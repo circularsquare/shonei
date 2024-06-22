@@ -1,0 +1,18 @@
+[
+    {
+        "id": 0,
+        "name": "none"
+    },
+    {
+        "id": 1,
+        "name": "wood"
+    },
+    {
+        "id": 2,
+        "name": "stone"
+    },
+    {
+        "id": 4,
+        "name": "wheat"
+    }
+]

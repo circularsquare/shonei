@@ -1,0 +1,29 @@
+hii
+
+eventually, want resource gathering to be done by mice who harvest at resource nodes and deliver stuff to inventories.
+(maybe just one inventory per settlement?)
+
+for now, have "mice" without game objects who just harvest and send directly to inventories.
+have a population census that tracks all the mice and their jobs. and allow reassigning from here.
+
+5/5
+
+move the a star stuff to animal game object!
+
+remove smoothing / set waypoint distance small!
+
+define connections my way! so that it makes sense with verticality.
+
+add ladders! and stairs!c  
+
+5/12
+wanna have woodcutters drop wood items
+
+wanna have haulers haul them
+
+6/9
+do the navigation stuff later?
+
+we can start with clicker game style. 
+
+can transition into having distinct workers / jobs later.

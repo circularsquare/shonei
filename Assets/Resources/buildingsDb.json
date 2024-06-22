@@ -1,0 +1,23 @@
+[  
+    {  
+        "id": 1,
+        "name": "house",
+        "description": "a simple house for 4 mice",
+        "nx": 1,
+        "ny": 1,
+        "costs": [
+            { "id": 10, "quantity": 5 }
+        ]
+    },
+    {  
+        "id": 2,
+        "name": "warehouse",
+        "description": "stores 4 stacks of things",
+        "nx": 1,
+        "ny": 1,
+        "costs": [
+            { "id": 1, "quantity": 1 }
+        ]
+    }
+
+]  

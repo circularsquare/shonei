@@ -1,0 +1,18 @@
+[
+    {
+        "id": 0,
+        "name": "none"
+    },
+    {
+        "id": 1,
+        "name": "woodcutter"
+    },
+    {
+        "id": 2,
+        "name": "miner"
+    },
+    {
+        "id": 4,
+        "name": "farmer"
+    }
+]

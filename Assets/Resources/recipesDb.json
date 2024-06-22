@@ -1,0 +1,24 @@
+[  
+    {  
+        "id": 0,
+        "job": "Woodcutter",
+        "name": "cut wood into planks",
+        "inputs": [
+            { "id": 1, "quantity": 1 }
+        ],
+        "outputs": [
+            { "id": 10, "quantity": 1 },
+            { "id": 11, "quantity": 1 }
+        ]
+    },
+    {  
+        "id": 1,
+        "job": "Stonecutter",
+        "inputs": [
+            { "id": 5, "quantity": 1 }
+        ],
+        "outputs": [
+            { "id": 6, "quantity": 1 }
+        ]
+    }
+]  
