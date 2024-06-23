@@ -10,6 +10,8 @@ public class UI : MonoBehaviour
     public static World world {get; protected set;}
     public static Db db {get; protected set;}
 
+    public GameObject JobDisplay; // prefab: same sort of thing as itemCount
+
     void Start() {
         if (instance != null) {
             Debug.LogError("there should only be one ui controller");}

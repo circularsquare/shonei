@@ -6,16 +6,16 @@ using Pathfinding;
 
 public class Animal      
 {
-    public enum Jobs {
-        None, Woodcutter, Miner, Farmer
-    }
+    // public enum Jobs {
+    //     None, Woodcutter, Miner, Farmer
+    // }
     public enum animalState {Idle, Walking, Working}
 
     public string aName;
     public float x;
     public float y;
     public float timeToFinish;
-    public Jobs job;
+    public Job job;
     public Inventory inventory;
     public animalState state;
     public GameObject go;
@@ -27,14 +27,18 @@ public class Animal
     public Sprite sprite;
     World world;
     
-    Action<Animal> cbAnimalChanged;
+    Action<Animal, Job> cbAnimalChanged;
 
-    public Animal(World world, float x = 0f, float y = 0f, Jobs job = Jobs.None, string aName = "mouse"){
+    public Animal(World world, float x = 0f, float y = 0f, Job job = null, string aName = "mouse"){
         this.world = world;
         this.x = x;
         this.y = y;
         this.aName = aName;
-        this.job = job;
+        if(job == null){
+            this.job = Db.jobs[0];
+        } else {
+            this.job = job;
+        }
         this.state = animalState.Idle;
         go = new GameObject();
         go.name = "An" + aName;
@@ -50,26 +54,33 @@ public class Animal
 
     }
 
-    public void SetJob(Jobs job){
-        this.job = job;
+    public void SetJob(Job newJob){
+        Job oldJob = this.job;
+        this.job = newJob;
         if (cbAnimalChanged != null){
-            cbAnimalChanged(this);} 
+            cbAnimalChanged(this, oldJob);} 
+    }
+    public void SetJob(string jobStr){
+        SetJob(Db.getJobByName(jobStr));
     }
     public void Work(){
         if (inventory == null){
             inventory = InventoryController.instance.inventory;
         }
-        switch (job) {
-            case Jobs.None:
+        switch (job.name) {
+            case "none":
                 break;
-            case Jobs.Woodcutter:
+            case "woodcutter":
                 inventory.AddItem("wood", 1);
                 break;
-            case Jobs.Miner:
+            case "miner":
                 inventory.AddItem("stone", 1);
                 break;
-            case Jobs.Farmer:
+            case "farmer":
                 inventory.AddItem("wheat", 1);
+                break;
+            default:
+                Debug.LogError("unknown job!");
                 break;
         }
 
@@ -105,8 +116,8 @@ public class Animal
     }
 
 
-    public void RegisterCbAnimalChanged(Action<Animal> callback){
+    public void RegisterCbAnimalChanged(Action<Animal, Job> callback){
         cbAnimalChanged += callback;}
-    public void UnregisterCbAnimalChanged(Action<Animal> callback){
+    public void UnregisterCbAnimalChanged(Action<Animal, Job> callback){
         cbAnimalChanged -= callback;}
 }

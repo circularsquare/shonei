@@ -30,11 +30,11 @@ public class MouseController : MonoBehaviour
         // draggin world around
         Vector3 currPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
         currPosition.z = 1f;
-        if (Input.GetMouseButton(1) || Input.GetMouseButton(2)){ // right or middle click
+        if (Input.GetMouseButton(1)){ // right or middle click
             Camera.main.transform.Translate(prevPosition - currPosition);
         }
         // for some reason quill18 didnt need the "if mouse button down" part??
-        if (Input.GetMouseButtonDown(1) || Input.GetMouseButtonDown(2)){
+        if (Input.GetMouseButtonDown(1)){
             prevPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             prevPosition.z = 1f;
         }

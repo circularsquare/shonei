@@ -44,12 +44,12 @@ public class InventoryController : MonoBehaviour
         if (item != null && inventory.GetAmount(item.id) != 0){
             GameObject itemCountGo = Instantiate(itemCount, panelInv.transform);
             itemCountGo.GetComponent<TMPro.TextMeshProUGUI>().text = item.name + ": " + inventory.GetAmount(item.id).ToString();
-            itemCountGo.name = "ItemCount" + item.name;
+            itemCountGo.name = "ItemCount_" + item.name;
         }
     }
     void updateItemCountDisplay(Item item){
         if (item != null && inventory.GetAmount(item.id) != 0){
-            Transform itemCountTransform = panelInv.transform.Find("ItemCount" + item.name);
+            Transform itemCountTransform = panelInv.transform.Find("ItemCount_" + item.name);
             if (itemCountTransform == null){
                 addItemCountDisplay(item);
             } else {

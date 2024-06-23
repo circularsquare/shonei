@@ -7,6 +7,7 @@ using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
+// this loads before anything else. 
 
 public class Db : MonoBehaviour { // should detach from game object (or make it a conrtrolelr?)
     public static Db instance {get; protected set;}
@@ -17,7 +18,7 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
 
     // int maxJobs = 40;
     // int maxRecipes = 5000;
-    public static Item[] items = new Item[5];
+    public static Item[] items = new Item[5000];
     public static Job[] jobs = new Job[100];
     public static Recipe[] recipes = new Recipe[5000];
 
@@ -38,8 +39,9 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
         jobByName = new Dictionary<string, Job>();
     } 
 
-    void Start(){
+    void Awake(){ // this runs before Start() like in world
         readCsv();
+        Debug.Log("db loaded");
     } 
 
     void readCsv(){
@@ -100,11 +102,18 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
     }
 
     void Update(){  }
+    public static Job getJobByName(string name){
+        if (jobByName.ContainsKey(name)){
+            return jobByName[name];
+        } else {
+            return null;
+        }
+    }
 }
 
 // theres already an Item class in another file
 public class Job {
-    public int id {get; set;} // for some reason the set can't be protected. for the json deserealize to work
+    public int id {get; set;} // for some reason the set can't be protected. for the json deserialize to work
     public string name {get; set;}
     public List<Recipe> recipes = new List<Recipe>();
 }

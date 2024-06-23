@@ -18,7 +18,9 @@ public class WorldController : MonoBehaviour
             Debug.LogError("there should only be one world controller");}
         instance = this;
 
+
         world = new World();
+        world.Start();
 
         tileGameObjectMap = new Dictionary<Tile, GameObject>();
 

@@ -33,12 +33,13 @@ public class World
         invController = InventoryController.instance;
         worldController = WorldController.instance;
 
+
+    }
+
+    public void Start(){
         for (int i = 0; i < 10; i++){
             AddAnimal();
         }
-        AddJob(Animal.Jobs.Woodcutter, 2);
-
-        Debug.Log("World created");
     }
 
     public void Update(){
@@ -55,20 +56,36 @@ public class World
     // ---------------------------
     // ANIMAL STUFF 
     // ---------------------------
-    public void AddAnimal(int x = 10, int y = 2, Animal.Jobs job = Animal.Jobs.None){
+    public void AddAnimal(int x = 10, int y = 2, Job job = null){
         animals[na] = new Animal(this, x, y, job);
         animals[na].RegisterCbAnimalChanged(AnimalController.instance.OnAnimalChanged);
+        if (job == null) {
+            animals[na].job = Db.getJobByName("none");
+        }
         na += 1;
     }
-    public void AddJob(Animal.Jobs job, int n = 1){
-        for (int a = 0; a < maxna; a++){
-            if (animals[a].job == Animal.Jobs.None){
-                animals[a].SetJob(job);
-                n -= 1;
+    public void AddJob(string jobstr, int n = 1){
+        if (n > 0) {
+            for (int a = 0; a < maxna; a++){
+                if (n == 0){return;}
+                if (animals[a] != null && animals[a].job.id == 0){ // if null
+                    animals[a].SetJob(jobstr);
+                    n -= 1;
+                }
             }
-            if (n <= 0){return;}
+            Debug.Log("no free mice!"); // only fires if doesn't return early
+        } else if (n < 0) {
+            for (int a = 0; a < maxna; a++){
+                if (n == 0){return;}
+                if (animals[a] != null && animals[a].job.name == jobstr){
+                    animals[a].SetJob("none");
+                    n += 1;
+                }
+            }
+            Debug.Log("no more mice to fire!");
         }
-        Debug.Log("no free mice!"); // only fires if doesn't return early
+        
+
     }
 
     // ---------------------------------
