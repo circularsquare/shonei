@@ -15,12 +15,14 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
     public static Dictionary<string, int> iidByName {get; protected set;}
     public static Dictionary<string, Item> itemByName {get; protected set;}
     public static Dictionary<string, Job> jobByName {get; protected set;}
+    public static Dictionary<string, BuildingType> buildingTypeByName {get; protected set;}
 
     // int maxJobs = 40;
     // int maxRecipes = 5000;
     public static Item[] items = new Item[5000];
     public static Job[] jobs = new Job[100];
     public static Recipe[] recipes = new Recipe[5000];
+    public static BuildingType[] buildingTypes = new BuildingType[100];
 
 
     // items: stored in csv and accessible through here
@@ -37,32 +39,15 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
         iidByName = new Dictionary<string, int>();
         itemByName = new Dictionary<string, Item>();
         jobByName = new Dictionary<string, Job>();
+        buildingTypeByName = new Dictionary<string, BuildingType>();
     } 
 
     void Awake(){ // this runs before Start() like in world
-        readCsv();
+        readJson();
         Debug.Log("db loaded");
     } 
 
-    void readCsv(){
-        // var path = Application.dataPath + "/Resources/itemsDb.csv"; 
-        // List<int> iids = new List<int>();
-        // List<Item> items = new List<Item>();
-        // using(var reader = new StreamReader(path)){
-        //     reader.ReadLine(); // column names
-        //     while (!reader.EndOfStream){
-        //         string line = reader.ReadLine();
-        //         string[] values = line.Split(new char[] {',', ' '}, StringSplitOptions.RemoveEmptyEntries);
-        //         iids.Add(Int32.Parse(values[0]));
-        //         items.Add(new Item(Int32.Parse(values[0]), values[1]));
-        //         // Debug.Log(values[0] + values[1]);
-        //     }
-        // }
-        // itemById = iids.Zip(items, (k, v) => new { k, v })
-        //       .ToDictionary(x => x.k, x => x.v);
-        // iidByName = iids.Zip(items, (k, v) => new {k, v})
-        //       .ToDictionary(x => x.v.iName, x => x.k); 
-
+    void readJson(){
         // read Items
         string jsonTextItems = File.ReadAllText(Application.dataPath + "/Resources/itemsDb.json");
         Item[] itemsUnplaced = JsonConvert.DeserializeObject<Item[]>(jsonTextItems);
@@ -97,6 +82,15 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
                 jobByName[recipe.job].recipes.Add(recipe);
             }
         }
+
+        // read Buildings
+        string jsonBuildingTypes = File.ReadAllText(Application.dataPath + "/Resources/buildingsDb.json");
+        BuildingType[] buildingTypesUnplaced = JsonConvert.DeserializeObject<BuildingType[]>(jsonBuildingTypes);
+        foreach (BuildingType buildingType in buildingTypesUnplaced){
+            if (buildingTypes[buildingType.id] != null){Debug.LogError("error!! multiple building types with same id");}
+            buildingTypes[buildingType.id] = buildingType;
+            buildingTypeByName.Add(buildingType.name, buildingType);
+        }
         
 
     }
@@ -126,6 +120,16 @@ public class Recipe {
     public ItemQuantity[] outputs { get; set; }
 }
 
+public class BuildingType{
+    public int id {get; set;}
+    public string name {get; set;}
+    public int nx {get; set;}
+    public int ny {get; set;}
+    public ItemQuantity[] costs {get; set;}
+    public bool isTile {get; set;}
+}
+
+// for stuff like input costs.
 public class ItemQuantity{
     public int id {get; set;}
     public int quantity {get; set;}

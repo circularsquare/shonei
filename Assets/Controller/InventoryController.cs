@@ -6,6 +6,12 @@ using UnityEngine.EventSystems;
 using TMPro;
 using System;
 
+
+
+// eventually, would like to have local inventorys (stockpiles) 
+// and a fake global inventory that simply tracks the sum of the local inventories 
+// for sidebar display purposes.
+
 public class InventoryController : MonoBehaviour
 {
     public static InventoryController instance {get; protected set;}

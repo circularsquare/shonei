@@ -23,6 +23,7 @@ public class AnimalController : MonoBehaviour
             Debug.LogError("there should only be one ani controller");}
         instance = this;   
         jobCounts = new Dictionary<Job, int>();
+        jobCounts.Add(Db.jobs[0], 0); 
     }
 
     void Update()
@@ -31,25 +32,23 @@ public class AnimalController : MonoBehaviour
             world = WorldController.instance.world;
 
             // this needs to run AFTER world has already been populated!
-            // hopefully it is??
             addJobCounts();
         } 
     }
     
 
     void addJobCounts(){
-        // register animal update callbacks
-        for (int i = 0; i < world.na; i++){
-            Animal ani = world.animals[i];
-            if (ani != null){
-                ani.RegisterCbAnimalChanged(OnAnimalChanged);
-            }
-        }
+        // register animal update callbacks is done in world.cs already
+        // for (int i = 0; i < world.na; i++){
+        //     Animal ani = world.animals[i];
+        //     if (ani != null){
+        //         ani.RegisterCbAnimalChanged(OnAnimalChanged);
+        //     }
+        // }
 
         panelJobs = UI.instance.transform.Find("PanelJobs").gameObject;
-        // need to modify the below to look at the jobs enum rather than the Db.
         foreach(Job job in Db.jobs){
-            if (job != null){ // need to add anotehr condintion for if there are no animals withthis job
+            if (job != null){ // still want this to display even if no animals have the job
                 GameObject textDisplayGo = Instantiate(UI.instance.JobDisplay, panelJobs.transform);
                 textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = job.name + ": " + (getJobCount(job)).ToString();
                 textDisplayGo.name = "JobCount_" + job.name;
@@ -57,7 +56,7 @@ public class AnimalController : MonoBehaviour
         }
     }
 
-    // this maybe probably be an interface or something
+    // this maybe probably be an interface or something (shared code w inv controller)
     // updates the number of mice with this job in the ui
     void updateJobCount(Job job){
         if (job != null){
@@ -76,12 +75,10 @@ public class AnimalController : MonoBehaviour
 
     public void OnAnimalChanged(Animal ani, Job oldJob) {
 
-        // its pretty stupid to have this here rather than with the job change function.
-        // maybe move it all except the updateJobCounts.
-        // regardless it definitely shouldnt be in a OnChanged function cuz i think thats why its getting double called.
+        // maybe move this to be with job change function?
+        // maybe its fine.
+
         Job newJob = ani.job;
-        Debug.Log(newJob.name);
-        Debug.Log(oldJob.name);
         if (!jobCounts.ContainsKey(newJob)){
             jobCounts.Add(newJob, 1);
         } else {

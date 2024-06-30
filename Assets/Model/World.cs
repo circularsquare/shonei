@@ -61,6 +61,7 @@ public class World
         animals[na].RegisterCbAnimalChanged(AnimalController.instance.OnAnimalChanged);
         if (job == null) {
             animals[na].job = Db.getJobByName("none");
+            AnimalController.instance.jobCounts[Db.jobs[0]] += 1;
         }
         na += 1;
     }

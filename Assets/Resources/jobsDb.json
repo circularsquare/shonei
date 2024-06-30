@@ -2,17 +2,17 @@
     {
         "id": 0,
         "name": "none"
-    },
-    {
+    },{
         "id": 1,
-        "name": "woodcutter"
-    },
-    {
+        "name": "logger"
+    },{
         "id": 2,
         "name": "miner"
-    },
-    {
+    },{
         "id": 4,
         "name": "farmer"
+    },{
+        "id": 10,
+        "name": "digger"
     }
 ]

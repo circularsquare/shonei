@@ -7,12 +7,13 @@ public class Tile
 {
     Action<Tile> cbTileTypeChanged;
 
-    public enum TileType {Empty, Soil, Stone, Built, Tree};
+    public enum TileType {Empty, Soil, Stone, Built, Tree, Structure};
     public Dictionary<TileType, bool> SolidDict = new Dictionary<TileType, bool>(){
                                 {TileType.Empty, false},
                                 {TileType.Tree, false},
                                 {TileType.Soil, true},
-                                {TileType.Stone, true}}; 
+                                {TileType.Stone, true},
+                                {TileType.Structure, true}}; 
 
     TileType type = TileType.Empty;
     public TileType Type {

@@ -8,16 +8,24 @@ using UnityEngine.EventSystems;
 
 public class MouseController : MonoBehaviour
 {
-    Tile.TileType buildModeTile = Tile.TileType.Soil;
+    public Tile.TileType buildModeTile;
     public GameObject cursorHighlight;
     Vector3 prevPosition;
 
     public World world;
     public Inventory inventory;
+    public static MouseController instance;
 
     void Start() {
+        if (instance != null) {
+            Debug.LogError("there should only be one mouse controller");}
+        instance = this;        
     }
 
+
+
+    // wanna chagne the building process to only be able to make Buildings, not tiles. 
+    // dirt buildings will instantly just turn into dirt tiles after theyre made.
     void Update() {
         if (EventSystem.current.IsPointerOverGameObject()){
             return;
@@ -49,6 +57,9 @@ public class MouseController : MonoBehaviour
             if (Input.GetMouseButtonDown(0)) {
                 Vector3 clickPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
                 if (tileAt != null && tileAt.Type == Tile.TileType.Empty) {
+                    if (BuildMenu.Construct(Structure)){
+
+                    }
                     tileAt.Type = buildModeTile;
                 } else if (buildModeTile == Tile.TileType.Empty){
                     tileAt.Type = buildModeTile; // destroy 

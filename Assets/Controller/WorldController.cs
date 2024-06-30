@@ -66,10 +66,10 @@ public class WorldController : MonoBehaviour
                 tile_go.GetComponent<SpriteRenderer>().sprite = Resources.Load<Sprite>("Sprites/Tiles/grass");
             }
         }
-        else if (tile_data.Type == Tile.TileType.Empty){
+        else if (tile_data.Type == Tile.TileType.Empty || tile_data.Type == Tile.TileType.Structure){
             tile_go.GetComponent<SpriteRenderer>().sprite = null;
         }
-        else if (tile_data.Type.ToString() == "Tree"){
+        else if (tile_data.Type.ToString() == "Tree" || tile_data.Type == Tile.TileType.Stone){
             tile_go.GetComponent<SpriteRenderer>().sprite = Resources.Load<Sprite>("Sprites/Tiles/" + tile_data.Type.ToString());
         }
         else{

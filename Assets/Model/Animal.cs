@@ -70,7 +70,7 @@ public class Animal
         switch (job.name) {
             case "none":
                 break;
-            case "woodcutter":
+            case "logger":
                 inventory.AddItem("wood", 1);
                 break;
             case "miner":
@@ -79,12 +79,15 @@ public class Animal
             case "farmer":
                 inventory.AddItem("wheat", 1);
                 break;
+            case "digger":
+                inventory.AddItem("dirt", 1);
+                break;
             default:
                 Debug.LogError("unknown job!");
                 break;
         }
 
-        MoveTo(x + (float)UnityEngine.Random.Range(-1, 1), y);
+        //MoveTo(x + (float)UnityEngine.Random.Range(-1, 1), y);
     }
     
     public void MoveTo(float x, float y){
