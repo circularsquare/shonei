@@ -8,6 +8,7 @@ public class BuildMenu : MonoBehaviour {
     public GameObject buildButtonPrefab; // UI button prefab for each building
     public GameObject textDisplayPrefab;
     public BuildMenu instance;
+    public BuildingType bt;
 
     private void Start(){
         if (instance != null) {
@@ -67,6 +68,7 @@ public class BuildMenu : MonoBehaviour {
 
     private void SelectBuilding(BuildingType bt)
     {
+        this.bt = bt;
         if (bt.isTile == true){
             if (bt.name == "stone"){
                 MouseController.instance.buildModeTile = Tile.TileType.Stone;
@@ -74,7 +76,7 @@ public class BuildMenu : MonoBehaviour {
                 MouseController.instance.buildModeTile = Tile.TileType.Soil;
             }
             
-        } else{
+        } else {
             MouseController.instance.buildModeTile = Tile.TileType.Structure;
         }
 
