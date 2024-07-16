@@ -95,7 +95,7 @@ public class Animal
             Debug.Log("destination out of range!" + x.ToString() + "," + y.ToString());
             return;
         }
-        if (world.GetTileAt(x, y).standable | true){
+        if (/*world.GetTileAt(x, y).type.solid |*/ true){
             this.state = animalState.Walking;
             Vector2Int start = new Vector2Int{x=(int)this.x, y=(int)this.y};
             Vector2Int end = new Vector2Int{x=(int)x, y=(int)y};

@@ -115,7 +115,7 @@ public class World
             for (int y = 0; y < ny; y++){
                 if (y == 0){
                     SetStandability(x, y, true);
-                } else if (GetTileAt(x, y-1).Solid() && !GetTileAt(x, y).Solid()){
+                } else if (GetTileAt(x, y-1).type.solid && !GetTileAt(x, y).type.solid){
                     SetStandability(x, y, true);
                 } else {
                     SetStandability(x, y, false);
@@ -127,7 +127,7 @@ public class World
         for (int i = 0; i < 2; i++){
             if (y == 0){
                 SetStandability(x, y, true);
-            } else if (GetTileAt(x, y-1).Solid() && !GetTileAt(x, y).Solid()){
+            } else if (GetTileAt(x, y-1).type.solid && !GetTileAt(x, y).type.solid){
                 SetStandability(x, y, true);
             } else {
                 SetStandability(x, y, false); 
@@ -136,8 +136,8 @@ public class World
         }
     }
     void SetStandability(int x, int y, bool val){
-        standableTiles[x,y] = val;
-        tiles[x,y].standable = val;
+        standableTiles[x,y] = true; // val;
+        // tiles[x,y].standable = true; // val;
     }
     
     // ---------------------------------

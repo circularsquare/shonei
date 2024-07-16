@@ -34,10 +34,17 @@ public class Inventory // should make a separate inventory game object?
         if (cbInventoryChanged != null){
             cbInventoryChanged(this); } // make sure to add this callback thing wherever inv is changed
     }
-    public void AddItems(ItemQuantity[] iqs){
-        foreach (ItemQuantity iq in iqs){
-            AddItem(iq.id, iq.quantity);
+    public void AddItems(ItemQuantity[] iqs, bool negate = false){
+        if (negate){
+            foreach (ItemQuantity iq in iqs){
+                AddItem(iq.id, -iq.quantity);
+            }
+        } else {
+            foreach (ItemQuantity iq in iqs){
+                AddItem(iq.id, iq.quantity);
+            }
         }
+
     }
 
     public float GetAmount(string name){

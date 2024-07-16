@@ -8,7 +8,8 @@ using UnityEngine.EventSystems;
 
 public class MouseController : MonoBehaviour
 {
-    public Tile.TileType buildModeTile;
+    public enum MouseMode {Default, Build, Destroy};
+    public MouseMode mouseMode = MouseMode.Default;
     public GameObject cursorHighlight;
     Vector3 prevPosition;
 
@@ -49,47 +50,31 @@ public class MouseController : MonoBehaviour
 
         Tile tileAt = WorldController.instance.world.GetTileAt(currPosition.x, currPosition.y);
 
-
-        // ok i think i should
-        // abolish mousecontroller
-        // make TileType a full object instead of just an enum
-        // have click interaction in buildmenu
-        // have separate functions to construct tile or construct building 
-        // check costs / consume costs
-        // if buildingType.isTile, 
-        //     call the current tile updating thing
-        // else 
-        //     set the tile to Structure
-        //     instantiate a Building on that tile (with coordinates int x y equal to that of the Tile)
-            
-
-
         if (tileAt == null){ cursorHighlight.SetActive(false);}
-        else{
+        else if ((mouseMode == MouseMode.Build) || (mouseMode == MouseMode.Destroy)){
             cursorHighlight.SetActive(true);
             cursorHighlight.transform.position = new Vector3(tileAt.x, tileAt.y, 1);
+        }
+
             // click to switch tile type
-            if (Input.GetMouseButtonDown(0)) {
-                Vector3 clickPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-                if (tileAt != null && tileAt.Type == Tile.TileType.Empty) {
-                    tileAt.Type = buildModeTile;
-                    // if (buildModeTile == Tile.TileType.Structure){
-                    //     BuildMenu.Construct(BuildMenu.instance.bt, x = 0, y = 0);
-                    // }
-                } else if (buildModeTile == Tile.TileType.Empty){
-                    tileAt.Type = buildModeTile; // destroy 
-                }
+        if (Input.GetMouseButtonDown(0)) {
+            Vector3 clickPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            if (mouseMode == MouseMode.Build) {
+                BuildMenu.instance.Construct(tileAt);
+            } else if (mouseMode == MouseMode.Destroy) {
+                BuildMenu.instance.Destroy(tileAt);
             }
         }
+        
     }
 
     public void SetModeBuild() {
-        buildModeTile = Tile.TileType.Soil;
+        mouseMode = MouseMode.Build;
     }
     public void SetModeDestroy() {
-        buildModeTile = Tile.TileType.Empty;
+        mouseMode = MouseMode.Destroy;
     }
-    public void HarvestWood(){
+    public void HarvestWood() {
         inventory.AddItem(1, 2);
     }
 }

@@ -16,13 +16,15 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
     public static Dictionary<string, Item> itemByName {get; protected set;}
     public static Dictionary<string, Job> jobByName {get; protected set;}
     public static Dictionary<string, BuildingType> buildingTypeByName {get; protected set;}
+    public static Dictionary<string, TileType> tileTypeByName {get; protected set;}
 
     // int maxJobs = 40;
     // int maxRecipes = 5000;
-    public static Item[] items = new Item[5000];
+    public static Item[] items = new Item[500];
     public static Job[] jobs = new Job[100];
-    public static Recipe[] recipes = new Recipe[5000];
+    public static Recipe[] recipes = new Recipe[500];
     public static BuildingType[] buildingTypes = new BuildingType[100];
+    public static TileType[] tileTypes = new TileType[100];
 
 
     // items: stored in csv and accessible through here
@@ -40,6 +42,7 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
         itemByName = new Dictionary<string, Item>();
         jobByName = new Dictionary<string, Job>();
         buildingTypeByName = new Dictionary<string, BuildingType>();
+        tileTypeByName = new Dictionary<string, TileType>();
     } 
 
     void Awake(){ // this runs before Start() like in world
@@ -91,6 +94,15 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
             buildingTypes[buildingType.id] = buildingType;
             buildingTypeByName.Add(buildingType.name, buildingType);
         }
+
+        // read Tiles
+        string jsonTileTypes = File.ReadAllText(Application.dataPath + "/Resources/tilesDb.json");
+        TileType[] tileTypesUnplaced = JsonConvert.DeserializeObject<TileType[]>(jsonTileTypes);
+        foreach (TileType tileType in tileTypesUnplaced){
+            if (tileTypes[tileType.id] != null){Debug.LogError("error!! multiple tile types with same id");}
+            tileTypes[tileType.id] = tileType;
+            tileTypeByName.Add(tileType.name, tileType);
+        }
         
 
     }
@@ -120,7 +132,7 @@ public class Recipe {
     public ItemQuantity[] outputs { get; set; }
 }
 
-public class BuildingType{
+public class BuildingType {
     public int id {get; set;}
     public string name {get; set;}
     public int nx {get; set;}
@@ -129,8 +141,14 @@ public class BuildingType{
     public bool isTile {get; set;}
 }
 
+public class TileType {
+    public int id {get; set;}
+    public string name {get; set;}
+    public bool solid {get; set;}
+}
+
 // for stuff like input costs.
-public class ItemQuantity{
+public class ItemQuantity {
     public int id {get; set;}
     public int quantity {get; set;}
 }

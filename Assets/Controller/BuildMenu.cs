@@ -7,7 +7,7 @@ public class BuildMenu : MonoBehaviour {
 
     public GameObject buildButtonPrefab; // UI button prefab for each building
     public GameObject textDisplayPrefab;
-    public BuildMenu instance;
+    public static BuildMenu instance;
     public BuildingType bt;
 
     private void Start(){
@@ -25,19 +25,45 @@ public class BuildMenu : MonoBehaviour {
                     costDisplay.GetComponent<TMPro.TextMeshProUGUI>().text = Db.items[iq.id].name + ": " + iq.quantity.ToString();
                     costDisplay.name = "CostDisplay" + Db.items[iq.id].name;
                 }
-                buttonGo.GetComponent<Button>().onClick.AddListener(() => SelectBuilding(building));
+                buttonGo.GetComponent<Button>().onClick.AddListener(() => this.bt = building);  // is this right??
                 buttonGo.GetComponentInChildren<TMPro.TextMeshProUGUI>().text = building.name;
             }
-
         }
     }
 
     // mousecontroller handles the mouse stuff. and calls build here.
 
-    public bool Construct(BuildingType bt, int x, int y){
-        if (Inventory.instance.SufficientResources(bt.costs)){
-            Inventory.instance.AddItems(bt.costs);
+    public bool Construct(Tile tile){
+        if (Inventory.instance.SufficientResources(bt.costs) && tile.type.id == 0){
+            Inventory.instance.AddItems(bt.costs, true);
+            if (bt.isTile){
+                if (Db.tileTypeByName.ContainsKey(bt.name)){
+                    tile.type = Db.tileTypeByName[bt.name];
+                }
+            }
+            if (!bt.isTile){
+                if (tile.building != null){
+                    Debug.Log("theres already a building here!");
+                    return false;
+                } else {
+                    // instead of new building its supposed to be addcomponent?
+                    Building building = new Building(bt, tile.x, tile.y);
+                    GameObject buildingGo = new GameObject("building" + bt.name);
+                    tile.building = building;
+                }
+            }
             return true;
+        }
+        return false;
+    }
+    public bool Destroy(Tile tile){
+        if (tile.type != Db.tileTypes[0]){
+            if (tile.building != null){
+                tile.building = null;
+                return true; // destroyed structure
+            }
+            tile.type = Db.tileTypes[0]; 
+            return true; // destroyed tile
         }
         return false;
     }
@@ -66,19 +92,4 @@ public class BuildMenu : MonoBehaviour {
         // }
     }
 
-    private void SelectBuilding(BuildingType bt)
-    {
-        this.bt = bt;
-        if (bt.isTile == true){
-            if (bt.name == "stone"){
-                MouseController.instance.buildModeTile = Tile.TileType.Stone;
-            } else{
-                MouseController.instance.buildModeTile = Tile.TileType.Soil;
-            }
-            
-        } else {
-            MouseController.instance.buildModeTile = Tile.TileType.Structure;
-        }
-
-    }
 }

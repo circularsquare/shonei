@@ -1,0 +1,28 @@
+[  
+    {  
+        "id": 0,
+        "name": "empty",
+        "solid": 0
+    },{    
+        "id": 1,
+        "name": "structure",
+        "solid": 0
+    },{  
+        "id": 2,
+        "name": "soil",
+        "solid": 1
+    },{  
+        "id": 3,
+        "name": "stone",
+        "solid": 1
+    },{  
+        "id": 4,
+        "name": "tree",
+        "solid": 1
+    },{  
+        "id": 5,
+        "name": "ummm",
+        "solid": 1
+    }
+
+]  

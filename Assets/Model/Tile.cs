@@ -7,37 +7,29 @@ public class Tile
 {
     Action<Tile> cbTileTypeChanged;
 
-    public enum TileType {Empty, Soil, Stone, Built, Tree, Structure};
-    public Dictionary<TileType, bool> SolidDict = new Dictionary<TileType, bool>(){
-                                {TileType.Empty, false},
-                                {TileType.Tree, false},
-                                {TileType.Soil, true},
-                                {TileType.Stone, true},
-                                {TileType.Structure, true}}; 
-
-    TileType type = TileType.Empty;
-    public TileType Type {
-        get{return type;}
+    World world;
+    public int x;
+    public int y;
+    private TileType _type;
+    public TileType type
+    {
+        get{return _type;}
         set{
-            type = value;
+            _type = value;
             if (cbTileTypeChanged != null){
                 cbTileTypeChanged(this);
             }
         }
     }
+    public Building building; // in future, have like "front level" "back level" building slots? like wall level?
 
-    World world;
-    public int x;
-    public int y;
-    public bool standable;
     
     public Tile(World world, int x, int y){
         this.world = world;
         this.x = x;
         this.y = y;
-    }
-    public bool Solid(){
-        return SolidDict[type];
+        
+        type = Db.tileTypes[0];
     }
     
     public void RegisterCbTileTypeChanged(Action<Tile> callback){

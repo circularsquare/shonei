@@ -41,11 +41,11 @@ public class WorldController : MonoBehaviour
                 tile_data.RegisterCbTileTypeChanged(OnTileTypeChanged);
 
                 if (y < 2){
-                    tile_data.Type = Tile.TileType.Soil;
+                    tile_data.type = Db.tileTypeByName["soil"];
                 }
             }
         }
-        world.GetTileAt(5, 2).Type = Tile.TileType.Tree;
+        world.GetTileAt(5, 2).type = Db.tileTypeByName["tree"];
         world.CalculateTileStandability();
     } 
 
@@ -59,18 +59,18 @@ public class WorldController : MonoBehaviour
             Debug.LogError("tile data is not in tile game object map!");
         }
         GameObject tile_go = tileGameObjectMap[tile_data];
-        if (tile_data.Type == Tile.TileType.Soil){
-            if (tile_data.y < world.ny - 1 && world.GetTileAt(tile_data.x, tile_data.y + 1).Type == Tile.TileType.Soil){
+        if (tile_data.type.name == "soil"){
+            if (tile_data.y < world.ny - 1 && world.GetTileAt(tile_data.x, tile_data.y + 1).type != Db.tileTypes[0]){
                 tile_go.GetComponent<SpriteRenderer>().sprite = Resources.Load<Sprite>("Sprites/Tiles/dirt");
             } else {
                 tile_go.GetComponent<SpriteRenderer>().sprite = Resources.Load<Sprite>("Sprites/Tiles/grass");
             }
         }
-        else if (tile_data.Type == Tile.TileType.Empty || tile_data.Type == Tile.TileType.Structure){
+        else if (tile_data.type.name == "empty" || tile_data.type.name == "structure"){
             tile_go.GetComponent<SpriteRenderer>().sprite = null;
         }
-        else if (tile_data.Type.ToString() == "Tree" || tile_data.Type == Tile.TileType.Stone){
-            tile_go.GetComponent<SpriteRenderer>().sprite = Resources.Load<Sprite>("Sprites/Tiles/" + tile_data.Type.ToString());
+        else if (tile_data.type.name == "tree" || tile_data.type.name == "stone"){
+            tile_go.GetComponent<SpriteRenderer>().sprite = Resources.Load<Sprite>("Sprites/Tiles/" + tile_data.type.ToString());
         }
         else{
             Debug.LogError("ontiletypechanged - unrecognized tile type");
