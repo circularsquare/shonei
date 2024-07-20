@@ -9,6 +9,8 @@ public class Item // : Object
 {
     public int id {get; set;}
     public string name {get; set;}
+    
+    public bool isComposite {get; set;}
     public bool isDiscrete {get; set;}
 
     // just enum?

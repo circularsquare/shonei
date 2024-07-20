@@ -40,6 +40,7 @@ public class WorldController : MonoBehaviour
                 // tile_data.RegisterCbTileTypeChanged((tile) => {OnTileTypeChanged(tile, tile_go);});
                 tile_data.RegisterCbTileTypeChanged(OnTileTypeChanged);
 
+                // world generating
                 if (y < 2){
                     tile_data.type = Db.tileTypeByName["soil"];
                 }

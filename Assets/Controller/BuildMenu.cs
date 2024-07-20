@@ -46,10 +46,14 @@ public class BuildMenu : MonoBehaviour {
                     Debug.Log("theres already a building here!");
                     return false;
                 } else {
-                    // instead of new building its supposed to be addcomponent?
-                    Building building = new Building(bt, tile.x, tile.y);
-                    GameObject buildingGo = new GameObject("building" + bt.name);
+                    Building building;
+                    if (bt.name == "drawer"){
+                        building = new BStorage(bt, tile.x, tile.y);
+                    } else {
+                        building = new Building(bt, tile.x, tile.y);
+                    }    
                     tile.building = building;
+
                 }
             }
             return true;

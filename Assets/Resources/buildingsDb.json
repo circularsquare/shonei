@@ -10,7 +10,7 @@
         ]
     },{  
         "id": 2,
-        "name": "warehouse",
+        "name": "drawer",
         "description": "stores 4 stacks of things",
         "nx": 1,
         "ny": 1,

@@ -1924,6 +1924,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e32e3dde4aafb034cb1a9ee27df13b16, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  mouseMode: 0
   cursorHighlight: {fileID: 1481481862}
 --- !u!1 &1347016351
 GameObject:

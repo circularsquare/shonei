@@ -1,23 +1,28 @@
 [
     {
         "id": 0,
-        "name": "none"
+        "name": "none",
+        "isComposite": false
     },
     {
         "id": 1,
-        "name": "wood"
+        "name": "wood",
+        "isComposite": false
     },
     {
         "id": 2,
-        "name": "stone"
+        "name": "stone",
+        "isComposite": true
     },
     {
         "id": 4,
-        "name": "wheat"
+        "name": "wheat",
+        "isComposite": false
     },
     {
         "id": 5,
-        "name": "dirt"
-    },
+        "name": "soil",
+        "isComposite": false
+    }
     
 ]
