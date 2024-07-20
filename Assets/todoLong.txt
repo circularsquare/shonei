@@ -1,0 +1,29 @@
+meow
+
+- local inventories
+    - assignable/filterable
+- items on floor
+- info panel
+    - for items
+    - for inventories
+    - for mice
+    - for structures/tiles
+- job things
+    - deciding what to craft
+    - recipe list per job 
+        - make if have > x lots of input and < y of primary output?
+        - priority
+- navigation / item hauling
+- buildings
+    - inventories 
+    - housing
+    - leisure
+    - work stations
+    - > 1x1 buildings
+- happiness
+    - food
+    - leisure
+    - housing
+    - wealth / beauty / diversity?
+- work experience / books ?
+
