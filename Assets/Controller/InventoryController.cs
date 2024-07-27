@@ -39,7 +39,7 @@ public class InventoryController : MonoBehaviour
             inventory.RegisterCbInventoryChanged(OnInventoryChanged);
             inv_go.transform.SetParent(this.transform, true);
             SpriteRenderer inv_sr = inv_go.AddComponent<SpriteRenderer>();
-            panelInv = UI.instance.transform.Find("PanelInventory").gameObject;
+            panelInv = UI.instance.transform.Find("InventoryPanel").gameObject;
             foreach (Item item in Db.items){
                 addItemCountDisplay(item);
             }

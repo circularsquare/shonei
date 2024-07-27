@@ -22,6 +22,7 @@ public class Tile
         }
     }
     public Building building; // in future, have like "front level" "back level" building slots? like wall level?
+    public Animal animal; // animals standing here
 
     
     public Tile(World world, int x, int y){

@@ -23,7 +23,12 @@ public class Inventory // should make a separate inventory game object?
         AddItem(iq.id, iq.quantity);
     }
     public void AddItem(string name, int amount){
-        AddItem(Db.iidByName[name], amount);
+        if (Db.iidByName.ContainsKey(name)){
+            AddItem(Db.iidByName[name], amount);
+        } else {
+            Debug.LogError("item name doesn't exist in iid dictionary");
+        }
+        
     }
     public void AddItem(int iid, int amount){
         if (!itemAmounts.ContainsKey(iid)){

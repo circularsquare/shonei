@@ -8,8 +8,8 @@ using UnityEngine.EventSystems;
 
 public class MouseController : MonoBehaviour
 {
-    public enum MouseMode {Default, Build, Destroy};
-    public MouseMode mouseMode = MouseMode.Default;
+    public enum MouseMode {Select, Build, Destroy};
+    public MouseMode mouseMode = MouseMode.Select;
     public GameObject cursorHighlight;
     Vector3 prevPosition;
 
@@ -29,6 +29,7 @@ public class MouseController : MonoBehaviour
     // dirt buildings will instantly just turn into dirt tiles after theyre made.
     void Update() {
         if (EventSystem.current.IsPointerOverGameObject()){
+            // this only checks if it's over ui elements.
             return;
         }
         if (world == null){
@@ -37,34 +38,48 @@ public class MouseController : MonoBehaviour
         }
 
         // draggin world around
+        // is buggy if you drag off a UI element        
         Vector3 currPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
         currPosition.z = 1f;
-        if (Input.GetMouseButton(1)){ // right or middle click
+        if (Input.GetMouseButton(1)){ // right click. drag to move around in game
             Camera.main.transform.Translate(prevPosition - currPosition);
         }
-        // for some reason quill18 didnt need the "if mouse button down" part??
         if (Input.GetMouseButtonDown(1)){
             prevPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             prevPosition.z = 1f;
         }
 
+        // set cursorHighlight if in build/destroy mode
         Tile tileAt = WorldController.instance.world.GetTileAt(currPosition.x, currPosition.y);
-
         if (tileAt == null){ cursorHighlight.SetActive(false);}
         else if ((mouseMode == MouseMode.Build) || (mouseMode == MouseMode.Destroy)){
             cursorHighlight.SetActive(true);
             cursorHighlight.transform.position = new Vector3(tileAt.x, tileAt.y, 1);
         }
+        if (mouseMode == MouseMode.Select){
+            cursorHighlight.SetActive(false);
+        }
 
-            // click to switch tile type
+
+        // register click
         if (Input.GetMouseButtonDown(0)) {
             Vector3 clickPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            if (mouseMode == MouseMode.Build) {
-                BuildMenu.instance.Construct(tileAt);
+            if (mouseMode == MouseMode.Select){ // display info
+                RaycastHit2D hit = Physics2D.Raycast(clickPos, Vector2.zero);
+                if (hit.collider != null) {
+                    InfoPanel.instance.ShowInfo(hit.collider); // clicked on animal
+                } else if (tileAt != null) {
+                    InfoPanel.instance.ShowInfo(tileAt); // clicked on tile
+                }
+
+            } else if (mouseMode == MouseMode.Build) {
+                BuildPanel.instance.Construct(tileAt);
             } else if (mouseMode == MouseMode.Destroy) {
-                BuildMenu.instance.Destroy(tileAt);
+                BuildPanel.instance.Destroy(tileAt);
             }
         }
+
+
         
     }
 
@@ -73,8 +88,10 @@ public class MouseController : MonoBehaviour
     }
     public void SetModeDestroy() {
         mouseMode = MouseMode.Destroy;
+        BuildPanel.instance.bt = null;
     }
-    public void HarvestWood() {
-        inventory.AddItem(1, 2);
+    public void SetModeSelect() {
+        mouseMode = MouseMode.Select;
+        BuildPanel.instance.bt = null;
     }
 }

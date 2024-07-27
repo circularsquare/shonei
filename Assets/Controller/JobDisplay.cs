@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 
+// this is the script for a singular row job display prefab, not the whole job panel
 public class JobDisplay : MonoBehaviour
 {
 

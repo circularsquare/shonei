@@ -8,76 +8,79 @@ using TMPro;
 public class AnimalController : MonoBehaviour
 {
     public static AnimalController instance {get; protected set;}
-    public GameObject panelJobs;
+    public Animal[] animals;
+    public int na = 0; 
+    private int maxna = 1000;
+    public GameObject jobsPanel;
 
     private World world;
     public Dictionary<Job, int> jobCounts;
 
-    // the purpose of this module right now is just to keep track of how many of each job there are
-    // for display purposes.
-    // actual animal updates are still in world.cs.
+    // this class keeps track of all the animals and adds animals and such
 
-    void Start()
-    {    
+    void Start() {    
         if (instance != null) {
             Debug.LogError("there should only be one ani controller");}
         instance = this;   
+
+        animals = new Animal[maxna];
         jobCounts = new Dictionary<Job, int>();
         jobCounts.Add(Db.jobs[0], 0); 
+
+        for (int i = 0; i < 10; i++){
+            AddAnimal();
+        }
     }
 
-    void Update()
-    {
+    void Update() {
         if (world == null){
             world = WorldController.instance.world;
-
-            // this needs to run AFTER world has already been populated!
-            addJobCounts();
+            addJobCounts();  // this needs to run AFTER world has already been populated!
         } 
     }
-    
 
-    void addJobCounts(){
-        // register animal update callbacks is done in world.cs already
-        // for (int i = 0; i < world.na; i++){
-        //     Animal ani = world.animals[i];
-        //     if (ani != null){
-        //         ani.RegisterCbAnimalChanged(OnAnimalChanged);
-        //     }
-        // }
+    public void Work(){ // called on a timer from World.cs
+        for (int a = 0; a < na; a++){ // later, change the animal work method to not be a timer and instead track individual animal workloads
+            animals[a].Work(); 
+        }
+    }
 
-        panelJobs = UI.instance.transform.Find("PanelJobs").gameObject;
-        foreach(Job job in Db.jobs){
-            if (job != null){ // still want this to display even if no animals have the job
-                GameObject textDisplayGo = Instantiate(UI.instance.JobDisplay, panelJobs.transform);
-                textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = job.name + ": " + (getJobCount(job)).ToString();
-                textDisplayGo.name = "JobCount_" + job.name;
+    public void AddAnimal(int x = 10, int y = 2, Job job = null){
+        GameObject animalPrefab = Resources.Load<GameObject>("Prefabs/Animal");
+        GameObject go = GameObject.Instantiate(animalPrefab, new Vector3(x, y, 0), Quaternion.identity);
+        Animal animal = go.AddComponent<Animal>(); // connect to animal script
+        animal.x = x;
+        animal.y = y; 
+        animal.RegisterCbAnimalChanged(OnAnimalChanged);
+        animal.transform.SetParent(transform);
+        animals[na] = animal;
+        jobCounts[Db.jobs[0]] += 1;
+        na += 1;
+    }
+
+    public void AddJob(string jobstr, int n = 1){
+        if (n > 0) {
+            for (int a = 0; a < maxna; a++){
+                if (n == 0){return;}
+                if (animals[a] != null && animals[a].job.id == 0){ // if null
+                    animals[a].SetJob(jobstr);
+                    n -= 1;
+                }
             }
+            Debug.Log("no free mice!"); // only fires if doesn't return early
+        } else if (n < 0) {
+            for (int a = 0; a < maxna; a++){
+                if (n == 0){return;}
+                if (animals[a] != null && animals[a].job.name == jobstr){
+                    animals[a].SetJob("none");
+                    n += 1;
+                }
+            }
+            Debug.Log("no more mice to fire!");
         }
-    }
-
-    // this maybe probably be an interface or something (shared code w inv controller)
-    // updates the number of mice with this job in the ui
-    void updateJobCount(Job job){
-        if (job != null){
-            Transform textDisplayTransform = panelJobs.transform.Find("JobCount_" + job.name);
-            textDisplayTransform.gameObject.GetComponent<TMPro.TextMeshProUGUI>().text = job.name + ": " + (getJobCount(job)).ToString();
-        }
-    }
-    int getJobCount(Job job){
-        if (jobCounts.ContainsKey(job)){
-            return jobCounts[job];
-        } else {return 0;}
-    }
-    int getJobCount(string jobstr){
-        return getJobCount(Db.getJobByName(jobstr));
     }
 
     public void OnAnimalChanged(Animal ani, Job oldJob) {
-
-        // maybe move this to be with job change function?
-        // maybe its fine.
-
         Job newJob = ani.job;
         if (!jobCounts.ContainsKey(newJob)){
             jobCounts.Add(newJob, 1);
@@ -95,25 +98,50 @@ public class AnimalController : MonoBehaviour
         }
         updateJobCount(oldJob);
         updateJobCount(newJob);
-
-        //animalCount_ui.GetComponent<TextMeshProUGUI>().text = Db.itemById[1].iName + ": " + "5";
     }
 
-    // handle job assignment button clicks
+    // this maybe probably be an interface or something (shared code w inv controller)
+    // updates the number of mice with this job in the ui
+
+    void addJobCounts(){
+        jobsPanel = UI.instance.transform.Find("JobsPanel").gameObject;
+        foreach(Job job in Db.jobs){
+            if (job != null){ 
+                GameObject textDisplayGo = Instantiate(UI.instance.JobDisplay, jobsPanel.transform);
+                textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = job.name + ": " + (getJobCount(job)).ToString();
+                textDisplayGo.name = "JobCount_" + job.name;
+            }
+        }
+    }
+    void updateJobCount(Job job){
+        if (job != null){
+            Transform textDisplayTransform = jobsPanel.transform.Find("JobCount_" + job.name);
+            textDisplayTransform.gameObject.GetComponent<TMPro.TextMeshProUGUI>().text = job.name + ": " + (getJobCount(job)).ToString();
+        }
+    }
+    int getJobCount(Job job){
+        if (jobCounts.ContainsKey(job)){
+            return jobCounts[job];
+        } else {return 0;}
+    }
+    int getJobCount(string jobstr){
+        return getJobCount(Db.getJobByName(jobstr));
+    }
+
     public void OnClickJobAssignment(string jobstr, string buttontype){
         switch (buttontype){
             case "Add":
-                world.AddJob(jobstr, 1);
+                AddJob(jobstr, 1);
                 break;
             case "Subtract":
-                world.AddJob(jobstr, -1);
+                AddJob(jobstr, -1);
                 break;
             case "Zero":
-                world.AddJob(jobstr, -getJobCount(jobstr));
+                AddJob(jobstr, -getJobCount(jobstr));
                 break;
         }
-
     }
+
 
 
 }

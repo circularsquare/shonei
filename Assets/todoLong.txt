@@ -26,4 +26,29 @@ meow
     - housing
     - wealth / beauty / diversity?
 - work experience / books ?
+- animal stats 
+    - be able to level up skills e.g. farming
+    - animal smart job assignment
+        - every so often, check a few animal pairs and see if they'd be better off swapped?
+
+exrperience types 
+    - gathering
+        - plants 
+        - animals 
+        - mining
+    - crafting 
+        - woodworking 
+        - masonry 
+        - smithing 
+        - tailoring
+        - cooking
+        - art
+        - magic?
+    - construction
+    - social 
+    - science 
+    - magic
+- when an animal Works, their productivity is determined by skill level in some predetermined thing
+    - woodcutting - plants
+
 

@@ -8,10 +8,7 @@ public class WorldController : MonoBehaviour
     public static WorldController instance {get; protected set;}
     public World world {get; protected set;}
 
-    public Sprite soilSprite;
     Dictionary<Tile, GameObject> tileGameObjectMap;
-
-
 
     void Start() {
         if (instance != null) {

@@ -34,7 +34,7 @@
         "nx": 1,
         "ny": 1,
         "costs": [
-            { "id": 4, "quantity": 10 }
+            { "id": 2, "quantity": 10 }
         ],
         "isTile": true
     }

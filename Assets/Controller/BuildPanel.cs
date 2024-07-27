@@ -3,16 +3,16 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class BuildMenu : MonoBehaviour {
+public class BuildPanel : MonoBehaviour {
 
     public GameObject buildButtonPrefab; // UI button prefab for each building
     public GameObject textDisplayPrefab;
-    public static BuildMenu instance;
+    public static BuildPanel instance;
     public BuildingType bt;
 
     private void Start(){
         if (instance != null) {
-            Debug.LogError("there should only be one buildmenu");}
+            Debug.LogError("there should only be one build panel");}
         instance = this;        
 
 
@@ -25,16 +25,20 @@ public class BuildMenu : MonoBehaviour {
                     costDisplay.GetComponent<TMPro.TextMeshProUGUI>().text = Db.items[iq.id].name + ": " + iq.quantity.ToString();
                     costDisplay.name = "CostDisplay" + Db.items[iq.id].name;
                 }
-                buttonGo.GetComponent<Button>().onClick.AddListener(() => this.bt = building);  // is this right??
+                buttonGo.GetComponent<Button>().onClick.AddListener(() => SetBuildingType(building));  // is this right??
                 buttonGo.GetComponentInChildren<TMPro.TextMeshProUGUI>().text = building.name;
             }
         }
+    }
+    public void SetBuildingType(BuildingType bt){
+        this.bt = bt;
+        MouseController.instance.mouseMode = MouseController.MouseMode.Build;
     }
 
     // mousecontroller handles the mouse stuff. and calls build here.
 
     public bool Construct(Tile tile){
-        if (Inventory.instance.SufficientResources(bt.costs) && tile.type.id == 0){
+        if (bt != null && Inventory.instance.SufficientResources(bt.costs) && tile.type.id == 0){
             Inventory.instance.AddItems(bt.costs, true);
             if (bt.isTile){
                 if (Db.tileTypeByName.ContainsKey(bt.name)){

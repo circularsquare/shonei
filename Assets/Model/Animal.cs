@@ -1,23 +1,27 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using System;
 using Pathfinding;
 
-public class Animal      
+public class Animal : MonoBehaviour      
 {
     // public enum Jobs {
     //     None, Woodcutter, Miner, Farmer
     // }
-    public enum animalState {Idle, Walking, Working}
+    public enum AnimalState {Idle, Walking, Working}
 
     public string aName;
     public float x;
     public float y;
-    public float timeToFinish;
+
     public Job job;
-    public Inventory inventory;
-    public animalState state;
+    public Inventory inventory; // just points to the global inv right now
+    // list of skills goes here?
+    // maybe one for each job?
+
+    public AnimalState state;
     public GameObject go;
     public SpriteRenderer sr;
     public Astar astar;
@@ -25,33 +29,18 @@ public class Animal
     public int[][] map;
 
     public Sprite sprite;
+    public Bounds bounds; // a box to click on to select the animal
     World world;
     
     Action<Animal, Job> cbAnimalChanged;
 
-    public Animal(World world, float x = 0f, float y = 0f, Job job = null, string aName = "mouse"){
-        this.world = world;
-        this.x = x;
-        this.y = y;
-        this.aName = aName;
-        if(job == null){
-            this.job = Db.jobs[0];
-        } else {
-            this.job = job;
-        }
-        this.state = animalState.Idle;
-        go = new GameObject();
-        go.name = "An" + aName;
-        go.transform.SetParent(world.worldController.transform, true);
-        go.transform.position = new Vector3(x, y, 0);
-        sr = go.AddComponent<SpriteRenderer>();
-        sprite = Resources.Load<Sprite>("Sprites/Mushrooms/redMushSmall");
-        sr.sprite = sprite;
-
-        // go.AddComponent<CharacterController>();
-        // seeker = go.AddComponent<Seeker>();
-        // go.AddComponent<AstarAI>();
-
+    public void Start(){
+        world = World.instance;
+        this.aName = "mouse";
+        this.state = AnimalState.Idle;
+        this.job = Db.jobs[0];
+        this.go = this.gameObject;
+        this.go.name = "animal" + aName;
     }
 
     public void SetJob(Job newJob){
@@ -80,7 +69,7 @@ public class Animal
                 inventory.AddItem("wheat", 1);
                 break;
             case "digger":
-                inventory.AddItem("dirt", 1);
+                inventory.AddItem("soil", 1);
                 break;
             default:
                 Debug.LogError("unknown job!");
@@ -96,9 +85,10 @@ public class Animal
             return;
         }
         if (/*world.GetTileAt(x, y).type.solid |*/ true){
-            this.state = animalState.Walking;
+            this.state = AnimalState.Walking;
             Vector2Int start = new Vector2Int{x=(int)this.x, y=(int)this.y};
             Vector2Int end = new Vector2Int{x=(int)x, y=(int)y};
+            // a star stuff
             //     List<Vector2Int> result = new Astar(world.standableTiles, start, end).Result;
             //     if( result.Count>1){
             //         this.x = (float)result[1].x;
@@ -106,12 +96,15 @@ public class Animal
             //         go.transform.position = new Vector3((float)result[1].x, (float)result[1].y, go.transform.position.z);
             //     }
             // }
-            // NOTE this a star stuff doesnt work right now... idk why.
             this.x = x;
             this.y = y;
             go.transform.position = new Vector3(x, y, go.transform.position.z);
+            bounds.center = go.transform.position;
 
-            this.state = animalState.Idle;
+    
+            // when done, call some stuff.
+            
+            this.state = AnimalState.Idle;
         }
     }
     public void MoveToward(float x, float y){

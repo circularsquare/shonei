@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 
-public class ItemStack  // this should have a gameobject too
+public class ItemStack 
 {
     public bool isComposite{get; set;}
     public Item item { get; set; }
-    public int quantity { get; set; }
+    public int quantity { get; set; } //if i want some things to be floats... have a display multiplier?
+                                        // so some things can then be like 0.001 but in reality are just small?
     public int x;
     public int y;
     public static int maxStack = 100;
