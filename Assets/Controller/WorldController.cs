@@ -16,8 +16,7 @@ public class WorldController : MonoBehaviour
         instance = this;
 
 
-        world = new World();
-        world.Start();
+        world = this.gameObject.AddComponent<World>(); // ad dworld
 
         tileGameObjectMap = new Dictionary<Tile, GameObject>();
 
@@ -30,6 +29,7 @@ public class WorldController : MonoBehaviour
                 tile_go.transform.position = new Vector3(tile_data.x, tile_data.y, 0);
                 tile_go.transform.SetParent(this.transform, true);
                 tileGameObjectMap.Add(tile_data, tile_go);
+                tile_data.go = tile_go;
                 
                 SpriteRenderer tile_sr = tile_go.AddComponent<SpriteRenderer>();
                 
@@ -46,10 +46,6 @@ public class WorldController : MonoBehaviour
         world.GetTileAt(5, 2).type = Db.tileTypeByName["tree"];
         world.CalculateTileStandability();
     } 
-
-    void Update() {
-        world.Update(); // is this bad?
-    }
 
     // updaes the gameobjects sprite when the tile data is changed
     void OnTileTypeChanged(Tile tile_data) {

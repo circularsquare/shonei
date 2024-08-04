@@ -35,8 +35,14 @@ public class InfoPanel : MonoBehaviour {
             if (collider.gameObject.GetComponent<Animal>() != null){
                 infoMode = InfoMode.Animal;
                 gameObject.SetActive(true);
-                Animal ani = collider.gameObject.GetComponent<Animal>() ;
-                textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = "animal: " + ani.aName;
+                Animal ani = collider.gameObject.GetComponent<Animal>();
+                string displayText = ("animal: " + ani.aName + 
+                "\n state: " + ani.state.ToString() + 
+                "\n job: " + ani.job.name +
+                // "\n inventory: " + ani.inventory.ToString() + 
+                "\n locationxy: " + ani.x.ToString() + ", " + ani.y.ToString() +
+                "\n location: " + ani.go.transform.position.ToString());
+                textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = displayText;
             }
         }
 
@@ -45,7 +51,9 @@ public class InfoPanel : MonoBehaviour {
             if (tile.building != null){
                 infoMode = InfoMode.Building;
                 gameObject.SetActive(true);
-                textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = "building: " + tile.building.buildingType.name;
+                textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = (
+                    "building: " + tile.building.buildingType.name + 
+                    "\n location: " + tile.x.ToString() + ", " + tile.y.ToString());
             } else {
                 infoMode = InfoMode.Tile;
                 gameObject.SetActive(true);

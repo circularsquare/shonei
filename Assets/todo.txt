@@ -85,4 +85,20 @@ how many item types do i roughly expect a player to have?
     - early game you just have
         - wood, stone, soil, wheat 
 
+8/4/24
 
+next steps 
+- add tree sprite 
+    - have woodcutters walk to tree to chop it 
+    - produce / add to wood item stacks
+- add generic "inventory" and rename "inventory" to globalInventory.
+    - add an inventory to animals.
+- search for nearby item stacks 
+    - reserve stack so no one else takes it
+- fetch item stacks
+- transport item stacks to storage
+    - porter just does this all the time? looks for stuff and delivers.
+
+- add build blueprints
+    - add "build" process, builders will deliver materials then work on building.
+- add work stations 

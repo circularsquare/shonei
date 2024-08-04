@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 
-public class World 
+public class World : MonoBehaviour
 {
     Tile[,] tiles;
     public bool[,] standableTiles;
@@ -14,30 +14,30 @@ public class World
     public static World instance;
     public float timer = 0f;
 
-    public World(int nx = 50, int ny = 100){
-        this.nx = nx;
-        this.ny = ny;
-        tiles = new Tile[nx,ny];
-        standableTiles = new bool[nx,ny];
-        for (int x = 0; x < nx; x++){
-            for (int y = 0; y < ny; y++){
-                tiles[x,y] = new Tile(this, x, y);
-                standableTiles[x,y] = false;
+
+    public void Awake(){
+        if (instance != null){
+            Debug.LogError("there should only be one world controller");}
+        instance = this;
+
+        nx = 50;
+        ny = 100;
+        tiles = new Tile[nx, ny];
+        standableTiles = new bool[nx, ny];
+        for (int x = 0; x < nx; x++)
+        {
+            for (int y = 0; y < ny; y++)
+            {
+                tiles[x, y] = new Tile(this, x, y);
+                standableTiles[x, y] = false;
             }
         }
         invController = InventoryController.instance;
         worldController = WorldController.instance;
     }
 
-
-    public void Start(){
-        if (instance != null) {
-            Debug.LogError("there should only be one world controller");}
-        instance = this;
-    }
-
     public void Update(){
-        if (Math.Floor(timer + Time.deltaTime) - Math.Floor(timer) > 0.5){
+        if (Math.Floor(timer + Time.deltaTime) - Math.Floor(timer) > 0){ 
             AnimalController.instance.Work();
         }
         timer += Time.deltaTime;

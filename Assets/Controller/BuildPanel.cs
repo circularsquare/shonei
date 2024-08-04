@@ -39,10 +39,10 @@ public class BuildPanel : MonoBehaviour {
 
     public bool Construct(Tile tile){
         if (bt != null && Inventory.instance.SufficientResources(bt.costs) && tile.type.id == 0){
-            Inventory.instance.AddItems(bt.costs, true);
             if (bt.isTile){
                 if (Db.tileTypeByName.ContainsKey(bt.name)){
                     tile.type = Db.tileTypeByName[bt.name];
+                    Inventory.instance.AddItems(bt.costs, true);
                 }
             }
             if (!bt.isTile){
@@ -57,7 +57,7 @@ public class BuildPanel : MonoBehaviour {
                         building = new Building(bt, tile.x, tile.y);
                     }    
                     tile.building = building;
-
+                    Inventory.instance.AddItems(bt.costs, true);
                 }
             }
             return true;

@@ -48,7 +48,7 @@ public class AnimalController : MonoBehaviour
     public void AddAnimal(int x = 10, int y = 2, Job job = null){
         GameObject animalPrefab = Resources.Load<GameObject>("Prefabs/Animal");
         GameObject go = GameObject.Instantiate(animalPrefab, new Vector3(x, y, 0), Quaternion.identity);
-        Animal animal = go.AddComponent<Animal>(); // connect to animal script
+        Animal animal = go.GetComponent<Animal>(); // already made in prefab!
         animal.x = x;
         animal.y = y; 
         animal.RegisterCbAnimalChanged(OnAnimalChanged);

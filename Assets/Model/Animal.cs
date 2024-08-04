@@ -15,6 +15,9 @@ public class Animal : MonoBehaviour
     public string aName;
     public float x;
     public float y;
+    public float maxSpeed = 1f;
+
+    public Tile target;
 
     public Job job;
     public Inventory inventory; // just points to the global inv right now
@@ -41,6 +44,7 @@ public class Animal : MonoBehaviour
         this.job = Db.jobs[0];
         this.go = this.gameObject;
         this.go.name = "animal" + aName;
+        Debug.Log("start");
     }
 
     public void SetJob(Job newJob){
@@ -76,7 +80,30 @@ public class Animal : MonoBehaviour
                 break;
         }
 
-        //MoveTo(x + (float)UnityEngine.Random.Range(-1, 1), y);
+        if (state == AnimalState.Idle)  {
+            MoveTo(x + (float)UnityEngine.Random.Range(-3, 3), y);
+        }
+        
+    }
+
+    public void Update(){
+        if (state == AnimalState.Walking){
+            if (Vector3.Distance(this.go.transform.position, target.go.transform.position) < 0.02f){
+                this.go.transform.position = target.go.transform.position;
+                SyncPosition(); 
+                this.state = AnimalState.Idle;
+            }
+            else {
+                this.go.transform.position = Vector3.MoveTowards(this.go.transform.position, 
+                    target.go.transform.position, maxSpeed * Time.deltaTime);
+                SyncPosition();
+            }
+        }
+    }
+    public void SyncPosition(){
+        this.x = this.go.transform.position.x;
+        this.y = this.go.transform.position.y;
+        bounds.center = go.transform.position;
     }
     
     public void MoveTo(float x, float y){
@@ -85,31 +112,15 @@ public class Animal : MonoBehaviour
             return;
         }
         if (/*world.GetTileAt(x, y).type.solid |*/ true){
+            target = world.GetTileAt(x, y);
             this.state = AnimalState.Walking;
-            Vector2Int start = new Vector2Int{x=(int)this.x, y=(int)this.y};
-            Vector2Int end = new Vector2Int{x=(int)x, y=(int)y};
-            // a star stuff
-            //     List<Vector2Int> result = new Astar(world.standableTiles, start, end).Result;
-            //     if( result.Count>1){
-            //         this.x = (float)result[1].x;
-            //         this.y = (float)result[1].y; // this is kinda stupid... having two different sets of coords.
-            //         go.transform.position = new Vector3((float)result[1].x, (float)result[1].y, go.transform.position.z);
-            //     }
-            // }
-            this.x = x;
-            this.y = y;
-            go.transform.position = new Vector3(x, y, go.transform.position.z);
-            bounds.center = go.transform.position;
-
-    
-            // when done, call some stuff.
-            
-            this.state = AnimalState.Idle;
         }
     }
-    public void MoveToward(float x, float y){
-        
+
+    public void FetchItem(){
+        // huhhh
     }
+
 
 
     public void RegisterCbAnimalChanged(Action<Animal, Job> callback){

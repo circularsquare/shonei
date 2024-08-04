@@ -10,6 +10,7 @@ public class Tile
     World world;
     public int x;
     public int y;
+    public GameObject go;
     private TileType _type;
     public TileType type
     {
