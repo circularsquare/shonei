@@ -11,7 +11,7 @@ public class ItemStack
                                         // so some things can then be like 0.001 but in reality are just small?
     public int x;
     public int y;
-    public static int maxStack = 100;
+    public static int stackSize = 100;
     public GameObject go;
 
     public ItemStack(Item item, int quantity = 0, int x = 0, int y = 0)
@@ -30,23 +30,24 @@ public class ItemStack
         SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
         
     }
-    public int? addItem(Item item, int quantity){
+    public int? AddItem(Item item, int quantity){
         if (this.item == null || this.quantity == 0){ // add to empty stack
             this.item = item;
-            this.quantity = Math.Min(maxStack, quantity);
-            updateSprite();
-            return Math.Max(0, (quantity - maxStack));
+            this.quantity = Math.Min(stackSize, quantity);
+            UpdateSprite();
+            return Math.Max(0, (quantity - stackSize));
         }
         else if (item != this.item){ // not the same item
             return null; 
-        } else if (this.quantity + quantity > maxStack){
-            int sizeOver = this.quantity + quantity - maxStack;
-            this.quantity = maxStack;
+        } else if (this.quantity + quantity > stackSize){
+            int sizeOver = this.quantity + quantity - stackSize;
+            this.quantity = stackSize;
             return sizeOver; // overflow (3 if still have 3 to deposit)
         } else if (this.quantity + quantity < 0){
             int sizeUnder = this.quantity + quantity - 0;
             this.quantity = 0;
-            updateSprite();
+            this.item = null;
+            UpdateSprite();
             return sizeUnder; // underflow (-3 if still need 3 more)
         } else {
             this.quantity += quantity; // add to stack
@@ -54,7 +55,7 @@ public class ItemStack
         } 
     }
 
-    public void updateSprite(){
+    public void UpdateSprite(){
         Sprite sprite;
         if (item == null || quantity == 0){
             go.name = "ItemStackNone";
@@ -64,6 +65,12 @@ public class ItemStack
             sprite = Resources.Load<Sprite>("Sprites/items/" + item.name);
         }
         go.GetComponent<SpriteRenderer>().sprite = sprite;
+    }
+    public override string ToString(){
+        if (item != null){
+            return item.name + " x " + quantity.ToString() + "\n";
+        } 
+        return "";
     }
 
 }

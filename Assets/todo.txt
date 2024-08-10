@@ -99,6 +99,40 @@ next steps
 - transport item stacks to storage
     - porter just does this all the time? looks for stuff and delivers.
 
+    - make porter a subclass of animal
+
 - add build blueprints
     - add "build" process, builders will deliver materials then work on building.
 - add work stations 
+
+
+8/10/24 
+how do animals decide where to work?
+options are
+    - (clicker game) assign number of each job 
+    - (syx) assign number of animals at each workstation
+    - (rimworld) assign work priorities to individual mice and they decide what to work on
+    can't do rimworld because need to have fixed workstations to have local neighborhoods.
+    clicker game is just less granular syx.
+an animal picks where to work based off their personal skillset
+    - then they pick a place to live near their workstation based off some utility function
+    - periodically check if pairs of animals would be better off swapped
+you assign number of jobs at each workstation...
+    give one of 5 priorities to each workstation
+    animals will fill based on priority, then skill.
+right now i am using clicker game system. but will eventually transitition to syx.
+
+how are resources delivered?
+    - (rimworld) item produced goes on floor. then they pick it up and deliver at some pt
+    - (syx) item produced goes on floor. warehouse porters deliver
+    - (?) item produced goes in building storage. warehouse porters deliver
+so for shonei
+    - item produced goes on floor. (issue: too many different items from one tree?)
+        - can one tile of floor hold several stacks of stuff?
+        - it certainly can't display that many stacks of stuff.
+        - using multiple tiles might be fine. just search the 5x5 neighborhood of tiles for an existing stack to dump each resource.
+    - hauler finds an itemstack and designates that as work location
+    - picks it up and then finds nearest appropriate warehouse.
+    - the only way to move resources other than haulers is mice looking for materials.
+        - so like a carpenter will search for wood on the ground or in warehouses
+unemployed mice will be haulers?

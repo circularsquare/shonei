@@ -64,7 +64,7 @@ public class WorldController : MonoBehaviour
             tile_go.GetComponent<SpriteRenderer>().sprite = null;
         }
         else if (tile_data.type.name == "tree" || tile_data.type.name == "stone"){
-            tile_go.GetComponent<SpriteRenderer>().sprite = Resources.Load<Sprite>("Sprites/Tiles/" + tile_data.type.ToString());
+            tile_go.GetComponent<SpriteRenderer>().sprite = Resources.Load<Sprite>("Sprites/Tiles/" + tile_data.type.name);
         }
         else{
             Debug.LogError("ontiletypechanged - unrecognized tile type");

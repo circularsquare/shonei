@@ -4,12 +4,15 @@
         "name": "none"
     },{
         "id": 1,
-        "name": "logger"
+        "name": "hauler"
     },{
         "id": 2,
-        "name": "miner"
+        "name": "logger"
     },{
         "id": 4,
+        "name": "miner"
+    },{
+        "id": 6,
         "name": "farmer"
     },{
         "id": 10,

@@ -38,11 +38,11 @@ public class BuildPanel : MonoBehaviour {
     // mousecontroller handles the mouse stuff. and calls build here.
 
     public bool Construct(Tile tile){
-        if (bt != null && Inventory.instance.SufficientResources(bt.costs) && tile.type.id == 0){
+        if (bt != null && GlobalInventory.instance.SufficientResources(bt.costs) && tile.type.id == 0){
             if (bt.isTile){
                 if (Db.tileTypeByName.ContainsKey(bt.name)){
                     tile.type = Db.tileTypeByName[bt.name];
-                    Inventory.instance.AddItems(bt.costs, true);
+                    GlobalInventory.instance.AddItems(bt.costs, true);
                 }
             }
             if (!bt.isTile){
@@ -51,13 +51,9 @@ public class BuildPanel : MonoBehaviour {
                     return false;
                 } else {
                     Building building;
-                    if (bt.name == "drawer"){
-                        building = new BStorage(bt, tile.x, tile.y);
-                    } else {
-                        building = new Building(bt, tile.x, tile.y);
-                    }    
+                    building = new Building(bt, tile.x, tile.y); 
                     tile.building = building;
-                    Inventory.instance.AddItems(bt.costs, true);
+                    GlobalInventory.instance.AddItems(bt.costs, true);
                 }
             }
             return true;

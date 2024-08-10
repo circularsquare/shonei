@@ -46,11 +46,11 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
     } 
 
     void Awake(){ // this runs before Start() like in world
-        readJson();
+        ReadJson();
         Debug.Log("db loaded");
     } 
 
-    void readJson(){
+    void ReadJson(){
         // read Items
         string jsonTextItems = File.ReadAllText(Application.dataPath + "/Resources/itemsDb.json");
         Item[] itemsUnplaced = JsonConvert.DeserializeObject<Item[]>(jsonTextItems);
@@ -108,7 +108,7 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
     }
 
     void Update(){  }
-    public static Job getJobByName(string name){
+    public static Job GetJobByName(string name){
         if (jobByName.ContainsKey(name)){
             return jobByName[name];
         } else {

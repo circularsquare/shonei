@@ -38,7 +38,7 @@ public class World : MonoBehaviour
 
     public void Update(){
         if (Math.Floor(timer + Time.deltaTime) - Math.Floor(timer) > 0){ 
-            AnimalController.instance.Work();
+            AnimalController.instance.FastUpdate(); // every 1 sec
         }
         timer += Time.deltaTime;
     }

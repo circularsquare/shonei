@@ -14,7 +14,6 @@ public class MouseController : MonoBehaviour
     Vector3 prevPosition;
 
     public World world;
-    public Inventory inventory;
     public static MouseController instance;
 
     void Start() {
@@ -34,7 +33,6 @@ public class MouseController : MonoBehaviour
         }
         if (world == null){
             world = WorldController.instance.world;
-            inventory = InventoryController.instance.inventory;
         }
 
         // draggin world around

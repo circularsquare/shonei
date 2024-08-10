@@ -30,6 +30,7 @@ public class InfoPanel : MonoBehaviour {
             return;
         }
 
+        // todo: make it so if you click again it cycles possible targets somehow?
         if (obj is Collider2D){
             Collider2D collider = obj as Collider2D;
             if (collider.gameObject.GetComponent<Animal>() != null){
@@ -39,7 +40,7 @@ public class InfoPanel : MonoBehaviour {
                 string displayText = ("animal: " + ani.aName + 
                 "\n state: " + ani.state.ToString() + 
                 "\n job: " + ani.job.name +
-                // "\n inventory: " + ani.inventory.ToString() + 
+                "\n inventory: " + ani.inventory.ToString() + 
                 "\n locationxy: " + ani.x.ToString() + ", " + ani.y.ToString() +
                 "\n location: " + ani.go.transform.position.ToString());
                 textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = displayText;

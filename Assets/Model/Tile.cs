@@ -23,7 +23,8 @@ public class Tile
         }
     }
     public Building building; // in future, have like "front level" "back level" building slots? like wall level?
-    public Animal animal; // animals standing here
+    public ItemStack itemStack; // on the floor
+    public bool reserved;
 
     
     public Tile(World world, int x, int y){
@@ -40,5 +41,11 @@ public class Tile
     public void UnregisterCbTileTypeChanged(Action<Tile> callback){
         cbTileTypeChanged -= callback;
     }
-
+    public bool ContainsFloorItem(){
+        return (itemStack != null && itemStack.quantity > 0);
+    }
+    public bool ContainsItem(Item item){
+        return ((itemStack != null && itemStack.item == item) | 
+            (building != null && building.ContainsItem(item)));
+    }
 }

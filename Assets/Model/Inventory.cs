@@ -2,78 +2,60 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
-using TMPro;
 
-// this is global inventory
-public class Inventory // should make a separate inventory game object?
+public class Inventory
 {
-    public static Inventory instance {get; protected set;}
-    public Dictionary<int, int> itemAmounts {get; protected set;}
-    Action<Inventory> cbInventoryChanged;
+    public int nStacks;
+    public int stackSize; 
+    public ItemStack[] itemStacks;
 
-    public Inventory() {
-        itemAmounts = new Dictionary<int, int>();
-
-        if (instance != null) {
-            Debug.LogError("there should only be one ani controller");}
-        instance = this;  
-    }
-
-    public void AddItem(ItemQuantity iq){
-        AddItem(iq.id, iq.quantity);
-    }
-    public void AddItem(string name, int amount){
-        if (Db.iidByName.ContainsKey(name)){
-            AddItem(Db.iidByName[name], amount);
-        } else {
-            Debug.LogError("item name doesn't exist in iid dictionary");
+    public Inventory(int n = 4, int x = 0, int y = 0) {
+        nStacks = n;
+        stackSize = 10;
+        itemStacks = new ItemStack[nStacks];
+        for (int i = 0; i < nStacks; i++){
+            itemStacks[i] = new ItemStack(null, 0, x, y);
         }
-        
     }
-    public void AddItem(int iid, int amount){
-        if (!itemAmounts.ContainsKey(iid)){
-            itemAmounts.Add(iid, amount);
+
+    public int AddItem(Item item, int quantity){
+        for (int i = 0; i < nStacks; i++){
+            int? result = itemStacks[i].AddItem(item, quantity);
+            if (result == null){ continue; }
+            int resulti = result.Value;
+            if (resulti == 0){ return 0; } // successfully added item to a stack
+            else {quantity = resulti;} // set quantity to remaining size to get off and keep trying
         }
-        itemAmounts[iid] += amount;
-
-        if (cbInventoryChanged != null){
-            cbInventoryChanged(this); } // make sure to add this callback thing wherever inv is changed
+        return quantity; // leftover size
     }
-    public void AddItems(ItemQuantity[] iqs, bool negate = false){
-        if (negate){
-            foreach (ItemQuantity iq in iqs){
-                AddItem(iq.id, -iq.quantity);
-            }
-        } else {
-            foreach (ItemQuantity iq in iqs){
-                AddItem(iq.id, iq.quantity);
-            }
+    public int AddItem(string name, int quantity){
+        return(AddItem(Db.itemByName[name], quantity));
+    }
+
+    public override string ToString(){
+        string s = "inventory \n";
+        foreach (ItemStack stack in itemStacks){
+            if (stack != null){
+                s += stack.ToString();
+            }  
         }
-
+        return s;
     }
-
-    public float GetAmount(string name){
-        return GetAmount(Db.iidByName[name]);
-    }
-    public float GetAmount(int iid){
-        if (itemAmounts.ContainsKey(iid)){
-            return itemAmounts[iid];
-        } else {return 0;}
-    }
-
-    public bool SufficientResources(ItemQuantity[] iqs){
-        bool sufficient = true;
-        foreach (ItemQuantity iq in iqs){
-            if (GetAmount(iq.id) < iq.quantity){
-                sufficient = false;
+    public bool ContainsItem(Item item){
+        foreach (ItemStack stack in itemStacks){
+            if (stack != null && stack.item == item){
+                return true;
             }
         }
-        return sufficient;
+        return false;
+    }
+    public bool HasSpaceForItem(Item item){
+        foreach (ItemStack stack in itemStacks){
+            if (stack == null || stack.item == null || (stack.item == item && stack.quantity < stackSize)){
+                return true;
+            }
+        }
+        return false;
     }
 
-
-    public void RegisterCbInventoryChanged(Action<Inventory> callback){
-        cbInventoryChanged += callback;}
-    public void UnregisterCbInventoryChanged(Action<Inventory> callback){
-        cbInventoryChanged -= callback;}
-} 
+}

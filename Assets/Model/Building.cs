@@ -11,11 +11,15 @@ public class Building {
     public int y;
     public BuildingType buildingType;
     public Sprite sprite;
+    public Inventory inventory;
 
     public Building(BuildingType buildingType, int x, int y){
         this.buildingType = buildingType;
         this.x = x;
         this.y = y;
+        if (buildingType.name == "Drawer"){
+            inventory = new Inventory(4, x, y);
+        }
 
         go = new GameObject();
         go.transform.position = new Vector3(x, y, 0);
@@ -28,19 +32,11 @@ public class Building {
 
         // register callback to update sprite?
     }
+    public bool ContainsItem(Item item){
+        return (inventory != null && inventory.ContainsItem(item));}
+    public bool HasSpaceForItem(Item item){
+        return (inventory != null && inventory.HasSpaceForItem(item));}
 
-
-    // public void Work(){
-    //     if (inventory == null){
-    //         inventory = InventoryController.instance.inventory;
-    //     }
-    //     switch (job.name) {
-    //         case "none":
-    //             break;
-    //         case "logger":
-    //             inventory.AddItem("wood", 1);
-    //             break;
-    // }
 
 
 

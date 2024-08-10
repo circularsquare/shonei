@@ -35,13 +35,13 @@ public class AnimalController : MonoBehaviour
     void Update() {
         if (world == null){
             world = WorldController.instance.world;
-            addJobCounts();  // this needs to run AFTER world has already been populated!
+            AddJobCounts();  // this needs to run AFTER world has already been populated!
         } 
     }
 
-    public void Work(){ // called on a timer from World.cs
+    public void FastUpdate(){ // called on a timer from World.cs
         for (int a = 0; a < na; a++){ // later, change the animal work method to not be a timer and instead track individual animal workloads
-            animals[a].Work(); 
+            animals[a].FastUpdate(); 
         }
     }
 
@@ -96,36 +96,36 @@ public class AnimalController : MonoBehaviour
         if (jobCounts[oldJob] < 0 && oldJob.id != 0){
             Debug.LogError("have negative quantity of a job!");
         }
-        updateJobCount(oldJob);
-        updateJobCount(newJob);
+        UpdateJobCount(oldJob);
+        UpdateJobCount(newJob);
     }
 
     // this maybe probably be an interface or something (shared code w inv controller)
     // updates the number of mice with this job in the ui
 
-    void addJobCounts(){
+    void AddJobCounts(){
         jobsPanel = UI.instance.transform.Find("JobsPanel").gameObject;
         foreach(Job job in Db.jobs){
             if (job != null){ 
                 GameObject textDisplayGo = Instantiate(UI.instance.JobDisplay, jobsPanel.transform);
-                textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = job.name + ": " + (getJobCount(job)).ToString();
+                textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = job.name + ": " + (GetJobCount(job)).ToString();
                 textDisplayGo.name = "JobCount_" + job.name;
             }
         }
     }
-    void updateJobCount(Job job){
+    void UpdateJobCount(Job job){
         if (job != null){
             Transform textDisplayTransform = jobsPanel.transform.Find("JobCount_" + job.name);
-            textDisplayTransform.gameObject.GetComponent<TMPro.TextMeshProUGUI>().text = job.name + ": " + (getJobCount(job)).ToString();
+            textDisplayTransform.gameObject.GetComponent<TMPro.TextMeshProUGUI>().text = job.name + ": " + (GetJobCount(job)).ToString();
         }
     }
-    int getJobCount(Job job){
+    int GetJobCount(Job job){
         if (jobCounts.ContainsKey(job)){
             return jobCounts[job];
         } else {return 0;}
     }
-    int getJobCount(string jobstr){
-        return getJobCount(Db.getJobByName(jobstr));
+    int GetJobCount(string jobstr){
+        return GetJobCount(Db.GetJobByName(jobstr));
     }
 
     public void OnClickJobAssignment(string jobstr, string buttontype){
@@ -137,7 +137,7 @@ public class AnimalController : MonoBehaviour
                 AddJob(jobstr, -1);
                 break;
             case "Zero":
-                AddJob(jobstr, -getJobCount(jobstr));
+                AddJob(jobstr, -GetJobCount(jobstr));
                 break;
         }
     }
