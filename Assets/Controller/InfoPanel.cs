@@ -40,7 +40,7 @@ public class InfoPanel : MonoBehaviour {
                 string displayText = ("animal: " + ani.aName + 
                 "\n state: " + ani.state.ToString() + 
                 "\n job: " + ani.job.name +
-                "\n inventory: " + ani.inventory.ToString() + 
+                "\n inventory: " + ani.inv.ToString() + 
                 "\n locationxy: " + ani.x.ToString() + ", " + ani.y.ToString() +
                 "\n location: " + ani.go.transform.position.ToString());
                 textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = displayText;
@@ -49,18 +49,21 @@ public class InfoPanel : MonoBehaviour {
 
         else if (obj is Tile){
             Tile tile = obj as Tile;
+            string displayText = "";
             if (tile.building != null){
                 infoMode = InfoMode.Building;
                 gameObject.SetActive(true);
-                textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = (
-                    "building: " + tile.building.buildingType.name + 
+                displayText =  ( "building: " + tile.building.buildingType.name + 
                     "\n location: " + tile.x.ToString() + ", " + tile.y.ToString());
             } else {
                 infoMode = InfoMode.Tile;
                 gameObject.SetActive(true);
-                textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = "tile: " + tile.type.name;            
+                displayText = "tile: " + tile.type.name;            
             }
-
+            if (tile.inv != null){
+                displayText += "\n inventory: " + tile.inv.ToString();
+            }
+            textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = displayText;
             gameObject.SetActive(true);
         }
         else{ Deselect(); }

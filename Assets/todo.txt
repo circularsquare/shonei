@@ -99,6 +99,7 @@ next steps
 - transport item stacks to storage
     - porter just does this all the time? looks for stuff and delivers.
 
+    - make items drop on floor
     - make porter a subclass of animal
 
 - add build blueprints
@@ -136,3 +137,18 @@ so for shonei
     - the only way to move resources other than haulers is mice looking for materials.
         - so like a carpenter will search for wood on the ground or in warehouses
 unemployed mice will be haulers?
+
+8/31
+made haulers!
+items produced go on the floor (typically on the tile where they are produced. need to add "clustering?" for like farmers.)
+and haulers pick them up.
+
+yayyy!!!
+
+i think i'll do a sorting order of 
+foreground decoration - 50 (flowers? rain?)
+animals - 40
+items - 30
+buildings - 20
+tiles - 10
+background - 0

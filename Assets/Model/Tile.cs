@@ -23,7 +23,7 @@ public class Tile
         }
     }
     public Building building; // in future, have like "front level" "back level" building slots? like wall level?
-    public ItemStack itemStack; // on the floor
+    public Inventory inv;
     public bool reserved;
 
     
@@ -31,7 +31,6 @@ public class Tile
         this.world = world;
         this.x = x;
         this.y = y;
-        
         type = Db.tileTypes[0];
     }
     
@@ -41,11 +40,20 @@ public class Tile
     public void UnregisterCbTileTypeChanged(Action<Tile> callback){
         cbTileTypeChanged -= callback;
     }
-    public bool ContainsFloorItem(){
-        return (itemStack != null && itemStack.quantity > 0);
-    }
     public bool ContainsItem(Item item){
-        return ((itemStack != null && itemStack.item == item) | 
-            (building != null && building.ContainsItem(item)));
+        return (inv != null && inv.ContainsItem(item));
     }
+    public bool ContainsFloorItem(Item item = null){
+        return ContainsItem(item) && inv.invType == Inventory.InvType.Floor;
+    }
+    public bool HasStorageForItem(Item item){
+        return (inv != null && inv.invType == Inventory.InvType.Storage && 
+            inv.HasSpaceForItem(item));
+    }
+    // should change below so that not all tiles have floor room. 
+    public bool HasSpaceForItem(Item item){ 
+        return (inv == null || inv.HasSpaceForItem(item));
+    }
+
+
 }

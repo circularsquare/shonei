@@ -27,7 +27,7 @@ public class AnimalController : MonoBehaviour
         jobCounts = new Dictionary<Job, int>();
         jobCounts.Add(Db.jobs[0], 0); 
 
-        for (int i = 0; i < 10; i++){
+        for (int i = 0; i < 3; i++){
             AddAnimal();
         }
     }

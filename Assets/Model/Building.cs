@@ -11,14 +11,16 @@ public class Building {
     public int y;
     public BuildingType buildingType;
     public Sprite sprite;
-    public Inventory inventory;
+    public Tile tile; // not really sure how this will work for multi-tile buildings...
 
     public Building(BuildingType buildingType, int x, int y){
         this.buildingType = buildingType;
         this.x = x;
         this.y = y;
-        if (buildingType.name == "Drawer"){
-            inventory = new Inventory(4, x, y);
+        this.tile = World.instance.GetTileAt(x, y);
+        if (buildingType.name == "drawer"){
+            tile.inv = new Inventory(4, 10, Inventory.InvType.Storage, x, y); 
+            // TODO: don't overwrite existing floor inventory!!
         }
 
         go = new GameObject();
@@ -32,10 +34,12 @@ public class Building {
 
         // register callback to update sprite?
     }
-    public bool ContainsItem(Item item){
-        return (inventory != null && inventory.ContainsItem(item));}
-    public bool HasSpaceForItem(Item item){
-        return (inventory != null && inventory.HasSpaceForItem(item));}
+
+    // buildings no longer have inventories. tiles do.
+    // public bool ContainsItem(Item item){
+    //     return (inventory != null && inventory.ContainsItem(item));}
+    // public bool HasSpaceForItem(Item item){
+    //     return (inventory != null && inventory.HasSpaceForItem(item));}
 
 
 
