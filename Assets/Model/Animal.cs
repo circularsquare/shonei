@@ -110,6 +110,7 @@ public class Animal : MonoBehaviour
             }
         }
         if (state == AnimalState.Idle) {
+            DropItems();
             FindWork(); // want to move this into slow update, once i make it
         }
         if (state == AnimalState.Idle){
@@ -169,7 +170,7 @@ public class Animal : MonoBehaviour
         this.state = AnimalState.Walking;
     }
 
-    public bool Fetch(Item item = null, int quantity = 10){ 
+    public bool Fetch(Item item = null, int quantity = 40){ 
         Tile itemTile = FindFloorItem(item);
         if (itemTile == null){Debug.Log("nothing to fetch"); return false;} 
         if (item != null){ desiredItem = item; }
@@ -223,6 +224,14 @@ public class Animal : MonoBehaviour
             dTile.inv = new Inventory(1, 20, Inventory.InvType.Floor, dTile.x, dTile.y);
         }
         inv.MoveItemTo(dTile.inv, item, inv.GetItemAmount(item));
+    }
+    // drops all items.
+    public void DropAll(){
+        foreach (ItemStack stack in inv.itemStacks){
+            if (stack != null && stack.quantity > 0){
+                DropItem(item, FindPlaceToDrop(stack.item));
+            }
+        }
     }
 
     // instantly produces item at a nearby tile. only allowed for producers like miners

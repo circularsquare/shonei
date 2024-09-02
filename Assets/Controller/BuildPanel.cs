@@ -54,6 +54,19 @@ public class BuildPanel : MonoBehaviour {
                     building = new Building(bt, tile.x, tile.y); 
                     tile.building = building;
                     GlobalInventory.instance.AddItems(bt.costs, true);
+
+                     // this needs a lot of work!!
+                     // probably should make a different FindItem function.
+                    foreach (ItemQuantity cost in bt.costs){
+                        Tile itemTile = Animal.FindItem(cost.item);
+                        int sizeLeft = itemTile.inv.RemoveItem(cost.item, cost.quantity);
+                           
+                    }
+
+
+                    return true;
+
+
                 }
             }
             return true;

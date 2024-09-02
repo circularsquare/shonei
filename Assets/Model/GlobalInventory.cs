@@ -28,7 +28,6 @@ public class GlobalInventory
         } else {
             Debug.LogError("item name doesn't exist in iid dictionary");
         }
-        
     }
     public void AddItem(int iid, int amount){
         if (!itemAmounts.ContainsKey(iid)){
@@ -49,7 +48,6 @@ public class GlobalInventory
                 AddItem(iq.id, iq.quantity);
             }
         }
-
     }
 
     public float GetAmount(string name){

@@ -28,6 +28,7 @@ public class Inventory
             go.transform.SetParent(WorldController.instance.transform, true);
             SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
             sr.sortingOrder = 10;
+
             sr.sprite = Resources.Load<Sprite>("Sprites/Inventory/" + invType.ToString());
         }
 
@@ -36,14 +37,23 @@ public class Inventory
     public int AddItem(Item item, int quantity){
         for (int i = 0; i < nStacks; i++){
             int? result = itemStacks[i].AddItem(item, quantity);
-            if (result == null){ continue; }
-            if (result.Value == 0){ continue; } // successfully added item to a stack
-            else {quantity = result.Value;} // set quantity to remaining size to get off and keep trying
+            if (result == null){ continue; } // item slot occupied by different item. go next
+            quantity = result.Value; //set quantity to remaining size to get off
+            if (quantity == 0){ break; }  // successfully added all items. stop.
         }
         UpdateSprite(); // this is a bit wasteful right now.
         return quantity; // leftover size
     }
     public int AddItem(string name, int quantity){return(AddItem(Db.itemByName[name], quantity));}
+    public void AddItems(ItemQuantity[] iqs, bool negate = false){
+        int negateNum = 1;
+        if (negate){ negateNum = -1; }
+        foreach (ItemQuantity iq in iqs){
+            if (AddItem(iq.id, negateNum * iq.quantity) != 0){
+                Debug.LogError("failed to add items!" + iq.item.ToString());
+            };
+        }
+    }
     public int TakeItem(Item item, int quantity){return AddItem(item, -quantity);}
     public int TakeItem(string name, int quantity){return AddItem(name, -quantity);}
     public int MoveItemTo(Inventory otherInv, Item item, int quantity){
@@ -52,6 +62,8 @@ public class Inventory
         if (overFill > 0){
             AddItem(item, overFill); // return the item if recipient is full.
         }
+        Debug.Log("took " + taken + " from " + invType.ToString() + " addedback " + overFill + " to " + otherInv.invType.ToString());
+
         return taken - overFill;
     }
     public int MoveItemTo(Inventory otherInv, string name, int quantity){return MoveItemTo(otherInv, Db.itemByName[name], quantity);}
@@ -105,13 +117,16 @@ public class Inventory
             go.GetComponent<SpriteRenderer>().sprite = null;
             return;
         } 
+        Item mostItem = null;
+        int mostAmount = 0;
         foreach (ItemStack stack in itemStacks){
-            if (stack != null && stack.item != null){
-                go.name = "Inventory" + stack.item.name;
-                go.GetComponent<SpriteRenderer>().sprite = Resources.Load<Sprite>("Sprites/items/" + stack.item.name);
-                return;
+            if (stack != null && stack.item != null && stack.quantity > mostAmount){
+                mostItem = stack.item;
+                mostAmount = stack.quantity;
             }
         }
+        go.name = "Inventory" + mostItem.name;
+        go.GetComponent<SpriteRenderer>().sprite = Resources.Load<Sprite>("Sprites/items/" + mostItem.name);
     }
 
 
