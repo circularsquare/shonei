@@ -163,3 +163,13 @@ background - 0
         - if you're idle.. you don't want any items.
         - if you're working, it depends. unclear
 - need to figure out why global wood is starting 1 higher than actual world wood...
+
+9/21
+- feel so tired today. 
+- added blueprints!
+    - right now haulers 50/50 between delivering to blueprints and doing other hauling.
+    - want to make this a smarter decision.
+    - also rename haulers to "workers?" or maybe have builders be separate idk.
+    - also want to add construction prgoress. and resource delivery progress.
+        - visible in info panel. need to add info panel for blueprints.
+    

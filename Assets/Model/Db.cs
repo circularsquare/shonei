@@ -151,4 +151,8 @@ public class TileType {
 public class ItemQuantity {
     public int id {get; set;}
     public int quantity {get; set;}
+    public ItemQuantity(int id, int quantity){
+        this.id = id;
+        this.quantity = quantity;
+    }
 }

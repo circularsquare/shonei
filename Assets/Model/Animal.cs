@@ -31,6 +31,7 @@ public class Animal : MonoBehaviour
     public GameObject go;
     public SpriteRenderer sr;
     public Astar astar;
+    public System.Random random;
 
     public int[][] map;
 
@@ -49,6 +50,7 @@ public class Animal : MonoBehaviour
         this.go.name = "animal" + aName;
         this.inv = new Inventory(5, 10, Inventory.InvType.Animal);
         ginv = GlobalInventory.instance;
+        random = new System.Random();
     }
 
     public void SetJob(Job newJob){
@@ -68,7 +70,11 @@ public class Animal : MonoBehaviour
             state = AnimalState.Idle;
             return;
         } else if (job.name == "hauler"){
-            Fetch();
+            if (random.Next(2) == 0){
+                Fetch();
+            } else {
+                FetchForBlueprint();
+            }
             return;
         } else if (job.name == "logger"){
             t = FindWorkTile("tree");
@@ -178,11 +184,30 @@ public class Animal : MonoBehaviour
         desiredItemQuantity = quantity; // TODO: should juts fetch all probably? or itll juts fetch one as it's produced.
         storageTile = FindStorage(desiredItem); // TODO: need to reserve space
         if (storageTile == null){Debug.Log("nowhere to store");return false;} 
-
         target = itemTile;
         state = AnimalState.Fetching; // on arrival, will HaulBack()
         return true;
     }
+    public bool FetchForBlueprint(){
+        Tile blueprintTile = FindBlueprint();
+        if (blueprintTile == null){return false;}
+        Blueprint blueprint = blueprintTile.blueprint;
+        for (int i = 0; i < blueprint.costs.Length; i++){
+            if (blueprint.deliveredResources[i].quantity < blueprint.costs[i].quantity){
+                Tile itemTile = FindItem(Db.items[blueprint.costs[i].id]);
+                if (itemTile != null){
+                    desiredItem = Db.items[blueprint.costs[i].id];
+                    desiredItemQuantity = blueprint.costs[i].quantity - blueprint.deliveredResources[i].quantity;
+                    storageTile = blueprintTile;
+                    target = itemTile;
+                    state = AnimalState.Fetching;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     public void OnArrivalAtFetchTarget(){
         TakeItem(desiredItem, desiredItemQuantity);
         int itemInInv = inv.GetItemAmount(desiredItem);
@@ -197,7 +222,21 @@ public class Animal : MonoBehaviour
         state = AnimalState.Delivering;
     }
     public void OnArrivalAtDeliverTarget(){
+        if (target.blueprint != null){ OnArrivalDeliverToBlueprint(); return; }
         DropItem(desiredItem, target);
+        int itemInInv = inv.GetItemAmount(desiredItem);
+        if (itemInInv > 0){ // if you have excess of the item, drop it somewhere.
+            target = FindPlaceToDrop(desiredItem, itemInInv); // at the moment they seem to just hold onto it!
+            state = AnimalState.Delivering;
+        }
+        state = AnimalState.Idle;
+
+    }
+    public void OnArrivalDeliverToBlueprint(){
+        int extra = target.blueprint.RecieveResource(desiredItem, desiredItemQuantity);
+        int delivered = desiredItemQuantity - extra;
+        inv.AddItem(desiredItem, -delivered); // remove item from own inv
+        
         int itemInInv = inv.GetItemAmount(desiredItem);
         if (itemInInv > 0){ // if you have excess of the item, drop it somewhere.
             target = FindPlaceToDrop(desiredItem, itemInInv); // at the moment they seem to just hold onto it!
@@ -226,10 +265,10 @@ public class Animal : MonoBehaviour
         inv.MoveItemTo(dTile.inv, item, inv.GetItemAmount(item));
     }
     // drops all items.
-    public void DropAll(){
+    public void DropItems(){
         foreach (ItemStack stack in inv.itemStacks){
             if (stack != null && stack.quantity > 0){
-                DropItem(item, FindPlaceToDrop(stack.item));
+                DropItem(stack.item, FindPlaceToDrop(stack.item));
             }
         }
     }
@@ -264,6 +303,9 @@ public class Animal : MonoBehaviour
         if (Db.tileTypeByName.ContainsKey(tileTypeStr)){
             return FindWorkTile(Db.tileTypeByName[tileTypeStr], r);
         } else {Debug.Log("tile type doesn't exist"); return null;}
+    }
+    public Tile FindBlueprint(int r = 50){
+        return Find(t => t.blueprint != null, r);
     }
 
     public Tile Find(Func<Tile, bool> condition, int r, bool persistent = false){

@@ -46,27 +46,13 @@ public class BuildPanel : MonoBehaviour {
                 }
             }
             if (!bt.isTile){
-                if (tile.building != null){
-                    Debug.Log("theres already a building here!");
+                if ((tile.building != null) || (tile.blueprint != null)){
+                    Debug.Log("theres already a building or blueprint here!");
                     return false;
                 } else {
-                    Building building;
-                    building = new Building(bt, tile.x, tile.y); 
-                    tile.building = building;
-                    GlobalInventory.instance.AddItems(bt.costs, true);
-
-                     // this needs a lot of work!!
-                     // probably should make a different FindItem function.
-                    foreach (ItemQuantity cost in bt.costs){
-                        Tile itemTile = Animal.FindItem(cost.item);
-                        int sizeLeft = itemTile.inv.RemoveItem(cost.item, cost.quantity);
-                           
-                    }
-
-
+                    Blueprint blueprint = new Blueprint(bt, tile.x, tile.y);
+                    tile.blueprint = blueprint;                   
                     return true;
-
-
                 }
             }
             return true;
