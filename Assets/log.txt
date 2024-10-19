@@ -1,0 +1,180 @@
+hii
+
+eventually, want resource gathering to be done by mice who harvest at resource nodes and deliver stuff to inventories.
+(maybe just one inventory per settlement?)
+
+for now, have "mice" without game objects who just harvest and send directly to inventories.
+have a population census that tracks all the mice and their jobs. and allow reassigning from here.
+
+5/5
+
+move the a star stuff to animal game object!
+
+remove smoothing / set waypoint distance small!
+
+define connections my way! so that it makes sense with verticality.
+
+add ladders! and stairs!c  
+
+5/12
+wanna have woodcutters drop wood items
+
+wanna have haulers haul them
+
+6/9
+do the navigation stuff later?
+
+we can start with clicker game style. 
+
+can transition into having distinct workers / jobs later.
+
+7/20
+
+how do i handle item stacks?
+mining gives a stack of stone. 
+the stone should be separable into various ores and stones with the right tech...
+a pile can hold 1 stack.
+say you have a pile of 100 already mined mixed stone 
+it really is 20 iron ore and 80 granite or whatever 
+
+        the broad categories are used in general but with really shitty results.
+        you can grow specific herbs.
+the two options are 
+    - have secretly differentiated stone 
+        - mining yields a "single stack" of "stone"
+        - when you mine stone from one spot and then another
+            - it is different stone... um...
+            - stone 5486 has 20 hematite and 80 granite
+            - stone 230 just has 100 granite
+            - the stack of stone is actually up to 100 different stacks of stone 
+            - seems computationally tough. but doable? 
+        - an item stack can be a normal stack 
+            - with just an amount and an itemid 
+        - or a composite stack  (do later)
+            - with several hidden normal stacks inside 
+            - contains 40 stone 5486 and 59 stone 230 and 1 stone 1902
+            - analysis of a stack yields the component ores (hematite, granite) 
+                - so this yields like 85 granite and 14 hematite and 1 gold
+                - you now need to store 3 stacks
+            - for herbs. you have a composite herb stack of 20 herb temp cul and 3 herb temp medi.
+                - analysis yields 15 mint 5 thyme 2 hyssop 1 henna 
+                - actually i think herbs maybe should just all be discovered?
+                - herbs just come from foraging in different places?
+            - for sand. you have a composite sand stack of 18 quartz sand and 2 iron sand 
+                - analysis yields 18 quartz sand and 2 iron sand
+in summary, discovery is: 
+    single stack of stone (maybe call it "raw granite"?)
+    analysis yields several stacks of stones and minerals
+    can process those stones and minerals 
+        - hematite -> iron -> steel
+how many item types do i roughly expect a player to have? 
+    - 50 stones 
+    - 30 ores 
+    - 20 metals / fully processed earth resources 
+    - 50 plants + 50 seeds
+    - 10 food types 
+    - 10 woods 
+    - 20 magic resources 
+    - like 20 x 10 furnitures 
+    - like 20 x 10 tools / weapons ?
+    - like 100s of books (one for each tech?) 
+    - overall about 200 stackable resources 
+    - and 500 unstackable resources (furniture, tools, books)
+    - a cabinet can hold 4 stacks of 100. so you need like 50 cabinets end game 
+        - seems reasonable.
+    - early game you just have
+        - wood, stone, soil, wheat 
+
+8/4/24
+
+next steps 
+- add tree sprite 
+    - have woodcutters walk to tree to chop it 
+    - produce / add to wood item stacks
+- add generic "inventory" and rename "inventory" to globalInventory.
+    - add an inventory to animals.
+- search for nearby item stacks 
+    - reserve stack so no one else takes it
+- fetch item stacks
+- transport item stacks to storage
+    - porter just does this all the time? looks for stuff and delivers.
+
+    - make items drop on floor
+    - make porter a subclass of animal
+
+- add build blueprints
+    - add "build" process, builders will deliver materials then work on building.
+- add work stations 
+
+
+8/10/24 
+how do animals decide where to work?
+options are
+    - (clicker game) assign number of each job 
+    - (syx) assign number of animals at each workstation
+    - (rimworld) assign work priorities to individual mice and they decide what to work on
+    can't do rimworld because need to have fixed workstations to have local neighborhoods.
+    clicker game is just less granular syx.
+an animal picks where to work based off their personal skillset
+    - then they pick a place to live near their workstation based off some utility function
+    - periodically check if pairs of animals would be better off swapped
+you assign number of jobs at each workstation...
+    give one of 5 priorities to each workstation
+    animals will fill based on priority, then skill.
+right now i am using clicker game system. but will eventually transitition to syx.
+
+how are resources delivered?
+    - (rimworld) item produced goes on floor. then they pick it up and deliver at some pt
+    - (syx) item produced goes on floor. warehouse porters deliver
+    - (?) item produced goes in building storage. warehouse porters deliver
+so for shonei
+    - item produced goes on floor. (issue: too many different items from one tree?)
+        - can one tile of floor hold several stacks of stuff?
+        - it certainly can't display that many stacks of stuff.
+        - using multiple tiles might be fine. just search the 5x5 neighborhood of tiles for an existing stack to dump each resource.
+    - hauler finds an itemstack and designates that as work location
+    - picks it up and then finds nearest appropriate warehouse.
+    - the only way to move resources other than haulers is mice looking for materials.
+        - so like a carpenter will search for wood on the ground or in warehouses
+unemployed mice will be haulers?
+
+8/31
+made haulers!
+items produced go on the floor (typically on the tile where they are produced. need to add "clustering?" for like farmers.)
+and haulers pick them up.
+
+yayyy!!!
+
+i think i'll do a sorting order of 
+foreground decoration - 50 (flowers? rain?)
+animals - 40
+items - 30
+buildings - 20
+tiles - 10
+background - 0
+
+9/2
+- fixed item moving bug..
+- added dirt sprite
+- right now when building the items aren't taken out of anywhere. take out of a random inventory.
+    - this is in BuildPanel! need to work on a lot of stuff.
+- have haulers drop items they don't want
+    - keep track of "desired items?"
+        - if you're idle.. you don't want any items.
+        - if you're working, it depends. unclear
+- need to figure out why global wood is starting 1 higher than actual world wood...
+
+9/21
+- feel so tired today. 
+- added blueprints!
+    - right now haulers 50/50 between delivering to blueprints and doing other hauling.
+    - want to make this a smarter decision.
+    - also rename haulers to "workers?" or maybe have builders be separate idk.
+    - also want to add construction prgoress. and resource delivery progress.
+        - visible in info panel. need to add info panel for blueprints.
+
+10/19
+
+
+
+    
