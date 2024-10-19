@@ -22,8 +22,8 @@ public class BuildPanel : MonoBehaviour {
                 GameObject buttonGo = Instantiate(buildButtonPrefab, transform);
                 foreach (ItemQuantity iq in building.costs) {
                     GameObject costDisplay = Instantiate(textDisplayPrefab, buttonGo.transform);
-                    costDisplay.GetComponent<TMPro.TextMeshProUGUI>().text = Db.items[iq.id].name + ": " + iq.quantity.ToString();
-                    costDisplay.name = "CostDisplay" + Db.items[iq.id].name;
+                    costDisplay.GetComponent<TMPro.TextMeshProUGUI>().text = iq.item.name + ": " + iq.quantity.ToString();
+                    costDisplay.name = "CostDisplay" + iq.item.name;
                 }
                 buttonGo.GetComponent<Button>().onClick.AddListener(() => SetBuildingType(building));  // is this right??
                 buttonGo.GetComponentInChildren<TMPro.TextMeshProUGUI>().text = building.name;
@@ -38,7 +38,7 @@ public class BuildPanel : MonoBehaviour {
     // mousecontroller handles the mouse stuff. and calls build here.
 
     public bool Construct(Tile tile){
-        if (bt != null && GlobalInventory.instance.SufficientResources(bt.costs) && tile.type.id == 0){
+        if (bt != null && tile.type.id == 0){ // && GlobalInventory.instance.SufficientResources(bt.costs)
             if (bt.isTile){
                 if (Db.tileTypeByName.ContainsKey(bt.name)){
                     tile.type = Db.tileTypeByName[bt.name];
@@ -59,6 +59,7 @@ public class BuildPanel : MonoBehaviour {
         }
         return false;
     }
+
     public bool Destroy(Tile tile){
         if (tile.type != Db.tileTypes[0]){
             if (tile.building != null){

@@ -12,6 +12,7 @@ public class InfoPanel : MonoBehaviour {
         Inactive,
         Tile, 
         Building,
+        Blueprint,
         Animal
     }
     public InfoMode infoMode = InfoMode.Inactive;
@@ -55,6 +56,12 @@ public class InfoPanel : MonoBehaviour {
                 gameObject.SetActive(true);
                 displayText =  ( "building: " + tile.building.buildingType.name + 
                     "\n location: " + tile.x.ToString() + ", " + tile.y.ToString());
+            } else if (tile.blueprint != null){
+                infoMode = InfoMode.Blueprint;
+                gameObject.SetActive(true);
+                displayText =  ( "blueprint: " + tile.blueprint.buildingType.name + 
+                    "\n location: " + tile.x.ToString() + ", " + tile.y.ToString() + 
+                    "\n progress: " + tile.blueprint.GetProgress());
             } else {
                 infoMode = InfoMode.Tile;
                 gameObject.SetActive(true);

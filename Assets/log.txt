@@ -174,7 +174,11 @@ background - 0
         - visible in info panel. need to add info panel for blueprints.
 
 10/19
-
+- added default building sprite 
+- blueprint sprites grayed out
+- fixed some null hauling issues.. so many
+- made itemquantity a bit easier to work with. but still need to specify itemids. maybe make a spreadsheet
+- planned out how crafters will work.
 
 
     

@@ -10,7 +10,7 @@ public class Animal : MonoBehaviour
     public string aName;
     public float x;
     public float y;
-    public float timerOffset = 0f;
+    public float timerOffset = 0f; // unused i think
     public float maxSpeed = 1f;
 
     public Tile target;
@@ -92,8 +92,8 @@ public class Animal : MonoBehaviour
         }
     }
 
-    public void FastUpdate(){
-        if (state == AnimalState.Working){ // haulers are never Working
+    public void FastUpdate(){ // called from animalcontroller each second.
+        if (state == AnimalState.Working && job.jobType == "gatherer"){ 
             switch (job.name) {
             case "none":
                 Debug.LogError("working without a job!");
@@ -120,7 +120,9 @@ public class Animal : MonoBehaviour
             FindWork(); // want to move this into slow update, once i make it
         }
         if (state == AnimalState.Idle){
-            //MoveTo(x + (float)UnityEngine.Random.Range(-1, 2), y);
+            if (UnityEngine.Random.Range(0, 5) == 0){
+                MoveTo(x + (float)UnityEngine.Random.Range(-1, 2), y);
+            }
         }
     }
     public void Produce(string itemName, int amount = 1){
@@ -131,11 +133,17 @@ public class Animal : MonoBehaviour
 
     public void Update(){
         if ((state == AnimalState.Walking) || (state == AnimalState.Fetching) || (state == AnimalState.Delivering)){
+            if (target == null || target.go == null){ 
+                // this shouldnt happen i think!
+                    // seem sto happen maybe when someone construct partially then someone else finishes.
+                Debug.LogError("target disappeared!!");
+                DropItems();
+                state = AnimalState.Idle;
+            }
             // arrived at target
-            if (Vector3.Distance(this.go.transform.position, target.go.transform.position) < 0.02f){
+            else if (Vector3.Distance(this.go.transform.position, target.go.transform.position) < 0.02f){
                 this.go.transform.position = target.go.transform.position;
                 SyncPosition(); 
-
 
                 if (state == AnimalState.Walking){ // have reached destination.
                     if (target == workTile){
@@ -194,9 +202,9 @@ public class Animal : MonoBehaviour
         Blueprint blueprint = blueprintTile.blueprint;
         for (int i = 0; i < blueprint.costs.Length; i++){
             if (blueprint.deliveredResources[i].quantity < blueprint.costs[i].quantity){
-                Tile itemTile = FindItem(Db.items[blueprint.costs[i].id]);
+                Tile itemTile = FindItem(blueprint.costs[i].item);
                 if (itemTile != null){
-                    desiredItem = Db.items[blueprint.costs[i].id];
+                    desiredItem = blueprint.costs[i].item;
                     desiredItemQuantity = blueprint.costs[i].quantity - blueprint.deliveredResources[i].quantity;
                     storageTile = blueprintTile;
                     target = itemTile;
@@ -240,6 +248,9 @@ public class Animal : MonoBehaviour
         int itemInInv = inv.GetItemAmount(desiredItem);
         if (itemInInv > 0){ // if you have excess of the item, drop it somewhere.
             target = FindPlaceToDrop(desiredItem, itemInInv); // at the moment they seem to just hold onto it!
+            if (target == null){
+                Debug.LogError("couldn't find a place to drop!");
+            }
             state = AnimalState.Delivering;
         }
         state = AnimalState.Idle;
@@ -249,9 +260,9 @@ public class Animal : MonoBehaviour
         Tile tileHere = world.GetTileAt(x, y);
         if (tileHere != null && tileHere.inv != null){ 
             tileHere.inv.MoveItemTo(inv, item, quantity);
-        }
-        if (tileHere.inv.IsEmpty() && tileHere.inv.invType == Inventory.InvType.Floor){
-            tileHere.inv = null;
+            if (tileHere.inv.IsEmpty() && tileHere.inv.invType == Inventory.InvType.Floor){
+                tileHere.inv = null; // delete an empty floor inv.
+            }
         }
     }
     // tries to drop all of an item at a nearby tile.

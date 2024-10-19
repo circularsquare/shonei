@@ -3,25 +3,33 @@
         "id": 0,
         "name": "none",
         "isComposite": false
-    },
-    {
+    },{
         "id": 1,
         "name": "wood",
         "isComposite": false
-    },
-    {
+    },{
         "id": 2,
         "name": "stone",
         "isComposite": true
-    },
-    {
+    },{
         "id": 4,
         "name": "wheat",
         "isComposite": false
-    },
-    {
+    },{
         "id": 5,
         "name": "soil",
+        "isComposite": false
+    },{
+        "id": 6,
+        "name": "bricks",
+        "isComposite": false
+    },{
+        "id": 10,
+        "name": "planks",
+        "isComposite": false
+    },{
+        "id": 11,
+        "name": "sawdust",
         "isComposite": false
     }
     

@@ -15,8 +15,8 @@ public class WorldController : MonoBehaviour
             Debug.LogError("there should only be one world controller");}
         instance = this;
 
-
-        world = this.gameObject.AddComponent<World>(); // ad dworld
+        Application.runInBackground = true;
+        world = this.gameObject.AddComponent<World>(); // add world
 
         tileGameObjectMap = new Dictionary<Tile, GameObject>();
 
@@ -44,6 +44,8 @@ public class WorldController : MonoBehaviour
             }
         }
         world.GetTileAt(5, 2).type = Db.tileTypeByName["tree"];
+        world.GetTileAt(4, 2).type = Db.tileTypeByName["tree"];
+        world.GetTileAt(12, 2).type = Db.tileTypeByName["tree"];
         world.CalculateTileStandability();
     } 
 

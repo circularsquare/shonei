@@ -29,8 +29,11 @@ public class Building {
         go.name = "Building" + buildingType.name;
         
         sprite = Resources.Load<Sprite>("Sprites/Buildings/" + buildingType.name);
+        if (sprite == null || sprite.texture == null){
+            sprite = Resources.Load<Sprite>("Sprites/Buildings/default");
+        }
         SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
-        sr.sprite = sprite;
+        sr.sprite = sprite; // remember this is copy and pasted into blueprint.cs too.
 
         // register callback to update sprite?
     }

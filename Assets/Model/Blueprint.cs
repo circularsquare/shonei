@@ -27,13 +27,15 @@ public class Blueprint {
         go.name = "BuildingBlueprint" + buildingType.name;
         
         sprite = Resources.Load<Sprite>("Sprites/Buildings/" + buildingType.name);
-            // todo: make the sprite look different
+        if (sprite == null || sprite.texture == null){
+            sprite = Resources.Load<Sprite>("Sprites/Buildings/default");}
         SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
         sr.sprite = sprite;
+        sr.color = new Color(sr.color.r, sr.color.g, sr.color.b, 0.5f); // blueprint half alpha
 
         deliveredResources = new ItemQuantity[buildingType.costs.Length];
         for (int i = 0; i < buildingType.costs.Length; i++){
-            deliveredResources[i] = new ItemQuantity(buildingType.costs[i].id, 0);
+            deliveredResources[i] = new ItemQuantity(buildingType.costs[i].item, 0);
         }
         costs = buildingType.costs;
 
@@ -41,17 +43,16 @@ public class Blueprint {
     }
 
     public int RecieveResource(Item item, int quantity){
-            // this maybe should be using itemstacks instead of item quantitys.     
+        // this maybe should be using itemstacks instead of item quantitys.     
 
         int delivered = 0;
         for (int i = 0; i < deliveredResources.Length; i++) {
-            if (deliveredResources[i].id == item.id) {
+            if (deliveredResources[i].item == item) {
                 delivered = Math.Min(quantity, costs[i].quantity - deliveredResources[i].quantity);
                 deliveredResources[i].quantity += delivered;
                 break;
             }
         }
-
         // check if construction is complete 
         for (int i = 0; i < deliveredResources.Length; i++) {
             if (deliveredResources[i].quantity < costs[i].quantity) {
@@ -70,5 +71,16 @@ public class Blueprint {
         // delete blueprint
         tile.blueprint = null;
         GameObject.Destroy(go);
+    }
+
+
+    public string GetProgress(){
+        string progress = "";
+        for (int i = 0; i < deliveredResources.Length; i++) {
+            progress += (deliveredResources[i].ItemName() 
+                + deliveredResources[i].quantity.ToString() 
+                + "/" + costs[i].quantity.ToString());
+        }
+        return progress;
     }
 }

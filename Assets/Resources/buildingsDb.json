@@ -37,6 +37,15 @@
             { "id": 2, "quantity": 10 }
         ],
         "isTile": true
+    },{  
+        "id": 100,
+        "name": "sawmill",
+        "description": "wood processing",
+        "nx": 1,
+        "ny": 1,
+        "costs": [
+            { "id": 1, "quantity": 5 }
+        ]
     }
 
 

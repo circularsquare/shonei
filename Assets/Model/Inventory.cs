@@ -49,8 +49,8 @@ public class Inventory
         int negateNum = 1;
         if (negate){ negateNum = -1; }
         foreach (ItemQuantity iq in iqs){
-            if (AddItem(Db.items[iq.id], negateNum * iq.quantity) != 0){
-                Debug.LogError("failed to add items!" + Db.items[iq.id].ToString());
+            if (AddItem(iq.item, negateNum * iq.quantity) != 0){
+                Debug.LogError("failed to add items!" + iq.item.ToString());
             }; // this shoudl be using stacks????
         }
     }

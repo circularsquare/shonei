@@ -6,6 +6,7 @@ using System;
 using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Runtime.Serialization;
 
 // this loads before anything else. 
 
@@ -23,7 +24,7 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
     public static Item[] items = new Item[500];
     public static Job[] jobs = new Job[100];
     public static Recipe[] recipes = new Recipe[500];
-    public static BuildingType[] buildingTypes = new BuildingType[100];
+    public static BuildingType[] buildingTypes = new BuildingType[300];
     public static TileType[] tileTypes = new TileType[100];
 
 
@@ -73,16 +74,21 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
                 jobByName.Add(job.name, job);
             }
         }
-        
+        Debug.Log("loaded jobs");
         // read Recipes
         string jsonTextRecipes = File.ReadAllText(Application.dataPath + "/Resources/recipesDb.json");
         Recipe[] recipesUnplaced = JsonConvert.DeserializeObject<Recipe[]>(jsonTextRecipes);
         foreach (Recipe recipe in recipesUnplaced){
             if (recipes[recipe.id] != null){Debug.LogError("error!! multiple recipes with same id");}
             recipes[recipe.id] = recipe;
-
             if (jobByName.ContainsKey(recipe.job)){
                 jobByName[recipe.job].recipes.Add(recipe);
+            }
+        }
+        foreach (Recipe recipe in recipes){
+            if (recipe != null){
+                Debug.Log(recipe.inputs[0].item.name);
+                Debug.Log(recipe.outputs[0].item.name);
             }
         }
 
@@ -121,15 +127,16 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
 public class Job {
     public int id {get; set;} // for some reason the set can't be protected. for the json deserialize to work
     public string name {get; set;}
+    public string jobType {get; set;}
     public List<Recipe> recipes = new List<Recipe>();
 }
 
 public class Recipe {
     public int id {get; set;}
     public string job {get; set;}
-    public string name {get; set;} // optional (maybe make the getter return something other than null?)
-    public ItemQuantity[] inputs { get; set; }
-    public ItemQuantity[] outputs { get; set; }
+    public string description {get; set;} // optional (maybe make the getter return something other than null?)
+    public ItemQuantity[] inputs {get; set;}
+    public ItemQuantity[] outputs {get; set;}
 }
 
 public class BuildingType {
@@ -147,12 +154,33 @@ public class TileType {
     public bool solid {get; set;}
 }
 
+
 // for stuff like input costs.
 public class ItemQuantity {
     public int id {get; set;}
     public int quantity {get; set;}
+    public Item item;
+    public ItemQuantity(){}
+    [OnDeserialized]
+    internal void OnDeserialized(StreamingContext context){
+        item = Db.items[id];
+    }
+
     public ItemQuantity(int id, int quantity){
-        this.id = id;
+        this.item = Db.items[id];
         this.quantity = quantity;
+    }
+    public ItemQuantity(Item item, int quantity){
+        this.item = item;
+        this.quantity = quantity;
+    }
+    public ItemQuantity(string name, int quantity){
+        this.item = Db.itemByName[name];
+        this.quantity = quantity;
+    }
+    public override string ToString(){
+        return item.name + ": " + quantity.ToString();}
+    public string ItemName(){
+        return item.name;
     }
 }

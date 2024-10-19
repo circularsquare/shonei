@@ -3,13 +3,29 @@
         - want to make this a smarter decision.
     - also rename haulers to "workers?" or maybe have builders be separate idk.
     - also want to add construction prgoress. and resource delivery progress.
-        - visible in info panel. need to add info panel for blueprints.
+        - visible in info panel. 
 - info panel: 
     - have info panel update.
     - have info panel cycle through when you click it again.
 - blueprints   
-    - have it work for building tiles
-    - display differently 
+    - have it work for building tiles (have a generic way of building any tile? or only some hardcoded ones.)
+        - maybe only need soil, stone, wood, and a few others. idk.
+
+- animal
+    - split logic into separate files depending on job type
+
+- crafting 
+    - select a recipe 
+        - select one that there are enough resources to make.
+    - set worktile to required work station. reserve it 
+    - haul materials to work station inv (taking extra if there is a lot?)
+        - make sure there's enough room in work station inv 
+    - craft
+    - drop product in work station inv. 
+        - maybe make more
 
 BUGS
 - figure out why global wood is starting 1 higher than actual world wood...
+- occasionally haulers lose their target and get stuck somehow??
+- screen jitters when dragging around
+- fix building buy display to not overlap text

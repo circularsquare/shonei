@@ -19,8 +19,9 @@ public class GlobalInventory
         instance = this;  
     }
 
+
     public void AddItem(ItemQuantity iq){
-        AddItem(iq.id, iq.quantity);
+        AddItem(iq.item.id, iq.quantity);
     }
     public void AddItem(string name, int amount){
         if (Db.iidByName.ContainsKey(name)){
@@ -41,11 +42,11 @@ public class GlobalInventory
     public void AddItems(ItemQuantity[] iqs, bool negate = false){
         if (negate){
             foreach (ItemQuantity iq in iqs){
-                AddItem(iq.id, -iq.quantity);
+                AddItem(iq.item.id, -iq.quantity);
             }
         } else {
             foreach (ItemQuantity iq in iqs){
-                AddItem(iq.id, iq.quantity);
+                AddItem(iq.item.id, iq.quantity);
             }
         }
     }
@@ -62,7 +63,7 @@ public class GlobalInventory
     public bool SufficientResources(ItemQuantity[] iqs){
         bool sufficient = true;
         foreach (ItemQuantity iq in iqs){
-            if (GetAmount(iq.id) < iq.quantity){
+            if (GetAmount(iq.item.id) < iq.quantity){
                 sufficient = false;
             }
         }

@@ -1,21 +1,31 @@
 [
     {
         "id": 0,
-        "name": "none"
+        "name": "none",
+        "jobType": "logistics"
     },{
         "id": 1,
-        "name": "hauler"
+        "name": "hauler",
+        "jobType": "none"
     },{
         "id": 2,
-        "name": "logger"
+        "name": "logger",
+        "jobType": "gatherer"
     },{
         "id": 4,
-        "name": "miner"
+        "name": "miner",
+        "jobType": "gatherer"
     },{
         "id": 6,
-        "name": "farmer"
+        "name": "farmer",
+        "jobType": "gatherer"
     },{
         "id": 10,
-        "name": "digger"
+        "name": "digger",
+        "jobType": "gatherer"
+    },{
+        "id": 11,
+        "name": "sawyer",
+        "jobType": "crafter"
     }
 ]
