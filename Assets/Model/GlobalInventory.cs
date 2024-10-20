@@ -23,19 +23,21 @@ public class GlobalInventory
     public void AddItem(ItemQuantity iq){
         AddItem(iq.item.id, iq.quantity);
     }
-    public void AddItem(string name, int amount){
+    public void AddItem(string name, int quantity){
         if (Db.iidByName.ContainsKey(name)){
-            AddItem(Db.iidByName[name], amount);
+            AddItem(Db.iidByName[name], quantity);
         } else {
             Debug.LogError("item name doesn't exist in iid dictionary");
         }
     }
-    public void AddItem(int iid, int amount){
+    public void AddItem(Item item, int quantity){
+        AddItem(item.id, quantity);
+    }
+    public void AddItem(int iid, int quantity){
         if (!itemAmounts.ContainsKey(iid)){
-            itemAmounts.Add(iid, amount);
+            itemAmounts.Add(iid, 0);
         }
-        itemAmounts[iid] += amount;
-
+        itemAmounts[iid] += quantity;
         if (cbInventoryChanged != null){
             cbInventoryChanged(this); } // make sure to add this callback thing wherever inv is changed
     }
@@ -51,10 +53,10 @@ public class GlobalInventory
         }
     }
 
-    public float GetAmount(string name){
-        return GetAmount(Db.iidByName[name]);
+    public float Quantity(string name){
+        return Quantity(Db.iidByName[name]);
     }
-    public float GetAmount(int iid){
+    public float Quantity(int iid){
         if (itemAmounts.ContainsKey(iid)){
             return itemAmounts[iid];
         } else {return 0;}
@@ -63,7 +65,7 @@ public class GlobalInventory
     public bool SufficientResources(ItemQuantity[] iqs){
         bool sufficient = true;
         foreach (ItemQuantity iq in iqs){
-            if (GetAmount(iq.item.id) < iq.quantity){
+            if (Quantity(iq.item.id) < iq.quantity){
                 sufficient = false;
             }
         }

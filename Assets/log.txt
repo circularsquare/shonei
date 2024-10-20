@@ -180,5 +180,11 @@ background - 0
 - made itemquantity a bit easier to work with. but still need to specify itemids. maybe make a spreadsheet
 - planned out how crafters will work.
 
+10/20
+- added crafting!!! sawmill works.
+    - added a new fetch mode for crafters, slightly different from haulers 
+    - recipes
+    - also made gatherers use recipes like crafters
+
 
     

@@ -13,9 +13,7 @@ public class Item // : Object
     public bool isComposite {get; set;}
 
     // just enum?
-    // items should maybe be
-        // renderable (in stockpiles or sitting on the floor or desk)
-            // have an item game object.
+    // inventories are the ones with gameobjects and sprites, not items.
     
 
 }

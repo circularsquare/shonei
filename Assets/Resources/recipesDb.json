@@ -2,6 +2,7 @@
     {  
         "id": 0,
         "job": "sawyer",
+        "tile": "sawmill",
         "description": "cut wood into planks",
         "inputs": [
             { "id": "1", "quantity": 1 }
@@ -12,13 +13,39 @@
         ]
     },{  
         "id": 1,
-        "job": "stonecutter",
-        "description": "cut stone",
-        "inputs": [
-            { "id": "5", "quantity": 1 }
-        ],
+        "job": "logger",
+        "tile": "tree",
+        "description": "cut tree",
+        "inputs": [ ],
         "outputs": [
-            { "id": "6", "quantity": 1 }
+            { "id": "1", "quantity": 1 }
+        ]
+    },{  
+        "id": 2,
+        "job": "miner",
+        "tile": "stone",
+        "description": "mine stone",
+        "inputs": [ ],
+        "outputs": [
+            { "id": "2", "quantity": 1 }
+        ]
+    },{  
+        "id": 3,
+        "job": "digger",
+        "tile": "soil",
+        "description": "dig soil",
+        "inputs": [ ],
+        "outputs": [
+            { "id": "5", "quantity": 1 }
+        ]
+    },{  
+        "id": 4,
+        "job": "farmer",
+        "tile": "wheat",
+        "description": "harvest wheat",
+        "inputs": [ ],
+        "outputs": [
+            { "id": "4", "quantity": 1 }
         ]
     }
 ]  

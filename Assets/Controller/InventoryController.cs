@@ -47,19 +47,19 @@ public class InventoryController : MonoBehaviour
     }
 
     void addItemCountDisplay(Item item){
-        if (item != null && globalInventory.GetAmount(item.id) != 0){
+        if (item != null && globalInventory.Quantity(item.id) != 0){
             GameObject itemCountGo = Instantiate(itemCount, panelInv.transform);
-            itemCountGo.GetComponent<TMPro.TextMeshProUGUI>().text = item.name + ": " + globalInventory.GetAmount(item.id).ToString();
+            itemCountGo.GetComponent<TMPro.TextMeshProUGUI>().text = item.name + ": " + globalInventory.Quantity(item.id).ToString();
             itemCountGo.name = "ItemCount_" + item.name;
         }
     }
     void updateItemCountDisplay(Item item){
-        if (item != null && globalInventory.GetAmount(item.id) != 0){
+        if (item != null && globalInventory.Quantity(item.id) != 0){
             Transform itemCountTransform = panelInv.transform.Find("ItemCount_" + item.name);
             if (itemCountTransform == null){
                 addItemCountDisplay(item);
             } else {
-                itemCountTransform.gameObject.GetComponent<TMPro.TextMeshProUGUI>().text = item.name + ": " + globalInventory.GetAmount(item.id).ToString();
+                itemCountTransform.gameObject.GetComponent<TMPro.TextMeshProUGUI>().text = item.name + ": " + globalInventory.Quantity(item.id).ToString();
             }
         }
     }

@@ -86,7 +86,19 @@ public class Inventory
         }
         return false;
     }
-    public int GetItemAmount(Item item){
+    public bool ContainsItem(ItemQuantity iq){
+        return (Quantity(iq.item) >= iq.quantity);
+    }
+    public bool ContainsItems(ItemQuantity[] iqs){
+        bool sufficient = true;
+        foreach (ItemQuantity iq in iqs){
+            if (Quantity(iq.item) < iq.quantity){
+                sufficient = false;
+            }
+        }
+        return sufficient;
+    }
+    public int Quantity(Item item){
         int amount = 0;
         foreach (ItemStack stack in itemStacks){
             if (stack != null && stack.item == item){
@@ -126,7 +138,12 @@ public class Inventory
             }
         }
         go.name = "Inventory" + mostItem.name;
-        go.GetComponent<SpriteRenderer>().sprite = Resources.Load<Sprite>("Sprites/items/" + mostItem.name);
+        Sprite sprite = Resources.Load<Sprite>("Sprites/Items/" + mostItem.name);
+        if (sprite == null || sprite.texture == null){
+            sprite = Resources.Load<Sprite>("Sprites/Items/default");
+        }
+        go.GetComponent<SpriteRenderer>().sprite = sprite;   
+    
     }
 
 

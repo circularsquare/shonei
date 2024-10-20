@@ -12,6 +12,8 @@ public class Building {
     public BuildingType buildingType;
     public Sprite sprite;
     public Tile tile; // not really sure how this will work for multi-tile buildings...
+    public int capacity = 1;
+    public int reserved = 0;
 
     public Building(BuildingType buildingType, int x, int y){
         this.buildingType = buildingType;

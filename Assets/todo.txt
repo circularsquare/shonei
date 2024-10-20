@@ -12,7 +12,7 @@
         - maybe only need soil, stone, wood, and a few others. idk.
 
 - animal
-    - split logic into separate files depending on job type
+    - split logic into separate files depending on job type (on second thought maybe not? they should be able to do all these things. jobs are not identity.)
 
 - crafting 
     - select a recipe 
@@ -23,6 +23,9 @@
     - craft
     - drop product in work station inv. 
         - maybe make more
+    - drop unuseful stuff.
+
+- figure out how to deal with item ids being annoying to type in json.. maybe have a python script translate?
 
 BUGS
 - figure out why global wood is starting 1 higher than actual world wood...

@@ -74,23 +74,19 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
                 jobByName.Add(job.name, job);
             }
         }
-        Debug.Log("loaded jobs");
         // read Recipes
         string jsonTextRecipes = File.ReadAllText(Application.dataPath + "/Resources/recipesDb.json");
         Recipe[] recipesUnplaced = JsonConvert.DeserializeObject<Recipe[]>(jsonTextRecipes);
         foreach (Recipe recipe in recipesUnplaced){
             if (recipes[recipe.id] != null){Debug.LogError("error!! multiple recipes with same id");}
             recipes[recipe.id] = recipe;
-            if (jobByName.ContainsKey(recipe.job)){
-                jobByName[recipe.job].recipes.Add(recipe);
+            if (jobByName.ContainsKey(recipe.job)){ // add recipe to job's array of recipes
+                Job job = jobByName[recipe.job];
+                job.recipes[job.nRecipes] = recipe;
+                job.nRecipes += 1;                
             }
         }
-        foreach (Recipe recipe in recipes){
-            if (recipe != null){
-                Debug.Log(recipe.inputs[0].item.name);
-                Debug.Log(recipe.outputs[0].item.name);
-            }
-        }
+        Debug.Log("loaded recipes");
 
         // read Buildings
         string jsonBuildingTypes = File.ReadAllText(Application.dataPath + "/Resources/buildingsDb.json");
@@ -128,13 +124,16 @@ public class Job {
     public int id {get; set;} // for some reason the set can't be protected. for the json deserialize to work
     public string name {get; set;}
     public string jobType {get; set;}
-    public List<Recipe> recipes = new List<Recipe>();
+    public int nRecipes = 0;
+    public static int maxRecipes = 100;
+    public Recipe[] recipes = new Recipe[maxRecipes]; // max 100 recipes per job
 }
 
 public class Recipe {
     public int id {get; set;}
     public string job {get; set;}
     public string description {get; set;} // optional (maybe make the getter return something other than null?)
+    public string tile {get; set;}
     public ItemQuantity[] inputs {get; set;}
     public ItemQuantity[] outputs {get; set;}
 }
