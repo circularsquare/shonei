@@ -75,6 +75,9 @@ public class InfoPanel : MonoBehaviour {
         }
         else{ Deselect(); }
     }
+    public void UpdateInfo(){
+        // TODO: implement
+    }
 
     public void Deselect(){
         infoMode = InfoMode.Inactive;

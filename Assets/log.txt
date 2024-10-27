@@ -186,5 +186,13 @@ background - 0
     - recipes
     - also made gatherers use recipes like crafters
 
+10/27
+- structured items in a tree
+    - keep track of discovered items 
+- add display for local inventories
+    - add inventory allowed item lists (still need to have haulers remove disallowed items)
+- translate item names from json to item ids while loading db
+- fixed resources starting at 1 higher than they should
+- fixed blueprints receiving wrong number of resources
 
     

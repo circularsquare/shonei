@@ -9,6 +9,7 @@ public class GlobalInventory
 {
     public static GlobalInventory instance {get; protected set;}
     public Dictionary<int, int> itemAmounts {get; protected set;}
+    public Dictionary<int, int> itemCapacities {get; protected set;}
     Action<GlobalInventory> cbInventoryChanged;
 
     public GlobalInventory() {
@@ -72,6 +73,9 @@ public class GlobalInventory
         return sufficient;
     }
 
+    public void CalculateCapacities(){
+        // need to allocate capacities for inventories.
+    }
 
     public void RegisterCbInventoryChanged(Action<GlobalInventory> callback){
         cbInventoryChanged += callback;}

@@ -68,6 +68,11 @@ public class MouseController : MonoBehaviour
                     InfoPanel.instance.ShowInfo(hit.collider); // clicked on animal
                 } else if (tileAt != null) {
                     InfoPanel.instance.ShowInfo(tileAt); // clicked on tile
+                    if (tileAt.inv != null && tileAt.inv.invType == Inventory.InvType.Storage) {
+                        InventoryController.instance.SelectInventory(tileAt.inv);  // select inventory if storage
+                    } else {
+                        InventoryController.instance.SelectInventory(null); // deselect inventory (show global)
+                    }
                 }
 
             } else if (mouseMode == MouseMode.Build) {
@@ -76,7 +81,6 @@ public class MouseController : MonoBehaviour
                 BuildPanel.instance.Destroy(tileAt);
             }
         }
-
 
         
     }

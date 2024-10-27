@@ -93,7 +93,6 @@ public class Animal : MonoBehaviour
             if (t != null){
                 SetWorkTile(t); // reserves tile too.
                 if (inv.ContainsItems(recipe.inputs)){ // if have all the inputs, just go there.
-                    Debug.Log("have input");
                     GoToWork();
                 } else { // if missing some inputs, collect the missing inputs in your inventory.
                     Debug.Log("collecting input");
@@ -274,11 +273,10 @@ public class Animal : MonoBehaviour
             state = AnimalState.Delivering;
         }
         state = AnimalState.Idle;
-
     }
     public void OnArrivalDeliverToBlueprint(){      // deliver items to blueprint
-        int extra = target.blueprint.RecieveResource(desiredItem, desiredItemQuantity);
-        int delivered = desiredItemQuantity - extra;
+        int amountToDeliver = Math.Min(desiredItemQuantity, inv.Quantity(desiredItem));
+        int delivered = target.blueprint.ReceiveResource(desiredItem, amountToDeliver);
         inv.AddItem(desiredItem, -delivered); // remove item from own inv
         
         int itemInInv = inv.Quantity(desiredItem);
@@ -302,9 +300,7 @@ public class Animal : MonoBehaviour
         }
     }
     public void DropItem(Item item, Tile dTile = null){     // tries to drop all of an item at a nearby tile.
-        if (dTile == null){
-            dTile = world.GetTileAt(x, y);
-        }
+        if (dTile == null){dTile = world.GetTileAt(x, y); }
         if (dTile.inv == null){
             dTile.inv = new Inventory(1, 20, Inventory.InvType.Floor, dTile.x, dTile.y);
         }
@@ -321,7 +317,9 @@ public class Animal : MonoBehaviour
     public void Produce(string itemName, int quantity = 1){
         Produce(Db.itemByName[itemName], quantity);
     }
-    public void Produce(ItemQuantity iq){ Produce(iq.item, iq.quantity);}
+    public void Produce(ItemQuantity iq){ 
+        if (iq == null){Debug.LogError("null iq!");}
+        Produce(iq.item, iq.quantity);}
     public void Produce(Item item, int quantity = 1){   // instantly produces item at a nearby tile
         ginv.AddItem(item.id, quantity);
         Tile dTile = FindPlaceToDrop(item);
@@ -401,6 +399,15 @@ public class Animal : MonoBehaviour
         if (eligibleRecipes.Count == 0){return null;}
         int index = UnityEngine.Random.Range(0, eligibleRecipes.Count);
         return eligibleRecipes[index];
+    }
+
+    public int CalculateWorkPossible(Recipe recipe){
+        foreach (ItemQuantity input in recipe.inputs){
+             // need to get input capacities..
+            // also maybe this function should be in Recipe instead of animal? but then can't use location data.
+        }
+        return 0;
+
     }
 
 

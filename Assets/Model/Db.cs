@@ -22,6 +22,8 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
     // int maxJobs = 40;
     // int maxRecipes = 5000;
     public static Item[] items = new Item[500];
+    public static Item[] itemsFlat = new Item[500];
+    public static int itemsCount = 0;
     public static Job[] jobs = new Job[100];
     public static Recipe[] recipes = new Recipe[500];
     public static BuildingType[] buildingTypes = new BuildingType[300];
@@ -48,21 +50,32 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
 
     void Awake(){ // this runs before Start() like in world
         ReadJson();
+        itemsFlat = itemsFlat.Take(itemsCount).ToArray();
         Debug.Log("db loaded");
     } 
 
     void ReadJson(){
         // read Items
-        string jsonTextItems = File.ReadAllText(Application.dataPath + "/Resources/itemsDb.json");
+        string jsonTextItems = File.ReadAllText(Application.dataPath + "/Resources/itemsDb2.json");
         Item[] itemsUnplaced = JsonConvert.DeserializeObject<Item[]>(jsonTextItems);
         foreach (Item item in itemsUnplaced){
+            AddItemToDb(item);
+        }
+        void AddItemToDb(Item item){
             if (items[item.id] != null){Debug.LogError("error!! multiple items with same id");}
+            if (itemByName.ContainsKey(item.name)){Debug.LogError("error!! multiple items with same name");}
             items[item.id] = item;
             if (item.name != null){
                 itemByName.Add(item.name, item);
                 iidByName.Add(item.name, item.id);
+                itemsFlat[itemsCount++] = item;
             }
-        }
+            if (item.children != null){
+                foreach (Item child in item.children){
+                    AddItemToDb(child);
+                }
+            }
+        } // TODO: read only top level items
 
         // read Jobs
         string jsonTextJobs = File.ReadAllText(Application.dataPath + "/Resources/jobsDb.json");
@@ -86,7 +99,6 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
                 job.nRecipes += 1;                
             }
         }
-        Debug.Log("loaded recipes");
 
         // read Buildings
         string jsonBuildingTypes = File.ReadAllText(Application.dataPath + "/Resources/buildingsDb.json");
@@ -95,7 +107,8 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
             if (buildingTypes[buildingType.id] != null){Debug.LogError("error!! multiple building types with same id");}
             buildingTypes[buildingType.id] = buildingType;
             buildingTypeByName.Add(buildingType.name, buildingType);
-        }
+        } 
+
 
         // read Tiles
         string jsonTileTypes = File.ReadAllText(Application.dataPath + "/Resources/tilesDb.json");
@@ -134,8 +147,21 @@ public class Recipe {
     public string job {get; set;}
     public string description {get; set;} // optional (maybe make the getter return something other than null?)
     public string tile {get; set;}
-    public ItemQuantity[] inputs {get; set;}
-    public ItemQuantity[] outputs {get; set;}
+    public ItemNameQuantity[] ninputs {get; set;}
+    public ItemNameQuantity[] noutputs {get; set;}
+    public ItemQuantity[] inputs;
+    public ItemQuantity[] outputs;
+    [OnDeserialized]
+    internal void OnDeserialized(StreamingContext context){
+        inputs = new ItemQuantity[ninputs.Length];
+        outputs = new ItemQuantity[noutputs.Length];
+        for (int i = 0; i < ninputs.Length; i++){
+            inputs[i] = new ItemQuantity(ninputs[i].name, ninputs[i].quantity);
+        }
+        for (int i = 0; i < noutputs.Length; i++){
+            outputs[i] = new ItemQuantity(noutputs[i].name, noutputs[i].quantity);
+        }
+    }
 }
 
 public class BuildingType {
@@ -143,8 +169,16 @@ public class BuildingType {
     public string name {get; set;}
     public int nx {get; set;}
     public int ny {get; set;}
-    public ItemQuantity[] costs {get; set;}
+    public ItemNameQuantity[] ncosts {get; set;}
+    public ItemQuantity[] costs;
     public bool isTile {get; set;}
+    [OnDeserialized]
+    internal void OnDeserialized(StreamingContext context){
+        costs = new ItemQuantity[ncosts.Length];
+        for (int i = 0; i < ncosts.Length; i++){
+            costs[i] = new ItemQuantity(ncosts[i].name, ncosts[i].quantity);
+        }
+    }
 }
 
 public class TileType {
@@ -153,6 +187,10 @@ public class TileType {
     public bool solid {get; set;}
 }
 
+public class ItemNameQuantity {
+    public string name {get; set;}
+    public int quantity {get; set;}
+}
 
 // for stuff like input costs.
 public class ItemQuantity {
@@ -166,14 +204,17 @@ public class ItemQuantity {
     }
 
     public ItemQuantity(int id, int quantity){
+        this.id = id;
         this.item = Db.items[id];
         this.quantity = quantity;
     }
     public ItemQuantity(Item item, int quantity){
+        this.id = item.id;
         this.item = item;
         this.quantity = quantity;
     }
     public ItemQuantity(string name, int quantity){
+        this.id = Db.iidByName[name];
         this.item = Db.itemByName[name];
         this.quantity = quantity;
     }

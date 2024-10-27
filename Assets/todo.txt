@@ -25,10 +25,16 @@
         - maybe make more
     - drop unuseful stuff.
 
-- figure out how to deal with item ids being annoying to type in json.. maybe have a python script translate?
+- items 
+    - add capacity bars 
+    - haulers remove items from inventories where they're not allowed
+- haulers 
+    - if they see one item they can't store, they won't keep looking for farther items that they can store.
+
 
 BUGS
-- figure out why global wood is starting 1 higher than actual world wood...
 - occasionally haulers lose their target and get stuck somehow??
+    -- seems to be when inv is full or can't receive, like if suddne disallow.
 - screen jitters when dragging around
 - fix building buy display to not overlap text
+- haulers still have like wood x 0, should clear that out 

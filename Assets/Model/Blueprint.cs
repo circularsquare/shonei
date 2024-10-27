@@ -42,7 +42,7 @@ public class Blueprint {
         // register callback to update sprite?
     }
 
-    public int RecieveResource(Item item, int quantity){
+    public int ReceiveResource(Item item, int quantity){
         // this maybe should be using itemstacks instead of item quantitys.     
 
         int delivered = 0;
@@ -60,7 +60,7 @@ public class Blueprint {
             }
             if (i == deliveredResources.Length - 1) { Complete(); }
         }
-        return (quantity - delivered); // excess
+        return delivered;
         
     }
     public void Complete(){

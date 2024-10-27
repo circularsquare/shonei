@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
+using System.Linq;
 
 public class Inventory
 {
@@ -10,7 +11,7 @@ public class Inventory
     public ItemStack[] itemStacks;
     public enum InvType {Floor, Storage, Animal};
     public InvType invType;
-
+    public Dictionary<int, bool> allowed;
     public GameObject go;
 
     public Inventory(int n = 1, int stackSize = 20, InvType invType = InvType.Floor, int x = 0, int y = 0) {
@@ -21,6 +22,9 @@ public class Inventory
         for (int i = 0; i < nStacks; i++){
             itemStacks[i] = new ItemStack(null, 0, stackSize);
         }
+
+        allowed = Db.itemsFlat.ToDictionary(i => i.id, i => true); // default all items allowed
+
 
         if (invType == InvType.Floor || invType == InvType.Storage){
             go = new GameObject();
@@ -33,15 +37,22 @@ public class Inventory
         }
 
     }
+    
 
     public int AddItem(Item item, int quantity){
+        if (allowed[item.id] == false && quantity > 0){ 
+            Debug.Log("tried adding unallowed item to inventory");
+            return quantity;
+        } // don't add if not allowed
         for (int i = 0; i < nStacks; i++){
             int? result = itemStacks[i].AddItem(item, quantity);
+            // should probably just check if the itemstack is the right item instead of using this null thing.
             if (result == null){ continue; } // item slot occupied by different item. go next
             quantity = result.Value; //set quantity to remaining size to get off
             if (quantity == 0){ break; }  // successfully added all items. stop.
         }
         UpdateSprite(); // this is a bit wasteful right now.
+        if (quantity != 0){Debug.Log("quantity left is " + quantity);}
         return quantity; // leftover size
     }
     public int AddItem(string name, int quantity){return(AddItem(Db.itemByName[name], quantity));}
@@ -51,7 +62,7 @@ public class Inventory
         foreach (ItemQuantity iq in iqs){
             if (AddItem(iq.item, negateNum * iq.quantity) != 0){
                 Debug.LogError("failed to add items!" + iq.item.ToString());
-            }; // this shoudl be using stacks????
+            } // this shoudl be using stacks????
         }
     }
     public int TakeItem(Item item, int quantity){return AddItem(item, -quantity);}
@@ -62,7 +73,7 @@ public class Inventory
         if (overFill > 0){
             AddItem(item, overFill); // return the item if recipient is full.
         }
-        Debug.Log("took " + taken + " from " + invType.ToString() + " addedback " + overFill + " to " + otherInv.invType.ToString());
+        Debug.Log("moved " + taken + " from " + invType.ToString() + " to " + otherInv.invType.ToString()+ " addedback " + overFill);
 
         return taken - overFill;
     }
@@ -86,9 +97,7 @@ public class Inventory
         }
         return false;
     }
-    public bool ContainsItem(ItemQuantity iq){
-        return (Quantity(iq.item) >= iq.quantity);
-    }
+    public bool ContainsItem(ItemQuantity iq){ return (Quantity(iq.item) >= iq.quantity);}
     public bool ContainsItems(ItemQuantity[] iqs){
         bool sufficient = true;
         foreach (ItemQuantity iq in iqs){
@@ -108,6 +117,7 @@ public class Inventory
         return amount;
     }
     public bool HasSpaceForItem(Item item){
+        if (allowed[item.id] == false){return false;}
         foreach (ItemStack stack in itemStacks){
             if (stack == null || stack.item == null || (stack.item == item && stack.quantity < stackSize)){
                 return true;
@@ -121,6 +131,11 @@ public class Inventory
                 return false; }}
         return true;
     }
+
+    public void AllowItem(Item item){allowed[item.id] = true;}
+    public void DisallowItem(Item item){allowed[item.id] = false;}
+    public void ToggleAllowItem(Item item){allowed[item.id] = !allowed[item.id];
+    Debug.Log("toggled " + item.name + " to " + allowed[item.id]);}
 
     public void UpdateSprite(){
         if (invType == InvType.Animal){return;} // animal invs don't have game objects.

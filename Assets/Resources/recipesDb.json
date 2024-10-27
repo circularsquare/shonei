@@ -4,48 +4,48 @@
         "job": "sawyer",
         "tile": "sawmill",
         "description": "cut wood into planks",
-        "inputs": [
-            { "id": "1", "quantity": 1 }
+        "ninputs": [
+            { "name": "wood", "quantity": 1 }
         ],
-        "outputs": [
-            { "id": "10", "quantity": 1 },
-            { "id": "11", "quantity": 1 }
+        "noutputs": [
+            { "name": "oak", "quantity": 1 },
+            { "name": "maple", "quantity": 1 }
         ]
     },{  
         "id": 1,
         "job": "logger",
         "tile": "tree",
         "description": "cut tree",
-        "inputs": [ ],
-        "outputs": [
-            { "id": "1", "quantity": 1 }
+        "ninputs": [ ],
+        "noutputs": [
+            { "name": "wood", "quantity": 1 }
         ]
     },{  
         "id": 2,
         "job": "miner",
         "tile": "stone",
         "description": "mine stone",
-        "inputs": [ ],
-        "outputs": [
-            { "id": "2", "quantity": 1 }
+        "ninputs": [ ],
+        "noutputs": [
+            { "name": "stone", "quantity": 1 }
         ]
     },{  
         "id": 3,
         "job": "digger",
         "tile": "soil",
         "description": "dig soil",
-        "inputs": [ ],
-        "outputs": [
-            { "id": "5", "quantity": 1 }
+        "ninputs": [ ],
+        "noutputs": [
+            { "name": "soil", "quantity": 1 }
         ]
     },{  
         "id": 4,
         "job": "farmer",
         "tile": "wheat",
         "description": "harvest wheat",
-        "inputs": [ ],
-        "outputs": [
-            { "id": "4", "quantity": 1 }
+        "ninputs": [ ],
+        "noutputs": [
+            { "name": "wheat", "quantity": 1 }
         ]
     }
 ]  

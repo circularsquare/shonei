@@ -28,13 +28,13 @@ public class ItemStack
         if (this.quantity + quantity > stackSize){
             int sizeOver = this.quantity + quantity - stackSize;
             this.quantity = stackSize;
-            Debug.Log("this has " + this.quantity + " plus " + quantity + " and stack size is " + stackSize);
+            //Debug.Log("this has " + this.quantity + " plus " + quantity + " and stack size is " + stackSize);
             return sizeOver; // overflow (3 if still have 3 to deposit)
         } else if (this.quantity + quantity < 0){
             int sizeUnder = this.quantity + quantity - 0;
             this.quantity = 0;
             this.item = null;
-            Debug.Log("underflow, this has " + this.quantity + " plus " + quantity + " and stack size is " + stackSize);
+            //Debug.Log("underflow, this has " + this.quantity + " plus " + quantity + " and stack size is " + stackSize);
             return sizeUnder; // underflow (-3 if still need 3 more)
         } else {
             this.quantity += quantity; // add to stack

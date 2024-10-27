@@ -24,9 +24,9 @@ public class Tile
     }
     public Building building; // in future, have like "front level" "back level" building slots? like wall level?
     public Blueprint blueprint; // not sure how this would interact with levels of building
-    public Inventory inv;
-    public int capacity = 1;
-    public int reserved = 0;
+    public Inventory inv; // this encapsulates all inventory types
+    public int capacity = 1;    // unused rn
+    public int reserved = 0;    // unused maybe?
 
     
     public Tile(World world, int x, int y){

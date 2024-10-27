@@ -26,6 +26,9 @@ public class UI : MonoBehaviour
         } 
     }
 
+    // have an infoPanel on right and the rest of the panels (inactive/invisible) on the left.
+    // depending on what was clicked, choose the left panel.
+
     void Update() {
         if (db == null){
             StartLate();
