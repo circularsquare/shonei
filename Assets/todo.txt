@@ -5,12 +5,10 @@
     - also want to add construction prgoress. and resource delivery progress.
         - visible in info panel. 
 - info panel: 
-    - have info panel update.
     - have info panel cycle through when you click it again.
 - blueprints   
     - have it work for building tiles (have a generic way of building any tile? or only some hardcoded ones.)
         - maybe only need soil, stone, wood, and a few others. idk.
-
 - animal
     - split logic into separate files depending on job type (on second thought maybe not? they should be able to do all these things. jobs are not identity.)
 

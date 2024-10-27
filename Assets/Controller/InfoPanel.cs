@@ -7,6 +7,7 @@ public class InfoPanel : MonoBehaviour {
     public GameObject textDisplayPrefab;
     public static InfoPanel instance;
     public GameObject textDisplayGo;
+    public object obj;
 
     public enum InfoMode {
         Inactive,
@@ -26,12 +27,15 @@ public class InfoPanel : MonoBehaviour {
     }
 
     public void ShowInfo(object obj){
+        this.obj = obj;
+        UpdateInfo();
+    }
+    public void UpdateInfo(){
+        // todo: make it so if you click again it cycles possible targets somehow?
         if (obj == null){
             Deselect();
             return;
         }
-
-        // todo: make it so if you click again it cycles possible targets somehow?
         if (obj is Collider2D){
             Collider2D collider = obj as Collider2D;
             if (collider.gameObject.GetComponent<Animal>() != null){
@@ -74,9 +78,6 @@ public class InfoPanel : MonoBehaviour {
             gameObject.SetActive(true);
         }
         else{ Deselect(); }
-    }
-    public void UpdateInfo(){
-        // TODO: implement
     }
 
     public void Deselect(){
