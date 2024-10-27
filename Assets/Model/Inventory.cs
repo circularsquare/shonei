@@ -73,7 +73,7 @@ public class Inventory
         if (overFill > 0){
             AddItem(item, overFill); // return the item if recipient is full.
         }
-        Debug.Log("moved " + taken + " from " + invType.ToString() + " to " + otherInv.invType.ToString()+ " addedback " + overFill);
+        Debug.Log("moved " + taken + " from " + invType.ToString() + " to " + otherInv.invType.ToString()+ " and added back " + overFill);
 
         return taken - overFill;
     }

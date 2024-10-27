@@ -34,7 +34,6 @@ public class Animal : MonoBehaviour
     public AnimalState state;
     public GameObject go;
     public SpriteRenderer sr;
-    public Astar astar;
     public System.Random random;
 
     public int[][] map;
