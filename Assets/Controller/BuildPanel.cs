@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 public class BuildPanel : MonoBehaviour {
 
-    public GameObject buildButtonPrefab; // UI button prefab for each building
+    public GameObject buildDisplayPrefab; // UI button prefab for each building
     public GameObject textDisplayPrefab;
     public static BuildPanel instance;
     public BuildingType bt;
@@ -14,25 +14,28 @@ public class BuildPanel : MonoBehaviour {
         if (instance != null) {
             Debug.LogError("there should only be one build panel");}
         instance = this;        
+        
 
 
         // Create a button for each building and add it to the build menu
         foreach (BuildingType building in Db.buildingTypes){
             if (building != null){
-                GameObject buttonGo = Instantiate(buildButtonPrefab, transform);
-                foreach (ItemQuantity iq in building.costs) {
-                    GameObject costDisplay = Instantiate(textDisplayPrefab, buttonGo.transform);
+                GameObject buildDisplayGo = Instantiate(buildDisplayPrefab, transform);
+                foreach (ItemQuantity iq in building.costs) { 
+                    GameObject costDisplay = Instantiate(textDisplayPrefab, buildDisplayGo.transform);
                     costDisplay.GetComponent<TMPro.TextMeshProUGUI>().text = iq.item.name + ": " + iq.quantity.ToString();
-                    costDisplay.name = "CostDisplay" + iq.item.name;
+                    costDisplay.name = "CostDisplay_" + iq.item.name;
                 }
-                buttonGo.GetComponent<Button>().onClick.AddListener(() => SetBuildingType(building));  // is this right??
-                buttonGo.GetComponentInChildren<TMPro.TextMeshProUGUI>().text = building.name;
+                buildDisplayGo.transform.GetChild(0).GetComponent<Button>().onClick.AddListener(() => SetBuildingType(building));  // is this right??
+                GameObject buildingTextGo = buildDisplayGo.transform.Find("BuildingButton/TextBuildingName").gameObject;
+                buildingTextGo.GetComponent<TMPro.TextMeshProUGUI>().text = building.name;
+                buildDisplayGo.name = "BuildDisplay_" + building.name;
             }
         }
     }
     public void SetBuildingType(BuildingType bt){
         this.bt = bt;
-        MouseController.instance.mouseMode = MouseController.MouseMode.Build;
+        MouseController.instance.SetModeBuild();    
     }
 
     // mousecontroller handles the mouse stuff. and calls build here.

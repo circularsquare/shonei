@@ -36,26 +36,25 @@ public class Tile
         type = Db.tileTypes[0];
     }
     
-    public void RegisterCbTileTypeChanged(Action<Tile> callback){
-        cbTileTypeChanged += callback;
+    public void RegisterCbTileTypeChanged(Action<Tile> callback){cbTileTypeChanged += callback;}
+    public void UnregisterCbTileTypeChanged(Action<Tile> callback){cbTileTypeChanged -= callback;}
+    public bool ContainsItem(Item item){return (inv != null && inv.ContainsItem(item));}
+    public Item GetItemToHaul(){
+        if (inv == null){return null;}
+        else{return inv.GetItemToHaul();}
     }
-    public void UnregisterCbTileTypeChanged(Action<Tile> callback){
-        cbTileTypeChanged -= callback;
+    public bool HasItemToHaul(Item item){return (inv != null && inv.HasItemToHaul(item));}
+    public int GetStorageForItem(Item item){
+        if (inv != null && inv.invType == Inventory.InvType.Storage){
+            return inv.GetStorageForItem(item);
+        }
+        return 0;
     }
-    public bool ContainsItem(Item item){
-        return (inv != null && inv.ContainsItem(item));
-    }
-    public bool ContainsFloorItem(Item item = null){
-        return ContainsItem(item) && inv.invType == Inventory.InvType.Floor;
-    }
-    public bool HasStorageForItem(Item item){
-        return (inv != null && inv.invType == Inventory.InvType.Storage && 
-            inv.HasSpaceForItem(item));
-    }
-    // should change below so that not all tiles have floor room. 
-    public bool HasSpaceForItem(Item item){ 
-        return (inv == null || inv.HasSpaceForItem(item));
-    }
+    // storage: floor not allowed
+    public bool HasStorageForItem(Item item){return (inv != null && inv.HasStorageForItem(item)); }
+
+    // space: floor allowed
+    public bool HasSpaceForItem(Item item){return (inv == null || inv.HasSpaceForItem(item));}
 
 
 }

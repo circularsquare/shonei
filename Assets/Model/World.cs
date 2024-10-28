@@ -40,6 +40,9 @@ public class World : MonoBehaviour
         if (Math.Floor(timer + Time.deltaTime) - Math.Floor(timer) > 0){ // every 1 sec
             AnimalController.instance.FastUpdate(); 
             InventoryController.instance.UpdateItemsDisplay();
+        }        
+        if (Math.Floor((timer + Time.deltaTime) * 10) - Math.Floor(timer * 10) > 0){  // every 0.1 sec
+            InventoryController.instance.FastUpdate();
             InfoPanel.instance.UpdateInfo();
         }
         timer += Time.deltaTime;

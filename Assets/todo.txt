@@ -10,8 +10,9 @@
     - have it work for building tiles (have a generic way of building any tile? or only some hardcoded ones.)
         - maybe only need soil, stone, wood, and a few others. idk.
 - animal
-    - split logic into separate files depending on job type (on second thought maybe not? they should be able to do all these things. jobs are not identity.)
-
+    - clean up so many functions... 
+- building 
+    - add discovered
 - crafting 
     - select a recipe 
         - select one that there are enough resources to make.
@@ -22,17 +23,13 @@
     - drop product in work station inv. 
         - maybe make more
     - drop unuseful stuff.
-
 - items 
     - add capacity bars 
-    - haulers remove items from inventories where they're not allowed
-- haulers 
-    - if they see one item they can't store, they won't keep looking for farther items that they can store.
-
+- fix destroy button
+- menu
+    - add highlight on currently selected menu
 
 BUGS
 - occasionally haulers lose their target and get stuck somehow??
     -- seems to be when inv is full or can't receive, like if suddne disallow.
 - screen jitters when dragging around
-- fix building buy display to not overlap text
-- haulers still have like wood x 0, should clear that out 

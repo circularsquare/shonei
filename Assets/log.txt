@@ -195,4 +195,16 @@ background - 0
 - fixed resources starting at 1 higher than they should
 - fixed blueprints receiving wrong number of resources
 
+10/28
+- improved hauler logic, now they will keep searching for things to store instead of stopping when they find something to haul that they can't store
+    - also desiredItemQuantity is more sensibly chosen
+    - also remove from invs that dont allow
+- fixed build menu appearance
+- shrank animal bounding box
+- added menu selection / compressed jobs, build, inv menus
+- added item dropdowns with hiding undiscovered items
+- cleaned up ui layout
+- added item targets
+
+
     

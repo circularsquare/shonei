@@ -35,8 +35,7 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
     // recipes: stored in json
         // should there just be one recipe per possible (inputs, outputs)?
 
-    private Db()
-    {
+    private Db(){
         if (instance != null){
             Debug.LogError("tried to create two instances of database"); }
         instance = this;
@@ -73,6 +72,7 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
             if (item.children != null){
                 foreach (Item child in item.children){
                     AddItemToDb(child);
+                    child.parent = item;
                 }
             }
         } // TODO: read only top level items

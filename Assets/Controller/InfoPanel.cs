@@ -46,7 +46,6 @@ public class InfoPanel : MonoBehaviour {
                 "\n state: " + ani.state.ToString() + 
                 "\n job: " + ani.job.name +
                 "\n inventory: " + ani.inv.ToString() + 
-                "\n locationxy: " + ani.x.ToString() + ", " + ani.y.ToString() +
                 "\n location: " + ani.go.transform.position.ToString());
                 textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = displayText;
             }

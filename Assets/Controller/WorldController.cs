@@ -38,14 +38,17 @@ public class WorldController : MonoBehaviour
                 tile_data.RegisterCbTileTypeChanged(OnTileTypeChanged);
 
                 // world generating
-                if (y < 2){
+                if (y < 4){
                     tile_data.type = Db.tileTypeByName["soil"];
+                }
+                if (y < 2){
+                    tile_data.type = Db.tileTypeByName["stone"];
                 }
             }
         }
-        world.GetTileAt(5, 2).type = Db.tileTypeByName["tree"];
-        world.GetTileAt(4, 2).type = Db.tileTypeByName["tree"];
-        world.GetTileAt(12, 2).type = Db.tileTypeByName["tree"];
+        world.GetTileAt(5, 4).type = Db.tileTypeByName["tree"];
+        world.GetTileAt(4, 4).type = Db.tileTypeByName["tree"];
+        world.GetTileAt(12, 4).type = Db.tileTypeByName["tree"];
         world.CalculateTileStandability();
     } 
 

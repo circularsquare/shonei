@@ -30,7 +30,7 @@ public class ItemStack
             this.quantity = stackSize;
             //Debug.Log("this has " + this.quantity + " plus " + quantity + " and stack size is " + stackSize);
             return sizeOver; // overflow (3 if still have 3 to deposit)
-        } else if (this.quantity + quantity < 0){
+        } else if (this.quantity + quantity <= 0){ // <= 0 because want to null out stack
             int sizeUnder = this.quantity + quantity - 0;
             this.quantity = 0;
             this.item = null;
@@ -41,6 +41,7 @@ public class ItemStack
             return 0;
         } 
     }
+    public bool Empty(){ return (item == null || quantity == 0); }
 
     public bool ContainsItem(Item iitem){
         return (item == iitem && quantity > 0);

@@ -28,29 +28,30 @@ public class AnimalController : MonoBehaviour
         jobCounts.Add(Db.jobs[0], 0); 
 
         for (int i = 0; i < 3; i++){
-            AddAnimal();
+            AddAnimal(10, 4);
         }
     }
 
-    void Update() {
+
+    public void FastUpdate(){ // called on a timer from World.cs
         if (world == null){
             world = WorldController.instance.world;
             AddJobCounts();  // this needs to run AFTER world has already been populated!
+            AddJob("logger", 1);
+            AddJob("hauler", 1);
         } 
-    }
-
-    public void FastUpdate(){ // called on a timer from World.cs
         for (int a = 0; a < na; a++){ // later, change the animal work method to not be a timer and instead track individual animal workloads
             animals[a].FastUpdate(); 
         }
     }
 
-    public void AddAnimal(int x = 10, int y = 2, Job job = null){
+    public void AddAnimal(int x = 10, int y = 4){
         GameObject animalPrefab = Resources.Load<GameObject>("Prefabs/Animal");
         GameObject go = GameObject.Instantiate(animalPrefab, new Vector3(x, y, 0), Quaternion.identity);
         Animal animal = go.GetComponent<Animal>(); // already made in prefab!
         animal.x = x;
         animal.y = y; 
+        animal.id = na;
         animal.RegisterCbAnimalChanged(OnAnimalChanged);
         animal.transform.SetParent(transform);
         animals[na] = animal;

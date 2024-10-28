@@ -52,7 +52,6 @@ public class Inventory
             if (quantity == 0){ break; }  // successfully added all items. stop.
         }
         UpdateSprite(); // this is a bit wasteful right now.
-        if (quantity != 0){Debug.Log("quantity left is " + quantity);}
         return quantity; // leftover size
     }
     public int AddItem(string name, int quantity){return(AddItem(Db.itemByName[name], quantity));}
@@ -72,9 +71,8 @@ public class Inventory
         int overFill = otherInv.AddItem(item, taken);
         if (overFill > 0){
             AddItem(item, overFill); // return the item if recipient is full.
+            Debug.Log("moved " + taken + " from " + invType.ToString() + " to " + otherInv.invType.ToString()+ " and added back " + overFill);
         }
-        Debug.Log("moved " + taken + " from " + invType.ToString() + " to " + otherInv.invType.ToString()+ " and added back " + overFill);
-
         return taken - overFill;
     }
     public int MoveItemTo(Inventory otherInv, string name, int quantity){return MoveItemTo(otherInv, Db.itemByName[name], quantity);}
@@ -107,6 +105,24 @@ public class Inventory
         }
         return sufficient;
     }
+    public Item GetItemToHaul(){   // returns null if nothing, or item if something need to haul
+        foreach (ItemStack stack in itemStacks){
+            if (!stack.Empty() && 
+                (allowed[stack.item.id] == false || invType == InvType.Floor)){
+                return stack.item;
+            }
+        }
+        return null;
+    }
+    public bool HasItemToHaul(Item item){
+        foreach (ItemStack stack in itemStacks){
+            if (stack.item == item && stack.quantity > 0 &&
+                (allowed[stack.item.id] == false || invType == InvType.Floor)){
+                return true;
+            }
+        }
+        return false;
+    }
     public int Quantity(Item item){
         int amount = 0;
         foreach (ItemStack stack in itemStacks){
@@ -116,10 +132,39 @@ public class Inventory
         }
         return amount;
     }
-    public bool HasSpaceForItem(Item item){
-        if (allowed[item.id] == false){return false;}
+    public int GetStorageForItem(Item item){
+        if (allowed[item.id] == false || invType == InvType.Floor){return 0;}
+        int space = 0;
         foreach (ItemStack stack in itemStacks){
-            if (stack == null || stack.item == null || (stack.item == item && stack.quantity < stackSize)){
+            if (stack.item == null){
+                space += stackSize;
+            } else if (stack.item == item && stack.quantity < stackSize){
+                space += stackSize - stack.quantity;
+            }
+        }
+        return space;
+    }
+    public bool HasStorageForItem(Item item){return (GetStorageForItem(item) > 0);}
+    public bool HasSpaceForItem(Item item){
+        foreach (ItemStack stack in itemStacks){
+            if (stack.item == item && stack.quantity < stackSize){
+                return true;
+            }
+        }
+        return false;
+    }
+    public int GetSpace(){ // only coutns empty stacks
+        int amount = 0;
+        foreach (ItemStack stack in itemStacks){
+            if (stack.quantity == 0){
+                amount += stack.stackSize;
+            }
+        }
+        return amount;
+    }
+    public bool HasDisallowedItem(){
+        foreach (ItemStack stack in itemStacks){
+            if (stack != null && stack.item != null && allowed[stack.item.id] == false){
                 return true;
             }
         }

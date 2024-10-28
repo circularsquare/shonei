@@ -10,6 +10,7 @@ using Pathfinding;
 public class Animal : MonoBehaviour      
 {
     public string aName;
+    public int id;
     public float x;
     public float y;
     public float timerOffset = 0f; // unused i think
@@ -46,7 +47,7 @@ public class Animal : MonoBehaviour
 
     public void Start(){
         world = World.instance;
-        this.aName = "mouse";
+        this.aName = "mouse" + id.ToString();
         this.state = AnimalState.Idle;
         this.job = Db.jobs[0];
         this.go = this.gameObject;
@@ -74,7 +75,7 @@ public class Animal : MonoBehaviour
         } 
         if (job.name == "hauler"){
             DropItems();
-            if (random.Next(3) != 0 && Fetch()){ // randomly choose between fetch and fetch to build
+            if (random.Next(3) >= 1 && Fetch()){ // randomly choose between fetch and fetch to build
             } else {
                 FetchForBlueprint();
             }
@@ -183,22 +184,64 @@ public class Animal : MonoBehaviour
         workTile.reserved -= 1;
         workTile = null; 
     }
-    public bool AtWork(){
-        return (workTile == world.GetTileAt(x, y));
+    public bool Fetch(Item item = null){ // fetch items to haul (hauler)
+        if (item == null){  // if fetching any item
+            if (FindAnyItemToHaul()){   
+                state = AnimalState.Fetching; // on arrival, will HaulBack()
+                return true;
+            } 
+            return false;
+        } else {    // if fetching specific item
+            Tile itemTile = FindItemToHaul(item);
+            if (itemTile != null){
+                target = itemTile;
+                state = AnimalState.Fetching;
+                return true;
+            }
+            return false; // nothing to fetch
+        } 
     }
-    
-    public bool Fetch(Item item = null, int quantity = 40){ // fetch items (hauler)
-        Tile itemTile = FindFloorItem(item);
-        if (itemTile == null){Debug.Log("nothing to fetch"); return false;} 
-        if (item != null){ desiredItem = item; }
-        else { desiredItem = itemTile.inv.itemStacks[0].item; }
-        desiredItemQuantity = quantity; // TODO: should juts fetch all probably? or itll juts fetch one as it's produced.
-        storageTile = FindStorage(desiredItem); // TODO: need to reserve space
-        if (storageTile == null){Debug.Log("nowhere to store"); return false;} 
-        target = itemTile;
-        state = AnimalState.Fetching; // on arrival, will HaulBack()
-        return true;
+    public bool FindAnyItemToHaul(int r = 50){
+        float closestDistance = float.MaxValue;
+        Tile closestTile = null;
+        Tile closestStorage = null;
+        Item closestItemToHaul = null;
+        for (int x = -r; x <= r; x++) {
+            for (int y = -r; y <= r; y++) {
+                Tile tile = world.GetTileAt(this.x + x, this.y + y);
+                if (tile != null) {
+                    Item itemToHaul = tile.GetItemToHaul();
+                    if (itemToHaul != null) { 
+                        Tile storage = FindStorage(itemToHaul, r=80); // expensive
+                        if (storage != null){
+                            float distance = SquareDistance((float)tile.x, this.x, (float)tile.y, this.y);
+                            if (distance < closestDistance) {
+                                closestDistance = distance;
+                                closestTile = tile;
+                                closestStorage = storage;
+                                closestItemToHaul = itemToHaul;
+                            }
+                        }
+                    }
+                }
+            }
+        } // no persistent
+        if (closestTile != null){
+            storageTile = closestStorage;
+            target = closestTile;
+            desiredItem = closestItemToHaul;
+            desiredItemQuantity = Math.Min(closestTile.inv.Quantity(closestItemToHaul),
+                storageTile.GetStorageForItem(desiredItem)); // don't take more than u can store
+            return true;
+        } else {
+            storageTile = null; 
+            target = null; 
+            desiredItem = null;
+            desiredItemQuantity = 0;
+            return false;
+        }
     }
+
     public bool FetchForBlueprint(){
         Tile blueprintTile = FindBlueprint();
         if (blueprintTile == null){return false;}
@@ -251,11 +294,11 @@ public class Animal : MonoBehaviour
         state = AnimalState.Walking;
     }
 
-    public void OnArrivalAtFetchTarget(){       // take items
-        TakeItem(desiredItem, desiredItemQuantity);
-        int itemInInv = inv.Quantity(desiredItem);
-        if (itemInInv < desiredItemQuantity && Fetch(desiredItem, desiredItemQuantity - itemInInv)){
-            /* keep fetching more item.*/ }
+    public void OnArrivalAtFetchTarget(){      
+        TakeItem(desiredItem, desiredItemQuantity); // pick up items
+        desiredItemQuantity = desiredItemQuantity - inv.Quantity(desiredItem);
+        if (inv.GetStorageForItem(desiredItem) > 5 && desiredItemQuantity > 0 && Fetch(desiredItem)){
+            /* keep fetching the same item if you have space and can find stuff to fetch and can store it */  }
         else if (job.name == "hauler"){ Deliver(); }
         else {Collect();}
     }
@@ -268,19 +311,18 @@ public class Animal : MonoBehaviour
         DropItem(desiredItem, target);
         int itemInInv = inv.Quantity(desiredItem);
         if (itemInInv > 0){ // if you have excess of the item, drop it somewhere.
-            target = FindPlaceToDrop(desiredItem, itemInInv); // at the moment they seem to just hold onto it!
+            target = FindPlaceToDrop(desiredItem, itemInInv); 
             state = AnimalState.Delivering;
         }
         state = AnimalState.Idle;
     }
     public void OnArrivalDeliverToBlueprint(){      // deliver items to blueprint
-        int amountToDeliver = Math.Min(desiredItemQuantity, inv.Quantity(desiredItem));
+        int amountToDeliver = inv.Quantity(desiredItem);
         int delivered = target.blueprint.ReceiveResource(desiredItem, amountToDeliver);
         inv.AddItem(desiredItem, -delivered); // remove item from own inv
-        
         int itemInInv = inv.Quantity(desiredItem);
         if (itemInInv > 0){ // if you have excess of the item, drop it somewhere.
-            target = FindPlaceToDrop(desiredItem, itemInInv); // at the moment they seem to just hold onto it!
+            target = FindPlaceToDrop(desiredItem, itemInInv); 
             if (target == null){
                 Debug.LogError("couldn't find a place to drop!");
             }
@@ -304,6 +346,9 @@ public class Animal : MonoBehaviour
             dTile.inv = new Inventory(1, 20, Inventory.InvType.Floor, dTile.x, dTile.y);
         }
         inv.MoveItemTo(dTile.inv, item, inv.Quantity(item));
+        if (inv.Quantity(item) > 0){
+            DropItem(item, FindPlaceToDrop(item));} // if can't drop here, drop nearby
+            // TODO: make this require the animal to actually deliver it unless they cant fit it into their inv
     }
     public void DropItems(){    // drops all items.
         foreach (ItemStack stack in inv.itemStacks){
@@ -337,12 +382,12 @@ public class Animal : MonoBehaviour
         }
     }
 
-    // if item == null, finds any floor item
-    public Tile FindFloorItem(Item item = null, int r = 50){
-        return Find(t => t.ContainsFloorItem(item), r);
-    }
+
     public Tile FindItem(Item item, int r = 50){
         return Find(t => t.ContainsItem(item), r);
+    }
+    public Tile FindItemToHaul(Item item, int r = 50){
+        return Find(t => t.HasItemToHaul(item), r);
     }
     public Tile FindStorage(Item item, int r = 50){ // finds inv to store
         return Find(t => t.HasStorageForItem(item), r); 
