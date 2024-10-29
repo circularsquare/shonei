@@ -39,6 +39,9 @@ public class AnimalController : MonoBehaviour
             AddJobCounts();  // this needs to run AFTER world has already been populated!
             AddJob("logger", 1);
             AddJob("hauler", 1);
+            if (animals[0] != null){ // spawn starting resources
+                animals[0].Produce("wheat", 2);
+            }
         } 
         for (int a = 0; a < na; a++){ // later, change the animal work method to not be a timer and instead track individual animal workloads
             animals[a].FastUpdate(); 

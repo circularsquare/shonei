@@ -2,35 +2,68 @@
     {
         "id": 0,
         "name": "none",
-        "isComposite": false
+        "children": null
     },{
         "id": 1,
         "name": "wood",
-        "isComposite": false
-    },{
-        "id": 2,
-        "name": "stone",
-        "isComposite": true
-    },{
-        "id": 4,
-        "name": "wheat",
-        "isComposite": false
-    },{
-        "id": 5,
-        "name": "soil",
-        "isComposite": false
-    },{
-        "id": 6,
-        "name": "bricks",
-        "isComposite": false
+        "children": [
+            {
+                "id": 2,
+                "name": "oak",
+                "children": null
+            },{
+                "id": 3,
+                "name": "maple",
+                "children": null
+            }
+        ]
     },{
         "id": 10,
-        "name": "planks",
-        "isComposite": false
+        "name": "stone",
+        "children": [
+            {
+                "id": 11,
+                "name": "slate",
+                "children": null
+            },{
+                "id": 12,
+                "name": "granite",
+                "children": null
+            }
+        ]
     },{
-        "id": 11,
-        "name": "sawdust",
-        "isComposite": false
+        "id": 100,
+        "name": "planks",
+        "children": [
+            {
+                "id": 101,
+                "name": "oak planks",
+                "children": null
+            },{
+                "id": 102,
+                "name": "maple planks",
+                "children": null
+            }
+        ]
+    },{
+        "id": 20,
+        "name": "soil",
+        "children": null
+    },{
+        "id": 150,
+        "name": "seeds",
+        "children": [
+            {
+                "id": 151,
+                "name": "wheat",
+                "children": null
+            },{
+                "id": 152,
+                "name": "acorn",
+                "children": null
+            }
+        ]
     }
+
 
 ]

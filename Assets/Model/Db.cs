@@ -17,6 +17,7 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
     public static Dictionary<string, Item> itemByName {get; protected set;}
     public static Dictionary<string, Job> jobByName {get; protected set;}
     public static Dictionary<string, BuildingType> buildingTypeByName {get; protected set;}
+    public static Dictionary<string, PlantType> plantTypeByName {get; protected set;}
     public static Dictionary<string, TileType> tileTypeByName {get; protected set;}
 
     // int maxJobs = 40;
@@ -27,6 +28,7 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
     public static Job[] jobs = new Job[100];
     public static Recipe[] recipes = new Recipe[500];
     public static BuildingType[] buildingTypes = new BuildingType[300];
+    public static PlantType[] plantTypes = new PlantType[200];
     public static TileType[] tileTypes = new TileType[100];
 
 
@@ -45,6 +47,7 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
         jobByName = new Dictionary<string, Job>();
         buildingTypeByName = new Dictionary<string, BuildingType>();
         tileTypeByName = new Dictionary<string, TileType>();
+        plantTypeByName = new Dictionary<string, PlantType>();
     } 
 
     void Awake(){ // this runs before Start() like in world
@@ -55,7 +58,7 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
 
     void ReadJson(){
         // read Items
-        string jsonTextItems = File.ReadAllText(Application.dataPath + "/Resources/itemsDb2.json");
+        string jsonTextItems = File.ReadAllText(Application.dataPath + "/Resources/itemsDb.json");
         Item[] itemsUnplaced = JsonConvert.DeserializeObject<Item[]>(jsonTextItems);
         foreach (Item item in itemsUnplaced){
             AddItemToDb(item);
@@ -92,6 +95,14 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
             if (buildingTypes[buildingType.id] != null){Debug.LogError("error!! multiple building types with same id");}
             buildingTypes[buildingType.id] = buildingType;
             buildingTypeByName.Add(buildingType.name, buildingType);
+        } 
+
+        string jsonPlantTypes = File.ReadAllText(Application.dataPath + "/Resources/plantsDb.json");
+        PlantType[] plantTypesUnplaced = JsonConvert.DeserializeObject<PlantType[]>(jsonPlantTypes);
+        foreach (PlantType plantType in plantTypesUnplaced){
+            if (plantTypes[plantType.id] != null){Debug.LogError("error!! multiple plant types with same id");}
+            plantTypes[plantType.id] = plantType;
+            plantTypeByName.Add(plantType.name, plantType);
         } 
 
         // read Jobs

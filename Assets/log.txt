@@ -210,7 +210,7 @@ background - 0
 - added recipe score based on target, used to order recipe priority (if target = 0, won't do at all)
 - added batch processing! crafters will estimate numRounds possible to make and try to fetch required resources
     - untested for multi input recipes 
-- 
+- added plant to db and build menu. yet to add way to construct, and actual plant functionality.
 
 
     

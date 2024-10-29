@@ -14,10 +14,8 @@ public class BuildPanel : MonoBehaviour {
         if (instance != null) {
             Debug.LogError("there should only be one build panel");}
         instance = this;        
-        
 
-
-        // Create a button for each building and add it to the build menu
+        // add building buttons
         foreach (BuildingType building in Db.buildingTypes){
             if (building != null){
                 GameObject buildDisplayGo = Instantiate(buildDisplayPrefab, transform);
@@ -30,6 +28,20 @@ public class BuildPanel : MonoBehaviour {
                 GameObject buildingTextGo = buildDisplayGo.transform.Find("BuildingButton/TextBuildingName").gameObject;
                 buildingTextGo.GetComponent<TMPro.TextMeshProUGUI>().text = building.name;
                 buildDisplayGo.name = "BuildDisplay_" + building.name;
+            }
+        }
+
+        foreach (PlantType plantType in Db.plantTypes){
+            if (plantType != null){
+                GameObject buildDisplayGo = Instantiate(buildDisplayPrefab, transform);
+                foreach (ItemQuantity iq in plantType.costs) { 
+                    GameObject costDisplay = Instantiate(textDisplayPrefab, buildDisplayGo.transform);
+                    costDisplay.GetComponent<TMPro.TextMeshProUGUI>().text = iq.item.name + ": " + iq.quantity.ToString();
+                    costDisplay.name = "CostDisplay_" + iq.item.name;
+                }
+                // buildDisplayGo.transform.GetChild(0).GetComponent<Button>().onClick.AddListener(() => SetBuildingType(plantType));  
+                GameObject buildingTextGo = buildDisplayGo.transform.Find("BuildingButton/TextBuildingName").gameObject;
+                buildingTextGo.GetComponent<TMPro.TextMeshProUGUI>().text = plantType.name;
             }
         }
     }

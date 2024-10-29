@@ -1,6 +1,8 @@
 - haulers: 
     - right now haulers 50/50 between delivering to blueprints and doing other hauling.
         - want to make this a smarter decision.
+    - have them pick up bigger stacks rather than just keep picking up closer one...
+        - maybe change Find to take an integer score returning thing instead of a bool.
     - also rename haulers to "workers?" or maybe have builders be separate idk.
     - also want to add construction prgoress. and resource delivery progress.
         - visible in info panel. 
@@ -24,8 +26,21 @@
 - ui
     - add highlight on currently selected menu
 
-- content
-    - add farmers who make wheat tiles 
+- plant
+    - add wheat tile construction
+    - have farmers be the ones to plant instead of farmers?
+    - implement wheat growth
+        - add placeholder methods and things for checking moisture and temperature 
+    - implement harvesting taking time
+        - add harvesting method for mineral tiles 
+    - add autoreplanting with blueprint 
+
+
+    - add eating
+        - add food status to info panel
+    - convert tree into a plant
+
+- should buildings be tiles?
 
 
 

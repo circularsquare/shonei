@@ -48,17 +48,9 @@ public class World : MonoBehaviour
     }
         
 
-
-
-
     // ---------------------------------
     // TILE STUFF
     // ---------------------------------
-
-    public void RandomizeTiles(){
-
-    }
-
     public Tile GetTileAt(int x, int y){
         if (x >= nx || x < 0 || y >= ny || y < 0){
             // Debug.Log("tile " + x + "," + y +  " out of range");
