@@ -7,6 +7,7 @@ public class WorldController : MonoBehaviour
 {
     public static WorldController instance {get; protected set;}
     public World world {get; protected set;}
+    public Transform tilesTransform;
 
     Dictionary<Tile, GameObject> tileGameObjectMap;
 
@@ -19,6 +20,7 @@ public class WorldController : MonoBehaviour
         world = this.gameObject.AddComponent<World>(); // add world
 
         tileGameObjectMap = new Dictionary<Tile, GameObject>();
+        tilesTransform = transform.Find("Tiles");
 
         for (int x = 0; x < world.nx; x++){
             for (int y = world.ny - 1; y >= 0; y--){
@@ -27,7 +29,7 @@ public class WorldController : MonoBehaviour
                 GameObject tile_go = new GameObject();
                 tile_go.name = "Tile_" + x + "_" + y;
                 tile_go.transform.position = new Vector3(tile_data.x, tile_data.y, 0);
-                tile_go.transform.SetParent(this.transform, true);
+                tile_go.transform.SetParent(tilesTransform);
                 tileGameObjectMap.Add(tile_data, tile_go);
                 tile_data.go = tile_go;
                 

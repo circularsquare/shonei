@@ -75,7 +75,24 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
                     child.parent = item;
                 }
             }
-        } // TODO: read only top level items
+        } 
+
+        // read Tiles
+        string jsonTileTypes = File.ReadAllText(Application.dataPath + "/Resources/tilesDb.json");
+        TileType[] tileTypesUnplaced = JsonConvert.DeserializeObject<TileType[]>(jsonTileTypes);
+        foreach (TileType tileType in tileTypesUnplaced){
+            if (tileTypes[tileType.id] != null){Debug.LogError("error!! multiple tile types with same id");}
+            tileTypes[tileType.id] = tileType;
+            tileTypeByName.Add(tileType.name, tileType);
+        }
+        // read Buildings
+        string jsonBuildingTypes = File.ReadAllText(Application.dataPath + "/Resources/buildingsDb.json");
+        BuildingType[] buildingTypesUnplaced = JsonConvert.DeserializeObject<BuildingType[]>(jsonBuildingTypes);
+        foreach (BuildingType buildingType in buildingTypesUnplaced){
+            if (buildingTypes[buildingType.id] != null){Debug.LogError("error!! multiple building types with same id");}
+            buildingTypes[buildingType.id] = buildingType;
+            buildingTypeByName.Add(buildingType.name, buildingType);
+        } 
 
         // read Jobs
         string jsonTextJobs = File.ReadAllText(Application.dataPath + "/Resources/jobsDb.json");
@@ -98,27 +115,7 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
                 job.recipes[job.nRecipes] = recipe;
                 job.nRecipes += 1;                
             }
-        }
-
-        // read Buildings
-        string jsonBuildingTypes = File.ReadAllText(Application.dataPath + "/Resources/buildingsDb.json");
-        BuildingType[] buildingTypesUnplaced = JsonConvert.DeserializeObject<BuildingType[]>(jsonBuildingTypes);
-        foreach (BuildingType buildingType in buildingTypesUnplaced){
-            if (buildingTypes[buildingType.id] != null){Debug.LogError("error!! multiple building types with same id");}
-            buildingTypes[buildingType.id] = buildingType;
-            buildingTypeByName.Add(buildingType.name, buildingType);
-        } 
-
-
-        // read Tiles
-        string jsonTileTypes = File.ReadAllText(Application.dataPath + "/Resources/tilesDb.json");
-        TileType[] tileTypesUnplaced = JsonConvert.DeserializeObject<TileType[]>(jsonTileTypes);
-        foreach (TileType tileType in tileTypesUnplaced){
-            if (tileTypes[tileType.id] != null){Debug.LogError("error!! multiple tile types with same id");}
-            tileTypes[tileType.id] = tileType;
-            tileTypeByName.Add(tileType.name, tileType);
-        }
-        
+        }        
 
     }
 
@@ -146,7 +143,8 @@ public class Recipe {
     public int id {get; set;}
     public string job {get; set;}
     public string description {get; set;} // optional (maybe make the getter return something other than null?)
-    public string tile {get; set;}
+    public string tile {get; set;} // actually is a tile or a building...
+    public TileType tileType;
     public ItemNameQuantity[] ninputs {get; set;}
     public ItemNameQuantity[] noutputs {get; set;}
     public ItemQuantity[] inputs;

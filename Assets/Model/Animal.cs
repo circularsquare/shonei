@@ -44,6 +44,9 @@ public class Animal : MonoBehaviour
     
     Action<Animal, Job> cbAnimalChanged;
 
+    // -----------------------
+    //  
+    // -----------------------
     public void Start(){
         world = World.instance;
         this.aName = "mouse" + id.ToString();
@@ -55,15 +58,6 @@ public class Animal : MonoBehaviour
         ginv = GlobalInventory.instance;
         random = new System.Random();
     }
-
-    public void SetJob(Job newJob){
-        Job oldJob = this.job;
-        this.job = newJob;
-        if (cbAnimalChanged != null){
-            cbAnimalChanged(this, oldJob);} 
-        FindWork();
-    }
-    public void SetJob(string jobStr){ SetJob(Db.GetJobByName(jobStr)); }
     public void FindWork(){
         if (job.name == "none"){ // free past worktile
             DropItems();
@@ -74,10 +68,8 @@ public class Animal : MonoBehaviour
         } 
         if (job.name == "hauler"){
             DropItems();
-            if (random.Next(3) >= 1 && Fetch()){ // randomly choose between fetch and fetch to build
-            } else {
-                FetchForBlueprint();
-            }
+            if (random.Next(3) > 0 && FetchForBlueprint()){}
+            else {Fetch();}
             return;
         } 
         recipe = PickRecipe(); 
@@ -121,7 +113,7 @@ public class Animal : MonoBehaviour
         }
     }
 
-    public void Update(){
+    public void Update(){ // for movement and detecting arrival
         if ((state == AnimalState.Walking) || (state == AnimalState.Fetching) || (state == AnimalState.Delivering)){
             if (target == null || target.go == null){ 
                 // this shouldnt happen i think!
@@ -135,7 +127,7 @@ public class Animal : MonoBehaviour
             else if (Vector3.Distance(this.go.transform.position, target.go.transform.position) < 0.02f){
                 this.go.transform.position = target.go.transform.position;
                 SyncPosition(); 
-                if (state == AnimalState.Walking){ .
+                if (state == AnimalState.Walking){ 
                     if (target == workTile){
                         state = AnimalState.Working; // if arrived at work, start working
                     } else {
@@ -157,6 +149,9 @@ public class Animal : MonoBehaviour
         }
     }
 
+    // -----------------------
+    // ITEM MOVING LOOP 
+    // -----------------------
     public bool Fetch(Item item = null){ // fetch items to haul (hauler)
         if (item == null){  // if fetching any item
             if (FindAnyItemToHaul()){   
@@ -174,47 +169,6 @@ public class Animal : MonoBehaviour
             return false; // nothing to fetch
         } 
     }
-    public bool FindAnyItemToHaul(int r = 50){
-        float closestDistance = float.MaxValue;
-        Tile closestTile = null;
-        Tile closestStorage = null;
-        Item closestItemToHaul = null;
-        for (int x = -r; x <= r; x++) {
-            for (int y = -r; y <= r; y++) {
-                Tile tile = world.GetTileAt(this.x + x, this.y + y);
-                if (tile != null) {
-                    Item itemToHaul = tile.GetItemToHaul();
-                    if (itemToHaul != null) { 
-                        Tile storage = FindStorage(itemToHaul, r=80); // expensive
-                        if (storage != null){
-                            float distance = SquareDistance((float)tile.x, this.x, (float)tile.y, this.y);
-                            if (distance < closestDistance) {
-                                closestDistance = distance;
-                                closestTile = tile;
-                                closestStorage = storage;
-                                closestItemToHaul = itemToHaul;
-                            }
-                        }
-                    }
-                }
-            }
-        } // no persistent
-        if (closestTile != null){
-            storageTile = closestStorage;
-            target = closestTile;
-            desiredItem = closestItemToHaul;
-            desiredItemQuantity = Math.Min(closestTile.inv.Quantity(closestItemToHaul),
-                storageTile.GetStorageForItem(desiredItem)); // don't take more than u can store
-            return true;
-        } else {
-            storageTile = null; 
-            target = null; 
-            desiredItem = null;
-            desiredItemQuantity = 0;
-            return false;
-        }
-    }
-
     public bool FetchForBlueprint(){
         Tile blueprintTile = FindBlueprint();
         if (blueprintTile == null){return false;}
@@ -263,12 +217,15 @@ public class Animal : MonoBehaviour
             return false;
         }
     }
+    public void Deliver(){ // move items to storagetile.
+        target = storageTile;
+        state = AnimalState.Delivering;
+    }
     public void GoToWork(){
         if (workTile == null){Debug.LogError("work tile doesn't exist!");}
         target = workTile;
         state = AnimalState.Walking;
     }
-
     public void OnArrivalAtFetchTarget(){      
         TakeItem(desiredItem, desiredItemQuantity); // pick up items
         desiredItemQuantity = desiredItemQuantity - inv.Quantity(desiredItem);
@@ -276,10 +233,6 @@ public class Animal : MonoBehaviour
             /* keep fetching the same item if you have space and can find stuff to fetch and can store it */  }
         else if (job.name == "hauler"){ Deliver(); }
         else {Collect();}
-    }
-    public void Deliver(){ // move items to storagetile.
-        target = storageTile;
-        state = AnimalState.Delivering;
     }
     public void OnArrivalAtDeliverTarget(){     // deliver items (to storage, etc.)
         if (target.blueprint != null){ OnArrivalDeliverToBlueprint(); return; }
@@ -306,6 +259,9 @@ public class Animal : MonoBehaviour
         state = AnimalState.Idle;
     }
     
+    // -----------------------
+    // ITEM MOVEMENT 
+    // -----------------------
     public void TakeItem(Item item, int quantity){  // pick up item from current location
         Tile tileHere = world.GetTileAt(x, y);
         if (tileHere != null && tileHere.inv != null){ 
@@ -333,12 +289,8 @@ public class Animal : MonoBehaviour
         }
     }
 
-    public void Produce(string itemName, int quantity = 1){
-        Produce(Db.itemByName[itemName], quantity);
-    }
-    public void Produce(ItemQuantity iq){ 
-        if (iq == null){Debug.LogError("null iq!");}
-        Produce(iq.item, iq.quantity);}
+    public void Produce(string itemName, int quantity = 1){Produce(Db.itemByName[itemName], quantity);}
+    public void Produce(ItemQuantity iq){Produce(iq.item, iq.quantity);}
     public void Produce(Item item, int quantity = 1){   // instantly produces item at a nearby tile
         ginv.AddItem(item.id, quantity);
         Tile dTile = FindPlaceToDrop(item);
@@ -349,7 +301,8 @@ public class Animal : MonoBehaviour
         dTile.inv.AddItem(item, quantity);
     }
     // ideally... produce recipe would check both inv of tileHere and of animal. how would that work?
-    public void Produce(Recipe recipe){ // only safe to call if you are sure the inv has all inputs!!
+    public void Produce(Recipe recipe){ // different from produce iq! 
+        //only safe to call if you are sure the inv has all inputs!!
         ginv.AddItems(recipe.inputs, true);
         inv.AddItems(recipe.inputs, true);
         foreach (ItemQuantity iq in recipe.outputs){
@@ -357,19 +310,13 @@ public class Animal : MonoBehaviour
         }
     }
 
-
-    public Tile FindItem(Item item, int r = 50){
-        return Find(t => t.ContainsItem(item), r);
-    }
-    public Tile FindItemToHaul(Item item, int r = 50){
-        return Find(t => t.HasItemToHaul(item), r);
-    }
-    public Tile FindStorage(Item item, int r = 50){ // finds inv to store
-        return Find(t => t.HasStorageForItem(item), r); 
-    }
-    public Tile FindPlaceToDrop(Item item, int r = 3){ 
-        return Find(t => t.HasSpaceForItem(item), r, true);
-    }
+    // -----------------------
+    // FIND
+    // -----------------------
+    public Tile FindItem(Item item, int r = 50){ return Find(t => t.ContainsItem(item), r); }
+    public Tile FindItemToHaul(Item item, int r = 50){ return Find(t => t.HasItemToHaul(item), r); }
+    public Tile FindStorage(Item item, int r = 50){ return Find(t => t.HasStorageForItem(item), r); }
+    public Tile FindPlaceToDrop(Item item, int r = 3){ return Find(t => t.HasSpaceForItem(item), r, true); }
     public Tile FindWorkBuilding(BuildingType buildingType, int r = 50){
         return Find(t => t.building != null && t.building.buildingType == buildingType && 
             t.building.capacity - t.building.reserved > 0, r);
@@ -377,14 +324,8 @@ public class Animal : MonoBehaviour
     public Tile FindWorkTile(TileType tileType, int r = 50){
         return Find(t => t.type == tileType && (t.capacity - t.reserved > 0), r);
     }
-    public Tile FindWorkTile(string tileTypeStr, int r = 30){
-        if (Db.tileTypeByName.ContainsKey(tileTypeStr)){
-            return FindWorkTile(Db.tileTypeByName[tileTypeStr], r);
-        } else {Debug.Log("tile type doesn't exist" + tileTypeStr); return null;}
-    }
-    public Tile FindBlueprint(int r = 50){
-        return Find(t => t.blueprint != null, r);
-    }
+    public Tile FindWorkTile(string tileTypeStr, int r = 30){ return FindWorkTile(Db.tileTypeByName[tileTypeStr], r); }
+    public Tile FindBlueprint(int r = 50){ return Find(t => t.blueprint != null, r);}
     public Tile Find(Func<Tile, bool> condition, int r, bool persistent = false){
         Tile closestTile = null;
         float closestDistance = float.MaxValue;
@@ -406,7 +347,51 @@ public class Animal : MonoBehaviour
         }
         return closestTile;
     }
+    public bool FindAnyItemToHaul(int r = 50){
+        float closestDistance = float.MaxValue;
+        Tile closestTile = null;
+        Tile closestStorage = null;
+        Item closestItemToHaul = null;
+        for (int x = -r; x <= r; x++) {
+            for (int y = -r; y <= r; y++) {
+                Tile tile = world.GetTileAt(this.x + x, this.y + y);
+                if (tile != null) {
+                    Item itemToHaul = tile.GetItemToHaul();
+                    if (itemToHaul != null) { 
+                        Tile storage = FindStorage(itemToHaul, r=80); // expensive
+                        if (storage != null){
+                            float distance = SquareDistance((float)tile.x, this.x, (float)tile.y, this.y);
+                            if (distance < closestDistance) {
+                                closestDistance = distance;
+                                closestTile = tile;
+                                closestStorage = storage;
+                                closestItemToHaul = itemToHaul;
+                            }
+                        }
+                    }
+                }
+            }
+        } // no persistent
+        if (closestTile != null){
+            storageTile = closestStorage;
+            target = closestTile;
+            desiredItem = closestItemToHaul;
+            desiredItemQuantity = Math.Min(closestTile.inv.Quantity(closestItemToHaul),
+                storageTile.GetStorageForItem(desiredItem)); // don't take more than u can store
+            return true;
+        } else {
+            storageTile = null; 
+            target = null; 
+            desiredItem = null;
+            desiredItemQuantity = 0;
+            return false;
+        }
+    }
 
+
+    // -----------------------
+    // THINKING
+    // -----------------------
     public Recipe PickRecipe2(){
         if (job.recipes.Length == 0){ return null;}
         List<Recipe> eligibleRecipes = new List<Recipe>();
@@ -456,7 +441,17 @@ public class Animal : MonoBehaviour
     }
 
 
-    // utils
+    // -----------------------
+    // UTILS
+    // -----------------------
+    public void SetJob(Job newJob){
+        Job oldJob = this.job;
+        this.job = newJob;
+        if (cbAnimalChanged != null){
+            cbAnimalChanged(this, oldJob);} 
+        FindWork();
+    }
+    public void SetJob(string jobStr){ SetJob(Db.GetJobByName(jobStr)); }
     public void SyncPosition(){
         this.x = this.go.transform.position.x;
         this.y = this.go.transform.position.y;
@@ -487,8 +482,6 @@ public class Animal : MonoBehaviour
     public float SquareDistance(float x1, float x2, float y1, float y2){
         return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);
     }
-    public void RegisterCbAnimalChanged(Action<Animal, Job> callback){
-        cbAnimalChanged += callback;}
-    public void UnregisterCbAnimalChanged(Action<Animal, Job> callback){
-        cbAnimalChanged -= callback;}
+    public void RegisterCbAnimalChanged(Action<Animal, Job> callback){ cbAnimalChanged += callback;}
+    public void UnregisterCbAnimalChanged(Action<Animal, Job> callback){ cbAnimalChanged -= callback;}
 }
