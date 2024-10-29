@@ -206,5 +206,11 @@ background - 0
 - cleaned up ui layout
 - added item targets
 
+10/29
+- added recipe score based on target, used to order recipe priority (if target = 0, won't do at all)
+- added batch processing! crafters will estimate numRounds possible to make and try to fetch required resources
+    - untested for multi input recipes 
+- 
+
 
     

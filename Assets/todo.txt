@@ -9,27 +9,30 @@
 - blueprints   
     - have it work for building tiles (have a generic way of building any tile? or only some hardcoded ones.)
         - maybe only need soil, stone, wood, and a few others. idk.
+    - give inventories (of 0 capacity) that can have allow lists
 - animal
     - clean up so many functions... 
+    - allow for animals to do other jobs if not busy
+    - lt: add leisure
 - building 
     - add discovered
 - crafting 
-    - select a recipe 
-        - select one that there are enough resources to make.
-    - set worktile to required work station. reserve it 
-    - haul materials to work station inv (taking extra if there is a lot?)
-        - make sure there's enough room in work station inv 
-    - craft
-    - drop product in work station inv. 
-        - maybe make more
-    - drop unuseful stuff.
-- items 
-    - add capacity bars 
+    - have product appear in workshop inventory or animal inventory instead of floor?
+        - reserve storage space?
+        - add workshop inventory...
 - fix destroy button
-- menu
+- ui
     - add highlight on currently selected menu
+
+- content
+    - add farmers who make wheat tiles 
+
+
+
 
 BUGS
 - occasionally haulers lose their target and get stuck somehow??
-    -- seems to be when inv is full or can't receive, like if suddne disallow.
 - screen jitters when dragging around
+
+- hauler is only picking up a few wood at a time?
+- sometimes target buttons stop working

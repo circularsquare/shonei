@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using System;
 using TMPro;
@@ -12,12 +13,12 @@ public class GlobalInventory
     public Dictionary<int, int> itemCapacities {get; protected set;}
     Action<GlobalInventory> cbInventoryChanged;
 
-    public GlobalInventory() {
-        itemAmounts = new Dictionary<int, int>();
-
+    public GlobalInventory() { // this is instantiated by invcontroller
         if (instance != null) {
             Debug.LogError("there should only be one global inv");}
         instance = this;  
+
+        itemAmounts = Db.itemsFlat.ToDictionary(i => i.id, i => 0);
     }
 
 
@@ -54,10 +55,10 @@ public class GlobalInventory
         }
     }
 
-    public float Quantity(string name){
+    public int Quantity(string name){
         return Quantity(Db.iidByName[name]);
     }
-    public float Quantity(int iid){
+    public int Quantity(int iid){
         if (itemAmounts.ContainsKey(iid)){
             return itemAmounts[iid];
         } else {return 0;}

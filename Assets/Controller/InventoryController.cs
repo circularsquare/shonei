@@ -18,7 +18,7 @@ public class InventoryController : MonoBehaviour
     public Inventory selectedInventory; // if u click on a drawer, allows u to set what its assigned to
     public Dictionary<int, bool> discoveredItems;
     public Dictionary<int, GameObject> itemDisplayGos; // keyed by itemid
-    public Dictionary<int, int> itemTargets;
+    public Dictionary<int, int> targets;
 
     void Start(){    
         if (instance != null) {
@@ -27,7 +27,7 @@ public class InventoryController : MonoBehaviour
         globalInventory = new GlobalInventory();
         discoveredItems = Db.itemsFlat.ToDictionary(i => i.id, i => false); // default no items discovered
         itemDisplayGos = Db.itemsFlat.ToDictionary(i => i.id, i => default(GameObject));
-        itemTargets = Db.itemsFlat.ToDictionary(i => i.id, i => 1000);
+        targets = Db.itemsFlat.ToDictionary(i => i.id, i => 1000);
     }
 
     public void FastUpdate(){
@@ -38,6 +38,7 @@ public class InventoryController : MonoBehaviour
                 AddItemDisplay(item);
             }
         }
+        UpdateItemsDisplay();
     }
 
     void AddItemDisplay(Item item){
@@ -71,7 +72,7 @@ public class InventoryController : MonoBehaviour
             Transform textGo = itemDisplayGo.transform.Find("HorizontalLayout/TextItem");
             if (textGo != null){textGo.gameObject.GetComponent<TMPro.TextMeshProUGUI>().text = text;}
 
-            text = "/" + itemTargets[item.id].ToString();
+            text = "/" + targets[item.id].ToString();
             Transform textTargetGo = itemDisplayGo.transform.Find("HorizontalLayout/TextItemTarget");
             if (textTargetGo != null){textTargetGo.gameObject.GetComponent<TMPro.TextMeshProUGUI>().text = text;}
 
@@ -83,5 +84,8 @@ public class InventoryController : MonoBehaviour
     public void SelectInventory(Inventory inv){
         selectedInventory = inv; 
         UpdateItemsDisplay();
+        if (inv != null && inv.invType == Inventory.InvType.Storage){
+            MenuPanel.instance.SetActivePanel(MenuPanel.instance.panels[0]);
+        }
     }
 }

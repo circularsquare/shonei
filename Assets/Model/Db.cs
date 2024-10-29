@@ -151,6 +151,7 @@ public class Recipe {
     public ItemNameQuantity[] noutputs {get; set;}
     public ItemQuantity[] inputs;
     public ItemQuantity[] outputs;
+    public InventoryController inventoryController;
     [OnDeserialized]
     internal void OnDeserialized(StreamingContext context){
         inputs = new ItemQuantity[ninputs.Length];
@@ -161,6 +162,20 @@ public class Recipe {
         for (int i = 0; i < noutputs.Length; i++){
             outputs[i] = new ItemQuantity(noutputs[i].name, noutputs[i].quantity);
         }
+    }
+    public float Score(){ // only takes into account global quantity / target. nothing about recipe ratios.
+        if (inventoryController == null){inventoryController = InventoryController.instance;}
+        if (inventoryController.targets == null){return 0;}
+        float score = 1;
+        foreach (ItemQuantity iq in inputs){
+            score *= ((float)inventoryController.globalInventory.Quantity(iq.item.id) / 
+                inventoryController.targets[iq.item.id]);
+        }
+        foreach (ItemQuantity iq in outputs){
+            score /= ((float)inventoryController.globalInventory.Quantity(iq.item.id) / 
+                inventoryController.targets[iq.item.id]);
+        }
+        return score;
     }
 }
 

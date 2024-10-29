@@ -95,11 +95,11 @@ public class Inventory
         }
         return false;
     }
-    public bool ContainsItem(ItemQuantity iq){ return (Quantity(iq.item) >= iq.quantity);}
-    public bool ContainsItems(ItemQuantity[] iqs){
+    public bool ContainsItem(ItemQuantity iq, int n = 1){ return (Quantity(iq.item) >= iq.quantity*n);}
+    public bool ContainsItems(ItemQuantity[] iqs, int n = 1){
         bool sufficient = true;
         foreach (ItemQuantity iq in iqs){
-            if (Quantity(iq.item) < iq.quantity){
+            if (Quantity(iq.item) < iq.quantity * n){
                 sufficient = false;
             }
         }

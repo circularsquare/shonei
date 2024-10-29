@@ -7,10 +7,14 @@ using UnityEngine.EventSystems;
 
 public class MenuPanel : MonoBehaviour
 {
+    public static MenuPanel instance;
     public GameObject[] panels;
     public GameObject activePanel;
 
     public void Start(){
+        if (instance != null) {
+            Debug.LogError("there should only be one menu panel");}
+        instance = this;       
         GameObject parent = transform.parent.gameObject;
         panels = new GameObject[] {
             parent.transform.Find("InventoryPanel").gameObject,
@@ -31,11 +35,10 @@ public class MenuPanel : MonoBehaviour
     public void OnClickJobs(){
         SetActivePanel(panels[2]);
     }
-    public void SetActivePanel(GameObject panel){
+    public void SetActivePanel(GameObject panel, bool toggle = true){
         if (MouseController.instance != null){ 
             MouseController.instance.SetModeSelect(); }
-        
-        if (panel == activePanel){              // if click same thing twice, close window
+        if (panel == activePanel && toggle){              // if click same thing twice, close window
             activePanel.SetActive(false);
             activePanel = null;
             return;

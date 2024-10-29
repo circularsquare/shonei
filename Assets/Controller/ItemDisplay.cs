@@ -27,10 +27,14 @@ public class ItemDisplay : MonoBehaviour
         }
     }
     public void OnClickTargetUp(){ // this should only work for globalinv? idk
-        InventoryController.instance.itemTargets[item.id] *= 2;
+        if (InventoryController.instance.targets[item.id] == 0){
+            InventoryController.instance.targets[item.id] = 1;
+        } else {
+            InventoryController.instance.targets[item.id] *= 2;
+        }
     }
     public void OnClickTargetDown(){ // this should only work for globalinv? idk
-        InventoryController.instance.itemTargets[item.id] /= 2;
+        InventoryController.instance.targets[item.id] /= 2;
     }
 
     public void LoadAllowed(){ 
