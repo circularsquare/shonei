@@ -15,6 +15,12 @@ public class Item // : Object
     
     public bool isComposite {get; set;} // get rid of this
 
+    public bool IsDiscovered(){
+        if (InventoryController.instance != null){
+            return (InventoryController.instance.discoveredItems[id]);
+        }
+        return false;
+    }
 
     // inventories are the ones with gameobjects and sprites, not items.
 }

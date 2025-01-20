@@ -18,10 +18,10 @@ public class ItemDisplay : MonoBehaviour
     }
 
     public void OnClickDropdown(){
-        if (item == null || item.children.Length == 0){ return; } // don't toggle if no children
+        if (item == null || item.children == null || item.children.Length == 0){ return; } // don't toggle if no children
         open = !open;
         foreach (Item child in item.children){
-            if (InventoryController.instance.discoveredItems[child.id]){  // don't toggle if undiscovered
+            if (child.IsDiscovered()){ // don't toggle if undiscovered
                 InventoryController.instance.itemDisplayGos[child.id].SetActive(open);
             } 
         }

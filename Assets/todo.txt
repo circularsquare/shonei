@@ -28,7 +28,12 @@
 
 - plant
     - add wheat tile construction
-    - have farmers be the ones to plant instead of farmers?
+        - what if plants are just subtype of buildings?
+            - would like eventually to have dynamic planting
+                - a farmer can just destroy / modify the building and replant?
+            - when harvested or rots, building disappears
+
+    - have farmers be the ones to plant instead of builders?
     - implement wheat growth
         - add placeholder methods and things for checking moisture and temperature 
     - implement harvesting taking time

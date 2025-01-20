@@ -56,16 +56,31 @@ public class InventoryController : MonoBehaviour
         itemDisplayGo.SetActive(discoveredItems[item.id]);
         UpdateItemDisplay(item);    
     }
+    bool HaveAnyOfChildren(Item item){ // this is a temporary fix while items are not actually their parents!
+        if (globalInventory.Quantity(item.id) != 0){
+            return true;
+        }
+        if (item.children != null){
+            foreach (Item child in item.children){
+                if (HaveAnyOfChildren(child)){
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
     void UpdateItemDisplay(Item item){
         if (item == null){return;}
         // TODO: add thing at the top that indicates ur looking at a specific inventory
-        if (globalInventory.Quantity(item.id) != 0){
+        if (HaveAnyOfChildren(item)){ 
             GameObject itemDisplayGo = itemDisplayGos[item.id];
             if (itemDisplayGo == null){Debug.LogError("itemdisplaygo not found: " + item.name);return;}
+
             if (discoveredItems[item.id] == false){
-                discoveredItems[item.id] = true; 
-                itemDisplayGo.SetActive(discoveredItems[item.id]);
+                discoveredItems[item.id] = true;
             }
+            itemDisplayGo.SetActive(discoveredItems[item.id]);
+
             string text;
             if (selectedInventory != null){text = item.name + ": " + selectedInventory.Quantity(item).ToString();}
             else {text = item.name + ": " + globalInventory.Quantity(item.id).ToString();}
@@ -78,6 +93,10 @@ public class InventoryController : MonoBehaviour
 
             ItemDisplay itemDisplay = itemDisplayGo.GetComponent<ItemDisplay>();
             itemDisplay.LoadAllowed();
+
+            if (item.parent != null){
+                UpdateItemDisplay(item.parent);
+            }
         }
     }
     public void UpdateItemsDisplay(){ foreach (Item item in Db.itemsFlat){ UpdateItemDisplay(item); } }
