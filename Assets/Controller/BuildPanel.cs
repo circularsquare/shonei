@@ -31,19 +31,19 @@ public class BuildPanel : MonoBehaviour {
             }
         }
 
-        foreach (PlantType plantType in Db.plantTypes){
-            if (plantType != null){
-                GameObject buildDisplayGo = Instantiate(buildDisplayPrefab, transform);
-                foreach (ItemQuantity iq in plantType.costs) { 
-                    GameObject costDisplay = Instantiate(textDisplayPrefab, buildDisplayGo.transform);
-                    costDisplay.GetComponent<TMPro.TextMeshProUGUI>().text = iq.item.name + ": " + iq.quantity.ToString();
-                    costDisplay.name = "CostDisplay_" + iq.item.name;
-                }
-                // buildDisplayGo.transform.GetChild(0).GetComponent<Button>().onClick.AddListener(() => SetBuildingType(plantType));  
-                GameObject buildingTextGo = buildDisplayGo.transform.Find("BuildingButton/TextBuildingName").gameObject;
-                buildingTextGo.GetComponent<TMPro.TextMeshProUGUI>().text = plantType.name;
-            }
-        }
+        // foreach (PlantType plantType in Db.plantTypes){
+        //     if (plantType != null){
+        //         GameObject buildDisplayGo = Instantiate(buildDisplayPrefab, transform);
+        //         foreach (ItemQuantity iq in plantType.costs) { 
+        //             GameObject costDisplay = Instantiate(textDisplayPrefab, buildDisplayGo.transform);
+        //             costDisplay.GetComponent<TMPro.TextMeshProUGUI>().text = iq.item.name + ": " + iq.quantity.ToString();
+        //             costDisplay.name = "CostDisplay_" + iq.item.name;
+        //         }
+        //         // buildDisplayGo.transform.GetChild(0).GetComponent<Button>().onClick.AddListener(() => SetBuildingType(plantType));  
+        //         GameObject buildingTextGo = buildDisplayGo.transform.Find("BuildingButton/TextBuildingName").gameObject;
+        //         buildingTextGo.GetComponent<TMPro.TextMeshProUGUI>().text = plantType.name;
+        //     }
+        // }
     }
     public void SetBuildingType(BuildingType bt){
         this.bt = bt;

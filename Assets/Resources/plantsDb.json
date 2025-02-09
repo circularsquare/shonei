@@ -1,6 +1,6 @@
 [  
     {  
-        "id": 1,
+        "id": 501,
         "name": "oaktree",
         "ncosts": [
             { "name": "acorn", "quantity": 1 }
@@ -9,7 +9,7 @@
             { "name": "wood", "quantity": 10 }
         ]
     },{  
-        "id": 30,
+        "id": 502,
         "name": "wheat",
         "ncosts": [
             { "name": "wheat", "quantity": 1 }

@@ -282,7 +282,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 63a963853a9e42d489d4ac7994e4e766, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  buildButtonPrefab: {fileID: 6399076802470216420, guid: d95c3b0b3e6a9ff4fafe6d7499778515, type: 3}
+  buildDisplayPrefab: {fileID: 6399076802470216420, guid: d95c3b0b3e6a9ff4fafe6d7499778515, type: 3}
   textDisplayPrefab: {fileID: 5785583937275510142, guid: 06038d4d58a788d40b469cacb116ff59, type: 3}
 --- !u!1 &81266634
 GameObject:
@@ -504,7 +504,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 5, y: -5}
-  m_SizeDelta: {x: 160, y: 400}
+  m_SizeDelta: {x: 180, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &211705628
 MonoBehaviour:
@@ -1646,6 +1646,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac72c2fae2942bc42b9f414e31bdef68, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  tilesTransform: {fileID: 0}
 --- !u!4 &1347016353
 Transform:
   m_ObjectHideFlags: 0
@@ -1963,7 +1964,7 @@ RectTransform:
   m_AnchorMin: {x: 1, y: 1}
   m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: -5, y: -5}
-  m_SizeDelta: {x: 120, y: 300}
+  m_SizeDelta: {x: 100, y: 300}
   m_Pivot: {x: 1, y: 1}
 --- !u!114 &1876276431
 MonoBehaviour:
@@ -2032,7 +2033,7 @@ MonoBehaviour:
   m_ChildForceExpandWidth: 1
   m_ChildForceExpandHeight: 0
   m_ChildControlWidth: 0
-  m_ChildControlHeight: 1
+  m_ChildControlHeight: 0
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0

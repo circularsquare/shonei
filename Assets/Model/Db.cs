@@ -27,8 +27,8 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
     public static int itemsCount = 0;
     public static Job[] jobs = new Job[100];
     public static Recipe[] recipes = new Recipe[500];
-    public static BuildingType[] buildingTypes = new BuildingType[300];
-    public static PlantType[] plantTypes = new PlantType[200];
+    public static BuildingType[] buildingTypes = new BuildingType[600];
+    public static PlantType[] plantTypes = new PlantType[600];
     public static TileType[] tileTypes = new TileType[100];
 
 
@@ -103,6 +103,10 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
             if (plantTypes[plantType.id] != null){Debug.LogError("error!! multiple plant types with same id");}
             plantTypes[plantType.id] = plantType;
             plantTypeByName.Add(plantType.name, plantType);
+            // also add each plant as a building so you can build it
+            if (buildingTypes[plantType.id] != null){Debug.LogError("error!! multiple building types with same id");}
+            buildingTypes[plantType.id] = plantType;
+            buildingTypeByName.Add(plantType.name, plantType);
         } 
 
         // read Jobs

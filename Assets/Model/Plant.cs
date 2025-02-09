@@ -5,13 +5,8 @@ using System;
 using System.Linq;
 using System.Runtime.Serialization;
 
-public class Plant {
-    public GameObject go;
-    public int x;
-    public int y;
+public class Plant : Building { 
     public PlantType plantType;
-    public Sprite sprite;
-    public Tile tile; 
 
     public float timer;
     public int growthStage;
@@ -21,7 +16,7 @@ public class Plant {
     // public int capacity = 1;
     // public int reserved = 0;
 
-    public Plant(PlantType plantType, int x, int y){
+    public Plant(PlantType plantType, int x, int y) : base (plantType, x, y){ // make subtype of building?
         this.plantType = plantType;
         this.x = x;
         this.y = y;
@@ -43,12 +38,8 @@ public class Plant {
 
 }
 
-public class PlantType {
-    public int id {get; set;}
-    public string name {get; set;}
-    public ItemNameQuantity[] ncosts {get; set;}
+public class PlantType : BuildingType {
     public ItemNameQuantity[] nproducts {get; set;}
-    public ItemQuantity[] costs;
     public ItemQuantity[] products;
     
 
@@ -57,7 +48,7 @@ public class PlantType {
     public int harvestProgress;
 
     [OnDeserialized]
-    internal void OnDeserialized(StreamingContext context){
+    new internal void OnDeserialized(StreamingContext context){
         // costs = new ItemQuantity[ncosts.Length];
         // for (int i = 0; i < ncosts.Length; i++){
         //     costs[i] = new ItemQuantity(ncosts[i].name, ncosts[i].quantity);

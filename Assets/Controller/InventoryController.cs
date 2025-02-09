@@ -78,8 +78,10 @@ public class InventoryController : MonoBehaviour
 
             if (discoveredItems[item.id] == false){
                 discoveredItems[item.id] = true;
+                itemDisplayGo.SetActive(discoveredItems[item.id]);
+                RectTransform rectTransform = GetComponent<RectTransform>();
+                LayoutRebuilder.ForceRebuildLayoutImmediate(rectTransform);
             }
-            itemDisplayGo.SetActive(discoveredItems[item.id]);
 
             string text;
             if (selectedInventory != null){text = item.name + ": " + selectedInventory.Quantity(item).ToString();}

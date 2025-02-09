@@ -23,6 +23,8 @@ public class ItemDisplay : MonoBehaviour
         foreach (Item child in item.children){
             if (child.IsDiscovered()){ // don't toggle if undiscovered
                 InventoryController.instance.itemDisplayGos[child.id].SetActive(open);
+                RectTransform rectTransform = GetComponent<RectTransform>();
+                LayoutRebuilder.ForceRebuildLayoutImmediate(rectTransform);
             } 
         }
     }

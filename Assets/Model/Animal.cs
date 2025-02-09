@@ -15,6 +15,7 @@ public class Animal : MonoBehaviour
     public float y;
     public float timerOffset = 0f; // unused i think
     public float maxSpeed = 2f;
+    private bool isMovingRight = true;
 
     public Tile target;         // where you are currently going
     public Tile workTile;       // where production happens
@@ -126,6 +127,7 @@ public class Animal : MonoBehaviour
             // arrived at target
             else if (Vector3.Distance(this.go.transform.position, target.go.transform.position) < 0.02f){
                 this.go.transform.position = target.go.transform.position;
+
                 SyncPosition(); 
                 if (state == AnimalState.Walking){ 
                     if (target == workTile){
@@ -144,6 +146,9 @@ public class Animal : MonoBehaviour
             else {  // move toward target
                 this.go.transform.position = Vector3.MoveTowards(this.go.transform.position, 
                     target.go.transform.position, maxSpeed * Time.deltaTime);
+                // set facing direction
+                isMovingRight = (target.go.transform.position.x - this.go.transform.position.x >= 0);
+                sr.flipX = !isMovingRight;
                 SyncPosition();
             }
         }

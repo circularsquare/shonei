@@ -216,3 +216,6 @@ background - 0
 1/20/25
 - its been so long!
 - fixed child items not showing up (initial wheat)
+2/9/25
+- changed item display formatting to not overlap
+- added some sprites
