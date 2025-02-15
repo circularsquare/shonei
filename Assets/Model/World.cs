@@ -11,13 +11,16 @@ public class World : MonoBehaviour
     public int ny;
     public WorldController worldController;
     public InventoryController invController;
+    public AnimalController animalController;
+    public PlantController plantController;
+    
     public static World instance;
     public float timer = 0f;
 
 
     public void Awake(){
         if (instance != null){
-            Debug.LogError("there should only be one world controller");}
+            Debug.LogError("there should only be one world?");}
         instance = this;
 
         nx = 50;
@@ -34,16 +37,22 @@ public class World : MonoBehaviour
         }
         invController = InventoryController.instance;
         worldController = WorldController.instance;
+        animalController = AnimalController.instance;
+        plantController = PlantController.instance;
     }
 
     public void Update(){
         if (Math.Floor(timer + Time.deltaTime) - Math.Floor(timer) > 0){ // every 1 sec
-            AnimalController.instance.FastUpdate(); 
+            animalController.TickUpdate(); 
+            plantController.TickUpdate();
         }        
-        if (Math.Floor((timer + Time.deltaTime) * 10) - Math.Floor(timer * 10) > 0){  // every 0.1 sec
-            InventoryController.instance.FastUpdate(); // update itemdisplay, add controller instances
+        float period = 0.2f;
+        if (Math.Floor((timer + Time.deltaTime) / period) - Math.Floor(timer / period) > 0){  // every 0.2 sec
+            invController.TickUpdate(); // update itemdisplay, add controller instances
             InfoPanel.instance.UpdateInfo();
         }
+
+
         timer += Time.deltaTime;
     }
         

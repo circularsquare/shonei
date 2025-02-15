@@ -33,18 +33,19 @@ public class AnimalController : MonoBehaviour
     }
 
 
-    public void FastUpdate(){ // called on a timer from World.cs
+    public void TickUpdate(){ // called on a timer from World.cs
         if (world == null){
             world = WorldController.instance.world;
             AddJobCounts();  // this needs to run AFTER world has already been populated!
             AddJob("logger", 1);
             AddJob("hauler", 1);
+            AddJob("farmer", 1);
             if (animals[0] != null){ // spawn starting resources
                 animals[0].Produce("wheat", 2);
             }
         } 
         for (int a = 0; a < na; a++){ // later, change the animal work method to not be a timer and instead track individual animal workloads
-            animals[a].FastUpdate(); 
+            animals[a].TickUpdate(); 
         }
     }
 

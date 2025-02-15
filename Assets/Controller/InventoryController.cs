@@ -30,7 +30,7 @@ public class InventoryController : MonoBehaviour
         targets = Db.itemsFlat.ToDictionary(i => i.id, i => 1000);
     }
 
-    public void FastUpdate(){
+    public void TickUpdate(){
         if (world == null){
             world = WorldController.instance.world;
             panelInventory = GetComponent<Transform>().gameObject;
@@ -106,7 +106,7 @@ public class InventoryController : MonoBehaviour
         selectedInventory = inv; 
         UpdateItemsDisplay();
         if (inv != null && inv.invType == Inventory.InvType.Storage){
-            MenuPanel.instance.SetActivePanel(MenuPanel.instance.panels[0]);
+            MenuPanel.instance.SetActivePanel(MenuPanel.instance.panels[0]); // object ref not sent to instance
         }
     }
 }

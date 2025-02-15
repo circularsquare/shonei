@@ -38,14 +38,5 @@
         "noutputs": [
             { "name": "soil", "quantity": 1 }
         ]
-    },{  
-        "id": 4,
-        "job": "farmer",
-        "tile": "wheat",
-        "description": "harvest wheat",
-        "ninputs": [ ],
-        "noutputs": [
-            { "name": "wheat", "quantity": 1 }
-        ]
     }
 ]  

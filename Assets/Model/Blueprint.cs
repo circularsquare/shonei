@@ -64,8 +64,14 @@ public class Blueprint {
         
     }
     public void Complete(){
-        Building building = new Building(buildingType, x, y);
+        Building building;
+        if (buildingType is PlantType){
+            building = new Plant(buildingType as PlantType, x, y);
+        } else {
+            building = new Building(buildingType, x, y);        
+        }
         tile.building = building;
+        Debug.Log(buildingType.costs[0].quantity);
         GlobalInventory.instance.AddItems(buildingType.costs, true);
 
         // delete blueprint

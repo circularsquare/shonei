@@ -219,3 +219,12 @@ background - 0
 2/9/25
 - changed item display formatting to not overlap
 - added some sprites
+2/15
+- i watched this video https://www.youtube.com/watch?v=JxI3Eu5DPwE&t=545s that introduced me to cool design patterns. i want to put them in eventually, especially actions and also components.
+- plants!
+    - made farmers plant plants. refactored job / hauler logic to split job stuff farther apart.
+    - added plant gradual growth via plantController, and farmers harvest when done.
+- fixed multi menu panel initalization
+- eating!
+    - mice seek out wheat and take 5 and eat it as they work 
+    - if hungry, their productivity and movement speed drops    

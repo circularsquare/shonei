@@ -1,6 +1,7 @@
 - haulers: 
     - right now haulers 50/50 between delivering to blueprints and doing other hauling.
         - want to make this a smarter decision.
+        - also want to jitter which locations it picks up / delivers to so it doesnt juts repetitively serve one guy creating stuff.
     - have them pick up bigger stacks rather than just keep picking up closer one...
         - maybe change Find to take an integer score returning thing instead of a bool.
     - also rename haulers to "workers?" or maybe have builders be separate idk.
@@ -28,27 +29,17 @@
     - add highlight on currently selected menu
 
 - plant
-    - add wheat tile construction
-        - what if plants are just subtype of buildings?
-            - would like eventually to have dynamic planting
-                - a farmer can just destroy / modify the building and replant?
-            - when harvested or rots, building disappears
-
-    - have farmers be the ones to plant instead of builders?
-    - implement wheat growth
+    - flesh out plant growth
         - add placeholder methods and things for checking moisture and temperature 
     - implement harvesting taking time
         - add harvesting method for mineral tiles 
-    - add autoreplanting with blueprint 
+    - have plant building disappear? and have blueprint auto create.
 
-
-    - add eating
-        - add food status to info panel
     - convert tree into a plant
 
-- should buildings be tiles?
-
-
+- food
+    - have haulers not throw out their food
+    - don't allow them to eat last food seeds
 
 
 
@@ -59,3 +50,4 @@ BUGS
 
 - hauler is only picking up a few wood at a time?
 - sometimes target buttons stop working
+- wheat inventory display doesn't update immediately when building a wheat? maybe has to do with it being a child resource idk.

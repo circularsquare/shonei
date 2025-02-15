@@ -14,7 +14,8 @@ public class InfoPanel : MonoBehaviour {
         Tile, 
         Building,
         Blueprint,
-        Animal
+        Animal, 
+        Plant,
     }
     public InfoMode infoMode = InfoMode.Inactive;
 
@@ -46,7 +47,8 @@ public class InfoPanel : MonoBehaviour {
                 "\n state: " + ani.state.ToString() + 
                 "\n job: " + ani.job.name +
                 "\n inventory: " + ani.inv.ToString() + 
-                "\n location: " + ani.go.transform.position.ToString());
+                "\n location: " + ani.go.transform.position.ToString() + 
+                "\n fullness: " + ani.eating.Fullness().ToString("F2"));
                 textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = displayText;
             }
         }
@@ -55,10 +57,18 @@ public class InfoPanel : MonoBehaviour {
             Tile tile = obj as Tile;
             string displayText = "";
             if (tile.building != null){
-                infoMode = InfoMode.Building;
-                gameObject.SetActive(true);
-                displayText =  ( "building: " + tile.building.buildingType.name + 
-                    "\n location: " + tile.x.ToString() + ", " + tile.y.ToString());
+                if (tile.building is Plant){
+                    infoMode = InfoMode.Plant;
+                    gameObject.SetActive(true);
+                    displayText =  ( "plant: " + tile.building.buildingType.name + 
+                        "\n location: " + tile.x.ToString() + ", " + tile.y.ToString() + 
+                        "\n growth: " + (tile.building as Plant).growthStage);
+                } else {
+                    infoMode = InfoMode.Building;
+                    gameObject.SetActive(true);
+                    displayText =  ( "building: " + tile.building.buildingType.name + 
+                        "\n location: " + tile.x.ToString() + ", " + tile.y.ToString());
+                }
             } else if (tile.blueprint != null){
                 infoMode = InfoMode.Blueprint;
                 gameObject.SetActive(true);

@@ -93,6 +93,7 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
         BuildingType[] buildingTypesUnplaced = JsonConvert.DeserializeObject<BuildingType[]>(jsonBuildingTypes);
         foreach (BuildingType buildingType in buildingTypesUnplaced){
             if (buildingTypes[buildingType.id] != null){Debug.LogError("error!! multiple building types with same id");}
+            buildingType.isPlant = false;
             buildingTypes[buildingType.id] = buildingType;
             buildingTypeByName.Add(buildingType.name, buildingType);
         } 
@@ -106,6 +107,7 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
             // also add each plant as a building so you can build it
             if (buildingTypes[plantType.id] != null){Debug.LogError("error!! multiple building types with same id");}
             buildingTypes[plantType.id] = plantType;
+            plantType.isPlant = true;
             buildingTypeByName.Add(plantType.name, plantType);
         } 
 
@@ -200,6 +202,7 @@ public class BuildingType {
     public ItemNameQuantity[] ncosts {get; set;}
     public ItemQuantity[] costs;
     public bool isTile {get; set;}
+    public bool isPlant;
     [OnDeserialized]
     internal void OnDeserialized(StreamingContext context){
         costs = new ItemQuantity[ncosts.Length];

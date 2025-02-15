@@ -22,8 +22,6 @@ public class MouseController : MonoBehaviour
         instance = this;        
     }
 
-
-
     // wanna chagne the building process to only be able to make Buildings, not tiles. 
     // dirt buildings will instantly just turn into dirt tiles after theyre made.
     void Update() {

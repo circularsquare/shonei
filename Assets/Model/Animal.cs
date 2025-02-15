@@ -29,17 +29,31 @@ public class Animal : MonoBehaviour
     public Job job;
     public Inventory inv; 
     public GlobalInventory ginv;
+
+    public float energy;     // every time you get 1 energy you can do 1 work
+    public float efficiency; // energy gain rate
+
     // list of skills goes here?
     // maybe one for each job?
 
-    public enum AnimalState {Idle, Walking, Working, Fetching, Delivering}
+    public Eating eating;
 
+    public enum AnimalState {
+        Idle, 
+        Walking,                // going somewhere unburdened OR going to work station?
+        Collecting,             // for producers, collecting inputs for recipe
+        Working,                // for producers, making recipe
+        Fetching, Delivering,   // for hauling, getting and delivering.
+        Taking,                 // for taking like food for yourself.
+        WalkingToHarvest,
+        WalkingToWork,
+    } 
     public AnimalState state;
+
     public GameObject go;
     public SpriteRenderer sr;
-    public System.Random random;
-
     public Sprite sprite;
+    public System.Random random;
     public Bounds bounds; // a box to click on to select the animal
     World world;
     
@@ -56,9 +70,85 @@ public class Animal : MonoBehaviour
         this.go = this.gameObject;
         this.go.name = "animal" + aName;
         this.inv = new Inventory(5, 10, Inventory.InvType.Animal);
+        this.eating = new Eating();
+        this.efficiency = 1f;
+        this.energy = 0f;
         ginv = GlobalInventory.instance;
         random = new System.Random();
     }
+    
+    public void TickUpdate(){ // called from animalcontroller each second.
+        eating.Update();
+        efficiency = eating.Efficiency(); // will have other factors in efficiency later.
+        maxSpeed = 2f * efficiency;
+
+        if (eating.Hungry()){
+            if (inv.ContainsItem(Db.itemByName["wheat"])){ // if have food in inv
+                Consume(Db.itemByName["wheat"], 1);
+                eating.Eat(20f);
+            }
+            else { // else find food
+                Take(Db.itemByName["wheat"]); 
+            } 
+        }
+
+        energy += efficiency;
+
+        if (energy > 1f){ // if you have enough energy, spend it. also then you can work if you're Working.
+            energy -= 1f; 
+
+            if (state == AnimalState.Working){ // if working, do your recipe
+                if (recipe != null && inv.ContainsItems(recipe.inputs)){
+                    Produce(recipe); 
+                } else { state = AnimalState.Idle; }
+            }
+            if (state == AnimalState.Idle){     // if can't work, find work
+                FindWork(); 
+            }
+            if (state == AnimalState.Idle){ // if still can't find work, pace around
+                if (UnityEngine.Random.Range(0, 5) == 0){
+                    GoTo(x + (float)UnityEngine.Random.Range(-1, 2), y); }
+            }
+        }
+    }
+
+
+
+    public void Update(){ // for movement and detecting arrival
+        if (IsMoving()){
+            if (target == null || target.go == null){ 
+                // this shouldnt happen i think!
+                    // seem sto happen maybe when someone construct partially then someone else finishes.
+                    // also, why am i using tile gameobject anyways? maybe better to just use tile coords.
+                Debug.LogError("movement target disappeared!!");
+                DropItems();
+                state = AnimalState.Idle;
+            }
+            // arrived at target
+            else if (Vector3.Distance(this.go.transform.position, target.go.transform.position) < 0.02f){
+                this.go.transform.position = target.go.transform.position;
+
+                SyncPosition(); 
+
+                if (state == AnimalState.Walking)        { state = AnimalState.Idle; }
+                else if (state == AnimalState.Collecting){ OnArrivalCollect(); }
+                else if (state == AnimalState.WalkingToWork){ state = AnimalState.Working; }
+                else if (state == AnimalState.WalkingToHarvest){ OnArrivalHarvest(); }
+                else if (state == AnimalState.Fetching)  { OnArrivalFetch(); }
+                else if (state == AnimalState.Delivering){ OnArrivalDeliver(); }
+                else if (state == AnimalState.Taking)    { OnArrivalTake(); }
+            }
+            else {  // move toward target
+                this.go.transform.position = Vector3.MoveTowards(this.go.transform.position, 
+                    target.go.transform.position, maxSpeed * Time.deltaTime);
+                // set facing direction
+                isMovingRight = (target.go.transform.position.x - this.go.transform.position.x >= 0);
+                sr.flipX = !isMovingRight;
+                SyncPosition();
+            }
+        }
+    }
+
     public void FindWork(){
         if (job.name == "none"){ // free past worktile
             DropItems();
@@ -73,6 +163,13 @@ public class Animal : MonoBehaviour
             else {Fetch();}
             return;
         } 
+        if (job.name == "farmer"){
+            // find something to harvest or plant
+            if (Harvest() || FetchForBlueprint("farmer")){
+                return;
+            }
+        }
+        // generic work: make recipe.
         recipe = PickRecipe(); 
         if (recipe != null){ // if can find recipe 
             Tile t = null;
@@ -92,66 +189,9 @@ public class Animal : MonoBehaviour
                 }
             }
         }        
+
+        // if can't do anything, just stay idle
         // TODO: drop unuseful items
-    }
-
-    public void FastUpdate(){ // called from animalcontroller each second.
-        if (state == AnimalState.Working){ // if working, do your recipe
-            if (recipe != null && inv.ContainsItems(recipe.inputs)){
-                Produce(recipe); 
-            }
-            else { 
-                state = AnimalState.Idle; 
-            }
-        }
-        if (state == AnimalState.Idle){     // if can't work, find work
-            FindWork(); 
-        }
-        if (state == AnimalState.Idle){ // if still can't find work, pace around
-            if (UnityEngine.Random.Range(0, 5) == 0){
-                MoveTo(x + (float)UnityEngine.Random.Range(-1, 2), y);
-            }
-        }
-    }
-
-    public void Update(){ // for movement and detecting arrival
-        if ((state == AnimalState.Walking) || (state == AnimalState.Fetching) || (state == AnimalState.Delivering)){
-            if (target == null || target.go == null){ 
-                // this shouldnt happen i think!
-                    // seem sto happen maybe when someone construct partially then someone else finishes.
-                    // also, why am i using tile gameobject anyways? maybe better to just use tile coords.
-                Debug.LogError("movement target disappeared!!");
-                DropItems();
-                state = AnimalState.Idle;
-            }
-            // arrived at target
-            else if (Vector3.Distance(this.go.transform.position, target.go.transform.position) < 0.02f){
-                this.go.transform.position = target.go.transform.position;
-
-                SyncPosition(); 
-                if (state == AnimalState.Walking){ 
-                    if (target == workTile){
-                        state = AnimalState.Working; // if arrived at work, start working
-                    } else {
-                        state = AnimalState.Idle;
-                    }
-                }
-                else if (state == AnimalState.Fetching){
-                    OnArrivalAtFetchTarget();                    
-                }
-                else if (state == AnimalState.Delivering){
-                    OnArrivalAtDeliverTarget();
-                }
-            }
-            else {  // move toward target
-                this.go.transform.position = Vector3.MoveTowards(this.go.transform.position, 
-                    target.go.transform.position, maxSpeed * Time.deltaTime);
-                // set facing direction
-                isMovingRight = (target.go.transform.position.x - this.go.transform.position.x >= 0);
-                sr.flipX = !isMovingRight;
-                SyncPosition();
-            }
-        }
     }
 
     // -----------------------
@@ -174,10 +214,21 @@ public class Animal : MonoBehaviour
             return false; // nothing to fetch
         } 
     }
-    public bool FetchForBlueprint(){
-        Tile blueprintTile = FindBlueprint();
+    public void OnArrivalFetch(){      
+        TakeItem(desiredItem, desiredItemQuantity); // pick up items
+        desiredItemQuantity = desiredItemQuantity - inv.Quantity(desiredItem);
+        if (inv.GetStorageForItem(desiredItem) > 5 && desiredItemQuantity > 0){
+            Fetch(desiredItem); /* keep fetching the same item if you have space and can find stuff to fetch and can store it */  }
+        else{Deliver();}
+    }
+
+    public bool FetchForBlueprint (string jobName = "hauler"){
+        Tile blueprintTile = null;
+        if (jobName == "hauler"){blueprintTile = FindHaulerBlueprint();} // called if normal building blueprint
+        if (jobName == "farmer"){blueprintTile = FindPlantBlueprint();} // called if it's plant blueprint
         if (blueprintTile == null){return false;}
         Blueprint blueprint = blueprintTile.blueprint;
+
         for (int i = 0; i < blueprint.costs.Length; i++){
             if (blueprint.deliveredResources[i].quantity < blueprint.costs[i].quantity){
                 Tile itemTile = FindItem(blueprint.costs[i].item);
@@ -188,68 +239,10 @@ public class Animal : MonoBehaviour
                     target = itemTile;
                     state = AnimalState.Fetching;
                     return true;
-                }
-            }
-        }
+        }}}
         return false;
     }
-    public bool Collect(){ // collect recipe inputs (non hauler)
-        if (recipe == null){ Debug.LogError("lost recipe!");}
-        desiredItem = null;
-        foreach (ItemQuantity input in recipe.inputs){
-            if (!inv.ContainsItem(input, numRounds)){
-                desiredItem = input.item; // you want it. you can't necessarily find it.
-                desiredItemQuantity = input.quantity * numRounds;
-                Tile itemTile = FindItem(desiredItem);
-                if (itemTile != null){  // you can find it, go get it.
-                    target = itemTile; 
-                    state = AnimalState.Fetching;
-                    return true;
-                }
-            }
-        }
-        if (desiredItem == null){  // have all desired items! go to work
-            target = workTile;
-            state = AnimalState.Walking;
-            return true; 
-        } else { // want items but you can't find any of them. give up and go to work
-            desiredItem = null;
-            desiredItemQuantity = 0;
-            target = workTile;
-            state = AnimalState.Walking;
-            Tile itemTile = FindItem(desiredItem);
-            Debug.Log("can't find a recipe input");
-            return false;
-        }
-    }
-    public void Deliver(){ // move items to storagetile.
-        target = storageTile;
-        state = AnimalState.Delivering;
-    }
-    public void GoToWork(){
-        if (workTile == null){Debug.LogError("work tile doesn't exist!");}
-        target = workTile;
-        state = AnimalState.Walking;
-    }
-    public void OnArrivalAtFetchTarget(){      
-        TakeItem(desiredItem, desiredItemQuantity); // pick up items
-        desiredItemQuantity = desiredItemQuantity - inv.Quantity(desiredItem);
-        if (inv.GetStorageForItem(desiredItem) > 5 && desiredItemQuantity > 0 && Fetch(desiredItem)){
-            /* keep fetching the same item if you have space and can find stuff to fetch and can store it */  }
-        else if (job.name == "hauler"){ Deliver(); }
-        else {Collect();}
-    }
-    public void OnArrivalAtDeliverTarget(){     // deliver items (to storage, etc.)
-        if (target.blueprint != null){ OnArrivalDeliverToBlueprint(); return; }
-        DropItem(desiredItem, target);
-        int itemInInv = inv.Quantity(desiredItem);
-        if (itemInInv > 0){ // if you have excess of the item, drop it somewhere.
-            target = FindPlaceToDrop(desiredItem, itemInInv); 
-            state = AnimalState.Delivering;
-        }
-        state = AnimalState.Idle;
-    }
-    public void OnArrivalDeliverToBlueprint(){      // deliver items to blueprint
+    public void OnArrivalBlueprint() {      // deliver items to blueprint
         int amountToDeliver = inv.Quantity(desiredItem);
         int delivered = target.blueprint.ReceiveResource(desiredItem, amountToDeliver);
         inv.AddItem(desiredItem, -delivered); // remove item from own inv
@@ -263,15 +256,104 @@ public class Animal : MonoBehaviour
         }
         state = AnimalState.Idle;
     }
+
+
+
+
+    public void Deliver(){ // move items to storagetile.
+        target = storageTile;
+        state = AnimalState.Delivering;
+    }
+    public void OnArrivalDeliver(){     // deliver items (to storage, etc.)
+        if (target.blueprint != null){ OnArrivalBlueprint(); return; }
+        DropItem(desiredItem, target);
+        int itemInInv = inv.Quantity(desiredItem);
+        if (itemInInv > 0){ // if you have excess of the item, drop it somewhere.
+            target = FindPlaceToDrop(desiredItem, itemInInv); 
+            state = AnimalState.Delivering;
+        }
+        state = AnimalState.Idle;
+    }
+
+    public bool Take(Item item, int quantity = 5){
+        desiredItem = item;
+        desiredItemQuantity = quantity;
+        Tile itemTile = FindItem(item);
+        if (itemTile != null){
+            target = itemTile;
+            state = AnimalState.Taking;
+            return true;
+        }
+        return false;
+    }
+    public void OnArrivalTake(){      
+        TakeItem(desiredItem, desiredItemQuantity); // pick up items
+        desiredItemQuantity = desiredItemQuantity - inv.Quantity(desiredItem);
+        if (inv.GetStorageForItem(desiredItem) > 5 && desiredItemQuantity > 0 && Take(desiredItem, desiredItemQuantity)){ } // look for more
+        else{ state = AnimalState.Idle; }
+    }
+
+
+    public bool Collect(){ // pick up recipe inputs and decide what to do next
+        if (recipe != null){ Debug.LogError("lost recipe!");}
+        desiredItem = null;
+        foreach (ItemQuantity input in recipe.inputs){
+            if (!inv.ContainsItem(input, numRounds)){
+                desiredItem = input.item; // you want it. 
+                desiredItemQuantity = input.quantity * numRounds;
+                Tile itemTile = FindItem(desiredItem);
+                if (itemTile != null){  // you can find it, go get it.
+                    target = itemTile; 
+                    state = AnimalState.Collecting;
+                    return true;
+                }
+            }
+        }
+        if (desiredItem == null){  // have all desired items! go to work
+            GoToWork();
+            return true; 
+        } else { // want items but you can't find any of them. give up and go to work
+            desiredItem = null;
+            desiredItemQuantity = 0;
+            GoToWork();
+            Debug.Log("can't find a recipe input");
+            return false;
+        }
+    }
+    public void OnArrivalCollect(){      
+        TakeItem(desiredItem, desiredItemQuantity); // pick up items
+        desiredItemQuantity = desiredItemQuantity - inv.Quantity(desiredItem);
+        if (inv.GetStorageForItem(desiredItem) > 5 && desiredItemQuantity > 0){
+            /* ?????? keep collecting the same item if you have space and can find stuff to fetch and can store it */  }
+        Collect();
+    }
+
+
+
+
+    public bool Harvest(){
+        Tile plantTile = FindHarvestablePlant();
+        if (plantTile != null){
+            GoToHarvest(plantTile);
+            return true;
+        }
+        return false;
+    }
+    public void OnArrivalHarvest(){      // deliver items to blueprint
+        Plant plant = TileHere().building as Plant;
+        if (plant.harvestable){ Produce(plant.Harvest()); }
+        state = AnimalState.Idle;
+    }
     
     // -----------------------
     // ITEM MOVEMENT 
     // -----------------------
     public void TakeItem(Item item, int quantity){  // pick up item from current location
-        Tile tileHere = world.GetTileAt(x, y);
+        Tile tileHere = TileHere();
         if (tileHere != null && tileHere.inv != null){ 
             tileHere.inv.MoveItemTo(inv, item, quantity);
             if (tileHere.inv.IsEmpty() && tileHere.inv.invType == Inventory.InvType.Floor){
+                Destroy(tileHere.inv.go);
                 tileHere.inv = null; // delete an empty floor inv.
             }
         }
@@ -286,7 +368,7 @@ public class Animal : MonoBehaviour
             DropItem(item, FindPlaceToDrop(item));} // if can't drop here, drop nearby
             // TODO: make this require the animal to actually deliver it unless they cant fit it into their inv
     }
-    public void DropItems(){    // drops all items.
+    public void DropItems(){    // drops all items. maybe change to not drop food?
         foreach (ItemStack stack in inv.itemStacks){
             if (stack != null && stack.quantity > 0){
                 DropItem(stack.item, FindPlaceToDrop(stack.item));
@@ -294,8 +376,9 @@ public class Animal : MonoBehaviour
         }
     }
 
-    public void Produce(string itemName, int quantity = 1){Produce(Db.itemByName[itemName], quantity);}
-    public void Produce(ItemQuantity iq){Produce(iq.item, iq.quantity);}
+    public void Produce(string itemName, int quantity = 1){ Produce(Db.itemByName[itemName], quantity); }
+    public void Produce(ItemQuantity iq){ Produce(iq.item, iq.quantity); }
+    public void Produce(ItemQuantity[] iqs){ Array.ForEach(iqs, iq => Produce(iq)); }
     public void Produce(Item item, int quantity = 1){   // instantly produces item at a nearby tile
         ginv.AddItem(item.id, quantity);
         Tile dTile = FindPlaceToDrop(item);
@@ -314,6 +397,10 @@ public class Animal : MonoBehaviour
             Produce(iq);
         }
     }
+    public void Consume(Item item, int quantity = 1){
+        ginv.AddItem(item, -quantity);
+        inv.AddItem(item, -quantity);
+    }
 
     // -----------------------
     // FIND
@@ -330,7 +417,10 @@ public class Animal : MonoBehaviour
         return Find(t => t.type == tileType && (t.capacity - t.reserved > 0), r);
     }
     public Tile FindWorkTile(string tileTypeStr, int r = 30){ return FindWorkTile(Db.tileTypeByName[tileTypeStr], r); }
-    public Tile FindBlueprint(int r = 50){ return Find(t => t.blueprint != null, r);}
+    public Tile FindHaulerBlueprint(int r = 50){return Find(t => t.blueprint != null && !(t.blueprint.buildingType is PlantType), r);}
+    public Tile FindPlantBlueprint(int r = 40){return Find(t => t.blueprint != null && t.blueprint.buildingType is PlantType, r);}
+    public Tile FindHarvestablePlant(int r = 40){
+        return Find(t => t.building != null && t.building is Plant && (t.building as Plant).harvestable, r);}
     public Tile Find(Func<Tile, bool> condition, int r, bool persistent = false){
         Tile closestTile = null;
         float closestDistance = float.MaxValue;
@@ -430,7 +520,7 @@ public class Animal : MonoBehaviour
         // looks at inputs in gInv, and first available storage you can find in animal range, at least 1. 
         // the storage thing makes it a bit conservative. 
         if (recipe.inputs.Length == 0){return -1;}
-        int numRounds = 10; // won't do any more than this
+        int numRounds = 10; // will try to gather this amount of input at once.
         int n;
         foreach (ItemQuantity input in recipe.inputs){
             n = ginv.Quantity(input.id) / input.quantity;
@@ -462,13 +552,23 @@ public class Animal : MonoBehaviour
         this.y = this.go.transform.position.y;
         bounds.center = go.transform.position;
     }
-    public void MoveTo(float x, float y){
-        if (x < 0 || x >= world.nx || y < 0 || y >= world.ny) { return; }
-        if (/*world.GetTileAt(x, y).type.solid |*/ true){
-            MoveTo(world.GetTileAt(x, y));
-        }
+
+
+
+    public void GoToWork(){
+        if (workTile == null){Debug.LogError("work tile doesn't exist!");}
+        target = workTile;
+        state = AnimalState.WalkingToWork;
     }
-    public void MoveTo(Tile t){ // this sets state to walking. don't use this for stuff like fetching.
+    public void GoToHarvest(Tile t){
+        target = t;
+        this.state = AnimalState.WalkingToHarvest;
+    }
+
+    public void GoTo(float x, float y){
+        GoTo(world.GetTileAt(x, y));
+    }
+    public void GoTo(Tile t){ // this sets state to walking. don't use this for stuff like fetching.
         target = t;
         this.state = AnimalState.Walking;
     }
@@ -483,10 +583,53 @@ public class Animal : MonoBehaviour
         workTile.reserved -= 1;
         workTile = null; 
     }
+    public Tile TileHere(){
+        return world.GetTileAt(x, y);
+    }
+    
+
+    public bool IsMoving(){
+        return !(state == AnimalState.Idle || state == AnimalState.Working);
+    }
 
     public float SquareDistance(float x1, float x2, float y1, float y2){
         return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);
     }
+
+    
     public void RegisterCbAnimalChanged(Action<Animal, Job> callback){ cbAnimalChanged += callback;}
     public void UnregisterCbAnimalChanged(Action<Animal, Job> callback){ cbAnimalChanged -= callback;}
+}
+
+
+
+public class Eating {
+    public float maxFood = 100f;
+    public float food = 90f;
+    public float hungerRate = 1f;
+
+    public Eating(){ 
+    }
+    
+    public float Fullness(){
+        return food / maxFood;
+    }
+    public bool Hungry(){
+        return food / maxFood < 0.5f;
+    }
+
+    public float Efficiency(){
+        if (Fullness() > 0.5f){
+            return 1f;
+        } else {
+            return Fullness() * 2f * 0.9f + 0.1f; // 10% at worst.
+        }
+    }
+    public void Eat(float nFood){
+        food += nFood;
+    }
+    public void Update(float t = 1f){
+        food -= hungerRate * t;
+        if (food < 0f){food = 0f;}
+    }
 }

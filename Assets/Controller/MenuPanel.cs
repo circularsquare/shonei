@@ -8,23 +8,34 @@ using UnityEngine.EventSystems;
 public class MenuPanel : MonoBehaviour
 {
     public static MenuPanel instance;
-    public GameObject[] panels;
+    public GameObject[] panels = null;
     public GameObject activePanel;
 
     public void Start(){
         if (instance != null) {
             Debug.LogError("there should only be one menu panel");}
         instance = this;       
-        GameObject parent = transform.parent.gameObject;
-        panels = new GameObject[] {
-            parent.transform.Find("InventoryPanel").gameObject,
-            parent.transform.Find("BuildPanel").gameObject,
-            parent.transform.Find("JobsPanel").gameObject
-        };
-        foreach (GameObject panel in panels){
-            panel.SetActive(false);
+    }
+    public void Update(){
+        if (panels.Length == 0){
+            LoadPanels();
         }
-        SetActivePanel(panels[0]);
+    }
+    public void LoadPanels(){     
+        GameObject parent = transform.parent.gameObject;
+        if (parent.transform.Find("InventoryPanel").gameObject != null){
+            panels = new GameObject[] {
+                parent.transform.Find("InventoryPanel").gameObject,
+                parent.transform.Find("BuildPanel").gameObject,
+                parent.transform.Find("JobsPanel").gameObject
+            };
+
+            // disabled for now because it's nice to have all the menus at once!
+            // foreach (GameObject panel in panels){
+            //     panel.SetActive(false);
+            // }
+            SetActivePanel(panels[0]);
+        }
     }
     public void OnClickInventory(){
         SetActivePanel(panels[0]);
@@ -39,15 +50,15 @@ public class MenuPanel : MonoBehaviour
         if (MouseController.instance != null){ 
             MouseController.instance.SetModeSelect(); }
         if (panel == activePanel && toggle){              // if click same thing twice, close window
-            activePanel.SetActive(false);
+            // activePanel.SetActive(false);
             activePanel = null;
             return;
         }
         if (activePanel != null){
-            activePanel.SetActive(false); 
+            // activePanel.SetActive(false); 
         }
         activePanel = panel;
-        activePanel.SetActive(true);
+        // activePanel.SetActive(true);
     }
 
 

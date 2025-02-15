@@ -11,6 +11,7 @@ public class Building {
     public int y;
     public BuildingType buildingType;
     public Sprite sprite;
+    public SpriteRenderer sr;
     public Tile tile; // not really sure how this will work for multi-tile buildings...
     public int capacity = 1;
     public int reserved = 0;
@@ -21,7 +22,7 @@ public class Building {
         this.y = y;
         this.tile = World.instance.GetTileAt(x, y);
         if (buildingType.name == "drawer"){
-            tile.inv = new Inventory(4, 10, Inventory.InvType.Storage, x, y); 
+            tile.inv = new Inventory(4, 20, Inventory.InvType.Storage, x, y); 
             // TODO: don't overwrite existing floor inventory!!
         }
 
@@ -34,7 +35,7 @@ public class Building {
         if (sprite == null || sprite.texture == null){
             sprite = Resources.Load<Sprite>("Sprites/Buildings/default");
         }
-        SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+        sr = go.AddComponent<SpriteRenderer>();
         sr.sprite = sprite; // remember this is copy and pasted into blueprint.cs too.
 
         // register callback to update sprite?
