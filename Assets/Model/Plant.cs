@@ -84,6 +84,8 @@ public class PlantType : BuildingType {
     public int maxYieldPerSize;
     public int harvestProgress;
     public int growthTime;
+    public string job {get; set;}
+    public Job jobType;
 
     [OnDeserialized]
     new internal void OnDeserialized(StreamingContext context){
@@ -93,6 +95,7 @@ public class PlantType : BuildingType {
         // }
         costs = ncosts.Select(iq => new ItemQuantity(iq.name, iq.quantity)).ToArray();
         products = nproducts.Select(iq => new ItemQuantity(iq.name, iq.quantity)).ToArray();
+        //jobType = Db.jobByName[job];
     }
 
 }

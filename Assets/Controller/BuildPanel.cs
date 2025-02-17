@@ -66,7 +66,7 @@ public class BuildPanel : MonoBehaviour {
                     return false;
                 } else {
                     Blueprint blueprint = new Blueprint(bt, tile.x, tile.y);
-                    tile.blueprint = blueprint;                   
+                    tile.blueprint = blueprint;                       
                     return true;
                 }
             }
