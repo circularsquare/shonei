@@ -219,6 +219,7 @@ background - 0
 2/9/25
 - changed item display formatting to not overlap
 - added some sprites
+
 2/15
 - i watched this video https://www.youtube.com/watch?v=JxI3Eu5DPwE&t=545s that introduced me to cool design patterns. i want to put them in eventually, especially actions and also components.
 - plants!
@@ -228,3 +229,7 @@ background - 0
 - eating!
     - mice seek out wheat and take 5 and eat it as they work 
     - if hungry, their productivity and movement speed drops    
+    - factored out into its own component hehe.
+
+2/17
+- made trees into a plant instead of a tile (still need to make loggers cut them instead of farmers)

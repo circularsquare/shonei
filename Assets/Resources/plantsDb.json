@@ -1,13 +1,15 @@
 [  
     {  
         "id": 501,
-        "name": "oaktree",
+        "name": "tree",
         "ncosts": [
             { "name": "acorn", "quantity": 1 }
         ],
         "nproducts": [
-            { "name": "wood", "quantity": 10 }
-        ]
+            { "name": "wood", "quantity": 10 },
+            { "name": "acorn", "quantity": 3 }
+        ],
+        "growthTime": 20
     },{  
         "id": 502,
         "name": "wheat",
@@ -16,7 +18,8 @@
         ],
         "nproducts": [
             { "name": "wheat", "quantity": 10 }
-        ]
+        ],
+        "growthTime": 60
     }
 
 ]  

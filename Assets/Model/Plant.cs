@@ -25,6 +25,7 @@ public class Plant : Building {
         this.x = x;
         this.y = y;
         this.tile = World.instance.GetTileAt(x, y);
+        tile.building = this;
 
         go = new GameObject();
         go.transform.position = new Vector3(x, y, 0);
@@ -62,9 +63,11 @@ public class Plant : Building {
 
     public void UpdateSprite(){
         sprite = Resources.Load<Sprite>("Sprites/Plants/" + plantType.name + growthStage.ToString());
-        sr.sprite = sprite;
+        if (sprite == null || sprite.texture == null){
+            sprite = Resources.Load<Sprite>("Sprites/Plants/" + plantType.name);} 
         if (sprite == null || sprite.texture == null){
             sprite = Resources.Load<Sprite>("Sprites/Plants/default");}
+        sr.sprite = sprite;
     }
 
 }
@@ -80,6 +83,7 @@ public class PlantType : BuildingType {
     public int maxSize;
     public int maxYieldPerSize;
     public int harvestProgress;
+    public int growthTime;
 
     [OnDeserialized]
     new internal void OnDeserialized(StreamingContext context){

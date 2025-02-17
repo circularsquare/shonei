@@ -48,9 +48,13 @@ public class WorldController : MonoBehaviour
                 }
             }
         }
-        world.GetTileAt(5, 4).type = Db.tileTypeByName["tree"];
-        world.GetTileAt(4, 4).type = Db.tileTypeByName["tree"];
-        world.GetTileAt(12, 4).type = Db.tileTypeByName["tree"];
+        // world.GetTileAt(5, 4).type = Db.tileTypeByName["tree"];
+        // world.GetTileAt(4, 4).type = Db.tileTypeByName["tree"];
+        // world.GetTileAt(12, 4).type = Db.tileTypeByName["tree"];
+        new Plant(Db.plantTypeByName["tree"], 4, 4);
+        new Plant(Db.plantTypeByName["tree"], 5, 4);
+        new Plant(Db.plantTypeByName["tree"], 12, 4);
+
         world.CalculateTileStandability();
     } 
 
