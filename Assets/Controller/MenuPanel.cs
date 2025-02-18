@@ -18,23 +18,22 @@ public class MenuPanel : MonoBehaviour
     }
     public void Update(){
         if (panels.Length == 0){
-            LoadPanels();
+            // LoadPanels(); // deactivaed for now
         }
     }
     public void LoadPanels(){     
         GameObject parent = transform.parent.gameObject;
-        if (parent.transform.Find("InventoryPanel").gameObject != null){
+        if (parent.transform.Find("InventoryPanel") != null){
             panels = new GameObject[] {
                 parent.transform.Find("InventoryPanel").gameObject,
                 parent.transform.Find("BuildPanel").gameObject,
                 parent.transform.Find("JobsPanel").gameObject
             };
 
-            // disabled for now because it's nice to have all the menus at once!
-            // foreach (GameObject panel in panels){
+            // foreach (GameObject panel in panels){ // disabled for now because it's nice to have all the menus at once!
             //     panel.SetActive(false);
             // }
-            SetActivePanel(panels[0]);
+            // SetActivePanel(panels[0]);
         }
     }
     public void OnClickInventory(){
@@ -58,8 +57,6 @@ public class MenuPanel : MonoBehaviour
             // activePanel.SetActive(false); 
         }
         activePanel = panel;
-        // activePanel.SetActive(true);
+        activePanel.SetActive(true);
     }
-
-
 }

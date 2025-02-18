@@ -20,6 +20,8 @@ public class InventoryController : MonoBehaviour
     public Dictionary<int, GameObject> itemDisplayGos; // keyed by itemid
     public Dictionary<int, int> targets;
 
+    public List<Inventory> inventories = new List<Inventory>(); // list of invs
+
     void Start(){    
         if (instance != null) {
             Debug.LogError("there should only be one inv controller");}
@@ -30,6 +32,10 @@ public class InventoryController : MonoBehaviour
         targets = Db.itemsFlat.ToDictionary(i => i.id, i => 1000);
     }
 
+    public void AddInventory(Inventory inv){
+        inventories.Add(inv);
+    }
+
     public void TickUpdate(){
         if (world == null){
             world = WorldController.instance.world;
@@ -37,6 +43,9 @@ public class InventoryController : MonoBehaviour
             foreach (Item item in Db.items){
                 AddItemDisplay(item);
             }
+        }
+        foreach (Inventory inv in inventories){
+            inv.TickUpdate();
         }
         UpdateItemsDisplay();
     }

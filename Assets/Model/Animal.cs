@@ -22,6 +22,7 @@ public class Animal : MonoBehaviour
     public Item desiredItem;    // item you're fetching
     public int desiredItemQuantity;
     public Tile storageTile;    // tile to store fetched items in (for haulers)
+    public Tile homeTile;   
 
     public Recipe recipe;
     public int numRounds = 0;
@@ -37,6 +38,7 @@ public class Animal : MonoBehaviour
     // maybe one for each job?
 
     public Eating eating;
+    public Eeping eeping;
     public Nav nav; 
 
     public enum AnimalState {
@@ -44,17 +46,22 @@ public class Animal : MonoBehaviour
         Walking,                // going somewhere unburdened OR going to work station?
         Collecting,             // for producers, collecting inputs for recipe
         Working,                // for producers, making recipe
+        Eeping,
         Fetching, Delivering,   // for hauling, getting and delivering.
         Taking,                 // for taking like food for yourself.
         WalkingToHarvest,
         WalkingToWork,
+        WalkingToEep,
+        
     } 
     public AnimalState state;
+
+    public System.Random random;
+    public int tickCounter = 0;
 
     public GameObject go;
     public SpriteRenderer sr;
     public Sprite sprite;
-    public System.Random random;
     public Bounds bounds; // a box to click on to select the animal
     public World world;
     
@@ -73,18 +80,29 @@ public class Animal : MonoBehaviour
         this.inv = new Inventory(5, 10, Inventory.InvType.Animal);
         this.efficiency = 1f;
         this.energy = 0f;
-
+        
         this.eating = new Eating();
+        this.eeping = new Eeping();
         this.nav = new Nav(this);
         
         ginv = GlobalInventory.instance;
         random = new System.Random();
+
+        FindHome();
     }
     
     public void TickUpdate(){ // called from animalcontroller each second.
+        if (this.eating == null){return;} // animal not fully initted yet
+        tickCounter++;
+        if (tickCounter % 10 == 0){ 
+            SlowUpdate(); 
+        }
+
         eating.Update();
-        efficiency = eating.Efficiency(); // will have other factors in efficiency later.
+        eeping.Update();
+        efficiency = eating.Efficiency() * eeping.Efficiency();
         maxSpeed = 2f * efficiency;
+
 
         if (eating.Hungry()){
             if (inv.ContainsItem(Db.itemByName["wheat"])){ // if have food in inv
@@ -92,8 +110,23 @@ public class Animal : MonoBehaviour
                 eating.Eat(20f);
             }
             else { // else find food
-                Take(Db.itemByName["wheat"]); 
+                Take(Db.itemByName["wheat"], 5); // look for 5 food to take 
             } 
+        }
+        else if (eeping.Eepy() && state != AnimalState.Eeping){
+            GoToEep();
+        }
+        
+        if (state == AnimalState.Eeping){
+            eeping.Eep(1f, AtHome());
+            if (eeping.eep >= eeping.maxEep){
+                state = AnimalState.Idle;
+            }
+            if (AtHome() && homeTile.building.reserved < homeTile.building.capacity && homeTile.building.reserved > 2){
+                if (random.Next(0, 50) == 0){
+                    AnimalController.instance.AddAnimal(x, y);
+                }
+            }
         }
 
         energy += efficiency;
@@ -115,6 +148,9 @@ public class Animal : MonoBehaviour
             }
         }
     }
+    public void SlowUpdate(){ // called every 10 or so seconds
+        FindHome();
+    }
 
 
 
@@ -131,7 +167,6 @@ public class Animal : MonoBehaviour
             // arrived at target
             else if (Vector3.Distance(this.go.transform.position, target.go.transform.position) < 0.02f){
                 this.go.transform.position = target.go.transform.position;
-
                 SyncPosition(); 
 
                 if (state == AnimalState.Walking)        { state = AnimalState.Idle; }
@@ -140,7 +175,8 @@ public class Animal : MonoBehaviour
                 else if (state == AnimalState.WalkingToHarvest){ OnArrivalHarvest(); }
                 else if (state == AnimalState.Fetching)  { OnArrivalFetch(); }
                 else if (state == AnimalState.Delivering){ OnArrivalDeliver(); }
-                else if (state == AnimalState.Taking)    { OnArrivalTake(); } // refactor all this into one function onarrival?
+                else if (state == AnimalState.Taking)    { OnArrivalTake(); }
+                else if (state == AnimalState.WalkingToEep){ OnArrivalEep(); } 
             }
             else {  // move toward target
                 this.go.transform.position = Vector3.MoveTowards(this.go.transform.position, 
@@ -150,7 +186,13 @@ public class Animal : MonoBehaviour
                 sr.flipX = !isMovingRight;
                 SyncPosition();
             }
-        }
+         } 
+        // else if (state == AnimalState.Eeping){ // this might be wastefully updating too much.
+        //     eeping.Eep(Time.deltaTime);
+        //     if (eeping.eep >= eeping.maxEep){
+        //         state = AnimalState.Idle;
+        //     }
+        // }
     }
 
     public void FindWork(){
@@ -181,7 +223,7 @@ public class Animal : MonoBehaviour
                 t = nav.FindWorkTile(Db.tileTypeByName[recipe.tile]);
             }
             else if (Db.buildingTypeByName.ContainsKey(recipe.tile)){
-                t = nav.FindWorkBuilding(Db.buildingTypeByName[recipe.tile]);
+                t = nav.FindBuilding(Db.buildingTypeByName[recipe.tile]);
             } 
             if (t != null){
                 numRounds = CalculateWorkPossible(recipe);      // calc numRounds
@@ -272,7 +314,7 @@ public class Animal : MonoBehaviour
         state = AnimalState.Idle;
     }
 
-    public bool Take(Item item, int quantity = 5){
+    public bool Take(Item item, int quantity = 1){
         desiredItem = item;
         desiredItemQuantity = quantity;
         Tile itemTile = nav.FindItem(item);
@@ -285,11 +327,11 @@ public class Animal : MonoBehaviour
     }
     public void OnArrivalTake(){      
         TakeItem(desiredItem, desiredItemQuantity); // pick up items
-        desiredItemQuantity = desiredItemQuantity - inv.Quantity(desiredItem);
+        desiredItemQuantity = desiredItemQuantity - inv.Quantity(desiredItem); // extra desired
+        // if still desire more, look for more
         if (inv.GetStorageForItem(desiredItem) > 5 && desiredItemQuantity > 0 && Take(desiredItem, desiredItemQuantity)){ } // look for more
         else{ state = AnimalState.Idle; }
     }
-
 
     public bool Collect(){ // pick up recipe inputs and decide what to do next
         if (recipe != null){ Debug.LogError("lost recipe!");}
@@ -324,6 +366,9 @@ public class Animal : MonoBehaviour
             /* ?????? keep collecting the same item if you have space and can find stuff to fetch and can store it */  }
         Collect();
     }
+    public void OnArrivalEep(){
+        state = AnimalState.Eeping;
+    }
 
 
     public bool Harvest(){
@@ -348,53 +393,64 @@ public class Animal : MonoBehaviour
         if (tileHere != null && tileHere.inv != null){ 
             tileHere.inv.MoveItemTo(inv, item, quantity);
             if (tileHere.inv.IsEmpty() && tileHere.inv.invType == Inventory.InvType.Floor){
-                Destroy(tileHere.inv.go);
+                tileHere.inv.Destroy(); 
                 tileHere.inv = null; // delete an empty floor inv.
             }
         }
     }
-    public void DropItem(Item item, Tile dTile = null){     // tries to drop all of an item at a nearby tile.
+    public void DropItem(Item item, Tile dTile = null, int quantity = -1){     // tries to drop all of an item at a nearby tile.
         if (dTile == null){dTile = world.GetTileAt(x, y); }
         if (dTile.inv == null){
             dTile.inv = new Inventory(1, 20, Inventory.InvType.Floor, dTile.x, dTile.y);
         }
-        inv.MoveItemTo(dTile.inv, item, inv.Quantity(item));
-        if (inv.Quantity(item) > 0){
+        if (quantity == -1){ inv.MoveItemTo(dTile.inv, item, inv.Quantity(item)); } // default: dropall
+        else { quantity = inv.MoveItemTo(dTile.inv, item, quantity); }
+        if (inv.Quantity(item) > 0 && (quantity == -1 || quantity > 0)){
             DropItem(item, nav.FindPlaceToDrop(item));} // if can't drop here, drop nearby
             // TODO: make this require the animal to actually deliver it unless they cant fit it into their inv
     }
-    public void DropItems(){    // drops all items. maybe change to not drop food?
+    public void DropItems(){    // drops all items, tries to keep 5 food on hand.
+                                // actually keeps 5 of each food stack. kinda sloppy, needs work eventually.
         foreach (ItemStack stack in inv.itemStacks){
             if (stack != null && stack.quantity > 0){
+                if (stack.item.name == "wheat"){
+                    DropItem(stack.item, nav.FindPlaceToDrop(stack.item), stack.quantity - 5);
+                }
                 DropItem(stack.item, nav.FindPlaceToDrop(stack.item));
             }
         }
     }
 
+    // produces item in ani inv, dumps at nearby tile if inv full
+    public void Produce(Item item, int quantity = 1){   
+        if (quantity < 0){
+            Debug.Log("called produce with negative quantity, use consume instead");
+            Consume(item, -quantity); return;
+        }
+        // int leftover = inv.Produce(item, quantity); // disabled producing into inv for now...
+        int leftover = quantity;
+        if (leftover > 0){
+            Tile dTile = nav.FindPlaceToDrop(item);
+            if (dTile == null){Debug.LogError("no place to drop item!! excess item disappearing.");}
+            if (dTile.inv == null){
+                dTile.inv = new Inventory(1, 20, Inventory.InvType.Floor, dTile.x, dTile.y);
+            }
+            dTile.inv.Produce(item, leftover);
+        }        
+    }
     public void Produce(string itemName, int quantity = 1){ Produce(Db.itemByName[itemName], quantity); }
     public void Produce(ItemQuantity iq){ Produce(iq.item, iq.quantity); }
     public void Produce(ItemQuantity[] iqs){ Array.ForEach(iqs, iq => Produce(iq)); }
-    public void Produce(Item item, int quantity = 1){   // instantly produces item at a nearby tile
-        ginv.AddItem(item.id, quantity);
-        Tile dTile = nav.FindPlaceToDrop(item);
-        if (dTile == null){Debug.Log("no place to drop item!!");}
-        if (dTile.inv == null){
-            dTile.inv = new Inventory(1, 20, Inventory.InvType.Floor, dTile.x, dTile.y);
-        }
-        dTile.inv.AddItem(item, quantity);
-    }
-    // ideally... produce recipe would check both inv of tileHere and of animal. how would that work?
-    public void Produce(Recipe recipe){ // different from produce iq! 
-        //only safe to call if you are sure the inv has all inputs!!
-        ginv.AddItems(recipe.inputs, true);
-        inv.AddItems(recipe.inputs, true);
-        foreach (ItemQuantity iq in recipe.outputs){
-            Produce(iq);
-        }
+    public void Produce(Recipe recipe){ // checks inv for recipe inputs
+        if (recipe != null && inv.ContainsItems(recipe.inputs)){
+            foreach (ItemQuantity iq in recipe.inputs){ inv.Produce(iq.item, -iq.quantity); }
+            Produce(recipe.outputs);
+        } else { Debug.Log("called produce without having all recipe ingredients! not doing."); }
     }
     public void Consume(Item item, int quantity = 1){
-        ginv.AddItem(item, -quantity);
-        inv.AddItem(item, -quantity);
+        if (inv.Produce(item, -quantity) < 0){
+            Debug.LogError("tried consuming more than you have!");
+        }
     }
 
     
@@ -467,6 +523,12 @@ public class Animal : MonoBehaviour
         bounds.center = go.transform.position;
     }
 
+    public void GoTo(Tile t){ // this sets state to walking. don't use this for stuff like fetching.
+        target = t;
+        this.state = AnimalState.Walking;
+    }
+    public void GoTo(float x, float y){GoTo(world.GetTileAt(x, y));}
+
     public void GoToWork(){
         if (workTile == null){Debug.LogError("work tile doesn't exist!");}
         target = workTile;
@@ -474,16 +536,15 @@ public class Animal : MonoBehaviour
     }
     public void GoToHarvest(Tile t){
         target = t;
+        SetWorkTile(t); // just to reserve the tile. i don't think worktile is used for harvesters.
         this.state = AnimalState.WalkingToHarvest;
     }
+    public void GoToEep(){ 
+        if (homeTile != null){target = homeTile; state = AnimalState.WalkingToEep;}
+        else { state = AnimalState.Eeping;}
+    }
 
-    public void GoTo(float x, float y){
-        GoTo(world.GetTileAt(x, y));
-    }
-    public void GoTo(Tile t){ // this sets state to walking. don't use this for stuff like fetching.
-        target = t;
-        this.state = AnimalState.Walking;
-    }
+
     public void SetWorkTile(Tile t){
         if (workTile != null){
             workTile.reserved -= 1;
@@ -495,10 +556,22 @@ public class Animal : MonoBehaviour
         workTile.reserved -= 1;
         workTile = null; 
     }
+    public void FindHome(){
+        if (homeTile == null){
+            homeTile = nav.FindBuilding(Db.buildingTypeByName["house"]);
+            if (homeTile != null){
+                homeTile.building.reserved += 1;
+            }
+        }
+    }
+
+
     public Tile TileHere(){return world.GetTileAt(x, y);}
+    public bool AtHome(){return homeTile != null && homeTile == TileHere();}
 
     public bool IsMoving(){
-        return !(state == AnimalState.Idle || state == AnimalState.Working);
+        return !(state == AnimalState.Idle || state == AnimalState.Working 
+            || state == AnimalState.Eeping);
     }
 
     public float SquareDistance(float x1, float x2, float y1, float y2){return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);}
@@ -528,7 +601,7 @@ public class Nav {
     public Tile FindItemToHaul(Item item, int r = 50){ return Find(t => t.HasItemToHaul(item), r); }
     public Tile FindStorage(Item item, int r = 50){ return Find(t => t.HasStorageForItem(item), r); }
     public Tile FindPlaceToDrop(Item item, int r = 3){ return Find(t => t.HasSpaceForItem(item), r, true); }
-    public Tile FindWorkBuilding(BuildingType buildingType, int r = 50){
+    public Tile FindBuilding(BuildingType buildingType, int r = 50){
         return Find(t => t.building != null && t.building.buildingType == buildingType && 
             t.building.capacity - t.building.reserved > 0, r);
     }
@@ -629,7 +702,7 @@ public class Eating {
         if (Fullness() > 0.5f){
             return 1f;
         } else {
-            return Fullness() * 2f * 0.9f + 0.1f; // 10% at worst.
+            return Fullness() * 2f * 0.8f + 0.2f; // 20% at worst.
         }
     }
     public void Eat(float nFood){
@@ -639,4 +712,34 @@ public class Eating {
         food -= hungerRate * t;
         if (food < 0f){food = 0f;}
     }
+}
+
+public class Eeping {
+    public float maxEep = 100f;
+    public float eep = 90f;
+    public static float tireRate = 0.3f;
+    public static float eepRate = 5f;
+    public static float outsideEepRate = 2f;
+
+    public Eeping(){}
+    public bool Eepy(){
+        return eep / maxEep < 0.5f;
+    }
+    public float Efficiency(){
+        if (eep / maxEep > 0.5f){
+            return 1f;
+        } else {
+            return eep / maxEep * 2f * 0.8f + 0.2f; // 20% at worst.
+        }
+    }
+    public float Eepness(){ return eep / maxEep; }
+    public void Eep(float t, bool atHome){
+        if (atHome){ eep += t * eepRate; }
+        else { eep += t * outsideEepRate; }
+    }
+    public void Update(float t = 1f){
+        eep -= tireRate * t;
+        if (eep < 0f){eep = 0f;}
+    }
+
 }

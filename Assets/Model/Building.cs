@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using System;
 using System.Linq;
 using System.Runtime.Serialization;
@@ -24,10 +25,19 @@ public class Building {
         this.x = x;
         this.y = y;
         this.tile = World.instance.GetTileAt(x, y);
+
+        if (buildingType.isTile){
+            tile.type = Db.tileTypeByName[buildingType.name];
+            DestroySelf();
+            return;
+        }
+
         if (buildingType.name == "drawer"){
             tile.inv = new Inventory(4, 20, Inventory.InvType.Storage, x, y); 
             // TODO: don't overwrite existing floor inventory!!
         }
+
+        capacity = buildingType.capacity;
 
         go = new GameObject();
         go.transform.position = new Vector3(x, y, 0);
@@ -42,6 +52,11 @@ public class Building {
         sr.sprite = sprite; // remember this is copy and pasted into blueprint.cs too.
 
         // register callback to update sprite?
+    }
+
+    public void DestroySelf(){
+        GameObject.Destroy(go);
+        tile.building = null;
     }
 
     // buildings no longer have inventories. tiles do.
@@ -68,8 +83,11 @@ public class BuildingType {
     public bool isPlant;
     public string njob {get; set;}
     public Job job;
+    public int capacity {get; set;} // animal capacity, like max # of workers or eepers
+
     [OnDeserialized]
     internal void OnDeserialized(StreamingContext context){
+        if (capacity == 0){ capacity = 20;} // default, basically infinite capacity 
         costs = new ItemQuantity[ncosts.Length];
         for (int i = 0; i < ncosts.Length; i++){
             costs[i] = new ItemQuantity(ncosts[i].name, ncosts[i].quantity);

@@ -8,17 +8,32 @@ public class ItemStack
     public bool isComposite{get; set;}
     public Item item { get; set; }
     public int quantity { get; set; } //if i want some things to be floats... have a display multiplier?
-                                        // so some things can then be like 0.001 but in reality are just small?
+                                        // so some things can then be like 0.001 but in reality are just small? 
+    public int decayCounter; // increments from 0 to maxdecaycount, when reaches it, it decays 1 item.
+    public static int maxDecayCount = 1000000;
     public int stackSize = 100;
+    public Inventory inv;
 
-    public ItemStack(Item item, int quantity = 0, int stackSize = 100)
-    {
+    public ItemStack(Inventory inv, Item item, int quantity = 0, int stackSize = 100){
         this.item = item;
         this.quantity = quantity;
         this.stackSize = stackSize;
-        if (item != null){
-            isComposite = item.isComposite;
-        }        
+        this.inv = inv;
+        decayCounter = 0;
+    }
+
+    public void Decay(float time = 1f){
+        if (item != null && quantity > 0){
+            float decayedQuantity = (float)quantity * (item.decayRate * time / (float)(Db.ticksInDay*Db.daysInYear));
+            // ^ number near 0
+            decayCounter += (int)(decayedQuantity * maxDecayCount);
+            int amountToDecay = decayCounter / maxDecayCount;
+            if (amountToDecay > 0){
+                Debug.Log("decayed! " + item.name + " x " + amountToDecay);
+                inv.Produce(item, -amountToDecay);
+                decayCounter -= amountToDecay * maxDecayCount;
+            }
+        }
     }
     public int? AddItem(Item item, int quantity){
         if (this.item == null || this.quantity == 0){ // add to empty stack

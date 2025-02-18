@@ -31,19 +31,6 @@ public class BuildPanel : MonoBehaviour {
             }
         }
 
-        // foreach (PlantType plantType in Db.plantTypes){
-        //     if (plantType != null){
-        //         GameObject buildDisplayGo = Instantiate(buildDisplayPrefab, transform);
-        //         foreach (ItemQuantity iq in plantType.costs) { 
-        //             GameObject costDisplay = Instantiate(textDisplayPrefab, buildDisplayGo.transform);
-        //             costDisplay.GetComponent<TMPro.TextMeshProUGUI>().text = iq.item.name + ": " + iq.quantity.ToString();
-        //             costDisplay.name = "CostDisplay_" + iq.item.name;
-        //         }
-        //         // buildDisplayGo.transform.GetChild(0).GetComponent<Button>().onClick.AddListener(() => SetBuildingType(plantType));  
-        //         GameObject buildingTextGo = buildDisplayGo.transform.Find("BuildingButton/TextBuildingName").gameObject;
-        //         buildingTextGo.GetComponent<TMPro.TextMeshProUGUI>().text = plantType.name;
-        //     }
-        // }
     }
     public void SetBuildingType(BuildingType bt){
         this.buildingType = bt;
@@ -53,24 +40,16 @@ public class BuildPanel : MonoBehaviour {
     // mousecontroller handles the mouse stuff. and calls build here.
 
     public bool Construct(Tile tile){
+        // tile must be empty (id 0), have no building, and have no blueprint.
         if (buildingType != null && tile.type.id == 0){ // && GlobalInventory.instance.SufficientResources(buildingType.costs)
-            if (buildingType.isTile){
-                if (Db.tileTypeByName.ContainsKey(buildingType.name)){
-                    tile.type = Db.tileTypeByName[buildingType.name];
-                    GlobalInventory.instance.AddItems(buildingType.costs, true);
-                }
+            if ((tile.building != null) || (tile.blueprint != null)){
+                Debug.Log("theres already a building or blueprint here!");
+                return false;
+            } else {
+                Blueprint blueprint = new Blueprint(buildingType, tile.x, tile.y);
+                tile.blueprint = blueprint;                       
+                return true;
             }
-            if (!buildingType.isTile){
-                if ((tile.building != null) || (tile.blueprint != null)){
-                    Debug.Log("theres already a building or blueprint here!");
-                    return false;
-                } else {
-                    Blueprint blueprint = new Blueprint(buildingType, tile.x, tile.y);
-                    tile.blueprint = blueprint;                       
-                    return true;
-                }
-            }
-            return true;
         }
         return false;
     }

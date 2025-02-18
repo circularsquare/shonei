@@ -29,6 +29,9 @@
 - ui
     - add highlight on currently selected menu
 
+- inventory
+    - have a "keep" setting that invs can toggle to keep food for consumption and stuff like that. 
+
 - plant
     - flesh out plant growth
         - add placeholder methods and things for checking moisture and temperature 
@@ -37,13 +40,9 @@
     - have plant building disappear? and have blueprint auto create.
     - acorn sprite
     - make plant tile sprites start at 0
-
-- item decay 
-    - one rate for floor inv, other rate for others
-    - have item decay baserate, high for perishables
+    - sync plant and building constructors!
 
 - food
-    - have haulers not throw out their food
     - don't allow them to eat last food seeds
 
 BUGS

@@ -235,3 +235,11 @@ background - 0
 - made trees into a plant instead of a tile 
 - made loggers do trees instead of farmers
 - added plant growthTime
+- refactored Nav out of animal
+2/18
+- added itemdecay! with variable based on invType. also reorganized item movement stuff to be less in Animal class.
+- added tile construction with buildings that turn into tiles
+- added scroll bar to build menu
+- added homes to mice, 4 mice to a house.
+    - added eep, mice will go to home to eep.
+- added reproduction, that happens while eeping!

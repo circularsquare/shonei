@@ -2,10 +2,12 @@
     {
         "id": 0,
         "name": "none",
+        "decayRate": 0.0,
         "children": null
     },{
         "id": 1,
         "name": "wood",
+        "decayRate": 0.08,
         "children": [
             {
                 "id": 2,
@@ -20,6 +22,7 @@
     },{
         "id": 10,
         "name": "stone",
+        "decayRate": 0.01,
         "children": [
             {
                 "id": 11,
@@ -34,6 +37,7 @@
     },{
         "id": 100,
         "name": "planks",
+        "decayRate": 0.06,
         "children": [
             {
                 "id": 101,
@@ -48,22 +52,27 @@
     },{
         "id": 110,
         "name": "sawdust",
+        "decayRate": 0.04,
         "children": null
     },{
         "id": 20,
         "name": "soil",
+        "decayRate": 0.01,
         "children": null
     },{
         "id": 150,
         "name": "seeds",
+        "decayRate": 0.4,
         "children": [
             {
                 "id": 151,
                 "name": "wheat",
+                "decayRate": 0.3,
                 "children": null
             },{
                 "id": 152,
                 "name": "acorn",
+                "decayRate": 0.4,
                 "children": null
             }
         ]

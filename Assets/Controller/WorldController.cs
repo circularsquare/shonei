@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 
+// this class handles tile sprites, and also places initial objects into world.
 public class WorldController : MonoBehaviour
 {
     public static WorldController instance {get; protected set;}
@@ -51,10 +52,10 @@ public class WorldController : MonoBehaviour
         // world.GetTileAt(5, 4).type = Db.tileTypeByName["tree"];
         // world.GetTileAt(4, 4).type = Db.tileTypeByName["tree"];
         // world.GetTileAt(12, 4).type = Db.tileTypeByName["tree"];
-        Plant plant1 = new Plant(Db.plantTypeByName["tree"], 4, 4);
+        Plant plant1 = new Plant(Db.plantTypeByName["tree"], 12, 4);
         plant1.Mature();
         new Plant(Db.plantTypeByName["tree"], 5, 4);
-        new Plant(Db.plantTypeByName["tree"], 12, 4);
+        new Plant(Db.plantTypeByName["tree"], 8, 4);
 
         world.CalculateTileStandability();
     } 

@@ -48,7 +48,9 @@ public class InfoPanel : MonoBehaviour {
                 "\n job: " + ani.job.name +
                 "\n inventory: " + ani.inv.ToString() + 
                 "\n location: " + ani.go.transform.position.ToString() + 
-                "\n fullness: " + ani.eating.Fullness().ToString("F2"));
+                "\n efficiency: " + ani.efficiency.ToString("F2") + 
+                "\n fullness: " + ani.eating.Fullness().ToString("F2") + 
+                "\n eep: " + ani.eeping.Eepness().ToString("F2"));
                 textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = displayText;
             }
         }
@@ -67,7 +69,8 @@ public class InfoPanel : MonoBehaviour {
                     infoMode = InfoMode.Building;
                     gameObject.SetActive(true);
                     displayText =  ( "building: " + tile.building.buildingType.name + 
-                        "\n location: " + tile.x.ToString() + ", " + tile.y.ToString());
+                        "\n location: " + tile.x.ToString() + ", " + tile.y.ToString() + 
+                        "\n reserved: " + tile.building.reserved);
                 }
             } else if (tile.blueprint != null){
                 infoMode = InfoMode.Blueprint;

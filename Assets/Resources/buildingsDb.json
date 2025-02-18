@@ -8,7 +8,8 @@
         "ncosts": [
             { "name": "wood", "quantity": 10 }
         ],
-        "njob": "hauler"
+        "njob": "hauler",
+        "capacity": 4
     },{  
         "id": 2,
         "name": "drawer",
@@ -50,7 +51,8 @@
         "ncosts": [
             { "name": "wood", "quantity": 5 }
         ],
-        "njob": "hauler"
+        "njob": "hauler",
+        "capacity": 1
     }
 
 

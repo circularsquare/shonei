@@ -14,13 +14,15 @@ public class Inventory
     public Dictionary<int, bool> allowed;
     public GameObject go;
 
+    public GlobalInventory ginv;
+
     public Inventory(int n = 1, int stackSize = 20, InvType invType = InvType.Floor, int x = 0, int y = 0) {
         nStacks = n;
         this.stackSize = stackSize;
         this.invType = invType;
         itemStacks = new ItemStack[nStacks];
         for (int i = 0; i < nStacks; i++){
-            itemStacks[i] = new ItemStack(null, 0, stackSize);
+            itemStacks[i] = new ItemStack(this, null, 0, stackSize);
         }
 
         allowed = Db.itemsFlat.ToDictionary(i => i.id, i => true); // default all items allowed
@@ -36,9 +38,31 @@ public class Inventory
             sr.sprite = Resources.Load<Sprite>("Sprites/Inventory/" + invType.ToString());
         }
 
+        InventoryController.instance.inventories.Add(this);
+        ginv = GlobalInventory.instance;
     }
-    
+    public void Destroy(){
+        if (go != null){GameObject.Destroy(go); go = null;}
+        InventoryController.instance.inventories.Remove(this);
+    }
+    public void TickUpdate(){
+        Decay();
+    }
+    public void Decay(float time = 1f){
+        float invTypeMult = 1f;
+        if (invType == InvType.Floor){ invTypeMult = 5f; }
+        if (invType == InvType.Storage){ invTypeMult = 1f; }
+        if (invType == InvType.Animal){ invTypeMult = 1f; }
+        for (int i = 0; i < nStacks; i++){
+            itemStacks[i].Decay(invTypeMult * time);
+        }
+    }
 
+    // =========================
+    // ----- MOVING ITEMS ------
+    // =========================
+
+    // returns leftover size 
     public int AddItem(Item item, int quantity){
         if (allowed[item.id] == false && quantity > 0){  // allowed is not implemented yet... for limiting inventories to certian types of resource
             Debug.Log("tried adding unallowed item to inventory");
@@ -55,15 +79,6 @@ public class Inventory
         return quantity; // leftover size
     }
     public int AddItem(string name, int quantity){return(AddItem(Db.itemByName[name], quantity));}
-    public void AddItems(ItemQuantity[] iqs, bool negate = false){
-        int negateNum = 1;
-        if (negate){ negateNum = -1; }
-        foreach (ItemQuantity iq in iqs){
-            if (AddItem(iq.item, negateNum * iq.quantity) != 0){
-                Debug.LogError("failed to add items!" + iq.item.ToString());
-            } // this shoudl be using stacks????
-        }
-    }
     public int TakeItem(Item item, int quantity){return AddItem(item, -quantity);}
     public int TakeItem(string name, int quantity){return AddItem(name, -quantity);}
     public int MoveItemTo(Inventory otherInv, Item item, int quantity){
@@ -77,14 +92,25 @@ public class Inventory
     }
     public int MoveItemTo(Inventory otherInv, string name, int quantity){return MoveItemTo(otherInv, Db.itemByName[name], quantity);}
 
-    public override string ToString(){
-        string s = "inventory \n";
+    // adds to ginv too
+    // returns LEFTOVER size
+    public int Produce(Item item, int quantity){
+        int produced = quantity - AddItem(item, quantity);
+        ginv.AddItem(item, produced);
+        return quantity - produced;
+    }
+
+    // =========================
+    // ---- GETTING INFO -----
+    // =========================
+    public int Quantity(Item item){
+        int amount = 0;
         foreach (ItemStack stack in itemStacks){
-            if (stack != null){
-                s += stack.ToString();
-            }  
+            if (stack != null && stack.item == item){
+                amount += stack.quantity;
+            }
         }
-        return s;
+        return amount;
     }
     public bool ContainsItem(Item item){
         if (item == null){ return !IsEmpty(); }
@@ -122,15 +148,6 @@ public class Inventory
             }
         }
         return false;
-    }
-    public int Quantity(Item item){
-        int amount = 0;
-        foreach (ItemStack stack in itemStacks){
-            if (stack != null && stack.item == item){
-                amount += stack.quantity;
-            }
-        }
-        return amount;
     }
     public int GetStorageForItem(Item item){
         if (allowed[item.id] == false || invType == InvType.Floor){return 0;}
@@ -177,6 +194,36 @@ public class Inventory
         return true;
     }
 
+
+    // =========================
+    // ------ OTHER ------------
+    // =========================
+
+    public void Restack(){
+        var restackedInventory = new ItemStack[itemStacks.Length];
+        int index = 0;
+        foreach (var stack in itemStacks){
+            if (stack.quantity == 0) continue;
+
+            var matchingStack = restackedInventory.FirstOrDefault(s => s != null && s.item == stack.item);
+            if (matchingStack != null){
+                int spaceAvailable = matchingStack.stackSize - matchingStack.quantity;
+                int quantityToAdd = Math.Min(spaceAvailable, stack.quantity);
+
+                matchingStack.quantity += quantityToAdd;
+                stack.quantity -= quantityToAdd;
+
+                if (stack.quantity > 0){
+                    restackedInventory[index++] = new ItemStack(this, stack.item, stack.quantity, stackSize);
+                }
+            }
+            else {
+                restackedInventory[index++] = new ItemStack(this, stack.item, stack.quantity, stackSize);
+            }
+        }
+        itemStacks = restackedInventory;
+    }
+
     public void AllowItem(Item item){allowed[item.id] = true;}
     public void DisallowItem(Item item){allowed[item.id] = false;}
     public void ToggleAllowItem(Item item){allowed[item.id] = !allowed[item.id];
@@ -204,6 +251,16 @@ public class Inventory
         }
         go.GetComponent<SpriteRenderer>().sprite = sprite;   
     
+    }
+
+    public override string ToString(){
+        string str = "";
+        foreach (ItemStack stack in itemStacks){
+            if (stack != null && stack.quantity > 0){
+                str += stack.ToString();
+            }
+        }
+        return str;
     }
 
 

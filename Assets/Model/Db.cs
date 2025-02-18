@@ -4,9 +4,9 @@ using UnityEngine;
 using System.IO;
 using System;
 using System.Linq;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System.Runtime.Serialization;
+using Newtonsoft.Json;                  // used for somethign related to deserializing
+using Newtonsoft.Json.Linq; 
+using System.Runtime.Serialization;     // used for deserializing
 
 // this loads before anything else. 
 
@@ -30,6 +30,9 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
     public static BuildingType[] buildingTypes = new BuildingType[600];
     public static PlantType[] plantTypes = new PlantType[600];
     public static TileType[] tileTypes = new TileType[100];
+
+    public static int ticksInDay = 300;
+    public static int daysInYear = 20;
 
 
     // items: stored in csv and accessible through here
@@ -57,6 +60,7 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
     } 
 
     void ReadJson(){
+        
         // read Items
         string jsonTextItems = File.ReadAllText(Application.dataPath + "/Resources/itemsDb.json");
         Item[] itemsUnplaced = JsonConvert.DeserializeObject<Item[]>(jsonTextItems);
@@ -136,7 +140,6 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
                 job.nRecipes += 1;                
             }
         }        
-
     }
 
     void Update(){  }
@@ -204,40 +207,3 @@ public class TileType {
     public bool solid {get; set;}
 }
 
-public class ItemNameQuantity {
-    public string name {get; set;}
-    public int quantity {get; set;}
-}
-
-// for stuff like input costs.
-public class ItemQuantity {
-    public int id {get; set;}
-    public int quantity {get; set;}
-    public Item item;
-    public ItemQuantity(){}
-    [OnDeserialized]
-    internal void OnDeserialized(StreamingContext context){
-        item = Db.items[id];
-    }
-
-    public ItemQuantity(int id, int quantity){
-        this.id = id;
-        this.item = Db.items[id];
-        this.quantity = quantity;
-    }
-    public ItemQuantity(Item item, int quantity){
-        this.id = item.id;
-        this.item = item;
-        this.quantity = quantity;
-    }
-    public ItemQuantity(string name, int quantity){
-        this.id = Db.iidByName[name];
-        this.item = Db.itemByName[name];
-        this.quantity = quantity;
-    }
-    public override string ToString(){
-        return item.name + ": " + quantity.ToString();}
-    public string ItemName(){
-        return item.name;
-    }
-}
