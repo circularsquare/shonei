@@ -40,7 +40,7 @@ public class Inventory
     
 
     public int AddItem(Item item, int quantity){
-        if (allowed[item.id] == false && quantity > 0){ 
+        if (allowed[item.id] == false && quantity > 0){  // allowed is not implemented yet... for limiting inventories to certian types of resource
             Debug.Log("tried adding unallowed item to inventory");
             return quantity;
         } // don't add if not allowed
@@ -114,9 +114,9 @@ public class Inventory
         }
         return null;
     }
-    public bool HasItemToHaul(Item item){
+    public bool HasItemToHaul(Item item){ // if null, finds any item to haul
         foreach (ItemStack stack in itemStacks){
-            if (stack.item == item && stack.quantity > 0 &&
+            if ((item == null || stack.item == item) && stack.quantity > 0 &&
                 (allowed[stack.item.id] == false || invType == InvType.Floor)){
                 return true;
             }

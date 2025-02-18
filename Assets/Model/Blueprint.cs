@@ -71,7 +71,7 @@ public class Blueprint {
             building = new Building(buildingType, x, y);        
         }
         tile.building = building;
-        Debug.Log(buildingType.costs[0].quantity);
+        //Debug.Log(buildingType.costs[0].quantity);
         GlobalInventory.instance.AddItems(buildingType.costs, true);
 
         // delete blueprint

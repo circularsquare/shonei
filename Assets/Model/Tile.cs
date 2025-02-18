@@ -43,7 +43,7 @@ public class Tile
         if (inv == null){return null;}
         else{return inv.GetItemToHaul();}
     }
-    public bool HasItemToHaul(Item item){return (inv != null && inv.HasItemToHaul(item));}
+    public bool HasItemToHaul(Item item){return (inv != null && inv.HasItemToHaul(item));} // can be null for any item
     public int GetStorageForItem(Item item){
         if (inv != null && inv.invType == Inventory.InvType.Storage){
             return inv.GetStorageForItem(item);

@@ -88,6 +88,18 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
             tileTypes[tileType.id] = tileType;
             tileTypeByName.Add(tileType.name, tileType);
         }
+
+        // read Jobs
+        string jsonTextJobs = File.ReadAllText(Application.dataPath + "/Resources/jobsDb.json");
+        Job[] jobsUnplaced = JsonConvert.DeserializeObject<Job[]>(jsonTextJobs);
+        foreach (Job job in jobsUnplaced){
+            if (jobs[job.id] != null){Debug.LogError("error!! multiple jobs with same id");}
+            jobs[job.id] = job;
+            if (job.name != null){
+                jobByName.Add(job.name, job);
+            }
+        }
+
         // read Buildings
         string jsonBuildingTypes = File.ReadAllText(Application.dataPath + "/Resources/buildingsDb.json");
         BuildingType[] buildingTypesUnplaced = JsonConvert.DeserializeObject<BuildingType[]>(jsonBuildingTypes);
@@ -111,16 +123,7 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
             buildingTypeByName.Add(plantType.name, plantType);
         } 
 
-        // read Jobs
-        string jsonTextJobs = File.ReadAllText(Application.dataPath + "/Resources/jobsDb.json");
-        Job[] jobsUnplaced = JsonConvert.DeserializeObject<Job[]>(jsonTextJobs);
-        foreach (Job job in jobsUnplaced){
-            if (jobs[job.id] != null){Debug.LogError("error!! multiple jobs with same id");}
-            jobs[job.id] = job;
-            if (job.name != null){
-                jobByName.Add(job.name, job);
-            }
-        }
+
         // read Recipes
         string jsonTextRecipes = File.ReadAllText(Application.dataPath + "/Resources/recipesDb.json");
         Recipe[] recipesUnplaced = JsonConvert.DeserializeObject<Recipe[]>(jsonTextRecipes);
@@ -194,23 +197,6 @@ public class Recipe {
     }
 }
 
-public class BuildingType {
-    public int id {get; set;}
-    public string name {get; set;}
-    public int nx {get; set;}
-    public int ny {get; set;}
-    public ItemNameQuantity[] ncosts {get; set;}
-    public ItemQuantity[] costs;
-    public bool isTile {get; set;}
-    public bool isPlant;
-    [OnDeserialized]
-    internal void OnDeserialized(StreamingContext context){
-        costs = new ItemQuantity[ncosts.Length];
-        for (int i = 0; i < ncosts.Length; i++){
-            costs[i] = new ItemQuantity(ncosts[i].name, ncosts[i].quantity);
-        }
-    }
-}
 
 public class TileType {
     public int id {get; set;}

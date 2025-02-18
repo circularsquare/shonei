@@ -51,8 +51,6 @@ public class World : MonoBehaviour
             invController.TickUpdate(); // update itemdisplay, add controller instances
             InfoPanel.instance.UpdateInfo();
         }
-
-
         timer += Time.deltaTime;
     }
         

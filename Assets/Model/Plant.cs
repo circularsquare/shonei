@@ -41,18 +41,16 @@ public class Plant : Building {
     }
     
     public void Grow(int t){
-        age += 1;
-        if (age < 5){
-            growthStage = 1;
-        } else if (age < 10){
-            growthStage = 2;
-        } else if (age < 15){
-            growthStage = 3;
-        } else {
-            growthStage = 4;
+        age += t;
+        // hardcoded 4 growth stages
+        growthStage = Math.Min(1 + (age * 3 / plantType.growthTime), 4);
+        if (growthStage >= 4){ // probably wanna make this start at 0 (and change the sprite file names too).
             harvestable = true;
         }
         UpdateSprite();
+    }
+    public void Mature(){
+        Grow(plantType.growthTime);
     }
     public ItemQuantity[] Harvest(){
         harvestable = false;
@@ -84,8 +82,8 @@ public class PlantType : BuildingType {
     public int maxYieldPerSize;
     public int harvestProgress;
     public int growthTime;
-    public string job {get; set;}
-    public Job jobType;
+    // public string njob {get; set;}
+    // public Job job;
 
     [OnDeserialized]
     new internal void OnDeserialized(StreamingContext context){
@@ -95,7 +93,10 @@ public class PlantType : BuildingType {
         // }
         costs = ncosts.Select(iq => new ItemQuantity(iq.name, iq.quantity)).ToArray();
         products = nproducts.Select(iq => new ItemQuantity(iq.name, iq.quantity)).ToArray();
-        //jobType = Db.jobByName[job];
+        if (njob != null){
+            job = Db.jobByName[njob]; // this is duplicated in plant...
+        }
+        // handle null or 0 growthTime?
     }
 
 }

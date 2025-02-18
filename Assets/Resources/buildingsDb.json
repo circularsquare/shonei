@@ -7,7 +7,8 @@
         "ny": 1,
         "ncosts": [
             { "name": "wood", "quantity": 10 }
-        ]
+        ],
+        "njob": "hauler"
     },{  
         "id": 2,
         "name": "drawer",
@@ -16,7 +17,8 @@
         "ny": 1,
         "ncosts": [
             { "name": "wood", "quantity": 5 }
-        ]
+        ],
+        "njob": "hauler"
     },{  
         "id": 4,
         "name": "soil",
@@ -26,7 +28,8 @@
         "ncosts": [
             { "name": "soil", "quantity": 10 }
         ],
-        "isTile": true
+        "isTile": true,
+        "njob": "hauler"
     },{  
         "id": 5,
         "name": "stone",
@@ -36,7 +39,8 @@
         "ncosts": [
             { "name": "stone", "quantity": 10 }
         ],
-        "isTile": true
+        "isTile": true,
+        "njob": "hauler"
     },{  
         "id": 100,
         "name": "sawmill",
@@ -45,7 +49,8 @@
         "ny": 1,
         "ncosts": [
             { "name": "wood", "quantity": 5 }
-        ]
+        ],
+        "njob": "hauler"
     }
 
 

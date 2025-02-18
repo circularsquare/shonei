@@ -8,7 +8,7 @@ public class BuildPanel : MonoBehaviour {
     public GameObject buildDisplayPrefab; // UI button prefab for each building
     public GameObject textDisplayPrefab;
     public static BuildPanel instance;
-    public BuildingType bt;
+    public BuildingType buildingType;
 
     private void Start(){
         if (instance != null) {
@@ -46,26 +46,26 @@ public class BuildPanel : MonoBehaviour {
         // }
     }
     public void SetBuildingType(BuildingType bt){
-        this.bt = bt;
+        this.buildingType = bt;
         MouseController.instance.SetModeBuild();    
     }
 
     // mousecontroller handles the mouse stuff. and calls build here.
 
     public bool Construct(Tile tile){
-        if (bt != null && tile.type.id == 0){ // && GlobalInventory.instance.SufficientResources(bt.costs)
-            if (bt.isTile){
-                if (Db.tileTypeByName.ContainsKey(bt.name)){
-                    tile.type = Db.tileTypeByName[bt.name];
-                    GlobalInventory.instance.AddItems(bt.costs, true);
+        if (buildingType != null && tile.type.id == 0){ // && GlobalInventory.instance.SufficientResources(buildingType.costs)
+            if (buildingType.isTile){
+                if (Db.tileTypeByName.ContainsKey(buildingType.name)){
+                    tile.type = Db.tileTypeByName[buildingType.name];
+                    GlobalInventory.instance.AddItems(buildingType.costs, true);
                 }
             }
-            if (!bt.isTile){
+            if (!buildingType.isTile){
                 if ((tile.building != null) || (tile.blueprint != null)){
                     Debug.Log("theres already a building or blueprint here!");
                     return false;
                 } else {
-                    Blueprint blueprint = new Blueprint(bt, tile.x, tile.y);
+                    Blueprint blueprint = new Blueprint(buildingType, tile.x, tile.y);
                     tile.blueprint = blueprint;                       
                     return true;
                 }

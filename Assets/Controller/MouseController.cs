@@ -89,13 +89,13 @@ public class MouseController : MonoBehaviour
     public void SetModeDestroy() {
         mouseMode = MouseMode.Destroy;
         if (BuildPanel.instance != null){
-            BuildPanel.instance.bt = null;
+            BuildPanel.instance.buildingType = null;
         }
     }
     public void SetModeSelect() {
         mouseMode = MouseMode.Select;
         if (BuildPanel.instance != null){
-            BuildPanel.instance.bt = null;
+            BuildPanel.instance.buildingType = null;
         }
     }
 }

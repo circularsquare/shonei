@@ -232,4 +232,6 @@ background - 0
     - factored out into its own component hehe.
 
 2/17
-- made trees into a plant instead of a tile (still need to make loggers cut them instead of farmers)
+- made trees into a plant instead of a tile 
+- made loggers do trees instead of farmers
+- added plant growthTime

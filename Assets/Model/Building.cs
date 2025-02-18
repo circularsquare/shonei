@@ -2,6 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
+using System.Linq;
+using System.Runtime.Serialization;
+
 
 public class Building {
     // public enum Jobs {
@@ -47,11 +50,38 @@ public class Building {
     // public bool HasSpaceForItem(Item item){
     //     return (inventory != null && inventory.HasSpaceForItem(item));}
 
-
-
-
     // public void RegisterCbAnimalChanged(Action<Animal, Job> callback){
     //     cbAnimalChanged += callback;}
     // public void UnregisterCbAnimalChanged(Action<Animal, Job> callback){
     //     cbAnimalChanged -= callback;}
 }
+
+
+public class BuildingType {
+    public int id {get; set;}
+    public string name {get; set;}
+    public int nx {get; set;}
+    public int ny {get; set;}
+    public ItemNameQuantity[] ncosts {get; set;}
+    public ItemQuantity[] costs;
+    public bool isTile {get; set;}
+    public bool isPlant;
+    public string njob {get; set;}
+    public Job job;
+    [OnDeserialized]
+    internal void OnDeserialized(StreamingContext context){
+        costs = new ItemQuantity[ncosts.Length];
+        for (int i = 0; i < ncosts.Length; i++){
+            costs[i] = new ItemQuantity(ncosts[i].name, ncosts[i].quantity);
+        }
+        if (njob != null){
+            job = Db.jobByName[njob]; 
+        } else {
+            job = Db.jobByName["hauler"]; // default if no njob provided
+        }
+    }
+}
+ 
+
+
+

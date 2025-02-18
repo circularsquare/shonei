@@ -19,10 +19,9 @@ public class UI : MonoBehaviour
     } 
     void StartLate(){
         if (world == null){
-            world = WorldController.instance.world;
-            db = Db.instance; // right now this is just used to check if the db is finished loading
+            // world = WorldController.instance.world;
+            // db = Db.instance; // right now this is just used to check if the db is finished loading
             // moved this to InventoryController
-            
         } 
     }
 
@@ -30,7 +29,7 @@ public class UI : MonoBehaviour
     // depending on what was clicked, choose the left panel.
 
     void Update() {
-        if (db == null){
+        if (world == null){
             StartLate();
         }
     }
