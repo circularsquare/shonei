@@ -7,7 +7,7 @@ public class Blueprint {
     public GameObject go;
     public int x;
     public int y;
-    public BuildingType buildingType;
+    public StructType structType;
     public Sprite sprite;
     public Tile tile; // not really sure how this will work for multi-tile buildings...
 
@@ -15,29 +15,30 @@ public class Blueprint {
     public ItemQuantity[] costs;
     public float constructionProgress; // todo: implement
 
-    public Blueprint(BuildingType buildingType, int x, int y){
-        this.buildingType = buildingType;
+    public Blueprint(StructType structType, int x, int y){
+        this.structType = structType;
         this.x = x;
         this.y = y;
         this.tile = World.instance.GetTileAt(x, y);
+        tile.blueprint = this;
 
         go = new GameObject();
         go.transform.position = new Vector3(x, y, 0);
         go.transform.SetParent(WorldController.instance.transform, true);
-        go.name = "BuildingBlueprint" + buildingType.name;
+        go.name = "blueprint_" + structType.name;
         
-        sprite = Resources.Load<Sprite>("Sprites/Buildings/" + buildingType.name);
+        sprite = Resources.Load<Sprite>("Sprites/Buildings/" + structType.name);
         if (sprite == null || sprite.texture == null){
             sprite = Resources.Load<Sprite>("Sprites/Buildings/default");}
         SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
         sr.sprite = sprite;
         sr.color = new Color(sr.color.r, sr.color.g, sr.color.b, 0.5f); // blueprint half alpha
 
-        deliveredResources = new ItemQuantity[buildingType.costs.Length];
-        for (int i = 0; i < buildingType.costs.Length; i++){
-            deliveredResources[i] = new ItemQuantity(buildingType.costs[i].item, 0);
+        deliveredResources = new ItemQuantity[structType.costs.Length];
+        for (int i = 0; i < structType.costs.Length; i++){
+            deliveredResources[i] = new ItemQuantity(structType.costs[i].item, 0);
         }
-        costs = buildingType.costs;
+        costs = structType.costs;
 
         // register callback to update sprite?
     }
@@ -64,16 +65,7 @@ public class Blueprint {
         
     }
     public void Complete(){
-        Building building;
-        if (buildingType is PlantType){
-            building = new Plant(buildingType as PlantType, x, y);
-        } else {
-            building = new Building(buildingType, x, y);        
-        }
-        tile.building = building;
-        //Debug.Log(buildingType.costs[0].quantity);
-        GlobalInventory.instance.AddItems(buildingType.costs, true);
-
+        StructController.instance.Construct(structType, tile);
         // delete blueprint
         tile.blueprint = null;
         GameObject.Destroy(go);

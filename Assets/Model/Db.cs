@@ -16,7 +16,7 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
     public static Dictionary<string, int> iidByName {get; protected set;}
     public static Dictionary<string, Item> itemByName {get; protected set;}
     public static Dictionary<string, Job> jobByName {get; protected set;}
-    public static Dictionary<string, BuildingType> buildingTypeByName {get; protected set;}
+    public static Dictionary<string, StructType> structTypeByName {get; protected set;}
     public static Dictionary<string, PlantType> plantTypeByName {get; protected set;}
     public static Dictionary<string, TileType> tileTypeByName {get; protected set;}
 
@@ -27,7 +27,7 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
     public static int itemsCount = 0;
     public static Job[] jobs = new Job[100];
     public static Recipe[] recipes = new Recipe[500];
-    public static BuildingType[] buildingTypes = new BuildingType[600];
+    public static StructType[] structTypes = new StructType[600];
     public static PlantType[] plantTypes = new PlantType[600];
     public static TileType[] tileTypes = new TileType[100];
 
@@ -48,7 +48,7 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
         iidByName = new Dictionary<string, int>();
         itemByName = new Dictionary<string, Item>();
         jobByName = new Dictionary<string, Job>();
-        buildingTypeByName = new Dictionary<string, BuildingType>();
+        structTypeByName = new Dictionary<string, StructType>();
         tileTypeByName = new Dictionary<string, TileType>();
         plantTypeByName = new Dictionary<string, PlantType>();
     } 
@@ -104,14 +104,14 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
             }
         }
 
-        // read Buildings
-        string jsonBuildingTypes = File.ReadAllText(Application.dataPath + "/Resources/buildingsDb.json");
-        BuildingType[] buildingTypesUnplaced = JsonConvert.DeserializeObject<BuildingType[]>(jsonBuildingTypes);
-        foreach (BuildingType buildingType in buildingTypesUnplaced){
-            if (buildingTypes[buildingType.id] != null){Debug.LogError("error!! multiple building types with same id");}
-            buildingType.isPlant = false;
-            buildingTypes[buildingType.id] = buildingType;
-            buildingTypeByName.Add(buildingType.name, buildingType);
+        // read Structures
+        string jsonStructTypes = File.ReadAllText(Application.dataPath + "/Resources/buildingsDb.json");
+        StructType[] structTypesUnplaced = JsonConvert.DeserializeObject<StructType[]>(jsonStructTypes);
+        foreach (StructType structType in structTypesUnplaced){
+            if (structTypes[structType.id] != null){Debug.LogError("error!! multiple struct types with same id");}
+            structType.isPlant = false;
+            structTypes[structType.id] = structType;
+            structTypeByName.Add(structType.name, structType);
         } 
 
         string jsonPlantTypes = File.ReadAllText(Application.dataPath + "/Resources/plantsDb.json");
@@ -121,10 +121,10 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
             plantTypes[plantType.id] = plantType;
             plantTypeByName.Add(plantType.name, plantType);
             // also add each plant as a building so you can build it
-            if (buildingTypes[plantType.id] != null){Debug.LogError("error!! multiple building types with same id");}
-            buildingTypes[plantType.id] = plantType;
+            if (structTypes[plantType.id] != null){Debug.LogError("error!! multiple struct types with same id");}
+            structTypes[plantType.id] = plantType;
             plantType.isPlant = true;
-            buildingTypeByName.Add(plantType.name, plantType);
+            structTypeByName.Add(plantType.name, plantType);
         } 
 
 
@@ -201,9 +201,4 @@ public class Recipe {
 }
 
 
-public class TileType {
-    public int id {get; set;}
-    public string name {get; set;}
-    public bool solid {get; set;}
-}
 

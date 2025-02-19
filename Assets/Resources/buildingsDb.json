@@ -9,7 +9,8 @@
             { "name": "wood", "quantity": 10 }
         ],
         "njob": "hauler",
-        "capacity": 4
+        "capacity": 4,
+        "depth": "b"
     },{  
         "id": 2,
         "name": "drawer",
@@ -53,7 +54,35 @@
         ],
         "njob": "hauler",
         "capacity": 1
+    },{
+        "id": 10,
+        "name": "platform",
+        "nx": 1,
+        "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 3 }
+        ],
+        "depth": "m"
+    },{
+        "id": 11,
+        "name": "stairs",
+        "nx": 1,
+        "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 6 }
+        ],
+        "depth": "f"        
+    },{
+        "id": 12,
+        "name": "ladder",
+        "nx": 1,
+        "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 6 }
+        ],
+        "depth": "f"
     }
+
 
 
 ]  

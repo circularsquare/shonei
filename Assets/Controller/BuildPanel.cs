@@ -8,7 +8,7 @@ public class BuildPanel : MonoBehaviour {
     public GameObject buildDisplayPrefab; // UI button prefab for each building
     public GameObject textDisplayPrefab;
     public static BuildPanel instance;
-    public BuildingType buildingType;
+    public StructType structType;
 
     private void Start(){
         if (instance != null) {
@@ -16,45 +16,39 @@ public class BuildPanel : MonoBehaviour {
         instance = this;        
 
         // add building buttons
-        foreach (BuildingType building in Db.buildingTypes){
-            if (building != null){
+        foreach (StructType structType in Db.structTypes){
+            if (structType != null){
                 GameObject buildDisplayGo = Instantiate(buildDisplayPrefab, transform);
-                foreach (ItemQuantity iq in building.costs) { 
+                foreach (ItemQuantity iq in structType.costs) { 
                     GameObject costDisplay = Instantiate(textDisplayPrefab, buildDisplayGo.transform);
                     costDisplay.GetComponent<TMPro.TextMeshProUGUI>().text = iq.item.name + ": " + iq.quantity.ToString();
                     costDisplay.name = "CostDisplay_" + iq.item.name;
                 }
-                buildDisplayGo.transform.GetChild(0).GetComponent<Button>().onClick.AddListener(() => SetBuildingType(building));  // is this right??
+                buildDisplayGo.transform.GetChild(0).GetComponent<Button>().onClick.AddListener(() => SetStructType(structType));  // is this right??
                 GameObject buildingTextGo = buildDisplayGo.transform.Find("BuildingButton/TextBuildingName").gameObject;
-                buildingTextGo.GetComponent<TMPro.TextMeshProUGUI>().text = building.name;
-                buildDisplayGo.name = "BuildDisplay_" + building.name;
+                buildingTextGo.GetComponent<TMPro.TextMeshProUGUI>().text = structType.name;
+                buildDisplayGo.name = "BuildDisplay_" + structType.name;
             }
         }
 
     }
-    public void SetBuildingType(BuildingType bt){
-        this.buildingType = bt;
+    public void SetStructType(StructType st){
+        this.structType = st;
         MouseController.instance.SetModeBuild();    
     }
 
     // mousecontroller handles the mouse stuff. and calls build here.
-
-    public bool Construct(Tile tile){
+    
+    public bool PlaceBlueprint(Tile tile){
         // tile must be empty (id 0), have no building, and have no blueprint.
-        if (buildingType != null && tile.type.id == 0){ // && GlobalInventory.instance.SufficientResources(buildingType.costs)
-            if ((tile.building != null) || (tile.blueprint != null)){
-                Debug.Log("theres already a building or blueprint here!");
-                return false;
-            } else {
-                Blueprint blueprint = new Blueprint(buildingType, tile.x, tile.y);
-                tile.blueprint = blueprint;                       
-                return true;
-            }
-        }
+        if (structType != null && tile.type.id == 0){ // && GlobalInventory.instance.SufficientResources(buildingType.costs)
+            Blueprint blueprint = new Blueprint(structType, tile.x, tile.y);
+            return true;
+        } 
         return false;
     }
 
-    public bool Destroy(Tile tile){
+    public bool Destroy(Tile tile){ // DOESNT WORK
         if (tile.type != Db.tileTypes[0]){
             if (tile.building != null){
                 tile.building = null;
@@ -66,28 +60,7 @@ public class BuildPanel : MonoBehaviour {
         return false;
     }
 
-    private void Update()
-    {
-        // // If the player is holding the build button and there is a selected building, start building the building
-        // if (Input.GetMouseButton(0) && isBuilding)
-        // {
-        //     BuildingType buildingType = Db.buildingTypes[selectedBuildingIndex];
-        //     if (Inventory.instance.SufficientResources(buildingType.costs))
-        //     {
-        //         Vector3 mousePos = Input.mousePosition;
-        //         Ray ray = Camera.main.ScreenPointToRay(mousePos);
-        //         RaycastHit hit;
-        //         if (Physics.Raycast(ray, out hit))
-        //         {
-        //             if (hit.collider.tag == "BuildLocation")
-        //             {
-        //                 Inventory.instance.AddItems(buildingType.costs);
-        //                 //World.Instance.AddBuilding(building, hit.point);
-        //                 //Player.Instance.RemoveResources(buildingType.resources, buildingType.cost);
-        //             }
-        //         }
-        //     }
-        // }
+    private void Update(){
     }
 
 }

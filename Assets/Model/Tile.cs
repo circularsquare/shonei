@@ -1,15 +1,17 @@
 using System.Collections;
 using System.Collections.Generic;
-using System;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using System;
+using System.Linq;
+using System.Runtime.Serialization;
 
 public class Tile 
 {
     Action<Tile> cbTileTypeChanged;
 
     World world;
-    public int x;
-    public int y;
+    public int x, y;
     public GameObject go;
     private TileType _type;
     public TileType type
@@ -24,9 +26,12 @@ public class Tile
     }
     public Building building; // in future, have like "front level" "back level" building slots? like wall level?
     public Blueprint blueprint; // not sure how this would interact with levels of building
+    public Structure mStruct; // midground: for moving horizontally in front of buildings
+    public Structure fStruct; // foreground: ladders and stairs and stuff
     public Inventory inv; // this encapsulates all inventory types
     public int capacity = 1;    // unused rn
     public int reserved = 0;    // unused maybe?
+    public Node node;
 
     
     public Tile(World world, int x, int y){
@@ -34,6 +39,7 @@ public class Tile
         this.x = x;
         this.y = y;
         type = Db.tileTypes[0];
+        node = new Node(this, x, y, false);
     }
     
     public void RegisterCbTileTypeChanged(Action<Tile> callback){cbTileTypeChanged += callback;}
@@ -57,4 +63,11 @@ public class Tile
     public bool HasSpaceForItem(Item item){return (inv == null || inv.HasSpaceForItem(item));}
 
 
+}
+
+
+public class TileType {
+    public int id {get; set;}
+    public string name {get; set;}
+    public bool solid {get; set;}
 }

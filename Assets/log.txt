@@ -243,3 +243,6 @@ background - 0
 - added homes to mice, 4 mice to a house.
     - added eep, mice will go to home to eep.
 - added reproduction, that happens while eeping!
+2/19
+- added structures for navigation!
+- started work on a star navigation. still has issues like shared nodes.

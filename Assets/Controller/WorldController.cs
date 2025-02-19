@@ -25,27 +25,27 @@ public class WorldController : MonoBehaviour
 
         for (int x = 0; x < world.nx; x++){
             for (int y = world.ny - 1; y >= 0; y--){
-                Tile tile_data = world.GetTileAt(x, y);
+                Tile tile = world.GetTileAt(x, y);
                     
                 GameObject tile_go = new GameObject();
                 tile_go.name = "Tile_" + x + "_" + y;
-                tile_go.transform.position = new Vector3(tile_data.x, tile_data.y, 0);
+                tile_go.transform.position = new Vector3(tile.x, tile.y, 0);
                 tile_go.transform.SetParent(tilesTransform);
-                tileGameObjectMap.Add(tile_data, tile_go);
-                tile_data.go = tile_go;
+                tileGameObjectMap.Add(tile, tile_go);
+                tile.go = tile_go;
                 
                 SpriteRenderer tile_sr = tile_go.AddComponent<SpriteRenderer>();
                 
                 // remember that when you destroy tiles you'll need to unregister the callback
-                // tile_data.RegisterCbTileTypeChanged((tile) => {OnTileTypeChanged(tile, tile_go);});
-                tile_data.RegisterCbTileTypeChanged(OnTileTypeChanged);
+                // tile.RegisterCbTileTypeChanged((tile) => {OnTileTypeChanged(tile, tile_go);});
+                tile.RegisterCbTileTypeChanged(OnTileTypeChanged);
 
                 // world generating
                 if (y < 4){
-                    tile_data.type = Db.tileTypeByName["soil"];
+                    tile.type = Db.tileTypeByName["soil"];
                 }
                 if (y < 2){
-                    tile_data.type = Db.tileTypeByName["stone"];
+                    tile.type = Db.tileTypeByName["stone"];
                 }
             }
         }
@@ -56,33 +56,33 @@ public class WorldController : MonoBehaviour
         plant1.Mature();
         new Plant(Db.plantTypeByName["tree"], 5, 4);
         new Plant(Db.plantTypeByName["tree"], 8, 4);
+        new Plant(Db.plantTypeByName["wheat"], 15, 4);
+        new Plant(Db.plantTypeByName["wheat"], 16, 4);
 
-        world.CalculateTileStandability();
+        world.graph.Initialize();
     } 
 
     // updaes the gameobjects sprite when the tile data is changed
-    void OnTileTypeChanged(Tile tile_data) {
-        if (!tileGameObjectMap.ContainsKey(tile_data)){
+    void OnTileTypeChanged(Tile tile) {
+        if (!tileGameObjectMap.ContainsKey(tile)){
             Debug.LogError("tile data is not in tile game object map!");
         }
-        GameObject tile_go = tileGameObjectMap[tile_data];
-        if (tile_data.type.name == "soil"){
-            if (tile_data.y < world.ny - 1 && world.GetTileAt(tile_data.x, tile_data.y + 1).type != Db.tileTypes[0]){
-                tile_go.GetComponent<SpriteRenderer>().sprite = Resources.Load<Sprite>("Sprites/Tiles/dirt");
+        GameObject tile_go = tileGameObjectMap[tile];
+        Sprite sprite;
+        if (tile.type.name == "soil"){
+            if (tile.y < world.ny - 1 && world.GetTileAt(tile.x, tile.y + 1).type != Db.tileTypes[0]){
+                sprite = Resources.Load<Sprite>("Sprites/Tiles/dirt");
             } else {
-                tile_go.GetComponent<SpriteRenderer>().sprite = Resources.Load<Sprite>("Sprites/Tiles/grass");
+                sprite = Resources.Load<Sprite>("Sprites/Tiles/grass");
             }
         }
-        else if (tile_data.type.name == "empty" || tile_data.type.name == "structure"){
-            tile_go.GetComponent<SpriteRenderer>().sprite = null;
+        else { sprite = Resources.Load<Sprite>("Sprites/Tiles/" + tile.type.name); }
+        if (sprite == null || sprite.texture == null){
+            sprite = Resources.Load<Sprite>("Sprites/Tiles/default");
         }
-        else if (tile_data.type.name == "tree" || tile_data.type.name == "stone"){
-            tile_go.GetComponent<SpriteRenderer>().sprite = Resources.Load<Sprite>("Sprites/Tiles/" + tile_data.type.name);
-        }
-        else{
-            Debug.LogError("ontiletypechanged - unrecognized tile type");
-        }
-        world.CalculateTileStandability(tile_data.x, tile_data.y);
+        tile_go.GetComponent<SpriteRenderer>().sprite = sprite;
+
+        world.graph.CalculateTileStandability(tile);
     }
 
 }

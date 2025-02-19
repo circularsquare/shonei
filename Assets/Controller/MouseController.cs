@@ -74,7 +74,7 @@ public class MouseController : MonoBehaviour
                 }
 
             } else if (mouseMode == MouseMode.Build) {
-                BuildPanel.instance.Construct(tileAt);
+                BuildPanel.instance.PlaceBlueprint(tileAt);
             } else if (mouseMode == MouseMode.Destroy) {
                 BuildPanel.instance.Destroy(tileAt);
             }
@@ -89,13 +89,13 @@ public class MouseController : MonoBehaviour
     public void SetModeDestroy() {
         mouseMode = MouseMode.Destroy;
         if (BuildPanel.instance != null){
-            BuildPanel.instance.buildingType = null;
+            BuildPanel.instance.structType = null;
         }
     }
     public void SetModeSelect() {
         mouseMode = MouseMode.Select;
         if (BuildPanel.instance != null){
-            BuildPanel.instance.buildingType = null;
+            BuildPanel.instance.structType = null;
         }
     }
 }

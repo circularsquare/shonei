@@ -19,21 +19,12 @@ public class Plant : Building {
     // public int capacity = 1;
     // public int reserved = 0;
 
-    public Plant(PlantType plantType, int x, int y) : base (plantType, x, y){ 
-        // doesn't call building constructor..
+    public Plant(PlantType plantType, int x, int y) : base (plantType, x, y){ // call parent constructor
         this.plantType = plantType;
-        this.x = x;
-        this.y = y;
-        this.tile = World.instance.GetTileAt(x, y);
-        tile.building = this;
-
-        go = new GameObject();
-        go.transform.position = new Vector3(x, y, 0);
-        go.transform.SetParent(WorldController.instance.transform, true);
-        go.name = "Plant_" + plantType.name;
 
         PlantController.instance.AddPlant(this);
-        
+        go.name = "plant_" + plantType.name;
+
         sprite = Resources.Load<Sprite>("Sprites/Plants/" + plantType.name);
         if (sprite == null || sprite.texture == null){
             sprite = Resources.Load<Sprite>("Sprites/Plants/default");}
@@ -69,8 +60,6 @@ public class Plant : Building {
     }
 
 }
-
-
 
 
 

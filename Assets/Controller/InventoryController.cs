@@ -115,7 +115,7 @@ public class InventoryController : MonoBehaviour
         selectedInventory = inv; 
         UpdateItemsDisplay();
         if (inv != null && inv.invType == Inventory.InvType.Storage){
-            MenuPanel.instance.SetActivePanel(MenuPanel.instance.panels[0]); // object ref not sent to instance
+            //MenuPanel.instance.SetActivePanel(MenuPanel.instance.panels[0]); // object ref not sent to instance
         }
     }
 }

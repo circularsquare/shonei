@@ -64,6 +64,7 @@ public class Inventory
 
     // returns leftover size 
     public int AddItem(Item item, int quantity){
+        if (item == null) {Debug.LogError("tried adding null item"); return quantity;}
         if (allowed[item.id] == false && quantity > 0){  // allowed is not implemented yet... for limiting inventories to certian types of resource
             Debug.Log("tried adding unallowed item to inventory");
             return quantity;

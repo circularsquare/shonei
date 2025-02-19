@@ -10,11 +10,9 @@
 - info panel: 
     - have info panel cycle through when you click it again.
 - blueprints   
-    - have it work for building tiles (have a generic way of building any tile? or only some hardcoded ones.)
-        - maybe only need soil, stone, wood, and a few others. idk.
     - give inventories (of 0 capacity) that can have allow lists
 - animal
-    - clean up so many functions... 
+    - clean up functions... 
     - allow for animals to do other jobs if not busy
     - lt: add leisure
 - building 
@@ -24,7 +22,7 @@
 - crafting 
     - have product appear in workshop inventory or animal inventory instead of floor?
         - reserve storage space?
-        - add workshop inventory...
+        - add workshop inventory
 - fix destroy button
 - ui
     - add highlight on currently selected menu
@@ -44,6 +42,15 @@
 
 - food
     - don't allow them to eat last food seeds
+
+- pathfinding
+    - add solidity / standability
+    - have animals only follow possible paths
+    - add stairs, ladders
+- tile mining
+    - add tile mining commands 
+        - have mice able to mine tiles adjacent to them
+        - add tile durability so that they disappear when fully mined 
 
 BUGS
 - occasionally haulers lose their target and get stuck somehow??

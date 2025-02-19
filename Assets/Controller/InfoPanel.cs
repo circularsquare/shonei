@@ -62,20 +62,20 @@ public class InfoPanel : MonoBehaviour {
                 if (tile.building is Plant){
                     infoMode = InfoMode.Plant;
                     gameObject.SetActive(true);
-                    displayText =  ( "plant: " + tile.building.buildingType.name + 
+                    displayText =  ( "plant: " + tile.building.structType.name + 
                         "\n location: " + tile.x.ToString() + ", " + tile.y.ToString() + 
                         "\n growth: " + (tile.building as Plant).growthStage);
                 } else {
                     infoMode = InfoMode.Building;
                     gameObject.SetActive(true);
-                    displayText =  ( "building: " + tile.building.buildingType.name + 
+                    displayText =  ( "building: " + tile.building.structType.name + 
                         "\n location: " + tile.x.ToString() + ", " + tile.y.ToString() + 
                         "\n reserved: " + tile.building.reserved);
                 }
             } else if (tile.blueprint != null){
                 infoMode = InfoMode.Blueprint;
                 gameObject.SetActive(true);
-                displayText =  ( "blueprint: " + tile.blueprint.buildingType.name + 
+                displayText =  ( "blueprint: " + tile.blueprint.structType.name + 
                     "\n location: " + tile.x.ToString() + ", " + tile.y.ToString() + 
                     "\n progress: " + tile.blueprint.GetProgress());
             } else {

@@ -9,7 +9,7 @@
             { "name": "wood", "quantity": 10 },
             { "name": "acorn", "quantity": 3 }
         ],
-        "growthTime": 60,
+        "growthTime": 30,
         "njob": "logger"
     },{  
         "id": 502,
@@ -18,7 +18,7 @@
             { "name": "wheat", "quantity": 1 }
         ],
         "nproducts": [
-            { "name": "wheat", "quantity": 10 }
+            { "name": "wheat", "quantity": 5 }
         ],
         "growthTime": 15,
         "njob": "farmer"

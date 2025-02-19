@@ -5,8 +5,7 @@ using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using TMPro;
 
-public class AnimalController : MonoBehaviour
-{
+public class AnimalController : MonoBehaviour{
     public static AnimalController instance {get; protected set;}
     public Animal[] animals;
     public int na = 0; 
