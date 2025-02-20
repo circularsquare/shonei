@@ -43,10 +43,6 @@
 - food
     - don't allow them to eat last food seeds
 
-- pathfinding
-    - add solidity / standability
-    - have animals only follow possible paths
-    - add stairs, ladders
 - tile mining
     - add tile mining commands 
         - have mice able to mine tiles adjacent to them
@@ -58,6 +54,9 @@
 
 
 BUGS
+- multiple blueprints on same tile, they get lost. disallow or fix.
+- mice are not reserving houses!
+
 - occasionally haulers lose their target and get stuck somehow??
 - screen jitters when dragging around
 

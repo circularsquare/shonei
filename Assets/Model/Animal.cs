@@ -683,7 +683,7 @@ public class Nav {
                     // wasn't this reversed for a while but it seemed to work? vvv
                     Path cPath = world.graph.Navigate(a.TileHere().node, tile.node);
                     if (cPath == null) { continue; }
-                    float distance = cPath.length; // try cost later.
+                    float distance = cPath.cost; // try cost later.
                     //float distance = SquareDistance((float)tile.x, a.x, (float)tile.y, a.y);
                     if (distance < closestDistance) {
                         closestDistance = distance;
@@ -748,15 +748,10 @@ public class Eating {
     public float food = 90f;
     public float hungerRate = 0.5f;
 
-    public Eating(){ 
-    }
+    public Eating(){ }
     
-    public float Fullness(){
-        return food / maxFood;
-    }
-    public bool Hungry(){
-        return food / maxFood < 0.5f;
-    }
+    public float Fullness(){ return food / maxFood; }
+    public bool Hungry(){ return food / maxFood < 0.5f; }
 
     public float Efficiency(){
         if (Fullness() > 0.5f){
