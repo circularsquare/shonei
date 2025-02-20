@@ -26,7 +26,7 @@ public class Tile
     }
     public Building building; // in future, have like "front level" "back level" building slots? like wall level?
     public Blueprint blueprint; // not sure how this would interact with levels of building
-    public Structure mStruct; // midground: for moving horizontally in front of buildings
+    public Structure mStruct; // midground: platforms for moving horizontally in front of buildings
     public Structure fStruct; // foreground: ladders and stairs and stuff
     public Inventory inv; // this encapsulates all inventory types
     public int capacity = 1;    // unused rn
@@ -39,7 +39,7 @@ public class Tile
         this.x = x;
         this.y = y;
         type = Db.tileTypes[0];
-        node = new Node(this, x, y, false);
+        node = new Node(this, x, y);
     }
     
     public void RegisterCbTileTypeChanged(Action<Tile> callback){cbTileTypeChanged += callback;}
@@ -61,8 +61,9 @@ public class Tile
 
     // space: floor allowed
     public bool HasSpaceForItem(Item item){return (inv == null || inv.HasSpaceForItem(item));}
-
-
+    public bool HasLadder(){ return (fStruct != null && fStruct is Ladder); }
+    public bool HasStairRight(){ return (fStruct != null && fStruct is Stairs && (fStruct as Stairs).right); }
+    public bool HasStairLeft(){ return (fStruct != null && fStruct is Stairs && !(fStruct as Stairs).right); }
 }
 
 

@@ -35,6 +35,7 @@ public class WorldController : MonoBehaviour
                 tile.go = tile_go;
                 
                 SpriteRenderer tile_sr = tile_go.AddComponent<SpriteRenderer>();
+                tile_sr.sortingOrder = 0;
                 
                 // remember that when you destroy tiles you'll need to unregister the callback
                 // tile.RegisterCbTileTypeChanged((tile) => {OnTileTypeChanged(tile, tile_go);});
@@ -82,7 +83,8 @@ public class WorldController : MonoBehaviour
         }
         tile_go.GetComponent<SpriteRenderer>().sprite = sprite;
 
-        world.graph.CalculateTileStandability(tile);
+        world.graph.UpdateNeighbors(tile.x, tile.y); // i think this is redundant. should laready be called
+        // in structcontroller whenever a tile type changes?
     }
 
 }

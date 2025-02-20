@@ -29,6 +29,7 @@ public class Plant : Building {
         if (sprite == null || sprite.texture == null){
             sprite = Resources.Load<Sprite>("Sprites/Plants/default");}
         sr.sprite = sprite; 
+        sr.sortingOrder = 60;
     }
     
     public void Grow(int t){

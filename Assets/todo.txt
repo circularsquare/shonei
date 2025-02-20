@@ -52,6 +52,11 @@
         - have mice able to mine tiles adjacent to them
         - add tile durability so that they disappear when fully mined 
 
+- nav
+    - have each AStar have its own copy of nodes!!
+
+
+
 BUGS
 - occasionally haulers lose their target and get stuck somehow??
 - screen jitters when dragging around

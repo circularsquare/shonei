@@ -64,13 +64,17 @@ public class InfoPanel : MonoBehaviour {
                     gameObject.SetActive(true);
                     displayText =  ( "plant: " + tile.building.structType.name + 
                         "\n location: " + tile.x.ToString() + ", " + tile.y.ToString() + 
-                        "\n growth: " + (tile.building as Plant).growthStage);
+                        "\n growth: " + (tile.building as Plant).growthStage + 
+                        "\n standability: " + tile.node.standable.ToString() + 
+                        "\n num neighbors: " + tile.node.neighbors.Count);
                 } else {
                     infoMode = InfoMode.Building;
                     gameObject.SetActive(true);
                     displayText =  ( "building: " + tile.building.structType.name + 
                         "\n location: " + tile.x.ToString() + ", " + tile.y.ToString() + 
-                        "\n reserved: " + tile.building.reserved);
+                        "\n reserved: " + tile.building.reserved + 
+                        "\n standability: " + tile.node.standable.ToString() + 
+                        "\n num neighbors: " + tile.node.neighbors.Count);
                 }
             } else if (tile.blueprint != null){
                 infoMode = InfoMode.Blueprint;
@@ -81,7 +85,10 @@ public class InfoPanel : MonoBehaviour {
             } else {
                 infoMode = InfoMode.Tile;
                 gameObject.SetActive(true);
-                displayText = "tile: " + tile.type.name;            
+                displayText = ("tile: " + tile.type.name + 
+                    "\n location: " + tile.x.ToString() + ", " + tile.y.ToString() +
+                    "\n standability: " + tile.node.standable.ToString() + 
+                    "\n num neighbors: " + tile.node.neighbors.Count);            
             }
             if (tile.inv != null){
                 displayText += "\n inventory: " + tile.inv.ToString();

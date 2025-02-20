@@ -34,6 +34,14 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
     public static int ticksInDay = 300;
     public static int daysInYear = 20;
 
+    // sprite sorting orders 
+        // 100: blueprint
+        // 80: fStruct
+        // 60: plant
+        // 40: animal
+        // 30: item
+        // 20: building
+        // 0: tile
 
     // items: stored in csv and accessible through here
     // jobs: stored in Animal.Jobs enum

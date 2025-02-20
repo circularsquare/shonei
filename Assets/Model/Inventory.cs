@@ -33,7 +33,7 @@ public class Inventory
             go.transform.position = new Vector3(x, y, 0);
             go.transform.SetParent(WorldController.instance.transform, true);
             SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
-            sr.sortingOrder = 10;
+            sr.sortingOrder = 30;
 
             sr.sprite = Resources.Load<Sprite>("Sprites/Inventory/" + invType.ToString());
         }

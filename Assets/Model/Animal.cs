@@ -40,6 +40,7 @@ public class Animal : MonoBehaviour
     public Eating eating;
     public Eeping eeping;
     public Nav nav; 
+    public AnimationController animationController;
 
     public enum AnimalState {
         Idle, 
@@ -52,9 +53,17 @@ public class Animal : MonoBehaviour
         WalkingToHarvest,
         WalkingToWork,
         WalkingToEep,
-        
     } 
-    public AnimalState state;
+    private AnimalState _state;
+    public AnimalState state{
+        get { return _state; }
+        set {
+            _state = value;
+            if (animationController != null){
+                animationController.UpdateState();
+            }
+        }
+    }
 
     public System.Random random;
     public int tickCounter = 0;
@@ -80,6 +89,9 @@ public class Animal : MonoBehaviour
         this.job = Db.jobs[0];
         this.go = this.gameObject;
         this.go.name = "animal_" + aName;
+        this.sr = go.GetComponent<SpriteRenderer>();
+        animationController = go.GetComponent<AnimationController>();
+        sr.sortingOrder = 50;
         this.inv = new Inventory(5, 10, Inventory.InvType.Animal);
         this.efficiency = 1f;
         this.energy = 0f;
@@ -156,23 +168,27 @@ public class Animal : MonoBehaviour
     }
 
     public void Update(){ // for movement and detecting arrival
+        if (!TileHere().node.standable){             // fall
+            this.go.transform.position = new Vector3(this.go.transform.position.x, 
+                this.go.transform.position.y - maxSpeed*Time.deltaTime, this.go.transform.position.z);
+        }
+
         if (IsMoving()){
-            if (target == null || target.go == null){ 
+            if (target == null){ 
                 // this shouldnt happen i think!
                     // seem sto happen maybe when someone construct partially then someone else finishes.
                     // also, why am i using tile gameobject anyways? maybe better to just use tile coords.
-                Debug.LogError("movement target disappeared!!");
+                Debug.LogError("movement target null! " + this.state.ToString());
+
                 DropItems();
                 state = AnimalState.Idle;
             }
             else {  // move toward target
-                bool arrived = nav.Move(Time.deltaTime);
-                
-
-                // arrived at target
-                if (arrived){
-                    this.go.transform.position = target.go.transform.position;
-                    SyncPosition();  // idk if i need this?
+                bool done = nav.Move(Time.deltaTime);
+                if (done && SquareDistance(x, target.x, y, target.y) < 0.001f){ // arrived at target
+                    this.x = target.x;
+                    this.y = target.y;
+                    this.go.transform.position = new Vector3(x, y, 0);
 
                     if (state == AnimalState.Walking)        { state = AnimalState.Idle; }
                     else if (state == AnimalState.Collecting){ OnArrivalCollect(); }
@@ -217,16 +233,16 @@ public class Animal : MonoBehaviour
         // generic work: make recipe.
         recipe = PickRecipe(); 
         if (recipe != null){ // if can find recipe 
-            Tile t = null;
+            Path p = null;
             if (Db.tileTypeByName.ContainsKey(recipe.tile)){ // if can find unreserved work tile
-                t = nav.FindWorkTile(Db.tileTypeByName[recipe.tile]);
+                p = nav.FindWorkTile(Db.tileTypeByName[recipe.tile]);
             }
             else if (Db.structTypeByName.ContainsKey(recipe.tile)){
-                t = nav.FindBuilding(Db.structTypeByName[recipe.tile]);
+                p = nav.FindBuilding(Db.structTypeByName[recipe.tile]);
             } 
-            if (t != null){
+            if (p != null){
                 numRounds = CalculateWorkPossible(recipe);      // calc numRounds
-                SetWorkTile(t);                                 // reserve work tile
+                SetWorkTile(p.tile);                                 // reserve work tile
                 if (inv.ContainsItems(recipe.inputs, numRounds)){ // if have all the inputs, just go there.
                     GoToWork();
                 } else { // if missing some inputs, collect the missing inputs in your inventory.
@@ -248,11 +264,9 @@ public class Animal : MonoBehaviour
             } 
             return false;
         } else {    // if fetching specific item
-            Tile itemTile = nav.FindItemToHaul(item);
-            if (itemTile != null){
-                target = itemTile;
-                state = AnimalState.Fetching;
-                return true;
+            Path p = nav.FindItemToHaul(item);
+            if (p != null){
+                return (GoTo(null, p, AnimalState.Fetching));
             }
             return false; // nothing to fetch
         } 
@@ -263,24 +277,25 @@ public class Animal : MonoBehaviour
         desiredItemQuantity = desiredItemQuantity - inv.Quantity(desiredItem);
         if (inv.GetStorageForItem(desiredItem) > 5 && desiredItemQuantity > 0){
             Fetch(desiredItem); /* keep fetching the same item if you have space and can find stuff to fetch and can store it */  }
-        else{Deliver();}
+        else{GoToDeliver();}
     }
 
     public bool FetchForBlueprint(){
-        Tile blueprintTile = nav.FindBlueprint(job); // finds a blueprint appropriate to your job
-        if (blueprintTile == null){return false;}
+        Path blueprintPath = nav.FindBlueprint(job); // finds a blueprint appropriate to your job
+        if (blueprintPath == null){return false;} 
+        Tile blueprintTile = blueprintPath.tile;
         Blueprint blueprint = blueprintTile.blueprint;
 
         for (int i = 0; i < blueprint.costs.Length; i++){
             if (blueprint.deliveredResources[i].quantity < blueprint.costs[i].quantity){
-                Tile itemTile = nav.FindItem(blueprint.costs[i].item);
-                if (itemTile != null){
-                    desiredItem = blueprint.costs[i].item;
-                    desiredItemQuantity = blueprint.costs[i].quantity - blueprint.deliveredResources[i].quantity;
-                    storageTile = blueprintTile;
-                    target = itemTile;
-                    state = AnimalState.Fetching;
-                    return true;
+                Path p = nav.FindItem(blueprint.costs[i].item);
+                if (p != null){
+                    if (GoTo(null, p, AnimalState.Fetching)){
+                        desiredItem = blueprint.costs[i].item;
+                        desiredItemQuantity = blueprint.costs[i].quantity - blueprint.deliveredResources[i].quantity;
+                        storageTile = blueprintTile;
+                        return true;
+                    } else {return false;}
         }}}
         return false;
     }
@@ -289,38 +304,36 @@ public class Animal : MonoBehaviour
         int delivered = target.blueprint.ReceiveResource(desiredItem, amountToDeliver);
         inv.AddItem(desiredItem, -delivered); // remove item from own inv
         int itemInInv = inv.Quantity(desiredItem);
-        if (itemInInv > 0){ // if you have excess of the item, drop it somewhere.
-            target = nav.FindPlaceToDrop(desiredItem, itemInInv); 
-            if (target == null){ Debug.LogError("couldn't find a place to drop!"); }
-            state = AnimalState.Delivering;
+        if (itemInInv > 0){ // if you have excess of the item, drop it somewhere immediately
+            DropItem(desiredItem);
+            state = AnimalState.Idle;
             return;
         }
         state = AnimalState.Idle;
     }
 
-    public void Deliver(){ // move items to storagetile.
-        nav.NavigateTo(storageTile);
-        state = AnimalState.Delivering;
-    }
     public void OnArrivalDeliver(){     // deliver items (to storage, etc.)
         if (target.blueprint != null){ OnArrivalBlueprint(); return; }
-        DropItem(desiredItem, target);
+        DropItem(desiredItem);
         int itemInInv = inv.Quantity(desiredItem);
         if (itemInInv > 0){ // if you have excess of the item, drop it somewhere.
-            Tile tile = nav.FindPlaceToDrop(desiredItem, itemInInv);
-            if (tile == null){ Debug.LogError("couldn't find a place to drop!"); }
-            nav.NavigateTo(tile); 
-            state = AnimalState.Delivering;
+            TakeToDrop();
         }
         state = AnimalState.Idle;
+    }
+    public void TakeToDrop(){ // delivers items to drop somewhere. TODO: don't use desiredItem, feed specific values.
+        Path p = nav.FindPlaceToDrop(desiredItem, desiredItemQuantity);
+        if (p == null){ Debug.LogError("couldn't find a place to drop!"); }
+        nav.Navigate(p); 
+        state = AnimalState.Delivering;
     }
 
     public bool Take(Item item, int quantity = 1){
         desiredItem = item;
         desiredItemQuantity = quantity;
-        Tile itemTile = nav.FindItem(item);
-        if (itemTile != null){
-            nav.NavigateTo(itemTile);
+        Path p = nav.FindItem(item);
+        if (p != null){
+            nav.Navigate(p);
             state = AnimalState.Taking;
             return true;
         }
@@ -341,9 +354,9 @@ public class Animal : MonoBehaviour
             if (!inv.ContainsItem(input, numRounds)){
                 desiredItem = input.item; // you want it. 
                 desiredItemQuantity = input.quantity * numRounds;
-                Tile itemTile = nav.FindItem(desiredItem);
-                if (itemTile != null){  // you can find it, go get it.
-                    nav.NavigateTo(itemTile);
+                Path p = nav.FindItem(desiredItem);
+                if (p != null){  // you can find it, go get it.
+                    nav.Navigate(p);
                     state = AnimalState.Collecting;
                     return true;
                 }
@@ -373,9 +386,9 @@ public class Animal : MonoBehaviour
 
 
     public bool Harvest(){
-        Tile plantTile = nav.FindHarvestablePlant(job);
-        if (plantTile != null){
-            GoToHarvest(plantTile);
+        Path p = nav.FindHarvestablePlant(job);
+        if (p != null){
+            GoToHarvest(null, p);
             return true;
         }
         return false;
@@ -399,29 +412,34 @@ public class Animal : MonoBehaviour
             }
         }
     }
-    public void DropItem(Item item, Tile dTile = null, int quantity = -1){     // tries to drop all of an item at a nearby tile.
-        if (dTile == null){dTile = world.GetTileAt(x, y); }
-        if (dTile.inv == null){
-            dTile.inv = new Inventory(1, 20, Inventory.InvType.Floor, dTile.x, dTile.y);
-        }
+
+    // TODO: make these use navigation!!! instead of insta moving to tile inv.
+    public void DropItem(Item item, Path dPath = null, int quantity = -1){     // tries to drop all of an item at a nearby tile.
+        Tile dTile;
+        if (dPath != null){dTile = dPath.tile;}
+        else {dTile = TileHere();}
+        if (dTile.inv == null){ // create new floor inv
+            dTile.inv = new Inventory(1, 20, Inventory.InvType.Floor, dTile.x, dTile.y);}
         if (quantity == -1){ inv.MoveItemTo(dTile.inv, item, inv.Quantity(item)); } // default: dropall
-        else { quantity = inv.MoveItemTo(dTile.inv, item, quantity); }
+        else { quantity = inv.MoveItemTo(dTile.inv, item, quantity); } // drop into inv here
         if (inv.Quantity(item) > 0 && (quantity == -1 || quantity > 0)){
-            DropItem(item, nav.FindPlaceToDrop(item));} // if can't drop here, drop nearby
+            DropItem(item, nav.FindPlaceToDrop(item));  // if can't drop here, drop nearby
             // TODO: make this require the animal to actually deliver it unless they cant fit it into their inv
+        }
     }
     public void DropItems(){    // drops all items, tries to keep 5 food on hand.
                                 // actually keeps 5 of each food stack. kinda sloppy, needs work eventually.
         foreach (ItemStack stack in inv.itemStacks){
-            if (stack != null && stack.quantity > 0){
+            if (stack != null && stack.item != null && stack.quantity > 0){ // im not sure why the quantity check isn't working??
                 if (stack.item.name == "wheat"){
                     DropItem(stack.item, nav.FindPlaceToDrop(stack.item), stack.quantity - 5);
                 }
-                DropItem(stack.item, nav.FindPlaceToDrop(stack.item));
+                else { DropItem(stack.item, nav.FindPlaceToDrop(stack.item)); }
             }
         }
     }
 
+    // TODO: make this use navigation!!
     // produces item in ani inv, dumps at nearby tile if inv full
     public void Produce(Item item, int quantity = 1){   
         if (quantity < 0){
@@ -431,7 +449,7 @@ public class Animal : MonoBehaviour
         // int leftover = inv.Produce(item, quantity); // disabled producing into inv for now...
         int leftover = quantity;
         if (leftover > 0){
-            Tile dTile = nav.FindPlaceToDrop(item);
+            Tile dTile = nav.FindPlaceToDrop(item).tile;
             if (dTile == null){Debug.LogError("no place to drop item!! excess item disappearing.");}
             if (dTile.inv == null){
                 dTile.inv = new Inventory(1, 20, Inventory.InvType.Floor, dTile.x, dTile.y);
@@ -498,9 +516,10 @@ public class Animal : MonoBehaviour
             if (n < numRounds){numRounds = n;}
         }
         foreach (ItemQuantity output in recipe.outputs){
-            Tile store = nav.FindStorage(output.item);
-            if (store == null){ n = 0;}
-            else {n = store.GetStorageForItem(output.item) / output.quantity; }
+            Path storePath = nav.FindStorage(output.item);
+            if (storePath == null) {n = 0;}
+            else {
+                n = storePath.tile.GetStorageForItem(output.item) / output.quantity; }
             if (n < numRounds){numRounds = Math.Max(n, 1);}
         }
         return numRounds;
@@ -518,34 +537,23 @@ public class Animal : MonoBehaviour
         FindWork();
     }
     public void SetJob(string jobStr){ SetJob(Db.GetJobByName(jobStr)); }
-    public void SyncPosition(){
-        this.x = this.go.transform.position.x;
-        this.y = this.go.transform.position.y;
-        bounds.center = go.transform.position;
-    }
 
 
-    public void GoTo(Tile t){ // this sets state to walking. don't use this for stuff like fetching.
-        nav.NavigateTo(t);
-        this.state = AnimalState.Walking;
+    // navigates to t and sets state to some form of walking. returns whether found a path.
+    public bool GoTo(Tile t, Path p = null, AnimalState state = AnimalState.Walking){ 
+        if (t == null && p == null){Debug.LogError("destination tile is null!"); return false;}
+        if (nav.NavigateTo(t, p)){
+            this.state = state;
+            return true;
+        } else {return false;}
     }
-    public void GoTo(float x, float y){GoTo(world.GetTileAt(x, y));}
-
-    public void GoToWork(){
-        if (workTile == null){Debug.LogError("work tile doesn't exist!");}
-        nav.NavigateTo(workTile);
-        state = AnimalState.WalkingToWork;
-    }
-    public void GoToHarvest(Tile t){
-        nav.NavigateTo(t);
-        SetWorkTile(t); // just to reserve the tile. i don't think worktile is used for harvesters.
-        this.state = AnimalState.WalkingToHarvest;
-    }
-    public void GoToEep(){ 
-        if (homeTile != null){
-            nav.NavigateTo(homeTile);
-            state = AnimalState.WalkingToEep;}
-        else { state = AnimalState.Eeping;}
+    public void GoTo(float x, float y){GoTo(world.GetTileAt(x, y)); }
+    public void GoToWork(Path p = null){ GoTo(workTile, p, AnimalState.WalkingToWork); }
+    public void GoToHarvest(Tile t, Path p = null){ GoTo(t, p, AnimalState.WalkingToHarvest); }
+    public void GoToDeliver(Path p = null){ GoTo(storageTile, p, AnimalState.Delivering); }
+    public void GoToEep(Path p = null){ 
+        if (homeTile == null){state = AnimalState.Eeping;}
+        else { GoTo(homeTile, p, AnimalState.WalkingToEep); }
     }
 
 
@@ -562,7 +570,8 @@ public class Animal : MonoBehaviour
     }
     public void FindHome(){
         if (homeTile == null){
-            homeTile = nav.FindBuilding(Db.structTypeByName["house"]);
+            Path homePath = nav.FindBuilding(Db.structTypeByName["house"]);
+            if (homePath != null){ homeTile = homePath.tile; }
             if (homeTile != null){
                 homeTile.building.reserved += 1;
             }
@@ -587,11 +596,9 @@ public class Animal : MonoBehaviour
 public class Nav {
     public Animal a; // have this be more generic? idk
     public World world;
-
     
-    public List<Node> path; 
+    public Path path; 
     private int pathIndex = 0;
-    private int pathLength = 0;
     private Node prevNode = null;
     private Node nextNode = null;
 
@@ -602,30 +609,30 @@ public class Nav {
         path = null;
     }
 
-    public void NavigateTo(Tile t){  // this should be the only way you set target!
-        Debug.Log("starting navigation");
-        a.target = t;
-        path = world.graph.Navigate(a.TileHere().node, a.target.node);
-        pathLength = path.Count - 1; // number of links in the chain, not nodes
-        SetPathIndex(0);
-    }
-    public void CancelNavigation(){ path = null; pathIndex = 0; prevNode = null; nextNode = null;} // should stop you from moving
-    public void SetPathIndex(int i){
-        if (i + 1 >= pathLength){Debug.Log("pathindex out of bounds");}
-        pathIndex = i; prevNode = path[i]; nextNode = path[i + 1];}
+    public bool NavigateTo(Tile t, Path iPath = null){  // this should be the only way you set target!
+        if (t == null && iPath == null){Debug.LogError("navigating without destination or path!"); return false;}
+        if (iPath != null){path = iPath; t = iPath.tile;} // if fed a path, just use it.
+        else {path = world.graph.Navigate(a.TileHere().node, t.node);} // otherwise find a path
+        if (path == null){ return false; } // if still no path exists, leave
 
-    public bool Move(float deltaTime){ // called by animal every frame!! returns whether you've arrived
-        if (path == null || pathIndex >= pathLength){return true;}  
-        Debug.Log(pathIndex);
-        if (SquareDistance(a.x, nextNode.x, a.y, nextNode.y) < 0.002f){
-            if (pathIndex + 1 >= pathLength){
-                Debug.Log("arrived"); 
-                CancelNavigation();
+        pathIndex = 0; prevNode = path.nodes[0];        // set prevNode, pathindex
+        if (path.length != 0) {nextNode = path.nodes[1];} else{nextNode = prevNode;} // set nextNode
+        a.target = t;   // set target, starting navigation
+        return true;
+    }
+    public bool Navigate(Path p){return NavigateTo(p.tile, p);}
+    public void EndNavigation(){ path = null; pathIndex = 0; prevNode = null; nextNode = null;} // should stop you from moving
+    public bool Move(float deltaTime){ // called by animal every frame!! returns whether you're done
+        if (path == null || pathIndex >= path.length){return true;}  // no path... return true, give up
+        if (SquareDistance(a.x, nextNode.x, a.y, nextNode.y) < 0.001f){
+            if (pathIndex + 1 >= path.length){
+                EndNavigation();
                 return true;
             } else {
-                SetPathIndex(pathIndex + 1);
+                pathIndex++;
+                prevNode = nextNode;
+                nextNode = path.nodes[pathIndex + 1];
             }
-            
         } 
 
         Vector2 newPos = Vector2.MoveTowards(
@@ -639,84 +646,91 @@ public class Nav {
         return false;
     }
 
-    public Tile FindItem(Item item, int r = 50){ return Find(t => t.ContainsItem(item), r); }
-    public Tile FindItemToHaul(Item item, int r = 50){ return Find(t => t.HasItemToHaul(item), r); }
-    public Tile FindStorage(Item item, int r = 50){ return Find(t => t.HasStorageForItem(item), r); }
-    public Tile FindPlaceToDrop(Item item, int r = 3){ return Find(t => t.HasSpaceForItem(item), r, true); }
-
-    public Tile FindBuilding(BuildingType buildingType, int r = 50){
+    public Path FindItem(Item item, int r = 50){ return Find(t => t.ContainsItem(item), r); }
+    public Path FindItemToHaul(Item item, int r = 50){ return Find(t => t.HasItemToHaul(item), r); }
+    public Path FindStorage(Item item, int r = 50){ return Find(t => t.HasStorageForItem(item), r); }
+    public Path FindPlaceToDrop(Item item, int r = 3){ return Find(t => t.HasSpaceForItem(item), r, true); }
+    public Tile FindTileToDrop(Item item, int r = 3){ 
+        Path p = FindPlaceToDrop(item, r);
+        if (p != null){ return p.tile; }
+        return null;
+    }
+    public Path FindBuilding(BuildingType buildingType, int r = 50){
         return Find(t => t.building != null && t.building.buildingType == buildingType && 
             t.building.capacity - t.building.reserved > 0, r);
     }
-    public Tile FindBuilding(StructType structType, int r = 50){
+    public Path FindBuilding(StructType structType, int r = 50){
         if (structType is BuildingType){ return FindBuilding(structType as BuildingType, r);}
         else {return null;}
     }
-    public Tile FindWorkTile(TileType tileType, int r = 50){
+    public Path FindWorkTile(TileType tileType, int r = 50){
         return Find(t => t.type == tileType && (t.capacity - t.reserved > 0), r);
     }
-    public Tile FindWorkTile(string tileTypeStr, int r = 30){ return FindWorkTile(Db.tileTypeByName[tileTypeStr], r); }
-    public Tile FindBlueprint(Job job, int r = 50){return Find(t => t.blueprint != null && t.blueprint.structType.job == job, r);}
-    public Tile FindHarvestablePlant(Job job, int r = 40){
+    public Path FindWorkTile(string tileTypeStr, int r = 30){ return FindWorkTile(Db.tileTypeByName[tileTypeStr], r); }
+    public Path FindBlueprint(Job job, int r = 50){return Find(t => t.blueprint != null && t.blueprint.structType.job == job, r);}
+    public Path FindHarvestablePlant(Job job, int r = 40){
         return Find(t => t.building != null && t.building is Plant 
         && (t.building as Plant).harvestable
         && (t.building.buildingType.job == job), r); // something about jobs here?
     }
-    public Tile Find(Func<Tile, bool> condition, int r, bool persistent = false){
-        Tile closestTile = null;
-        float closestDistance = float.MaxValue;
+    public Path Find(Func<Tile, bool> condition, int r, bool persistent = false){
+        Path closestPath = null;
+        float closestDistance = 100000f;
         for (int x = -r; x <= r; x++) {
             for (int y = -r; y <= r; y++) {
                 Tile tile = world.GetTileAt(a.x + x, a.y + y);
                 if (tile != null && condition(tile)) {
-                    float distance = SquareDistance((float)tile.x, a.x, (float)tile.y, a.y);
+                    // wasn't this reversed for a while but it seemed to work? vvv
+                    Path cPath = world.graph.Navigate(a.TileHere().node, tile.node);
+                    if (cPath == null) { continue; }
+                    float distance = cPath.length; // try cost later.
+                    //float distance = SquareDistance((float)tile.x, a.x, (float)tile.y, a.y);
                     if (distance < closestDistance) {
                         closestDistance = distance;
-                        closestTile = tile;
+                        closestPath = cPath;
                     }
                 }
             }
         } // should check in a wider radius if none found...
-        if (persistent && closestTile == null && r < 100){ 
-            Debug.Log("no tile found. expanding radius to " + r + 3);
-            closestTile = Find(condition, r + 3, persistent);
+        if (persistent && closestPath == null && r < 60){ 
+            Debug.Log("no tile found. expanding radius to " + (r + 3));
+            return (Find(condition, r + 4, persistent));
         }
-        return closestTile;
+        return closestPath;
     }
 
-    public Tile FindAnyItemToHaul(int r = 50){ 
+    public Path FindAnyItemToHaul(int r = 50){ 
         float closestDistance = float.MaxValue;
-        Tile closestTile = null;
+        Path closestItemPath = null;
         Tile closestStorage = null;
         Item closestItem = null;
-        Tile itemTile = Find(t => t.HasItemToHaul(null), r);
-        if (itemTile != null){
-            Item item = itemTile.inv.GetItemToHaul();
+        Path itemPath = Find(t => t.HasItemToHaul(null), r);
+        if (itemPath != null){
+            Item item = itemPath.tile.inv.GetItemToHaul();
             if (item != null){
-                Tile storage = FindStorage(item, r=50);
-                if (storage != null){
-                    float distance = SquareDistance((float)itemTile.x, a.x, (float)itemTile.y, a.y);
+                Path storagePath = FindStorage(item, r=50);
+                if (storagePath != null){
+                    float distance = itemPath.length;
                     if (distance < closestDistance) {
                         closestDistance = distance;
-                        closestTile = itemTile;
-                        closestStorage = storage;
+                        closestItemPath = itemPath;
+                        closestStorage = storagePath.tile;
                         closestItem = item;
                     }
                 }
             }
         }
-        if (closestTile != null){
+        if (closestItemPath != null){
+            Navigate(closestItemPath);
             a.storageTile = closestStorage;
             a.desiredItem = closestItem;
-            a.desiredItemQuantity = Math.Min(closestTile.inv.Quantity(closestItem),
+            a.desiredItemQuantity = Math.Min(closestItemPath.tile.inv.Quantity(closestItem),
                 closestStorage.GetStorageForItem(closestItem)); // don't take more than u can store
-            NavigateTo(closestTile);
-            return closestTile;
+            return closestItemPath;
         } else {
             a.storageTile = null; 
             a.desiredItem = null;
             a.desiredItemQuantity = 0;
-            CancelNavigation();
             a.state = Animal.AnimalState.Idle;
             return null;
         }
@@ -789,3 +803,5 @@ public class Eeping {
     }
 
 }
+
+

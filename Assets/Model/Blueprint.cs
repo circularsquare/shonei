@@ -31,6 +31,7 @@ public class Blueprint {
         if (sprite == null || sprite.texture == null){
             sprite = Resources.Load<Sprite>("Sprites/Buildings/default");}
         SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+        sr.sortingOrder = 100;
         sr.sprite = sprite;
         sr.color = new Color(sr.color.r, sr.color.g, sr.color.b, 0.5f); // blueprint half alpha
 

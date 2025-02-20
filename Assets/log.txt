@@ -246,3 +246,6 @@ background - 0
 2/19
 - added structures for navigation!
 - started work on a star navigation. still has issues like shared nodes.
+2/20
+- pathfinding mostly works!
+    - construction updates neighbors / navigation. still not sure if it works well dynamically.

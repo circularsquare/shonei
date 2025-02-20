@@ -89,12 +89,26 @@ public class Node {
     public Tile tile;
     
    
-    public Node(Tile tile, int x, int y, bool standable){
-        this.tile = tile; this.x = x; this.y = y; this.standable = standable;
+    public Node(Tile tile, int x, int y){
+        this.tile = tile; this.x = x; this.y = y;
         neighbors = new List<Node>();
     }
-    public void AddNeighbor(Node n){neighbors.Add(n); n.neighbors.Add(this);}  // also adds reciprocally
+    public void AddNeighbor(Node n){ // also adds reciprocally
+        if (!neighbors.Contains(n)) {neighbors.Add(n); n.neighbors.Add(this);}
+    }  
     public void RemoveNeighbor(Node n){neighbors.Remove(n); n.neighbors.Remove(this);}
+}
+public class Path {
+    public List<Node> nodes;
+    public float cost;
+    public int length {get {return nodes.Count - 1;}} // number of links in path, not nodes
+    public Node end;
+    public Tile tile {get {return end.tile;}}
+    public Path(List<Node> nodes, float cost){
+        this.nodes = nodes;
+        this.cost = cost;
+        end = nodes[nodes.Count - 1];
+    }
 }
 
 
@@ -107,38 +121,68 @@ public class Graph {
     public Graph(World world){
         this.world = world;
     }
-    public void Initialize(){ // updates whole network
-        CalculateTileStandability();
+    public void Initialize(){ // updates whole network  
         AddNeighborsInitial();
-        
     }
-    public List<Node> Navigate(Node start, Node goal){
+    public Path Navigate(Node start, Node goal){
         AStar astar = new AStar(nodes, start, goal);
-        List<Node> path = astar.Search();
-        return path;
+        return astar.Search();
     }
 
     // only call this if all the neighbors are empty, and just initialized.
     public void AddNeighborsInitial(){
         for (int x = 0; x < world.nx; x++){
             for (int y = 0; y < world.ny; y++){
-                // add horizontal neighbors
-                if (x + 1 < world.nx) {nodes[x,y].AddNeighbor(nodes[x+1,y]);}
-                // add vertical neighbors via ladders or stairs
-                Structure fStruct = nodes[x,y].tile.fStruct;
-                if (fStruct != null && y + 1 < world.ny){
-                    if (fStruct.structType.name == "ladder"){
-                        nodes[x,y].AddNeighbor(nodes[x,y+1]);
-                    } else if (fStruct is Stairs && (fStruct as Stairs).right){
-                        nodes[x,y].AddNeighbor(nodes[x+1,y+1]);
-                    } else if (fStruct is Stairs && !(fStruct as Stairs).right){
-                        nodes[x,y].AddNeighbor(nodes[x-1,y+1]);
-                    }
-                }
+                UpdateStandability(x, y); // needs to be called before so you can know which neighbors not to add
+            }
+        }
+        for (int x = 0; x < world.nx; x++){
+            for (int y = 0; y < world.ny; y++){
+                UpdateNeighbors(x, y);
             }
         }
     }
-    public bool GetTileStandability(int x, int y){
+    public void UpdateNeighbors(int x, int y){
+        UpdateStandability(x, y);
+        Node node = nodes[x,y];
+
+        // this part removes no longer viable neighbors
+        foreach (Node neighbor in node.neighbors){
+            int xDiff = neighbor.x - node.x; int yDiff = neighbor.y - node.y;
+            if ((xDiff == 1 || xDiff == -1) && yDiff == 0 && !(node.standable && neighbor.standable)){
+                node.RemoveNeighbor(neighbor); }
+            else if (xDiff == 0 && yDiff == 1 && !node.tile.HasLadder()){
+                node.RemoveNeighbor(neighbor); }
+            else if (xDiff == 0 && yDiff == -1 && !neighbor.tile.HasLadder()){
+                node.RemoveNeighbor(neighbor);}
+            else if (xDiff == 1 && yDiff == 1 && !node.tile.HasStairRight()){
+                node.RemoveNeighbor(neighbor); }
+            else if (xDiff == -1 && yDiff == -1 && !neighbor.tile.HasStairRight()){
+                node.RemoveNeighbor(neighbor); }
+            else if (xDiff == -1 && yDiff == 1 && !node.tile.HasStairLeft()){
+                node.RemoveNeighbor(neighbor); }
+            else if (xDiff == 1 && yDiff == -1 && !neighbor.tile.HasStairLeft()){
+                node.RemoveNeighbor(neighbor); }
+        }
+
+        // add horizontal standable neighbors
+        if (x + 1 < world.nx && node.standable && nodes[x+1,y].standable){
+            node.AddNeighbor(nodes[x+1,y]); }
+        if (x - 1 >= 0 && node.standable && nodes[x-1,y].standable){
+            node.AddNeighbor(nodes[x-1,y]); }
+        // add vertical neighbors via ladders or stairs
+        Structure fStruct = node.tile.fStruct;
+        if (fStruct != null && y + 1 < world.ny){
+            if (fStruct.structType.name == "ladder"){
+                node.AddNeighbor(nodes[x,y+1]);
+            } else if (fStruct is Stairs && (fStruct as Stairs).right){
+                node.AddNeighbor(nodes[x+1,y+1]);
+            } else if (fStruct is Stairs && !(fStruct as Stairs).right){
+                node.AddNeighbor(nodes[x-1,y+1]);
+            }
+        }
+    }
+    public bool GetStandability(int x, int y){
         Tile tileHere = world.GetTileAt(x, y);
         Tile tileBelow = world.GetTileAt(x, y-1);
         if (tileBelow == null) {return false;} // need tile below to exist
@@ -146,20 +190,10 @@ public class Graph {
 
         else if (tileBelow.type.solid) {return true;} // tile below is solid
         else if (tileBelow.building != null) {return true;} // tile below is building
-        else if (tileBelow.fStruct != null && tileBelow.fStruct.structType.name == "platform") {return true;} // tile below is platform
+        else if (tileBelow.mStruct != null && tileBelow.mStruct.structType.name == "platform") {return true;} // tile below is platform
         else {return false;}
-        
     }
-    public void CalculateTileStandability(Tile tile){CalculateTileStandability(tile.x, tile.y);}
-    public void CalculateTileStandability(int x, int y){world.GetTileAt(x, y).node.standable = GetTileStandability(x, y);}
-    public void CalculateTileStandability(){
-        for (int x = 0; x < world.nx; x++){
-            for (int y = 0; y < world.ny; y++){
-                CalculateTileStandability(x, y);
-            }
-        }
-    }
-    
+    public void UpdateStandability(int x, int y){ nodes[x,y].standable = GetStandability(x, y); }
 }
 
 
@@ -178,7 +212,7 @@ public class AStar {
         closedList = new List<Node>();
     }
 
-    public List<Node> Search() {
+    public Path Search() {
         Reset();
         start.g = 0;     // Initialize the start node
         start.h = Heuristic(start, goal);
@@ -225,18 +259,27 @@ public class AStar {
         // Simple Manhattan distance heuristic
         return (float)Math.Sqrt((node.x - goal.x)*(node.x - goal.x) + (node.y - goal.y)*(node.y - goal.y));
     }
-    
-    private List<Node> ReconstructPath(Node node) {
-        int maxDepth = 30;
+    public void Reset(){
+        foreach (Node node in graph){
+            node.parent = null;
+            node.g = 0; node.h = 0; node.f = 0;
+        }
+        openList.Clear(); closedList.Clear();
+    }
+
+    private Path ReconstructPath(Node node) {
+        int maxDepth = 60;
         int depth = 0;
-        List<Node> path = new List<Node>();
+        List<Node> nodes = new List<Node>();
         while (node != null) {
             depth++;
             if (depth > maxDepth) {Debug.LogError("path too long"); break;}
-            path.Add(node);
+            nodes.Add(node);
             node = node.parent;
         }
-        path.Reverse();
+        nodes.Reverse();
+        if (nodes == null || nodes.Count == 0) {return null;}
+        Path path = new Path(nodes, nodes[nodes.Count-1].g); // does this work as distance? 
         return path;
     }
 }

@@ -29,7 +29,7 @@ public class ItemStack
             decayCounter += (int)(decayedQuantity * maxDecayCount);
             int amountToDecay = decayCounter / maxDecayCount;
             if (amountToDecay > 0){
-                Debug.Log("decayed! " + item.name + " x " + amountToDecay);
+                //Debug.Log("decayed! " + item.name + " x " + amountToDecay);
                 inv.Produce(item, -amountToDecay);
                 decayCounter -= amountToDecay * maxDecayCount;
             }

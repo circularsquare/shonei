@@ -26,14 +26,11 @@ public class StructController : MonoBehaviour {
         n += 1;
     }
 
-    public bool Construct(StructType st, Tile tile){
+    public bool Construct(StructType st, Tile tile){        
+        Structure structure = null;
         if (st.isTile){ // tiles are not real structures, should just turn into tile
-            tile.type = Db.tileTypeByName[st.name];
-            return true;
-        }
-        
-        Structure structure;
-        if (st.isPlant){
+            tile.type = Db.tileTypeByName[st.name];}
+        else if (st.isPlant){
             if (tile.building != null){Debug.LogError("already a building or plant here!"); return false;}
             structure = new Plant(st as PlantType, tile.x, tile.y);}
         else if (st.depth == "b"){
@@ -50,8 +47,13 @@ public class StructController : MonoBehaviour {
             structure = new Ladder(st, tile.x, tile.y);}
         else { Debug.LogError("unknown type of structure?"); Debug.Log(st.depth);return false; }
         
-        structures.Add(structure);
+        if (!st.isTile){
+            structures.Add(structure);
+        }
         GlobalInventory.instance.AddItems(st.costs, true);
+        if (world == null) {world = World.instance;}
+        world.graph.UpdateNeighbors(tile.x, tile.y);
+        world.graph.UpdateNeighbors(tile.x, tile.y + 1); // it may become standable?
         return true;
     }
 
