@@ -256,3 +256,4 @@ background - 0
 - added construction progress! 
 - cleaned up a loot of extra animal states, refactored into AnimalStateManager 
     - might want to remove movement stuff from animalstatemanager 
+- fixed self fetching to not loop when gathering ingredients

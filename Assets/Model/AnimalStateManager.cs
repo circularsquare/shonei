@@ -29,8 +29,8 @@ public class AnimalStateManager {
 
         onStateEnter = new Dictionary<AnimalState, Action> {
             { AnimalState.Idle, () => animal.FindWork() },
-            { AnimalState.Delivering, () => animal.StartDelivering() },
-            { AnimalState.Fetching, () => animal.StartFetching() }
+            { AnimalState.Delivering, () => animal.StartDelivering() }, 
+            //{ AnimalState.Fetching, () => animal.StartFetching() } // DON'T WANT THIS because want fetching to be recursive
         };
     }
 

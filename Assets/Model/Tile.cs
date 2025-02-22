@@ -29,8 +29,6 @@ public class Tile
     public Structure mStruct; // midground: platforms for moving horizontally in front of buildings
     public Structure fStruct; // foreground: ladders and stairs and stuff
     public Inventory inv; // this encapsulates all inventory types
-    public int capacity = 1;    // unused rn
-    public int reserved = 0;    // unused maybe?
     public Node node;
 
     

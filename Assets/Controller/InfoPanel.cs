@@ -73,7 +73,7 @@ public class InfoPanel : MonoBehaviour {
                     gameObject.SetActive(true);
                     displayText =  ( "building: " + tile.building.structType.name + 
                         "\n location: " + tile.x.ToString() + ", " + tile.y.ToString() + 
-                        "\n reserved: " + tile.building.reserved + 
+                        "\n reserved: " + tile.building.reserved + "/" + tile.building.capacity + 
                         "\n standability: " + tile.node.standable.ToString() + 
                         "\n num neighbors: " + tile.node.neighbors.Count);
                 }

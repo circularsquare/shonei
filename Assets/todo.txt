@@ -42,8 +42,9 @@
 - nav
     - have each AStar have its own copy of nodes!!
 
+- reserved 
+    - have WorkSites that can more systematically be reserved, rather than buildings and tiles
 
-- have deliveryTarget "self" isntead of "none" for picking up
 
 
 BUGS

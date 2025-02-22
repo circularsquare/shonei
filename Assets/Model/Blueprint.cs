@@ -26,7 +26,7 @@ public class Blueprint {
         tile.blueprint = this;
 
         if (structType.constructionCost == 0f){
-            constructionCost = 5f; // default
+            constructionCost = 2f; // default
         } else {
             constructionCost = structType.constructionCost;
         }
