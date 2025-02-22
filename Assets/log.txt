@@ -249,3 +249,10 @@ background - 0
 2/20
 - pathfinding mostly works!
     - construction updates neighbors / navigation. still not sure if it works well dynamically.
+- added basic animations! and mouse sprite. 
+2/21
+- cleaned up animation
+- set up cursor! lol
+- added construction progress! 
+- cleaned up a loot of extra animal states, refactored into AnimalStateManager 
+    - might want to remove movement stuff from animalstatemanager 

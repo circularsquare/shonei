@@ -59,6 +59,7 @@ public class StructType {
     public int ny {get; set;}
     public ItemNameQuantity[] ncosts {get; set;}
     public ItemQuantity[] costs;
+    public float constructionCost {get; set;}
     public bool isTile {get; set;}
     public bool isPlant; // is this used?
     public string depth {get; set;}

@@ -5,8 +5,6 @@
     - have them pick up bigger stacks rather than just keep picking up closer one...
         - maybe change Find to take an integer score returning thing instead of a bool.
     - also rename haulers to "workers?" or maybe have builders be separate idk.
-    - also want to add construction prgoress.
-        - visible in info panel. 
 - info panel: 
     - have info panel cycle through when you click it again.
 - blueprints   
@@ -31,17 +29,10 @@
     - have a "keep" setting that invs can toggle to keep food for consumption and stuff like that. 
 
 - plant
-    - flesh out plant growth
-        - add placeholder methods and things for checking moisture and temperature 
-    - implement harvesting taking time // have this be like "task" and have it be generic for construction as well?
+    - flesh out plant growth, moisture and temperature
+    - implement harvesting taking time, like construction (or mining)! maybe generalize to "Task" instead of blueprint?
         - add harvesting method for mineral tiles 
-    - have plant building disappear? and have blueprint auto create.
-    - acorn sprite
     - make plant tile sprites start at 0
-    - sync plant and building constructors!
-
-- food
-    - don't allow them to eat last food seeds
 
 - tile mining
     - add tile mining commands 
@@ -51,6 +42,8 @@
 - nav
     - have each AStar have its own copy of nodes!!
 
+
+- have deliveryTarget "self" isntead of "none" for picking up
 
 
 BUGS
@@ -63,3 +56,5 @@ BUGS
 - hauler is only picking up a few wood at a time?
 - sometimes target buttons stop working
 - wheat inventory display doesn't update immediately when building a wheat? maybe has to do with it being a child resource idk.
+
+- removing a hauler while it is busy can cause stack overflow 

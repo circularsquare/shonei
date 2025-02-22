@@ -13,7 +13,10 @@ public class Blueprint {
 
     public ItemQuantity[] deliveredResources;
     public ItemQuantity[] costs;
-    public float constructionProgress; // todo: implement
+    public float constructionCost;
+    public float constructionProgress = 0f; 
+    public enum BlueprintState { Receiving, Constructing }
+    public BlueprintState state = BlueprintState.Receiving;
 
     public Blueprint(StructType structType, int x, int y){
         this.structType = structType;
@@ -21,6 +24,12 @@ public class Blueprint {
         this.y = y;
         this.tile = World.instance.GetTileAt(x, y);
         tile.blueprint = this;
+
+        if (structType.constructionCost == 0f){
+            constructionCost = 5f; // default
+        } else {
+            constructionCost = structType.constructionCost;
+        }
 
         go = new GameObject();
         go.transform.position = new Vector3(x, y, 0);
@@ -45,8 +54,8 @@ public class Blueprint {
     }
 
     public int ReceiveResource(Item item, int quantity){
+        if (state != BlueprintState.Receiving) { Debug.LogError("Blueprint is not in Receiving state"); return 0;}
         // this maybe should be using itemstacks instead of item quantitys.     
-
         int delivered = 0;
         for (int i = 0; i < deliveredResources.Length; i++) {
             if (deliveredResources[i].item == item) {
@@ -60,11 +69,20 @@ public class Blueprint {
             if (deliveredResources[i].quantity < costs[i].quantity) {
                 break;
             }
-            if (i == deliveredResources.Length - 1) { Complete(); }
+            if (i == deliveredResources.Length - 1) { 
+                state = BlueprintState.Constructing;
+            }
         }
         return delivered;
-        
     }
+    public void ReceiveConstruction(float progress){
+        if (state != BlueprintState.Constructing) { Debug.LogError("Blueprint is not in Constructing state"); return;}
+        constructionProgress += progress;
+        if (constructionProgress >= constructionCost){
+            Complete();
+        }
+    }
+
     public void Complete(){
         StructController.instance.Construct(structType, tile);
         // delete blueprint
@@ -73,12 +91,15 @@ public class Blueprint {
     }
 
 
-    public string GetProgress(){
+    public string GetProgress(){ // for display string
         string progress = "";
         for (int i = 0; i < deliveredResources.Length; i++) {
             progress += (deliveredResources[i].ItemName() 
                 + deliveredResources[i].quantity.ToString() 
                 + "/" + costs[i].quantity.ToString());
+        }
+        if (state == BlueprintState.Constructing){
+            progress += " (" + constructionProgress.ToString() + "/" + constructionCost.ToString() + ")";
         }
         return progress;
     }

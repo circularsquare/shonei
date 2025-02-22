@@ -15,6 +15,7 @@ public class Node { // note these are shared between all animals who want to nav
         this.tile = tile; this.x = x; this.y = y;
         neighbors = new List<Node>();
     }
+
     // note: adds reciprocally
     public void AddNeighbor(Node n){ if (!neighbors.Contains(n)) {neighbors.Add(n); n.neighbors.Add(this);}} 
     public void RemoveNeighbor(Node n){neighbors.Remove(n); n.neighbors.Remove(this);}
@@ -31,8 +32,6 @@ public class Path {
         end = nodes[nodes.Count - 1];
     }
 }
-
-
 
 
 public class Graph {

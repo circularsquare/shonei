@@ -39,9 +39,8 @@ public class BuildPanel : MonoBehaviour {
 
     // mousecontroller handles the mouse stuff. and calls build here.
     
-    public bool PlaceBlueprint(Tile tile){
-        // tile must be empty (id 0), have no building, and have no blueprint.
-        if (structType != null && tile.type.id == 0){ // && GlobalInventory.instance.SufficientResources(buildingType.costs)
+    public bool PlaceBlueprint(Tile tile){ // tile must be empty (id 0), or blueprint is to mine tile
+        if (structType != null && (tile.type.id == 0 || structType.name == "empty")){ // special case: mine tile
             Blueprint blueprint = new Blueprint(structType, tile.x, tile.y);
             return true;
         } 

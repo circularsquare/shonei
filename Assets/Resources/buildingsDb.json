@@ -1,10 +1,18 @@
 [  
-    {  
+    {
+        "id": 0,
+        "name": "empty",
+        "description": "dig",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+        ],
+        "isTile": true,
+        "njob": "digger"
+    },{  
         "id": 1,
         "name": "house",
         "description": "a simple house for 4 mice",
-        "nx": 1,
-        "ny": 1,
+        "nx": 1, "ny": 1,
         "ncosts": [
             { "name": "wood", "quantity": 10 }
         ],
@@ -15,8 +23,7 @@
         "id": 2,
         "name": "drawer",
         "description": "stores 4 stacks of things",
-        "nx": 1,
-        "ny": 1,
+        "nx": 1, "ny": 1,
         "ncosts": [
             { "name": "wood", "quantity": 5 }
         ],
@@ -25,8 +32,7 @@
         "id": 4,
         "name": "soil",
         "description": "block of soil",
-        "nx": 1,
-        "ny": 1,
+        "nx": 1, "ny": 1,
         "ncosts": [
             { "name": "soil", "quantity": 10 }
         ],
@@ -36,19 +42,17 @@
         "id": 5,
         "name": "stone",
         "description": "block of stone",
-        "nx": 1,
-        "ny": 1,
+        "nx": 1, "ny": 1,
         "ncosts": [
             { "name": "stone", "quantity": 10 }
         ],
         "isTile": true,
         "njob": "hauler"
-    },{  
+    },{          
         "id": 100,
         "name": "sawmill",
         "description": "wood processing",
-        "nx": 1,
-        "ny": 1,
+        "nx": 1, "ny": 1,
         "ncosts": [
             { "name": "wood", "quantity": 5 }
         ],
@@ -57,8 +61,7 @@
     },{
         "id": 10,
         "name": "platform",
-        "nx": 1,
-        "ny": 1,
+        "nx": 1, "ny": 1,
         "ncosts": [
             { "name": "wood", "quantity": 3 }
         ],
@@ -66,19 +69,17 @@
     },{
         "id": 11,
         "name": "stairs",
-        "nx": 1,
-        "ny": 1,
+        "nx": 1, "ny": 1,
         "ncosts": [
-            { "name": "wood", "quantity": 6 }
+            { "name": "wood", "quantity": 5 }
         ],
         "depth": "f"        
     },{
         "id": 12,
         "name": "ladder",
-        "nx": 1,
-        "ny": 1,
+        "nx": 1, "ny": 1,
         "ncosts": [
-            { "name": "wood", "quantity": 6 }
+            { "name": "wood", "quantity": 5 }
         ],
         "depth": "f"
     }

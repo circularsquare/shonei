@@ -47,6 +47,7 @@ public class InfoPanel : MonoBehaviour {
                 "\n state: " + ani.state.ToString() + 
                 "\n job: " + ani.job.name +
                 "\n inventory: " + ani.inv.ToString() + 
+                "\n delivery target: " + ani.deliveryTarget.ToString() +
                 "\n location: " + ani.go.transform.position.ToString() + 
                 "\n efficiency: " + ani.efficiency.ToString("F2") + 
                 "\n fullness: " + ani.eating.Fullness().ToString("F2") + 

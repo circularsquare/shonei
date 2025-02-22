@@ -12,15 +12,6 @@
             { "name": "maple", "quantity": 1 }
         ]
     },{  
-        "id": 1,
-        "job": "logger",
-        "tile": "tree",
-        "description": "cut tree",
-        "ninputs": [ ],
-        "noutputs": [
-            { "name": "wood", "quantity": 1 }
-        ]
-    },{  
         "id": 2,
         "job": "miner",
         "tile": "stone",
