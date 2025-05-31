@@ -101,7 +101,7 @@ public class Nav {
     public Path FindHarvestable(Job job, int r = 40){
         return FindPath(t => t.building != null && t.building is Plant 
         && (t.building as Plant).harvestable
-        && (t.building.buildingType.job == job), r); // something about jobs here?
+        && (t.building.buildingType.job == job), r);
     }
     public Path FindPathTo(Tile tile){
         return (world.graph.Navigate(a.TileHere().node, tile.node));
@@ -126,7 +126,7 @@ public class Nav {
             }
         } // should check in a wider radius if none found...
         if (persistent && closestPath == null && r < 20){ 
-            Debug.Log("no tile found. expanding radius to " + (r + 3));
+            Debug.Log("no tile found for " + a.name + ", expanding radius to " + (r + 3));
             return (FindPath(condition, r + 4, persistent));
         }
         return closestPath;

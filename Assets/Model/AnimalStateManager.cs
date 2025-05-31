@@ -48,6 +48,7 @@ public class AnimalStateManager {
     }
     private void HandleIdle() {
         animal.objective = Animal.Objective.None;
+        
         animal.FindWork();
         if (animal.state == AnimalState.Idle) {
             // Random walking when nothing else to do
@@ -66,7 +67,7 @@ public class AnimalStateManager {
             }
 
         } else if (animal.recipe != null && animal.inv.ContainsItems(animal.recipe.inputs)
-            && (animal.workTile != null)) {
+            && animal.AtWork()) {
             animal.Produce(animal.recipe);
         } else {
             animal.state = AnimalState.Idle;

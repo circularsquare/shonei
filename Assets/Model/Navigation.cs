@@ -104,9 +104,6 @@ public class Graph {
 
     public bool IsNeighbor(Node node, Node neighbor){
         int xDiff = neighbor.x - node.x; int yDiff = neighbor.y - node.y;
-        if ((xDiff == 1 || xDiff == -1) && yDiff == 0 && (node.standable && neighbor.standable)){
-            Debug.Log("yeah");
-        }
         return (((xDiff == 1 || xDiff == -1) && yDiff == 0 && (node.standable && neighbor.standable))
         || (xDiff == 0 && yDiff == 1 && !node.tile.HasLadder())
         || (xDiff == 0 && yDiff == -1 && !neighbor.tile.HasLadder())

@@ -162,12 +162,10 @@ public class Animal : MonoBehaviour
     public void FindWork(){
         if (job.name == "none"){ // free past worktile
             StartDropping();
-            if (workTile != null){
-                RemoveWorkTile();}
-            state = AnimalState.Idle;
+            Refresh();
             return;
         } 
-        // 1. First priority: Check for blueprints needing construction
+        // 1. Check for blueprints needing construction
         Tile constructionTile = nav.FindConstructingBlueprint(job);
         if (constructionTile != null){
             Path constructionPath = nav.FindPathConstructingBlueprint(job);
@@ -199,14 +197,14 @@ public class Animal : MonoBehaviour
                 }
             }
         }
-        // 1. First priority: Check for blueprints that need resources
+        // 1.5: Check for blueprints that need resources
         Path blueprintPath = nav.FindReceivingBlueprint(job);
         if (blueprintPath != null) {
             deliveryTarget = DeliveryTarget.Blueprint;
             StartFetching();
             return;
         }
-        // 2. Second priority: Check for harvestable resources matching job
+        // 2. Check for harvestable resources matching job
         Path harvestPath = nav.FindHarvestable(job);
         if (harvestPath != null) {  // this is kinda duplicated in Harvest()
             SetWorkTile(harvestPath.tile); 
@@ -214,20 +212,16 @@ public class Animal : MonoBehaviour
             return;
         }
 
-        // 3. Third priority: Job-specific behaviors
-        switch (job.name) {
-            case "hauler":
-                // Haulers look for items to move to storage
-                StartDropping();
-                deliveryTarget = DeliveryTarget.Storage;
-                StartFetching();
-                return;
-
-            default:
-                // Other jobs try to craft recipes
-                TryStartCrafting();
-                break;
+        // 3. if hauler, haul
+        if (job.name == "hauler"){
+            StartDropping();
+            deliveryTarget = DeliveryTarget.Storage;
+            StartFetching();
+            return;
         }
+
+        // 4. start crafting
+        TryStartCrafting();
     }
 
     // returns whether you have gathered all ingredients
@@ -236,9 +230,10 @@ public class Animal : MonoBehaviour
         if (recipe == null){ return false; }
         Path p = null;
         // first find work tile.
-        if (Db.tileTypeByName.ContainsKey(recipe.tile)){ // if can find unreserved work tile
-            p = nav.FindWorkTile(Db.tileTypeByName[recipe.tile]); // maybe get rid of.
-        } else if (Db.structTypeByName.ContainsKey(recipe.tile)){
+        // if (Db.tileTypeByName.ContainsKey(recipe.tile)){ // if can find unreserved work tile
+        //     p = nav.FindWorkTile(Db.tileTypeByName[recipe.tile]); // maybe get rid of.
+        // } else
+        if (Db.structTypeByName.ContainsKey(recipe.tile)){
             p = nav.FindBuilding(Db.structTypeByName[recipe.tile]);
         } 
         if (p == null){ return false; }
@@ -247,6 +242,7 @@ public class Animal : MonoBehaviour
         if (inv.ContainsItems(recipe.inputs, numRounds)){ // if have all the inputs, go to work.
             SetWorkTile(p.tile);
             GoTo(p.tile);
+            
             return true;
         } 
         else { // if missing some inputs, fetch the first missing input to your inventory.
@@ -347,7 +343,7 @@ public class Animal : MonoBehaviour
             if (inv.GetStorageForItem(desiredItem) > 5 && desiredItemQuantity > 0) {
                 StartFetching(desiredItem, desiredItemQuantity);  // Keep collecting if we need more
             } else {
-                state = AnimalState.Idle;
+                Refresh(); // have enough of the item, do whatever now
             }
         } else {
             // Normal fetching behavior
@@ -377,9 +373,8 @@ public class Animal : MonoBehaviour
             case DeliveryTarget.Drop:
                 Path dropPath = nav.FindPlaceToDrop(desiredItem);
                 if (dropPath == null) {
-                    // no path found while dropping. can't just call dropping, that's circular.
-                    //TODO: destroy items
-                    state = AnimalState.Idle;
+                    // no path found while dropping. can't just call dropping, that's circular. just destroy the items.
+                    Refresh();
                     return;
                 } else {
                     nav.Navigate(dropPath);
@@ -419,7 +414,7 @@ public class Animal : MonoBehaviour
             Refresh();
         }
     }
-    public void Refresh(){ 
+    public void Refresh(){ // command to forget stuff and become idle.
         desiredItem = null;
         desiredItemQuantity = 0;
         deliveryTarget = DeliveryTarget.None;
@@ -453,7 +448,7 @@ public class Animal : MonoBehaviour
     // returns inventory if it's at a tile, otherwise makes a floor inventory.
     public Inventory EnsureFloorInventory(Tile t){
         if (t.inv == null){
-            t.inv = new Inventory(1, 20, Inventory.InvType.Floor, t.x, t.y); }
+            t.inv = new Inventory(x: t.x, y: t.y); }
         return t.inv;
     }
 
@@ -494,10 +489,14 @@ public class Animal : MonoBehaviour
         // int leftover = inv.Produce(item, quantity); // disabled producing into inv for now...
         int leftover = quantity;
         if (leftover > 0){
-            Tile dTile = nav.FindPlaceToDrop(item).tile;
-            if (dTile == null){Debug.LogError("no place to drop item!! excess item disappearing.");}
+            Path dropPath = nav.FindPlaceToDrop(item);
+            if (dropPath == null) {
+                Debug.Log("no place to drop " + item.name + "!! excess item disappearing.");
+                return;
+            }
+            Tile dTile = dropPath.tile;
             if (dTile.inv == null){
-                dTile.inv = new Inventory(1, 20, Inventory.InvType.Floor, dTile.x, dTile.y);
+                dTile.inv = new Inventory(x: dTile.x, y: dTile.y);
             }
             dTile.inv.Produce(item, leftover);
         }        
@@ -629,9 +628,14 @@ public class Animal : MonoBehaviour
     
     public Tile TileHere(){return world.GetTileAt(x, y);}
     public bool AtHome(){return homeTile != null && homeTile == TileHere();}
+    public bool AtWork() { // are you at the place where you can produce a recipe?
+        return workTile != null && workTile == TileHere() &&
+        recipe != null && recipe.tile == workTile.type.name;
+    }
 
-    public bool IsMoving(){
-        return !(state == AnimalState.Idle || state == AnimalState.Working 
+    public bool IsMoving()
+    {
+        return !(state == AnimalState.Idle || state == AnimalState.Working
             || state == AnimalState.Eeping);
     }
 

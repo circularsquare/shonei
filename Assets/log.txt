@@ -259,4 +259,6 @@ background - 0
 - fixed self fetching to not loop when gathering ingredients
 3/29
 - i can't believe im at val town
-- added constructing at adjacent tiles, and destruction of adjacent tiles! can mine now. but they don't fall or anything.
+- added constructing at adjacent tiles, and destruction of adjacent tiles! can mine now. but they fall in and don't come out.
+5/31
+- fixed up AtWork() check

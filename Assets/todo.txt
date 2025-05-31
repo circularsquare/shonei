@@ -35,9 +35,7 @@
     - make plant tile sprites start at 0
 
 - tile mining
-    - add tile mining commands 
-        - have mice able to mine tiles adjacent to them
-        - add tile durability so that they disappear when fully mined 
+    - add tile mining command as a separate button sort of thing
 
 - nav
     - have each AStar have its own copy of nodes!!
