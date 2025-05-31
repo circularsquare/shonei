@@ -95,7 +95,7 @@ public class Inventory
 
     // adds to ginv too
     // returns LEFTOVER size
-    public int Produce(Item item, int quantity){
+    public int Produce(Item item, int quantity = 1){
         int produced = quantity - AddItem(item, quantity);
         ginv.AddItem(item, produced);
         return quantity - produced;

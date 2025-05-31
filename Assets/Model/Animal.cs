@@ -50,6 +50,10 @@ public class Animal : MonoBehaviour
         Delivering,     // Delivering items
         Eeping,
     } 
+    public enum Objective { // need to actually use this to make remembering what you wanted to do more foolproof
+        None,
+        Construct,
+    }
     private AnimalStateManager stateManager;
     private AnimalState _state;
     public AnimalState state{
@@ -64,6 +68,7 @@ public class Animal : MonoBehaviour
             }
         }
     }
+    public Objective objective;
 
     public System.Random random;
     public int tickCounter = 0;
@@ -73,7 +78,6 @@ public class Animal : MonoBehaviour
     public Sprite sprite;
     public Bounds bounds; // a box to click on to select the animal
     public World world;
-
 
 
 
@@ -87,6 +91,7 @@ public class Animal : MonoBehaviour
         this.aName = "mouse" + id.ToString();
         this.stateManager = new AnimalStateManager(this);
         this.state = AnimalState.Idle;
+        this.objective = Objective.None;
         this.job = Db.jobs[0];
         this.go = this.gameObject;
         this.go.name = "animal_" + aName;
@@ -163,12 +168,36 @@ public class Animal : MonoBehaviour
             return;
         } 
         // 1. First priority: Check for blueprints needing construction
-        Path constructionPath = nav.FindConstructingBlueprint(job);
-        if (constructionPath != null) {
-            // TODO: construction path
-            SetWorkTile(constructionPath.tile);
-            GoTo(constructionPath.tile);
-            return;
+        Tile constructionTile = nav.FindConstructingBlueprint(job);
+        if (constructionTile != null){
+            Path constructionPath = nav.FindPathConstructingBlueprint(job);
+            if (constructionPath != null){
+                SetWorkTile(constructionTile);
+                objective = Objective.Construct;
+                GoTo(constructionTile);
+
+                return;
+            } else { // find adjacent tile to blueprint
+                Tile[] adjacents = constructionTile.GetAdjacents();
+                Path shortestConstructionPath = null;
+                float shortestPathCost = 1000000f;
+                foreach (Tile adjacent in adjacents){ // try navigating to any adjacent tile of the blueprint tile. 
+                    if (adjacent != null && adjacent.node.standable){
+                        Path candidatePath = nav.FindPathTo(adjacent);
+                        if ((candidatePath != null) && (candidatePath.cost < shortestPathCost)){
+                            shortestConstructionPath = candidatePath;
+                            shortestPathCost = candidatePath.cost;
+                        }
+                    }
+                }
+                if (shortestConstructionPath != null){
+                    constructionPath = shortestConstructionPath;
+                    SetWorkTile(constructionTile); // note this is different from the tile you are going to!
+                    objective = Objective.Construct;
+                    GoTo(constructionPath);
+                    Debug.Log("travelling to adjacent tile of blueprint!");
+                }
+            }
         }
         // 1. First priority: Check for blueprints that need resources
         Path blueprintPath = nav.FindReceivingBlueprint(job);
@@ -357,7 +386,6 @@ public class Animal : MonoBehaviour
                     state = AnimalState.Delivering;
                     return;
                 }
-                break; 
                 
         }
         StartDropping(); 
@@ -457,7 +485,6 @@ public class Animal : MonoBehaviour
         }
     }
 
-    // TODO: make this use navigation!!
     // produces item in ani inv, dumps at nearby tile if inv full
     public void Produce(Item item, int quantity = 1){   
         if (quantity < 0){
@@ -566,6 +593,9 @@ public class Animal : MonoBehaviour
             return true;
         }
         return false;
+    }
+    public bool GoTo(Path p){
+        return GoTo(p.tile, p);
     }
     public bool GoTo(float x, float y){ return GoTo(world.GetTileAt(x, y)); }
 

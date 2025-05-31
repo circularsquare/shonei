@@ -37,6 +37,16 @@ public class Nav {
     }
     public bool Navigate(Path p){return NavigateTo(p.tile, p);}
     public void EndNavigation(){ path = null; pathIndex = 0; prevNode = null; nextNode = null;} // should stop you from moving
+    public bool Fall(){ // navigates to tileBelow, even though theres no path cuz unstandable
+        List<Node> pathNodes = new List<Node>();
+        pathNodes.Add(a.TileHere().node);
+        pathNodes.Add(world.GetTileAt(a.x, a.y - 1).node);
+        Path fallPath = new Path(pathNodes);
+        NavigateTo(fallPath.tile, fallPath);
+        a.state = Animal.AnimalState.Walking;
+        return true;
+    }
+
     public bool Move(float deltaTime){ // called by animal every frame!! returns whether you're done
         if (path == null || pathIndex >= path.length){return true;}  // no path... return true, give up
         if (SquareDistance(a.x, nextNode.x, a.y, nextNode.y) < 0.001f){
@@ -61,12 +71,13 @@ public class Nav {
         return false;
     }
 
-    public Path FindItem(Item item, int r = 50){ return Find(t => t.ContainsItem(item), r); }
-    public Path FindItemToHaul(Item item, int r = 50){ return Find(t => t.HasItemToHaul(item), r); }
-    public Path FindStorage(Item item, int r = 50){ return Find(t => t.HasStorageForItem(item), r); }
-    public Path FindPlaceToDrop(Item item, int r = 3){ return Find(t => t.HasSpaceForItem(item), r, true); }
+
+    public Path FindItem(Item item, int r = 50){ return FindPath(t => t.ContainsItem(item), r); }
+    public Path FindItemToHaul(Item item, int r = 50){ return FindPath(t => t.HasItemToHaul(item), r); }
+    public Path FindStorage(Item item, int r = 50){ return FindPath(t => t.HasStorageForItem(item), r); }
+    public Path FindPlaceToDrop(Item item, int r = 3){ return FindPath(t => t.HasSpaceForItem(item), r, true); }
     public Path FindBuilding(BuildingType buildingType, int r = 50){
-        return Find(t => t.building != null && t.building.buildingType == buildingType && 
+        return FindPath(t => t.building != null && t.building.buildingType == buildingType && 
             t.building.capacity - t.building.reserved > 0, r);
     }
     public Path FindBuilding(StructType structType, int r = 50){ return FindBuilding(structType as BuildingType, r);}
@@ -74,24 +85,30 @@ public class Nav {
 
         Debug.LogError("FindStructure not implemented!"); return null;}
     public Path FindWorkTile(TileType tileType, int r = 50){
-        return Find(t => t.type == tileType && (t.building.capacity - t.building.reserved > 0) && 
+        return FindPath(t => t.type == tileType && (t.building != null) && (t.building.capacity - t.building.reserved > 0) && 
             !(t.building != null && t.building is Plant), r);
     }
     public Path FindWorkTile(string tileTypeStr, int r = 30){ return FindWorkTile(Db.tileTypeByName[tileTypeStr], r); }
-    public Path FindReceivingBlueprint(Job job, int r = 50){return Find(t => t.blueprint != null 
+    public Path FindReceivingBlueprint(Job job, int r = 50){return FindPath(t => t.blueprint != null 
         && t.blueprint.structType.job == job 
         && t.blueprint.state == Blueprint.BlueprintState.Receiving, r);}
-    public Path FindConstructingBlueprint(Job job, int r = 50){return Find(t => t.blueprint != null 
+    public Path FindPathConstructingBlueprint(Job job, int r = 50){return FindPath(t => t.blueprint != null 
+        && t.blueprint.structType.job == job 
+        && t.blueprint.state == Blueprint.BlueprintState.Constructing, r);}
+    public Tile FindConstructingBlueprint(Job job, int r = 50){return Find(t => t.blueprint != null 
         && t.blueprint.structType.job == job 
         && t.blueprint.state == Blueprint.BlueprintState.Constructing, r);}
     public Path FindHarvestable(Job job, int r = 40){
-        return Find(t => t.building != null && t.building is Plant 
+        return FindPath(t => t.building != null && t.building is Plant 
         && (t.building as Plant).harvestable
         && (t.building.buildingType.job == job), r); // something about jobs here?
     }
-    public Path Find(Func<Tile, bool> condition, int r, bool persistent = false){
+    public Path FindPathTo(Tile tile){
+        return (world.graph.Navigate(a.TileHere().node, tile.node));
+    }
+    public Path FindPath(Func<Tile, bool> condition, int r, bool persistent = false){
         Path closestPath = null;
-        float closestDistance = 100000f;
+        float closestDistance = float.MaxValue;
         for (int x = -r; x <= r; x++) {
             for (int y = -r; y <= r; y++) {
                 Tile tile = world.GetTileAt(a.x + x, a.y + y);
@@ -108,11 +125,33 @@ public class Nav {
                 }
             }
         } // should check in a wider radius if none found...
-        if (persistent && closestPath == null && r < 60){ 
+        if (persistent && closestPath == null && r < 20){ 
+            Debug.Log("no tile found. expanding radius to " + (r + 3));
+            return (FindPath(condition, r + 4, persistent));
+        }
+        return closestPath;
+    }
+    
+    public Tile Find(Func <Tile, bool> condition, int r, bool persistent = false){
+        Tile closestTile = null;
+        float closestDistance = float.MaxValue;
+        for (int x = -r; x <= r; x++) {
+            for (int y = -r; y <= r; y++) {
+                Tile tile = world.GetTileAt(a.x + x, a.y + y);
+                if (tile != null && condition(tile)) {
+                    float distance = SquareDistance((float)tile.x, a.x, (float)tile.y, a.y);
+                    if (distance < closestDistance) {
+                        closestDistance = distance;
+                        closestTile = tile;
+                    }
+                }
+            }
+        } // should check in a wider radius if none found...
+        if (persistent && closestTile == null && r < 60){ 
             Debug.Log("no tile found. expanding radius to " + (r + 3));
             return (Find(condition, r + 4, persistent));
         }
-        return closestPath;
+        return closestTile;
     }
 
     public Path FindAnyItemToHaul(int r = 50){ 
@@ -120,7 +159,7 @@ public class Nav {
         Path closestItemPath = null;
         Tile closestStorage = null;
         Item closestItem = null;
-        Path itemPath = Find(t => t.HasItemToHaul(null), r);
+        Path itemPath = FindPath(t => t.HasItemToHaul(null), r);
         if (itemPath != null){
             Item item = itemPath.tile.inv.GetItemToHaul();
             if (item != null){

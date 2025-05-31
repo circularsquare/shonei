@@ -52,6 +52,9 @@ public class InfoPanel : MonoBehaviour {
                 "\n efficiency: " + ani.efficiency.ToString("F2") + 
                 "\n fullness: " + ani.eating.Fullness().ToString("F2") + 
                 "\n eep: " + ani.eeping.Eepness().ToString("F2"));
+                if (ani.workTile != null){
+                    displayText += "\n workTile: " + ani.workTile.ToString();
+                }
                 textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = displayText;
             }
         }

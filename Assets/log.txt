@@ -257,3 +257,6 @@ background - 0
 - cleaned up a loot of extra animal states, refactored into AnimalStateManager 
     - might want to remove movement stuff from animalstatemanager 
 - fixed self fetching to not loop when gathering ingredients
+3/29
+- i can't believe im at val town
+- added constructing at adjacent tiles, and destruction of adjacent tiles! can mine now. but they don't fall or anything.

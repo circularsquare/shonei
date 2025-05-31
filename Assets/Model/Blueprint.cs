@@ -50,6 +50,8 @@ public class Blueprint {
         }
         costs = structType.costs;
 
+        if (structType.costs.Length == 0){ state = BlueprintState.Constructing; }
+
         // register callback to update sprite?
     }
 
@@ -75,12 +77,15 @@ public class Blueprint {
         }
         return delivered;
     }
-    public void ReceiveConstruction(float progress){
-        if (state != BlueprintState.Constructing) { Debug.LogError("Blueprint is not in Constructing state"); return;}
+    
+    public bool ReceiveConstruction(float progress){ // returns whether you just finished
+        if (state != BlueprintState.Constructing) { Debug.LogError("Blueprint is not in Constructing state"); return true;}
         constructionProgress += progress;
         if (constructionProgress >= constructionCost){
             Complete();
+            return true;
         }
+        return false;
     }
 
     public void Complete(){

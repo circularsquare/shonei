@@ -46,7 +46,6 @@
     - have WorkSites that can more systematically be reserved, rather than buildings and tiles
 
 
-
 BUGS
 - multiple blueprints on same tile, they get lost. disallow or fix.
 - mice are not reserving houses!

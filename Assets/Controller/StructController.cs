@@ -29,6 +29,14 @@ public class StructController : MonoBehaviour {
     public bool Construct(StructType st, Tile tile){        
         Structure structure = null;
         if (st.isTile){ // tiles are not real structures, should just turn into tile
+            if (st.name == "empty"){
+                // need to spawn the mined resources
+                if (tile.type.products != null && tile.type.products.Length > 0){
+                    if (tile.inv == null){ tile.inv = new Inventory(1, 20, Inventory.InvType.Floor, tile.x, tile.y); }
+                    tile.inv.Produce(tile.type.products[0].item, tile.type.products[0].quantity);
+                }
+                
+            }
             tile.type = Db.tileTypeByName[st.name];}
         else if (st.isPlant){
             if (tile.building != null){Debug.LogError("already a building or plant here!"); return false;}

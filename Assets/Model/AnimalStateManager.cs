@@ -47,6 +47,7 @@ public class AnimalStateManager {
         }
     }
     private void HandleIdle() {
+        animal.objective = Animal.Objective.None;
         animal.FindWork();
         if (animal.state == AnimalState.Idle) {
             // Random walking when nothing else to do
@@ -57,11 +58,16 @@ public class AnimalStateManager {
     }
 
     private void HandleWorking() {
-        if (animal.recipe != null && animal.inv.ContainsItems(animal.recipe.inputs)) {
+        // should recheck if worktile is what you expect? how to do that? 
+        if (animal.workTile?.blueprint != null && 
+                   animal.workTile.blueprint.state == Blueprint.BlueprintState.Constructing) {
+            if (animal.workTile.blueprint.ReceiveConstruction(1f * animal.efficiency)){
+                animal.state = AnimalState.Idle;// if finished
+            }
+
+        } else if (animal.recipe != null && animal.inv.ContainsItems(animal.recipe.inputs)
+            && (animal.workTile != null)) {
             animal.Produce(animal.recipe);
-        } else if (animal.target?.blueprint != null && 
-                   animal.target.blueprint.state == Blueprint.BlueprintState.Constructing) {
-            animal.target.blueprint.ReceiveConstruction(1f * animal.efficiency);
         } else {
             animal.state = AnimalState.Idle;
         }
@@ -83,14 +89,9 @@ public class AnimalStateManager {
 
     public void UpdateMovement(float deltaTime) {
         // Handle falling
-        // if (!animal.TileHere().node.standable) {
-        //     animal.go.transform.position = new Vector3(
-        //         animal.go.transform.position.x,
-        //         animal.go.transform.position.y - animal.maxSpeed * deltaTime,
-        //         animal.go.transform.position.z);
-        //     animal.x = animal.go.transform.position.x;
-        //     animal.y = animal.go.transform.position.y;
-        // }
+        if (!animal.TileHere().node.standable) {
+            animal.nav.Fall();
+        }
 
         if (IsMovingState(animal.state)) {
             if (animal.target == null) {
@@ -127,7 +128,9 @@ public class AnimalStateManager {
         switch (animal.state) {
             case AnimalState.Walking:
                     // Check if we arrived at workTile or homeTile
-                if (animal.TileHere() == animal.workTile) {
+                if (animal.objective == Animal.Objective.Construct){
+                    animal.state = AnimalState.Working;
+                } else if (animal.TileHere() == animal.workTile) {
                     if (animal.TileHere().building is Plant) { // work tile is plant 
                         Plant plant = animal.TileHere().building as Plant;
                         if (plant.harvestable) {
@@ -140,6 +143,7 @@ public class AnimalStateManager {
                         animal.state = AnimalState.Working;
                     }
                 } else if (animal.TileHere() == animal.homeTile) {
+                    Debug.Log("arrived home, going to eep");
                     animal.state = AnimalState.Eeping;
                 } else {
                     animal.state = AnimalState.Idle;

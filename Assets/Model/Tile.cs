@@ -62,6 +62,19 @@ public class Tile
     public bool HasLadder(){ return (fStruct != null && fStruct is Ladder); }
     public bool HasStairRight(){ return (fStruct != null && fStruct is Stairs && (fStruct as Stairs).right); }
     public bool HasStairLeft(){ return (fStruct != null && fStruct is Stairs && !(fStruct as Stairs).right); }
+
+    public Tile[] GetAdjacents(){ // not the same as graph neighbors
+        Tile[] adjacents = new Tile[4];
+        adjacents[0] = world.GetTileAt(x + 1, y);
+        adjacents[1] = world.GetTileAt(x, y - 1);
+        adjacents[2] = world.GetTileAt(x - 1, y);
+        adjacents[3] = world.GetTileAt(x, y + 1);
+        return adjacents;
+    }
+
+    override public string ToString(){
+        return ("tile " + x.ToString() + "," + y.ToString());
+    }
 }
 
 
@@ -69,4 +82,20 @@ public class TileType {
     public int id {get; set;}
     public string name {get; set;}
     public bool solid {get; set;}
+    public ItemNameQuantity[] nproducts {get; set;}
+    public ItemQuantity[] products;
+
+
+    [OnDeserialized]
+    internal void OnDeserialized(StreamingContext context){
+        if (nproducts != null){
+            products = new ItemQuantity[nproducts.Length];
+            for (int i = 0; i < nproducts.Length; i++){
+                products[i] = new ItemQuantity(nproducts[i].name, nproducts[i].quantity);
+            }
+        }
+    }
+
+
+
 }
