@@ -189,23 +189,23 @@ public class Nav {
     }
 
 
-    // public Path FindAdjacentTile(Tile target) {
-    //         // Check all adjacent tiles
-    //     Vector2Int[] adjacentOffsets = new[] {
-    //         new Vector2Int(0, 1),
-    //         new Vector2Int(1, 0),
-    //         new Vector2Int(0, -1),
-    //         new Vector2Int(-1, 0) };
-    //     foreach (var offset in adjacentOffsets) {
-    //         Tile adjacentTile = world.GetTileAt(
-    //             target.x + offset.x, 
-    //             target.y + offset.y );  
-    //         if (adjacentTile != null && IsReachable(adjacentTile)) {
-    //             return world.graph.Navigate(a.TileHere().node, adjacentTile.node);
-    //         }
-    //     }        
-    //     return null;
-    // }
+    public Path FindAdjacentTile(Tile target) {
+            // Check all adjacent tiles
+        Vector2Int[] adjacentOffsets = new[] {
+            new Vector2Int(0, 1),
+            new Vector2Int(1, 0),
+            new Vector2Int(0, -1),
+            new Vector2Int(-1, 0) };
+        foreach (var offset in adjacentOffsets) {
+            Tile adjacentTile = world.GetTileAt(
+                target.x + offset.x, 
+                target.y + offset.y );  
+            if (adjacentTile != null && IsReachable(adjacentTile)) {
+                return world.graph.Navigate(a.TileHere().node, adjacentTile.node);
+            }
+        }        
+        return null;
+    }
 
     public bool IsReachable(Tile t){ // TODO: implement! can you reach this tile from where you are?
         return t.node.standable;

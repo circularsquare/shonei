@@ -64,15 +64,11 @@ public class Tile
     public bool HasStairLeft(){ return (fStruct != null && fStruct is Stairs && !(fStruct as Stairs).right); }
 
     public Tile[] GetAdjacents(){ // not the same as graph neighbors
-        Tile[] adjacents = new Tile[8];
+        Tile[] adjacents = new Tile[4];
         adjacents[0] = world.GetTileAt(x + 1, y);
-        adjacents[1] = world.GetTileAt(x + 1, y - 1);
-        adjacents[2] = world.GetTileAt(x, y - 1);
-        adjacents[3] = world.GetTileAt(x - 1, y - 1);
-        adjacents[4] = world.GetTileAt(x - 1, y);
-        adjacents[5] = world.GetTileAt(x - 1, y + 1);
-        adjacents[6] = world.GetTileAt(x, y + 1);
-        adjacents[7] = world.GetTileAt(x + 1, y + 1);
+        adjacents[1] = world.GetTileAt(x, y - 1);
+        adjacents[2] = world.GetTileAt(x - 1, y);
+        adjacents[3] = world.GetTileAt(x, y + 1);
         return adjacents;
     }
 
