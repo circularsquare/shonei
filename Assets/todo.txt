@@ -24,24 +24,25 @@
 - fix destroy button
 - ui
     - add highlight on currently selected menu
-
 - inventory
     - have a "keep" setting that invs can toggle to keep food for consumption and stuff like that. 
-
 - plant
     - flesh out plant growth, moisture and temperature
     - implement harvesting taking time, like construction (or mining)! maybe generalize to "Task" instead of blueprint?
         - add harvesting method for mineral tiles 
     - make plant tile sprites start at 0
-
 - tile mining
     - add tile mining command as a separate button sort of thing
-
 - nav
     - have each AStar have its own copy of nodes!!
-
 - reserved 
     - have WorkSites that can more systematically be reserved, rather than buildings and tiles
+- task objective system
+    - move over deliverobj, workobj, eepobj
+    - move over other simple tasks
+    - implement discardTask
+    - have animals call onarrival
+    - change animalstate to have fewer states
 
 
 BUGS

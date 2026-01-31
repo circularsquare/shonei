@@ -11,41 +11,35 @@ public class AnimalStateManager {
 
     private Animal animal;
 
-    private Dictionary<AnimalState, Action> stateActions;
-    private Dictionary<AnimalState, Action> onStateEnter;
-
     public AnimalStateManager(Animal animal) {
         this.animal = animal;
-        InitializeStateActions();
-    }
-
-    private void InitializeStateActions() {
-        stateActions = new Dictionary<AnimalState, Action> {
-            { AnimalState.Idle, HandleIdle },
-            { AnimalState.Working, HandleWorking },
-            { AnimalState.Eeping, HandleEeping },
-            // Walking, Fetching, and Delivering are handled in Update() since they need deltaTime
-        };
-
-        onStateEnter = new Dictionary<AnimalState, Action> {
-            { AnimalState.Idle, () => animal.FindWork() },
-            { AnimalState.Delivering, () => animal.StartDelivering() }, 
-            //{ AnimalState.Fetching, () => animal.StartFetching() } // DON'T WANT THIS because want fetching to be recursive
-        };
-    }
-
-
-    public void UpdateState() {
-        if (stateActions.ContainsKey(animal.state)) {
-            stateActions[animal.state].Invoke();
-        }
     }
 
     public void OnStateEnter(AnimalState newState) {
-        if (onStateEnter.ContainsKey(newState)) {
-            onStateEnter[newState].Invoke();
+        switch(newState)
+        {
+            case AnimalState.Idle:
+                break;
         }
     }
+
+
+    public void UpdateState() { // called every animal.tickupdate!
+        switch (animal.state){ // fetching and delivering and such are handled in Update() cuz they require deltatime?
+            case AnimalState.Idle:
+                HandleIdle();
+                break;
+            case AnimalState.Working:
+                HandleWorking();
+                break;
+            case AnimalState.Eeping:
+                HandleEeping();
+                break;
+        }
+    }
+
+    
+
     private void HandleIdle() {
         animal.objective = Animal.Objective.None;
         
