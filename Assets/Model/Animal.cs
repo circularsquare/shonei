@@ -45,17 +45,16 @@ public class Animal : MonoBehaviour
 
     public Task task;
 
-    public enum AnimalState
-    {
+    public enum AnimalState{
         Idle,
         Walking,        // Generic movement state
         Working,        // For any work at a location (crafting, building, etc)
         Fetching,       // Getting items
         Delivering,     // Delivering items
         Eeping,
+        Moving,         // any type of moving, under the task system
     }
-    public enum Objective
-    { // need to actually use this to make remembering what you wanted to do more foolproof
+    public enum Objective { // need to actually use this to make remembering what you wanted to do more foolproof
         None,
         Construct,
     }
@@ -150,8 +149,7 @@ public class Animal : MonoBehaviour
                 deliveryTarget = DeliveryTarget.Self;
                 StartFetching(Db.itemByName["wheat"], 5);
             }
-        }
-        else if (eeping.Eepy() && state != AnimalState.Eeping) {
+        } else if (eeping.Eepy() && state != AnimalState.Eeping) {
             GoToEep();
         }
     }
@@ -170,31 +168,23 @@ public class Animal : MonoBehaviour
 
 
 
-
-    
-
     public void FindWork() {
-        if (job.name == "none")
-        { // free past worktile
+        if (job.name == "none") { // free past worktile
             StartDropping();
             Refresh();
             return;
         }
         // 1. Check for blueprints needing construction
         Tile constructionTile = nav.FindConstructingBlueprint(job);
-        if (constructionTile != null)
-        {
+        if (constructionTile != null){
             Path constructionPath = nav.FindPathConstructingBlueprint(job);
-            if (constructionPath != null)
-            {
+            if (constructionPath != null){
                 SetWorkTile(constructionTile);
                 objective = Objective.Construct;
                 GoTo(constructionTile);
-
                 return;
             }
-            else
-            { // find adjacent tile to blueprint
+            else { // find adjacent tile to blueprint
                 Tile[] adjacents = constructionTile.GetAdjacents();
                 Path shortestConstructionPath = null;
                 float shortestPathCost = 1000000f;
@@ -222,8 +212,7 @@ public class Animal : MonoBehaviour
         }
         // 1.5: Check for blueprints that need resources
         Path blueprintPath = nav.FindReceivingBlueprint(job);
-        if (blueprintPath != null)
-        {
+        if (blueprintPath != null){
             deliveryTarget = DeliveryTarget.Blueprint;
             StartFetching();
             return;
@@ -245,39 +234,35 @@ public class Animal : MonoBehaviour
         }
 
         // 4. start crafting
-        TryStartCrafting();
+
+        // TryStartCrafting();
+        task = new CraftTask(this);
+        if (task.Start()) return;
+
+        task = null; // none of the above tasks started successfully...
+        return;
     }
 
     // returns whether you have gathered all ingredients
-    private bool TryStartCrafting()
-    {
+    private bool TryStartCrafting(){
         recipe = PickRecipe();
         if (recipe == null) { return false; }
         Path p = null;
         // first find work tile.
-        // if (Db.tileTypeByName.ContainsKey(recipe.tile)){ // if can find unreserved work tile
-        //     p = nav.FindWorkTile(Db.tileTypeByName[recipe.tile]); // maybe get rid of.
-        // } else
-        if (Db.structTypeByName.ContainsKey(recipe.tile))
-        {
+        if (Db.structTypeByName.ContainsKey(recipe.tile)){
             p = nav.FindBuilding(Db.structTypeByName[recipe.tile]);
         }
         if (p == null) { return false; }
 
         numRounds = CalculateWorkPossible(recipe);      // calc numRounds
-        if (inv.ContainsItems(recipe.inputs, numRounds))
-        { // if have all the inputs, go to work.
+        if (inv.ContainsItems(recipe.inputs, numRounds)) { // if have all the inputs, go to work.
             SetWorkTile(p.tile);
             GoTo(p.tile);
-
             return true;
         }
-        else
-        { // if missing some inputs, fetch the first missing input to your inventory.
-            foreach (ItemQuantity input in recipe.inputs)
-            {
-                if (!inv.ContainsItem(input, numRounds))
-                {
+        else { // if missing some inputs, fetch the first missing input to your inventory.
+            foreach (ItemQuantity input in recipe.inputs){
+                if (!inv.ContainsItem(input, numRounds)){
                     if (input == null) { Debug.LogError("recipe input is null??"); }
                     deliveryTarget = DeliveryTarget.Self; // note: unsure abt this
                     StartFetching(input.item, input.quantity * numRounds);
@@ -289,10 +274,10 @@ public class Animal : MonoBehaviour
         }
     }
 
+
     public bool Collect() {
         if (recipe == null) { Debug.LogError("lost recipe!"); return false; }
-        foreach (ItemQuantity input in recipe.inputs)
-        {
+        foreach (ItemQuantity input in recipe.inputs){
             if (!inv.ContainsItem(input, numRounds))
             {
                 deliveryTarget = DeliveryTarget.Storage;
@@ -309,21 +294,16 @@ public class Animal : MonoBehaviour
     // -----------------------
 
     // Combine Fetch methods into one clear entry point
-    public bool StartFetching(Item item = null, int quantity = -1)
-    {
+    public bool StartFetching(Item item = null, int quantity = -1){
         Path itemPath = null;
-        switch (deliveryTarget)
-        {
+        switch (deliveryTarget){
             case DeliveryTarget.Storage:
-                if (item == null)
-                {
+                if (item == null) {
                     itemPath = nav.FindAnyItemToHaul(); // sets desiredItem and desiredquantity and storageTile
                 }
-                else
-                {
+                else {
                     itemPath = nav.FindItemToHaul(item);
-                    if (itemPath != null)
-                    {
+                    if (itemPath != null){
                         desiredItem = item;
                         if (quantity != -1) { desiredItemQuantity = quantity; } // edfault, don't touch desired quantity
                         storageTile = nav.FindStorage(item).tile;
@@ -334,17 +314,13 @@ public class Animal : MonoBehaviour
             case DeliveryTarget.Blueprint:
                 if (item != null) { Debug.LogError("delivery target is blueprint, but item is not null!"); }
                 Path blueprintPath = nav.FindReceivingBlueprint(job);
-                if (blueprintPath != null)
-                {
+                if (blueprintPath != null) {
                     Blueprint blueprint = blueprintPath.tile.blueprint;
-                    for (int i = 0; i < blueprint.costs.Length; i++)
-                    {
-                        if (blueprint.deliveredResources[i].quantity < blueprint.costs[i].quantity)
-                        {
+                    for (int i = 0; i < blueprint.costs.Length; i++)  {
+                        if (blueprint.deliveredResources[i].quantity < blueprint.costs[i].quantity) {
                             item = blueprint.costs[i].item;
                             itemPath = nav.FindItem(item);
-                            if (itemPath != null)
-                            {
+                            if (itemPath != null) {
                                 desiredItem = item;
                                 desiredItemQuantity = blueprint.costs[i].quantity - blueprint.deliveredResources[i].quantity;
                                 storageTile = blueprint.tile;
@@ -376,35 +352,28 @@ public class Animal : MonoBehaviour
             return false;
         }
     }
-    public void OnArrivalFetch()
-    {
+    public void OnArrivalFetch(){
         TakeItem(desiredItem, desiredItemQuantity);
         desiredItemQuantity = desiredItemQuantity - inv.Quantity(desiredItem);
 
-        if (deliveryTarget == DeliveryTarget.None)
-        {
+        if (deliveryTarget == DeliveryTarget.None){
             Debug.LogError("delivery target is none!"); return;
         }
         else if (deliveryTarget == DeliveryTarget.Self)
         { // if taking for self, keep fetching if you need more.
-            if (inv.GetStorageForItem(desiredItem) > 5 && desiredItemQuantity > 0)
-            {
+            if (inv.GetStorageForItem(desiredItem) > 5 && desiredItemQuantity > 0){
                 StartFetching(desiredItem, desiredItemQuantity);  // Keep collecting if we need more
             }
-            else
-            {
+            else {
                 Refresh(); // have enough of the item, do whatever now
             }
         }
-        else
-        {
+        else {
             // Normal fetching behavior
-            if (inv.GetStorageForItem(desiredItem) > 5 && desiredItemQuantity > 0)
-            {
+            if (inv.GetStorageForItem(desiredItem) > 5 && desiredItemQuantity > 0){
                 StartFetching(desiredItem);
             }
-            else
-            {
+            else{
                 StartDelivering();
             }
         }
@@ -448,10 +417,8 @@ public class Animal : MonoBehaviour
         StartDropping();
     }
 
-    public void OnArrivalDeliver()
-    {
-        switch (deliveryTarget)
-        {
+    public void OnArrivalDeliver(){
+        switch (deliveryTarget){
             case DeliveryTarget.Storage:
                 DropItem(desiredItem);
                 break;
@@ -471,20 +438,22 @@ public class Animal : MonoBehaviour
                 DropItem(desiredItem);
                 break;
         }
-
         int itemInInv = inv.Quantity(desiredItem);
-        if (itemInInv > 0)
-        {
+        if (itemInInv > 0){
             deliveryTarget = DeliveryTarget.Drop;
             StartDelivering();
         }  // keep dropping. might caues infinite loop with dropping wheat though you need to keep it.
-        else
-        {
+        else{
             Refresh();
         }
     }
-    public void Refresh()
-    { // command to forget stuff and become idle.
+
+    // uses the task/objective system!
+    public void OnArrival(){
+        if (task != null) task.OnArrival();
+    }
+
+    public void Refresh(){ // command to forget stuff and become idle.
         desiredItem = null;
         desiredItemQuantity = 0;
         deliveryTarget = DeliveryTarget.None;
@@ -497,26 +466,25 @@ public class Animal : MonoBehaviour
     //--------------
     // ITEM MOVEMENT (maybe these should be moved into Inventory class??)
     // -----------------------
-    public void TakeItem(Item item, int quantity)
-    {  // pick up item from current location
+    // picks up item current location, returns amount *not* taken
+    public int TakeItem(Item item, int quantity){ 
         Tile tileHere = TileHere();
-        if (tileHere != null && tileHere.inv != null)
-        {
-            tileHere.inv.MoveItemTo(inv, item, quantity);
-            if (tileHere.inv.IsEmpty() && tileHere.inv.invType == Inventory.InvType.Floor)
-            {
+        if (tileHere != null && tileHere.inv != null) {
+            int leftover = tileHere.inv.MoveItemTo(inv, item, quantity);
+            if (tileHere.inv.IsEmpty() && tileHere.inv.invType == Inventory.InvType.Floor){
                 tileHere.inv.Destroy();
                 tileHere.inv = null; // delete an empty floor inv.
             }
+            return leftover;
         }
+        return quantity;
     }
-    public void TakeItem(ItemQuantity iq){ TakeItem(iq.item , iq.quantity); }
+    public int TakeItem(ItemQuantity iq){ return(TakeItem(iq.item , iq.quantity)); }
 
-
-    public void DropItem(Item item, int quantity = -1)
-    { // moves item to tile here.
+    // moves item to tile here. returns amount *not* dropped
+    public int DropItem(Item item, int quantity = -1){ 
         if (quantity == -1) { quantity = inv.Quantity(item); }
-        inv.MoveItemTo(EnsureFloorInventory(TileHere()), item, quantity);
+        return (inv.MoveItemTo(EnsureFloorInventory(TileHere()), item, quantity));
         // what to do when this fails???
         // need failsafe
     }
@@ -527,7 +495,7 @@ public class Animal : MonoBehaviour
         }
         return t.inv;
     }
-    public void DropItem(ItemQuantity iq) { DropItem(iq.item, iq.quantity); }
+    public int DropItem(ItemQuantity iq) { return(DropItem(iq.item, iq.quantity)); }
 
     public void DropAtBlueprint()
     {      // deliver items to blueprint
@@ -601,10 +569,8 @@ public class Animal : MonoBehaviour
         }
         else { Debug.Log("called produce without having all recipe ingredients! not doing."); }
     }
-    public void Consume(Item item, int quantity = 1)
-    {
-        if (inv.Produce(item, -quantity) < 0)
-        {
+    public void Consume(Item item, int quantity = 1){
+        if (inv.Produce(item, -quantity) < 0){
             Debug.LogError("tried consuming more than you have!");
         }
     }
@@ -649,8 +615,7 @@ public class Animal : MonoBehaviour
         return bestRecipe;
     }
 
-    public int CalculateWorkPossible(Recipe recipe)
-    {
+    public int CalculateWorkPossible(Recipe recipe){
         // looks at inputs in gInv, and first available storage you can find in animal range, at least 1. 
         // the storage thing makes it a bit conservative. 
         if (recipe.inputs.Length == 0) { return -1; }
@@ -678,8 +643,7 @@ public class Animal : MonoBehaviour
     // -----------------------
     // UTILS
     // -----------------------
-    public void SetJob(Job newJob)
-    {
+    public void SetJob(Job newJob){
         Job oldJob = this.job;
         this.job = newJob;
         if (cbAnimalChanged != null)
@@ -693,8 +657,7 @@ public class Animal : MonoBehaviour
 
 
     // navigates to t and sets state to walking.
-    public bool GoTo(Tile t, Path p = null)
-    {
+    public bool GoTo(Tile t, Path p = null){
         if (t == null && p == null) { Debug.LogError("destination tile is null!"); return false; }
         if (nav.NavigateTo(t, p))
         {
@@ -709,14 +672,12 @@ public class Animal : MonoBehaviour
     }
     public bool GoTo(float x, float y) { return GoTo(world.GetTileAt(x, y)); }
 
-    public void GoToEep()
-    {
+    public void GoToEep(){
         if (homeTile == null) { state = AnimalState.Eeping; }
         else { GoTo(homeTile); }
     }
 
-    public void SetWorkTile(Tile t)
-    {
+    public void SetWorkTile(Tile t){
         if (workTile != null)
         {
             //workTile.reserved -= 1;  // change this to add WorkSite at each building and blueprint! and have it be reservable
@@ -724,16 +685,13 @@ public class Animal : MonoBehaviour
         workTile = t;
         //workTile.reserved += 1;
     }
-    public void RemoveWorkTile()
-    {
+    public void RemoveWorkTile(){
         if (workTile == null) { return; }
         //workTile.reserved -= 1;
         workTile = null;
     }
-    public void FindHome()
-    {
-        if (homeTile == null)
-        {
+    public void FindHome(){
+        if (homeTile == null){
             Path homePath = nav.FindBuilding(Db.structTypeByName["house"]);
             if (homePath != null) { homeTile = homePath.tile; }
             if (homeTile != null)
@@ -746,14 +704,15 @@ public class Animal : MonoBehaviour
 
     public Tile TileHere() { return world.GetTileAt(x, y); }
     public bool AtHome() { return homeTile != null && homeTile == TileHere(); }
-    public bool AtWork()
-    { // are you at the place where you can produce a recipe?
+    public bool AtWork(){ // are you at the place where you can produce a recipe?
         return workTile != null && workTile == TileHere() &&
         recipe != null && recipe.tile == workTile.type.name;
     }
+    public bool CanProduce(Recipe recipe) {
+        return inv.ContainsItems(recipe.inputs) && recipe.tile == TileHere().building.structType.name;
+    }
 
-    public bool IsMoving()
-    {
+    public bool IsMoving(){
         return !(state == AnimalState.Idle || state == AnimalState.Working
             || state == AnimalState.Eeping);
     }

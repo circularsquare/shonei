@@ -53,19 +53,29 @@ public class AnimalStateManager {
     }
 
     private void HandleWorking() {
-        // should recheck if worktile is what you expect? how to do that? 
         if (animal.workTile?.blueprint != null && 
                    animal.workTile.blueprint.state == Blueprint.BlueprintState.Constructing) {
             if (animal.workTile.blueprint.ReceiveConstruction(1f * animal.efficiency)){
-                animal.state = AnimalState.Idle;// if finished
+                animal.state = AnimalState.Idle; // if finished
+                animal.task?.Complete(); // completes task to set state. TODO: remove other setting of state above.
             }
-
-        } else if (animal.recipe != null && animal.inv.ContainsItems(animal.recipe.inputs)
-            && animal.AtWork()) {
-            animal.Produce(animal.recipe);
-        } else {
-            animal.state = AnimalState.Idle;
+        } 
+        // crafting!
+        // else if (animal.recipe != null && animal.inv.ContainsItems(animal.recipe.inputs) && animal.AtWork()) {
+        //     animal.Produce(animal.recipe);
+        // } else {
+        //     animal.state = AnimalState.Idle;
+        // }
+        else if (animal.task is CraftTask craftTask) {
+            Recipe recipe = craftTask.recipe;
+            if (animal.CanProduce(recipe)){
+                animal.Produce(recipe);
+            } else {
+                animal.task.Complete();
+            }
+            return;
         }
+        Debug.Log("in working state but no work to do");
     }
 
     private void HandleEeping() {
@@ -112,7 +122,8 @@ public class AnimalStateManager {
     private bool IsMovingState(AnimalState state) {
         return state == AnimalState.Walking ||
                state == AnimalState.Fetching ||
-               state == AnimalState.Delivering;
+               state == AnimalState.Delivering || 
+               state == AnimalState.Moving;
     }
     private void HandleArrival() {
         // Tile here = animal.TileHere();
@@ -149,6 +160,9 @@ public class AnimalStateManager {
                 break;
             case AnimalState.Delivering:
                 animal.OnArrivalDeliver();
+                break;
+            case AnimalState.Moving:
+                animal.OnArrival();
                 break;
         }
     }

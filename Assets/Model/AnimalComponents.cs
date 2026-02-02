@@ -104,7 +104,7 @@ public class Nav {
         && (t.building.buildingType.job == job), r);
     }
     public Path FindPathTo(Tile tile){
-        return (world.graph.Navigate(a.TileHere().node, tile.node));
+        return world.graph.Navigate(a.TileHere().node, tile.node);
     }
     public Path FindPath(Func<Tile, bool> condition, int r, bool persistent = false){
         Path closestPath = null;

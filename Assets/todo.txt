@@ -38,16 +38,17 @@
 - reserved 
     - have WorkSites that can more systematically be reserved, rather than buildings and tiles
 - task objective system
-    - move over deliverobj, workobj, eepobj
-    - move over other simple tasks
-    - implement discardTask
-    - have animals call onarrival
-    - change animalstate to have fewer states
+    - move over workobj, eepobj
+    - move over other tasks
+        - hauling
+        - eeping
+        - constructing
+    - remove extra animalstates
 
 
 BUGS
 - multiple blueprints on same tile, they get lost. disallow or fix.
-- mice are not reserving houses!
+- mice are not reserving houses
 
 - occasionally haulers lose their target and get stuck somehow??
 - screen jitters when dragging around
@@ -57,3 +58,6 @@ BUGS
 - wheat inventory display doesn't update immediately when building a wheat? maybe has to do with it being a child resource idk.
 
 - removing a hauler while it is busy can cause stack overflow 
+
+- 
+
