@@ -24,7 +24,7 @@ public class Tile
             }
         }
     }
-    public Building building; // in future, have like "front level" "back level" building slots? like wall level?
+    public Building building; // can be a plant... should probably rename at some point
     public Blueprint blueprint; // not sure how this would interact with levels of building
     public Structure mStruct; // midground: platforms for moving horizontally in front of buildings
     public Structure fStruct; // foreground: ladders and stairs and stuff

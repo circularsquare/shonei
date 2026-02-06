@@ -67,7 +67,7 @@ public class CraftTask : Task {
         if (p == null) { return false; }
         workplace = p.tile;
 
-        int numRounds = 1; // animal.CalculateWorkPossible(recipe);
+        int numRounds = animal.CalculateWorkPossible(recipe);
         foreach (ItemQuantity input in recipe.inputs){
             if (!animal.inv.ContainsItem(input, numRounds)){
                 objectives.Enqueue(new FetchObjective(this, input));
@@ -93,6 +93,9 @@ public class ObtainTask : Task {
     public ObtainTask(Animal animal, ItemQuantity iq) : base(animal){
         this.iq = iq;
     }
+    public ObtainTask(Animal animal, Item item, int quantity) : base(animal){
+        iq = new ItemQuantity(item, quantity);
+    }
     public override bool Initialize(){
         // TODO: reserve
         objectives.Enqueue(new FetchObjective(this, iq));
@@ -100,6 +103,43 @@ public class ObtainTask : Task {
     }
     public override void Cleanup(){
         // TODO: unreserve
+        objectives.Clear();
+    }
+}
+public class EepTask : Task {
+    public EepTask(Animal animal) : base(animal){}
+    public override bool Initialize(){
+        if (animal.homeTile == null){
+            animal.FindHome();
+        }
+        objectives.Enqueue(new GoObjective(this, animal.homeTile));
+        return true;
+    }
+    public override void Cleanup(){
+        objectives.Clear();
+    }
+}
+public class HarvestTask : Task {
+    public Tile tile;
+    public HarvestTask(Animal animal, Tile tile) : base(animal){
+        this.tile = tile;
+    }
+    public override bool Initialize() {
+        // TODO: reserve
+        if (!(tile.building is Plant)){
+            return false;
+        } 
+        Plant plant = tile.building as Plant;
+        
+        objectives.Enqueue(new GoObjective(this, tile));
+        objectives.Enqueue(new HarvestObjective(this, plant));
+        foreach (ItemQuantity output in plant.plantType.products){
+            objectives.Enqueue(new DropObjective(this, output.item));
+        }
+        return true;
+    }
+    public override void Cleanup() {
+        // TODO: reserve
         objectives.Clear();
     }
 }
@@ -187,7 +227,7 @@ public class DropObjective : Objective { // drops ALL of an item. can't predict 
         if (dropPath != null){
             destination = dropPath.tile;
             animal.nav.Navigate(dropPath);
-            animal.state = Animal.AnimalState.Delivering;
+            animal.state = Animal.AnimalState.Moving;
         } else {
             Debug.LogError("can't find a place to drop!");
             // Fail(); remember, failing would call drop
@@ -222,4 +262,16 @@ public class WorkObjective : Objective {
         animal.state = Animal.AnimalState.Working;
     }
     // animalstatemanager.HandleWorking will call task.Complete() when it's done!
+}
+public class HarvestObjective : Objective {
+    private Plant plant; 
+    public HarvestObjective(Task task, Plant plant) : base(task) {
+        this.plant = plant;
+    }
+    public override void Start(){
+        if (plant != null && plant.harvestable) {
+            animal.Produce(plant.Harvest());
+            Complete();
+        } else { Fail(); }    
+    }
 }

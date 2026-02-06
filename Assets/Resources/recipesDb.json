@@ -8,8 +8,8 @@
             { "name": "wood", "quantity": 1 }
         ],
         "noutputs": [
-            { "name": "oak", "quantity": 1 },
-            { "name": "maple", "quantity": 1 }
+            { "name": "planks", "quantity": 1 },
+            { "name": "sawdust", "quantity": 1 }
         ]
     },{  
         "id": 2,

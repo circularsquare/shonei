@@ -47,7 +47,8 @@
 
 
 BUGS
-- multiple blueprints on same tile, they get lost. disallow or fix.
+- if multiple blueprints on same tile, they get lost
+    - you can place a blueprint on a tree
 - mice are not reserving houses
 
 - occasionally haulers lose their target and get stuck somehow??

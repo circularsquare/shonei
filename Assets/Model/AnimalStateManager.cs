@@ -16,13 +16,11 @@ public class AnimalStateManager {
     }
 
     public void OnStateEnter(AnimalState newState) {
-        switch(newState)
-        {
+        switch(newState){
             case AnimalState.Idle:
                 break;
         }
     }
-
 
     public void UpdateState() { // called every animal.tickupdate!
         switch (animal.state){ // fetching and delivering and such are handled in Update() cuz they require deltatime?
@@ -75,7 +73,7 @@ public class AnimalStateManager {
             }
             return;
         }
-        Debug.Log("in working state but no work to do");
+        Debug.Log(animal.aName + " in working state but no work to do");
     }
 
     private void HandleEeping() {
@@ -161,7 +159,7 @@ public class AnimalStateManager {
             case AnimalState.Delivering:
                 animal.OnArrivalDeliver();
                 break;
-            case AnimalState.Moving:
+            case AnimalState.Moving: // this is the new state that is set when you use a task!
                 animal.OnArrival();
                 break;
         }
