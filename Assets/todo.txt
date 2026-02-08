@@ -41,8 +41,8 @@
     - move over workobj, eepobj
     - move over other tasks
         - hauling
-        - eeping
         - constructing
+        - moving/going
     - remove extra animalstates
 
 

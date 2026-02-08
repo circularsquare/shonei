@@ -43,15 +43,21 @@ public class InfoPanel : MonoBehaviour {
                 infoMode = InfoMode.Animal;
                 gameObject.SetActive(true);
                 Animal ani = collider.gameObject.GetComponent<Animal>();
-                string displayText = ("animal: " + ani.aName + 
-                "\n state: " + ani.state.ToString() + 
-                "\n job: " + ani.job.name +
-                "\n inventory: " + ani.inv.ToString() + 
-                "\n delivery target: " + ani.deliveryTarget.ToString() +
-                "\n location: " + ani.go.transform.position.ToString() + 
-                "\n efficiency: " + ani.efficiency.ToString("F2") + 
-                "\n fullness: " + ani.eating.Fullness().ToString("F2") + 
-                "\n eep: " + ani.eeping.Eepness().ToString("F2"));
+                string displayText = (
+                    "animal: " + ani.aName + 
+                    "\n state: " + ani.state.ToString() + 
+                    "\n job: " + ani.job.name +
+                    "\n inventory: " + ani.inv.ToString());
+                if (ani.task != null){
+                    displayText += (
+                    "\n task: " + ani.task.ToString() + 
+                    "\n objective " + ani.task.currentObjective.ToString());
+                }
+                displayText += ("\n delivery target: " + ani.deliveryTarget.ToString() +
+                    "\n location: " + ani.go.transform.position.ToString() + 
+                    "\n efficiency: " + ani.efficiency.ToString("F2") + 
+                    "\n fullness: " + ani.eating.Fullness().ToString("F2") + 
+                    "\n eep: " + ani.eeping.Eepness().ToString("F2"));
                 if (ani.workTile != null){
                     displayText += "\n workTile: " + ani.workTile.ToString();
                 }

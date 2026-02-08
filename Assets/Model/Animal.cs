@@ -92,8 +92,7 @@ public class Animal : MonoBehaviour
     // -----------------------
     //  
     // -----------------------
-    public void Start()
-    {
+    public void Start(){
         world = World.instance;
         this.aName = "mouse" + id.ToString();
         this.stateManager = new AnimalStateManager(this);
@@ -120,8 +119,7 @@ public class Animal : MonoBehaviour
     }
 
 
-    public void TickUpdate()
-    { // called from animalcontroller each second.
+    public void TickUpdate() { // called from animalcontroller each second.
         if (this.eating == null) { return; } // animal not fully initted yet
         tickCounter++;
         if (tickCounter % 10 == 0) {
@@ -130,8 +128,7 @@ public class Animal : MonoBehaviour
         HandleNeeds();
         UpdateEfficiency();
         energy += efficiency;
-        if (energy > 1f)
-        { // if you have enough energy, spend it. also then you can work if you're Working.
+        if (energy > 1f) { // if you have enough energy, spend it. also then you can work if you're Working.
             energy -= 1f;
             stateManager.UpdateState();
         }
@@ -152,7 +149,8 @@ public class Animal : MonoBehaviour
                 }
             }
         } else if (eeping.Eepy() && state != AnimalState.Eeping) {
-            GoToEep();
+            task = new EepTask(this);
+            task.Start();
         }
     }
     private void UpdateEfficiency() {
@@ -171,6 +169,7 @@ public class Animal : MonoBehaviour
 
 
     public void FindWork() {
+        if (task != null){ return; } //TODO: change when findwork is called to just whenever task is null
         if (job.name == "none") { // free past worktile
             StartDropping();
             Refresh();
@@ -221,14 +220,14 @@ public class Animal : MonoBehaviour
         if (harvestPath != null) { 
             task = new HarvestTask(this, harvestPath.tile);
             if (task.Start()) return;
-            return;
         }
         // 3. if hauler, hauls
         if (job.name == "hauler") {
-            StartDropping();
-            deliveryTarget = DeliveryTarget.Storage;
-            StartFetching();
-            return;
+            // StartDropping();
+            // deliveryTarget = DeliveryTarget.Storage;
+            // StartFetching();
+            task = new HaulTask(this);
+            if (task.Start()) return;
         }
         // 4. start crafting
         // TryStartCrafting();
@@ -240,35 +239,35 @@ public class Animal : MonoBehaviour
     }
 
     // returns whether you have gathered all ingredients
-    private bool TryStartCrafting(){
-        recipe = PickRecipe();
-        if (recipe == null) { return false; }
-        Path p = null;
-        // first find work tile.
-        if (Db.structTypeByName.ContainsKey(recipe.tile)){
-            p = nav.FindBuilding(Db.structTypeByName[recipe.tile]);
-        }
-        if (p == null) { return false; }
+    // private bool TryStartCrafting(){
+    //     recipe = PickRecipe();
+    //     if (recipe == null) { return false; }
+    //     Path p = null;
+    //     // first find work tile.
+    //     if (Db.structTypeByName.ContainsKey(recipe.tile)){
+    //         p = nav.FindBuilding(Db.structTypeByName[recipe.tile]);
+    //     }
+    //     if (p == null) { return false; }
 
-        numRounds = CalculateWorkPossible(recipe);      // calc numRounds
-        if (inv.ContainsItems(recipe.inputs, numRounds)) { // if have all the inputs, go to work.
-            SetWorkTile(p.tile);
-            GoTo(p.tile);
-            return true;
-        }
-        else { // if missing some inputs, fetch the first missing input to your inventory.
-            foreach (ItemQuantity input in recipe.inputs){
-                if (!inv.ContainsItem(input, numRounds)){
-                    if (input == null) { Debug.LogError("recipe input is null??"); }
-                    deliveryTarget = DeliveryTarget.Self; // note: unsure abt this
-                    StartFetching(input.item, input.quantity * numRounds);
-                    return false;
-                }
-            }
-            Debug.LogError("can't find crafting input!");
-            return false;
-        }
-    }
+    //     numRounds = CalculateWorkPossible(recipe);      // calc numRounds
+    //     if (inv.ContainsItems(recipe.inputs, numRounds)) { // if have all the inputs, go to work.
+    //         SetWorkTile(p.tile);
+    //         GoTo(p.tile);
+    //         return true;
+    //     }
+    //     else { // if missing some inputs, fetch the first missing input to your inventory.
+    //         foreach (ItemQuantity input in recipe.inputs){
+    //             if (!inv.ContainsItem(input, numRounds)){
+    //                 if (input == null) { Debug.LogError("recipe input is null??"); }
+    //                 deliveryTarget = DeliveryTarget.Self; // note: unsure abt this
+    //                 StartFetching(input.item, input.quantity * numRounds);
+    //                 return false;
+    //             } 
+    //         }
+    //         Debug.LogError("can't find crafting input!");
+    //         return false;
+    //     }
+    // }
 
 
     public bool Collect() {
@@ -293,19 +292,19 @@ public class Animal : MonoBehaviour
     public bool StartFetching(Item item = null, int quantity = -1){
         Path itemPath = null;
         switch (deliveryTarget){
-            case DeliveryTarget.Storage:
-                if (item == null) {
-                    itemPath = nav.FindAnyItemToHaul(); // sets desiredItem and desiredquantity and storageTile
-                }
-                else {
-                    itemPath = nav.FindItemToHaul(item);
-                    if (itemPath != null){
-                        desiredItem = item;
-                        if (quantity != -1) { desiredItemQuantity = quantity; } // edfault, don't touch desired quantity
-                        storageTile = nav.FindStorage(item).tile;
-                    }
-                }
-                break;
+            // case DeliveryTarget.Storage:
+            //     if (item == null) {
+            //         itemPath = nav.FindAnyItemToHaul(); // sets desiredItem and desiredquantity and storageTile
+            //     }
+            //     else {
+            //         itemPath = nav.FindItemToHaul(item);
+            //         if (itemPath != null){
+            //             desiredItem = item;
+            //             if (quantity != -1) { desiredItemQuantity = quantity; } // edfault, don't touch desired quantity
+            //             storageTile = nav.FindStorage(item).tile;
+            //         }
+            //     }
+            //     break;
 
             case DeliveryTarget.Blueprint:
                 if (item != null) { Debug.LogError("delivery target is blueprint, but item is not null!"); }
@@ -664,7 +663,7 @@ public class Animal : MonoBehaviour
             Path homePath = nav.FindBuilding(Db.structTypeByName["house"]);
             if (homePath != null) { homeTile = homePath.tile; }
             if (homeTile != null){
-                //homeTile.building.reserved += 1;
+                homeTile.building.reserved += 1;
             }
         }
     }

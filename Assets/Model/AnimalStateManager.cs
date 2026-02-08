@@ -45,7 +45,10 @@ public class AnimalStateManager {
         if (animal.state == AnimalState.Idle) {
             // Random walking when nothing else to do
             if (UnityEngine.Random.Range(0, 5) == 0) {
-                animal.GoTo(animal.x + UnityEngine.Random.Range(-1, 2), animal.y);
+                // animal.GoTo(animal.x + UnityEngine.Random.Range(-1, 2), animal.y);
+                animal.task = new GoTask(animal, 
+                    animal.world.GetTileAt(animal.x + UnityEngine.Random.Range(-1, 2), animal.y));
+                animal.task.Start();
             }
         }
     }
@@ -78,15 +81,15 @@ public class AnimalStateManager {
 
     private void HandleEeping() {
         animal.eeping.Eep(1f, animal.AtHome());
-        if (animal.eeping.eep >= animal.eeping.maxEep) {
-            animal.state = AnimalState.Idle;
-        }
         // reproduction! 
         if (animal.AtHome() && animal.homeTile.building.reserved < animal.homeTile.building.capacity 
             && animal.homeTile.building.reserved > 2) {
-            if (animal.random.Next(0, 50) == 0) {
+            if (animal.random.Next(0, 50) < 2) {
                 AnimalController.instance.AddAnimal(animal.x, animal.y);
             }
+        }
+        if (animal.eeping.eep >= animal.eeping.maxEep) {
+            animal.task.Complete();
         }
     }
 
@@ -134,22 +137,21 @@ public class AnimalStateManager {
                     // Check if we arrived at workTile or homeTile
                 if (animal.objective == Animal.Objective.Construct){
                     animal.state = AnimalState.Working;
-                } else if (animal.TileHere() == animal.workTile) {
-                    if (animal.TileHere().building is Plant) { // work tile is plant 
-                        Plant plant = animal.TileHere().building as Plant;
-                        if (plant.harvestable) {
-                            animal.Produce(plant.Harvest());
-                            animal.workTile = null;
-                        }
-                        animal.state = AnimalState.Idle;
-                    }
-                    else { // worktile is not plant 
-                        animal.state = AnimalState.Working;
-                    }
-                } else if (animal.TileHere() == animal.homeTile) {
-                    Debug.Log("arrived home, going to eep");
-                    animal.state = AnimalState.Eeping;
-                } else {
+                } 
+                // else if (animal.TileHere() == animal.workTile) {
+                //     if (animal.TileHere().building is Plant) { // work tile is plant 
+                //         Plant plant = animal.TileHere().building as Plant;
+                //         if (plant.harvestable) {
+                //             animal.Produce(plant.Harvest());
+                //             animal.workTile = null;
+                //         }
+                //         animal.state = AnimalState.Idle;
+                //     }
+                //     else { // worktile is not plant 
+                //         animal.state = AnimalState.Working;
+                //     }
+                // } 
+                else {
                     animal.state = AnimalState.Idle;
                 }
                 break;

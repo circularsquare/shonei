@@ -37,11 +37,14 @@ public abstract class Task {
         }
     }
     public void Fail(){
+        Debug.Log("failed " + ToString() + " task at " + currentObjective.ToString());
         Cleanup();
         animal.task = null;
         animal.state = Animal.AnimalState.Idle;
     }
-    public abstract void Cleanup(); // task specific cleanup
+    public virtual void Cleanup(){
+        objectives.Clear();
+    }
     public void StartNextObjective(){
         currentObjective = objectives.Dequeue();
         currentObjective.Start();
@@ -49,6 +52,14 @@ public abstract class Task {
     public void OnArrival(){
         currentObjective?.OnArrival();
     }
+
+    public virtual string GetTaskName (){
+        return this.GetType().Name.Replace("Task", "");
+    }
+    public override string ToString(){
+        return GetTaskName();
+    }
+
 }
 
 public class CraftTask : Task {
@@ -106,13 +117,23 @@ public class ObtainTask : Task {
         objectives.Clear();
     }
 }
+public class GoTask : Task {
+    public Tile tile;
+    public GoTask (Animal animal, Tile tile) : base(animal){ this.tile = tile;}
+    public override bool Initialize(){
+        objectives.Enqueue(new GoObjective(this, tile)); return true;
+    }
+}
 public class EepTask : Task {
     public EepTask(Animal animal) : base(animal){}
     public override bool Initialize(){
         if (animal.homeTile == null){
             animal.FindHome();
         }
-        objectives.Enqueue(new GoObjective(this, animal.homeTile));
+        if (animal.homeTile != null){
+            objectives.Enqueue(new GoObjective(this, animal.homeTile));
+        }
+        objectives.Enqueue(new EepObjective(this));
         return true;
     }
     public override void Cleanup(){
@@ -143,6 +164,23 @@ public class HarvestTask : Task {
         objectives.Clear();
     }
 }
+// haultask is only for moving random items to storage!
+public class HaulTask : Task { 
+    HaulInfo haulInfo;
+    public HaulTask(Animal animal) : base(animal){
+    }
+    public override bool Initialize() {
+        haulInfo = animal.nav.FindAnyItemToHaul();
+        if (haulInfo == null) {return false;}
+        ItemQuantity iq = new ItemQuantity(haulInfo.item, haulInfo.quantity);
+        objectives.Enqueue(new FetchObjective(this, iq, haulInfo.itemTile));
+        objectives.Enqueue(new DeliverObjective(this, iq, haulInfo.storageTile));
+        return true;
+    }
+    public override void Cleanup(){
+        objectives.Clear();
+    }
+}
 
 
 // ------------------------------
@@ -164,25 +202,39 @@ public abstract class Objective {
     public void Fail(){
         task.Fail();
     }
+    public virtual string GetObjectiveName() {
+        return this.GetType().Name.Replace("Objective", "");
+    }
+    public override string ToString() {return GetObjectiveName();}
 }
 
 public class FetchObjective : Objective {
     private ItemQuantity iq;
-    public FetchObjective(Task task, ItemQuantity iq) : base(task) {
+    private Tile sourceTile;
+    public FetchObjective(Task task, ItemQuantity iq, Tile sourceTile = null) : base(task) {
         this.iq = iq;
+        this.sourceTile = sourceTile;
     }
     public override void Start(){
-        Path itemPath = animal.nav.FindItem(iq.item);
+        Path itemPath;
+        if (sourceTile != null) {
+            itemPath = animal.nav.FindPathTo(sourceTile);
+        } else {
+            itemPath = animal.nav.FindItem(iq.item);
+        }
         if (itemPath != null){
             destination = itemPath.tile;
             animal.nav.Navigate(itemPath); 
-            animal.state = Animal.AnimalState.Moving; // todo: switch tolike "walking"
+            animal.state = Animal.AnimalState.Moving;
         } else {
             Fail();
         }
     }
     public override void OnArrival(){
+        int amountBefore = animal.inv.Quantity(iq.item);
         animal.TakeItem(iq);
+        int amountTaken = animal.inv.Quantity(iq.item) - amountBefore;
+        if (amountTaken == 0){Fail(); Debug.Log("Couldn't fetch any " + iq.item); return;}
         int desiredItemQuantity = iq.quantity - animal.inv.Quantity(iq.item); 
         if (desiredItemQuantity > 0 && animal.inv.GetStorageForItem(iq.item) >= 5){
             iq.quantity = desiredItemQuantity;
@@ -193,7 +245,7 @@ public class FetchObjective : Objective {
     }
 }
 public class DeliverObjective : Objective {
-    private ItemQuantity iq;
+    private ItemQuantity iq; 
     public DeliverObjective(Task task, ItemQuantity iq, Tile destination) : base(task) {
         this.iq = iq;
         this.destination = destination;
@@ -206,12 +258,9 @@ public class DeliverObjective : Objective {
         } else {Fail();}
     }
     public override void OnArrival(){
-        int leftover = animal.DropItem(iq);
-        if (leftover > 0){
-            Fail();
-        } else {
-            Complete();
-        }
+        if (animal.inv.Quantity(iq.item) == 0){ Debug.Log(iq.item.name); Fail(); }
+        animal.DropItem(iq);  // drops the amount you have up to iq.quantity. if have less, just drops that.
+        Complete();
     }
 }
 public class DropObjective : Objective { // drops ALL of an item. can't predict how many to drop. 
@@ -230,7 +279,7 @@ public class DropObjective : Objective { // drops ALL of an item. can't predict 
             animal.state = Animal.AnimalState.Moving;
         } else {
             Debug.LogError("can't find a place to drop!");
-            // Fail(); remember, failing would call drop
+            Fail(); // remember, failing might lead to calling drop?
         }
     }
     public override void OnArrival(){
@@ -262,6 +311,13 @@ public class WorkObjective : Objective {
         animal.state = Animal.AnimalState.Working;
     }
     // animalstatemanager.HandleWorking will call task.Complete() when it's done!
+}
+public class EepObjective : Objective {
+    public EepObjective(Task task): base(task){}
+    public override void Start(){
+        animal.state = Animal.AnimalState.Eeping;
+    }
+    // asm.handleeeping calls task.complete
 }
 public class HarvestObjective : Objective {
     private Plant plant; 

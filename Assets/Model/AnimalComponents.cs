@@ -154,38 +154,57 @@ public class Nav {
         return closestTile;
     }
 
-    public Path FindAnyItemToHaul(int r = 50){ 
-        float closestDistance = float.MaxValue;
-        Path closestItemPath = null;
-        Tile closestStorage = null;
-        Item closestItem = null;
+    // public Path FindAnyItemToHaul(int r = 50){ 
+    //     float closestDistance = float.MaxValue;
+    //     Path closestItemPath = null;
+    //     Tile closestStorage = null;
+    //     Item closestItem = null;
+    //     Path itemPath = FindPath(t => t.HasItemToHaul(null), r);
+    //     if (itemPath != null){
+    //         Item item = itemPath.tile.inv.GetItemToHaul();
+    //         if (item != null){
+    //             Path storagePath = FindStorage(item, r=50);
+    //             if (storagePath != null){
+    //                 float distance = itemPath.length;
+    //                 if (distance < closestDistance) {
+    //                     closestDistance = distance;
+    //                     closestItemPath = itemPath;
+    //                     closestStorage = storagePath.tile;
+    //                     closestItem = item;
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     if (closestItemPath != null){
+    //         Navigate(closestItemPath);
+    //         a.storageTile = closestStorage;
+    //         a.desiredItem = closestItem;
+    //         a.desiredItemQuantity = Math.Min(closestItemPath.tile.inv.Quantity(closestItem),
+    //             closestStorage.GetStorageForItem(closestItem)); // don't take more than u can store
+    //         return closestItemPath;
+    //     } else {
+    //         a.Refresh();
+    //         return null;
+    //     }
+    // }
+
+    // HaulInfo is just a data container to pass all the data to the HaulTask...
+    public HaulInfo FindAnyItemToHaul(int r = 50){ 
         Path itemPath = FindPath(t => t.HasItemToHaul(null), r);
         if (itemPath != null){
             Item item = itemPath.tile.inv.GetItemToHaul();
             if (item != null){
                 Path storagePath = FindStorage(item, r=50);
                 if (storagePath != null){
-                    float distance = itemPath.length;
-                    if (distance < closestDistance) {
-                        closestDistance = distance;
-                        closestItemPath = itemPath;
-                        closestStorage = storagePath.tile;
-                        closestItem = item;
-                    }
+                    int quantity = Math.Min(
+                        itemPath.tile.inv.Quantity(item),
+                        storagePath.tile.GetStorageForItem(item)
+                    );
+                    return new HaulInfo(item, quantity, itemPath.tile, storagePath.tile);
                 }
             }
         }
-        if (closestItemPath != null){
-            Navigate(closestItemPath);
-            a.storageTile = closestStorage;
-            a.desiredItem = closestItem;
-            a.desiredItemQuantity = Math.Min(closestItemPath.tile.inv.Quantity(closestItem),
-                closestStorage.GetStorageForItem(closestItem)); // don't take more than u can store
-            return closestItemPath;
-        } else {
-            a.Refresh();
-            return null;
-        }
+        return null;
     }
 
 
@@ -276,3 +295,16 @@ public class Eeping {
 }
 
 
+public class HaulInfo {
+    public Item item;
+    public int quantity;
+    public Tile itemTile;
+    public Tile storageTile;
+    
+    public HaulInfo(Item item, int quantity, Tile itemTile, Tile storageTile) {
+        this.item = item;
+        this.quantity = quantity;
+        this.itemTile = itemTile;
+        this.storageTile = storageTile;
+    }
+}
