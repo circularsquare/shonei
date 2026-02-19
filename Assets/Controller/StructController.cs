@@ -61,7 +61,7 @@ public class StructController : MonoBehaviour {
         GlobalInventory.instance.AddItems(st.costs, true);
         if (world == null) {world = World.instance;}
         world.graph.UpdateNeighbors(tile.x, tile.y);
-        world.graph.UpdateNeighbors(tile.x, tile.y + 1); // it may become standable?
+        world.graph.UpdateNeighbors(tile.x, tile.y + 1); // it may become standable
         return true;
     }
 

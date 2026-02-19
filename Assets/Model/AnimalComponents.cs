@@ -72,32 +72,51 @@ public class Nav {
     }
 
 
-    public Path FindItem(Item item, int r = 50){ return FindPath(t => t.ContainsItem(item), r); }
-    public Path FindItemToHaul(Item item, int r = 50){ return FindPath(t => t.HasItemToHaul(item), r); }
-    public Path FindStorage(Item item, int r = 50){ return FindPath(t => t.HasStorageForItem(item), r); }
+    public Path FindItem(Item item, int r = 40){ return FindPath(t => t.ContainsItem(item), r); }
+    public Path FindItemToHaul(Item item, int r = 40){ return FindPath(t => t.HasItemToHaul(item), r); }
+    public Path FindStorage(Item item, int r = 40){ return FindPath(t => t.HasStorageForItem(item), r); }
     public Path FindPlaceToDrop(Item item, int r = 3){ return FindPath(t => t.HasSpaceForItem(item), r, true); }
-    public Path FindBuilding(BuildingType buildingType, int r = 50){
+    public Path FindBuilding(BuildingType buildingType, int r = 40){
         return FindPath(t => t.building != null && t.building.buildingType == buildingType && 
             t.building.capacity - t.building.reserved > 0, r);
     }
-    public Path FindBuilding(StructType structType, int r = 50){ return FindBuilding(structType as BuildingType, r);}
-    public Path FindStructure(StructType structType, int r = 50){
+    public Path FindBuilding(StructType structType, int r = 40){ return FindBuilding(structType as BuildingType, r);}
+    public Path FindStructure(StructType structType, int r = 40){
 
         Debug.LogError("FindStructure not implemented!"); return null;}
-    public Path FindWorkTile(TileType tileType, int r = 50){
+    public Path FindWorkTile(TileType tileType, int r = 40){
         return FindPath(t => t.type == tileType && (t.building != null) && (t.building.capacity - t.building.reserved > 0) && 
             !(t.building != null && t.building is Plant), r);
     }
     public Path FindWorkTile(string tileTypeStr, int r = 30){ return FindWorkTile(Db.tileTypeByName[tileTypeStr], r); }
-    public Path FindReceivingBlueprint(Job job, int r = 50){return FindPath(t => t.blueprint != null 
+    public Path FindReceivingBlueprint(Job job, int r = 40){return FindPath(t => t.blueprint != null 
         && t.blueprint.structType.job == job 
         && t.blueprint.state == Blueprint.BlueprintState.Receiving, r);}
-    public Path FindPathConstructingBlueprint(Job job, int r = 50){return FindPath(t => t.blueprint != null 
+    public Path FindPathConstructingBlueprint(Job job, int r = 40){return FindPath(t => t.blueprint != null 
         && t.blueprint.structType.job == job 
         && t.blueprint.state == Blueprint.BlueprintState.Constructing, r);}
-    public Tile FindConstructingBlueprint(Job job, int r = 50){return Find(t => t.blueprint != null 
+    public Tile FindConstructingBlueprint(Job job, int r = 40){return Find(t => t.blueprint != null 
         && t.blueprint.structType.job == job 
         && t.blueprint.state == Blueprint.BlueprintState.Constructing, r);}
+
+    public (Tile, Path) FindPathToConstructingBlueprint(int r = 40){
+        (Tile, Path) bestPath = (null, null);
+        float bestCost = float.MaxValue;
+        for (int x = -r; x <= r; x++) {
+            for (int y = -r; y <= r; y++) {
+                Tile tile = world.GetTileAt(a.x + x, a.y + y);
+                if (tile != null && tile.blueprint != null && tile.blueprint.state == Blueprint.BlueprintState.Constructing
+                    && tile.blueprint.structType.job == a.job) {
+                    Path path = FindPathToOrAdjacent(tile);
+                    if (path != null && path.cost < bestCost) {
+                        bestCost = path.cost;
+                        bestPath = (tile, path);
+                    }
+                }
+            }
+        }
+        return bestPath;
+    }
     public Path FindHarvestable(Job job, int r = 40){
         return FindPath(t => t.building != null && t.building is Plant 
         && (t.building as Plant).harvestable
@@ -105,6 +124,23 @@ public class Nav {
     }
     public Path FindPathTo(Tile tile){
         return world.graph.Navigate(a.TileHere().node, tile.node);
+    }
+    public Path FindPathToOrAdjacent(Tile target) {
+        Path directPath = FindPathTo(target);
+        if (directPath != null) { return directPath; }
+        Tile[] adjacents = target.GetAdjacents();
+        Path shortestPath = null;
+        float shortestCost = float.MaxValue;
+        foreach (Tile adjacent in adjacents) {
+            if (adjacent != null && adjacent.node.standable) {
+                Path candidatePath = FindPathTo(adjacent);
+                if (candidatePath != null && candidatePath.cost < shortestCost) {
+                    shortestPath = candidatePath;
+                    shortestCost = candidatePath.cost;
+                }
+            }
+        }
+        return shortestPath; // null if no path found
     }
     public Path FindPath(Func<Tile, bool> condition, int r, bool persistent = false){
         Path closestPath = null;

@@ -176,45 +176,50 @@ public class Animal : MonoBehaviour
             return;
         }
         // 1. Check for blueprints needing construction
-        Tile constructionTile = nav.FindConstructingBlueprint(job);
-        if (constructionTile != null){
-            Path constructionPath = nav.FindPathConstructingBlueprint(job);
-            if (constructionPath != null){
-                SetWorkTile(constructionTile);
-                objective = Objective.Construct;
-                GoTo(constructionTile);
-                return;
-            }
-            else { // find adjacent tile to blueprint
-                Tile[] adjacents = constructionTile.GetAdjacents();
-                Path shortestConstructionPath = null;
-                float shortestPathCost = 1000000f;
-                foreach (Tile adjacent in adjacents)
-                { // try navigating to any adjacent tile of the blueprint tile. 
-                    if (adjacent != null && adjacent.node.standable){
-                        Path candidatePath = nav.FindPathTo(adjacent);
-                        if ((candidatePath != null) && (candidatePath.cost < shortestPathCost)){
-                            shortestConstructionPath = candidatePath;
-                            shortestPathCost = candidatePath.cost;
-                        }
-                    }
-                }
-                if (shortestConstructionPath != null){
-                    constructionPath = shortestConstructionPath;
-                    SetWorkTile(constructionTile); // note this is different from the tile you are going to!
-                    objective = Objective.Construct;
-                    GoTo(constructionPath);
-                    Debug.Log("travelling to adjacent tile of blueprint!");
-                }
-            }
-        }
+        // Tile constructionTile = nav.FindConstructingBlueprint(job);
+        // if (constructionTile != null){
+        //     Path constructionPath = nav.FindPathConstructingBlueprint(job);
+        //     if (constructionPath != null){
+        //         SetWorkTile(constructionTile);
+        //         objective = Objective.Construct;
+        //         GoTo(constructionTile);
+        //         return;
+        //     }
+        //     else { // find adjacent tile to blueprint
+        //         Tile[] adjacents = constructionTile.GetAdjacents();
+        //         Path shortestConstructionPath = null;
+        //         float shortestPathCost = 1000000f;
+        //         foreach (Tile adjacent in adjacents)
+        //         { // try navigating to any adjacent tile of the blueprint tile. 
+        //             if (adjacent != null && adjacent.node.standable){
+        //                 Path candidatePath = nav.FindPathTo(adjacent);
+        //                 if ((candidatePath != null) && (candidatePath.cost < shortestPathCost)){
+        //                     shortestConstructionPath = candidatePath;
+        //                     shortestPathCost = candidatePath.cost;
+        //                 }
+        //             }
+        //         }
+        //         if (shortestConstructionPath != null){
+        //             constructionPath = shortestConstructionPath;
+        //             SetWorkTile(constructionTile); // note this is different from the tile you are going to!
+        //             objective = Objective.Construct;
+        //             GoTo(constructionPath);
+        //             Debug.Log("travelling to adjacent tile of blueprint!");
+        //         }
+        //     }
+        // }
+        task = new ConstructTask(this);
+        if (task.Start()) return;
+
+        task = new SupplyBlueprintTask(this);
+        if (task.Start()) return;
         // 1.5: Check for blueprints that need resources
-        Path blueprintPath = nav.FindReceivingBlueprint(job);
-        if (blueprintPath != null){
-            deliveryTarget = DeliveryTarget.Blueprint;
-            StartFetching();
-            return;
-        }
+        // Path blueprintPath = nav.FindReceivingBlueprint(job);
+        // if (blueprintPath != null){
+        //     deliveryTarget = DeliveryTarget.Blueprint;
+        //     StartFetching();
+        //     return;
+        // }
         // 2. Check for harvestable resources matching job
         Path harvestPath = nav.FindHarvestable(job);
         if (harvestPath != null) { 
@@ -572,8 +577,7 @@ public class Animal : MonoBehaviour
         int index = UnityEngine.Random.Range(0, eligibleRecipes.Count);
         return eligibleRecipes[index];
     }
-    public Recipe PickRecipe()
-    { // score based selection
+    public Recipe PickRecipe(){ // score based selection
         if (job.recipes.Length == 0) { return null; }
         float maxScore = 0;
         Recipe bestRecipe = null;
@@ -663,7 +667,9 @@ public class Animal : MonoBehaviour
             Path homePath = nav.FindBuilding(Db.structTypeByName["house"]);
             if (homePath != null) { homeTile = homePath.tile; }
             if (homeTile != null){
-                homeTile.building.reserved += 1;
+                if (homeTile.building.structType.name == "house"){
+                    homeTile.building.reserved += 1;
+                }
             }
         }
     }

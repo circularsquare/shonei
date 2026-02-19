@@ -54,13 +54,21 @@ public class AnimalStateManager {
     }
 
     private void HandleWorking() {
-        if (animal.workTile?.blueprint != null && 
-                   animal.workTile.blueprint.state == Blueprint.BlueprintState.Constructing) {
-            if (animal.workTile.blueprint.ReceiveConstruction(1f * animal.efficiency)){
-                animal.state = AnimalState.Idle; // if finished
-                animal.task?.Complete(); // completes task to set state. TODO: remove other setting of state above.
+        // if (animal.workTile?.blueprint != null && 
+        //            animal.workTile.blueprint.state == Blueprint.BlueprintState.Constructing) {
+        //     if (animal.workTile.blueprint.ReceiveConstruction(1f * animal.efficiency)){
+        //         animal.state = AnimalState.Idle; // if finished
+        //         animal.task?.Complete(); // completes task to set state. TODO: remove other setting of state above.
+        //     }
+        // } 
+        if (animal.task is ConstructTask constructTask){
+            Blueprint blueprint = constructTask.tile.blueprint;
+            if (blueprint.ReceiveConstruction(1f * animal.efficiency)){
+                constructTask.Complete();
             }
-        } 
+            return;
+        }
+
         // crafting!
         // else if (animal.recipe != null && animal.inv.ContainsItems(animal.recipe.inputs) && animal.AtWork()) {
         //     animal.Produce(animal.recipe);

@@ -38,12 +38,11 @@
 - reserved 
     - have WorkSites that can more systematically be reserved, rather than buildings and tiles
 - task objective system
-    - move over workobj, eepobj
     - move over other tasks
-        - hauling
         - constructing
-        - moving/going
     - remove extra animalstates
+- infopanel
+    - allow clickthrough if you already have the top thing selected
 
 
 BUGS
@@ -54,7 +53,6 @@ BUGS
 - occasionally haulers lose their target and get stuck somehow??
 - screen jitters when dragging around
 
-- hauler is only picking up a few wood at a time?
 - sometimes target buttons stop working
 - wheat inventory display doesn't update immediately when building a wheat? maybe has to do with it being a child resource idk.
 

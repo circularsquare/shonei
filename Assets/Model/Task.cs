@@ -37,7 +37,7 @@ public abstract class Task {
         }
     }
     public void Fail(){
-        Debug.Log("failed " + ToString() + " task at " + currentObjective.ToString());
+        Debug.Log(animal.aName + " failed " + ToString() + " task at " + currentObjective.ToString());
         Cleanup();
         animal.task = null;
         animal.state = Animal.AnimalState.Idle;
@@ -167,8 +167,7 @@ public class HarvestTask : Task {
 // haultask is only for moving random items to storage!
 public class HaulTask : Task { 
     HaulInfo haulInfo;
-    public HaulTask(Animal animal) : base(animal){
-    }
+    public HaulTask(Animal animal) : base(animal){}
     public override bool Initialize() {
         haulInfo = animal.nav.FindAnyItemToHaul();
         if (haulInfo == null) {return false;}
@@ -179,6 +178,44 @@ public class HaulTask : Task {
     }
     public override void Cleanup(){
         objectives.Clear();
+    }
+}
+
+public class ConstructTask : Task {
+    public Tile tile;
+    public ConstructTask(Animal animal) : base(animal){}
+    public override bool Initialize() {
+        (Tile, Path) info = animal.nav.FindPathToConstructingBlueprint();
+        if (info.Item1 == null){return false;}
+        tile = info.Item1;
+        objectives.Enqueue(new GoObjective(this, info.Item2.tile));
+        objectives.Enqueue(new ConstructObjective(this));
+        return true;
+    }
+}
+public class SupplyBlueprintTask : Task {
+    Tile tile;
+    Blueprint blueprint;
+    ItemQuantity iq; 
+    public SupplyBlueprintTask(Animal animal) : base(animal){}
+    public override bool Initialize() {
+        Path blueprintPath = animal.nav.FindReceivingBlueprint(animal.job);
+        if (blueprintPath == null) {return false;}
+        tile = blueprintPath.tile;
+        blueprint = tile.blueprint;
+        for (int i = 0; i < blueprint.costs.Length; i++) {
+            if (blueprint.deliveredResources[i].quantity < blueprint.costs[i].quantity) {
+                iq = new ItemQuantity(blueprint.costs[i].item,
+                    blueprint.costs[i].quantity - blueprint.deliveredResources[i].quantity);
+                Path itemPath = animal.nav.FindItem(iq.item);    // check if this item exists anywhere
+                if (itemPath == null) { continue; } 
+                // found item and blueprint needs it!
+                objectives.Enqueue(new FetchObjective(this, iq, itemPath.tile));
+                objectives.Enqueue(new DeliverToBlueprintObjective(this, iq, tile));
+                return true;
+            }
+        }
+        return false;
     }
 }
 
@@ -263,6 +300,28 @@ public class DeliverObjective : Objective {
         Complete();
     }
 }
+public class DeliverToBlueprintObjective : Objective {
+    private ItemQuantity iq;
+    public DeliverToBlueprintObjective(Task task, ItemQuantity iq, Tile destination) : base(task) {
+        this.iq = iq;
+        this.destination = destination;
+    }
+    public override void Start(){
+        Path path = animal.nav.FindPathTo(destination);
+        if (path != null){
+            animal.nav.Navigate(path);
+            animal.state = Animal.AnimalState.Moving;
+        } else {Fail();}
+    }
+    public override void OnArrival(){
+        if (animal.inv.Quantity(iq.item) > 0 && destination.blueprint != null){ 
+            int delivered = destination.blueprint.ReceiveResource(iq.item, iq.quantity);
+            animal.inv.AddItem(iq.item, -delivered);
+            Complete();
+        }
+        else { Debug.Log(iq.item.name); Fail(); }
+    }
+}
 public class DropObjective : Objective { // drops ALL of an item. can't predict how many to drop. 
     private Item item;
     public DropObjective(Task task, Item item) : base(task) {
@@ -292,6 +351,7 @@ public class GoObjective : Objective {
         this.destination = destination;
     }
     public override void Start(){
+        if (animal.TileHere() == destination) {Complete(); return;}
         Path path = animal.nav.FindPathTo(destination);
         if (path != null){
             animal.nav.Navigate(path);
@@ -311,6 +371,12 @@ public class WorkObjective : Objective {
         animal.state = Animal.AnimalState.Working;
     }
     // animalstatemanager.HandleWorking will call task.Complete() when it's done!
+}
+public class ConstructObjective : Objective {
+    public ConstructObjective(Task task) : base(task) {}
+    public override void Start(){
+        animal.state = Animal.AnimalState.Working;
+    }
 }
 public class EepObjective : Objective {
     public EepObjective(Task task): base(task){}
