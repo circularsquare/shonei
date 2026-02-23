@@ -16,8 +16,6 @@ public class Plant : Building {
 
     public bool harvestable;
 
-    // public int capacity = 1;
-    // public int reserved = 0;
 
     public Plant(PlantType plantType, int x, int y) : base (plantType, x, y){ // call parent constructor
         this.plantType = plantType;
@@ -64,7 +62,7 @@ public class Plant : Building {
 
 
 
-public class PlantType : BuildingType {
+public class PlantType : StructType {
     public ItemNameQuantity[] nproducts {get; set;}
     public ItemQuantity[] products;
 

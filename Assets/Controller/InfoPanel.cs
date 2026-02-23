@@ -49,18 +49,17 @@ public class InfoPanel : MonoBehaviour {
                     "\n job: " + ani.job.name +
                     "\n inventory: " + ani.inv.ToString());
                 if (ani.task != null){
-                    displayText += (
-                    "\n task: " + ani.task.ToString() + 
-                    "\n objective " + ani.task.currentObjective.ToString());
+                    displayText += "\n task: " + ani.task.ToString();}
+                if (ani.task?.currentObjective != null){
+                    displayText += "\n objective " + ani.task.currentObjective.ToString();}
+                if (ani.task is CraftTask craftTask){
+                    displayText += "\n recipe: " + craftTask.recipe?.description;
                 }
-                displayText += ("\n delivery target: " + ani.deliveryTarget.ToString() +
+                displayText += (
                     "\n location: " + ani.go.transform.position.ToString() + 
                     "\n efficiency: " + ani.efficiency.ToString("F2") + 
                     "\n fullness: " + ani.eating.Fullness().ToString("F2") + 
                     "\n eep: " + ani.eeping.Eepness().ToString("F2"));
-                if (ani.workTile != null){
-                    displayText += "\n workTile: " + ani.workTile.ToString();
-                }
                 textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = displayText;
             }
         }
@@ -75,6 +74,7 @@ public class InfoPanel : MonoBehaviour {
                     displayText =  ( "plant: " + tile.building.structType.name + 
                         "\n location: " + tile.x.ToString() + ", " + tile.y.ToString() + 
                         "\n growth: " + (tile.building as Plant).growthStage + 
+                        "\n reserved: " + tile.building.res.reserved + "/" + tile.building.res.capacity + 
                         "\n standability: " + tile.node.standable.ToString() + 
                         "\n num neighbors: " + tile.node.neighbors.Count);
                 } else {
@@ -82,16 +82,17 @@ public class InfoPanel : MonoBehaviour {
                     gameObject.SetActive(true);
                     displayText =  ( "building: " + tile.building.structType.name + 
                         "\n location: " + tile.x.ToString() + ", " + tile.y.ToString() + 
-                        "\n reserved: " + tile.building.reserved + "/" + tile.building.capacity + 
+                        "\n reserved: " + tile.building.res.reserved + "/" + tile.building.res.capacity + 
                         "\n standability: " + tile.node.standable.ToString() + 
                         "\n num neighbors: " + tile.node.neighbors.Count);
                 }
-            } else if (tile.blueprint != null){
+            } else if (tile.GetAnyBlueprint() != null){
+                Blueprint blueprint = tile.GetAnyBlueprint();
                 infoMode = InfoMode.Blueprint;
                 gameObject.SetActive(true);
-                displayText =  ( "blueprint: " + tile.blueprint.structType.name + 
-                    "\n location: " + tile.x.ToString() + ", " + tile.y.ToString() + 
-                    "\n progress: " + tile.blueprint.GetProgress());
+                displayText =  ( "blueprint: " + blueprint.structType.name +
+                    "\n location: " + tile.x.ToString() + ", " + tile.y.ToString() +
+                    "\n progress: " + blueprint.GetProgress());
             } else {
                 infoMode = InfoMode.Tile;
                 gameObject.SetActive(true);

@@ -4,7 +4,6 @@ using UnityEngine;
 using UnityEngine.UI;
 
 public class BuildPanel : MonoBehaviour {
-
     public GameObject buildDisplayPrefab; // UI button prefab for each building
     public GameObject textDisplayPrefab;
     public static BuildPanel instance;
@@ -38,13 +37,21 @@ public class BuildPanel : MonoBehaviour {
     }
 
     // mousecontroller handles the mouse stuff. and calls build here.
-    
+
     public bool PlaceBlueprint(Tile tile){ // tile must be empty (id 0), or blueprint is to mine tile
-        if (structType != null && (tile.type.id == 0 || structType.name == "empty")){ // special case: mine tile
-            Blueprint blueprint = new Blueprint(structType, tile.x, tile.y);
-            return true;
-        } 
-        return false;
+        if (structType == null) return false;
+        if (tile.GetBlueprintAt(structType.depth) != null) return false;
+        if (tile.type.id != 0 && structType.name != "empty") return false; // special case: mine tile
+
+        // Check for existing structure at the same depth slot
+        if (!structType.isTile){
+            if ((structType.isPlant || structType.depth == "b") && tile.building != null) return false;
+            if (structType.depth == "m" && tile.mStruct != null) return false;
+            if (structType.depth == "f" && tile.fStruct != null) return false;
+        }
+
+        Blueprint blueprint = new Blueprint(structType, tile.x, tile.y);
+        return true;
     }
 
     public bool Destroy(Tile tile){ // DOESNT WORK

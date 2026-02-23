@@ -33,11 +33,15 @@ public abstract class Task {
         else {
             Cleanup();
             animal.task = null;
-            animal.state = Animal.AnimalState.Idle; // SETTING STATE!
+            animal.state = Animal.AnimalState.Idle;
         }
     }
-    public void Fail(){
-        Debug.Log(animal.aName + " failed " + ToString() + " task at " + currentObjective.ToString());
+    public void Fail(){ // end task, go idle
+        if (currentObjective == null){
+            Debug.Log(animal.aName + " failed " + ToString() + " task, null objective");
+        } else {
+            Debug.Log(animal.aName + " failed " + ToString() + " task at " + currentObjective.ToString());
+        }
         Cleanup();
         animal.task = null;
         animal.state = Animal.AnimalState.Idle;
@@ -68,12 +72,11 @@ public class CraftTask : Task {
 
     public CraftTask(Animal animal) : base(animal){}
     public override bool Initialize(){
-        // TODO: reserve
         recipe = animal.PickRecipe(); // TODO: should this function be moved here to Task?
         if (recipe == null){ return false; }
         Path p = null; 
         if (Db.structTypeByName.ContainsKey(recipe.tile)) {
-            p = animal.nav.FindBuilding(Db.structTypeByName[recipe.tile]);
+            p = animal.nav.FindPathToBuilding(Db.structTypeByName[recipe.tile]);
         }
         if (p == null) { return false; }
         workplace = p.tile;
@@ -82,6 +85,7 @@ public class CraftTask : Task {
         foreach (ItemQuantity input in recipe.inputs){
             if (!animal.inv.ContainsItem(input, numRounds)){
                 objectives.Enqueue(new FetchObjective(this, input));
+                // TODO: reserve
             }
         }
         objectives.Enqueue(new GoObjective(this, workplace));
@@ -90,17 +94,18 @@ public class CraftTask : Task {
         foreach (ItemQuantity output in recipe.outputs){
             objectives.Enqueue(new DropObjective(this, output.item));
         }
+        if (!workplace.building.res.Reserve()) Debug.Log("reserved workplace that is not available!");
         return true;
     }
     public override void Cleanup(){
-        // TODO: unreserve
+        workplace.building?.res.Unreserve();
         objectives.Clear();
     }
 }
 
 
 public class ObtainTask : Task {
-    ItemQuantity iq;
+    public ItemQuantity iq;
     public ObtainTask(Animal animal, ItemQuantity iq) : base(animal){
         this.iq = iq;
     }
@@ -109,6 +114,7 @@ public class ObtainTask : Task {
     }
     public override bool Initialize(){
         // TODO: reserve
+        if (animal.nav.FindPathToItem(iq.item) == null){ return false; } // to catch some failures to find item, such as wheat
         objectives.Enqueue(new FetchObjective(this, iq));
         return true;
     }
@@ -121,6 +127,7 @@ public class GoTask : Task {
     public Tile tile;
     public GoTask (Animal animal, Tile tile) : base(animal){ this.tile = tile;}
     public override bool Initialize(){
+        if (animal.nav.PathTo(tile) == null) return false;
         objectives.Enqueue(new GoObjective(this, tile)); return true;
     }
 }
@@ -136,9 +143,6 @@ public class EepTask : Task {
         objectives.Enqueue(new EepObjective(this));
         return true;
     }
-    public override void Cleanup(){
-        objectives.Clear();
-    }
 }
 public class HarvestTask : Task {
     public Tile tile;
@@ -146,7 +150,6 @@ public class HarvestTask : Task {
         this.tile = tile;
     }
     public override bool Initialize() {
-        // TODO: reserve
         if (!(tile.building is Plant)){
             return false;
         } 
@@ -157,10 +160,11 @@ public class HarvestTask : Task {
         foreach (ItemQuantity output in plant.plantType.products){
             objectives.Enqueue(new DropObjective(this, output.item));
         }
+        if (!plant.res.Reserve()) Debug.Log("reserved plant that is not available!");
         return true;
     }
     public override void Cleanup() {
-        // TODO: reserve
+        tile.building?.res.Unreserve();
         objectives.Clear();
     }
 }
@@ -174,48 +178,84 @@ public class HaulTask : Task {
         ItemQuantity iq = new ItemQuantity(haulInfo.item, haulInfo.quantity);
         objectives.Enqueue(new FetchObjective(this, iq, haulInfo.itemTile));
         objectives.Enqueue(new DeliverObjective(this, iq, haulInfo.storageTile));
+        if (!haulInfo.itemStack.res.Reserve()) Debug.Log("reserved itemstack that is not available!");
         return true;
     }
     public override void Cleanup(){
         objectives.Clear();
+        haulInfo.itemStack?.res.Unreserve();
+    }
+}
+public class DropTask : Task {
+    ItemQuantity iq;
+    public DropTask(Animal animal) : base(animal){}
+    public override bool Initialize(){
+        List<Item> itemsToDrop = animal.inv.GetItemsList();
+        if (itemsToDrop.Count == 0) { return false; }
+        foreach (Item item in itemsToDrop) {
+            objectives.Enqueue(new DropObjective(this, item)); }
+        return true;
     }
 }
 
 public class ConstructTask : Task {
     public Tile tile;
+    public Blueprint blueprint;
     public ConstructTask(Animal animal) : base(animal){}
     public override bool Initialize() {
-        (Tile, Path) info = animal.nav.FindPathToConstructingBlueprint();
+        (Tile, Path) info = animal.nav.FindPathAdjacentToBlueprint(animal.job, constructing: true);
         if (info.Item1 == null){return false;}
         tile = info.Item1;
+        blueprint = tile.GetMatchingBlueprint(b => b.structType.job == animal.job && b.state == Blueprint.BlueprintState.Constructing);
         objectives.Enqueue(new GoObjective(this, info.Item2.tile));
-        objectives.Enqueue(new ConstructObjective(this));
+        objectives.Enqueue(new ConstructObjective(this, blueprint));
+        if (!blueprint.res.Reserve()) Debug.Log("reserved blueprint that is not available!");
         return true;
+    }
+    public override void Cleanup(){
+        objectives.Clear();
+        blueprint?.res.Unreserve();
     }
 }
 public class SupplyBlueprintTask : Task {
-    Tile tile;
     Blueprint blueprint;
     ItemQuantity iq; 
     public SupplyBlueprintTask(Animal animal) : base(animal){}
     public override bool Initialize() {
-        Path blueprintPath = animal.nav.FindReceivingBlueprint(animal.job);
-        if (blueprintPath == null) {return false;}
-        tile = blueprintPath.tile;
-        blueprint = tile.blueprint;
+        //Path blueprintPath = animal.nav.FindReceivingBlueprint(animal.job);
+        (Tile bpTile, Path standPath) = animal.nav.FindPathAdjacentToBlueprint(animal.job, constructing: false);
+        if (bpTile == null) {return false;}
+        blueprint = bpTile.GetMatchingBlueprint(b => b.structType.job == animal.job && b.state == Blueprint.BlueprintState.Receiving);
         for (int i = 0; i < blueprint.costs.Length; i++) {
             if (blueprint.deliveredResources[i].quantity < blueprint.costs[i].quantity) {
                 iq = new ItemQuantity(blueprint.costs[i].item,
                     blueprint.costs[i].quantity - blueprint.deliveredResources[i].quantity);
-                Path itemPath = animal.nav.FindItem(iq.item);    // check if this item exists anywhere
-                if (itemPath == null) { continue; } 
-                // found item and blueprint needs it!
-                objectives.Enqueue(new FetchObjective(this, iq, itemPath.tile));
-                objectives.Enqueue(new DeliverToBlueprintObjective(this, iq, tile));
+                if (!animal.inv.ContainsItem(iq)){
+                    Path itemPath = animal.nav.FindPathToItem(iq.item);    // check if this item exists anywhere
+                    if (itemPath == null) { continue; } 
+                    objectives.Enqueue(new FetchObjective(this, iq, itemPath.tile));
+                    // TODO: reserve
+                }
+                objectives.Enqueue(new GoObjective(this, standPath.tile));
+                objectives.Enqueue(new DeliverToBlueprintObjective(this, iq, blueprint));
+                if (!blueprint.res.Reserve()) Debug.Log("reserved blueprint that is not available!");
                 return true;
             }
         }
         return false;
+    }
+    public override void Cleanup(){
+        objectives.Clear();
+        blueprint?.res.Unreserve();
+    }
+}
+public class FallTask : Task {
+    public FallTask(Animal animal) : base(animal) {}
+    public override bool Initialize() {
+        Tile below = animal.world.GetTileAt(animal.x, animal.y - 1);
+        if (below == null) return false;
+        objectives.Enqueue(new FallObjective(this, below));
+        return true;
     }
 }
 
@@ -253,18 +293,19 @@ public class FetchObjective : Objective {
         this.sourceTile = sourceTile;
     }
     public override void Start(){
+        if (animal.inv.ContainsItem(iq)){Complete(); return;}
         Path itemPath;
         if (sourceTile != null) {
-            itemPath = animal.nav.FindPathTo(sourceTile);
+            itemPath = animal.nav.PathTo(sourceTile);
         } else {
-            itemPath = animal.nav.FindItem(iq.item);
+            itemPath = animal.nav.FindPathToItem(iq.item);
         }
         if (itemPath != null){
             destination = itemPath.tile;
             animal.nav.Navigate(itemPath); 
             animal.state = Animal.AnimalState.Moving;
         } else {
-            Fail();
+            Fail(); Debug.Log("no path to fetch item...");
         }
     }
     public override void OnArrival(){
@@ -281,14 +322,14 @@ public class FetchObjective : Objective {
         }
     }
 }
-public class DeliverObjective : Objective {
+public class DeliverObjective : Objective { // navigates and drops off item
     private ItemQuantity iq; 
     public DeliverObjective(Task task, ItemQuantity iq, Tile destination) : base(task) {
         this.iq = iq;
         this.destination = destination;
     }
     public override void Start(){
-        Path path = animal.nav.FindPathTo(destination);
+        Path path = animal.nav.PathTo(destination);
         if (path != null){
             animal.nav.Navigate(path);
             animal.state = Animal.AnimalState.Moving;
@@ -300,45 +341,39 @@ public class DeliverObjective : Objective {
         Complete();
     }
 }
-public class DeliverToBlueprintObjective : Objective {
+public class DeliverToBlueprintObjective : Objective { // does not navigate, happens on arrival
     private ItemQuantity iq;
-    public DeliverToBlueprintObjective(Task task, ItemQuantity iq, Tile destination) : base(task) {
+    private Blueprint blueprint;
+    public DeliverToBlueprintObjective(Task task, ItemQuantity iq, Blueprint blueprint) : base(task) {
         this.iq = iq;
-        this.destination = destination;
+        this.blueprint = blueprint;
     }
     public override void Start(){
-        Path path = animal.nav.FindPathTo(destination);
-        if (path != null){
-            animal.nav.Navigate(path);
-            animal.state = Animal.AnimalState.Moving;
-        } else {Fail();}
-    }
-    public override void OnArrival(){
-        if (animal.inv.Quantity(iq.item) > 0 && destination.blueprint != null){ 
-            int delivered = destination.blueprint.ReceiveResource(iq.item, iq.quantity);
+        if (animal.inv.Quantity(iq.item) > 0 && blueprint != null) {
+            int delivered = blueprint.ReceiveResource(iq.item, iq.quantity);
             animal.inv.AddItem(iq.item, -delivered);
             Complete();
+        } else {
+            Debug.Log(iq.item.name + " could not be delivered to blueprint");
+            Fail();
         }
-        else { Debug.Log(iq.item.name); Fail(); }
     }
 }
-public class DropObjective : Objective { // drops ALL of an item. can't predict how many to drop. 
+public class DropObjective : Objective { 
     private Item item;
     public DropObjective(Task task, Item item) : base(task) {
         this.item = item;
     }
-    public DropObjective(Task task, ItemQuantity iq) : base(task) {
-        this.item = iq.item;
-    }
     public override void Start(){
-        Path dropPath = animal.nav.FindPlaceToDrop(item);
+        if (animal.inv.Quantity(item) == 0) {Complete(); return;}
+        Path dropPath = animal.nav.FindPathToDrop(item);
         if (dropPath != null){
             destination = dropPath.tile;
             animal.nav.Navigate(dropPath);
             animal.state = Animal.AnimalState.Moving;
         } else {
-            Debug.LogError("can't find a place to drop!");
-            Fail(); // remember, failing might lead to calling drop?
+            Debug.LogError("can't find a place to drop " + item.name + "!");
+            Fail();
         }
     }
     public override void OnArrival(){
@@ -352,7 +387,7 @@ public class GoObjective : Objective {
     }
     public override void Start(){
         if (animal.TileHere() == destination) {Complete(); return;}
-        Path path = animal.nav.FindPathTo(destination);
+        Path path = animal.nav.PathTo(destination);
         if (path != null){
             animal.nav.Navigate(path);
             animal.state = Animal.AnimalState.Moving;
@@ -373,7 +408,10 @@ public class WorkObjective : Objective {
     // animalstatemanager.HandleWorking will call task.Complete() when it's done!
 }
 public class ConstructObjective : Objective {
-    public ConstructObjective(Task task) : base(task) {}
+    public Blueprint blueprint;
+    public ConstructObjective(Task task, Blueprint blueprint) : base(task) {
+        this.blueprint = blueprint;
+    }
     public override void Start(){
         animal.state = Animal.AnimalState.Working;
     }
@@ -395,5 +433,30 @@ public class HarvestObjective : Objective {
             animal.Produce(plant.Harvest());
             Complete();
         } else { Fail(); }    
+    }
+}
+
+
+
+public class FallObjective : Objective {
+    public FallObjective(Task task, Tile below) : base(task) {
+        this.destination = below;
+    }
+    public override void Start() {
+        // Build a direct path bypassing standability checks
+        List<Node> nodes = new List<Node> { animal.TileHere().node, destination.node };
+        animal.nav.NavigateTo(destination, new Path(nodes));
+        animal.state = Animal.AnimalState.Moving;
+    }
+    public override void OnArrival() {
+        if (!animal.TileHere().node.standable) {
+            // Keep falling — queue another fall objective
+            Tile below = animal.world.GetTileAt(animal.x, animal.y - 1);
+            //if (below == null) { Fail(); Debug.Log(animal.y); return; }
+            destination = below;
+            Start(); // re-navigate one tile down
+        } else {
+            Complete();
+        }
     }
 }

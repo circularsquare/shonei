@@ -17,13 +17,15 @@ public class Blueprint {
     public float constructionProgress = 0f; 
     public enum BlueprintState { Receiving, Constructing }
     public BlueprintState state = BlueprintState.Receiving;
+    public Reservable res;
 
     public Blueprint(StructType structType, int x, int y){
         this.structType = structType;
         this.x = x;
         this.y = y;
         this.tile = World.instance.GetTileAt(x, y);
-        tile.blueprint = this;
+        tile.SetBlueprintAt(structType.depth, this);
+        res = new Reservable(1);
 
         if (structType.constructionCost == 0f){
             constructionCost = 2f; // default
@@ -91,7 +93,7 @@ public class Blueprint {
     public void Complete(){
         StructController.instance.Construct(structType, tile);
         // delete blueprint
-        tile.blueprint = null;
+        tile.SetBlueprintAt(structType.depth, null);
         GameObject.Destroy(go);
     }
 

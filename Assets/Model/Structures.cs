@@ -3,24 +3,17 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class Building : Structure {
-    public BuildingType buildingType;
     public Building(StructType st, int x, int y) : base(st, x, y){
         if (tile.building != null){Debug.LogError("already a building here!");}
         tile.building = this;
         go.name = "building_" + structType.name;
         sr.sortingOrder = 10;
-    
+
         if (structType.name == "drawer"){
-            tile.inv = new Inventory(4, 20, Inventory.InvType.Storage, x, y); 
+            tile.inv = new Inventory(4, 20, Inventory.InvType.Storage, x, y);
             // TODO: don't overwrite existing floor inventory!!
         }
-
-        capacity = structType.capacity;
-        buildingType = structType as BuildingType;
     }
-}
-public class BuildingType : StructType {
-
 }
 
 public class Platform : Structure {

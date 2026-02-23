@@ -36,16 +36,11 @@ public class AnimalStateManager {
         }
     }
 
-    
-
     private void HandleIdle() {
-        animal.objective = Animal.Objective.None;
-        
-        animal.FindWork();
+        animal.ChooseTask();
         if (animal.state == AnimalState.Idle) {
             // Random walking when nothing else to do
             if (UnityEngine.Random.Range(0, 5) == 0) {
-                // animal.GoTo(animal.x + UnityEngine.Random.Range(-1, 2), animal.y);
                 animal.task = new GoTask(animal, 
                     animal.world.GetTileAt(animal.x + UnityEngine.Random.Range(-1, 2), animal.y));
                 animal.task.Start();
@@ -54,33 +49,20 @@ public class AnimalStateManager {
     }
 
     private void HandleWorking() {
-        // if (animal.workTile?.blueprint != null && 
-        //            animal.workTile.blueprint.state == Blueprint.BlueprintState.Constructing) {
-        //     if (animal.workTile.blueprint.ReceiveConstruction(1f * animal.efficiency)){
-        //         animal.state = AnimalState.Idle; // if finished
-        //         animal.task?.Complete(); // completes task to set state. TODO: remove other setting of state above.
-        //     }
-        // } 
         if (animal.task is ConstructTask constructTask){
-            Blueprint blueprint = constructTask.tile.blueprint;
+            Blueprint blueprint = constructTask.blueprint;
+            if (blueprint == null) {constructTask.Fail();}
             if (blueprint.ReceiveConstruction(1f * animal.efficiency)){
                 constructTask.Complete();
             }
             return;
         }
-
-        // crafting!
-        // else if (animal.recipe != null && animal.inv.ContainsItems(animal.recipe.inputs) && animal.AtWork()) {
-        //     animal.Produce(animal.recipe);
-        // } else {
-        //     animal.state = AnimalState.Idle;
-        // }
         else if (animal.task is CraftTask craftTask) {
             Recipe recipe = craftTask.recipe;
             if (animal.CanProduce(recipe)){
                 animal.Produce(recipe);
             } else {
-                animal.task.Complete();
+                craftTask.Complete();
             }
             return;
         }
@@ -90,8 +72,8 @@ public class AnimalStateManager {
     private void HandleEeping() {
         animal.eeping.Eep(1f, animal.AtHome());
         // reproduction! 
-        if (animal.AtHome() && animal.homeTile.building.reserved < animal.homeTile.building.capacity 
-            && animal.homeTile.building.reserved > 2) {
+        if (animal.AtHome() && animal.homeTile.building.res.Available()
+            && animal.homeTile.building.res.reserved > 2) {
             if (animal.random.Next(0, 50) < 2) {
                 AnimalController.instance.AddAnimal(animal.x, animal.y);
             }
@@ -106,13 +88,12 @@ public class AnimalStateManager {
         if (!animal.TileHere().node.standable) {
             animal.nav.Fall();
         }
-
         if (IsMovingState(animal.state)) {
             if (animal.target == null) {
                 // Error handling for missing target
-                Debug.LogError("movement target null! " + animal.state.ToString());
-                animal.StartDropping();
-                //animal.state = AnimalState.Idle;
+                Debug.LogError(animal.aName + " movement target null! failing task " + animal.state.ToString());
+                animal.task?.Fail();
+                animal.state = Animal.AnimalState.Idle;
             }
             else {
                 bool done = animal.nav.Move(deltaTime);
@@ -129,10 +110,7 @@ public class AnimalStateManager {
         }
     }
     private bool IsMovingState(AnimalState state) {
-        return state == AnimalState.Walking ||
-               state == AnimalState.Fetching ||
-               state == AnimalState.Delivering || 
-               state == AnimalState.Moving;
+        return state == AnimalState.Moving;
     }
     private void HandleArrival() {
         // Tile here = animal.TileHere();
@@ -141,35 +119,7 @@ public class AnimalStateManager {
         //       $"workTile=({animal.workTile?.x},{animal.workTile?.y}), " +
         //       $"equals={here == animal.workTile}");
         switch (animal.state) {
-            case AnimalState.Walking:
-                    // Check if we arrived at workTile or homeTile
-                if (animal.objective == Animal.Objective.Construct){
-                    animal.state = AnimalState.Working;
-                } 
-                // else if (animal.TileHere() == animal.workTile) {
-                //     if (animal.TileHere().building is Plant) { // work tile is plant 
-                //         Plant plant = animal.TileHere().building as Plant;
-                //         if (plant.harvestable) {
-                //             animal.Produce(plant.Harvest());
-                //             animal.workTile = null;
-                //         }
-                //         animal.state = AnimalState.Idle;
-                //     }
-                //     else { // worktile is not plant 
-                //         animal.state = AnimalState.Working;
-                //     }
-                // } 
-                else {
-                    animal.state = AnimalState.Idle;
-                }
-                break;
-            case AnimalState.Fetching:
-                animal.OnArrivalFetch();
-                break;
-            case AnimalState.Delivering:
-                animal.OnArrivalDeliver();
-                break;
-            case AnimalState.Moving: // this is the new state that is set when you use a task!
+            case AnimalState.Moving: 
                 animal.OnArrival();
                 break;
         }

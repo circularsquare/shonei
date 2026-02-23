@@ -6,8 +6,7 @@ using System;
 using System.Linq;
 using System.Runtime.Serialization;
 
-public class Tile 
-{
+public class Tile {
     Action<Tile> cbTileTypeChanged;
 
     World world;
@@ -25,7 +24,9 @@ public class Tile
         }
     }
     public Building building; // can be a plant... should probably rename at some point
-    public Blueprint blueprint; // not sure how this would interact with levels of building
+    public Blueprint bBlueprint; // background blueprint
+    public Blueprint mBlueprint; // midground blueprint
+    public Blueprint fBlueprint; // foreground blueprint
     public Structure mStruct; // midground: platforms for moving horizontally in front of buildings
     public Structure fStruct; // foreground: ladders and stairs and stuff
     public Inventory inv; // this encapsulates all inventory types
@@ -42,12 +43,12 @@ public class Tile
     
     public void RegisterCbTileTypeChanged(Action<Tile> callback){cbTileTypeChanged += callback;}
     public void UnregisterCbTileTypeChanged(Action<Tile> callback){cbTileTypeChanged -= callback;}
-    public bool ContainsItem(Item item){return (inv != null && inv.ContainsItem(item));}
-    public Item GetItemToHaul(){
+    public bool ContainsItem(Item item){return inv != null && inv.ContainsItem(item);}
+    public ItemStack GetItemToHaul(){
         if (inv == null){return null;}
         else{return inv.GetItemToHaul();}
     }
-    public bool HasItemToHaul(Item item){return (inv != null && inv.HasItemToHaul(item));} // can be null for any item
+    public bool HasItemToHaul(Item item){return inv != null && inv.HasItemToHaul(item);} // can be null for any item
     public int GetStorageForItem(Item item){
         if (inv != null && inv.invType == Inventory.InvType.Storage){
             return inv.GetStorageForItem(item);
@@ -63,12 +64,37 @@ public class Tile
     public bool HasStairRight(){ return (fStruct != null && fStruct is Stairs && (fStruct as Stairs).right); }
     public bool HasStairLeft(){ return (fStruct != null && fStruct is Stairs && !(fStruct as Stairs).right); }
 
+    public Blueprint GetAnyBlueprint(){
+        return bBlueprint ?? mBlueprint ?? fBlueprint;
+    }
+    public Blueprint GetMatchingBlueprint(Func<Blueprint, bool> predicate){
+        if (bBlueprint != null && predicate(bBlueprint)) return bBlueprint;
+        if (mBlueprint != null && predicate(mBlueprint)) return mBlueprint;
+        if (fBlueprint != null && predicate(fBlueprint)) return fBlueprint;
+        return null;
+    }
+    public Blueprint GetBlueprintAt(string depth){
+        if (depth == "b") return bBlueprint;
+        if (depth == "m") return mBlueprint;
+        if (depth == "f") return fBlueprint;
+        return null;
+    }
+    public void SetBlueprintAt(string depth, Blueprint bp){
+        if (depth == "b") bBlueprint = bp;
+        else if (depth == "m") mBlueprint = bp;
+        else if (depth == "f") fBlueprint = bp;
+    }
+
     public Tile[] GetAdjacents(){ // not the same as graph neighbors
-        Tile[] adjacents = new Tile[4];
+        Tile[] adjacents = new Tile[8];
         adjacents[0] = world.GetTileAt(x + 1, y);
         adjacents[1] = world.GetTileAt(x, y - 1);
         adjacents[2] = world.GetTileAt(x - 1, y);
         adjacents[3] = world.GetTileAt(x, y + 1);
+        adjacents[4] = world.GetTileAt(x + 1, y - 1);
+        adjacents[5] = world.GetTileAt(x - 1, y - 1);
+        adjacents[6] = world.GetTileAt(x - 1, y + 1);
+        adjacents[7] = world.GetTileAt(x + 1, y + 1);
         return adjacents;
     }
 
