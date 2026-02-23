@@ -15,8 +15,7 @@ public class Structure {
     public Sprite sprite;
     public SpriteRenderer sr;
     public Tile tile; // not really sure how this will work for multi-tile buildings...
-    public int capacity = 1;
-    public int reserved = 0;
+    public Reservable res;
     public string depth;
     
     public Structure(StructType st, int x, int y){
@@ -36,15 +35,16 @@ public class Structure {
         }
         sr = go.AddComponent<SpriteRenderer>();
         sr.sprite = sprite;
+        res = new Reservable(structType.capacity);
     }
 
     public void Destroy(){
         GameObject.Destroy(go);
         if (depth == "b"){
             tile.building = null;
-        } if (depth == "f"){
+        } else if (depth == "f"){
             tile.fStruct = null;
-        } if (depth == "m"){
+        } else if (depth == "m"){
             tile.mStruct = null;
         }
     }
@@ -65,11 +65,11 @@ public class StructType {
     public string depth {get; set;}
     public string njob {get; set;}
     public Job job;
-    public int capacity {get; set;} // animal capacity, like max # of workers or eepers
+    public int capacity {get; set;} // number of animals that can reserve this struct at once
 
     [OnDeserialized]
     internal void OnDeserialized(StreamingContext context){
-        if (capacity == 0){ capacity = 20; } // default, basically infinite capacity 
+        if (capacity == 0){ capacity = 1; } // default, can be used by one animal at a time
         if (depth == null){ depth = "b"; }
         costs = new ItemQuantity[ncosts.Length];
         for (int i = 0; i < ncosts.Length; i++){

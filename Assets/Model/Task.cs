@@ -82,6 +82,7 @@ public class CraftTask : Task {
         workplace = p.tile;
 
         int numRounds = animal.CalculateWorkPossible(recipe);
+        if (numRounds == 0) { return false; }
         foreach (ItemQuantity input in recipe.inputs){
             if (!animal.inv.ContainsItem(input, numRounds)){
                 objectives.Enqueue(new FetchObjective(this, input));

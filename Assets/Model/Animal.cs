@@ -246,7 +246,8 @@ public class Animal : MonoBehaviour{
         else { Debug.Log("called produce without having all recipe ingredients! not doing."); }
     }
     public bool CanProduce(Recipe recipe) {
-        return inv.ContainsItems(recipe.inputs) && recipe.tile == TileHere().building.structType.name;
+        Building b = TileHere()?.building;
+        return b != null && inv.ContainsItems(recipe.inputs) && recipe.tile == b.structType.name;
     }
     public void Consume(Item item, int quantity = 1){
         if (inv.Produce(item, -quantity) < 0){

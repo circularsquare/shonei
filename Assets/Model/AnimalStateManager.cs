@@ -51,7 +51,7 @@ public class AnimalStateManager {
     private void HandleWorking() {
         if (animal.task is ConstructTask constructTask){
             Blueprint blueprint = constructTask.blueprint;
-            if (blueprint == null) {constructTask.Fail();}
+            if (blueprint == null) {constructTask.Fail(); return;}
             if (blueprint.ReceiveConstruction(1f * animal.efficiency)){
                 constructTask.Complete();
             }
@@ -61,8 +61,10 @@ public class AnimalStateManager {
             Recipe recipe = craftTask.recipe;
             if (animal.CanProduce(recipe)){
                 animal.Produce(recipe);
+            } else if (animal.inv.ContainsItems(recipe.inputs)) {
+                craftTask.Fail(); // has inputs but can't produce — wrong location
             } else {
-                craftTask.Complete();
+                craftTask.Complete(); // out of inputs — done
             }
             return;
         }

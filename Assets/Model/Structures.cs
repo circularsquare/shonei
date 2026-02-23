@@ -10,8 +10,14 @@ public class Building : Structure {
         sr.sortingOrder = 10;
 
         if (structType.name == "drawer"){
+            Inventory oldInv = tile.inv;
             tile.inv = new Inventory(4, 20, Inventory.InvType.Storage, x, y);
-            // TODO: don't overwrite existing floor inventory!!
+            if (oldInv != null && oldInv.invType == Inventory.InvType.Floor) {
+                foreach (Item item in oldInv.GetItemsList()) {
+                    oldInv.MoveItemTo(tile.inv, item, oldInv.Quantity(item));
+                }
+                oldInv.Destroy();
+            }
         }
     }
 }
