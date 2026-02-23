@@ -3,14 +3,24 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 
-public class Node { // note these are shared between all animals who want to navigate
-    public int x, y;
+public class Node {
+    public int x, y;       // grid tile position (for array indexing)
+    public float wx, wy;   // world position (actual movement target)
+    public bool isWaypoint;
     public List<Node> neighbors;
     public bool standable;
     public Tile tile;
-    
+
     public Node(Tile tile, int x, int y){
         this.tile = tile; this.x = x; this.y = y;
+        this.wx = x; this.wy = y;
+        neighbors = new List<Node>();
+    }
+    // Waypoint constructor — float world position, no tile reference
+    public Node(float wx, float wy){
+        this.wx = wx; this.wy = wy;
+        this.x = Mathf.RoundToInt(wx); this.y = Mathf.RoundToInt(wy);
+        this.isWaypoint = true;
         neighbors = new List<Node>();
     }
 
@@ -37,6 +47,7 @@ public class Graph {
     public World world;
     public Node[,] nodes;
     public static Graph instance;
+    private Dictionary<(int,int),(Node,Node)> stairWaypoints = new Dictionary<(int,int),(Node,Node)>();
 
     public Graph(World world){
         this.world = world;
@@ -57,7 +68,14 @@ public class Graph {
     public void AddNeighborsInitial(){
         for (int x = 0; x < world.nx; x++){
             for (int y = 0; y < world.ny; y++){
-                UpdateStandability(x, y); // needs to be called before so you can know which neighbors not to add
+                UpdateStandability(x, y);
+            }
+        }
+        // Create stair waypoints before the neighbor pass so adjacent tiles can connect to them
+        for (int x = 0; x < world.nx; x++){
+            for (int y = 0; y < world.ny; y++){
+                if (nodes[x,y].tile.HasStairRight() || nodes[x,y].tile.HasStairLeft())
+                    CreateStairWaypoints(x, y);
             }
         }
         for (int x = 0; x < world.nx; x++){
@@ -70,47 +88,71 @@ public class Graph {
         UpdateStandability(x, y);
         Node node = nodes[x,y];
 
-        List<Node> eligibleNeighbors = new List<Node>(); 
+        List<Node> eligibleNeighbors = new List<Node>();
         foreach (Node neighbor in node.neighbors) {
-            if (IsNeighbor(node, neighbor)) { 
-                eligibleNeighbors.Add(neighbor); 
+            if (IsNeighbor(node, neighbor)) {
+                eligibleNeighbors.Add(neighbor);
                 neighbor.AddNeighbor(node);
             } else {
                 neighbor.RemoveNeighbor(node);
             }
         }
         node.neighbors = eligibleNeighbors;
-        // the above part only rechecks EXISTING neighbors, doesn't add new potential ones. that happens below
-        // consider rewriting below to use IsNeighbor()
-        // add horizontal standable neighbors
+
+        // Add horizontal standable neighbors
         if (x + 1 < world.nx && node.standable && nodes[x+1,y].standable){
             node.AddNeighbor(nodes[x+1,y], true); }
         if (x - 1 >= 0 && node.standable && nodes[x-1,y].standable){
             node.AddNeighbor(nodes[x-1,y], true); }
-        // add vertical neighbors via ladders or stairs
+        // Add vertical neighbors via ladders
         Structure fStruct = node.tile.fStruct;
-        if (fStruct != null && y + 1 < world.ny){
-            if (fStruct.structType.name == "ladder"){
-                node.AddNeighbor(nodes[x,y+1], true);
-            } else if (fStruct is Stairs && (fStruct as Stairs).right){
-                node.AddNeighbor(nodes[x+1,y+1], true);
-            } else if (fStruct is Stairs && !(fStruct as Stairs).right){
-                node.AddNeighbor(nodes[x-1,y+1], true);
-            }
+        if (fStruct != null && fStruct.structType.name == "ladder" && y + 1 < world.ny){
+            node.AddNeighbor(nodes[x,y+1], true);
+        }
+        // Stairs add extra diagonal routes on top of normal horizontal connections
+        if (node.tile.HasStairRight() || node.tile.HasStairLeft()) {
+            CreateStairWaypoints(x, y);
         }
     }
 
     public bool IsNeighbor(Node node, Node neighbor){
+        if (node.isWaypoint || neighbor.isWaypoint) return true; // waypoints manage their own connections
         int xDiff = neighbor.x - node.x; int yDiff = neighbor.y - node.y;
         return (
         ((xDiff == 1 || xDiff == -1) && yDiff == 0 && (node.standable && neighbor.standable))
         || (xDiff == 0 && yDiff == 1 && node.tile.HasLadder())
-        || (xDiff == 0 && yDiff == -1 && neighbor.tile.HasLadder())
-        || (xDiff == 1 && yDiff == 1 && node.tile.HasStairRight())
-        || (xDiff == -1 && yDiff == -1 && neighbor.tile.HasStairRight())
-        || (xDiff == -1 && yDiff == 1 && node.tile.HasStairLeft())
-        || (xDiff == 1 && yDiff == -1 && neighbor.tile.HasStairLeft()));
+        || (xDiff == 0 && yDiff == -1 && neighbor.tile.HasLadder()));
     }
+    private void CreateStairWaypoints(int sx, int sy) {
+        // Clean up old waypoints if present
+        if (stairWaypoints.ContainsKey((sx, sy))) {
+            var (oldEntry, oldExit) = stairWaypoints[(sx, sy)];
+            foreach (Node n in oldEntry.neighbors) n.RemoveNeighbor(oldEntry);
+            foreach (Node n in oldExit.neighbors)  n.RemoveNeighbor(oldExit);
+            stairWaypoints.Remove((sx, sy));
+        }
+        bool right = nodes[sx, sy].tile.HasStairRight();
+        if (right) {
+            if (sx - 1 < 0 || sx + 1 >= world.nx || sy + 1 >= world.ny) return;
+            if (!GetStandability(sx - 1, sy) || !GetStandability(sx + 1, sy + 1)) return;
+            Node entry = new Node(sx - 0.5f, (float)sy);
+            Node exit  = new Node(sx + 0.5f, sy + 1f);
+            entry.AddNeighbor(exit, true);
+            entry.AddNeighbor(nodes[sx-1, sy],   true);
+            exit.AddNeighbor( nodes[sx+1, sy+1], true);
+            stairWaypoints[(sx, sy)] = (entry, exit);
+        } else {
+            if (sx + 1 >= world.nx || sx - 1 < 0 || sy + 1 >= world.ny) return;
+            if (!GetStandability(sx + 1, sy) || !GetStandability(sx - 1, sy + 1)) return;
+            Node entry = new Node(sx + 0.5f, (float)sy);
+            Node exit  = new Node(sx - 0.5f, sy + 1f);
+            entry.AddNeighbor(exit, true);
+            entry.AddNeighbor(nodes[sx+1, sy],   true);
+            exit.AddNeighbor( nodes[sx-1, sy+1], true);
+            stairWaypoints[(sx, sy)] = (entry, exit);
+        }
+    }
+
     public bool GetStandability(int x, int y){
         Tile tileHere = world.GetTileAt(x, y);
         Tile tileBelow = world.GetTileAt(x, y-1);
@@ -227,7 +269,7 @@ public class AStar {
     }
 
     private float Heuristic(Node node, Node goal) {
-        return (float)Math.Sqrt((node.x - goal.x) * (node.x - goal.x)
-            + (node.y - goal.y) * (node.y - goal.y));
+        return (float)Math.Sqrt((node.wx - goal.wx) * (node.wx - goal.wx)
+            + (node.wy - goal.wy) * (node.wy - goal.wy));
     }
 }

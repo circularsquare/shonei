@@ -19,6 +19,7 @@ public class Animal : MonoBehaviour{
 
     public Recipe recipe;
     public int numRounds = 0;
+    public float workProgress = 0f;
 
     public Job job;
     public Inventory inv;

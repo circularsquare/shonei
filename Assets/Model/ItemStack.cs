@@ -3,8 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 
-public class ItemStack 
-{
+public class ItemStack {
     public bool isComposite{get; set;}
     public Item item { get; set; }
     public int quantity { get; set; } //if i want some things to be floats... have a display multiplier?
@@ -13,12 +12,14 @@ public class ItemStack
     public static int maxDecayCount = 1000000;
     public int stackSize = 100;
     public Inventory inv;
+    public Reservable res;
 
     public ItemStack(Inventory inv, Item item, int quantity = 0, int stackSize = 100){
         this.item = item;
         this.quantity = quantity;
         this.stackSize = stackSize;
         this.inv = inv;
+        this.res = new Reservable(1);
         decayCounter = 0;
     }
 

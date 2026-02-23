@@ -25,8 +25,8 @@ public class World : MonoBehaviour
 
         graph = new Graph(this);
 
-        nx = 50;
-        ny = 100;
+        nx = 100;
+        ny = 50;
         tiles = new Tile[nx, ny];
         graph.nodes = new Node[nx, ny];
         for (int x = 0; x < nx; x++){

@@ -8,8 +8,7 @@ using System;
 using System.Linq;
 
 
-public class InventoryController : MonoBehaviour
-{
+public class InventoryController : MonoBehaviour {
     public static InventoryController instance {get; protected set;}
     public GlobalInventory globalInventory;
     public GameObject panelInventory;

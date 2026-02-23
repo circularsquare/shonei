@@ -87,7 +87,7 @@ public class Inventory
         int overFill = otherInv.AddItem(item, taken);
         if (overFill > 0){
             AddItem(item, overFill); // return the item if recipient is full.
-            Debug.Log("moved " + taken + " from " + invType.ToString() + " to " + otherInv.invType.ToString()+ " and added back " + overFill);
+            // Debug.Log("moved " + taken + " from " + invType.ToString() + " to " + otherInv.invType.ToString()+ " and added back " + overFill);
         }
         return taken - overFill;
     }
@@ -132,18 +132,18 @@ public class Inventory
         }
         return sufficient;
     }
-    public Item GetItemToHaul(){   // returns null if nothing, or item if something need to haul
+    public ItemStack GetItemToHaul(){   // returns null if nothing, or item if something need to haul
         foreach (ItemStack stack in itemStacks){
-            if (!stack.Empty() && 
+            if (!stack.Empty() && stack.res.Available() &&
                 (allowed[stack.item.id] == false || invType == InvType.Floor)){
-                return stack.item;
+                return stack;
             }
         }
         return null;
     }
     public bool HasItemToHaul(Item item){ // if null, finds any item to haul
         foreach (ItemStack stack in itemStacks){
-            if ((item == null || stack.item == item) && stack.quantity > 0 &&
+            if ((item == null || stack.item == item) && stack.quantity > 0 && stack.res.Available() &&
                 (allowed[stack.item.id] == false || invType == InvType.Floor)){
                 return true;
             }
@@ -180,6 +180,15 @@ public class Inventory
         }
         return amount;
     }
+    public int GetFreeStacks() {
+        int amount = 0;
+        foreach (ItemStack stack in itemStacks){
+            if (stack.quantity == 0){
+                amount += 1;
+            }
+        }
+        return amount;
+    }
     public bool HasDisallowedItem(){
         foreach (ItemStack stack in itemStacks){
             if (stack != null && stack.item != null && allowed[stack.item.id] == false){
@@ -193,6 +202,15 @@ public class Inventory
             if (stack != null && stack.quantity > 0){
                 return false; }}
         return true;
+    }
+    public List<Item> GetItemsList(){
+        List<Item> items = new List<Item>();
+        foreach (ItemStack stack in itemStacks) {
+            if (stack != null && stack.item != null && stack.quantity > 0) {
+                items.Add(stack.item);
+            }
+        }
+        return items;
     }
 
 

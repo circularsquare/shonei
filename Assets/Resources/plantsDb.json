@@ -7,11 +7,12 @@
         ],
         "nproducts": [
             { "name": "wood", "quantity": 10 },
-            { "name": "acorn", "quantity": 3 }
+            { "name": "acorn", "quantity": 1 }
         ],
         "growthTime": 30,
+        "harvestTime": 5.0,
         "njob": "logger"
-    },{  
+    },{
         "id": 502,
         "name": "wheat",
         "ncosts": [
@@ -21,6 +22,7 @@
             { "name": "wheat", "quantity": 5 }
         ],
         "growthTime": 15,
+        "harvestTime": 2.0,
         "njob": "farmer"
     }
 

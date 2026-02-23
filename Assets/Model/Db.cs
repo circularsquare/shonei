@@ -175,6 +175,7 @@ public class Recipe {
     public string job {get; set;}
     public string description {get; set;} // optional (maybe make the getter return something other than null?)
     public string tile {get; set;} // actually is a tile or a building...
+    public float workload {get; set;}
     public TileType tileType;
     public ItemNameQuantity[] ninputs {get; set;}
     public ItemNameQuantity[] noutputs {get; set;}
@@ -209,4 +210,18 @@ public class Recipe {
 }
 
 
-
+public class HaulInfo {
+    public Item item;
+    public int quantity;
+    public Tile itemTile;
+    public Tile storageTile;
+    public ItemStack itemStack;
+    
+    public HaulInfo(Item item, int quantity, Tile itemTile, Tile storageTile, ItemStack itemStack) {
+        this.item = item;
+        this.quantity = quantity;
+        this.itemTile = itemTile;
+        this.storageTile = storageTile;
+        this.itemStack = itemStack;
+    }
+}

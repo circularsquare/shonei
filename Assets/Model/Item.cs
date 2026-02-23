@@ -10,8 +10,7 @@ using System.Runtime.Serialization;
 // this class holds mostly permanent attributes about an item in general.
 // items don't have unique attributes. they are like resources. 
 // if you want unique attributes make something else.
-public class Item // : Object
-{
+public class Item {
     public int id {get; set;}
     public string name {get; set;}
     public Item[] children {get; set;}
@@ -21,7 +20,7 @@ public class Item // : Object
 
     public bool IsDiscovered(){
         if (InventoryController.instance != null){
-            return (InventoryController.instance.discoveredItems[id]);
+            return InventoryController.instance.discoveredItems[id];
         }
         return false;
     }

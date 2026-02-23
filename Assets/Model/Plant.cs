@@ -70,6 +70,7 @@ public class PlantType : StructType {
     public int maxYieldPerSize;
     public int harvestProgress;
     public int growthTime;
+    public float harvestTime {get; set;}
     // public string njob {get; set;}
     // public Job job;
 

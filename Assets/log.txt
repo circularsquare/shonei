@@ -1,35 +1,24 @@
 hii
 
-eventually, want resource gathering to be done by mice who harvest at resource nodes and deliver stuff to inventories.
-(maybe just one inventory per settlement?)
 
-for now, have "mice" without game objects who just harvest and send directly to inventories.
-have a population census that tracks all the mice and their jobs. and allow reassigning from here.
 
-5/5
+5/5/24
 
 move the a star stuff to animal game object!
-
 remove smoothing / set waypoint distance small!
-
 define connections my way! so that it makes sense with verticality.
-
 add ladders! and stairs!c  
 
 5/12
 wanna have woodcutters drop wood items
-
 wanna have haulers haul them
 
 6/9
 do the navigation stuff later?
-
 we can start with clicker game style. 
-
 can transition into having distinct workers / jobs later.
 
 7/20
-
 how do i handle item stacks?
 mining gives a stack of stone. 
 the stone should be separable into various ores and stones with the right tech...
@@ -86,7 +75,6 @@ how many item types do i roughly expect a player to have?
         - wood, stone, soil, wheat 
 
 8/4/24
-
 next steps 
 - add tree sprite 
     - have woodcutters walk to tree to chop it 
@@ -98,10 +86,8 @@ next steps
 - fetch item stacks
 - transport item stacks to storage
     - porter just does this all the time? looks for stuff and delivers.
-
     - make items drop on floor
     - make porter a subclass of animal
-
 - add build blueprints
     - add "build" process, builders will deliver materials then work on building.
 - add work stations 
@@ -138,7 +124,7 @@ so for shonei
         - so like a carpenter will search for wood on the ground or in warehouses
 unemployed mice will be haulers?
 
-8/31
+8/31/24
 made haulers!
 items produced go on the floor (typically on the tile where they are produced. need to add "clustering?" for like farmers.)
 and haulers pick them up.
@@ -152,7 +138,6 @@ items - 30
 buildings - 20
 tiles - 10
 background - 0
-
 9/2
 - fixed item moving bug..
 - added dirt sprite
@@ -163,7 +148,6 @@ background - 0
         - if you're idle.. you don't want any items.
         - if you're working, it depends. unclear
 - need to figure out why global wood is starting 1 higher than actual world wood...
-
 9/21
 - feel so tired today. 
 - added blueprints!
@@ -172,20 +156,17 @@ background - 0
     - also rename haulers to "workers?" or maybe have builders be separate idk.
     - also want to add construction prgoress. and resource delivery progress.
         - visible in info panel. need to add info panel for blueprints.
-
 10/19
 - added default building sprite 
 - blueprint sprites grayed out
 - fixed some null hauling issues.. so many
 - made itemquantity a bit easier to work with. but still need to specify itemids. maybe make a spreadsheet
 - planned out how crafters will work.
-
 10/20
 - added crafting!!! sawmill works.
     - added a new fetch mode for crafters, slightly different from haulers 
     - recipes
     - also made gatherers use recipes like crafters
-
 10/27
 - structured items in a tree
     - keep track of discovered items 
@@ -194,7 +175,6 @@ background - 0
 - translate item names from json to item ids while loading db
 - fixed resources starting at 1 higher than they should
 - fixed blueprints receiving wrong number of resources
-
 10/28
 - improved hauler logic, now they will keep searching for things to store instead of stopping when they find something to haul that they can't store
     - also desiredItemQuantity is more sensibly chosen
@@ -205,21 +185,17 @@ background - 0
 - added item dropdowns with hiding undiscovered items
 - cleaned up ui layout
 - added item targets
-
-10/29
+10/29/24
 - added recipe score based on target, used to order recipe priority (if target = 0, won't do at all)
 - added batch processing! crafters will estimate numRounds possible to make and try to fetch required resources
     - untested for multi input recipes 
 - added plant to db and build menu. yet to add way to construct, and actual plant functionality.
-
-
 1/20/25
 - its been so long!
 - fixed child items not showing up (initial wheat)
 2/9/25
 - changed item display formatting to not overlap
 - added some sprites
-
 2/15
 - i watched this video https://www.youtube.com/watch?v=JxI3Eu5DPwE&t=545s that introduced me to cool design patterns. i want to put them in eventually, especially actions and also components.
 - plants!
@@ -230,7 +206,6 @@ background - 0
     - mice seek out wheat and take 5 and eat it as they work 
     - if hungry, their productivity and movement speed drops    
     - factored out into its own component hehe.
-
 2/17
 - made trees into a plant instead of a tile 
 - made loggers do trees instead of farmers
@@ -260,5 +235,25 @@ background - 0
 3/29
 - i can't believe im at val town
 - added constructing at adjacent tiles, and destruction of adjacent tiles! can mine now. but they fall in and don't come out.
-5/31
+5/31/25
 - fixed up AtWork() check
+2/19/26
+- completed transferring everything to objective system!
+- changed dropping to require actual movement on the animal's part, item produced in animal inv rather than floor
+- fixed reachability regarding ladders and stairs
+2/20/26
+- renamed/reorganized nav functions to reflect whether they return paths or tiles
+- allowed delivering to blueprints from adjacent (inc. diagonal) tiles
+- disallowed multiple blueprints on same tile (first placed were getting lost)
+- fixed falling / made into task
+- handled not being able to satisfy needs better    
+    - merged needs handling / findwork into general ChooseTask decision tree
+    - work continues even if you can't satisfy needs
+- fixed dropping items when inventory gets near full
+- fix panning screen jitters
+- animation updates :3
+2/21/26
+- added Reservable system, both structures and itemstacks have them
+- allow multiple blueprints on a tile at different depths
+- work and harvesting takes multiple time, specified by workload and harvestTime
+

@@ -50,7 +50,7 @@ public class Nav {
 
     public bool Move(float deltaTime){ // called by animal every frame!! returns whether you're done
         if (path == null || pathIndex >= path.length){return true;}  // no path... return true, give up
-        if (SquareDistance(a.x, nextNode.x, a.y, nextNode.y) < 0.001f){
+        if (SquareDistance(a.x, nextNode.wx, a.y, nextNode.wy) < 0.001f){
             if (pathIndex + 1 >= path.length){
                 EndNavigation();
                 return true;
@@ -59,14 +59,14 @@ public class Nav {
                 prevNode = nextNode;
                 nextNode = path.nodes[pathIndex + 1];
             }
-        } 
+        }
         Vector2 newPos = Vector2.MoveTowards(
-            new Vector2(a.x, a.y), new Vector2(nextNode.x, nextNode.y), 
+            new Vector2(a.x, a.y), new Vector2(nextNode.wx, nextNode.wy),
             a.maxSpeed * deltaTime);
         a.x = newPos.x; a.y = newPos.y;
         a.go.transform.position = new Vector3(a.x, a.y, 0);
 
-        a.isMovingRight = (nextNode.x - a.x > 0);
+        a.isMovingRight = (nextNode.wx - a.x > 0);
         return false;
     }
 

@@ -4,8 +4,7 @@ using UnityEngine;
 using System;
 using System.Linq;
 
-public class UI : MonoBehaviour
-{
+public class UI : MonoBehaviour {
     public static UI instance {get; protected set;}
     public static World world {get; protected set;}
     public static Db db {get; protected set;}
@@ -24,10 +23,6 @@ public class UI : MonoBehaviour
             // moved this to InventoryController
         } 
     }
-
-    // have an infoPanel on right and the rest of the panels (inactive/invisible) on the left.
-    // depending on what was clicked, choose the left panel.
-
     void Update() {
         if (world == null){
             StartLate();

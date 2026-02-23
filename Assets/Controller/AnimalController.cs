@@ -26,8 +26,8 @@ public class AnimalController : MonoBehaviour{
         jobCounts = new Dictionary<Job, int>();
         jobCounts.Add(Db.jobs[0], 0); 
 
-        for (int i = 0; i < 3; i++){
-            AddAnimal(10, 4);
+        for (int i = 0; i < 4; i++){ // start with 4 mice
+            AddAnimal(20, 10);
         }
     }
 
@@ -145,7 +145,4 @@ public class AnimalController : MonoBehaviour{
                 break;
         }
     }
-
-
-
 }

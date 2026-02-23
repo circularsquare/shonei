@@ -17,7 +17,7 @@ public class AnimationController : MonoBehaviour
 
     public void UpdateState(){
         if (animal.state == Animal.AnimalState.Idle){ animator.SetInteger("state", 0); }
-        else if (animal.state == Animal.AnimalState.Walking){ animator.SetInteger("state", 1); }
+        else if (animal.state == Animal.AnimalState.Moving){ animator.SetInteger("state", 1); }
         else if (animal.state == Animal.AnimalState.Eeping){ animator.SetInteger("state", 2); }
         else if (animal.IsMoving()){ animator.SetInteger("state", 1); }
         else { animator.SetInteger("state", 0); }

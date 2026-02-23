@@ -1,62 +1,43 @@
-- haulers: 
-    - right now haulers 50/50 between delivering to blueprints and doing other hauling.
-        - want to make this a smarter decision.
-        - also want to jitter which locations it picks up / delivers to so it doesnt juts repetitively serve one guy creating stuff.
-    - have them pick up bigger stacks rather than just keep picking up closer one...
-        - maybe change Find to take an integer score returning thing instead of a bool.
-    - also rename haulers to "workers?" or maybe have builders be separate idk.
 - info panel: 
     - have info panel cycle through when you click it again.
 - blueprints   
     - give inventories (of 0 capacity) that can have allow lists
 - animal
-    - clean up functions... 
     - allow for animals to do other jobs if not busy
     - lt: add leisure
 - building 
     - add discovered
     - make buiding menu bigger... have it replace item menu.
-    - add tile building (dirt: just turns into dirt tile)
+    - when building tiles (like dirt), don't have mouse fall through, require building on adjacent tile. 
+    - have building inventories
 - crafting 
-    - have product appear in workshop inventory or animal inventory instead of floor?
-        - reserve storage space?
-        - add workshop inventory
+    - reserve storage space?
 - fix destroy button
-- ui
-    - add highlight on currently selected menu
 - inventory
     - have a "keep" setting that invs can toggle to keep food for consumption and stuff like that. 
 - plant
     - flesh out plant growth, moisture and temperature
-    - implement harvesting taking time, like construction (or mining)! maybe generalize to "Task" instead of blueprint?
-        - add harvesting method for mineral tiles 
     - make plant tile sprites start at 0
 - tile mining
     - add tile mining command as a separate button sort of thing
-- nav
-    - have each AStar have its own copy of nodes!!
-- reserved 
-    - have WorkSites that can more systematically be reserved, rather than buildings and tiles
-- task objective system
-    - move over other tasks
-        - constructing
-    - remove extra animalstates
-- infopanel
-    - allow clickthrough if you already have the top thing selected
+- visuals
+    - improve mouse animation
+- world
+    - make map centered at 0, 0 and go a substantial distance in both positive and negative?
+        - load world from file 
+- content
+    - add quarries and soilpit sprite and buildings
+- reservation
+    - add reserving for remaining tasks, obtain, craft, etc.
+- stairs
+    - needs a lot of thinking...
 
 
 BUGS
-- if multiple blueprints on same tile, they get lost
-    - you can place a blueprint on a tree
-- mice are not reserving houses
+- mice can get stuck when going down slope into block..
+    - handle getting stuck better generally...
+- sometimes digger keeps trying to craft for some reason
+- we might not fall as much as we want to, as falling is not allowed if mouse is Moving
 
-- occasionally haulers lose their target and get stuck somehow??
-- screen jitters when dragging around
 
-- sometimes target buttons stop working
-- wheat inventory display doesn't update immediately when building a wheat? maybe has to do with it being a child resource idk.
-
-- removing a hauler while it is busy can cause stack overflow 
-
-- 
-
+TODAY GOALS

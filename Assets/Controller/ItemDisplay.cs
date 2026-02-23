@@ -5,9 +5,8 @@ using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using System.Linq;
 
-// this is the script for a singular row job display prefab, not the whole job panel
-public class ItemDisplay : MonoBehaviour
-{
+// this is the script for a singular row item display prefab
+public class ItemDisplay : MonoBehaviour {
     public Item item;
     public GameObject toggleGo;
     public bool open = true;

@@ -59,6 +59,16 @@
         "njob": "hauler",
         "capacity": 1
     },{
+        "id": 120,
+        "name": "soil pit",
+        "description": "dig for soil",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "soil", "quantity": 10 }
+        ],
+        "njob": "digger",
+        "capacity": 1
+    },{
         "id": 10,
         "name": "platform",
         "nx": 1, "ny": 1,

@@ -1,9 +1,10 @@
 [  
-    {  
+    {
         "id": 0,
         "job": "sawyer",
         "tile": "sawmill",
         "description": "cut wood into planks",
+        "workload": 2.0,
         "ninputs": [
             { "name": "wood", "quantity": 1 }
         ],
@@ -11,21 +12,14 @@
             { "name": "planks", "quantity": 1 },
             { "name": "sawdust", "quantity": 1 }
         ]
-    },{  
-        "id": 2,
-        "job": "miner",
-        "tile": "stone",
-        "description": "mine stone",
-        "ninputs": [ ],
-        "noutputs": [
-            { "name": "stone", "quantity": 1 }
-        ]
-    },{  
-        "id": 3,
+    },{
+        "id": 10,
         "job": "digger",
-        "tile": "soil",
+        "tile": "soil pit",
         "description": "dig soil",
-        "ninputs": [ ],
+        "workload": 2.0,
+        "ninputs": [
+        ],
         "noutputs": [
             { "name": "soil", "quantity": 1 }
         ]

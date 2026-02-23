@@ -34,15 +34,18 @@ public class MouseController : MonoBehaviour
         }
 
         // draggin world around
-        // is buggy if you drag off a UI element        
         Vector3 currPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
         currPosition.z = 1f;
-        if (Input.GetMouseButton(1)){ // right click. drag to move around in game
-            Camera.main.transform.Translate(prevPosition - currPosition);
-        }
         if (Input.GetMouseButtonDown(1)){
-            prevPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            prevPosition.z = 1f;
+            prevPosition = Input.mousePosition;
+        }
+        if (Input.GetMouseButton(1)) {
+            Vector3 currScreenPosition = Input.mousePosition;
+            Vector3 delta = Camera.main.ScreenToWorldPoint(prevPosition) 
+                        - Camera.main.ScreenToWorldPoint(currScreenPosition);
+            delta.z = 0f;
+            Camera.main.transform.Translate(delta);
+            prevPosition = currScreenPosition;
         }
 
         // set cursorHighlight if in build/destroy mode
@@ -79,8 +82,6 @@ public class MouseController : MonoBehaviour
                 BuildPanel.instance.Destroy(tileAt);
             }
         }
-
-        
     }
 
     public void SetModeBuild() {

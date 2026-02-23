@@ -403,6 +403,7 @@ public class WorkObjective : Objective {
     }
     public override void Start(){
         // TODO: check if you're actually at a workplace!
+        animal.workProgress = 0f;
         animal.recipe = recipe;
         animal.state = Animal.AnimalState.Working;
     }
@@ -425,15 +426,14 @@ public class EepObjective : Objective {
     // asm.handleeeping calls task.complete
 }
 public class HarvestObjective : Objective {
-    private Plant plant; 
+    private Plant plant;
     public HarvestObjective(Task task, Plant plant) : base(task) {
         this.plant = plant;
     }
     public override void Start(){
-        if (plant != null && plant.harvestable) {
-            animal.Produce(plant.Harvest());
-            Complete();
-        } else { Fail(); }    
+        if (plant == null || !plant.harvestable) { Fail(); return; }
+        animal.workProgress = 0f;
+        animal.state = Animal.AnimalState.Working;
     }
 }
 

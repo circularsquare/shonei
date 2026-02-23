@@ -49,6 +49,16 @@ public class AnimalStateManager {
     }
 
     private void HandleWorking() {
+        if (animal.task is HarvestTask harvestTask) {
+            Plant plant = harvestTask.tile.building as Plant;
+            if (plant == null || !plant.harvestable) { harvestTask.Fail(); return; }
+            animal.workProgress += 1f;
+            if (animal.workProgress < plant.plantType.harvestTime) { return; }
+            animal.workProgress -= plant.plantType.harvestTime;
+            animal.Produce(plant.Harvest());
+            harvestTask.Complete();
+            return;
+        }
         if (animal.task is ConstructTask constructTask){
             Blueprint blueprint = constructTask.blueprint;
             if (blueprint == null) {constructTask.Fail(); return;}
@@ -59,6 +69,9 @@ public class AnimalStateManager {
         }
         else if (animal.task is CraftTask craftTask) {
             Recipe recipe = craftTask.recipe;
+            animal.workProgress += 1f;
+            if (animal.workProgress < recipe.workload) { return; }
+            animal.workProgress -= recipe.workload;
             if (animal.CanProduce(recipe)){
                 animal.Produce(recipe);
             } else if (animal.inv.ContainsItems(recipe.inputs)) {
@@ -86,8 +99,8 @@ public class AnimalStateManager {
     }
 
     public void UpdateMovement(float deltaTime) {
-        // Handle falling
-        if (!animal.TileHere().node.standable) {
+        // Only fall when standing still — moving animals follow their nav path
+        if (animal.state != AnimalState.Moving && !animal.TileHere().node.standable) {
             animal.nav.Fall();
         }
         if (IsMovingState(animal.state)) {

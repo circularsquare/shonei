@@ -35,7 +35,6 @@ public class StructController : MonoBehaviour {
                     if (tile.inv == null){ tile.inv = new Inventory(1, 20, Inventory.InvType.Floor, tile.x, tile.y); }
                     tile.inv.Produce(tile.type.products[0].item, tile.type.products[0].quantity);
                 }
-                
             }
             tile.type = Db.tileTypeByName[st.name];}
         else if (st.isPlant){
@@ -61,7 +60,26 @@ public class StructController : MonoBehaviour {
         GlobalInventory.instance.AddItems(st.costs, true);
         if (world == null) {world = World.instance;}
         world.graph.UpdateNeighbors(tile.x, tile.y);
-        world.graph.UpdateNeighbors(tile.x, tile.y + 1); // it may become standable
+        world.graph.UpdateNeighbors(tile.x, tile.y + 1);
+        if (st.name == "stairs") {
+            int nx = world.nx, ny = world.ny;
+            if (tile.x - 1 >= 0)              world.graph.UpdateNeighbors(tile.x - 1, tile.y);
+            if (tile.x + 1 < nx)              world.graph.UpdateNeighbors(tile.x + 1, tile.y);
+            if (tile.x - 1 >= 0 && tile.y + 1 < ny) world.graph.UpdateNeighbors(tile.x - 1, tile.y + 1);
+            if (tile.x + 1 < nx && tile.y + 1 < ny) world.graph.UpdateNeighbors(tile.x + 1, tile.y + 1);
+        }
+        if (st.isTile) {
+            int nx = world.nx, ny = world.ny;
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    if (dx == 0 && dy == 0) continue; // already updated above
+                    if (dx == 0 && dy == 1) continue; // (tile.x, tile.y+1) already updated above
+                    int tx = tile.x + dx, ty = tile.y + dy;
+                    if (tx >= 0 && tx < nx && ty >= 0 && ty < ny)
+                        world.graph.UpdateNeighbors(tx, ty);
+                }
+            }
+        }
         return true;
     }
 

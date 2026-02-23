@@ -4,8 +4,7 @@ using UnityEngine;
 using System;
 
 // this class handles tile sprites, and also places initial objects into world.
-public class WorldController : MonoBehaviour
-{
+public class WorldController : MonoBehaviour {
     public static WorldController instance {get; protected set;}
     public World world {get; protected set;}
     public Transform tilesTransform;
@@ -42,23 +41,20 @@ public class WorldController : MonoBehaviour
                 tile.RegisterCbTileTypeChanged(OnTileTypeChanged);
 
                 // world generating
-                if (y < 4){
+                if (y < 10){
                     tile.type = Db.tileTypeByName["soil"];
                 }
-                if (y < 2){
+                if (y < 8){
                     tile.type = Db.tileTypeByName["stone"];
                 }
             }
         }
-        // world.GetTileAt(5, 4).type = Db.tileTypeByName["tree"];
-        // world.GetTileAt(4, 4).type = Db.tileTypeByName["tree"];
-        // world.GetTileAt(12, 4).type = Db.tileTypeByName["tree"];
-        Plant plant1 = new Plant(Db.plantTypeByName["tree"], 12, 4);
+        Plant plant1 = new Plant(Db.plantTypeByName["tree"], 22, 10);
         plant1.Mature();
-        new Plant(Db.plantTypeByName["tree"], 5, 4);
-        new Plant(Db.plantTypeByName["tree"], 8, 4);
-        new Plant(Db.plantTypeByName["wheat"], 15, 4);
-        new Plant(Db.plantTypeByName["wheat"], 16, 4);
+        new Plant(Db.plantTypeByName["tree"], 15, 10);
+        new Plant(Db.plantTypeByName["tree"], 18, 10);
+        new Plant(Db.plantTypeByName["wheat"], 25, 10);
+        new Plant(Db.plantTypeByName["wheat"], 26, 10);
 
         world.graph.Initialize();
     } 
