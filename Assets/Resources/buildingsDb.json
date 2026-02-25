@@ -17,7 +17,7 @@
             { "name": "wood", "quantity": 10 }
         ],
         "njob": "hauler",
-        "capacity": 4,
+        "capacity": 5,
         "depth": "b"
     },{  
         "id": 2,
@@ -60,14 +60,27 @@
         "capacity": 1
     },{
         "id": 120,
-        "name": "soil pit",
+        "name": "dirt pit",
         "description": "dig for soil",
         "nx": 1, "ny": 1,
         "ncosts": [
-            { "name": "soil", "quantity": 10 }
+            { "name": "soil", "quantity": 10 },
+            { "name": "wood", "quantity": 2 }
         ],
         "njob": "digger",
-        "capacity": 1
+        "capacity": 1,
+        "requiredTileName": "soil"
+    },{
+        "id": 121,
+        "name": "quarry",
+        "description": "dig for stone",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 5 }
+        ],
+        "njob": "miner",
+        "capacity": 1,
+        "requiredTileName": "stone"
     },{
         "id": 10,
         "name": "platform",

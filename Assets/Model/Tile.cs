@@ -13,8 +13,7 @@ public class Tile {
     public int x, y;
     public GameObject go;
     private TileType _type;
-    public TileType type
-    {
+    public TileType type{
         get{return _type;}
         set{
             _type = value;

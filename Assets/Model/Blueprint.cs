@@ -38,7 +38,7 @@ public class Blueprint {
         go.transform.SetParent(WorldController.instance.transform, true);
         go.name = "blueprint_" + structType.name;
         
-        sprite = Resources.Load<Sprite>("Sprites/Buildings/" + structType.name);
+        sprite = Resources.Load<Sprite>("Sprites/Buildings/" + structType.name.Replace(" ", ""));
         if (sprite == null || sprite.texture == null){
             sprite = Resources.Load<Sprite>("Sprites/Buildings/default");}
         SpriteRenderer sr = go.AddComponent<SpriteRenderer>();

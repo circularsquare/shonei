@@ -74,10 +74,12 @@ public class AnimalStateManager {
             animal.workProgress -= recipe.workload;
             if (animal.CanProduce(recipe)){
                 animal.Produce(recipe);
+                craftTask.roundsRemaining--;
+                if (craftTask.roundsRemaining <= 0) { craftTask.Complete(); }
             } else if (animal.inv.ContainsItems(recipe.inputs)) {
-                craftTask.Fail(); // has inputs but can't produce — wrong location
+                craftTask.Fail();
             } else {
-                craftTask.Complete(); // out of inputs — done
+                craftTask.Complete(); // out of inputs
             }
             return;
         }
@@ -112,7 +114,7 @@ public class AnimalStateManager {
             }
             else {
                 bool done = animal.nav.Move(deltaTime);
-                if (done && animal.SquareDistance(animal.x, animal.target.x, animal.y, animal.target.y) < 0.001f) {
+                if (done) {
                     // Arrived at destination
                     animal.x = animal.target.x;
                     animal.y = animal.target.y;

@@ -54,6 +54,10 @@ public class StructController : MonoBehaviour {
             structure = new Ladder(st, tile.x, tile.y);}
         else { Debug.LogError("unknown type of structure?"); Debug.Log(st.depth);return false; }
         
+
+        if (st.requiredTileName != null){ // if building inside a tile (like for quarry), remove the tile
+            tile.type = Db.tileTypeByName["empty"];
+        }
         if (!st.isTile){
             structures.Add(structure);
         }

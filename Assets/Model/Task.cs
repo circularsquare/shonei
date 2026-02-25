@@ -69,6 +69,7 @@ public abstract class Task {
 public class CraftTask : Task {
     public Recipe recipe;
     Tile workplace; 
+    public int roundsRemaining;
 
     public CraftTask(Animal animal) : base(animal){}
     public override bool Initialize(){
@@ -81,10 +82,10 @@ public class CraftTask : Task {
         if (p == null) { return false; }
         workplace = p.tile;
 
-        int numRounds = animal.CalculateWorkPossible(recipe);
-        if (numRounds == 0) { return false; }
+        roundsRemaining = animal.CalculateWorkPossible(recipe);
+        if (roundsRemaining == 0) { return false; }
         foreach (ItemQuantity input in recipe.inputs){
-            if (!animal.inv.ContainsItem(input, numRounds)){
+            if (!animal.inv.ContainsItem(input, roundsRemaining)){
                 objectives.Enqueue(new FetchObjective(this, input));
                 // TODO: reserve
             }

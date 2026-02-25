@@ -37,11 +37,14 @@ public class BuildPanel : MonoBehaviour {
     }
 
     // mousecontroller handles the mouse stuff. and calls build here.
-
     public bool PlaceBlueprint(Tile tile){ // tile must be empty (id 0), or blueprint is to mine tile
         if (structType == null) return false;
         if (tile.GetBlueprintAt(structType.depth) != null) return false;
-        if (tile.type.id != 0 && structType.name != "empty") return false; // special case: mine tile
+
+        // if there is null required tile, and the building isnt "empty", only allow placement on empty tiles
+        if (tile.type.id != 0 && structType.name != "empty" && structType.requiredTileName == null) return false;
+        // if there is a required tile, only allow placement on those
+        if (structType.requiredTileName != null && tile.type.name != structType.requiredTileName) return false;
 
         // Check for existing structure at the same depth slot
         if (!structType.isTile){
@@ -49,6 +52,8 @@ public class BuildPanel : MonoBehaviour {
             if (structType.depth == "m" && tile.mStruct != null) return false;
             if (structType.depth == "f" && tile.fStruct != null) return false;
         }
+
+
 
         Blueprint blueprint = new Blueprint(structType, tile.x, tile.y);
         return true;

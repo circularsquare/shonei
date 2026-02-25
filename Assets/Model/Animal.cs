@@ -155,11 +155,11 @@ public class Animal : MonoBehaviour{
             task = new HarvestTask(this, harvestPath.tile);
             if (task.Start()) return;}
 
-        task = new CraftTask(this);             // craft
-        if (task.Start()) return;
         task = new ConstructTask(this);         // construct blueprints
         if (task.Start()) return;
         task = new SupplyBlueprintTask(this);   // supply blueprints
+        if (task.Start()) return;
+        task = new CraftTask(this);             // craft
         if (task.Start()) return;
         if (job.name == "hauler") {             // haul
             task = new HaulTask(this);
@@ -176,7 +176,7 @@ public class Animal : MonoBehaviour{
     }
 
     public void Refresh(){ // end task, go idle, AND drop items
-        // Debug.Log(aName + " refreshed! interrupting current task");
+        Debug.Log(aName + " refreshed! interrupting current task");
         task?.Fail();
         task = new DropTask(this);
         if (!task.Start()){

@@ -29,7 +29,7 @@ public class Structure {
         go.transform.SetParent(WorldController.instance.transform, true);
         go.name = "structure_" + structType.name;
         
-        sprite = Resources.Load<Sprite>("Sprites/Buildings/" + structType.name);
+        sprite = Resources.Load<Sprite>("Sprites/Buildings/" + structType.name.Replace(" ", "")); // removes spaces in name
         if (sprite == null || sprite.texture == null){
             sprite = Resources.Load<Sprite>("Sprites/Buildings/default");
         }
@@ -66,6 +66,7 @@ public class StructType {
     public string njob {get; set;}
     public Job job;
     public int capacity {get; set;} // number of animals that can reserve this struct at once
+    public string requiredTileName {get; set;} // tile that this struct must be built on
 
     [OnDeserialized]
     internal void OnDeserialized(StreamingContext context){

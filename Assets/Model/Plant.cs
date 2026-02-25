@@ -23,7 +23,7 @@ public class Plant : Building {
         PlantController.instance.AddPlant(this);
         go.name = "plant_" + plantType.name;
 
-        sprite = Resources.Load<Sprite>("Sprites/Plants/" + plantType.name);
+        sprite = Resources.Load<Sprite>("Sprites/Plants/" + plantType.name.Replace(" ", ""));
         if (sprite == null || sprite.texture == null){
             sprite = Resources.Load<Sprite>("Sprites/Plants/default");}
         sr.sprite = sprite; 

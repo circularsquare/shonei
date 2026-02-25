@@ -2,9 +2,6 @@
     - have info panel cycle through when you click it again.
 - blueprints   
     - give inventories (of 0 capacity) that can have allow lists
-- animal
-    - allow for animals to do other jobs if not busy
-    - lt: add leisure
 - building 
     - add discovered
     - make buiding menu bigger... have it replace item menu.
@@ -31,6 +28,13 @@
     - add reserving for remaining tasks, obtain, craft, etc.
 - stairs
     - needs a lot of thinking...
+- trading
+    - set up server
+        - send and receive first messages
+    - create openable market window to display market info 
+        - have it be per item, configurable
+        - see orders
+    - place orders
 
 
 BUGS
@@ -41,3 +45,5 @@ BUGS
 
 
 TODAY GOALS
+- discuss how to add trading 
+    - set up server?

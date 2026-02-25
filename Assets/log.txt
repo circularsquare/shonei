@@ -256,4 +256,7 @@ background - 0
 - added Reservable system, both structures and itemstacks have them
 - allow multiple blueprints on a tile at different depths
 - work and harvesting takes multiple time, specified by workload and harvestTime
-
+2/22
+- added buildings that can be placed in solid tiles (soil pit, quarry)
+bug fixes
+- calculateworkpossible amount is actually followed by crafttask

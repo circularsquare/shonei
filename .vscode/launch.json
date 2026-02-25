@@ -6,11 +6,16 @@
             "type": "coreclr",
             "request": "launch",
             "program": "${workspaceFolder}/Unity/Hub/Editor/Unity.exe",
-            "args": ["-projectPath", "${workspaceFolder}"],
+            "args": ["-projectPath","${workspaceFolder}"],
             "stopAtEntry": true,
             "console": "internalConsole",
             "internalConsoleOptions": "openOnSessionStart",
             "runtimeType": "mono"
+        },
+        {
+            "name": "Attach to Unity",
+            "type": "vstuc",
+            "request": "attach"
         }
     ]
 }
