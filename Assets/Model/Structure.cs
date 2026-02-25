@@ -39,7 +39,10 @@ public class Structure {
     }
 
     public void Destroy(){
-        GameObject.Destroy(go);
+        if (this is Plant plant) {
+            PlantController.instance.Remove(plant);
+        } 
+        StructController.instance.Remove(this);
         if (depth == "b"){
             tile.building = null;
         } else if (depth == "f"){
@@ -47,6 +50,7 @@ public class Structure {
         } else if (depth == "m"){
             tile.mStruct = null;
         }
+        GameObject.Destroy(go);
     }
 
 }

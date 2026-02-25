@@ -58,16 +58,21 @@ public class AnimalStateManager {
             animal.Produce(plant.Harvest());
             harvestTask.Complete();
             return;
-        }
-        if (animal.task is ConstructTask constructTask){
+        } else if (animal.task is ConstructTask constructTask){
             Blueprint blueprint = constructTask.blueprint;
             if (blueprint == null) {constructTask.Fail(); return;}
             if (blueprint.ReceiveConstruction(1f * animal.efficiency)){
                 constructTask.Complete();
             }
             return;
-        }
-        else if (animal.task is CraftTask craftTask) {
+        } else if (animal.task is DeconstructTask deconstructTask){
+            Blueprint blueprint = deconstructTask.blueprint;
+            if (blueprint == null) {deconstructTask.Fail(); return;}
+            if (blueprint.ReceiveConstruction(1f * animal.efficiency)){
+                deconstructTask.Complete();
+            }
+            return;
+        } else if (animal.task is CraftTask craftTask) {
             Recipe recipe = craftTask.recipe;
             animal.workProgress += 1f;
             if (animal.workProgress < recipe.workload) { return; }

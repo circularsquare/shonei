@@ -2,7 +2,6 @@ meow
 
 - local inventories
     - assignable/filterable
-- items on floor
 - info panel
     - for items
     - for inventories
@@ -13,7 +12,6 @@ meow
     - recipe list per job 
         - make if have > x lots of input and < y of primary output?
         - priority
-- navigation / item hauling
 - buildings
     - inventories 
     - housing

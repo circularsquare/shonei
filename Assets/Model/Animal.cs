@@ -141,8 +141,6 @@ public class Animal : MonoBehaviour{
             if (task.Start()) return; 
             else Debug.Log("inventory near full and can't drop!"); }
 
-        if (job.name == "none") { return; }
-
         if (eating.Hungry()) {
             task = new ObtainTask(this, Db.itemByName["wheat"], 5); 
             if (task.Start()) return; }
@@ -164,6 +162,8 @@ public class Animal : MonoBehaviour{
         if (job.name == "hauler") {             // haul
             task = new HaulTask(this);
             if (task.Start()) return; }
+        task = new DeconstructTask(this);
+        if (task.Start()) return;
 
         task = null; // none of the above tasks started successfully...
         return;
@@ -176,7 +176,7 @@ public class Animal : MonoBehaviour{
     }
 
     public void Refresh(){ // end task, go idle, AND drop items
-        Debug.Log(aName + " refreshed! interrupting current task");
+        // Debug.Log(aName + " refreshed! interrupting current task");
         task?.Fail();
         task = new DropTask(this);
         if (!task.Start()){
@@ -205,15 +205,10 @@ public class Animal : MonoBehaviour{
     // moves item to tile here. returns amount *not* dropped
     public int DropItem(Item item, int quantity = -1){ 
         if (quantity == -1) { quantity = inv.Quantity(item); }
-        return (inv.MoveItemTo(EnsureFloorInventory(TileHere()), item, quantity));
-        // what to do when this fails???
-        // need failsafe
+        return (inv.MoveItemTo(TileHere().EnsureFloorInventory(), item, quantity));
+        // maybe need failsafe?
     }
     public int DropItem(ItemQuantity iq) { return(DropItem(iq.item, iq.quantity)); }
-    public Inventory EnsureFloorInventory(Tile t) { // returns inventory at a tile
-        if (t.inv == null) { t.inv = new Inventory(x: t.x, y: t.y); }
-        return t.inv;
-    }
 
     // produces item in ani inv, dumps at nearby tile if inv full
     public void Produce(Item item, int quantity = 1){

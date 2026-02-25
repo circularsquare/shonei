@@ -260,3 +260,11 @@ background - 0
 - added buildings that can be placed in solid tiles (soil pit, quarry)
 bug fixes
 - calculateworkpossible amount is actually followed by crafttask
+2/23
+- made stairs work
+- added claude!
+- multi depth blueprints
+2/24
+- created server! has very basic order matching.
+- added reservations for item fetching
+- added tile destruction

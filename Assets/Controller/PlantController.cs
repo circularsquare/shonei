@@ -26,6 +26,10 @@ public class PlantController : MonoBehaviour {
         plants.Add(plant);
         np += 1;
     }
+    public void Remove(Plant plant) {
+        plants.Remove(plant);
+        np -= 1;
+    }
 
     public void TickUpdate(){
         foreach (Plant plant in plants){

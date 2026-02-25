@@ -57,7 +57,6 @@ public class Plant : Building {
             sprite = Resources.Load<Sprite>("Sprites/Plants/default");}
         sr.sprite = sprite;
     }
-
 }
 
 

@@ -72,7 +72,7 @@ public class Inventory
         for (int i = 0; i < nStacks; i++){
             int? result = itemStacks[i].AddItem(item, quantity);
             // should probably just check if the itemstack is the right item instead of using this null thing.
-            if (result == null){ continue; } // item slot occupied by different item. go next
+            if (result == null){ continue; } // item slot occupied by different item. go next    
             quantity = result.Value; //set quantity to remaining size to get off
             if (quantity == 0){ break; }  // successfully added all items. stop.
         }
@@ -80,7 +80,9 @@ public class Inventory
         return quantity; // leftover size
     }
     public int AddItem(string name, int quantity){return(AddItem(Db.itemByName[name], quantity));}
-    public int TakeItem(Item item, int quantity){return AddItem(item, -quantity);}
+    public int TakeItem(Item item, int quantity){
+        return AddItem(item, -quantity);
+    }
     public int TakeItem(string name, int quantity){return AddItem(name, -quantity);}
     public int MoveItemTo(Inventory otherInv, Item item, int quantity){
         int taken = quantity + TakeItem(item, quantity);
@@ -117,6 +119,15 @@ public class Inventory
         if (item == null){ return !IsEmpty(); }
         foreach (ItemStack stack in itemStacks){
             if (stack != null && stack.item == item && stack.quantity > 0){
+                return true;
+            }
+        }
+        return false;
+    }
+    public bool ContainsAvailableItem(Item item){
+        if (item == null){ return !IsEmpty(); }
+        foreach (ItemStack stack in itemStacks){
+            if (stack != null && stack.item == item && stack.quantity > 0  && stack.res.Available()){
                 return true;
             }
         }
@@ -188,6 +199,17 @@ public class Inventory
             }
         }
         return amount;
+    }
+    public ItemStack GetItemStack(Item item){
+        ItemStack best = null;
+        foreach (ItemStack stack in itemStacks){
+            if (stack != null && stack.item == item && stack.quantity > 0 && stack.res.Available()){
+                if (best == null || stack.quantity > best.quantity){
+                    best = stack;
+                }
+            }
+        }
+        return best;
     }
     public bool HasDisallowedItem(){
         foreach (ItemStack stack in itemStacks){

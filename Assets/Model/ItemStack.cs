@@ -41,6 +41,9 @@ public class ItemStack {
             this.item = item; }
         if (item != this.item){ // item slot occupied by different item. go next
             return null; }
+        if (quantity < 0 && res.reserved >= 1) {
+            res.Unreserve(); // unreserve if removing items
+        }
         if (this.quantity + quantity > stackSize){
             int sizeOver = this.quantity + quantity - stackSize;
             this.quantity = stackSize;
@@ -56,6 +59,7 @@ public class ItemStack {
             this.quantity += quantity; // add to stack
             return 0;
         } 
+        // todo: reserve
     }
     public bool Empty(){ return (item == null || quantity == 0); }
 

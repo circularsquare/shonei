@@ -150,11 +150,9 @@ public class Nav {
     // =========================================================
 
     public Path FindPathToItem(Item item, int r = 40){ 
-        return FindPathTo(t => t.ContainsItem(item), r); }
+        return FindPathTo(t => t.ContainsAvailableItem(item), r); }
     public Tile FindItem(Item item, int r = 40){
-        return Find(t => t.ContainsItem(item), r); }
-    public Path FindPathToItemToHaul(Item item, int r = 40){ 
-        return FindPathTo(t => t.HasItemToHaul(item), r); }
+        return Find(t => t.ContainsAvailableItem(item), r); }
     public Path FindPathToStorage(Item item, int r = 40){ 
         return FindPathTo(t => t.HasStorageForItem(item), r); }
     public Path FindPathToDrop(Item item, int r = 3){ 
@@ -170,21 +168,19 @@ public class Nav {
         && t.building.res.Available()
         && t.building.structType.job == job, r);
     }
+    public (Path, ItemStack) FindPathItemStack(Item item, int r = 40){
+        Path path = FindPathTo(t => t.ContainsAvailableItem(item), r);
+        if (path == null) return (null, null);
+        ItemStack stack = path.tile.inv.GetItemStack(item); // or however you access it
+        return (path, stack);
+    }
 
     // --- Blueprints (use adjacent, since blueprint tile may not be standable) ---
-    public (Tile, Path) FindPathAdjacentToBlueprint(Job job, bool constructing, int r = 40){
-        if (constructing) {
-            return FindPathAdjacentTo(t => t.GetMatchingBlueprint(b =>
+    public (Tile, Path) FindPathAdjacentToBlueprint(Job job, Blueprint.BlueprintState bpState, int r = 40){
+        return FindPathAdjacentTo(t => t.GetMatchingBlueprint(b =>
                 b.structType.job == job
-                && b.state == Blueprint.BlueprintState.Constructing
+                && b.state == bpState
                 && b.res.Available()) != null, r);
-        } else {
-            return FindPathAdjacentTo(t => t.GetMatchingBlueprint(b =>
-                b.structType.job == job
-                && b.state == Blueprint.BlueprintState.Receiving
-                && b.res.Available()) != null, r);
-        }
-        
     }
     public HaulInfo FindAnyItemToHaul(int r = 50){ 
         Path itemPath = FindPathTo(t => t.HasItemToHaul(null), r);

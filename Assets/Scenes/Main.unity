@@ -941,9 +941,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'destroy
-
-'
+  m_text: remove
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 35d708990aaf29e45adabe16f109f44d, type: 2}
   m_sharedMaterial: {fileID: -3846113756537978055, guid: 35d708990aaf29e45adabe16f109f44d, type: 2}
@@ -1421,7 +1419,7 @@ GameObject:
   - component: {fileID: 725810125}
   - component: {fileID: 725810124}
   m_Layer: 5
-  m_Name: Button destroy
+  m_Name: Button remove
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1494,7 +1492,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1236719831}
         m_TargetAssemblyTypeName: MouseController, Assembly-CSharp
-        m_MethodName: SetModeDestroy
+        m_MethodName: SetModeRemove
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}

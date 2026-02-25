@@ -53,23 +53,31 @@ public class BuildPanel : MonoBehaviour {
             if (structType.depth == "f" && tile.fStruct != null) return false;
         }
 
-
-
         Blueprint blueprint = new Blueprint(structType, tile.x, tile.y);
         return true;
     }
 
-    public bool Destroy(Tile tile){ // DOESNT WORK
-        if (tile.type != Db.tileTypes[0]){
-            if (tile.building != null){
-                tile.building = null;
-                return true; // destroyed structure
+    public bool Remove(Tile tile) {
+        Blueprint existingBp = tile.GetBlueprintAt("b") ?? tile.GetBlueprintAt("m") ?? tile.GetBlueprintAt("f");
+        if (existingBp != null && existingBp.state != Blueprint.BlueprintState.Deconstructing) {
+            // drop delivered resources on floor
+            foreach (ItemQuantity delivered in existingBp.deliveredResources) {
+                if (delivered.quantity > 0) {
+                    tile.EnsureFloorInventory().Produce(delivered.item, delivered.quantity);
+                }
             }
-            tile.type = Db.tileTypes[0]; 
-            return true; // destroyed tile
+            tile.SetBlueprintAt(existingBp.structType.depth, null);
+            GameObject.Destroy(existingBp.go);
+            return true;
+        }
+        // mark building/struct for deconstruction
+        if (tile.building != null || tile.mStruct != null || tile.fStruct != null) {
+            Blueprint.CreateDeconstructBlueprint(tile);
+            return true;
         }
         return false;
     }
+
 
     private void Update(){
     }

@@ -7,9 +7,6 @@
     - make buiding menu bigger... have it replace item menu.
     - when building tiles (like dirt), don't have mouse fall through, require building on adjacent tile. 
     - have building inventories
-- crafting 
-    - reserve storage space?
-- fix destroy button
 - inventory
     - have a "keep" setting that invs can toggle to keep food for consumption and stuff like that. 
 - plant
@@ -22,28 +19,19 @@
 - world
     - make map centered at 0, 0 and go a substantial distance in both positive and negative?
         - load world from file 
-- content
-    - add quarries and soilpit sprite and buildings
-- reservation
-    - add reserving for remaining tasks, obtain, craft, etc.
-- stairs
-    - needs a lot of thinking...
 - trading
-    - set up server
-        - send and receive first messages
+    - link to unity?
     - create openable market window to display market info 
-        - have it be per item, configurable
-        - see orders
-    - place orders
+- priority
+    - allow players to specify priority within constructing/deconstructing/crafting, anything that can be set at a site ahead of time
 
 
 BUGS
 - mice can get stuck when going down slope into block..
     - handle getting stuck better generally...
-- sometimes digger keeps trying to craft for some reason
 - we might not fall as much as we want to, as falling is not allowed if mouse is Moving
+- destroying a building does not destroy its inventory
+    - buildings should have inventories?
 
 
 TODAY GOALS
-- discuss how to add trading 
-    - set up server?

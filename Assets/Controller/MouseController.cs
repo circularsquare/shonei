@@ -6,16 +6,15 @@ using UnityEngine.EventSystems;
 
 // note: this is not really a controller. it just manages mouse input
 
-public class MouseController : MonoBehaviour
-{
-    public enum MouseMode {Select, Build, Destroy};
+public class MouseController : MonoBehaviour {
+    public enum MouseMode {Select, Build, Remove};
     public MouseMode mouseMode = MouseMode.Select;
     public GameObject cursorHighlight;
     Vector3 prevPosition;
 
     public World world;
     public static MouseController instance;
-
+    
     void Start() {
         if (instance != null) {
             Debug.LogError("there should only be one mouse controller");}
@@ -48,10 +47,10 @@ public class MouseController : MonoBehaviour
             prevPosition = currScreenPosition;
         }
 
-        // set cursorHighlight if in build/destroy mode
+        // set cursorHighlight if in build/remove mode
         Tile tileAt = WorldController.instance.world.GetTileAt(currPosition.x, currPosition.y);
         if (tileAt == null){ cursorHighlight.SetActive(false);}
-        else if ((mouseMode == MouseMode.Build) || (mouseMode == MouseMode.Destroy)){
+        else if ((mouseMode == MouseMode.Build) || (mouseMode == MouseMode.Remove)){
             cursorHighlight.SetActive(true);
             cursorHighlight.transform.position = new Vector3(tileAt.x, tileAt.y, 1);
         }
@@ -78,8 +77,8 @@ public class MouseController : MonoBehaviour
 
             } else if (mouseMode == MouseMode.Build) {
                 BuildPanel.instance.PlaceBlueprint(tileAt);
-            } else if (mouseMode == MouseMode.Destroy) {
-                BuildPanel.instance.Destroy(tileAt);
+            } else if (mouseMode == MouseMode.Remove) {
+                BuildPanel.instance.Remove(tileAt);
             }
         }
     }
@@ -87,8 +86,8 @@ public class MouseController : MonoBehaviour
     public void SetModeBuild() {
         mouseMode = MouseMode.Build;
     }
-    public void SetModeDestroy() {
-        mouseMode = MouseMode.Destroy;
+    public void SetModeRemove() {
+        mouseMode = MouseMode.Remove;
         if (BuildPanel.instance != null){
             BuildPanel.instance.structType = null;
         }

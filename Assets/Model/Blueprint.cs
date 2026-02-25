@@ -15,7 +15,7 @@ public class Blueprint {
     public ItemQuantity[] costs;
     public float constructionCost;
     public float constructionProgress = 0f; 
-    public enum BlueprintState { Receiving, Constructing }
+    public enum BlueprintState { Receiving, Constructing, Deconstructing}
     public BlueprintState state = BlueprintState.Receiving;
     public Reservable res;
 
@@ -44,7 +44,10 @@ public class Blueprint {
         SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
         sr.sortingOrder = 100;
         sr.sprite = sprite;
-        sr.color = new Color(sr.color.r, sr.color.g, sr.color.b, 0.5f); // blueprint half alpha
+        sr.color = new Color(0.8f, 0.9f, 1f, 0.5f); // blueprint half alpha
+        if (state == BlueprintState.Deconstructing) {
+            sr.color = new Color(1f, 0.3f, 0.3f, 0.8f);
+        }
 
         deliveredResources = new ItemQuantity[structType.costs.Length];
         for (int i = 0; i < structType.costs.Length; i++){
@@ -53,8 +56,15 @@ public class Blueprint {
         costs = structType.costs;
 
         if (structType.costs.Length == 0){ state = BlueprintState.Constructing; }
-
         // register callback to update sprite?
+    }
+    public static Blueprint CreateDeconstructBlueprint(Tile tile) {
+        Structure structure = tile.building ?? tile.mStruct ?? tile.fStruct;
+        if (structure == null) return null;
+        Blueprint bp = new Blueprint(structure.structType, tile.x, tile.y);
+        bp.state = BlueprintState.Deconstructing;
+        bp.go.GetComponent<SpriteRenderer>().color = new Color(1f, 0.3f, 0.3f, 0.5f);
+        return bp;
     }
 
     public int ReceiveResource(Item item, int quantity){
@@ -81,11 +91,16 @@ public class Blueprint {
     }
     
     public bool ReceiveConstruction(float progress){ // returns whether you just finished
-        if (state != BlueprintState.Constructing) { Debug.LogError("Blueprint is not in Constructing state"); return true;}
+        if (state == BlueprintState.Receiving) { Debug.LogError("Blueprint is not in Constructing state"); return true;}
         constructionProgress += progress;
         if (constructionProgress >= constructionCost){
-            Complete();
-            return true;
+            if (state == BlueprintState.Constructing) {
+                Complete();
+                return true;
+            } else if (state == BlueprintState.Deconstructing) {
+                Deconstruct();
+                return true;
+            }
         }
         return false;
     }
@@ -93,6 +108,22 @@ public class Blueprint {
     public void Complete(){
         StructController.instance.Construct(structType, tile);
         // delete blueprint
+        tile.SetBlueprintAt(structType.depth, null);
+        GameObject.Destroy(go);
+    }
+    public void Deconstruct() {
+        foreach (ItemQuantity cost in costs) {
+            int amount = Mathf.FloorToInt(cost.quantity / 2f);
+            if (amount > 0) {
+                tile.EnsureFloorInventory().Produce(cost.item, amount);
+                // TODO: this wont actually work if multiple items need to be dropped
+            }
+        }
+            // destroy the building
+        if (tile.building != null) { tile.building.Destroy(); tile.building = null; }
+        else if (tile.mStruct != null) { tile.mStruct.Destroy(); tile.mStruct = null; }
+        else if (tile.fStruct != null) { tile.fStruct.Destroy(); tile.fStruct = null; }
+        // remove blueprint
         tile.SetBlueprintAt(structType.depth, null);
         GameObject.Destroy(go);
     }

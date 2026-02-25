@@ -43,6 +43,7 @@ public class Tile {
     public void RegisterCbTileTypeChanged(Action<Tile> callback){cbTileTypeChanged += callback;}
     public void UnregisterCbTileTypeChanged(Action<Tile> callback){cbTileTypeChanged -= callback;}
     public bool ContainsItem(Item item){return inv != null && inv.ContainsItem(item);}
+    public bool ContainsAvailableItem(Item item){return inv != null && inv.ContainsAvailableItem(item);}
     public ItemStack GetItemToHaul(){
         if (inv == null){return null;}
         else{return inv.GetItemToHaul();}
@@ -99,6 +100,11 @@ public class Tile {
 
     override public string ToString(){
         return ("tile " + x.ToString() + "," + y.ToString());
+    }
+
+    public Inventory EnsureFloorInventory() {
+        if (inv == null) { inv = new Inventory(x: x, y: y); }
+        return inv;
     }
 }
 

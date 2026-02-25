@@ -21,9 +21,9 @@ public class StructController : MonoBehaviour {
         instance = this;   
     }
 
-    public void AddStructure(Structure structure){
-        structures.Add(structure);
-        n += 1;
+    public void Remove(Structure structure) {
+        structures.Remove(structure);
+        n -= 1;
     }
 
     public bool Construct(StructType st, Tile tile){        
