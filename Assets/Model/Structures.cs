@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Building : Structure {
     public Building(StructType st, int x, int y) : base(st, x, y){
-        if (tile.building != null){Debug.LogError("already a building here!");}
+        if (tile.building != null){Debug.LogError("already a building at " + x.ToString() + "," + y.ToString() + "!");}
         tile.building = this;
         go.name = "building_" + structType.name;
         sr.sortingOrder = 10;
@@ -24,14 +24,14 @@ public class Building : Structure {
 
 public class Platform : Structure {
     public Platform(StructType st, int x, int y) : base(st, x, y){
-        if (tile.mStruct != null){Debug.LogError("already a mid structure here!");}
+        if (tile.mStruct != null){Debug.LogError("already a mid structure at " + x.ToString() + "," + y.ToString() + "!");}
         tile.mStruct = this; 
         sr.sortingOrder = 11;
     }
 }
 public class Ladder: Structure {
     public Ladder(StructType st, int x, int y) : base(st, x, y){
-        if (tile.fStruct != null){Debug.LogError("already a foreground structure here!");}
+        if (tile.fStruct != null){Debug.LogError("already a foreground structure at " + x.ToString() + "," + y.ToString() + "!");}
         tile.fStruct = this; 
         sr.sortingOrder = 80;
     }
@@ -39,7 +39,7 @@ public class Ladder: Structure {
 public class Stairs: Structure {
     public bool right = true;
     public Stairs(StructType st, int x, int y) : base(st, x, y){
-        if (tile.fStruct != null){Debug.LogError("already a foreground structure here!");}
+        if (tile.fStruct != null){Debug.LogError("already a foreground structure at " + x.ToString() + "," + y.ToString() + "!");}
         tile.fStruct = this;
         sr.sortingOrder = 80;
         if (right){

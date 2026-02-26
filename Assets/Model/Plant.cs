@@ -75,14 +75,10 @@ public class PlantType : StructType {
 
     [OnDeserialized]
     new internal void OnDeserialized(StreamingContext context){
-        // costs = new ItemQuantity[ncosts.Length];
-        // for (int i = 0; i < ncosts.Length; i++){
-        //     costs[i] = new ItemQuantity(ncosts[i].name, ncosts[i].quantity);
-        // }
         costs = ncosts.Select(iq => new ItemQuantity(iq.name, iq.quantity)).ToArray();
         products = nproducts.Select(iq => new ItemQuantity(iq.name, iq.quantity)).ToArray();
         if (njob != null){
-            job = Db.jobByName[njob]; // this is duplicated in plant...
+            job = Db.jobByName[njob]; 
         }
         // handle null or 0 growthTime?
     }

@@ -37,6 +37,7 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
     // sprite sorting orders 
         // 100: blueprint
         // 80: fStruct
+        // 70: item (rendered in inventory.cs)
         // 60: plant
         // 40: animal
         // 30: item

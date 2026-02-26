@@ -33,7 +33,7 @@ public class Inventory
             go.transform.position = new Vector3(x, y, 0);
             go.transform.SetParent(WorldController.instance.transform, true);
             SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
-            sr.sortingOrder = 30;
+            sr.sortingOrder = 70;
 
             sr.sprite = Resources.Load<Sprite>("Sprites/Inventory/" + invType.ToString());
         }
@@ -142,6 +142,17 @@ public class Inventory
             }
         }
         return sufficient;
+    }
+    public Item GetMostItem(){
+        int most = 0;
+        Item mostItem = null;
+        foreach (ItemStack stack in itemStacks){
+            if (stack.quantity > most){
+                most = stack.quantity;
+                mostItem = stack.item;
+            }
+        }
+        return mostItem;
     }
     public ItemStack GetItemToHaul(){   // returns null if nothing, or item if something need to haul
         foreach (ItemStack stack in itemStacks){
@@ -270,8 +281,10 @@ public class Inventory
     public void ToggleAllowItem(Item item){allowed[item.id] = !allowed[item.id];
     Debug.Log("toggled " + item.name + " to " + allowed[item.id]);}
 
+    public enum ItemSpriteType { Icon, Floor, Storage }
+
     public void UpdateSprite(){
-        if (invType == InvType.Animal){return;} // animal invs don't have game objects.
+        if (invType == InvType.Animal){return;} // animal invs don't have game objects or sprites.
         if (IsEmpty()) {
             go.name = "InventoryEmpty";
             go.GetComponent<SpriteRenderer>().sprite = null;
@@ -285,13 +298,20 @@ public class Inventory
                 mostAmount = stack.quantity;
             }
         }
-        go.name = "Inventory" + mostItem.name;
-        Sprite sprite = Resources.Load<Sprite>("Sprites/Items/" + mostItem.name);
-        if (sprite == null || sprite.texture == null){
-            sprite = Resources.Load<Sprite>("Sprites/Items/default");
+        String iName = mostItem.name;
+        Sprite sprite;
+        if (invType == InvType.Floor) {
+            sprite = Resources.Load<Sprite>($"Sprites/Items/{iName}/floor");
+        } else if (invType == InvType.Storage){
+            sprite = Resources.Load<Sprite>($"Sprites/Items/{iName}/smid");
+        } else {
+            sprite = Resources.Load<Sprite>($"Sprites/Items/{iName}/icon");
         }
-        go.GetComponent<SpriteRenderer>().sprite = sprite;   
-    
+        sprite ??= Resources.Load<Sprite>($"Sprites/Items/{iName}/{iName}");
+        sprite ??= Resources.Load<Sprite>("Sprites/Items/default");
+
+        go.name = "Inventory" + mostItem.name;
+        go.GetComponent<SpriteRenderer>().sprite = sprite;
     }
 
     public override string ToString(){

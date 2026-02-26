@@ -268,3 +268,7 @@ bug fixes
 - created server! has very basic order matching.
 - added reservations for item fetching
 - added tile destruction
+2/26
+- added world saving and loading!
+- clouds!
+- more specific item sprite loading depending on inventory type

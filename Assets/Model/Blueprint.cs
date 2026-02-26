@@ -129,6 +129,11 @@ public class Blueprint {
     }
 
 
+    public void Destroy() {
+        tile.SetBlueprintAt(structType.depth, null);
+        GameObject.Destroy(go);
+    }
+
     public string GetProgress(){ // for display string
         string progress = "";
         for (int i = 0; i < deliveredResources.Length; i++) {

@@ -59,6 +59,10 @@ public class Animal : MonoBehaviour{
     public System.Random random;
     public int tickCounter = 0;
 
+    // Set before Start() runs when loading a save; Start() checks this and applies it.
+    // [NonSerialized] prevents Unity from serializing a default AnimalSaveData instance in place of null.
+    [System.NonSerialized] public AnimalSaveData pendingSaveData = null;
+
     public GameObject go;
     public SpriteRenderer sr;
     public Sprite sprite;
@@ -70,27 +74,47 @@ public class Animal : MonoBehaviour{
 
     public void Start(){
         world = World.instance;
-        this.aName = "mouse" + id.ToString();
         this.stateManager = new AnimalStateManager(this);
-        this.state = AnimalState.Idle;
-        this.job = Db.jobs[0];
         this.go = this.gameObject;
-        this.go.name = "animal_" + aName;
         this.sr = go.GetComponent<SpriteRenderer>();
         animationController = go.GetComponent<AnimationController>();
         sr.sortingOrder = 50;
         this.inv = new Inventory(5, 10, Inventory.InvType.Animal);
-        this.efficiency = 1f;
-        this.energy = 0f;
-
-        this.eating = new Eating();
-        this.eeping = new Eeping();
         this.nav = new Nav(this);
-
         ginv = GlobalInventory.instance;
         random = new System.Random();
 
-        FindHome();
+        if (pendingSaveData != null) {
+            this.aName = pendingSaveData.aName;
+            this.go.name = "animal_" + aName;
+            this.energy = pendingSaveData.energy;
+            this.eating = new Eating();
+            this.eating.food = pendingSaveData.food;
+            this.eeping = new Eeping();
+            this.eeping.eep = pendingSaveData.eep;
+            this.job = Db.GetJobByName(pendingSaveData.jobName) ?? Db.jobs[0];
+            this.state = AnimalState.Idle;
+            this.efficiency = eating.Efficiency() * eeping.Efficiency();
+            // Restore animal inventory items
+            foreach (ItemStackSaveData ssd in pendingSaveData.inv.stacks) {
+                if (!string.IsNullOrEmpty(ssd.itemName) && Db.itemByName.ContainsKey(ssd.itemName) && ssd.quantity > 0) {
+                    inv.Produce(Db.itemByName[ssd.itemName], ssd.quantity);
+                }
+            }
+            pendingSaveData = null;
+        } else {
+            this.aName = "mouse" + id.ToString();
+            this.go.name = "animal_" + aName;
+            this.state = AnimalState.Idle;
+            this.job = Db.jobs[0];
+            this.efficiency = 1f;
+            this.energy = 0f;
+            this.eating = new Eating();
+            this.eating.food = this.eating.maxFood;
+            this.eeping = new Eeping();
+            this.eeping.eep = this.eeping.maxEep;
+            FindHome();
+        }
     }
 
 
@@ -345,6 +369,11 @@ public class Animal : MonoBehaviour{
     }
 
     public float SquareDistance(float x1, float x2, float y1, float y2) { return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2); }
+    public void Destroy() {
+        if (inv != null) { inv.Destroy(); inv = null; }
+        GameObject.Destroy(gameObject);
+    }
+
     public void RegisterCbAnimalChanged(Action<Animal, Job> callback) { cbAnimalChanged += callback; }
     public void UnregisterCbAnimalChanged(Action<Animal, Job> callback) { cbAnimalChanged -= callback; }
 }

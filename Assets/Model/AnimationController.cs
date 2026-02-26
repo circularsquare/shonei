@@ -4,8 +4,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using System;
 
-public class AnimationController : MonoBehaviour
-{
+public class AnimationController : MonoBehaviour {
     private Animal animal;
     private Animator animator;
     private enum AnimationState { Idle, Walking, Eeping }

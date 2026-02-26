@@ -16,7 +16,6 @@ public class Structure {
     public SpriteRenderer sr;
     public Tile tile; // not really sure how this will work for multi-tile buildings...
     public Reservable res;
-    public string depth;
     
     public Structure(StructType st, int x, int y){
         this.structType = st;
@@ -43,11 +42,11 @@ public class Structure {
             PlantController.instance.Remove(plant);
         } 
         StructController.instance.Remove(this);
-        if (depth == "b"){
+        if (structType.depth == "b"){
             tile.building = null;
-        } else if (depth == "f"){
+        } else if (structType.depth == "f"){
             tile.fStruct = null;
-        } else if (depth == "m"){
+        } else if (structType.depth == "m"){
             tile.mStruct = null;
         }
         GameObject.Destroy(go);

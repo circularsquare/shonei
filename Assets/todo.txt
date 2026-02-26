@@ -1,7 +1,5 @@
 - info panel: 
     - have info panel cycle through when you click it again.
-- blueprints   
-    - give inventories (of 0 capacity) that can have allow lists
 - building 
     - add discovered
     - make buiding menu bigger... have it replace item menu.
@@ -16,22 +14,24 @@
     - add tile mining command as a separate button sort of thing
 - visuals
     - improve mouse animation
-- world
-    - make map centered at 0, 0 and go a substantial distance in both positive and negative?
-        - load world from file 
 - trading
     - link to unity?
     - create openable market window to display market info 
 - priority
     - allow players to specify priority within constructing/deconstructing/crafting, anything that can be set at a site ahead of time
-
+- content
+    - add item displays
+- visuals
+    - add clouds
+- inventories
+    - simplify drawers? 
 
 BUGS
 - mice can get stuck when going down slope into block..
     - handle getting stuck better generally...
 - we might not fall as much as we want to, as falling is not allowed if mouse is Moving
 - destroying a building does not destroy its inventory
-    - buildings should have inventories?
+    - should buildings have inventories?
 
 
 TODAY GOALS

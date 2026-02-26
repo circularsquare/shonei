@@ -5,30 +5,29 @@ using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using TMPro;
 
+// this class keeps track of all the animals and adds animals and such
 public class AnimalController : MonoBehaviour{
     public static AnimalController instance {get; protected set;}
     public Animal[] animals;
-    public int na = 0; 
+    public int na = 0;
     private int maxna = 1000;
     public GameObject jobsPanel;
 
     private World world;
     public Dictionary<Job, int> jobCounts;
 
-    // this class keeps track of all the animals and adds animals and such
 
-    void Start() {    
+    void Awake() {
         if (instance != null) {
             Debug.LogError("there should only be one ani controller");}
-        instance = this;   
+        instance = this;
 
         animals = new Animal[maxna];
         jobCounts = new Dictionary<Job, int>();
-        jobCounts.Add(Db.jobs[0], 0); 
-
-        for (int i = 0; i < 4; i++){ // start with 4 mice
-            AddAnimal(20, 10);
-        }
+        
+    }
+    void Start() {
+        jobCounts.Add(Db.jobs[0], 0);
     }
 
 
@@ -36,30 +35,40 @@ public class AnimalController : MonoBehaviour{
         if (world == null){
             world = WorldController.instance.world;
             AddJobCounts();  // this needs to run AFTER world has already been populated!
-            AddJob("logger", 1);
-            AddJob("hauler", 1);
-            AddJob("farmer", 1);
-            if (animals[0] != null){ // spawn starting resources
-                animals[0].Produce("wheat", 2);
-            }
-        } 
+        }
         for (int a = 0; a < na; a++){ // later, change the animal work method to not be a timer and instead track individual animal workloads
-            animals[a].TickUpdate(); 
+            animals[a].TickUpdate();
         }
     }
 
-    public void AddAnimal(float x = 10, float y = 4){
+    public Animal AddAnimal(float x = 10, float y = 4){
         GameObject animalPrefab = Resources.Load<GameObject>("Prefabs/Animal");
         GameObject go = GameObject.Instantiate(animalPrefab, new Vector3(x, y, 0), Quaternion.identity);
         Animal animal = go.GetComponent<Animal>(); // already made in prefab!
         animal.x = x;
-        animal.y = y; 
+        animal.y = y;
         animal.id = na;
         animal.RegisterCbAnimalChanged(OnAnimalChanged);
         animal.transform.SetParent(transform);
         animals[na] = animal;
         jobCounts[Db.jobs[0]] += 1;
         na += 1;
+        return animal;
+    }
+
+    public void LoadAnimal(AnimalSaveData asd) {
+        Animal animal = AddAnimal(asd.x, asd.y); // adds +1 to "none" job count
+        animal.pendingSaveData = asd; // Animal.Start() (next frame) will apply name/stats/inv/job
+
+        // Fix job counts now: move from "none" to saved job
+        Job savedJob = Db.GetJobByName(asd.jobName);
+        if (savedJob != null && savedJob.id != 0) {
+            jobCounts[Db.jobs[0]] -= 1;
+            if (!jobCounts.ContainsKey(savedJob)) jobCounts[savedJob] = 0;
+            jobCounts[savedJob] += 1;
+            UpdateJobCount(Db.jobs[0]);
+            UpdateJobCount(savedJob);
+        }
     }
 
     public void AddJob(string jobstr, int n = 1){
@@ -95,7 +104,7 @@ public class AnimalController : MonoBehaviour{
             jobCounts.Add(oldJob, -1);
         } else {
             jobCounts[oldJob] -= 1;
-        } 
+        }
 
         if (jobCounts[oldJob] < 0 && oldJob.id != 0){
             Debug.LogError("have negative quantity of a job!");
@@ -110,7 +119,7 @@ public class AnimalController : MonoBehaviour{
     void AddJobCounts(){
         jobsPanel = UI.instance.transform.Find("JobsPanel").gameObject;
         foreach(Job job in Db.jobs){
-            if (job != null){ 
+            if (job != null){
                 GameObject textDisplayGo = Instantiate(UI.instance.JobDisplay, jobsPanel.transform);
                 textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = job.name + ": " + (GetJobCount(job)).ToString();
                 textDisplayGo.name = "JobCount_" + job.name;
@@ -120,7 +129,9 @@ public class AnimalController : MonoBehaviour{
     void UpdateJobCount(Job job){
         if (job != null){
             Transform textDisplayTransform = jobsPanel.transform.Find("JobCount_" + job.name);
-            textDisplayTransform.gameObject.GetComponent<TMPro.TextMeshProUGUI>().text = job.name + ": " + (GetJobCount(job)).ToString();
+            if (textDisplayTransform != null){
+                textDisplayTransform.gameObject.GetComponent<TMPro.TextMeshProUGUI>().text = job.name + ": " + (GetJobCount(job)).ToString();
+            }
         }
     }
     int GetJobCount(Job job){
@@ -130,6 +141,11 @@ public class AnimalController : MonoBehaviour{
     }
     int GetJobCount(string jobstr){
         return GetJobCount(Db.GetJobByName(jobstr));
+    }
+
+    public void ResetJobCounts() {
+        foreach (Job key in new List<Job>(jobCounts.Keys)) { jobCounts[key] = 0; }
+        foreach (Job key in jobCounts.Keys) { UpdateJobCount(key); }
     }
 
     public void OnClickJobAssignment(string jobstr, string buttontype){

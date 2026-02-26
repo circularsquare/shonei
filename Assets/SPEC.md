@@ -67,6 +67,58 @@ All game content is defined in JSON and loaded at startup via `Db.cs` using Newt
 
 Lookups: `itemByName`, `jobByName`, `structTypeByName`, `plantTypeByName`, `tileTypeByName`
 
+## Save / Load / Reset
+
+World state is serialized to JSON via Newtonsoft.Json and stored in `Application.persistentDataPath/saves/<slot>.json`. The entry point is `SaveSystem` (MonoBehaviour singleton).
+
+### Save data classes (`WorldSaveData.cs`)
+Plain C# classes — **no `[Serializable]`** (not needed by Newtonsoft.Json; adding it causes Unity's own serializer to materialize default instances on MonoBehaviour fields instead of null).
+
+### Structure creation rules
+Two legitimate ways to put a structure into the world:
+
+| Method | When to use |
+|--------|-------------|
+| `StructController.Construct(st, tile)` | Normal gameplay (via `Blueprint.Complete()`). Deducts costs from `GlobalInventory`. |
+| `new Building/Plant/etc.(…)` + `StructController.Place(s)` | Load path and world generation. No cost side-effects. |
+
+Always call `Place()` after direct construction — it registers the structure for tracking so `ClearWorld()` can find and destroy it later. Direct `new X()` without `Place()` is a bug.
+
+### Startup ordering
+
+Unity `Start()` execution order between MonoBehaviours is undefined. `WorldController.Start()` is an `IEnumerator` that `yield return null`s before calling `GenerateDefault()`, ensuring all other `Start()` methods (notably `AnimalController.Start()` initializing `jobCounts`) have run first.
+
+### Reset / Load flow
+
+```
+Reset:  WorldController.ClearWorld()  →  WorldController.GenerateDefault()
+Load:   WorldController.ClearWorld()  →  WorldController.ApplySaveData(data)
+```
+
+**`ClearWorld()`** tears down in this order:
+1. Destroy all structures via `StructController.GetStructures()` → `s.Destroy()` (nulls tile refs, removes from PlantController/StructController, destroys GOs)
+2. Destroy all blueprints (iterate tiles, call `bp.Destroy()`)
+3. Destroy all animals (call `animal.Destroy()` which destroys their inventory + GO), reset `na = 0`, call `ResetJobCounts()`
+4. Destroy remaining inventories (tile floor/storage invs) via `InventoryController.inventories`
+5. Zero all `GlobalInventory.itemAmounts`
+6. Reset all tiles: null `tile.inv`, set `tile.type = empty` (fires sprite callbacks)
+7. Reset `world.timer`, clear `InfoPanel`
+
+**`GenerateDefault()`** rebuilds:
+1. Set tile types (soil y<10, stone y<8)
+2. Create default plants + `Place()` each with StructController
+3. `world.graph.Initialize()`
+4. Spawn 4 animals via `AnimalController.AddAnimal()`
+5. `StartCoroutine(DefaultJobSetup)` — yields 1 frame (waits for `Animal.Start()`), then assigns jobs and starting wheat
+
+**`ApplySaveData()`** rebuilds from file:
+1. Apply tile types + blueprints + structures (via `Place()`) + inventories per saved tile
+2. `world.graph.Initialize()`
+3. `LoadAnimal()` per saved animal (sets `pendingSaveData`; `Animal.Start()` applies it next frame)
+
+### `pendingSaveData` pattern
+`LoadAnimal()` sets `animal.pendingSaveData` before `Animal.Start()` runs. `Start()` checks it: if set, applies saved stats/job; if null, initializes with full hunger/sleep. Marked `[System.NonSerialized]` to prevent Unity from replacing null with a default instance.
+
 ## Animal AI
 
 ### States
@@ -137,7 +189,7 @@ Three inventory types:
 | Storage | varies | varies | normal |
 | Floor | 5 | varies | 5× normal |
 
-- Items decay over time (fresh → aged → rotten)
+- Items decay over time 
 - `allowed` dict filters what item types a storage accepts
 - `Reservable` (capacity-based) prevents multiple animals targeting same resource
 - `Produce()` adds to inventory and global inventory simultaneously
@@ -145,11 +197,11 @@ Three inventory types:
 ## Rendering & Layers
 
 Structures render in three depth layers per tile:
-- **Background (b)**: walls, soil
-- **Midground (m)**: main structure body
-- **Foreground (f)**: front-facing details
+- **Background (b)**: buildings, plants
+- **Midground (m)**: platforms
+- **Foreground (f)**: stairs, ladders
 
-This enables stairs and multi-part structures to render correctly.
+This enables stairs and multi-part structures to be placed on the same tiles
 
 ## Current State & Known Issues
 

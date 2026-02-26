@@ -26,6 +26,15 @@ public class StructController : MonoBehaviour {
         n -= 1;
     }
 
+    public List<Structure> GetStructures() => new List<Structure>(structures);
+
+    // Place a structure that was already created directly (load path, world generation).
+    // Unlike Construct(), this does not touch GlobalInventory costs.
+    public void Place(Structure structure) {
+        structures.Add(structure);
+        n += 1;
+    }
+
     public bool Construct(StructType st, Tile tile){        
         Structure structure = null;
         if (st.isTile){ // tiles are not real structures, should just turn into tile
