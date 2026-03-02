@@ -43,6 +43,7 @@ public class WorldController : MonoBehaviour {
 
         yield return null; // wait one frame so all other Start()s finish before we generate the world
         GenerateDefault();
+        StartCoroutine(SaveSystem.instance.PostLoadInit());
     }
 
     // -----------------------------------------------------------------------
@@ -106,7 +107,7 @@ public class WorldController : MonoBehaviour {
         Plant plant1 = new Plant(Db.plantTypeByName["tree"], 22, 10);
         plant1.Mature();
         StructController.instance.Place(plant1);
-        Plant plant2 = new Plant(Db.plantTypeByName["tree"], 15, 10);
+        Plant plant2 = new Plant(Db.plantTypeByName["appletree"], 15, 10);
         StructController.instance.Place(plant2);
         Plant plant3 = new Plant(Db.plantTypeByName["tree"], 18, 10);
         StructController.instance.Place(plant3);

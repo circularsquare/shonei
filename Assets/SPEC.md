@@ -86,13 +86,14 @@ Always call `Place()` after direct construction — it registers the structure f
 
 ### Startup ordering
 
-Unity `Start()` execution order between MonoBehaviours is undefined. `WorldController.Start()` is an `IEnumerator` that `yield return null`s before calling `GenerateDefault()`, ensuring all other `Start()` methods (notably `AnimalController.Start()` initializing `jobCounts`) have run first.
+Unity `Start()` execution order between MonoBehaviours is undefined. `WorldController.Start()` is an `IEnumerator` that `yield return null`s before calling `GenerateDefault()`, ensuring all other `Start()` methods (notably `AnimalController.Start()` initializing `jobCounts`) have run first. After `GenerateDefault()`, it starts `SaveSystem.instance.PostLoadInit()` — the same coroutine used by Load and Reset — so colony stat initialization runs consistently on all three paths.
 
-### Reset / Load flow
+### Initial / Reset / Load flow
 
 ```
-Reset:  WorldController.ClearWorld()  →  WorldController.GenerateDefault()
-Load:   WorldController.ClearWorld()  →  WorldController.ApplySaveData(data)
+Initial: WorldController.GenerateDefault()  →  PostLoadInit (next frame)
+Reset:   WorldController.ClearWorld()  →  WorldController.GenerateDefault()  →  PostLoadInit (next frame)
+Load:    WorldController.ClearWorld()  →  WorldController.ApplySaveData(data)  →  PostLoadInit (next frame)
 ```
 
 **`ClearWorld()`** tears down in this order:
@@ -116,8 +117,20 @@ Load:   WorldController.ClearWorld()  →  WorldController.ApplySaveData(data)
 2. `world.graph.Initialize()`
 3. `LoadAnimal()` per saved animal (sets `pendingSaveData`; `Animal.Start()` applies it next frame)
 
+`SaveSystem.PostLoadInit()` is started as a coroutine at the end of all three paths. It yields one frame (waiting for any `Animal.Start()` calls spawned this frame to complete), then calls `AnimalController.instance.Load()`. This is the correct place to run any initialization that depends on animals being fully ready (e.g. `SlowUpdate()` to initialize happiness, `UpdateColonyStats()`).
+
 ### `pendingSaveData` pattern
 `LoadAnimal()` sets `animal.pendingSaveData` before `Animal.Start()` runs. `Start()` checks it: if set, applies saved stats/job; if null, initializes with full hunger/sleep. Marked `[System.NonSerialized]` to prevent Unity from replacing null with a default instance.
+
+### Timing rules: when can you call what?
+| Moment | What has run | What has NOT run yet |
+|--------|-------------|----------------------|
+| Inside `ApplySaveData()` | Tiles, structures, nav graph | `Animal.Start()` (next frame) |
+| Inside `Animal.Start()` (pendingSaveData branch) | `world`, `nav`, `eating`, `eeping`, `happiness` all initialized | `FindHome()` not yet called (no homeTile) |
+| `PostLoadInit` coroutine (1 frame after load) | All `Animal.Start()` calls | — safe to call `SlowUpdate()`, `UpdateColonyStats()` |
+| `AnimalController.TickUpdate` `if (world == null)` block | First game tick after scene load | — `world` is never null after a reload, so this only fires on a fresh scene launch; superseded by `PostLoadInit` |
+
+**Key rule**: use `PostLoadInit` for all post-spawn initialization — it runs on every path (initial, Reset, Load). Do NOT use the `if (world == null)` guard in `AnimalController.TickUpdate`; `world` is never reset to null on reload so that block is unreliable across all paths.
 
 ## Animal AI
 

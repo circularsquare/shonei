@@ -33,6 +33,7 @@ public class Animal : MonoBehaviour{
 
     public Eating eating;
     public Eeping eeping;
+    public Happiness happiness;
     public Nav nav;
     public AnimationController animationController;
 
@@ -90,8 +91,10 @@ public class Animal : MonoBehaviour{
             this.energy = pendingSaveData.energy;
             this.eating = new Eating();
             this.eating.food = pendingSaveData.food;
+            this.eating.timeSinceLastAte = pendingSaveData.timeSinceLastAte;
             this.eeping = new Eeping();
             this.eeping.eep = pendingSaveData.eep;
+            this.happiness = new Happiness();
             this.job = Db.GetJobByName(pendingSaveData.jobName) ?? Db.jobs[0];
             this.state = AnimalState.Idle;
             this.efficiency = eating.Efficiency() * eeping.Efficiency();
@@ -113,6 +116,7 @@ public class Animal : MonoBehaviour{
             this.eating.food = this.eating.maxFood;
             this.eeping = new Eeping();
             this.eeping.eep = this.eeping.maxEep;
+            this.happiness = new Happiness();
             FindHome();
         }
     }
@@ -137,9 +141,13 @@ public class Animal : MonoBehaviour{
         eating.Update();
         eeping.Update();
         if (eating.Hungry()) {
-            if (inv.ContainsItem(Db.itemByName["wheat"])) {
-                Consume(Db.itemByName["wheat"], 1);
-                eating.Eat(20f);
+            foreach (Item food in Db.edibleItems) {
+                if (inv.ContainsItem(food)) {
+                    Consume(food, 1);
+                    eating.Eat(food.foodValue);
+                    happiness.NoteAte(food);
+                    break;
+                }
             }
         }
     }
@@ -150,6 +158,8 @@ public class Animal : MonoBehaviour{
 
     public void SlowUpdate() { // called every 10 or so seconds
         FindHome();
+        eating.SlowUpdate();
+        happiness.SlowUpdate(this);
     }
 
     public void Update() { // called all the time, for movement and detecting arrival
@@ -165,9 +175,7 @@ public class Animal : MonoBehaviour{
             if (task.Start()) return; 
             else Debug.Log("inventory near full and can't drop!"); }
 
-        if (eating.Hungry()) {
-            task = new ObtainTask(this, Db.itemByName["wheat"], 5); 
-            if (task.Start()) return; }
+        if (eating.Hungry()) { if (FindFood()) return; } // will create obtaintask for food
         if (eeping.Eepy()) { 
             task = new EepTask(this); 
             if (task.Start()) return; }
@@ -191,6 +199,21 @@ public class Animal : MonoBehaviour{
 
         task = null; // none of the above tasks started successfully...
         return;
+    }
+
+    // Prioritizes foods from unhappy categories; falls back to any available food.
+    private bool FindFood() {
+        int amountToPickUp = 2;
+        foreach (Item food in Db.edibleItems) {
+            if (!happiness.WouldHelp(food)) continue;
+            task = new ObtainTask(this, food, amountToPickUp);
+            if (task.Start()) return true;
+        }
+        foreach (Item food in Db.edibleItems) {
+            task = new ObtainTask(this, food, amountToPickUp);
+            if (task.Start()) return true;
+        }
+        return false;
     }
 
 
@@ -346,7 +369,8 @@ public class Animal : MonoBehaviour{
     public void FindHome(){
         // if you have no home tile, or your hometile does not have a house,
             // if u can find a house, set ur hometile to that
-        if (homeTile == null || !(homeTile?.building?.structType.name == "house")){
+        if (nav != null && 
+        (homeTile == null || !(homeTile?.building?.structType.name == "house"))){
             Path housePath = nav.FindPathToBuilding(Db.structTypeByName["house"]);
             if (housePath != null && housePath.tile.building?.structType.name == "house") { 
                 // should maybe also unreserve previous house, if you can? 
@@ -359,9 +383,11 @@ public class Animal : MonoBehaviour{
 
     public Tile TileHere() { return world.GetTileAt(x, y); }
 
-    public bool AtHome() { 
-        return homeTile != null && homeTile == TileHere() && homeTile.building?.structType.name == "house"; 
+    public bool AtHome() {
+        return homeTile != null && homeTile == TileHere() && homeTile.building?.structType.name == "house";
     }
+
+    public bool HasHouse => homeTile?.building?.structType.name == "house";
 
     public bool IsMoving(){
         return !(state == AnimalState.Idle || state == AnimalState.Working

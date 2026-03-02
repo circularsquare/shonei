@@ -96,6 +96,13 @@ public class StructController : MonoBehaviour {
         return true;
     }
 
+    public int TotalHousingCapacity(){
+        int total = 0;
+        foreach (Structure s in structures)
+            if (s.structType.name == "house") total += s.res.capacity;
+        return total;
+    }
+
     public void TickUpdate(){
         foreach (Structure structure in structures){
             //

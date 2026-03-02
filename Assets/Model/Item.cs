@@ -14,8 +14,9 @@ public class Item {
     public int id {get; set;}
     public string name {get; set;}
     public Item[] children {get; set;}
-    public float decayRate{get; set;}   
-    public Item parent; 
+    public float decayRate{get; set;}
+    public float foodValue {get; set;}  // 0 = not edible; >0 = nutrition restored per unit eaten
+    public Item parent;
     
 
     public bool IsDiscovered(){

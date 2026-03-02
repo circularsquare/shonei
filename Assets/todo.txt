@@ -30,3 +30,11 @@ BUGS
 - does calculateworkpossible work? 
 
 TODAY GOALS
+- add happiness (for each mouse, will eventually depend on many factors)
+    - for now depends on just 
+        - have you eaten wheat recently (past 5 min)
+        - do you have a house 
+    - show happiness on mouse infopanel (wheat: 1/1, housing: 1/1)
+    - calculate colonywide avg happiness (like 1.6/2) and display somewhere
+    - have avg happiness determine a hidden population capacity, which determines likelyhood of reproduction in houses
+        - maybe streamline / systematize reproduction (currently just something that happens in handleeeping)

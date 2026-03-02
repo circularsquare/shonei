@@ -56,10 +56,11 @@ public class InfoPanel : MonoBehaviour {
                     displayText += "\n recipe: " + craftTask.recipe?.description;
                 }
                 displayText += (
-                    "\n location: " + ani.go.transform.position.ToString() + 
-                    "\n efficiency: " + ani.efficiency.ToString("F2") + 
-                    "\n fullness: " + ani.eating.Fullness().ToString("F2") + 
-                    "\n eep: " + ani.eeping.Eepness().ToString("F2"));
+                    "\n location: " + ani.go.transform.position.ToString() +
+                    "\n efficiency: " + ani.efficiency.ToString("F2") +
+                    "\n fullness: " + ani.eating.Fullness().ToString("F2") +
+                    "\n eep: " + ani.eeping.Eepness().ToString("F2") +
+                    "\n happiness: " + ani.happiness.ToString());
                 textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = displayText;
             }
         }

@@ -276,3 +276,6 @@ bug fixes
 - added crate, one itemstack storage
 - added quarter sprites for drawers
 - changed itemstack reservation to reserve a number instead of binary
+3/2
+- added happiness, which depends on food variety and having a house, and determines population cap
+- added apples! mice seek out food that would make them happy

@@ -8,7 +8,6 @@ using System.Linq;
 using AnimalState = Animal.AnimalState;
 
 public class AnimalStateManager {
-
     private Animal animal;
 
     public AnimalStateManager(Animal animal) {
@@ -86,11 +85,16 @@ public class AnimalStateManager {
 
     private void HandleEeping() {
         animal.eeping.Eep(1f, animal.AtHome());
-        // reproduction! 
-        if (animal.AtHome() && animal.homeTile.building.res.Available()
-            && animal.homeTile.building.res.reserved > 2) {
-            if (animal.random.Next(0, 50) < 2) {
-                AnimalController.instance.AddAnimal(animal.x, animal.y);
+        // reproduction: logistic growth, gated by population and housing capacity
+        if (animal.AtHome()) {
+            AnimalController ac = AnimalController.instance;
+            if (ac.na < ac.populationCapacity && ac.na < ac.totalHousingCapacity) {
+                float p = ac.na;
+                float pmax = ac.populationCapacity;
+                float birthChance = 0.2f * (pmax - p) / pmax;
+                if ((float)animal.random.NextDouble() < birthChance) {
+                    ac.AddAnimal(animal.x, animal.y);
+                }
             }
         }
         if (animal.eeping.eep >= animal.eeping.maxEep) {

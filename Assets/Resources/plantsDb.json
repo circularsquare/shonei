@@ -24,6 +24,18 @@
         "growthTime": 15,
         "harvestTime": 2.0,
         "njob": "farmer"
+    },{
+        "id": 550,
+        "name": "appletree",
+        "ncosts": [
+            { "name": "apple", "quantity": 1 }
+        ],
+        "nproducts": [
+            { "name": "apple", "quantity": 3 }
+        ],
+        "growthTime": 10,
+        "harvestTime": 2.0,
+        "njob": "farmer"
     }
 
 ]  

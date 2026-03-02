@@ -345,6 +345,7 @@ public class Inventory{
         } else {
             sprite = Resources.Load<Sprite>($"Sprites/Items/{iName}/icon");
         }
+        sprite ??= Resources.Load<Sprite>($"Sprites/Items/{iName}/icon");
         sprite ??= Resources.Load<Sprite>("Sprites/Items/default");
         go.name = "Inventory" + mostItem.name;
         go.GetComponent<SpriteRenderer>().sprite = sprite;

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs grep -l \"class Db\")",
+      "Bash(xargs grep -l \"Inventory\\\\|ContainsItem\")"
+    ]
+  }
+}

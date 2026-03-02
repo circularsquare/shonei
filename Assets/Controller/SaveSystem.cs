@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Newtonsoft.Json;
@@ -133,6 +134,7 @@ public class SaveSystem : MonoBehaviour {
             jobName = a.job.name,
             energy = a.energy,
             food = a.eating.food,
+            timeSinceLastAte = a.eating.timeSinceLastAte,
             eep = a.eeping.eep,
             inv = GatherInventory(a.inv)
         };
@@ -149,6 +151,12 @@ public class SaveSystem : MonoBehaviour {
         WorldSaveData data = JsonConvert.DeserializeObject<WorldSaveData>(json);
         WorldController.instance.ClearWorld();
         WorldController.instance.ApplySaveData(data);
+        StartCoroutine(PostLoadInit());
+    }
+
+    public IEnumerator PostLoadInit() { // for loading happiness
+        yield return null; // wait one frame for all Animal.Start() calls to complete
+        AnimalController.instance.Load();
     }
 
     // -----------------------------------------------------------------------
@@ -158,6 +166,7 @@ public class SaveSystem : MonoBehaviour {
     public void Reset() {
         WorldController.instance.ClearWorld();
         WorldController.instance.GenerateDefault();
+        StartCoroutine(PostLoadInit());
     }
 
     // -----------------------------------------------------------------------

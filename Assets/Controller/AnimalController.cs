@@ -15,6 +15,12 @@ public class AnimalController : MonoBehaviour{
 
     private World world;
     public Dictionary<Job, int> jobCounts;
+    private TMPro.TextMeshProUGUI happinessDisplay;
+    private int colonyTickCounter = 0;
+
+    public float avgHappiness = 0f;
+    public int totalHousingCapacity = 0;
+    public int populationCapacity = 0;
 
 
     void Awake() {
@@ -36,9 +42,11 @@ public class AnimalController : MonoBehaviour{
             world = WorldController.instance.world;
             AddJobCounts();  // this needs to run AFTER world has already been populated!
         }
-        for (int a = 0; a < na; a++){ // later, change the animal work method to not be a timer and instead track individual animal workloads
+        for (int a = 0; a < na; a++){
             animals[a].TickUpdate();
         }
+        colonyTickCounter++;
+        if (colonyTickCounter % 10 == 0) UpdateColonyStats();
     }
 
     public Animal AddAnimal(float x = 10, float y = 4){
@@ -70,6 +78,10 @@ public class AnimalController : MonoBehaviour{
             UpdateJobCount(Db.jobs[0]);
             UpdateJobCount(savedJob);
         }
+    }
+    public void Load() {
+        for (int a = 0; a < na; a++) animals[a].SlowUpdate(); // init happiness immediately on load
+        UpdateColonyStats();
     }
 
     public void AddJob(string jobstr, int n = 1){
@@ -119,6 +131,9 @@ public class AnimalController : MonoBehaviour{
 
     void AddJobCounts(){
         jobsPanel = UI.instance.transform.Find("JobsPanel").gameObject;
+        Transform happinessDisplayTransform = UI.instance.transform.Find("HappinessDisplay");
+        if (happinessDisplayTransform != null)
+            happinessDisplay = happinessDisplayTransform.GetComponent<TMPro.TextMeshProUGUI>();
         foreach(Job job in Db.jobs){
             if (job != null){
                 GameObject textDisplayGo = Instantiate(UI.instance.JobDisplay, jobsPanel.transform);
@@ -135,6 +150,17 @@ public class AnimalController : MonoBehaviour{
             }
         }
     }
+    void UpdateColonyStats(){
+        if (na == 0) return;
+        avgHappiness = 0f;
+        for (int a = 0; a < na; a++) avgHappiness += animals[a].happiness.score;
+        avgHappiness /= na;
+        totalHousingCapacity = StructController.instance.TotalHousingCapacity();
+        populationCapacity = Mathf.FloorToInt(avgHappiness * 2.5f);
+        if (happinessDisplay != null)
+            happinessDisplay.text = $"happiness: {avgHappiness:0.0}  pop: {na}/{populationCapacity}";
+    }
+
     int GetJobCount(Job job){
         if (jobCounts.ContainsKey(job)){
             return jobCounts[job];

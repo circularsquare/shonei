@@ -59,7 +59,8 @@ public class AnimalSaveData {
     public float x, y;
     public string jobName;
     public float energy;
-    public float food;  // eating.food
-    public float eep;   // eeping.eep
+    public float food;             // eating.food
+    public float timeSinceLastAte; // eating.timeSinceLastAte
+    public float eep;              // eeping.eep
     public InventorySaveData inv;
 }

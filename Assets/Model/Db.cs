@@ -25,6 +25,7 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
     public static Item[] items = new Item[500];
     public static Item[] itemsFlat = new Item[500];
     public static int itemsCount = 0;
+    public static List<Item> edibleItems;
     public static Job[] jobs = new Job[100];
     public static Recipe[] recipes = new Recipe[500];
     public static StructType[] structTypes = new StructType[600];
@@ -65,6 +66,7 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
     void Awake(){ // this runs before Start() like in world
         ReadJson();
         itemsFlat = itemsFlat.Take(itemsCount).ToArray();
+        edibleItems = itemsFlat.Where(i => i.foodValue > 0).OrderByDescending(i => i.foodValue).ToList();
         Debug.Log("db loaded");
     } 
 
