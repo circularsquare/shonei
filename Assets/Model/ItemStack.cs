@@ -19,7 +19,7 @@ public class ItemStack {
         this.quantity = quantity;
         this.stackSize = stackSize;
         this.inv = inv;
-        this.res = new Reservable(1);
+        this.res = new Reservable(quantity); // capacity tracks current quantity
         decayCounter = 0;
     }
 
@@ -41,25 +41,25 @@ public class ItemStack {
             this.item = item; }
         if (item != this.item){ // item slot occupied by different item. go next
             return null; }
-        if (quantity < 0 && res.reserved >= 1) {
-            res.Unreserve(); // unreserve if removing items
-        }
         if (this.quantity + quantity > stackSize){
             int sizeOver = this.quantity + quantity - stackSize;
             this.quantity = stackSize;
-            //Debug.Log("this has " + this.quantity + " plus " + quantity + " and stack size is " + stackSize);
+            res.capacity = this.quantity;
             return sizeOver; // overflow (3 if still have 3 to deposit)
         } else if (this.quantity + quantity <= 0){ // <= 0 because want to null out stack
             int sizeUnder = this.quantity + quantity - 0;
             this.quantity = 0;
             this.item = null;
-            //Debug.Log("underflow, this has " + this.quantity + " plus " + quantity + " and stack size is " + stackSize);
+            res.reserved = 0;
+            res.capacity = 0;
             return sizeUnder; // underflow (-3 if still need 3 more)
         } else {
             this.quantity += quantity; // add to stack
+            res.capacity = this.quantity;
+            // clamp reserved so it can't exceed the new quantity
+            if (res.reserved > this.quantity) res.reserved = this.quantity;
             return 0;
-        } 
-        // todo: reserve
+        }
     }
     public bool Empty(){ return (item == null || quantity == 0); }
 

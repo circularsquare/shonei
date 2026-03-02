@@ -65,13 +65,6 @@ public class AnimalStateManager {
                 constructTask.Complete();
             }
             return;
-        } else if (animal.task is DeconstructTask deconstructTask){
-            Blueprint blueprint = deconstructTask.blueprint;
-            if (blueprint == null) {deconstructTask.Fail(); return;}
-            if (blueprint.ReceiveConstruction(1f * animal.efficiency)){
-                deconstructTask.Complete();
-            }
-            return;
         } else if (animal.task is CraftTask craftTask) {
             Recipe recipe = craftTask.recipe;
             animal.workProgress += 1f;

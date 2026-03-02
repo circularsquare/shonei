@@ -53,6 +53,7 @@ public class AnimalController : MonoBehaviour{
         animals[na] = animal;
         jobCounts[Db.jobs[0]] += 1;
         na += 1;
+        UpdateJobCount(Db.jobs[0]);
         return animal;
     }
 
@@ -127,7 +128,7 @@ public class AnimalController : MonoBehaviour{
         }
     }
     void UpdateJobCount(Job job){
-        if (job != null){
+        if (job != null && jobsPanel != null){
             Transform textDisplayTransform = jobsPanel.transform.Find("JobCount_" + job.name);
             if (textDisplayTransform != null){
                 textDisplayTransform.gameObject.GetComponent<TMPro.TextMeshProUGUI>().text = job.name + ": " + (GetJobCount(job)).ToString();

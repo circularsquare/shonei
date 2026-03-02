@@ -109,9 +109,17 @@ public class Graph {
         if (fStruct != null && fStruct.structType.name == "ladder" && y + 1 < world.ny){
             node.AddNeighbor(nodes[x,y+1], true);
         }
-        // Stairs add extra diagonal routes on top of normal horizontal connections
-        if (node.tile.HasStairRight() || node.tile.HasStairLeft()) {
-            CreateStairWaypoints(x, y);
+        // Refresh stair waypoints for this tile and any adjacent stair tiles that use this as an endpoint.
+        // Candidates: self + 4 positions that could be stairs with (x,y) as their entry/exit.
+        int[] scx = { x, x+1, x-1, x-1, x+1 };
+        int[] scy = { y, y,   y,   y-1, y-1  };
+        for (int i = 0; i < 5; i++){
+            int cx = scx[i], cy = scy[i];
+            if (cx < 0 || cx >= world.nx || cy < 0 || cy >= world.ny) continue;
+            Tile candidate = world.GetTileAt(cx, cy);
+            if (candidate.HasStairRight() || candidate.HasStairLeft()){
+                CreateStairWaypoints(cx, cy);
+            }
         }
     }
 

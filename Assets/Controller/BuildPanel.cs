@@ -18,12 +18,26 @@ public class BuildPanel : MonoBehaviour {
         foreach (StructType structType in Db.structTypes){
             if (structType != null){
                 GameObject buildDisplayGo = Instantiate(buildDisplayPrefab, transform);
-                foreach (ItemQuantity iq in structType.costs) { 
-                    GameObject costDisplay = Instantiate(textDisplayPrefab, buildDisplayGo.transform);
+                // Find or create a costs container with a VLG so displays stack instead of overlap
+                Transform costsContainer = buildDisplayGo.transform.Find("CostsContainer");
+                // if (costsContainer == null){
+                //     GameObject costsGo = new GameObject("CostsContainer");
+                //     costsGo.transform.SetParent(buildDisplayGo.transform, false);
+                //     VerticalLayoutGroup vlg = costsGo.AddComponent<VerticalLayoutGroup>();
+                //     vlg.childAlignment = TextAnchor.UpperLeft;
+                //     vlg.childControlHeight = false;
+                //     vlg.childForceExpandHeight = false;
+                //     vlg.childForceExpandWidth = true;
+                //     ContentSizeFitter csf = costsGo.AddComponent<ContentSizeFitter>();
+                //     csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+                //     costsContainer = costsGo.transform;
+                // }
+                foreach (ItemQuantity iq in structType.costs) {
+                    GameObject costDisplay = Instantiate(textDisplayPrefab, costsContainer);
                     costDisplay.GetComponent<TMPro.TextMeshProUGUI>().text = iq.item.name + ": " + iq.quantity.ToString();
                     costDisplay.name = "CostDisplay_" + iq.item.name;
                 }
-                buildDisplayGo.transform.GetChild(0).GetComponent<Button>().onClick.AddListener(() => SetStructType(structType));  // is this right??
+                buildDisplayGo.transform.GetChild(0).GetComponent<Button>().onClick.AddListener(() => SetStructType(structType));
                 GameObject buildingTextGo = buildDisplayGo.transform.Find("BuildingButton/TextBuildingName").gameObject;
                 buildingTextGo.GetComponent<TMPro.TextMeshProUGUI>().text = structType.name;
                 buildDisplayGo.name = "BuildDisplay_" + structType.name;

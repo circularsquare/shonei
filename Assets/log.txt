@@ -272,3 +272,7 @@ bug fixes
 - added world saving and loading!
 - clouds!
 - more specific item sprite loading depending on inventory type
+2/27
+- added crate, one itemstack storage
+- added quarter sprites for drawers
+- changed itemstack reservation to reserve a number instead of binary

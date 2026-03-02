@@ -70,6 +70,9 @@ public class StructType {
     public Job job;
     public int capacity {get; set;} // number of animals that can reserve this struct at once
     public string requiredTileName {get; set;} // tile that this struct must be built on
+    public bool isStorage {get; set;} // true for storage buildings (drawers, crates, etc.)
+    public int nStacks {get; set;} // number of item stacks in storage
+    public int storageStackSize {get; set;} // max items per stack in storage
 
     [OnDeserialized]
     internal void OnDeserialized(StreamingContext context){

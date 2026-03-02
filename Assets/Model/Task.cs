@@ -15,13 +15,25 @@ public abstract class Task {
     public Animal animal;
     protected Queue<Objective> objectives = new Queue<Objective>();
     public Objective currentObjective;
+    private List<(ItemStack stack, int amount)> reservedStacks = new List<(ItemStack, int)>();
 
     // check whether a task is possible. create objectives, make reservations
-    public abstract bool Initialize(); 
+    public abstract bool Initialize();
 
     public Task(Animal animal){
         this.animal = animal;
     }
+
+    // Enqueues a FetchObjective and reserves items on the stack, tracking for cleanup.
+    protected void FetchAndReserve(ItemQuantity iq, Tile tile, ItemStack stack, int amount){
+        objectives.Enqueue(new FetchObjective(this, iq, tile));
+        int reserved = stack.res.Reserve(amount);
+        if (reserved > 0) reservedStacks.Add((stack, reserved));
+    }
+    protected void FetchAndReserve(ItemQuantity iq, Tile tile, ItemStack stack){
+        FetchAndReserve(iq, tile, stack, iq.quantity);
+    }
+
     public bool Start(){ // calls some task specific Initialize
         bool initialized = Initialize();
         if (objectives.Count > 0){StartNextObjective();}
@@ -46,6 +58,10 @@ public abstract class Task {
         animal.state = Animal.AnimalState.Idle;
     }
     public virtual void Cleanup(){
+        foreach (var (stack, amount) in reservedStacks){
+            stack.res.Unreserve(Math.Min(amount, stack.res.reserved));
+        }
+        reservedStacks.Clear();
         objectives.Clear();
     }
     public void StartNextObjective(){
@@ -85,10 +101,9 @@ public class CraftTask : Task {
         if (roundsRemaining == 0) { return false; }
         foreach (ItemQuantity iq in recipe.inputs){
             if (!animal.inv.ContainsItem(iq, roundsRemaining)){
-                (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(iq.item); 
-                if (itemPath == null) { return false; } 
-                objectives.Enqueue(new FetchObjective(this, iq, itemPath.tile));
-                stack.res.Reserve();
+                (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(iq.item);
+                if (itemPath == null) { return false; }
+                FetchAndReserve(iq, itemPath.tile, stack, iq.quantity * roundsRemaining);
             }
         }
         objectives.Enqueue(new GoObjective(this, workplace));
@@ -102,7 +117,7 @@ public class CraftTask : Task {
     }
     public override void Cleanup(){
         workplace.building?.res.Unreserve();
-        objectives.Clear();
+        base.Cleanup();
     }
 }
 
@@ -116,15 +131,10 @@ public class ObtainTask : Task {
         iq = new ItemQuantity(item, quantity);
     }
     public override bool Initialize(){
-        (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(iq.item); 
-        if (itemPath == null) { return false; } 
-        objectives.Enqueue(new FetchObjective(this, iq, itemPath.tile));
-        stack.res.Reserve();
+        (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(iq.item);
+        if (itemPath == null) { return false; }
+        FetchAndReserve(iq, itemPath.tile, stack);
         return true;
-    }
-    public override void Cleanup(){
-        // TODO: unreserve
-        objectives.Clear();
     }
 }
 public class GoTask : Task {
@@ -169,7 +179,7 @@ public class HarvestTask : Task {
     }
     public override void Cleanup() {
         tile.building?.res.Unreserve();
-        objectives.Clear();
+        base.Cleanup();
     }
 }
 // haultask is only for moving random items to storage!
@@ -180,13 +190,9 @@ public class HaulTask : Task {
         haulInfo = animal.nav.FindAnyItemToHaul();
         if (haulInfo == null) {return false;}
         ItemQuantity iq = new ItemQuantity(haulInfo.item, haulInfo.quantity);
-        objectives.Enqueue(new FetchObjective(this, iq, haulInfo.itemTile));
+        FetchAndReserve(iq, haulInfo.itemTile, haulInfo.itemStack, haulInfo.quantity);
         objectives.Enqueue(new DeliverObjective(this, iq, haulInfo.storageTile));
-        if (!haulInfo.itemStack.res.Reserve()) Debug.Log("reserved itemstack that is not available!");
         return true;
-    }
-    public override void Cleanup(){
-        objectives.Clear();
     }
 }
 public class DropTask : Task {
@@ -202,40 +208,27 @@ public class DropTask : Task {
 }
 
 public class ConstructTask : Task {
-    public Tile tile;
     public Blueprint blueprint;
-    public ConstructTask(Animal animal) : base(animal){}
+    public bool deconstructing;
+    public ConstructTask(Animal animal, bool deconstructing = false) : base(animal){
+        this.deconstructing = deconstructing;
+    }
     public override bool Initialize() {
-        (Tile bpTile, Path standPath) = animal.nav.FindPathAdjacentToBlueprint(animal.job, Blueprint.BlueprintState.Constructing);
-        if (bpTile == null){return false;}
-        blueprint = bpTile.GetMatchingBlueprint(b => b.structType.job == animal.job && b.state == Blueprint.BlueprintState.Constructing);
+        var state = deconstructing ? Blueprint.BlueprintState.Deconstructing : Blueprint.BlueprintState.Constructing;
+        (Tile bpTile, Path standPath) = animal.nav.FindPathAdjacentToBlueprint(animal.job, state);
+        if (bpTile == null) { return false; }
+        blueprint = deconstructing
+            ? bpTile.GetMatchingBlueprint(b => b.state == Blueprint.BlueprintState.Deconstructing)
+            : bpTile.GetMatchingBlueprint(b => b.structType.job == animal.job && b.state == Blueprint.BlueprintState.Constructing);
+        if (blueprint == null) { return false; }
         objectives.Enqueue(new GoObjective(this, standPath.tile));
         objectives.Enqueue(new ConstructObjective(this, blueprint));
         if (!blueprint.res.Reserve()) Debug.Log("reserved blueprint that is not available!");
         return true;
     }
-    public override void Cleanup(){
-        objectives.Clear();
-        blueprint?.res.Unreserve();
-    }
-}
-public class DeconstructTask : Task {
-    public Tile tile;
-    public Blueprint blueprint;
-    public DeconstructTask(Animal animal) : base(animal) {}
-    public override bool Initialize() {
-        (Tile bpTile, Path standPath) = animal.nav.FindPathAdjacentToBlueprint(animal.job, Blueprint.BlueprintState.Deconstructing);
-        if (bpTile == null) { return false; }
-        blueprint = bpTile.GetMatchingBlueprint(b => b.state == Blueprint.BlueprintState.Deconstructing);
-        if (blueprint == null) { return false; }
-        objectives.Enqueue(new GoObjective(this, standPath.tile));
-        objectives.Enqueue(new DeconstructObjective(this, blueprint));
-        if (!blueprint.res.Reserve()) Debug.Log("reserved deconstruct blueprint that is not available!");
-        return true;
-    }
     public override void Cleanup() {
-        objectives.Clear();
         blueprint?.res.Unreserve();
+        base.Cleanup();
     }
 }
 public class SupplyBlueprintTask : Task {
@@ -251,10 +244,9 @@ public class SupplyBlueprintTask : Task {
                 iq = new ItemQuantity(blueprint.costs[i].item,
                     blueprint.costs[i].quantity - blueprint.deliveredResources[i].quantity);
                 if (!animal.inv.ContainsItem(iq)){
-                    (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(iq.item); 
-                    if (itemPath == null) { continue; } 
-                    objectives.Enqueue(new FetchObjective(this, iq, itemPath.tile));
-                    stack.res.Reserve();
+                    (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(iq.item);
+                    if (itemPath == null) { continue; }
+                    FetchAndReserve(iq, itemPath.tile, stack);
                 }
                 objectives.Enqueue(new GoObjective(this, standPath.tile));
                 objectives.Enqueue(new DeliverToBlueprintObjective(this, iq, blueprint));
@@ -265,8 +257,8 @@ public class SupplyBlueprintTask : Task {
         return false;
     }
     public override void Cleanup(){
-        objectives.Clear();
         blueprint?.res.Unreserve();
+        base.Cleanup();
     }
 }
 public class FallTask : Task {
@@ -319,8 +311,8 @@ public class FetchObjective : Objective {
         if (sourceTile != null) {
             itemPath = animal.nav.PathTo(sourceTile);
         } else {
-            (itemPath, stack) = animal.nav.FindPathItemStack(iq.item); 
-            stack.res.Reserve();
+            (itemPath, stack) = animal.nav.FindPathItemStack(iq.item);
+            stack.res.Reserve(iq.quantity);
         }
         if (itemPath != null){
             destination = itemPath.tile;
@@ -436,15 +428,6 @@ public class ConstructObjective : Objective {
         this.blueprint = blueprint;
     }
     public override void Start(){
-        animal.state = Animal.AnimalState.Working;
-    }
-}
-public class DeconstructObjective : Objective {
-    public Blueprint blueprint;
-    public DeconstructObjective(Task task, Blueprint blueprint) : base(task) {
-        this.blueprint = blueprint;
-    }
-    public override void Start() {
         animal.state = Animal.AnimalState.Working;
     }
 }

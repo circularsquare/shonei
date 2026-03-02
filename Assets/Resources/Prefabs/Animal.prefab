@@ -52,21 +52,17 @@ MonoBehaviour:
   id: 0
   x: 0
   y: 0
-  timerOffset: 0
   maxSpeed: 2
   isMovingRight: 1
-  desiredItemQuantity: 0
   numRounds: 0
+  workProgress: 0
   energy: 0
   efficiency: 0
-  state: 0
+  animationController: {fileID: 0}
   tickCounter: 0
   go: {fileID: 3119841835361231821}
   sr: {fileID: 5993029239632073220}
   sprite: {fileID: 0}
-  bounds:
-    m_Center: {x: 0, y: 0, z: 0}
-    m_Extent: {x: 0, y: 0, z: 0}
   world: {fileID: 0}
 --- !u!61 &5080775729284744739
 BoxCollider2D:

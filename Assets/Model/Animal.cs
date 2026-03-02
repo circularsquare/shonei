@@ -186,7 +186,7 @@ public class Animal : MonoBehaviour{
         if (job.name == "hauler") {             // haul
             task = new HaulTask(this);
             if (task.Start()) return; }
-        task = new DeconstructTask(this);
+        task = new ConstructTask(this, deconstructing: true);
         if (task.Start()) return;
 
         task = null; // none of the above tasks started successfully...

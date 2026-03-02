@@ -9,9 +9,9 @@ public class Building : Structure {
         go.name = "building_" + structType.name;
         sr.sortingOrder = 10;
 
-        if (structType.name == "drawer"){
+        if (structType.isStorage){
             Inventory oldInv = tile.inv;
-            tile.inv = new Inventory(4, 20, Inventory.InvType.Storage, x, y);
+            tile.inv = new Inventory(structType.nStacks, structType.storageStackSize, Inventory.InvType.Storage, x, y);
             if (oldInv != null && oldInv.invType == Inventory.InvType.Floor) {
                 foreach (Item item in oldInv.GetItemsList()) {
                     oldInv.MoveItemTo(tile.inv, item, oldInv.Quantity(item));

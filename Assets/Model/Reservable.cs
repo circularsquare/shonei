@@ -19,12 +19,19 @@ public class Reservable {
         reserved++;
         return true;
     }
-    public bool Unreserve(){
-        if (reserved <= 0){
-            Debug.LogError("unreserved when had 0 reserved!");
+    // Reserves up to n, clamped to what's available. Returns amount actually reserved.
+    public int Reserve(int n){
+        int amount = Math.Min(n, capacity - reserved);
+        if (amount <= 0) return 0;
+        reserved += amount;
+        return amount;
+    }
+    public bool Unreserve(int n = 1){
+        if (reserved < n){
+            Debug.LogError("unreserved when had less reserved!");
             return false;
         }
-        reserved--;
+        reserved -= n;
         return true;
     }
 } 

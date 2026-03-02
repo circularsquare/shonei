@@ -4,8 +4,7 @@ using UnityEngine;
 using System;
 using System.Linq;
 
-public class Inventory
-{
+public class Inventory{
     public int nStacks;
     public int stackSize; 
     public ItemStack[] itemStacks;
@@ -13,6 +12,14 @@ public class Inventory
     public InvType invType;
     public Dictionary<int, bool> allowed;
     public GameObject go;
+    private GameObject[] stackGos; // per-stack sprites for multi-stack storage (e.g. drawer)
+
+    private static readonly Vector2[] quarterOffsets = {
+        new Vector2(-0.25f,  0.25f), // top-left
+        new Vector2( 0.25f,  0.25f), // top-right
+        new Vector2(-0.25f, -0.25f), // bottom-left
+        new Vector2( 0.25f, -0.25f), // bottom-right
+    };
 
     public GlobalInventory ginv;
 
@@ -27,14 +34,23 @@ public class Inventory
 
         allowed = Db.itemsFlat.ToDictionary(i => i.id, i => true); // default all items allowed
 
-
-        if (invType == InvType.Floor || invType == InvType.Storage){
+        if (invType == InvType.Storage && nStacks > 1){
+            // Multi-stack storage (drawer): one sprite per stack slot in a 2x2 grid
+            stackGos = new GameObject[nStacks];
+            for (int i = 0; i < nStacks && i < quarterOffsets.Length; i++){
+                stackGos[i] = new GameObject("InventoryStack_" + i);
+                stackGos[i].transform.position = new Vector3(x + quarterOffsets[i].x, y + quarterOffsets[i].y, 0);
+                stackGos[i].transform.SetParent(WorldController.instance.transform, true);
+                SpriteRenderer sr = stackGos[i].AddComponent<SpriteRenderer>();
+                sr.sortingOrder = 30;
+            }
+        } else if (invType == InvType.Floor || invType == InvType.Storage){
             go = new GameObject();
             go.transform.position = new Vector3(x, y, 0);
             go.transform.SetParent(WorldController.instance.transform, true);
             SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
-            sr.sortingOrder = 70;
-
+            if (invType == InvType.Floor) {sr.sortingOrder = 70;}
+            else {sr.sortingOrder = 30;}
             sr.sprite = Resources.Load<Sprite>("Sprites/Inventory/" + invType.ToString());
         }
 
@@ -43,6 +59,10 @@ public class Inventory
     }
     public void Destroy(){
         if (go != null){GameObject.Destroy(go); go = null;}
+        if (stackGos != null){
+            foreach (GameObject sgo in stackGos){ if (sgo != null) GameObject.Destroy(sgo); }
+            stackGos = null;
+        }
         InventoryController.instance.inventories.Remove(this);
     }
     public void TickUpdate(){
@@ -94,9 +114,8 @@ public class Inventory
         return taken - overFill;
     }
     public int MoveItemTo(Inventory otherInv, string name, int quantity){return MoveItemTo(otherInv, Db.itemByName[name], quantity);}
-
-    // adds to ginv too
-    // returns LEFTOVER size
+    
+    // adds to ginv. returns leftover size.
     public int Produce(Item item, int quantity = 1){
         int produced = quantity - AddItem(item, quantity);
         ginv.AddItem(item, produced);
@@ -284,12 +303,31 @@ public class Inventory
     public enum ItemSpriteType { Icon, Floor, Storage }
 
     public void UpdateSprite(){
-        if (invType == InvType.Animal){return;} // animal invs don't have game objects or sprites.
+        if (invType == InvType.Animal){return;}
+        if (stackGos != null){
+            // Multi-stack storage (drawer): update each slot independently
+            for (int i = 0; i < nStacks && i < stackGos.Length; i++){
+                if (stackGos[i] == null) continue;
+                ItemStack stack = itemStacks[i];
+                SpriteRenderer sr = stackGos[i].GetComponent<SpriteRenderer>();
+                if (stack == null || stack.Empty()){
+                    stackGos[i].name = "InventoryStackEmpty";
+                    sr.sprite = null;
+                    continue;
+                }
+                string sName = stack.item.name;
+                Sprite sSprite = Resources.Load<Sprite>($"Sprites/Items/{sName}/qmid");
+                sSprite ??= Resources.Load<Sprite>("Sprites/Items/defaultq");
+                stackGos[i].name = "InventoryStack_" + sName;
+                sr.sprite = sSprite;
+            }
+            return;
+        }
         if (IsEmpty()) {
             go.name = "InventoryEmpty";
             go.GetComponent<SpriteRenderer>().sprite = null;
             return;
-        } 
+        }
         Item mostItem = null;
         int mostAmount = 0;
         foreach (ItemStack stack in itemStacks){
@@ -307,9 +345,7 @@ public class Inventory
         } else {
             sprite = Resources.Load<Sprite>($"Sprites/Items/{iName}/icon");
         }
-        sprite ??= Resources.Load<Sprite>($"Sprites/Items/{iName}/{iName}");
         sprite ??= Resources.Load<Sprite>("Sprites/Items/default");
-
         go.name = "Inventory" + mostItem.name;
         go.GetComponent<SpriteRenderer>().sprite = sprite;
     }

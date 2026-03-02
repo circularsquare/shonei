@@ -25,10 +25,26 @@
         "description": "stores 4 stacks of things",
         "nx": 1, "ny": 1,
         "ncosts": [
+            { "name": "wood", "quantity": 5 },
+            { "name": "planks", "quantity": 5 }
+        ],
+        "njob": "hauler",
+        "isStorage": true,
+        "nStacks": 4,
+        "storageStackSize": 20
+    },{
+        "id": 3,
+        "name": "crate",
+        "description": "stores 1 stack of things",
+        "nx": 1, "ny": 1,
+        "ncosts": [
             { "name": "wood", "quantity": 5 }
         ],
-        "njob": "hauler"
-    },{  
+        "njob": "hauler",
+        "isStorage": true,
+        "nStacks": 1,
+        "storageStackSize": 100
+    },{
         "id": 4,
         "name": "soil",
         "description": "block of soil",
