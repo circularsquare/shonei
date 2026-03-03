@@ -1,4 +1,4 @@
-[  
+[
     {
         "id": 0,
         "name": "empty",
@@ -7,8 +7,9 @@
         "ncosts": [
         ],
         "isTile": true,
-        "njob": "digger"
-    },{  
+        "njob": "digger",
+        "category": "structures"
+    },{
         "id": 1,
         "name": "house",
         "description": "a simple house for 4 mice",
@@ -18,8 +19,9 @@
         ],
         "njob": "hauler",
         "capacity": 5,
-        "depth": "b"
-    },{  
+        "depth": "b",
+        "category": "storage"
+    },{
         "id": 2,
         "name": "drawer",
         "description": "stores 4 stacks of things",
@@ -31,7 +33,8 @@
         "njob": "hauler",
         "isStorage": true,
         "nStacks": 4,
-        "storageStackSize": 20
+        "storageStackSize": 20,
+        "category": "storage"
     },{
         "id": 3,
         "name": "crate",
@@ -43,7 +46,8 @@
         "njob": "hauler",
         "isStorage": true,
         "nStacks": 1,
-        "storageStackSize": 100
+        "storageStackSize": 100,
+        "category": "storage"
     },{
         "id": 4,
         "name": "soil",
@@ -53,8 +57,9 @@
             { "name": "soil", "quantity": 10 }
         ],
         "isTile": true,
-        "njob": "hauler"
-    },{  
+        "njob": "hauler",
+        "category": "structures"
+    },{
         "id": 5,
         "name": "stone",
         "description": "block of stone",
@@ -63,8 +68,9 @@
             { "name": "stone", "quantity": 10 }
         ],
         "isTile": true,
-        "njob": "hauler"
-    },{          
+        "njob": "hauler",
+        "category": "structures"
+    },{
         "id": 100,
         "name": "sawmill",
         "description": "wood processing",
@@ -73,7 +79,8 @@
             { "name": "wood", "quantity": 5 }
         ],
         "njob": "hauler",
-        "capacity": 1
+        "capacity": 1,
+        "category": "production"
     },{
         "id": 120,
         "name": "dirt pit",
@@ -85,7 +92,8 @@
         ],
         "njob": "digger",
         "capacity": 1,
-        "requiredTileName": "soil"
+        "requiredTileName": "soil",
+        "category": "production"
     },{
         "id": 121,
         "name": "quarry",
@@ -96,7 +104,8 @@
         ],
         "njob": "miner",
         "capacity": 1,
-        "requiredTileName": "stone"
+        "requiredTileName": "stone",
+        "category": "production"
     },{
         "id": 10,
         "name": "platform",
@@ -104,7 +113,8 @@
         "ncosts": [
             { "name": "wood", "quantity": 3 }
         ],
-        "depth": "m"
+        "depth": "m",
+        "category": "structures"
     },{
         "id": 11,
         "name": "stairs",
@@ -112,7 +122,8 @@
         "ncosts": [
             { "name": "wood", "quantity": 5 }
         ],
-        "depth": "f"        
+        "depth": "f",
+        "category": "structures"
     },{
         "id": 12,
         "name": "ladder",
@@ -120,9 +131,7 @@
         "ncosts": [
             { "name": "wood", "quantity": 5 }
         ],
-        "depth": "f"
+        "depth": "f",
+        "category": "structures"
     }
-
-
-
-]  
+]

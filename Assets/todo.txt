@@ -15,12 +15,16 @@
 - visuals
     - improve mouse animation
 - trading
-    - link to unity?
-    - create openable market window to display market info 
+    - send orders
+    - send chat
+    - display chat
+    - receive fills
 - priority
     - allow players to specify priority within constructing/deconstructing/crafting, anything that can be set at a site ahead of time
     - have closest building mouse claim building instead of a random one? (maybe not)
 - content
+- unity
+    - hook up new ui elements manually so dont need to find them each time
     
 
 BUGS
@@ -30,11 +34,3 @@ BUGS
 - does calculateworkpossible work? 
 
 TODAY GOALS
-- add happiness (for each mouse, will eventually depend on many factors)
-    - for now depends on just 
-        - have you eaten wheat recently (past 5 min)
-        - do you have a house 
-    - show happiness on mouse infopanel (wheat: 1/1, housing: 1/1)
-    - calculate colonywide avg happiness (like 1.6/2) and display somewhere
-    - have avg happiness determine a hidden population capacity, which determines likelyhood of reproduction in houses
-        - maybe streamline / systematize reproduction (currently just something that happens in handleeeping)

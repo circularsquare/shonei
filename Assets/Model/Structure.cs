@@ -73,6 +73,7 @@ public class StructType {
     public bool isStorage {get; set;} // true for storage buildings (drawers, crates, etc.)
     public int nStacks {get; set;} // number of item stacks in storage
     public int storageStackSize {get; set;} // max items per stack in storage
+    public string category {get; set;} // build menu category: "structures", "plants", "production", "storage"
 
     [OnDeserialized]
     internal void OnDeserialized(StreamingContext context){

@@ -279,3 +279,7 @@ bug fixes
 3/2
 - added happiness, which depends on food variety and having a house, and determines population cap
 - added apples! mice seek out food that would make them happy
+- made sub build menus!
+3/3
+- made trading menu!
+- connected to server, can send market data requests!
