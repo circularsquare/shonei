@@ -30,6 +30,7 @@ public class BuildPanel : MonoBehaviour {
 
         foreach (StructType st in Db.structTypes) {
             if (st == null) continue;
+            if (st.defaultLocked) continue;
             string cat = st.isPlant ? "plants" : st.category;
             if (cat != null && cats.ContainsKey(cat)) cats[cat].Add(st);
         }

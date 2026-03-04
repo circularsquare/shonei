@@ -283,3 +283,8 @@ bug fixes
 3/3
 - made trading menu!
 - connected to server, can send market data requests!
+3/4
+- added order submitting / receiving fill messages (still need to translate to items)
+- added chat
+- added market building
+- added building "unlocked" for construction eligibility

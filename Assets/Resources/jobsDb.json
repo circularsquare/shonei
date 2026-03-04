@@ -9,6 +9,10 @@
         "jobType": "none"
     },{
         "id": 2,
+        "name": "merchant",
+        "jobType": "none"
+    },{
+        "id": 3,
         "name": "logger",
         "jobType": "gatherer"
     },{

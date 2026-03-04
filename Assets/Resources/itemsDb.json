@@ -6,15 +6,20 @@
         "children": null
     },{
         "id": 1,
+        "name": "silver",
+        "decayRate": 0.0,
+        "children": null
+    },{
+        "id": 5,
         "name": "wood",
         "decayRate": 0.08,
         "children": [
             {
-                "id": 2,
+                "id": 6,
                 "name": "oak",
                 "children": null
             },{
-                "id": 3,
+                "id": 7,
                 "name": "maple",
                 "children": null
             }

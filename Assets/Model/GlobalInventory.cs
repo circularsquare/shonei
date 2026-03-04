@@ -6,8 +6,7 @@ using System;
 using TMPro;
 
 // this is global inventory
-public class GlobalInventory 
-{
+public class GlobalInventory {
     public static GlobalInventory instance {get; protected set;}
     public Dictionary<int, int> itemAmounts {get; protected set;}
     public Dictionary<int, int> itemCapacities {get; protected set;}

@@ -33,8 +33,8 @@ public class Plant : Building {
     public void Grow(int t){
         age += t;
         // hardcoded 4 growth stages
-        growthStage = Math.Min(1 + (age * 3 / plantType.growthTime), 4);
-        if (growthStage >= 4){ // probably wanna make this start at 0 (and change the sprite file names too).
+        growthStage = Math.Min(age * 3 / plantType.growthTime, 3);
+        if (growthStage >= 3){ // probably wanna make this start at 0 (and change the sprite file names too).
             harvestable = true;
         }
         UpdateSprite();

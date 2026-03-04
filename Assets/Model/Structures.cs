@@ -12,6 +12,7 @@ public class Building : Structure {
         if (structType.isStorage){
             Inventory oldInv = tile.inv;
             tile.inv = new Inventory(structType.nStacks, structType.storageStackSize, Inventory.InvType.Storage, x, y);
+            if (structType.isMarket) tile.inv.SetMarket();
             if (oldInv != null && oldInv.invType == Inventory.InvType.Floor) {
                 foreach (Item item in oldInv.GetItemsList()) {
                     oldInv.MoveItemTo(tile.inv, item, oldInv.Quantity(item));

@@ -1,5 +1,17 @@
+- content
+    - water
+    - trains
+    - bunnies
+    - magic / qi
+    - tofu
+    - farming buildings
+- research
+    - add research panel
+    - add scientist job / building
+    - add global research point tracking 
 - info panel: 
     - have info panel cycle through when you click it again.
+    - display which inventory youre looking at if ur looking at an inventory
 - building 
     - add discovered
     - make buiding menu bigger... have it replace item menu.
@@ -9,28 +21,26 @@
     - have a "keep" setting that invs can toggle to keep food for consumption and stuff like that. 
 - plant
     - flesh out plant growth, moisture and temperature
-    - make plant tile sprites start at 0
 - tile mining
     - add tile mining command as a separate button sort of thing
+- hauling
+    - have haulers stack items together if nothing else to do
 - visuals
     - improve mouse animation
-- trading
-    - send orders
-    - send chat
-    - display chat
-    - receive fills
 - priority
     - allow players to specify priority within constructing/deconstructing/crafting, anything that can be set at a site ahead of time
     - have closest building mouse claim building instead of a random one? (maybe not)
-- content
+    - add inventory priority!
+
 - unity
     - hook up new ui elements manually so dont need to find them each time
     
 
 BUGS
-- mice can get stuck when going down slope into block..
-    - handle getting stuck better generally...
 - we might not fall as much as we want to, as falling is not allowed if mouse is Moving
 - does calculateworkpossible work? 
+- can't build plants?
 
 TODAY GOALS
+- market
+    - set market targets 

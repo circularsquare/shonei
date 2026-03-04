@@ -12,6 +12,7 @@ public class AnimalController : MonoBehaviour{
     public int na = 0;
     private int maxna = 1000;
     public GameObject jobsPanel;
+    public GameObject happinessPanel;
 
     private World world;
     public Dictionary<Job, int> jobCounts;
@@ -130,10 +131,6 @@ public class AnimalController : MonoBehaviour{
     // updates the number of mice with this job in the ui
 
     void AddJobCounts(){
-        jobsPanel = UI.instance.transform.Find("JobsPanel").gameObject;
-        Transform happinessDisplayTransform = UI.instance.transform.Find("HappinessDisplay");
-        if (happinessDisplayTransform != null)
-            happinessDisplay = happinessDisplayTransform.GetComponent<TMPro.TextMeshProUGUI>();
         foreach(Job job in Db.jobs){
             if (job != null){
                 GameObject textDisplayGo = Instantiate(UI.instance.JobDisplay, jobsPanel.transform);
@@ -157,6 +154,8 @@ public class AnimalController : MonoBehaviour{
         avgHappiness /= na;
         totalHousingCapacity = StructController.instance.TotalHousingCapacity();
         populationCapacity = Mathf.FloorToInt(avgHappiness * 2.5f);
+        if (happinessDisplay == null)
+            happinessDisplay = happinessPanel.GetComponent<TMPro.TextMeshProUGUI>();
         if (happinessDisplay != null)
             happinessDisplay.text = $"happiness: {avgHappiness:0.0}  pop: {na}/{populationCapacity}";
     }

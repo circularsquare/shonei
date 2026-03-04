@@ -49,7 +49,48 @@
         "storageStackSize": 100,
         "category": "storage"
     },{
-        "id": 4,
+        "id": 5,
+        "name": "market",
+        "description": "place to exchange goods with other settlements",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+        ],
+        "njob": "hauler",
+        "isStorage": true,
+        "nStacks": 50,
+        "storageStackSize": 50,
+        "category": "storage",
+        "isMarket": true,
+        "defaultLocked": true
+    },{
+        "id": 10,
+        "name": "platform",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 3 }
+        ],
+        "depth": "m",
+        "category": "structures"
+    },{
+        "id": 11,
+        "name": "stairs",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 5 }
+        ],
+        "depth": "f",
+        "category": "structures"
+    },{
+        "id": 12,
+        "name": "ladder",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 5 }
+        ],
+        "depth": "f",
+        "category": "structures"
+    },{
+        "id": 50,
         "name": "soil",
         "description": "block of soil",
         "nx": 1, "ny": 1,
@@ -60,7 +101,7 @@
         "njob": "hauler",
         "category": "structures"
     },{
-        "id": 5,
+        "id": 51,
         "name": "stone",
         "description": "block of stone",
         "nx": 1, "ny": 1,
@@ -106,32 +147,5 @@
         "capacity": 1,
         "requiredTileName": "stone",
         "category": "production"
-    },{
-        "id": 10,
-        "name": "platform",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "wood", "quantity": 3 }
-        ],
-        "depth": "m",
-        "category": "structures"
-    },{
-        "id": 11,
-        "name": "stairs",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "wood", "quantity": 5 }
-        ],
-        "depth": "f",
-        "category": "structures"
-    },{
-        "id": 12,
-        "name": "ladder",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "wood", "quantity": 5 }
-        ],
-        "depth": "f",
-        "category": "structures"
     }
 ]

@@ -104,6 +104,9 @@ public class WorldController : MonoBehaviour {
             }
         }
 
+        Building market = new(Db.structTypeByName["market"], 10, 10);
+        StructController.instance.Place(market);
+
         Plant plant1 = new Plant(Db.plantTypeByName["tree"], 22, 10);
         plant1.Mature();
         StructController.instance.Place(plant1);
@@ -129,6 +132,7 @@ public class WorldController : MonoBehaviour {
         AnimalController.instance.AddJob("farmer", 1);
         if (AnimalController.instance.animals[0] != null) {
             AnimalController.instance.animals[0].Produce("wheat", 2);
+            AnimalController.instance.animals[0].Produce("silver", 10);
         }
     }
 

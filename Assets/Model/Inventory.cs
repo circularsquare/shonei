@@ -8,7 +8,7 @@ public class Inventory{
     public int nStacks;
     public int stackSize; 
     public ItemStack[] itemStacks;
-    public enum InvType {Floor, Storage, Animal};
+    public enum InvType {Floor, Storage, Animal, Market};
     public InvType invType;
     public Dictionary<int, bool> allowed;
     public GameObject go;
@@ -22,6 +22,15 @@ public class Inventory{
     };
 
     public GlobalInventory ginv;
+
+    // target quantity per item for the market; merchants aim to keep inventory at these levels.
+    // null on non-market inventories.
+    public Dictionary<Item, int> targets;
+
+    public void SetMarket() {
+        invType = InvType.Market;
+        targets = Db.itemsFlat.ToDictionary(i => i, i => 10);
+    }
 
     public Inventory(int n = 1, int stackSize = 20, InvType invType = InvType.Floor, int x = 0, int y = 0) {
         nStacks = n;
@@ -174,6 +183,7 @@ public class Inventory{
         return mostItem;
     }
     public ItemStack GetItemToHaul(){   // returns null if nothing, or item if something need to haul
+        if (invType == InvType.Market) return null;
         foreach (ItemStack stack in itemStacks){
             if (!stack.Empty() && stack.res.Available() &&
                 (allowed[stack.item.id] == false || invType == InvType.Floor)){
@@ -183,6 +193,7 @@ public class Inventory{
         return null;
     }
     public bool HasItemToHaul(Item item){ // if null, finds any item to haul
+        if (invType == InvType.Market) return false;
         foreach (ItemStack stack in itemStacks){
             if ((item == null || stack.item == item) && stack.quantity > 0 && stack.res.Available() &&
                 (allowed[stack.item.id] == false || invType == InvType.Floor)){
@@ -192,6 +203,7 @@ public class Inventory{
         return false;
     }
     public int GetStorageForItem(Item item){
+        if (invType == InvType.Market) return 0;
         if (allowed[item.id] == false || invType == InvType.Floor){return 0;}
         int space = 0;
         foreach (ItemStack stack in itemStacks){
@@ -205,6 +217,7 @@ public class Inventory{
     }
     public bool HasStorageForItem(Item item){return (GetStorageForItem(item) > 0);}
     public bool HasSpaceForItem(Item item){
+        if (invType == InvType.Market) return false;
         foreach (ItemStack stack in itemStacks){
             if (stack.item == item && stack.quantity < stackSize){
                 return true;
@@ -303,7 +316,7 @@ public class Inventory{
     public enum ItemSpriteType { Icon, Floor, Storage }
 
     public void UpdateSprite(){
-        if (invType == InvType.Animal){return;}
+        if (invType == InvType.Animal || invType == InvType.Market){return;}
         if (stackGos != null){
             // Multi-stack storage (drawer): update each slot independently
             for (int i = 0; i < nStacks && i < stackGos.Length; i++){
