@@ -11,6 +11,7 @@ public class Inventory{
     public enum InvType {Floor, Storage, Animal, Market};
     public InvType invType;
     public Dictionary<int, bool> allowed;
+    public string displayName = "storage";
     public GameObject go;
     private GameObject[] stackGos; // per-stack sprites for multi-stack storage (e.g. drawer)
 
@@ -26,10 +27,23 @@ public class Inventory{
     // target quantity per item for the market; merchants aim to keep inventory at these levels.
     // null on non-market inventories.
     public Dictionary<Item, int> targets;
+    // reserved incoming space per item; used when placing orders to guarantee room for incoming goods.
+    public Dictionary<Item, Reservable> incomingRes;
 
     public void SetMarket() {
         invType = InvType.Market;
-        targets = Db.itemsFlat.ToDictionary(i => i, i => 10);
+        targets = Db.itemsFlat.ToDictionary(i => i, i => 0);
+        incomingRes = Db.itemsFlat.ToDictionary(i => i, i => new Reservable(9999));
+    }
+
+    // Returns unreserved space in this market inventory for the given item.
+    public int GetMarketSpace(Item item) {
+        int space = 0;
+        foreach (ItemStack stack in itemStacks) {
+            if (stack.item == null) space += stackSize;
+            else if (stack.item == item && stack.quantity < stackSize) space += stackSize - stack.quantity;
+        }
+        return space - incomingRes[item].reserved;
     }
 
     public Inventory(int n = 1, int stackSize = 20, InvType invType = InvType.Floor, int x = 0, int y = 0) {
@@ -94,10 +108,10 @@ public class Inventory{
     // returns leftover size 
     public int AddItem(Item item, int quantity){
         if (item == null) {Debug.LogError("tried adding null item"); return quantity;}
-        if (allowed[item.id] == false && quantity > 0){  // allowed is not implemented yet... for limiting inventories to certian types of resource
+        if (allowed[item.id] == false && quantity > 0){ 
             Debug.Log("tried adding unallowed item to inventory");
             return quantity;
-        } // don't add if not allowed
+        } 
         for (int i = 0; i < nStacks; i++){
             int? result = itemStacks[i].AddItem(item, quantity);
             // should probably just check if the itemstack is the right item instead of using this null thing.
@@ -216,6 +230,14 @@ public class Inventory{
         return space;
     }
     public bool HasStorageForItem(Item item){return (GetStorageForItem(item) > 0);}
+    // Quantity not reserved by any task (usable for order placement checks).
+    public int AvailableQuantity(Item item){
+        int total = 0;
+        foreach (ItemStack stack in itemStacks){
+            if (stack.item == item) total += Math.Max(0, stack.quantity - stack.res.reserved);
+        }
+        return total;
+    }
     public bool HasSpaceForItem(Item item){
         if (invType == InvType.Market) return false;
         foreach (ItemStack stack in itemStacks){

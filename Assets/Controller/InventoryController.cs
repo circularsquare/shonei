@@ -19,6 +19,7 @@ public class InventoryController : MonoBehaviour {
     public Dictionary<int, GameObject> itemDisplayGos; // keyed by itemid
     public Dictionary<int, int> targets;
 
+    public TextMeshProUGUI inventoryTitle; // assign in inspector
     public List<Inventory> inventories = new List<Inventory>(); // list of invs
 
     void Start(){    
@@ -97,7 +98,10 @@ public class InventoryController : MonoBehaviour {
             Transform textGo = itemDisplayGo.transform.Find("HorizontalLayout/TextItem");
             if (textGo != null){textGo.gameObject.GetComponent<TMPro.TextMeshProUGUI>().text = text;}
 
-            text = "/" + targets[item.id].ToString();
+            int targetQty = (selectedInventory?.invType == Inventory.InvType.Market)
+                ? selectedInventory.targets[item]
+                : targets[item.id];
+            text = "/" + targetQty.ToString();
             Transform textTargetGo = itemDisplayGo.transform.Find("HorizontalLayout/TextItemTarget");
             if (textTargetGo != null){textTargetGo.gameObject.GetComponent<TMPro.TextMeshProUGUI>().text = text;}
 
@@ -111,10 +115,9 @@ public class InventoryController : MonoBehaviour {
     }
     public void UpdateItemsDisplay(){ foreach (Item item in Db.itemsFlat){ UpdateItemDisplay(item); } }
     public void SelectInventory(Inventory inv){
-        selectedInventory = inv; 
+        selectedInventory = inv;
+        if (inventoryTitle != null)
+            inventoryTitle.text = inv == null ? "town" : inv.displayName;
         UpdateItemsDisplay();
-        if (inv != null && inv.invType == Inventory.InvType.Storage){
-            //MenuPanel.instance.SetActivePanel(MenuPanel.instance.panels[0]); // object ref not sent to instance
-        }
     }
 }

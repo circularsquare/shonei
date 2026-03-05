@@ -33,6 +33,7 @@ public class TradingPanel : MonoBehaviour {
     [Header("Order Entry")]
     public TMP_InputField orderPrice;
     public TMP_InputField orderQty;
+    public TextMeshProUGUI orderAlert; // assign in inspector; shows validation errors
 
     [Header("Chat")]
     public ScrollRect     chatScroll;
@@ -131,12 +132,38 @@ public class TradingPanel : MonoBehaviour {
     }
 
     public void OnClickPlaceOrder() {
-        string item = ItemName();
-        if (item.Length == 0) return;
-        if (!int.TryParse(orderPrice?.text, out int price) || price <= 0) return;
-        if (!int.TryParse(orderQty?.text,   out int qty)   || qty   <= 0) return;
+        string itemName = ItemName();
+        if (itemName.Length == 0) { ShowAlert("Enter an item name."); return; }
+        if (!int.TryParse(orderPrice?.text, out int price) || price <= 0) { ShowAlert("Enter a valid price."); return; }
+        if (!int.TryParse(orderQty?.text,   out int qty)   || qty   <= 0) { ShowAlert("Enter a valid quantity."); return; }
+
+        if (!Db.itemByName.ContainsKey(itemName)) { ShowAlert($"Unknown item: {itemName}"); return; }
+        Item item   = Db.itemByName[itemName];
+        Item silver = Db.itemByName["silver"];
+        Inventory market = TradingClient.FindMarketInventory();
+        if (market == null) { ShowAlert("No market building found."); return; }
+
+        if (_orderIsBuy) {
+            int silverNeeded = qty * price;
+            int silverHave   = market.AvailableQuantity(silver);
+            if (silverHave < silverNeeded) { ShowAlert($"Need {silverNeeded} silver in market (have {silverHave})."); return; }
+            int spaceForItem = market.GetMarketSpace(item);
+            if (spaceForItem < qty) { ShowAlert($"Need {qty} space for {itemName} in market (have {spaceForItem})."); return; }
+        } else {
+            int itemHave = market.AvailableQuantity(item);
+            if (itemHave < qty) { ShowAlert($"Need {qty} {itemName} in market (have {itemHave})."); return; }
+            int silverSpace = market.GetMarketSpace(silver);
+            int silverIncoming = qty * price;
+            if (silverSpace < silverIncoming) { ShowAlert($"Need {silverIncoming} space for silver in market (have {silverSpace})."); return; }
+        }
+
+        ShowAlert("");
         string side = _orderIsBuy ? "b" : "s";
-        TradingClient.instance?.SendOrder(item, side, price, qty);
+        TradingClient.instance?.SendOrder(itemName, side, price, qty);
+    }
+
+    void ShowAlert(string msg) {
+        if (orderAlert != null) orderAlert.text = msg;
     }
 
     // -------------------------------------------------------------------------
@@ -176,8 +203,6 @@ public class TradingPanel : MonoBehaviour {
         tmp.text               = text;
         tmp.fontSize           = 16;
         tmp.enableWordWrapping = true;
-        // ContentSizeFitter lets TMP compute its own height after VLG sets width.
-        // Requires chatList VLG: Control Child Size Width ON, Height OFF.
         var csf = go.AddComponent<ContentSizeFitter>();
         csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
         if (chatList.childCount > 20)

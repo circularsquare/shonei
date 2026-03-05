@@ -9,14 +9,11 @@
     - add research panel
     - add scientist job / building
     - add global research point tracking 
-- info panel: 
-    - have info panel cycle through when you click it again.
-    - display which inventory youre looking at if ur looking at an inventory
+- info panel
+    - have info panel cycle through when you click it again
 - building 
-    - add discovered
-    - make buiding menu bigger... have it replace item menu.
     - when building tiles (like dirt), don't have mouse fall through, require building on adjacent tile. 
-    - have building inventories
+    - make market a multitile building? 
 - inventory
     - have a "keep" setting that invs can toggle to keep food for consumption and stuff like that. 
 - plant
@@ -31,16 +28,14 @@
     - allow players to specify priority within constructing/deconstructing/crafting, anything that can be set at a site ahead of time
     - have closest building mouse claim building instead of a random one? (maybe not)
     - add inventory priority!
-
-- unity
-    - hook up new ui elements manually so dont need to find them each time
-    
+- add produceAtTile function?
+    - produce initial wheat and silver on floor somewhere instead of an animal inv
+- trading
+    - cancel orders
+    - cancel orders on close / have server cancel orders
 
 BUGS
 - we might not fall as much as we want to, as falling is not allowed if mouse is Moving
 - does calculateworkpossible work? 
-- can't build plants?
 
 TODAY GOALS
-- market
-    - set market targets 

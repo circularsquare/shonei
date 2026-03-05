@@ -27,18 +27,28 @@ public class ItemDisplay : MonoBehaviour {
             } 
         }
     }
-    public void OnClickTargetUp(){ // this should only work for globalinv? idk
-        if (InventoryController.instance.targets[item.id] == 0){
-            InventoryController.instance.targets[item.id] = 1;
+    public void OnClickTargetUp(){
+        Inventory sel = InventoryController.instance.selectedInventory;
+        if (sel?.invType == Inventory.InvType.Market) {
+            sel.targets[item] = sel.targets[item] == 0 ? 1 : sel.targets[item] * 2;
         } else {
-            InventoryController.instance.targets[item.id] *= 2;
+            var t = InventoryController.instance.targets;
+            t[item.id] = t[item.id] == 0 ? 1 : t[item.id] * 2;
         }
+        InventoryController.instance.UpdateItemsDisplay();
     }
-    public void OnClickTargetDown(){ // this should only work for globalinv? idk
-        InventoryController.instance.targets[item.id] /= 2;
+    public void OnClickTargetDown(){
+        Inventory sel = InventoryController.instance.selectedInventory;
+        if (sel?.invType == Inventory.InvType.Market) {
+            sel.targets[item] /= 2;
+        } else {
+            InventoryController.instance.targets[item.id] /= 2;
+        }
+        InventoryController.instance.UpdateItemsDisplay();
     }
 
-    public void LoadAllowed(){ 
+    public void LoadAllowed(){
+        if (item == null) return; // Start() hasn't run yet
         bool allowed = false;
         if (InventoryController.instance.selectedInventory != null){
             allowed = InventoryController.instance.selectedInventory.allowed[item.id];

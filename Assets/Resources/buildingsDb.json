@@ -53,14 +53,11 @@
         "name": "market",
         "description": "place to exchange goods with other settlements",
         "nx": 1, "ny": 1,
-        "ncosts": [
-        ],
-        "njob": "hauler",
+        "ncosts": [ ],
         "isStorage": true,
         "nStacks": 50,
         "storageStackSize": 50,
         "category": "storage",
-        "isMarket": true,
         "defaultLocked": true
     },{
         "id": 10,

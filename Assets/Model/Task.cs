@@ -261,6 +261,63 @@ public class SupplyBlueprintTask : Task {
         base.Cleanup();
     }
 }
+public class HaulToMarketTask : Task {
+    public HaulToMarketTask(Animal animal) : base(animal) {}
+    public override bool Initialize() {
+        Tile marketTile = animal.nav.Find(t => t.building != null && t.building.structType.name == "market");
+        if (marketTile == null) return false;
+        if (animal.nav.PathTo(marketTile) == null) return false;
+        Inventory marketInv = marketTile.inv;
+
+        foreach (var kvp in marketInv.targets) {
+            int quantityNeeded = kvp.Value - marketInv.Quantity(kvp.Key);
+            if (quantityNeeded <= 0) continue;
+            Item item = kvp.Key;
+
+            Path itemPath = animal.nav.FindPathTo(
+                t => t.inv != null && t.inv.invType != Inventory.InvType.Market && t.inv.ContainsAvailableItem(item));
+            if (itemPath == null) continue;
+            ItemStack stack = itemPath.tile.inv.GetItemStack(item);
+            if (stack == null) continue;
+
+            int qty = Math.Min(quantityNeeded, stack.quantity - stack.res.reserved);
+            if (qty <= 0) continue;
+            ItemQuantity iq = new(item, qty);
+            FetchAndReserve(iq, itemPath.tile, stack, qty);
+            objectives.Enqueue(new DeliverObjective(this, iq, marketTile));
+            return true;
+        }
+        return false;
+    }
+}
+public class HaulFromMarketTask : Task {
+    public HaulFromMarketTask(Animal animal) : base(animal) {}
+    public override bool Initialize() {
+        Tile marketTile = animal.nav.Find(t => t.building != null && t.building.structType.name == "market");
+        if (marketTile == null) return false;
+        if (animal.nav.PathTo(marketTile) == null) return false;
+        Inventory marketInv = marketTile.inv;
+
+        foreach (var kvp in marketInv.targets) {
+            int excess = marketInv.Quantity(kvp.Key) - kvp.Value;
+            if (excess <= 0) continue;
+            Item item = kvp.Key;
+
+            ItemStack stack = marketInv.GetItemStack(item);
+            if (stack == null) continue;
+            Path storagePath = animal.nav.FindPathToStorage(item);
+            if (storagePath == null) continue;
+
+            int qty = Math.Min(excess, stack.quantity - stack.res.reserved);
+            if (qty <= 0) continue;
+            ItemQuantity iq = new(item, qty);
+            FetchAndReserve(iq, marketTile, stack, qty);
+            objectives.Enqueue(new DeliverObjective(this, iq, storagePath.tile));
+            return true;
+        }
+        return false;
+    }
+}
 public class FallTask : Task {
     public FallTask(Animal animal) : base(animal) {}
     public override bool Initialize() {

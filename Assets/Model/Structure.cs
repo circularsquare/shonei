@@ -75,7 +75,6 @@ public class StructType {
     public int storageStackSize {get; set;} // max items per stack in storage
     public string category {get; set;} // build menu category: "structures", "plants", "production", "storage"
     public bool defaultLocked {get; set;} // true = locked; hidden from build menu until unlocked via research
-    public bool isMarket {get; set;} // true for the market building; skipped by normal haul logic
 
     [OnDeserialized]
     internal void OnDeserialized(StreamingContext context){

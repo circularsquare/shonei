@@ -46,11 +46,44 @@ public class TradingClient : MonoBehaviour {
                 OnMarketResponse?.Invoke(JsonUtility.FromJson<MarketResponseEnvelope>(raw).payload);
                 break;
             case "fill":
-                OnFill?.Invoke(JsonUtility.FromJson<FillEnvelope>(raw).payload);
+                var fill = JsonUtility.FromJson<FillEnvelope>(raw).payload;
+                ProcessFill(fill);
+                OnFill?.Invoke(fill);
+                QueryMarket(fill.item);
                 break;
             case "chat":
                 OnChat?.Invoke(JsonUtility.FromJson<ChatEnvelope>(raw).payload);
                 break;
+        }
+    }
+
+    public static Inventory FindMarketInventory() {
+        foreach (Inventory inv in InventoryController.instance.inventories)
+            if (inv.invType == Inventory.InvType.Market) return inv;
+        return null;
+    }
+
+    static void ProcessFill(Fill fill) {
+        Inventory market = FindMarketInventory();
+        if (market == null) { Debug.LogError("Fill received but no market inventory found."); return; }
+
+        if (!Db.itemByName.ContainsKey(fill.item)) { Debug.LogError($"Fill: unknown item '{fill.item}'"); return; }
+        Item item   = Db.itemByName[fill.item];
+        Item silver = Db.itemByName["silver"];
+        int  silverAmt = fill.quantity * fill.price;
+
+        if (fill.buyer == playerName) {
+            // We bought: pay silver, receive item
+            int leftover = market.Produce(silver, -silverAmt);
+            if (leftover != 0) Debug.LogError($"Fill: couldn't remove {silverAmt} silver from market (leftover {leftover})");
+            leftover = market.Produce(item, fill.quantity);
+            if (leftover != 0) Debug.LogError($"Fill: couldn't add {fill.quantity} {fill.item} to market (leftover {leftover})");
+        } else if (fill.seller == playerName) {
+            // We sold: give item, receive silver
+            int leftover = market.Produce(item, -fill.quantity);
+            if (leftover != 0) Debug.LogError($"Fill: couldn't remove {fill.quantity} {fill.item} from market (leftover {leftover})");
+            leftover = market.Produce(silver, silverAmt);
+            if (leftover != 0) Debug.LogError($"Fill: couldn't add {silverAmt} silver to market (leftover {leftover})");
         }
     }
 
@@ -100,6 +133,7 @@ public class TradingClient : MonoBehaviour {
         var payload = $"{{\"item\":\"{item}\",\"side\":\"{side}\",\"price\":{price},\"quantity\":{qty}}}";
         var envelope = $"{{\"type\":\"order\",\"payload\":{payload}}}";
         await ws.SendText(envelope);
+        QueryMarket(item);
     }
 
     async void OnDestroy() {

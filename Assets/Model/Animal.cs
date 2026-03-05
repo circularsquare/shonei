@@ -194,6 +194,11 @@ public class Animal : MonoBehaviour{
         if (job.name == "hauler") {             // haul
             task = new HaulTask(this);
             if (task.Start()) return; }
+        if (job.name == "merchant") {
+            task = new HaulFromMarketTask(this);
+            if (task.Start()) return;
+            task = new HaulToMarketTask(this);
+            if (task.Start()) return; }
         task = new ConstructTask(this, deconstructing: true);
         if (task.Start()) return;
 
