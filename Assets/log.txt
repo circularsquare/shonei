@@ -291,4 +291,4 @@ bug fixes
 3/5
 - order cancellation
 - added produceattile (for initial world gen)
-- 
+- switched item counts to fen (0.01)

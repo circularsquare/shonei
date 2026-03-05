@@ -9,3 +9,12 @@ csharp_new_line_before_open_brace = none
 csharp_new_line_before_else = false
 csharp_new_line_before_catch = false
 csharp_new_line_before_finally = false
+
+# Naming: allow camelCase for local variables and parameters
+dotnet_naming_rule.locals_camel_case.symbols = locals_and_params
+dotnet_naming_rule.locals_camel_case.style = camel_case_style
+dotnet_naming_rule.locals_camel_case.severity = none
+
+dotnet_naming_symbols.locals_and_params.applicable_kinds = local, parameter
+
+dotnet_naming_style.camel_case_style.capitalization = camel_case

@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(xargs grep -l \"class Db\")",
-      "Bash(xargs grep -l \"Inventory\\\\|ContainsItem\")"
+      "Bash(xargs grep -l \"Inventory\\\\|ContainsItem\")",
+      "Bash(ls c:/Users/anita/projects/shonei/*.csproj)",
+      "Bash(ls c:/Users/anita/projects/shonei/*.sln)",
+      "Bash(python3 -c \"import json,sys; data=json.load\\(sys.stdin\\); print\\([p[''name''] for p in data]\\)\")",
+      "Bash(git -C /c/Users/anita/projects/shonei config --list --local)"
     ]
   }
 }

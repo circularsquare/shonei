@@ -1229,8 +1229,6 @@ RectTransform:
   m_Children:
   - {fileID: 1934842534}
   - {fileID: 1200116721}
-  - {fileID: 2070193782}
-  - {fileID: 1705040733}
   m_Father: {fileID: 1902104031}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -2981,7 +2979,7 @@ RectTransform:
   m_Children:
   - {fileID: 1774840663}
   m_Father: {fileID: 1694460188}
-  m_RootOrder: 0
+  m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
@@ -5821,7 +5819,7 @@ RectTransform:
   m_Children:
   - {fileID: 392317196}
   m_Father: {fileID: 1694460188}
-  m_RootOrder: 1
+  m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
@@ -6944,7 +6942,7 @@ RectTransform:
   m_Children:
   - {fileID: 725351683}
   m_Father: {fileID: 1694460188}
-  m_RootOrder: 2
+  m_RootOrder: 4
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
@@ -7271,7 +7269,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 20, y: 20}
+  m_SizeDelta: {x: 43, y: 20}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1200116722
 MonoBehaviour:
@@ -8089,7 +8087,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Content: {fileID: 819812858}
-  m_Horizontal: 1
+  m_Horizontal: 0
   m_Vertical: 1
   m_MovementType: 1
   m_Elasticity: 0.1
@@ -8198,7 +8196,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Content: {fileID: 622647255}
-  m_Horizontal: 1
+  m_Horizontal: 0
   m_Vertical: 1
   m_MovementType: 1
   m_Elasticity: 0.1
@@ -8260,6 +8258,7 @@ Transform:
   - {fileID: 192023263}
   - {fileID: 18802941}
   - {fileID: 1890152499}
+  - {fileID: 1871853561}
   m_Father: {fileID: 0}
   m_RootOrder: 5
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -8649,7 +8648,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: :3
+  m_text: submit
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 35d708990aaf29e45adabe16f109f44d, type: 2}
   m_sharedMaterial: {fileID: -3846113756537978055, guid: 35d708990aaf29e45adabe16f109f44d, type: 2}
@@ -9521,6 +9520,8 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 2070193782}
+  - {fileID: 1705040733}
   - {fileID: 371670732}
   - {fileID: 941423691}
   - {fileID: 1140733188}
@@ -9777,8 +9778,8 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1628939552}
-  m_Father: {fileID: 132471211}
-  m_RootOrder: 3
+  m_Father: {fileID: 1694460188}
+  m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
@@ -10236,6 +10237,37 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Padding: {x: -8, y: -5, z: -8, w: -5}
   m_Softness: {x: 0, y: 0}
+--- !u!1 &1871853560
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1871853561}
+  m_Layer: 0
+  m_Name: Tiles
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1871853561
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1871853560}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1347016353}
+  m_RootOrder: 3
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1876276429
 GameObject:
   m_ObjectHideFlags: 0
@@ -10635,10 +10667,12 @@ MonoBehaviour:
   itemInput: {fileID: 1934842533}
   buysList: {fileID: 819812858}
   sellsList: {fileID: 622647255}
+  orderDisplayPrefab: {fileID: 7631417270672883555, guid: be568e6069e5179479712a83b2a6eef8, type: 3}
+  buyButton: {fileID: 2070193783}
+  sellButton: {fileID: 1705040734}
   orderPrice: {fileID: 941423692}
   orderQty: {fileID: 371670733}
   orderAlert: {fileID: 177629135}
-  chatScroll: {fileID: 0}
   chatList: {fileID: 625200430}
   chatInput: {fileID: 1001416772}
   onlineIndicator: {fileID: 1025804851}
@@ -11058,7 +11092,7 @@ GameObject:
   - component: {fileID: 1934842535}
   - component: {fileID: 1934842533}
   m_Layer: 5
-  m_Name: InputField (TMP)
+  m_Name: ItemNameInput
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -11181,7 +11215,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 160, y: 20}
+  m_SizeDelta: {x: 195, y: 20}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1934842535
 MonoBehaviour:
@@ -11788,8 +11822,8 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1928948604}
-  m_Father: {fileID: 132471211}
-  m_RootOrder: 2
+  m_Father: {fileID: 1694460188}
+  m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
