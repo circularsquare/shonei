@@ -49,12 +49,6 @@ Assets/
     └── recipesDb.json
 ```
 
-### Update Frequencies
-
-- **Animals + Plants**: every 1 second (game tick)
-- **Inventory**: every 0.2 seconds
-- **Rendering/Input**: every frame (Unity Update)
-
 ## Data-Driven Design
 
 All game content is defined in JSON and loaded at startup via `Db.cs` using Newtonsoft.Json. String references (e.g., `"wood"`) are resolved to object references in `[OnDeserialized]` callbacks.
@@ -79,58 +73,45 @@ Two legitimate ways to put a structure into the world:
 
 | Method | When to use |
 |--------|-------------|
-| `StructController.Construct(st, tile)` | Normal gameplay (via `Blueprint.Complete()`). Deducts costs from `GlobalInventory`. |
+| `StructController.Construct(st, tile)` | Normal gameplay (via `Blueprint.Complete()`). Consumes `Blueprint.inv` via `Produce(-qty)`, decrementing GlobalInventory. |
 | `new Building/Plant/etc.(…)` + `StructController.Place(s)` | Load path and world generation. No cost side-effects. |
 
 Always call `Place()` after direct construction — it registers the structure for tracking so `ClearWorld()` can find and destroy it later. Direct `new X()` without `Place()` is a bug.
 
-### Startup ordering
+### Startup ordering (frame by frame)
 
-Unity `Start()` execution order between MonoBehaviours is undefined. `WorldController.Start()` is an `IEnumerator` that `yield return null`s before calling `GenerateDefault()`, ensuring all other `Start()` methods (notably `AnimalController.Start()` initializing `jobCounts`) have run first. After `GenerateDefault()`, it starts `SaveSystem.instance.PostLoadInit()` — the same coroutine used by Load and Reset — so colony stat initialization runs consistently on all three paths.
-
-### Initial / Reset / Load flow
+All three paths (Initial / Reset / Load) follow the same two-frame handoff:
 
 ```
-Initial: WorldController.GenerateDefault()  →  PostLoadInit (next frame)
-Reset:   WorldController.ClearWorld()  →  WorldController.GenerateDefault()  →  PostLoadInit (next frame)
-Load:    WorldController.ClearWorld()  →  WorldController.ApplySaveData(data)  →  PostLoadInit (next frame)
+Initial: GenerateDefault()         →  PostLoadInit (next frame)
+Reset:   ClearWorld() + GenerateDefault()  →  PostLoadInit (next frame)
+Load:    ClearWorld() + ApplySaveData()    →  PostLoadInit (next frame)
 ```
 
-**`ClearWorld()`** tears down in this order:
-1. Destroy all structures via `StructController.GetStructures()` → `s.Destroy()` (nulls tile refs, removes from PlantController/StructController, destroys GOs)
-2. Destroy all blueprints (iterate tiles, call `bp.Destroy()`)
-3. Destroy all animals (call `animal.Destroy()` which destroys their inventory + GO), reset `na = 0`, call `ResetJobCounts()`
-4. Destroy remaining inventories (tile floor/storage invs) via `InventoryController.inventories`
-5. Zero all `GlobalInventory.itemAmounts`
-6. Reset all tiles: null `tile.inv`, set `tile.type = empty` (fires sprite callbacks)
-7. Reset `world.timer`, clear `InfoPanel`
+**Frame 0** — all `Awake()`s run (order undefined, but before any `Start`):
+- `Db.Awake()` — JSON data loaded; all lookups ready
+- `World.Awake()` — tiles and `graph.nodes` allocated; `node.standable = false` until `graph.Initialize()`
+- `AnimalController.Awake()` — instance set, arrays allocated
 
-**`GenerateDefault()`** rebuilds:
-1. Set tile types (soil y<10, stone y<8)
-2. Create default plants + `Place()` each with StructController
-3. `world.graph.Initialize()`
-4. Spawn 4 animals via `AnimalController.AddAnimal()`
-5. `StartCoroutine(DefaultJobSetup)` — yields 1 frame (waits for `Animal.Start()`), then assigns jobs and starting wheat
+**Frame 0** — all `Start()`s run: (cross object initialization)
+- `WorldController.Start()` runs up to `yield return null` and **pauses**
+- `AnimalController.Start()` — populates `jobCounts` (Db is ready; must finish before frame 1)
+- All UI/other controllers initialize
 
-**`ApplySaveData()`** rebuilds from file:
-1. Apply tile types + blueprints + structures (via `Place()`) + inventories per saved tile
-2. `world.graph.Initialize()`
-3. `LoadAnimal()` per saved animal (sets `pendingSaveData`; `Animal.Start()` applies it next frame)
+**Frame 1** — `WorldController.Start()` resumes, calls `GenerateDefault()` (or load path):
+- Tile types set, structures placed
+- **`graph.Initialize()`** — standability calculated; `node.standable` now valid
+- Animals spawned (`Animal.Awake` runs immediately; `Animal.Start` queued for next frame)
+- `StartCoroutine(DefaultJobSetup())` and `StartCoroutine(PostLoadInit())` — both pause at their yields
 
-`SaveSystem.PostLoadInit()` is started as a coroutine at the end of all three paths. It yields one frame (waiting for any `Animal.Start()` calls spawned this frame to complete), then calls `AnimalController.instance.Load()`. This is the correct place to run any initialization that depends on animals being fully ready (e.g. `SlowUpdate()` to initialize happiness, `UpdateColonyStats()`).
+**Frame 2** — coroutines resume:
+- **`Animal.Start()`** — initializes hunger/sleep/happiness; applies `pendingSaveData` if on load path
+- **`DefaultJobSetup`** — assigns jobs, calls `ProduceAtTile` (standability and animals both ready)
+- **`PostLoadInit`** — calls `AnimalController.Load()` → `SlowUpdate()`, `UpdateColonyStats()`
 
-### `pendingSaveData` pattern
-`LoadAnimal()` sets `animal.pendingSaveData` before `Animal.Start()` runs. `Start()` checks it: if set, applies saved stats/job; if null, initializes with full hunger/sleep. Marked `[System.NonSerialized]` to prevent Unity from replacing null with a default instance.
+**Key rule**: use `PostLoadInit` for any initialization that depends on animals being fully ready. It runs on all three paths. Do NOT use the `if (world == null)` guard in `AnimalController.TickUpdate` — unreliable on Reset/Load since `world` is never reset to null.
 
-### Timing rules: when can you call what?
-| Moment | What has run | What has NOT run yet |
-|--------|-------------|----------------------|
-| Inside `ApplySaveData()` | Tiles, structures, nav graph | `Animal.Start()` (next frame) |
-| Inside `Animal.Start()` (pendingSaveData branch) | `world`, `nav`, `eating`, `eeping`, `happiness` all initialized | `FindHome()` not yet called (no homeTile) |
-| `PostLoadInit` coroutine (1 frame after load) | All `Animal.Start()` calls | — safe to call `SlowUpdate()`, `UpdateColonyStats()` |
-| `AnimalController.TickUpdate` `if (world == null)` block | First game tick after scene load | — `world` is never null after a reload, so this only fires on a fresh scene launch; superseded by `PostLoadInit` |
-
-**Key rule**: use `PostLoadInit` for all post-spawn initialization — it runs on every path (initial, Reset, Load). Do NOT use the `if (world == null)` guard in `AnimalController.TickUpdate`; `world` is never reset to null on reload so that block is unreliable across all paths.
+`pendingSaveData`: `LoadAnimal()` sets this before `Animal.Start()` runs. `Start()` checks it and applies saved state if present; otherwise initializes fresh. Marked `[System.NonSerialized]` to prevent Unity from replacing null with a default instance.
 
 ## Animal AI
 
@@ -202,10 +183,15 @@ Three inventory types:
 | Storage | varies | varies | normal |
 | Floor | 5 | varies | 5× normal |
 
-- Items decay over time 
+- Items decay over time
 - `allowed` dict filters what item types a storage accepts
 - `Reservable` (capacity-based) prevents multiple animals targeting same resource
-- `Produce()` adds to inventory and global inventory simultaneously
+- `Produce()` adds to inventory and global inventory simultaneously; `MoveItemTo()` moves between inventories without touching global inventory
+- `AddItem()` is private — always use `Produce`, `MoveItemTo`, or `TakeItem` externally
+
+### Blueprint inventory
+
+`Blueprint` has its own `Inventory inv` (Animal type, not registered with InventoryController — no decay, no tick overhead). Materials are delivered into it via `MoveItemTo` from the animal's inventory. On `Complete()`, `inv.Produce(item, -qty)` is called for each cost item to decrement GlobalInventory (the items were already counted in GlobalInventory when originally harvested). On cancel (`BuildPanel.Remove`), materials are returned to the floor via `MoveItemTo`.
 
 ## Rendering & Layers
 
@@ -215,32 +201,6 @@ Structures render in three depth layers per tile:
 - **Foreground (f)**: stairs, ladders
 
 This enables stairs and multi-part structures to be placed on the same tiles
-
-## Current State & Known Issues
-
-### In Progress
-
-- **Reservation system**: partially implemented; needs extending to crafting, obtaining tasks
-- **Multi-round work**: `WorkObjective` needs to span multiple ticks (affects crafting and harvesting)
-- **Blueprint inventories**: need allow-lists for specific resource requirements
-- **Blueprint placement**: must not override floor items; overlapping blueprints need conflict detection
-- **Animal AI**: prevent infinite job-switching; add leisure state
-
-### Known Bugs
-
-- Building on tile with floor item can delete the item
-- Screen jitters when panning
-- Mice can get stuck descending slopes
-- Stairs don't position animals correctly
-- Digger job sometimes loops
-- Blueprint overlap validation missing
-
-### Planned Content
-
-- Quarry building + sprites
-- Mining floor tiles (separate command)
-- Plant moisture/temperature mechanics
-- More jobs and recipes
 
 ## Key Design Decisions
 

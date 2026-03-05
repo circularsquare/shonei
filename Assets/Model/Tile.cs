@@ -56,7 +56,7 @@ public class Tile {
         return 0;
     }
     // storage: floor not allowed
-    public bool HasStorageForItem(Item item){return (inv != null && inv.HasStorageForItem(item)); }
+    public bool HasStorageForItem(Item item){return (inv != null && inv.GetStorageForItem(item) > 0); }
 
     // space: floor allowed
     public bool HasSpaceForItem(Item item){return (inv == null || inv.HasSpaceForItem(item));}
@@ -122,7 +122,7 @@ public class TileType {
         if (nproducts != null){
             products = new ItemQuantity[nproducts.Length];
             for (int i = 0; i < nproducts.Length; i++){
-                products[i] = new ItemQuantity(nproducts[i].name, nproducts[i].quantity);
+                products[i] = new ItemQuantity(nproducts[i].name, (int)Math.Round(nproducts[i].quantity * 100));
             }
         }
     }

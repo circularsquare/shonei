@@ -46,7 +46,7 @@ public class Inventory{
         return space - incomingRes[item].reserved;
     }
 
-    public Inventory(int n = 1, int stackSize = 20, InvType invType = InvType.Floor, int x = 0, int y = 0) {
+    public Inventory(int n = 1, int stackSize = 1000, InvType invType = InvType.Floor, int x = 0, int y = 0) {
         nStacks = n;
         this.stackSize = stackSize;
         this.invType = invType;
@@ -88,8 +88,17 @@ public class Inventory{
         }
         InventoryController.instance.inventories.Remove(this);
     }
+    const int   ReservationExpireInterval = 120; // ticks between expiry sweeps per inventory
+    const float ReservationMaxAge         = 60f; // seconds before a reservation is considered stale
+    int _expireTick = 0;
+
     public void TickUpdate(){
         Decay();
+        if (++_expireTick >= ReservationExpireInterval) {
+            _expireTick = 0;
+            foreach (ItemStack stack in itemStacks)
+                stack?.res.ExpireIfStale(ReservationMaxAge);
+        }
     }
     public void Decay(float time = 1f){
         float invTypeMult = 1f;
@@ -106,7 +115,7 @@ public class Inventory{
     // =========================
 
     // returns leftover size 
-    public int AddItem(Item item, int quantity){
+    private int AddItem(Item item, int quantity){
         if (item == null) {Debug.LogError("tried adding null item"); return quantity;}
         if (allowed[item.id] == false && quantity > 0){ 
             Debug.Log("tried adding unallowed item to inventory");
@@ -122,13 +131,9 @@ public class Inventory{
         UpdateSprite(); // this is a bit wasteful right now.
         return quantity; // leftover size
     }
-    public int AddItem(string name, int quantity){return(AddItem(Db.itemByName[name], quantity));}
-    public int TakeItem(Item item, int quantity){
-        return AddItem(item, -quantity);
-    }
-    public int TakeItem(string name, int quantity){return AddItem(name, -quantity);}
+
     public int MoveItemTo(Inventory otherInv, Item item, int quantity){
-        int taken = quantity + TakeItem(item, quantity);
+        int taken = quantity + AddItem(item, -quantity);
         int overFill = otherInv.AddItem(item, taken);
         if (overFill > 0){
             AddItem(item, overFill); // return the item if recipient is full.
@@ -142,6 +147,7 @@ public class Inventory{
     public int Produce(Item item, int quantity = 1){
         int produced = quantity - AddItem(item, quantity);
         ginv.AddItem(item, produced);
+        //Debug.Log("produced" + item.name + produced.ToString());
         return quantity - produced;
     }
 
@@ -216,6 +222,8 @@ public class Inventory{
         }
         return false;
     }
+    // How much space is available for item in this inventory (allowed Storage/Animal only).
+    // Counts both empty stacks (any item could fill them) and partially-filled stacks of the same item.
     public int GetStorageForItem(Item item){
         if (invType == InvType.Market) return 0;
         if (allowed[item.id] == false || invType == InvType.Floor){return 0;}
@@ -229,7 +237,6 @@ public class Inventory{
         }
         return space;
     }
-    public bool HasStorageForItem(Item item){return (GetStorageForItem(item) > 0);}
     // Quantity not reserved by any task (usable for order placement checks).
     public int AvailableQuantity(Item item){
         int total = 0;
@@ -238,6 +245,8 @@ public class Inventory{
         }
         return total;
     }
+    // Unlike GetStorageForItem, only checks stacks already holding this item (no empty stacks).
+    // Use to top up an existing stack without claiming a new slot.
     public bool HasSpaceForItem(Item item){
         if (invType == InvType.Market) return false;
         foreach (ItemStack stack in itemStacks){
@@ -346,20 +355,20 @@ public class Inventory{
                 ItemStack stack = itemStacks[i];
                 SpriteRenderer sr = stackGos[i].GetComponent<SpriteRenderer>();
                 if (stack == null || stack.Empty()){
-                    stackGos[i].name = "InventoryStackEmpty";
+                    stackGos[i].name = "inventorystack_empty";
                     sr.sprite = null;
                     continue;
                 }
                 string sName = stack.item.name;
                 Sprite sSprite = Resources.Load<Sprite>($"Sprites/Items/{sName}/qmid");
                 sSprite ??= Resources.Load<Sprite>("Sprites/Items/defaultq");
-                stackGos[i].name = "InventoryStack_" + sName;
+                stackGos[i].name = "inventorystack_" + sName;
                 sr.sprite = sSprite;
             }
             return;
         }
         if (IsEmpty()) {
-            go.name = "InventoryEmpty";
+            go.name = "inventory_empty";
             go.GetComponent<SpriteRenderer>().sprite = null;
             return;
         }
@@ -382,7 +391,7 @@ public class Inventory{
         }
         sprite ??= Resources.Load<Sprite>($"Sprites/Items/{iName}/icon");
         sprite ??= Resources.Load<Sprite>("Sprites/Items/default");
-        go.name = "Inventory" + mostItem.name;
+        go.name = "inventory_" + mostItem.name;
         go.GetComponent<SpriteRenderer>().sprite = sprite;
     }
 

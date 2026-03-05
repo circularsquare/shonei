@@ -33,7 +33,7 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
     public static TileType[] tileTypes = new TileType[100];
 
     public static int ticksInDay = 300;
-    public static int daysInYear = 20;
+    public static int daysInYear = 20; // year is 6000s = 100 min
 
     // sprite sorting orders 
         // 100: blueprint
@@ -91,6 +91,7 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
                 foreach (Item child in item.children){
                     AddItemToDb(child);
                     child.parent = item;
+                    if (child.decayRate == 0f) child.decayRate = item.decayRate;
                 }
             }
         } 
@@ -190,10 +191,10 @@ public class Recipe {
         inputs = new ItemQuantity[ninputs.Length];
         outputs = new ItemQuantity[noutputs.Length];
         for (int i = 0; i < ninputs.Length; i++){
-            inputs[i] = new ItemQuantity(ninputs[i].name, ninputs[i].quantity);
+            inputs[i] = new ItemQuantity(ninputs[i].name, (int)Math.Round(ninputs[i].quantity * 100));
         }
         for (int i = 0; i < noutputs.Length; i++){
-            outputs[i] = new ItemQuantity(noutputs[i].name, noutputs[i].quantity);
+            outputs[i] = new ItemQuantity(noutputs[i].name, (int)Math.Round(noutputs[i].quantity * 100));
         }
     }
     public float Score(){ // only takes into account global quantity / target. nothing about recipe ratios.

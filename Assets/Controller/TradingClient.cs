@@ -30,7 +30,7 @@ public class TradingClient : MonoBehaviour {
             HandleMessage(raw);
         };
 
-        ws.OnOpen  += () => { Debug.Log("connected to trading server!"); SetOnline(true); };
+        ws.OnOpen  += () => { Debug.Log("connected to server"); SetOnline(true); };
         ws.OnError += (e) => Debug.Log("ServerError: " + e);
         ws.OnClose += (e) => { Debug.Log("disconnected from server"); SetOnline(false); };
 
@@ -136,6 +136,12 @@ public class TradingClient : MonoBehaviour {
         QueryMarket(item);
     }
 
+    public async void SendCancel(long id) {
+        if (!isOnline) return;
+        var envelope = $"{{\"type\":\"cancel_order\",\"payload\":{{\"id\":{id}}}}}";
+        await ws.SendText(envelope);
+    }
+
     async void OnDestroy() {
         StopAllCoroutines();
         if (ws != null) await ws.Close();
@@ -147,7 +153,7 @@ public class TradingClient : MonoBehaviour {
 [Serializable] class FillEnvelope           { public string type; public Fill     payload; }
 [Serializable] class ChatEnvelope           { public string type; public ChatMsg  payload; }
 [Serializable] public class MarketBook  { public string item; public MarketOrder[] buys; public MarketOrder[] sells; }
-[Serializable] public class MarketOrder { public string from; public string side; public int price; public int quantity; }
+[Serializable] public class MarketOrder { public long id; public string from; public string side; public int price; public int quantity; }
 [Serializable] public class Fill        { public string buyer; public string seller; public string item; public int price; public int quantity; }
 [Serializable] public class ChatMsg     { public string from; public string text; }
 [Serializable] class ChatPayload        { public string text; }

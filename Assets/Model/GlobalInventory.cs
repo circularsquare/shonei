@@ -20,17 +20,6 @@ public class GlobalInventory {
         itemAmounts = Db.itemsFlat.ToDictionary(i => i.id, i => 0);
     }
 
-
-    public void AddItem(ItemQuantity iq){
-        AddItem(iq.item.id, iq.quantity);
-    }
-    public void AddItem(string name, int quantity){
-        if (Db.iidByName.ContainsKey(name)){
-            AddItem(Db.iidByName[name], quantity);
-        } else {
-            Debug.LogError("item name doesn't exist in iid dictionary");
-        }
-    }
     public void AddItem(Item item, int quantity){
         AddItem(item.id, quantity);
     }

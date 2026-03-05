@@ -41,7 +41,7 @@ public class StructController : MonoBehaviour {
             if (st.name == "empty"){
                 // need to spawn the mined resources
                 if (tile.type.products != null && tile.type.products.Length > 0){
-                    if (tile.inv == null){ tile.inv = new Inventory(1, 20, Inventory.InvType.Floor, tile.x, tile.y); }
+                    if (tile.inv == null){ tile.inv = new Inventory(1, 2000, Inventory.InvType.Floor, tile.x, tile.y); }
                     tile.inv.Produce(tile.type.products[0].item, tile.type.products[0].quantity);
                 }
             }
@@ -70,7 +70,6 @@ public class StructController : MonoBehaviour {
         if (!st.isTile){
             structures.Add(structure);
         }
-        GlobalInventory.instance.AddItems(st.costs, true);
         if (world == null) {world = World.instance;}
         world.graph.UpdateNeighbors(tile.x, tile.y);
         world.graph.UpdateNeighbors(tile.x, tile.y + 1);

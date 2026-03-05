@@ -80,9 +80,10 @@ public class StructType {
     internal void OnDeserialized(StreamingContext context){
         if (capacity == 0){ capacity = 1; } // default, can be used by one animal at a time
         if (depth == null){ depth = "b"; }
+        if (storageStackSize > 0){ storageStackSize *= 100; } // convert liang → fen
         costs = new ItemQuantity[ncosts.Length];
         for (int i = 0; i < ncosts.Length; i++){
-            costs[i] = new ItemQuantity(ncosts[i].name, ncosts[i].quantity);
+            costs[i] = new ItemQuantity(ncosts[i].name, (int)Math.Round(ncosts[i].quantity * 100));
         }
         if (njob != null){
             job = Db.jobByName[njob]; 

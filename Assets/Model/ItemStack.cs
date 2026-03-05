@@ -14,6 +14,17 @@ public class ItemStack {
     public Inventory inv;
     public Reservable res;
 
+    // Formats a fen quantity as a liang string (e.g. 250 → "2.50")
+    public static string FormatQ(int fen){
+        float val = fen / 100f;
+        return Math.Abs(val) switch{
+            >= 10 => val.ToString("0"),
+            >= 1 => val.ToString("0.0"),
+            >= 0.01f => val.ToString("0.00"), // The "_" means "everything else" (< 1)
+            _ => val.ToString("0")
+        };
+    }
+
     public ItemStack(Inventory inv, Item item, int quantity = 0, int stackSize = 100){
         this.item = item;
         this.quantity = quantity;
@@ -30,7 +41,7 @@ public class ItemStack {
             decayCounter += (int)(decayedQuantity * maxDecayCount);
             int amountToDecay = decayCounter / maxDecayCount;
             if (amountToDecay > 0){
-                //Debug.Log("decayed! " + item.name + " x " + amountToDecay);
+                // Debug.Log("decayed! " + item.name + " x " + amountToDecay);
                 inv.Produce(item, -amountToDecay);
                 decayCounter -= amountToDecay * maxDecayCount;
             }
@@ -73,8 +84,8 @@ public class ItemStack {
 
     public override string ToString(){
         if (item != null){
-            return item.name + " x " + quantity.ToString() + "\n";
-        } 
+            return item.name + " x " + FormatQ(quantity) + "\n";
+        }
         return "";
     }
 

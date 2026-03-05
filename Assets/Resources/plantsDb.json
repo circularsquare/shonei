@@ -18,7 +18,7 @@
             { "name": "wheat", "quantity": 1 }
         ],
         "nproducts": [
-            { "name": "wheat", "quantity": 5 }
+            { "name": "wheat", "quantity": 3 }
         ],
         "growthTime": 15,
         "harvestTime": 2.0,
@@ -29,7 +29,7 @@
             { "name": "apple", "quantity": 1 }
         ],
         "nproducts": [
-            { "name": "apple", "quantity": 3 }
+            { "name": "apple", "quantity": 2 }
         ],
         "growthTime": 10,
         "harvestTime": 2.0,

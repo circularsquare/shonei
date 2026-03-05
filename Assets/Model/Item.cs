@@ -65,5 +65,5 @@ public class ItemQuantity {
 
 public class ItemNameQuantity {
     public string name {get; set;}
-    public int quantity {get; set;}
+    public float quantity {get; set;} // authored in liang; converted to fen (×100) on use
 }

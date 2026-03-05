@@ -32,12 +32,7 @@ public class BlueprintSaveData {
     public string typeName;
     public int state; // Blueprint.BlueprintState cast to int
     public float constructionProgress;
-    public ItemQuantitySaveData[] deliveredResources;
-}
-
-public class ItemQuantitySaveData {
-    public string itemName;
-    public int quantity;
+    public InventorySaveData inv;
 }
 
 public class InventorySaveData {

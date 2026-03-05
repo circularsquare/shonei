@@ -72,7 +72,7 @@ public class BuildPanel : MonoBehaviour {
         Transform costsContainer = go.transform.Find("CostsContainer");
         foreach (ItemQuantity iq in st.costs) {
             GameObject costDisplay = Instantiate(textDisplayPrefab, costsContainer);
-            costDisplay.GetComponent<TextMeshProUGUI>().text = iq.item.name + ": " + iq.quantity;
+            costDisplay.GetComponent<TextMeshProUGUI>().text = iq.item.name + ": " + ItemStack.FormatQ(iq.quantity);
             costDisplay.name = "CostDisplay_" + iq.item.name;
         }
         StructType captured = st;
@@ -125,11 +125,10 @@ public class BuildPanel : MonoBehaviour {
     public bool Remove(Tile tile) {
         Blueprint existingBp = tile.GetBlueprintAt("b") ?? tile.GetBlueprintAt("m") ?? tile.GetBlueprintAt("f");
         if (existingBp != null && existingBp.state != Blueprint.BlueprintState.Deconstructing) {
-            foreach (ItemQuantity delivered in existingBp.deliveredResources) {
-                if (delivered.quantity > 0) {
-                    tile.EnsureFloorInventory().Produce(delivered.item, delivered.quantity);
-                }
-            }
+            foreach (var cost in existingBp.costs)
+                existingBp.inv.MoveItemTo(tile.EnsureFloorInventory(), cost.item, existingBp.inv.Quantity(cost.item));
+                // TODO: this can break
+            existingBp.cancelled = true;
             tile.SetBlueprintAt(existingBp.structType.depth, null);
             GameObject.Destroy(existingBp.go);
             return true;

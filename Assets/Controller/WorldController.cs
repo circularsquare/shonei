@@ -11,6 +11,8 @@ public class WorldController : MonoBehaviour {
 
     Dictionary<Tile, GameObject> tileGameObjectMap;
 
+    // FRAME 0: runs up to the first yield, pausing to let all other Start()s finish.
+    // FRAME 1: resumes and calls GenerateDefault() (or waits for save/reset to do so).
     IEnumerator Start() {
         if (instance != null) {
             Debug.LogError("there should only be one world controller");}
@@ -96,6 +98,8 @@ public class WorldController : MonoBehaviour {
         InfoPanel.instance.ShowInfo(null);
     }
 
+    // Called synchronously in frame 1 (from Start, Reset, or Load path).
+    // graph.Initialize() here is what makes node.standable valid — must happen before DefaultJobSetup.
     public void GenerateDefault() {
         for (int x = 0; x < world.nx; x++) {
             for (int y = world.ny - 1; y > 0; y--) {
@@ -125,15 +129,48 @@ public class WorldController : MonoBehaviour {
         StartCoroutine(DefaultJobSetup());
     }
 
+    // FRAME 2 — one frame after GenerateDefault(). By this point:
+    //   Animal.Start() has run (safe to assign jobs)
+    //   graph.Initialize() has run (safe to call ProduceAtTile — standability is valid)
     IEnumerator DefaultJobSetup() {
         yield return null; // wait one frame for Animal.Start() to run
         AnimalController.instance.AddJob("logger", 1);
         AnimalController.instance.AddJob("hauler", 1);
         AnimalController.instance.AddJob("farmer", 1);
-        if (AnimalController.instance.animals[0] != null) {
-            AnimalController.instance.animals[0].Produce("wheat", 2);
-            AnimalController.instance.animals[0].Produce("silver", 10);
+        ProduceAtTile("wheat", 1, world.GetTileAt(20, 10));
+        ProduceAtTile("silver", 1, world.GetTileAt(21, 10));
+    }
+
+    // Produces items on a tile's floor inventory.
+    // If the tile is full, searches nearby standable tiles (expanding rings, radius 5).
+    public void ProduceAtTile(Item item, int quantity, Tile tile) {
+        int remaining = PutOnFloor(tile, item, quantity);
+        if (remaining == 0) return;
+
+        Debug.LogError($"ProduceAtTile: no space for {remaining} {item.name} at ({tile.x},{tile.y}), searching nearby.");
+
+        for (int r = 1; r <= 5 && remaining > 0; r++) {
+            for (int dx = -r; dx <= r && remaining > 0; dx++) {
+                for (int dy = -r; dy <= r && remaining > 0; dy++) {
+                    if (Math.Abs(dx) != r && Math.Abs(dy) != r) continue; // shell only
+                    int nx = tile.x + dx, ny = tile.y + dy;
+                    if (nx < 0 || ny < 0 || nx >= world.nx || ny >= world.ny) continue;
+                    Node n = world.graph.nodes[nx, ny];
+                    if (n == null || !n.standable || !n.tile.HasSpaceForItem(item)) continue;
+                    remaining = PutOnFloor(n.tile, item, remaining);
+                }
+            }
         }
+
+        if (remaining > 0)
+            Debug.LogError($"ProduceAtTile: couldn't place {remaining} {item.name} anywhere near ({tile.x},{tile.y})");
+    }
+    public void ProduceAtTile(string itemName, int quantity, Tile tile) =>
+        ProduceAtTile(Db.itemByName[itemName], quantity, tile);
+
+    int PutOnFloor(Tile tile, Item item, int quantity) {
+        if (tile.inv == null) tile.inv = new Inventory(x: tile.x, y: tile.y);
+        return tile.inv.Produce(item, quantity);
     }
 
     public void ApplySaveData(WorldSaveData save) {
@@ -212,9 +249,16 @@ public class WorldController : MonoBehaviour {
         Blueprint bp = new Blueprint(st, tile.x, tile.y);
         bp.state = (Blueprint.BlueprintState)bsd.state;
         bp.constructionProgress = bsd.constructionProgress;
-        if (bsd.deliveredResources != null) {
-            for (int i = 0; i < bsd.deliveredResources.Length && i < bp.deliveredResources.Length; i++) {
-                bp.deliveredResources[i].quantity = bsd.deliveredResources[i].quantity;
+        if (bsd.inv != null) {
+            for (int i = 0; i < bsd.inv.stacks.Length && i < bp.inv.itemStacks.Length; i++) {
+                var ssd = bsd.inv.stacks[i];
+                if (!string.IsNullOrEmpty(ssd.itemName) && Db.itemByName.ContainsKey(ssd.itemName) && ssd.quantity > 0) {
+                    bp.inv.itemStacks[i].item        = Db.itemByName[ssd.itemName];
+                    bp.inv.itemStacks[i].quantity     = ssd.quantity;
+                    bp.inv.itemStacks[i].res.capacity = ssd.quantity;
+                    bp.inv.itemStacks[i].res.reserved = 0;
+                    GlobalInventory.instance.AddItem(Db.itemByName[ssd.itemName], ssd.quantity);
+                }
             }
         }
         if (bp.state == Blueprint.BlueprintState.Deconstructing) {
@@ -233,6 +277,8 @@ public class WorldController : MonoBehaviour {
                 inv.itemStacks[i].item = item;
                 inv.itemStacks[i].quantity = ssd.quantity;
                 inv.itemStacks[i].decayCounter = ssd.decayCounter;
+                inv.itemStacks[i].res.capacity = ssd.quantity;
+                inv.itemStacks[i].res.reserved = 0;
                 GlobalInventory.instance.AddItem(item, ssd.quantity);
             }
         }

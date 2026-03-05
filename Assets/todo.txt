@@ -28,11 +28,9 @@
     - allow players to specify priority within constructing/deconstructing/crafting, anything that can be set at a site ahead of time
     - have closest building mouse claim building instead of a random one? (maybe not)
     - add inventory priority!
-- add produceAtTile function?
-    - produce initial wheat and silver on floor somewhere instead of an animal inv
-- trading
-    - cancel orders
-    - cancel orders on close / have server cancel orders
+- weight (for transfer to market) and volume?
+    - make item decimal, 0.01
+- consider whether itemstacks are useful
 
 BUGS
 - we might not fall as much as we want to, as falling is not allowed if mouse is Moving

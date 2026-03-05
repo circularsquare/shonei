@@ -29,7 +29,7 @@ public class InventoryController : MonoBehaviour {
         globalInventory = new GlobalInventory();
         discoveredItems = Db.itemsFlat.ToDictionary(i => i.id, i => false); // default no items discovered
         itemDisplayGos = Db.itemsFlat.ToDictionary(i => i.id, i => default(GameObject));
-        targets = Db.itemsFlat.ToDictionary(i => i.id, i => 1000);
+        targets = Db.itemsFlat.ToDictionary(i => i.id, i => 10000); // 100 liang in fen
     }
 
     public void AddInventory(Inventory inv){
@@ -93,15 +93,15 @@ public class InventoryController : MonoBehaviour {
             }
 
             string text;
-            if (selectedInventory != null){text = item.name + ": " + selectedInventory.Quantity(item).ToString();}
-            else {text = item.name + ": " + globalInventory.Quantity(item.id).ToString();}
+            if (selectedInventory != null){text = item.name + ": " + ItemStack.FormatQ(selectedInventory.Quantity(item));}
+            else {text = item.name + ": " + ItemStack.FormatQ(globalInventory.Quantity(item.id));}
             Transform textGo = itemDisplayGo.transform.Find("HorizontalLayout/TextItem");
             if (textGo != null){textGo.gameObject.GetComponent<TMPro.TextMeshProUGUI>().text = text;}
 
             int targetQty = (selectedInventory?.invType == Inventory.InvType.Market)
                 ? selectedInventory.targets[item]
                 : targets[item.id];
-            text = "/" + targetQty.ToString();
+            text = "/" + ItemStack.FormatQ(targetQty);
             Transform textTargetGo = itemDisplayGo.transform.Find("HorizontalLayout/TextItemTarget");
             if (textTargetGo != null){textTargetGo.gameObject.GetComponent<TMPro.TextMeshProUGUI>().text = text;}
 

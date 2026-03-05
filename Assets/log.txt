@@ -288,3 +288,7 @@ bug fixes
 - added chat
 - added market building
 - added building "unlocked" for construction eligibility
+3/5
+- order cancellation
+- added produceattile (for initial world gen)
+- 

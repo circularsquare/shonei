@@ -59,7 +59,7 @@ public class AnimalStateManager {
             return;
         } else if (animal.task is ConstructTask constructTask){
             Blueprint blueprint = constructTask.blueprint;
-            if (blueprint == null) {constructTask.Fail(); return;}
+            if (blueprint == null || blueprint.cancelled) {constructTask.Fail(); return;}
             if (blueprint.ReceiveConstruction(1f * animal.efficiency)){
                 constructTask.Complete();
             }

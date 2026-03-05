@@ -15,9 +15,7 @@ public class SaveSystem : MonoBehaviour {
         if (!System.IO.Directory.Exists(SaveDir)) System.IO.Directory.CreateDirectory(SaveDir);
     }
 
-    // -----------------------------------------------------------------------
     // SAVE
-    // -----------------------------------------------------------------------
 
     public void Save(string slotName) {
         WorldSaveData data = GatherSaveData();
@@ -88,18 +86,11 @@ public class SaveSystem : MonoBehaviour {
     }
 
     BlueprintSaveData GatherBlueprint(Blueprint bp) {
-        var delivered = new ItemQuantitySaveData[bp.deliveredResources.Length];
-        for (int i = 0; i < bp.deliveredResources.Length; i++) {
-            delivered[i] = new ItemQuantitySaveData {
-                itemName = bp.deliveredResources[i].item.name,
-                quantity = bp.deliveredResources[i].quantity
-            };
-        }
         return new BlueprintSaveData {
             typeName = bp.structType.name,
             state = (int)bp.state,
             constructionProgress = bp.constructionProgress,
-            deliveredResources = delivered
+            inv = bp.costs.Length > 0 ? GatherInventory(bp.inv) : null
         };
     }
 
@@ -140,10 +131,7 @@ public class SaveSystem : MonoBehaviour {
         };
     }
 
-    // -----------------------------------------------------------------------
     // LOAD
-    // -----------------------------------------------------------------------
-
     public void Load(string slotName) {
         string path = SlotPath(slotName);
         if (!System.IO.File.Exists(path)) { Debug.LogError("Save slot not found: " + slotName); return; }
@@ -154,14 +142,13 @@ public class SaveSystem : MonoBehaviour {
         StartCoroutine(PostLoadInit());
     }
 
-    public IEnumerator PostLoadInit() { // for loading happiness
+    // FRAME 2 — one frame after GenerateDefault / ApplySaveData.
+    // By this point all Animal.Start() calls have run. Safe to call Load() / UpdateColonyStats().
+    // Started on all three paths: initial world gen, Reset, and Load.
+    public IEnumerator PostLoadInit() {
         yield return null; // wait one frame for all Animal.Start() calls to complete
         AnimalController.instance.Load();
     }
-
-    // -----------------------------------------------------------------------
-    // RESET
-    // -----------------------------------------------------------------------
 
     public void Reset() {
         WorldController.instance.ClearWorld();
@@ -169,10 +156,7 @@ public class SaveSystem : MonoBehaviour {
         StartCoroutine(PostLoadInit());
     }
 
-    // -----------------------------------------------------------------------
     // SLOT INFO
-    // -----------------------------------------------------------------------
-
     public List<string> GetSaveSlots() {
         var slots = new List<string>();
         if (System.IO.Directory.Exists(SaveDir)) {

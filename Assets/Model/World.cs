@@ -18,6 +18,8 @@ public class World : MonoBehaviour
     public float timer = 0f;
 
 
+    // FRAME 0 — runs before any Start(). Allocates tiles and graph.nodes.
+    // node.standable stays false until graph.Initialize() runs in GenerateDefault() (frame 1).
     public void Awake(){
         if (instance != null){
             Debug.LogError("there should only be one world?");}

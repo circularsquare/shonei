@@ -240,9 +240,9 @@ public class SupplyBlueprintTask : Task {
         if (bpTile == null) {return false;}
         blueprint = bpTile.GetMatchingBlueprint(b => b.structType.job == animal.job && b.state == Blueprint.BlueprintState.Receiving);
         for (int i = 0; i < blueprint.costs.Length; i++) {
-            if (blueprint.deliveredResources[i].quantity < blueprint.costs[i].quantity) {
+            if (blueprint.inv.Quantity(blueprint.costs[i].item) < blueprint.costs[i].quantity) {
                 iq = new ItemQuantity(blueprint.costs[i].item,
-                    blueprint.costs[i].quantity - blueprint.deliveredResources[i].quantity);
+                    blueprint.costs[i].quantity - blueprint.inv.Quantity(blueprint.costs[i].item));
                 if (!animal.inv.ContainsItem(iq)){
                     (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(iq.item);
                     if (itemPath == null) { continue; }
@@ -421,8 +421,11 @@ public class DeliverToBlueprintObjective : Objective { // does not navigate, hap
     }
     public override void Start(){
         if (animal.inv.Quantity(iq.item) > 0 && blueprint != null) {
-            int delivered = blueprint.ReceiveResource(iq.item, iq.quantity);
-            animal.inv.AddItem(iq.item, -delivered);
+            int needed = 0;
+            foreach (var cost in blueprint.costs)
+                if (cost.item == iq.item) { needed = cost.quantity - blueprint.inv.Quantity(iq.item); break; }
+            animal.inv.MoveItemTo(blueprint.inv, iq.item, Math.Min(iq.quantity, needed));
+            if (blueprint.IsFullyDelivered()) blueprint.state = Blueprint.BlueprintState.Constructing;
             Complete();
         } else {
             Debug.Log(iq.item.name + " could not be delivered to blueprint");

@@ -24,6 +24,7 @@ public class AnimalController : MonoBehaviour{
     public int populationCapacity = 0;
 
 
+    // FRAME 0 — before any Start(). Sets instance and allocates arrays.
     void Awake() {
         if (instance != null) {
             Debug.LogError("there should only be one ani controller");}
@@ -31,8 +32,10 @@ public class AnimalController : MonoBehaviour{
 
         animals = new Animal[maxna];
         jobCounts = new Dictionary<Job, int>();
-        
+
     }
+    // FRAME 0 — populates jobCounts with jobs from Db (Db.Awake has already run).
+    // Must finish before WorldController.Start() resumes in frame 1 and calls GenerateDefault().
     void Start() {
         jobCounts.Add(Db.jobs[0], 0);
     }

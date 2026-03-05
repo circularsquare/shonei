@@ -73,6 +73,8 @@ public class Animal : MonoBehaviour{
 
 
 
+    // FRAME 2 (for default world) — runs the frame after the animal's GameObject is spawned.
+    // If pendingSaveData is set (load path), applies saved state; otherwise initializes fresh.
     public void Start(){
         world = World.instance;
         this.stateManager = new AnimalStateManager(this);
@@ -80,7 +82,7 @@ public class Animal : MonoBehaviour{
         this.sr = go.GetComponent<SpriteRenderer>();
         animationController = go.GetComponent<AnimationController>();
         sr.sortingOrder = 50;
-        this.inv = new Inventory(5, 10, Inventory.InvType.Animal);
+        this.inv = new Inventory(5, 1000, Inventory.InvType.Animal);
         this.nav = new Nav(this);
         ginv = GlobalInventory.instance;
         random = new System.Random();
@@ -142,8 +144,8 @@ public class Animal : MonoBehaviour{
         eeping.Update();
         if (eating.Hungry()) {
             foreach (Item food in Db.edibleItems) {
-                if (inv.ContainsItem(food)) {
-                    Consume(food, 1);
+                if (inv.Quantity(food) >= 100) {
+                    Consume(food, 100); // consume 1 liang
                     eating.Eat(food.foodValue);
                     happiness.NoteAte(food);
                     break;
@@ -208,7 +210,7 @@ public class Animal : MonoBehaviour{
 
     // Prioritizes foods from unhappy categories; falls back to any available food.
     private bool FindFood() {
-        int amountToPickUp = 2;
+        int amountToPickUp = 200; // 2 liang in fen
         foreach (Item food in Db.edibleItems) {
             if (!happiness.WouldHelp(food)) continue;
             task = new ObtainTask(this, food, amountToPickUp);

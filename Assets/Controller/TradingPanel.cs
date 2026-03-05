@@ -29,14 +29,16 @@ public class TradingPanel : MonoBehaviour {
     public TMP_InputField itemInput;
     public Transform      buysList;
     public Transform      sellsList;
+    public GameObject     orderDisplayPrefab;
 
     [Header("Order Entry")]
+    public Button         buyButton;
+    public Button         sellButton;
     public TMP_InputField orderPrice;
     public TMP_InputField orderQty;
     public TextMeshProUGUI orderAlert; // assign in inspector; shows validation errors
 
     [Header("Chat")]
-    public ScrollRect     chatScroll;
     public Transform      chatList;
     public TMP_InputField chatInput;
 
@@ -61,6 +63,8 @@ public class TradingPanel : MonoBehaviour {
             indicatorImage = onlineIndicator.GetComponentInChildren<Image>();
             indicatorText  = onlineIndicator.GetComponentInChildren<TextMeshProUGUI>();
         }
+
+        SetBuy(_orderIsBuy);
 
         if (itemInput != null) itemInput.onSubmit.AddListener(_ => OnClickQuery());
         if (chatInput != null) chatInput.onSubmit.AddListener(_ => OnClickSendChat());
@@ -112,23 +116,33 @@ public class TradingPanel : MonoBehaviour {
         if (buysList != null) {
             foreach (Transform child in buysList) Destroy(child.gameObject);
             if (book.buys != null)
-                foreach (var o in book.buys)
-                    AddRow($"{o.from}  x{o.quantity}  @ {o.price}", buysList);
+                foreach (var o in book.buys) SpawnOrder(o, buysList);
         }
         if (sellsList != null) {
             foreach (Transform child in sellsList) Destroy(child.gameObject);
             if (book.sells != null)
-                foreach (var o in book.sells)
-                    AddRow($"{o.from}  x{o.quantity}  @ {o.price}", sellsList);
+                foreach (var o in book.sells) SpawnOrder(o, sellsList);
         }
+    }
+
+    void SpawnOrder(MarketOrder order, Transform parent) {
+        if (orderDisplayPrefab == null) { AddRow($"{order.from}  x{order.quantity}  @ {order.price}", parent); return; }
+        var go = Instantiate(orderDisplayPrefab, parent, false);
+        go.GetComponent<OrderDisplay>()?.Init(order);
     }
 
     // -------------------------------------------------------------------------
     // Order entry
     // -------------------------------------------------------------------------
 
+    static readonly Color ColorBuyActive   = new Color(0.20f, 0.55f, 1.00f); // blue
+    static readonly Color ColorSellActive  = new Color(1.00f, 0.35f, 0.35f); // red
+    static readonly Color ColorInactive    = new Color(0.80f, 0.80f, 0.80f); // grey
+
     public void SetBuy(bool isBuy) {
         _orderIsBuy = isBuy;
+        if (buyButton  != null) buyButton.image.color  = isBuy  ? ColorBuyActive  : ColorInactive;
+        if (sellButton != null) sellButton.image.color = !isBuy ? ColorSellActive : ColorInactive;
     }
 
     public void OnClickPlaceOrder() {
@@ -208,7 +222,51 @@ public class TradingPanel : MonoBehaviour {
         if (chatList.childCount > 20)
             Destroy(chatList.GetChild(0).gameObject);
         LayoutRebuilder.ForceRebuildLayoutImmediate(chatList as RectTransform);
-        if (chatScroll) chatScroll.verticalNormalizedPosition = 0f;
+    }
+
+    void AddCancelRow(string text, Transform parent, long orderId) {
+        var row = new GameObject("Row", typeof(RectTransform));
+        row.transform.SetParent(parent, false);
+        var hlg = row.AddComponent<HorizontalLayoutGroup>();
+        hlg.spacing = 4;
+        hlg.childForceExpandWidth  = false;
+        hlg.childForceExpandHeight = false;
+        var le = row.AddComponent<LayoutElement>();
+        le.preferredHeight = 14;
+        le.minHeight       = 14;
+
+        // text label
+        var labelGo = new GameObject("Label", typeof(RectTransform));
+        labelGo.transform.SetParent(row.transform, false);
+        var tmp = labelGo.AddComponent<TextMeshProUGUI>();
+        tmp.text     = text;
+        tmp.fontSize = 16;
+        var labelLe = labelGo.AddComponent<LayoutElement>();
+        labelLe.flexibleWidth = 1;
+
+        // cancel button
+        var btnGo = new GameObject("CancelBtn", typeof(RectTransform));
+        btnGo.transform.SetParent(row.transform, false);
+        var img = btnGo.AddComponent<Image>();
+        img.color = new Color(1f, 0.35f, 0.35f);
+        var btn = btnGo.AddComponent<Button>();
+        long captured = orderId;
+        btn.onClick.AddListener(() => TradingClient.instance?.SendCancel(captured));
+        var btnLe = btnGo.AddComponent<LayoutElement>();
+        btnLe.preferredWidth = 14;
+        btnLe.minWidth       = 14;
+
+        var xGo = new GameObject("X", typeof(RectTransform));
+        xGo.transform.SetParent(btnGo.transform, false);
+        var xTmp = xGo.AddComponent<TextMeshProUGUI>();
+        xTmp.text      = "×";
+        xTmp.fontSize  = 12;
+        xTmp.alignment = TextAlignmentOptions.Center;
+        var xRect = xGo.GetComponent<RectTransform>();
+        xRect.anchorMin = Vector2.zero;
+        xRect.anchorMax = Vector2.one;
+        xRect.offsetMin = Vector2.zero;
+        xRect.offsetMax = Vector2.zero;
     }
 
     void AddRow(string text, Transform parent) {
