@@ -245,6 +245,13 @@ public class Inventory{
         }
         return total;
     }
+    // Space in an existing partial stack of `item` (for floor consolidation).
+    public int GetMergeSpace(Item item) {
+        foreach (ItemStack stack in itemStacks)
+            if (stack.item == item && stack.quantity < stackSize)
+                return stackSize - stack.quantity;
+        return 0;
+    }
     // Unlike GetStorageForItem, only checks stacks already holding this item (no empty stacks).
     // Use to top up an existing stack without claiming a new slot.
     public bool HasSpaceForItem(Item item){

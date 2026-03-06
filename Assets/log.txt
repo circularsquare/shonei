@@ -292,3 +292,6 @@ bug fixes
 - order cancellation
 - added produceattile (for initial world gen)
 - switched item counts to fen (0.01)
+- added item consolidation
+    - made hauling more robust / check more stuff
+- added infomode selected thing indicator

@@ -180,21 +180,83 @@ public class Nav {
                 && b.state == bpState
                 && b.res.Available()) != null, r);
     }
-    public HaulInfo FindAnyItemToHaul(int r = 50){ 
-        Path itemPath = FindPathTo(t => t.HasItemToHaul(null), r);
-        if (itemPath != null){
-            ItemStack itemStack = itemPath.tile.inv.GetItemToHaul();
-            Item item = itemStack.item;
-            if (item != null){
-                Path storagePath = FindPathToStorage(item, r=50);
-                if (storagePath != null){
-                    int quantity = Math.Min(
-                        itemPath.tile.inv.Quantity(item),
-                        storagePath.tile.GetStorageForItem(item)
-                    );
-                    return new HaulInfo(item, quantity, itemPath.tile, storagePath.tile, itemStack);
+    public HaulInfo FindFloorConsolidation(int r = 50) {
+        // Collect all floor haul-eligible tiles sorted by path cost, try each as a source
+        var candidates = new List<Path>();
+        for (int x = -r; x <= r; x++) {
+            for (int y = -r; y <= r; y++) {
+                Tile tile = world.GetTileAt(a.x + x, a.y + y);
+                if (tile != null && tile.inv != null &&
+                    tile.inv.invType == Inventory.InvType.Floor &&
+                    tile.inv.GetItemToHaul() != null) {
+                    Path path = world.graph.Navigate(a.TileHere().node, tile.node);
+                    if (path != null) candidates.Add(path);
                 }
             }
+        }
+        candidates.Sort((p1, p2) => p1.cost.CompareTo(p2.cost));
+
+        foreach (Path sourcePath in candidates) {
+            ItemStack sourceStack = sourcePath.tile.inv.GetItemToHaul();
+            if (sourceStack == null) continue;
+            Item item = sourceStack.item;
+            if (item == null) continue;
+            Tile sourceTile = sourcePath.tile;
+
+            // Item has storage available — should be hauled, not consolidated
+            if (FindPathToStorage(item) != null) continue;
+
+            // Find another floor tile with same item that has a partial stack with room
+            Path destPath = FindPathTo(t =>
+                t != sourceTile &&
+                t.inv != null &&
+                t.inv.invType == Inventory.InvType.Floor &&
+                t.inv.HasSpaceForItem(item), r);
+            if (destPath == null) continue;
+
+            // Always move smaller stack into bigger stack
+            Tile destTile = destPath.tile;
+            if (sourceTile.inv.Quantity(item) > destTile.inv.Quantity(item)) {
+                (sourceTile, destTile) = (destTile, sourceTile);
+                sourceStack = sourceTile.inv.GetItemToHaul();
+                if (sourceStack == null) continue;
+            }
+
+            int qty = Math.Min(sourceTile.inv.AvailableQuantity(item), destTile.inv.GetMergeSpace(item));
+            if (qty <= 0) continue;
+            // Skip tiny moves unless we'd be clearing the entire smaller stack
+            if (qty < 90 && qty < sourceTile.inv.Quantity(item)) continue;
+
+            return new HaulInfo(item, qty, sourceTile, destTile, sourceStack);
+        }
+        return null;
+    }
+
+    public HaulInfo FindAnyItemToHaul(int r = 50){
+        // Collect all haul-eligible tiles sorted by path cost, try each until one has storage
+        var candidates = new List<Path>();
+        for (int x = -r; x <= r; x++) {
+            for (int y = -r; y <= r; y++) {
+                Tile tile = world.GetTileAt(a.x + x, a.y + y);
+                if (tile != null && tile.HasItemToHaul(null)) {
+                    Path path = world.graph.Navigate(a.TileHere().node, tile.node);
+                    if (path != null) candidates.Add(path);
+                }
+            }
+        }
+        candidates.Sort((p1, p2) => p1.cost.CompareTo(p2.cost));
+        foreach (Path itemPath in candidates) {
+            ItemStack itemStack = itemPath.tile.inv.GetItemToHaul();
+            if (itemStack == null) continue;
+            Item item = itemStack.item;
+            if (item == null) continue;
+            Path storagePath = FindPathToStorage(item, r);
+            if (storagePath == null) continue;
+            int quantity = Math.Min(
+                itemPath.tile.inv.Quantity(item),
+                storagePath.tile.GetStorageForItem(item)
+            );
+            return new HaulInfo(item, quantity, itemPath.tile, storagePath.tile, itemStack);
         }
         return null;
     }
@@ -211,10 +273,17 @@ public class Nav {
     public Path PathToOrAdjacent(Tile target) {
         Path directPath = PathTo(target);
         if (directPath != null) { return directPath; }
-        Tile[] adjacents = target.GetAdjacents();
+        return PathStrictlyAdjacent(target);
+    }
+    // Like PathToOrAdjacent but never navigates onto the target tile itself.
+    // Use for solid-tile blueprints where the tile is currently passable but will become solid.
+    public Path PathStrictlyAdjacent(Tile target) {
+        Tile[] adjacents = target.GetAdjacents(); // 0-3 orthogonal, 4-7 diagonal
         Path shortestPath = null;
         float shortestCost = float.MaxValue;
-        foreach (Tile adjacent in adjacents) {
+        // Prefer orthogonal neighbours
+        for (int i = 0; i < 4; i++) {
+            Tile adjacent = adjacents[i];
             if (adjacent != null && adjacent.node.standable) {
                 Path candidatePath = PathTo(adjacent);
                 if (candidatePath != null && candidatePath.cost < shortestCost) {
@@ -223,7 +292,19 @@ public class Nav {
                 }
             }
         }
-        return shortestPath; // null if no path found
+        if (shortestPath != null) return shortestPath;
+        // Fall back to diagonal
+        for (int i = 4; i < 8; i++) {
+            Tile adjacent = adjacents[i];
+            if (adjacent != null && adjacent.node.standable) {
+                Path candidatePath = PathTo(adjacent);
+                if (candidatePath != null && candidatePath.cost < shortestCost) {
+                    shortestPath = candidatePath;
+                    shortestCost = candidatePath.cost;
+                }
+            }
+        }
+        return shortestPath;
     }
 
 

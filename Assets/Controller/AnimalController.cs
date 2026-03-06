@@ -172,6 +172,13 @@ public class AnimalController : MonoBehaviour{
         return GetJobCount(Db.GetJobByName(jobstr));
     }
 
+    public bool IsAnimalOnTile(Tile tile) {
+        for (int i = 0; i < na; i++) {
+            if (animals[i].TileHere() == tile) return true;
+        }
+        return false;
+    }
+
     public void ResetJobCounts() {
         foreach (Job key in new List<Job>(jobCounts.Keys)) { jobCounts[key] = 0; }
         foreach (Job key in jobCounts.Keys) { UpdateJobCount(key); }

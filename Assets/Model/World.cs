@@ -2,9 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
+//using System.Diagnostics;
 
-public class World : MonoBehaviour
-{
+public class World : MonoBehaviour {
     Tile[,] tiles;
     public Graph graph;
     public int nx;
@@ -17,6 +17,9 @@ public class World : MonoBehaviour
     public static World instance;
     public float timer = 0f;
 
+    readonly System.Diagnostics.Stopwatch tickStopwatch = new System.Diagnostics.Stopwatch();
+    double lastTickMs = 0;
+
 
     // FRAME 0 — runs before any Start(). Allocates tiles and graph.nodes.
     // node.standable stays false until graph.Initialize() runs in GenerateDefault() (frame 1).
@@ -24,6 +27,7 @@ public class World : MonoBehaviour
         if (instance != null){
             Debug.LogError("there should only be one world?");}
         instance = this;
+        Application.targetFrameRate = 60;
 
         graph = new Graph(this);
 
@@ -45,8 +49,11 @@ public class World : MonoBehaviour
 
     public void Update(){
         if (Math.Floor(timer + Time.deltaTime) - Math.Floor(timer) > 0){ // every 1 sec
-            animalController.TickUpdate(); 
+            tickStopwatch.Restart();
+            animalController.TickUpdate();
             plantController.TickUpdate();
+            tickStopwatch.Stop();
+            lastTickMs = tickStopwatch.Elapsed.TotalMilliseconds;
         }        
         float period = 0.2f;
         if (Math.Floor((timer + Time.deltaTime) / period) - Math.Floor(timer / period) > 0){  // every 0.2 sec
@@ -56,6 +63,11 @@ public class World : MonoBehaviour
         timer += Time.deltaTime;
     }
         
+
+    void OnGUI(){
+        // uncomment to show FPS
+        // GUI.Label(new Rect(10, 10, 200, 20), $"fps: {(int)(1f / Time.deltaTime)}  tick: {lastTickMs:0.00}ms");
+    }
 
     // ---------------------------------
     // TILE STUFF

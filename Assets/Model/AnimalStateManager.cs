@@ -60,6 +60,13 @@ public class AnimalStateManager {
         } else if (animal.task is ConstructTask constructTask){
             Blueprint blueprint = constructTask.blueprint;
             if (blueprint == null || blueprint.cancelled) {constructTask.Fail(); return;}
+            float progressAfter = blueprint.constructionProgress + 1f * animal.efficiency;
+            if (blueprint.structType.isTile && progressAfter >= blueprint.constructionCost) {
+                if (AnimalController.instance.IsAnimalOnTile(blueprint.tile)) {
+                    constructTask.Fail(); // leave blueprint intact so another mouse can retry later
+                    return;
+                }
+            }
             if (blueprint.ReceiveConstruction(1f * animal.efficiency)){
                 constructTask.Complete();
             }

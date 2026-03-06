@@ -195,6 +195,8 @@ public class Animal : MonoBehaviour{
         if (task.Start()) return;
         if (job.name == "hauler") {             // haul
             task = new HaulTask(this);
+            if (task.Start()) return;
+            task = new ConsolidateTask(this);   // consolidate floor stacks when nothing else to do
             if (task.Start()) return; }
         if (job.name == "merchant") {
             task = new HaulFromMarketTask(this);

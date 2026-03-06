@@ -195,6 +195,17 @@ public class HaulTask : Task {
         return true;
     }
 }
+public class ConsolidateTask : Task {
+    public ConsolidateTask(Animal animal) : base(animal) {}
+    public override bool Initialize() {
+        HaulInfo h = animal.nav.FindFloorConsolidation();
+        if (h == null) return false;
+        ItemQuantity iq = new ItemQuantity(h.item, h.quantity);
+        FetchAndReserve(iq, h.itemTile, h.itemStack, h.quantity);
+        objectives.Enqueue(new DeliverObjective(this, iq, h.storageTile));
+        return true;
+    }
+}
 public class DropTask : Task {
     ItemQuantity iq;
     public DropTask(Animal animal) : base(animal){}
@@ -221,6 +232,12 @@ public class ConstructTask : Task {
             ? bpTile.GetMatchingBlueprint(b => b.state == Blueprint.BlueprintState.Deconstructing)
             : bpTile.GetMatchingBlueprint(b => b.structType.job == animal.job && b.state == Blueprint.BlueprintState.Constructing);
         if (blueprint == null) { return false; }
+        // For solid tile blueprints the tile is currently passable, so PathToOrAdjacent may have
+        // returned the blueprint tile itself. Re-compute to guarantee we stand next to it.
+        if (blueprint.structType.isTile) {
+            standPath = animal.nav.PathStrictlyAdjacent(bpTile);
+            if (standPath == null) { return false; }
+        }
         objectives.Enqueue(new GoObjective(this, standPath.tile));
         objectives.Enqueue(new ConstructObjective(this, blueprint));
         if (!blueprint.res.Reserve()) Debug.Log("reserved blueprint that is not available!");

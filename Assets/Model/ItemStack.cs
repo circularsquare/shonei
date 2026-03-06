@@ -84,7 +84,8 @@ public class ItemStack {
 
     public override string ToString(){
         if (item != null){
-            return item.name + " x " + FormatQ(quantity) + "\n";
+            string resStr = res.reserved > 0 ? " (r" + FormatQ(res.reserved) + ")" : "";
+            return item.name + " x " + FormatQ(quantity) + resStr + "\n";
         }
         return "";
     }

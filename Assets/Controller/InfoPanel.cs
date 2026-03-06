@@ -8,6 +8,9 @@ public class InfoPanel : MonoBehaviour {
     public static InfoPanel instance;
     public GameObject textDisplayGo;
     public object obj;
+    public GameObject animalHighlight;    // assign in Inspector; follows selected animal
+    public GameObject tileHighlight;      // assign in Inspector; overlays selected tile
+    private Animal selectedAnimal;
 
     public enum InfoMode {
         Inactive,
@@ -39,10 +42,13 @@ public class InfoPanel : MonoBehaviour {
         }
         if (obj is Collider2D){
             Collider2D collider = obj as Collider2D;
-            if (collider.gameObject.GetComponent<Animal>() != null){
+            selectedAnimal = collider.gameObject.GetComponent<Animal>();
+            if (selectedAnimal != null){
                 infoMode = InfoMode.Animal;
                 gameObject.SetActive(true);
-                Animal ani = collider.gameObject.GetComponent<Animal>();
+                Animal ani = selectedAnimal;
+                if (animalHighlight != null) animalHighlight.SetActive(true);
+                if (tileHighlight != null) tileHighlight.SetActive(false);
                 string displayText = (
                     "animal: " + ani.aName + 
                     "\n state: " + ani.state.ToString() + 
@@ -66,7 +72,13 @@ public class InfoPanel : MonoBehaviour {
         }
 
         else if (obj is Tile){
+            selectedAnimal = null;
             Tile tile = obj as Tile;
+            if (animalHighlight != null) animalHighlight.SetActive(false);
+            if (tileHighlight != null) {
+                tileHighlight.SetActive(true);
+                tileHighlight.transform.position = new Vector3(tile.x, tile.y, -1);
+            }
             string displayText = "";
             if (tile.building != null){
                 if (tile.building is Plant){
@@ -108,12 +120,19 @@ public class InfoPanel : MonoBehaviour {
             textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = displayText;
             gameObject.SetActive(true);
         }
-        else{ Deselect(); }
+        else{ selectedAnimal = null; Deselect(); }
     }
 
     public void Deselect(){
         infoMode = InfoMode.Inactive;
         gameObject.SetActive(false);
+        if (animalHighlight != null) animalHighlight.SetActive(false);
+        if (tileHighlight != null) tileHighlight.SetActive(false);
+    }
+
+    void Update(){
+        if (infoMode == InfoMode.Animal && selectedAnimal != null && animalHighlight != null)
+            animalHighlight.transform.position = selectedAnimal.go.transform.position + new Vector3(0, 0.6f, -1);
     }
 
 }
