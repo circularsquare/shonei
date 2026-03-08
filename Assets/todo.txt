@@ -25,6 +25,14 @@
 - day night cycle
 - add roads (render on tile below?)
 - make sure market is in the normal list of inventories
+- ponder inventory management
+    - global, market, need to have set target 
+    - global can have
+        - consume above amount?
+- quarry
+    - chance to get coal and metals
+    - slow depletion
+    - 
 
 
 BUGS

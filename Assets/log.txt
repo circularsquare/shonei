@@ -301,4 +301,3 @@ bug fixes
 - various ui tidying
 - zooming in and out
 - connected claude to unity
-    - ~/.local/bin/uvx.exe --from "mcpforunityserver==9.4.7" mcp-for-unity --transport http --http-url http://127.0.0.1:8080 --project-scoped-tools
