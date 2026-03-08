@@ -121,7 +121,7 @@
         "category": "production"
     },{
         "id": 120,
-        "name": "dirt pit",
+        "name": "soil pit",
         "description": "dig for soil",
         "nx": 1, "ny": 1,
         "ncosts": [
@@ -131,6 +131,19 @@
         "njob": "digger",
         "capacity": 1,
         "requiredTileName": "soil",
+        "category": "production",
+        "defaultLocked": true
+    },{
+        "id": 130,
+        "name": "laboratory",
+        "description": "scientists conduct research here",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 10 },
+            { "name": "planks", "quantity": 5 }
+        ],
+        "njob": "hauler",
+        "capacity": 1,
         "category": "production"
     },{
         "id": 121,
@@ -143,6 +156,7 @@
         "njob": "miner",
         "capacity": 1,
         "requiredTileName": "stone",
-        "category": "production"
+        "category": "production",
+        "defaultLocked": true
     }
 ]

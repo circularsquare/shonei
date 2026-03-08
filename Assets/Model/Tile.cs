@@ -42,7 +42,6 @@ public class Tile {
     
     public void RegisterCbTileTypeChanged(Action<Tile> callback){cbTileTypeChanged += callback;}
     public void UnregisterCbTileTypeChanged(Action<Tile> callback){cbTileTypeChanged -= callback;}
-    public bool ContainsItem(Item item){return inv != null && inv.ContainsItem(item);}
     public bool ContainsAvailableItem(Item item){return inv != null && inv.ContainsAvailableItem(item);}
     public ItemStack GetItemToHaul(){
         if (inv == null){return null;}

@@ -1,0 +1,27 @@
+[
+    {
+        "id": 1,
+        "name": "Excavation",
+        "description": "Learn to dig efficient soil pits.",
+        "type": "building",
+        "unlocks": "soil pit",
+        "prereqs": [],
+        "cost": 5
+    },{
+        "id": 2,
+        "name": "Quarry",
+        "description": "Establish stone quarries to extract raw stone.",
+        "type": "building",
+        "unlocks": "quarry",
+        "prereqs": [1],
+        "cost": 5
+    },{
+        "id": 3,
+        "name": "Improved Research",
+        "description": "Better scientific methods increase research output by 20%.",
+        "type": "misc",
+        "unlocks": "research_efficiency",
+        "prereqs": [],
+        "cost": 5
+    }
+]

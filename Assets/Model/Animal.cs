@@ -93,10 +93,11 @@ public class Animal : MonoBehaviour{
             this.energy = pendingSaveData.energy;
             this.eating = new Eating();
             this.eating.food = pendingSaveData.food;
-            this.eating.timeSinceLastAte = pendingSaveData.timeSinceLastAte;
             this.eeping = new Eeping();
             this.eeping.eep = pendingSaveData.eep;
             this.happiness = new Happiness();
+            this.happiness.timeSinceAteWheat = pendingSaveData.timeSinceAteWheat;
+            this.happiness.timeSinceAteFruit = pendingSaveData.timeSinceAteFruit;
             this.job = Db.GetJobByName(pendingSaveData.jobName) ?? Db.jobs[0];
             this.state = AnimalState.Idle;
             this.efficiency = eating.Efficiency() * eeping.Efficiency();
@@ -202,6 +203,9 @@ public class Animal : MonoBehaviour{
             task = new HaulFromMarketTask(this);
             if (task.Start()) return;
             task = new HaulToMarketTask(this);
+            if (task.Start()) return; }
+        if (job.name == "scientist") {
+            task = new ResearchTask(this);
             if (task.Start()) return; }
         task = new ConstructTask(this, deconstructing: true);
         if (task.Start()) return;
@@ -376,15 +380,27 @@ public class Animal : MonoBehaviour{
 
 
     public void FindHome(){
+        if (nav == null) return;
         // if you have no home tile, or your hometile does not have a house,
             // if u can find a house, set ur hometile to that
-        if (nav != null && 
-        (homeTile == null || !(homeTile?.building?.structType.name == "house"))){
+        if (homeTile == null || !(homeTile?.building?.structType.name == "house")){
             Path housePath = nav.FindPathToBuilding(Db.structTypeByName["house"]);
-            if (housePath != null && housePath.tile.building?.structType.name == "house") { 
-                // should maybe also unreserve previous house, if you can? 
+            if (housePath != null && housePath.tile.building?.structType.name == "house") {
+                // should maybe also unreserve previous house, if you can?
                 if (homeTile?.building?.structType.name == "house") homeTile.building.res.Unreserve();
-                homeTile = housePath.tile; 
+                homeTile = housePath.tile;
+                homeTile.building.res.Reserve();
+            }
+        } else if (!homeTile.building.res.Available()) {
+            // current house is full — look for another house with >= 2 free slots
+            Tile currentHome = homeTile;
+            Path betterPath = nav.FindPathTo(t =>
+                t != currentHome &&
+                t.building?.structType.name == "house" &&
+                t.building.res.capacity - t.building.res.reserved >= 2);
+            if (betterPath != null) {
+                homeTile.building.res.Unreserve();
+                homeTile = betterPath.tile;
                 homeTile.building.res.Reserve();
             }
         }

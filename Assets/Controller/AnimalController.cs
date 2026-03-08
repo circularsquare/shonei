@@ -13,7 +13,7 @@ public class AnimalController : MonoBehaviour{
     private int maxna = 1000;
     public GameObject jobsPanel;
     public GameObject happinessPanel;
-
+    public GameObject JobDisplay; 
     private World world;
     public Dictionary<Job, int> jobCounts;
     private TMPro.TextMeshProUGUI happinessDisplay;
@@ -136,7 +136,7 @@ public class AnimalController : MonoBehaviour{
     void AddJobCounts(){
         foreach(Job job in Db.jobs){
             if (job != null){
-                GameObject textDisplayGo = Instantiate(UI.instance.JobDisplay, jobsPanel.transform);
+                GameObject textDisplayGo = Instantiate(JobDisplay, jobsPanel.transform);
                 textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = job.name + ": " + (GetJobCount(job)).ToString();
                 textDisplayGo.name = "JobCount_" + job.name;
             }

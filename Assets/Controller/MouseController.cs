@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using UnityEngine.U2D;
 
 // note: this is not really a controller. it just manages mouse input
 
@@ -14,29 +15,44 @@ public class MouseController : MonoBehaviour {
 
     public World world;
     public static MouseController instance;
-    
+    PixelPerfectCamera ppc;
+
     void Start() {
         if (instance != null) {
             Debug.LogError("there should only be one mouse controller");}
-        instance = this;        
+        instance = this;
+        ppc = Camera.main.GetComponent<PixelPerfectCamera>();
     }
 
     // wanna chagne the building process to only be able to make Buildings, not tiles. 
     // dirt buildings will instantly just turn into dirt tiles after theyre made.
     void Update() {
         if (EventSystem.current.IsPointerOverGameObject()){
-            // this only checks if it's over ui elements.
+            if (Input.GetMouseButtonDown(0) && mouseMode == MouseMode.Build)
+                SetModeSelect();
             return;
         }
         if (world == null){
             world = WorldController.instance.world;
         }
 
+        // zoom
+        float scroll = Input.GetAxis("Mouse ScrollWheel");
+        if (scroll != 0f && ppc != null) {
+            int[] zoomLevels = {8, 12, 16, 24 }; // in PPU
+            int idx = System.Array.IndexOf(zoomLevels, ppc.assetsPPU);
+            if (idx == -1) idx = System.Array.BinarySearch(zoomLevels, ppc.assetsPPU);
+            if (idx < 0) idx = ~idx; // nearest index if not found
+            idx = Mathf.Clamp(idx + (scroll > 0 ? 1 : -1), 0, zoomLevels.Length - 1);
+            ppc.assetsPPU = zoomLevels[idx];
+        }
+
         // draggin world around
         Vector3 currPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
         currPosition.z = 1f;
-        if (Input.GetMouseButtonDown(1)){
+        if (Input.GetMouseButtonDown(1)){ 
             prevPosition = Input.mousePosition;
+            // if (mouseMode == MouseMode.Build) SetModeSelect();             // cancels build mode on right click
         }
         if (Input.GetMouseButton(1)) {
             Vector3 currScreenPosition = Input.mousePosition;
@@ -91,12 +107,14 @@ public class MouseController : MonoBehaviour {
         mouseMode = MouseMode.Remove;
         if (BuildPanel.instance != null){
             BuildPanel.instance.structType = null;
+            BuildPanel.instance.CloseSubPanel();
         }
     }
     public void SetModeSelect() {
         mouseMode = MouseMode.Select;
         if (BuildPanel.instance != null){
             BuildPanel.instance.structType = null;
+            BuildPanel.instance.CloseSubPanel();
         }
     }
 }

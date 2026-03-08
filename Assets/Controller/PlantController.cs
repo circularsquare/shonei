@@ -9,7 +9,6 @@ public class PlantController : MonoBehaviour {
     public static PlantController instance;
     private List<Plant> plants = new List<Plant>(); // list of plants
     public int np = 0; 
-    public GameObject jobsPanel;
 
     private World world;
     public Dictionary<Job, int> jobCounts;

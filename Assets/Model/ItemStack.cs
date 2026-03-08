@@ -35,7 +35,7 @@ public class ItemStack {
     }
 
     public void Decay(float time = 1f){
-        if (item != null && quantity > 0){
+        if (item != null && quantity > 0 && item.decayRate != 0){
             float decayedQuantity = (float)quantity * (item.decayRate * time / (float)(Db.ticksInDay*Db.daysInYear));
             // ^ number near 0
             decayCounter += (int)(decayedQuantity * maxDecayCount);

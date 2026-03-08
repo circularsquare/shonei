@@ -193,6 +193,15 @@ Three inventory types:
 
 `Blueprint` has its own `Inventory inv` (Animal type, not registered with InventoryController — no decay, no tick overhead). Materials are delivered into it via `MoveItemTo` from the animal's inventory. On `Complete()`, `inv.Produce(item, -qty)` is called for each cost item to decrement GlobalInventory (the items were already counted in GlobalInventory when originally harvested). On cancel (`BuildPanel.Remove`), materials are returned to the floor via `MoveItemTo`.
 
+## Unit System — Fen / Liang
+
+All item quantities are stored as **fen** (integers), where **100 fen = 1 liang**. Display always formats as `X.XX` via `ItemStack.FormatQ(int fen)`.
+
+- **JSON data** is authored in liang (can be decimal, e.g. `0.5`). The field type is `float` (`ItemNameQuantity.quantity`).
+- **Conversion** to fen happens at all `ItemNameQuantity → ItemQuantity` sites (Db.cs, Structure.cs, Tile.cs, Plant.cs): `(int)Math.Round(q * 100)`.
+- **Stack sizes**: animal inv = 5 × 1000 fen; floor/default = 1000 fen; storage = `storageStackSize * 100` (converted in `StructType.OnDeserialized`).
+- Old saves are **incompatible** (quantities were in the old unit). Fresh start required after this change.
+
 ## Rendering & Layers
 
 Structures render in three depth layers per tile:
@@ -423,15 +432,13 @@ New field on `Inventory`: `Dictionary<Item, int> reservedIncoming`.
 
 #### Building unlock system
 
-New field on `StructType` in buildingsDb.json: `"defaultUnlocked"` (bool,
-defaults to `false` if absent → **unlocked**). Wait — to keep existing
-buildings unlocked by default, we should default to `true`. So:
+`StructType` has a `defaultLocked` bool (JSON field `"defaultLocked": true`).
 
-- `"defaultUnlocked": true` → available from the start (all current buildings)
-- `"defaultUnlocked": false` (or absent) → locked; hidden from build menu
-- The Market StructType has `"defaultUnlocked": false` (not player-buildable).
-- `World` (or a future `ResearchController`) tracks a `HashSet<string>
-  unlockedBuildings`. `BuildPanel` only shows entries present in that set.
+- Absent/false → available in build menu from the start (most buildings).
+- `true` → hidden from build menu at startup; must be unlocked via research.
+- Currently locked: `soil pit`, `quarry`, `market` (market is never unlockable — it's auto-spawned by world gen).
+- `BuildPanel.Start()` skips locked buildings when building sub-panels.
+- `BuildPanel.UnlockBuilding(name)` adds the entry to the correct sub-panel at runtime, called from `ResearchSystem.ApplyEffect`.
 
 #### Known gaps / TODO
 
@@ -447,6 +454,40 @@ buildings unlocked by default, we should default to `true`. So:
 - **NPC / bot orders**: no server-side liquidity seeding.
 - **Redundant order broadcast**: the `order` broadcast after matching is noisy
   since clients already receive `fill` messages; consider removing.
+
+## Research System
+
+Scientists working in **laboratory** buildings generate research points over time. Points can be spent to unlock new buildings, recipes, or misc upgrades.
+
+### Points mechanic
+
+Every `ticksInDay/12` seconds of game time, the system samples how many scientist mice are actively working in a lab (in the `Working` state). That sample (`scientists × 10`) is stored in a 15-entry circular buffer. The player's **available research points** = `max(buffer) − totalSpent`. This gives a stable, peak-based value that doesn't swing when a mouse briefly stops to eat.
+
+### Research nodes (`researchDb.json`)
+
+```json
+{ "id": 1, "name": "Excavation", "type": "building", "unlocks": "soil pit", "prereqs": [], "cost": 5 }
+{ "id": 2, "name": "Quarry", "type": "building", "unlocks": "quarry", "prereqs": [1], "cost": 5 }
+{ "id": 3, "name": "Improved Research", "type": "misc", "unlocks": "research_efficiency", "prereqs": [], "cost": 5 }
+```
+
+Types: `"building"`, `"recipe"`, `"misc"`. Prerequisites are node `id` integers. Unlocking permanently adds `cost` to `totalSpent`.
+
+### Key classes
+
+| Class | Role |
+|---|---|
+| `ResearchSystem` | Singleton model. Holds buffer, `totalSpent`, `unlockedIds`, `researchEfficiencyMultiplier`. Ticked from `World.Update`. |
+| `ResearchSystem.ApplyEffect(node)` | Single dispatch point for all research effects. Called on unlock and on load via `ReapplyAllEffects()`. |
+| `ResearchPanel` | Full-screen UI. Icon grid (`GridLayoutGroup`). Cards show sprite + cost. Hover → tooltip. Closes on world click. |
+| `ResearchDisplay` | Component on the ResearchDisplay prefab. Receives `Setup(node, rs, onUnlock)` to populate icon, cost, button. |
+| `TooltipSystem` | Singleton on Canvas. `Show(title, body)` / `Hide()`. Follows mouse. |
+| `Tooltippable` | Component on any UI element; fires tooltip on pointer enter/exit. |
+| `ResearchTask` | Task for scientist job. Navigates to lab, reserves it, works in 10-tick loops. |
+
+### Save data
+
+`ResearchSaveData`: `float[] pointHistory`, `int historyIndex/tickCounter`, `float totalSpent`, `int[] unlockedIds`.
 
 ## Technology
 

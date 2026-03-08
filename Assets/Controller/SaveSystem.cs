@@ -46,6 +46,19 @@ public class SaveSystem : MonoBehaviour {
         }
         data.animals = animals.ToArray();
 
+        var rs = ResearchSystem.instance;
+        if (rs != null) {
+            var ids = new int[rs.unlockedIds.Count];
+            rs.unlockedIds.CopyTo(ids);
+            data.research = new ResearchSaveData {
+                pointHistory = (float[])rs.pointHistory.Clone(),
+                historyIndex = rs.historyIndex,
+                totalSpent   = rs.totalSpent,
+                tickCounter  = rs.tickCounter,
+                unlockedIds  = ids
+            };
+        }
+
         return data;
     }
 
@@ -125,8 +138,9 @@ public class SaveSystem : MonoBehaviour {
             jobName = a.job.name,
             energy = a.energy,
             food = a.eating.food,
-            timeSinceLastAte = a.eating.timeSinceLastAte,
             eep = a.eeping.eep,
+            timeSinceAteWheat = a.happiness.timeSinceAteWheat,
+            timeSinceAteFruit = a.happiness.timeSinceAteFruit,
             inv = GatherInventory(a.inv)
         };
     }
@@ -139,6 +153,20 @@ public class SaveSystem : MonoBehaviour {
         WorldSaveData data = JsonConvert.DeserializeObject<WorldSaveData>(json);
         WorldController.instance.ClearWorld();
         WorldController.instance.ApplySaveData(data);
+        if (data.research != null && ResearchSystem.instance != null) {
+            var rs = ResearchSystem.instance;
+            if (data.research.pointHistory != null)
+                System.Array.Copy(data.research.pointHistory, rs.pointHistory,
+                    System.Math.Min(data.research.pointHistory.Length, rs.pointHistory.Length));
+            rs.historyIndex = data.research.historyIndex;
+            rs.totalSpent   = data.research.totalSpent;
+            rs.tickCounter  = data.research.tickCounter;
+            rs.unlockedIds.Clear();
+            if (data.research.unlockedIds != null)
+                foreach (int id in data.research.unlockedIds)
+                    rs.unlockedIds.Add(id);
+            rs.ReapplyAllEffects();
+        }
         StartCoroutine(PostLoadInit());
     }
 

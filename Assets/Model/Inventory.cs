@@ -101,10 +101,13 @@ public class Inventory{
         }
     }
     public void Decay(float time = 1f){
-        float invTypeMult = 1f;
-        if (invType == InvType.Floor){ invTypeMult = 5f; }
-        if (invType == InvType.Storage){ invTypeMult = 1f; }
-        if (invType == InvType.Animal){ invTypeMult = 1f; }
+        float invTypeMult = invType switch {
+            InvType.Floor   => 5f,
+            InvType.Animal  => 0f,
+            InvType.Market  => 0f,
+            _               => 1f
+        };
+        if (invTypeMult == 0f) return;
         for (int i = 0; i < nStacks; i++){
             itemStacks[i].Decay(invTypeMult * time);
         }
@@ -162,15 +165,6 @@ public class Inventory{
             }
         }
         return amount;
-    }
-    public bool ContainsItem(Item item){
-        if (item == null){ return !IsEmpty(); }
-        foreach (ItemStack stack in itemStacks){
-            if (stack != null && stack.item == item && stack.quantity > 0){
-                return true;
-            }
-        }
-        return false;
     }
     public bool ContainsAvailableItem(Item item){
         if (item == null){ return !IsEmpty(); }

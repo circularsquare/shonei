@@ -6,7 +6,22 @@
       "Bash(ls c:/Users/anita/projects/shonei/*.csproj)",
       "Bash(ls c:/Users/anita/projects/shonei/*.sln)",
       "Bash(python3 -c \"import json,sys; data=json.load\\(sys.stdin\\); print\\([p[''name''] for p in data]\\)\")",
-      "Bash(git -C /c/Users/anita/projects/shonei config --list --local)"
+      "Bash(git -C /c/Users/anita/projects/shonei config --list --local)",
+      "Bash(curl -s http://127.0.0.1:8080/sse)",
+      "WebFetch(domain:pypi.org)",
+      "WebFetch(domain:github.com)",
+      "Bash(claude mcp list)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\(''mcpServers'', {}\\), indent=2\\)\\)\")",
+      "Bash(curl -s -m 3 http://127.0.0.1:8080/mcp)",
+      "Bash(claude mcp add --transport sse unityMCP http://127.0.0.1:8080/sse)",
+      "Bash(curl -s -m 3 -H \"Accept: text/event-stream\" http://127.0.0.1:8080/sse)",
+      "Bash(curl -s -m 3 -H \"Accept: text/event-stream\" http://127.0.0.1:8080/mcp)",
+      "Bash(claude mcp remove unityMCP)",
+      "mcp__mcp-for-unity__manage_editor",
+      "mcp__mcp-for-unity__manage_scene"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\anita"
     ]
   }
 }

@@ -79,6 +79,7 @@ public class TradingPanel : MonoBehaviour {
         } else {
             SetIndicator(false);
         }
+        gameObject.SetActive(false);
     }
 
     void OnDestroy() {

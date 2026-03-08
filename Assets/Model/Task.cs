@@ -344,6 +344,24 @@ public class FallTask : Task {
         return true;
     }
 }
+public class ResearchTask : Task {
+    public Tile labTile;
+    public ResearchTask(Animal animal) : base(animal) {}
+    public override bool Initialize() {
+        if (!Db.structTypeByName.ContainsKey("laboratory")) return false;
+        Path p = animal.nav.FindPathToBuilding(Db.structTypeByName["laboratory"]);
+        if (p == null) return false;
+        labTile = p.tile;
+        if (!labTile.building.res.Reserve()) return false;
+        objectives.Enqueue(new GoObjective(this, labTile));
+        objectives.Enqueue(new ResearchObjective(this));
+        return true;
+    }
+    public override void Cleanup() {
+        labTile?.building?.res.Unreserve();
+        base.Cleanup();
+    }
+}
 
 
 // ------------------------------
@@ -528,6 +546,15 @@ public class HarvestObjective : Objective {
 }
 
 
+
+public class ResearchObjective : Objective {
+    public ResearchObjective(Task task) : base(task) {}
+    public override void Start() {
+        animal.workProgress = 0f;
+        animal.state = Animal.AnimalState.Working;
+    }
+    // AnimalStateManager.HandleWorking drives progress and calls task.Complete().
+}
 
 public class FallObjective : Objective {
     public FallObjective(Task task, Tile below) : base(task) {

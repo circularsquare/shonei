@@ -9,8 +9,6 @@ public class StructController : MonoBehaviour {
     public static StructController instance;
     private List<Structure> structures = new List<Structure>(); // list of structures
     public int n = 0; 
-    public GameObject jobsPanel;
-
     private World world;
     public Dictionary<Job, int> jobCounts;
 

@@ -5,10 +5,6 @@
     - magic / qi
     - tofu
     - farming buildings
-- research
-    - add research panel
-    - add scientist job / building
-    - add global research point tracking 
 - consider whether itemstacks are useful
 - info panel
     - have info panel cycle through when you click it again
@@ -26,6 +22,9 @@
     - allow players to specify priority within constructing/deconstructing/crafting, anything that can be set at a site ahead of time
     - have closest building mouse claim building instead of a random one? (maybe not)
     - add inventory priority!
+- day night cycle
+- add roads (render on tile below?)
+- make sure market is in the normal list of inventories
 
 
 BUGS

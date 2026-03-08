@@ -6,6 +6,15 @@ public class WorldSaveData {
     public float timer;
     public TileSaveData[] tiles;
     public AnimalSaveData[] animals;
+    public ResearchSaveData research;
+}
+
+public class ResearchSaveData {
+    public float[] pointHistory;
+    public int     historyIndex;
+    public float   totalSpent;
+    public int     tickCounter;
+    public int[]   unlockedIds;
 }
 
 public class TileSaveData {
@@ -54,8 +63,9 @@ public class AnimalSaveData {
     public float x, y;
     public string jobName;
     public float energy;
-    public float food;             // eating.food
-    public float timeSinceLastAte; // eating.timeSinceLastAte
-    public float eep;              // eeping.eep
+    public float food;
+    public float eep;
+    public float timeSinceAteWheat; // happiness
+    public float timeSinceAteFruit; // happiness
     public InventorySaveData inv;
 }

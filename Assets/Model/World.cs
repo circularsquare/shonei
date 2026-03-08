@@ -52,6 +52,7 @@ public class World : MonoBehaviour {
             tickStopwatch.Restart();
             animalController.TickUpdate();
             plantController.TickUpdate();
+            if (ResearchSystem.instance != null) ResearchSystem.instance.TickUpdate();
             tickStopwatch.Stop();
             lastTickMs = tickStopwatch.Elapsed.TotalMilliseconds;
         }        

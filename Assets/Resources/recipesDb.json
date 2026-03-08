@@ -15,7 +15,7 @@
     },{
         "id": 10,
         "job": "digger",
-        "tile": "dirt pit",
+        "tile": "soil pit",
         "description": "dig soil",
         "workload": 2.0,
         "ninputs": [

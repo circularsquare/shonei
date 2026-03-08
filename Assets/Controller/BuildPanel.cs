@@ -17,6 +17,7 @@ public class BuildPanel : MonoBehaviour {
     static readonly string[] CategoryNames = { "structures", "plants", "production", "storage" };
 
     readonly Dictionary<string, GameObject> subPanels = new Dictionary<string, GameObject>();
+    readonly Dictionary<string, Button> catButtons = new Dictionary<string, Button>();
     string openCategory = null;
 
     void Start() {
@@ -42,15 +43,17 @@ public class BuildPanel : MonoBehaviour {
 
             RectTransform rt = sp.AddComponent<RectTransform>();
             rt.anchorMin = Vector2.zero;
-            rt.anchorMax = new Vector2(1f, 0f);
+            rt.anchorMax = Vector2.zero;
             rt.pivot = new Vector2(0f, 0f);
 
             VerticalLayoutGroup vlg = sp.AddComponent<VerticalLayoutGroup>();
             vlg.childAlignment = TextAnchor.UpperLeft;
-            vlg.childForceExpandWidth = true;
+            vlg.childForceExpandWidth = false;
             vlg.childForceExpandHeight = false;
             vlg.childControlHeight = false;
-            sp.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            var csf = sp.AddComponent<ContentSizeFitter>();
+            csf.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+            csf.verticalFit   = ContentSizeFitter.FitMode.PreferredSize;
 
             foreach (StructType st in cats[cat]) {
                 AddBuildDisplay(sp.transform, st);
@@ -61,6 +64,10 @@ public class BuildPanel : MonoBehaviour {
         }
 
         // hook up the manually-placed category buttons
+        catButtons["structures"] = btnStructures;
+        catButtons["plants"]     = btnPlants;
+        catButtons["production"] = btnProduction;
+        catButtons["storage"]    = btnStorage;
         btnStructures?.onClick.AddListener(() => ToggleCategory("structures"));
         btnPlants?.onClick.AddListener(     () => ToggleCategory("plants"));
         btnProduction?.onClick.AddListener( () => ToggleCategory("production"));
@@ -88,8 +95,18 @@ public class BuildPanel : MonoBehaviour {
         bool wasOpen = openCategory == cat;
         CloseSubPanel();
         if (!wasOpen) {
-            subPanels[cat].SetActive(true);
+            GameObject sp = subPanels[cat];
+            sp.SetActive(true);
             openCategory = cat;
+            // position sub-panel above its category button
+            if (catButtons.TryGetValue(cat, out Button btn) && btn != null) {
+                RectTransform btnRt = btn.GetComponent<RectTransform>();
+                RectTransform spRt  = sp.GetComponent<RectTransform>();
+                RectTransform subpanelRt = (RectTransform)subpanel;
+                Vector3 btnLeftWorld = btnRt.TransformPoint(new Vector3(btnRt.rect.xMin, 0, 0));
+                Vector2 localPos = subpanelRt.InverseTransformPoint(btnLeftWorld);
+                spRt.anchoredPosition = new Vector2(localPos.x, spRt.anchoredPosition.y);
+            }
         }
     }
 
@@ -98,6 +115,15 @@ public class BuildPanel : MonoBehaviour {
             subPanels[openCategory].SetActive(false);
             openCategory = null;
         }
+    }
+
+    public void UnlockBuilding(string buildingName) {
+        if (!Db.structTypeByName.TryGetValue(buildingName, out StructType st)) {
+            Debug.LogWarning("UnlockBuilding: unknown building " + buildingName); return;
+        }
+        string cat = st.isPlant ? "plants" : st.category;
+        if (cat == null || !subPanels.ContainsKey(cat)) return;
+        AddBuildDisplay(subPanels[cat].transform, st);
     }
 
     public void SetStructType(StructType st) {

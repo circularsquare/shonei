@@ -87,6 +87,15 @@ public class AnimalStateManager {
             }
             return;
         }
+        if (animal.task is ResearchTask) {
+            float workload = 10f;
+            animal.workProgress += 1f;
+            if (animal.workProgress >= workload) {
+                animal.workProgress -= workload;
+                animal.task.Complete();
+            }
+            return;
+        }
         Debug.Log(animal.aName + " in working state but no work to do");
     }
 
