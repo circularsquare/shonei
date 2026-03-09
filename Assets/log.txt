@@ -307,3 +307,5 @@ bug fixes
 - added probability recipe outputs
 - added building depletion
 - added discrete itemstacks (like tools)
+- added tool equipping / workshop to produce tools
+- daynight cycle coloring

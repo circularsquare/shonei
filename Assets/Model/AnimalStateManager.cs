@@ -48,10 +48,14 @@ public class AnimalStateManager {
     }
 
     private void HandleWorking() {
+        bool hasTool = animal.toolSlotInv.itemStacks[0].item != null;
+        float toolMult = hasTool ? 1.25f : 1f;
+        float workEfficiency = 1f * animal.efficiency * toolMult;
+
         if (animal.task is HarvestTask harvestTask) {
             Plant plant = harvestTask.tile.building as Plant;
             if (plant == null || !plant.harvestable) { harvestTask.Fail(); return; }
-            animal.workProgress += 1f;
+            animal.workProgress += workEfficiency;
             if (animal.workProgress < plant.plantType.harvestTime) { return; }
             animal.workProgress -= plant.plantType.harvestTime;
             animal.Produce(plant.Harvest());
@@ -60,20 +64,21 @@ public class AnimalStateManager {
         } else if (animal.task is ConstructTask constructTask){
             Blueprint blueprint = constructTask.blueprint;
             if (blueprint == null || blueprint.cancelled) {constructTask.Fail(); return;}
-            float progressAfter = blueprint.constructionProgress + 1f * animal.efficiency;
+            float progressAmount = workEfficiency;
+            float progressAfter = blueprint.constructionProgress + progressAmount;
             if (blueprint.structType.isTile && progressAfter >= blueprint.constructionCost) {
                 if (AnimalController.instance.IsAnimalOnTile(blueprint.tile)) {
                     constructTask.Fail(); // leave blueprint intact so another mouse can retry later
                     return;
                 }
             }
-            if (blueprint.ReceiveConstruction(1f * animal.efficiency)){
+            if (blueprint.ReceiveConstruction(progressAmount)){
                 constructTask.Complete();
             }
             return;
         } else if (animal.task is CraftTask craftTask) {
             Recipe recipe = craftTask.recipe;
-            animal.workProgress += 1f;
+            animal.workProgress += workEfficiency;
             if (animal.workProgress < recipe.workload) { return; }
             animal.workProgress -= recipe.workload;
             if (animal.CanProduce(recipe)){

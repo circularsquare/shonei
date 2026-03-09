@@ -10,7 +10,7 @@
         ],
         "noutputs": [
             { "name": "planks", "quantity": 1 },
-            { "name": "sawdust", "quantity": 1 }
+            { "name": "sawdust", "quantity": 1, "chance": 0.2 }
         ]
     },{
         "id": 1,

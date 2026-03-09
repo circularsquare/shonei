@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
-using UnityEngine.U2D;
+using System.Reflection;
 
 // note: this is not really a controller. it just manages mouse input
 
@@ -15,17 +15,19 @@ public class MouseController : MonoBehaviour {
 
     public World world;
     public static MouseController instance;
-    PixelPerfectCamera ppc;
+    Component ppcComponent;
+    PropertyInfo ppcAssetsPPU;
 
     void Start() {
         if (instance != null) {
             Debug.LogError("there should only be one mouse controller");}
         instance = this;
-        ppc = Camera.main.GetComponent<PixelPerfectCamera>();
+        foreach (var c in Camera.main.GetComponents<Component>()) {
+            var prop = c.GetType().GetProperty("assetsPPU");
+            if (prop != null) { ppcComponent = c; ppcAssetsPPU = prop; break; }
+        }
     }
 
-    // wanna chagne the building process to only be able to make Buildings, not tiles. 
-    // dirt buildings will instantly just turn into dirt tiles after theyre made.
     void Update() {
         if (EventSystem.current.IsPointerOverGameObject()){
             if (Input.GetMouseButtonDown(0) && mouseMode == MouseMode.Build)
@@ -38,13 +40,14 @@ public class MouseController : MonoBehaviour {
 
         // zoom
         float scroll = Input.GetAxis("Mouse ScrollWheel");
-        if (scroll != 0f && ppc != null) {
+        if (scroll != 0f && ppcAssetsPPU != null) {
             int[] zoomLevels = {8, 12, 16, 24 }; // in PPU
-            int idx = System.Array.IndexOf(zoomLevels, ppc.assetsPPU);
-            if (idx == -1) idx = System.Array.BinarySearch(zoomLevels, ppc.assetsPPU);
-            if (idx < 0) idx = ~idx; // nearest index if not found
+            int current = (int)ppcAssetsPPU.GetValue(ppcComponent);
+            int idx = System.Array.IndexOf(zoomLevels, current);
+            if (idx == -1) idx = System.Array.BinarySearch(zoomLevels, current);
+            if (idx < 0) idx = ~idx;
             idx = Mathf.Clamp(idx + (scroll > 0 ? 1 : -1), 0, zoomLevels.Length - 1);
-            ppc.assetsPPU = zoomLevels[idx];
+            ppcAssetsPPU.SetValue(ppcComponent, zoomLevels[idx]);
         }
 
         // draggin world around

@@ -339,7 +339,7 @@ public class Eating {
     public float hungerRate = 0.5f;
     public float timeSinceLastAte = 9999f;
 
-    public Eating(){ }
+public Eating(){ }
 
     public float Fullness(){ return food / maxFood; }
     public bool Hungry(){ return food / maxFood < 0.5f; }

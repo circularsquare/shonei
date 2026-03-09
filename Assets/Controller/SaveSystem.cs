@@ -7,7 +7,16 @@ using Newtonsoft.Json;
 public class SaveSystem : MonoBehaviour {
     public static SaveSystem instance;
 
-    string SaveDir => System.IO.Path.Combine(Application.persistentDataPath, "saves");
+    //     string SaveDir => System.IO.Path.Combine(Application.persistentDataPath, "saves");
+    string SaveDir {
+        get {
+#if UNITY_EDITOR
+            return System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.dataPath, "../SaveData"));
+#else
+            return System.IO.Path.Combine(Application.persistentDataPath, "saves");
+#endif
+        }
+    }
 
     void Awake() {
         if (instance != null) { Debug.LogError("there should only be one SaveSystem"); }

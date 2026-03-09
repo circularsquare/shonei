@@ -123,6 +123,7 @@ public class WorldController : MonoBehaviour {
         Plant plant5 = new Plant(Db.plantTypeByName["wheat"], 26, 10);
         StructController.instance.Place(plant5);
 
+        world.timer = Db.ticksInDay * 0.3f;
         world.graph.Initialize();
 
         for (int i = 0; i < 4; i++) AnimalController.instance.AddAnimal(20, 10);

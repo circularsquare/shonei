@@ -195,9 +195,10 @@ public class Animal : MonoBehaviour{
             else Debug.Log("inventory near full and can't drop!"); }
 
         if (eating.Hungry()) { if (FindFood()) return; } // will create obtaintask for food
-        if (eeping.Eepy()) { 
-            task = new EepTask(this); 
+        if (eeping.Eepy()) {
+            task = new EepTask(this);
             if (task.Start()) return; }
+        if (FindEquipment()) return; // pick up a tool if not holding one
 
         Path harvestPath = nav.FindPathToHarvestable(job);    // harvest
         if (harvestPath != null) { 
@@ -228,6 +229,16 @@ public class Animal : MonoBehaviour{
 
         task = null; // none of the above tasks started successfully...
         return;
+    }
+
+    // Picks up one tool into toolSlotInv if the slot is empty.
+    private bool FindEquipment() {
+        if (toolSlotInv.itemStacks[0].item != null) return false; // already holding a tool
+        foreach (Item equipment in Db.equipmentItems) {
+            task = new ObtainTask(this, equipment, 100, toolSlotInv);
+            if (task.Start()) return true;
+        }
+        return false;
     }
 
     // Prioritizes foods from unhappy categories; falls back to any available food.
@@ -354,6 +365,8 @@ public class Animal : MonoBehaviour{
         List<Recipe> eligibleRecipes = new List<Recipe>();
         foreach (Recipe recipe in job.recipes){
             if (recipe != null && ginv.SufficientResources(recipe.inputs)){
+                if (!Db.structTypeByName.ContainsKey(recipe.tile) ||
+                    nav.FindPathToBuilding(Db.structTypeByName[recipe.tile]) == null) continue;
                 float score = recipe.Score();
                 eligibleRecipes.Add(recipe);
             }
@@ -368,6 +381,8 @@ public class Animal : MonoBehaviour{
         Recipe bestRecipe = null;
         foreach (Recipe recipe in job.recipes){
             if (recipe != null && ginv.SufficientResources(recipe.inputs)){
+                if (!Db.structTypeByName.ContainsKey(recipe.tile) ||
+                    nav.FindPathToBuilding(Db.structTypeByName[recipe.tile]) == null) continue;
                 float score = recipe.Score();
                 if (score > maxScore){
                     maxScore = score;
