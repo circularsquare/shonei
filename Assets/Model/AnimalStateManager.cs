@@ -77,7 +77,24 @@ public class AnimalStateManager {
             if (animal.workProgress < recipe.workload) { return; }
             animal.workProgress -= recipe.workload;
             if (animal.CanProduce(recipe)){
-                animal.Produce(recipe);
+                // Consume inputs and produce outputs, rolling chance for each output
+                foreach (ItemQuantity iq in recipe.inputs) animal.Consume(iq.item, iq.quantity);
+                foreach (ItemQuantity output in recipe.outputs) {
+                    if (output.chance >= 1f || UnityEngine.Random.value < output.chance)
+                        animal.Produce(output.item, output.quantity);
+                }
+                // Track uses and deplete building if applicable
+                Building workBuilding = craftTask.workplace?.building;
+                if (workBuilding != null && workBuilding.structType.depleteAt > 0) {
+                    workBuilding.uses++;
+                    if (workBuilding.uses >= workBuilding.structType.depleteAt) {
+                        Tile depletedTile = craftTask.workplace;
+                        workBuilding.Destroy();
+                        StructController.instance.Construct(Db.structTypeByName["platform"], depletedTile);
+                        craftTask.Complete();
+                        return;
+                    }
+                }
                 craftTask.roundsRemaining--;
                 if (craftTask.roundsRemaining <= 0) { craftTask.Complete(); }
             } else if (animal.inv.ContainsItems(recipe.inputs)) {

@@ -137,8 +137,7 @@ public class WorldController : MonoBehaviour {
         AnimalController.instance.AddJob("logger", 1);
         AnimalController.instance.AddJob("hauler", 1);
         AnimalController.instance.AddJob("farmer", 1);
-        ProduceAtTile("wheat", 1, world.GetTileAt(20, 10));
-        ProduceAtTile("silver", 1, world.GetTileAt(21, 10));
+        ProduceAtTile("silver", 50, world.GetTileAt(21, 10));
     }
 
     // Produces items on a tile's floor inventory.
@@ -223,7 +222,7 @@ public class WorldController : MonoBehaviour {
             plant.UpdateSprite();
             structure = plant;
         } else if (st.depth == "b") {
-            structure = new Building(st, tile.x, tile.y);
+            structure = new Building(st, tile.x, tile.y) { uses = ssd.uses };
         } else if (st.name == "platform") {
             structure = new Platform(st, tile.x, tile.y);
         } else if (st.name == "stairs") {
@@ -249,6 +248,7 @@ public class WorldController : MonoBehaviour {
         Blueprint bp = new Blueprint(st, tile.x, tile.y);
         bp.state = (Blueprint.BlueprintState)bsd.state;
         bp.constructionProgress = bsd.constructionProgress;
+        bp.priority = bsd.priority;
         if (bsd.inv != null) {
             for (int i = 0; i < bsd.inv.stacks.Length && i < bp.inv.itemStacks.Length; i++) {
                 var ssd = bsd.inv.stacks[i];
@@ -282,6 +282,7 @@ public class WorldController : MonoBehaviour {
                 GlobalInventory.instance.AddItem(item, ssd.quantity);
             }
         }
+        foreach (Item item in Db.itemsFlat) { inv.AllowItem(item); }
         if (isd.disallowedItemIds != null) {
             foreach (int id in isd.disallowedItemIds) {
                 if (id < Db.items.Length && Db.items[id] != null) {

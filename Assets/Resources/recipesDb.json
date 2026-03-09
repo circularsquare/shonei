@@ -32,7 +32,9 @@
         "ninputs": [
         ],
         "noutputs": [
-            { "name": "stone", "quantity": 1 }
+            { "name": "stone", "quantity": 1 },
+            { "name": "coal", "quantity": 1, "chance": 0.10 },
+            { "name": "iron ore", "quantity": 1, "chance": 0.10 }
         ]
     }
 ]  

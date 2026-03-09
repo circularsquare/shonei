@@ -95,6 +95,7 @@ public class SaveSystem : MonoBehaviour {
             ssd.plantGrowthStage = plant.growthStage;
             ssd.plantHarvestable = plant.harvestable;
         }
+        if (s is Building b && b.uses > 0) ssd.uses = b.uses;
         return ssd;
     }
 
@@ -103,7 +104,8 @@ public class SaveSystem : MonoBehaviour {
             typeName = bp.structType.name,
             state = (int)bp.state,
             constructionProgress = bp.constructionProgress,
-            inv = bp.costs.Length > 0 ? GatherInventory(bp.inv) : null
+            inv = bp.costs.Length > 0 ? GatherInventory(bp.inv) : null,
+            priority = bp.priority
         };
     }
 

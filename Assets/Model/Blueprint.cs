@@ -19,6 +19,7 @@ public class Blueprint {
     public BlueprintState state = BlueprintState.Receiving;
     public Reservable res;
     public bool cancelled = false;
+    public int priority = 0;
 
     public Blueprint(StructType structType, int x, int y){
         this.structType = structType;

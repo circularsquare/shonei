@@ -40,6 +40,26 @@
             }
         ]
     },{
+        "id": 20,
+        "name": "soil",
+        "decayRate": 0.01,
+        "children": null
+    },{
+        "id": 30,
+        "name": "ore",
+        "decayRate": 0.01,
+                "children": [
+            {
+                "id": 31,
+                "name": "iron ore",
+                "children": null
+            },{
+                "id": 32,
+                "name": "coal",
+                "children": null
+            }
+        ]
+    },{
         "id": 100,
         "name": "planks",
         "decayRate": 0.06,
@@ -58,11 +78,6 @@
         "id": 110,
         "name": "sawdust",
         "decayRate": 0.04,
-        "children": null
-    },{
-        "id": 20,
-        "name": "soil",
-        "decayRate": 0.01,
         "children": null
     },{
         "id": 150,
@@ -87,6 +102,11 @@
         "name": "apple",
         "decayRate": 0.2,
         "foodValue": 15,
+        "children": null
+    },{
+        "id": 200,
+        "name": "tools",
+        "decayRate": 0.1,
         "children": null
     }
 ]

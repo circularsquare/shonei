@@ -175,10 +175,24 @@ public class Nav {
 
     // --- Blueprints (use adjacent, since blueprint tile may not be standable) ---
     public (Tile, Path) FindPathAdjacentToBlueprint(Job job, Blueprint.BlueprintState bpState, int r = 40){
-        return FindPathAdjacentTo(t => t.GetMatchingBlueprint(b =>
-                b.structType.job == job
-                && b.state == bpState
-                && b.res.Available()) != null, r);
+        var candidates = new List<(Tile tile, Path path, Blueprint bp)>();
+        for (int x = -r; x <= r; x++) {
+            for (int y = -r; y <= r; y++) {
+                Tile tile = world.GetTileAt(a.x + x, a.y + y);
+                if (tile == null) continue;
+                Blueprint bp = tile.GetMatchingBlueprint(b =>
+                    b.structType.job == job && b.state == bpState && b.res.Available());
+                if (bp == null) continue;
+                Path path = PathToOrAdjacent(tile);
+                if (path != null) candidates.Add((tile, path, bp));
+            }
+        }
+        if (candidates.Count == 0) return (null, null);
+        candidates.Sort((a, b) => {
+            int pc = b.bp.priority.CompareTo(a.bp.priority); // higher priority first
+            return pc != 0 ? pc : a.path.cost.CompareTo(b.path.cost); // tiebreak: closer first
+        });
+        return (candidates[0].tile, candidates[0].path);
     }
     public HaulInfo FindFloorConsolidation(int r = 50) {
         // Collect all floor haul-eligible tiles sorted by path cost, try each as a source

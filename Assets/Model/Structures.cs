@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class Building : Structure {
+    public int uses = 0;
     public Building(StructType st, int x, int y) : base(st, x, y){
         if (tile.building != null){Debug.LogError("already a building at " + x.ToString() + "," + y.ToString() + "!");}
         tile.building = this;

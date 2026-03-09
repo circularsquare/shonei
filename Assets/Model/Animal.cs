@@ -23,6 +23,8 @@ public class Animal : MonoBehaviour{
 
     public Job job;
     public Inventory inv;
+    public Inventory foodSlotInv; // equip slot: food only, 1 stack, 5 liang capacity
+    public Inventory toolSlotInv; // equip slot: tool, 1 stack
     public GlobalInventory ginv;
 
     public float energy;     // every time you get 1 energy you can do 1 work
@@ -83,6 +85,8 @@ public class Animal : MonoBehaviour{
         animationController = go.GetComponent<AnimationController>();
         sr.sortingOrder = 50;
         this.inv = new Inventory(5, 1000, Inventory.InvType.Animal);
+        this.foodSlotInv = new Inventory(1, 500, Inventory.InvType.Equip);
+        this.toolSlotInv = new Inventory(1, 1000, Inventory.InvType.Equip);
         this.nav = new Nav(this);
         ginv = GlobalInventory.instance;
         random = new System.Random();
@@ -107,6 +111,11 @@ public class Animal : MonoBehaviour{
                     inv.Produce(Db.itemByName[ssd.itemName], ssd.quantity);
                 }
             }
+            // Restore equip slots (null on old saves — slots start empty)
+            if (pendingSaveData.foodSlotInv != null)
+                SaveSystem.LoadInventory(foodSlotInv, pendingSaveData.foodSlotInv);
+            if (pendingSaveData.toolSlotInv != null)
+                SaveSystem.LoadInventory(toolSlotInv, pendingSaveData.toolSlotInv);
             pendingSaveData = null;
         } else {
             this.aName = "mouse" + id.ToString();
@@ -144,12 +153,18 @@ public class Animal : MonoBehaviour{
         eating.Update();
         eeping.Update();
         if (eating.Hungry()) {
-            foreach (Item food in Db.edibleItems) {
-                if (inv.Quantity(food) >= 100) {
-                    Consume(food, 100); // consume 1 liang
-                    eating.Eat(food.foodValue);
-                    happiness.NoteAte(food);
-                    break;
+            Item slotFood = foodSlotInv.itemStacks[0].item;
+            if (slotFood != null && foodSlotInv.Quantity(slotFood) > 0) {
+                int qty = foodSlotInv.Quantity(slotFood);
+                if (qty >= 100) {
+                    // Full meal
+                    foodSlotInv.Produce(slotFood, -100);
+                    eating.Eat(slotFood.foodValue);
+                    happiness.NoteAte(slotFood);
+                } else {
+                    // Partial meal — consume remainder, scale nutrition, no happiness credit
+                    foodSlotInv.Produce(slotFood, -qty);
+                    eating.Eat(slotFood.foodValue * qty / 100f);
                 }
             }
         }
@@ -173,7 +188,7 @@ public class Animal : MonoBehaviour{
     public void ChooseTask() {
         if (task != null){ return; } // TODO: change when this func is called to just whenever task is null?
 
-        if (inv.GetFreeStacks() <= 2){ // drop inventory if two or fewer open stacks!
+        if (inv.GetFreeStacks() <= 3){ // drop inventory if three or fewer open stacks!
             task = new DropTask(this); 
             if (task.Start()) return; 
             else Debug.Log("inventory near full and can't drop!"); }
@@ -215,15 +230,25 @@ public class Animal : MonoBehaviour{
     }
 
     // Prioritizes foods from unhappy categories; falls back to any available food.
+    // Food goes directly into foodSlotInv (equip slot), not the main inventory.
     private bool FindFood() {
-        int amountToPickUp = 200; // 2 liang in fen
+        Item slotItem = foodSlotInv.itemStacks[0].item; // null if empty
+        int room = slotItem != null
+            ? foodSlotInv.GetStorageForItem(slotItem)
+            : foodSlotInv.stackSize;
+        if (room <= 0) return false; // slot already full
+
+        int amountToPickUp = Math.Max(room, 100);
+
         foreach (Item food in Db.edibleItems) {
             if (!happiness.WouldHelp(food)) continue;
-            task = new ObtainTask(this, food, amountToPickUp);
+            if (slotItem != null && slotItem != food) continue; // slot has different food
+            task = new ObtainTask(this, food, amountToPickUp, foodSlotInv);
             if (task.Start()) return true;
         }
         foreach (Item food in Db.edibleItems) {
-            task = new ObtainTask(this, food, amountToPickUp);
+            if (slotItem != null && slotItem != food) continue;
+            task = new ObtainTask(this, food, amountToPickUp, foodSlotInv);
             if (task.Start()) return true;
         }
         return false;
@@ -248,11 +273,13 @@ public class Animal : MonoBehaviour{
     //--------------
     // ITEM MOVEMENT (maybe these should be moved into Inventory class??)
     // -----------------------
-    // picks up item current location, returns amount *not* taken
-    public int TakeItem(Item item, int quantity){ 
+    // Picks up item at current location, returns amount *not* taken.
+    // Pass targetInv to deposit into an equip slot instead of main inventory.
+    public int TakeItem(Item item, int quantity, Inventory targetInv = null){
         Tile tileHere = TileHere();
         if (tileHere != null && tileHere.inv != null) {
-            int leftover = tileHere.inv.MoveItemTo(inv, item, quantity);
+            Inventory dest = targetInv ?? inv;
+            int leftover = tileHere.inv.MoveItemTo(dest, item, quantity);
             if (tileHere.inv.IsEmpty() && tileHere.inv.invType == Inventory.InvType.Floor){
                 tileHere.inv.Destroy();
                 tileHere.inv = null; // delete an empty floor inv.
@@ -261,7 +288,13 @@ public class Animal : MonoBehaviour{
         }
         return quantity;
     }
-    public int TakeItem(ItemQuantity iq){ return(TakeItem(iq.item , iq.quantity)); }
+    public int TakeItem(ItemQuantity iq, Inventory targetInv = null){ return(TakeItem(iq.item, iq.quantity, targetInv)); }
+    // Moves item from equip slot back to main inventory. Leftover stays in slot if inv is full.
+    public void Unequip(Inventory slotInv) {
+        Item item = slotInv.itemStacks[0].item;
+        if (item == null) return;
+        slotInv.MoveItemTo(inv, item, slotInv.Quantity(item));
+    }
     // moves item to tile here. returns amount *not* dropped
     public int DropItem(Item item, int quantity = -1){ 
         if (quantity == -1) { quantity = inv.Quantity(item); }

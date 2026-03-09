@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la ./Assets/Controller/*.cs)",
+      "mcp__unity__manage_gameobject",
+      "mcp__unity__manage_components",
+      "mcp__unity__batch_execute"
+    ]
+  }
+}

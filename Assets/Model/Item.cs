@@ -34,6 +34,7 @@ public class Item {
 public class ItemQuantity {
     public int id {get; set;}
     public int quantity {get; set;}
+    public float chance = 1f;
     public Item item;
     public ItemQuantity(){}
     [OnDeserialized]
@@ -66,4 +67,5 @@ public class ItemQuantity {
 public class ItemNameQuantity {
     public string name {get; set;}
     public float quantity {get; set;} // authored in liang; converted to fen (×100) on use
+    public float chance {get; set;} = 1f;
 }

@@ -195,6 +195,7 @@ public class Recipe {
         }
         for (int i = 0; i < noutputs.Length; i++){
             outputs[i] = new ItemQuantity(noutputs[i].name, (int)Math.Round(noutputs[i].quantity * 100));
+            outputs[i].chance = noutputs[i].chance;
         }
     }
     public float Score(){ // only takes into account global quantity / target. nothing about recipe ratios.

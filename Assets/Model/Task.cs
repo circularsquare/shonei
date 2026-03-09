@@ -83,7 +83,7 @@ public abstract class Task {
 
 public class CraftTask : Task {
     public Recipe recipe;
-    Tile workplace; 
+    public Tile workplace;
     public int roundsRemaining;
 
     public CraftTask(Animal animal) : base(animal){}
@@ -103,7 +103,8 @@ public class CraftTask : Task {
             if (!animal.inv.ContainsItem(iq, roundsRemaining)){
                 (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(iq.item);
                 if (itemPath == null) { return false; }
-                FetchAndReserve(iq, itemPath.tile, stack, iq.quantity * roundsRemaining);
+                int totalNeeded = iq.quantity * roundsRemaining;
+                FetchAndReserve(new ItemQuantity(iq.item, totalNeeded), itemPath.tile, stack, totalNeeded);
             }
         }
         objectives.Enqueue(new GoObjective(this, workplace));

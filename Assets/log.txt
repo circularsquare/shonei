@@ -301,3 +301,8 @@ bug fixes
 - various ui tidying
 - zooming in and out
 - connected claude to unity
+3/9
+- added blueprint prio
+- fixed calcworkpossible
+- added probability recipe outputs
+- added building depletion

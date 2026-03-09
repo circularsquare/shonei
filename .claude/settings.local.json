@@ -18,7 +18,17 @@
       "Bash(curl -s -m 3 -H \"Accept: text/event-stream\" http://127.0.0.1:8080/mcp)",
       "Bash(claude mcp remove unityMCP)",
       "mcp__mcp-for-unity__manage_editor",
-      "mcp__mcp-for-unity__manage_scene"
+      "mcp__mcp-for-unity__manage_scene",
+      "Bash(grep -n \"class.*Structure\\\\|class.*Building\" ./Assets/Model/*.cs)",
+      "Bash(curl -s http://127.0.0.1:8082)",
+      "Bash(curl -v http://127.0.0.1:8082)",
+      "Bash(curl -s http://127.0.0.1:8082/sse)",
+      "Bash(curl -s http://127.0.0.1:8082/mcp)",
+      "Bash(curl -s -X POST http://127.0.0.1:8082/mcp -H \"Content-Type: application/json\" -d '{\"\"jsonrpc\"\":\"\"2.0\"\",\"\"method\"\":\"\"initialize\"\",\"\"params\"\":{\"\"protocolVersion\"\":\"\"2024-11-05\"\",\"\"capabilities\"\":{}},\"\"id\"\":1}')",
+      "Bash(curl -s http://127.0.0.1:8082/mcp -H \"Accept: text/event-stream, application/json\")",
+      "mcp__unity__read_console",
+      "mcp__unity__manage_scene",
+      "mcp__unity__find_gameobjects"
     ],
     "additionalDirectories": [
       "C:\\Users\\anita"

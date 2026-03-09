@@ -81,16 +81,20 @@ public class InventoryController : MonoBehaviour {
     void UpdateItemDisplay(Item item){
         if (item == null){return;}
         // TODO: add thing at the top that indicates ur looking at a specific inventory
-        if (HaveAnyOfChildren(item)){ 
+        bool hasItem = HaveAnyOfChildren(item);
+
+        // Handle first-time discovery
+        if (hasItem && discoveredItems[item.id] == false){
+            discoveredItems[item.id] = true;
+            itemDisplayGos[item.id].SetActive(true);
+            Canvas.ForceUpdateCanvases();
+            LayoutRebuilder.ForceRebuildLayoutImmediate(panelInventory.GetComponent<RectTransform>());
+        }
+
+        // Update text if discovered (even if quantity is now 0, e.g. after Reset)
+        if (discoveredItems[item.id]){
             GameObject itemDisplayGo = itemDisplayGos[item.id];
             if (itemDisplayGo == null){Debug.LogError("itemdisplaygo not found: " + item.name);return;}
-
-            if (discoveredItems[item.id] == false){
-                discoveredItems[item.id] = true;
-                itemDisplayGo.SetActive(discoveredItems[item.id]);
-                RectTransform rectTransform = GetComponent<RectTransform>();
-                LayoutRebuilder.ForceRebuildLayoutImmediate(rectTransform);
-            }
 
             string text;
             if (selectedInventory != null){text = item.name + ": " + ItemStack.FormatQ(selectedInventory.Quantity(item));}
@@ -105,8 +109,8 @@ public class InventoryController : MonoBehaviour {
             Transform textTargetGo = itemDisplayGo.transform.Find("HorizontalLayout/TextItemTarget");
             if (textTargetGo != null){textTargetGo.gameObject.GetComponent<TMPro.TextMeshProUGUI>().text = text;}
 
-            ItemDisplay itemDisplay = itemDisplayGo.GetComponent<ItemDisplay>();
-            itemDisplay.LoadAllowed();
+            ItemDisplay itemDisplayComp = itemDisplayGo.GetComponent<ItemDisplay>();
+            itemDisplayComp.LoadAllowed();
 
             if (item.parent != null){
                 UpdateItemDisplay(item.parent);

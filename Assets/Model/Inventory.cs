@@ -8,7 +8,7 @@ public class Inventory{
     public int nStacks;
     public int stackSize; 
     public ItemStack[] itemStacks;
-    public enum InvType {Floor, Storage, Animal, Market};
+    public enum InvType {Floor, Storage, Animal, Market, Equip};
     public InvType invType;
     public Dictionary<int, bool> allowed;
     public string displayName = "storage";
@@ -55,7 +55,12 @@ public class Inventory{
             itemStacks[i] = new ItemStack(this, null, 0, stackSize);
         }
 
-        allowed = Db.itemsFlat.ToDictionary(i => i.id, i => true); // default all items allowed
+        if (invType == InvType.Storage) {
+            allowed = Db.itemsFlat.ToDictionary(i => i.id, i => false); // default all disallowed
+        } else {
+            allowed = Db.itemsFlat.ToDictionary(i => i.id, i => true); // default all items allowed
+        }
+        
 
         if (invType == InvType.Storage && nStacks > 1){
             // Multi-stack storage (drawer): one sprite per stack slot in a 2x2 grid
@@ -105,6 +110,7 @@ public class Inventory{
             InvType.Floor   => 5f,
             InvType.Animal  => 0f,
             InvType.Market  => 0f,
+            InvType.Equip   => 0f,
             _               => 1f
         };
         if (invTypeMult == 0f) return;
@@ -360,7 +366,7 @@ public class Inventory{
                     sr.sprite = null;
                     continue;
                 }
-                string sName = stack.item.name;
+                string sName = stack.item.name.Replace(" ", "");
                 Sprite sSprite = Resources.Load<Sprite>($"Sprites/Items/{sName}/qmid");
                 sSprite ??= Resources.Load<Sprite>("Sprites/Items/defaultq");
                 stackGos[i].name = "inventorystack_" + sName;

@@ -87,7 +87,8 @@ public class BuildPanel : MonoBehaviour {
             SetStructType(captured);
             CloseSubPanel();
         });
-        go.transform.Find("BuildingButton/TextBuildingName").GetComponent<TextMeshProUGUI>().text = st.name;
+        string buildingName = (st.name == "empty") ? "mine tile" : st.name;
+        go.transform.Find("BuildingButton/TextBuildingName").GetComponent<TextMeshProUGUI>().text = buildingName;
         go.name = "BuildDisplay_" + st.name;
     }
 

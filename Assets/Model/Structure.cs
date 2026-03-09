@@ -75,6 +75,7 @@ public class StructType {
     public int storageStackSize {get; set;} // max items per stack in storage
     public string category {get; set;} // build menu category: "structures", "plants", "production", "storage"
     public bool defaultLocked {get; set;} // true = locked; hidden from build menu until unlocked via research
+    public int depleteAt {get; set;} // 0 = never depletes; >0 = deplete after this many uses
 
     [OnDeserialized]
     internal void OnDeserialized(StreamingContext context){

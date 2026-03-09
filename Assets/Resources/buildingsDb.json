@@ -157,6 +157,7 @@
         "capacity": 1,
         "requiredTileName": "stone",
         "category": "production",
-        "defaultLocked": true
+        "defaultLocked": true,
+        "depleteAt": 100
     }
 ]

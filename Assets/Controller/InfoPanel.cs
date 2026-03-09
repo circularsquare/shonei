@@ -10,6 +10,8 @@ public class InfoPanel : MonoBehaviour {
     public object obj;
     public GameObject animalHighlight;    // assign in Inspector; follows selected animal
     public GameObject tileHighlight;      // assign in Inspector; overlays selected tile
+    [SerializeField] Button priorityUpButton;    // assign in Inspector
+    [SerializeField] Button priorityDownButton;  // assign in Inspector
     private Animal selectedAnimal;
 
     public enum InfoMode {
@@ -25,9 +27,26 @@ public class InfoPanel : MonoBehaviour {
     public void Start(){
         if (instance != null) {
             Debug.LogError("there should only be one " + this.GetType().ToString());}
-        instance = this;        
+        instance = this;
         ShowInfo(null); // initialize as inactive
-        textDisplayGo = Instantiate(textDisplayPrefab, this.transform);
+        //textDisplayGo = Instantiate(textDisplayPrefab, this.transform);
+        if (priorityUpButton != null)   priorityUpButton.onClick.AddListener(() => ChangeBlueprintPriority(1));
+        if (priorityDownButton != null) priorityDownButton.onClick.AddListener(() => ChangeBlueprintPriority(-1));
+    }
+
+    void ChangeBlueprintPriority(int delta) {
+        if (obj is Tile tile) {
+            Blueprint bp = tile.GetAnyBlueprint();
+            if (bp != null) {
+                bp.priority = Mathf.Max(0, bp.priority + delta);
+                UpdateInfo();
+            }
+        }
+    }
+
+    void SetPriorityButtonsVisible(bool visible) {
+        if (priorityUpButton != null)   priorityUpButton.gameObject.SetActive(visible);
+        if (priorityDownButton != null) priorityDownButton.gameObject.SetActive(visible);
     }
 
     public void ShowInfo(object obj){
@@ -40,6 +59,7 @@ public class InfoPanel : MonoBehaviour {
             Deselect();
             return;
         }
+        SetPriorityButtonsVisible(false); // hide by default; shown only for blueprints below
         if (obj is Collider2D){
             Collider2D collider = obj as Collider2D;
             selectedAnimal = collider.gameObject.GetComponent<Animal>();
@@ -93,18 +113,22 @@ public class InfoPanel : MonoBehaviour {
                 } else {
                     infoMode = InfoMode.Building;
                     gameObject.SetActive(true);
-                    displayText =  ( "building: " + tile.building.structType.name + 
-                        "\n location: " + tile.x.ToString() + ", " + tile.y.ToString() + 
-                        "\n reserved: " + tile.building.res.reserved + "/" + tile.building.res.capacity + 
-                        "\n standability: " + tile.node.standable.ToString() + 
-                        "\n num neighbors: " + tile.node.neighbors.Count);
+                    displayText = "building: " + tile.building.structType.name +
+                        "\n location: " + tile.x.ToString() + ", " + tile.y.ToString() +
+                        "\n reserved: " + tile.building.res.reserved + "/" + tile.building.res.capacity +
+                        "\n standability: " + tile.node.standable.ToString() +
+                        "\n num neighbors: " + tile.node.neighbors.Count;
+                    if (tile.building is Building bldg && bldg.structType.depleteAt > 0)
+                        displayText += "\n uses: " + bldg.uses + "/" + bldg.structType.depleteAt;
                 }
             } else if (tile.GetAnyBlueprint() != null){
                 Blueprint blueprint = tile.GetAnyBlueprint();
                 infoMode = InfoMode.Blueprint;
                 gameObject.SetActive(true);
+                SetPriorityButtonsVisible(true);
                 displayText =  ( "blueprint: " + blueprint.structType.name +
                     "\n location: " + tile.x.ToString() + ", " + tile.y.ToString() +
+                    "\n priority: " + blueprint.priority +
                     "\n progress: " + blueprint.GetProgress());
             } else {
                 infoMode = InfoMode.Tile;
@@ -126,6 +150,7 @@ public class InfoPanel : MonoBehaviour {
     public void Deselect(){
         infoMode = InfoMode.Inactive;
         gameObject.SetActive(false);
+        SetPriorityButtonsVisible(false);
         if (animalHighlight != null) animalHighlight.SetActive(false);
         if (tileHighlight != null) tileHighlight.SetActive(false);
     }

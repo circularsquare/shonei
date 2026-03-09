@@ -18,8 +18,8 @@ public class ItemStack {
     public static string FormatQ(int fen){
         float val = fen / 100f;
         return Math.Abs(val) switch{
-            >= 10 => val.ToString("0"),
-            >= 1 => val.ToString("0.0"),
+            >= 9.6f => val.ToString("0"),
+            >= 0.96f => val.ToString("0.0"),
             >= 0.01f => val.ToString("0.00"), // The "_" means "everything else" (< 1)
             _ => val.ToString("0")
         };

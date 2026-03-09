@@ -35,6 +35,7 @@ public class StructureSaveData {
     public int plantAge;
     public int plantGrowthStage;
     public bool plantHarvestable;
+    public int uses;
 }
 
 public class BlueprintSaveData {
@@ -42,6 +43,7 @@ public class BlueprintSaveData {
     public int state; // Blueprint.BlueprintState cast to int
     public float constructionProgress;
     public InventorySaveData inv;
+    public int priority = 0;
 }
 
 public class InventorySaveData {

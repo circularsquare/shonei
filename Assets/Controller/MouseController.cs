@@ -93,7 +93,9 @@ public class MouseController : MonoBehaviour {
                 }
 
             } else if (mouseMode == MouseMode.Build) {
-                BuildPanel.instance.PlaceBlueprint(tileAt);
+                if (BuildPanel.instance.PlaceBlueprint(tileAt)) {
+                    mouseMode = MouseMode.Select;
+                }
             } else if (mouseMode == MouseMode.Remove) {
                 BuildPanel.instance.Remove(tileAt);
             }

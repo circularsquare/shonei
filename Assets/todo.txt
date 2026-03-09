@@ -12,31 +12,44 @@
     - make market a multitile building? 
 - inventory
     - have a "keep" setting that invs can toggle to keep food for consumption and stuff like that. 
+    - add equippables
 - plant
     - flesh out plant growth, moisture and temperature
 - tile mining
     - add tile mining command as a separate button sort of thing
 - visuals
     - improve mouse animation
-- priority
-    - allow players to specify priority within constructing/deconstructing/crafting, anything that can be set at a site ahead of time
-    - have closest building mouse claim building instead of a random one? (maybe not)
-    - add inventory priority!
+    - move sprites to spritesheets?
+    - add icons to inventory panel view / itemdisplay
+- tools / itemstacks 
+    - add displayMult so that tools display as 1 and decay in discrete amounts?
+        - preserve decay progress upon item stack moving from one place to another?
+        - add storageMult? or maybe make unstackable
+            - kinda want like
+                - silver: stacks up to 100 liang
+                - tools: stacks up to 100 count (would be seen as like 100 fen = 1 liang)
+        - maybe just better to consider tools as "discrete"
+            - discrete: does not get multiplied by 100 on load or anything
 - day night cycle
+    - shaders
 - add roads (render on tile below?)
-- make sure market is in the normal list of inventories
+    - need road depth?
+    - consider moving depth to an array
+        - like buildings[4]
+            - alias building to buildings[0]
+- make decay a bit chunkier
 - ponder inventory management
     - global, market, need to have set target 
     - global can have
         - consume above amount?
-- quarry
-    - chance to get coal and metals
-    - slow depletion
-    - 
+- priority
+    - add recipe priority
+    - add inventory priority? or inventory pull orders
+- split inventory into subclasses
+- refactor the various haul tasks (haul, haultoblueprint, redistribute)
+- we might not fall as much as we want to, as falling is not allowed if mouse is Moving
 
 
 BUGS
-- we might not fall as much as we want to, as falling is not allowed if mouse is Moving
-- does calculateworkpossible work? 
 
 TODAY GOALS
