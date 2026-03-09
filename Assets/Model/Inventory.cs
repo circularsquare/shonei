@@ -108,9 +108,9 @@ public class Inventory{
     public void Decay(float time = 1f){
         float invTypeMult = invType switch {
             InvType.Floor   => 5f,
-            InvType.Animal  => 0f,
             InvType.Market  => 0f,
-            InvType.Equip   => 0f,
+            InvType.Animal  => 1f,
+            InvType.Equip   => 1f,
             _               => 1f
         };
         if (invTypeMult == 0f) return;
@@ -348,13 +348,12 @@ public class Inventory{
 
     public void AllowItem(Item item){allowed[item.id] = true;}
     public void DisallowItem(Item item){allowed[item.id] = false;}
-    public void ToggleAllowItem(Item item){allowed[item.id] = !allowed[item.id];
-    Debug.Log("toggled " + item.name + " to " + allowed[item.id]);}
+    public void ToggleAllowItem(Item item){allowed[item.id] = !allowed[item.id];}
 
     public enum ItemSpriteType { Icon, Floor, Storage }
 
     public void UpdateSprite(){
-        if (invType == InvType.Animal || invType == InvType.Market){return;}
+        if (invType == InvType.Animal || invType == InvType.Market || invType == InvType.Equip){return;}
         if (stackGos != null){
             // Multi-stack storage (drawer): update each slot independently
             for (int i = 0; i < nStacks && i < stackGos.Length; i++){

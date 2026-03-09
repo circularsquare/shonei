@@ -175,19 +175,41 @@ Each animal has one Job. Jobs define which Recipes the animal can execute. Recip
 
 ## Inventory System
 
-Three inventory types:
+Four inventory types:
 
-| Type | Slots | Stack Size | Decay Rate |
-|------|-------|-----------|-----------|
-| Animal | 5 | 10 | normal |
-| Storage | varies | varies | normal |
-| Floor | 5 | varies | 5× normal |
+| Type | Slots | Stack Size | Decay Rate | Notes |
+|------|-------|-----------|-----------|-------|
+| Animal | 5 | 1000 fen | none | General-purpose carry inventory |
+| Storage | varies | varies | normal | `allowed` dict restricts item types |
+| Floor | 1 | varies | 5× normal | Created/destroyed dynamically |
+| Equip | 1 | varies | none | Animal equip slots (food, tool) |
 
-- Items decay over time
-- `allowed` dict filters what item types a storage accepts
+- Items decay over time (Floor fastest; Animal/Equip never)
+- **Discrete items** (`Item.discrete = true`, e.g. tools): always stored/moved in whole-liang (100 fen) multiples; decay removes whole items only; display shows integer count. Adding a non-multiple-of-100 quantity logs a warning.
+- `allowed` dict filters what item types a storage accepts (all allowed by default for other types)
 - `Reservable` (capacity-based) prevents multiple animals targeting same resource
 - `Produce()` adds to inventory and global inventory simultaneously; `MoveItemTo()` moves between inventories without touching global inventory
 - `AddItem()` is private — always use `Produce`, `MoveItemTo`, or `TakeItem` externally
+
+### Equip Slots
+
+Each animal has two `InvType.Equip` inventory instances (1 stack each, registered with InventoryController for GlobalInventory tracking, no sprite, no decay):
+
+| Slot | Field | Capacity | Purpose |
+|------|-------|----------|---------|
+| Food | `foodSlotInv` | 500 fen (5 liang) | Carries food for eating |
+| Tool | `toolSlotInv` | 1000 fen | Reserved for future tool use |
+
+**Food acquisition flow:**
+1. Animal gets hungry → `FindFood()` checks `foodSlotInv` for room
+2. If room exists, creates `ObtainTask(food, amount, foodSlotInv)` — item goes to slot, not main inventory
+3. `HandleNeeds()` eats from `foodSlotInv`: full meals (≥100 fen) restore `foodValue` and trigger happiness; partial meals (remaining fen) scale nutrition proportionally and don't count for happiness
+
+**Key methods on `Animal`:**
+- `TakeItem(iq, targetInv = null)` — picks up from floor tile; pass `foodSlotInv` to equip directly
+- `Unequip(slotInv)` — moves slot contents back to main inventory (leftover stays in slot if inv full)
+
+**`ObtainTask` / `FetchObjective`** both accept an optional `Inventory targetInv` to route pickup into an equip slot instead of main inventory.
 
 ### Blueprint inventory
 
@@ -195,7 +217,7 @@ Three inventory types:
 
 ## Unit System — Fen / Liang
 
-All item quantities are stored as **fen** (integers), where **100 fen = 1 liang**. Display always formats as `X.XX` via `ItemStack.FormatQ(int fen)`.
+All item quantities are stored as **fen** (integers), where **100 fen = 1 liang**. Display uses `ItemStack.FormatQ(int fen, bool discrete = false)` — drops trailing zeros, shows no decimals for exact integers. Overload `FormatQ(ItemQuantity iq)` uses `iq.item.discrete` automatically.
 
 - **JSON data** is authored in liang (can be decimal, e.g. `0.5`). The field type is `float` (`ItemNameQuantity.quantity`).
 - **Conversion** to fen happens at all `ItemNameQuantity → ItemQuantity` sites (Db.cs, Structure.cs, Tile.cs, Plant.cs): `(int)Math.Round(q * 100)`.

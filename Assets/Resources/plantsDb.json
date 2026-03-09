@@ -9,9 +9,10 @@
             { "name": "wood", "quantity": 10 },
             { "name": "acorn", "quantity": 1 }
         ],
-        "growthTime": 30,
+        "growthTime": 40,
         "harvestTime": 5.0,
-        "njob": "logger"    },{
+        "njob": "logger"    
+    },{
         "id": 502,
         "name": "wheat",
         "ncosts": [
@@ -20,8 +21,8 @@
         "nproducts": [
             { "name": "wheat", "quantity": 3 }
         ],
-        "growthTime": 15,
-        "harvestTime": 2.0,
+        "growthTime": 40,
+        "harvestTime": 3.0,
         "njob": "farmer"    },{
         "id": 550,
         "name": "appletree",
@@ -31,7 +32,7 @@
         "nproducts": [
             { "name": "apple", "quantity": 2 }
         ],
-        "growthTime": 10,
+        "growthTime": 30,
         "harvestTime": 2.0,
         "njob": "farmer"    }
 

@@ -14,16 +14,18 @@ public class ItemStack {
     public Inventory inv;
     public Reservable res;
 
-    // Formats a fen quantity as a liang string (e.g. 250 → "2.50")
-    public static string FormatQ(int fen){
+    // Formats a fen quantity as a liang string (e.g. 250 → "2.5", 200 → "2", 5 → "0.05")
+    public static string FormatQ(int fen, bool discrete = false){
+        if (discrete) return (fen / 100).ToString();
+        if (fen % 100 == 0) return (fen / 100).ToString(); // exact integer, no decimals
         float val = fen / 100f;
         return Math.Abs(val) switch{
-            >= 9.6f => val.ToString("0"),
-            >= 0.96f => val.ToString("0.0"),
-            >= 0.01f => val.ToString("0.00"), // The "_" means "everything else" (< 1)
-            _ => val.ToString("0")
+            >= 9.6f => val.ToString("0.#"),
+            >= 0.96f => val.ToString("0.#"),
+            _ => val.ToString("0.##")
         };
     }
+    public static string FormatQ(ItemQuantity iq) => FormatQ(iq.quantity, iq.item.discrete);
 
     public ItemStack(Inventory inv, Item item, int quantity = 0, int stackSize = 100){
         this.item = item;
@@ -40,6 +42,7 @@ public class ItemStack {
             // ^ number near 0
             decayCounter += (int)(decayedQuantity * maxDecayCount);
             int amountToDecay = decayCounter / maxDecayCount;
+            if (item.discrete) amountToDecay = (amountToDecay / 100) * 100; // only decay whole items
             if (amountToDecay > 0){
                 // Debug.Log("decayed! " + item.name + " x " + amountToDecay);
                 inv.Produce(item, -amountToDecay);
@@ -52,6 +55,8 @@ public class ItemStack {
             this.item = item; }
         if (item != this.item){ // item slot occupied by different item. go next
             return null; }
+        if (item.discrete && quantity % 100 != 0)
+            Debug.LogWarning($"Discrete item '{item.name}': non-whole-liang quantity {quantity} fen passed to AddItem");
         if (this.quantity + quantity > stackSize){
             int sizeOver = this.quantity + quantity - stackSize;
             this.quantity = stackSize;
@@ -84,8 +89,8 @@ public class ItemStack {
 
     public override string ToString(){
         if (item != null){
-            string resStr = res.reserved > 0 ? " (r" + FormatQ(res.reserved) + ")" : "";
-            return item.name + " x " + FormatQ(quantity) + resStr + "\n";
+            string resStr = res.reserved > 0 ? " (r" + FormatQ(res.reserved, item.discrete) + ")" : "";
+            return item.name + " x " + FormatQ(quantity, item.discrete) + resStr + "\n";
         }
         return "";
     }

@@ -366,19 +366,20 @@ public class Eating {
 }
 
 public class Happiness {
-    public float timeSinceAteWheat = float.MaxValue;
-    public float timeSinceAteFruit = float.MaxValue;
     public bool house;
     public float score;
 
     const float recentThreshold = 120f;
-    const float soonThreshold = 20f;
+    const float soonThreshold = 30f;
+    const float maxTime = recentThreshold * 1.5f;
+    public float timeSinceAteWheat = maxTime;
+    public float timeSinceAteFruit = maxTime;
 
     public Happiness(){}
 
-    public void NoteAte(Item food) {
-        if (food.name == "wheat")      timeSinceAteWheat = 0f;
-        else if (food.name == "apple") timeSinceAteFruit = 0f;
+    public void NoteAte(Item food, float fraction = 1f) {
+        if (food.name == "wheat")      timeSinceAteWheat = Mathf.Max(0f, timeSinceAteWheat - fraction * recentThreshold);
+        else if (food.name == "apple") timeSinceAteFruit = Mathf.Max(0f, timeSinceAteFruit - fraction * recentThreshold);
         // add more mappings here as new foods are added
     }
 
@@ -390,8 +391,8 @@ public class Happiness {
     }
 
     public void SlowUpdate(Animal a){
-        if (timeSinceAteWheat < float.MaxValue) timeSinceAteWheat += 10f;
-        if (timeSinceAteFruit < float.MaxValue) timeSinceAteFruit += 10f;
+        timeSinceAteWheat = Mathf.Min(timeSinceAteWheat + 10f, maxTime);
+        timeSinceAteFruit = Mathf.Min(timeSinceAteFruit + 10f, maxTime);
         bool wheat = timeSinceAteWheat < recentThreshold;
         bool fruit = timeSinceAteFruit < recentThreshold;
         house = a.HasHouse;

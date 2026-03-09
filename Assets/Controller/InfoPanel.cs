@@ -69,10 +69,16 @@ public class InfoPanel : MonoBehaviour {
                 Animal ani = selectedAnimal;
                 if (animalHighlight != null) animalHighlight.SetActive(true);
                 if (tileHighlight != null) tileHighlight.SetActive(false);
+                static string FormatSlot(Inventory slot) {
+                    var s = slot.itemStacks[0];
+                    return s.item != null ? s.item.name + " " + ItemStack.FormatQ(s.quantity, s.item.discrete) : "empty";
+                }
                 string displayText = (
-                    "animal: " + ani.aName + 
-                    "\n state: " + ani.state.ToString() + 
+                    "animal: " + ani.aName +
+                    "\n state: " + ani.state.ToString() +
                     "\n job: " + ani.job.name +
+                    "\n [food] " + FormatSlot(ani.foodSlotInv) +
+                    "\n [tool] " + FormatSlot(ani.toolSlotInv) +
                     "\n inventory: " + ani.inv.ToString());
                 if (ani.task != null){
                     displayText += "\n task: " + ani.task.ToString();}

@@ -79,7 +79,7 @@ public class BuildPanel : MonoBehaviour {
         Transform costsContainer = go.transform.Find("CostsContainer");
         foreach (ItemQuantity iq in st.costs) {
             GameObject costDisplay = Instantiate(textDisplayPrefab, costsContainer);
-            costDisplay.GetComponent<TextMeshProUGUI>().text = iq.item.name + ": " + ItemStack.FormatQ(iq.quantity);
+            costDisplay.GetComponent<TextMeshProUGUI>().text = iq.item.name + ": " + ItemStack.FormatQ(iq);
             costDisplay.name = "CostDisplay_" + iq.item.name;
         }
         StructType captured = st;

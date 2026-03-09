@@ -306,3 +306,4 @@ bug fixes
 - fixed calcworkpossible
 - added probability recipe outputs
 - added building depletion
+- added discrete itemstacks (like tools)

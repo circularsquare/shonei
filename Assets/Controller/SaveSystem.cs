@@ -143,8 +143,19 @@ public class SaveSystem : MonoBehaviour {
             eep = a.eeping.eep,
             timeSinceAteWheat = a.happiness.timeSinceAteWheat,
             timeSinceAteFruit = a.happiness.timeSinceAteFruit,
-            inv = GatherInventory(a.inv)
+            inv = GatherInventory(a.inv),
+            foodSlotInv = GatherInventory(a.foodSlotInv),
+            toolSlotInv = GatherInventory(a.toolSlotInv),
         };
+    }
+
+    // Restores items from save data into an existing inventory instance.
+    public static void LoadInventory(Inventory inv, InventorySaveData data) {
+        foreach (ItemStackSaveData ssd in data.stacks) {
+            if (!string.IsNullOrEmpty(ssd.itemName) && Db.itemByName.ContainsKey(ssd.itemName) && ssd.quantity > 0) {
+                inv.Produce(Db.itemByName[ssd.itemName], ssd.quantity);
+            }
+        }
     }
 
     // LOAD

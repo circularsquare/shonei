@@ -16,6 +16,7 @@ public class Item {
     public Item[] children {get; set;}
     public float decayRate{get; set;}
     public float foodValue {get; set;}  // 0 = not edible; >0 = nutrition restored per unit eaten
+    public bool discrete {get; set;}    // true = stored/moved in whole-liang (100 fen) multiples only
     public Item parent;
     
 

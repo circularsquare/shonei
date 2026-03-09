@@ -15,7 +15,7 @@ public abstract class Task {
     public Animal animal;
     protected Queue<Objective> objectives = new Queue<Objective>();
     public Objective currentObjective;
-    private List<(ItemStack stack, int amount)> reservedStacks = new List<(ItemStack, int)>();
+    protected List<(ItemStack stack, int amount)> reservedStacks = new List<(ItemStack, int)>();
 
     // check whether a task is possible. create objectives, make reservations
     public abstract bool Initialize();
@@ -32,6 +32,12 @@ public abstract class Task {
     }
     protected void FetchAndReserve(ItemQuantity iq, Tile tile, ItemStack stack){
         FetchAndReserve(iq, tile, stack, iq.quantity);
+    }
+    // Overload that routes pickup into an equip slot instead of the animal's main inventory.
+    protected void FetchAndReserve(ItemQuantity iq, Tile tile, ItemStack stack, Inventory targetInv){
+        objectives.Enqueue(new FetchObjective(this, iq, tile, targetInv));
+        int reserved = stack.res.Reserve(iq.quantity);
+        if (reserved > 0) reservedStacks.Add((stack, reserved));
     }
 
     public bool Start(){ // calls some task specific Initialize
@@ -125,16 +131,20 @@ public class CraftTask : Task {
 
 public class ObtainTask : Task {
     public ItemQuantity iq;
-    public ObtainTask(Animal animal, ItemQuantity iq) : base(animal){
+    public Inventory targetInv; // null = animal's main inventory; pass foodSlotInv to equip
+    public ObtainTask(Animal animal, ItemQuantity iq, Inventory targetInv = null) : base(animal){
         this.iq = iq;
+        this.targetInv = targetInv;
     }
-    public ObtainTask(Animal animal, Item item, int quantity) : base(animal){
+    public ObtainTask(Animal animal, Item item, int quantity, Inventory targetInv = null) : base(animal){
         iq = new ItemQuantity(item, quantity);
+        this.targetInv = targetInv;
     }
     public override bool Initialize(){
         (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(iq.item);
         if (itemPath == null) { return false; }
-        FetchAndReserve(iq, itemPath.tile, stack);
+        if (targetInv != null) FetchAndReserve(iq, itemPath.tile, stack, targetInv);
+        else FetchAndReserve(iq, itemPath.tile, stack);
         return true;
     }
 }
@@ -393,12 +403,15 @@ public abstract class Objective {
 public class FetchObjective : Objective {
     private ItemQuantity iq;
     private Tile sourceTile;
-    public FetchObjective(Task task, ItemQuantity iq, Tile sourceTile = null) : base(task) {
+    private Inventory targetInv; // null = animal's main inventory; non-null = equip into that slot
+    public FetchObjective(Task task, ItemQuantity iq, Tile sourceTile = null, Inventory targetInv = null) : base(task) {
         this.iq = iq;
         this.sourceTile = sourceTile;
+        this.targetInv = targetInv;
     }
     public override void Start(){
-        if (animal.inv.ContainsItem(iq)){Complete(); return;}
+        Inventory dest = targetInv ?? animal.inv;
+        if (dest.Quantity(iq.item) >= iq.quantity){Complete(); return;}
         Path itemPath;
         ItemStack stack;
         if (sourceTile != null) {
@@ -409,19 +422,20 @@ public class FetchObjective : Objective {
         }
         if (itemPath != null){
             destination = itemPath.tile;
-            animal.nav.Navigate(itemPath); 
+            animal.nav.Navigate(itemPath);
             animal.state = Animal.AnimalState.Moving;
         } else {
             Fail(); Debug.Log("no path to fetch item...");
         }
     }
     public override void OnArrival(){
-        int amountBefore = animal.inv.Quantity(iq.item);
-        animal.TakeItem(iq);
-        int amountTaken = animal.inv.Quantity(iq.item) - amountBefore;
+        Inventory dest = targetInv ?? animal.inv;
+        int amountBefore = dest.Quantity(iq.item);
+        animal.TakeItem(iq, targetInv); // targetInv=null → picks up to main inv
+        int amountTaken = dest.Quantity(iq.item) - amountBefore;
         if (amountTaken == 0){Fail(); Debug.Log("Couldn't fetch any " + iq.item); return;}
-        int desiredItemQuantity = iq.quantity - animal.inv.Quantity(iq.item); 
-        if (desiredItemQuantity > 0 && animal.inv.GetStorageForItem(iq.item) >= 5){
+        int desiredItemQuantity = iq.quantity - dest.Quantity(iq.item);
+        if (desiredItemQuantity > 0 && dest.GetStorageForItem(iq.item) >= 5){
             iq.quantity = desiredItemQuantity;
             Start(); // restart fetching for the amount you still want
         } else {

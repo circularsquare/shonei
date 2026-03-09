@@ -13,6 +13,18 @@
             { "name": "sawdust", "quantity": 1 }
         ]
     },{
+        "id": 1,
+        "job": "sawyer",
+        "tile": "workshop",
+        "description": "make planks into tools",
+        "workload": 5.0,
+        "ninputs": [
+            { "name": "planks", "quantity": 1 }
+        ],
+        "noutputs": [
+            { "name": "tools", "quantity": 1 }
+        ]
+    },{
         "id": 10,
         "job": "digger",
         "tile": "soil pit",

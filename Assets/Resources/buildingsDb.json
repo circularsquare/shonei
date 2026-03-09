@@ -120,6 +120,17 @@
         "capacity": 1,
         "category": "production"
     },{
+        "id": 101,
+        "name": "workshop",
+        "description": "tool creation",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 5 }
+        ],
+        "njob": "hauler",
+        "capacity": 1,
+        "category": "production"
+    },{
         "id": 120,
         "name": "soil pit",
         "description": "dig for soil",

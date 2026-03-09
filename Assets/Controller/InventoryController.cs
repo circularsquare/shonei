@@ -97,15 +97,15 @@ public class InventoryController : MonoBehaviour {
             if (itemDisplayGo == null){Debug.LogError("itemdisplaygo not found: " + item.name);return;}
 
             string text;
-            if (selectedInventory != null){text = item.name + ": " + ItemStack.FormatQ(selectedInventory.Quantity(item));}
-            else {text = item.name + ": " + ItemStack.FormatQ(globalInventory.Quantity(item.id));}
+            if (selectedInventory != null){text = item.name + ": " + ItemStack.FormatQ(selectedInventory.Quantity(item), item.discrete);}
+            else {text = item.name + ": " + ItemStack.FormatQ(globalInventory.Quantity(item.id), item.discrete);}
             Transform textGo = itemDisplayGo.transform.Find("HorizontalLayout/TextItem");
             if (textGo != null){textGo.gameObject.GetComponent<TMPro.TextMeshProUGUI>().text = text;}
 
             int targetQty = (selectedInventory?.invType == Inventory.InvType.Market)
                 ? selectedInventory.targets[item]
                 : targets[item.id];
-            text = "/" + ItemStack.FormatQ(targetQty);
+            text = "/" + ItemStack.FormatQ(targetQty, item.discrete);
             Transform textTargetGo = itemDisplayGo.transform.Find("HorizontalLayout/TextItemTarget");
             if (textTargetGo != null){textTargetGo.gameObject.GetComponent<TMPro.TextMeshProUGUI>().text = text;}
 

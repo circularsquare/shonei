@@ -100,13 +100,14 @@
     },{
         "id": 160,
         "name": "apple",
-        "decayRate": 0.2,
+        "decayRate": 0.3,
         "foodValue": 15,
         "children": null
     },{
         "id": 200,
         "name": "tools",
-        "decayRate": 0.1,
+        "decayRate": 2.0,
+        "discrete": true,
         "children": null
     }
 ]

@@ -85,8 +85,8 @@ public class Animal : MonoBehaviour{
         animationController = go.GetComponent<AnimationController>();
         sr.sortingOrder = 50;
         this.inv = new Inventory(5, 1000, Inventory.InvType.Animal);
-        this.foodSlotInv = new Inventory(1, 500, Inventory.InvType.Equip);
-        this.toolSlotInv = new Inventory(1, 1000, Inventory.InvType.Equip);
+        this.foodSlotInv = new Inventory(1, 300, Inventory.InvType.Equip);
+        this.toolSlotInv = new Inventory(1, 200, Inventory.InvType.Equip);
         this.nav = new Nav(this);
         ginv = GlobalInventory.instance;
         random = new System.Random();
@@ -160,11 +160,12 @@ public class Animal : MonoBehaviour{
                     // Full meal
                     foodSlotInv.Produce(slotFood, -100);
                     eating.Eat(slotFood.foodValue);
-                    happiness.NoteAte(slotFood);
+                    happiness.NoteAte(slotFood, 1f);
                 } else {
-                    // Partial meal — consume remainder, scale nutrition, no happiness credit
+                    // Partial meal — consume remainder, scale nutrition, partial happiness credit
                     foodSlotInv.Produce(slotFood, -qty);
                     eating.Eat(slotFood.foodValue * qty / 100f);
+                    happiness.NoteAte(slotFood, qty / 100f);
                 }
             }
         }

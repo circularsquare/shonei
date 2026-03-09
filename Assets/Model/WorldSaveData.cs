@@ -70,4 +70,6 @@ public class AnimalSaveData {
     public float timeSinceAteWheat; // happiness
     public float timeSinceAteFruit; // happiness
     public InventorySaveData inv;
+    public InventorySaveData foodSlotInv; // null on old saves → slot starts empty
+    public InventorySaveData toolSlotInv;
 }

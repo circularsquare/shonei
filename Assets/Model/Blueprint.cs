@@ -124,7 +124,7 @@ public class Blueprint {
     public string GetProgress(){ // for display string
         string progress = "";
         for (int i = 0; i < costs.Length; i++) {
-            progress += costs[i].item.name + " " + ItemStack.FormatQ(inv.Quantity(costs[i].item)) + "/" + ItemStack.FormatQ(costs[i].quantity);
+            progress += costs[i].item.name + " " + ItemStack.FormatQ(inv.Quantity(costs[i].item), costs[i].item.discrete) + "/" + ItemStack.FormatQ(costs[i]);
         }
         if (state == BlueprintState.Constructing){
             progress += " (" + constructionProgress.ToString() + "/" + constructionCost.ToString() + ")";
