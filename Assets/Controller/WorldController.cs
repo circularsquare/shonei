@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 using System;
 
 // this class handles tile sprites, and also places initial objects into world.
@@ -8,7 +9,6 @@ public class WorldController : MonoBehaviour {
     public static WorldController instance {get; protected set;}
     public World world {get; protected set;}
     public Transform tilesTransform;
-
     Dictionary<Tile, GameObject> tileGameObjectMap;
 
     // FRAME 0: runs up to the first yield, pausing to let all other Start()s finish.
@@ -38,7 +38,6 @@ public class WorldController : MonoBehaviour {
 
                 SpriteRenderer tile_sr = tile_go.AddComponent<SpriteRenderer>();
                 tile_sr.sortingOrder = 0;
-
                 tile.RegisterCbTileTypeChanged(OnTileTypeChanged);
             }
         }
@@ -294,7 +293,7 @@ public class WorldController : MonoBehaviour {
         inv.UpdateSprite();
     }
 
-    // updaes the gameobjects sprite when the tile data is changed
+    // Updates the gameobject sprite and shadow caster when the tile data is changed
     void OnTileTypeChanged(Tile tile) {
         if (!tileGameObjectMap.ContainsKey(tile)){
             Debug.LogError("tile data is not in tile game object map!");
@@ -314,8 +313,46 @@ public class WorldController : MonoBehaviour {
         }
         tile_go.GetComponent<SpriteRenderer>().sprite = sprite;
 
+        // Solid tiles cast shadows; non-solid tiles don't.
+        ShadowCaster2D sc = tile_go.GetComponent<ShadowCaster2D>();
+        if (tile.type.solid) {
+            if (sc == null) {
+                sc = tile_go.AddComponent<ShadowCaster2D>();
+                sc.selfShadows = false;
+            }
+        } else {
+            if (sc != null) Destroy(sc);
+        }
+
+        // Update normal map for this tile and its 4 orthogonal neighbours
+        // (a neighbour's exposed/covered edges change whenever this tile changes).
+        ApplyTileNormalMap(tile);
+        ApplyTileNormalMap(world.GetTileAt(tile.x - 1, tile.y));
+        ApplyTileNormalMap(world.GetTileAt(tile.x + 1, tile.y));
+        ApplyTileNormalMap(world.GetTileAt(tile.x, tile.y - 1));
+        ApplyTileNormalMap(world.GetTileAt(tile.x, tile.y + 1));
+
         world.graph.UpdateNeighbors(tile.x, tile.y); // i think this is redundant. should laready be called
         // in structcontroller whenever a tile type changes?
+    }
+
+    void ApplyTileNormalMap(Tile tile) {
+        if (tile == null || !tileGameObjectMap.ContainsKey(tile)) return;
+        var sr = tileGameObjectMap[tile].GetComponent<SpriteRenderer>();
+        if (!tile.type.solid) { TileNormalMaps.Clear(sr); return; }
+
+        // Build 4-bit mask: bit 0=left, 1=right, 2=down, 3=up
+        int mask = 0;
+        if (IsSolidAt(tile.x - 1, tile.y)) mask |= 1;
+        if (IsSolidAt(tile.x + 1, tile.y)) mask |= 2;
+        if (IsSolidAt(tile.x,     tile.y - 1)) mask |= 4;
+        if (IsSolidAt(tile.x,     tile.y + 1)) mask |= 8;
+        TileNormalMaps.Apply(sr, mask);
+    }
+
+    bool IsSolidAt(int x, int y) {
+        Tile t = world.GetTileAt(x, y);
+        return t != null && t.type.solid;
     }
     Sprite LoadTileSprite(string name) {
         Sprite variant = Resources.Load<Sprite>("Sprites/Tiles/" + name + "2");

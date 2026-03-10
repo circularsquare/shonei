@@ -33,7 +33,7 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
     public static PlantType[] plantTypes = new PlantType[600];
     public static TileType[] tileTypes = new TileType[100];
 
-    public static int ticksInDay = 300;
+    public static int ticksInDay = 30;
     public static int daysInYear = 20; // year is 6000s = 100 min
 
     // sprite sorting orders 

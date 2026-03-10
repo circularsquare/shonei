@@ -36,7 +36,7 @@
 - split inventory into subclasses
 - refactor the various haul tasks (haul, haultoblueprint, redistribute)
 - we might not fall as much as we want to, as falling is not allowed if mouse is Moving
-
+- clean up background camera, do we need it? 
 
 BUGS
 

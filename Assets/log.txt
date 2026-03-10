@@ -309,3 +309,9 @@ bug fixes
 - added discrete itemstacks (like tools)
 - added tool equipping / workshop to produce tools
 - daynight cycle coloring
+3/10
+- added sun
+- added normal maps?
+    - right click sprite -> generate normal map -> sprite editor -> 
+        secondary textures -> + name _NormalMap, drag on _n.png 
+        
