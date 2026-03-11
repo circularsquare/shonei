@@ -1,52 +1,57 @@
 using UnityEngine;
-using UnityEngine.Rendering.Universal;
 
-// Manages the orbiting sun, URP 2D lighting, and sky background color.
+// Manages the orbiting sun, ambient lighting color, and sky background color.
 //
 // Scene setup:
 //   1. Create a GameObject "SunController", add this script.
-//   2. Create a child "Sun" with a SpriteRenderer and a Light2D (Point, Additive blend).
-//      - Light2D: Outer Radius ~130, Shadows On, Shadow Intensity ~0.75
-//   3. Create a child "GlobalLight" with a Light2D (Global, Additive blend).
-//   4. Wire all four fields below in the Inspector.
-//   5. Background Camera → Background Type: Solid Color (already done).
+//   2. Create a child "Sun" with a SpriteRenderer and a LightSource (isDirectional = true).
+//      - Also add a Light2D (Point, intensity 0, Use Normal Map ON, off-screen) as a normals activator.
+//   3. Wire all References fields in the Inspector.
+//   4. Background Camera → Background Type: Solid Color.
+//   5. Remove any DayNightController GameObject from the scene.
+//
+// Timing reference (fraction of a day):
+//   0.00 = midnight
+//   0.25 = sunrise (sun on east horizon)
+//   0.50 = noon
+//   0.75 = sunset  (sun on west horizon)
 public class SunController : MonoBehaviour {
     public static SunController instance { get; private set; }
 
     [Header("References")]
-    [SerializeField] Transform       sunTransform;
-    [SerializeField] SpriteRenderer  sunSR;
-    [SerializeField] Light2D         sunLight;
-    [SerializeField] Light2D         globalLight;
+    [SerializeField] Transform      sunTransform;
+    [SerializeField] SpriteRenderer sunSR;
+    [SerializeField] LightSource    sunSource;
 
     [Header("Orbit")]
-    [SerializeField] float orbitCenterX = 50f;
-    [SerializeField] float orbitCenterY = 10f;
-    [SerializeField] float orbitRadius  = 58f;
-    [SerializeField] float sunZ         = 0f; // more negative -> more frontal
+    [SerializeField] float orbitCenterX;
+    [SerializeField] float orbitCenterY;
+    [SerializeField] float orbitRadius;
 
-    [Header("Sky Color")]
-    [SerializeField] Color skyDay   = new Color(0.38f, 0.68f, 1.00f);
+    [Header("Timing")]
+    [Tooltip("Duration of twilight centred on sunrise/sunset, in days  (1.2 h ≈ 0.05)")]
+    [SerializeField] float twilightLength;
+    [Tooltip("How long the sun spotlight fades in/out around the horizon, in days  (20 min ≈ 0.014)")]
+    [SerializeField] float sunsetLength;
+
+    [Header("Sky Colors")]
+    [SerializeField] Color skyDay;
+    [SerializeField] Color skyTwilight1;
+    [SerializeField] Color skyTwilight2;
+    [SerializeField] Color skyTwilight3;
+    [SerializeField] Color skyNight;
 
     [Header("Sun Light Colors")]
-    [SerializeField] Color sunColorDay  = new Color(1.00f, 0.96f, 0.82f);
-    [SerializeField] Color sunColorDusk = new Color(1.00f, 0.52f, 0.14f);
+    [SerializeField] Color sunColorDay;
+    [SerializeField] Color sunColorDusk;
 
     [Header("Sun Light Intensity")]
-    [SerializeField] float sunIntensityNoon    = 0.35f;
-    [SerializeField] float sunIntensityHorizon = 0.05f;
-    // Fraction of elevation (sin scale 0–1) over which the light fades in/out at sunrise/sunset
-    [SerializeField] float horizonFadeZone     = 0.12f;
+    [SerializeField] float sunIntensityNoon;
+    [SerializeField] float sunIntensityHorizon;
 
-    // Global light uses Multiply blend — white = no change, dark = night tint.
-    // Set its Blend Style to Multiply (index 0) in the Inspector.
-    [Header("Ambient (Multiply) Colors")]
-    [SerializeField] Color ambientDay   = new Color(1.00f, 1.00f, 1.00f); // white = no tint
-    [SerializeField] Color ambientNight = new Color(0.10f, 0.10f, 0.25f); // dark blue
-
-    [Header("Ambient (Multiply) Intensity")]
-    [SerializeField] float ambientIntensityDay   = 1.0f;
-    [SerializeField] float ambientIntensityNight = 1.0f; // keep at 1 — color does the darkening
+    [Header("Ambient Colors")]
+    [SerializeField] Color ambientDay;
+    [SerializeField] Color ambientNight;
 
     Camera bgCamera;
 
@@ -56,53 +61,105 @@ public class SunController : MonoBehaviour {
     }
 
     void Start() {
-        // Find the background camera (lowest depth)
         bgCamera = null;
         float lowestDepth = float.MaxValue;
-        foreach (Camera cam in Camera.allCameras) {
+        foreach (Camera cam in Camera.allCameras)
             if (cam.depth < lowestDepth) { lowestDepth = cam.depth; bgCamera = cam; }
-        }
     }
 
     void Update() {
         if (World.instance == null) return;
-        float phase = DayNightController.GetDayPhase();
+        float phase = GetDayPhase();
+        nightT = NightT(phase);
         UpdateSun(phase);
-        UpdateSkyColor(phase);
+        if (bgCamera != null)
+            bgCamera.backgroundColor = SkyColor(phase);
+    }
+
+    // ── Public API ────────────────────────────────────────────────────────────
+
+    // 0 = full day, 1 = full night. Updated every frame.
+    public static float nightT { get; private set; }
+
+    public static float GetDayPhase() {
+        if (World.instance == null) return 0f;
+        return World.instance.timer % Db.ticksInDay / Db.ticksInDay;
+    }
+
+    // Ambient light color for the current time of day.
+    // LightFeature uses this as the light RT clear color (the minimum light level).
+    public static Color GetAmbientColor() {
+        if (instance == null) return Color.black;
+        return Color.Lerp(instance.ambientDay, instance.ambientNight, nightT);
+    }
+
+    // Normalized direction from scene toward the sun (used as _SunDir in LightSun shader).
+    public static Vector3 GetSunDirection() {
+        if (instance == null) return Vector3.up;
+        Vector3 toSun = instance.sunTransform.position - new Vector3(instance.orbitCenterX, instance.orbitCenterY, 0f);
+        // sinElev = how far above the horizon the sun is (0 at horizon, 1 at noon).
+        // Use it to set a Z (depth) component scaled to orbitRadius, so the normalized
+        // direction has a comparable XY/Z ratio. Without this, toSun.z ≈ 1 vs orbitRadius ≈ 20,
+        // giving near-zero NdotL on flat camera-facing sprites (normal = (0,0,-1)).
+        float sinElev = instance.orbitRadius > 0f ? toSun.y / instance.orbitRadius : 0f;
+        toSun.z = -Mathf.Max(0f, sinElev) * instance.orbitRadius;
+        return toSun == Vector3.zero ? Vector3.up : toSun.normalized;
+    }
+
+    // ── Internal ──────────────────────────────────────────────────────────────
+
+    // Returns 0 = full day, 1 = full night, with smooth transitions over twilightLength.
+    // Twilight is centred on sunrise (0.25) and sunset (0.75).
+    float NightT(float phase) {
+        float half    = twilightLength * 0.5f;
+        float srStart = 0.25f - half;  float srEnd = 0.25f + half;
+        float ssStart = 0.75f - half;  float ssEnd = 0.75f + half;
+
+        if (phase >= srEnd   && phase <= ssStart) return 0f;  // full day
+        if (phase >= ssEnd   || phase <  srStart) return 1f;  // full night
+        if (phase >= ssStart)
+            return Mathf.Clamp01((phase - ssStart) / twilightLength);  // sunset  0→1
+        return 1f - Mathf.Clamp01((phase - srStart) / twilightLength); // sunrise 1→0
+    }
+
+    // Returns 1 = sun fully shining, 0 = off.  Fades over sunsetLength around the horizon.
+    float SunFadeT(float phase) {
+        float srStart = 0.25f - sunsetLength;  float srEnd = 0.25f;
+        float ssStart = 0.75f;                 float ssEnd = 0.75f + sunsetLength;
+
+        if (phase >= srEnd   && phase <= ssStart) return 1f;
+        if (phase <= srStart || phase >= ssEnd)   return 0f;
+        if (phase >= ssStart)
+            return 1f - Mathf.Clamp01((phase - ssStart) / sunsetLength);  // fade out
+        return Mathf.Clamp01((phase - srStart) / sunsetLength);            // fade in
     }
 
     void UpdateSun(float phase) {
-        // phase 0=midnight, 0.25=east horizon, 0.5=noon, 0.75=west horizon
         float angle = (phase - 0.25f) * Mathf.PI * 2f;
-        float x = orbitCenterX + orbitRadius * Mathf.Cos(angle);
-        float y = orbitCenterY + orbitRadius * Mathf.Sin(angle);
-        sunTransform.position = new Vector3(x, y, sunZ);
+        sunTransform.position = new Vector3(
+            orbitCenterX + orbitRadius * Mathf.Cos(angle),
+            orbitCenterY + orbitRadius * Mathf.Sin(angle),
+            1);
 
-        float sinElev = Mathf.Sin(angle);               // 1 at noon, 0 at horizon, negative underground
-        float elevT   = Mathf.Clamp01(sinElev);         // 0..1 for color lerp
-        // Fade light in/out smoothly over horizonFadeZone instead of hard on/off
-        float fadeT   = Mathf.Clamp01(sinElev / Mathf.Max(horizonFadeZone, 0.001f));
+        float sinElev = Mathf.Sin(angle);
+        float elevT   = Mathf.Clamp01(sinElev);
+        float sunFade = SunFadeT(phase);
 
+        // Sun sprite
         sunSR.enabled = sinElev > 0f;
         sunSR.color   = Color.Lerp(sunColorDusk, sunColorDay, elevT);
 
-        float intensity = Mathf.Lerp(sunIntensityHorizon, sunIntensityNoon, elevT) * fadeT;
-        sunLight.color     = Color.Lerp(sunColorDusk, sunColorDay, elevT);
-        sunLight.intensity = intensity;
-        sunLight.enabled   = intensity > 0.001f;
-
-        // Global ambient tracks overall day brightness
-        float dayT = Mathf.Clamp01(1f - Mathf.Abs(phase * 2f - 1f));
-        globalLight.color     = Color.Lerp(ambientNight, ambientDay, dayT);
-        globalLight.intensity = Mathf.Lerp(ambientIntensityNight, ambientIntensityDay, dayT);
+        // Sun LightSource (feeds into LightFeature custom pass)
+        float intensity    = Mathf.Lerp(sunIntensityHorizon, sunIntensityNoon, elevT) * sunFade;
+        sunSource.lightColor = Color.Lerp(sunColorDusk, sunColorDay, elevT);
+        sunSource.intensity  = intensity;
     }
 
-    void UpdateSkyColor(float phase) {
-        if (bgCamera == null) return;
-        // Camera background bypasses URP lighting, so manually apply the same
-        // multiply-ambient the global light applies to sprites.
-        float dayT = Mathf.Clamp01(1f - Mathf.Abs(phase * 2f - 1f));
-        Color ambient = Color.Lerp(ambientNight, ambientDay, dayT);
-        bgCamera.backgroundColor = skyDay * ambient;
+    // 5-stop gradient: skyDay → skyTwilight1 → skyTwilight2 → skyTwilight3 → skyNight
+    Color SkyColor(float phase) {
+        float t      = NightT(phase) * 4f;
+        Color[] stops = { skyDay, skyTwilight1, skyTwilight2, skyTwilight3, skyNight };
+        int   i = Mathf.Clamp(Mathf.FloorToInt(t), 0, stops.Length - 2);
+        return Color.Lerp(stops[i], stops[i + 1], t - i);
     }
 }

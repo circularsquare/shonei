@@ -77,7 +77,8 @@ public static class TileNormalMaps {
         }
 
         var tex = new Texture2D(SIZE, SIZE, TextureFormat.RGBA32, false) {
-            filterMode = FilterMode.Point
+            filterMode = FilterMode.Point,
+            wrapMode   = TextureWrapMode.Clamp
         };
         tex.SetPixels32(pixels);
         tex.Apply();
