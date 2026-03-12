@@ -4,10 +4,26 @@ using UnityEngine;
 using Newtonsoft.Json;
 
 // Handles saving and loading world state to/from JSON files.
+//
+// -----------------------------------------------------------------------
+// ADDING NEW SAVEABLE DATA — checklist for future changes:
+//   1. Add fields to the relevant class in WorldSaveData.cs
+//      - Top-level world data (timer, etc.)  → WorldSaveData
+//      - Per-tile data (building, mStruct, fStruct, road, blueprints) → TileSaveData
+//      - Per-structure data                   → StructureSaveData
+//      - Per-blueprint data                   → BlueprintSaveData
+//      - Per-inventory data                   → InventorySaveData
+//      - Per-animal data                      → AnimalSaveData
+//      - Research system data                 → ResearchSaveData
+//   2. Add a Gather* method in the SAVE section and call it from the
+//      appropriate parent (GatherSaveData, GatherTile, GatherAnimal, etc.)
+//   3. Add a Restore* method in the LOAD section and call it from the
+//      appropriate parent (ApplySaveData, RestoreTile, etc.)
+// -----------------------------------------------------------------------
+
 public class SaveSystem : MonoBehaviour {
     public static SaveSystem instance;
 
-    //     string SaveDir => System.IO.Path.Combine(Application.persistentDataPath, "saves");
     string SaveDir {
         get {
 #if UNITY_EDITOR
@@ -24,7 +40,9 @@ public class SaveSystem : MonoBehaviour {
         if (!System.IO.Directory.Exists(SaveDir)) System.IO.Directory.CreateDirectory(SaveDir);
     }
 
+    // -----------------------------------------------------------------------
     // SAVE
+    // -----------------------------------------------------------------------
 
     public void Save(string slotName) {
         WorldSaveData data = GatherSaveData();
@@ -77,30 +95,34 @@ public class SaveSystem : MonoBehaviour {
             tile.building != null ||
             tile.mStruct != null ||
             tile.fStruct != null ||
+            tile.road != null ||
             tile.bBlueprint != null ||
             tile.mBlueprint != null ||
             tile.fBlueprint != null ||
+            tile.roadBlueprint != null ||
             (tile.inv != null && !tile.inv.IsEmpty());
         if (!hasContent) return null;
 
         return new TileSaveData {
             x = tile.x,
             y = tile.y,
-            tileType = tile.type.name,
-            building   = tile.building   != null ? GatherStructure(tile.building)   : null,
-            mStruct    = tile.mStruct    != null ? GatherStructure(tile.mStruct)    : null,
-            fStruct    = tile.fStruct    != null ? GatherStructure(tile.fStruct)    : null,
-            bBlueprint = tile.bBlueprint != null ? GatherBlueprint(tile.bBlueprint) : null,
-            mBlueprint = tile.mBlueprint != null ? GatherBlueprint(tile.mBlueprint) : null,
-            fBlueprint = tile.fBlueprint != null ? GatherBlueprint(tile.fBlueprint) : null,
-            inv        = tile.inv        != null ? GatherInventory(tile.inv)        : null,
+            tileType   = tile.type.name,
+            building      = tile.building      != null ? GatherStructure(tile.building)      : null,
+            mStruct       = tile.mStruct       != null ? GatherStructure(tile.mStruct)       : null,
+            fStruct       = tile.fStruct       != null ? GatherStructure(tile.fStruct)       : null,
+            road          = tile.road          != null ? GatherStructure(tile.road)          : null,
+            bBlueprint    = tile.bBlueprint    != null ? GatherBlueprint(tile.bBlueprint)    : null,
+            mBlueprint    = tile.mBlueprint    != null ? GatherBlueprint(tile.mBlueprint)    : null,
+            fBlueprint    = tile.fBlueprint    != null ? GatherBlueprint(tile.fBlueprint)    : null,
+            roadBlueprint = tile.roadBlueprint != null ? GatherBlueprint(tile.roadBlueprint) : null,
+            inv           = tile.inv           != null ? GatherInventory(tile.inv)           : null,
         };
     }
 
     StructureSaveData GatherStructure(Structure s) {
         var ssd = new StructureSaveData { typeName = s.structType.name };
         if (s is Plant plant) {
-            ssd.plantAge = plant.age;
+            ssd.plantAge         = plant.age;
             ssd.plantGrowthStage = plant.growthStage;
             ssd.plantHarvestable = plant.harvestable;
         }
@@ -110,11 +132,11 @@ public class SaveSystem : MonoBehaviour {
 
     BlueprintSaveData GatherBlueprint(Blueprint bp) {
         return new BlueprintSaveData {
-            typeName = bp.structType.name,
-            state = (int)bp.state,
+            typeName             = bp.structType.name,
+            state                = (int)bp.state,
             constructionProgress = bp.constructionProgress,
-            inv = bp.costs.Length > 0 ? GatherInventory(bp.inv) : null,
-            priority = bp.priority
+            inv                  = bp.costs.Length > 0 ? GatherInventory(bp.inv) : null,
+            priority             = bp.priority
         };
     }
 
@@ -123,8 +145,8 @@ public class SaveSystem : MonoBehaviour {
         for (int i = 0; i < inv.itemStacks.Length; i++) {
             ItemStack stack = inv.itemStacks[i];
             stacks[i] = new ItemStackSaveData {
-                itemName = stack.item?.name ?? "",
-                quantity = stack.quantity,
+                itemName     = stack.item?.name ?? "",
+                quantity     = stack.quantity,
                 decayCounter = stack.decayCounter
             };
         }
@@ -133,48 +155,43 @@ public class SaveSystem : MonoBehaviour {
             if (!kv.Value) disallowed.Add(kv.Key);
         }
         return new InventorySaveData {
-            nStacks = inv.nStacks,
-            stackSize = inv.stackSize,
-            invType = inv.invType.ToString(),
-            stacks = stacks,
-            disallowedItemIds = disallowed.Count > 0 ? disallowed.ToArray() : null
+            nStacks            = inv.nStacks,
+            stackSize          = inv.stackSize,
+            invType            = inv.invType.ToString(),
+            stacks             = stacks,
+            disallowedItemIds  = disallowed.Count > 0 ? disallowed.ToArray() : null
         };
     }
 
     AnimalSaveData GatherAnimal(Animal a) {
         return new AnimalSaveData {
-            aName = a.aName,
-            x = a.x,
-            y = a.y,
-            jobName = a.job.name,
-            energy = a.energy,
-            food = a.eating.food,
-            eep = a.eeping.eep,
-            timeSinceAteWheat = a.happiness.timeSinceAteWheat,
-            timeSinceAteFruit = a.happiness.timeSinceAteFruit,
-            inv = GatherInventory(a.inv),
-            foodSlotInv = GatherInventory(a.foodSlotInv),
-            toolSlotInv = GatherInventory(a.toolSlotInv),
+            aName              = a.aName,
+            x                  = a.x,
+            y                  = a.y,
+            jobName            = a.job.name,
+            energy             = a.energy,
+            food               = a.eating.food,
+            eep                = a.eeping.eep,
+            timeSinceAteWheat  = a.happiness.timeSinceAteWheat,
+            timeSinceAteFruit  = a.happiness.timeSinceAteFruit,
+            inv                = GatherInventory(a.inv),
+            foodSlotInv        = GatherInventory(a.foodSlotInv),
+            toolSlotInv        = GatherInventory(a.toolSlotInv),
         };
     }
 
-    // Restores items from save data into an existing inventory instance.
-    public static void LoadInventory(Inventory inv, InventorySaveData data) {
-        foreach (ItemStackSaveData ssd in data.stacks) {
-            if (!string.IsNullOrEmpty(ssd.itemName) && Db.itemByName.ContainsKey(ssd.itemName) && ssd.quantity > 0) {
-                inv.Produce(Db.itemByName[ssd.itemName], ssd.quantity);
-            }
-        }
-    }
-
+    // -----------------------------------------------------------------------
     // LOAD
+    // -----------------------------------------------------------------------
+
     public void Load(string slotName) {
         string path = SlotPath(slotName);
         if (!System.IO.File.Exists(path)) { Debug.LogError("Save slot not found: " + slotName); return; }
         string json = System.IO.File.ReadAllText(path);
         WorldSaveData data = JsonConvert.DeserializeObject<WorldSaveData>(json);
         WorldController.instance.ClearWorld();
-        WorldController.instance.ApplySaveData(data);
+        ApplySaveData(data);
+
         if (data.research != null && ResearchSystem.instance != null) {
             var rs = ResearchSystem.instance;
             if (data.research.pointHistory != null)
@@ -189,14 +206,144 @@ public class SaveSystem : MonoBehaviour {
                     rs.unlockedIds.Add(id);
             rs.ReapplyAllEffects();
         }
+
         StartCoroutine(PostLoadInit());
     }
+
+    void ApplySaveData(WorldSaveData save) {
+        World world = World.instance;
+        world.timer = save.timer;
+
+        foreach (TileSaveData tsd in save.tiles) {
+            Tile tile = world.GetTileAt(tsd.x, tsd.y);
+            if (tile == null) continue;
+
+            if (!string.IsNullOrEmpty(tsd.tileType) && Db.tileTypeByName.ContainsKey(tsd.tileType))
+                tile.type = Db.tileTypeByName[tsd.tileType];
+
+            // Blueprints before structures so deconstruct blueprints can coexist with structures
+            if (tsd.bBlueprint    != null) RestoreBlueprint(tsd.bBlueprint,    tile);
+            if (tsd.mBlueprint    != null) RestoreBlueprint(tsd.mBlueprint,    tile);
+            if (tsd.fBlueprint    != null) RestoreBlueprint(tsd.fBlueprint,    tile);
+            if (tsd.roadBlueprint != null) RestoreBlueprint(tsd.roadBlueprint, tile);
+
+            if (tsd.building != null) RestoreStructure(tsd.building, tile);
+            if (tsd.mStruct  != null) RestoreStructure(tsd.mStruct,  tile);
+            if (tsd.fStruct  != null) RestoreStructure(tsd.fStruct,  tile);
+            if (tsd.road     != null) RestoreStructure(tsd.road,     tile);
+
+            if (tsd.inv != null) RestoreInventory(tsd.inv, tile);
+        }
+
+        world.graph.Initialize();
+
+        if (save.animals != null)
+            foreach (AnimalSaveData asd in save.animals)
+                AnimalController.instance.LoadAnimal(asd);
+    }
+
+    void RestoreStructure(StructureSaveData ssd, Tile tile) {
+        if (!Db.structTypeByName.ContainsKey(ssd.typeName)) {
+            Debug.LogError("Unknown struct type on load: " + ssd.typeName); return;
+        }
+        StructType st = Db.structTypeByName[ssd.typeName];
+        Structure structure = null;
+
+        if (st.isPlant) {
+            Plant plant = new Plant(st as PlantType, tile.x, tile.y);
+            plant.age          = ssd.plantAge;
+            plant.growthStage  = ssd.plantGrowthStage;
+            plant.harvestable  = ssd.plantHarvestable;
+            plant.UpdateSprite();
+            structure = plant;
+        } else if (st.depth == "b") {
+            structure = new Building(st, tile.x, tile.y) { uses = ssd.uses };
+        } else if (st.name == "platform") {
+            structure = new Platform(st, tile.x, tile.y);
+        } else if (st.name == "stairs") {
+            structure = new Stairs(st, tile.x, tile.y);
+        } else if (st.name == "ladder") {
+            structure = new Ladder(st, tile.x, tile.y);
+        } else if (st.depth == "r") {
+            structure = new Structure(st, tile.x, tile.y);
+            tile.road = structure;
+        } else {
+            Debug.LogError("Unhandled struct type on load: " + ssd.typeName); return;
+        }
+
+        if (structure != null) {
+            StructController.instance.Place(structure);
+            World.instance.graph.UpdateNeighbors(tile.x, tile.y);
+            World.instance.graph.UpdateNeighbors(tile.x, tile.y + 1);
+        }
+    }
+
+    void RestoreBlueprint(BlueprintSaveData bsd, Tile tile) {
+        if (!Db.structTypeByName.ContainsKey(bsd.typeName)) {
+            Debug.LogError("Unknown blueprint struct type on load: " + bsd.typeName); return;
+        }
+        StructType st = Db.structTypeByName[bsd.typeName];
+        Blueprint bp = new Blueprint(st, tile.x, tile.y);
+        bp.state                = (Blueprint.BlueprintState)bsd.state;
+        bp.constructionProgress = bsd.constructionProgress;
+        bp.priority             = bsd.priority;
+
+        if (bsd.inv != null) {
+            for (int i = 0; i < bsd.inv.stacks.Length && i < bp.inv.itemStacks.Length; i++) {
+                var ssd = bsd.inv.stacks[i];
+                if (!string.IsNullOrEmpty(ssd.itemName) && Db.itemByName.ContainsKey(ssd.itemName) && ssd.quantity > 0) {
+                    bp.inv.itemStacks[i].item         = Db.itemByName[ssd.itemName];
+                    bp.inv.itemStacks[i].quantity      = ssd.quantity;
+                    bp.inv.itemStacks[i].res.capacity  = ssd.quantity;
+                    bp.inv.itemStacks[i].res.reserved  = 0;
+                    GlobalInventory.instance.AddItem(Db.itemByName[ssd.itemName], ssd.quantity);
+                }
+            }
+        }
+        bp.RefreshColor();
+    }
+
+    void RestoreInventory(InventorySaveData isd, Tile tile) {
+        Inventory inv = tile.inv ?? tile.EnsureFloorInventory();
+
+        for (int i = 0; i < isd.stacks.Length && i < inv.itemStacks.Length; i++) {
+            ItemStackSaveData ssd = isd.stacks[i];
+            if (!string.IsNullOrEmpty(ssd.itemName) && Db.itemByName.ContainsKey(ssd.itemName) && ssd.quantity > 0) {
+                Item item = Db.itemByName[ssd.itemName];
+                inv.itemStacks[i].item         = item;
+                inv.itemStacks[i].quantity      = ssd.quantity;
+                inv.itemStacks[i].decayCounter  = ssd.decayCounter;
+                inv.itemStacks[i].res.capacity  = ssd.quantity;
+                inv.itemStacks[i].res.reserved  = 0;
+                GlobalInventory.instance.AddItem(item, ssd.quantity);
+            }
+        }
+        foreach (Item item in Db.itemsFlat) { inv.AllowItem(item); }
+        if (isd.disallowedItemIds != null)
+            foreach (int id in isd.disallowedItemIds)
+                if (id < Db.items.Length && Db.items[id] != null)
+                    inv.DisallowItem(Db.items[id]);
+
+        inv.UpdateSprite();
+    }
+
+    // Restores items from save data into an existing inventory instance (used by AnimalController).
+    public static void LoadInventory(Inventory inv, InventorySaveData data) {
+        foreach (ItemStackSaveData ssd in data.stacks) {
+            if (!string.IsNullOrEmpty(ssd.itemName) && Db.itemByName.ContainsKey(ssd.itemName) && ssd.quantity > 0)
+                inv.Produce(Db.itemByName[ssd.itemName], ssd.quantity);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // LIFECYCLE
+    // -----------------------------------------------------------------------
 
     // FRAME 2 — one frame after GenerateDefault / ApplySaveData.
     // By this point all Animal.Start() calls have run. Safe to call Load() / UpdateColonyStats().
     // Started on all three paths: initial world gen, Reset, and Load.
     public IEnumerator PostLoadInit() {
-        yield return null; // wait one frame for all Animal.Start() calls to complete
+        yield return null;
         AnimalController.instance.Load();
     }
 
@@ -206,22 +353,19 @@ public class SaveSystem : MonoBehaviour {
         StartCoroutine(PostLoadInit());
     }
 
-    // SLOT INFO
+    // -----------------------------------------------------------------------
+    // SLOTS
+    // -----------------------------------------------------------------------
+
     public List<string> GetSaveSlots() {
         var slots = new List<string>();
-        if (System.IO.Directory.Exists(SaveDir)) {
-            foreach (string file in System.IO.Directory.GetFiles(SaveDir, "*.json")) {
+        if (System.IO.Directory.Exists(SaveDir))
+            foreach (string file in System.IO.Directory.GetFiles(SaveDir, "*.json"))
                 slots.Add(System.IO.Path.GetFileNameWithoutExtension(file));
-            }
-        }
         return slots;
     }
 
-    public bool SlotExists(string slotName) {
-        return System.IO.File.Exists(SlotPath(slotName));
-    }
+    public bool SlotExists(string slotName) => System.IO.File.Exists(SlotPath(slotName));
 
-    string SlotPath(string slotName) {
-        return System.IO.Path.Combine(SaveDir, slotName + ".json");
-    }
+    string SlotPath(string slotName) => System.IO.Path.Combine(SaveDir, slotName + ".json");
 }

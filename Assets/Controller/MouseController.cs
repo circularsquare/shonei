@@ -71,7 +71,7 @@ public class MouseController : MonoBehaviour {
         if (tileAt == null){ cursorHighlight.SetActive(false);}
         else if ((mouseMode == MouseMode.Build) || (mouseMode == MouseMode.Remove)){
             cursorHighlight.SetActive(true);
-            cursorHighlight.transform.position = new Vector3(tileAt.x, tileAt.y, 1);
+            cursorHighlight.transform.position = new Vector3(tileAt.x, tileAt.y, -1);
         }
         if (mouseMode == MouseMode.Select){
             cursorHighlight.SetActive(false);
@@ -96,7 +96,7 @@ public class MouseController : MonoBehaviour {
                 }
 
             } else if (mouseMode == MouseMode.Build) {
-                if (BuildPanel.instance.PlaceBlueprint(tileAt)) {
+                if (BuildPanel.instance.PlaceBlueprint(tileAt) && !Input.GetKey(KeyCode.LeftShift) && !Input.GetKey(KeyCode.RightShift)) {
                     mouseMode = MouseMode.Select;
                 }
             } else if (mouseMode == MouseMode.Remove) {

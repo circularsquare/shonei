@@ -39,7 +39,7 @@ public class StructController : MonoBehaviour {
             if (st.name == "empty"){
                 // need to spawn the mined resources
                 if (tile.type.products != null && tile.type.products.Length > 0){
-                    if (tile.inv == null){ tile.inv = new Inventory(1, 2000, Inventory.InvType.Floor, tile.x, tile.y); }
+                    if (tile.inv == null){ tile.inv = new Inventory(4, 1000, Inventory.InvType.Floor, tile.x, tile.y); }
                     tile.inv.Produce(tile.type.products[0].item, tile.type.products[0].quantity);
                 }
             }
@@ -59,6 +59,12 @@ public class StructController : MonoBehaviour {
         else if (st.name == "ladder"){
             if (tile.fStruct != null){Debug.LogError("already a foreground structure here!"); return false;}
             structure = new Ladder(st, tile.x, tile.y);}
+        else if (st.depth == "r"){
+            if (tile.road != null){Debug.LogError("already a road here!"); return false;}
+            Tile below = World.instance.GetTileAt(tile.x, tile.y - 1);
+            if (below == null || !below.type.solid){Debug.LogError("road requires solid tile below!"); return false;}
+            structure = new Structure(st, tile.x, tile.y);
+            tile.road = structure;}
         else { Debug.LogError("unknown type of structure?"); Debug.Log(st.depth);return false; }
         
 
@@ -90,6 +96,8 @@ public class StructController : MonoBehaviour {
                 }
             }
         }
+        // After any tile/building change, check if items on the tile above are now floating.
+        world.FallIfUnstandable(tile.x, tile.y + 1);
         return true;
     }
 
