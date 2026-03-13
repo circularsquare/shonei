@@ -29,24 +29,48 @@ All controllers are Unity MonoBehaviours. The `World` singleton provides access 
 
 ```
 Assets/
-├── Controller/        Unity MonoBehaviours (UI, input, rendering)
-├── Model/             Pure C# game logic
-│   ├── World.cs       Tile grid, update loops, system access
+├── Controller/        Game-system MonoBehaviours (rendering, world lifecycle, networking)
+│   ├── WorldController.cs   Tile rendering + world setup (GenerateDefault, ClearWorld)
+│   ├── AnimalController.cs  Animal spawning + rendering
+│   ├── StructController.cs  Structure placement + rendering
+│   ├── PlantController.cs   Plant rendering
+│   ├── InventoryController.cs  Global inventory tracking + item sprite display
+│   ├── AnimationController.cs  Animal sprite animation
+│   ├── SaveSystem.cs        Save/load/reset — all Gather* and Restore* methods live here
+│   ├── TradingClient.cs     WebSocket connection to trading server
+│   ├── MouseController.cs   Input handling
+│   ├── BackgroundCamera.cs  Background parallax camera
+│   └── CloudLayer.cs        Cloud rendering
+├── Model/             Pure C# game logic (no MonoBehaviours)
+│   ├── World.cs       Tile grid, tick loop, ProduceAtTile, FallItems
 │   ├── Animal.cs      Agent data + task dispatch
 │   ├── AnimalStateManager.cs  State machine logic
-│   ├── Task.cs        Task + Objective definitions
+│   ├── AnimalComponents.cs  Nav, movement, pathfinding helpers (Move, Find*, FindPath*)
+│   ├── Task.cs        All Task + Objective class definitions
 │   ├── Navigation.cs  A* pathfinding
 │   ├── Inventory.cs   Item containers (animal/storage/floor)
 │   ├── Plant.cs       Growing plants
-│   ├── Structure.cs   Placed buildings
+│   ├── Structure.cs   Placed buildings + StructType
 │   ├── Tile.cs        Grid cell
 │   ├── Item.cs        Item type definitions
 │   ├── Db.cs          JSON database loader
+│   ├── ResearchSystem.cs  Research points + unlock logic
+│   ├── WorldSaveData.cs   Save data classes (add fields here when extending save)
 │   └── Reservable.cs  Resource reservation (capacity-based)
+├── UI/                UI panels, displays, and tooltip system
+│   ├── BuildPanel.cs, InfoPanel.cs, MenuPanel.cs, SaveMenuPanel.cs
+│   ├── TradingPanel.cs, RecipePanel.cs, ResearchPanel.cs
+│   ├── ItemDisplay.cs, JobDisplay.cs, OrderDisplay.cs, ResearchDisplay.cs
+│   ├── TooltipSystem.cs, Tooltippable.cs
+│   └── UI.cs          Static singleton accessor hub
+├── Lighting/          Custom lighting pipeline (ScriptableRendererFeature)
 └── Resources/
     ├── buildingsDb.json
     ├── plantsDb.json
-    └── recipesDb.json
+    ├── recipesDb.json
+    ├── itemsDb.json
+    ├── jobsDb.json
+    └── researchDb.json
 ```
 
 ## Data-Driven Design
@@ -55,7 +79,7 @@ All game content is defined in JSON and loaded at startup via `Db.cs` using Newt
 
 | File | Content |
 |------|---------|
-| `buildingsDb.json` | StructTypes: house, drawer, sawmill, soil pit, ladder, stairs, platform |
+| `buildingsDb.json` | StructTypes: buildings (house, sawmill, laboratory, market, quarry, dirtpit, crate, drawer), structures (platform, ladder, stairs, torch, road), plants (tree, wheat, apple tree) |
 | `plantsDb.json` | PlantTypes: tree (30 ticks), wheat (15 ticks) |
 | `recipesDb.json` | Recipes: sawyer (wood → plank + sawdust), digger (∅ → soil) |
 
@@ -85,7 +109,7 @@ All three paths (Initial / Reset / Load) follow the same two-frame handoff:
 ```
 Initial: GenerateDefault()         →  PostLoadInit (next frame)
 Reset:   ClearWorld() + GenerateDefault()  →  PostLoadInit (next frame)
-Load:    ClearWorld() + ApplySaveData()    →  PostLoadInit (next frame)
+Load:    ClearWorld() + SaveSystem.ApplySaveData()  →  PostLoadInit (next frame)
 ```
 
 **Frame 0** — all `Awake()`s run (order undefined, but before any `Start`):
@@ -106,7 +130,7 @@ Load:    ClearWorld() + ApplySaveData()    →  PostLoadInit (next frame)
 
 **Frame 2** — coroutines resume:
 - **`Animal.Start()`** — initializes hunger/sleep/happiness; applies `pendingSaveData` if on load path
-- **`DefaultJobSetup`** — assigns jobs, calls `ProduceAtTile` (standability and animals both ready)
+- **`DefaultJobSetup`** — assigns jobs, calls `World.ProduceAtTile` (standability and animals both ready)
 - **`PostLoadInit`** — calls `AnimalController.Load()` → `SlowUpdate()`, `UpdateColonyStats()`
 
 **Key rule**: use `PostLoadInit` for any initialization that depends on animals being fully ready. It runs on all three paths. Do NOT use the `if (world == null)` guard in `AnimalController.TickUpdate` — unreliable on Reset/Load since `world` is never reset to null.
@@ -168,28 +192,56 @@ Each animal has one Job. Jobs define which Recipes the animal can execute. Recip
 
 ## Navigation
 
-- **Algorithm**: A* with Manhattan heuristic
-- **Standability**: tile is standable if tile below is solid, has a platform/building, or has a ladder/stairs
-- **Vertical movement**: ladders (straight up), stairs (diagonal)
+- **Algorithm**: A* with Euclidean heuristic. Edge costs vary by traversal type (see below).
+- **Locomotion**: `speed = maxSpeed * edgeLength / edgeCost`. Both values come from `Graph.GetEdgeInfo(from, to)`, so speed automatically adjusts for sub-tile and slow edges.
+- **Standability**: tile is standable if tile below is solid, has a platform/building, or has a ladder.
+- **Vertical movement**: ladders produce direct node-to-node vertical edges (cost 2.0). Cliff climbing and stairs use **waypoint chains** (see below).
+- **Road speed boost**: road tiles reduce A* edge cost by `pathCostReduction` (both endpoints contribute), making roads faster to path through. Base movement speed is `1 tile/sec × efficiency`.
 - **Helper queries**: `FindPathToBuilding`, `FindPathToItem`, `FindPathToStorage`, `FindPathAdjacentToBlueprint`, `FindPathToHarvestable`
+
+### Waypoint system (stairs and cliff climbs)
+
+Both stairs and one-block cliff climbs are represented as **waypoint chains** — intermediate `Node` objects with fractional world positions, not backed by tiles. They are stored in `stairWaypoints` and `cliffWaypoints` dictionaries and rebuilt whenever nearby tiles change.
+
+**Cliff climb** (one solid block beside a standable tile): `base → wp1 → wp2 → cliffTop`
+- `wp1` at `(base.x + dir×0.25, base.y)` — 0.25 tiles from base, normal speed
+- `wp1 → wp2` vertical, cost 3.0 (slow both up and down)
+- `wp2` at `(base.x + dir×0.25, base.y+1)` — 0.75 tiles from cliff top, normal speed
+
+**Stair** (stair tile): `left → entry → exit → right`, where entry/exit are 0.5-tile offsets from their endpoints; the diagonal entry→exit step has cost 1.8 / length √2.
+
+`preventFall` in `Nav.Move()` suppresses the fall check while on any waypoint edge or a ladder edge. Direct non-standable tile traversal no longer occurs — all such paths go through waypoints.
 
 ## Inventory System
 
-Four inventory types:
+Five inventory types:
 
 | Type | Slots | Stack Size | Decay Rate | Notes |
 |------|-------|-----------|-----------|-------|
 | Animal | 5 | 1000 fen | none | General-purpose carry inventory |
 | Storage | varies | varies | normal | `allowed` dict restricts item types |
-| Floor | 1 | varies | 5× normal | Created/destroyed dynamically |
+| Floor | 4 | 1000 fen | 5× normal | Created/destroyed dynamically; up to 4 item types can share a tile |
 | Equip | 1 | varies | none | Animal equip slots (food, tool) |
+| Market | varies | varies | none | Market building only; set via `SetMarket()` on a Storage inv |
 
-- Items decay over time (Floor fastest; Animal/Equip never)
+- Items decay over time (Floor fastest; Animal/Equip/Market never)
 - **Discrete items** (`Item.discrete = true`, e.g. tools): always stored/moved in whole-liang (100 fen) multiples; decay removes whole items only; display shows integer count. Adding a non-multiple-of-100 quantity logs a warning.
 - `allowed` dict filters what item types a storage accepts (all allowed by default for other types)
 - `Reservable` (capacity-based) prevents multiple animals targeting same resource
 - `Produce()` adds to inventory and global inventory simultaneously; `MoveItemTo()` moves between inventories without touching global inventory
 - `AddItem()` is private — always use `Produce`, `MoveItemTo`, or `TakeItem` externally
+- **`InventoryController.byType`**: `Dictionary<InvType, List<Inventory>>` maintained alongside the flat `inventories` list. Use for type-filtered lookups (e.g. iterate only Storage invs) instead of tile scans. All add/remove/type-change paths go through `AddInventory`, `RemoveInventory`, `MoveInventoryType`.
+- **`ValidateGlobalInventory()`**: sums all registered inventory stacks and compares against `GlobalInventory.itemAmounts`; called at end of save load. `LogError`s any mismatch.
+
+### Item Falling
+
+When a tile or building change reduces standability, items on the tile above that is no longer standable fall straight down to the nearest standable tile.
+
+- **Trigger**: `StructController.Construct()` and `Structure.Destroy()` both call `World.FallIfUnstandable(x, y+1)` after updating the nav graph. This covers tile mining, building placement, and building removal.
+- **`World.FallIfUnstandable(x, y)`**: no-op if the tile has no items or is still standable; otherwise calls `FallItems`.
+- **`World.FallItems(tile)`**: scans downward from `tile.y−1` for the first standable tile (`landing`). Moves all stacks via `MoveItemTo` (no GlobalInventory double-count). Any items that can't fit in the landing inventory are subtracted from GlobalInventory and logged as a warning before the source inventory is destroyed. Same applies if no landing tile exists at all (e.g. items at y=0).
+- **Mixing**: `PutOnFloor` / `ProduceAtTile` prevent different item types from being placed on the same floor tile normally. `FallItems` bypasses this deliberately — a floor tile can hold up to 4 types after a fall.
+- **GlobalInventory**: `MoveItemTo` is used (not `Produce`) so no double-counting occurs. Lost items are explicitly removed from GlobalInventory before destruction.
 
 ### Equip Slots
 
@@ -226,12 +278,55 @@ All item quantities are stored as **fen** (integers), where **100 fen = 1 liang*
 
 ## Rendering & Layers
 
-Structures render in three depth layers per tile:
-- **Background (b)**: buildings, plants
-- **Midground (m)**: platforms
-- **Foreground (f)**: stairs, ladders
+Structures render in four depth layers per tile, stored as named fields on `Tile`:
 
-This enables stairs and multi-part structures to be placed on the same tiles
+| Depth | Field | Contents | Sprite position |
+|-------|-------|----------|----------------|
+| `r` | `tile.road` | Roads | `(x, y−1)` — renders on surface of solid tile below |
+| `b` | `tile.building` | Buildings, plants | `(x, y)` |
+| `m` | `tile.mStruct` | Platforms | `(x, y)` |
+| `f` | `tile.fStruct` | Stairs, ladders | `(x, y)` |
+
+Each layer also has a corresponding `Blueprint` field (`roadBlueprint`, `bBlueprint`, `mBlueprint`, `fBlueprint`). Roads use `sortingOrder = 1` to render above the tile ground sprite (order 0). Multiple layers can coexist on the same tile — roads are independent of all other layers.
+
+## Lighting
+
+Custom `ScriptableRendererFeature` pipeline — no URP Light2Ds used. All lights use `BlendOp Max` so overlapping sources take the brightest value. Final result is Multiply-blitted onto the scene.
+
+### Render pipeline (per frame)
+
+1. **NormalsCapturePass** (`BeforeRenderingTransparents`) — draws all sprites with `Hidden/NormalsCapture` override material into `_CapturedNormalsRT`. Outputs world-space normals packed 0–1 (`rgb * 0.5 + 0.5`). Transparent pixels discarded (background stays black = flat fallback).
+2. **LightPass** (`AfterRenderingTransparents`) — clears light RT to `SunController.GetAmbientColor()`, then `BlendOp Max`-draws:
+   - Sun (directional): fullscreen quad, NdotL with `_SunDir` from `SunController.GetSunDirection()`.
+   - Point lights (torches, etc.): per-light quad scaled to `outerRadius×2`, radial falloff × NdotL with `toLight = normalize(lightXY − fragXY, −lightHeight)`.
+3. **Composite** — `cmd.Blit(lightRT, scene, LightComposite)` multiplies scene by light map (`Blend DstColor Zero`).
+
+### Key files
+
+All lighting C# scripts and shaders live in `Assets/Lighting/`.
+
+| File | Role |
+|------|------|
+| `LightFeature.cs` | `ScriptableRendererFeature` containing `NormalsCapturePass` + `LightPass` |
+| `LightSource.cs` | Component: `lightColor`, `intensity`, `outerRadius`, `innerRadius`, `lightHeight`, `isDirectional`. Registers itself in a static list read by `LightPass`. |
+| `SunController.cs` | Orbiting sun, sky color, `GetAmbientColor()`, `GetSunDirection()`. Sun child has a `LightSource (isDirectional=true)`. |
+| `NormalsCapture.shader` | Tangent→world normal transform for flat 2D sprites: `(x, y, z) → (x, y, −z)`. |
+| `LightCircle.shader` | Point light pass: radial falloff × NdotL. |
+| `LightSun.shader` | Directional sun pass: fullscreen NdotL. |
+| `LightComposite.shader` | Multiply blit onto scene. |
+
+`Assets/Editor/SpriteNormalMapGenerator.cs` — sprite normal map batch tool (must stay in `Editor/`).
+
+### Normal maps
+
+**Encoding**: world-space, packed 0–1. Flat camera-facing sprite = `(0,0,−1)` → `(0.5, 0.5, 0.0)`. Black = no sprite, shader uses flat fallback. No Y-flip on screen UV (DrawRenderers and the light pass projection both use OpenGL convention, V=0 at bottom).
+
+**Tile normal maps** (`TileNormalMaps.cs`): 16 procedural variants (4-bit adjacency mask). Exposed edges bevel outward; interior stays flat. Applied via `MaterialPropertyBlock` on tile `SpriteRenderer`s.
+
+**Sprite normal maps** (`SpriteNormalMapGenerator.cs`): editor tool (**Tools → Generate All Sprite Normal Maps**) batch-processes `Assets/Resources/Sprites/`. For each texture:
+1. Generates `_n.png` — edge pixels get outward normals, interior gets flat forward normal.
+2. Imports as `Default` / `Uncompressed` RGBA32 (not NormalMap type — must stay plain packed 0–1).
+3. Auto-assigns as `_NormalMap` secondary texture on the source sprite importer.
 
 ## Key Design Decisions
 
@@ -396,9 +491,7 @@ special **Market building**, which represents a distant city.
 - StructType `"market"`, `isMarket = true` on the StructType.
 - Auto-spawned once at world gen at tile `(10, 10)`; never player-buildable.
 - Does **not** appear in the build menu (enforced via the unlock system — see below).
-- The Market inventory is a normal `Inventory` but tagged `isMarket = true`.
-  Normal haul logic (HaulTask) skips market inventories; only merchant mice
-  may target them.
+- The Market inventory starts as `InvType.Storage` then `SetMarket()` flips it to `InvType.Market` and initializes `targets`/`incomingRes`. Normal haul logic (HaulTask) skips market inventories; only merchant mice may target them.
 
 #### Player name
 

@@ -40,9 +40,9 @@ public class AnimalStateManager {
         if (animal.state == AnimalState.Idle) {
             // Random walking when nothing else to do
             if (UnityEngine.Random.Range(0, 5) == 0) {
-                animal.task = new GoTask(animal, 
+                animal.task = new GoTask(animal,
                     animal.world.GetTileAt(animal.x + UnityEngine.Random.Range(-1, 2), animal.y));
-                animal.task.Start();
+                if (!animal.task.Start()) animal.task = null;
             }
         }
     }
@@ -141,8 +141,8 @@ public class AnimalStateManager {
     }
 
     public void UpdateMovement(float deltaTime) {
-        // Only fall when standing still — moving animals follow their nav path
-        if (animal.state != AnimalState.Moving && !animal.TileHere().node.standable) {
+        // Fall unless the current nav edge is deliberately vertical (ladder/cliff/stair)
+        if (!animal.nav.preventFall && !animal.TileHere().node.standable) {
             animal.nav.Fall();
         }
         if (IsMovingState(animal.state)) {

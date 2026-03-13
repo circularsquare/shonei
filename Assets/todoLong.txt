@@ -2,11 +2,6 @@ meow
 
 - local inventories
     - assignable/filterable
-- info panel
-    - for items
-    - for inventories
-    - for mice
-    - for structures/tiles
 - job things
     - deciding what to craft
     - recipe list per job 
@@ -48,5 +43,9 @@ exrperience types
     - magic
 - when an animal Works, their productivity is determined by skill level in some predetermined thing
     - woodcutting - plants
+- books
+    - books for gaining skills 
+    - manuals for learning technologies
+    - scriptoriums
 
 

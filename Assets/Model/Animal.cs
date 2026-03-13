@@ -172,7 +172,13 @@ public class Animal : MonoBehaviour{
     }
     private void UpdateEfficiency() {
         efficiency = eating.Efficiency() * eeping.Efficiency();
-        maxSpeed = 2f * efficiency;
+        maxSpeed = 1.5f * efficiency;
+    }
+
+    // True between 9 pm (phase 0.875) and 6 am (phase 0.25).
+    private bool IsNighttime() {
+        float phase = (World.instance.timer % World.ticksInDay) / (float)World.ticksInDay;
+        return phase >= 21f / 24f || phase < 6f / 24f;
     }
 
     public void SlowUpdate() { // called every 10 or so seconds
@@ -189,13 +195,12 @@ public class Animal : MonoBehaviour{
     public void ChooseTask() {
         if (task != null){ return; } // TODO: change when this func is called to just whenever task is null?
 
-        if (inv.GetFreeStacks() <= 3){ // drop inventory if three or fewer open stacks!
-            task = new DropTask(this); 
-            if (task.Start()) return; 
-            else Debug.Log("inventory near full and can't drop!"); }
+        if (!inv.IsEmpty()) { // drop all main inventory when idle (food/tools are in equip slots)
+            task = new DropTask(this);
+            if (task.Start()) return; }
 
         if (eating.Hungry()) { if (FindFood()) return; } // will create obtaintask for food
-        if (eeping.Eepy()) {
+        if (eeping.Eepy() && IsNighttime()) {
             task = new EepTask(this);
             if (task.Start()) return; }
         if (FindEquipment()) return; // pick up a tool if not holding one

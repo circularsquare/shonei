@@ -1,15 +1,5 @@
 [
     {
-        "id": 0,
-        "name": "empty",
-        "description": "dig",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-        ],
-        "isTile": true,
-        "njob": "digger",
-        "category": "structures"
-    },{
         "id": 1,
         "name": "house",
         "description": "a simple house for 4 mice",
@@ -20,6 +10,7 @@
         "njob": "hauler",
         "capacity": 5,
         "depth": "b",
+        "solidTop": true,
         "category": "storage"
     },{
         "id": 2,
@@ -34,6 +25,7 @@
         "isStorage": true,
         "nStacks": 4,
         "storageStackSize": 20,
+        "solidTop": true,
         "category": "storage"
     },{
         "id": 3,
@@ -47,6 +39,7 @@
         "isStorage": true,
         "nStacks": 1,
         "storageStackSize": 100,
+        "solidTop": true,
         "category": "storage"
     },{
         "id": 5,
@@ -60,6 +53,16 @@
         "category": "storage",
         "defaultLocked": true
     },{
+        "id": 20,
+        "name": "torch",
+        "description": "a small torch that lights the area",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 5 }
+        ],
+        "depth": "b",
+        "category": "structures"
+    },{
         "id": 10,
         "name": "platform",
         "nx": 1, "ny": 1,
@@ -67,6 +70,7 @@
             { "name": "wood", "quantity": 3 }
         ],
         "depth": "m",
+        "solidTop": true,
         "category": "structures"
     },{
         "id": 11,
@@ -87,6 +91,16 @@
         "depth": "f",
         "category": "structures"
     },{
+        "id": 0,
+        "name": "empty",
+        "description": "dig",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+        ],
+        "isTile": true,
+        "njob": "digger",
+        "category": "tiles"
+    },{
         "id": 50,
         "name": "soil",
         "description": "block of soil",
@@ -96,7 +110,7 @@
         ],
         "isTile": true,
         "njob": "hauler",
-        "category": "structures"
+        "category": "tiles"
     },{
         "id": 51,
         "name": "stone",
@@ -107,7 +121,7 @@
         ],
         "isTile": true,
         "njob": "hauler",
-        "category": "structures"
+        "category": "tiles"
     },{
         "id": 100,
         "name": "sawmill",
@@ -118,6 +132,7 @@
         ],
         "njob": "hauler",
         "capacity": 1,
+        "solidTop": true,
         "category": "production"
     },{
         "id": 101,
@@ -129,6 +144,7 @@
         ],
         "njob": "hauler",
         "capacity": 1,
+        "solidTop": true,
         "category": "production"
     },{
         "id": 120,
@@ -142,6 +158,7 @@
         "njob": "digger",
         "capacity": 1,
         "requiredTileName": "soil",
+        "solidTop": true,
         "category": "production",
         "defaultLocked": true
     },{
@@ -155,6 +172,7 @@
         ],
         "njob": "hauler",
         "capacity": 1,
+        "solidTop": true,
         "category": "production"
     },{
         "id": 121,
@@ -167,8 +185,19 @@
         "njob": "miner",
         "capacity": 1,
         "requiredTileName": "stone",
+        "solidTop": true,
         "category": "production",
         "defaultLocked": true,
         "depleteAt": 100
+    },{
+        "id": 21,
+        "name": "road",
+        "description": "paved road that increases movement speed",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+        ],
+        "depth": "r",
+        "pathCostReduction": 0.1,
+        "category": "structures"
     }
 ]

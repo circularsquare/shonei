@@ -40,6 +40,15 @@ public abstract class Task {
         if (reserved > 0) reservedStacks.Add((stack, reserved));
     }
 
+    // Shared setup for simple haul tasks: reserve item, queue Fetch + Deliver.
+    protected bool InitFromHaul(HaulInfo h) {
+        if (h == null) return false;
+        ItemQuantity iq = new ItemQuantity(h.item, h.quantity);
+        FetchAndReserve(iq, h.itemTile, h.itemStack, h.quantity);
+        objectives.Enqueue(new DeliverObjective(this, iq, h.storageTile));
+        return true;
+    }
+
     public bool Start(){ // calls some task specific Initialize
         bool initialized = Initialize();
         if (objectives.Count > 0){StartNextObjective();}
@@ -194,28 +203,14 @@ public class HarvestTask : Task {
     }
 }
 // haultask is only for moving random items to storage!
-public class HaulTask : Task { 
-    HaulInfo haulInfo;
+public class HaulTask : Task {
     public HaulTask(Animal animal) : base(animal){}
-    public override bool Initialize() {
-        haulInfo = animal.nav.FindAnyItemToHaul();
-        if (haulInfo == null) {return false;}
-        ItemQuantity iq = new ItemQuantity(haulInfo.item, haulInfo.quantity);
-        FetchAndReserve(iq, haulInfo.itemTile, haulInfo.itemStack, haulInfo.quantity);
-        objectives.Enqueue(new DeliverObjective(this, iq, haulInfo.storageTile));
-        return true;
-    }
+    public override bool Initialize() => InitFromHaul(animal.nav.FindAnyItemToHaul());
 }
+// consolidatetask is only for merging floor stacks when no storage is available!
 public class ConsolidateTask : Task {
     public ConsolidateTask(Animal animal) : base(animal) {}
-    public override bool Initialize() {
-        HaulInfo h = animal.nav.FindFloorConsolidation();
-        if (h == null) return false;
-        ItemQuantity iq = new ItemQuantity(h.item, h.quantity);
-        FetchAndReserve(iq, h.itemTile, h.itemStack, h.quantity);
-        objectives.Enqueue(new DeliverObjective(this, iq, h.storageTile));
-        return true;
-    }
+    public override bool Initialize() => InitFromHaul(animal.nav.FindFloorConsolidation());
 }
 public class DropTask : Task {
     ItemQuantity iq;
@@ -237,22 +232,15 @@ public class ConstructTask : Task {
     }
     public override bool Initialize() {
         var state = deconstructing ? Blueprint.BlueprintState.Deconstructing : Blueprint.BlueprintState.Constructing;
-        (Tile bpTile, Path standPath) = animal.nav.FindPathAdjacentToBlueprint(animal.job, state);
-        if (bpTile == null) { return false; }
-        blueprint = deconstructing
-            ? bpTile.GetMatchingBlueprint(b => b.state == Blueprint.BlueprintState.Deconstructing)
-            : bpTile.GetMatchingBlueprint(b => b.structType.job == animal.job && b.state == Blueprint.BlueprintState.Constructing);
-        if (blueprint == null) { return false; }
-        // For solid tile blueprints the tile is currently passable, so PathToOrAdjacent may have
-        // returned the blueprint tile itself. Re-compute to guarantee we stand next to it.
-        if (blueprint.structType.isTile) {
-            standPath = animal.nav.PathStrictlyAdjacent(bpTile);
-            if (standPath == null) { return false; }
+        var candidates = animal.nav.FindPathsAdjacentToBlueprints(animal.job, state);
+        foreach (var (bpTile, standPath, bp) in candidates) {
+            blueprint = bp;
+            objectives.Enqueue(new GoObjective(this, standPath.tile));
+            objectives.Enqueue(new ConstructObjective(this, blueprint));
+            if (!blueprint.res.Reserve()) Debug.Log("reserved blueprint that is not available!");
+            return true;
         }
-        objectives.Enqueue(new GoObjective(this, standPath.tile));
-        objectives.Enqueue(new ConstructObjective(this, blueprint));
-        if (!blueprint.res.Reserve()) Debug.Log("reserved blueprint that is not available!");
-        return true;
+        return false;
     }
     public override void Cleanup() {
         blueprint?.res.Unreserve();
@@ -264,22 +252,23 @@ public class SupplyBlueprintTask : Task {
     ItemQuantity iq; 
     public SupplyBlueprintTask(Animal animal) : base(animal){}
     public override bool Initialize() {
-        (Tile bpTile, Path standPath) = animal.nav.FindPathAdjacentToBlueprint(animal.job, Blueprint.BlueprintState.Receiving);
-        if (bpTile == null) {return false;}
-        blueprint = bpTile.GetMatchingBlueprint(b => b.structType.job == animal.job && b.state == Blueprint.BlueprintState.Receiving);
-        for (int i = 0; i < blueprint.costs.Length; i++) {
-            if (blueprint.inv.Quantity(blueprint.costs[i].item) < blueprint.costs[i].quantity) {
-                iq = new ItemQuantity(blueprint.costs[i].item,
-                    blueprint.costs[i].quantity - blueprint.inv.Quantity(blueprint.costs[i].item));
-                if (!animal.inv.ContainsItem(iq)){
-                    (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(iq.item);
-                    if (itemPath == null) { continue; }
-                    FetchAndReserve(iq, itemPath.tile, stack);
+        var candidates = animal.nav.FindPathsAdjacentToBlueprints(animal.job, Blueprint.BlueprintState.Receiving);
+        foreach (var (bpTile, standPath, bp) in candidates) {
+            for (int i = 0; i < bp.costs.Length; i++) {
+                if (bp.inv.Quantity(bp.costs[i].item) < bp.costs[i].quantity) {
+                    iq = new ItemQuantity(bp.costs[i].item,
+                        bp.costs[i].quantity - bp.inv.Quantity(bp.costs[i].item));
+                    if (!animal.inv.ContainsItem(iq)){
+                        (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(iq.item);
+                        if (itemPath == null) { continue; }
+                        FetchAndReserve(iq, itemPath.tile, stack);
+                    }
+                    blueprint = bp;
+                    objectives.Enqueue(new GoObjective(this, standPath.tile));
+                    objectives.Enqueue(new DeliverToBlueprintObjective(this, iq, blueprint));
+                    if (!blueprint.res.Reserve()) Debug.Log("reserved blueprint that is not available!");
+                    return true;
                 }
-                objectives.Enqueue(new GoObjective(this, standPath.tile));
-                objectives.Enqueue(new DeliverToBlueprintObjective(this, iq, blueprint));
-                if (!blueprint.res.Reserve()) Debug.Log("reserved blueprint that is not available!");
-                return true;
             }
         }
         return false;
@@ -292,9 +281,8 @@ public class SupplyBlueprintTask : Task {
 public class HaulToMarketTask : Task {
     public HaulToMarketTask(Animal animal) : base(animal) {}
     public override bool Initialize() {
-        Tile marketTile = animal.nav.Find(t => t.building != null && t.building.structType.name == "market");
+        Tile marketTile = animal.nav.FindMarketPath()?.tile;
         if (marketTile == null) return false;
-        if (animal.nav.PathTo(marketTile) == null) return false;
         Inventory marketInv = marketTile.inv;
 
         foreach (var kvp in marketInv.targets) {
@@ -321,9 +309,8 @@ public class HaulToMarketTask : Task {
 public class HaulFromMarketTask : Task {
     public HaulFromMarketTask(Animal animal) : base(animal) {}
     public override bool Initialize() {
-        Tile marketTile = animal.nav.Find(t => t.building != null && t.building.structType.name == "market");
+        Tile marketTile = animal.nav.FindMarketPath()?.tile;
         if (marketTile == null) return false;
-        if (animal.nav.PathTo(marketTile) == null) return false;
         Inventory marketInv = marketTile.inv;
 
         foreach (var kvp in marketInv.targets) {
@@ -470,11 +457,12 @@ public class DeliverToBlueprintObjective : Objective { // does not navigate, hap
         this.blueprint = blueprint;
     }
     public override void Start(){
-        if (animal.inv.Quantity(iq.item) > 0 && blueprint != null) {
+        if (blueprint == null || blueprint.cancelled) { Fail(); return; }
+        if (animal.inv.Quantity(iq.item) > 0) {
             int needed = 0;
             foreach (var cost in blueprint.costs)
                 if (cost.item == iq.item) { needed = cost.quantity - blueprint.inv.Quantity(iq.item); break; }
-            animal.inv.MoveItemTo(blueprint.inv, iq.item, Math.Min(iq.quantity, needed));
+            animal.inv.MoveItemTo(blueprint.inv, iq.item, Math.Min(animal.inv.Quantity(iq.item), needed));
             if (blueprint.IsFullyDelivered()) blueprint.state = Blueprint.BlueprintState.Constructing;
             Complete();
         } else {
@@ -518,6 +506,10 @@ public class GoObjective : Objective {
         } else {Fail();}
     }
     public override void OnArrival(){ Complete(); }
+    public override string GetObjectiveName() {
+        if (destination != null) return $"Go ({destination.x}, {destination.y})";
+        return "Go";
+    }
 }
 public class WorkObjective : Objective {
     private Recipe recipe;
@@ -538,6 +530,7 @@ public class ConstructObjective : Objective {
         this.blueprint = blueprint;
     }
     public override void Start(){
+        if (blueprint == null || blueprint.cancelled) { Fail(); return; }
         animal.state = Animal.AnimalState.Working;
     }
 }
@@ -585,7 +578,7 @@ public class FallObjective : Objective {
         if (!animal.TileHere().node.standable) {
             // Keep falling — queue another fall objective
             Tile below = animal.world.GetTileAt(animal.x, animal.y - 1);
-            //if (below == null) { Fail(); Debug.Log(animal.y); return; }
+            if (below == null) { Fail(); return; }
             destination = below;
             Start(); // re-navigate one tile down
         } else {

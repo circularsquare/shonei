@@ -54,5 +54,6 @@ public class Stairs: Structure {
             sprite = Resources.Load<Sprite>("Sprites/Buildings/default");}
         sr.sprite = sprite;
     }   
-
 }
+
+// TODO: give road its own subclass thing?

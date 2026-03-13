@@ -23,9 +23,11 @@ public class TileSaveData {
     public StructureSaveData building;
     public StructureSaveData mStruct;
     public StructureSaveData fStruct;
+    public StructureSaveData road;
     public BlueprintSaveData bBlueprint;
     public BlueprintSaveData mBlueprint;
     public BlueprintSaveData fBlueprint;
+    public BlueprintSaveData roadBlueprint;
     public InventorySaveData inv;
 }
 

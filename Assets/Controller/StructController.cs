@@ -7,8 +7,10 @@ using TMPro;
 
 public class StructController : MonoBehaviour {
     public static StructController instance;
-    private List<Structure> structures = new List<Structure>(); // list of structures
-    public int n = 0; 
+    private List<Structure> structures = new List<Structure>();
+    private Dictionary<StructType, List<Structure>> structsByType = new Dictionary<StructType, List<Structure>>();
+    private List<Blueprint> blueprints = new List<Blueprint>();
+    public int n = 0;
     private World world;
     public Dictionary<Job, int> jobCounts;
 
@@ -22,6 +24,8 @@ public class StructController : MonoBehaviour {
     public void Remove(Structure structure) {
         structures.Remove(structure);
         n -= 1;
+        if (structsByType.TryGetValue(structure.structType, out var list))
+            list.Remove(structure);
     }
 
     public List<Structure> GetStructures() => new List<Structure>(structures);
@@ -31,6 +35,11 @@ public class StructController : MonoBehaviour {
     public void Place(Structure structure) {
         structures.Add(structure);
         n += 1;
+        if (!structsByType.TryGetValue(structure.structType, out var list)) {
+            list = new List<Structure>();
+            structsByType[structure.structType] = list;
+        }
+        list.Add(structure);
     }
 
     public bool Construct(StructType st, Tile tile){        
@@ -72,7 +81,7 @@ public class StructController : MonoBehaviour {
             tile.type = Db.tileTypeByName["empty"];
         }
         if (!st.isTile){
-            structures.Add(structure);
+            Place(structure);
         }
         if (world == null) {world = World.instance;}
         world.graph.UpdateNeighbors(tile.x, tile.y);
@@ -101,10 +110,19 @@ public class StructController : MonoBehaviour {
         return true;
     }
 
-    public int TotalHousingCapacity(){
+    public void AddBlueprint(Blueprint bp) { blueprints.Add(bp); }
+    public void RemoveBlueprint(Blueprint bp) { blueprints.Remove(bp); }
+    public List<Blueprint> GetBlueprints() => blueprints;
+
+    public List<Structure> GetByType(StructType st) {
+        return structsByType.TryGetValue(st, out var list) ? list : null;
+    }
+
+    public int TotalHousingCapacity() {
         int total = 0;
-        foreach (Structure s in structures)
-            if (s.structType.name == "house") total += s.res.capacity;
+        var houses = GetByType(Db.structTypeByName["house"]);
+        if (houses != null)
+            foreach (Structure s in houses) total += s.res.capacity;
         return total;
     }
 

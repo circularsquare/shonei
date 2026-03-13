@@ -240,6 +240,8 @@ public class SaveSystem : MonoBehaviour {
         if (save.animals != null)
             foreach (AnimalSaveData asd in save.animals)
                 AnimalController.instance.LoadAnimal(asd);
+
+        InventoryController.instance.ValidateGlobalInventory();
     }
 
     void RestoreStructure(StructureSaveData ssd, Tile tile) {

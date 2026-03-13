@@ -65,7 +65,7 @@ public class ResearchSystem : MonoBehaviour {
 
     // Called from World.Update every second.
     public void TickUpdate() {
-        int interval = Mathf.Max(1, Db.ticksInDay / 12);
+        int interval = Mathf.Max(1, World.ticksInDay / 12);
         tickCounter++;
         if (tickCounter >= interval) {
             tickCounter = 0;
@@ -117,6 +117,15 @@ public class ResearchSystem : MonoBehaviour {
                 if (node.unlocks == "research_efficiency")
                     researchEfficiencyMultiplier *= 1.2f;
                 break;
+        }
+    }
+
+    // Debug: unlock every node regardless of points or prereqs.
+    public void UnlockAll() {
+        foreach (var node in nodes) {
+            if (IsUnlocked(node.id)) continue;
+            unlockedIds.Add(node.id);
+            ApplyEffect(node);
         }
     }
 

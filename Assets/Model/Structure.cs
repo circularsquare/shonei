@@ -24,7 +24,9 @@ public class Structure {
         this.tile = World.instance.GetTileAt(x, y);
 
         go = new GameObject();
-        go.transform.position = new Vector3(x, y, 0);
+        go.transform.position = structType.depth == "r"
+            ? new Vector3(x, y - 1, 0)
+            : new Vector3(x, y, 0);
         go.transform.SetParent(WorldController.instance.transform, true);
         go.name = "structure_" + structType.name;
         
@@ -34,13 +36,18 @@ public class Structure {
         }
         sr = go.AddComponent<SpriteRenderer>();
         sr.sprite = sprite;
+        if (structType.depth == "r") sr.sortingOrder = 1; // above tile (order 0), below buildings
         res = new Reservable(structType.capacity);
+
+        if (structType.name == "torch") {
+            go.AddComponent<LightSource>();
+        }
     }
 
     public void Destroy(){
         if (this is Plant plant) {
             PlantController.instance.Remove(plant);
-        } 
+        }
         StructController.instance.Remove(this);
         if (structType.depth == "b"){
             tile.building = null;
@@ -48,8 +55,14 @@ public class Structure {
             tile.fStruct = null;
         } else if (structType.depth == "m"){
             tile.mStruct = null;
+        } else if (structType.depth == "r"){
+            tile.road = null;
         }
         GameObject.Destroy(go);
+        World world = World.instance;
+        world.graph.UpdateNeighbors(tile.x, tile.y);
+        world.graph.UpdateNeighbors(tile.x, tile.y + 1);
+        world.FallIfUnstandable(tile.x, tile.y + 1);
     }
 
 }
@@ -64,8 +77,8 @@ public class StructType {
     public ItemQuantity[] costs;
     public float constructionCost {get; set;}
     public bool isTile {get; set;}
-    public bool isPlant; // is this used?
-    public string depth {get; set;}
+    public bool isPlant; 
+    public string depth {get; set;} // 'b', 'm', 'f', 'r'
     public string njob {get; set;}
     public Job job;
     public int capacity {get; set;} // number of animals that can reserve this struct at once
@@ -76,6 +89,8 @@ public class StructType {
     public string category {get; set;} // build menu category: "structures", "plants", "production", "storage"
     public bool defaultLocked {get; set;} // true = locked; hidden from build menu until unlocked via research
     public int depleteAt {get; set;} // 0 = never depletes; >0 = deplete after this many uses
+    public float pathCostReduction {get; set;} // subtracted from edge cost for horizontal moves (roads: 0.1)
+    public bool solidTop {get; set;} // can animals stand on top of this structure?
 
     [OnDeserialized]
     internal void OnDeserialized(StreamingContext context){

@@ -1,22 +1,21 @@
 using UnityEngine;
 using UnityEditor;
+using System.Collections.Generic;
 using SysPath = System.IO.Path;
 using SysFile = System.IO.File;
 
-// Right-click any Texture2D in the Project window and choose
-// "Generate Sprite Normal Map" to produce a _n.png normal map beside it.
+// Right-click any Texture2D → "Generate Sprite Normal Map"  (single)
+// Tools menu             → "Generate All Sprite Normal Maps" (batch, Assets/Sprites/)
 //
-// Algorithm:
-//   - Transparent pixels  → neutral normal (0.5, 0.5, 1.0)
-//   - Interior pixels     → neutral normal (faces camera)
-//   - Edge pixels         → normal pointing outward in XY, blended with Z=BevelZ
-//   - Corner pixels       → diagonal outward normal (same logic, two XY components)
+// Each _n.png is auto-assigned as a _NormalMap secondary texture on the source
+// sprite so URP's Sprite Lit shader picks it up with no runtime code needed.
+// This works correctly for sprite sheets / animated sprites too.
 //
-// BevelZ controls how steep the edge tilt is:
-//   higher = shallower bevel (more frontal catch), 1 = 45° bevel.
+// BevelZ: higher = shallower bevel (more frontal catch), 1 = 45° bevel.
 public static class SpriteNormalMapGenerator {
     const float BevelZ = 1f;
 
+    // ── single selected texture ──────────────────────────────────────────────
     [MenuItem("Assets/Generate Sprite Normal Map", validate = true)]
     static bool Validate() {
         foreach (Object o in Selection.objects)
@@ -32,6 +31,29 @@ public static class SpriteNormalMapGenerator {
         AssetDatabase.Refresh();
     }
 
+    // ── batch: all textures under Assets/Sprites that aren't already _n ──────
+    static readonly string[] BatchFolders = {
+        "Assets/Resources/Sprites/Animals",
+        "Assets/Resources/Sprites/Buildings",
+        "Assets/Resources/Sprites/Items",
+        "Assets/Resources/Sprites/Plants",
+    };
+
+    [MenuItem("Tools/Generate All Sprite Normal Maps")]
+    static void GenerateAll() {
+        string[] guids = AssetDatabase.FindAssets("t:Texture2D", BatchFolders);
+        int count = 0;
+        foreach (string guid in guids) {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            if (path.EndsWith("_n.png")) continue;       // skip existing normal maps
+            Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            if (tex != null) { ProcessTexture(tex); count++; }
+        }
+        AssetDatabase.Refresh();
+        Debug.Log($"[NormalMapGen] Done — processed {count} texture(s).");
+    }
+
+    // ── core ─────────────────────────────────────────────────────────────────
     static void ProcessTexture(Texture2D source) {
         string srcPath = AssetDatabase.GetAssetPath(source);
         TextureImporter imp = AssetImporter.GetAtPath(srcPath) as TextureImporter;
@@ -50,7 +72,6 @@ public static class SpriteNormalMapGenerator {
                 int i = y * w + x;
                 if (src[i].a < 128) { dst[i] = new Color32(128, 128, 255, 0); continue; }
 
-                // A pixel is an "edge" if any of its 4 neighbours is transparent (or out-of-bounds).
                 bool eL = x == 0   || src[y * w + (x - 1)].a < 128;
                 bool eR = x == w-1 || src[y * w + (x + 1)].a < 128;
                 bool eD = y == 0   || src[(y - 1) * w + x].a < 128;
@@ -80,21 +101,57 @@ public static class SpriteNormalMapGenerator {
         normalTex.SetPixels32(dst);
         normalTex.Apply();
 
-        string dir    = SysPath.GetDirectoryName(srcPath);
-        string stem   = SysPath.GetFileNameWithoutExtension(srcPath);
+        string dir     = SysPath.GetDirectoryName(srcPath);
+        string stem    = SysPath.GetFileNameWithoutExtension(srcPath);
         string outPath = SysPath.Combine(dir, stem + "_n.png").Replace('\\', '/');
         SysFile.WriteAllBytes(outPath, normalTex.EncodeToPNG());
         Object.DestroyImmediate(normalTex);
 
-        // Import as normal map, matching source filter mode
+        // Import as normal map matching source filter mode
         AssetDatabase.ImportAsset(outPath);
         TextureImporter nImp = AssetImporter.GetAtPath(outPath) as TextureImporter;
         if (nImp != null) {
-            nImp.textureType = TextureImporterType.NormalMap;
-            nImp.filterMode  = imp.filterMode;
+            // Use Default (not NormalMap) so the texture stays as plain RGBA32 —
+            // the same packed 0-1 format that TileNormalMaps uses and NormalsCapture decodes.
+            nImp.textureType        = TextureImporterType.Default;
+            nImp.textureCompression = TextureImporterCompression.Uncompressed;
+            nImp.filterMode         = imp.filterMode;
+            nImp.wrapMode           = TextureWrapMode.Clamp;
             nImp.SaveAndReimport();
         }
 
+        // Assign as _NormalMap secondary texture on the source sprite
+        AssignSecondaryTexture(srcPath, outPath);
+
         Debug.Log($"[NormalMapGen] Written: {outPath}");
+    }
+
+    static void AssignSecondaryTexture(string srcPath, string normalPath) {
+        TextureImporter imp = AssetImporter.GetAtPath(srcPath) as TextureImporter;
+        if (imp == null) return;
+
+        Texture2D normalTex = AssetDatabase.LoadAssetAtPath<Texture2D>(normalPath);
+        if (normalTex == null) return;
+
+        // Secondary textures live at m_SpriteSheet.m_SecondaryTextures in the importer
+        var so   = new SerializedObject(imp);
+        var arr  = so.FindProperty("m_SpriteSheet.m_SecondaryTextures");
+        if (arr == null) return;
+
+        // Remove any existing _NormalMap entry
+        for (int i = arr.arraySize - 1; i >= 0; i--) {
+            var entry = arr.GetArrayElementAtIndex(i);
+            if (entry.FindPropertyRelative("name").stringValue == "_NormalMap")
+                arr.DeleteArrayElementAtIndex(i);
+        }
+
+        // Append new entry
+        arr.arraySize++;
+        var elem = arr.GetArrayElementAtIndex(arr.arraySize - 1);
+        elem.FindPropertyRelative("name").stringValue                = "_NormalMap";
+        elem.FindPropertyRelative("texture").objectReferenceValue    = normalTex;
+
+        so.ApplyModifiedPropertiesWithoutUndo();
+        imp.SaveAndReimport();
     }
 }

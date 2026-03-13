@@ -26,8 +26,10 @@ public class Tile {
     public Blueprint bBlueprint; // background blueprint
     public Blueprint mBlueprint; // midground blueprint
     public Blueprint fBlueprint; // foreground blueprint
+    public Blueprint roadBlueprint; // road blueprint
     public Structure mStruct; // midground: platforms for moving horizontally in front of buildings
     public Structure fStruct; // foreground: ladders and stairs and stuff
+    public Structure road; // road layer: sits beneath all other structures, speeds up movement
     public Inventory inv; // this encapsulates all inventory types
     public Node node;
 
@@ -64,22 +66,25 @@ public class Tile {
     public bool HasStairLeft(){ return (fStruct != null && fStruct is Stairs && !(fStruct as Stairs).right); }
 
     public Blueprint GetAnyBlueprint(){
-        return bBlueprint ?? mBlueprint ?? fBlueprint;
+        return roadBlueprint ?? bBlueprint ?? mBlueprint ?? fBlueprint;
     }
     public Blueprint GetMatchingBlueprint(Func<Blueprint, bool> predicate){
+        if (roadBlueprint != null && predicate(roadBlueprint)) return roadBlueprint;
         if (bBlueprint != null && predicate(bBlueprint)) return bBlueprint;
         if (mBlueprint != null && predicate(mBlueprint)) return mBlueprint;
         if (fBlueprint != null && predicate(fBlueprint)) return fBlueprint;
         return null;
     }
     public Blueprint GetBlueprintAt(string depth){
+        if (depth == "r") return roadBlueprint;
         if (depth == "b") return bBlueprint;
         if (depth == "m") return mBlueprint;
         if (depth == "f") return fBlueprint;
         return null;
     }
     public void SetBlueprintAt(string depth, Blueprint bp){
-        if (depth == "b") bBlueprint = bp;
+        if (depth == "r") roadBlueprint = bp;
+        else if (depth == "b") bBlueprint = bp;
         else if (depth == "m") mBlueprint = bp;
         else if (depth == "f") fBlueprint = bp;
     }
@@ -102,7 +107,7 @@ public class Tile {
     }
 
     public Inventory EnsureFloorInventory() {
-        if (inv == null) { inv = new Inventory(x: x, y: y); }
+        if (inv == null) { inv = new Inventory(n: 4, x: x, y: y); }
         return inv;
     }
 }

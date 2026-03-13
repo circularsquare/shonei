@@ -21,19 +21,69 @@ public class InventoryController : MonoBehaviour {
 
     public TextMeshProUGUI inventoryTitle; // assign in inspector
     public List<Inventory> inventories = new List<Inventory>(); // list of invs
+    public Dictionary<Inventory.InvType, List<Inventory>> byType = new Dictionary<Inventory.InvType, List<Inventory>>();
 
-    void Start(){    
+    void Start(){
         if (instance != null) {
             Debug.LogError("there should only be one inv controller");}
-        instance = this;        
+        instance = this;
         globalInventory = new GlobalInventory();
         discoveredItems = Db.itemsFlat.ToDictionary(i => i.id, i => false); // default no items discovered
         itemDisplayGos = Db.itemsFlat.ToDictionary(i => i.id, i => default(GameObject));
         targets = Db.itemsFlat.ToDictionary(i => i.id, i => 10000); // 100 liang in fen
+        World.OnItemFall += SpawnFallAnimation;
     }
 
-    public void AddInventory(Inventory inv){
+    void OnDestroy() {
+        World.OnItemFall -= SpawnFallAnimation;
+    }
+
+    void SpawnFallAnimation(int srcX, int srcY, int dstX, int dstY, Item item) {
+        StartCoroutine(FallAnimCoroutine(srcX, srcY, dstX, dstY, item));
+    }
+
+    IEnumerator FallAnimCoroutine(int srcX, int srcY, int dstX, int dstY, Item item) {
+        string iName = item.name.Replace(" ", "");
+        Sprite sprite = Resources.Load<Sprite>($"Sprites/Items/{iName}/floor");
+        sprite ??= Resources.Load<Sprite>($"Sprites/Items/{iName}/icon");
+        sprite ??= Resources.Load<Sprite>("Sprites/Items/default");
+
+        GameObject go = new GameObject("FallAnim_" + iName);
+        go.transform.SetParent(WorldController.instance.transform, true);
+        SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+        sr.sprite = sprite;
+        sr.sortingOrder = 65; // below floor items (sortingOrder 70)
+
+        Vector3 start = new Vector3(srcX, srcY, 0);
+        Vector3 end   = new Vector3(dstX, dstY, 0);
+        go.transform.position = start;
+
+        float dist = srcY - dstY;
+        float duration = 0.4f * dist;
+        float elapsed = 0f;
+        while (elapsed < duration) {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            go.transform.position = Vector3.Lerp(start, end, t * t); // t² = gravity ease-in
+            yield return null;
+        }
+
+        Destroy(go);
+    }
+
+    public void AddInventory(Inventory inv) {
         inventories.Add(inv);
+        if (!byType.ContainsKey(inv.invType)) byType[inv.invType] = new List<Inventory>();
+        byType[inv.invType].Add(inv);
+    }
+    public void RemoveInventory(Inventory inv) {
+        inventories.Remove(inv);
+        if (byType.TryGetValue(inv.invType, out var list)) list.Remove(inv);
+    }
+    public void MoveInventoryType(Inventory inv, Inventory.InvType oldType, Inventory.InvType newType) {
+        if (byType.TryGetValue(oldType, out var oldList)) oldList.Remove(inv);
+        if (!byType.ContainsKey(newType)) byType[newType] = new List<Inventory>();
+        byType[newType].Add(inv);
     }
 
     public void TickUpdate(){
@@ -118,6 +168,25 @@ public class InventoryController : MonoBehaviour {
         }
     }
     public void UpdateItemsDisplay(){ foreach (Item item in Db.itemsFlat){ UpdateItemDisplay(item); } }
+    public void ValidateGlobalInventory() {
+        var summed = new Dictionary<int, int>();
+        foreach (Inventory inv in inventories) {
+            foreach (ItemStack stack in inv.itemStacks) {
+                if (stack.item == null || stack.quantity == 0) continue;
+                if (!summed.ContainsKey(stack.item.id)) summed[stack.item.id] = 0;
+                summed[stack.item.id] += stack.quantity;
+            }
+        }
+        bool ok = true;
+        foreach (var kvp in globalInventory.itemAmounts) {
+            int actual = summed.TryGetValue(kvp.Key, out int v) ? v : 0;
+            if (actual != kvp.Value) {
+                string name = Array.Find(Db.itemsFlat, i => i != null && i.id == kvp.Key)?.name ?? kvp.Key.ToString();
+                Debug.LogError($"GlobalInventory mismatch: {name} — ginv={kvp.Value} actual={actual}");
+                ok = false;
+            }
+        }
+    }
     public void SelectInventory(Inventory inv){
         selectedInventory = inv;
         if (inventoryTitle != null)

@@ -32,7 +32,7 @@ public class TradingClient : MonoBehaviour {
 
         ws.OnOpen  += () => { Debug.Log("connected to server"); SetOnline(true); };
         ws.OnError += (e) => Debug.Log("ServerError: " + e);
-        ws.OnClose += (e) => { Debug.Log("disconnected from server"); SetOnline(false); };
+        //ws.OnClose += (e) => { Debug.Log("disconnected from server"); SetOnline(false); };
 
         await ws.Connect();
         isConnecting = false;

@@ -4,13 +4,12 @@ using UnityEngine;
 using System.IO;
 using System;
 using System.Linq;
-using Newtonsoft.Json;                  // used for somethign related to deserializing
-using Newtonsoft.Json.Linq; 
-using System.Runtime.Serialization;     // used for deserializing
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System.Runtime.Serialization;
 
-// this loads before anything else. 
-
-public class Db : MonoBehaviour { // should detach from game object (or make it a conrtrolelr?)
+// Loads before anything else — Awake() runs before World.Start().
+public class Db : MonoBehaviour {
     public static Db instance {get; protected set;}
     // itemById or jobById is just the array items or jobs.
     public static Dictionary<string, int> iidByName {get; protected set;}
@@ -20,8 +19,6 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
     public static Dictionary<string, PlantType> plantTypeByName {get; protected set;}
     public static Dictionary<string, TileType> tileTypeByName {get; protected set;}
 
-    // int maxJobs = 40;
-    // int maxRecipes = 5000;
     public static Item[] items = new Item[500];
     public static Item[] itemsFlat = new Item[500];
     public static int itemsCount = 0;
@@ -33,10 +30,7 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
     public static PlantType[] plantTypes = new PlantType[600];
     public static TileType[] tileTypes = new TileType[100];
 
-    public static int ticksInDay = 30;
-    public static int daysInYear = 20; // year is 6000s = 100 min
-
-    // sprite sorting orders 
+    // sprite sorting orders
         // 100: blueprint
         // 80: fStruct
         // 70: item on floor
@@ -73,30 +67,10 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
     } 
 
     void ReadJson(){
-        
         // read Items
         string jsonTextItems = File.ReadAllText(Application.dataPath + "/Resources/itemsDb.json");
-        Item[] itemsUnplaced = JsonConvert.DeserializeObject<Item[]>(jsonTextItems);
-        foreach (Item item in itemsUnplaced){
+        foreach (Item item in JsonConvert.DeserializeObject<Item[]>(jsonTextItems))
             AddItemToDb(item);
-        }
-        void AddItemToDb(Item item){
-            if (items[item.id] != null){Debug.LogError("error!! multiple items with same id");}
-            if (itemByName.ContainsKey(item.name)){Debug.LogError("error!! multiple items with same name");}
-            items[item.id] = item;
-            if (item.name != null){
-                itemByName.Add(item.name, item);
-                iidByName.Add(item.name, item.id);
-                itemsFlat[itemsCount++] = item;
-            }
-            if (item.children != null){
-                foreach (Item child in item.children){
-                    AddItemToDb(child);
-                    child.parent = item;
-                    if (child.decayRate == 0f) child.decayRate = item.decayRate;
-                }
-            }
-        } 
 
         // read Tiles
         string jsonTileTypes = File.ReadAllText(Application.dataPath + "/Resources/tilesDb.json");
@@ -156,19 +130,32 @@ public class Db : MonoBehaviour { // should detach from game object (or make it 
         }        
     }
 
-    void Update(){  }
-    public static Job GetJobByName(string name){
-        if (jobByName.ContainsKey(name)){
-            return jobByName[name];
-        } else {
-            return null;
+    public static Job GetJobByName(string name) {
+        jobByName.TryGetValue(name, out Job job);
+        return job;
+    }
+
+    void AddItemToDb(Item item) {
+        if (items[item.id] != null)        Debug.LogError("error!! multiple items with same id");
+        if (itemByName.ContainsKey(item.name)) Debug.LogError("error!! multiple items with same name");
+        items[item.id] = item;
+        if (item.name != null) {
+            itemByName.Add(item.name, item);
+            iidByName.Add(item.name, item.id);
+            itemsFlat[itemsCount++] = item;
+        }
+        if (item.children != null) {
+            foreach (Item child in item.children) {
+                AddItemToDb(child);
+                child.parent = item;
+                if (child.decayRate == 0f) child.decayRate = item.decayRate;
+            }
         }
     }
 }
 
-// theres already an Item class in another file
 public class Job {
-    public int id {get; set;} // for some reason the set can't be protected. for the json deserialize to work
+    public int id {get; set;} // set must be public for JSON deserialization
     public string name {get; set;}
     public string jobType {get; set;}
     public int nRecipes = 0;

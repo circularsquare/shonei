@@ -1,0 +1,197 @@
+using UnityEngine;
+
+// Manages the orbiting sun, ambient lighting color, and sky background color.
+//
+// Scene setup:
+//   1. Create a GameObject "SunController", add this script.
+//   2. Create a child "Sun" with a SpriteRenderer and a LightSource (isDirectional = true).
+//   3. Wire all References fields in the Inspector.
+//   4. Background Camera → Background Type: Solid Color.
+//
+// Timing reference (fraction of a day):
+//   0.00 = midnight
+//   0.25 = sunrise (sun on east horizon)
+//   0.50 = noon
+//   0.75 = sunset  (sun on west horizon)
+//
+// twilightFraction: 1 = full day, 0 = full night.
+// Brightness: sin^3 of sun elevation, 0 at horizon/night, 1 at noon.
+public class SunController : MonoBehaviour {
+    public static SunController instance { get; private set; }
+
+    [Header("References")]
+    [SerializeField] Transform      sunTransform;
+    [SerializeField] SpriteRenderer sunSR;
+    [SerializeField] LightSource    sunSource;
+
+    [Header("Orbit")]
+    [SerializeField] float orbitCenterX;
+    [SerializeField] float orbitCenterY;
+    [SerializeField] float orbitRadius;
+
+    [Header("Timing")]
+    [Tooltip("Duration of twilight centred on sunrise/sunset, in days  (1.2 h ≈ 0.05)")]
+    [SerializeField] float twilightLength;
+
+    [Header("Sky Colors")]
+    [SerializeField] Color skyDay;
+    [SerializeField] Color skyTwilight1;
+    [SerializeField] Color skyTwilight2;
+    [SerializeField] Color skyTwilight3;
+    [SerializeField] Color skyNight;
+
+    [Header("Sun Light Colors")]
+    [SerializeField] Color sunColorDay;
+    [SerializeField] Color sunColorEarlyDusk;
+    [SerializeField] Color sunColorDusk;
+    [SerializeField] Color sunColorNight;
+
+    [Header("Sun Light Intensity")]
+    [SerializeField] float sunIntensityNoon;
+
+    [Header("Ambient Colors")]
+    [SerializeField] Color ambientDay;
+    [SerializeField] Color ambientNight;
+
+    [Header("Debug (read-only in play mode)")]
+    [SerializeField] float _twilightFraction;
+    [SerializeField] float _brightness;
+
+    Camera bgCamera;
+
+    void Awake() {
+        if (instance != null && instance != this) { Destroy(gameObject); return; }
+        instance = this;
+    }
+
+    void Start() {
+        bgCamera = null;
+        float lowestDepth = float.MaxValue;
+        foreach (Camera cam in Camera.allCameras)
+            if (cam.depth < lowestDepth) { lowestDepth = cam.depth; bgCamera = cam; }
+    }
+
+    void Update() {
+        if (World.instance == null) return;
+        float phase = GetDayPhase();
+        twilightFraction = _twilightFraction = CalcTwilightFraction(phase);
+        brightness       = _brightness       = Brightness(phase);
+        UpdateSun();
+        if (bgCamera != null)
+            bgCamera.backgroundColor = SkyColor();
+    }
+
+    // ── Public API ────────────────────────────────────────────────────────────
+
+    // 1 = full day, 0 = full night. Smooth transitions over twilightLength.
+    public static float twilightFraction { get; private set; }
+
+    // 0 at night, 1 during day; linear transition over twilightLength/2 around sunrise/sunset.
+    public static float brightness { get; private set; }
+
+    public static float GetDayPhase() {
+        if (World.instance == null) return 0f;
+        return World.instance.timer % World.ticksInDay / World.ticksInDay;
+    }
+
+    // Ambient light color for the current time of day.
+    // Color tint: lerp(ambientNight, ambientDay, twilightFraction).
+    // Brightness factor: brightness * 0.6 + 0.4  (never fully dark).
+    public static Color GetAmbientColor() {
+        if (instance == null) return Color.white;
+        Color tint   = Color.Lerp(instance.ambientNight, instance.ambientDay, twilightFraction);
+        float bright = brightness * 0.4f + 0.6f;
+        return tint * bright;
+    }
+
+    // Normalized direction from scene toward the sun (used as _SunDir in LightSun shader).
+    // XY direction toward the sun in world space. Z is omitted — lightHeight on the
+    // LightSource component controls the sun's apparent elevation in the shader.
+    public static Vector3 GetSunDirection() {
+        if (instance == null) return Vector3.up;
+        Vector3 toSun = instance.sunTransform.position - new Vector3(instance.orbitCenterX, instance.orbitCenterY, 0f);
+        toSun.z = 0f;
+        return toSun == Vector3.zero ? Vector3.up : toSun.normalized;
+    }
+
+    // ── Internal ──────────────────────────────────────────────────────────────
+
+    // Returns 1 = full day, 0 = full night, with smooth transitions over twilightLength.
+    // Twilight is centred on sunrise (0.25) and sunset (0.75).
+    float CalcTwilightFraction(float phase) {
+        float half    = twilightLength * 0.5f;
+        float srStart = 0.25f - half;  float srEnd = 0.25f + half;
+        float ssStart = 0.75f - half;  float ssEnd = 0.75f + half;
+
+        if (phase >= srEnd   && phase <= ssStart) return 1f;  // full day
+        if (phase >= ssEnd   || phase <  srStart) return 0f;  // full night
+        if (phase >= ssStart)
+            return 1f - Mathf.Clamp01((phase - ssStart) / twilightLength);  // sunset  1→0
+        return Mathf.Clamp01((phase - srStart) / twilightLength);            // sunrise 0→1
+    }
+
+    // Linear 0→1 over first half of sunrise (srStart→0.25), full day, linear 1→0 over second half of sunset (0.75→ssEnd).
+    float Brightness(float phase) {
+        float half    = twilightLength * 0.5f;
+        float srStart = 0.25f - half;
+        float ssEnd   = 0.75f + half;
+
+        if (phase >= 0.25f && phase <= 0.75f) return 1f;                             // full day
+        if (phase >= ssEnd || phase < srStart) return 0f;                             // full night
+        if (phase >= 0.75f) return 1f - Mathf.Clamp01((phase - 0.75f) / half);       // sunset  1→0
+        return Mathf.Clamp01((phase - srStart) / half);                               // sunrise 0→1
+    }
+
+    // Sunset:  day → earlyDusk (0.75-half) → dusk (0.75) → night (0.75+half)
+    // Sunrise: symmetric reverse — night (0.25-half) → dusk (0.25) → earlyDusk (0.25+half) → day
+    Color SunColor(float phase) {
+        float half = twilightLength * 0.5f;
+
+        if (phase > 0.25f + twilightLength && phase < 0.75f - twilightLength) return sunColorDay;   // full day
+        if (phase >= 0.75f + half || phase < 0.25f - half)                    return sunColorNight; // full night
+
+        // sunset
+        if (phase >= 0.75f - twilightLength && phase < 0.75f - half)
+            return Color.Lerp(sunColorDay,       sunColorEarlyDusk, (phase - (0.75f - twilightLength)) / half);
+        if (phase >= 0.75f - half && phase < 0.75f)
+            return Color.Lerp(sunColorEarlyDusk, sunColorDusk,      (phase - (0.75f - half)) / half);
+        if (phase >= 0.75f && phase < 0.75f + half)
+            return Color.Lerp(sunColorDusk,      sunColorNight,     (phase - 0.75f) / half);
+
+        // sunrise (symmetric)
+        if (phase >= 0.25f - half && phase < 0.25f)
+            return Color.Lerp(sunColorNight,     sunColorDusk,      (phase - (0.25f - half)) / half);
+        if (phase >= 0.25f && phase < 0.25f + half)
+            return Color.Lerp(sunColorDusk,      sunColorEarlyDusk, (phase - 0.25f) / half);
+        return     Color.Lerp(sunColorEarlyDusk, sunColorDay,       (phase - (0.25f + half)) / half);
+    }
+
+    void UpdateSun() {
+        float phase = GetDayPhase();
+        float angle = (phase - 0.25f) * Mathf.PI * 2f;
+        sunTransform.position = new Vector3(
+            orbitCenterX + orbitRadius * Mathf.Cos(angle),
+            orbitCenterY + orbitRadius * Mathf.Sin(angle),
+            1);
+
+        bool aboveHorizon = Mathf.Sin(angle) > 0f;
+        sunSR.enabled = aboveHorizon;
+        sunSR.color   = SunColor(phase);
+
+        sunSource.lightColor = SunColor(phase);
+        sunSource.intensity  = brightness * sunIntensityNoon;
+
+        foreach (LightSource ls in LightSource.all)
+            if (!ls.isDirectional)
+                ls.intensity = ls.baseIntensity * (1f - brightness);
+    }
+
+    // 5-stop gradient: skyDay → skyTwilight1 → skyTwilight2 → skyTwilight3 → skyNight
+    // driven by twilightFraction (1=day, 0=night).
+    Color SkyColor() {
+        float t      = (1f - twilightFraction) * 4f;
+        Color[] stops = { skyDay, skyTwilight1, skyTwilight2, skyTwilight3, skyNight };
+        int   i = Mathf.Clamp(Mathf.FloorToInt(t), 0, stops.Length - 2);
+        return Color.Lerp(stops[i], stops[i + 1], t - i);
+    }
+}

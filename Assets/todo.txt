@@ -5,6 +5,11 @@
     - magic / qi
     - tofu
     - farming buildings
+    - books
+        - books for gaining skills 
+        - manuals for learning technologies
+        - scriptoriums
+- pause / speedup?
 - consider whether itemstacks are useful
 - info panel
     - have info panel cycle through when you click it again
@@ -12,20 +17,13 @@
     - make market a multitile building? 
 - inventory
     - have a "keep" setting that invs can toggle to keep food for consumption and stuff like that. 
-    - add equippables
 - plant
     - flesh out plant growth, moisture and temperature
 - tile mining
     - add tile mining command as a separate button sort of thing
 - visuals
     - improve mouse animation
-    - move sprites to spritesheets?
     - add icons to inventory panel view / itemdisplay
-- add roads (render on tile below?)
-    - need road depth?
-    - consider moving depth to an array
-        - like buildings[4]
-            - alias building to buildings[0]
 - ponder inventory management
     - global, market, need to have set target 
     - global can have
@@ -33,11 +31,8 @@
 - priority
     - add recipe priority
     - add inventory priority? or inventory pull orders
-- split inventory into subclasses
-- refactor the various haul tasks (haul, haultoblueprint, redistribute)
-- we might not fall as much as we want to, as falling is not allowed if mouse is Moving
-- clean up background camera, do we need it? 
 
 BUGS
 
 TODAY GOALS
+    - move sprites to spritesheets?

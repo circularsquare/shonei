@@ -10,6 +10,7 @@ public class Inventory{
     public ItemStack[] itemStacks;
     public enum InvType {Floor, Storage, Animal, Market, Equip};
     public InvType invType;
+    public int x, y;
     public Dictionary<int, bool> allowed;
     public string displayName = "storage";
     public GameObject go;
@@ -31,6 +32,7 @@ public class Inventory{
     public Dictionary<Item, Reservable> incomingRes;
 
     public void SetMarket() {
+        InventoryController.instance.MoveInventoryType(this, invType, InvType.Market);
         invType = InvType.Market;
         targets = Db.itemsFlat.ToDictionary(i => i, i => 0);
         incomingRes = Db.itemsFlat.ToDictionary(i => i, i => new Reservable(9999));
@@ -50,6 +52,8 @@ public class Inventory{
         nStacks = n;
         this.stackSize = stackSize;
         this.invType = invType;
+        this.x = x;
+        this.y = y;
         itemStacks = new ItemStack[nStacks];
         for (int i = 0; i < nStacks; i++){
             itemStacks[i] = new ItemStack(this, null, 0, stackSize);
@@ -82,7 +86,7 @@ public class Inventory{
             sr.sprite = Resources.Load<Sprite>("Sprites/Inventory/" + invType.ToString());
         }
 
-        InventoryController.instance.inventories.Add(this);
+        InventoryController.instance.AddInventory(this);
         ginv = GlobalInventory.instance;
     }
     public void Destroy(){
@@ -91,7 +95,7 @@ public class Inventory{
             foreach (GameObject sgo in stackGos){ if (sgo != null) GameObject.Destroy(sgo); }
             stackGos = null;
         }
-        InventoryController.instance.inventories.Remove(this);
+        InventoryController.instance.RemoveInventory(this);
     }
     const int   ReservationExpireInterval = 120; // ticks between expiry sweeps per inventory
     const float ReservationMaxAge         = 60f; // seconds before a reservation is considered stale
@@ -109,7 +113,7 @@ public class Inventory{
         float invTypeMult = invType switch {
             InvType.Floor   => 5f,
             InvType.Market  => 0f,
-            InvType.Animal  => 1f,
+            InvType.Animal  => 0f,
             InvType.Equip   => 1f,
             _               => 1f
         };
