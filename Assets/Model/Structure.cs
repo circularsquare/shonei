@@ -30,10 +30,7 @@ public class Structure {
         go.transform.SetParent(WorldController.instance.transform, true);
         go.name = "structure_" + structType.name;
         
-        sprite = Resources.Load<Sprite>("Sprites/Buildings/" + structType.name.Replace(" ", "")); // removes spaces in name
-        if (sprite == null || sprite.texture == null){
-            sprite = Resources.Load<Sprite>("Sprites/Buildings/default");
-        }
+        sprite = structType.LoadSprite() ?? Resources.Load<Sprite>("Sprites/Buildings/default");
         sr = go.AddComponent<SpriteRenderer>();
         sr.sprite = sprite;
         if (structType.depth == "r") sr.sortingOrder = 1; // above tile (order 0), below buildings
@@ -91,6 +88,16 @@ public class StructType {
     public int depleteAt {get; set;} // 0 = never depletes; >0 = deplete after this many uses
     public float pathCostReduction {get; set;} // subtracted from edge cost for horizontal moves (roads: 0.1)
     public bool solidTop {get; set;} // can animals stand on top of this structure?
+
+    public virtual Sprite LoadSprite() {
+        if (isTile) {
+            if (name == "empty") return null;
+            Sprite s = Resources.Load<Sprite>("Sprites/Tiles/" + name.Replace(" ", ""));
+            return s != null && s.texture != null ? s : null;
+        }
+        Sprite s2 = Resources.Load<Sprite>("Sprites/Buildings/" + name.Replace(" ", ""));
+        return s2 != null && s2.texture != null ? s2 : null;
+    }
 
     [OnDeserialized]
     internal void OnDeserialized(StreamingContext context){

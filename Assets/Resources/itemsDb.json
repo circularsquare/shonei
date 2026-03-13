@@ -41,7 +41,7 @@
         ]
     },{
         "id": 20,
-        "name": "soil",
+        "name": "dirt",
         "decayRate": 0.01,
         "children": null
     },{

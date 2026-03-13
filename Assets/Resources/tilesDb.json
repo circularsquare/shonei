@@ -9,10 +9,10 @@
         "solid": 0
     },{  
         "id": 2,
-        "name": "soil",
+        "name": "dirt",
         "solid": 1,
         "nproducts": [
-            { "name": "soil", "quantity": 10 }
+            { "name": "dirt", "quantity": 10 }
         ]
     },{  
         "id": 3,

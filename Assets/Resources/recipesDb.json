@@ -27,15 +27,15 @@
     },{
         "id": 10,
         "job": "digger",
-        "tile": "soil pit",
-        "description": "dig soil",
+        "tile": "dirt pit",
+        "description": "dig dirt",
         "workload": 2.0,
         "research": "Excavation",
         "skillPoints": 0.025,
         "ninputs": [
         ],
         "noutputs": [
-            { "name": "soil", "quantity": 1 }
+            { "name": "dirt", "quantity": 1 }
         ]
     },{
         "id": 11,

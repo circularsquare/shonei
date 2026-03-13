@@ -163,7 +163,7 @@ public class BuildPanel : MonoBehaviour {
             }
         }
 
-        if (st.name != "empty" && !World.instance.graph.nodes[tile.x, tile.y].standable) return false;
+        if (st.name != "empty" && st.requiredTileName == null && !World.instance.graph.nodes[tile.x, tile.y].standable) return false;
 
         return true;
     }

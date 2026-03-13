@@ -1,20 +1,32 @@
 {
   "permissions": {
     "allow": [
+      "mcp__unity__*",
+      "mcp__mcp-for-unity__*",
+      "Bash(curl * http://127.0.0.1:8082*)",
+      "Bash(curl * http://127.0.0.1:8080*)",
+      "Bash(claude mcp *)",
       "Bash(ls -la ./Assets/Controller/*.cs)",
-      "mcp__unity__manage_gameobject",
-      "mcp__unity__manage_components",
-      "mcp__unity__batch_execute",
-      "Bash(curl -s http://127.0.0.1:8082/mcp -X POST -H \"Content-Type: application/json\" -d '{\"\"jsonrpc\"\":\"\"2.0\"\",\"\"id\"\":1,\"\"method\"\":\"\"tools/list\"\"}')",
-      "Bash(curl -v http://127.0.0.1:8082/mcp)",
+      "Bash(ls c:/Users/anita/projects/shonei/*)",
+      "Bash(wc -l c:/Users/anita/projects/shonei/Assets/Controller/*.cs c:/Users/anita/projects/shonei/Assets/Model/*.cs)",
       "Bash(grep -v \"//\")",
+      "Bash(grep -n \"class.*Structure\\\\|class.*Building\" ./Assets/Model/*.cs)",
+      "Bash(xargs grep -l \"class Db\")",
+      "Bash(xargs grep -l \"Inventory\\\\|ContainsItem\")",
+      "Bash(git -C /c/Users/anita/projects/shonei config --list --local)",
+      "Bash(sort echo:*)",
       "WebSearch",
       "WebFetch(domain:discussions.unity.com)",
       "WebFetch(domain:docs.unity3d.com)",
       "WebFetch(domain:issuetracker.unity3d.com)",
-      "Bash(wc -l c:/Users/anita/projects/shonei/Assets/Controller/*.cs c:/Users/anita/projects/shonei/Assets/Model/*.cs)",
-      "Bash(sort echo:*)",
-      "Read(//c/Users/anita/projects/shonei/**)"
+      "WebFetch(domain:pypi.org)",
+      "WebFetch(domain:github.com)",
+      "Read(//c/Users/anita/projects/shonei/**)",
+      "Read(//mnt/c/Users/anita/projects/shonei/Assets/**)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\anita",
+      "c:\\Users\\anita\\projects\\shonei\\Assets"
     ]
   }
 }

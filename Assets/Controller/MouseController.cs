@@ -11,6 +11,8 @@ public class MouseController : MonoBehaviour {
     public enum MouseMode {Select, Build, Remove};
     public MouseMode mouseMode = MouseMode.Select;
     public GameObject cursorHighlight;
+    SpriteRenderer cursorHighlightSr;
+    Sprite cursorHighlightDefaultSprite;
     Vector3 prevPosition;
 
     public World world;
@@ -22,6 +24,8 @@ public class MouseController : MonoBehaviour {
         if (instance != null) {
             Debug.LogError("there should only be one mouse controller");}
         instance = this;
+        cursorHighlightSr = cursorHighlight.GetComponent<SpriteRenderer>();
+        cursorHighlightDefaultSprite = cursorHighlightSr.sprite;
         foreach (var c in Camera.main.GetComponents<Component>()) {
             var prop = c.GetType().GetProperty("assetsPPU");
             if (prop != null) { ppcComponent = c; ppcAssetsPPU = prop; break; }
@@ -72,6 +76,15 @@ public class MouseController : MonoBehaviour {
         else if ((mouseMode == MouseMode.Build) || (mouseMode == MouseMode.Remove)){
             cursorHighlight.SetActive(true);
             cursorHighlight.transform.position = new Vector3(tileAt.x, tileAt.y, -1);
+            StructType st = BuildPanel.instance != null ? BuildPanel.instance.structType : null;
+            if (mouseMode == MouseMode.Build && st != null) {
+                Sprite buildSprite = st.LoadSprite();
+                cursorHighlightSr.sprite = buildSprite != null ? buildSprite : cursorHighlightDefaultSprite;
+                cursorHighlightSr.color = buildSprite != null ? new Color(1f, 1f, 1f, 0.3f) : Color.white;
+            } else {
+                cursorHighlightSr.sprite = cursorHighlightDefaultSprite;
+                cursorHighlightSr.color = Color.white;
+            }
         }
         if (mouseMode == MouseMode.Select){
             cursorHighlight.SetActive(false);

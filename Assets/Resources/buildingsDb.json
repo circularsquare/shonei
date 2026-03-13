@@ -102,11 +102,11 @@
         "category": "tiles"
     },{
         "id": 50,
-        "name": "soil",
-        "description": "block of soil",
+        "name": "dirt",
+        "description": "block of dirt",
         "nx": 1, "ny": 1,
         "ncosts": [
-            { "name": "soil", "quantity": 10 }
+            { "name": "dirt", "quantity": 10 }
         ],
         "isTile": true,
         "njob": "hauler",
@@ -148,16 +148,16 @@
         "category": "production"
     },{
         "id": 120,
-        "name": "soil pit",
-        "description": "dig for soil",
+        "name": "dirt pit",
+        "description": "dig for dirt",
         "nx": 1, "ny": 1,
         "ncosts": [
-            { "name": "soil", "quantity": 10 },
+            { "name": "dirt", "quantity": 10 },
             { "name": "wood", "quantity": 2 }
         ],
         "njob": "digger",
         "capacity": 1,
-        "requiredTileName": "soil",
+        "requiredTileName": "dirt",
         "solidTop": true,
         "category": "production",
         "defaultLocked": true

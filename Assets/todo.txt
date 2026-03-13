@@ -27,6 +27,7 @@
     - global, market, need to have set target 
     - global can have
         - consume above amount?
+- consider stuff thats extraneously saved
 - priority
     - add recipe priority
     - add inventory priority? or inventory pull orders
@@ -35,13 +36,12 @@
     - research multiplier
     - tool productivity multiplier
 - research
-    - add decay (quadratic?)
-        - test passive points gain from tech usage
     - queue research projects, decide what fraction to move onto next project at
     - decide what fraction to maintain researches at?
         - assign scientists to "maintain" duty?
     - lock postrequisites?
-- consider stuff thats extraneously saved
+- make blueprints / building previews not use normal maps
+
 
 BUGS
 

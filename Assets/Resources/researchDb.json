@@ -2,9 +2,9 @@
     {
         "id": 1,
         "name": "Excavation",
-        "description": "Learn to dig efficient soil pits.",
+        "description": "Learn to dig efficient dirt pits.",
         "type": "building",
-        "unlocks": "soil pit",
+        "unlocks": "dirt pit",
         "prereqs": [],
         "cost": 5
     },{

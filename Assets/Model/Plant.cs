@@ -23,10 +23,8 @@ public class Plant : Building {
         PlantController.instance.AddPlant(this);
         go.name = "plant_" + plantType.name;
 
-        sprite = Resources.Load<Sprite>("Sprites/Plants/" + plantType.name.Replace(" ", ""));
-        if (sprite == null || sprite.texture == null){
-            sprite = Resources.Load<Sprite>("Sprites/Plants/default");}
-        sr.sprite = sprite; 
+        sprite = plantType.LoadSprite() ?? Resources.Load<Sprite>("Sprites/Plants/default");
+        sr.sprite = sprite;
         sr.sortingOrder = 60;
     }
     
@@ -64,6 +62,13 @@ public class Plant : Building {
 public class PlantType : StructType {
     public ItemNameQuantity[] nproducts {get; set;}
     public ItemQuantity[] products;
+
+    public override Sprite LoadSprite() {
+        string n = name.Replace(" ", "");
+        Sprite s = Resources.Load<Sprite>("Sprites/Plants/" + n + "0");
+        s ??= Resources.Load<Sprite>("Sprites/Plants/" + n);
+        return s != null && s.texture != null ? s : null;
+    }
 
     public int maxSize;
     public int maxYieldPerSize;

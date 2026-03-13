@@ -146,7 +146,7 @@ public class WorldController : MonoBehaviour {
     public void GenerateDefault() {
         for (int x = 0; x < world.nx; x++) {
             for (int y = world.ny - 1; y > 0; y--) {
-                if (y < 10) world.GetTileAt(x, y).type = Db.tileTypeByName["soil"];
+                if (y < 10) world.GetTileAt(x, y).type = Db.tileTypeByName["dirt"];
                 if (y < 8)  world.GetTileAt(x, y).type = Db.tileTypeByName["stone"];
             }
         }
@@ -191,7 +191,7 @@ public class WorldController : MonoBehaviour {
         }
         GameObject tile_go = tileGameObjectMap[tile];
         Sprite sprite;
-        if (tile.type.name == "soil") {
+        if (tile.type.name == "dirt") {
             if (tile.y < world.ny - 1 && world.GetTileAt(tile.x, tile.y + 1).type != Db.tileTypes[0])
                 sprite = LoadTileSprite("dirt");
             else
