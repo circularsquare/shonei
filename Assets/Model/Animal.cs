@@ -46,6 +46,7 @@ public class Animal : MonoBehaviour{
         Working,        // For any work at a location (crafting, building, etc)
         Eeping,
         Moving,         // any type of moving, under the task system
+        Falling,        // involuntary fall, bypasses task and nav systems
     }
     private AnimalStateManager stateManager;
     private AnimalState _state;

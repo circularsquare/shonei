@@ -21,6 +21,11 @@ public class World : MonoBehaviour {
     // Args: srcX, srcY, dstX, dstY, representative item
     public static event Action<int, int, int, int, Item> OnItemFall;
 
+    // Physics constant shared by item fall animation and mouse falling.
+    // Gravity is derived so a 1-tile fall takes fallSecondsPerTile seconds.
+    public const float fallSecondsPerTile = 0.4f;
+    public const float fallGravity = 2f / (fallSecondsPerTile * fallSecondsPerTile); // 12.5 tiles/s²
+
     public static int ticksInDay = 240;
     public static int daysInYear = 20; // year is 6000s = 100 min
 

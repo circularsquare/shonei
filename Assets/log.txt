@@ -4,7 +4,12 @@ meoww!!
 - search list of structures by type rather than finding structure by tile
 - also listify inventories (by invtype, not item) and blueprints
 - item falling animation
-- spritesheets?
+- spritesheets and sheet splitting tool
+    - added high/low version of inventory sprites
+- added time control / pausing / double speed!
+- research revamp!
+    - added progress bar
+- added modifiers system
 3/12
 - file reorganization (created UI folder, separated model/controller folders cleanly)
 - added roads!

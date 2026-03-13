@@ -30,11 +30,11 @@ All controllers are Unity MonoBehaviours. The `World` singleton provides access 
 ```
 Assets/
 ├── Controller/        Game-system MonoBehaviours (rendering, world lifecycle, networking)
-│   ├── WorldController.cs   Tile rendering + world setup (GenerateDefault, ClearWorld)
+│   ├── WorldController.cs   Tile rendering + world setup (GenerateDefault, ClearWorld, item fall animation)
 │   ├── AnimalController.cs  Animal spawning + rendering
 │   ├── StructController.cs  Structure placement + rendering
 │   ├── PlantController.cs   Plant rendering
-│   ├── InventoryController.cs  Global inventory tracking + item sprite display
+│   ├── InventoryController.cs  Global inventory tracking + item sprite display + haul logic
 │   ├── AnimationController.cs  Animal sprite animation
 │   ├── SaveSystem.cs        Save/load/reset — all Gather* and Restore* methods live here
 │   ├── TradingClient.cs     WebSocket connection to trading server
@@ -137,6 +137,30 @@ Load:    ClearWorld() + SaveSystem.ApplySaveData()  →  PostLoadInit (next fram
 
 `pendingSaveData`: `LoadAnimal()` sets this before `Animal.Start()` runs. `Start()` checks it and applies saved state if present; otherwise initializes fresh. Marked `[System.NonSerialized]` to prevent Unity from replacing null with a default instance.
 
+## Time System
+
+The main game clock lives in `World.Update()` (World.cs). Each frame it accumulates `timer += Time.deltaTime` and fires tick events at fixed intervals:
+
+| Interval | What fires |
+|----------|-----------|
+| 1 second | `AnimalController.TickUpdate()`, `PlantController.TickUpdate()`, `ResearchSystem.TickUpdate()` |
+| 0.2 seconds | `InventoryController.TickUpdate()` (item display refresh), `InfoPanel.UpdateInfo()` |
+
+All game logic is intended to be tick-driven. Movement and fall physics are the only things that run per-frame (in `Animal.Update()` → `AnimalStateManager.UpdateMovement(deltaTime)`), because smooth sub-tile animation requires it.
+
+### Time scale
+
+`TimeController.cs` wraps `Time.timeScale`. Setting it to `0` pauses all ticks and movement; `2` doubles everything. Because all code uses `Time.deltaTime`, scaling is automatic — no special handling needed in tick consumers. `TradingClient.ReconnectLoop` uses `WaitForSecondsRealtime` so network reconnection is unaffected by time scale.
+
+### Key time constants
+
+| Constant | Value | Used by |
+|----------|-------|---------|
+| `ticksInDay` | 240 | Day/night length, research rate |
+| `daysInYear` | 20 | Calendar |
+| `fallSecondsPerTile` | 0.4s | Item and mouse fall physics |
+| `fallGravity` | 12.5 tiles/s² | Derived from above |
+
 ## Animal AI
 
 ### States
@@ -145,12 +169,14 @@ Load:    ClearWorld() + SaveSystem.ApplySaveData()  →  PostLoadInit (next fram
 Idle → Working
      → Moving → (arrives) → back to Working or Idle
 Idle → Eeping (sleeping)
+Any  → Falling (involuntary; interrupts current task) → Idle on landing
 ```
 
 - **Idle**: calls `ChooseTask()`, selects best recipe by score
 - **Working**: executes current objective (craft, harvest, build, sleep)
 - **Moving**: navigates path via A*; calls `OnArrival()` on completion
 - **Eeping**: sleeps at home, restores sleep meter; can trigger reproduction
+- **Falling**: triggered when `!preventFall && !standable`; moves mouse straight down each frame using gravity (`World.fallGravity`); snaps to tile center on landing; bypasses task and nav systems entirely
 
 ### Needs
 
@@ -181,10 +207,9 @@ Tasks decompose into an ordered queue of Objectives. Each task:
 | `EepTask` | Navigate home and sleep |
 | `DropTask` | Drop excess inventory |
 | `GoTask` | Navigate to a tile |
-| `FallTask` | Fall downward until stable |
 
 **Objectives (atomic steps):**
-`GoObjective`, `FetchObjective`, `DeliverObjective`, `WorkObjective`, `EepObjective`, `FallObjective`
+`GoObjective`, `FetchObjective`, `DeliverObjective`, `WorkObjective`, `EepObjective`
 
 ### Job System
 
@@ -239,9 +264,10 @@ When a tile or building change reduces standability, items on the tile above tha
 
 - **Trigger**: `StructController.Construct()` and `Structure.Destroy()` both call `World.FallIfUnstandable(x, y+1)` after updating the nav graph. This covers tile mining, building placement, and building removal.
 - **`World.FallIfUnstandable(x, y)`**: no-op if the tile has no items or is still standable; otherwise calls `FallItems`.
-- **`World.FallItems(tile)`**: scans downward from `tile.y−1` for the first standable tile (`landing`). Moves all stacks via `MoveItemTo` (no GlobalInventory double-count). Any items that can't fit in the landing inventory are subtracted from GlobalInventory and logged as a warning before the source inventory is destroyed. Same applies if no landing tile exists at all (e.g. items at y=0).
+- **`World.FallItems(tile)`**: scans downward from `tile.y−1` for the first standable tile (`landing`). Moves all stacks via `MoveItemTo` (no GlobalInventory double-count). Fires `World.OnItemFall` to trigger the fall animation (subscribed in `WorldController`). Any items that can't fit in the landing inventory are subtracted from GlobalInventory and logged as a warning before the source inventory is destroyed. Same applies if no landing tile exists at all (e.g. items at y=0).
 - **Mixing**: `PutOnFloor` / `ProduceAtTile` prevent different item types from being placed on the same floor tile normally. `FallItems` bypasses this deliberately — a floor tile can hold up to 4 types after a fall.
 - **GlobalInventory**: `MoveItemTo` is used (not `Produce`) so no double-counting occurs. Lost items are explicitly removed from GlobalInventory before destruction.
+- **Fall physics constants** (`World.cs`): `fallSecondsPerTile = 0.4f` (time to fall one tile), `fallGravity = 2 / fallSecondsPerTile²` (12.5 tiles/s²). Both item animation (t² ease-in over `fallSecondsPerTile × dist` seconds) and mouse falling (velocity accumulation) are derived from these constants. Animation spawned in `WorldController.ItemFallAnimCoroutine`.
 
 ### Equip Slots
 

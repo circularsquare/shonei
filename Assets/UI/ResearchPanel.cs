@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
@@ -7,7 +8,6 @@ using TMPro;
 // Full-screen research panel — icon grid with hover tooltips.
 //
 // Unity setup:
-//   pointsLabel     — TextMeshProUGUI  (research points display)
 //   nodeListContent — Transform        (scroll view Content object)
 //                     Add GridLayoutGroup to it with:
 //                       Cell Size  = (80, 90)
@@ -26,12 +26,15 @@ public class ResearchPanel : MonoBehaviour {
     public static ResearchPanel instance;
 
     [Header("UI Refs")]
-    public TextMeshProUGUI pointsLabel;
     public Transform       nodeListContent;
     public ResearchDisplay cardPrefab;
 
     [Header("Debug")]
     public Button debugUnlockAllButton;
+
+    readonly List<ResearchDisplay> spawnedCards = new List<ResearchDisplay>();
+    float refreshTimer = 0f;
+    const float RefreshInterval = 0.5f;
 
     void Awake() {
         if (instance != null) { Debug.LogError("two ResearchPanels!"); }
@@ -47,8 +50,15 @@ public class ResearchPanel : MonoBehaviour {
     void Update() {
         if (gameObject.activeSelf
                 && Input.GetMouseButtonDown(0)
-                && !EventSystem.current.IsPointerOverGameObject())
+                && !EventSystem.current.IsPointerOverGameObject()) {
             gameObject.SetActive(false);
+            return;
+        }
+        refreshTimer += Time.deltaTime;
+        if (refreshTimer >= RefreshInterval) {
+            refreshTimer = 0f;
+            foreach (var card in spawnedCards) card.RefreshProgress();
+        }
     }
 
     void OnEnable() {
@@ -60,20 +70,13 @@ public class ResearchPanel : MonoBehaviour {
     }
 
     public void Refresh() {
-        UpdatePointsLabel();
         RebuildNodeList();
-    }
-
-    void UpdatePointsLabel() {
-        if (pointsLabel == null) return;
-        var rs = ResearchSystem.instance;
-        if (rs == null) { pointsLabel.text = "research"; return; }
-        pointsLabel.text = $"research points: {rs.AvailablePoints:0.0}";
     }
 
     void RebuildNodeList() {
         if (nodeListContent == null) return;
         foreach (Transform child in nodeListContent) Destroy(child.gameObject);
+        spawnedCards.Clear();
 
         var rs = ResearchSystem.instance;
         if (rs == null) return;
@@ -85,7 +88,8 @@ public class ResearchPanel : MonoBehaviour {
     void SpawnCard(ResearchNodeData node, ResearchSystem rs) {
         var card = Instantiate(cardPrefab, nodeListContent, false);
         card.name = "Card_" + node.id;
-        card.Setup(node, rs, OnClickUnlock);
+        card.Setup(node, rs, OnClickSetActive);
+        spawnedCards.Add(card);
     }
 
     void OnClickUnlockAll() {
@@ -93,15 +97,14 @@ public class ResearchPanel : MonoBehaviour {
         Refresh();
     }
 
-    void OnClickUnlock(ResearchNodeData node) {
-        if (ResearchSystem.instance == null) return;
-        if (ResearchSystem.instance.Unlock(node))
-            Refresh();
+    void OnClickSetActive(ResearchNodeData node) {
+        ResearchSystem.instance?.SetActiveResearch(node.id);
+        Refresh();
     }
 
     public static string BuildTooltipBody(ResearchNodeData node, ResearchSystem rs) {
         var sb = new StringBuilder();
-        sb.AppendLine($"[{node.type}]   {node.cost:0} pts");
+        sb.AppendLine($"[{node.type}]   threshold: {node.cost:0} pts");
         if (!string.IsNullOrEmpty(node.description))
             sb.AppendLine(node.description);
         if (node.prereqs != null && node.prereqs.Length > 0) {
@@ -113,12 +116,17 @@ public class ResearchPanel : MonoBehaviour {
         }
         if (!string.IsNullOrEmpty(node.unlocks))
             sb.AppendLine($"Unlocks: {node.unlocks}");
+
+        float p = rs.GetProgress(node.id);
         if (rs.IsUnlocked(node.id))
-            sb.Append("Already unlocked.");
-        else if (!rs.CanUnlock(node))
-            sb.Append($"Need {node.cost:0} pts  (have {rs.AvailablePoints:0.0})");
+            sb.Append($"Known. ({p:0.0} / {node.cost:0})");
+        else if (!rs.PrereqsMet(node))
+            sb.Append("Prerequisites not met.");
+        else if (rs.activeResearchId == node.id)
+            sb.Append("Active research project. Click to deselect.");
         else
-            sb.Append("Click to unlock.");
+            sb.Append("Click to set as active research project.");
+
         return sb.ToString().TrimEnd();
     }
 }

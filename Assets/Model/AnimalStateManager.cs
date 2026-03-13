@@ -79,46 +79,44 @@ public class AnimalStateManager {
         } else if (animal.task is CraftTask craftTask) {
             Recipe recipe = craftTask.recipe;
             animal.workProgress += workEfficiency;
-            if (animal.workProgress < recipe.workload) { return; }
-            animal.workProgress -= recipe.workload;
-            if (animal.CanProduce(recipe)){
-                // Consume inputs and produce outputs, rolling chance for each output
-                foreach (ItemQuantity iq in recipe.inputs) animal.Consume(iq.item, iq.quantity);
-                foreach (ItemQuantity output in recipe.outputs) {
-                    if (output.chance >= 1f || UnityEngine.Random.value < output.chance)
-                        animal.Produce(output.item, output.quantity);
-                }
-                // Track uses and deplete building if applicable
-                Building workBuilding = craftTask.workplace?.building;
-                if (workBuilding != null && workBuilding.structType.depleteAt > 0) {
-                    workBuilding.uses++;
-                    if (workBuilding.uses >= workBuilding.structType.depleteAt) {
-                        Tile depletedTile = craftTask.workplace;
-                        workBuilding.Destroy();
-                        StructController.instance.Construct(Db.structTypeByName["platform"], depletedTile);
-                        craftTask.Complete();
-                        return;
+            while (animal.workProgress >= recipe.workload) {
+                animal.workProgress -= recipe.workload;
+                if (animal.CanProduce(recipe)) {
+                    // Consume inputs and produce outputs, rolling chance for each output
+                    foreach (ItemQuantity iq in recipe.inputs) animal.Consume(iq.item, iq.quantity);
+                    foreach (ItemQuantity output in recipe.outputs) {
+                        if (output.chance >= 1f || UnityEngine.Random.value < output.chance)
+                            animal.Produce(output.item, output.quantity);
                     }
+                    // Passive research progress from this recipe cycle
+                    if (recipe.research != null)
+                        ResearchSystem.instance?.AddPassiveProgress(recipe.research, recipe.skillPoints);
+                    // Track uses and deplete building if applicable
+                    Building workBuilding = craftTask.workplace?.building;
+                    if (workBuilding != null && workBuilding.structType.depleteAt > 0) {
+                        workBuilding.uses++;
+                        if (workBuilding.uses >= workBuilding.structType.depleteAt) {
+                            Tile depletedTile = craftTask.workplace;
+                            workBuilding.Destroy();
+                            StructController.instance.Construct(Db.structTypeByName["platform"], depletedTile);
+                            craftTask.Complete();
+                            return;
+                        }
+                    }
+                    craftTask.roundsRemaining--;
+                    if (craftTask.roundsRemaining <= 0) { craftTask.Complete(); return; }
+                } else if (animal.inv.ContainsItems(recipe.inputs)) {
+                    craftTask.Fail(); return;
+                } else {
+                    craftTask.Complete(); return; // out of inputs
                 }
-                craftTask.roundsRemaining--;
-                if (craftTask.roundsRemaining <= 0) { craftTask.Complete(); }
-            } else if (animal.inv.ContainsItems(recipe.inputs)) {
-                craftTask.Fail();
-            } else {
-                craftTask.Complete(); // out of inputs
             }
-            return;
+        } else if (animal.task is ResearchTask) {
+            ResearchSystem.instance?.AddScientistProgress(workEfficiency);
+            animal.task.Complete();
+        } else {
+            Debug.Log(animal.aName + " in working state but no work to do");
         }
-        if (animal.task is ResearchTask) {
-            float workload = 10f;
-            animal.workProgress += 1f;
-            if (animal.workProgress >= workload) {
-                animal.workProgress -= workload;
-                animal.task.Complete();
-            }
-            return;
-        }
-        Debug.Log(animal.aName + " in working state but no work to do");
     }
 
     private void HandleEeping() {
@@ -142,10 +140,21 @@ public class AnimalStateManager {
 
     public void UpdateMovement(float deltaTime) {
         // Fall unless the current nav edge is deliberately vertical (ladder/cliff/stair)
-        if (!animal.nav.preventFall && !animal.TileHere().node.standable) {
+        if (!animal.nav.preventFall && !animal.TileHere().node.standable
+            && animal.state != AnimalState.Falling) {
             animal.nav.Fall();
         }
-        if (IsMovingState(animal.state)) {
+        if (animal.state == AnimalState.Falling) {
+            animal.nav.fallVelocity += World.fallGravity * deltaTime;
+            animal.y -= animal.nav.fallVelocity * deltaTime;
+            animal.go.transform.position = new Vector3(animal.x, animal.y, 0);
+            Tile here = animal.TileHere();
+            if (here != null && here.node.standable && animal.y <= here.y) {
+                animal.y = here.y;
+                animal.go.transform.position = new Vector3(animal.x, animal.y, 0);
+                animal.state = AnimalState.Idle;
+            }
+        } else if (IsMovingState(animal.state)) {
             if (animal.target == null) {
                 // Error handling for missing target
                 Debug.LogError(animal.aName + " movement target null! failing task " + animal.state.ToString());

@@ -45,6 +45,44 @@ public class WorldController : MonoBehaviour {
         yield return null; // wait one frame so all other Start()s finish before we generate the world
         GenerateDefault();
         StartCoroutine(SaveSystem.instance.PostLoadInit());
+        World.OnItemFall += SpawnItemFallAnimation;
+    }
+
+    void OnDestroy() {
+        World.OnItemFall -= SpawnItemFallAnimation;
+    }
+
+    void SpawnItemFallAnimation(int srcX, int srcY, int dstX, int dstY, Item item) {
+        StartCoroutine(ItemFallAnimCoroutine(srcX, srcY, dstX, dstY, item));
+    }
+
+    IEnumerator ItemFallAnimCoroutine(int srcX, int srcY, int dstX, int dstY, Item item) {
+        string iName = item.name.Replace(" ", "");
+        Sprite sprite = Resources.Load<Sprite>($"Sprites/Items/{iName}/floor");
+        sprite ??= Resources.Load<Sprite>($"Sprites/Items/{iName}/icon");
+        sprite ??= Resources.Load<Sprite>("Sprites/Items/default/icon");
+
+        GameObject go = new GameObject("FallAnim_" + iName);
+        go.transform.SetParent(transform, true);
+        SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+        sr.sprite = sprite;
+        sr.sortingOrder = 65; // below floor items (sortingOrder 70)
+
+        Vector3 start = new Vector3(srcX, srcY, 0);
+        Vector3 end   = new Vector3(dstX, dstY, 0);
+        go.transform.position = start;
+
+        float dist = srcY - dstY;
+        float duration = World.fallSecondsPerTile * dist;
+        float elapsed = 0f;
+        while (elapsed < duration) {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            go.transform.position = Vector3.Lerp(start, end, t * t); // t² = gravity ease-in
+            yield return null;
+        }
+
+        Destroy(go);
     }
 
     // -----------------------------------------------------------------------
@@ -52,6 +90,12 @@ public class WorldController : MonoBehaviour {
     // -----------------------------------------------------------------------
 
     public void ClearWorld() {
+        // Null all tile.inv refs before destroying structures — prevents Structure.Destroy()
+        // → FallIfUnstandable() from spawning stale fall animations during the clear.
+        for (int x = 0; x < world.nx; x++)
+            for (int y = 0; y < world.ny; y++)
+                world.GetTileAt(x, y).inv = null;
+
         // 1. Destroy all structures (copy list since Destroy modifies it)
         foreach (Structure s in StructController.instance.GetStructures()) s.Destroy();
 
@@ -85,11 +129,10 @@ public class WorldController : MonoBehaviour {
             GlobalInventory.instance.itemAmounts[key] = 0;
         }
 
-        // 6. Reset all tiles: null stale inv refs, reset tile types (fires sprite callbacks)
+        // 6. Reset all tiles: reset tile types (fires sprite callbacks)
         for (int x = 0; x < world.nx; x++) {
             for (int y = 0; y < world.ny; y++) {
                 Tile tile = world.GetTileAt(x, y);
-                tile.inv = null;
                 tile.type = Db.tileTypeByName["empty"];
             }
         }

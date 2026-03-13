@@ -370,8 +370,12 @@ public class Inventory{
                     continue;
                 }
                 string sName = stack.item.name.Replace(" ", "");
-                Sprite sSprite = Resources.Load<Sprite>($"Sprites/Items/{sName}/qmid");
-                sSprite ??= Resources.Load<Sprite>("Sprites/Items/defaultq");
+                float qFill = stack.quantity / (float)stack.stackSize;
+                string qVariant = qFill >= 0.75f ? "qhigh" : qFill < 0.2f ? "qlow" : "qmid";
+                Sprite sSprite  = Resources.Load<Sprite>($"Sprites/Items/{sName}/{qVariant}");
+                sSprite ??= Resources.Load<Sprite>($"Sprites/Items/{sName}/qmid");
+                sSprite ??= Resources.Load<Sprite>($"Sprites/Items/default/{qVariant}");
+                sSprite ??= Resources.Load<Sprite>("Sprites/Items/default/qmid");
                 stackGos[i].name = "inventorystack_" + sName;
                 sr.sprite = sSprite;
             }
@@ -391,16 +395,21 @@ public class Inventory{
             }
         }
         String iName = mostItem.name;
+        float fill = mostAmount / (float)stackSize;
         Sprite sprite;
         if (invType == InvType.Floor) {
             sprite = Resources.Load<Sprite>($"Sprites/Items/{iName}/floor");
-        } else if (invType == InvType.Storage){
-            sprite = Resources.Load<Sprite>($"Sprites/Items/{iName}/smid");
+        } else if (invType == InvType.Storage) {
+            string sVariant = fill >= 0.75f ? "shigh" : fill < 0.2f ? "slow" : "smid";
+            sprite  = Resources.Load<Sprite>($"Sprites/Items/{iName}/{sVariant}");
+            sprite ??= Resources.Load<Sprite>($"Sprites/Items/{iName}/smid");
+            sprite ??= Resources.Load<Sprite>($"Sprites/Items/default/{sVariant}");
+            sprite ??= Resources.Load<Sprite>("Sprites/Items/default/smid");
         } else {
             sprite = Resources.Load<Sprite>($"Sprites/Items/{iName}/icon");
         }
         sprite ??= Resources.Load<Sprite>($"Sprites/Items/{iName}/icon");
-        sprite ??= Resources.Load<Sprite>("Sprites/Items/default");
+        sprite ??= Resources.Load<Sprite>("Sprites/Items/default/icon");
         go.name = "inventory_" + mostItem.name;
         go.GetComponent<SpriteRenderer>().sprite = sprite;
     }

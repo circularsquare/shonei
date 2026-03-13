@@ -8,17 +8,14 @@ meow
         - make if have > x lots of input and < y of primary output?
         - priority
 - buildings
-    - inventories 
-    - housing
-    - leisure
-    - work stations
     - > 1x1 buildings
 - happiness
     - food
     - leisure
+        - schedule for sleeping / leisure?
+        - schedule interface?
     - housing
     - wealth / beauty / diversity?
-- work experience / books ?
 - animal stats 
     - be able to level up skills e.g. farming
     - animal smart job assignment

@@ -14,36 +14,26 @@ public class ResearchNodeData {
     public string unlocks;  // building/recipe name for typed nodes
 }
 
-// ResearchSystem tracks available research points using a rolling-window approach:
-//   - Every (ticksInDay / 12) ticks, sample the current scientist output.
-//   - Keep the last 15 samples in a circular buffer.
-//   - Available points = max of those 15 samples minus total already spent.
-//   - This gives a stable value that reflects recent peak productivity without
-//     swinging every time a mouse takes a break.
+// ResearchSystem tracks per-node research progress.
+//
+// Each research node has a progress value (0 → 2×cost).
+// Scientists contribute to the settlement's active research project.
+// Progress decays over time — keeping scientists working is required to maintain unlocks.
+//
+// Unlock:  progress >= cost (and all prereqs are currently unlocked)
+// Forget:  progress < 0.8 × cost (locks the research again)
 public class ResearchSystem : MonoBehaviour {
     public static ResearchSystem instance;
 
-    const int HistorySize = 15;
+    const float DecayRate     = 0.02f;  // progress lost per tick (all nodes with any progress)
+    const float ScientistRate = 0.1f;   // progress gained per workefficiency of a scientist each tick
 
-    public float[] pointHistory  = new float[HistorySize];
-    public int     historyIndex  = 0;
-    public float   totalSpent    = 0f;
-    public int     tickCounter   = 0;
+    public Dictionary<int, float> progress       = new Dictionary<int, float>();
+    public int                    activeResearchId = -1;
 
-    public float AvailablePoints {
-        get {
-            float peak = 0f;
-            foreach (float v in pointHistory) if (v > peak) peak = v;
-            return Mathf.Max(0f, peak - totalSpent);
-        }
-    }
-
-    public List<ResearchNodeData>            nodes    = new List<ResearchNodeData>();
-    public Dictionary<int, ResearchNodeData> nodeById = new Dictionary<int, ResearchNodeData>();
+    public List<ResearchNodeData>            nodes       = new List<ResearchNodeData>();
+    public Dictionary<int, ResearchNodeData> nodeById    = new Dictionary<int, ResearchNodeData>();
     public HashSet<int>                      unlockedIds = new HashSet<int>();
-
-    // Runtime state modified by research effects.
-    public float researchEfficiencyMultiplier = 1f;
 
     void Awake() {
         if (instance != null) { Debug.LogError("two ResearchSystems!"); }
@@ -60,78 +50,123 @@ public class ResearchSystem : MonoBehaviour {
             if (node.prereqs == null) node.prereqs = new int[0];
             nodes.Add(node);
             nodeById[node.id] = node;
+            progress[node.id] = 0f;
         }
     }
 
     // Called from World.Update every second.
     public void TickUpdate() {
-        int interval = Mathf.Max(1, World.ticksInDay / 12);
-        tickCounter++;
-        if (tickCounter >= interval) {
-            tickCounter = 0;
-            pointHistory[historyIndex] = GetCurrentCapacity();
-            historyIndex = (historyIndex + 1) % HistorySize;
+        foreach (var node in nodes) {
+            if (progress.TryGetValue(node.id, out float p) && p > 0f)
+                progress[node.id] = Mathf.Max(0f, p - DecayRate);
+        }
+        CheckTransitions();
+    }
+
+    void CheckTransitions() {
+        foreach (var node in nodes) {
+            float p       = GetProgress(node.id);
+            bool unlocked = IsUnlocked(node.id);
+            if (!unlocked && p >= node.cost && PrereqsMet(node)) {
+                unlockedIds.Add(node.id);
+                ApplyEffect(node);
+            } else if (unlocked && p < node.cost * 0.8f) {
+                unlockedIds.Remove(node.id);
+                RevertEffect(node);
+            }
         }
     }
 
-    // Current research output = working scientists * 10.
-    float GetCurrentCapacity() {
-        AnimalController ac = AnimalController.instance;
-        if (ac == null) return 0f;
-        int scientists = 0;
-        for (int i = 0; i < ac.na; i++) {
-            Animal a = ac.animals[i];
-            if (a.job?.name == "scientist" && a.task is ResearchTask
-                    && a.state == Animal.AnimalState.Working)
-                scientists++;
-        }
-        return scientists * 10f * researchEfficiencyMultiplier;
+    public float GetProgress(int id) {
+        progress.TryGetValue(id, out float p);
+        return p;
     }
+
+    public float GetCap(ResearchNodeData node) => node.cost * 2f;
 
     public bool IsUnlocked(int id) => unlockedIds.Contains(id);
 
-    public bool CanUnlock(ResearchNodeData node) {
-        if (IsUnlocked(node.id)) return false;
-        if (AvailablePoints < node.cost) return false;
+    public bool PrereqsMet(ResearchNodeData node) {
         foreach (int prereq in node.prereqs)
             if (!IsUnlocked(prereq)) return false;
         return true;
     }
 
-    public bool Unlock(ResearchNodeData node) {
-        if (!CanUnlock(node)) return false;
-        totalSpent += node.cost;
-        unlockedIds.Add(node.id);
-        ApplyEffect(node);
-        return true;
+    // Returns true if this research can be set as the active project.
+    // Prereqs must be unlocked; no restriction on whether the node itself is unlocked
+    // (already-known research can still be reinforced to prevent forgetting).
+    public bool CanSetActive(ResearchNodeData node) => PrereqsMet(node);
+
+    public void SetActiveResearch(int id) {
+        activeResearchId = (activeResearchId == id) ? -1 : id;
     }
 
-    // Applies the gameplay effect of a research node.
-    // All research effects are handled here.
+    // Called from AnimalStateManager each research tick with the scientist's work efficiency.
+    public void AddScientistProgress(float workEfficiency) {
+        if (activeResearchId < 0) return;
+        if (!nodeById.TryGetValue(activeResearchId, out var node)) return;
+        float gained = workEfficiency * ScientistRate * ModifierSystem.instance.GetResearchMultiplier();
+        progress[activeResearchId] = Mathf.Min(GetProgress(activeResearchId) + gained, GetCap(node));
+        CheckTransitions();
+    }
+
+    // Called from AnimalStateManager when a recipe cycle completes (passive skill gain).
+    public void AddPassiveProgress(string researchName, float amount) {
+        foreach (var node in nodes) {
+            if (node.name == researchName) {
+                progress[node.id] = Mathf.Min(GetProgress(node.id) + amount, GetCap(node));
+                CheckTransitions();
+                return;
+            }
+        }
+    }
+
+    // Applies the gameplay effect of a research node (called on unlock).
     public void ApplyEffect(ResearchNodeData node) {
         switch (node.type) {
             case "building":
                 BuildPanel.instance?.UnlockBuilding(node.unlocks);
                 break;
             case "misc":
-                if (node.unlocks == "research_efficiency")
-                    researchEfficiencyMultiplier *= 1.2f;
+                // research_efficiency is computed on demand by ModifierSystem.GetResearchMultiplier()
                 break;
         }
     }
 
-    // Debug: unlock every node regardless of points or prereqs.
+    // Reverts the gameplay effect of a research node (called on forget).
+    public void RevertEffect(ResearchNodeData node) {
+        switch (node.type) {
+            case "building":
+                BuildPanel.instance?.LockBuilding(node.unlocks);
+                break;
+            case "misc":
+                // research_efficiency is computed on demand by ModifierSystem.GetResearchMultiplier()
+                break;
+        }
+    }
+
+    // Debug: fully unlock every node.
     public void UnlockAll() {
         foreach (var node in nodes) {
-            if (IsUnlocked(node.id)) continue;
-            unlockedIds.Add(node.id);
-            ApplyEffect(node);
+            progress[node.id] = GetCap(node);
+            if (!IsUnlocked(node.id)) {
+                unlockedIds.Add(node.id);
+                ApplyEffect(node);
+            }
         }
+    }
+
+    // Returns how many currently-unlocked nodes have the given unlocks value.
+    public int CountUnlocks(string unlocksValue) {
+        int count = 0;
+        foreach (int id in unlockedIds)
+            if (nodeById.TryGetValue(id, out var node) && node.unlocks == unlocksValue)
+                count++;
+        return count;
     }
 
     // Re-apply effects for all already-unlocked nodes (called after save load).
     public void ReapplyAllEffects() {
-        researchEfficiencyMultiplier = 1f;
         foreach (int id in unlockedIds)
             if (nodeById.TryGetValue(id, out var node))
                 ApplyEffect(node);

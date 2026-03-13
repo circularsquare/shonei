@@ -10,11 +10,9 @@ public class WorldSaveData {
 }
 
 public class ResearchSaveData {
-    public float[] pointHistory;
-    public int     historyIndex;
-    public float   totalSpent;
-    public int     tickCounter;
-    public int[]   unlockedIds;
+    public System.Collections.Generic.Dictionary<int, float> progress;
+    public int   activeResearchId;
+    public int[] unlockedIds;
 }
 
 public class TileSaveData {

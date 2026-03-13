@@ -333,15 +333,6 @@ public class HaulFromMarketTask : Task {
         return false;
     }
 }
-public class FallTask : Task {
-    public FallTask(Animal animal) : base(animal) {}
-    public override bool Initialize() {
-        Tile below = animal.world.GetTileAt(animal.x, animal.y - 1);
-        if (below == null) return false;
-        objectives.Enqueue(new FallObjective(this, below));
-        return true;
-    }
-}
 public class ResearchTask : Task {
     public Tile labTile;
     public ResearchTask(Animal animal) : base(animal) {}
@@ -564,25 +555,4 @@ public class ResearchObjective : Objective {
     // AnimalStateManager.HandleWorking drives progress and calls task.Complete().
 }
 
-public class FallObjective : Objective {
-    public FallObjective(Task task, Tile below) : base(task) {
-        this.destination = below;
-    }
-    public override void Start() {
-        // Build a direct path bypassing standability checks
-        List<Node> nodes = new List<Node> { animal.TileHere().node, destination.node };
-        animal.nav.NavigateTo(destination, new Path(nodes));
-        animal.state = Animal.AnimalState.Moving;
-    }
-    public override void OnArrival() {
-        if (!animal.TileHere().node.standable) {
-            // Keep falling — queue another fall objective
-            Tile below = animal.world.GetTileAt(animal.x, animal.y - 1);
-            if (below == null) { Fail(); return; }
-            destination = below;
-            Start(); // re-navigate one tile down
-        } else {
-            Complete();
-        }
-    }
-}
+

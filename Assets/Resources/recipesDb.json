@@ -1,4 +1,4 @@
-[  
+[
     {
         "id": 0,
         "job": "sawyer",
@@ -30,6 +30,8 @@
         "tile": "soil pit",
         "description": "dig soil",
         "workload": 2.0,
+        "research": "Excavation",
+        "skillPoints": 0.025,
         "ninputs": [
         ],
         "noutputs": [
@@ -41,6 +43,8 @@
         "tile": "quarry",
         "description": "mine stone",
         "workload": 3.0,
+        "research": "Quarry",
+        "skillPoints": 0.025,
         "ninputs": [
         ],
         "noutputs": [
@@ -49,4 +53,4 @@
             { "name": "iron ore", "quantity": 1, "chance": 0.10 }
         ]
     }
-]  
+]

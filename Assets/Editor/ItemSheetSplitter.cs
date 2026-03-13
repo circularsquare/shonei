@@ -26,20 +26,19 @@ using SysDir  = System.IO.Directory;
 //   Right-click sheet → Split Item Sheet — processes selected sheet(s)
 public static class ItemSheetSplitter {
     const int CellSize   = 16;
-    const string SheetsFolder = "Assets/Resources/Sheets";
+    const string SheetsFolder = "Assets/Resources/Sprites/Items/Sheets";
     const string ItemsFolder  = "Assets/Resources/Sprites/Items";
 
-    // (col, row, outputFileName)
-    static readonly (int col, int row, string name)[] Slots = {
-        (0, 0, "icon"),
-        (1, 0, "floor"),
-        (0, 1, "smid"),
-        (1, 1, "qmid"),
-        // Uncomment when you add these sprites to your sheets:
-        // (0, 2, "shigh"),
-        // (1, 2, "qhigh"),
-        // (0, 3, "slow"),
-        // (1, 3, "glow"),
+    // (row, col, outputFileName, cropSize)  cropSize <= CellSize; top-left of cell is used
+    static readonly (int row, int col, string name, int cropSize)[] Slots = {
+        (0, 0, "icon",  CellSize),
+        (0, 1, "floor", CellSize),
+        (1, 0, "slow",  CellSize),
+        (1, 1, "smid",  CellSize),
+        (1, 2, "shigh", CellSize),
+        (2, 0, "qlow",  7),
+        (2, 1, "qmid",  7),
+        (2, 2, "qhigh", 7),
     };
 
     // ── batch: all sheets in Sheets/ ─────────────────────────────────────────
@@ -105,24 +104,25 @@ public static class ItemSheetSplitter {
         string outDir = SysPath.Combine(ItemsFolder, itemName).Replace('\\', '/');
         SysDir.CreateDirectory(outDir);
 
-        foreach (var (col, row, slotName) in Slots) {
+        foreach (var (row, col, slotName, cropSize) in Slots) {
             int px = col * CellSize;
-            // Texture2D pixel coords have y=0 at bottom; rows in the sheet are top-to-bottom
-            int py = sheet.height - (row + 1) * CellSize;
+            // Texture2D pixel coords have y=0 at bottom; rows in the sheet are top-to-bottom.
+            // cropSize crops from the top-left of the cell, so offset py up by (CellSize - cropSize).
+            int py = sheet.height - (row + 1) * CellSize + (CellSize - cropSize);
 
-            if (px + CellSize > sheet.width || py < 0) {
+            if (px + cropSize > sheet.width || py < 0) {
                 Debug.LogWarning($"[SheetSplitter] {itemName}: slot '{slotName}' out of bounds (sheet {sheet.width}×{sheet.height}), skipping.");
                 continue;
             }
 
-            Color[] pixels = sheet.GetPixels(px, py, CellSize, CellSize);
+            Color[] pixels = sheet.GetPixels(px, py, cropSize, cropSize);
 
             // Skip fully-transparent slots (empty cells in the sheet)
             bool hasContent = false;
             foreach (var p in pixels) { if (p.a > 0) { hasContent = true; break; } }
             if (!hasContent) continue;
 
-            Texture2D cell = new Texture2D(CellSize, CellSize, TextureFormat.RGBA32, false);
+            Texture2D cell = new Texture2D(cropSize, cropSize, TextureFormat.RGBA32, false);
             cell.SetPixels(pixels);
             cell.Apply();
 

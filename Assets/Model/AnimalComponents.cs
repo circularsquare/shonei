@@ -14,6 +14,7 @@ public class Nav {
     private Node prevNode = null;
     private Node nextNode = null;
     public bool preventFall = false; // true while traversing a vertical or stair edge
+    public float fallVelocity = 0f;  // accumulated downward speed during Falling state
 
 
     public Nav (Animal a){
@@ -36,15 +37,15 @@ public class Nav {
     }
     public bool Navigate(Path p){return NavigateTo(p.tile, p);}
     public void EndNavigation(){ path = null; pathIndex = 0; prevNode = null; nextNode = null; preventFall = false; }
-    public void Fall(){ // navigates to tileBelow, even though theres no path cuz unstandable
-        if (!a.TileHere().node.standable) {
-            if (a.task != null && a.task is not FallTask) {
-                Debug.Log(a.aName + " falling! interrupting current task "  + a.task.ToString());
-                a.task.Fail();
-            }
-            a.task = new FallTask(a);
-            a.task.Start();
+    public void Fall(){
+        if (a.task != null) {
+            Debug.Log(a.aName + " falling! interrupting task " + a.task.ToString());
+            a.task.Fail();
+            a.task = null;
         }
+        EndNavigation();
+        fallVelocity = 0f;
+        a.state = Animal.AnimalState.Falling;
     }
 
     public bool Move(float deltaTime){ // called by animal every frame!! returns whether you're done
@@ -66,9 +67,7 @@ public class Nav {
         // is gone — cliff traversal now uses waypoints which are already covered above.
         preventFall = prevNode.isWaypoint || nextNode.isWaypoint
                    || Mathf.Abs(nextNode.wy - prevNode.wy) > 0.1f;
-        var (edgeCost, edgeLen) = (a.task is FallTask)
-            ? (1.0f, 1.0f)
-            : Graph.instance.GetEdgeInfo(prevNode, nextNode);
+        var (edgeCost, edgeLen) = Graph.instance.GetEdgeInfo(prevNode, nextNode);
         Vector2 newPos = Vector2.MoveTowards(
             new Vector2(a.x, a.y), new Vector2(nextNode.wx, nextNode.wy),
             a.maxSpeed * edgeLen / edgeCost * deltaTime);

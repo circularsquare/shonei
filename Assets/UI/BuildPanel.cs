@@ -130,6 +130,17 @@ public class BuildPanel : MonoBehaviour {
         AddBuildDisplay(subPanels[cat].transform, st);
     }
 
+    public void LockBuilding(string buildingName) {
+        if (!Db.structTypeByName.TryGetValue(buildingName, out StructType st)) {
+            Debug.LogWarning("LockBuilding: unknown building " + buildingName); return;
+        }
+        string cat = st.isPlant ? "plants" : st.category;
+        if (cat == null || !subPanels.ContainsKey(cat)) return;
+        Transform panel = subPanels[cat].transform;
+        Transform entry = panel.Find("BuildDisplay_" + buildingName);
+        if (entry != null) Destroy(entry.gameObject);
+    }
+
     public void SetStructType(StructType st) {
         structType = st;
         MouseController.instance.SetModeBuild();

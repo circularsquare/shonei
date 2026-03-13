@@ -31,44 +31,7 @@ public class InventoryController : MonoBehaviour {
         discoveredItems = Db.itemsFlat.ToDictionary(i => i.id, i => false); // default no items discovered
         itemDisplayGos = Db.itemsFlat.ToDictionary(i => i.id, i => default(GameObject));
         targets = Db.itemsFlat.ToDictionary(i => i.id, i => 10000); // 100 liang in fen
-        World.OnItemFall += SpawnFallAnimation;
-    }
-
-    void OnDestroy() {
-        World.OnItemFall -= SpawnFallAnimation;
-    }
-
-    void SpawnFallAnimation(int srcX, int srcY, int dstX, int dstY, Item item) {
-        StartCoroutine(FallAnimCoroutine(srcX, srcY, dstX, dstY, item));
-    }
-
-    IEnumerator FallAnimCoroutine(int srcX, int srcY, int dstX, int dstY, Item item) {
-        string iName = item.name.Replace(" ", "");
-        Sprite sprite = Resources.Load<Sprite>($"Sprites/Items/{iName}/floor");
-        sprite ??= Resources.Load<Sprite>($"Sprites/Items/{iName}/icon");
-        sprite ??= Resources.Load<Sprite>("Sprites/Items/default");
-
-        GameObject go = new GameObject("FallAnim_" + iName);
-        go.transform.SetParent(WorldController.instance.transform, true);
-        SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
-        sr.sprite = sprite;
-        sr.sortingOrder = 65; // below floor items (sortingOrder 70)
-
-        Vector3 start = new Vector3(srcX, srcY, 0);
-        Vector3 end   = new Vector3(dstX, dstY, 0);
-        go.transform.position = start;
-
-        float dist = srcY - dstY;
-        float duration = 0.4f * dist;
-        float elapsed = 0f;
-        while (elapsed < duration) {
-            elapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(elapsed / duration);
-            go.transform.position = Vector3.Lerp(start, end, t * t); // t² = gravity ease-in
-            yield return null;
-        }
-
-        Destroy(go);
+        // Fall animation handled by WorldController
     }
 
     public void AddInventory(Inventory inv) {
@@ -177,13 +140,11 @@ public class InventoryController : MonoBehaviour {
                 summed[stack.item.id] += stack.quantity;
             }
         }
-        bool ok = true;
         foreach (var kvp in globalInventory.itemAmounts) {
             int actual = summed.TryGetValue(kvp.Key, out int v) ? v : 0;
             if (actual != kvp.Value) {
                 string name = Array.Find(Db.itemsFlat, i => i != null && i.id == kvp.Key)?.name ?? kvp.Key.ToString();
                 Debug.LogError($"GlobalInventory mismatch: {name} — ginv={kvp.Value} actual={actual}");
-                ok = false;
             }
         }
     }

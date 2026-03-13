@@ -10,6 +10,7 @@ public class TradingClient : MonoBehaviour {
     WebSocket ws;
     public bool isOnline { get; private set; } = false;
     bool isConnecting = false;
+    bool hasLoggedConnectError = false;
     public const string playerName = "anita";
     const string WsUrl = "ws://127.0.0.1:8082/ws?name=" + playerName;
     const float ReconnectInterval = 20f;
@@ -30,8 +31,14 @@ public class TradingClient : MonoBehaviour {
             HandleMessage(raw);
         };
 
-        ws.OnOpen  += () => { Debug.Log("connected to server"); SetOnline(true); };
-        ws.OnError += (e) => Debug.Log("ServerError: " + e);
+        ws.OnOpen  += () => { Debug.Log("connected to server"); hasLoggedConnectError = false; SetOnline(true); };
+        ws.OnError += (e) => {
+            if (e == "Unable to connect to the remote server") {
+                if (!hasLoggedConnectError) { Debug.Log("ServerError: " + e); hasLoggedConnectError = true; }
+            } else {
+                Debug.Log("ServerError: " + e);
+            }
+        };
         //ws.OnClose += (e) => { Debug.Log("disconnected from server"); SetOnline(false); };
 
         await ws.Connect();
@@ -94,7 +101,7 @@ public class TradingClient : MonoBehaviour {
 
     IEnumerator ReconnectLoop() {
         while (true) {
-            yield return new WaitForSeconds(ReconnectInterval);
+            yield return new WaitForSecondsRealtime(ReconnectInterval);
             if (!isOnline && !isConnecting) Connect();
         }
     }
