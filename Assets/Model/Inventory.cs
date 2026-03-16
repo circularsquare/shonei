@@ -8,7 +8,7 @@ public class Inventory{
     public int nStacks;
     public int stackSize; 
     public ItemStack[] itemStacks;
-    public enum InvType {Floor, Storage, Animal, Market, Equip};
+    public enum InvType {Floor, Storage, Animal, Market, Equip, Blueprint};
     public InvType invType;
     public int x, y;
     public Dictionary<int, bool> allowed;
@@ -31,12 +31,6 @@ public class Inventory{
     // reserved incoming space per item; used when placing orders to guarantee room for incoming goods.
     public Dictionary<Item, Reservable> incomingRes;
 
-    public void SetMarket() {
-        InventoryController.instance.MoveInventoryType(this, invType, InvType.Market);
-        invType = InvType.Market;
-        targets = Db.itemsFlat.ToDictionary(i => i, i => 0);
-        incomingRes = Db.itemsFlat.ToDictionary(i => i, i => new Reservable(9999));
-    }
 
     // Returns unreserved space in this market inventory for the given item.
     public int GetMarketSpace(Item item) {
@@ -86,6 +80,11 @@ public class Inventory{
             sr.sprite = Resources.Load<Sprite>("Sprites/Inventory/" + invType.ToString());
         }
 
+        if (invType == InvType.Market) {
+            targets = Db.itemsFlat.ToDictionary(i => i, i => 0);
+            incomingRes = Db.itemsFlat.ToDictionary(i => i, i => new Reservable(9999));
+        }
+
         InventoryController.instance.AddInventory(this);
         ginv = GlobalInventory.instance;
     }
@@ -111,11 +110,12 @@ public class Inventory{
     }
     public void Decay(float time = 1f){
         float invTypeMult = invType switch {
-            InvType.Floor   => 5f,
-            InvType.Market  => 0f,
-            InvType.Animal  => 0f,
-            InvType.Equip   => 1f,
-            _               => 1f
+            InvType.Floor      => 5f,
+            InvType.Market     => 0f,
+            InvType.Animal     => 0f,
+            InvType.Equip      => 1f,
+            InvType.Blueprint  => 0f,
+            _                  => 1f
         };
         if (invTypeMult == 0f) return;
         for (int i = 0; i < nStacks; i++){
@@ -130,10 +130,10 @@ public class Inventory{
     // returns leftover size 
     private int AddItem(Item item, int quantity){
         if (item == null) {Debug.LogError("tried adding null item"); return quantity;}
-        if (allowed[item.id] == false && quantity > 0){ 
-            Debug.Log("tried adding unallowed item to inventory");
+        if (allowed[item.id] == false && quantity > 0){
+            Debug.Log($"tried adding unallowed item {item.name} to {invType} inv at ({x},{y})");
             return quantity;
-        } 
+        }
         for (int i = 0; i < nStacks; i++){
             int? result = itemStacks[i].AddItem(item, quantity);
             // should probably just check if the itemstack is the right item instead of using this null thing.
@@ -207,7 +207,7 @@ public class Inventory{
         return mostItem;
     }
     public ItemStack GetItemToHaul(){   // returns null if nothing, or item if something need to haul
-        if (invType == InvType.Market) return null;
+        if (invType == InvType.Market || invType == InvType.Blueprint) return null;
         foreach (ItemStack stack in itemStacks){
             if (!stack.Empty() && stack.res.Available() &&
                 (allowed[stack.item.id] == false || invType == InvType.Floor)){
@@ -217,7 +217,7 @@ public class Inventory{
         return null;
     }
     public bool HasItemToHaul(Item item){ // if null, finds any item to haul
-        if (invType == InvType.Market) return false;
+        if (invType == InvType.Market || invType == InvType.Blueprint) return false;
         foreach (ItemStack stack in itemStacks){
             if ((item == null || stack.item == item) && stack.quantity > 0 && stack.res.Available() &&
                 (allowed[stack.item.id] == false || invType == InvType.Floor)){
@@ -229,7 +229,7 @@ public class Inventory{
     // How much space is available for item in this inventory (allowed Storage/Animal only).
     // Counts both empty stacks (any item could fill them) and partially-filled stacks of the same item.
     public int GetStorageForItem(Item item){
-        if (invType == InvType.Market) return 0;
+        if (invType == InvType.Market || invType == InvType.Blueprint) return 0;
         if (allowed[item.id] == false || invType == InvType.Floor){return 0;}
         int space = 0;
         foreach (ItemStack stack in itemStacks){
@@ -259,7 +259,7 @@ public class Inventory{
     // Unlike GetStorageForItem, only checks stacks already holding this item (no empty stacks).
     // Use to top up an existing stack without claiming a new slot.
     public bool HasSpaceForItem(Item item){
-        if (invType == InvType.Market) return false;
+        if (invType == InvType.Market || invType == InvType.Blueprint) return false;
         foreach (ItemStack stack in itemStacks){
             if (stack.item == item && stack.quantity < stackSize){
                 return true;
@@ -357,7 +357,7 @@ public class Inventory{
     public enum ItemSpriteType { Icon, Floor, Storage }
 
     public void UpdateSprite(){
-        if (invType == InvType.Animal || invType == InvType.Market || invType == InvType.Equip){return;}
+        if (invType == InvType.Animal || invType == InvType.Market || invType == InvType.Equip || invType == InvType.Blueprint){return;}
         if (stackGos != null){
             // Multi-stack storage (drawer): update each slot independently
             for (int i = 0; i < nStacks && i < stackGos.Length; i++){

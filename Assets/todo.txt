@@ -13,8 +13,6 @@
 - consider whether itemstacks are useful
 - info panel
     - have info panel cycle through when you click it again
-- building 
-    - make market a multitile building? 
 - inventory
     - have a "keep" setting that invs can toggle to keep food for consumption and stuff like that. 
 - plant
@@ -41,6 +39,16 @@
         - assign scientists to "maintain" duty?
     - lock postrequisites?
 - make blueprints / building previews not use normal maps
+- item stack reservation is MESSY
+    - draw out foolproof spec!
+- dynamic objectives!
+- FetchObjective partial fill for crafting
+    - current: if mouse fetched enough for at least 1 round but can't find more, task fails anyway
+    - desired: if can't find more but already have >= 1 round's worth of inputs, skip to crafting
+    - approach: give FetchObjective a `minQuantity` alongside the `target` quantity.
+      retry across tiles until we have `minQuantity`; once we can't find more and have >= minQuantity, complete.
+      for food minQuantity = 1 (fractional eating), for crafting minQuantity = 1 round's ingredient amount.
+      this also removes the current special-case `targetInv != null` early-complete — food's minQuantity=1 covers it naturally.
 
 
 BUGS

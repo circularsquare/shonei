@@ -1,5 +1,9 @@
 meoww!!
 
+3/16
+- multitile buildings!
+    - save buildings by struct list instead of by tile
+    - use building workTile, storageTile coords
 3/13
 - search list of structures by type rather than finding structure by tile
 - also listify inventories (by invtype, not item) and blueprints

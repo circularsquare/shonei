@@ -45,7 +45,8 @@
         "id": 5,
         "name": "market",
         "description": "place to exchange goods with other settlements",
-        "nx": 1, "ny": 1,
+        "nx": 3, "ny": 1,
+        "storageTileX": 1,
         "ncosts": [ ],
         "isStorage": true,
         "nStacks": 50,
@@ -143,6 +144,22 @@
             { "name": "wood", "quantity": 5 }
         ],
         "njob": "hauler",
+        "capacity": 1,
+        "solidTop": true,
+        "category": "production"
+    },{
+        "id": 102,
+        "name": "furnace",
+        "description": "smelts and processes materials; storage on the right",
+        "nx": 2, "ny": 1,
+        "storageTileX": 1,
+        "ncosts": [
+            { "name": "stone", "quantity": 10 }
+        ],
+        "njob": "hauler",
+        "isStorage": true,
+        "nStacks": 4,
+        "storageStackSize": 50,
         "capacity": 1,
         "solidTop": true,
         "category": "production"

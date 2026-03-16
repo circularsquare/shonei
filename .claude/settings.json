@@ -22,7 +22,9 @@
       "WebFetch(domain:pypi.org)",
       "WebFetch(domain:github.com)",
       "Read(//c/Users/anita/projects/shonei/**)",
-      "Read(//mnt/c/Users/anita/projects/shonei/Assets/**)"
+      "Read(//mnt/c/Users/anita/projects/shonei/Assets/**)",
+      "Bash(ls Assets/Resources/*.json)",
+      "Bash(python -c \"import json; d=json.load\\(open\\(''Assets/Resources/plantsDb.json''\\)\\); [print\\(p.get\\(''name''\\), p.get\\(''nx''\\)\\) for p in d]\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\anita",

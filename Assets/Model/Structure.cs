@@ -14,19 +14,19 @@ public class Structure {
     public StructType structType;
     public Sprite sprite;
     public SpriteRenderer sr;
-    public Tile tile; // not really sure how this will work for multi-tile buildings...
+    public Tile workTile => World.instance.GetTileAt(x + structType.workTileX, y + structType.workTileY);
     public Reservable res;
-    
+
     public Structure(StructType st, int x, int y){
         this.structType = st;
         this.x = x;
         this.y = y;
-        this.tile = World.instance.GetTileAt(x, y);
 
         go = new GameObject();
-        go.transform.position = structType.depth == "r"
-            ? new Vector3(x, y - 1, 0)
-            : new Vector3(x, y, 0);
+        float visualX = st.nx > 1 ? x + (st.nx - 1) / 2.0f : x;
+        go.transform.position = st.depth == "r"
+            ? new Vector3(visualX, y - 1, 0)
+            : new Vector3(visualX, y, 0);
         go.transform.SetParent(WorldController.instance.transform, true);
         go.name = "structure_" + structType.name;
         
@@ -46,20 +46,23 @@ public class Structure {
             PlantController.instance.Remove(plant);
         }
         StructController.instance.Remove(this);
-        if (structType.depth == "b"){
-            tile.building = null;
-        } else if (structType.depth == "f"){
-            tile.fStruct = null;
-        } else if (structType.depth == "m"){
-            tile.mStruct = null;
-        } else if (structType.depth == "r"){
-            tile.road = null;
+        string depth = structType.depth;
+        for (int i = 0; i < structType.nx; i++) {
+            Tile t = World.instance.GetTileAt(x + i, y);
+            if (t == null) continue;
+            if (depth == "b") t.building = null;
+            else if (depth == "f") t.fStruct = null;
+            else if (depth == "m") t.mStruct = null;
+            else if (depth == "r") t.road = null;
         }
         GameObject.Destroy(go);
         World world = World.instance;
-        world.graph.UpdateNeighbors(tile.x, tile.y);
-        world.graph.UpdateNeighbors(tile.x, tile.y + 1);
-        world.FallIfUnstandable(tile.x, tile.y + 1);
+        int tileCount = structType.nx > 1 ? structType.nx : 1;
+        for (int i = 0; i < tileCount; i++) {
+            world.graph.UpdateNeighbors(x + i, y);
+            world.graph.UpdateNeighbors(x + i, y + 1);
+            world.FallIfUnstandable(x + i, y + 1);
+        }
     }
 
 }
@@ -88,6 +91,10 @@ public class StructType {
     public int depleteAt {get; set;} // 0 = never depletes; >0 = deplete after this many uses
     public float pathCostReduction {get; set;} // subtracted from edge cost for horizontal moves (roads: 0.1)
     public bool solidTop {get; set;} // can animals stand on top of this structure?
+    public int workTileX {get; set;} // tile offset to the interaction/nav tile (default 0,0 = anchor)
+    public int workTileY {get; set;}
+    public int storageTileX {get; set;} // tile offset to the storage inventory tile (default 0,0 = anchor)
+    public int storageTileY {get; set;}
 
     public virtual Sprite LoadSprite() {
         if (isTile) {
@@ -103,6 +110,8 @@ public class StructType {
     internal void OnDeserialized(StreamingContext context){
         if (capacity == 0){ capacity = 1; } // default, can be used by one animal at a time
         if (depth == null){ depth = "b"; }
+        if (nx == 0){ nx = 1; }
+        if (ny == 0){ ny = 1; }
         if (storageStackSize > 0){ storageStackSize *= 100; } // convert liang → fen
         costs = new ItemQuantity[ncosts.Length];
         for (int i = 0; i < ncosts.Length; i++){

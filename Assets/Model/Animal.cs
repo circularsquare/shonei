@@ -350,7 +350,7 @@ public class Animal : MonoBehaviour{
             foreach (ItemQuantity iq in recipe.inputs) { inv.Produce(iq.item, -iq.quantity); }
             Produce(recipe.outputs);
         }
-        else { Debug.Log("called produce without having all recipe ingredients! not doing."); }
+        else { Debug.Log($"{aName} ({job.name}) called produce without ingredients for recipe at ({(int)x},{(int)y})"); }
     }
     public bool CanProduce(Recipe recipe) {
         Building b = TileHere()?.building;

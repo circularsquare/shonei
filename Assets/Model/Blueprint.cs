@@ -11,7 +11,7 @@ public class Blueprint {
     public Sprite sprite;
     public Tile tile; // not really sure how this will work for multi-tile buildings...
 
-    public Inventory inv;  // holds delivered materials; not tracked by InventoryController
+    public Inventory inv;  // holds delivered materials; InvType.Blueprint keeps it out of haul/consolidate searches
     public ItemQuantity[] costs;
     public float constructionCost;
     public float constructionProgress = 0f;
@@ -36,9 +36,10 @@ public class Blueprint {
         }
 
         go = new GameObject();
+        float visualX = structType.nx > 1 ? x + (structType.nx - 1) / 2.0f : x;
         go.transform.position = structType.depth == "r"
             ? new Vector3(x, y - 1, 0)
-            : new Vector3(x, y, 0);
+            : new Vector3(visualX, y, 0);
         go.transform.SetParent(WorldController.instance.transform, true);
         go.name = "blueprint_" + structType.name;
 
@@ -50,10 +51,9 @@ public class Blueprint {
 
         costs = structType.costs;
         // One stack per cost item, capacity capped to exactly that item's cost quantity.
-        inv = new Inventory(Math.Max(1, costs.Length), 0, Inventory.InvType.Animal, x, y);
+        inv = new Inventory(Math.Max(1, costs.Length), 0, Inventory.InvType.Blueprint, x, y);
         for (int i = 0; i < costs.Length; i++)
             inv.itemStacks[i].stackSize = costs[i].quantity;
-        InventoryController.instance.RemoveInventory(inv);
 
         if (structType.costs.Length == 0){ state = BlueprintState.Constructing; }
         StructController.instance.AddBlueprint(this);

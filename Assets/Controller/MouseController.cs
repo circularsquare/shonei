@@ -72,16 +72,26 @@ public class MouseController : MonoBehaviour {
 
         // set cursorHighlight if in build/remove mode
         Tile tileAt = WorldController.instance.world.GetTileAt(currPosition.x, currPosition.y);
-        if (tileAt == null){ cursorHighlight.SetActive(false);}
+        StructType st = BuildPanel.instance != null ? BuildPanel.instance.structType : null;
+
+        // For multi-tile buildings, offset anchor so the building is centered on the mouse
+        Tile anchorTile = tileAt;
+        if (tileAt != null && st != null && st.nx > 1) {
+            int offsetX = (st.nx - 1) / 2;
+            anchorTile = WorldController.instance.world.GetTileAt(tileAt.x - offsetX, tileAt.y);
+        }
+
+        if (tileAt == null){ cursorHighlight.SetActive(false); }
         else if ((mouseMode == MouseMode.Build) || (mouseMode == MouseMode.Remove)){
             cursorHighlight.SetActive(true);
-            cursorHighlight.transform.position = new Vector3(tileAt.x, tileAt.y, -1);
-            StructType st = BuildPanel.instance != null ? BuildPanel.instance.structType : null;
-            if (mouseMode == MouseMode.Build && st != null) {
+            if (mouseMode == MouseMode.Build && st != null && anchorTile != null) {
                 Sprite buildSprite = st.LoadSprite();
                 cursorHighlightSr.sprite = buildSprite != null ? buildSprite : cursorHighlightDefaultSprite;
                 cursorHighlightSr.color = buildSprite != null ? new Color(1f, 1f, 1f, 0.3f) : Color.white;
+                float visualX = anchorTile.x + (st.nx - 1) / 2.0f;
+                cursorHighlight.transform.position = new Vector3(visualX, anchorTile.y, -1);
             } else {
+                cursorHighlight.transform.position = new Vector3(tileAt.x, tileAt.y, -1);
                 cursorHighlightSr.sprite = cursorHighlightDefaultSprite;
                 cursorHighlightSr.color = Color.white;
             }
@@ -109,7 +119,8 @@ public class MouseController : MonoBehaviour {
                 }
 
             } else if (mouseMode == MouseMode.Build) {
-                if (BuildPanel.instance.PlaceBlueprint(tileAt) && !Input.GetKey(KeyCode.LeftShift) && !Input.GetKey(KeyCode.RightShift)) {
+                Tile placeTile = anchorTile ?? tileAt;
+                if (BuildPanel.instance.PlaceBlueprint(placeTile) && !Input.GetKey(KeyCode.LeftShift) && !Input.GetKey(KeyCode.RightShift)) {
                     mouseMode = MouseMode.Select;
                 }
             } else if (mouseMode == MouseMode.Remove) {

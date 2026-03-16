@@ -56,25 +56,28 @@ public class StructController : MonoBehaviour {
         else if (st.isPlant){
             if (tile.building != null){Debug.LogError("already a building or plant here!"); return false;}
             structure = new Plant(st as PlantType, tile.x, tile.y);}
-        else if (st.depth == "b"){
-            if (tile.building != null){Debug.LogError("already a building or plant here!"); return false;}
-            structure = new Building(st, tile.x, tile.y);}
-        else if (st.name == "platform"){
-            if (tile.mStruct != null){Debug.LogError("already a mid structure here!"); return false;}
-            structure = new Platform(st, tile.x, tile.y);}   
-        else if (st.name == "stairs"){
-            if (tile.fStruct != null){Debug.LogError("already a foreground structure here!"); return false;}
-            structure = new Stairs(st, tile.x, tile.y);}
-        else if (st.name == "ladder"){
-            if (tile.fStruct != null){Debug.LogError("already a foreground structure here!"); return false;}
-            structure = new Ladder(st, tile.x, tile.y);}
-        else if (st.depth == "r"){
-            if (tile.road != null){Debug.LogError("already a road here!"); return false;}
-            Tile below = World.instance.GetTileAt(tile.x, tile.y - 1);
-            if (below == null || !below.type.solid){Debug.LogError("road requires solid tile below!"); return false;}
-            structure = new Structure(st, tile.x, tile.y);
-            tile.road = structure;}
-        else { Debug.LogError("unknown type of structure?"); Debug.Log(st.depth);return false; }
+        else {
+            // Generic multi-tile collision check for all depths
+            for (int i = 0; i < st.nx; i++) {
+                Tile t = World.instance.GetTileAt(tile.x + i, tile.y);
+                if (t == null) { Debug.LogError("tile out of bounds at " + (tile.x+i) + "," + tile.y); return false; }
+                if (st.depth == "b" && t.building != null) { Debug.LogError("building occupied at " + (tile.x+i) + "," + tile.y); return false; }
+                if (st.depth == "m" && t.mStruct != null) { Debug.LogError("mStruct occupied at " + (tile.x+i) + "," + tile.y); return false; }
+                if (st.depth == "f" && t.fStruct != null) { Debug.LogError("fStruct occupied at " + (tile.x+i) + "," + tile.y); return false; }
+                if (st.depth == "r" && t.road != null) { Debug.LogError("road occupied at " + (tile.x+i) + "," + tile.y); return false; }
+            }
+            if (st.depth == "r") {
+                Tile below = World.instance.GetTileAt(tile.x, tile.y - 1);
+                if (below == null || !below.type.solid) { Debug.LogError("road requires solid tile below!"); return false; }
+            }
+            // Dispatch to subclass
+            if (st.depth == "b") { structure = new Building(st, tile.x, tile.y); }
+            else if (st.name == "platform") { structure = new Platform(st, tile.x, tile.y); }
+            else if (st.name == "stairs") { structure = new Stairs(st, tile.x, tile.y); }
+            else if (st.name == "ladder") { structure = new Ladder(st, tile.x, tile.y); }
+            else if (st.depth == "r") { structure = new Road(st, tile.x, tile.y); }
+            else { Debug.LogError("unknown type of structure? " + st.depth); return false; }
+        }
         
 
         if (st.requiredTileName != null){ // if building inside a tile (like for quarry), remove the tile

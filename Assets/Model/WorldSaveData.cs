@@ -4,7 +4,9 @@
 
 public class WorldSaveData {
     public float timer;
-    public TileSaveData[] tiles;
+    public TileSaveData[] tiles;             // tile types and floor inventories only
+    public StructureSaveData[] structures;   // all structures (buildings, plants, platforms, ladders, roads)
+    public BlueprintSaveData[] blueprints;   // all blueprints
     public AnimalSaveData[] animals;
     public ResearchSaveData research;
 }
@@ -18,18 +20,11 @@ public class ResearchSaveData {
 public class TileSaveData {
     public int x, y;
     public string tileType;
-    public StructureSaveData building;
-    public StructureSaveData mStruct;
-    public StructureSaveData fStruct;
-    public StructureSaveData road;
-    public BlueprintSaveData bBlueprint;
-    public BlueprintSaveData mBlueprint;
-    public BlueprintSaveData fBlueprint;
-    public BlueprintSaveData roadBlueprint;
-    public InventorySaveData inv;
+    public InventorySaveData inv; // floor inventory only; storage building inventories are filled after structures are restored
 }
 
 public class StructureSaveData {
+    public int x, y; // anchor (bottom-left) tile position
     public string typeName;
     // Plant-specific fields (only populated when structure is a Plant)
     public int plantAge;
@@ -39,6 +34,7 @@ public class StructureSaveData {
 }
 
 public class BlueprintSaveData {
+    public int x, y; // anchor tile position
     public string typeName;
     public int state; // Blueprint.BlueprintState cast to int
     public float constructionProgress;

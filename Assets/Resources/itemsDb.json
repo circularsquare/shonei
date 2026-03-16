@@ -60,6 +60,11 @@
             }
         ]
     },{
+        "id": 40,
+        "name": "iron",
+        "decayRate": 0.0,
+        "children": null
+    },{
         "id": 100,
         "name": "planks",
         "decayRate": 0.06,

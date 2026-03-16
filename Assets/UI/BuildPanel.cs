@@ -153,13 +153,20 @@ public class BuildPanel : MonoBehaviour {
         if (st.requiredTileName != null && tile.type.name != st.requiredTileName) return false;
 
         if (!st.isTile) {
-            if ((st.isPlant || st.depth == "b") && tile.building != null) return false;
-            if (st.depth == "m" && tile.mStruct != null) return false;
-            if (st.depth == "f" && tile.fStruct != null) return false;
-            if (st.depth == "r") {
-                if (tile.road != null) return false;
-                Tile below = World.instance.GetTileAt(tile.x, tile.y - 1);
-                if (below == null || !below.type.solid) return false;
+            if (st.isPlant && tile.building != null) return false;
+            if (!st.isPlant) {
+                for (int i = 0; i < st.nx; i++) {
+                    Tile t = World.instance.GetTileAt(tile.x + i, tile.y);
+                    if (t == null) return false;
+                    if (st.depth == "b" && (t.building != null || t.GetBlueprintAt("b") != null)) return false;
+                    if (st.depth == "m" && t.mStruct != null) return false;
+                    if (st.depth == "f" && t.fStruct != null) return false;
+                    if (st.depth == "r" && t.road != null) return false;
+                }
+                if (st.depth == "r") {
+                    Tile below = World.instance.GetTileAt(tile.x, tile.y - 1);
+                    if (below == null || !below.type.solid) return false;
+                }
             }
         }
 
@@ -188,6 +195,15 @@ public class BuildPanel : MonoBehaviour {
             return true;
         }
         if (tile.building != null || tile.mStruct != null || tile.fStruct != null || tile.road != null) {
+            bool alreadyDeconstructing = false;
+            foreach (string depth in new[] { "b", "m", "f", "r" }) {
+                Blueprint bp = tile.GetBlueprintAt(depth);
+                if (bp != null && bp.state == Blueprint.BlueprintState.Deconstructing) {
+                    alreadyDeconstructing = true;
+                    break;
+                }
+            }
+            if (alreadyDeconstructing) return false;
             Blueprint.CreateDeconstructBlueprint(tile);
             return true;
         }

@@ -1,15 +1,15 @@
 {
-  "timer": 379.740753,
+  "timer": 828.739441,
   "tiles": [
     {
       "x": 0,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 0,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 0,
@@ -49,12 +49,12 @@
     {
       "x": 1,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 1,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 1,
@@ -94,12 +94,12 @@
     {
       "x": 2,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 2,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 2,
@@ -139,12 +139,12 @@
     {
       "x": 3,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 3,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 3,
@@ -184,12 +184,12 @@
     {
       "x": 4,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 4,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 4,
@@ -229,12 +229,12 @@
     {
       "x": 5,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 5,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 5,
@@ -274,12 +274,12 @@
     {
       "x": 6,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 6,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 6,
@@ -319,12 +319,12 @@
     {
       "x": 7,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 7,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 7,
@@ -364,12 +364,12 @@
     {
       "x": 8,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 8,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 8,
@@ -409,12 +409,12 @@
     {
       "x": 9,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 9,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 9,
@@ -453,866 +453,98 @@
     },
     {
       "x": 10,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 10,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 10,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 10,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 10,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 10,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 10,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 10,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 10,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 11,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 11,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 11,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 11,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 11,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 11,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 11,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 11,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 11,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 12,
       "y": 10,
       "tileType": "empty",
-      "building": {
-        "typeName": "market",
-        "plantAge": 0,
-        "plantGrowthStage": 0,
-        "plantHarvestable": false,
-        "uses": 0
-      },
-      "inv": {
-        "nStacks": 50,
-        "stackSize": 5000,
-        "invType": "Market",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ],
-        "disallowedItemIds": [
-          0,
-          1,
-          5,
-          6,
-          7,
-          10,
-          11,
-          12,
-          20,
-          30,
-          31,
-          32,
-          100,
-          101,
-          102,
-          110,
-          150,
-          151,
-          152,
-          160,
-          200
-        ]
-      }
-    },
-    {
-      "x": 10,
-      "y": 9,
-      "tileType": "soil"
-    },
-    {
-      "x": 10,
-      "y": 8,
-      "tileType": "soil"
-    },
-    {
-      "x": 10,
-      "y": 7,
-      "tileType": "stone"
-    },
-    {
-      "x": 10,
-      "y": 6,
-      "tileType": "stone"
-    },
-    {
-      "x": 10,
-      "y": 5,
-      "tileType": "stone"
-    },
-    {
-      "x": 10,
-      "y": 4,
-      "tileType": "stone"
-    },
-    {
-      "x": 10,
-      "y": 3,
-      "tileType": "stone"
-    },
-    {
-      "x": 10,
-      "y": 2,
-      "tileType": "stone"
-    },
-    {
-      "x": 10,
-      "y": 1,
-      "tileType": "stone"
-    },
-    {
-      "x": 11,
-      "y": 9,
-      "tileType": "soil"
-    },
-    {
-      "x": 11,
-      "y": 8,
-      "tileType": "soil"
-    },
-    {
-      "x": 11,
-      "y": 7,
-      "tileType": "stone"
-    },
-    {
-      "x": 11,
-      "y": 6,
-      "tileType": "stone"
-    },
-    {
-      "x": 11,
-      "y": 5,
-      "tileType": "stone"
-    },
-    {
-      "x": 11,
-      "y": 4,
-      "tileType": "stone"
-    },
-    {
-      "x": 11,
-      "y": 3,
-      "tileType": "stone"
-    },
-    {
-      "x": 11,
-      "y": 2,
-      "tileType": "stone"
-    },
-    {
-      "x": 11,
-      "y": 1,
-      "tileType": "stone"
-    },
-    {
-      "x": 12,
-      "y": 9,
-      "tileType": "soil"
-    },
-    {
-      "x": 12,
-      "y": 8,
-      "tileType": "soil"
-    },
-    {
-      "x": 12,
-      "y": 7,
-      "tileType": "stone"
-    },
-    {
-      "x": 12,
-      "y": 6,
-      "tileType": "stone"
-    },
-    {
-      "x": 12,
-      "y": 5,
-      "tileType": "stone"
-    },
-    {
-      "x": 12,
-      "y": 4,
-      "tileType": "stone"
-    },
-    {
-      "x": 12,
-      "y": 3,
-      "tileType": "stone"
-    },
-    {
-      "x": 12,
-      "y": 2,
-      "tileType": "stone"
-    },
-    {
-      "x": 12,
-      "y": 1,
-      "tileType": "stone"
-    },
-    {
-      "x": 13,
-      "y": 9,
-      "tileType": "soil"
-    },
-    {
-      "x": 13,
-      "y": 8,
-      "tileType": "soil"
-    },
-    {
-      "x": 13,
-      "y": 7,
-      "tileType": "stone"
-    },
-    {
-      "x": 13,
-      "y": 6,
-      "tileType": "stone"
-    },
-    {
-      "x": 13,
-      "y": 5,
-      "tileType": "stone"
-    },
-    {
-      "x": 13,
-      "y": 4,
-      "tileType": "stone"
-    },
-    {
-      "x": 13,
-      "y": 3,
-      "tileType": "stone"
-    },
-    {
-      "x": 13,
-      "y": 2,
-      "tileType": "stone"
-    },
-    {
-      "x": 13,
-      "y": 1,
-      "tileType": "stone"
-    },
-    {
-      "x": 14,
-      "y": 10,
-      "tileType": "empty",
-      "inv": {
-        "nStacks": 4,
-        "stackSize": 1000,
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "apple",
-            "quantity": 190,
-            "decayCounter": 671208
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      }
-    },
-    {
-      "x": 14,
-      "y": 9,
-      "tileType": "soil"
-    },
-    {
-      "x": 14,
-      "y": 8,
-      "tileType": "soil"
-    },
-    {
-      "x": 14,
-      "y": 7,
-      "tileType": "stone"
-    },
-    {
-      "x": 14,
-      "y": 6,
-      "tileType": "stone"
-    },
-    {
-      "x": 14,
-      "y": 5,
-      "tileType": "stone"
-    },
-    {
-      "x": 14,
-      "y": 4,
-      "tileType": "stone"
-    },
-    {
-      "x": 14,
-      "y": 3,
-      "tileType": "stone"
-    },
-    {
-      "x": 14,
-      "y": 2,
-      "tileType": "stone"
-    },
-    {
-      "x": 14,
-      "y": 1,
-      "tileType": "stone"
-    },
-    {
-      "x": 15,
-      "y": 10,
-      "tileType": "empty",
-      "building": {
-        "typeName": "appletree",
-        "plantAge": 36,
-        "plantGrowthStage": 3,
-        "plantHarvestable": true,
-        "uses": 0
-      },
-      "inv": {
-        "nStacks": 4,
-        "stackSize": 1000,
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "acorn",
-            "quantity": 179,
-            "decayCounter": 497749
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      }
-    },
-    {
-      "x": 15,
-      "y": 9,
-      "tileType": "soil"
-    },
-    {
-      "x": 15,
-      "y": 8,
-      "tileType": "soil"
-    },
-    {
-      "x": 15,
-      "y": 7,
-      "tileType": "stone"
-    },
-    {
-      "x": 15,
-      "y": 6,
-      "tileType": "stone"
-    },
-    {
-      "x": 15,
-      "y": 5,
-      "tileType": "stone"
-    },
-    {
-      "x": 15,
-      "y": 4,
-      "tileType": "stone"
-    },
-    {
-      "x": 15,
-      "y": 3,
-      "tileType": "stone"
-    },
-    {
-      "x": 15,
-      "y": 2,
-      "tileType": "stone"
-    },
-    {
-      "x": 15,
-      "y": 1,
-      "tileType": "stone"
-    },
-    {
-      "x": 16,
-      "y": 10,
-      "tileType": "empty",
-      "inv": {
-        "nStacks": 4,
-        "stackSize": 1000,
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "wood",
-            "quantity": 961,
-            "decayCounter": 436901
-          },
-          {
-            "itemName": "wood",
-            "quantity": 1000,
-            "decayCounter": 230970
-          },
-          {
-            "itemName": "wood",
-            "quantity": 845,
-            "decayCounter": 618640
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      }
-    },
-    {
-      "x": 16,
-      "y": 9,
-      "tileType": "soil"
-    },
-    {
-      "x": 16,
-      "y": 8,
-      "tileType": "soil"
-    },
-    {
-      "x": 16,
-      "y": 7,
-      "tileType": "stone"
-    },
-    {
-      "x": 16,
-      "y": 6,
-      "tileType": "stone"
-    },
-    {
-      "x": 16,
-      "y": 5,
-      "tileType": "stone"
-    },
-    {
-      "x": 16,
-      "y": 4,
-      "tileType": "stone"
-    },
-    {
-      "x": 16,
-      "y": 3,
-      "tileType": "stone"
-    },
-    {
-      "x": 16,
-      "y": 2,
-      "tileType": "stone"
-    },
-    {
-      "x": 16,
-      "y": 1,
-      "tileType": "stone"
-    },
-    {
-      "x": 17,
-      "y": 10,
-      "tileType": "empty",
-      "building": {
-        "typeName": "tree",
-        "plantAge": 34,
-        "plantGrowthStage": 2,
-        "plantHarvestable": false,
-        "uses": 0
-      },
-      "inv": {
-        "nStacks": 4,
-        "stackSize": 1000,
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "acorn",
-            "quantity": 664,
-            "decayCounter": 737734
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      }
-    },
-    {
-      "x": 17,
-      "y": 9,
-      "tileType": "soil"
-    },
-    {
-      "x": 17,
-      "y": 8,
-      "tileType": "soil"
-    },
-    {
-      "x": 17,
-      "y": 7,
-      "tileType": "stone"
-    },
-    {
-      "x": 17,
-      "y": 6,
-      "tileType": "stone"
-    },
-    {
-      "x": 17,
-      "y": 5,
-      "tileType": "stone"
-    },
-    {
-      "x": 17,
-      "y": 4,
-      "tileType": "stone"
-    },
-    {
-      "x": 17,
-      "y": 3,
-      "tileType": "stone"
-    },
-    {
-      "x": 17,
-      "y": 2,
-      "tileType": "stone"
-    },
-    {
-      "x": 17,
-      "y": 1,
-      "tileType": "stone"
-    },
-    {
-      "x": 18,
-      "y": 10,
-      "tileType": "empty",
-      "building": {
-        "typeName": "tree",
-        "plantAge": 26,
-        "plantGrowthStage": 1,
-        "plantHarvestable": false,
-        "uses": 0
-      }
-    },
-    {
-      "x": 18,
-      "y": 9,
-      "tileType": "soil"
-    },
-    {
-      "x": 18,
-      "y": 8,
-      "tileType": "soil"
-    },
-    {
-      "x": 18,
-      "y": 7,
-      "tileType": "stone"
-    },
-    {
-      "x": 18,
-      "y": 6,
-      "tileType": "stone"
-    },
-    {
-      "x": 18,
-      "y": 5,
-      "tileType": "stone"
-    },
-    {
-      "x": 18,
-      "y": 4,
-      "tileType": "stone"
-    },
-    {
-      "x": 18,
-      "y": 3,
-      "tileType": "stone"
-    },
-    {
-      "x": 18,
-      "y": 2,
-      "tileType": "stone"
-    },
-    {
-      "x": 18,
-      "y": 1,
-      "tileType": "stone"
-    },
-    {
-      "x": 19,
-      "y": 10,
-      "tileType": "empty",
-      "building": {
-        "typeName": "torch",
-        "plantAge": 0,
-        "plantGrowthStage": 0,
-        "plantHarvestable": false,
-        "uses": 0
-      },
       "inv": {
         "nStacks": 4,
         "stackSize": 1000,
@@ -1320,8 +552,8 @@
         "stacks": [
           {
             "itemName": "sawdust",
-            "quantity": 100,
-            "decayCounter": 62490
+            "quantity": 493,
+            "decayCounter": 889694
           },
           {
             "itemName": "",
@@ -1342,107 +574,54 @@
       }
     },
     {
-      "x": 19,
+      "x": 12,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
-      "x": 19,
+      "x": 12,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
-      "x": 19,
+      "x": 12,
       "y": 7,
       "tileType": "stone"
     },
     {
-      "x": 19,
+      "x": 12,
       "y": 6,
       "tileType": "stone"
     },
     {
-      "x": 19,
+      "x": 12,
       "y": 5,
       "tileType": "stone"
     },
     {
-      "x": 19,
+      "x": 12,
       "y": 4,
       "tileType": "stone"
     },
     {
-      "x": 19,
+      "x": 12,
       "y": 3,
       "tileType": "stone"
     },
     {
-      "x": 19,
+      "x": 12,
       "y": 2,
       "tileType": "stone"
     },
     {
-      "x": 19,
+      "x": 12,
       "y": 1,
       "tileType": "stone"
     },
     {
-      "x": 20,
-      "y": 11,
-      "tileType": "empty",
-      "building": {
-        "typeName": "crate",
-        "plantAge": 0,
-        "plantGrowthStage": 0,
-        "plantHarvestable": false,
-        "uses": 0
-      },
-      "inv": {
-        "nStacks": 1,
-        "stackSize": 10000,
-        "invType": "Storage",
-        "stacks": [
-          {
-            "itemName": "planks",
-            "quantity": 781,
-            "decayCounter": 656243
-          }
-        ],
-        "disallowedItemIds": [
-          0,
-          1,
-          5,
-          6,
-          7,
-          10,
-          11,
-          12,
-          20,
-          30,
-          31,
-          32,
-          101,
-          102,
-          110,
-          150,
-          151,
-          152,
-          160,
-          200
-        ]
-      }
-    },
-    {
-      "x": 20,
+      "x": 13,
       "y": 10,
       "tileType": "empty",
-      "building": {
-        "typeName": "sawmill",
-        "plantAge": 0,
-        "plantGrowthStage": 0,
-        "plantHarvestable": false,
-        "uses": 0
-      },
       "inv": {
         "nStacks": 4,
         "stackSize": 1000,
@@ -1450,8 +629,85 @@
         "stacks": [
           {
             "itemName": "planks",
-            "quantity": 999,
-            "decayCounter": 124874
+            "quantity": 1000,
+            "decayCounter": 986528
+          },
+          {
+            "itemName": "planks",
+            "quantity": 575,
+            "decayCounter": 754911
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      }
+    },
+    {
+      "x": 13,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 13,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 13,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 13,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 13,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 13,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 13,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 13,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 13,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 14,
+      "y": 9,
+      "tileType": "empty",
+      "inv": {
+        "nStacks": 4,
+        "stackSize": 1000,
+        "invType": "Floor",
+        "stacks": [
+          {
+            "itemName": "stone",
+            "quantity": 946,
+            "decayCounter": 783420
           },
           {
             "itemName": "",
@@ -1472,75 +728,23 @@
       }
     },
     {
-      "x": 20,
-      "y": 9,
-      "tileType": "soil"
-    },
-    {
-      "x": 20,
-      "y": 8,
-      "tileType": "soil"
-    },
-    {
-      "x": 20,
+      "x": 14,
       "y": 7,
-      "tileType": "stone"
-    },
-    {
-      "x": 20,
-      "y": 6,
-      "tileType": "stone"
-    },
-    {
-      "x": 20,
-      "y": 5,
-      "tileType": "stone"
-    },
-    {
-      "x": 20,
-      "y": 4,
-      "tileType": "stone"
-    },
-    {
-      "x": 20,
-      "y": 3,
-      "tileType": "stone"
-    },
-    {
-      "x": 20,
-      "y": 2,
-      "tileType": "stone"
-    },
-    {
-      "x": 20,
-      "y": 1,
-      "tileType": "stone"
-    },
-    {
-      "x": 21,
-      "y": 11,
       "tileType": "empty",
-      "building": {
-        "typeName": "drawer",
-        "plantAge": 0,
-        "plantGrowthStage": 0,
-        "plantHarvestable": false,
-        "uses": 0
-      },
       "inv": {
         "nStacks": 4,
         "stackSize": 2000,
         "invType": "Storage",
         "stacks": [
           {
-            "itemName": "acorn",
-            "quantity": 258,
-            "decayCounter": 451189
+            "itemName": "iron ore",
+            "quantity": 300,
+            "decayCounter": 114192
           },
           {
-            "itemName": "sawdust",
-            "quantity": 196,
-            "decayCounter": 3266
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
           },
           {
             "itemName": "",
@@ -1564,63 +768,13 @@
           12,
           20,
           30,
-          31,
-          32,
-          100,
-          101,
-          102,
-          150,
-          151
-        ]
-      }
-    },
-    {
-      "x": 21,
-      "y": 10,
-      "tileType": "empty",
-      "building": {
-        "typeName": "crate",
-        "plantAge": 0,
-        "plantGrowthStage": 0,
-        "plantHarvestable": false,
-        "uses": 0
-      },
-      "fStruct": {
-        "typeName": "ladder",
-        "plantAge": 0,
-        "plantGrowthStage": 0,
-        "plantHarvestable": false,
-        "uses": 0
-      },
-      "inv": {
-        "nStacks": 1,
-        "stackSize": 10000,
-        "invType": "Storage",
-        "stacks": [
-          {
-            "itemName": "wheat",
-            "quantity": 233,
-            "decayCounter": 254076
-          }
-        ],
-        "disallowedItemIds": [
-          0,
-          1,
-          5,
-          6,
-          7,
-          10,
-          11,
-          12,
-          20,
-          30,
-          31,
-          32,
+          40,
           100,
           101,
           102,
           110,
           150,
+          151,
           152,
           160,
           200
@@ -1628,149 +782,143 @@
       }
     },
     {
-      "x": 21,
-      "y": 9,
-      "tileType": "soil"
-    },
-    {
-      "x": 21,
-      "y": 8,
-      "tileType": "soil"
-    },
-    {
-      "x": 21,
-      "y": 7,
-      "tileType": "stone"
-    },
-    {
-      "x": 21,
+      "x": 14,
       "y": 6,
       "tileType": "stone"
     },
     {
-      "x": 21,
+      "x": 14,
       "y": 5,
       "tileType": "stone"
     },
     {
-      "x": 21,
+      "x": 14,
       "y": 4,
       "tileType": "stone"
     },
     {
-      "x": 21,
+      "x": 14,
       "y": 3,
       "tileType": "stone"
     },
     {
-      "x": 21,
+      "x": 14,
       "y": 2,
       "tileType": "stone"
     },
     {
-      "x": 21,
+      "x": 14,
       "y": 1,
       "tileType": "stone"
     },
     {
-      "x": 22,
-      "y": 11,
-      "tileType": "empty",
-      "building": {
-        "typeName": "laboratory",
-        "plantAge": 0,
-        "plantGrowthStage": 0,
-        "plantHarvestable": false,
-        "uses": 0
-      }
-    },
-    {
-      "x": 22,
+      "x": 15,
       "y": 10,
       "tileType": "empty",
-      "building": {
-        "typeName": "tree",
-        "plantAge": 44,
-        "plantGrowthStage": 3,
-        "plantHarvestable": true,
-        "uses": 0
-      },
-      "mStruct": {
-        "typeName": "platform",
-        "plantAge": 0,
-        "plantGrowthStage": 0,
-        "plantHarvestable": false,
-        "uses": 0
+      "inv": {
+        "nStacks": 4,
+        "stackSize": 1000,
+        "invType": "Floor",
+        "stacks": [
+          {
+            "itemName": "wood",
+            "quantity": 895,
+            "decayCounter": 232798
+          },
+          {
+            "itemName": "wood",
+            "quantity": 1000,
+            "decayCounter": 572410
+          },
+          {
+            "itemName": "wood",
+            "quantity": 274,
+            "decayCounter": 684990
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
       }
     },
     {
-      "x": 22,
+      "x": 15,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
-      "x": 22,
+      "x": 15,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
-      "x": 22,
+      "x": 15,
       "y": 7,
-      "tileType": "stone"
+      "tileType": "empty",
+      "inv": {
+        "nStacks": 4,
+        "stackSize": 1000,
+        "invType": "Floor",
+        "stacks": [
+          {
+            "itemName": "stone",
+            "quantity": 994,
+            "decayCounter": 984406
+          },
+          {
+            "itemName": "stone",
+            "quantity": 1000,
+            "decayCounter": 361296
+          },
+          {
+            "itemName": "stone",
+            "quantity": 1000,
+            "decayCounter": 263621
+          },
+          {
+            "itemName": "stone",
+            "quantity": 1000,
+            "decayCounter": 762456
+          }
+        ]
+      }
     },
     {
-      "x": 22,
+      "x": 15,
       "y": 6,
       "tileType": "stone"
     },
     {
-      "x": 22,
+      "x": 15,
       "y": 5,
       "tileType": "stone"
     },
     {
-      "x": 22,
+      "x": 15,
       "y": 4,
       "tileType": "stone"
     },
     {
-      "x": 22,
+      "x": 15,
       "y": 3,
       "tileType": "stone"
     },
     {
-      "x": 22,
+      "x": 15,
       "y": 2,
       "tileType": "stone"
     },
     {
-      "x": 22,
+      "x": 15,
       "y": 1,
       "tileType": "stone"
     },
     {
-      "x": 23,
-      "y": 11,
-      "tileType": "empty",
-      "building": {
-        "typeName": "workshop",
-        "plantAge": 0,
-        "plantGrowthStage": 0,
-        "plantHarvestable": false,
-        "uses": 0
-      }
-    },
-    {
-      "x": 23,
+      "x": 16,
       "y": 10,
       "tileType": "empty",
-      "building": {
-        "typeName": "crate",
-        "plantAge": 0,
-        "plantGrowthStage": 0,
-        "plantHarvestable": false,
-        "uses": 0
-      },
       "inv": {
         "nStacks": 1,
         "stackSize": 10000,
@@ -1778,8 +926,8 @@
         "stacks": [
           {
             "itemName": "wood",
-            "quantity": 3006,
-            "decayCounter": 499900
+            "quantity": 9994,
+            "decayCounter": 523702
           }
         ],
         "disallowedItemIds": [
@@ -1807,14 +955,528 @@
       }
     },
     {
+      "x": 16,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 16,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 16,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 16,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 16,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 16,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 16,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 16,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 16,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 17,
+      "y": 10,
+      "tileType": "empty",
+      "inv": {
+        "nStacks": 1,
+        "stackSize": 10000,
+        "invType": "Storage",
+        "stacks": [
+          {
+            "itemName": "dirt",
+            "quantity": 1986,
+            "decayCounter": 951253
+          }
+        ],
+        "disallowedItemIds": [
+          0,
+          1,
+          5,
+          6,
+          7,
+          10,
+          11,
+          12,
+          30,
+          31,
+          32,
+          100,
+          101,
+          102,
+          110,
+          150,
+          151,
+          152,
+          160,
+          200
+        ]
+      }
+    },
+    {
+      "x": 17,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 17,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 17,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 17,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 17,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 17,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 17,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 17,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 17,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 18,
+      "y": 10,
+      "tileType": "empty",
+      "inv": {
+        "nStacks": 4,
+        "stackSize": 1000,
+        "invType": "Floor",
+        "stacks": [
+          {
+            "itemName": "wood",
+            "quantity": 984,
+            "decayCounter": 221773
+          },
+          {
+            "itemName": "wood",
+            "quantity": 1000,
+            "decayCounter": 226068
+          },
+          {
+            "itemName": "wood",
+            "quantity": 1000,
+            "decayCounter": 566918
+          },
+          {
+            "itemName": "wood",
+            "quantity": 1000,
+            "decayCounter": 141658
+          }
+        ]
+      }
+    },
+    {
+      "x": 18,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 18,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 18,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 18,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 18,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 18,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 18,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 18,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 18,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 19,
+      "y": 10,
+      "tileType": "empty",
+      "inv": {
+        "nStacks": 4,
+        "stackSize": 1000,
+        "invType": "Floor",
+        "stacks": [
+          {
+            "itemName": "acorn",
+            "quantity": 142,
+            "decayCounter": 815208
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      }
+    },
+    {
+      "x": 19,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 19,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 19,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 19,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 19,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 19,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 19,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 19,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 19,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 20,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 20,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 20,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 20,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 20,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 20,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 20,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 20,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 20,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 21,
+      "y": 10,
+      "tileType": "empty",
+      "inv": {
+        "nStacks": 4,
+        "stackSize": 1000,
+        "invType": "Floor",
+        "stacks": [
+          {
+            "itemName": "silver",
+            "quantity": 100,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      }
+    },
+    {
+      "x": 21,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 21,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 21,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 21,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 21,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 21,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 21,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 21,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 21,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 22,
+      "y": 10,
+      "tileType": "empty",
+      "inv": {
+        "nStacks": 4,
+        "stackSize": 1000,
+        "invType": "Floor",
+        "stacks": [
+          {
+            "itemName": "wood",
+            "quantity": 932,
+            "decayCounter": 3247
+          },
+          {
+            "itemName": "wood",
+            "quantity": 1000,
+            "decayCounter": 144488
+          },
+          {
+            "itemName": "wood",
+            "quantity": 1000,
+            "decayCounter": 779588
+          },
+          {
+            "itemName": "wood",
+            "quantity": 1000,
+            "decayCounter": 741567
+          }
+        ]
+      }
+    },
+    {
+      "x": 22,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 22,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 22,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 22,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 22,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 22,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 22,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 22,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 22,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 23,
+      "y": 10,
+      "tileType": "empty",
+      "inv": {
+        "nStacks": 4,
+        "stackSize": 1000,
+        "invType": "Floor",
+        "stacks": [
+          {
+            "itemName": "acorn",
+            "quantity": 940,
+            "decayCounter": 251681
+          },
+          {
+            "itemName": "acorn",
+            "quantity": 414,
+            "decayCounter": 514653
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      }
+    },
+    {
       "x": 23,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 23,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 23,
@@ -1853,37 +1515,13 @@
     },
     {
       "x": 24,
-      "y": 11,
-      "tileType": "empty",
-      "building": {
-        "typeName": "house",
-        "plantAge": 0,
-        "plantGrowthStage": 0,
-        "plantHarvestable": false,
-        "uses": 0
-      }
-    },
-    {
-      "x": 24,
-      "y": 10,
-      "tileType": "empty",
-      "fStruct": {
-        "typeName": "ladder",
-        "plantAge": 0,
-        "plantGrowthStage": 0,
-        "plantHarvestable": false,
-        "uses": 0
-      }
-    },
-    {
-      "x": 24,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 24,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 24,
@@ -1924,13 +1562,6 @@
       "x": 25,
       "y": 10,
       "tileType": "empty",
-      "building": {
-        "typeName": "wheat",
-        "plantAge": 50,
-        "plantGrowthStage": 3,
-        "plantHarvestable": true,
-        "uses": 0
-      },
       "inv": {
         "nStacks": 4,
         "stackSize": 1000,
@@ -1938,8 +1569,8 @@
         "stacks": [
           {
             "itemName": "wheat",
-            "quantity": 278,
-            "decayCounter": 412126
+            "quantity": 296,
+            "decayCounter": 474052
           },
           {
             "itemName": "",
@@ -1962,12 +1593,12 @@
     {
       "x": 25,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 25,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 25,
@@ -2008,13 +1639,6 @@
       "x": 26,
       "y": 10,
       "tileType": "empty",
-      "building": {
-        "typeName": "wheat",
-        "plantAge": 46,
-        "plantGrowthStage": 3,
-        "plantHarvestable": true,
-        "uses": 0
-      },
       "inv": {
         "nStacks": 4,
         "stackSize": 1000,
@@ -2022,13 +1646,13 @@
         "stacks": [
           {
             "itemName": "wheat",
-            "quantity": 280,
-            "decayCounter": 668382
+            "quantity": 966,
+            "decayCounter": 74499
           },
           {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
+            "itemName": "wheat",
+            "quantity": 690,
+            "decayCounter": 968263
           },
           {
             "itemName": "",
@@ -2046,12 +1670,12 @@
     {
       "x": 26,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 26,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 26,
@@ -2091,12 +1715,12 @@
     {
       "x": 27,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 27,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 27,
@@ -2136,12 +1760,12 @@
     {
       "x": 28,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 28,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 28,
@@ -2181,12 +1805,12 @@
     {
       "x": 29,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 29,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 29,
@@ -2226,12 +1850,12 @@
     {
       "x": 30,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 30,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 30,
@@ -2271,12 +1895,12 @@
     {
       "x": 31,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 31,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 31,
@@ -2316,12 +1940,12 @@
     {
       "x": 32,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 32,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 32,
@@ -2361,12 +1985,12 @@
     {
       "x": 33,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 33,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 33,
@@ -2406,12 +2030,12 @@
     {
       "x": 34,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 34,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 34,
@@ -2451,12 +2075,12 @@
     {
       "x": 35,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 35,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 35,
@@ -2496,12 +2120,12 @@
     {
       "x": 36,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 36,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 36,
@@ -2541,12 +2165,12 @@
     {
       "x": 37,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 37,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 37,
@@ -2586,12 +2210,12 @@
     {
       "x": 38,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 38,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 38,
@@ -2631,12 +2255,12 @@
     {
       "x": 39,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 39,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 39,
@@ -2676,12 +2300,12 @@
     {
       "x": 40,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 40,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 40,
@@ -2721,12 +2345,12 @@
     {
       "x": 41,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 41,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 41,
@@ -2766,12 +2390,12 @@
     {
       "x": 42,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 42,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 42,
@@ -2811,12 +2435,12 @@
     {
       "x": 43,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 43,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 43,
@@ -2856,12 +2480,12 @@
     {
       "x": 44,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 44,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 44,
@@ -2901,12 +2525,12 @@
     {
       "x": 45,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 45,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 45,
@@ -2946,12 +2570,12 @@
     {
       "x": 46,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 46,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 46,
@@ -2991,12 +2615,12 @@
     {
       "x": 47,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 47,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 47,
@@ -3036,12 +2660,12 @@
     {
       "x": 48,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 48,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 48,
@@ -3081,12 +2705,12 @@
     {
       "x": 49,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 49,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 49,
@@ -3126,12 +2750,12 @@
     {
       "x": 50,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 50,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 50,
@@ -3171,12 +2795,12 @@
     {
       "x": 51,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 51,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 51,
@@ -3216,12 +2840,12 @@
     {
       "x": 52,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 52,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 52,
@@ -3261,12 +2885,12 @@
     {
       "x": 53,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 53,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 53,
@@ -3306,12 +2930,12 @@
     {
       "x": 54,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 54,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 54,
@@ -3351,12 +2975,12 @@
     {
       "x": 55,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 55,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 55,
@@ -3396,12 +3020,12 @@
     {
       "x": 56,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 56,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 56,
@@ -3441,12 +3065,12 @@
     {
       "x": 57,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 57,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 57,
@@ -3486,12 +3110,12 @@
     {
       "x": 58,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 58,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 58,
@@ -3531,12 +3155,12 @@
     {
       "x": 59,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 59,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 59,
@@ -3576,12 +3200,12 @@
     {
       "x": 60,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 60,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 60,
@@ -3621,12 +3245,12 @@
     {
       "x": 61,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 61,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 61,
@@ -3666,12 +3290,12 @@
     {
       "x": 62,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 62,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 62,
@@ -3711,12 +3335,12 @@
     {
       "x": 63,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 63,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 63,
@@ -3756,12 +3380,12 @@
     {
       "x": 64,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 64,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 64,
@@ -3801,12 +3425,12 @@
     {
       "x": 65,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 65,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 65,
@@ -3846,12 +3470,12 @@
     {
       "x": 66,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 66,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 66,
@@ -3891,12 +3515,12 @@
     {
       "x": 67,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 67,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 67,
@@ -3936,12 +3560,12 @@
     {
       "x": 68,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 68,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 68,
@@ -3981,12 +3605,12 @@
     {
       "x": 69,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 69,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 69,
@@ -4026,12 +3650,12 @@
     {
       "x": 70,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 70,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 70,
@@ -4071,12 +3695,12 @@
     {
       "x": 71,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 71,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 71,
@@ -4116,12 +3740,12 @@
     {
       "x": 72,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 72,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 72,
@@ -4161,12 +3785,12 @@
     {
       "x": 73,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 73,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 73,
@@ -4206,12 +3830,12 @@
     {
       "x": 74,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 74,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 74,
@@ -4251,12 +3875,12 @@
     {
       "x": 75,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 75,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 75,
@@ -4296,12 +3920,12 @@
     {
       "x": 76,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 76,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 76,
@@ -4341,12 +3965,12 @@
     {
       "x": 77,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 77,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 77,
@@ -4386,12 +4010,12 @@
     {
       "x": 78,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 78,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 78,
@@ -4431,12 +4055,12 @@
     {
       "x": 79,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 79,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 79,
@@ -4476,12 +4100,12 @@
     {
       "x": 80,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 80,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 80,
@@ -4521,12 +4145,12 @@
     {
       "x": 81,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 81,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 81,
@@ -4566,12 +4190,12 @@
     {
       "x": 82,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 82,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 82,
@@ -4611,12 +4235,12 @@
     {
       "x": 83,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 83,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 83,
@@ -4656,12 +4280,12 @@
     {
       "x": 84,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 84,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 84,
@@ -4701,12 +4325,12 @@
     {
       "x": 85,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 85,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 85,
@@ -4746,12 +4370,12 @@
     {
       "x": 86,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 86,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 86,
@@ -4791,12 +4415,12 @@
     {
       "x": 87,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 87,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 87,
@@ -4836,12 +4460,12 @@
     {
       "x": 88,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 88,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 88,
@@ -4881,12 +4505,12 @@
     {
       "x": 89,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 89,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 89,
@@ -4926,12 +4550,12 @@
     {
       "x": 90,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 90,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 90,
@@ -4971,12 +4595,12 @@
     {
       "x": 91,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 91,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 91,
@@ -5016,12 +4640,12 @@
     {
       "x": 92,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 92,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 92,
@@ -5061,12 +4685,12 @@
     {
       "x": 93,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 93,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 93,
@@ -5106,12 +4730,12 @@
     {
       "x": 94,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 94,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 94,
@@ -5151,12 +4775,12 @@
     {
       "x": 95,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 95,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 95,
@@ -5196,12 +4820,12 @@
     {
       "x": 96,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 96,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 96,
@@ -5241,12 +4865,12 @@
     {
       "x": 97,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 97,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 97,
@@ -5286,12 +4910,12 @@
     {
       "x": 98,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 98,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 98,
@@ -5331,12 +4955,12 @@
     {
       "x": 99,
       "y": 9,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 99,
       "y": 8,
-      "tileType": "soil"
+      "tileType": "dirt"
     },
     {
       "x": 99,
@@ -5374,17 +4998,392 @@
       "tileType": "stone"
     }
   ],
+  "structures": [
+    {
+      "x": 10,
+      "y": 10,
+      "typeName": "market",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0
+    },
+    {
+      "x": 22,
+      "y": 10,
+      "typeName": "tree",
+      "plantAge": 42,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
+      "uses": 0
+    },
+    {
+      "x": 15,
+      "y": 10,
+      "typeName": "appletree",
+      "plantAge": 44,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
+      "uses": 0
+    },
+    {
+      "x": 18,
+      "y": 10,
+      "typeName": "tree",
+      "plantAge": 10,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0
+    },
+    {
+      "x": 25,
+      "y": 10,
+      "typeName": "wheat",
+      "plantAge": 10,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0
+    },
+    {
+      "x": 26,
+      "y": 10,
+      "typeName": "wheat",
+      "plantAge": 6,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0
+    },
+    {
+      "x": 16,
+      "y": 10,
+      "typeName": "crate",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0
+    },
+    {
+      "x": 17,
+      "y": 10,
+      "typeName": "crate",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0
+    },
+    {
+      "x": 24,
+      "y": 10,
+      "typeName": "crate",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0
+    },
+    {
+      "x": 17,
+      "y": 10,
+      "typeName": "ladder",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0
+    },
+    {
+      "x": 17,
+      "y": 11,
+      "typeName": "house",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0
+    },
+    {
+      "x": 16,
+      "y": 11,
+      "typeName": "torch",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0
+    },
+    {
+      "x": 14,
+      "y": 9,
+      "typeName": "ladder",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0
+    },
+    {
+      "x": 14,
+      "y": 8,
+      "typeName": "ladder",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0
+    },
+    {
+      "x": 14,
+      "y": 7,
+      "typeName": "ladder",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0
+    },
+    {
+      "x": 15,
+      "y": 7,
+      "typeName": "quarry",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 50
+    },
+    {
+      "x": 19,
+      "y": 10,
+      "typeName": "furnace",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0
+    },
+    {
+      "x": 13,
+      "y": 10,
+      "typeName": "sawmill",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0
+    },
+    {
+      "x": 14,
+      "y": 7,
+      "typeName": "drawer",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0
+    }
+  ],
+  "blueprints": [],
   "animals": [
     {
       "aName": "mouse0",
-      "x": 22.0,
+      "x": 16.6330166,
       "y": 10.0,
       "jobName": "logger",
-      "energy": 0.7279997,
-      "food": 60.7999954,
-      "eep": 71.60094,
+      "energy": 0.8607991,
+      "food": 64.5,
+      "eep": 89.50196,
+      "timeSinceAteWheat": 70.0,
+      "timeSinceAteFruit": 0.0,
+      "inv": {
+        "nStacks": 5,
+        "stackSize": 1000,
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "nStacks": 1,
+        "stackSize": 300,
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "apple",
+            "quantity": 54,
+            "decayCounter": 819493
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "nStacks": 1,
+        "stackSize": 200,
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      }
+    },
+    {
+      "aName": "mouse1",
+      "x": 19.18202,
+      "y": 10.0,
+      "jobName": "hauler",
+      "energy": 0.468797565,
+      "food": 51.34999,
+      "eep": 95.50176,
+      "timeSinceAteWheat": 90.0,
+      "timeSinceAteFruit": 30.0,
+      "inv": {
+        "nStacks": 5,
+        "stackSize": 1000,
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "nStacks": 1,
+        "stackSize": 300,
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "apple",
+            "quantity": 98,
+            "decayCounter": 609082
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "nStacks": 1,
+        "stackSize": 200,
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      }
+    },
+    {
+      "aName": "mouse2",
+      "x": 18.91453,
+      "y": 10.0,
+      "jobName": "farmer",
+      "energy": 0.4343995,
+      "food": 48.75,
+      "eep": 77.50182,
+      "timeSinceAteWheat": 40.0,
+      "timeSinceAteFruit": 170.0,
+      "inv": {
+        "nStacks": 5,
+        "stackSize": 1000,
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "nStacks": 1,
+        "stackSize": 300,
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 71573
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "nStacks": 1,
+        "stackSize": 200,
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      }
+    },
+    {
+      "aName": "mouse3",
+      "x": 26.0,
+      "y": 10.0,
+      "jobName": "smith",
+      "energy": 0.649591446,
+      "food": 56.2999878,
+      "eep": 91.50175,
       "timeSinceAteWheat": 20.0,
-      "timeSinceAteFruit": 50.0,
+      "timeSinceAteFruit": 180.0,
       "inv": {
         "nStacks": 5,
         "stackSize": 1000,
@@ -5425,208 +5424,7 @@
           {
             "itemName": "wheat",
             "quantity": 199,
-            "decayCounter": 469419
-          }
-        ]
-      },
-      "toolSlotInv": {
-        "nStacks": 1,
-        "stackSize": 200,
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "tools",
-            "quantity": 100,
-            "decayCounter": 13124790
-          }
-        ]
-      }
-    },
-    {
-      "aName": "mouse1",
-      "x": 21.0,
-      "y": 11.0,
-      "jobName": "hauler",
-      "energy": 0.228800654,
-      "food": 65.3,
-      "eep": 71.60094,
-      "timeSinceAteWheat": 10.0,
-      "timeSinceAteFruit": 180.0,
-      "inv": {
-        "nStacks": 5,
-        "stackSize": 1000,
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "foodSlotInv": {
-        "nStacks": 1,
-        "stackSize": 300,
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 108134
-          }
-        ]
-      },
-      "toolSlotInv": {
-        "nStacks": 1,
-        "stackSize": 200,
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      }
-    },
-    {
-      "aName": "mouse2",
-      "x": 25.0,
-      "y": 10.0,
-      "jobName": "farmer",
-      "energy": 0.4944005,
-      "food": 46.25,
-      "eep": 71.60094,
-      "timeSinceAteWheat": 130.0,
-      "timeSinceAteFruit": 30.0,
-      "inv": {
-        "nStacks": 5,
-        "stackSize": 1000,
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "foodSlotInv": {
-        "nStacks": 1,
-        "stackSize": 300,
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 868602
-          }
-        ]
-      },
-      "toolSlotInv": {
-        "nStacks": 1,
-        "stackSize": 200,
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      }
-    },
-    {
-      "aName": "mouse3",
-      "x": 18.0,
-      "y": 10.0,
-      "jobName": "sawyer",
-      "energy": 0.846400261,
-      "food": 50.0,
-      "eep": 71.60094,
-      "timeSinceAteWheat": 130.0,
-      "timeSinceAteFruit": 30.0,
-      "inv": {
-        "nStacks": 5,
-        "stackSize": 1000,
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "wood",
-            "quantity": 288,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "foodSlotInv": {
-        "nStacks": 1,
-        "stackSize": 300,
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 125802
+            "decayCounter": 525314
           }
         ]
       },
@@ -5645,14 +5443,14 @@
     },
     {
       "aName": "mouse4",
-      "x": 22.0,
-      "y": 11.0,
-      "jobName": "scientist",
-      "energy": 0.9760001,
-      "food": 61.0,
-      "eep": 68.40048,
-      "timeSinceAteWheat": 20.0,
-      "timeSinceAteFruit": 180.0,
+      "x": 13.089695,
+      "y": 10.0,
+      "jobName": "sawyer",
+      "energy": 0.0248007774,
+      "food": 47.65,
+      "eep": 94.90129,
+      "timeSinceAteWheat": 50.0,
+      "timeSinceAteFruit": 170.0,
       "inv": {
         "nStacks": 5,
         "stackSize": 1000,
@@ -5691,9 +5489,9 @@
         "invType": "Equip",
         "stacks": [
           {
-            "itemName": "wheat",
-            "quantity": 71,
-            "decayCounter": 493468
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 949198
           }
         ]
       },
@@ -5713,11 +5511,11 @@
   ],
   "research": {
     "progress": {
-      "1": 0.419999957,
-      "2": 0.0,
-      "3": 0.0
+      "1": 0.5599618,
+      "2": 1.80995989,
+      "3": 0.5599618
     },
-    "activeResearchId": 1,
+    "activeResearchId": -1,
     "unlockedIds": []
   }
 }

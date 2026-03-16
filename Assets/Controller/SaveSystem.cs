@@ -66,6 +66,16 @@ public class SaveSystem : MonoBehaviour {
         }
         data.tiles = tiles.ToArray();
 
+        var structures = new List<StructureSaveData>();
+        foreach (Structure s in StructController.instance.GetStructures())
+            structures.Add(GatherStructure(s));
+        data.structures = structures.ToArray();
+
+        var blueprints = new List<BlueprintSaveData>();
+        foreach (Blueprint bp in StructController.instance.GetBlueprints())
+            blueprints.Add(GatherBlueprint(bp));
+        data.blueprints = blueprints.ToArray();
+
         AnimalController ac = AnimalController.instance;
         var animals = new List<AnimalSaveData>();
         for (int i = 0; i < ac.na; i++) {
@@ -90,35 +100,19 @@ public class SaveSystem : MonoBehaviour {
     TileSaveData GatherTile(Tile tile) {
         bool hasContent =
             tile.type.name != "empty" ||
-            tile.building != null ||
-            tile.mStruct != null ||
-            tile.fStruct != null ||
-            tile.road != null ||
-            tile.bBlueprint != null ||
-            tile.mBlueprint != null ||
-            tile.fBlueprint != null ||
-            tile.roadBlueprint != null ||
             (tile.inv != null && !tile.inv.IsEmpty());
         if (!hasContent) return null;
 
         return new TileSaveData {
-            x = tile.x,
-            y = tile.y,
-            tileType   = tile.type.name,
-            building      = tile.building      != null ? GatherStructure(tile.building)      : null,
-            mStruct       = tile.mStruct       != null ? GatherStructure(tile.mStruct)       : null,
-            fStruct       = tile.fStruct       != null ? GatherStructure(tile.fStruct)       : null,
-            road          = tile.road          != null ? GatherStructure(tile.road)          : null,
-            bBlueprint    = tile.bBlueprint    != null ? GatherBlueprint(tile.bBlueprint)    : null,
-            mBlueprint    = tile.mBlueprint    != null ? GatherBlueprint(tile.mBlueprint)    : null,
-            fBlueprint    = tile.fBlueprint    != null ? GatherBlueprint(tile.fBlueprint)    : null,
-            roadBlueprint = tile.roadBlueprint != null ? GatherBlueprint(tile.roadBlueprint) : null,
-            inv           = tile.inv           != null ? GatherInventory(tile.inv)           : null,
+            x        = tile.x,
+            y        = tile.y,
+            tileType = tile.type.name,
+            inv      = tile.inv != null ? GatherInventory(tile.inv) : null,
         };
     }
 
     StructureSaveData GatherStructure(Structure s) {
-        var ssd = new StructureSaveData { typeName = s.structType.name };
+        var ssd = new StructureSaveData { x = s.x, y = s.y, typeName = s.structType.name };
         if (s is Plant plant) {
             ssd.plantAge         = plant.age;
             ssd.plantGrowthStage = plant.growthStage;
@@ -130,6 +124,8 @@ public class SaveSystem : MonoBehaviour {
 
     BlueprintSaveData GatherBlueprint(Blueprint bp) {
         return new BlueprintSaveData {
+            x                    = bp.x,
+            y                    = bp.y,
             typeName             = bp.structType.name,
             state                = (int)bp.state,
             constructionProgress = bp.constructionProgress,
@@ -210,25 +206,31 @@ public class SaveSystem : MonoBehaviour {
         World world = World.instance;
         world.timer = save.timer;
 
-        foreach (TileSaveData tsd in save.tiles) {
-            Tile tile = world.GetTileAt(tsd.x, tsd.y);
-            if (tile == null) continue;
+        if (save.tiles != null) {
+            foreach (TileSaveData tsd in save.tiles) {
+                Tile tile = world.GetTileAt(tsd.x, tsd.y);
+                if (tile == null) continue;
+                if (!string.IsNullOrEmpty(tsd.tileType) && Db.tileTypeByName.ContainsKey(tsd.tileType))
+                    tile.type = Db.tileTypeByName[tsd.tileType];
+            }
+        }
 
-            if (!string.IsNullOrEmpty(tsd.tileType) && Db.tileTypeByName.ContainsKey(tsd.tileType))
-                tile.type = Db.tileTypeByName[tsd.tileType];
+        // Blueprints before structures so deconstruct blueprints can coexist with buildings
+        if (save.blueprints != null)
+            foreach (BlueprintSaveData bsd in save.blueprints)
+                RestoreBlueprint(bsd);
 
-            // Blueprints before structures so deconstruct blueprints can coexist with structures
-            if (tsd.bBlueprint    != null) RestoreBlueprint(tsd.bBlueprint,    tile);
-            if (tsd.mBlueprint    != null) RestoreBlueprint(tsd.mBlueprint,    tile);
-            if (tsd.fBlueprint    != null) RestoreBlueprint(tsd.fBlueprint,    tile);
-            if (tsd.roadBlueprint != null) RestoreBlueprint(tsd.roadBlueprint, tile);
+        if (save.structures != null)
+            foreach (StructureSaveData ssd in save.structures)
+                RestoreStructure(ssd);
 
-            if (tsd.building != null) RestoreStructure(tsd.building, tile);
-            if (tsd.mStruct  != null) RestoreStructure(tsd.mStruct,  tile);
-            if (tsd.fStruct  != null) RestoreStructure(tsd.fStruct,  tile);
-            if (tsd.road     != null) RestoreStructure(tsd.road,     tile);
-
-            if (tsd.inv != null) RestoreInventory(tsd.inv, tile);
+        // Restore tile inventories after structures (storage inventories are created by Building constructor)
+        if (save.tiles != null) {
+            foreach (TileSaveData tsd in save.tiles) {
+                Tile tile = world.GetTileAt(tsd.x, tsd.y);
+                if (tile == null) continue;
+                if (tsd.inv != null) RestoreInventory(tsd.inv, tile);
+            }
         }
 
         world.graph.Initialize();
@@ -240,30 +242,32 @@ public class SaveSystem : MonoBehaviour {
         InventoryController.instance.ValidateGlobalInventory();
     }
 
-    void RestoreStructure(StructureSaveData ssd, Tile tile) {
+    void RestoreStructure(StructureSaveData ssd) {
         if (!Db.structTypeByName.ContainsKey(ssd.typeName)) {
             Debug.LogError("Unknown struct type on load: " + ssd.typeName); return;
         }
         StructType st = Db.structTypeByName[ssd.typeName];
+        Tile tile = World.instance.GetTileAt(ssd.x, ssd.y);
+        if (tile == null) { Debug.LogError("Null tile on load for struct: " + ssd.typeName); return; }
         Structure structure = null;
 
         if (st.isPlant) {
-            Plant plant = new Plant(st as PlantType, tile.x, tile.y);
+            Plant plant = new Plant(st as PlantType, ssd.x, ssd.y);
             plant.age          = ssd.plantAge;
             plant.growthStage  = ssd.plantGrowthStage;
             plant.harvestable  = ssd.plantHarvestable;
             plant.UpdateSprite();
             structure = plant;
         } else if (st.depth == "b") {
-            structure = new Building(st, tile.x, tile.y) { uses = ssd.uses };
+            structure = new Building(st, ssd.x, ssd.y) { uses = ssd.uses };
         } else if (st.name == "platform") {
-            structure = new Platform(st, tile.x, tile.y);
+            structure = new Platform(st, ssd.x, ssd.y);
         } else if (st.name == "stairs") {
-            structure = new Stairs(st, tile.x, tile.y);
+            structure = new Stairs(st, ssd.x, ssd.y);
         } else if (st.name == "ladder") {
-            structure = new Ladder(st, tile.x, tile.y);
+            structure = new Ladder(st, ssd.x, ssd.y);
         } else if (st.depth == "r") {
-            structure = new Structure(st, tile.x, tile.y);
+            structure = new Structure(st, ssd.x, ssd.y);
             tile.road = structure;
         } else {
             Debug.LogError("Unhandled struct type on load: " + ssd.typeName); return;
@@ -271,17 +275,17 @@ public class SaveSystem : MonoBehaviour {
 
         if (structure != null) {
             StructController.instance.Place(structure);
-            World.instance.graph.UpdateNeighbors(tile.x, tile.y);
-            World.instance.graph.UpdateNeighbors(tile.x, tile.y + 1);
+            World.instance.graph.UpdateNeighbors(ssd.x, ssd.y);
+            World.instance.graph.UpdateNeighbors(ssd.x, ssd.y + 1);
         }
     }
 
-    void RestoreBlueprint(BlueprintSaveData bsd, Tile tile) {
+    void RestoreBlueprint(BlueprintSaveData bsd) {
         if (!Db.structTypeByName.ContainsKey(bsd.typeName)) {
             Debug.LogError("Unknown blueprint struct type on load: " + bsd.typeName); return;
         }
         StructType st = Db.structTypeByName[bsd.typeName];
-        Blueprint bp = new Blueprint(st, tile.x, tile.y);
+        Blueprint bp = new Blueprint(st, bsd.x, bsd.y);
         bp.state                = (Blueprint.BlueprintState)bsd.state;
         bp.constructionProgress = bsd.constructionProgress;
         bp.priority             = bsd.priority;

@@ -35,5 +35,9 @@
         "id": 12,
         "name": "scientist",
         "jobType": "researcher"
+    },{
+        "id": 13,
+        "name": "smith",
+        "jobType": "crafter"
     }
 ]

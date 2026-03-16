@@ -195,7 +195,7 @@ public class Nav {
         foreach (Structure s in list) {
             if (Mathf.Max(Mathf.Abs(s.x - (int)a.x), Mathf.Abs(s.y - (int)a.y)) > r) continue;
             if (filter != null && !filter(s)) continue;
-            Path p = world.graph.Navigate(a.TileHere().node, s.tile.node);
+            Path p = world.graph.Navigate(a.TileHere().node, s.workTile.node);
             if (p != null && p.cost < closestCost) {
                 closestCost = p.cost;
                 closestPath = p;
@@ -219,7 +219,7 @@ public class Nav {
             foreach (Structure s in list) {
                 if (Mathf.Max(Mathf.Abs(s.x - (int)a.x), Mathf.Abs(s.y - (int)a.y)) > r) continue;
                 if (!(s is Plant p) || !p.harvestable || !s.res.Available()) continue;
-                Path pa = world.graph.Navigate(a.TileHere().node, s.tile.node);
+                Path pa = world.graph.Navigate(a.TileHere().node, s.workTile.node);
                 if (pa != null && pa.cost < closestCost) {
                     closestCost = pa.cost;
                     closestPath = pa;
@@ -467,9 +467,9 @@ public class Happiness {
 public class Eeping {
     public float maxEep = 100f;
     public float eep = 90f;
-    public static float tireRate = 0.2f;
-    public static float eepRate = 3f;
-    public static float outsideEepRate = 1.5f;
+    public static float tireRate = 0.1f;
+    public static float eepRate = 2f;
+    public static float outsideEepRate = 1f;
 
     public Eeping(){}
     public bool Eepy(){

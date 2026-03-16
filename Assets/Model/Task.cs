@@ -72,6 +72,11 @@ public abstract class Task {
         animal.task = null;
         animal.state = Animal.AnimalState.Idle;
     }
+    // Called by FetchObjective when it acquires a new source tile mid-task (partial fetch retry).
+    public void AddReservedStack(ItemStack stack, int amount) {
+        int reserved = stack.res.Reserve(amount);
+        if (reserved > 0) reservedStacks.Add((stack, reserved));
+    }
     public virtual void Cleanup(){
         foreach (var (stack, amount) in reservedStacks){
             stack.res.Unreserve(Math.Min(amount, stack.res.reserved));
@@ -281,17 +286,22 @@ public class SupplyBlueprintTask : Task {
 public class HaulToMarketTask : Task {
     public HaulToMarketTask(Animal animal) : base(animal) {}
     public override bool Initialize() {
-        Tile marketTile = animal.nav.FindMarketPath()?.tile;
-        if (marketTile == null) return false;
-        Inventory marketInv = marketTile.inv;
+        Path marketPath = animal.nav.FindMarketPath();
+        if (marketPath == null) return false;
+        Building market = marketPath.tile.building as Building;
+        if (market == null) return false;
+        Tile marketStorageTile = market.storageTile;
+        Inventory marketInv = marketStorageTile.inv;
+        if (marketInv == null) return false;
 
         foreach (var kvp in marketInv.targets) {
             int quantityNeeded = kvp.Value - marketInv.Quantity(kvp.Key);
             if (quantityNeeded <= 0) continue;
             Item item = kvp.Key;
+            if (marketInv.allowed[item.id] == false) continue;
 
             Path itemPath = animal.nav.FindPathTo(
-                t => t.inv != null && t.inv.invType != Inventory.InvType.Market && t.inv.ContainsAvailableItem(item));
+                t => t.inv != null && t.inv.invType != Inventory.InvType.Market && t.inv.invType != Inventory.InvType.Blueprint && t.inv.ContainsAvailableItem(item));
             if (itemPath == null) continue;
             ItemStack stack = itemPath.tile.inv.GetItemStack(item);
             if (stack == null) continue;
@@ -300,7 +310,7 @@ public class HaulToMarketTask : Task {
             if (qty <= 0) continue;
             ItemQuantity iq = new(item, qty);
             FetchAndReserve(iq, itemPath.tile, stack, qty);
-            objectives.Enqueue(new DeliverObjective(this, iq, marketTile));
+            objectives.Enqueue(new DeliverObjective(this, iq, marketStorageTile));
             return true;
         }
         return false;
@@ -309,9 +319,13 @@ public class HaulToMarketTask : Task {
 public class HaulFromMarketTask : Task {
     public HaulFromMarketTask(Animal animal) : base(animal) {}
     public override bool Initialize() {
-        Tile marketTile = animal.nav.FindMarketPath()?.tile;
-        if (marketTile == null) return false;
-        Inventory marketInv = marketTile.inv;
+        Path marketPath = animal.nav.FindMarketPath();
+        if (marketPath == null) return false;
+        Building market = marketPath.tile.building as Building;
+        if (market == null) return false;
+        Tile marketStorageTile = market.storageTile;
+        Inventory marketInv = marketStorageTile.inv;
+        if (marketInv == null) return false;
 
         foreach (var kvp in marketInv.targets) {
             int excess = marketInv.Quantity(kvp.Key) - kvp.Value;
@@ -326,7 +340,7 @@ public class HaulFromMarketTask : Task {
             int qty = Math.Min(excess, stack.quantity - stack.res.reserved);
             if (qty <= 0) continue;
             ItemQuantity iq = new(item, qty);
-            FetchAndReserve(iq, marketTile, stack, qty);
+            FetchAndReserve(iq, marketStorageTile, stack, qty);
             objectives.Enqueue(new DeliverObjective(this, iq, storagePath.tile));
             return true;
         }
@@ -391,33 +405,39 @@ public class FetchObjective : Objective {
         Inventory dest = targetInv ?? animal.inv;
         if (dest.Quantity(iq.item) >= iq.quantity){Complete(); return;}
         Path itemPath;
-        ItemStack stack;
         if (sourceTile != null) {
             itemPath = animal.nav.PathTo(sourceTile);
         } else {
+            ItemStack stack;
             (itemPath, stack) = animal.nav.FindPathItemStack(iq.item);
-            stack.res.Reserve(iq.quantity);
+            if (itemPath != null) {
+                task.AddReservedStack(stack, iq.quantity);
+                sourceTile = itemPath.tile;
+            }
         }
         if (itemPath != null){
             destination = itemPath.tile;
             animal.nav.Navigate(itemPath);
             animal.state = Animal.AnimalState.Moving;
         } else {
-            Fail(); Debug.Log("no path to fetch item...");
+            Fail(); Debug.Log($"{animal.aName} ({animal.job.name}) found no path to fetch {iq.item.name} at ({(int)animal.x},{(int)animal.y})");
         }
     }
     public override void OnArrival(){
         Inventory dest = targetInv ?? animal.inv;
+        int needed = iq.quantity - dest.Quantity(iq.item); // how much more we still need
+        if (needed <= 0) { Complete(); return; }
         int amountBefore = dest.Quantity(iq.item);
-        animal.TakeItem(iq, targetInv); // targetInv=null → picks up to main inv
+        animal.TakeItem(new ItemQuantity(iq.item, needed), targetInv); // only take what's still needed
         int amountTaken = dest.Quantity(iq.item) - amountBefore;
-        if (amountTaken == 0){Fail(); Debug.Log("Couldn't fetch any " + iq.item); return;}
-        int desiredItemQuantity = iq.quantity - dest.Quantity(iq.item);
-        if (desiredItemQuantity > 0 && dest.GetStorageForItem(iq.item) >= 5){
-            iq.quantity = desiredItemQuantity;
-            Start(); // restart fetching for the amount you still want
-        } else {
+        if (amountTaken == 0) { Fail(); Debug.Log($"{animal.aName} Couldn't fetch any {iq.item.name} (needed {needed} fen)"); return; }
+        // targetInv != null means equip slot (food/tool) — partial fills are fine there,
+        // so don't retry across tiles. Main-inv crafting fetches (targetInv == null) do retry.
+        if (dest.Quantity(iq.item) >= iq.quantity || dest.GetStorageForItem(iq.item) < 5 || targetInv != null) {
             Complete();
+        } else {
+            sourceTile = null; // source tile may be exhausted; search for another
+            Start();
         }
     }
 }
@@ -435,7 +455,7 @@ public class DeliverObjective : Objective { // navigates and drops off item
         } else {Fail();}
     }
     public override void OnArrival(){
-        if (animal.inv.Quantity(iq.item) == 0){ Debug.Log(iq.item.name); Fail(); }
+        if (animal.inv.Quantity(iq.item) == 0){ Debug.Log($"{animal.aName} DeliverObjective: missing {iq.item.name} to deliver to ({destination.x},{destination.y})"); Fail(); }
         animal.DropItem(iq);  // drops the amount you have up to iq.quantity. if have less, just drops that.
         Complete();
     }
@@ -457,7 +477,7 @@ public class DeliverToBlueprintObjective : Objective { // does not navigate, hap
             if (blueprint.IsFullyDelivered()) blueprint.state = Blueprint.BlueprintState.Constructing;
             Complete();
         } else {
-            Debug.Log(iq.item.name + " could not be delivered to blueprint");
+            Debug.Log($"{animal.aName} could not deliver {iq.item.name} to blueprint at ({blueprint.x},{blueprint.y})");
             Fail();
         }
     }
@@ -475,7 +495,7 @@ public class DropObjective : Objective {
             animal.nav.Navigate(dropPath);
             animal.state = Animal.AnimalState.Moving;
         } else {
-            Debug.LogError("can't find a place to drop " + item.name + "!");
+            Debug.LogError($"{animal.aName} ({animal.job.name}) can't find a place to drop {item.name} at ({(int)animal.x},{(int)animal.y})!");
             Fail();
         }
     }
@@ -509,6 +529,10 @@ public class WorkObjective : Objective {
     }
     public override void Start(){
         // TODO: check if you're actually at a workplace!
+        if (!animal.inv.ContainsItems(recipe.inputs)) {
+            Debug.Log($"{animal.aName} WorkObjective: missing inputs for {recipe.description}, failing");
+            Fail(); return;
+        }
         animal.workProgress = 0f;
         animal.recipe = recipe;
         animal.state = Animal.AnimalState.Working;

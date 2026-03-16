@@ -43,11 +43,6 @@ public class InventoryController : MonoBehaviour {
         inventories.Remove(inv);
         if (byType.TryGetValue(inv.invType, out var list)) list.Remove(inv);
     }
-    public void MoveInventoryType(Inventory inv, Inventory.InvType oldType, Inventory.InvType newType) {
-        if (byType.TryGetValue(oldType, out var oldList)) oldList.Remove(inv);
-        if (!byType.ContainsKey(newType)) byType[newType] = new List<Inventory>();
-        byType[newType].Add(inv);
-    }
 
     public void TickUpdate(){
         if (world == null){
