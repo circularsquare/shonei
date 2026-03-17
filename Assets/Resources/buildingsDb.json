@@ -9,7 +9,7 @@
         ],
         "njob": "hauler",
         "capacity": 5,
-        "depth": "b",
+        "depth": 0,
         "solidTop": true,
         "category": "storage"
     },{
@@ -61,7 +61,7 @@
         "ncosts": [
             { "name": "wood", "quantity": 5 }
         ],
-        "depth": "b",
+        "depth": 2,
         "category": "structures"
     },{
         "id": 10,
@@ -70,7 +70,7 @@
         "ncosts": [
             { "name": "wood", "quantity": 3 }
         ],
-        "depth": "m",
+        "depth": 1,
         "solidTop": true,
         "category": "structures"
     },{
@@ -80,7 +80,7 @@
         "ncosts": [
             { "name": "wood", "quantity": 5 }
         ],
-        "depth": "f",
+        "depth": 2,
         "category": "structures"
     },{
         "id": 12,
@@ -89,7 +89,7 @@
         "ncosts": [
             { "name": "wood", "quantity": 5 }
         ],
-        "depth": "f",
+        "depth": 2,
         "category": "structures"
     },{
         "id": 0,
@@ -141,7 +141,7 @@
         "description": "tool creation",
         "nx": 1, "ny": 1,
         "ncosts": [
-            { "name": "wood", "quantity": 5 }
+            { "name": "planks", "quantity": 5 }
         ],
         "njob": "hauler",
         "capacity": 1,
@@ -213,7 +213,7 @@
         "nx": 1, "ny": 1,
         "ncosts": [
         ],
-        "depth": "r",
+        "depth": 3,
         "pathCostReduction": 0.1,
         "category": "structures"
     }

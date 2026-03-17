@@ -46,6 +46,7 @@ public static class SpriteNormalMapGenerator {
         foreach (string guid in guids) {
             string path = AssetDatabase.GUIDToAssetPath(guid);
             if (path.EndsWith("_n.png")) continue;       // skip existing normal maps
+            if (path.Contains("/Sheets/")) continue;     // skip source sheets — normals generated for split sprites only
             Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
             if (tex != null) { ProcessTexture(tex); count++; }
         }
@@ -63,8 +64,11 @@ public static class SpriteNormalMapGenerator {
         bool wasReadable = imp.isReadable;
         if (!wasReadable) { imp.isReadable = true; imp.SaveAndReimport(); }
 
-        Color32[] src = source.GetPixels32();
-        int w = source.width, h = source.height;
+        // Reload after reimport — the old reference may be stale
+        Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(srcPath);
+        if (tex == null) { if (!wasReadable) { imp.isReadable = false; imp.SaveAndReimport(); } return; }
+        Color32[] src = tex.GetPixels32();
+        int w = tex.width, h = tex.height;
         Color32[] dst = new Color32[w * h];
 
         for (int y = 0; y < h; y++) {

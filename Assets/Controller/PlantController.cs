@@ -6,7 +6,7 @@ using UnityEngine.EventSystems;
 using TMPro;
 
 public class PlantController : MonoBehaviour {
-    public static PlantController instance;
+    public static PlantController instance { get; protected set; }
     private List<Plant> plants = new List<Plant>(); // list of plants
     public int np = 0; 
 

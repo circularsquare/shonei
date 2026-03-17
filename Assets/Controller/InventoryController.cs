@@ -43,6 +43,15 @@ public class InventoryController : MonoBehaviour {
         inventories.Remove(inv);
         if (byType.TryGetValue(inv.invType, out var list)) list.Remove(inv);
     }
+    // Sums unreserved quantity across Floor + Storage — the same scope FindPathItemStack searches.
+    public int TotalAvailableQuantity(Item item) {
+        int total = 0;
+        if (byType.TryGetValue(Inventory.InvType.Floor, out var f))
+            foreach (Inventory inv in f) total += inv.AvailableQuantity(item);
+        if (byType.TryGetValue(Inventory.InvType.Storage, out var s))
+            foreach (Inventory inv in s) total += inv.AvailableQuantity(item);
+        return total;
+    }
 
     public void TickUpdate(){
         if (world == null){
@@ -97,6 +106,9 @@ public class InventoryController : MonoBehaviour {
             itemDisplayGos[item.id].SetActive(true);
             Canvas.ForceUpdateCanvases();
             LayoutRebuilder.ForceRebuildLayoutImmediate(panelInventory.GetComponent<RectTransform>());
+            // Refresh parent's dropdown sprite now that it has a discovered child
+            if (item.parent != null && itemDisplayGos[item.parent.id] != null)
+                itemDisplayGos[item.parent.id].GetComponent<ItemDisplay>()?.RefreshDropdownSprite();
         }
 
         // Update text if discovered (even if quantity is now 0, e.g. after Reset)

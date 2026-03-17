@@ -22,14 +22,9 @@ public class Tile {
             }
         }
     }
-    public Building building; // can be a plant... should probably rename at some point
-    public Blueprint bBlueprint; // background blueprint
-    public Blueprint mBlueprint; // midground blueprint
-    public Blueprint fBlueprint; // foreground blueprint
-    public Blueprint roadBlueprint; // road blueprint
-    public Structure mStruct; // midground: platforms for moving horizontally in front of buildings
-    public Structure fStruct; // foreground: ladders and stairs and stuff
-    public Structure road; // road layer: sits beneath all other structures, speeds up movement
+    public Structure[] structs = new Structure[4];   // indexed by depth: 0=building, 1=platform, 2=foreground, 3=road
+    public Blueprint[] blueprints = new Blueprint[4]; // indexed by depth
+    public Building building => structs[0] as Building; // alias for depth 0 (Plant extends Building, so this covers both)
     public Inventory inv; // this encapsulates all inventory types
     public Node node;
 
@@ -61,33 +56,20 @@ public class Tile {
 
     // space: floor allowed
     public bool HasSpaceForItem(Item item){return (inv == null || inv.HasSpaceForItem(item));}
-    public bool HasLadder(){ return (fStruct != null && fStruct is Ladder); }
-    public bool HasStairRight(){ return (fStruct != null && fStruct is Stairs && (fStruct as Stairs).right); }
-    public bool HasStairLeft(){ return (fStruct != null && fStruct is Stairs && !(fStruct as Stairs).right); }
+    public bool HasLadder(){ return (structs[2] != null && structs[2] is Ladder); }
+    public bool HasStairRight(){ return (structs[2] != null && structs[2] is Stairs && (structs[2] as Stairs).right); }
+    public bool HasStairLeft(){ return (structs[2] != null && structs[2] is Stairs && !(structs[2] as Stairs).right); }
 
     public Blueprint GetAnyBlueprint(){
-        return roadBlueprint ?? bBlueprint ?? mBlueprint ?? fBlueprint;
+        foreach (var bp in blueprints) if (bp != null) return bp;
+        return null;
     }
     public Blueprint GetMatchingBlueprint(Func<Blueprint, bool> predicate){
-        if (roadBlueprint != null && predicate(roadBlueprint)) return roadBlueprint;
-        if (bBlueprint != null && predicate(bBlueprint)) return bBlueprint;
-        if (mBlueprint != null && predicate(mBlueprint)) return mBlueprint;
-        if (fBlueprint != null && predicate(fBlueprint)) return fBlueprint;
+        foreach (var bp in blueprints) if (bp != null && predicate(bp)) return bp;
         return null;
     }
-    public Blueprint GetBlueprintAt(string depth){
-        if (depth == "r") return roadBlueprint;
-        if (depth == "b") return bBlueprint;
-        if (depth == "m") return mBlueprint;
-        if (depth == "f") return fBlueprint;
-        return null;
-    }
-    public void SetBlueprintAt(string depth, Blueprint bp){
-        if (depth == "r") roadBlueprint = bp;
-        else if (depth == "b") bBlueprint = bp;
-        else if (depth == "m") mBlueprint = bp;
-        else if (depth == "f") fBlueprint = bp;
-    }
+    public Blueprint GetBlueprintAt(int depth) => blueprints[depth];
+    public void SetBlueprintAt(int depth, Blueprint bp) => blueprints[depth] = bp;
 
     public Tile[] GetAdjacents(){ // not the same as graph neighbors
         Tile[] adjacents = new Tile[8];
@@ -107,7 +89,7 @@ public class Tile {
     }
 
     public Inventory EnsureFloorInventory() {
-        if (inv == null) { inv = new Inventory(n: 4, x: x, y: y); }
+        if (inv == null) { inv = new Inventory(n: 1, x: x, y: y); }
         return inv;
     }
 }

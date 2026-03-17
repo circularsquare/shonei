@@ -9,10 +9,11 @@ public class ItemStack {
     public int quantity { get; set; } //if i want some things to be floats... have a display multiplier?
                                         // so some things can then be like 0.001 but in reality are just small? 
     public int decayCounter; // increments from 0 to maxdecaycount, when reaches it, it decays 1 item.
-    public static int maxDecayCount = 1000000;
+    public static int maxDecayCount = 1000000;  
     public int stackSize = 100;
     public Inventory inv;
-    public Reservable res;
+    public int resAmount = 0;    // how much of this stack is reserved by pending tasks
+    public float resTime = 0f;   // Time.time when last Reserve() was called (for staleness)
 
     // Formats a fen quantity as a liang string (e.g. 250 → "2.5", 200 → "2", 5 → "0.05")
     public static string FormatQ(int fen, bool discrete = false){
@@ -32,7 +33,6 @@ public class ItemStack {
         this.quantity = quantity;
         this.stackSize = stackSize;
         this.inv = inv;
-        this.res = new Reservable(quantity); // capacity tracks current quantity
         decayCounter = 0;
     }
 
@@ -60,20 +60,16 @@ public class ItemStack {
         if (this.quantity + quantity > stackSize){
             int sizeOver = this.quantity + quantity - stackSize;
             this.quantity = stackSize;
-            res.capacity = this.quantity;
             return sizeOver; // overflow (3 if still have 3 to deposit)
         } else if (this.quantity + quantity <= 0){ // <= 0 because want to null out stack
             int sizeUnder = this.quantity + quantity - 0;
             this.quantity = 0;
             this.item = null;
-            res.reserved = 0;
-            res.capacity = 0;
+            resAmount = 0;
             return sizeUnder; // underflow (-3 if still need 3 more)
         } else {
             this.quantity += quantity; // add to stack
-            res.capacity = this.quantity;
-            // clamp reserved so it can't exceed the new quantity
-            if (res.reserved > this.quantity) res.reserved = this.quantity;
+            if (resAmount > this.quantity) resAmount = this.quantity;
             return 0;
         }
     }
@@ -87,9 +83,36 @@ public class ItemStack {
     }
 
 
+    public bool Available() => resAmount < quantity;
+    public int Reserve(int n) {
+        int amount = Math.Min(n, quantity - resAmount);
+        if (amount <= 0) return 0;
+        resAmount += amount;
+        resTime = Time.time;
+        return amount;
+    }
+    public bool Reserve() {
+        if (!Available()) return false;
+        resAmount++;
+        resTime = Time.time;
+        return true;
+    }
+    public void Unreserve(int n = 1) {
+        if (resAmount < n) { Debug.LogError("ItemStack.Unreserve: underflow!"); resAmount = 0; return; }
+        resAmount -= n;
+    }
+    public bool ExpireIfStale(float maxAge) {
+        if (resAmount > 0 && Time.time - resTime > maxAge) {
+            Debug.LogWarning($"Cleared stale ItemStack reservation (held {Time.time - resTime:F0}s)");
+            resAmount = 0;
+            return true;
+        }
+        return false;
+    }
+
     public override string ToString(){
         if (item != null){
-            string resStr = res.reserved > 0 ? " (r" + FormatQ(res.reserved, item.discrete) + ")" : "";
+            string resStr = resAmount > 0 ? " (r" + FormatQ(resAmount, item.discrete) + ")" : "";
             return item.name + " x " + FormatQ(quantity, item.discrete) + resStr + "\n";
         }
         return "";

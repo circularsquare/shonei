@@ -6,7 +6,7 @@ using UnityEngine.EventSystems;
 
 
 public class MenuPanel : MonoBehaviour {
-    public static MenuPanel instance;
+    public static MenuPanel instance { get; protected set; }
     public GameObject[] panels = null;
     public GameObject activePanel;
 

@@ -50,6 +50,15 @@ public class Nav {
 
     public bool Move(float deltaTime){ // called by animal every frame!! returns whether you're done
         if (path == null || pathIndex >= path.length){return true;}  // no path... return true, give up
+        // If the next tile became solid mid-path (e.g. building placed), abort early.
+        // Skip waypoints — they're virtual intermediate points and are never standable.
+        if (!nextNode.isWaypoint && !nextNode.standable) {
+            Debug.Log($"{a.aName} path blocked at ({(int)nextNode.wx},{(int)nextNode.wy}), aborting task");
+            a.task?.Fail();
+            EndNavigation();
+            a.state = Animal.AnimalState.Idle;
+            return true;
+        }
         if (SquareDistance(a.x, nextNode.wx, a.y, nextNode.wy) < 0.001f){
             if (pathIndex + 1 >= path.length){
                 EndNavigation();
@@ -165,8 +174,12 @@ public class Nav {
     public Path FindPathToStorage(Item item, int r = 40) {
         return FindPathToInv(new[] { Inventory.InvType.Storage },
             inv => inv.GetStorageForItem(item) > 0, r); }
-    public Path FindPathToDrop(Item item, int r = 3){
-        return FindPathTo(t => t.HasSpaceForItem(item), r, true); }
+    public Path FindPathToDrop(Item item, int animalQuantity, int r = 3){
+        return FindPathTo(t => {
+            if (t.inv == null) return true; // empty tile: full stack worth of space
+            int space = t.inv.GetMergeSpace(item);
+            return space > 0 && (space >= Task.MinHaulQuantity || space >= animalQuantity);
+        }, r, true); }
     private Path FindPathToInv(Inventory.InvType[] types, Func<Inventory, bool> filter, int r) {
         var ic = InventoryController.instance;
         Path closestPath = null;
@@ -294,7 +307,7 @@ public class Nav {
             int qty = Math.Min(sourceTile.inv.AvailableQuantity(item), destTile.inv.GetMergeSpace(item));
             if (qty <= 0) continue;
             // Skip tiny moves unless we'd be clearing the entire smaller stack
-            if (qty < 20 && qty < sourceTile.inv.Quantity(item)) continue;
+            if (qty < Task.MinHaulQuantity && qty < sourceTile.inv.Quantity(item)) continue;
 
             return new HaulInfo(item, qty, sourceTile, destTile, sourceStack);
         }
@@ -327,7 +340,7 @@ public class Nav {
             int sourceQty = itemPath.tile.inv.Quantity(item);
             int quantity = Math.Min(sourceQty, storagePath.tile.GetStorageForItem(item));
             // Skip tiny hauls unless fully clearing the source stack
-            if (quantity < 20 && quantity < sourceQty) continue;
+            if (quantity < Task.MinHaulQuantity && quantity < sourceQty) continue;
             return new HaulInfo(item, quantity, itemPath.tile, storagePath.tile, itemStack);
         }
         return null;

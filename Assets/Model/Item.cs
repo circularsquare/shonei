@@ -59,7 +59,7 @@ public class ItemQuantity {
         this.quantity = quantity;
     }
     public override string ToString(){
-        return item.name + ": " + quantity.ToString();}
+        return item.name + ": " + ItemStack.FormatQ(quantity, item.discrete);}
     public string ItemName(){
         return item.name;
     }

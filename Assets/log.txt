@@ -1,9 +1,16 @@
 meoww!!
 
+3/17
+- got rid of multitile floor invs
+    - prevent item falling collisions by disallowing deconstructs that would cause them
+- made depth int 
+- cleaned up inventory display and infopanel
+- added recipe panel!
 3/16
-- multitile buildings!
+- multitile buildings!s
     - save buildings by struct list instead of by tile
     - use building workTile, storageTile coords
+- safer navigation / check preemptively if would fall
 3/13
 - search list of structures by type rather than finding structure by tile
 - also listify inventories (by invtype, not item) and blueprints

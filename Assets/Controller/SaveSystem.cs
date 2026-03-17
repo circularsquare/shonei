@@ -9,7 +9,7 @@ using Newtonsoft.Json;
 // ADDING NEW SAVEABLE DATA — checklist for future changes:
 //   1. Add fields to the relevant class in WorldSaveData.cs
 //      - Top-level world data (timer, etc.)  → WorldSaveData
-//      - Per-tile data (building, mStruct, fStruct, road, blueprints) → TileSaveData
+//      - Per-tile data (structs[4], blueprints[4])                    → TileSaveData
 //      - Per-structure data                   → StructureSaveData
 //      - Per-blueprint data                   → BlueprintSaveData
 //      - Per-inventory data                   → InventorySaveData
@@ -22,7 +22,7 @@ using Newtonsoft.Json;
 // -----------------------------------------------------------------------
 
 public class SaveSystem : MonoBehaviour {
-    public static SaveSystem instance;
+    public static SaveSystem instance { get; protected set; }
 
     string SaveDir {
         get {
@@ -94,6 +94,13 @@ public class SaveSystem : MonoBehaviour {
             };
         }
 
+        var rp = RecipePanel.instance;
+        if (rp != null) {
+            var disabled = new int[rp.DisabledCount];
+            rp.CopyDisabledIds(disabled);
+            if (disabled.Length > 0) data.disabledRecipeIds = disabled;
+        }
+
         return data;
     }
 
@@ -149,8 +156,6 @@ public class SaveSystem : MonoBehaviour {
             if (!kv.Value) disallowed.Add(kv.Key);
         }
         return new InventorySaveData {
-            nStacks            = inv.nStacks,
-            stackSize          = inv.stackSize,
             invType            = inv.invType.ToString(),
             stacks             = stacks,
             disallowedItemIds  = disallowed.Count > 0 ? disallowed.ToArray() : null
@@ -196,6 +201,7 @@ public class SaveSystem : MonoBehaviour {
             if (data.research.unlockedIds != null)
                 foreach (int id in data.research.unlockedIds)
                     rs.unlockedIds.Add(id);
+            rs.CheckTransitions();
             rs.ReapplyAllEffects();
         }
 
@@ -240,6 +246,14 @@ public class SaveSystem : MonoBehaviour {
                 AnimalController.instance.LoadAnimal(asd);
 
         InventoryController.instance.ValidateGlobalInventory();
+
+        var rp = RecipePanel.instance;
+        if (rp != null) {
+            rp.ClearDisabled();
+            if (save.disabledRecipeIds != null)
+                foreach (int id in save.disabledRecipeIds)
+                    rp.SetAllowed(id, false);
+        }
     }
 
     void RestoreStructure(StructureSaveData ssd) {
@@ -258,7 +272,7 @@ public class SaveSystem : MonoBehaviour {
             plant.harvestable  = ssd.plantHarvestable;
             plant.UpdateSprite();
             structure = plant;
-        } else if (st.depth == "b") {
+        } else if (st.depth == 0) {
             structure = new Building(st, ssd.x, ssd.y) { uses = ssd.uses };
         } else if (st.name == "platform") {
             structure = new Platform(st, ssd.x, ssd.y);
@@ -266,9 +280,13 @@ public class SaveSystem : MonoBehaviour {
             structure = new Stairs(st, ssd.x, ssd.y);
         } else if (st.name == "ladder") {
             structure = new Ladder(st, ssd.x, ssd.y);
-        } else if (st.depth == "r") {
+        } else if (st.depth == 1) {
+            structure = new Platform(st, ssd.x, ssd.y);
+        } else if (st.depth == 2) {
+            structure = new ForegroundStructure(st, ssd.x, ssd.y);
+        } else if (st.depth == 3) {
             structure = new Structure(st, ssd.x, ssd.y);
-            tile.road = structure;
+            tile.structs[3] = structure;
         } else {
             Debug.LogError("Unhandled struct type on load: " + ssd.typeName); return;
         }
@@ -296,13 +314,14 @@ public class SaveSystem : MonoBehaviour {
                 if (!string.IsNullOrEmpty(ssd.itemName) && Db.itemByName.ContainsKey(ssd.itemName) && ssd.quantity > 0) {
                     bp.inv.itemStacks[i].item         = Db.itemByName[ssd.itemName];
                     bp.inv.itemStacks[i].quantity      = ssd.quantity;
-                    bp.inv.itemStacks[i].res.capacity  = ssd.quantity;
-                    bp.inv.itemStacks[i].res.reserved  = 0;
+                    bp.inv.itemStacks[i].resAmount = 0;
                     GlobalInventory.instance.AddItem(Db.itemByName[ssd.itemName], ssd.quantity);
                 }
             }
         }
         bp.RefreshColor();
+        if (bp.state == Blueprint.BlueprintState.Deconstructing && bp.tile.building?.storage != null)
+            bp.tile.building.storage.locked = true;
     }
 
     void RestoreInventory(InventorySaveData isd, Tile tile) {
@@ -315,8 +334,7 @@ public class SaveSystem : MonoBehaviour {
                 inv.itemStacks[i].item         = item;
                 inv.itemStacks[i].quantity      = ssd.quantity;
                 inv.itemStacks[i].decayCounter  = ssd.decayCounter;
-                inv.itemStacks[i].res.capacity  = ssd.quantity;
-                inv.itemStacks[i].res.reserved  = 0;
+                inv.itemStacks[i].resAmount = 0;
                 GlobalInventory.instance.AddItem(item, ssd.quantity);
             }
         }

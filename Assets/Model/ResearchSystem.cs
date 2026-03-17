@@ -23,7 +23,7 @@ public class ResearchNodeData {
 // Unlock:  progress >= cost (and all prereqs are currently unlocked)
 // Forget:  progress < 0.8 × cost (locks the research again)
 public class ResearchSystem : MonoBehaviour {
-    public static ResearchSystem instance;
+    public static ResearchSystem instance { get; protected set; }
 
     const float DecayRate     = 0.02f;  // progress lost per tick (all nodes with any progress)
     const float ScientistRate = 0.1f;   // progress gained per workefficiency of a scientist each tick
@@ -63,7 +63,7 @@ public class ResearchSystem : MonoBehaviour {
         CheckTransitions();
     }
 
-    void CheckTransitions() {
+    public void CheckTransitions() {
         foreach (var node in nodes) {
             float p       = GetProgress(node.id);
             bool unlocked = IsUnlocked(node.id);

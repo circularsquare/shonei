@@ -23,7 +23,7 @@ using TMPro;
 //     ChatSendButton        -> TradingPanel.instance.OnClickSendChat()
 
 public class TradingPanel : MonoBehaviour {
-    public static TradingPanel instance;
+    public static TradingPanel instance { get; protected set; }
 
     [Header("Market Query")]
     public TMP_InputField itemInput;
@@ -127,7 +127,7 @@ public class TradingPanel : MonoBehaviour {
     }
 
     void SpawnOrder(MarketOrder order, Transform parent) {
-        if (orderDisplayPrefab == null) { AddRow($"{order.from}  x{order.quantity}  @ {order.price}", parent); return; }
+        if (orderDisplayPrefab == null) { AddRow($"{order.from}  x{ItemStack.FormatQ(order.quantity)}  @ {order.price}", parent); return; }
         var go = Instantiate(orderDisplayPrefab, parent, false);
         go.GetComponent<OrderDisplay>()?.Init(order);
     }
@@ -199,7 +199,8 @@ public class TradingPanel : MonoBehaviour {
     }
 
     void DisplayFill(Fill fill) {
-        AddChat($"<color=#aaffaa>[fill] {fill.buyer} bought {fill.quantity} {fill.item} from {fill.seller} @ {fill.price}</color>");
+        bool discrete = Db.itemByName.TryGetValue(fill.item, out Item item) && item.discrete;
+        AddChat($"<color=#aaffaa>[fill] {fill.buyer} bought {ItemStack.FormatQ(fill.quantity, discrete)} {fill.item} from {fill.seller} @ {fill.price}</color>");
     }
 
     // -------------------------------------------------------------------------

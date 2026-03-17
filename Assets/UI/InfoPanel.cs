@@ -1,11 +1,10 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class InfoPanel : MonoBehaviour {
     public GameObject textDisplayPrefab;
-    public static InfoPanel instance;
+    public static InfoPanel instance { get; protected set; }
     public GameObject textDisplayGo;
     public object obj;
     public GameObject animalHighlight;    // assign in Inspector; follows selected animal
@@ -60,97 +59,102 @@ public class InfoPanel : MonoBehaviour {
             return;
         }
         SetPriorityButtonsVisible(false); // hide by default; shown only for blueprints below
-        if (obj is Collider2D){
-            Collider2D collider = obj as Collider2D;
-            selectedAnimal = collider.gameObject.GetComponent<Animal>();
-            if (selectedAnimal != null){
-                infoMode = InfoMode.Animal;
-                gameObject.SetActive(true);
-                Animal ani = selectedAnimal;
-                if (animalHighlight != null) animalHighlight.SetActive(true);
-                if (tileHighlight != null) tileHighlight.SetActive(false);
-                static string FormatSlot(Inventory slot) {
-                    var s = slot.itemStacks[0];
-                    return s.item != null ? s.item.name + " " + ItemStack.FormatQ(s.quantity, s.item.discrete) : "empty";
-                }
-                string displayText = (
-                    "animal: " + ani.aName +
+
+        if (obj is List<Animal> animals) {
+            infoMode = InfoMode.Animal;
+            gameObject.SetActive(true);
+            selectedAnimal = animals.Count > 0 ? animals[0] : null;
+            if (animalHighlight != null) animalHighlight.SetActive(selectedAnimal != null);
+            if (tileHighlight != null) tileHighlight.SetActive(false);
+
+            static string FormatSlot(Inventory slot) {
+                var s = slot.itemStacks[0];
+                return s.item != null ? s.item.name + " " + ItemStack.FormatQ(s.quantity, s.item.discrete) : "empty";
+            }
+            static string FormatAnimal(Animal ani) {
+                string t = "animal: " + ani.aName +
                     "\n state: " + ani.state.ToString() +
                     "\n job: " + ani.job.name +
                     "\n [food] " + FormatSlot(ani.foodSlotInv) +
                     "\n [tool] " + FormatSlot(ani.toolSlotInv) +
-                    "\n inventory: " + ani.inv.ToString());
-                if (ani.task != null){
-                    displayText += "\n task: " + ani.task.ToString();}
-                if (ani.task?.currentObjective != null){
-                    displayText += "\n objective " + ani.task.currentObjective.ToString();}
-                if (ani.task is CraftTask craftTask){
-                    displayText += "\n recipe: " + craftTask.recipe?.description;
-                }
-                displayText += (
-                    "\n location: " + ani.go.transform.position.ToString() +
+                    "\n inv: " + ani.inv.ToString();
+                t += "\n task: " + (ani.task?.ToString() ?? "none");
+                t += "\n objective: " + (ani.task?.currentObjective?.ToString() ?? "none");
+                if (ani.task is CraftTask craftTask)
+                    t += "\n recipe: " + craftTask.recipe?.description;
+                t += "\n location: " + ani.go.transform.position.ToString() +
                     "\n efficiency: " + ani.efficiency.ToString("F2") +
                     "\n fullness: " + ani.eating.Fullness().ToString("F2") +
                     "\n eep: " + ani.eeping.Eepness().ToString("F2") +
-                    "\n happiness: " + ani.happiness.ToString());
-                textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = displayText;
+                    "\n happiness: " + ani.happiness.ToString();
+                return t;
             }
+
+            var parts = new System.Text.StringBuilder();
+            for (int i = 0; i < animals.Count; i++) {
+                if (i > 0) parts.Append("\n---\n");
+                parts.Append(FormatAnimal(animals[i]));
+            }
+            textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = parts.ToString();
         }
 
-        else if (obj is Tile){
+        else if (obj is Tile tile) {
             selectedAnimal = null;
-            Tile tile = obj as Tile;
+            infoMode = InfoMode.Tile;
+            gameObject.SetActive(true);
             if (animalHighlight != null) animalHighlight.SetActive(false);
             if (tileHighlight != null) {
                 tileHighlight.SetActive(true);
                 tileHighlight.transform.position = new Vector3(tile.x, tile.y, -1);
             }
-            string displayText = "";
-            if (tile.building != null){
-                if (tile.building is Plant){
-                    infoMode = InfoMode.Plant;
-                    gameObject.SetActive(true);
-                    displayText =  ( "plant: " + tile.building.structType.name + 
-                        "\n location: " + tile.x.ToString() + ", " + tile.y.ToString() + 
-                        "\n growth: " + (tile.building as Plant).growthStage + 
-                        "\n reserved: " + tile.building.res.reserved + "/" + tile.building.res.capacity + 
-                        "\n standability: " + tile.node.standable.ToString() + 
-                        "\n num neighbors: " + tile.node.neighbors.Count);
-                } else {
-                    infoMode = InfoMode.Building;
-                    gameObject.SetActive(true);
-                    displayText = "building: " + tile.building.structType.name +
-                        "\n location: " + tile.x.ToString() + ", " + tile.y.ToString() +
-                        "\n reserved: " + tile.building.res.reserved + "/" + tile.building.res.capacity +
-                        "\n standability: " + tile.node.standable.ToString() +
-                        "\n num neighbors: " + tile.node.neighbors.Count;
-                    if (tile.building is Building bldg && bldg.structType.depleteAt > 0)
-                        displayText += "\n uses: " + bldg.uses + "/" + bldg.structType.depleteAt;
+
+            var sb = new System.Text.StringBuilder();
+            sb.Append("location: " + tile.x + ", " + tile.y);
+
+            // Nav info (above buildings)
+            sb.Append("\nstandable: " + tile.node.standable + "  neighbors: " + tile.node.neighbors.Count);
+
+            // Tile type info (only if non-default)
+            if (tile.type.id != 0) {
+                sb.Append("\ntile: " + tile.type.name +
+                    "  solid: " + tile.type.solid);
+            }
+
+            string[] layerLabels = { "b", "m", "f", "r" };
+            for (int d = 0; d < 4; d++) {
+                Structure s = tile.structs[d];
+                if (s != null) {
+                    if (s is Plant plant) {
+                        sb.Append("\n" + layerLabels[d] + ": " + s.structType.name);
+                        sb.Append("\n  growth: " + plant.growthStage);
+                        if (s.res != null) sb.Append("\n  res: " + s.res.reserved + "/" + s.res.capacity);
+                    } else {
+                        sb.Append("\n" + layerLabels[d] + ": " + s.structType.name);
+                        if (s.res != null) sb.Append("\n res: " + s.res.reserved + "/" + s.res.capacity);
+                        if (s is Building bldg && bldg.structType.depleteAt > 0)
+                            sb.Append("\n  uses: " + bldg.uses + "/" + bldg.structType.depleteAt);
+                    }
                 }
-            } else if (tile.GetAnyBlueprint() != null){
-                Blueprint blueprint = tile.GetAnyBlueprint();
-                infoMode = InfoMode.Blueprint;
-                gameObject.SetActive(true);
-                SetPriorityButtonsVisible(true);
-                displayText =  ( "blueprint: " + blueprint.structType.name +
-                    "\n location: " + tile.x.ToString() + ", " + tile.y.ToString() +
-                    "\n priority: " + blueprint.priority +
-                    "\n progress: " + blueprint.GetProgress());
-            } else {
-                infoMode = InfoMode.Tile;
-                gameObject.SetActive(true);
-                displayText = ("tile: " + tile.type.name + 
-                    "\n location: " + tile.x.ToString() + ", " + tile.y.ToString() +
-                    "\n standability: " + tile.node.standable.ToString() + 
-                    "\n num neighbors: " + tile.node.neighbors.Count);            
+                Blueprint bp = tile.blueprints[d];
+                if (bp != null) {
+                    sb.Append("\nblueprint (" + layerLabels[d] + "): " + bp.structType.name);
+                    sb.Append("\n  priority: " + bp.priority + "  progress: " + bp.GetProgress());
+                    SetPriorityButtonsVisible(true);
+                }
             }
-            if (tile.inv != null){
-                displayText += "\n inventory: " + tile.inv.ToString();
+
+            // Inventory
+            if (tile.inv != null) {
+                sb.Append("\n inv:");
+                foreach (var stack in tile.inv.itemStacks) {
+                    if (stack.item != null)
+                        sb.Append("\n  " + stack.item.name + " x " + ItemStack.FormatQ(stack.quantity, stack.item.discrete));
+                }
             }
-            textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = displayText;
-            gameObject.SetActive(true);
+
+            textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = sb.ToString();
         }
-        else{ selectedAnimal = null; Deselect(); }
+        else { selectedAnimal = null; Deselect(); }
     }
 
     public void Deselect(){

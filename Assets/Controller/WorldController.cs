@@ -89,7 +89,10 @@ public class WorldController : MonoBehaviour {
     // WORLD LIFECYCLE
     // -----------------------------------------------------------------------
 
+    public static bool isClearing = false;
+
     public void ClearWorld() {
+        isClearing = true;
         // Null all tile.inv refs before destroying structures — prevents Structure.Destroy()
         // → FallIfUnstandable() from spawning stale fall animations during the clear.
         for (int x = 0; x < world.nx; x++)
@@ -103,10 +106,7 @@ public class WorldController : MonoBehaviour {
         for (int x = 0; x < world.nx; x++) {
             for (int y = 0; y < world.ny; y++) {
                 Tile tile = world.GetTileAt(x, y);
-                tile.bBlueprint?.Destroy();
-                tile.mBlueprint?.Destroy();
-                tile.fBlueprint?.Destroy();
-                tile.roadBlueprint?.Destroy();
+                for (int i = 0; i < 4; i++) tile.blueprints[i]?.Destroy();
             }
         }
 
@@ -139,6 +139,7 @@ public class WorldController : MonoBehaviour {
 
         world.timer = 0;
         InfoPanel.instance.ShowInfo(null);
+        isClearing = false;
     }
 
     // Called synchronously in frame 1 (from Start, Reset, or Load path).

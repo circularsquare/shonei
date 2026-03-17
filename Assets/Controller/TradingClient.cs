@@ -5,7 +5,7 @@ using System.Collections;
 using System;
 
 public class TradingClient : MonoBehaviour {
-    public static TradingClient instance;
+    public static TradingClient instance { get; protected set; }
 
     WebSocket ws;
     public bool isOnline { get; private set; } = false;

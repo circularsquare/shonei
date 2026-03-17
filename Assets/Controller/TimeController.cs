@@ -1,7 +1,7 @@
 using UnityEngine;
 
 public class TimeController : MonoBehaviour {
-    public static TimeController instance;
+    public static TimeController instance { get; protected set; }
 
     void Awake() {
         if (instance != null) { Debug.LogError("there should only be one TimeController"); }

@@ -54,7 +54,6 @@ public class Animal : MonoBehaviour{
         get { return _state; }
         set { if (_state != value) {
                 _state = value;
-                stateManager.OnStateEnter(value);
                 animationController?.UpdateState();
             }
         }
@@ -213,6 +212,8 @@ public class Animal : MonoBehaviour{
 
         task = new ConstructTask(this);         // construct blueprints
         if (task.Start()) return;
+        task = new ConstructTask(this, deconstructing: true);
+        if (task.Start()) return;
         task = new SupplyBlueprintTask(this);   // supply blueprints
         if (task.Start()) return;
         task = new CraftTask(this);             // craft
@@ -230,9 +231,6 @@ public class Animal : MonoBehaviour{
         if (job.name == "scientist") {
             task = new ResearchTask(this);
             if (task.Start()) return; }
-        task = new ConstructTask(this, deconstructing: true);
-        if (task.Start()) return;
-
         task = null; // none of the above tasks started successfully...
         return;
     }
@@ -330,7 +328,7 @@ public class Animal : MonoBehaviour{
         int leftover = inv.Produce(item, quantity); 
         if (leftover > 0){
             Debug.LogError(aName + " produced without space in inventory");
-            Path dropPath = nav.FindPathToDrop(item);
+            Path dropPath = nav.FindPathToDrop(item, leftover);
             if (dropPath == null){
                 Debug.Log("no place to drop " + item.name + "!! excess item disappearing.");
                 return;
@@ -366,14 +364,15 @@ public class Animal : MonoBehaviour{
     // -----------------------
     // THINKING
     // -----------------------
-    public Recipe PickRecipe2(){ // randomized selection
+    public Recipe PickRecipeRandom(){ // randomized selection
         if (job.recipes.Length == 0) { return null; }
         List<Recipe> eligibleRecipes = new List<Recipe>();
         foreach (Recipe recipe in job.recipes){
-            if (recipe != null && ginv.SufficientResources(recipe.inputs)){
+            if (recipe == null) continue;
+            if (RecipePanel.instance != null && !RecipePanel.instance.IsAllowed(recipe.id)) continue;
+            if (ginv.SufficientResources(recipe.inputs)){
                 if (!Db.structTypeByName.ContainsKey(recipe.tile) ||
                     nav.FindPathToBuilding(Db.structTypeByName[recipe.tile]) == null) continue;
-                float score = recipe.Score();
                 eligibleRecipes.Add(recipe);
             }
         }
@@ -383,13 +382,16 @@ public class Animal : MonoBehaviour{
     }
     public Recipe PickRecipe(){ // score based selection
         if (job.recipes.Length == 0) { return null; }
+        var targets = InventoryController.instance.targets;
         float maxScore = 0;
         Recipe bestRecipe = null;
         foreach (Recipe recipe in job.recipes){
-            if (recipe != null && ginv.SufficientResources(recipe.inputs)){
+            if (recipe == null) continue;
+            if (RecipePanel.instance != null && !RecipePanel.instance.IsAllowed(recipe.id)) continue;
+            if (ginv.SufficientResources(recipe.inputs)){
                 if (!Db.structTypeByName.ContainsKey(recipe.tile) ||
                     nav.FindPathToBuilding(Db.structTypeByName[recipe.tile]) == null) continue;
-                float score = recipe.Score();
+                float score = recipe.Score(targets);
                 if (score > maxScore){
                     maxScore = score;
                     bestRecipe = recipe;
@@ -405,7 +407,7 @@ public class Animal : MonoBehaviour{
         int numRounds = 10; // will try to gather this amount of input at once.
         int n;
         foreach (ItemQuantity input in recipe.inputs){
-            n = ginv.Quantity(input.id) / input.quantity;
+            n = InventoryController.instance.TotalAvailableQuantity(input.item) / input.quantity;
             if (n < numRounds) { numRounds = n; }
         }
         foreach (ItemQuantity output in recipe.outputs){

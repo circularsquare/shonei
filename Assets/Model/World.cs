@@ -14,7 +14,7 @@ public class World : MonoBehaviour {
     public AnimalController animalController;
     public PlantController plantController;
     
-    public static World instance;
+    public static World instance { get; protected set; }
     public float timer = 0f;
 
     // Fired just before items are moved; controllers subscribe to play fall animations.
@@ -28,10 +28,6 @@ public class World : MonoBehaviour {
 
     public static int ticksInDay = 240;
     public static int daysInYear = 20; // year is 6000s = 100 min
-
-    readonly System.Diagnostics.Stopwatch tickStopwatch = new System.Diagnostics.Stopwatch();
-    double lastTickMs = 0;
-
 
     // FRAME 0 — runs before any Start(). Allocates tiles and graph.nodes.
     // node.standable stays false until graph.Initialize() runs in GenerateDefault() (frame 1).
@@ -61,12 +57,9 @@ public class World : MonoBehaviour {
 
     public void Update(){
         if (Math.Floor(timer + Time.deltaTime) - Math.Floor(timer) > 0){ // every 1 sec
-            tickStopwatch.Restart();
             animalController.TickUpdate();
             plantController.TickUpdate();
             if (ResearchSystem.instance != null) ResearchSystem.instance.TickUpdate();
-            tickStopwatch.Stop();
-            lastTickMs = tickStopwatch.Elapsed.TotalMilliseconds;
         }        
         float period = 0.2f;
         if (Math.Floor((timer + Time.deltaTime) / period) - Math.Floor(timer / period) > 0){  // every 0.2 sec
@@ -76,11 +69,6 @@ public class World : MonoBehaviour {
         timer += Time.deltaTime;
     }
         
-
-    void OnGUI(){
-        // uncomment to show FPS
-        // GUI.Label(new Rect(10, 10, 200, 20), $"fps: {(int)(1f / Time.deltaTime)}  tick: {lastTickMs:0.00}ms");
-    }
 
     // ---------------------------------
     // TILE STUFF
@@ -126,7 +114,7 @@ public class World : MonoBehaviour {
         ProduceAtTile(Db.itemByName[itemName], quantity, tile);
 
     int PutOnFloor(Tile tile, Item item, int quantity) {
-        if (tile.inv == null) tile.inv = new Inventory(n: 4, x: tile.x, y: tile.y);
+        if (tile.inv == null) tile.inv = new Inventory(n: 1, x: tile.x, y: tile.y);
         // Don't mix different items on a floor tile (FallItems bypasses this)
         if (!tile.inv.IsEmpty() && tile.inv.Quantity(item) == 0) return quantity;
         return tile.inv.Produce(item, quantity);
@@ -151,12 +139,12 @@ public class World : MonoBehaviour {
         if (landing == null) {
             foreach (ItemStack stack in tile.inv.itemStacks) {
                 if (stack == null || stack.item == null || stack.quantity <= 0) continue;
-                Debug.LogWarning($"FallItems: {stack.quantity} {stack.item.name} at ({tile.x},{tile.y}) lost — no standable tile below");
+                Debug.LogError($"FallItems: {stack.quantity} {stack.item.name} at ({tile.x},{tile.y}) lost — no standable tile below");
                 GlobalInventory.instance.AddItem(stack.item, -stack.quantity);
             }
             tile.inv.Destroy(); tile.inv = null; return;
         }
-        landing.inv ??= new Inventory(n: 4, x: landing.x, y: landing.y);
+        landing.inv ??= new Inventory(n: 1, x: landing.x, y: landing.y);
         foreach (ItemStack stack in tile.inv.itemStacks) {
             if (stack == null || stack.item == null || stack.quantity <= 0) continue;
             OnItemFall?.Invoke(tile.x, tile.y, landing.x, landing.y, stack.item);
@@ -165,7 +153,7 @@ public class World : MonoBehaviour {
         // Anything left in tile.inv couldn't land — remove from ginv before destroying.
         foreach (ItemStack stack in tile.inv.itemStacks) {
             if (stack == null || stack.item == null || stack.quantity <= 0) continue;
-            Debug.LogWarning($"FallItems: {stack.quantity} {stack.item.name} lost at ({tile.x},{tile.y}) — landing ({landing.x},{landing.y}) full");
+            Debug.LogError($"FallItems: {stack.quantity} {stack.item.name} lost at ({tile.x},{tile.y}) — landing ({landing.x},{landing.y}) full");
             GlobalInventory.instance.AddItem(stack.item, -stack.quantity);
         }
         tile.inv.Destroy();

@@ -9,11 +9,27 @@ using System.Linq;
 public class ItemDisplay : MonoBehaviour {
     public Item item;
     public GameObject toggleGo;
-    public bool open = true;
-
+    [System.NonSerialized] public bool open;
+    public Sprite spriteOpen;
+    public Sprite spriteCollapsed;
+    public Sprite spriteLeaf; // no children
+    private Image dropdownImage;
 
     public void Start(){
+        open = true; // always start expanded, overrides any serialized value
         item = Db.itemByName[gameObject.name.Split('_')[1]];
+        Transform btn = transform.Find("HorizontalLayout/ButtonDropdown");
+        if (btn != null) dropdownImage = btn.GetComponent<Image>();
+        RefreshDropdownSprite();
+    }
+
+    private bool HasOpenableChildren() =>
+        item != null && item.children != null && System.Array.Exists(item.children, c => c.IsDiscovered());
+
+    public void RefreshDropdownSprite(){
+        if (dropdownImage == null) return;
+        if (!HasOpenableChildren()) dropdownImage.sprite = spriteLeaf;
+        else dropdownImage.sprite = open ? spriteOpen : spriteCollapsed;
     }
 
     public void OnClickDropdown(){
@@ -24,8 +40,9 @@ public class ItemDisplay : MonoBehaviour {
                 InventoryController.instance.itemDisplayGos[child.id].SetActive(open);
                 RectTransform rectTransform = GetComponent<RectTransform>();
                 LayoutRebuilder.ForceRebuildLayoutImmediate(rectTransform);
-            } 
+            }
         }
+        RefreshDropdownSprite();
     }
     public void OnClickTargetUp(){
         Inventory sel = InventoryController.instance.selectedInventory;

@@ -49,6 +49,7 @@ public static class ItemSheetSplitter {
         List<string> written = new List<string>();
         foreach (string guid in guids) {
             string path = AssetDatabase.GUIDToAssetPath(guid);
+            if (path.EndsWith("_n.png")) continue;       // skip generated normal maps in Sheets/
             string itemName = SysPath.GetFileNameWithoutExtension(path);
             SplitSheet(path, itemName, written);
             count++;
@@ -77,6 +78,7 @@ public static class ItemSheetSplitter {
             if (!(o is Texture2D)) continue;
             string path = AssetDatabase.GetAssetPath(o);
             if (!path.StartsWith(SheetsFolder)) continue;
+            if (path.EndsWith("_n.png")) continue;       // skip generated normal maps
             string itemName = SysPath.GetFileNameWithoutExtension(path);
             SplitSheet(path, itemName, written);
         }

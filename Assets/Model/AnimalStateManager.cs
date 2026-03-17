@@ -14,13 +14,6 @@ public class AnimalStateManager {
         this.animal = animal;
     }
 
-    public void OnStateEnter(AnimalState newState) {
-        switch(newState){
-            case AnimalState.Idle:
-                break;
-        }
-    }
-
     public void UpdateState() { // called every animal.tickupdate!
         switch (animal.state){ // fetching and delivering and such are handled in Update() cuz they require deltatime?
             case AnimalState.Idle:
@@ -48,9 +41,7 @@ public class AnimalStateManager {
     }
 
     private void HandleWorking() {
-        bool hasTool = animal.toolSlotInv.itemStacks[0].item != null;
-        float toolMult = hasTool ? 1.25f : 1f;
-        float workEfficiency = 1f * animal.efficiency * toolMult;
+        float workEfficiency = ModifierSystem.instance.GetWorkMultiplier(animal);
 
         if (animal.task is HarvestTask harvestTask) {
             Plant plant = harvestTask.tile.building as Plant;
@@ -66,14 +57,25 @@ public class AnimalStateManager {
             if (blueprint == null || blueprint.cancelled) {constructTask.Fail(); return;}
             float progressAmount = workEfficiency;
             float progressAfter = blueprint.constructionProgress + progressAmount;
-            if (blueprint.structType.isTile && progressAfter >= blueprint.constructionCost) {
-                if (AnimalController.instance.IsAnimalOnTile(blueprint.tile)) {
+            if (progressAfter >= blueprint.constructionCost) {
+                if (blueprint.structType.isTile && AnimalController.instance.IsAnimalOnTile(blueprint.tile)) {
                     constructTask.Fail(); // leave blueprint intact so another mouse can retry later
                     return;
                 }
+                // Safety net: block if items above would fall (e.g. items appeared after task was created).
+                if (blueprint.WouldCauseItemsFall()) {
+                    constructTask.Fail(); return;
+                }
+                if (blueprint.StorageNeedsEmptying()) {
+                    constructTask.Fail(); return;
+                }
             }
             if (blueprint.ReceiveConstruction(progressAmount)){
+                var output = blueprint.pendingOutput;
                 constructTask.Complete();
+                if (output != null)
+                    foreach (var iq in output)
+                        animal.Produce(iq.item, iq.quantity);
             }
             return;
         } else if (animal.task is CraftTask craftTask) {

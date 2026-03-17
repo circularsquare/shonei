@@ -9,6 +9,7 @@ public class WorldSaveData {
     public BlueprintSaveData[] blueprints;   // all blueprints
     public AnimalSaveData[] animals;
     public ResearchSaveData research;
+    public int[] disabledRecipeIds; // null = all enabled
 }
 
 public class ResearchSaveData {
@@ -43,8 +44,6 @@ public class BlueprintSaveData {
 }
 
 public class InventorySaveData {
-    public int nStacks;
-    public int stackSize;
     public string invType;
     public ItemStackSaveData[] stacks;
     public int[] disallowedItemIds; // item IDs that have been explicitly disallowed

@@ -45,7 +45,7 @@ public class Path {
 public class Graph { 
     public World world;
     public Node[,] nodes;
-    public static Graph instance;
+    public static Graph instance { get; protected set; }
     private Dictionary<(int,int),  (Node,Node)> stairWaypoints = new Dictionary<(int,int),  (Node,Node)>();
     private Dictionary<(int,int,int),(Node,Node)> cliffWaypoints = new Dictionary<(int,int,int),(Node,Node)>();
 
@@ -112,7 +112,7 @@ public class Graph {
         if (x - 1 >= 0 && node.standable && nodes[x-1,y].standable){
             node.AddNeighbor(nodes[x-1,y], true); }
         // Add vertical neighbors via ladders
-        Structure fStruct = node.tile.fStruct;
+        Structure fStruct = node.tile.structs[2];
         if (fStruct != null && fStruct.structType.name == "ladder" && y + 1 < world.ny){
             node.AddNeighbor(nodes[x,y+1], true);
         }
@@ -229,8 +229,8 @@ public class Graph {
         // cliff climbing goes through waypoints and is handled above.
         if (Math.Abs(to.wy - from.wy) > 0.1f) return (2.0f, 1.0f);
         // Horizontal — road tiles reduce cost from both sides (length always 1)
-        float fromR = from.tile?.road?.structType.pathCostReduction ?? 0f;
-        float toR   = to.tile?.road?.structType.pathCostReduction   ?? 0f;
+        float fromR = from.tile?.structs[3]?.structType.pathCostReduction ?? 0f;
+        float toR   = to.tile?.structs[3]?.structType.pathCostReduction   ?? 0f;
         return (Mathf.Max(0.1f, 1.0f - fromR - toR), 1.0f);
     }
     public float GetEdgeCost(Node from, Node to) => GetEdgeInfo(from, to).cost;
@@ -242,7 +242,7 @@ public class Graph {
         else if (tileHere.type.solid) {return false;} // need tilehere to not be solid
         else if (tileBelow.type.solid) {return true;} // tile below is solid
         else if (tileBelow.building != null && tileBelow.building.structType.solidTop) {return true;} // tile below is solid-top building
-        else if (tileBelow.mStruct != null && tileBelow.mStruct.structType.solidTop) {return true;} // tile below is solid-top mStruct
+        else if (tileBelow.structs[1] != null && tileBelow.structs[1].structType.solidTop) {return true;} // tile below is solid-top mStruct
         else if (tileHere.HasLadder() || tileBelow.HasLadder()) {return true;}
         else {return false;}
     }

@@ -12,7 +12,8 @@ public class Inventory{
     public InvType invType;
     public int x, y;
     public Dictionary<int, bool> allowed;
-    public string displayName = "storage";
+    public bool locked = false; // when true, no items accepted and all existing items are treated as needing haul-out
+    public string displayName;
     public GameObject go;
     private GameObject[] stackGos; // per-stack sprites for multi-stack storage (e.g. drawer)
 
@@ -48,6 +49,7 @@ public class Inventory{
         this.invType = invType;
         this.x = x;
         this.y = y;
+        displayName = invType.ToString().ToLower();
         itemStacks = new ItemStack[nStacks];
         for (int i = 0; i < nStacks; i++){
             itemStacks[i] = new ItemStack(this, null, 0, stackSize);
@@ -105,7 +107,7 @@ public class Inventory{
         if (++_expireTick >= ReservationExpireInterval) {
             _expireTick = 0;
             foreach (ItemStack stack in itemStacks)
-                stack?.res.ExpireIfStale(ReservationMaxAge);
+                stack?.ExpireIfStale(ReservationMaxAge);
         }
     }
     public void Decay(float time = 1f){
@@ -127,11 +129,12 @@ public class Inventory{
     // ----- MOVING ITEMS ------
     // =========================
 
-    // returns leftover size 
-    private int AddItem(Item item, int quantity){
+    // returns leftover size
+    private int AddItem(Item item, int quantity, bool force = false){
         if (item == null) {Debug.LogError("tried adding null item"); return quantity;}
-        if (allowed[item.id] == false && quantity > 0){
-            Debug.Log($"tried adding unallowed item {item.name} to {invType} inv at ({x},{y})");
+        if (!force && (locked || allowed[item.id] == false) && quantity > 0){
+            string reason = locked ? "locked" : "disallowed";
+            Debug.Log($"tried adding {reason} item {item.name} to {invType} '{displayName}' at ({x},{y})");
             return quantity;
         }
         for (int i = 0; i < nStacks; i++){
@@ -155,6 +158,18 @@ public class Inventory{
         return taken - overFill;
     }
     public int MoveItemTo(Inventory otherInv, string name, int quantity){return MoveItemTo(otherInv, Db.itemByName[name], quantity);}
+
+    // Like MoveItemTo but bypasses the allowed filter on the destination — use when items must not be lost
+    // (e.g. migrating a floor inventory into a newly-placed storage building).
+    // Haulers will eventually move the item out once they notice it is disallowed.
+    public int ForceMoveItemTo(Inventory otherInv, Item item, int quantity){
+        int taken = quantity + AddItem(item, -quantity);
+        int overFill = otherInv.AddItem(item, taken, force: true);
+        if (overFill > 0){
+            AddItem(item, overFill);
+        }
+        return taken - overFill;
+    }
     
     // adds to ginv. returns leftover size.
     public int Produce(Item item, int quantity = 1){
@@ -179,7 +194,7 @@ public class Inventory{
     public bool ContainsAvailableItem(Item item){
         if (item == null){ return !IsEmpty(); }
         foreach (ItemStack stack in itemStacks){
-            if (stack != null && stack.item == item && stack.quantity > 0  && stack.res.Available()){
+            if (stack != null && stack.item == item && stack.quantity > 0  && stack.Available()){
                 return true;
             }
         }
@@ -209,8 +224,8 @@ public class Inventory{
     public ItemStack GetItemToHaul(){   // returns null if nothing, or item if something need to haul
         if (invType == InvType.Market || invType == InvType.Blueprint) return null;
         foreach (ItemStack stack in itemStacks){
-            if (!stack.Empty() && stack.res.Available() &&
-                (allowed[stack.item.id] == false || invType == InvType.Floor)){
+            if (!stack.Empty() && stack.Available() &&
+                (locked || allowed[stack.item.id] == false || invType == InvType.Floor)){
                 return stack;
             }
         }
@@ -219,8 +234,8 @@ public class Inventory{
     public bool HasItemToHaul(Item item){ // if null, finds any item to haul
         if (invType == InvType.Market || invType == InvType.Blueprint) return false;
         foreach (ItemStack stack in itemStacks){
-            if ((item == null || stack.item == item) && stack.quantity > 0 && stack.res.Available() &&
-                (allowed[stack.item.id] == false || invType == InvType.Floor)){
+            if ((item == null || stack.item == item) && stack.quantity > 0 && stack.Available() &&
+                (locked || allowed[stack.item.id] == false || invType == InvType.Floor)){
                 return true;
             }
         }
@@ -230,7 +245,7 @@ public class Inventory{
     // Counts both empty stacks (any item could fill them) and partially-filled stacks of the same item.
     public int GetStorageForItem(Item item){
         if (invType == InvType.Market || invType == InvType.Blueprint) return 0;
-        if (allowed[item.id] == false || invType == InvType.Floor){return 0;}
+        if (locked || allowed[item.id] == false || invType == InvType.Floor){return 0;}
         int space = 0;
         foreach (ItemStack stack in itemStacks){
             if (stack.item == null){
@@ -245,12 +260,13 @@ public class Inventory{
     public int AvailableQuantity(Item item){
         int total = 0;
         foreach (ItemStack stack in itemStacks){
-            if (stack.item == item) total += Math.Max(0, stack.quantity - stack.res.reserved);
+            if (stack.item == item) total += Math.Max(0, stack.quantity - stack.resAmount);
         }
         return total;
     }
     // Space in an existing partial stack of `item` (for floor consolidation).
     public int GetMergeSpace(Item item) {
+        if (locked || allowed[item.id] == false) return 0;
         foreach (ItemStack stack in itemStacks)
             if (stack.item == item && stack.quantity < stackSize)
                 return stackSize - stack.quantity;
@@ -259,7 +275,7 @@ public class Inventory{
     // Unlike GetStorageForItem, only checks stacks already holding this item (no empty stacks).
     // Use to top up an existing stack without claiming a new slot.
     public bool HasSpaceForItem(Item item){
-        if (invType == InvType.Market || invType == InvType.Blueprint) return false;
+        if (locked || invType == InvType.Market || invType == InvType.Blueprint) return false;
         foreach (ItemStack stack in itemStacks){
             if (stack.item == item && stack.quantity < stackSize){
                 return true;
@@ -276,19 +292,10 @@ public class Inventory{
         }
         return amount;
     }
-    public int GetFreeStacks() {
-        int amount = 0;
-        foreach (ItemStack stack in itemStacks){
-            if (stack.quantity == 0){
-                amount += 1;
-            }
-        }
-        return amount;
-    }
     public ItemStack GetItemStack(Item item){
         ItemStack best = null;
         foreach (ItemStack stack in itemStacks){
-            if (stack != null && stack.item == item && stack.quantity > 0 && stack.res.Available()){
+            if (stack != null && stack.item == item && stack.quantity > 0 && stack.Available()){
                 if (best == null || stack.quantity > best.quantity){
                     best = stack;
                 }

@@ -10,13 +10,13 @@ using System.Reflection;
 public class MouseController : MonoBehaviour {
     public enum MouseMode {Select, Build, Remove};
     public MouseMode mouseMode = MouseMode.Select;
-    public GameObject cursorHighlight;
-    SpriteRenderer cursorHighlightSr;
-    Sprite cursorHighlightDefaultSprite;
+    public GameObject buildPreview;
+    SpriteRenderer buildPreviewSr;
+    Sprite buildPreviewDefaultSprite;
     Vector3 prevPosition;
 
     public World world;
-    public static MouseController instance;
+    public static MouseController instance { get; protected set; }
     Component ppcComponent;
     PropertyInfo ppcAssetsPPU;
 
@@ -24,8 +24,9 @@ public class MouseController : MonoBehaviour {
         if (instance != null) {
             Debug.LogError("there should only be one mouse controller");}
         instance = this;
-        cursorHighlightSr = cursorHighlight.GetComponent<SpriteRenderer>();
-        cursorHighlightDefaultSprite = cursorHighlightSr.sprite;
+        buildPreviewSr = buildPreview.GetComponent<SpriteRenderer>();
+        buildPreviewSr.sortingOrder = 200;
+        buildPreviewDefaultSprite = buildPreviewSr.sprite;
         foreach (var c in Camera.main.GetComponents<Component>()) {
             var prop = c.GetType().GetProperty("assetsPPU");
             if (prop != null) { ppcComponent = c; ppcAssetsPPU = prop; break; }
@@ -33,6 +34,9 @@ public class MouseController : MonoBehaviour {
     }
 
     void Update() {
+        if (Input.GetKeyDown(KeyCode.Escape) && mouseMode != MouseMode.Select)
+            SetModeSelect();
+
         if (EventSystem.current.IsPointerOverGameObject()){
             if (Input.GetMouseButtonDown(0) && mouseMode == MouseMode.Build)
                 SetModeSelect();
@@ -70,7 +74,7 @@ public class MouseController : MonoBehaviour {
             prevPosition = currScreenPosition;
         }
 
-        // set cursorHighlight if in build/remove mode
+        // set buildPreview if in build/remove mode
         Tile tileAt = WorldController.instance.world.GetTileAt(currPosition.x, currPosition.y);
         StructType st = BuildPanel.instance != null ? BuildPanel.instance.structType : null;
 
@@ -81,23 +85,23 @@ public class MouseController : MonoBehaviour {
             anchorTile = WorldController.instance.world.GetTileAt(tileAt.x - offsetX, tileAt.y);
         }
 
-        if (tileAt == null){ cursorHighlight.SetActive(false); }
+        if (tileAt == null){ buildPreview.SetActive(false); }
         else if ((mouseMode == MouseMode.Build) || (mouseMode == MouseMode.Remove)){
-            cursorHighlight.SetActive(true);
+            buildPreview.SetActive(true);
             if (mouseMode == MouseMode.Build && st != null && anchorTile != null) {
                 Sprite buildSprite = st.LoadSprite();
-                cursorHighlightSr.sprite = buildSprite != null ? buildSprite : cursorHighlightDefaultSprite;
-                cursorHighlightSr.color = buildSprite != null ? new Color(1f, 1f, 1f, 0.3f) : Color.white;
+                buildPreviewSr.sprite = buildSprite != null ? buildSprite : buildPreviewDefaultSprite;
+                buildPreviewSr.color = buildSprite != null ? new Color(1f, 1f, 1f, 0.3f) : Color.white;
                 float visualX = anchorTile.x + (st.nx - 1) / 2.0f;
-                cursorHighlight.transform.position = new Vector3(visualX, anchorTile.y, -1);
+                buildPreview.transform.position = new Vector3(visualX, anchorTile.y, -1);
             } else {
-                cursorHighlight.transform.position = new Vector3(tileAt.x, tileAt.y, -1);
-                cursorHighlightSr.sprite = cursorHighlightDefaultSprite;
-                cursorHighlightSr.color = Color.white;
+                buildPreview.transform.position = new Vector3(tileAt.x, tileAt.y, -1);
+                buildPreviewSr.sprite = buildPreviewDefaultSprite;
+                buildPreviewSr.color = Color.white;
             }
         }
         if (mouseMode == MouseMode.Select){
-            cursorHighlight.SetActive(false);
+            buildPreview.SetActive(false);
         }
 
 
@@ -105,13 +109,19 @@ public class MouseController : MonoBehaviour {
         if (Input.GetMouseButtonDown(0)) {
             Vector3 clickPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             if (mouseMode == MouseMode.Select){ // display info
-                RaycastHit2D hit = Physics2D.Raycast(clickPos, Vector2.zero);
-                if (hit.collider != null) {
-                    InfoPanel.instance.ShowInfo(hit.collider); // clicked on animal
+                Collider2D[] hits = Physics2D.OverlapPointAll(clickPos);
+                var animals = new System.Collections.Generic.List<Animal>();
+                foreach (var col in hits) {
+                    Animal a = col.gameObject.GetComponent<Animal>();
+                    if (a != null) animals.Add(a);
+                }
+                if (animals.Count > 0) {
+                    InfoPanel.instance.ShowInfo(animals); // clicked on animal(s)
                 } else if (tileAt != null) {
                     InfoPanel.instance.ShowInfo(tileAt); // clicked on tile
                     if (tileAt.inv != null && (tileAt.inv.invType == Inventory.InvType.Storage
-                                            || tileAt.inv.invType == Inventory.InvType.Market)) {
+                                            || tileAt.inv.invType == Inventory.InvType.Market
+                                            || tileAt.inv.invType == Inventory.InvType.Floor)) {
                         InventoryController.instance.SelectInventory(tileAt.inv);  // select inventory if storage
                     } else {
                         InventoryController.instance.SelectInventory(null); // deselect inventory (show global)

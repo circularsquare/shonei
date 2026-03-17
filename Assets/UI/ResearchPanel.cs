@@ -23,7 +23,7 @@ using TMPro;
 //     Anchor Min=(0,0)  Anchor Max=(1,1)  Left=Right=Top=Bottom=20
 
 public class ResearchPanel : MonoBehaviour {
-    public static ResearchPanel instance;
+    public static ResearchPanel instance { get; protected set; }
 
     [Header("UI Refs")]
     public Transform       nodeListContent;

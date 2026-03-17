@@ -109,7 +109,7 @@ Fields:
 | `nStacks` | int? | inventory slot count (requires `isStorage`) |
 | `storageStackSize` | int? | max stack per slot in liang (requires `isStorage`) |
 | `capacity` | int? | max simultaneous workers |
-| `depth` | string? | render layer: `"b"` building, `"m"` platform, `"f"` front, `"r"` road |
+| `depth` | int? | render/occupancy layer: `0` building, `1` platform, `2` foreground (stairs/ladder/torch), `3` road. Defaults to 0. |
 | `solidTop` | bool? | mice can stand on top |
 | `isTile` | bool? | placeable tile type rather than a building |
 | `category` | string | UI build menu group: `"storage"`, `"structures"`, `"tiles"`, `"production"` |
@@ -442,16 +442,16 @@ All item quantities are stored as **fen** (integers), where **100 fen = 1 liang*
 
 ## Rendering & Layers
 
-Structures render in four depth layers per tile, stored as named fields on `Tile`:
+Structures render in four depth layers per tile. Each tile holds `Structure[] structs` and `Blueprint[] blueprints`, both indexed by depth int:
 
-| Depth | Field | Contents | Sprite position |
-|-------|-------|----------|----------------|
-| `r` | `tile.road` | Roads | `(x, y−1)` — renders on surface of solid tile below |
-| `b` | `tile.building` | Buildings, plants | `(x, y)` |
-| `m` | `tile.mStruct` | Platforms | `(x, y)` |
-| `f` | `tile.fStruct` | Stairs, ladders | `(x, y)` |
+| Depth | `structs[d]` | Contents | Sprite position | sortingOrder |
+|-------|-------------|----------|----------------|-------------|
+| 0 | building layer | Buildings, plants (`Building`/`Plant`) | `(x, y)` | 10 |
+| 1 | platform layer | Platforms | `(x, y)` | 11 |
+| 2 | foreground layer | Stairs, ladders, torches | `(x, y)` | 80 |
+| 3 | road layer | Roads | `(x, y−1/8)` — sits on tile surface | 1 |
 
-Each layer also has a corresponding `Blueprint` field (`roadBlueprint`, `bBlueprint`, `mBlueprint`, `fBlueprint`). Roads use `sortingOrder = 1` to render above the tile ground sprite (order 0). Multiple layers can coexist on the same tile — roads are independent of all other layers.
+`tile.building` is a convenience property: `structs[0] as Building` (Plant extends Building, so both are accessible through it). Multiple layers can coexist on the same tile. `GetBlueprintAt(int depth)` / `SetBlueprintAt(int depth, Blueprint bp)` directly index into `blueprints[]`.
 
 ## Lighting
 

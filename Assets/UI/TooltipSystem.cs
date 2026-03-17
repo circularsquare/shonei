@@ -7,7 +7,7 @@ using TMPro;
 // The tooltip panel is built in code — no prefab needed.
 
 public class TooltipSystem : MonoBehaviour {
-    public static TooltipSystem instance;
+    public static TooltipSystem instance { get; protected set; }
 
     RectTransform tooltipPanel;
     TextMeshProUGUI titleText;

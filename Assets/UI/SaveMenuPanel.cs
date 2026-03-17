@@ -19,7 +19,7 @@ using TMPro;
 //      clicking it populates the input field.
 
 public class SaveMenuPanel : MonoBehaviour {
-    public static SaveMenuPanel instance;
+    public static SaveMenuPanel instance { get; protected set; }
 
     public TMP_InputField slotNameInput;
     public Transform slotList;          // parent for slot entry buttons
@@ -78,6 +78,5 @@ public class SaveMenuPanel : MonoBehaviour {
 
     void SetFeedback(string msg) {
         if (feedbackText != null) feedbackText.text = msg;
-        else Debug.Log("[SaveMenu] " + msg);
     }
 }

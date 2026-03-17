@@ -1,7 +1,11 @@
 # Shonei — Claude Instructions
 
 ## Project spec
-Feel free to explain your thought process in your responses.
+Please feel free to explain your thought process in your responses.
+
+Avoid failing silently. Instead, LogError. Or if an unexpected case occurs, at least Log.
+
+Make stuff private if you think it should be private. 
 
 If you notice anything that could be reorganized to improve clarity or efficiency, please mention a suggestion to me.
 

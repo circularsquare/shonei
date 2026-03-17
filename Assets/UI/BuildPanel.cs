@@ -12,7 +12,7 @@ public class BuildPanel : MonoBehaviour {
     public Button btnProduction;
     public Button btnStorage;
     public Button btnTiles;
-    public static BuildPanel instance;
+    public static BuildPanel instance { get; protected set; }
     public StructType structType;
 
     static readonly string[] CategoryNames = { "structures", "plants", "production", "storage", "tiles" };
@@ -158,14 +158,7 @@ public class BuildPanel : MonoBehaviour {
                 for (int i = 0; i < st.nx; i++) {
                     Tile t = World.instance.GetTileAt(tile.x + i, tile.y);
                     if (t == null) return false;
-                    if (st.depth == "b" && (t.building != null || t.GetBlueprintAt("b") != null)) return false;
-                    if (st.depth == "m" && t.mStruct != null) return false;
-                    if (st.depth == "f" && t.fStruct != null) return false;
-                    if (st.depth == "r" && t.road != null) return false;
-                }
-                if (st.depth == "r") {
-                    Tile below = World.instance.GetTileAt(tile.x, tile.y - 1);
-                    if (below == null || !below.type.solid) return false;
+                    if (t.structs[st.depth] != null || t.GetBlueprintAt(st.depth) != null) return false;
                 }
             }
         }
@@ -184,26 +177,15 @@ public class BuildPanel : MonoBehaviour {
     }
 
     public bool Remove(Tile tile) {
-        Blueprint existingBp = tile.GetBlueprintAt("b") ?? tile.GetBlueprintAt("m") ?? tile.GetBlueprintAt("f") ?? tile.GetBlueprintAt("r");
+        Blueprint existingBp = tile.GetAnyBlueprint();
         if (existingBp != null && existingBp.state != Blueprint.BlueprintState.Deconstructing) {
             foreach (var cost in existingBp.costs)
                 existingBp.inv.MoveItemTo(tile.EnsureFloorInventory(), cost.item, existingBp.inv.Quantity(cost.item));
-                // TODO: this can break
-            existingBp.cancelled = true;
-            tile.SetBlueprintAt(existingBp.structType.depth, null);
-            GameObject.Destroy(existingBp.go);
+            existingBp.Destroy(); // sets cancelled, nulls tile ref, removes from blueprint list, destroys GO
             return true;
         }
-        if (tile.building != null || tile.mStruct != null || tile.fStruct != null || tile.road != null) {
-            bool alreadyDeconstructing = false;
-            foreach (string depth in new[] { "b", "m", "f", "r" }) {
-                Blueprint bp = tile.GetBlueprintAt(depth);
-                if (bp != null && bp.state == Blueprint.BlueprintState.Deconstructing) {
-                    alreadyDeconstructing = true;
-                    break;
-                }
-            }
-            if (alreadyDeconstructing) return false;
+        if (System.Array.Exists(tile.structs, s => s != null)) {
+            if (tile.GetMatchingBlueprint(bp => bp.state == Blueprint.BlueprintState.Deconstructing) != null) return false;
             Blueprint.CreateDeconstructBlueprint(tile);
             return true;
         }

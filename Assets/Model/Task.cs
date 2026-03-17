@@ -13,9 +13,12 @@ using System.Linq;
 
 public abstract class Task {
     public Animal animal;
-    protected Queue<Objective> objectives = new Queue<Objective>();
+    protected LinkedList<Objective> objectives = new LinkedList<Objective>();
     public Objective currentObjective;
-    protected List<(ItemStack stack, int amount)> reservedStacks = new List<(ItemStack, int)>();
+    private readonly List<(ItemStack stack, int amount)> reservedStacks = new();
+
+    // De minimis: skip hauls/drops below this unless it clears the source stack entirely.
+    public const int MinHaulQuantity = 20; // 0.20 liang
 
     // check whether a task is possible. create objectives, make reservations
     public abstract bool Initialize();
@@ -24,29 +27,24 @@ public abstract class Task {
         this.animal = animal;
     }
 
+    // Reserves items on a stack and tracks for cleanup. Single entry point for all item reservations.
+    public void ReserveStack(ItemStack stack, int amount){
+        int reserved = stack.Reserve(amount);
+        if (reserved > 0) reservedStacks.Add((stack, reserved));
+    }
+
     // Enqueues a FetchObjective and reserves items on the stack, tracking for cleanup.
     protected void FetchAndReserve(ItemQuantity iq, Tile tile, ItemStack stack, int amount){
-        objectives.Enqueue(new FetchObjective(this, iq, tile));
-        int reserved = stack.res.Reserve(amount);
-        if (reserved > 0) reservedStacks.Add((stack, reserved));
+        objectives.AddLast(new FetchObjective(this, iq, tile));
+        ReserveStack(stack, amount);
     }
     protected void FetchAndReserve(ItemQuantity iq, Tile tile, ItemStack stack){
         FetchAndReserve(iq, tile, stack, iq.quantity);
     }
     // Overload that routes pickup into an equip slot instead of the animal's main inventory.
     protected void FetchAndReserve(ItemQuantity iq, Tile tile, ItemStack stack, Inventory targetInv){
-        objectives.Enqueue(new FetchObjective(this, iq, tile, targetInv));
-        int reserved = stack.res.Reserve(iq.quantity);
-        if (reserved > 0) reservedStacks.Add((stack, reserved));
-    }
-
-    // Shared setup for simple haul tasks: reserve item, queue Fetch + Deliver.
-    protected bool InitFromHaul(HaulInfo h) {
-        if (h == null) return false;
-        ItemQuantity iq = new ItemQuantity(h.item, h.quantity);
-        FetchAndReserve(iq, h.itemTile, h.itemStack, h.quantity);
-        objectives.Enqueue(new DeliverObjective(this, iq, h.storageTile));
-        return true;
+        objectives.AddLast(new FetchObjective(this, iq, tile, targetInv));
+        ReserveStack(stack, iq.quantity);
     }
 
     public bool Start(){ // calls some task specific Initialize
@@ -54,7 +52,7 @@ public abstract class Task {
         if (objectives.Count > 0){StartNextObjective();}
         return initialized;
     }
-    public void Complete(){ // called whenever an objective is complete;
+    public virtual void Complete(){ // called whenever an objective is complete;
         if (objectives.Count > 0){StartNextObjective();}
         else {
             Cleanup();
@@ -72,27 +70,25 @@ public abstract class Task {
         animal.task = null;
         animal.state = Animal.AnimalState.Idle;
     }
-    // Called by FetchObjective when it acquires a new source tile mid-task (partial fetch retry).
-    public void AddReservedStack(ItemStack stack, int amount) {
-        int reserved = stack.res.Reserve(amount);
-        if (reserved > 0) reservedStacks.Add((stack, reserved));
-    }
     public virtual void Cleanup(){
         foreach (var (stack, amount) in reservedStacks){
-            stack.res.Unreserve(Math.Min(amount, stack.res.reserved));
+            stack.Unreserve(Math.Min(amount, stack.resAmount));
         }
         reservedStacks.Clear();
         objectives.Clear();
     }
+    public void EnqueueFront(Objective obj) { objectives.AddFirst(obj); }
+
     public void StartNextObjective(){
-        currentObjective = objectives.Dequeue();
+        currentObjective = objectives.First.Value;
+        objectives.RemoveFirst();
         currentObjective.Start();
     }
     public void OnArrival(){
         currentObjective?.OnArrival();
     }
 
-    public virtual string GetTaskName (){
+    public virtual string GetTaskName(){
         return this.GetType().Name.Replace("Task", "");
     }
     public override string ToString(){
@@ -105,12 +101,14 @@ public class CraftTask : Task {
     public Recipe recipe;
     public Tile workplace;
     public int roundsRemaining;
+    private List<(Item item, int perRound)> _inputsToFetch;
+    private int _fetchInputIndex;
 
     public CraftTask(Animal animal) : base(animal){}
     public override bool Initialize(){
-        recipe = animal.PickRecipe(); // TODO: should this function be moved here to Task?
+        recipe = animal.PickRecipe();
         if (recipe == null){ return false; }
-        Path p = null; 
+        Path p = null;
         if (Db.structTypeByName.ContainsKey(recipe.tile)) {
             p = animal.nav.FindPathToBuilding(Db.structTypeByName[recipe.tile]);
         }
@@ -119,22 +117,64 @@ public class CraftTask : Task {
 
         roundsRemaining = animal.CalculateWorkPossible(recipe);
         if (roundsRemaining == 0) { return false; }
-        foreach (ItemQuantity iq in recipe.inputs){
-            if (!animal.inv.ContainsItem(iq, roundsRemaining)){
-                (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(iq.item);
-                if (itemPath == null) { return false; }
-                int totalNeeded = iq.quantity * roundsRemaining;
-                FetchAndReserve(new ItemQuantity(iq.item, totalNeeded), itemPath.tile, stack, totalNeeded);
-            }
-        }
-        objectives.Enqueue(new GoObjective(this, workplace));
-        objectives.Enqueue(new WorkObjective(this, recipe));
 
-        foreach (ItemQuantity output in recipe.outputs){
-            objectives.Enqueue(new DropObjective(this, output.item));
+        // Build the fetch list in forward order (skipping what's already in animal inv)
+        _inputsToFetch = new List<(Item, int)>();
+        foreach (ItemQuantity iq in recipe.inputs) {
+            if (!animal.inv.ContainsItem(iq, roundsRemaining))
+                _inputsToFetch.Add((iq.item, iq.quantity));
         }
-        if (!workplace.building.res.Reserve()) Debug.Log("reserved workplace that is not available!");
+        _fetchInputIndex = 0;
+
+        // Queue tail: Go → Work → Drops
+        objectives.AddLast(new GoObjective(this, workplace));
+        objectives.AddLast(new WorkObjective(this, recipe));
+        foreach (ItemQuantity output in recipe.outputs)
+            objectives.AddLast(new DropObjective(this, output.item));
+
+        // Prepend fetch objectives in reverse so index 0 ends at front
+        for (int i = _inputsToFetch.Count - 1; i >= 0; i--) {
+            var (item, perRound) = _inputsToFetch[i];
+            int toFetch = perRound * roundsRemaining - animal.inv.Quantity(item);
+            (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(item);
+            if (itemPath == null) { return false; }
+            ReserveStack(stack, toFetch);
+            objectives.AddFirst(new FetchObjective(this, new ItemQuantity(item, toFetch), itemPath.tile, softFetch: true));
+        }
+
+        if (!workplace.building.res.Reserve()) return false;
         return true;
+    }
+    public override void Complete(){
+        // When a FetchObjective finishes and we're still in the fetch phase, run continuation logic
+        if (currentObjective is FetchObjective && _fetchInputIndex < _inputsToFetch.Count) {
+            var (item, perRound) = _inputsToFetch[_fetchInputIndex];
+            int have = animal.inv.Quantity(item);
+            int needed = perRound * roundsRemaining;
+
+            if (have < needed) {
+                int stillNeed = needed - have;
+                (Path p, ItemStack stack) = animal.nav.FindPathItemStack(item);
+                if (p != null) {
+                    ReserveStack(stack, stillNeed);
+                    // Pass `needed` (not stillNeed) as iq.quantity so FetchObjective.Start's early-exit
+                    // (have >= iq.quantity) only fires when the animal truly has everything it needs.
+                    // OnArrival calculates how much to take as (iq.quantity - have), so it still fetches
+                    // only the remaining gap.
+                    EnqueueFront(new FetchObjective(this, new ItemQuantity(item, needed), p.tile, softFetch: true));
+                    // Don't increment — check this ingredient again after the retry
+                    base.Complete();
+                    return;
+                }
+                // No sources left — trim rounds to what we can actually do
+                int achievable = have / perRound;
+                if (achievable == 0) { Fail(); return; }
+                Debug.Log($"{animal.aName}: trimming rounds {roundsRemaining}→{achievable} (short on {item.name})");
+                roundsRemaining = achievable;
+            }
+            _fetchInputIndex++;
+        }
+        base.Complete();
     }
     public override void Cleanup(){
         workplace.building?.res.Unreserve();
@@ -167,7 +207,7 @@ public class GoTask : Task {
     public GoTask (Animal animal, Tile tile) : base(animal){ this.tile = tile;}
     public override bool Initialize(){
         if (animal.nav.PathTo(tile) == null) return false;
-        objectives.Enqueue(new GoObjective(this, tile)); return true;
+        objectives.AddLast(new GoObjective(this, tile)); return true;
     }
 }
 public class EepTask : Task {
@@ -177,9 +217,9 @@ public class EepTask : Task {
             animal.FindHome();
         }
         if (animal.homeTile != null){
-            objectives.Enqueue(new GoObjective(this, animal.homeTile));
+            objectives.AddLast(new GoObjective(this, animal.homeTile));
         }
-        objectives.Enqueue(new EepObjective(this));
+        objectives.AddLast(new EepObjective(this));
         return true;
     }
 }
@@ -194,12 +234,12 @@ public class HarvestTask : Task {
         } 
         Plant plant = tile.building as Plant;
         
-        objectives.Enqueue(new GoObjective(this, tile));
-        objectives.Enqueue(new HarvestObjective(this, plant));
+        objectives.AddLast(new GoObjective(this, tile));
+        objectives.AddLast(new HarvestObjective(this, plant));
         foreach (ItemQuantity output in plant.plantType.products){
-            objectives.Enqueue(new DropObjective(this, output.item));
+            objectives.AddLast(new DropObjective(this, output.item));
         }
-        if (!plant.res.Reserve()) Debug.Log("reserved plant that is not available!");
+        if (!plant.res.Reserve()) return false;
         return true;
     }
     public override void Cleanup() {
@@ -210,21 +250,34 @@ public class HarvestTask : Task {
 // haultask is only for moving random items to storage!
 public class HaulTask : Task {
     public HaulTask(Animal animal) : base(animal){}
-    public override bool Initialize() => InitFromHaul(animal.nav.FindAnyItemToHaul());
+    public override bool Initialize() {
+        HaulInfo h = animal.nav.FindAnyItemToHaul();
+        if (h == null) return false;
+        ItemQuantity iq = new(h.item, h.quantity);
+        FetchAndReserve(iq, h.itemTile, h.itemStack, h.quantity);
+        objectives.AddLast(new DeliverObjective(this, iq, h.storageTile));
+        return true;
+    }
 }
 // consolidatetask is only for merging floor stacks when no storage is available!
 public class ConsolidateTask : Task {
     public ConsolidateTask(Animal animal) : base(animal) {}
-    public override bool Initialize() => InitFromHaul(animal.nav.FindFloorConsolidation());
+    public override bool Initialize() {
+        HaulInfo h = animal.nav.FindFloorConsolidation();
+        if (h == null) return false;
+        ItemQuantity iq = new(h.item, h.quantity);
+        FetchAndReserve(iq, h.itemTile, h.itemStack, h.quantity);
+        objectives.AddLast(new DeliverObjective(this, iq, h.storageTile));
+        return true;
+    }
 }
 public class DropTask : Task {
-    ItemQuantity iq;
     public DropTask(Animal animal) : base(animal){}
     public override bool Initialize(){
         List<Item> itemsToDrop = animal.inv.GetItemsList();
         if (itemsToDrop.Count == 0) { return false; }
         foreach (Item item in itemsToDrop) {
-            objectives.Enqueue(new DropObjective(this, item)); }
+            objectives.AddLast(new DropObjective(this, item)); }
         return true;
     }
 }
@@ -239,10 +292,12 @@ public class ConstructTask : Task {
         var state = deconstructing ? Blueprint.BlueprintState.Deconstructing : Blueprint.BlueprintState.Constructing;
         var candidates = animal.nav.FindPathsAdjacentToBlueprints(animal.job, state);
         foreach (var (bpTile, standPath, bp) in candidates) {
+            if (bp.WouldCauseItemsFall()) continue; // items above must be cleared first
+            if (bp.StorageNeedsEmptying()) continue; // storage must be emptied before deconstruction
             blueprint = bp;
-            objectives.Enqueue(new GoObjective(this, standPath.tile));
-            objectives.Enqueue(new ConstructObjective(this, blueprint));
-            if (!blueprint.res.Reserve()) Debug.Log("reserved blueprint that is not available!");
+            objectives.AddLast(new GoObjective(this, standPath.tile));
+            objectives.AddLast(new ConstructObjective(this, blueprint));
+            if (!blueprint.res.Reserve()) return false;
             return true;
         }
         return false;
@@ -269,9 +324,9 @@ public class SupplyBlueprintTask : Task {
                         FetchAndReserve(iq, itemPath.tile, stack);
                     }
                     blueprint = bp;
-                    objectives.Enqueue(new GoObjective(this, standPath.tile));
-                    objectives.Enqueue(new DeliverToBlueprintObjective(this, iq, blueprint));
-                    if (!blueprint.res.Reserve()) Debug.Log("reserved blueprint that is not available!");
+                    objectives.AddLast(new GoObjective(this, standPath.tile));
+                    objectives.AddLast(new DeliverToBlueprintObjective(this, iq, blueprint));
+                    if (!blueprint.res.Reserve()) return false;
                     return true;
                 }
             }
@@ -306,11 +361,14 @@ public class HaulToMarketTask : Task {
             ItemStack stack = itemPath.tile.inv.GetItemStack(item);
             if (stack == null) continue;
 
-            int qty = Math.Min(quantityNeeded, stack.quantity - stack.res.reserved);
+            int qty = Math.Min(quantityNeeded, stack.quantity - stack.resAmount);
             if (qty <= 0) continue;
+            int sourceQty = stack.quantity - stack.resAmount;
+            bool worthHauling = qty >= MinHaulQuantity || qty >= sourceQty || qty >= quantityNeeded / 4;
+            if (!worthHauling) continue;
             ItemQuantity iq = new(item, qty);
             FetchAndReserve(iq, itemPath.tile, stack, qty);
-            objectives.Enqueue(new DeliverObjective(this, iq, marketStorageTile));
+            objectives.AddLast(new DeliverObjective(this, iq, marketStorageTile));
             return true;
         }
         return false;
@@ -337,11 +395,13 @@ public class HaulFromMarketTask : Task {
             Path storagePath = animal.nav.FindPathToStorage(item);
             if (storagePath == null) continue;
 
-            int qty = Math.Min(excess, stack.quantity - stack.res.reserved);
+            int qty = Math.Min(excess, stack.quantity - stack.resAmount);
             if (qty <= 0) continue;
+            int sourceQty = stack.quantity - stack.resAmount;
+            if (qty < MinHaulQuantity && qty < sourceQty) continue;
             ItemQuantity iq = new(item, qty);
             FetchAndReserve(iq, marketStorageTile, stack, qty);
-            objectives.Enqueue(new DeliverObjective(this, iq, storagePath.tile));
+            objectives.AddLast(new DeliverObjective(this, iq, storagePath.tile));
             return true;
         }
         return false;
@@ -356,8 +416,8 @@ public class ResearchTask : Task {
         if (p == null) return false;
         labTile = p.tile;
         if (!labTile.building.res.Reserve()) return false;
-        objectives.Enqueue(new GoObjective(this, labTile));
-        objectives.Enqueue(new ResearchObjective(this));
+        objectives.AddLast(new GoObjective(this, labTile));
+        objectives.AddLast(new ResearchObjective(this));
         return true;
     }
     public override void Cleanup() {
@@ -396,14 +456,18 @@ public class FetchObjective : Objective {
     private ItemQuantity iq;
     private Tile sourceTile;
     private Inventory targetInv; // null = animal's main inventory; non-null = equip into that slot
-    public FetchObjective(Task task, ItemQuantity iq, Tile sourceTile = null, Inventory targetInv = null) : base(task) {
+    private bool softFetch; // if true: Complete (not Fail) when no path found or nothing taken; no cross-tile retry
+    private Inventory Dest => targetInv ?? animal.inv;
+    public FetchObjective(Task task, ItemQuantity iq, Tile sourceTile = null, Inventory targetInv = null, bool softFetch = false) : base(task) {
         this.iq = iq;
         this.sourceTile = sourceTile;
         this.targetInv = targetInv;
+        this.softFetch = softFetch;
     }
     public override void Start(){
-        Inventory dest = targetInv ?? animal.inv;
-        if (dest.Quantity(iq.item) >= iq.quantity){Complete(); return;}
+        // Start() may be called more than once (non-soft): if the animal arrives and the stack is partially
+        // exhausted, sourceTile is cleared and Start() re-runs to find a new source tile.
+        if (Dest.Quantity(iq.item) >= iq.quantity){Complete(); return;}
         Path itemPath;
         if (sourceTile != null) {
             itemPath = animal.nav.PathTo(sourceTile);
@@ -411,7 +475,7 @@ public class FetchObjective : Objective {
             ItemStack stack;
             (itemPath, stack) = animal.nav.FindPathItemStack(iq.item);
             if (itemPath != null) {
-                task.AddReservedStack(stack, iq.quantity);
+                task.ReserveStack(stack, iq.quantity);
                 sourceTile = itemPath.tile;
             }
         }
@@ -420,20 +484,23 @@ public class FetchObjective : Objective {
             animal.nav.Navigate(itemPath);
             animal.state = Animal.AnimalState.Moving;
         } else {
+            if (softFetch) { Complete(); return; }
             Fail(); Debug.Log($"{animal.aName} ({animal.job.name}) found no path to fetch {iq.item.name} at ({(int)animal.x},{(int)animal.y})");
         }
     }
     public override void OnArrival(){
-        Inventory dest = targetInv ?? animal.inv;
-        int needed = iq.quantity - dest.Quantity(iq.item); // how much more we still need
+        int needed = iq.quantity - Dest.Quantity(iq.item); // how much more we still need
         if (needed <= 0) { Complete(); return; }
-        int amountBefore = dest.Quantity(iq.item);
+        int amountBefore = Dest.Quantity(iq.item);
         animal.TakeItem(new ItemQuantity(iq.item, needed), targetInv); // only take what's still needed
-        int amountTaken = dest.Quantity(iq.item) - amountBefore;
-        if (amountTaken == 0) { Fail(); Debug.Log($"{animal.aName} Couldn't fetch any {iq.item.name} (needed {needed} fen)"); return; }
-        // targetInv != null means equip slot (food/tool) — partial fills are fine there,
-        // so don't retry across tiles. Main-inv crafting fetches (targetInv == null) do retry.
-        if (dest.Quantity(iq.item) >= iq.quantity || dest.GetStorageForItem(iq.item) < 5 || targetInv != null) {
+        int amountTaken = Dest.Quantity(iq.item) - amountBefore;
+        if (amountTaken == 0) {
+            if (softFetch) { Complete(); return; }
+            Fail(); Debug.Log($"{animal.aName} Couldn't fetch any {iq.item.name} (needed {needed} fen)"); return;
+        }
+        // softFetch: always complete after one tile visit (CraftTask.Complete handles retry logic)
+        // targetInv != null means equip slot (food/tool) — partial fills are fine there, don't retry
+        if (softFetch || Dest.Quantity(iq.item) >= iq.quantity || Dest.GetStorageForItem(iq.item) < 5 || targetInv != null) {
             Complete();
         } else {
             sourceTile = null; // source tile may be exhausted; search for another
@@ -455,12 +522,14 @@ public class DeliverObjective : Objective { // navigates and drops off item
         } else {Fail();}
     }
     public override void OnArrival(){
-        if (animal.inv.Quantity(iq.item) == 0){ Debug.Log($"{animal.aName} DeliverObjective: missing {iq.item.name} to deliver to ({destination.x},{destination.y})"); Fail(); }
-        animal.DropItem(iq);  // drops the amount you have up to iq.quantity. if have less, just drops that.
+        if (animal.inv.Quantity(iq.item) == 0){ Debug.Log($"{animal.aName} DeliverObjective: missing {iq.item.name} to deliver to ({destination.x},{destination.y})"); Fail(); return; }
+        int moved = animal.DropItem(iq);  // drops the amount you have up to iq.quantity. if have less, just drops that.
+        if (moved < iq.quantity)
+            Debug.Log($"{animal.aName} ({animal.job.name}) at ({(int)animal.x},{(int)animal.y}): partial/failed drop of {iq.item.name} — moved {moved}/{iq.quantity} to ({destination.x},{destination.y})");
         Complete();
     }
 }
-public class DeliverToBlueprintObjective : Objective { // does not navigate, happens on arrival
+public class DeliverToBlueprintObjective : Objective { // always queued after GoObjective; Start() runs immediately once the animal is in position
     private ItemQuantity iq;
     private Blueprint blueprint;
     public DeliverToBlueprintObjective(Task task, ItemQuantity iq, Blueprint blueprint) : base(task) {
@@ -489,7 +558,7 @@ public class DropObjective : Objective {
     }
     public override void Start(){
         if (animal.inv.Quantity(item) == 0) {Complete(); return;}
-        Path dropPath = animal.nav.FindPathToDrop(item);
+        Path dropPath = animal.nav.FindPathToDrop(item, animal.inv.Quantity(item));
         if (dropPath != null){
             destination = dropPath.tile;
             animal.nav.Navigate(dropPath);
@@ -504,6 +573,7 @@ public class DropObjective : Objective {
         Complete();
     }
 }
+
 public class GoObjective : Objective {
     public GoObjective(Task task, Tile destination) : base(task) {
         this.destination = destination;
@@ -547,14 +617,15 @@ public class ConstructObjective : Objective {
     public override void Start(){
         if (blueprint == null || blueprint.cancelled) { Fail(); return; }
         animal.state = Animal.AnimalState.Working;
+        // AnimalStateManager.HandleWorking calls task.Complete() when construction finishes.
     }
 }
 public class EepObjective : Objective {
     public EepObjective(Task task): base(task){}
     public override void Start(){
         animal.state = Animal.AnimalState.Eeping;
+        // AnimalStateManager.HandleEeping calls task.Complete() when sleep finishes.
     }
-    // asm.handleeeping calls task.complete
 }
 public class HarvestObjective : Objective {
     private Plant plant;
@@ -565,18 +636,17 @@ public class HarvestObjective : Objective {
         if (plant == null || !plant.harvestable) { Fail(); return; }
         animal.workProgress = 0f;
         animal.state = Animal.AnimalState.Working;
+        // AnimalStateManager.HandleWorking calls task.Complete() when harvesting finishes.
     }
 }
-
-
 
 public class ResearchObjective : Objective {
     public ResearchObjective(Task task) : base(task) {}
     public override void Start() {
         animal.workProgress = 0f;
         animal.state = Animal.AnimalState.Working;
+        // AnimalStateManager.HandleWorking calls task.Complete() when research finishes.
     }
-    // AnimalStateManager.HandleWorking drives progress and calls task.Complete().
 }
 
 

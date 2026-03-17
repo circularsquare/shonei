@@ -11,7 +11,8 @@
         ],
         "growthTime": 40,
         "harvestTime": 5.0,
-        "njob": "logger"    
+        "njob": "logger",
+        "capacity": 1
     },{
         "id": 502,
         "name": "wheat",
@@ -23,7 +24,9 @@
         ],
         "growthTime": 40,
         "harvestTime": 3.0,
-        "njob": "farmer"    },{
+        "njob": "farmer",
+        "capacity": 1
+    },{
         "id": 550,
         "name": "appletree",
         "ncosts": [
@@ -34,6 +37,8 @@
         ],
         "growthTime": 30,
         "harvestTime": 2.0,
-        "njob": "farmer"    }
+        "njob": "farmer",
+        "capacity": 1
+    }
 
 ]  

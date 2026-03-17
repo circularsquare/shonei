@@ -20,6 +20,9 @@ public class Blueprint {
     public Reservable res;
     public bool cancelled = false;
     public int priority = 0;
+    // Items to give to the completing animal after construction/deconstruction finishes.
+    // Set by StructController.Construct (mining output) or Deconstruct (refunded materials).
+    public List<ItemQuantity> pendingOutput;
 
     public Blueprint(StructType structType, int x, int y){
         this.structType = structType;
@@ -37,8 +40,8 @@ public class Blueprint {
 
         go = new GameObject();
         float visualX = structType.nx > 1 ? x + (structType.nx - 1) / 2.0f : x;
-        go.transform.position = structType.depth == "r"
-            ? new Vector3(x, y - 1, 0)
+        go.transform.position = structType.depth == 3
+            ? new Vector3(x, y - 1f/8f, 0)
             : new Vector3(visualX, y, 0);
         go.transform.SetParent(WorldController.instance.transform, true);
         go.name = "blueprint_" + structType.name;
@@ -66,11 +69,13 @@ public class Blueprint {
     }
 
     public static Blueprint CreateDeconstructBlueprint(Tile tile) {
-        Structure structure = tile.building ?? tile.mStruct ?? tile.fStruct ?? tile.road;
+        Structure structure = tile.structs[0] ?? tile.structs[1] ?? tile.structs[2] ?? tile.structs[3];
         if (structure == null) return null;
         Blueprint bp = new Blueprint(structure.structType, tile.x, tile.y);
         bp.state = BlueprintState.Deconstructing;
         bp.RefreshColor();
+        if (tile.building?.storage != null)
+            tile.building.storage.locked = true;
         return bp;
     }
 
@@ -100,32 +105,73 @@ public class Blueprint {
         // Consume delivered materials — removes them from globalInv now that they're used up
         foreach (var cost in costs)
             inv.Produce(cost.item, -inv.Quantity(cost.item));
+        // Capture tile products before Construct() changes the tile type
+        if (structType.isTile && structType.name == "empty" && tile.type.products != null)
+            pendingOutput = new List<ItemQuantity>(tile.type.products);
         StructController.instance.Construct(structType, tile);
         tile.SetBlueprintAt(structType.depth, null);
         GameObject.Destroy(go);
     }
     public void Deconstruct() {
         StructController.instance.RemoveBlueprint(this);
+        pendingOutput = new List<ItemQuantity>(); // given in asm.handleworking
         foreach (ItemQuantity cost in costs) {
             int amount = Mathf.FloorToInt(cost.quantity / 2f);
-            if (amount > 0) {
-                tile.EnsureFloorInventory().Produce(cost.item, amount);
-                // TODO: this wont actually work if multiple items need to be dropped
-            }
+            if (amount > 0)
+                pendingOutput.Add(new ItemQuantity(cost.item, amount));
         }
         // destroy the building
-        if (tile.building != null) { tile.building.Destroy(); }
-        else if (tile.mStruct != null) { tile.mStruct.Destroy();}
-        else if (tile.fStruct != null) { tile.fStruct.Destroy(); }
-        else if (tile.road != null) { tile.road.Destroy(); }
+        for (int i = 0; i < 4; i++) { if (tile.structs[i] != null) { tile.structs[i].Destroy(); break; } }
         // remove blueprint
         tile.SetBlueprintAt(structType.depth, null);
         GameObject.Destroy(go);
     }
 
+    // Returns true if this is a deconstruct blueprint on a storage building and the storage still has items.
+    // Deconstruction must wait until the storage is emptied by haulers.
+    public bool StorageNeedsEmptying() {
+        return state == BlueprintState.Deconstructing
+            && tile.building?.storage != null
+            && !tile.building.storage.IsEmpty();
+    }
+
+    // Returns true if completing this blueprint would cause items on the tile(s) above to lose
+    // standability and fall. Uses the same logic as Navigation.GetStandability().
+    public bool WouldCauseItemsFall() {
+        World world = World.instance;
+        for (int i = 0; i < structType.nx; i++) {
+            int bx = tile.x + i, by = tile.y;
+            Tile above = world.GetTileAt(bx, by + 1);
+            if (above == null || above.inv == null || above.inv.IsEmpty()) continue;
+            if (!world.graph.nodes[bx, by + 1].standable) continue;
+
+            Tile tileBelow = world.GetTileAt(bx, by);
+
+            bool solidTileAfter = structType.isTile
+                ? Db.tileTypeByName[structType.name].solid
+                : tileBelow.type.solid;
+
+            bool anySolidTopAfter = false;
+            for (int d = 0; d < 4; d++) {
+                bool solidTop = structType.depth == d
+                    ? (state == BlueprintState.Constructing && structType.solidTop)
+                    : (tileBelow.structs[d] != null && tileBelow.structs[d].structType.solidTop);
+                if (solidTop) { anySolidTopAfter = true; break; }
+            }
+
+            bool ladderSupport = above.HasLadder() || tileBelow.HasLadder();
+
+            if (!(solidTileAfter || anySolidTopAfter || ladderSupport))
+                return true;
+        }
+        return false;
+    }
+
     public void Destroy() {
         StructController.instance.RemoveBlueprint(this);
         cancelled = true;
+        if (state == BlueprintState.Deconstructing && tile.building?.storage != null)
+            tile.building.storage.locked = false;
         tile.SetBlueprintAt(structType.depth, null);
         GameObject.Destroy(go);
     }

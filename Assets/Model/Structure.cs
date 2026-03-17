@@ -24,8 +24,8 @@ public class Structure {
 
         go = new GameObject();
         float visualX = st.nx > 1 ? x + (st.nx - 1) / 2.0f : x;
-        go.transform.position = st.depth == "r"
-            ? new Vector3(visualX, y - 1, 0)
+        go.transform.position = st.depth == 3
+            ? new Vector3(visualX, y - 1f/8f, 0)
             : new Vector3(visualX, y, 0);
         go.transform.SetParent(WorldController.instance.transform, true);
         go.name = "structure_" + structType.name;
@@ -33,27 +33,24 @@ public class Structure {
         sprite = structType.LoadSprite() ?? Resources.Load<Sprite>("Sprites/Buildings/default");
         sr = go.AddComponent<SpriteRenderer>();
         sr.sprite = sprite;
-        if (structType.depth == "r") sr.sortingOrder = 1; // above tile (order 0), below buildings
-        res = new Reservable(structType.capacity);
+        if (structType.depth == 3) sr.sortingOrder = 1; // above tile (order 0), below buildings
+        res = structType.capacity > 0 ? new Reservable(structType.capacity) : null;
 
         if (structType.name == "torch") {
             go.AddComponent<LightSource>();
         }
     }
 
-    public void Destroy(){
+    public virtual void Destroy(){
         if (this is Plant plant) {
             PlantController.instance.Remove(plant);
         }
         StructController.instance.Remove(this);
-        string depth = structType.depth;
+        int depth = structType.depth;
         for (int i = 0; i < structType.nx; i++) {
             Tile t = World.instance.GetTileAt(x + i, y);
             if (t == null) continue;
-            if (depth == "b") t.building = null;
-            else if (depth == "f") t.fStruct = null;
-            else if (depth == "m") t.mStruct = null;
-            else if (depth == "r") t.road = null;
+            t.structs[depth] = null;
         }
         GameObject.Destroy(go);
         World world = World.instance;
@@ -78,7 +75,7 @@ public class StructType {
     public float constructionCost {get; set;}
     public bool isTile {get; set;}
     public bool isPlant; 
-    public string depth {get; set;} // 'b', 'm', 'f', 'r'
+    public int depth {get; set;} // 0=building, 1=platform, 2=foreground, 3=road
     public string njob {get; set;}
     public Job job;
     public int capacity {get; set;} // number of animals that can reserve this struct at once
@@ -108,8 +105,6 @@ public class StructType {
 
     [OnDeserialized]
     internal void OnDeserialized(StreamingContext context){
-        if (capacity == 0){ capacity = 1; } // default, can be used by one animal at a time
-        if (depth == null){ depth = "b"; }
         if (nx == 0){ nx = 1; }
         if (ny == 0){ ny = 1; }
         if (storageStackSize > 0){ storageStackSize *= 100; } // convert liang → fen

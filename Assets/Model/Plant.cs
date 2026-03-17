@@ -41,6 +41,7 @@ public class Plant : Building {
         Grow(plantType.growthTime);
     }
     public ItemQuantity[] Harvest(){
+        if (!harvestable) { Debug.LogError($"Harvest() called on {plantType.name} but harvestable=false"); return Array.Empty<ItemQuantity>(); }
         harvestable = false;
         age = 0; // autoreplant
         growthStage = 0;

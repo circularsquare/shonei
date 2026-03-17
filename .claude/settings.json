@@ -24,7 +24,8 @@
       "Read(//c/Users/anita/projects/shonei/**)",
       "Read(//mnt/c/Users/anita/projects/shonei/Assets/**)",
       "Bash(ls Assets/Resources/*.json)",
-      "Bash(python -c \"import json; d=json.load\\(open\\(''Assets/Resources/plantsDb.json''\\)\\); [print\\(p.get\\(''name''\\), p.get\\(''nx''\\)\\) for p in d]\")"
+      "Bash(python -c \"import json; d=json.load\\(open\\(''Assets/Resources/plantsDb.json''\\)\\); [print\\(p.get\\(''name''\\), p.get\\(''nx''\\)\\) for p in d]\")",
+      "Bash(xargs grep:*)"
     ],
     "additionalDirectories": [
       "C:\\Users\\anita",

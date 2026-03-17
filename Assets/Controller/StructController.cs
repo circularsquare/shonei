@@ -6,7 +6,7 @@ using UnityEngine.EventSystems;
 using TMPro;
 
 public class StructController : MonoBehaviour {
-    public static StructController instance;
+    public static StructController instance { get; protected set; }
     private List<Structure> structures = new List<Structure>();
     private Dictionary<StructType, List<Structure>> structsByType = new Dictionary<StructType, List<Structure>>();
     private List<Blueprint> blueprints = new List<Blueprint>();
@@ -42,15 +42,12 @@ public class StructController : MonoBehaviour {
         list.Add(structure);
     }
 
-    public bool Construct(StructType st, Tile tile){        
+    public bool Construct(StructType st, Tile tile){
         Structure structure = null;
         if (st.isTile){ // tiles are not real structures, should just turn into tile
             if (st.name == "empty"){
-                // need to spawn the mined resources
-                if (tile.type.products != null && tile.type.products.Length > 0){
-                    if (tile.inv == null){ tile.inv = new Inventory(4, 1000, Inventory.InvType.Floor, tile.x, tile.y); }
-                    tile.inv.Produce(tile.type.products[0].item, tile.type.products[0].quantity);
-                }
+                // Mining output is captured by Blueprint.Complete() into pendingOutput before this is called.
+                // (No floor produce here — if called outside a blueprint context, caller handles output.)
             }
             tile.type = Db.tileTypeByName[st.name];}
         else if (st.isPlant){
@@ -61,22 +58,17 @@ public class StructController : MonoBehaviour {
             for (int i = 0; i < st.nx; i++) {
                 Tile t = World.instance.GetTileAt(tile.x + i, tile.y);
                 if (t == null) { Debug.LogError("tile out of bounds at " + (tile.x+i) + "," + tile.y); return false; }
-                if (st.depth == "b" && t.building != null) { Debug.LogError("building occupied at " + (tile.x+i) + "," + tile.y); return false; }
-                if (st.depth == "m" && t.mStruct != null) { Debug.LogError("mStruct occupied at " + (tile.x+i) + "," + tile.y); return false; }
-                if (st.depth == "f" && t.fStruct != null) { Debug.LogError("fStruct occupied at " + (tile.x+i) + "," + tile.y); return false; }
-                if (st.depth == "r" && t.road != null) { Debug.LogError("road occupied at " + (tile.x+i) + "," + tile.y); return false; }
-            }
-            if (st.depth == "r") {
-                Tile below = World.instance.GetTileAt(tile.x, tile.y - 1);
-                if (below == null || !below.type.solid) { Debug.LogError("road requires solid tile below!"); return false; }
+                if (t.structs[st.depth] != null) { Debug.LogError("depth " + st.depth + " occupied at " + (tile.x+i) + "," + tile.y); return false; }
             }
             // Dispatch to subclass
-            if (st.depth == "b") { structure = new Building(st, tile.x, tile.y); }
+            if (st.depth == 0) { structure = new Building(st, tile.x, tile.y); }
             else if (st.name == "platform") { structure = new Platform(st, tile.x, tile.y); }
             else if (st.name == "stairs") { structure = new Stairs(st, tile.x, tile.y); }
             else if (st.name == "ladder") { structure = new Ladder(st, tile.x, tile.y); }
-            else if (st.depth == "r") { structure = new Road(st, tile.x, tile.y); }
-            else { Debug.LogError("unknown type of structure? " + st.depth); return false; }
+            else if (st.depth == 1) { structure = new Platform(st, tile.x, tile.y); }
+            else if (st.depth == 2) { structure = new ForegroundStructure(st, tile.x, tile.y); }
+            else if (st.depth == 3) { structure = new Road(st, tile.x, tile.y); }
+            else { Debug.LogError("unknown type of structure? depth=" + st.depth); return false; }
         }
         
 
