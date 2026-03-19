@@ -18,10 +18,13 @@ MonoBehaviour:
   shadowDarkness: 0.563
   litLayers:
     serializedVersion: 2
-    m_Bits: 91
+    m_Bits: 27
   shadowCasterLayers:
     serializedVersion: 2
     m_Bits: 191
+  directionalOnlyLayers:
+    serializedVersion: 2
+    m_Bits: 64
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
