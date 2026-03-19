@@ -10,6 +10,7 @@ public class WorldController : MonoBehaviour {
     public World world {get; protected set;}
     public Transform tilesTransform;
     Dictionary<Tile, GameObject> tileGameObjectMap;
+    Coroutine defaultSetupCoroutine;
 
     // FRAME 0: runs up to the first yield, pausing to let all other Start()s finish.
     // FRAME 1: resumes and calls GenerateDefault() (or waits for save/reset to do so).
@@ -92,6 +93,8 @@ public class WorldController : MonoBehaviour {
     public static bool isClearing = false;
 
     public void ClearWorld() {
+        if (defaultSetupCoroutine != null) { StopCoroutine(defaultSetupCoroutine); defaultSetupCoroutine = null; }
+        WorkOrderManager.instance?.ClearAllOrders();
         isClearing = true;
         // Null all tile.inv refs before destroying structures — prevents Structure.Destroy()
         // → FallIfUnstandable() from spawning stale fall animations during the clear.
@@ -171,7 +174,7 @@ public class WorldController : MonoBehaviour {
         world.graph.Initialize();
 
         for (int i = 0; i < 4; i++) AnimalController.instance.AddAnimal(20, 10);
-        StartCoroutine(DefaultJobSetup());
+        defaultSetupCoroutine = StartCoroutine(DefaultJobSetup());
     }
 
     // FRAME 2 — one frame after GenerateDefault(). By this point:

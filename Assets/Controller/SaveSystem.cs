@@ -271,6 +271,7 @@ public class SaveSystem : MonoBehaviour {
             plant.growthStage  = ssd.plantGrowthStage;
             plant.harvestable  = ssd.plantHarvestable;
             plant.UpdateSprite();
+            WorkOrderManager.instance?.RegisterHarvest(plant);
             structure = plant;
         } else if (st.depth == 0) {
             structure = new Building(st, ssd.x, ssd.y) { uses = ssd.uses };
@@ -303,7 +304,7 @@ public class SaveSystem : MonoBehaviour {
             Debug.LogError("Unknown blueprint struct type on load: " + bsd.typeName); return;
         }
         StructType st = Db.structTypeByName[bsd.typeName];
-        Blueprint bp = new Blueprint(st, bsd.x, bsd.y);
+        Blueprint bp = new Blueprint(st, bsd.x, bsd.y, autoRegister: false);
         bp.state                = (Blueprint.BlueprintState)bsd.state;
         bp.constructionProgress = bsd.constructionProgress;
         bp.priority             = bsd.priority;
@@ -322,6 +323,14 @@ public class SaveSystem : MonoBehaviour {
         bp.RefreshColor();
         if (bp.state == Blueprint.BlueprintState.Deconstructing && bp.tile.building?.storage != null)
             bp.tile.building.storage.locked = true;
+        switch (bp.state) {
+            case Blueprint.BlueprintState.Constructing:
+                WorkOrderManager.instance?.RegisterConstruct(bp); break;
+            case Blueprint.BlueprintState.Receiving:
+                WorkOrderManager.instance?.RegisterSupplyBlueprint(bp); break;
+            case Blueprint.BlueprintState.Deconstructing:
+                WorkOrderManager.instance?.RegisterDeconstruct(bp); break;
+        }
     }
 
     void RestoreInventory(InventorySaveData isd, Tile tile) {
@@ -336,6 +345,8 @@ public class SaveSystem : MonoBehaviour {
                 inv.itemStacks[i].decayCounter  = ssd.decayCounter;
                 inv.itemStacks[i].resAmount = 0;
                 GlobalInventory.instance.AddItem(item, ssd.quantity);
+                if (inv.invType == Inventory.InvType.Floor)
+                    WorkOrderManager.instance?.RegisterHaul(inv.itemStacks[i]);
             }
         }
         foreach (Item item in Db.itemsFlat) { inv.AllowItem(item); }

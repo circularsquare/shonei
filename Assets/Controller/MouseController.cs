@@ -36,6 +36,10 @@ public class MouseController : MonoBehaviour {
     void Update() {
         if (Input.GetKeyDown(KeyCode.Escape) && mouseMode != MouseMode.Select)
             SetModeSelect();
+        if (Input.GetKeyDown(KeyCode.D) && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))) {
+            WorkOrderManager.instance?.AuditOrders();
+            InventoryController.instance?.ValidateGlobalInventory();
+        }
 
         if (EventSystem.current.IsPointerOverGameObject()){
             if (Input.GetMouseButtonDown(0) && mouseMode == MouseMode.Build)

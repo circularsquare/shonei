@@ -8,6 +8,7 @@ using TMPro;
 public class PlantController : MonoBehaviour {
     public static PlantController instance { get; protected set; }
     private List<Plant> plants = new List<Plant>(); // list of plants
+    public IReadOnlyList<Plant> Plants => plants;
     public int np = 0; 
 
     private World world;
@@ -28,6 +29,7 @@ public class PlantController : MonoBehaviour {
     public void Remove(Plant plant) {
         plants.Remove(plant);
         np -= 1;
+        WorkOrderManager.instance?.RemoveForTile(plant.tile);
     }
 
     public void TickUpdate(){
