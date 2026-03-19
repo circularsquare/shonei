@@ -61,6 +61,7 @@ public class Graph {
         AddNeighborsInitial();
     }
     public Path Navigate(Node start, Node goal){
+        if (!SameComponent(start, goal)) return null;  // O(1) fast exit before A*
         AStar astar = new AStar(nodes, start, goal);
         return astar.Search();
     }
@@ -274,7 +275,11 @@ public class Graph {
         // Horizontal — road tiles reduce cost from both sides (length always 1)
         float fromR = from.tile?.structs[3]?.structType.pathCostReduction ?? 0f;
         float toR   = to.tile?.structs[3]?.structType.pathCostReduction   ?? 0f;
-        return (Mathf.Max(0.1f, 1.0f - fromR - toR), 1.0f);
+        float baseCost = Mathf.Max(0.1f, 1.0f - fromR - toR);
+        // Water on either endpoint tile halves traversal speed (doubles cost).
+        bool inWater = (from.tile != null && from.tile.water > 0)
+                    || (to.tile   != null && to.tile.water   > 0);
+        return (inWater ? baseCost * 2f : baseCost, 1.0f);
     }
     public float GetEdgeCost(Node from, Node to) => GetEdgeInfo(from, to).cost;
 

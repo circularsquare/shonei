@@ -16,7 +16,7 @@
     - have a "keep" setting that invs can toggle to keep food for consumption and stuff like that. 
 - plant
     - flesh out plant growth, moisture and temperature
-    - make plants grow from sunlight
+    - make plants grow from sunlight? shading
 - visuals
     - improve mouse animation
     - add icons to inventory panel view / itemdisplay
@@ -32,20 +32,13 @@
         - assign scientists to "maintain" duty?
     - lock postrequisites?
 - dynamic objectives!
-- implement "reachability" connected networks in navigation?
-- add clock / tick counter in game display
 - crafttask priority...
 - incentivize building lots of storage at once, make it easy i guess?
 - test workorders for multiple capacity
-- should decay call additem?
-- recheck whether nav is a mess
+- re-clean up audit/reconcile?
+- leisure!
+- figure out cloud lighting by torches
 
 BUGS
 
 TODAY GOALS
-- wom
-    - consider whether we should save workorders?
-- check that audit and reconcile are basically the same 
-    - can they be made into the same function actually?
-- wom navigates for hauling and construction and harvesting.... but not all things...
-- market decays... need to check marketneedshaulto for tolerance

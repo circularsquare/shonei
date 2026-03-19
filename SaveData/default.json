@@ -1,5 +1,5 @@
 {
-  "timer": 2031.0105,
+  "timer": 2078.77026,
   "tiles": [
     {
       "x": 0,
@@ -595,8 +595,8 @@
         "stacks": [
           {
             "itemName": "planks",
-            "quantity": 997,
-            "decayCounter": 545504
+            "quantity": 982,
+            "decayCounter": 327154
           }
         ]
       }
@@ -610,8 +610,8 @@
         "stacks": [
           {
             "itemName": "sawdust",
-            "quantity": 688,
-            "decayCounter": 805718
+            "quantity": 681,
+            "decayCounter": 619955
           }
         ]
       }
@@ -671,7 +671,7 @@
           {
             "itemName": "tools",
             "quantity": 100,
-            "decayCounter": 9791651
+            "decayCounter": 59583238
           }
         ]
       }
@@ -685,8 +685,23 @@
         "stacks": [
           {
             "itemName": "planks",
-            "quantity": 366,
-            "decayCounter": 952335
+            "quantity": 993,
+            "decayCounter": 894670
+          }
+        ]
+      }
+    },
+    {
+      "x": 14,
+      "y": 9,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Floor",
+        "stacks": [
+          {
+            "itemName": "tools",
+            "quantity": 200,
+            "decayCounter": 44583262
           }
         ]
       }
@@ -700,8 +715,8 @@
         "stacks": [
           {
             "itemName": "stone",
-            "quantity": 1896,
-            "decayCounter": 770777
+            "quantity": 1895,
+            "decayCounter": 714228
           }
         ],
         "disallowedItemIds": [
@@ -739,7 +754,7 @@
           {
             "itemName": "iron ore",
             "quantity": 297,
-            "decayCounter": 846550
+            "decayCounter": 994252
           },
           {
             "itemName": "",
@@ -860,8 +875,8 @@
         "stacks": [
           {
             "itemName": "planks",
-            "quantity": 7572,
-            "decayCounter": 912910
+            "quantity": 6613,
+            "decayCounter": 470675
           }
         ],
         "disallowedItemIds": [
@@ -943,8 +958,8 @@
         "stacks": [
           {
             "itemName": "dirt",
-            "quantity": 1961,
-            "decayCounter": 653986
+            "quantity": 1960,
+            "decayCounter": 629993
           }
         ],
         "disallowedItemIds": [
@@ -1018,6 +1033,21 @@
     },
     {
       "x": 18,
+      "y": 10,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Floor",
+        "stacks": [
+          {
+            "itemName": "wood",
+            "quantity": 934,
+            "decayCounter": 175744
+          }
+        ]
+      }
+    },
+    {
+      "x": 18,
       "y": 9,
       "tileType": "dirt"
     },
@@ -1070,8 +1100,8 @@
         "stacks": [
           {
             "itemName": "sawdust",
-            "quantity": 1900,
-            "decayCounter": 331170
+            "quantity": 1896,
+            "decayCounter": 111806
           },
           {
             "itemName": "",
@@ -1122,9 +1152,9 @@
         "invType": "Floor",
         "stacks": [
           {
-            "itemName": "acorn",
-            "quantity": 93,
-            "decayCounter": 533658
+            "itemName": "wood",
+            "quantity": 29,
+            "decayCounter": 520033
           }
         ]
       }
@@ -1183,8 +1213,8 @@
         "stacks": [
           {
             "itemName": "acorn",
-            "quantity": 1105,
-            "decayCounter": 967079
+            "quantity": 1436,
+            "decayCounter": 169814
           },
           {
             "itemName": "silver",
@@ -1194,12 +1224,12 @@
           {
             "itemName": "acorn",
             "quantity": 841,
-            "decayCounter": 819114
+            "decayCounter": 568951
           },
           {
             "itemName": "tools",
-            "quantity": 1100,
-            "decayCounter": 56416118
+            "quantity": 1000,
+            "decayCounter": 59999324
           }
         ],
         "disallowedItemIds": [
@@ -1271,6 +1301,21 @@
     },
     {
       "x": 21,
+      "y": 11,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Floor",
+        "stacks": [
+          {
+            "itemName": "wood",
+            "quantity": 392,
+            "decayCounter": 173849
+          }
+        ]
+      }
+    },
+    {
+      "x": 21,
       "y": 10,
       "tileType": "empty",
       "inv": {
@@ -1278,8 +1323,8 @@
         "stacks": [
           {
             "itemName": "wood",
-            "quantity": 9997,
-            "decayCounter": 625125
+            "quantity": 9980,
+            "decayCounter": 358767
           }
         ],
         "disallowedItemIds": [
@@ -1361,8 +1406,8 @@
         "stacks": [
           {
             "itemName": "wood",
-            "quantity": 997,
-            "decayCounter": 12169
+            "quantity": 998,
+            "decayCounter": 721114
           }
         ]
       }
@@ -1421,8 +1466,8 @@
         "stacks": [
           {
             "itemName": "acorn",
-            "quantity": 190,
-            "decayCounter": 913214
+            "quantity": 100,
+            "decayCounter": 833320
           }
         ]
       }
@@ -1481,8 +1526,8 @@
         "stacks": [
           {
             "itemName": "wheat",
-            "quantity": 1651,
-            "decayCounter": 930625
+            "quantity": 2938,
+            "decayCounter": 591191
           }
         ],
         "disallowedItemIds": [
@@ -1563,9 +1608,9 @@
         "invType": "Floor",
         "stacks": [
           {
-            "itemName": "wheat",
-            "quantity": 299,
-            "decayCounter": 872183
+            "itemName": "wood",
+            "quantity": 980,
+            "decayCounter": 979992
           }
         ]
       }
@@ -1614,21 +1659,6 @@
       "x": 25,
       "y": 1,
       "tileType": "stone"
-    },
-    {
-      "x": 26,
-      "y": 10,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "wheat",
-            "quantity": 782,
-            "decayCounter": 657933
-          }
-        ]
-      }
     },
     {
       "x": 26,
@@ -1684,8 +1714,8 @@
         "stacks": [
           {
             "itemName": "wood",
-            "quantity": 301,
-            "decayCounter": 66764
+            "quantity": 295,
+            "decayCounter": 11187
           }
         ]
       }
@@ -5008,7 +5038,7 @@
       "x": 18,
       "y": 10,
       "typeName": "tree",
-      "plantAge": 39,
+      "plantAge": 36,
       "plantGrowthStage": 2,
       "plantHarvestable": false,
       "uses": 0
@@ -5017,7 +5047,7 @@
       "x": 25,
       "y": 10,
       "typeName": "wheat",
-      "plantAge": 5,
+      "plantAge": 2,
       "plantGrowthStage": 0,
       "plantHarvestable": false,
       "uses": 0
@@ -5026,7 +5056,7 @@
       "x": 26,
       "y": 10,
       "typeName": "wheat",
-      "plantAge": 43,
+      "plantAge": 44,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "uses": 0
@@ -5255,87 +5285,35 @@
       "plantGrowthStage": 0,
       "plantHarvestable": false,
       "uses": 0
+    },
+    {
+      "x": 17,
+      "y": 11,
+      "typeName": "clock",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0
     }
   ],
   "blueprints": [],
   "animals": [
     {
       "aName": "mouse0",
-      "x": 21.0,
+      "x": 13.0,
       "y": 10.0,
-      "jobName": "digger",
-      "energy": 0.365601063,
-      "food": 63.3999939,
-      "eep": 89.3037949,
-      "timeSinceAteWheat": 20.0,
-      "timeSinceAteFruit": 140.0,
-      "inv": {
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "foodSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "toolSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "tools",
-            "quantity": 100,
-            "decayCounter": 2166632
-          }
-        ]
-      }
-    },
-    {
-      "aName": "mouse1",
-      "x": 20.0061531,
-      "y": 10.77476,
-      "jobName": "logger",
-      "energy": 0.230390072,
-      "food": 50.9,
-      "eep": 89.3036,
+      "jobName": "merchant",
+      "energy": 0.277600646,
+      "food": 54.8999939,
+      "eep": 84.60387,
       "timeSinceAteWheat": 80.0,
       "timeSinceAteFruit": 70.0,
       "inv": {
         "invType": "Animal",
         "stacks": [
           {
-            "itemName": "wood",
-            "quantity": 902,
+            "itemName": "",
+            "quantity": 0,
             "decayCounter": 0
           },
           {
@@ -5365,8 +5343,8 @@
         "stacks": [
           {
             "itemName": "apple",
-            "quantity": 99,
-            "decayCounter": 321724
+            "quantity": 96,
+            "decayCounter": 486250
           }
         ]
       },
@@ -5376,21 +5354,21 @@
           {
             "itemName": "tools",
             "quantity": 100,
-            "decayCounter": 2166632
+            "decayCounter": 5291582
           }
         ]
       }
     },
     {
-      "aName": "mouse2",
-      "x": 26.0,
+      "aName": "mouse1",
+      "x": 25.0,
       "y": 10.0,
-      "jobName": "farmer",
-      "energy": 0.634404063,
-      "food": 57.8500137,
-      "eep": 89.30366,
+      "jobName": "logger",
+      "energy": 0.08639026,
+      "food": 62.25,
+      "eep": 84.60367,
       "timeSinceAteWheat": 20.0,
-      "timeSinceAteFruit": 60.0,
+      "timeSinceAteFruit": 50.0,
       "inv": {
         "invType": "Animal",
         "stacks": [
@@ -5427,7 +5405,7 @@
           {
             "itemName": "wheat",
             "quantity": 200,
-            "decayCounter": 650000
+            "decayCounter": 687500
           }
         ]
       },
@@ -5437,20 +5415,81 @@
           {
             "itemName": "tools",
             "quantity": 100,
-            "decayCounter": 2166632
+            "decayCounter": 5291582
+          }
+        ]
+      }
+    },
+    {
+      "aName": "mouse2",
+      "x": 25.19666,
+      "y": 10.0,
+      "jobName": "farmer",
+      "energy": 0.634404063,
+      "food": 54.3500137,
+      "eep": 84.60373,
+      "timeSinceAteWheat": 40.0,
+      "timeSinceAteFruit": 120.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "wheat",
+            "quantity": 100,
+            "decayCounter": 793750
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "tools",
+            "quantity": 100,
+            "decayCounter": 5291582
           }
         ]
       }
     },
     {
       "aName": "mouse3",
-      "x": 19.47601,
+      "x": 21.8121223,
       "y": 10.0,
       "jobName": "hauler",
-      "energy": 0.9271774,
-      "food": 67.45,
-      "eep": 89.30358,
-      "timeSinceAteWheat": 10.0,
+      "energy": 0.292776823,
+      "food": 43.9499969,
+      "eep": 84.60365,
+      "timeSinceAteWheat": 70.0,
       "timeSinceAteFruit": 180.0,
       "inv": {
         "invType": "Animal",
@@ -5488,7 +5527,7 @@
           {
             "itemName": "",
             "quantity": 0,
-            "decayCounter": 191797
+            "decayCounter": 0
           }
         ]
       },
@@ -5498,7 +5537,7 @@
           {
             "itemName": "tools",
             "quantity": 100,
-            "decayCounter": 2166632
+            "decayCounter": 5291582
           }
         ]
       }
@@ -5509,21 +5548,21 @@
       "y": 11.0,
       "jobName": "sawyer",
       "energy": 0.340009451,
-      "food": 62.25,
-      "eep": 88.703125,
+      "food": 58.35,
+      "eep": 84.0032,
       "timeSinceAteWheat": 20.0,
-      "timeSinceAteFruit": 100.0,
+      "timeSinceAteFruit": 160.0,
       "inv": {
         "invType": "Animal",
         "stacks": [
           {
             "itemName": "planks",
-            "quantity": 900,
+            "quantity": 700,
             "decayCounter": 0
           },
           {
-            "itemName": "",
-            "quantity": 0,
+            "itemName": "tools",
+            "quantity": 300,
             "decayCounter": 0
           },
           {
@@ -5547,9 +5586,9 @@
         "invType": "Equip",
         "stacks": [
           {
-            "itemName": "wheat",
-            "quantity": 98,
-            "decayCounter": 318500
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 79625
           }
         ]
       },
@@ -5559,7 +5598,7 @@
           {
             "itemName": "tools",
             "quantity": 100,
-            "decayCounter": 2166632
+            "decayCounter": 5291582
           }
         ]
       }

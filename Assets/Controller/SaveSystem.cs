@@ -66,6 +66,18 @@ public class SaveSystem : MonoBehaviour {
         }
         data.tiles = tiles.ToArray();
 
+        // Water levels — only write if any tile has water (keeps save files clean for dry worlds)
+        bool anyWater = false;
+        byte[] wl = new byte[world.nx * world.ny];
+        for (int x = 0; x < world.nx; x++) {
+            for (int y = 0; y < world.ny; y++) {
+                byte w = world.GetTileAt(x, y).water;
+                wl[y * world.nx + x] = w;
+                if (w > 0) anyWater = true;
+            }
+        }
+        if (anyWater) data.waterLevels = wl;
+
         var structures = new List<StructureSaveData>();
         foreach (Structure s in StructController.instance.GetStructures())
             structures.Add(GatherStructure(s));
@@ -211,6 +223,16 @@ public class SaveSystem : MonoBehaviour {
     void ApplySaveData(WorldSaveData save) {
         World world = World.instance;
         world.timer = save.timer;
+
+        if (save.waterLevels != null) {
+            for (int x = 0; x < world.nx; x++) {
+                for (int y = 0; y < world.ny; y++) {
+                    int idx = y * world.nx + x;
+                    if (idx < save.waterLevels.Length)
+                        world.GetTileAt(x, y).water = save.waterLevels[idx];
+                }
+            }
+        }
 
         if (save.tiles != null) {
             foreach (TileSaveData tsd in save.tiles) {

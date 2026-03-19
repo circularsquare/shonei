@@ -9,12 +9,27 @@ using UnityEngine.Rendering.Universal;
 //   1. NormalsCapturePass renders all sprites' _NormalMap textures into
 //      _CapturedNormalsRT (world-space normals, packed 0–1).
 //   2. Clear light RT to SunController.GetAmbientColor().
-//   3. Draw directional LightSources (sun) fullscreen — NdotL from _CapturedNormalsRT.
-//   4. Draw point LightSources (torches) as circle quads — NdotL × radial falloff.
+//   3. Draw point LightSources (torches) as circle quads — NdotL × radial falloff.
+//   4. Draw directional LightSources (sun) fullscreen — NdotL from _CapturedNormalsRT.
+//      Shadow: 16-step ray march in LightSun.shader along the sun direction.
 //   5. Multiply-blit light RT onto scene: final = scene × lightmap.
 public class LightFeature : ScriptableRendererFeature {
     [Tooltip("Minimum NdotL floor applied to all lights — prevents back-faces from going fully black.")]
     [Range(0f, 1f)] public float ambientNormal = 0.50f;
+
+    [Header("Sun Shadows")]
+    [Tooltip("Shadow length in world units. Automatically scales with camera zoom/PPU.")]
+    [Range(0f, 5f)] public float shadowLength = 0.5f;
+    [Tooltip("How dark the shadow is. 0 = no shadow, 1 = fully blocks sun.")]
+    [Range(0f, 1f)] public float shadowDarkness = 0.6f;
+
+    [Header("Normals")]
+    [Tooltip("Only these layers are captured into the normals RT. Sprites on excluded layers are unlit — they cast and receive no shadows.")]
+    public LayerMask litLayers = ~0; // default: Everything
+    [Tooltip("Subset of litLayers that block sunlight and cast shadows. Lit-only layers (e.g. clouds) are excluded here so they receive normal-map lighting but cast no shadows.")]
+    public LayerMask shadowCasterLayers = ~0; // default: Everything
+    [Tooltip("Layers that receive sun + ambient only — not torch/point lights. Good for clouds and distant backgrounds. Can overlap with litLayers; directional-only always wins.")]
+    public LayerMask directionalOnlyLayers = 0; // default: Nothing
 
     NormalsCapturePass capturePass;
     LightPass          lightPass;
@@ -30,8 +45,9 @@ public class LightFeature : ScriptableRendererFeature {
 
     public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData) {
         if (!Application.isPlaying) return;
+        capturePass.Setup(litLayers, shadowCasterLayers, directionalOnlyLayers);
         renderer.EnqueuePass(capturePass);
-        lightPass.Setup(renderer.cameraColorTarget, ambientNormal);
+        lightPass.Setup(renderer.cameraColorTarget, ambientNormal, shadowLength, shadowDarkness);
         renderer.EnqueuePass(lightPass);
     }
 
@@ -48,9 +64,18 @@ public class LightFeature : ScriptableRendererFeature {
 class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
     static readonly int CapturedNormalsId = Shader.PropertyToID("_CapturedNormalsRT");
     readonly Material mat;
+    int litMask    = ~0;
+    int shadowMask = ~0;
+    int dirOnlyMask = 0;
 
     public NormalsCapturePass() {
         mat = CoreUtils.CreateEngineMaterial("Hidden/NormalsCapture");
+    }
+
+    public void Setup(int litMask, int shadowMask, int dirOnlyMask) {
+        this.litMask     = litMask;
+        this.shadowMask  = shadowMask;
+        this.dirOnlyMask = dirOnlyMask;
     }
 
     public void Dispose() => CoreUtils.Destroy(mat);
@@ -69,13 +94,39 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
         context.ExecuteCommandBuffer(cmd);
         CommandBufferPool.Release(cmd);
 
-        // Draw all Universal2D sprites with the normals capture override material.
-        var drawSettings = CreateDrawingSettings(
-            new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
-        drawSettings.overrideMaterial          = mat;
-        drawSettings.overrideMaterialPassIndex = 0;
-        var filterSettings = new FilteringSettings(RenderQueueRange.all);
-        context.DrawRenderers(rd.cullResults, ref drawSettings, ref filterSettings);
+        // Draw directional-only sprites (pass 2, alpha=0.3) — sun + ambient only, no torch light.
+        // Drawn first; litOnlyMask and shadowMask both exclude dirOnlyMask so they can't overwrite.
+        if (dirOnlyMask != 0) {
+            var ds = CreateDrawingSettings(
+                new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
+            ds.overrideMaterial          = mat;
+            ds.overrideMaterialPassIndex = 2; // alpha = 0.3 (directional-only)
+            var fs = new FilteringSettings(RenderQueueRange.all, dirOnlyMask);
+            context.DrawRenderers(rd.cullResults, ref ds, ref fs);
+        }
+
+        // Draw lit-only sprites next (pass 1, alpha=0.5) — no shadow cast.
+        // Shadow casters are drawn last (pass 0, alpha=1.0) so they overwrite on overlap.
+        // dirOnlyMask is excluded from both: those sprites were already drawn above with pass 2.
+        int litOnlyMask = litMask & ~shadowMask & ~dirOnlyMask;
+        if (litOnlyMask != 0) {
+            var ds = CreateDrawingSettings(
+                new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
+            ds.overrideMaterial          = mat;
+            ds.overrideMaterialPassIndex = 1; // alpha = 0.5 (lit, no shadow)
+            var fs = new FilteringSettings(RenderQueueRange.all, litOnlyMask);
+            context.DrawRenderers(rd.cullResults, ref ds, ref fs);
+        }
+
+        // Draw shadow-casting sprites (pass 0, alpha=1.0).
+        {
+            var ds = CreateDrawingSettings(
+                new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
+            ds.overrideMaterial          = mat;
+            ds.overrideMaterialPassIndex = 0; // alpha = 1.0 (casts shadow)
+            var fs = new FilteringSettings(RenderQueueRange.all, litMask & shadowMask & ~dirOnlyMask);
+            context.DrawRenderers(rd.cullResults, ref ds, ref fs);
+        }
     }
 
     public override void OnCameraCleanup(CommandBuffer cmd) {
@@ -89,6 +140,8 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
     static readonly int LightRTId = Shader.PropertyToID("_CustomLightRT");
 
     float ambientNormal;
+    float shadowLength;
+    float shadowDarkness;
     RenderTargetIdentifier colorBuffer;
     readonly Material circleMat;
     readonly Material sunMat;
@@ -109,9 +162,11 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         CoreUtils.Destroy(quad);
     }
 
-    public void Setup(RenderTargetIdentifier colorBuffer, float ambientNormal) {
+    public void Setup(RenderTargetIdentifier colorBuffer, float ambientNormal, float shadowLength, float shadowDarkness) {
         this.colorBuffer    = colorBuffer;
         this.ambientNormal  = ambientNormal;
+        this.shadowLength   = shadowLength;
+        this.shadowDarkness = shadowDarkness;
     }
 
     public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData rd) {
@@ -129,6 +184,8 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         var proj = GL.GetGPUProjectionMatrix(rd.cameraData.GetProjectionMatrix(), renderIntoTexture: false);
         cmd.SetViewMatrix(view);
         cmd.SetProjectionMatrix(proj);
+
+        var fullscreenMatrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(10000f, 10000f, 1f));
 
         // ── 1. Clear light RT to ambient color ───────────────────────────────
         cmd.SetRenderTarget(LightRTId);
@@ -156,8 +213,15 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
             cmd.DrawMesh(quad, matrix, circleMat, 0, 0, mpb);
         }
 
-        // ── 3. Draw directional lights (sun) — additive, last ────────────────
-        var sunMatrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(10000f, 10000f, 1f));
+        // ── 3. Draw directional lights (sun) — NdotL × shadow march ──────────
+        // World→UV scale lets LightSun.shader convert shadow length (world units) to UV offset.
+        var cam = rd.cameraData.camera;
+        float orthoH = cam.orthographicSize * 2f;
+        float orthoW = orthoH * cam.aspect;
+        cmd.SetGlobalVector("_WorldToUV",     new Vector2(1f / orthoW, 1f / orthoH));
+        cmd.SetGlobalFloat("_ShadowLength",   shadowLength);
+        cmd.SetGlobalFloat("_ShadowDarkness", shadowDarkness);
+
         foreach (var src in LightSource.all) {
             if (src == null || !src.isDirectional || src.intensity <= 0f) continue;
             cmd.SetGlobalColor("_SunColor",      src.lightColor);
@@ -165,7 +229,7 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
             cmd.SetGlobalVector("_SunDir",       SunController.GetSunDirection());
             cmd.SetGlobalFloat("_SunHeight",     src.lightHeight);
             cmd.SetGlobalFloat("_AmbientNormal", ambientNormal);
-            cmd.DrawMesh(quad, sunMatrix, sunMat, 0, 0, null);
+            cmd.DrawMesh(quad, fullscreenMatrix, sunMat, 0, 0, null);
         }
 
         // ── 4. Multiply-blit light RT onto the scene ─────────────────────────

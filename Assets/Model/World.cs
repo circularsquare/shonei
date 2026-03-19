@@ -13,7 +13,8 @@ public class World : MonoBehaviour {
     public InventoryController invController;
     public AnimalController animalController;
     public PlantController plantController;
-    
+    public WaterController waterController;
+
     public static World instance { get; protected set; }
     public float timer = 0f;
 
@@ -53,6 +54,7 @@ public class World : MonoBehaviour {
         worldController = WorldController.instance;
         animalController = AnimalController.instance;
         plantController = PlantController.instance;
+        waterController = WaterController.instance;
     }
 
     public void Update(){
@@ -67,6 +69,7 @@ public class World : MonoBehaviour {
         float period = 0.2f;
         if (Math.Floor((timer + Time.deltaTime) / period) - Math.Floor(timer / period) > 0){  // every 0.2 sec
             invController.TickUpdate(); // update itemdisplay, add controller instances
+            waterController?.TickUpdate();
             InfoPanel.instance.UpdateInfo();
         }
         timer += Time.deltaTime;

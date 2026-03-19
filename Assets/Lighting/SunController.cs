@@ -57,18 +57,9 @@ public class SunController : MonoBehaviour {
     [SerializeField] float _twilightFraction;
     [SerializeField] float _brightness;
 
-    Camera bgCamera;
-
     void Awake() {
         if (instance != null && instance != this) { Destroy(gameObject); return; }
         instance = this;
-    }
-
-    void Start() {
-        bgCamera = null;
-        float lowestDepth = float.MaxValue;
-        foreach (Camera cam in Camera.allCameras)
-            if (cam.depth < lowestDepth) { lowestDepth = cam.depth; bgCamera = cam; }
     }
 
     void Update() {
@@ -77,8 +68,7 @@ public class SunController : MonoBehaviour {
         twilightFraction = _twilightFraction = CalcTwilightFraction(phase);
         brightness       = _brightness       = Brightness(phase);
         UpdateSun();
-        if (bgCamera != null)
-            bgCamera.backgroundColor = SkyColor();
+        Camera.main.backgroundColor = SkyColor();
     }
 
     // ── Public API ────────────────────────────────────────────────────────────

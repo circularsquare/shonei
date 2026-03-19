@@ -26,6 +26,7 @@ public class Tile {
     public Blueprint[] blueprints = new Blueprint[4]; // indexed by depth
     public Building building => structs[0] as Building; // alias for depth 0 (Plant extends Building, so this covers both)
     public Inventory inv; // this encapsulates all inventory types
+    public byte water; // 0–16; 16 = fully filled tile
     public Node node;
 
     

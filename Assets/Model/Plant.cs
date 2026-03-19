@@ -21,6 +21,7 @@ public class Plant : Building {
         this.plantType = plantType;
 
         PlantController.instance.AddPlant(this);
+        go.transform.SetParent(PlantController.instance.transform, true);
         go.name = "plant_" + plantType.name;
 
         sprite = plantType.LoadSprite() ?? Resources.Load<Sprite>("Sprites/Plants/default");

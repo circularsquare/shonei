@@ -256,6 +256,7 @@ public class HaulTask : Task {
         Item item = targetStack.item;
         Tile itemTile = World.instance.GetTileAt(targetStack.inv.x, targetStack.inv.y);
         if (itemTile == null) return false;
+        if (!animal.nav.CanReach(itemTile)) return false;
         Path storagePath = animal.nav.FindPathToStorage(item);
         if (storagePath == null) return false;
         int available = targetStack.quantity - targetStack.resAmount;

@@ -14,10 +14,9 @@
 `Graph` maintains a component ID on every `Node` (`node.componentId: int`, -1 = impassable). `Graph.RebuildComponents()` runs a BFS flood-fill over all standable nodes and assigns integer IDs; waypoint nodes get IDs transitively via neighbor edges. `Graph.SameComponent(a, b)` is an O(1) check.
 
 - **Rebuild triggers**: `StructController.Construct()` (end of method, after all `UpdateNeighbors` calls) and `Graph.AddNeighborsInitial()` (startup/load). Cost ≈ 0.1–0.2 ms for a 100×50 map.
-- **Usage as pre-filter**: every pathfinding loop (`FindPathToInv`, `FindPathToStruct`, `FindPathTo`, `FindPathToHarvestable`) checks `SameComponent` before calling A*. Unreachable candidates are rejected in O(1) without exploring the graph.
-- **`Nav.IsReachable(Tile t)`**: O(1) reachability check from the animal's current position.
+- **Usage as pre-filter**: `Graph.Navigate()` itself checks `SameComponent` before running A*, so all pathfinding automatically rejects unreachable targets in O(1). Individual search loops no longer need their own `SameComponent` calls.
+- **`Nav.CanReach(Tile t)`**: O(1) reachability check from the animal's current position. Used as an early-out in task Initialize methods (e.g. `HaulTask`) before running heavier searches.
 - **`Nav.CanReachBuilding(StructType, r)`**: checks whether any building of a given type is in the same component — used by `PickRecipe`/`PickRecipeRandom` instead of a full A* scan.
-- **`FindPathAdjacentTo`** does not apply the pre-filter: blueprint targets are often non-standable (walls, stairs under construction), so their `componentId` is `-1`. `PathToOrAdjacent` handles finding standable adjacent tiles internally.
 
 ### Waypoint system (stairs and cliff climbs)
 
@@ -93,6 +92,28 @@ Each animal has two `InvType.Equip` inventory instances (1 stack each, registere
 `Blueprint` has its own `Inventory inv` (Animal type, not registered with InventoryController — no decay, no tick overhead). Materials are delivered into it via `MoveItemTo` from the animal's inventory. On `Complete()`, `inv.Produce(item, -qty)` is called for each cost item to decrement GlobalInventory (the items were already counted in GlobalInventory when originally harvested). On cancel (`BuildPanel.Remove`), materials are returned to the floor via `MoveItemTo`.
 
 ---
+
+## Water System (added 2026-03-19)
+
+`Assets/Controller/WaterController.cs` — singleton MonoBehaviour; must be in the scene.
+
+**Data**: `Tile.water` (`byte`, 0–16). 16 = fully filled tile. Only non-solid tiles hold water (solid tiles are skipped in simulation).
+
+**Simulation**: `TickUpdate()` called every 0.2 s from `World.Update()`. Two passes, bottom-to-top:
+1. **Fall** — pour water straight down into the tile below if it has space (`flow = min(tile.water, 16 - below.water)`).
+2. **Spread** — equalize with one horizontal neighbor (`flow = (tile.water - neighbor.water) / 2`). Direction alternates left/right each tick to avoid directional bias.
+
+Volume is conserved exactly (integer math, explicit transfers).
+
+**Rendering**: Each tile gets a child `GameObject("Water_x_y")` with a SpriteRenderer (sortingOrder 2, blue semi-transparent 1×1 sprite generated at runtime). Scale and position are updated every tick: `localScale.y = water/16f`, `localPosition.y = -0.5 + water/32f` (bottom-anchored).
+
+**Mouse speed**: Water on either endpoint of a horizontal nav edge doubles the A* edge cost (→ 0.5× speed). Applied in `Graph.GetEdgeInfo()`.
+
+**World gen**: `WorldController.GenerateDefault()` seeds `water=16` at y=9 for x=[0,3] and x=[30,40], first clearing those tiles to empty.
+
+**Save/load**: `WorldSaveData.waterLevels` — flat `byte[]`, index `y * nx + x`. Omitted (null) if all-dry. Restored in `SaveSystem.ApplySaveData()` before tile types are applied.
+
+**ClearWorld**: `WaterController.ClearWater()` called from `WorldController.ClearWorld()` — zeros all `tile.water` and hides water quads.
 
 ## Unit System — Fen / Liang
 

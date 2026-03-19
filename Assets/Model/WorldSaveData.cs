@@ -10,6 +10,7 @@ public class WorldSaveData {
     public AnimalSaveData[] animals;
     public ResearchSaveData research;
     public int[] disabledRecipeIds; // null = all enabled
+    public byte[] waterLevels;      // flat array, index = y * nx + x; null if all-dry
 }
 
 public class ResearchSaveData {

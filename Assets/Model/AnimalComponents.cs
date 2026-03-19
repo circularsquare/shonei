@@ -1,9 +1,6 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using System;
-using System.Linq;
 
 public class Nav {
     public Animal a; // have this be more generic? idk
@@ -124,7 +121,6 @@ public class Nav {
             for (int y = -r; y <= r; y++) {
                 Tile tile = world.GetTileAt(a.x + x, a.y + y);
                 if (tile != null && condition(tile)) {
-                    if (!world.graph.SameComponent(myNode, tile.node)) continue;
                     Path cPath = world.graph.Navigate(myNode, tile.node);
                     if (cPath == null) { continue; }
                     float distance = cPath.cost;
@@ -168,11 +164,6 @@ public class Nav {
     //  "FindPathAdjacentToX" = animal walks next to the tile
     // =========================================================
 
-    public Path FindPathToItem(Item item, int r = 40) {
-        return FindPathToInv(new[] { Inventory.InvType.Floor, Inventory.InvType.Storage },
-            inv => inv.ContainsAvailableItem(item), r); }
-    public Tile FindItem(Item item, int r = 40){
-        return Find(t => t.ContainsAvailableItem(item), r); }
     public Path FindPathToStorage(Item item, int r = 40) {
         return FindPathToInv(new[] { Inventory.InvType.Storage },
             inv => inv.GetStorageForItem(item) > 0, r); }
@@ -194,7 +185,6 @@ public class Nav {
                 if (!filter(inv)) continue;
                 Tile t = world.GetTileAt(inv.x, inv.y);
                 if (t == null) continue;
-                if (!world.graph.SameComponent(myNode, t.node)) continue;
                 Path p = world.graph.Navigate(myNode, t.node);
                 if (p != null && p.cost < closestCost) {
                     closestCost = p.cost;
@@ -213,7 +203,6 @@ public class Nav {
         foreach (Structure s in list) {
             if (Mathf.Max(Mathf.Abs(s.x - (int)a.x), Mathf.Abs(s.y - (int)a.y)) > r) continue;
             if (filter != null && !filter(s)) continue;
-            if (!world.graph.SameComponent(myNode, s.workTile.node)) continue;
             Path p = world.graph.Navigate(myNode, s.workTile.node);
             if (p != null && p.cost < closestCost) {
                 closestCost = p.cost;
@@ -239,7 +228,6 @@ public class Nav {
             foreach (Structure s in list) {
                 if (Mathf.Max(Mathf.Abs(s.x - (int)a.x), Mathf.Abs(s.y - (int)a.y)) > r) continue;
                 if (!(s is Plant p) || !p.harvestable || !s.res.Available()) continue;
-                if (!world.graph.SameComponent(myNode, s.workTile.node)) continue;
                 Path pa = world.graph.Navigate(myNode, s.workTile.node);
                 if (pa != null && pa.cost < closestCost) {
                     closestCost = pa.cost;
@@ -256,100 +244,26 @@ public class Nav {
         return (path, path.tile.inv.GetItemStack(item));
     }
 
-    public HaulInfo FindFloorConsolidation(ItemStack sourceStack = null, int r = 50) {
-        // ── TARGETED MODE: WOM provides the exact source stack ────────────────────────
-        if (sourceStack != null) {
-            if (sourceStack.item == null || sourceStack.quantity == 0) return null;
-            Item item = sourceStack.item;
-            Tile sourceTile = world.GetTileAt(sourceStack.inv.x, sourceStack.inv.y);
-            if (sourceTile == null) return null;
-            if (FindPathToStorage(item) != null) return null; // storage exists — should haul instead
+    // WOM always provides the exact source stack (targeted mode only).
+    public HaulInfo FindFloorConsolidation(ItemStack sourceStack, int r = 50) {
+        if (sourceStack.item == null || sourceStack.quantity == 0) return null;
+        Item item = sourceStack.item;
+        Tile sourceTile = world.GetTileAt(sourceStack.inv.x, sourceStack.inv.y);
+        if (sourceTile == null) return null;
+        if (FindPathToStorage(item) != null) return null; // storage exists — should haul instead
 
-            // Find a dest floor tile: same item, room to receive, more quantity than source
-            Path destPath = FindPathToInv(new[] { Inventory.InvType.Floor },
-                inv => world.GetTileAt(inv.x, inv.y) != sourceTile
-                    && inv.HasSpaceForItem(item)
-                    && inv.Quantity(item) > sourceTile.inv.Quantity(item), r);
-            if (destPath == null) return null;
+        // Find a dest floor tile: same item, room to receive, more quantity than source
+        Path destPath = FindPathToInv(new[] { Inventory.InvType.Floor },
+            inv => world.GetTileAt(inv.x, inv.y) != sourceTile
+                && inv.HasSpaceForItem(item)
+                && inv.Quantity(item) > sourceTile.inv.Quantity(item), r);
+        if (destPath == null) return null;
 
-            Tile destTile = destPath.tile;
-            int qty = Math.Min(sourceTile.inv.AvailableQuantity(item), destTile.inv.GetMergeSpace(item));
-            if (qty <= 0) return null;
-            if (qty < Task.MinHaulQuantity && qty < sourceTile.inv.Quantity(item)) return null;
-            return new HaulInfo(item, qty, sourceTile, destTile, sourceStack);
-        }
-
-        // ── AUTO MODE: search for any consolidatable pair ─────────────────────────────
-        var ic = InventoryController.instance;
-        var candidates = new List<Path>();
-        if (ic.byType.TryGetValue(Inventory.InvType.Floor, out var floorList)) {
-            foreach (Inventory inv in floorList) {
-                if (Mathf.Max(Mathf.Abs(inv.x - (int)a.x), Mathf.Abs(inv.y - (int)a.y)) > r) continue;
-                if (inv.GetItemToHaul() == null) continue;
-                Tile tile = world.GetTileAt(inv.x, inv.y);
-                if (tile == null) continue;
-                Path path = world.graph.Navigate(a.TileHere().node, tile.node);
-                if (path != null) candidates.Add(path);
-            }
-        }
-        candidates.Sort((p1, p2) => p1.cost.CompareTo(p2.cost));
-
-        foreach (Path sourcePath in candidates) {
-            ItemStack src = sourcePath.tile.inv.GetItemToHaul();
-            if (src == null) continue;
-            Item item = src.item;
-            if (item == null) continue;
-            Tile sourceTile = sourcePath.tile;
-
-            if (FindPathToStorage(item) != null) continue;
-
-            Path destPath = FindPathToInv(new[] { Inventory.InvType.Floor },
-                inv => world.GetTileAt(inv.x, inv.y) != sourceTile && inv.HasSpaceForItem(item), r);
-            if (destPath == null) continue;
-
-            Tile destTile = destPath.tile;
-            // Skip if dest has ≤ source quantity — the reversed pair will appear as its own candidate
-            if (destTile.inv.Quantity(item) <= sourceTile.inv.Quantity(item)) continue;
-
-            int qty = Math.Min(sourceTile.inv.AvailableQuantity(item), destTile.inv.GetMergeSpace(item));
-            if (qty <= 0) continue;
-            if (qty < Task.MinHaulQuantity && qty < sourceTile.inv.Quantity(item)) continue;
-
-            return new HaulInfo(item, qty, sourceTile, destTile, src);
-        }
-        return null;
-    }
-
-    public HaulInfo FindAnyItemToHaul(int r = 50){
-        // Collect all haul-eligible tiles sorted by path cost, try each until one has storage
-        var ic = InventoryController.instance;
-        var candidates = new List<Path>();
-        foreach (var type in new[] { Inventory.InvType.Floor, Inventory.InvType.Storage }) {
-            if (!ic.byType.TryGetValue(type, out var list)) continue;
-            foreach (Inventory inv in list) {
-                if (Mathf.Max(Mathf.Abs(inv.x - (int)a.x), Mathf.Abs(inv.y - (int)a.y)) > r) continue;
-                if (!inv.HasItemToHaul(null)) continue;
-                Tile tile = world.GetTileAt(inv.x, inv.y);
-                if (tile == null) continue;
-                Path path = world.graph.Navigate(a.TileHere().node, tile.node);
-                if (path != null) candidates.Add(path);
-            }
-        }
-        candidates.Sort((p1, p2) => p1.cost.CompareTo(p2.cost));
-        foreach (Path itemPath in candidates) {
-            ItemStack itemStack = itemPath.tile.inv.GetItemToHaul();
-            if (itemStack == null) continue;
-            Item item = itemStack.item;
-            if (item == null) continue;
-            Path storagePath = FindPathToStorage(item, r);
-            if (storagePath == null) continue;
-            int sourceQty = itemPath.tile.inv.Quantity(item);
-            int quantity = Math.Min(sourceQty, storagePath.tile.GetStorageForItem(item));
-            // Skip tiny hauls unless fully clearing the source stack
-            if (quantity < Task.MinHaulQuantity && quantity < sourceQty) continue;
-            return new HaulInfo(item, quantity, itemPath.tile, storagePath.tile, itemStack);
-        }
-        return null;
+        Tile destTile = destPath.tile;
+        int qty = Math.Min(sourceTile.inv.AvailableQuantity(item), destTile.inv.GetMergeSpace(item));
+        if (qty <= 0) return null;
+        if (qty < Task.MinHaulQuantity && qty < sourceTile.inv.Quantity(item)) return null;
+        return new HaulInfo(item, qty, sourceTile, destTile, sourceStack);
     }
 
 
@@ -402,7 +316,7 @@ public class Nav {
 
     // ========= utils =============
     public float SquareDistance(float x1, float x2, float y1, float y2){return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);}
-    public bool IsReachable(Tile t) {
+    public bool CanReach(Tile t) {
         if (t?.node == null) return false;
         Node myNode = a.TileHere()?.node;
         if (myNode == null) return false;

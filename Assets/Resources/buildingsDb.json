@@ -54,6 +54,17 @@
         "category": "storage",
         "defaultLocked": true
     },{
+        "id": 22,
+        "name": "clock",
+        "description": "tells the time of day",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 5 }
+        ],
+        "depth": 0,
+        "solidTop": true,
+        "category": "structures"
+    },{
         "id": 20,
         "name": "torch",
         "description": "a small torch that lights the area",

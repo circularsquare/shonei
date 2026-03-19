@@ -132,7 +132,8 @@ public class WorldController : MonoBehaviour {
             GlobalInventory.instance.itemAmounts[key] = 0;
         }
 
-        // 6. Reset all tiles: reset tile types (fires sprite callbacks)
+        // 6. Reset all tiles: reset tile types (fires sprite callbacks) and water
+        WaterController.instance?.ClearWater();
         for (int x = 0; x < world.nx; x++) {
             for (int y = 0; y < world.ny; y++) {
                 Tile tile = world.GetTileAt(x, y);
@@ -169,6 +170,16 @@ public class WorldController : MonoBehaviour {
         StructController.instance.Place(plant4);
         Plant plant5 = new Plant(Db.plantTypeByName["wheat"], 26, 10);
         StructController.instance.Place(plant5);
+
+        // Seed water sources at the surface (y=10) in the specified x ranges.
+        // Clear the tile first so water isn't blocked by solid terrain.
+        for (int x = 0; x < world.nx; x++) {
+            if ((x >= 0 && x <= 3) || (x >= 30 && x <= 40)) {
+                Tile t = world.GetTileAt(x, 9);
+                t.type = Db.tileTypeByName["empty"];
+                t.water = 16;
+            }
+        }
 
         world.timer = World.ticksInDay * 0.3f;
         world.graph.Initialize();

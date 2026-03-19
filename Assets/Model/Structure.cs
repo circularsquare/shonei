@@ -28,7 +28,7 @@ public class Structure {
         go.transform.position = st.depth == 3
             ? new Vector3(visualX, y - 1f/8f, 0)
             : new Vector3(visualX, y, 0);
-        go.transform.SetParent(WorldController.instance.transform, true);
+        go.transform.SetParent(StructController.instance.transform, true);
         go.name = "structure_" + structType.name;
         
         sprite = structType.LoadSprite() ?? Resources.Load<Sprite>("Sprites/Buildings/default");
@@ -39,6 +39,9 @@ public class Structure {
 
         if (structType.name == "torch") {
             go.AddComponent<LightSource>();
+        }
+        if (structType.name == "clock") {
+            go.AddComponent<ClockHand>();
         }
     }
 

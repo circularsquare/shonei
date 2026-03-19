@@ -165,7 +165,7 @@ All `Register*` methods are safe to call unconditionally — they self-guard wit
 
 ### Adding a new WOM-based task type
 
-1. **Define the task** in `Task.cs`: implement `Initialize()` (add objectives, reserve resources, check job via `animal.job`). Only override `Cleanup()` if the task holds extra reservations beyond item stacks (e.g. a building `res`); always call `base.Cleanup()` which handles `workOrder.res.Unreserve()` and item stack unreserves automatically. Do **not** remove the WOM order or re-register in `Cleanup` — the order persists in the queue.
+1. **Define the task** in `Task.cs`: implement `Initialize()` (add objectives, reserve resources, check job via `animal.job`). Only override `Cleanup()` when needed — always call `base.Cleanup()` first (it handles `workOrder.res.Unreserve()` and item stack unreserves). Two cases that require a `Cleanup()` override: (a) the task holds an extra reservation on a building/plant `res`; (b) the order uses a predicate-guarded removal that skips in-flight orders (like `UpdateMarketOrders`) — in that case, call the removal method again *after* `base.Cleanup()` so the order is now unreserved when the predicate check runs. See `HaulToMarketTask` for an example of case (b). Do **not** remove the WOM order or re-register in `Cleanup` for normal order types — the order persists in the queue.
 2. **Job check**: add `if (animal.job.name != "myjob") return false;` as the first line of `Initialize()`, or check against the target object's `structType.job` field.
 3. **Add `OrderType`** to the `WorkOrderManager.OrderType` enum.
 4. **Add `Register*` method** with a predicate self-guard and a dedup guard (`orders.Exists(...)`). Returns `bool` (true = new order inserted).

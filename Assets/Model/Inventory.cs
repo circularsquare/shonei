@@ -68,14 +68,14 @@ public class Inventory{
             for (int i = 0; i < nStacks && i < quarterOffsets.Length; i++){
                 stackGos[i] = new GameObject("InventoryStack_" + i);
                 stackGos[i].transform.position = new Vector3(x + quarterOffsets[i].x, y + quarterOffsets[i].y, 0);
-                stackGos[i].transform.SetParent(WorldController.instance.transform, true);
+                stackGos[i].transform.SetParent(InventoryController.instance.transform, true);
                 SpriteRenderer sr = stackGos[i].AddComponent<SpriteRenderer>();
                 sr.sortingOrder = 30;
             }
         } else if (invType == InvType.Floor || invType == InvType.Storage){
             go = new GameObject();
             go.transform.position = new Vector3(x, y, 0);
-            go.transform.SetParent(WorldController.instance.transform, true);
+            go.transform.SetParent(InventoryController.instance.transform, true);
             SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
             if (invType == InvType.Floor) {sr.sortingOrder = 70;}
             else {sr.sortingOrder = 30;}
@@ -127,10 +127,7 @@ public class Inventory{
         };
         if (invTypeMult == 0f) return;
         for (int i = 0; i < nStacks; i++){
-            Item prevItem = itemStacks[i].item;
             itemStacks[i].Decay(invTypeMult * time);
-            if (invType == InvType.Floor && prevItem != null && itemStacks[i].item == null)
-                WorkOrderManager.instance?.RemoveHaulForStack(itemStacks[i]);
         }
     }
 
@@ -147,9 +144,17 @@ public class Inventory{
             return quantity;
         }
         for (int i = 0; i < nStacks; i++){
+            Item prevItem = itemStacks[i].item;
             int? result = itemStacks[i].AddItem(item, quantity);
             // should probably just check if the itemstack is the right item instead of using this null thing.
-            if (result == null){ continue; } // item slot occupied by different item. go next    
+            if (result == null){ continue; } // item slot occupied by different item. go next
+            // Floor haul side effects: remove order when stack empties, register when items arrive.
+            if (invType == InvType.Floor) {
+                if (prevItem != null && itemStacks[i].item == null)
+                    WorkOrderManager.instance?.RemoveHaulForStack(itemStacks[i]);
+                else if (quantity > 0 && itemStacks[i].quantity > 0)
+                    WorkOrderManager.instance?.RegisterHaul(itemStacks[i]);
+            }
             quantity = result.Value; //set quantity to remaining size to get off
             if (quantity == 0){ break; }  // successfully added all items. stop.
         }
@@ -168,13 +173,6 @@ public class Inventory{
                 Debug.LogError($"MoveItemTo: {stillLost} fen of {item.name} lost returning to {invType} inv at ({x},{y}) — source had no room!");
         }
         int moved = taken - overFill;
-        if (invType == InvType.Floor && moved > 0)
-            foreach (ItemStack s in itemStacks)
-                if (s.item == null) WorkOrderManager.instance?.RemoveHaulForStack(s); // stack just emptied
-        if (otherInv.invType == InvType.Floor && moved > 0) {
-            ItemStack stack = otherInv.GetItemStack(item);
-            if (stack != null) WorkOrderManager.instance?.RegisterHaul(stack);
-        }
         if (otherInv.invType == InvType.Market && moved > 0)
             WorkOrderManager.instance?.UpdateMarketOrders(otherInv);
         if (invType == InvType.Market && moved > 0)
@@ -186,6 +184,7 @@ public class Inventory{
     // Like MoveItemTo but bypasses the allowed filter on the destination — use when items must not be lost
     // (e.g. migrating a floor inventory into a newly-placed storage building).
     // Haulers will eventually move the item out once they notice it is disallowed.
+    // Do NOT use with market inventories — it skips UpdateMarketOrders.
     public int ForceMoveItemTo(Inventory otherInv, Item item, int quantity){
         int taken = quantity + AddItem(item, -quantity);
         int overFill = otherInv.AddItem(item, taken, force: true);
@@ -202,10 +201,8 @@ public class Inventory{
         int produced = quantity - AddItem(item, quantity);
         ginv.AddItem(item, produced);
         //Debug.Log("produced" + item.name + produced.ToString());
-        if (invType == InvType.Floor && produced > 0) {
-            ItemStack stack = GetItemStack(item);
-            if (stack != null) WorkOrderManager.instance?.RegisterHaul(stack);
-        }
+        if (invType == InvType.Market)
+            WorkOrderManager.instance?.UpdateMarketOrders(this);
         return quantity - produced;
     }
 

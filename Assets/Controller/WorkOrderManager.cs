@@ -100,7 +100,7 @@ public class WorkOrderManager : MonoBehaviour {
             factory = a => new ConstructTask(a, bp),
             blueprint = bp,
             canDo = a => a.job == bp.structType.job,
-            getDistance = a => Mathf.Max(Mathf.Abs(bp.tile.x - a.x), Mathf.Abs(bp.tile.y - a.y))
+            getDistance = a => Mathf.Abs(bp.tile.x - a.x) + Mathf.Abs(bp.tile.y - a.y)
         });
         return true;
     }
@@ -114,7 +114,7 @@ public class WorkOrderManager : MonoBehaviour {
             factory = a => new SupplyBlueprintTask(a, bp),
             blueprint = bp,
             canDo = a => a.job == bp.structType.job,
-            getDistance = a => Mathf.Max(Mathf.Abs(bp.tile.x - a.x), Mathf.Abs(bp.tile.y - a.y))
+            getDistance = a => Mathf.Abs(bp.tile.x - a.x) + Mathf.Abs(bp.tile.y - a.y)
         });
         return true;
     }
@@ -138,7 +138,7 @@ public class WorkOrderManager : MonoBehaviour {
             factory = a => new ConstructTask(a, bp, deconstructing: true),
             blueprint = bp,
             canDo = a => a.job == bp.structType.job,
-            getDistance = a => Mathf.Max(Mathf.Abs(bp.tile.x - a.x), Mathf.Abs(bp.tile.y - a.y))
+            getDistance = a => Mathf.Abs(bp.tile.x - a.x) + Mathf.Abs(bp.tile.y - a.y)
         });
         PromoteHaulsFor(bp);
         return true;
@@ -161,7 +161,7 @@ public class WorkOrderManager : MonoBehaviour {
             },
             stack = stack,
             canDo = a => a.job.name == "hauler",
-            getDistance = a => Mathf.Max(Mathf.Abs(stack.inv.x - a.x), Mathf.Abs(stack.inv.y - a.y))
+            getDistance = a => Mathf.Abs(stack.inv.x - a.x) + Mathf.Abs(stack.inv.y - a.y)
         });
         return true;
     }
@@ -214,13 +214,15 @@ public class WorkOrderManager : MonoBehaviour {
                 stack = stack,
                 blueprint = source,
                 canDo = a => a.job.name == "hauler",
-                getDistance = a => Mathf.Max(Mathf.Abs(stack.inv.x - a.x), Mathf.Abs(stack.inv.y - a.y))
+                getDistance = a => Mathf.Abs(stack.inv.x - a.x) + Mathf.Abs(stack.inv.y - a.y)
             });
         }
     }
 
     // Creates or removes market haul orders to match current inventory vs targets.
     // Call immediately whenever the market inventory changes or a target is updated.
+    // Orders are removed eagerly even if in-flight: the active task still holds a workOrder
+    // reference and base.Cleanup() will Unreserve() it safely even after removal from the queue.
     public void UpdateMarketOrders(Inventory marketInv) {
         if (MarketNeedsHaulTo(marketInv) && !orders[2].Exists(o => o.type == OrderType.HaulToMarket && o.inv == marketInv))
             Add(new WorkOrder {
@@ -238,9 +240,9 @@ public class WorkOrderManager : MonoBehaviour {
                 inv = marketInv,
                 canDo = a => a.job.name == "merchant"
             });
-        // Remove orders whose need has gone away (skip in-flight orders).
+        // Remove orders whose need has gone away.
         orders[2].RemoveAll(o => {
-            if (o.inv != marketInv || o.res.reserved != 0) return false;
+            if (o.inv != marketInv) return false;
             if (o.type == OrderType.HaulToMarket   && !MarketNeedsHaulTo(marketInv))   return true;
             if (o.type == OrderType.HaulFromMarket && !MarketNeedsHaulFrom(marketInv)) return true;
             return false;
@@ -260,7 +262,7 @@ public class WorkOrderManager : MonoBehaviour {
             res = new(plant.res?.capacity ?? 1),
             isActive = () => plant.harvestable,
             canDo = a => a.job == harvestJob,
-            getDistance = a => Mathf.Max(Mathf.Abs(tile.x - a.x), Mathf.Abs(tile.y - a.y))
+            getDistance = a => Mathf.Abs(tile.x - a.x) + Mathf.Abs(tile.y - a.y)
         });
         return true;
     }
@@ -277,7 +279,7 @@ public class WorkOrderManager : MonoBehaviour {
             tile = lab.tile,
             res = new(lab.res?.capacity ?? 1),
             canDo = a => a.job.name == "scientist",
-            getDistance = a => Mathf.Max(Mathf.Abs(lab.tile.x - a.x), Mathf.Abs(lab.tile.y - a.y))
+            getDistance = a => Mathf.Abs(lab.tile.x - a.x) + Mathf.Abs(lab.tile.y - a.y)
         });
         return true;
     }
@@ -323,11 +325,12 @@ public class WorkOrderManager : MonoBehaviour {
             });
     }
 
-    // Remove market haul orders where the need has gone away. Skip in-flight orders.
-    // Goal: fix upstream gaps so this never fires (LogWarning will tell you when it does).
+    // Remove market haul orders where the need has gone away (safety net for edge cases
+    // like a market being destroyed mid-task). UpdateMarketOrders now removes eagerly, so
+    // this should rarely fire; LogWarning will tell you when it does.
     private void PruneStaleMarketOrders() {
         orders[2].RemoveAll(o => {
-            if (o.res.reserved != 0 || o.inv == null) return false;
+            if (o.inv == null) return false;
             if (o.type == OrderType.HaulToMarket && !MarketNeedsHaulTo(o.inv)) {
                 Debug.LogWarning($"WOM prune: stale HaulToMarket order for market at ({o.inv.x},{o.inv.y})");
                 return true;

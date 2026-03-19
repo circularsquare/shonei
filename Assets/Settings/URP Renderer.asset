@@ -13,7 +13,15 @@ MonoBehaviour:
   m_Name: LightFeature
   m_EditorClassIdentifier: 
   m_Active: 1
-  ambientNormal: 0
+  ambientNormal: 0.095
+  shadowLength: 5
+  shadowDarkness: 0.563
+  litLayers:
+    serializedVersion: 2
+    m_Bits: 91
+  shadowCasterLayers:
+    serializedVersion: 2
+    m_Bits: 191
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -24,7 +32,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 11145981673336645838492a2d98e247, type: 3}
-  m_Name: New Universal Render Pipeline Asset_Renderer
+  m_Name: URP Renderer
   m_EditorClassIdentifier: 
   debugShaders:
     debugReplacementPS: {fileID: 4800000, guid: cf852408f2e174538bcd9b7fda1c5ae7, type: 3}

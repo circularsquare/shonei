@@ -11,7 +11,7 @@ using System.Linq;
 public class InventoryController : MonoBehaviour {
     public static InventoryController instance {get; protected set;}
     public GlobalInventory globalInventory;
-    public GameObject panelInventory;
+    public GameObject inventoryPanel;
     public GameObject itemDisplay; // prefab 
     private World world;
     public Inventory selectedInventory; // if u click on a drawer, allows u to set what its assigned to
@@ -56,7 +56,6 @@ public class InventoryController : MonoBehaviour {
     public void TickUpdate(){
         if (world == null){
             world = WorldController.instance.world;
-            panelInventory = GetComponent<Transform>().gameObject;
             foreach (Item item in Db.items){
                 AddItemDisplay(item);
             }
@@ -72,7 +71,7 @@ public class InventoryController : MonoBehaviour {
 
         GameObject itemDisplayGo;
         if (item.parent == null){
-            itemDisplayGo = Instantiate(itemDisplay, panelInventory.transform);
+            itemDisplayGo = Instantiate(itemDisplay, inventoryPanel.transform);
         } else { // WARNING parent must be initiated beore child
             itemDisplayGo = Instantiate(itemDisplay, itemDisplayGos[item.parent.id].transform);
         }
@@ -105,7 +104,7 @@ public class InventoryController : MonoBehaviour {
             discoveredItems[item.id] = true;
             itemDisplayGos[item.id].SetActive(true);
             Canvas.ForceUpdateCanvases();
-            LayoutRebuilder.ForceRebuildLayoutImmediate(panelInventory.GetComponent<RectTransform>());
+            LayoutRebuilder.ForceRebuildLayoutImmediate(inventoryPanel.GetComponent<RectTransform>());
             // Refresh parent's dropdown sprite now that it has a discovered child
             if (item.parent != null && itemDisplayGos[item.parent.id] != null)
                 itemDisplayGos[item.parent.id].GetComponent<ItemDisplay>()?.RefreshDropdownSprite();

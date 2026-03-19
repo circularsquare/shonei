@@ -30,7 +30,11 @@
       "Bash(find /c/Users/anita/projects/shonei/Assets/Controller -name *.cs)",
       "Bash(grep -n \"class HaulInfo\" /c/Users/anita/projects/shonei/Assets/Model/*.cs)",
       "Bash(git mv:*)",
-      "Bash(git status:*)"
+      "Bash(git status:*)",
+      "Bash(grep -n \"class HaulInfo\\\\|struct HaulInfo\" Assets/Model/*.cs)",
+      "Bash(grep -rn \"GetEdgeInfo\\\\|GetEdgeCost\" Assets/ --include=*.cs)",
+      "Bash(grep -rn \"FindPathToItem\\\\|FindItem\" Assets/Model/ Assets/Controller/ --include=*.cs)",
+      "Bash(grep -rn \"\\\\.FindPathToItem\\\\|\\\\.FindItem\" Assets/ --include=*.cs)"
     ],
     "additionalDirectories": [
       "C:\\Users\\anita",

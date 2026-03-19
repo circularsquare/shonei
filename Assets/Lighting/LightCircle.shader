@@ -65,6 +65,11 @@ Shader "Hidden/LightCircle" {
                 float2 screenUV = IN.positionCS.xy / _ScreenParams.xy;
                 float4 ns = SAMPLE_TEXTURE2D(_CapturedNormalsRT, sampler_CapturedNormalsRT, screenUV);
 
+                // Directional-only tier (alpha ≈ 0.3): skip torch contribution entirely.
+                // LightComposite still applies the lightmap to these pixels, but since we
+                // write nothing here the lightmap only carries ambient + sun for them.
+                if (ns.a > 0.0 && ns.a < 0.4) return float4(0, 0, 0, 1);
+
                 // Black = no sprite here, use flat fallback (0,0,-1).
                 if (dot(ns.rgb, ns.rgb) < 0.01) ns = float4(0.5, 0.5, 0.0, 1.0);
 

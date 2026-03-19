@@ -41,7 +41,7 @@ public class Blueprint {
         go.transform.position = structType.depth == 3
             ? new Vector3(x, y - 1f/8f, 0)
             : new Vector3(visualX, y, 0);
-        go.transform.SetParent(WorldController.instance.transform, true);
+        go.transform.SetParent(StructController.instance.transform, true);
         go.name = "blueprint_" + structType.name;
 
         sprite = structType.LoadSprite() ?? Resources.Load<Sprite>("Sprites/Buildings/default");
