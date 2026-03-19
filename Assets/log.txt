@@ -1,5 +1,12 @@
 meoww!!
 
+3/19
+- more workorder improvements
+- reorganize spec
+- add reachability - connected component tracking for faster lookup
+3/18
+- added WorkOrder system, task priorities 
+    - prioritize deconstruct-blocking haul tasks
 3/17
 - got rid of multitile floor invs
     - prevent item falling collisions by disallowing deconstructs that would cause them

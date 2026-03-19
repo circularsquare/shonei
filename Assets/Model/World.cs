@@ -60,7 +60,10 @@ public class World : MonoBehaviour {
             animalController.TickUpdate();
             plantController.TickUpdate();
             if (ResearchSystem.instance != null) ResearchSystem.instance.TickUpdate();
-        }        
+        }
+        float reconcilePeriod = 10f;
+        if (Math.Floor((timer + Time.deltaTime) / reconcilePeriod) - Math.Floor(timer / reconcilePeriod) > 0)
+            WorkOrderManager.instance?.Reconcile();        
         float period = 0.2f;
         if (Math.Floor((timer + Time.deltaTime) / period) - Math.Floor(timer / period) > 0){  // every 0.2 sec
             invController.TickUpdate(); // update itemdisplay, add controller instances

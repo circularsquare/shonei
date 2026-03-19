@@ -48,6 +48,7 @@ public class ItemDisplay : MonoBehaviour {
         Inventory sel = InventoryController.instance.selectedInventory;
         if (sel?.invType == Inventory.InvType.Market) {
             sel.targets[item] = sel.targets[item] == 0 ? 1 : sel.targets[item] * 2;
+            WorkOrderManager.instance?.UpdateMarketOrders(sel);
         } else {
             var t = InventoryController.instance.targets;
             t[item.id] = t[item.id] == 0 ? 1 : t[item.id] * 2;
@@ -58,6 +59,7 @@ public class ItemDisplay : MonoBehaviour {
         Inventory sel = InventoryController.instance.selectedInventory;
         if (sel?.invType == Inventory.InvType.Market) {
             sel.targets[item] /= 2;
+            WorkOrderManager.instance?.UpdateMarketOrders(sel);
         } else {
             InventoryController.instance.targets[item.id] /= 2;
         }

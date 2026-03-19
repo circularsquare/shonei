@@ -17,20 +17,18 @@ public class Blueprint {
     public float constructionProgress = 0f;
     public enum BlueprintState { Receiving, Constructing, Deconstructing}
     public BlueprintState state = BlueprintState.Receiving;
-    public Reservable res;
     public bool cancelled = false;
     public int priority = 0;
     // Items to give to the completing animal after construction/deconstruction finishes.
     // Set by StructController.Construct (mining output) or Deconstruct (refunded materials).
     public List<ItemQuantity> pendingOutput;
 
-    public Blueprint(StructType structType, int x, int y){
+    public Blueprint(StructType structType, int x, int y, bool autoRegister = true){
         this.structType = structType;
         this.x = x;
         this.y = y;
         this.tile = World.instance.GetTileAt(x, y);
         tile.SetBlueprintAt(structType.depth, this);
-        res = new Reservable(1);
 
         if (structType.constructionCost == 0f){
             constructionCost = 2f; // default
@@ -58,7 +56,14 @@ public class Blueprint {
         for (int i = 0; i < costs.Length; i++)
             inv.itemStacks[i].stackSize = costs[i].quantity;
 
-        if (structType.costs.Length == 0){ state = BlueprintState.Constructing; }
+        if (autoRegister) {
+            if (structType.costs.Length == 0) {
+                state = BlueprintState.Constructing;
+                WorkOrderManager.instance?.RegisterConstruct(this);
+            } else {
+                WorkOrderManager.instance?.RegisterSupplyBlueprint(this);
+            }
+        }
         StructController.instance.AddBlueprint(this);
     }
     public void RefreshColor() {
@@ -71,9 +76,10 @@ public class Blueprint {
     public static Blueprint CreateDeconstructBlueprint(Tile tile) {
         Structure structure = tile.structs[0] ?? tile.structs[1] ?? tile.structs[2] ?? tile.structs[3];
         if (structure == null) return null;
-        Blueprint bp = new Blueprint(structure.structType, tile.x, tile.y);
+        Blueprint bp = new Blueprint(structure.structType, tile.x, tile.y, autoRegister: false);
         bp.state = BlueprintState.Deconstructing;
         bp.RefreshColor();
+        WorkOrderManager.instance?.RegisterDeconstruct(bp);
         if (tile.building?.storage != null)
             tile.building.storage.locked = true;
         return bp;
@@ -102,6 +108,7 @@ public class Blueprint {
 
     public void Complete(){
         StructController.instance.RemoveBlueprint(this);
+        WorkOrderManager.instance?.RemoveForBlueprint(this);
         // Consume delivered materials — removes them from globalInv now that they're used up
         foreach (var cost in costs)
             inv.Produce(cost.item, -inv.Quantity(cost.item));
@@ -111,9 +118,11 @@ public class Blueprint {
         StructController.instance.Construct(structType, tile);
         tile.SetBlueprintAt(structType.depth, null);
         GameObject.Destroy(go);
+        if (InfoPanel.instance?.obj == tile) InfoPanel.instance.UpdateInfo();
     }
     public void Deconstruct() {
         StructController.instance.RemoveBlueprint(this);
+        WorkOrderManager.instance?.RemoveForBlueprint(this);
         pendingOutput = new List<ItemQuantity>(); // given in asm.handleworking
         foreach (ItemQuantity cost in costs) {
             int amount = Mathf.FloorToInt(cost.quantity / 2f);
@@ -125,6 +134,7 @@ public class Blueprint {
         // remove blueprint
         tile.SetBlueprintAt(structType.depth, null);
         GameObject.Destroy(go);
+        if (InfoPanel.instance?.obj == tile) InfoPanel.instance.UpdateInfo();
     }
 
     // Returns true if this is a deconstruct blueprint on a storage building and the storage still has items.
@@ -169,6 +179,7 @@ public class Blueprint {
 
     public void Destroy() {
         StructController.instance.RemoveBlueprint(this);
+        WorkOrderManager.instance?.RemoveForBlueprint(this);
         cancelled = true;
         if (state == BlueprintState.Deconstructing && tile.building?.storage != null)
             tile.building.storage.locked = false;

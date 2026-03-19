@@ -16,6 +16,9 @@ public abstract class Task {
     protected LinkedList<Objective> objectives = new LinkedList<Objective>();
     public Objective currentObjective;
     private readonly List<(ItemStack stack, int amount)> reservedStacks = new();
+    // Set by WorkOrderManager.ChooseOrder when this task fulfills a work order.
+    // Null for non-WOM tasks (Craft, Eep, Obtain, etc.). Released in Cleanup().
+    public WorkOrderManager.WorkOrder workOrder;
 
     // De minimis: skip hauls/drops below this unless it clears the source stack entirely.
     public const int MinHaulQuantity = 20; // 0.20 liang
@@ -49,7 +52,7 @@ public abstract class Task {
 
     public bool Start(){ // calls some task specific Initialize
         bool initialized = Initialize();
-        if (objectives.Count > 0){StartNextObjective();}
+        if (initialized && objectives.Count > 0){StartNextObjective();}
         return initialized;
     }
     public virtual void Complete(){ // called whenever an objective is complete;
@@ -71,6 +74,8 @@ public abstract class Task {
         animal.state = Animal.AnimalState.Idle;
     }
     public virtual void Cleanup(){
+        workOrder?.res.Unreserve();
+        workOrder = null;
         foreach (var (stack, amount) in reservedStacks){
             stack.Unreserve(Math.Min(amount, stack.resAmount));
         }
@@ -229,42 +234,51 @@ public class HarvestTask : Task {
         this.tile = tile;
     }
     public override bool Initialize() {
-        if (!(tile.building is Plant)){
-            return false;
-        } 
-        Plant plant = tile.building as Plant;
-        
+        if (!(tile.building is Plant plant)) return false;
+        if (!plant.harvestable) return false;
+
         objectives.AddLast(new GoObjective(this, tile));
         objectives.AddLast(new HarvestObjective(this, plant));
         foreach (ItemQuantity output in plant.plantType.products){
             objectives.AddLast(new DropObjective(this, output.item));
         }
-        if (!plant.res.Reserve()) return false;
         return true;
     }
-    public override void Cleanup() {
-        tile.building?.res.Unreserve();
-        base.Cleanup();
-    }
 }
-// haultask is only for moving random items to storage!
+// haultask is only for moving a specific floor stack to storage (always WOM-targeted).
 public class HaulTask : Task {
-    public HaulTask(Animal animal) : base(animal){}
+    private readonly ItemStack targetStack;
+    public HaulTask(Animal animal, ItemStack targetStack) : base(animal){
+        this.targetStack = targetStack;
+    }
     public override bool Initialize() {
-        HaulInfo h = animal.nav.FindAnyItemToHaul();
-        if (h == null) return false;
-        ItemQuantity iq = new(h.item, h.quantity);
-        FetchAndReserve(iq, h.itemTile, h.itemStack, h.quantity);
-        objectives.AddLast(new DeliverObjective(this, iq, h.storageTile));
+        if (targetStack.item == null || targetStack.quantity == 0) return false; // stale
+        Item item = targetStack.item;
+        Tile itemTile = World.instance.GetTileAt(targetStack.inv.x, targetStack.inv.y);
+        if (itemTile == null) return false;
+        Path storagePath = animal.nav.FindPathToStorage(item);
+        if (storagePath == null) return false;
+        int available = targetStack.quantity - targetStack.resAmount;
+        int quantity = Math.Min(available, storagePath.tile.GetStorageForItem(item));
+        if (quantity <= 0) return false;
+        if (quantity < MinHaulQuantity && quantity < available) return false; // de minimis
+        ItemQuantity iq = new(item, quantity);
+        FetchAndReserve(iq, itemTile, targetStack, quantity);
+        objectives.AddLast(new DeliverObjective(this, iq, storagePath.tile));
         return true;
     }
 }
-// consolidatetask is only for merging floor stacks when no storage is available!
+// consolidatetask is only for consolidating a specific floor stack when no storage is available (always WOM-targeted).
 public class ConsolidateTask : Task {
-    public ConsolidateTask(Animal animal) : base(animal) {}
+    private readonly ItemStack stack;
+    public ConsolidateTask(Animal animal, ItemStack stack) : base(animal) {
+        this.stack = stack;
+    }
     public override bool Initialize() {
-        HaulInfo h = animal.nav.FindFloorConsolidation();
+        HaulInfo h = animal.nav.FindFloorConsolidation(stack);
         if (h == null) return false;
+        int available = h.itemStack.quantity - h.itemStack.resAmount;
+        if (h.quantity < MinHaulQuantity && h.quantity < available) return false; // de minimis
         ItemQuantity iq = new(h.item, h.quantity);
         FetchAndReserve(iq, h.itemTile, h.itemStack, h.quantity);
         objectives.AddLast(new DeliverObjective(this, iq, h.storageTile));
@@ -285,57 +299,59 @@ public class DropTask : Task {
 public class ConstructTask : Task {
     public Blueprint blueprint;
     public bool deconstructing;
-    public ConstructTask(Animal animal, bool deconstructing = false) : base(animal){
+    public ConstructTask(Animal animal, Blueprint bp, bool deconstructing = false) : base(animal){
+        this.blueprint = bp;
         this.deconstructing = deconstructing;
     }
     public override bool Initialize() {
-        var state = deconstructing ? Blueprint.BlueprintState.Deconstructing : Blueprint.BlueprintState.Constructing;
-        var candidates = animal.nav.FindPathsAdjacentToBlueprints(animal.job, state);
-        foreach (var (bpTile, standPath, bp) in candidates) {
-            if (bp.WouldCauseItemsFall()) continue; // items above must be cleared first
-            if (bp.StorageNeedsEmptying()) continue; // storage must be emptied before deconstruction
-            blueprint = bp;
-            objectives.AddLast(new GoObjective(this, standPath.tile));
-            objectives.AddLast(new ConstructObjective(this, blueprint));
-            if (!blueprint.res.Reserve()) return false;
-            return true;
+        if (blueprint == null || blueprint.cancelled) return false;
+        // State guard (was previously implicit in FindPathsAdjacentToBlueprints filter)
+        var expectedState = deconstructing ? Blueprint.BlueprintState.Deconstructing : Blueprint.BlueprintState.Constructing;
+        if (blueprint.state != expectedState) return false;
+        if (blueprint.WouldCauseItemsFall()) {
+            if (deconstructing) WorkOrderManager.instance?.PromoteHaulsFor(blueprint);
+            return false;
         }
-        return false;
-    }
-    public override void Cleanup() {
-        blueprint?.res.Unreserve();
-        base.Cleanup();
+        if (blueprint.StorageNeedsEmptying()) {
+            if (deconstructing) WorkOrderManager.instance?.PromoteHaulsFor(blueprint);
+            return false;
+        }
+        Path standPath = blueprint.structType.isTile
+            ? animal.nav.PathStrictlyAdjacent(blueprint.tile)
+            : animal.nav.PathToOrAdjacent(blueprint.tile);
+        if (standPath == null) return false;
+        objectives.AddLast(new GoObjective(this, standPath.tile));
+        objectives.AddLast(new ConstructObjective(this, blueprint));
+        return true;
     }
 }
 public class SupplyBlueprintTask : Task {
     Blueprint blueprint;
-    ItemQuantity iq; 
-    public SupplyBlueprintTask(Animal animal) : base(animal){}
+    ItemQuantity iq;
+    public SupplyBlueprintTask(Animal animal, Blueprint bp) : base(animal){
+        this.blueprint = bp;
+    }
     public override bool Initialize() {
-        var candidates = animal.nav.FindPathsAdjacentToBlueprints(animal.job, Blueprint.BlueprintState.Receiving);
-        foreach (var (bpTile, standPath, bp) in candidates) {
-            for (int i = 0; i < bp.costs.Length; i++) {
-                if (bp.inv.Quantity(bp.costs[i].item) < bp.costs[i].quantity) {
-                    iq = new ItemQuantity(bp.costs[i].item,
-                        bp.costs[i].quantity - bp.inv.Quantity(bp.costs[i].item));
-                    if (!animal.inv.ContainsItem(iq)){
-                        (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(iq.item);
-                        if (itemPath == null) { continue; }
-                        FetchAndReserve(iq, itemPath.tile, stack);
-                    }
-                    blueprint = bp;
-                    objectives.AddLast(new GoObjective(this, standPath.tile));
-                    objectives.AddLast(new DeliverToBlueprintObjective(this, iq, blueprint));
-                    if (!blueprint.res.Reserve()) return false;
-                    return true;
-                }
+        if (blueprint == null || blueprint.cancelled) return false;
+        if (blueprint.state != Blueprint.BlueprintState.Receiving) return false;
+        Path standPath = blueprint.structType.isTile
+            ? animal.nav.PathStrictlyAdjacent(blueprint.tile)
+            : animal.nav.PathToOrAdjacent(blueprint.tile);
+        if (standPath == null) return false;
+        for (int i = 0; i < blueprint.costs.Length; i++) {
+            int needed = blueprint.costs[i].quantity - blueprint.inv.Quantity(blueprint.costs[i].item);
+            if (needed <= 0) continue;
+            iq = new ItemQuantity(blueprint.costs[i].item, needed);
+            if (!animal.inv.ContainsItem(iq)) {
+                (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(iq.item);
+                if (itemPath == null) continue; // can't find this item — try next cost slot
+                FetchAndReserve(iq, itemPath.tile, stack);
             }
+            objectives.AddLast(new GoObjective(this, standPath.tile));
+            objectives.AddLast(new DeliverToBlueprintObjective(this, iq, blueprint));
+            return true;
         }
         return false;
-    }
-    public override void Cleanup(){
-        blueprint?.res.Unreserve();
-        base.Cleanup();
     }
 }
 public class HaulToMarketTask : Task {
@@ -398,7 +414,8 @@ public class HaulFromMarketTask : Task {
             int qty = Math.Min(excess, stack.quantity - stack.resAmount);
             if (qty <= 0) continue;
             int sourceQty = stack.quantity - stack.resAmount;
-            if (qty < MinHaulQuantity && qty < sourceQty) continue;
+            bool worthHauling = qty >= MinHaulQuantity || qty >= sourceQty || qty >= excess / 4;
+            if (!worthHauling) continue;
             ItemQuantity iq = new(item, qty);
             FetchAndReserve(iq, marketStorageTile, stack, qty);
             objectives.AddLast(new DeliverObjective(this, iq, storagePath.tile));
@@ -408,21 +425,15 @@ public class HaulFromMarketTask : Task {
     }
 }
 public class ResearchTask : Task {
-    public Tile labTile;
-    public ResearchTask(Animal animal) : base(animal) {}
+    private readonly Building _lab;
+    public ResearchTask(Animal animal, Building lab) : base(animal) { _lab = lab; }
     public override bool Initialize() {
-        if (!Db.structTypeByName.ContainsKey("laboratory")) return false;
-        Path p = animal.nav.FindPathToBuilding(Db.structTypeByName["laboratory"]);
+        if (_lab == null) return false;
+        Path p = animal.nav.PathToOrAdjacent(_lab.tile);
         if (p == null) return false;
-        labTile = p.tile;
-        if (!labTile.building.res.Reserve()) return false;
-        objectives.AddLast(new GoObjective(this, labTile));
+        objectives.AddLast(new GoObjective(this, p.tile));
         objectives.AddLast(new ResearchObjective(this));
         return true;
-    }
-    public override void Cleanup() {
-        labTile?.building?.res.Unreserve();
-        base.Cleanup();
     }
 }
 
@@ -543,7 +554,10 @@ public class DeliverToBlueprintObjective : Objective { // always queued after Go
             foreach (var cost in blueprint.costs)
                 if (cost.item == iq.item) { needed = cost.quantity - blueprint.inv.Quantity(iq.item); break; }
             animal.inv.MoveItemTo(blueprint.inv, iq.item, Math.Min(animal.inv.Quantity(iq.item), needed));
-            if (blueprint.IsFullyDelivered()) blueprint.state = Blueprint.BlueprintState.Constructing;
+            if (blueprint.IsFullyDelivered()) {
+                blueprint.state = Blueprint.BlueprintState.Constructing;
+                WorkOrderManager.instance?.PromoteToConstruct(blueprint);
+            }
             Complete();
         } else {
             Debug.Log($"{animal.aName} could not deliver {iq.item.name} to blueprint at ({blueprint.x},{blueprint.y})");

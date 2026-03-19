@@ -119,11 +119,13 @@ public class Nav {
     public Path FindPathTo(Func<Tile, bool> condition, int r = 40, bool persistent = false){
         Path closestPath = null;
         float closestDistance = float.MaxValue;
+        Node myNode = a.TileHere().node;
         for (int x = -r; x <= r; x++) {
             for (int y = -r; y <= r; y++) {
                 Tile tile = world.GetTileAt(a.x + x, a.y + y);
                 if (tile != null && condition(tile)) {
-                    Path cPath = world.graph.Navigate(a.TileHere().node, tile.node);
+                    if (!world.graph.SameComponent(myNode, tile.node)) continue;
+                    Path cPath = world.graph.Navigate(myNode, tile.node);
                     if (cPath == null) { continue; }
                     float distance = cPath.cost;
                     if (distance < closestDistance) {
@@ -134,7 +136,7 @@ public class Nav {
             }
         } 
         if (persistent && closestPath == null && r < 20){ 
-            Debug.Log("no tile found for " + a.name + ", expanding radius to " + (r + 5));
+            Debug.Log("no tile found for " + a.aName + " (" + a.job.name + "), expanding radius to " + (r + 5));
             return (FindPathTo(condition, r + 4, persistent));
         }
         return closestPath;
@@ -184,6 +186,7 @@ public class Nav {
         var ic = InventoryController.instance;
         Path closestPath = null;
         float closestCost = float.MaxValue;
+        Node myNode = a.TileHere().node;
         foreach (var type in types) {
             if (!ic.byType.TryGetValue(type, out var list)) continue;
             foreach (Inventory inv in list) {
@@ -191,7 +194,8 @@ public class Nav {
                 if (!filter(inv)) continue;
                 Tile t = world.GetTileAt(inv.x, inv.y);
                 if (t == null) continue;
-                Path p = world.graph.Navigate(a.TileHere().node, t.node);
+                if (!world.graph.SameComponent(myNode, t.node)) continue;
+                Path p = world.graph.Navigate(myNode, t.node);
                 if (p != null && p.cost < closestCost) {
                     closestCost = p.cost;
                     closestPath = p;
@@ -205,10 +209,12 @@ public class Nav {
         if (list == null) return null;
         Path closestPath = null;
         float closestCost = float.MaxValue;
+        Node myNode = a.TileHere().node;
         foreach (Structure s in list) {
             if (Mathf.Max(Mathf.Abs(s.x - (int)a.x), Mathf.Abs(s.y - (int)a.y)) > r) continue;
             if (filter != null && !filter(s)) continue;
-            Path p = world.graph.Navigate(a.TileHere().node, s.workTile.node);
+            if (!world.graph.SameComponent(myNode, s.workTile.node)) continue;
+            Path p = world.graph.Navigate(myNode, s.workTile.node);
             if (p != null && p.cost < closestCost) {
                 closestCost = p.cost;
                 closestPath = p;
@@ -225,6 +231,7 @@ public class Nav {
     public Path FindPathToHarvestable(Job job, int r = 40) {
         Path closestPath = null;
         float closestCost = float.MaxValue;
+        Node myNode = a.TileHere().node;
         foreach (var st in Db.structTypeByName.Values) {
             if (!st.isPlant || st.job != job) continue;
             var list = StructController.instance.GetByType(st);
@@ -232,7 +239,8 @@ public class Nav {
             foreach (Structure s in list) {
                 if (Mathf.Max(Mathf.Abs(s.x - (int)a.x), Mathf.Abs(s.y - (int)a.y)) > r) continue;
                 if (!(s is Plant p) || !p.harvestable || !s.res.Available()) continue;
-                Path pa = world.graph.Navigate(a.TileHere().node, s.workTile.node);
+                if (!world.graph.SameComponent(myNode, s.workTile.node)) continue;
+                Path pa = world.graph.Navigate(myNode, s.workTile.node);
                 if (pa != null && pa.cost < closestCost) {
                     closestCost = pa.cost;
                     closestPath = pa;
@@ -248,25 +256,30 @@ public class Nav {
         return (path, path.tile.inv.GetItemStack(item));
     }
 
-    // --- Blueprints (use adjacent, since blueprint tile may not be standable) ---
-    public List<(Tile tile, Path path, Blueprint bp)> FindPathsAdjacentToBlueprints(Job job, Blueprint.BlueprintState bpState, int r = 40){
-        var candidates = new List<(Tile tile, Path path, Blueprint bp)>();
-        foreach (Blueprint bp in StructController.instance.GetBlueprints()) {
-            if (Mathf.Max(Mathf.Abs(bp.x - (int)a.x), Mathf.Abs(bp.y - (int)a.y)) > r) continue;
-            if (bp.structType.job != job || bp.state != bpState || !bp.res.Available()) continue;
-            // isTile blueprints require standing adjacent (tile becomes solid after build);
-            // non-isTile can stand on the blueprint tile itself.
-            Path path = bp.structType.isTile ? PathStrictlyAdjacent(bp.tile) : PathToOrAdjacent(bp.tile);
-            if (path != null) candidates.Add((bp.tile, path, bp));
+    public HaulInfo FindFloorConsolidation(ItemStack sourceStack = null, int r = 50) {
+        // ── TARGETED MODE: WOM provides the exact source stack ────────────────────────
+        if (sourceStack != null) {
+            if (sourceStack.item == null || sourceStack.quantity == 0) return null;
+            Item item = sourceStack.item;
+            Tile sourceTile = world.GetTileAt(sourceStack.inv.x, sourceStack.inv.y);
+            if (sourceTile == null) return null;
+            if (FindPathToStorage(item) != null) return null; // storage exists — should haul instead
+
+            // Find a dest floor tile: same item, room to receive, more quantity than source
+            Path destPath = FindPathToInv(new[] { Inventory.InvType.Floor },
+                inv => world.GetTileAt(inv.x, inv.y) != sourceTile
+                    && inv.HasSpaceForItem(item)
+                    && inv.Quantity(item) > sourceTile.inv.Quantity(item), r);
+            if (destPath == null) return null;
+
+            Tile destTile = destPath.tile;
+            int qty = Math.Min(sourceTile.inv.AvailableQuantity(item), destTile.inv.GetMergeSpace(item));
+            if (qty <= 0) return null;
+            if (qty < Task.MinHaulQuantity && qty < sourceTile.inv.Quantity(item)) return null;
+            return new HaulInfo(item, qty, sourceTile, destTile, sourceStack);
         }
-        candidates.Sort((a, b) => {
-            int pc = b.bp.priority.CompareTo(a.bp.priority); // higher priority first
-            return pc != 0 ? pc : a.path.cost.CompareTo(b.path.cost); // tiebreak: closer first
-        });
-        return candidates;
-    }
-    public HaulInfo FindFloorConsolidation(int r = 50) {
-        // Collect all floor haul-eligible tiles sorted by path cost, try each as a source
+
+        // ── AUTO MODE: search for any consolidatable pair ─────────────────────────────
         var ic = InventoryController.instance;
         var candidates = new List<Path>();
         if (ic.byType.TryGetValue(Inventory.InvType.Floor, out var floorList)) {
@@ -282,34 +295,27 @@ public class Nav {
         candidates.Sort((p1, p2) => p1.cost.CompareTo(p2.cost));
 
         foreach (Path sourcePath in candidates) {
-            ItemStack sourceStack = sourcePath.tile.inv.GetItemToHaul();
-            if (sourceStack == null) continue;
-            Item item = sourceStack.item;
+            ItemStack src = sourcePath.tile.inv.GetItemToHaul();
+            if (src == null) continue;
+            Item item = src.item;
             if (item == null) continue;
             Tile sourceTile = sourcePath.tile;
 
-            // Item has storage available — should be hauled, not consolidated
             if (FindPathToStorage(item) != null) continue;
 
-            // Find another floor tile with same item that has a partial stack with room
             Path destPath = FindPathToInv(new[] { Inventory.InvType.Floor },
                 inv => world.GetTileAt(inv.x, inv.y) != sourceTile && inv.HasSpaceForItem(item), r);
             if (destPath == null) continue;
 
-            // Always move smaller stack into bigger stack
             Tile destTile = destPath.tile;
-            if (sourceTile.inv.Quantity(item) > destTile.inv.Quantity(item)) {
-                (sourceTile, destTile) = (destTile, sourceTile);
-                sourceStack = sourceTile.inv.GetItemToHaul();
-                if (sourceStack == null) continue;
-            }
+            // Skip if dest has ≤ source quantity — the reversed pair will appear as its own candidate
+            if (destTile.inv.Quantity(item) <= sourceTile.inv.Quantity(item)) continue;
 
             int qty = Math.Min(sourceTile.inv.AvailableQuantity(item), destTile.inv.GetMergeSpace(item));
             if (qty <= 0) continue;
-            // Skip tiny moves unless we'd be clearing the entire smaller stack
             if (qty < Task.MinHaulQuantity && qty < sourceTile.inv.Quantity(item)) continue;
 
-            return new HaulInfo(item, qty, sourceTile, destTile, sourceStack);
+            return new HaulInfo(item, qty, sourceTile, destTile, src);
         }
         return null;
     }
@@ -396,8 +402,27 @@ public class Nav {
 
     // ========= utils =============
     public float SquareDistance(float x1, float x2, float y1, float y2){return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);}
-    public bool IsReachable(Tile t){ // TODO: implement! can you reach this tile from where you are?
-        return t.node.standable;
+    public bool IsReachable(Tile t) {
+        if (t?.node == null) return false;
+        Node myNode = a.TileHere()?.node;
+        if (myNode == null) return false;
+        return world.graph.SameComponent(myNode, t.node);
+    }
+
+    // Pure component check — no A*. Returns true if any building of this type is in the same
+    // connected component as the animal. Use this instead of FindPathToBuilding() != null
+    // when you only need reachability, not the actual path.
+    public bool CanReachBuilding(StructType structType, int r = 40) {
+        var list = StructController.instance.GetByType(structType);
+        if (list == null) return false;
+        Node myNode = a.TileHere()?.node;
+        if (myNode == null) return false;
+        foreach (Structure s in list) {
+            if (Mathf.Max(Mathf.Abs(s.x - (int)a.x), Mathf.Abs(s.y - (int)a.y)) > r) continue;
+            if (!s.res.Available()) continue;
+            if (world.graph.SameComponent(myNode, s.workTile.node)) return true;
+        }
+        return false;
     }
 
 

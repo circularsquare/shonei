@@ -80,6 +80,10 @@ public class AnimalStateManager {
             return;
         } else if (animal.task is CraftTask craftTask) {
             Recipe recipe = craftTask.recipe;
+            if (RecipePanel.instance != null && !RecipePanel.instance.IsAllowed(recipe.id)) {
+                craftTask.Fail();
+                return;
+            }
             animal.workProgress += workEfficiency;
             while (animal.workProgress >= recipe.workload) {
                 animal.workProgress -= recipe.workload;
@@ -114,7 +118,10 @@ public class AnimalStateManager {
                 }
             }
         } else if (animal.task is ResearchTask) {
+            animal.workProgress += workEfficiency;
             ResearchSystem.instance?.AddScientistProgress(workEfficiency);
+            if (animal.workProgress < 10f) return;
+            animal.workProgress = 0f;
             animal.task.Complete();
         } else {
             Debug.Log(animal.aName + " in working state but no work to do");

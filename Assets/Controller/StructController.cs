@@ -77,6 +77,8 @@ public class StructController : MonoBehaviour {
         }
         if (!st.isTile){
             Place(structure);
+            if (st.name == "laboratory" && structure is Building lab)
+                WorkOrderManager.instance?.RegisterResearch(lab);
         }
         if (world == null) {world = World.instance;}
         world.graph.UpdateNeighbors(tile.x, tile.y);
@@ -102,6 +104,7 @@ public class StructController : MonoBehaviour {
         }
         // After any tile/building change, check if items on the tile above are now floating.
         world.FallIfUnstandable(tile.x, tile.y + 1);
+        world.graph.RebuildComponents();
         return true;
     }
 

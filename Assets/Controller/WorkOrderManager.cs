@@ -6,26 +6,30 @@ using UnityEngine;
 /*
     WorkOrderManager centralises work prioritisation. Instead of each animal independently
     scanning for tasks in a hardcoded order, work is registered here as prioritised WorkOrders.
-    Animals call FindBestTask() to get the highest-priority task they can do.
+    Animals call ChooseOrder(animal, priority) to get the best task at exactly that priority tier.
 
     Priority:  1 = highest (hauls unblocking a pending deconstruct)
                2 = construct, supply blueprint, harvest
                3 = haul, consolidate, haul to/from market
-               4 = deconstruct
+               4 = deconstruct, research
+
+    In Animal.ChooseTask the tiers are interleaved with non-WOM tasks:
+        ChooseOrder(1) → ChooseOrder(2) → ChooseOrder(3) → CraftTask → ChooseOrder(4)
 
     Blueprint-based work (Construct, Supply, Deconstruct) is registered explicitly when
     blueprint state changes.  Haul orders are registered when items land on floor inventories.
-    Harvest orders are registered when plants become harvestable.
-    Craft and Research are NOT in this system (handled as fallbacks in ChooseTask).
+    Harvest orders are registered when plants are placed. isActive suppresses the order between grow cycles.
+    Research is maintained as a single standing order whenever a lab building exists.
+    Craft is NOT in this system (handled between p3 and p4 in ChooseTask).
 */
 public class WorkOrderManager : MonoBehaviour {
     public static WorkOrderManager instance { get; private set; }
 
-    public enum OrderType { Haul, Harvest, Construct, SupplyBlueprint, Deconstruct, HaulToMarket, HaulFromMarket }
+    public enum OrderType { Haul, Harvest, Construct, SupplyBlueprint, Deconstruct, HaulToMarket, HaulFromMarket, Research }
 
     public class WorkOrder {
         public OrderType type;
-        public int priority;             // 1=highest, 4=lowest
+        public int priority;             // 1=highest, 4=lowest (also used as tier index: priority-1)
         public Func<Animal, Task> factory;
         public Blueprint blueprint;      // nullable; for blueprint-based orders & cleanup
         public ItemStack stack;          // nullable; for haul orders (dedup & priority promote)
@@ -33,11 +37,18 @@ public class WorkOrderManager : MonoBehaviour {
         public Inventory inv;            // nullable; for market haul orders (dedup & staleness)
         public Func<Animal, bool> canDo;        // null = any animal; job gate checked before factory
         public Func<Animal, float> getDistance; // null = 0; Chebyshev approx, used for within-tier sorting
+        // Orders stay in the queue when claimed; res tracks how many animals are working this order.
+        // capacity defaults to 1; set to N for multi-slot buildings (e.g. a 2-scientist lab).
+        public Reservable res = new(1);
+        // Optional: returns false to temporarily suppress this order without removing it from the queue.
+        // Null means always active. ChooseOrder checks this before calling factory.
+        // Example: harvest orders use () => plant.harvestable so the order stays alive across grow cycles.
+        public Func<bool> isActive;
     }
 
-    // Sorted: ascending priority (1 first), FIFO within the same priority.
-    // Maintained sorted by Insert().
-    private readonly List<WorkOrder> orders = new();
+    // orders[0] = priority 1 (highest), orders[3] = priority 4 (lowest).
+    // Each list is FIFO within its tier; distance sort happens at query time in ChooseOrder.
+    private readonly List<WorkOrder>[] orders = Enumerable.Range(0, 4).Select(_ => new List<WorkOrder>()).ToArray();
 
     void Awake() {
         if (instance != null) { Debug.LogError("WorkOrderManager: multiple instances"); return; }
@@ -48,31 +59,33 @@ public class WorkOrderManager : MonoBehaviour {
 
     // ── QUERY ──────────────────────────────────────────────────────────────────────
 
-    // Builds a candidate list filtered by canDo, sorted by (priority ASC, distance ASC),
-    // then returns the first task this animal can start. Removes the claimed order.
-    public Task FindBestTask(Animal animal) {
-        PruneStaleHauls();
-        PruneStaleMarketOrders();
-
-        var candidates = new List<(WorkOrder order, float dist)>();
-        foreach (WorkOrder order in orders) {
-            if (order.canDo != null && !order.canDo(animal)) continue;
-            float dist = order.getDistance?.Invoke(animal) ?? 0f;
-            candidates.Add((order, dist));
-        }
-        candidates.Sort((a, b) => {
-            int pc = a.order.priority.CompareTo(b.order.priority);
-            return pc != 0 ? pc : a.dist.CompareTo(b.dist);
-        });
-
-        foreach (var (order, _) in candidates) {
+    // Returns the best (distance-sorted) startable task at exactly this priority tier, or null.
+    // Removes the claimed order on success. Call PruneStale() once before a ChooseOrder sequence.
+    public Task ChooseOrder(Animal animal, int priority) {
+        List<WorkOrder> tier = orders[priority - 1];
+        var candidates = tier
+            .Where(o => o.isActive == null || o.isActive())
+            .Where(o => o.res.Available())
+            .Where(o => o.canDo == null || o.canDo(animal))
+            .Where(o => o.stack == null || o.stack.Available()) // skip haul orders whose stack is fully reserved
+            .OrderBy(o => o.getDistance?.Invoke(animal) ?? 0f)
+            .ToList();
+        foreach (WorkOrder order in candidates) {
             Task task = order.factory(animal);
             if (task.Start()) {
-                orders.Remove(order);
+                order.res.Reserve();
+                task.workOrder = order;
                 return task;
             }
         }
         return null;
+    }
+
+    // Prune stale orders. Call once per ChooseTask before the ChooseOrder sequence.
+    // Goal: get these warnings to 0 by fixing upstream registration/cleanup gaps.
+    public void PruneStale() {
+        PruneStaleHauls();
+        PruneStaleMarketOrders();
     }
 
     // ── REGISTRATION ───────────────────────────────────────────────────────────────
@@ -81,7 +94,7 @@ public class WorkOrderManager : MonoBehaviour {
         // No reserved-guard here — PromoteToConstruct calls this while the prior supply task
         // is still cleaning up (res still reserved). Guard lives in Reconcile/AuditOrders only.
         if (HasOrderFor(OrderType.Construct, bp)) return false;
-        Insert(new WorkOrder {
+        Add(new WorkOrder {
             type = OrderType.Construct,
             priority = 2,
             factory = a => new ConstructTask(a, bp),
@@ -95,7 +108,7 @@ public class WorkOrderManager : MonoBehaviour {
     public bool RegisterSupplyBlueprint(Blueprint bp) {
         // No reserved-guard — see RegisterConstruct comment.
         if (HasOrderFor(OrderType.SupplyBlueprint, bp)) return false;
-        Insert(new WorkOrder {
+        Add(new WorkOrder {
             type = OrderType.SupplyBlueprint,
             priority = 2,
             factory = a => new SupplyBlueprintTask(a, bp),
@@ -107,15 +120,19 @@ public class WorkOrderManager : MonoBehaviour {
     }
 
     // Called when the last supply delivery transitions a blueprint Receiving → Constructing.
+    // Note: the SupplyBlueprint order may still have res.reserved == 1 at this point (the task
+    // that delivered is still running). That's fine — we remove the order intentionally here, and
+    // SupplyBlueprintTask.Cleanup will call workOrder.res.Unreserve() on the now-orphaned order
+    // object, which is harmless.
     public void PromoteToConstruct(Blueprint bp) {
-        orders.RemoveAll(o => o.blueprint == bp && o.type == OrderType.SupplyBlueprint);
+        orders[1].RemoveAll(o => o.blueprint == bp && o.type == OrderType.SupplyBlueprint);
         RegisterConstruct(bp);
     }
 
     public bool RegisterDeconstruct(Blueprint bp) {
         // No reserved-guard — see RegisterConstruct comment.
         if (HasOrderFor(OrderType.Deconstruct, bp)) return false;
-        Insert(new WorkOrder {
+        Add(new WorkOrder {
             type = OrderType.Deconstruct,
             priority = 4,
             factory = a => new ConstructTask(a, bp, deconstructing: true),
@@ -132,8 +149,10 @@ public class WorkOrderManager : MonoBehaviour {
     // Returns true if a new order was inserted.
     public bool RegisterHaul(ItemStack stack) {
         if (!StackNeedsHaulOrder(stack)) return false;
-        if (orders.Exists(o => o.type == OrderType.Haul && o.stack == stack)) return false;
-        Insert(new WorkOrder {
+        // Haul orders live at p1 or p3 — check both tiers.
+        if (orders[0].Exists(o => o.type == OrderType.Haul && o.stack == stack)) return false;
+        if (orders[2].Exists(o => o.type == OrderType.Haul && o.stack == stack)) return false;
+        Add(new WorkOrder {
             type = OrderType.Haul,
             priority = 3,
             factory = a => {
@@ -172,18 +191,20 @@ public class WorkOrderManager : MonoBehaviour {
         }
     }
 
-    // Promotes an existing p3 haul order for this stack to p1, or creates a new p1 haul order
+    // Promotes an existing haul order for this stack to p1, or creates a new p1 haul order
     // if none exists. P1 hauls block deconstruct and use the same haul-or-consolidate factory.
     private void PromoteOrCreateHaul(ItemStack stack, Blueprint source) {
-        WorkOrder existing = orders.Find(o => o.type == OrderType.Haul && o.stack == stack);
+        // Haul orders can be at p1 or p3; search both tiers.
+        WorkOrder existing = orders[0].Find(o => o.type == OrderType.Haul && o.stack == stack)
+            ?? orders[2].Find(o => o.type == OrderType.Haul && o.stack == stack);
         if (existing != null) {
-            if (existing.priority == 1) return; // already priority 1
-            orders.Remove(existing);
+            if (existing.priority == 1) return; // already p1
+            orders[existing.priority - 1].Remove(existing);
             existing.priority = 1;
             existing.blueprint = source;
-            Insert(existing);
+            orders[0].Add(existing);
         } else {
-            Insert(new WorkOrder {
+            orders[0].Add(new WorkOrder {
                 type = OrderType.Haul,
                 priority = 1,
                 factory = a => {
@@ -198,89 +219,133 @@ public class WorkOrderManager : MonoBehaviour {
         }
     }
 
-    public void RegisterMarketHauls(Inventory marketInv) {
-        if (MarketNeedsHaulTo(marketInv) && !orders.Exists(o => o.type == OrderType.HaulToMarket && o.inv == marketInv))
-            Insert(new WorkOrder {
+    // Creates or removes market haul orders to match current inventory vs targets.
+    // Call immediately whenever the market inventory changes or a target is updated.
+    public void UpdateMarketOrders(Inventory marketInv) {
+        if (MarketNeedsHaulTo(marketInv) && !orders[2].Exists(o => o.type == OrderType.HaulToMarket && o.inv == marketInv))
+            Add(new WorkOrder {
                 type = OrderType.HaulToMarket,
                 priority = 3,
                 factory = a => new HaulToMarketTask(a),
                 inv = marketInv,
                 canDo = a => a.job.name == "merchant"
             });
-        if (MarketNeedsHaulFrom(marketInv) && !orders.Exists(o => o.type == OrderType.HaulFromMarket && o.inv == marketInv))
-            Insert(new WorkOrder {
+        if (MarketNeedsHaulFrom(marketInv) && !orders[2].Exists(o => o.type == OrderType.HaulFromMarket && o.inv == marketInv))
+            Add(new WorkOrder {
                 type = OrderType.HaulFromMarket,
                 priority = 3,
                 factory = a => new HaulFromMarketTask(a),
                 inv = marketInv,
                 canDo = a => a.job.name == "merchant"
             });
+        // Remove orders whose need has gone away (skip in-flight orders).
+        orders[2].RemoveAll(o => {
+            if (o.inv != marketInv || o.res.reserved != 0) return false;
+            if (o.type == OrderType.HaulToMarket   && !MarketNeedsHaulTo(marketInv))   return true;
+            if (o.type == OrderType.HaulFromMarket && !MarketNeedsHaulFrom(marketInv)) return true;
+            return false;
+        });
     }
 
     public bool RegisterHarvest(Plant plant) {
         if (plant == null || plant.tile == null) return false;
-        if (!PlantNeedsOrder(plant)) return false;
-        if (orders.Exists(o => o.type == OrderType.Harvest && o.tile == plant.tile)) return false;
+        if (orders[1].Exists(o => o.type == OrderType.Harvest && o.tile == plant.tile)) return false;
         Tile tile = plant.tile;
         Job harvestJob = plant.plantType.job;
-        Insert(new WorkOrder {
+        Add(new WorkOrder {
             type = OrderType.Harvest,
             priority = 2,
             factory = a => new HarvestTask(a, tile),
             tile = tile,
+            res = new(plant.res?.capacity ?? 1),
+            isActive = () => plant.harvestable,
             canDo = a => a.job == harvestJob,
             getDistance = a => Mathf.Max(Mathf.Abs(tile.x - a.x), Mathf.Abs(tile.y - a.y))
         });
         return true;
     }
 
+    // Registers a Research order for a specific lab building if it's unreserved and no order exists for it.
+    // Returns true if a new order was inserted.
+    public bool RegisterResearch(Building lab) {
+        if (lab == null) return false;
+        if (orders[3].Exists(o => o.type == OrderType.Research && o.tile == lab.tile)) return false;
+        Add(new WorkOrder {
+            type = OrderType.Research,
+            priority = 4,
+            factory = a => new ResearchTask(a, lab),
+            tile = lab.tile,
+            res = new(lab.res?.capacity ?? 1),
+            canDo = a => a.job.name == "scientist",
+            getDistance = a => Mathf.Max(Mathf.Abs(lab.tile.x - a.x), Mathf.Abs(lab.tile.y - a.y))
+        });
+        return true;
+    }
+
     // ── REMOVAL ────────────────────────────────────────────────────────────────────
+
+    // Remove haul orders for a specific stack (call when the stack becomes empty).
+    public void RemoveHaulForStack(ItemStack stack) {
+        foreach (var tier in orders)
+            tier.RemoveAll(o => o.type == OrderType.Haul && o.stack == stack);
+    }
 
     // Remove all orders associated with this blueprint (used on blueprint cancel/destroy).
     public void RemoveForBlueprint(Blueprint bp) {
-        orders.RemoveAll(o => o.blueprint == bp);
+        foreach (var tier in orders) tier.RemoveAll(o => o.blueprint == bp);
     }
 
     // Remove harvest order for a tile (used when plant is destroyed before harvest).
     public void RemoveForTile(Tile tile) {
-        orders.RemoveAll(o => o.tile == tile);
+        foreach (var tier in orders) tier.RemoveAll(o => o.tile == tile);
     }
 
     // Clears all orders — call from ClearWorld() before loading a new save.
-    public void ClearAllOrders() { orders.Clear(); }
-
-    // Remove stale haul orders whose stacks have been emptied.
-    // Called opportunistically; not required for correctness (Initialize returns false on stale).
-    public void PruneStaleHauls() {
-        orders.RemoveAll(o => o.type == OrderType.Haul &&
-            (o.stack == null || o.stack.item == null || o.stack.quantity == 0));
+    public void ClearAllOrders() {
+        foreach (var tier in orders) tier.Clear();
     }
 
-    // Remove market haul orders where the need has gone away (market restocked/emptied since registration).
+    // Remove stale haul orders whose stacks have been emptied. Skip in-flight orders (res.reserved > 0)
+    // so we don't interrupt an active task; it will release when its Cleanup runs.
+    // Goal: fix upstream gaps so this never fires (LogWarning will tell you when it does).
+    private void PruneStaleHauls() {
+        foreach (var tier in orders)
+            tier.RemoveAll(o => {
+                if (o.type != OrderType.Haul || o.res.reserved != 0) return false;
+                if (o.stack == null || o.stack.item == null || o.stack.quantity == 0) {
+                    string stackDesc = o.stack == null ? "null stack"
+                        : $"item={o.stack.item?.name ?? "null"} qty={o.stack.quantity} res={o.stack.resAmount} inv=({o.stack.inv?.x},{o.stack.inv?.y})";
+                    string bpDesc = o.blueprint == null ? "" : $" bp={o.blueprint.structType?.name}@({o.blueprint.x},{o.blueprint.y})";
+                    Debug.LogWarning($"WOM prune: stale haul order — {stackDesc}{bpDesc} — order was never cleaned up");
+                    return true;
+                }
+                return false;
+            });
+    }
+
+    // Remove market haul orders where the need has gone away. Skip in-flight orders.
+    // Goal: fix upstream gaps so this never fires (LogWarning will tell you when it does).
     private void PruneStaleMarketOrders() {
-        orders.RemoveAll(o => o.type == OrderType.HaulToMarket   && o.inv != null && !MarketNeedsHaulTo(o.inv));
-        orders.RemoveAll(o => o.type == OrderType.HaulFromMarket && o.inv != null && !MarketNeedsHaulFrom(o.inv));
+        orders[2].RemoveAll(o => {
+            if (o.res.reserved != 0 || o.inv == null) return false;
+            if (o.type == OrderType.HaulToMarket && !MarketNeedsHaulTo(o.inv)) {
+                Debug.LogWarning($"WOM prune: stale HaulToMarket order for market at ({o.inv.x},{o.inv.y})");
+                return true;
+            }
+            if (o.type == OrderType.HaulFromMarket && !MarketNeedsHaulFrom(o.inv)) {
+                Debug.LogWarning($"WOM prune: stale HaulFromMarket order for market at ({o.inv.x},{o.inv.y})");
+                return true;
+            }
+            return false;
+        });
     }
 
     // ── RECONCILE / AUDIT ──────────────────────────────────────────────────────────
 
-    // "Needs a haul order" predicate: has items and no active task holding a reservation.
-    // resAmount == 0 means no task is currently working on this stack; any reservation (even partial)
-    // means a task was claimed and will re-register via Cleanup() when it finishes or fails.
-    // IMPORTANT: same rule used by RegisterHaul, Reconcile, and AuditOrders — update here, not each site.
-    // ORDERING: any Cleanup that calls RegisterHaul must call base.Cleanup() (which unreserves)
-    //           BEFORE calling RegisterHaul, or resAmount will still be > 0 and this returns false.
+    // "Needs a haul order" predicate: stack has items and no order already exists for it.
+    // The dedup check in RegisterHaul (Exists o.stack == stack) handles in-flight orders.
     private static bool StackNeedsHaulOrder(ItemStack stack) =>
-        stack != null && stack.item != null && stack.quantity > 0 && stack.resAmount == 0;
-
-    // "Needs a harvest order" predicate.
-    // IMPORTANT: Reconcile, AuditOrders, and every RegisterHarvest call site must all use this.
-    // ORDERING: any Cleanup that calls RegisterHarvest must release res.Unreserve() BEFORE calling
-    //           RegisterHarvest, or res.reserved will still be > 0 and this returns false.
-    private static bool PlantNeedsOrder(Plant p) => p.harvestable && p.res.reserved == 0;
-
-    // "Needs a blueprint order" predicate (same rule).
-    private static bool BlueprintNeedsOrder(Blueprint bp) => bp.res == null || bp.res.reserved == 0;
+        stack != null && stack.item != null && stack.quantity > 0;
 
     private static bool MarketNeedsHaulTo(Inventory inv) =>
         inv.targets != null && inv.targets.Any(kvp => inv.Quantity(kvp.Key) < kvp.Value);
@@ -295,7 +360,6 @@ public class WorkOrderManager : MonoBehaviour {
                 Debug.LogWarning($"WOM reconcile: registered missing harvest order for {p.plantType.name} at ({p.x},{p.y})");
 
         foreach (Blueprint bp in StructController.instance.GetBlueprints()) {
-            if (!BlueprintNeedsOrder(bp)) continue;
             bool inserted = bp.state switch {
                 Blueprint.BlueprintState.Constructing   => RegisterConstruct(bp),
                 Blueprint.BlueprintState.Receiving      => RegisterSupplyBlueprint(bp),
@@ -315,20 +379,26 @@ public class WorkOrderManager : MonoBehaviour {
 
         if (InventoryController.instance.byType.TryGetValue(Inventory.InvType.Market, out var markets)) {
             foreach (Inventory inv in markets)
-                RegisterMarketHauls(inv);
+                UpdateMarketOrders(inv);
+        }
+
+        if (Db.structTypeByName.TryGetValue("laboratory", out var labSt)) {
+            foreach (Structure s in StructController.instance.GetByType(labSt) ?? new List<Structure>())
+                if (s is Building lab && RegisterResearch(lab))
+                    Debug.LogWarning($"WOM reconcile: registered missing Research order for lab at ({lab.tile.x},{lab.tile.y})");
         }
     }
 
     // Ctrl+D dev tool: checks invariants in both directions and logs violations.
     public void AuditOrders() {
-        // Harvest — direction 1: every harvestable plant with no active worker must have an order
+        // Harvest — direction 1: every plant must have a standing harvest order (active or not)
         foreach (Plant p in PlantController.instance.Plants)
-            if (PlantNeedsOrder(p) && !orders.Exists(o => o.type == OrderType.Harvest && o.tile == p.tile))
-                Debug.LogError($"WOM audit: harvestable plant at ({p.x},{p.y}) has no harvest order");
-        // Harvest — direction 2: every harvest order must have a harvestable plant
-        foreach (WorkOrder o in orders)
-            if (o.type == OrderType.Harvest && !(o.tile?.building is Plant p2 && p2.harvestable))
-                Debug.LogError($"WOM audit: harvest order at ({o.tile?.x},{o.tile?.y}) has no harvestable plant");
+            if (!orders[1].Exists(o => o.type == OrderType.Harvest && o.tile == p.tile))
+                Debug.LogError($"WOM audit: plant at ({p.x},{p.y}) has no harvest order");
+        // Harvest — direction 2: every harvest order must reference a tile with a living plant
+        foreach (WorkOrder o in orders[1])
+            if (o.type == OrderType.Harvest && !(o.tile?.building is Plant))
+                Debug.LogError($"WOM audit: harvest order at ({o.tile?.x},{o.tile?.y}) has no plant");
 
         // Blueprints — direction 1: every active blueprint must have a matching order
         var bps = StructController.instance.GetBlueprints();
@@ -339,11 +409,11 @@ public class WorkOrderManager : MonoBehaviour {
                 Blueprint.BlueprintState.Deconstructing => OrderType.Deconstruct,
                 _ => (OrderType)(-1)
             };
-            if (expected != (OrderType)(-1) && BlueprintNeedsOrder(bp) && !orders.Exists(o => o.type == expected && o.blueprint == bp))
+            if (expected != (OrderType)(-1) && !HasOrderFor(expected, bp))
                 Debug.LogError($"WOM audit: blueprint {bp.structType.name} at ({bp.x},{bp.y}) missing {expected} order");
         }
         // Blueprints — direction 2: every blueprint order must reference a live blueprint
-        foreach (WorkOrder o in orders)
+        foreach (WorkOrder o in AllOrders())
             if (o.blueprint != null && !bps.Contains(o.blueprint))
                 Debug.LogError($"WOM audit: {o.type} order references a blueprint not in StructController");
 
@@ -354,35 +424,93 @@ public class WorkOrderManager : MonoBehaviour {
         if (InventoryController.instance.byType.TryGetValue(Inventory.InvType.Floor, out var floors)) {
             foreach (Inventory inv in floors)
                 foreach (ItemStack stack in inv.itemStacks)
-                    if (StackNeedsHaulOrder(stack) && !orders.Exists(o => o.type == OrderType.Haul && o.stack == stack))
+                    if (StackNeedsHaulOrder(stack)
+                        && !orders[0].Exists(o => o.type == OrderType.Haul && o.stack == stack)
+                        && !orders[2].Exists(o => o.type == OrderType.Haul && o.stack == stack))
                         Debug.LogError($"WOM audit: floor stack {stack.item?.name} at ({inv.x},{inv.y}) has no haul order");
         }
         // Hauls — direction 2: every haul order must reference a valid stack
-        foreach (WorkOrder o in orders)
+        foreach (WorkOrder o in AllOrders())
             if (o.type == OrderType.Haul && !StackNeedsHaulOrder(o.stack))
                 Debug.LogError($"WOM audit: haul order references stale/empty stack ({o.stack?.item?.name})");
 
-        Debug.Log($"WOM audit complete. {orders.Count} orders.");
+        // Research — one order per lab
+        if (Db.structTypeByName.TryGetValue("laboratory", out var labSt2)) {
+            var allLabs = StructController.instance.GetByType(labSt2);
+            if (allLabs != null) {
+                // Direction 1: every unreserved lab must have a Research order
+                // Direction 1: every lab must have a Research order (reserved or not)
+                foreach (Structure s in allLabs)
+                    if (s is Building lab
+                        && !orders[3].Exists(o => o.type == OrderType.Research && o.tile == lab.tile))
+                        Debug.LogError($"WOM audit: lab at ({lab.tile.x},{lab.tile.y}) has no Research order");
+                // Direction 2: every Research order must reference a live lab
+                foreach (WorkOrder o in orders[3])
+                    if (o.type == OrderType.Research
+                        && !(o.tile?.building is Building b && b.structType == labSt2))
+                        Debug.LogError($"WOM audit: Research order at ({o.tile?.x},{o.tile?.y}) has no valid lab");
+            }
+        }
+
+        int total = orders.Sum(t => t.Count);
+        Debug.Log($"WOM audit complete. {total} orders.");
+    }
+
+    // ── INSPECT ────────────────────────────────────────────────────────────────────
+
+    // Returns the first active WorkOrder associated with a blueprint, or null.
+    public WorkOrder FindOrderForBlueprint(Blueprint bp) {
+        foreach (var tier in orders)
+            foreach (var o in tier)
+                if (o.blueprint == bp) return o;
+        return null;
+    }
+
+    // Returns the first active WorkOrder associated with a floor ItemStack, or null.
+    public WorkOrder FindOrderForStack(ItemStack stack) {
+        foreach (var tier in orders)
+            foreach (var o in tier)
+                if (o.stack == stack) return o;
+        return null;
+    }
+
+    // Returns all active WorkOrders keyed to a specific tile (harvest, research).
+    public IEnumerable<WorkOrder> FindOrdersForTile(Tile tile) {
+        foreach (var tier in orders)
+            foreach (var o in tier)
+                if (o.tile == tile) yield return o;
+    }
+
+    // Returns all active WorkOrders keyed to a specific inventory (market hauls).
+    public IEnumerable<WorkOrder> FindOrdersForInv(Inventory inv) {
+        foreach (var tier in orders)
+            foreach (var o in tier)
+                if (o.inv == inv) yield return o;
     }
 
     // ── INTERNAL ───────────────────────────────────────────────────────────────────
 
-    private void Insert(WorkOrder order) {
-        // Find insertion point: after all orders with strictly lower priority (higher number).
-        // This preserves FIFO within the same priority.
-        int i = orders.Count;
-        while (i > 0 && orders[i - 1].priority > order.priority) i--;
-        orders.Insert(i, order);
-    }
+    private void Add(WorkOrder order) => orders[order.priority - 1].Add(order);
 
-    private bool HasOrderFor(OrderType type, Blueprint bp) =>
-        orders.Exists(o => o.type == type && o.blueprint == bp);
+    private IEnumerable<WorkOrder> AllOrders() => orders.SelectMany(t => t);
+
+    private bool HasOrderFor(OrderType type, Blueprint bp) {
+        int tier = type switch {
+            OrderType.Construct       => 1,   // p2
+            OrderType.SupplyBlueprint => 1,   // p2
+            OrderType.Deconstruct     => 3,   // p4
+            _ => -1
+        };
+        if (tier < 0) return false;
+        return orders[tier].Exists(o => o.type == type && o.blueprint == bp);
+    }
 
     // ── DEBUG ──────────────────────────────────────────────────────────────────────
 
     public void LogOrders() {
-        Debug.Log($"WorkOrderManager: {orders.Count} orders");
-        foreach (var o in orders)
-            Debug.Log($"  p{o.priority} {o.type} bp={o.blueprint?.tile.x},{o.blueprint?.tile.y} stack={o.stack?.item?.name}");
+        int total = orders.Sum(t => t.Count);
+        Debug.Log($"WorkOrderManager: {total} orders");
+        foreach (var o in AllOrders())
+            Debug.Log($"  p{o.priority} {o.type} res={o.res.reserved}/{o.res.capacity} bp={o.blueprint?.tile.x},{o.blueprint?.tile.y} stack={o.stack?.item?.name}");
     }
 }

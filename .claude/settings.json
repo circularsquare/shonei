@@ -25,7 +25,12 @@
       "Read(//mnt/c/Users/anita/projects/shonei/Assets/**)",
       "Bash(ls Assets/Resources/*.json)",
       "Bash(python -c \"import json; d=json.load\\(open\\(''Assets/Resources/plantsDb.json''\\)\\); [print\\(p.get\\(''name''\\), p.get\\(''nx''\\)\\) for p in d]\")",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(find /c/Users/anita/projects/shonei/Assets -name AnimalStateManager.cs -o -name *Task*.cs)",
+      "Bash(find /c/Users/anita/projects/shonei/Assets/Controller -name *.cs)",
+      "Bash(grep -n \"class HaulInfo\" /c/Users/anita/projects/shonei/Assets/Model/*.cs)",
+      "Bash(git mv:*)",
+      "Bash(git status:*)"
     ],
     "additionalDirectories": [
       "C:\\Users\\anita",

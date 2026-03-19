@@ -195,44 +195,31 @@ public class Animal : MonoBehaviour{
     public void ChooseTask() {
         if (task != null){ return; } // TODO: change when this func is called to just whenever task is null?
 
+        // 1. Survival needs (always first)
         if (!inv.IsEmpty()) { // drop all main inventory when idle (food/tools are in equip slots)
             task = new DropTask(this);
             if (task.Start()) return; }
-
-        if (eating.Hungry()) { if (FindFood()) return; } // will create obtaintask for food
+        if (eating.Hungry()) { if (FindFood()) return; }
         if (eeping.Eepy() && IsNighttime()) {
             task = new EepTask(this);
             if (task.Start()) return; }
-        if (FindEquipment()) return; // pick up a tool if not holding one
+        if (FindEquipment()) return;
 
-        Path harvestPath = nav.FindPathToHarvestable(job);    // harvest
-        if (harvestPath != null) { 
-            task = new HarvestTask(this, harvestPath.tile);
-            if (task.Start()) return;}
-
-        task = new ConstructTask(this);         // construct blueprints
+        // 2. Work orders, interleaved with CraftTask between p3 and p4:
+        //    ChooseOrder(1) → ChooseOrder(2) → ChooseOrder(3) → CraftTask → ChooseOrder(4)
+        var wom = WorkOrderManager.instance;
+        if (wom != null) {
+            wom.PruneStale();
+            task = wom.ChooseOrder(this, 1); if (task != null) return;
+            task = wom.ChooseOrder(this, 2); if (task != null) return;
+            task = wom.ChooseOrder(this, 3); if (task != null) return;
+        }
+        task = new CraftTask(this);
         if (task.Start()) return;
-        task = new ConstructTask(this, deconstructing: true);
-        if (task.Start()) return;
-        task = new SupplyBlueprintTask(this);   // supply blueprints
-        if (task.Start()) return;
-        task = new CraftTask(this);             // craft
-        if (task.Start()) return;
-        if (job.name == "hauler") {             // haul
-            task = new HaulTask(this);
-            if (task.Start()) return;
-            task = new ConsolidateTask(this);   // consolidate floor stacks when nothing else to do
-            if (task.Start()) return; }
-        if (job.name == "merchant") {
-            task = new HaulFromMarketTask(this);
-            if (task.Start()) return;
-            task = new HaulToMarketTask(this);
-            if (task.Start()) return; }
-        if (job.name == "scientist") {
-            task = new ResearchTask(this);
-            if (task.Start()) return; }
-        task = null; // none of the above tasks started successfully...
-        return;
+        if (wom != null) {
+            task = wom.ChooseOrder(this, 4); if (task != null) return;
+        }
+        task = null;
     }
 
     // Picks up one tool into toolSlotInv if the slot is empty.
@@ -372,7 +359,7 @@ public class Animal : MonoBehaviour{
             if (RecipePanel.instance != null && !RecipePanel.instance.IsAllowed(recipe.id)) continue;
             if (ginv.SufficientResources(recipe.inputs)){
                 if (!Db.structTypeByName.ContainsKey(recipe.tile) ||
-                    nav.FindPathToBuilding(Db.structTypeByName[recipe.tile]) == null) continue;
+                    !nav.CanReachBuilding(Db.structTypeByName[recipe.tile])) continue;
                 eligibleRecipes.Add(recipe);
             }
         }
@@ -390,7 +377,7 @@ public class Animal : MonoBehaviour{
             if (RecipePanel.instance != null && !RecipePanel.instance.IsAllowed(recipe.id)) continue;
             if (ginv.SufficientResources(recipe.inputs)){
                 if (!Db.structTypeByName.ContainsKey(recipe.tile) ||
-                    nav.FindPathToBuilding(Db.structTypeByName[recipe.tile]) == null) continue;
+                    !nav.CanReachBuilding(Db.structTypeByName[recipe.tile])) continue;
                 float score = recipe.Score(targets);
                 if (score > maxScore){
                     maxScore = score;

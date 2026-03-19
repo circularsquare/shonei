@@ -8,6 +8,7 @@ public class Node {
     public bool isWaypoint;
     public List<Node> neighbors;
     public bool standable;
+    public int componentId = -1;  // set by Graph.RebuildComponents(); -1 = impassable/unvisited
     public Tile tile;
 
     public Node(Tile tile, int x, int y){
@@ -64,6 +65,47 @@ public class Graph {
         return astar.Search();
     }
 
+    // BFS flood-fill assigning integer component IDs to all standable nodes.
+    // Call after any topology change. O(V) — ~5000 nodes, negligible cost.
+    public void RebuildComponents() {
+        // Reset tile-nodes
+        for (int x = 0; x < world.nx; x++)
+            for (int y = 0; y < world.ny; y++)
+                nodes[x, y].componentId = -1;
+
+        // Reset waypoint nodes (stored in dictionaries, not in nodes[,])
+        foreach (var (wp1, wp2) in stairWaypoints.Values) { wp1.componentId = -1; wp2.componentId = -1; }
+        foreach (var (wp1, wp2) in cliffWaypoints.Values)  { wp1.componentId = -1; wp2.componentId = -1; }
+
+        // BFS from each unvisited standable tile-node; waypoints get IDs transitively via edges
+        int nextId = 0;
+        var queue = new Queue<Node>();
+        for (int x = 0; x < world.nx; x++) {
+            for (int y = 0; y < world.ny; y++) {
+                Node seed = nodes[x, y];
+                if (!seed.standable || seed.componentId >= 0) continue;
+                seed.componentId = nextId;
+                queue.Enqueue(seed);
+                while (queue.Count > 0) {
+                    Node cur = queue.Dequeue();
+                    foreach (Node nb in cur.neighbors) {
+                        if (nb.componentId >= 0) continue;
+                        nb.componentId = nextId;
+                        queue.Enqueue(nb);
+                    }
+                }
+                nextId++;
+            }
+        }
+    }
+
+    // O(1) reachability query. Returns false if either node is impassable or unvisited.
+    public bool SameComponent(Node a, Node b) {
+        if (a == null || b == null) return false;
+        if (a.componentId < 0 || b.componentId < 0) return false;
+        return a.componentId == b.componentId;
+    }
+
     // Full rebuild — only safe to call when all neighbor lists are empty (i.e. on startup).
     // Stair and cliff waypoints must be created before the neighbor pass so adjacent tiles can link to them.
     public void AddNeighborsInitial(){
@@ -88,6 +130,7 @@ public class Graph {
                 UpdateNeighbors(x, y);
             }
         }
+        RebuildComponents();
     }
     public void UpdateNeighbors(int x, int y){
         UpdateStandability(x, y);

@@ -26,13 +26,16 @@ public class Plant : Building {
         sprite = plantType.LoadSprite() ?? Resources.Load<Sprite>("Sprites/Plants/default");
         sr.sprite = sprite;
         sr.sortingOrder = 60;
+
+        // Every plant always has a standing harvest order. isActive suppresses it between cycles.
+        WorkOrderManager.instance?.RegisterHarvest(this);
     }
-    
+
     public void Grow(int t){
         age += t;
         // hardcoded 4 growth stages
         growthStage = Math.Min(age * 3 / plantType.growthTime, 3);
-        if (growthStage >= 3){ // probably wanna make this start at 0 (and change the sprite file names too).
+        if (growthStage >= 3 && !harvestable){
             harvestable = true;
         }
         UpdateSprite();

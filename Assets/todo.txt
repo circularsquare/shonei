@@ -32,13 +32,20 @@
         - assign scientists to "maintain" duty?
     - lock postrequisites?
 - dynamic objectives!
-- prioritize hauling to move items out of locked inventories and off the surface of tiles to be removed
-    - add task priorities?
-- interrupt current recipes on recipe disable
-
+- implement "reachability" connected networks in navigation?
+- add clock / tick counter in game display
+- crafttask priority...
+- incentivize building lots of storage at once, make it easy i guess?
+- test workorders for multiple capacity
+- should decay call additem?
+- recheck whether nav is a mess
 
 BUGS
 
 TODAY GOALS
-- add recipe window
-    - add recipe priority
+- wom
+    - consider whether we should save workorders?
+- check that audit and reconcile are basically the same 
+    - can they be made into the same function actually?
+- wom navigates for hauling and construction and harvesting.... but not all things...
+- market decays... need to check marketneedshaulto for tolerance

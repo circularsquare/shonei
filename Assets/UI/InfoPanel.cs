@@ -128,17 +128,27 @@ public class InfoPanel : MonoBehaviour {
                         sb.Append("\n" + layerLabels[d] + ": " + s.structType.name);
                         sb.Append("\n  growth: " + plant.growthStage);
                         if (s.res != null) sb.Append("\n  res: " + s.res.reserved + "/" + s.res.capacity);
+                        AppendTileOrders(sb, plant.tile);
                     } else {
                         sb.Append("\n" + layerLabels[d] + ": " + s.structType.name);
                         if (s.res != null) sb.Append("\n res: " + s.res.reserved + "/" + s.res.capacity);
-                        if (s is Building bldg && bldg.structType.depleteAt > 0)
-                            sb.Append("\n  uses: " + bldg.uses + "/" + bldg.structType.depleteAt);
+                        if (s is Building bldg) {
+                            if (bldg.structType.depleteAt > 0)
+                                sb.Append("\n  uses: " + bldg.uses + "/" + bldg.structType.depleteAt);
+                            // tile-keyed orders (e.g. research on lab)
+                            AppendTileOrders(sb, bldg.tile);
+                            // inv-keyed orders (e.g. market hauls)
+                            if (bldg.storage != null)
+                                AppendInvOrders(sb, bldg.storage);
+                        }
                     }
                 }
                 Blueprint bp = tile.blueprints[d];
                 if (bp != null) {
                     sb.Append("\nblueprint (" + layerLabels[d] + "): " + bp.structType.name);
                     sb.Append("\n  priority: " + bp.priority + "  progress: " + bp.GetProgress());
+                    var bpOrder = WorkOrderManager.instance?.FindOrderForBlueprint(bp);
+                    if (bpOrder != null) sb.Append("\n  wo: " + bpOrder.type);
                     SetPriorityButtonsVisible(true);
                 }
             }
@@ -147,14 +157,40 @@ public class InfoPanel : MonoBehaviour {
             if (tile.inv != null) {
                 sb.Append("\n inv:");
                 foreach (var stack in tile.inv.itemStacks) {
-                    if (stack.item != null)
-                        sb.Append("\n  " + stack.item.name + " x " + ItemStack.FormatQ(stack.quantity, stack.item.discrete));
+                    if (stack.item != null) {
+                        string resStr = stack.resAmount > 0 ? " (r" + ItemStack.FormatQ(stack.resAmount, stack.item.discrete) + ")" : "";
+                        var stackOrder = WorkOrderManager.instance?.FindOrderForStack(stack);
+                        string woStr = stackOrder == null ? "" :
+                            stackOrder.type == WorkOrderManager.OrderType.Haul && stackOrder.priority == 1
+                                ? " [wo:Haul!]" : " [wo:" + stackOrder.type + "]";
+                        sb.Append("\n  " + stack.item.name + " x " + ItemStack.FormatQ(stack.quantity, stack.item.discrete) + resStr + woStr);
+                    }
                 }
             }
 
             textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = sb.ToString();
         }
         else { selectedAnimal = null; Deselect(); }
+    }
+
+    // Appends "wo: X, Y" for all orders keyed by tile (harvest, research). No-ops if empty.
+    private static void AppendTileOrders(System.Text.StringBuilder sb, Tile tile) {
+        if (WorkOrderManager.instance == null) return;
+        var found = new System.Collections.Generic.List<string>();
+        foreach (var o in WorkOrderManager.instance.FindOrdersForTile(tile))
+            found.Add(o.type.ToString());
+        if (found.Count > 0)
+            sb.Append("\n  wo: " + string.Join(", ", found));
+    }
+
+    // Appends "wo: X, Y" for all orders keyed by inventory (market hauls). No-ops if empty.
+    private static void AppendInvOrders(System.Text.StringBuilder sb, Inventory inv) {
+        if (WorkOrderManager.instance == null) return;
+        var found = new System.Collections.Generic.List<string>();
+        foreach (var o in WorkOrderManager.instance.FindOrdersForInv(inv))
+            found.Add(o.type.ToString());
+        if (found.Count > 0)
+            sb.Append("\n  wo: " + string.Join(", ", found));
     }
 
     public void Deselect(){

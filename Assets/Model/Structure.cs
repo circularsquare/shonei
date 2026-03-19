@@ -14,6 +14,7 @@ public class Structure {
     public StructType structType;
     public Sprite sprite;
     public SpriteRenderer sr;
+    public Tile tile => World.instance.GetTileAt(x, y);
     public Tile workTile => World.instance.GetTileAt(x + structType.workTileX, y + structType.workTileY);
     public Reservable res;
 

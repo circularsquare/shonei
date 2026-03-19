@@ -91,6 +91,12 @@ public class Inventory{
         ginv = GlobalInventory.instance;
     }
     public void Destroy(){
+        // Eagerly remove haul orders for floor stacks, then zero quantities as a safety net
+        // for PruneStaleHauls (covers non-floor invs and any orders that slip through).
+        if (invType == InvType.Floor)
+            foreach (ItemStack stack in itemStacks)
+                WorkOrderManager.instance?.RemoveHaulForStack(stack);
+        foreach (ItemStack stack in itemStacks) { stack.quantity = 0; stack.resAmount = 0; }
         if (go != null){GameObject.Destroy(go); go = null;}
         if (stackGos != null){
             foreach (GameObject sgo in stackGos){ if (sgo != null) GameObject.Destroy(sgo); }
@@ -121,7 +127,10 @@ public class Inventory{
         };
         if (invTypeMult == 0f) return;
         for (int i = 0; i < nStacks; i++){
+            Item prevItem = itemStacks[i].item;
             itemStacks[i].Decay(invTypeMult * time);
+            if (invType == InvType.Floor && prevItem != null && itemStacks[i].item == null)
+                WorkOrderManager.instance?.RemoveHaulForStack(itemStacks[i]);
         }
     }
 
@@ -152,10 +161,25 @@ public class Inventory{
         int taken = quantity + AddItem(item, -quantity);
         int overFill = otherInv.AddItem(item, taken);
         if (overFill > 0){
-            AddItem(item, overFill); // return the item if recipient is full.
-            // Debug.Log("moved " + taken + " from " + invType.ToString() + " to " + otherInv.invType.ToString()+ " and added back " + overFill);
+            // Force the return so disallowed/locked source invs don't silently eat the leftover.
+            // Items came from this inventory, so there is always room — LogError if not.
+            int stillLost = AddItem(item, overFill, force: true);
+            if (stillLost > 0)
+                Debug.LogError($"MoveItemTo: {stillLost} fen of {item.name} lost returning to {invType} inv at ({x},{y}) — source had no room!");
         }
-        return taken - overFill;
+        int moved = taken - overFill;
+        if (invType == InvType.Floor && moved > 0)
+            foreach (ItemStack s in itemStacks)
+                if (s.item == null) WorkOrderManager.instance?.RemoveHaulForStack(s); // stack just emptied
+        if (otherInv.invType == InvType.Floor && moved > 0) {
+            ItemStack stack = otherInv.GetItemStack(item);
+            if (stack != null) WorkOrderManager.instance?.RegisterHaul(stack);
+        }
+        if (otherInv.invType == InvType.Market && moved > 0)
+            WorkOrderManager.instance?.UpdateMarketOrders(otherInv);
+        if (invType == InvType.Market && moved > 0)
+            WorkOrderManager.instance?.UpdateMarketOrders(this);
+        return moved;
     }
     public int MoveItemTo(Inventory otherInv, string name, int quantity){return MoveItemTo(otherInv, Db.itemByName[name], quantity);}
 
@@ -166,7 +190,9 @@ public class Inventory{
         int taken = quantity + AddItem(item, -quantity);
         int overFill = otherInv.AddItem(item, taken, force: true);
         if (overFill > 0){
-            AddItem(item, overFill);
+            int stillLost = AddItem(item, overFill, force: true);
+            if (stillLost > 0)
+                Debug.LogError($"ForceMoveItemTo: {stillLost} fen of {item.name} lost returning to {invType} inv at ({x},{y}) — source had no room!");
         }
         return taken - overFill;
     }
@@ -176,6 +202,10 @@ public class Inventory{
         int produced = quantity - AddItem(item, quantity);
         ginv.AddItem(item, produced);
         //Debug.Log("produced" + item.name + produced.ToString());
+        if (invType == InvType.Floor && produced > 0) {
+            ItemStack stack = GetItemStack(item);
+            if (stack != null) WorkOrderManager.instance?.RegisterHaul(stack);
+        }
         return quantity - produced;
     }
 
