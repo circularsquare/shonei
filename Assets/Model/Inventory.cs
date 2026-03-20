@@ -8,7 +8,16 @@ public class Inventory{
     public int nStacks;
     public int stackSize; 
     public ItemStack[] itemStacks;
-    public enum InvType {Floor, Storage, Animal, Market, Equip, Blueprint};
+    public enum InvType {Floor, Storage, Animal, Market, Equip, Blueprint, Liquid};
+
+    // Returns true if this item type is physically compatible with this inventory type.
+    // This is a hard constraint checked before the per-item allowed[] dict.
+    // Expand here as new item/inventory categories are added (e.g. gas, cold storage).
+    public static bool ItemTypeCompatible(InvType invType, Item item) {
+        if (invType == InvType.Storage && item.isLiquid)  return false; // dry storage can't hold liquids
+        if (invType == InvType.Liquid  && !item.isLiquid) return false; // liquid storage can't hold solids
+        return true;
+    }
     public InvType invType;
     public int x, y;
     public Dictionary<int, bool> allowed;
@@ -55,15 +64,13 @@ public class Inventory{
             itemStacks[i] = new ItemStack(this, null, 0, stackSize);
         }
 
-        if (invType == InvType.Storage) {
-            allowed = Db.itemsFlat.ToDictionary(i => i.id, i => false); // default all disallowed
-        } else {
-            allowed = Db.itemsFlat.ToDictionary(i => i.id, i => true); // default all items allowed
-        }
+        if      (invType == InvType.Storage) allowed = Db.itemsFlat.ToDictionary(i => i.id, i => false);         // all disallowed by default; user enables per-item
+        else if (invType == InvType.Liquid)  allowed = Db.itemsFlat.ToDictionary(i => i.id, i => i.isLiquid);   // liquid items allowed, solids disallowed (evicted if somehow placed)
+        else                                 allowed = Db.itemsFlat.ToDictionary(i => i.id, i => true);
         
 
-        if (invType == InvType.Storage && nStacks > 1){
-            // Multi-stack storage (drawer): one sprite per stack slot in a 2x2 grid
+        if ((invType == InvType.Storage || invType == InvType.Liquid) && nStacks > 1){
+            // Multi-stack storage (drawer/tank): one sprite per stack slot in a 2x2 grid
             stackGos = new GameObject[nStacks];
             for (int i = 0; i < nStacks && i < quarterOffsets.Length; i++){
                 stackGos[i] = new GameObject("InventoryStack_" + i);
@@ -72,7 +79,7 @@ public class Inventory{
                 SpriteRenderer sr = stackGos[i].AddComponent<SpriteRenderer>();
                 sr.sortingOrder = 30;
             }
-        } else if (invType == InvType.Floor || invType == InvType.Storage){
+        } else if (invType == InvType.Floor || invType == InvType.Storage || invType == InvType.Liquid){
             go = new GameObject();
             go.transform.position = new Vector3(x, y, 0);
             go.transform.SetParent(InventoryController.instance.transform, true);
@@ -91,9 +98,9 @@ public class Inventory{
         ginv = GlobalInventory.instance;
     }
     public void Destroy(){
-        // Eagerly remove haul orders for floor stacks, then zero quantities as a safety net
-        // for PruneStaleHauls (covers non-floor invs and any orders that slip through).
-        if (invType == InvType.Floor)
+        // Eagerly remove haul orders for floor and storage stacks, then zero quantities as a safety net
+        // for PruneStaleHauls (covers other inv types and any orders that slip through).
+        if (invType == InvType.Floor || invType == InvType.Storage || invType == InvType.Liquid)
             foreach (ItemStack stack in itemStacks)
                 WorkOrderManager.instance?.RemoveHaulForStack(stack);
         foreach (ItemStack stack in itemStacks) { stack.quantity = 0; stack.resAmount = 0; }
@@ -138,6 +145,10 @@ public class Inventory{
     // returns leftover size
     private int AddItem(Item item, int quantity, bool force = false){
         if (item == null) {Debug.LogError("tried adding null item"); return quantity;}
+        if (!force && !ItemTypeCompatible(invType, item) && quantity > 0){
+            Debug.Log($"tried adding type-incompatible item {item.name} (isLiquid={item.isLiquid}) to {invType} '{displayName}' at ({x},{y})");
+            return quantity;
+        }
         if (!force && (locked || allowed[item.id] == false) && quantity > 0){
             string reason = locked ? "locked" : "disallowed";
             Debug.Log($"tried adding {reason} item {item.name} to {invType} '{displayName}' at ({x},{y})");
@@ -154,6 +165,13 @@ public class Inventory{
                     WorkOrderManager.instance?.RemoveHaulForStack(itemStacks[i]);
                 else if (quantity > 0 && itemStacks[i].quantity > 0)
                     WorkOrderManager.instance?.RegisterHaul(itemStacks[i]);
+            }
+            // Storage/Liquid eviction side effects.
+            if (invType == InvType.Storage || invType == InvType.Liquid) {
+                if (prevItem != null && itemStacks[i].item == null)
+                    WorkOrderManager.instance?.RemoveHaulForStack(itemStacks[i]); // stack emptied — order no longer needed
+                else if (force && allowed[item.id] == false && itemStacks[i].quantity > 0)
+                    WorkOrderManager.instance?.RegisterStorageEvictionHaul(itemStacks[i]); // disallowed item force-added
             }
             quantity = result.Value; //set quantity to remaining size to get off
             if (quantity == 0){ break; }  // successfully added all items. stop.
@@ -272,6 +290,7 @@ public class Inventory{
     // Counts both empty stacks (any item could fill them) and partially-filled stacks of the same item.
     public int GetStorageForItem(Item item){
         if (invType == InvType.Market || invType == InvType.Blueprint) return 0;
+        if (!ItemTypeCompatible(invType, item)) return 0;
         if (locked || allowed[item.id] == false || invType == InvType.Floor){return 0;}
         int space = 0;
         foreach (ItemStack stack in itemStacks){
@@ -293,6 +312,7 @@ public class Inventory{
     }
     // Space in an existing partial stack of `item` (for floor consolidation).
     public int GetMergeSpace(Item item) {
+        if (!ItemTypeCompatible(invType, item)) return 0;
         if (locked || allowed[item.id] == false) return 0;
         foreach (ItemStack stack in itemStacks)
             if (stack.item == item && stack.quantity < stackSize)
@@ -384,14 +404,39 @@ public class Inventory{
         itemStacks = restackedInventory;
     }
 
-    public void AllowItem(Item item){allowed[item.id] = true;}
-    public void DisallowItem(Item item){allowed[item.id] = false;}
-    public void ToggleAllowItem(Item item){allowed[item.id] = !allowed[item.id];}
+    public void AllowItem(Item item){
+        allowed[item.id] = true;
+        // Remove any pending eviction haul orders — item is welcome here again.
+        if (invType == InvType.Storage || invType == InvType.Liquid)
+            foreach (ItemStack stack in itemStacks)
+                if (stack.item == item)
+                    WorkOrderManager.instance?.RemoveHaulForStack(stack);
+    }
+    public void DisallowItem(Item item){
+        allowed[item.id] = false;
+        // Register eviction hauls for any stacks of this item already in this inventory.
+        if (invType == InvType.Storage || invType == InvType.Liquid)
+            foreach (ItemStack stack in itemStacks)
+                if (stack.item == item && stack.quantity > 0)
+                    WorkOrderManager.instance?.RegisterStorageEvictionHaul(stack);
+    }
+    public void ToggleAllowItem(Item item){
+        allowed[item.id] = !allowed[item.id];
+        if (invType == InvType.Storage || invType == InvType.Liquid) {
+            foreach (ItemStack stack in itemStacks) {
+                if (stack.item != item) continue;
+                if (allowed[item.id] == false && stack.quantity > 0)
+                    WorkOrderManager.instance?.RegisterStorageEvictionHaul(stack);
+                else
+                    WorkOrderManager.instance?.RemoveHaulForStack(stack);
+            }
+        }
+    }
 
     public enum ItemSpriteType { Icon, Floor, Storage }
 
     public void UpdateSprite(){
-        if (invType == InvType.Animal || invType == InvType.Market || invType == InvType.Equip || invType == InvType.Blueprint){return;}
+        if (invType == InvType.Animal || invType == InvType.Market || invType == InvType.Equip || invType == InvType.Blueprint) return;
         if (stackGos != null){
             // Multi-stack storage (drawer): update each slot independently
             for (int i = 0; i < nStacks && i < stackGos.Length; i++){
@@ -433,7 +478,7 @@ public class Inventory{
         Sprite sprite;
         if (invType == InvType.Floor) {
             sprite = Resources.Load<Sprite>($"Sprites/Items/{iName}/floor");
-        } else if (invType == InvType.Storage) {
+        } else if (invType == InvType.Storage || invType == InvType.Liquid) {
             string sVariant = fill >= 0.75f ? "shigh" : fill < 0.2f ? "slow" : "smid";
             sprite  = Resources.Load<Sprite>($"Sprites/Items/{iName}/{sVariant}");
             sprite ??= Resources.Load<Sprite>($"Sprites/Items/{iName}/smid");

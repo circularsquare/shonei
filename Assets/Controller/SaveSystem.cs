@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using Newtonsoft.Json;
 
@@ -68,10 +69,10 @@ public class SaveSystem : MonoBehaviour {
 
         // Water levels — only write if any tile has water (keeps save files clean for dry worlds)
         bool anyWater = false;
-        byte[] wl = new byte[world.nx * world.ny];
+        ushort[] wl = new ushort[world.nx * world.ny];
         for (int x = 0; x < world.nx; x++) {
             for (int y = 0; y < world.ny; y++) {
-                byte w = world.GetTileAt(x, y).water;
+                ushort w = world.GetTileAt(x, y).water;
                 wl[y * world.nx + x] = w;
                 if (w > 0) anyWater = true;
             }
@@ -137,7 +138,15 @@ public class SaveSystem : MonoBehaviour {
             ssd.plantGrowthStage = plant.growthStage;
             ssd.plantHarvestable = plant.harvestable;
         }
-        if (s is Building b && b.uses > 0) ssd.uses = b.uses;
+        if (s is Building b) {
+            if (b.uses > 0) ssd.uses = b.uses;
+            if (b.structType.isWorkstation && WorkOrderManager.instance != null) {
+                var order = WorkOrderManager.instance.FindOrdersForBuilding(b)
+                    .FirstOrDefault(o => o.type == WorkOrderManager.OrderType.Craft);
+                if (order != null)
+                    ssd.workOrderEffectiveCapacity = order.res.effectiveCapacity;
+            }
+        }
         return ssd;
     }
 
@@ -167,10 +176,19 @@ public class SaveSystem : MonoBehaviour {
         foreach (var kv in inv.allowed) {
             if (!kv.Value) disallowed.Add(kv.Key);
         }
+
+        System.Collections.Generic.Dictionary<string, int> marketTargets = null;
+        if (inv.targets != null) {
+            marketTargets = new System.Collections.Generic.Dictionary<string, int>();
+            foreach (var kv in inv.targets)
+                if (kv.Value != 0) marketTargets[kv.Key.name] = kv.Value;
+        }
+
         return new InventorySaveData {
             invType            = inv.invType.ToString(),
             stacks             = stacks,
-            disallowedItemIds  = disallowed.Count > 0 ? disallowed.ToArray() : null
+            disallowedItemIds  = disallowed.Count > 0 ? disallowed.ToArray() : null,
+            marketTargets      = marketTargets != null && marketTargets.Count > 0 ? marketTargets : null
         };
     }
 
@@ -188,6 +206,8 @@ public class SaveSystem : MonoBehaviour {
             inv                = GatherInventory(a.inv),
             foodSlotInv        = GatherInventory(a.foodSlotInv),
             toolSlotInv        = GatherInventory(a.toolSlotInv),
+            skillXp            = a.skills.SerializeXp(),
+            skillLevel         = a.skills.SerializeLevel(),
         };
     }
 
@@ -318,6 +338,11 @@ public class SaveSystem : MonoBehaviour {
             StructController.instance.Place(structure);
             World.instance.graph.UpdateNeighbors(ssd.x, ssd.y);
             World.instance.graph.UpdateNeighbors(ssd.x, ssd.y + 1);
+            if (st.isWorkstation && structure is Building ws) {
+                // null → old save; pass -1 so RegisterWorkstation defaults to full capacity
+                int ec = ssd.workOrderEffectiveCapacity ?? -1;
+                WorkOrderManager.instance?.RegisterWorkstation(ws, ec);
+            }
         }
     }
 
@@ -376,6 +401,12 @@ public class SaveSystem : MonoBehaviour {
             foreach (int id in isd.disallowedItemIds)
                 if (id < Db.items.Length && Db.items[id] != null)
                     inv.DisallowItem(Db.items[id]);
+
+        if (isd.marketTargets != null && inv.targets != null) {
+            foreach (var kv in isd.marketTargets)
+                if (Db.itemByName.TryGetValue(kv.Key, out Item item))
+                    inv.targets[item] = kv.Value;
+        }
 
         inv.UpdateSprite();
     }

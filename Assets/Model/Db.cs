@@ -125,9 +125,16 @@ public class Db : MonoBehaviour {
             if (jobByName.ContainsKey(recipe.job)){ // add recipe to job's array of recipes
                 Job job = jobByName[recipe.job];
                 job.recipes[job.nRecipes] = recipe;
-                job.nRecipes += 1;                
+                job.nRecipes += 1;
             }
-        }        
+        }
+
+        // Propagate each job's defaultSkill to any recipe that didn't specify its own skill.
+        foreach (Recipe recipe in recipesUnplaced) {
+            if (recipe.skill != null) continue;
+            if (jobByName.TryGetValue(recipe.job, out Job j))
+                recipe.skill = j.defaultSkill;
+        }
     }
 
     public static Job GetJobByName(string name) {
@@ -158,6 +165,7 @@ public class Job {
     public int id {get; set;} // set must be public for JSON deserialization
     public string name {get; set;}
     public string jobType {get; set;}
+    public string defaultSkill {get; set;} // optional; skill domain used for recipes of this job (e.g. "woodworking")
     public int nRecipes = 0;
     public static int maxRecipes = 100;
     public Recipe[] recipes = new Recipe[maxRecipes]; // max 100 recipes per job
@@ -171,6 +179,7 @@ public class Recipe {
     public float workload {get; set;}
     public string research   { get; set; }   // optional: research name to advance per cycle
     public float  skillPoints { get; set; }  // progress added to that research per cycle
+    public string skill      { get; set; }   // optional: overrides job.defaultSkill for this recipe (e.g. "mining")
     public TileType tileType;
     public ItemNameQuantity[] ninputs {get; set;}
     public ItemNameQuantity[] noutputs {get; set;}
@@ -189,13 +198,17 @@ public class Recipe {
         }
     }
     public float Score(Dictionary<int, int> targets){ // only takes into account global quantity / target. nothing about recipe ratios.
-        if (targets == null) return 0;
+        if (targets == null) return 1;
         float score = 1;
         foreach (ItemQuantity iq in inputs){
-            score *= ((float)GlobalInventory.instance.Quantity(iq.item.id) / targets[iq.item.id]);
+            int target = targets[iq.item.id];
+            if (target == 0) continue; // no target set — treat as neutral
+            score *= ((float)GlobalInventory.instance.Quantity(iq.item.id) / target);
         }
         foreach (ItemQuantity iq in outputs){
-            score /= ((float)GlobalInventory.instance.Quantity(iq.item.id) / targets[iq.item.id]);
+            int target = targets[iq.item.id];
+            if (target == 0) continue; // no target set — treat as neutral
+            score /= ((float)GlobalInventory.instance.Quantity(iq.item.id) / target);
         }
         return score;
     }

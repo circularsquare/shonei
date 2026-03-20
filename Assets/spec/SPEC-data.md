@@ -84,6 +84,7 @@ Fields:
 | `workload` | float | ticks to complete |
 | `research` | string? | research node name required to unlock |
 | `skillPoints` | float? | skill gained per completion |
+| `skill` | string? | skill domain for XP (e.g. `"mining"`); defaults to `job.defaultSkill` if omitted |
 | `ninputs` | `[{name, quantity}]` | consumed items in liang |
 | `noutputs` | `[{name, quantity, chance?}]` | produced items; `chance` (0–1) = probability of output |
 
@@ -106,6 +107,7 @@ Fields:
 | `id` | int | unique |
 | `name` | string | lookup key; matched against `recipe.job` |
 | `jobType` | string | category: `"logistics"`, `"none"`, `"gatherer"`, `"crafter"`, `"researcher"` |
+| `defaultSkill` | string? | skill domain awarded to all recipes of this job unless overridden; null for hauler/merchant |
 
 ## `plantsDb.json` — PlantTypes
 

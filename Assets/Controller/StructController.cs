@@ -61,7 +61,11 @@ public class StructController : MonoBehaviour {
                 if (t.structs[st.depth] != null) { Debug.LogError("depth " + st.depth + " occupied at " + (tile.x+i) + "," + tile.y); return false; }
             }
             // Dispatch to subclass
-            if (st.depth == 0) { structure = new Building(st, tile.x, tile.y); }
+            if (st.depth == 0) {
+                structure = st.name == "pump"
+                    ? new PumpBuilding(st, tile.x, tile.y)
+                    : new Building(st, tile.x, tile.y);
+            }
             else if (st.name == "platform") { structure = new Platform(st, tile.x, tile.y); }
             else if (st.name == "stairs") { structure = new Stairs(st, tile.x, tile.y); }
             else if (st.name == "ladder") { structure = new Ladder(st, tile.x, tile.y); }
@@ -79,6 +83,8 @@ public class StructController : MonoBehaviour {
             Place(structure);
             if (st.name == "laboratory" && structure is Building lab)
                 WorkOrderManager.instance?.RegisterResearch(lab);
+            if (st.isWorkstation && structure is Building ws)
+                WorkOrderManager.instance?.RegisterWorkstation(ws);
         }
         if (world == null) {world = World.instance;}
         world.graph.UpdateNeighbors(tile.x, tile.y);

@@ -10,22 +10,23 @@ using UnityEngine;
 
     Priority:  1 = highest (hauls unblocking a pending deconstruct)
                2 = construct, supply blueprint, harvest
-               3 = haul, consolidate, haul to/from market
+               3 = haul, consolidate, haul to/from market, craft
                4 = deconstruct, research
 
-    In Animal.ChooseTask the tiers are interleaved with non-WOM tasks:
-        ChooseOrder(1) → ChooseOrder(2) → ChooseOrder(3) → CraftTask → ChooseOrder(4)
+    In Animal.ChooseTask the tiers are:
+        ChooseOrder(1) → ChooseOrder(2) → ChooseOrder(3) → ChooseOrder(4)
 
     Blueprint-based work (Construct, Supply, Deconstruct) is registered explicitly when
     blueprint state changes.  Haul orders are registered when items land on floor inventories.
     Harvest orders are registered when plants are placed. isActive suppresses the order between grow cycles.
     Research is maintained as a single standing order whenever a lab building exists.
-    Craft is NOT in this system (handled between p3 and p4 in ChooseTask).
+    Craft orders are registered for each placed workstation building (isWorkstation=true in buildingsDb).
+    isActive on craft orders gates the building (e.g. pump inactive when no water below).
 */
 public class WorkOrderManager : MonoBehaviour {
     public static WorkOrderManager instance { get; private set; }
 
-    public enum OrderType { Haul, Harvest, Construct, SupplyBlueprint, Deconstruct, HaulToMarket, HaulFromMarket, Research }
+    public enum OrderType { Haul, Harvest, Construct, SupplyBlueprint, Deconstruct, HaulToMarket, HaulFromMarket, Research, Craft }
 
     public class WorkOrder {
         public OrderType type;
@@ -44,6 +45,7 @@ public class WorkOrderManager : MonoBehaviour {
         // Null means always active. ChooseOrder checks this before calling factory.
         // Example: harvest orders use () => plant.harvestable so the order stays alive across grow cycles.
         public Func<bool> isActive;
+        public Building building;            // nullable; for Craft orders (dedup & cleanup)
     }
 
     // orders[0] = priority 1 (highest), orders[3] = priority 4 (lowest).
@@ -219,6 +221,29 @@ public class WorkOrderManager : MonoBehaviour {
         }
     }
 
+    // Registers a haul order for a storage ItemStack whose item is disallowed (priority 3).
+    // Unlike floor hauls, no ConsolidateTask fallback — the order stays in queue until
+    // destination storage exists (HaulTask.Initialize returns false until then).
+    // Returns true if a new order was inserted.
+    public bool RegisterStorageEvictionHaul(ItemStack stack) {
+        if (!StackNeedsHaulOrder(stack)) return false;
+        if (stack.inv.invType != Inventory.InvType.Storage && stack.inv.invType != Inventory.InvType.Liquid) {
+            Debug.LogError($"WOM RegisterStorageEvictionHaul: called on non-storage/liquid stack (type={stack.inv.invType})");
+            return false;
+        }
+        if (orders[0].Exists(o => o.type == OrderType.Haul && o.stack == stack)) return false;
+        if (orders[2].Exists(o => o.type == OrderType.Haul && o.stack == stack)) return false;
+        Add(new WorkOrder {
+            type = OrderType.Haul,
+            priority = 3,
+            factory = a => new HaulTask(a, stack),
+            stack = stack,
+            canDo = a => a.job.name == "hauler",
+            getDistance = a => Mathf.Abs(stack.inv.x - a.x) + Mathf.Abs(stack.inv.y - a.y)
+        });
+        return true;
+    }
+
     // Creates or removes market haul orders to match current inventory vs targets.
     // Call immediately whenever the market inventory changes or a target is updated.
     // Orders are removed eagerly even if in-flight: the active task still holds a workOrder
@@ -259,7 +284,7 @@ public class WorkOrderManager : MonoBehaviour {
             priority = 2,
             factory = a => new HarvestTask(a, tile),
             tile = tile,
-            res = new(plant.res?.capacity ?? 1),
+            res = new(plant.plantType.capacity > 0 ? plant.plantType.capacity : 1),
             isActive = () => plant.harvestable,
             canDo = a => a.job == harvestJob,
             getDistance = a => Mathf.Abs(tile.x - a.x) + Mathf.Abs(tile.y - a.y)
@@ -277,11 +302,43 @@ public class WorkOrderManager : MonoBehaviour {
             priority = 4,
             factory = a => new ResearchTask(a, lab),
             tile = lab.tile,
-            res = new(lab.res?.capacity ?? 1),
+            res = new(Mathf.Max(1, lab.structType.capacity)),
             canDo = a => a.job.name == "scientist",
             getDistance = a => Mathf.Abs(lab.tile.x - a.x) + Mathf.Abs(lab.tile.y - a.y)
         });
         return true;
+    }
+
+    // Registers a Craft order for a workstation building. One order per building instance.
+    // The order stays in the queue permanently; isActive gates it when the building is inactive.
+    // effectiveCapacity: -1 = use full capacity (default for new placements).
+    //                     0 = disabled (no workers). 1..capacity = player-set limit.
+    // Returns true if a new order was inserted.
+    public bool RegisterWorkstation(Building building, int effectiveCapacity = -1) {
+        if (building == null) return false;
+        if (orders[2].Exists(o => o.type == OrderType.Craft && o.building == building)) return false;
+        // canDo checks recipe job, not construction job (structType.job = njob = who builds it).
+        // PickRecipeForBuilding filters by recipe.tile, so the correct gate is: does this animal's
+        // job have any recipe for this building type?
+        string buildingName = building.structType.name;
+        var res = new Reservable(Mathf.Max(1, building.structType.capacity));
+        if (effectiveCapacity >= 0) res.effectiveCapacity = effectiveCapacity;
+        Add(new WorkOrder {
+            type = OrderType.Craft,
+            priority = 3,
+            factory = a => new CraftTask(a, building),
+            building = building,
+            res = res,
+            isActive = () => building.IsActive(),
+            canDo = a => Array.Exists(a.job.recipes, r => r != null && r.tile == buildingName),
+            getDistance = a => Mathf.Abs(building.workTile.x - a.x) + Mathf.Abs(building.workTile.y - a.y)
+        });
+        return true;
+    }
+
+    // Removes the Craft order for a specific building (call when building is deconstructed).
+    public void RemoveWorkstationOrders(Building building) {
+        orders[2].RemoveAll(o => o.type == OrderType.Craft && o.building == building);
     }
 
     // ── REMOVAL ────────────────────────────────────────────────────────────────────
@@ -380,6 +437,15 @@ public class WorkOrderManager : MonoBehaviour {
                         Debug.LogWarning($"WOM reconcile: registered missing haul order for {stack.item?.name} at ({inv.x},{inv.y})");
         }
 
+        foreach (var evictType in new[] { Inventory.InvType.Storage, Inventory.InvType.Liquid }) {
+            if (InventoryController.instance.byType.TryGetValue(evictType, out var storages))
+                foreach (Inventory inv in storages)
+                    foreach (ItemStack stack in inv.itemStacks)
+                        if (stack.item != null && stack.quantity > 0 && inv.allowed[stack.item.id] == false)
+                            if (RegisterStorageEvictionHaul(stack))
+                                Debug.LogWarning($"WOM reconcile: registered missing eviction haul for {stack.item.name} at ({inv.x},{inv.y}) [{evictType}]");
+        }
+
         if (InventoryController.instance.byType.TryGetValue(Inventory.InvType.Market, out var markets)) {
             foreach (Inventory inv in markets)
                 UpdateMarketOrders(inv);
@@ -389,6 +455,11 @@ public class WorkOrderManager : MonoBehaviour {
             foreach (Structure s in StructController.instance.GetByType(labSt) ?? new List<Structure>())
                 if (s is Building lab && RegisterResearch(lab))
                     Debug.LogWarning($"WOM reconcile: registered missing Research order for lab at ({lab.tile.x},{lab.tile.y})");
+        }
+
+        foreach (Structure s in StructController.instance.GetStructures()) {
+            if (s.structType.isWorkstation && s is Building ws && RegisterWorkstation(ws))
+                Debug.LogWarning($"WOM reconcile: registered missing Craft order for {ws.structType.name} at ({ws.x},{ws.y})");
         }
     }
 
@@ -423,7 +494,7 @@ public class WorkOrderManager : MonoBehaviour {
         // Prune stale haul orders before checking direction-2, so timing artifacts don't fire.
         PruneStaleHauls();
 
-        // Hauls — direction 1: every haulable floor stack must have an order
+        // Hauls — direction 1a: every haulable floor stack must have an order
         if (InventoryController.instance.byType.TryGetValue(Inventory.InvType.Floor, out var floors)) {
             foreach (Inventory inv in floors)
                 foreach (ItemStack stack in inv.itemStacks)
@@ -431,6 +502,16 @@ public class WorkOrderManager : MonoBehaviour {
                         && !orders[0].Exists(o => o.type == OrderType.Haul && o.stack == stack)
                         && !orders[2].Exists(o => o.type == OrderType.Haul && o.stack == stack))
                         Debug.LogError($"WOM audit: floor stack {stack.item?.name} at ({inv.x},{inv.y}) has no haul order");
+        }
+        // Hauls — direction 1b: every disallowed storage/liquid stack must have a haul order
+        foreach (var evictType in new[] { Inventory.InvType.Storage, Inventory.InvType.Liquid }) {
+            if (InventoryController.instance.byType.TryGetValue(evictType, out var evictInvs))
+                foreach (Inventory inv in evictInvs)
+                    foreach (ItemStack stack in inv.itemStacks)
+                        if (stack.item != null && stack.quantity > 0 && inv.allowed[stack.item.id] == false
+                            && !orders[0].Exists(o => o.type == OrderType.Haul && o.stack == stack)
+                            && !orders[2].Exists(o => o.type == OrderType.Haul && o.stack == stack))
+                            Debug.LogError($"WOM audit: disallowed {evictType} stack {stack.item.name} at ({inv.x},{inv.y}) has no haul order");
         }
         // Hauls — direction 2: every haul order must reference a valid stack
         foreach (WorkOrder o in AllOrders())
@@ -453,6 +534,19 @@ public class WorkOrderManager : MonoBehaviour {
                         && !(o.tile?.building is Building b && b.structType == labSt2))
                         Debug.LogError($"WOM audit: Research order at ({o.tile?.x},{o.tile?.y}) has no valid lab");
             }
+        }
+
+        // Craft — direction 1: every placed workstation must have a Craft order
+        foreach (Structure s in StructController.instance.GetStructures()) {
+            if (s.structType.isWorkstation && s is Building ws
+                && !orders[2].Exists(o => o.type == OrderType.Craft && o.building == ws))
+                Debug.LogError($"WOM audit: workstation {ws.structType.name} at ({ws.x},{ws.y}) has no Craft order");
+        }
+        // Craft — direction 2: every Craft order must reference a live building
+        foreach (WorkOrder o in orders[2]) {
+            if (o.type == OrderType.Craft
+                && (o.building == null || o.building.go == null))
+                Debug.LogError($"WOM audit: Craft order references a destroyed building ({o.building?.structType?.name})");
         }
 
         int total = orders.Sum(t => t.Count);
@@ -489,6 +583,13 @@ public class WorkOrderManager : MonoBehaviour {
         foreach (var tier in orders)
             foreach (var o in tier)
                 if (o.inv == inv) yield return o;
+    }
+
+    // Returns all active WorkOrders keyed to a specific building (craft orders).
+    public IEnumerable<WorkOrder> FindOrdersForBuilding(Building building) {
+        foreach (var tier in orders)
+            foreach (var o in tier)
+                if (o.building == building) yield return o;
     }
 
     // ── INTERNAL ───────────────────────────────────────────────────────────────────

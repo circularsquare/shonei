@@ -26,7 +26,7 @@ public class Tile {
     public Blueprint[] blueprints = new Blueprint[4]; // indexed by depth
     public Building building => structs[0] as Building; // alias for depth 0 (Plant extends Building, so this covers both)
     public Inventory inv; // this encapsulates all inventory types
-    public byte water; // 0–16; 16 = fully filled tile
+    public ushort water; // 0–160 internal fixed-point (10 units = 1 display unit); 160 = fully filled tile
     public Node node;
 
     
@@ -47,7 +47,7 @@ public class Tile {
     }
     public bool HasItemToHaul(Item item){return inv != null && inv.HasItemToHaul(item);} // can be null for any item
     public int GetStorageForItem(Item item){
-        if (inv != null && inv.invType == Inventory.InvType.Storage){
+        if (inv != null && (inv.invType == Inventory.InvType.Storage || inv.invType == Inventory.InvType.Liquid)){
             return inv.GetStorageForItem(item);
         }
         return 0;

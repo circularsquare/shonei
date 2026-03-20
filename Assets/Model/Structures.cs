@@ -20,7 +20,9 @@ public class Building : Structure {
         if (structType.isStorage){
             Tile storageTile = World.instance.GetTileAt(x + st.storageTileX, y + st.storageTileY);
             Inventory oldInv = storageTile.inv;
-            var invType = structType.name == "market" ? Inventory.InvType.Market : Inventory.InvType.Storage;
+            var invType = structType.name == "market"  ? Inventory.InvType.Market
+                        : structType.liquidStorage      ? Inventory.InvType.Liquid
+                        :                                 Inventory.InvType.Storage;
             storageTile.inv = new Inventory(structType.nStacks, structType.storageStackSize, invType, storageTile.x, storageTile.y);
             storageTile.inv.displayName = structType.name;
             storage = storageTile.inv;
@@ -33,6 +35,8 @@ public class Building : Structure {
         }
     }
     public override void Destroy() {
+        if (structType.isWorkstation)
+            WorkOrderManager.instance?.RemoveWorkstationOrders(this);
         if (structType.isStorage && storage != null) {
             Tile st = storageTile;
             if (!storage.IsEmpty() && !WorldController.isClearing)

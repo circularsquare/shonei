@@ -165,7 +165,7 @@ public class Nav {
     // =========================================================
 
     public Path FindPathToStorage(Item item, int r = 40) {
-        return FindPathToInv(new[] { Inventory.InvType.Storage },
+        return FindPathToInv(new[] { Inventory.InvType.Storage, Inventory.InvType.Liquid },
             inv => inv.GetStorageForItem(item) > 0, r); }
     public Path FindPathToDrop(Item item, int animalQuantity, int r = 3){
         return FindPathTo(t => {
@@ -238,7 +238,7 @@ public class Nav {
         return closestPath;
     }
     public (Path, ItemStack) FindPathItemStack(Item item, int r = 40){
-        Path path = FindPathToInv(new[] { Inventory.InvType.Floor, Inventory.InvType.Storage },
+        Path path = FindPathToInv(new[] { Inventory.InvType.Floor, Inventory.InvType.Storage, Inventory.InvType.Liquid },
             inv => inv.ContainsAvailableItem(item), r);
         if (path == null) return (null, null);
         return (path, path.tile.inv.GetItemStack(item));

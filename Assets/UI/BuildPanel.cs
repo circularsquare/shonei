@@ -147,25 +147,7 @@ public class BuildPanel : MonoBehaviour {
     }
 
     public bool CanPlaceHere(StructType st, Tile tile) {
-        if (tile.GetBlueprintAt(st.depth) != null) return false;
-
-        if (tile.type.id != 0 && st.name != "empty" && st.requiredTileName == null) return false;
-        if (st.requiredTileName != null && tile.type.name != st.requiredTileName) return false;
-
-        if (!st.isTile) {
-            if (st.isPlant && tile.building != null) return false;
-            if (!st.isPlant) {
-                for (int i = 0; i < st.nx; i++) {
-                    Tile t = World.instance.GetTileAt(tile.x + i, tile.y);
-                    if (t == null) return false;
-                    if (t.structs[st.depth] != null || t.GetBlueprintAt(st.depth) != null) return false;
-                }
-            }
-        }
-
-        if (st.name != "empty" && st.requiredTileName == null && !World.instance.graph.nodes[tile.x, tile.y].standable) return false;
-
-        return true;
+        return StructPlacement.CanPlaceHere(st, tile);
     }
 
     public bool PlaceBlueprint(Tile tile) {

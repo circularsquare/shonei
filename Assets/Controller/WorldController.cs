@@ -177,7 +177,7 @@ public class WorldController : MonoBehaviour {
             if ((x >= 0 && x <= 3) || (x >= 30 && x <= 40)) {
                 Tile t = world.GetTileAt(x, 9);
                 t.type = Db.tileTypeByName["empty"];
-                t.water = 16;
+                t.water = WaterController.WaterMax;
             }
         }
 

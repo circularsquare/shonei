@@ -34,7 +34,10 @@
       "Bash(grep -n \"class HaulInfo\\\\|struct HaulInfo\" Assets/Model/*.cs)",
       "Bash(grep -rn \"GetEdgeInfo\\\\|GetEdgeCost\" Assets/ --include=*.cs)",
       "Bash(grep -rn \"FindPathToItem\\\\|FindItem\" Assets/Model/ Assets/Controller/ --include=*.cs)",
-      "Bash(grep -rn \"\\\\.FindPathToItem\\\\|\\\\.FindItem\" Assets/ --include=*.cs)"
+      "Bash(grep -rn \"\\\\.FindPathToItem\\\\|\\\\.FindItem\" Assets/ --include=*.cs)",
+      "Bash(find c:/Users/anita/projects/shonei/Assets -name *.mat)",
+      "Bash(node -e:*)",
+      "Bash(find /c/Users/anita/AppData -name *.mat.meta)"
     ],
     "additionalDirectories": [
       "C:\\Users\\anita",

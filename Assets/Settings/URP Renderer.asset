@@ -18,10 +18,10 @@ MonoBehaviour:
   shadowDarkness: 0.563
   litLayers:
     serializedVersion: 2
-    m_Bits: 27
+    m_Bits: 11
   shadowCasterLayers:
     serializedVersion: 2
-    m_Bits: 191
+    m_Bits: 175
   directionalOnlyLayers:
     serializedVersion: 2
     m_Bits: 64

@@ -77,7 +77,8 @@ public class TradingClient : MonoBehaviour {
         if (!Db.itemByName.ContainsKey(fill.item)) { Debug.LogError($"Fill: unknown item '{fill.item}'"); return; }
         Item item   = Db.itemByName[fill.item];
         Item silver = Db.itemByName["silver"];
-        int  silverAmt = fill.quantity * fill.price;
+        // quantity is in fen; price is liang/liang ratio → silverAmt in fen
+        int  silverAmt = Mathf.RoundToInt(fill.quantity * fill.price);
 
         if (fill.buyer == playerName) {
             // We bought: pay silver, receive item
@@ -135,9 +136,11 @@ public class TradingClient : MonoBehaviour {
         await ws.SendText(envelope);
     }
 
-    public async void SendOrder(string item, string side, int price, int qty) {
+    // qty is in fen; price is liang/liang (e.g. 0.3)
+    public async void SendOrder(string item, string side, float price, int qty) {
         if (!isOnline) return;
-        var payload = $"{{\"item\":\"{item}\",\"side\":\"{side}\",\"price\":{price},\"quantity\":{qty}}}";
+        string priceStr = price.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+        var payload = $"{{\"item\":\"{item}\",\"side\":\"{side}\",\"price\":{priceStr},\"quantity\":{qty}}}";
         var envelope = $"{{\"type\":\"order\",\"payload\":{payload}}}";
         await ws.SendText(envelope);
         QueryMarket(item);
@@ -160,7 +163,8 @@ public class TradingClient : MonoBehaviour {
 [Serializable] class FillEnvelope           { public string type; public Fill     payload; }
 [Serializable] class ChatEnvelope           { public string type; public ChatMsg  payload; }
 [Serializable] public class MarketBook  { public string item; public MarketOrder[] buys; public MarketOrder[] sells; }
-[Serializable] public class MarketOrder { public long id; public string from; public string side; public int price; public int quantity; }
-[Serializable] public class Fill        { public string buyer; public string seller; public string item; public int price; public int quantity; }
+// price is liang/liang (float); quantity is fen (int)
+[Serializable] public class MarketOrder { public long id; public string from; public string side; public float price; public int quantity; }
+[Serializable] public class Fill        { public string buyer; public string seller; public string item; public float price; public int quantity; }
 [Serializable] public class ChatMsg     { public string from; public string text; }
 [Serializable] class ChatPayload        { public string text; }

@@ -40,13 +40,28 @@ public class AnimalStateManager {
         }
     }
 
+    // Returns the skill domain for the animal's current task, or null if the task
+    // has no associated skill (e.g. hauling, idle wandering).
+    private static Skill? GetTaskSkill(Animal animal) {
+        Task t = animal.task;
+        if (t is HarvestTask)   return Skill.Farming;
+        if (t is ConstructTask) return Skill.Construction;
+        if (t is ResearchTask)  return Skill.Science;
+        if (t is CraftTask craftTask && craftTask.recipe?.skill != null)
+            if (System.Enum.TryParse<Skill>(craftTask.recipe.skill, ignoreCase: true, out Skill s)) return s;
+        return null;
+    }
+
     private void HandleWorking() {
-        float workEfficiency = ModifierSystem.instance.GetWorkMultiplier(animal);
+        Skill? taskSkill      = GetTaskSkill(animal);
+        float  baseWorkEff    = ModifierSystem.instance.GetBaseWorkEfficiency(animal);
+        float  workEfficiency = ModifierSystem.instance.GetWorkMultiplier(animal, taskSkill);
 
         if (animal.task is HarvestTask harvestTask) {
             Plant plant = harvestTask.tile.building as Plant;
             if (plant == null || !plant.harvestable) { harvestTask.Fail(); return; }
             animal.workProgress += workEfficiency;
+            animal.skills.GainXp(Skill.Farming, baseWorkEff * 0.1f);
             if (animal.workProgress < plant.plantType.harvestTime) { return; }
             animal.workProgress -= plant.plantType.harvestTime;
             animal.Produce(plant.Harvest());
@@ -70,6 +85,7 @@ public class AnimalStateManager {
                     constructTask.Fail(); return;
                 }
             }
+            animal.skills.GainXp(Skill.Construction, baseWorkEff * 0.1f);
             if (blueprint.ReceiveConstruction(progressAmount)){
                 var output = blueprint.pendingOutput;
                 constructTask.Complete();
@@ -85,6 +101,7 @@ public class AnimalStateManager {
                 return;
             }
             animal.workProgress += workEfficiency;
+            if (taskSkill.HasValue) animal.skills.GainXp(taskSkill.Value, baseWorkEff * 0.1f);
             while (animal.workProgress >= recipe.workload) {
                 animal.workProgress -= recipe.workload;
                 if (animal.CanProduce(recipe)) {
@@ -119,6 +136,7 @@ public class AnimalStateManager {
             }
         } else if (animal.task is ResearchTask) {
             animal.workProgress += workEfficiency;
+            animal.skills.GainXp(Skill.Science, baseWorkEff * 0.1f);
             ResearchSystem.instance?.AddScientistProgress(workEfficiency);
             if (animal.workProgress < 10f) return;
             animal.workProgress = 0f;

@@ -30,6 +30,9 @@ public class LightFeature : ScriptableRendererFeature {
     public LayerMask shadowCasterLayers = ~0; // default: Everything
     [Tooltip("Layers that receive sun + ambient only — not torch/point lights. Good for clouds and distant backgrounds. Can overlap with litLayers; directional-only always wins.")]
     public LayerMask directionalOnlyLayers = 0; // default: Nothing
+    [Tooltip("Water layer — rendered into the normals RT using NormalsCaptureWater, which samples " +
+             "_WaterSurfaceTex for transparency. Water is lit-only (torch + sun) but casts no shadows.")]
+    public LayerMask waterLayer = 0; // set to the 'Water' layer in the inspector
 
     NormalsCapturePass capturePass;
     LightPass          lightPass;
@@ -45,7 +48,9 @@ public class LightFeature : ScriptableRendererFeature {
 
     public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData) {
         if (!Application.isPlaying) return;
-        capturePass.Setup(litLayers, shadowCasterLayers, directionalOnlyLayers);
+        // Skip cameras that render nothing — avoids wasted NormalsCapture + LightPass GPU work.
+        if (renderingData.cameraData.camera.cullingMask == 0) return;
+        capturePass.Setup(litLayers, shadowCasterLayers, directionalOnlyLayers, waterLayer);
         renderer.EnqueuePass(capturePass);
         lightPass.Setup(renderer.cameraColorTarget, ambientNormal, shadowLength, shadowDarkness);
         renderer.EnqueuePass(lightPass);
@@ -64,25 +69,36 @@ public class LightFeature : ScriptableRendererFeature {
 class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
     static readonly int CapturedNormalsId = Shader.PropertyToID("_CapturedNormalsRT");
     readonly Material mat;
-    int litMask    = ~0;
-    int shadowMask = ~0;
+    readonly Material waterMat;
+    int litMask     = ~0;
+    int shadowMask  = ~0;
     int dirOnlyMask = 0;
+    int waterMask   = 0;
 
     public NormalsCapturePass() {
-        mat = CoreUtils.CreateEngineMaterial("Hidden/NormalsCapture");
+        mat      = CoreUtils.CreateEngineMaterial("Hidden/NormalsCapture");
+        waterMat = CoreUtils.CreateEngineMaterial("Hidden/NormalsCaptureWater");
     }
 
-    public void Setup(int litMask, int shadowMask, int dirOnlyMask) {
+    public void Setup(int litMask, int shadowMask, int dirOnlyMask, int waterMask) {
         this.litMask     = litMask;
         this.shadowMask  = shadowMask;
         this.dirOnlyMask = dirOnlyMask;
+        this.waterMask   = waterMask;
     }
 
-    public void Dispose() => CoreUtils.Destroy(mat);
+    public void Dispose() {
+        CoreUtils.Destroy(mat);
+        CoreUtils.Destroy(waterMat);
+    }
 
     public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData rd) {
         var desc = rd.cameraData.cameraTargetDescriptor;
         desc.depthBufferBits = 0;
+        // Must use a format with an alpha channel — the lighting tier system encodes
+        // shadow/lit/dirOnly information in alpha (1.0/0.5/0.3). The camera's default
+        // HDR format (B10G11R11) has no alpha, so all tier checks silently return 1.0.
+        desc.colorFormat = RenderTextureFormat.ARGB32;
         cmd.GetTemporaryRT(CapturedNormalsId, desc, FilterMode.Point);
     }
 
@@ -125,6 +141,18 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
             ds.overrideMaterial          = mat;
             ds.overrideMaterialPassIndex = 0; // alpha = 1.0 (casts shadow)
             var fs = new FilteringSettings(RenderQueueRange.all, litMask & shadowMask & ~dirOnlyMask);
+            context.DrawRenderers(rd.cullResults, ref ds, ref fs);
+        }
+
+        // Draw water as lit-only (pass 1, alpha=0.5): torch + sun light, no shadow cast.
+        // Uses NormalsCaptureWater which samples the global _WaterSurfaceTex set by
+        // WaterController, so only pixels with actual water get normals written.
+        if (waterMask != 0 && waterMat != null) {
+            var ds = CreateDrawingSettings(
+                new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
+            ds.overrideMaterial          = waterMat;
+            ds.overrideMaterialPassIndex = 1; // alpha = 0.5 (lit-only)
+            var fs = new FilteringSettings(RenderQueueRange.all, waterMask);
             context.DrawRenderers(rd.cullResults, ref ds, ref fs);
         }
     }

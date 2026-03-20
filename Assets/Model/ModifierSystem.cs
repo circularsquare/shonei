@@ -18,8 +18,18 @@ public class ModifierSystem {
 
     // --- Query methods ---
 
-    // Combined work speed multiplier for an animal (efficiency × tool bonus).
-    public float GetWorkMultiplier(Animal animal) {
+    // Combined work speed multiplier for an animal (efficiency × tool bonus × skill level bonus).
+    // Pass skill=null for tasks that have no associated skill domain (e.g. hauling).
+    public float GetWorkMultiplier(Animal animal, Skill? skill = null) {
+        bool hasTool = animal.toolSlotInv.itemStacks[0].item != null;
+        float toolMult  = hasTool ? ToolWorkBonus : 1f;
+        float skillMult = skill.HasValue ? animal.skills.GetBonus(skill.Value) : 1f;
+        return animal.efficiency * toolMult * skillMult;
+    }
+
+    // Base work efficiency before the skill bonus — used to calculate XP gain so that
+    // the skill bonus doesn't accelerate its own XP accumulation.
+    public float GetBaseWorkEfficiency(Animal animal) {
         bool hasTool = animal.toolSlotInv.itemStacks[0].item != null;
         float toolMult = hasTool ? ToolWorkBonus : 1f;
         return animal.efficiency * toolMult;

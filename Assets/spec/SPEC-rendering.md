@@ -17,15 +17,32 @@ Structures render in four depth layers per tile. Each tile holds `Structure[] st
 
 ## Lighting
 
-Custom `ScriptableRendererFeature` pipeline — no URP Light2Ds used. All lights use `BlendOp Max` so overlapping sources take the brightest value. Final result is Multiply-blitted onto the scene.
+Custom `ScriptableRendererFeature` pipeline — no URP Light2Ds used. Final result is Multiply-blitted onto the scene.
 
 ### Render pipeline (per frame)
 
-1. **NormalsCapturePass** (`BeforeRenderingTransparents`) — draws all sprites with `Hidden/NormalsCapture` override material into `_CapturedNormalsRT`. Outputs world-space normals packed 0–1 (`rgb * 0.5 + 0.5`). Transparent pixels discarded (background stays black = flat fallback).
-2. **LightPass** (`AfterRenderingTransparents`) — clears light RT to `SunController.GetAmbientColor()`, then `BlendOp Max`-draws:
-   - Sun (directional): fullscreen quad, NdotL with `_SunDir` from `SunController.GetSunDirection()`.
-   - Point lights (torches, etc.): per-light quad scaled to `outerRadius×2`, radial falloff × NdotL with `toLight = normalize(lightXY − fragXY, −lightHeight)`.
-3. **Composite** — `cmd.Blit(lightRT, scene, LightComposite)` multiplies scene by light map (`Blend DstColor Zero`).
+1. **NormalsCapturePass** (`BeforeRenderingTransparents`) — draws sprites with `Hidden/NormalsCapture` override into `_CapturedNormalsRT` (format: **ARGB32** — must have alpha; camera's default HDR format has none). Outputs world-space normals packed 0–1 in RGB. **Alpha encodes lighting tier:**
+   - `1.0` — shadow caster (full light, casts shadows)
+   - `0.5` — lit-only (full light, no shadow cast)
+   - `0.3` — directional-only (sun + ambient only; `LightCircle` skips torch for these pixels)
+   - `0.0` — no sprite (flat-normal fallback in light shaders)
+
+   Three draw calls in order (later overwrites earlier where they overlap, `Blend Off`):
+   - Pass 2 (`directionalOnlyLayers`): alpha = 0.3 — drawn first so shadow-caster pass can't overwrite
+   - Pass 1 (`litLayers & ~shadowCasterLayers & ~directionalOnlyLayers`): alpha = 0.5
+   - Pass 0 (`litLayers & shadowCasterLayers & ~directionalOnlyLayers`): alpha = 1.0
+
+2. **LightPass** (`AfterRenderingTransparents`) — clears light RT to `SunController.GetAmbientColor()`, then draws:
+   - Point lights (torches, etc.): per-light quad scaled to `outerRadius×2`, screen blend (`BlendOp Add, Blend One OneMinusSrcColor`), radial falloff × NdotL. **Skips pixels where normals RT alpha is 0–0.4** (directional-only tier).
+   - Sun (directional): fullscreen quad, additive blend (`BlendOp Add, Blend One One`), NdotL with `_SunDir` + 16-step shadow march.
+
+3. **Composite** — `cmd.Blit(lightRT, scene, LightComposite)` multiplies scene by light map (`Blend DstColor Zero`). **No-op (returns `(1,1,1,1)`) for pixels with normals RT alpha < 0.25** (empty sky/background); those pixels are instead tinted by `BackgroundCamera.backgroundColor`.
+
+**LightFeature skips cameras with `cullingMask == 0`** to avoid wasted GPU work (e.g. the background camera).
+
+### Sky / background
+
+`BackgroundCamera` (depth 0, ClearFlags = Solid Color) renders before the main camera. Its `backgroundColor` is set each frame to `baseSkyColor * SunController.GetAmbientColor()`, so the sky darkens at night and warms at sunrise. The main camera (depth 1, ClearFlags = Don't Clear) renders on top.
 
 ### Key files
 
@@ -42,6 +59,27 @@ All lighting C# scripts and shaders live in `Assets/Lighting/`.
 | `LightComposite.shader` | Multiply blit onto scene. |
 
 `Assets/Editor/SpriteNormalMapGenerator.cs` — sprite normal map batch tool (must stay in `Editor/`).
+
+---
+
+## Water Rendering
+
+See `SPEC-systems.md` for the simulation. The renderer is a separate GPU shader pipeline.
+
+**Files**: `Assets/Lighting/Water.shader`, `Assets/Controller/WaterController.cs`
+
+**Surface mask** (`TextureFormat.R8`, nx×16 × ny×16 pixels): one byte per game pixel, rebuilt by `WaterController.UpdateSurfaceMask()` every 0.2 s (sim tick). Values: `0`=transparent, `127`=interior water, `255`=surface pixel. A pixel is "surface" if any of its 8 orthogonal+diagonal neighbours is open air (non-solid, no water). Water touching solid walls is NOT flagged as surface.
+
+**Shader** (`Water/WaterSurface`): one texture sample per fragment, three branches:
+- `mask < 0.25` → `discard` (transparent)
+- `mask > 0.75` → `_SurfaceColor` (white highlight)
+- else → `lerp(_WaterColorDark, _WaterColorLight, sin(_Time.y…) * 0.4)` (shimmer)
+
+**Layer**: the `WaterSprite` GameObject must be on the **`Water`** Unity layer, excluded from:
+- `LightFeature` `litLayers` / `shadowCasterLayers` / `directionalOnlyLayers` — water is NOT handled by the standard NormalsCapture path
+- `BackgroundCamera` culling mask (otherwise water appears in the sky)
+
+**Lighting**: water is lit via a dedicated path. `LightFeature` has a `waterLayer` field (set to `Water` in the Inspector) which triggers a separate `DrawRenderers` call in `NormalsCapturePass` using `Hidden/NormalsCaptureWater` (pass 1, lit-only, alpha=0.5). That shader samples the global `_WaterSurfaceTex` (set each tick by `WaterController.UpdateSurfaceMask()`) for transparency, discarding pixels with no water. Outputs flat forward normals. This means water darkens at night and receives ambient light, but torch NdotL is minimal (flat normal faces away from scene).
 
 ### Normal maps
 

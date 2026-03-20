@@ -14,30 +14,37 @@
     },{
         "id": 3,
         "name": "logger",
-        "jobType": "gatherer"
+        "jobType": "gatherer",
+        "defaultSkill": "farming"
     },{
         "id": 4,
         "name": "miner",
-        "jobType": "gatherer"
+        "jobType": "gatherer",
+        "defaultSkill": "mining"
     },{
         "id": 6,
         "name": "farmer",
-        "jobType": "gatherer"
+        "jobType": "gatherer",
+        "defaultSkill": "farming"
     },{
         "id": 10,
         "name": "digger",
-        "jobType": "gatherer"
+        "jobType": "gatherer",
+        "defaultSkill": "mining"
     },{
         "id": 11,
         "name": "sawyer",
-        "jobType": "crafter"
+        "jobType": "crafter",
+        "defaultSkill": "woodworking"
     },{
         "id": 12,
         "name": "scientist",
-        "jobType": "researcher"
+        "jobType": "researcher",
+        "defaultSkill": "science"
     },{
         "id": 13,
         "name": "smith",
-        "jobType": "crafter"
+        "jobType": "crafter",
+        "defaultSkill": "woodworking"
     }
 ]

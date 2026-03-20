@@ -2,10 +2,9 @@
 // final = scene * lightmap  (black RT = black scene, white RT = unchanged scene)
 // Used with cmd.Blit, which sets _MainTex automatically.
 //
-// Only applies lighting where the main camera rendered a sprite (normals RT alpha > 0).
-// Pixels with no main-camera sprite (clouds from background camera, empty space) return
-// (1,1,1,1) — a no-op multiply — so background camera lighting is preserved untouched.
-// This prevents torch light bleeding onto clouds and avoids double-multiplying background pixels.
+// Only applies lighting to pixels where a sprite was rendered (normals RT alpha > 0).
+// Empty sky/background pixels (alpha == 0) return (1,1,1,1) — a no-op multiply — so
+// they are left unmodified. Sky color is instead tinted by BackgroundCamera.backgroundColor.
 Shader "Hidden/LightComposite" {
     Properties {
         _MainTex ("Light Map", 2D) = "white" {}
@@ -52,8 +51,7 @@ Shader "Hidden/LightComposite" {
             float4 frag(Varyings IN) : SV_Target {
                 float normsAlpha = SAMPLE_TEXTURE2D(_CapturedNormalsRT, sampler_CapturedNormalsRT, IN.uv).a;
 
-                // No main-camera sprite here — multiply by 1 (no-op) to leave background
-                // camera output (clouds, sky) with their own lighting intact.
+                // No sprite here (empty sky/background) — no-op multiply.
                 if (normsAlpha < 0.25) return float4(1, 1, 1, 1);
 
                 return SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, IN.uv);

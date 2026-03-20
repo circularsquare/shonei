@@ -96,12 +96,16 @@ public class MouseController : MonoBehaviour {
                 Sprite buildSprite = st.LoadSprite();
                 buildPreviewSr.sprite = buildSprite != null ? buildSprite : buildPreviewDefaultSprite;
                 buildPreviewSr.color = buildSprite != null ? new Color(1f, 1f, 1f, 0.3f) : Color.white;
+                buildPreview.transform.localScale = buildSprite == null
+                    ? new Vector3(st.nx, Mathf.Max(1, st.ny), 1f)
+                    : Vector3.one;
                 float visualX = anchorTile.x + (st.nx - 1) / 2.0f;
                 buildPreview.transform.position = new Vector3(visualX, anchorTile.y, -1);
             } else {
                 buildPreview.transform.position = new Vector3(tileAt.x, tileAt.y, -1);
                 buildPreviewSr.sprite = buildPreviewDefaultSprite;
                 buildPreviewSr.color = Color.white;
+                buildPreview.transform.localScale = Vector3.one;
             }
         }
         if (mouseMode == MouseMode.Select){
@@ -125,7 +129,7 @@ public class MouseController : MonoBehaviour {
                     InfoPanel.instance.ShowInfo(tileAt); // clicked on tile
                     if (tileAt.inv != null && (tileAt.inv.invType == Inventory.InvType.Storage
                                             || tileAt.inv.invType == Inventory.InvType.Market
-                                            || tileAt.inv.invType == Inventory.InvType.Floor)) {
+                                            || tileAt.inv.invType == Inventory.InvType.Liquid)) {
                         InventoryController.instance.SelectInventory(tileAt.inv);  // select inventory if storage
                     } else {
                         InventoryController.instance.SelectInventory(null); // deselect inventory (show global)

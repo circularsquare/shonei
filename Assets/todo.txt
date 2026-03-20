@@ -5,7 +5,7 @@
     - magic / qi
     - tofu
     - farming buildings
-    - mouse skills
+    - mouse skills, flesh out?
     - books
         - books for gaining skills 
         - manuals for learning technologies
@@ -34,11 +34,15 @@
 - dynamic objectives!
 - crafttask priority...
 - incentivize building lots of storage at once, make it easy i guess?
-- test workorders for multiple capacity
 - re-clean up audit/reconcile?
 - leisure!
-- figure out cloud lighting by torches
+- flip savesystem to save what items are allowed==true
+- workplace workorder capacity system is kinda indirect
+
 
 BUGS
 
 TODAY GOALS
+- add water shinies
+- crafttask WOM
+    - set workplace capacity manually (to 0 for inactive)

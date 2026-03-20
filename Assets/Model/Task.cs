@@ -108,17 +108,16 @@ public class CraftTask : Task {
     public int roundsRemaining;
     private List<(Item item, int perRound)> _inputsToFetch;
     private int _fetchInputIndex;
+    private readonly Building _building; // always set — assigned by WOM via RegisterWorkstation
 
-    public CraftTask(Animal animal) : base(animal){}
+    public CraftTask(Animal animal, Building building) : base(animal){ _building = building; }
+
     public override bool Initialize(){
-        recipe = animal.PickRecipe();
-        if (recipe == null){ return false; }
-        Path p = null;
-        if (Db.structTypeByName.ContainsKey(recipe.tile)) {
-            p = animal.nav.FindPathToBuilding(Db.structTypeByName[recipe.tile]);
-        }
+        recipe = animal.PickRecipeForBuilding(_building);
+        if (recipe == null) { return false; }
+        Path p = animal.nav.PathTo(_building.workTile);
         if (p == null) { return false; }
-        workplace = p.tile;
+        workplace = _building.workTile;
 
         roundsRemaining = animal.CalculateWorkPossible(recipe);
         if (roundsRemaining == 0) { return false; }
@@ -147,7 +146,6 @@ public class CraftTask : Task {
             objectives.AddFirst(new FetchObjective(this, new ItemQuantity(item, toFetch), itemPath.tile, softFetch: true));
         }
 
-        if (!workplace.building.res.Reserve()) return false;
         return true;
     }
     public override void Complete(){
@@ -182,7 +180,6 @@ public class CraftTask : Task {
         base.Complete();
     }
     public override void Cleanup(){
-        workplace.building?.res.Unreserve();
         base.Cleanup();
     }
 }
@@ -497,6 +494,12 @@ public class FetchObjective : Objective {
             animal.state = Animal.AnimalState.Moving;
         } else {
             if (softFetch) { Complete(); return; }
+            // If the animal already has a partial amount from a prior fetch attempt, deliver what it has
+            // rather than failing and dropping everything — avoids a tight drop-and-re-fetch loop.
+            if (Dest.Quantity(iq.item) > 0) {
+                Debug.Log($"{animal.aName} ({animal.job.name}) partial fetch: has {Dest.Quantity(iq.item)} {iq.item.name}, no more found — delivering partial");
+                Complete(); return;
+            }
             Fail(); Debug.Log($"{animal.aName} ({animal.job.name}) found no path to fetch {iq.item.name} at ({(int)animal.x},{(int)animal.y})");
         }
     }

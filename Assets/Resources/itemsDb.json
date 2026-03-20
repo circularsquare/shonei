@@ -114,5 +114,22 @@
         "decayRate": 2.0,
         "discrete": true,
         "children": null
+    },{
+        "id": 210,
+        "name": "water",
+        "decayRate": 0,
+        "isLiquid": true,
+        "children": null
+    },{
+        "id": 220,
+        "name": "soybeans",
+        "decayRate": 0.2,
+        "children": null
+    },{
+        "id": 230,
+        "name": "soymilk",
+        "decayRate": 1.5,
+        "isLiquid": true,
+        "children": null
     }
 ]

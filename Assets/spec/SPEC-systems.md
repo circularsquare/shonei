@@ -93,27 +93,31 @@ Each animal has two `InvType.Equip` inventory instances (1 stack each, registere
 
 ---
 
-## Water System (added 2026-03-19)
+## Water System (added 2026-03-19, rendering overhauled 2026-03-20)
 
 `Assets/Controller/WaterController.cs` — singleton MonoBehaviour; must be in the scene.
 
-**Data**: `Tile.water` (`byte`, 0–16). 16 = fully filled tile. Only non-solid tiles hold water (solid tiles are skipped in simulation).
+**Data**: `Tile.water` (`ushort`, 0–160). `WaterController.WaterMax = 160` = fully filled tile. The 10× internal scale (instead of 0–16) eliminates the integer truncation dead zone in the spread formula (`diff/2 == 0` when `diff == 1`), which would otherwise leave water visibly stuck in a staircase. The dead zone shrinks to 1/10 of a visual unit — sub-pixel. Only non-solid tiles hold water.
 
-**Simulation**: `TickUpdate()` called every 0.2 s from `World.Update()`. Two passes, bottom-to-top:
-1. **Fall** — pour water straight down into the tile below if it has space (`flow = min(tile.water, 16 - below.water)`).
+**Simulation**: `TickUpdate()` called every 0.2 s from `World.Update()`. Three passes, bottom-to-top:
+1. **Fall** — pour water straight down (`flow = min(tile.water, WaterMax - below.water)`).
 2. **Spread** — equalize with one horizontal neighbor (`flow = (tile.water - neighbor.water) / 2`). Direction alternates left/right each tick to avoid directional bias.
+3. **Look-ahead equalization** — fixes diff-1 slopes that Pass 2 can't resolve (truncates to 0). When a tile is exactly 1 unit below its sweep-direction neighbor, scans further for a tile at +2 or higher and pulls 1 unit from it.
 
 Volume is conserved exactly (integer math, explicit transfers).
 
-**Rendering**: Each tile gets a child `GameObject("Water_x_y")` with a SpriteRenderer (sortingOrder 2, blue semi-transparent 1×1 sprite generated at runtime). Scale and position are updated every tick: `localScale.y = water/16f`, `localPosition.y = -0.5 + water/32f` (bottom-anchored).
+**Rendering**: GPU shader pipeline — zero per-frame CPU work.
+- `Assets/Lighting/Water.shader` (`Water/WaterSurface`) — URP 2D unlit sprite shader. Reads a 1-byte-per-pixel R8 surface mask, returns: transparent (0) / shimmer lerp (0.5) / surface highlight (1.0). Per-pixel shimmer uses `_Time.y` (frame-rate driven on GPU).
+- Surface mask texture (`TextureFormat.R8`, 1600×800 for 100×50 world): rebuilt on the CPU every 0.2 s (sim tick only). Encodes: `0`=no water, `127`=interior water, `255`=surface pixel (any of 8 orthogonal+diagonal neighbours is open air — non-solid, non-water). Water touching solid walls is NOT highlighted.
+- World-spanning `WaterSprite` GameObject: 1×1 white pixel sprite at PPU=1, scaled to `(nx, ny)` Unity units, placed at `(−0.5, −0.5)`. sortingOrder=2. Must be on the **`Water`** Unity layer, excluded from `LightFeature` litLayers and BackgroundCamera culling mask.
 
 **Mouse speed**: Water on either endpoint of a horizontal nav edge doubles the A* edge cost (→ 0.5× speed). Applied in `Graph.GetEdgeInfo()`.
 
-**World gen**: `WorldController.GenerateDefault()` seeds `water=16` at y=9 for x=[0,3] and x=[30,40], first clearing those tiles to empty.
+**World gen**: `WorldController.GenerateDefault()` seeds `water=WaterMax` at y=9 for x=[0,3] and x=[30,40], first clearing those tiles to empty.
 
 **Save/load**: `WorldSaveData.waterLevels` — flat `byte[]`, index `y * nx + x`. Omitted (null) if all-dry. Restored in `SaveSystem.ApplySaveData()` before tile types are applied.
 
-**ClearWorld**: `WaterController.ClearWater()` called from `WorldController.ClearWorld()` — zeros all `tile.water` and hides water quads.
+**ClearWorld**: `WaterController.ClearWater()` zeros all `tile.water`, clears the surface mask texture, and calls `UpdateSurfaceMask()`.
 
 ## Unit System — Fen / Liang
 

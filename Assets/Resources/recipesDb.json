@@ -51,6 +51,29 @@
             { "name": "dirt", "quantity": 1 }
         ]
     },{
+        "id": 13,
+        "job": "farmer",
+        "tile": "press",
+        "description": "press soybeans into soymilk",
+        "workload": 3.0,
+        "ninputs": [
+            { "name": "soybeans", "quantity": 2.0 },
+            { "name": "water", "quantity": 0.5 }
+        ],
+        "noutputs": [
+            { "name": "soymilk", "quantity": 1.0 }
+        ]
+    },{
+        "id": 12,
+        "job": "hauler",
+        "tile": "pump",
+        "description": "pump water",
+        "workload": 2.0,
+        "ninputs": [],
+        "noutputs": [
+            { "name": "water", "quantity": 1.0 }
+        ]
+    },{
         "id": 11,
         "job": "miner",
         "tile": "quarry",

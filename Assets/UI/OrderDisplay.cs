@@ -15,7 +15,7 @@ public class OrderDisplay : MonoBehaviour {
     public void Init(MarketOrder order) {
         _orderId = order.id;
         if (label != null)
-            label.text = $"{order.from}  x{ItemStack.FormatQ(order.quantity)}  @ {order.price}";
+            label.text = $"{order.from}  x{ItemStack.FormatQ(order.quantity)}  @ {order.price:0.##}";
 
         bool isOwn = order.from == TradingClient.playerName;
         if (cancelButton != null) cancelButton.SetActive(isOwn);

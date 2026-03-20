@@ -6,15 +6,18 @@ using System.Linq;
 using System.Runtime.Serialization;
 
 public class Reservable {
-    public int   capacity;
+    public int   capacity;          // hard max (from structType.capacity / JSON)
+    public int   effectiveCapacity; // player-set limit; defaults to capacity on construction
     public int   reserved;
     public float reservedAt; // Time.time when last Reserve() was called
 
     public Reservable (int capacity){
         this.capacity = capacity;
+        this.effectiveCapacity = capacity;
         reserved = 0;
     }
-    public bool Available() => reserved < capacity;
+    // Gates on effectiveCapacity so the player can restrict workers below the hard max.
+    public bool Available() => reserved < effectiveCapacity;
     public bool Reserve(){
         if (!Available()) return false;
         reserved++;

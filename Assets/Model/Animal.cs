@@ -30,8 +30,7 @@ public class Animal : MonoBehaviour{
     public float energy;     // every time you get 1 energy you can do 1 work
     public float efficiency; // energy gain rate
 
-    // list of skills goes here?
-    // maybe one for each job?
+    public SkillSet skills = new SkillSet();
 
     public Eating eating;
     public Eeping eeping;
@@ -116,6 +115,7 @@ public class Animal : MonoBehaviour{
                 SaveSystem.LoadInventory(foodSlotInv, pendingSaveData.foodSlotInv);
             if (pendingSaveData.toolSlotInv != null)
                 SaveSystem.LoadInventory(toolSlotInv, pendingSaveData.toolSlotInv);
+            skills.Deserialize(pendingSaveData.skillXp, pendingSaveData.skillLevel);
             pendingSaveData = null;
         } else {
             this.aName = "mouse" + id.ToString();
@@ -205,18 +205,14 @@ public class Animal : MonoBehaviour{
             if (task.Start()) return; }
         if (FindEquipment()) return;
 
-        // 2. Work orders, interleaved with CraftTask between p3 and p4:
-        //    ChooseOrder(1) → ChooseOrder(2) → ChooseOrder(3) → CraftTask → ChooseOrder(4)
+        // 2. Work orders: p1 → p2 → p3 (haul + craft) → p4
+        //    Craft orders are registered per-workstation building via RegisterWorkstation().
         var wom = WorkOrderManager.instance;
         if (wom != null) {
             wom.PruneStale();
             task = wom.ChooseOrder(this, 1); if (task != null) return;
             task = wom.ChooseOrder(this, 2); if (task != null) return;
             task = wom.ChooseOrder(this, 3); if (task != null) return;
-        }
-        task = new CraftTask(this);
-        if (task.Start()) return;
-        if (wom != null) {
             task = wom.ChooseOrder(this, 4); if (task != null) return;
         }
         task = null;
@@ -383,6 +379,27 @@ public class Animal : MonoBehaviour{
                     maxScore = score;
                     bestRecipe = recipe;
                 }
+            }
+        }
+        return bestRecipe;
+    }
+
+    // Like PickRecipe but scoped to a specific building instance assigned by the WorkOrderManager.
+    // Only considers recipes for that building type; skips the CanReachBuilding check since
+    // the building reference is already known to the caller.
+    public Recipe PickRecipeForBuilding(Building building){
+        var targets = InventoryController.instance.targets;
+        float maxScore = 0;
+        Recipe bestRecipe = null;
+        foreach (Recipe recipe in job.recipes){
+            if (recipe == null) continue;
+            if (recipe.tile != building.structType.name) continue;
+            if (RecipePanel.instance != null && !RecipePanel.instance.IsAllowed(recipe.id)) continue;
+            if (!ginv.SufficientResources(recipe.inputs)) continue;
+            float score = recipe.Score(targets);
+            if (score > maxScore){
+                maxScore = score;
+                bestRecipe = recipe;
             }
         }
         return bestRecipe;

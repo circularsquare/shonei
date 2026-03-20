@@ -44,11 +44,14 @@ public class Blueprint {
         go.transform.SetParent(StructController.instance.transform, true);
         go.name = "blueprint_" + structType.name;
 
-        sprite = structType.LoadSprite() ?? Resources.Load<Sprite>("Sprites/Buildings/default");
+        Sprite loadedSprite = structType.LoadSprite();
+        sprite = loadedSprite ?? Resources.Load<Sprite>("Sprites/Buildings/default");
         SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
         sr.sortingOrder = 100;
         sr.sprite = sprite;
         sr.color = new Color(0.8f, 0.9f, 1f, 0.5f); // blueprint half alpha
+        if (loadedSprite == null)
+            go.transform.localScale = new Vector3(structType.nx, Mathf.Max(1, structType.ny), 1f);
 
         costs = structType.costs;
         // One stack per cost item, capacity capped to exactly that item's cost quantity.

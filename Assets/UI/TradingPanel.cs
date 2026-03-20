@@ -68,6 +68,7 @@ public class TradingPanel : MonoBehaviour {
 
         if (itemInput != null) itemInput.onSubmit.AddListener(_ => OnClickQuery());
         if (chatInput != null) chatInput.onSubmit.AddListener(_ => OnClickSendChat());
+        if (orderQty != null) orderQty.contentType = TMP_InputField.ContentType.IntegerNumber;
 
         var client = TradingClient.instance;
         if (client != null) {
@@ -80,6 +81,15 @@ public class TradingPanel : MonoBehaviour {
             SetIndicator(false);
         }
         gameObject.SetActive(false);
+    }
+
+    void Update() {
+        // Tab while typing qty → jump to price field
+        if (orderQty != null && orderPrice != null
+                && orderQty.isFocused && Input.GetKeyDown(KeyCode.Tab)) {
+            orderPrice.ActivateInputField();
+            orderPrice.MoveTextEnd(false);
+        }
     }
 
     void OnDestroy() {
@@ -127,7 +137,7 @@ public class TradingPanel : MonoBehaviour {
     }
 
     void SpawnOrder(MarketOrder order, Transform parent) {
-        if (orderDisplayPrefab == null) { AddRow($"{order.from}  x{ItemStack.FormatQ(order.quantity)}  @ {order.price}", parent); return; }
+        if (orderDisplayPrefab == null) { AddRow($"{order.from}  x{ItemStack.FormatQ(order.quantity)}  @ {order.price:0.##}", parent); return; }
         var go = Instantiate(orderDisplayPrefab, parent, false);
         go.GetComponent<OrderDisplay>()?.Init(order);
     }
@@ -149,8 +159,19 @@ public class TradingPanel : MonoBehaviour {
     public void OnClickPlaceOrder() {
         string itemName = ItemName();
         if (itemName.Length == 0) { ShowAlert("Enter an item name."); return; }
-        if (!int.TryParse(orderPrice?.text, out int price) || price <= 0) { ShowAlert("Enter a valid price."); return; }
-        if (!int.TryParse(orderQty?.text,   out int qty)   || qty   <= 0) { ShowAlert("Enter a valid quantity."); return; }
+
+        // Price: liang/liang ratio, supports decimals (e.g. 0.3)
+        if (!float.TryParse(orderPrice?.text, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out float price) || price <= 0f) {
+            ShowAlert("Enter a valid price (e.g. 0.3)."); return;
+        }
+        price = Mathf.Round(price * 100f) / 100f; // clamp to nearest cent
+
+        // Qty: whole liang entered by user; converted to fen for wire/inventory
+        if (!int.TryParse(orderQty?.text, out int qtyLiang) || qtyLiang <= 0) {
+            ShowAlert("Enter a whole number quantity (min 1)."); return;
+        }
+        int qtyFen = qtyLiang * 100;
 
         if (!Db.itemByName.ContainsKey(itemName)) { ShowAlert($"Unknown item: {itemName}"); return; }
         Item item   = Db.itemByName[itemName];
@@ -159,22 +180,22 @@ public class TradingPanel : MonoBehaviour {
         if (market == null) { ShowAlert("No market building found."); return; }
 
         if (_orderIsBuy) {
-            int silverNeeded = qty * price;
+            int silverNeeded = Mathf.RoundToInt(qtyFen * price);
             int silverHave   = market.AvailableQuantity(silver);
-            if (silverHave < silverNeeded) { ShowAlert($"Need {silverNeeded} silver in market (have {silverHave})."); return; }
+            if (silverHave < silverNeeded) { ShowAlert($"Need {ItemStack.FormatQ(silverNeeded)} silver in market (have {ItemStack.FormatQ(silverHave)})."); return; }
             int spaceForItem = market.GetMarketSpace(item);
-            if (spaceForItem < qty) { ShowAlert($"Need {qty} space for {itemName} in market (have {spaceForItem})."); return; }
+            if (spaceForItem < qtyFen) { ShowAlert($"Need {ItemStack.FormatQ(qtyFen)} space for {itemName} in market (have {ItemStack.FormatQ(spaceForItem)})."); return; }
         } else {
             int itemHave = market.AvailableQuantity(item);
-            if (itemHave < qty) { ShowAlert($"Need {qty} {itemName} in market (have {itemHave})."); return; }
+            if (itemHave < qtyFen) { ShowAlert($"Need {ItemStack.FormatQ(qtyFen)} {itemName} in market (have {ItemStack.FormatQ(itemHave)})."); return; }
             int silverSpace = market.GetMarketSpace(silver);
-            int silverIncoming = qty * price;
-            if (silverSpace < silverIncoming) { ShowAlert($"Need {silverIncoming} space for silver in market (have {silverSpace})."); return; }
+            int silverIncoming = Mathf.RoundToInt(qtyFen * price);
+            if (silverSpace < silverIncoming) { ShowAlert($"Need {ItemStack.FormatQ(silverIncoming)} space for silver in market (have {ItemStack.FormatQ(silverSpace)})."); return; }
         }
 
         ShowAlert("");
         string side = _orderIsBuy ? "b" : "s";
-        TradingClient.instance?.SendOrder(itemName, side, price, qty);
+        TradingClient.instance?.SendOrder(itemName, side, price, qtyFen);
     }
 
     void ShowAlert(string msg) {
@@ -200,7 +221,7 @@ public class TradingPanel : MonoBehaviour {
 
     void DisplayFill(Fill fill) {
         bool discrete = Db.itemByName.TryGetValue(fill.item, out Item item) && item.discrete;
-        AddChat($"<color=#aaffaa>[fill] {fill.buyer} bought {ItemStack.FormatQ(fill.quantity, discrete)} {fill.item} from {fill.seller} @ {fill.price}</color>");
+        AddChat($"<color=#aaffaa>[fill] {fill.buyer} bought {ItemStack.FormatQ(fill.quantity, discrete)} {fill.item} from {fill.seller} @ {fill.price:0.##}</color>");
     }
 
     // -------------------------------------------------------------------------

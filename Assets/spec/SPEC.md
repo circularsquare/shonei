@@ -56,6 +56,7 @@ Assets/
 │   ├── Item.cs        Item type definitions
 │   ├── Db.cs          JSON database loader
 │   ├── ResearchSystem.cs  Research points + unlock logic
+│   ├── SkillSystem.cs     Skill enum + SkillSet (XP, levels, work speed bonus)
 │   ├── WorldSaveData.cs   Save data classes (add fields here when extending save)
 │   └── Reservable.cs  Resource reservation (capacity-based)
 ├── UI/                UI panels, displays, and tooltip system

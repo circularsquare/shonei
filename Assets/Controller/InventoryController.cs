@@ -43,13 +43,15 @@ public class InventoryController : MonoBehaviour {
         inventories.Remove(inv);
         if (byType.TryGetValue(inv.invType, out var list)) list.Remove(inv);
     }
-    // Sums unreserved quantity across Floor + Storage — the same scope FindPathItemStack searches.
+    // Sums unreserved quantity across Floor + Storage + Liquid — the same scope FindPathItemStack searches.
     public int TotalAvailableQuantity(Item item) {
         int total = 0;
         if (byType.TryGetValue(Inventory.InvType.Floor, out var f))
             foreach (Inventory inv in f) total += inv.AvailableQuantity(item);
         if (byType.TryGetValue(Inventory.InvType.Storage, out var s))
             foreach (Inventory inv in s) total += inv.AvailableQuantity(item);
+        if (byType.TryGetValue(Inventory.InvType.Liquid, out var l))
+            foreach (Inventory inv in l) total += inv.AvailableQuantity(item);
         return total;
     }
 
@@ -95,7 +97,15 @@ public class InventoryController : MonoBehaviour {
         return false;
     }
     void UpdateItemDisplay(Item item){
-        if (item == null){return;}
+        if (item == null) return;
+
+        // Hide items that can't physically go in the selected inventory type.
+        // This prevents liquids appearing in dry-storage views and vice versa.
+        if (selectedInventory != null && !Inventory.ItemTypeCompatible(selectedInventory.invType, item)) {
+            itemDisplayGos[item.id]?.SetActive(false);
+            return;
+        }
+
         // TODO: add thing at the top that indicates ur looking at a specific inventory
         bool hasItem = HaveAnyOfChildren(item);
 
@@ -110,8 +120,10 @@ public class InventoryController : MonoBehaviour {
                 itemDisplayGos[item.parent.id].GetComponent<ItemDisplay>()?.RefreshDropdownSprite();
         }
 
-        // Update text if discovered (even if quantity is now 0, e.g. after Reset)
+        // Update text if discovered (even if quantity is now 0, e.g. after Reset).
+        // Also re-activate the GO here in case a previous inventory type filter hid it.
         if (discoveredItems[item.id]){
+            itemDisplayGos[item.id]?.SetActive(true);
             GameObject itemDisplayGo = itemDisplayGos[item.id];
             if (itemDisplayGo == null){Debug.LogError("itemdisplaygo not found: " + item.name);return;}
 

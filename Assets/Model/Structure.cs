@@ -18,6 +18,10 @@ public class Structure {
     public Tile workTile => World.instance.GetTileAt(x + structType.workTileX, y + structType.workTileY);
     public Reservable res;
 
+    // Returns false to suppress the WOM craft order for this building without removing it.
+    // Override in subclasses to add runtime conditions (e.g. pump needs water below).
+    public virtual bool IsActive() => true;
+
     public Structure(StructType st, int x, int y){
         this.structType = st;
         this.x = x;
@@ -31,11 +35,15 @@ public class Structure {
         go.transform.SetParent(StructController.instance.transform, true);
         go.name = "structure_" + structType.name;
         
-        sprite = structType.LoadSprite() ?? Resources.Load<Sprite>("Sprites/Buildings/default");
+        Sprite loadedSprite = structType.LoadSprite();
+        sprite = loadedSprite ?? Resources.Load<Sprite>("Sprites/Buildings/default");
         sr = go.AddComponent<SpriteRenderer>();
         sr.sprite = sprite;
         if (structType.depth == 3) sr.sortingOrder = 1; // above tile (order 0), below buildings
-        res = structType.capacity > 0 ? new Reservable(structType.capacity) : null;
+        if (loadedSprite == null)
+            go.transform.localScale = new Vector3(structType.nx, Mathf.Max(1, structType.ny), 1f);
+        // Workstations don't use Structure.res — their WOM Craft order owns the reservation.
+        res = (structType.capacity > 0 && !structType.isWorkstation) ? new Reservable(structType.capacity) : null;
 
         if (structType.name == "torch") {
             go.AddComponent<LightSource>();
@@ -69,6 +77,19 @@ public class Structure {
 }
 
 
+/// <summary>
+/// Per-tile constraint checked by StructPlacement.CanPlaceHere before allowing placement.
+/// dx/dy offsets are relative to the placement anchor tile.
+/// </summary>
+public class TileRequirement {
+    public int dx {get; set;}
+    public int dy {get; set;}
+    public bool mustBeStandable {get; set;}
+    public bool mustHaveWater {get; set;}    // tile.water > 0
+    public bool mustBeEmpty {get; set;}      // structs[0] (building layer) must be null
+    public string requiredTileName {get; set;}
+}
+
 public class StructType {
     public int id {get; set;}
     public string name {get; set;}
@@ -78,13 +99,14 @@ public class StructType {
     public ItemQuantity[] costs;
     public float constructionCost {get; set;}
     public bool isTile {get; set;}
-    public bool isPlant; 
+    public bool isPlant;
     public int depth {get; set;} // 0=building, 1=platform, 2=foreground, 3=road
     public string njob {get; set;}
     public Job job;
     public int capacity {get; set;} // number of animals that can reserve this struct at once
     public string requiredTileName {get; set;} // tile that this struct must be built on
     public bool isStorage {get; set;} // true for storage buildings (drawers, crates, etc.)
+    public bool liquidStorage {get; set;} // true = creates InvType.Liquid instead of InvType.Storage (use on tank-type buildings)
     public int nStacks {get; set;} // number of item stacks in storage
     public int storageStackSize {get; set;} // max items per stack in storage
     public string category {get; set;} // build menu category: "structures", "plants", "production", "storage"
@@ -92,10 +114,12 @@ public class StructType {
     public int depleteAt {get; set;} // 0 = never depletes; >0 = deplete after this many uses
     public float pathCostReduction {get; set;} // subtracted from edge cost for horizontal moves (roads: 0.1)
     public bool solidTop {get; set;} // can animals stand on top of this structure?
+    public bool isWorkstation {get; set;} // true = registers a WOM Craft order when placed; use IsActive() to gate it
     public int workTileX {get; set;} // tile offset to the interaction/nav tile (default 0,0 = anchor)
     public int workTileY {get; set;}
     public int storageTileX {get; set;} // tile offset to the storage inventory tile (default 0,0 = anchor)
     public int storageTileY {get; set;}
+    public TileRequirement[] tileRequirements {get; set;} // extra per-tile constraints checked at placement
 
     public virtual Sprite LoadSprite() {
         if (isTile) {

@@ -27,6 +27,19 @@
         "njob": "farmer",
         "capacity": 1
     },{
+        "id": 560,
+        "name": "soybean",
+        "ncosts": [
+            { "name": "soybeans", "quantity": 1 }
+        ],
+        "nproducts": [
+            { "name": "soybeans", "quantity": 3 }
+        ],
+        "growthTime": 35,
+        "harvestTime": 3.0,
+        "njob": "farmer",
+        "capacity": 1
+    },{
         "id": 550,
         "name": "appletree",
         "ncosts": [

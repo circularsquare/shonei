@@ -10,7 +10,7 @@ public class WorldSaveData {
     public AnimalSaveData[] animals;
     public ResearchSaveData research;
     public int[] disabledRecipeIds; // null = all enabled
-    public byte[] waterLevels;      // flat array, index = y * nx + x; null if all-dry
+    public ushort[] waterLevels;    // flat array, index = y * nx + x; null if all-dry
 }
 
 public class ResearchSaveData {
@@ -33,6 +33,10 @@ public class StructureSaveData {
     public int plantGrowthStage;
     public bool plantHarvestable;
     public int uses;
+    // Workstation-only: persists the WOM Craft order's effectiveCapacity (player-set worker slot limit).
+    // null = field absent (old saves) → RegisterWorkstation defaults to full capacity.
+    // 0 = explicitly disabled. 1..capacity = player-set limit.
+    public int? workOrderEffectiveCapacity;
 }
 
 public class BlueprintSaveData {
@@ -48,6 +52,8 @@ public class InventorySaveData {
     public string invType;
     public ItemStackSaveData[] stacks;
     public int[] disallowedItemIds; // item IDs that have been explicitly disallowed
+    // Market inventories only: item name → target quantity in fen. null on all other inventory types.
+    public System.Collections.Generic.Dictionary<string, int> marketTargets;
 }
 
 public class ItemStackSaveData {
@@ -68,4 +74,6 @@ public class AnimalSaveData {
     public InventorySaveData inv;
     public InventorySaveData foodSlotInv; // null on old saves → slot starts empty
     public InventorySaveData toolSlotInv;
+    public float[] skillXp;    // null on old saves → all skills start at 0 xp
+    public int[]   skillLevel; // null on old saves → all skills start at level 0
 }

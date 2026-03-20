@@ -1,5 +1,16 @@
 meoww!!
 
+3/20
+- add water!
+    - water surface balancing
+- fixed cloud lighting
+- fixed market / order placement with fen and liang, can have prices in cents
+- added mouse skills!
+- added pumps!
+    - reorganized building placement requirements 
+    - added soybeans, soymilk, and press 
+- moved crafting to workorder system
+- can set workstation worker limit below normal capacity
 3/19
 - more workorder improvements
 - reorganize spec
@@ -15,7 +26,7 @@ meoww!!
 - cleaned up inventory display and infopanel
 - added recipe panel!
 3/16
-- multitile buildings!s
+- multitile buildings!
     - save buildings by struct list instead of by tile
     - use building workTile, storageTile coords
 - safer navigation / check preemptively if would fall
