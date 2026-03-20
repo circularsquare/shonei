@@ -51,7 +51,7 @@ public class BlueprintSaveData {
 public class InventorySaveData {
     public string invType;
     public ItemStackSaveData[] stacks;
-    public int[] disallowedItemIds; // item IDs that have been explicitly disallowed
+    public int[] allowedItemIds; // item IDs explicitly allowed; only saved for Storage/Liquid types (others default to all-allowed)
     // Market inventories only: item name → target quantity in fen. null on all other inventory types.
     public System.Collections.Generic.Dictionary<string, int> marketTargets;
 }
@@ -69,8 +69,9 @@ public class AnimalSaveData {
     public float energy;
     public float food;
     public float eep;
-    public float timeSinceAteWheat; // happiness
-    public float timeSinceAteFruit; // happiness
+    public float timeSinceAteWheat;   // happiness
+    public float timeSinceAteFruit;   // happiness
+    public float timeSinceAteSoymilk; // happiness
     public InventorySaveData inv;
     public InventorySaveData foodSlotInv; // null on old saves → slot starts empty
     public InventorySaveData toolSlotInv;

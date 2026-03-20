@@ -99,8 +99,9 @@ public class Animal : MonoBehaviour{
             this.eeping = new Eeping();
             this.eeping.eep = pendingSaveData.eep;
             this.happiness = new Happiness();
-            this.happiness.timeSinceAteWheat = pendingSaveData.timeSinceAteWheat;
-            this.happiness.timeSinceAteFruit = pendingSaveData.timeSinceAteFruit;
+            this.happiness.timeSinceAteWheat   = pendingSaveData.timeSinceAteWheat;
+            this.happiness.timeSinceAteFruit   = pendingSaveData.timeSinceAteFruit;
+            this.happiness.timeSinceAteSoymilk = pendingSaveData.timeSinceAteSoymilk;
             this.job = Db.GetJobByName(pendingSaveData.jobName) ?? Db.jobs[0];
             this.state = AnimalState.Idle;
             this.efficiency = eating.Efficiency() * eeping.Efficiency();

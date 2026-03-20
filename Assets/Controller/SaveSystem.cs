@@ -172,9 +172,13 @@ public class SaveSystem : MonoBehaviour {
                 decayCounter = stack.decayCounter
             };
         }
-        var disallowed = new List<int>();
-        foreach (var kv in inv.allowed) {
-            if (!kv.Value) disallowed.Add(kv.Key);
+        // Only Storage/Liquid use explicit allow lists — Floor/Animal default to all-allowed so skip them.
+        int[] allowedIds = null;
+        if (inv.invType == Inventory.InvType.Storage || inv.invType == Inventory.InvType.Liquid) {
+            var allowedList = new List<int>();
+            foreach (var kv in inv.allowed)
+                if (kv.Value) allowedList.Add(kv.Key);
+            allowedIds = allowedList.Count > 0 ? allowedList.ToArray() : null;
         }
 
         System.Collections.Generic.Dictionary<string, int> marketTargets = null;
@@ -185,10 +189,10 @@ public class SaveSystem : MonoBehaviour {
         }
 
         return new InventorySaveData {
-            invType            = inv.invType.ToString(),
-            stacks             = stacks,
-            disallowedItemIds  = disallowed.Count > 0 ? disallowed.ToArray() : null,
-            marketTargets      = marketTargets != null && marketTargets.Count > 0 ? marketTargets : null
+            invType        = inv.invType.ToString(),
+            stacks         = stacks,
+            allowedItemIds = allowedIds,
+            marketTargets  = marketTargets != null && marketTargets.Count > 0 ? marketTargets : null
         };
     }
 
@@ -201,8 +205,9 @@ public class SaveSystem : MonoBehaviour {
             energy             = a.energy,
             food               = a.eating.food,
             eep                = a.eeping.eep,
-            timeSinceAteWheat  = a.happiness.timeSinceAteWheat,
-            timeSinceAteFruit  = a.happiness.timeSinceAteFruit,
+            timeSinceAteWheat   = a.happiness.timeSinceAteWheat,
+            timeSinceAteFruit   = a.happiness.timeSinceAteFruit,
+            timeSinceAteSoymilk = a.happiness.timeSinceAteSoymilk,
             inv                = GatherInventory(a.inv),
             foodSlotInv        = GatherInventory(a.foodSlotInv),
             toolSlotInv        = GatherInventory(a.toolSlotInv),
@@ -396,11 +401,12 @@ public class SaveSystem : MonoBehaviour {
                     WorkOrderManager.instance?.RegisterHaul(inv.itemStacks[i]);
             }
         }
-        foreach (Item item in Db.itemsFlat) { inv.AllowItem(item); }
-        if (isd.disallowedItemIds != null)
-            foreach (int id in isd.disallowedItemIds)
+        // Constructor defaults serve as baseline (Storage=all-disallowed, Liquid=liquids-allowed, others=all-allowed).
+        // Apply the explicit allow list on top; null means "use defaults as-is" (e.g. Floor/Animal, or old saves).
+        if (isd.allowedItemIds != null)
+            foreach (int id in isd.allowedItemIds)
                 if (id < Db.items.Length && Db.items[id] != null)
-                    inv.DisallowItem(Db.items[id]);
+                    inv.AllowItem(Db.items[id]);
 
         if (isd.marketTargets != null && inv.targets != null) {
             foreach (var kv in isd.marketTargets)

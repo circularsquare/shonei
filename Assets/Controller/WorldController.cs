@@ -185,6 +185,7 @@ public class WorldController : MonoBehaviour {
         world.graph.Initialize();
 
         for (int i = 0; i < 4; i++) AnimalController.instance.AddAnimal(20, 10);
+        Camera.main.transform.position = new Vector3(20f, 13f, Camera.main.transform.position.z);
         defaultSetupCoroutine = StartCoroutine(DefaultJobSetup());
     }
 

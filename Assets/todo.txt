@@ -1,5 +1,4 @@
 - content
-    - water
     - trains
     - bunnies
     - magic / qi
@@ -24,7 +23,7 @@
     - global, market, need to have set target 
     - global can have
         - consume above amount?
-- priority
+- priority  
     - add inventory priority? or inventory pull orders
 - research
     - queue research projects, decide what fraction to move onto next project at
@@ -36,8 +35,8 @@
 - incentivize building lots of storage at once, make it easy i guess?
 - re-clean up audit/reconcile?
 - leisure!
-- flip savesystem to save what items are allowed==true
 - workplace workorder capacity system is kinda indirect
+- move functionality out of infopanel and into more specialized panels?
 
 
 BUGS

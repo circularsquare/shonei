@@ -130,6 +130,8 @@ Orders are stored as `List<WorkOrder>[] orders` — an array of four lists, one 
 
 Each `WorkOrder` carries a `Reservable res` (default capacity 1). **Orders stay in the queue permanently** — they are only removed when the underlying need goes away (blueprint destroyed, plant gone, etc.), not when claimed. `ChooseOrder` filters to `o.res.Available()`, tries each factory, and on success calls `order.res.Reserve(); task.workOrder = order`. When the task ends (success or fail), `Task.Cleanup()` calls `workOrder?.res.Unreserve(); workOrder = null`, making the order available for the next animal.
 
+`Reservable` has two capacity fields: `capacity` (hard max, set at registration from `structType.capacity`) and `effectiveCapacity` (player-adjustable; defaults to `capacity`). `Available()` gates on `effectiveCapacity`. For Craft orders, the player can lower `effectiveCapacity` via InfoPanel +/- buttons to restrict how many workers use a workstation at once. `effectiveCapacity` is persisted in `StructureSaveData.workOrderEffectiveCapacity` (nullable int; null on old saves → defaults to full capacity on load). `Structure.res` is **not** created for workstations — the WOM Craft order's `res` is the sole reservation tracker for them.
+
 This replaces the old pattern where claiming removed the order and `Cleanup` had to re-register it.
 
 ### Priority tiers
@@ -157,6 +159,7 @@ Orders are created once when the need first arises and removed only when the nee
 | `HaulToMarket` | `UpdateMarketOrders(inv)` when any item is below its target | `UpdateMarketOrders(inv)` when target is met; called from `MoveItemTo` (market dest/source) and `ItemDisplay` target buttons. `PruneStaleMarketOrders()` is a warning-level safety net only. |
 | `HaulFromMarket` | `UpdateMarketOrders(inv)` when any item exceeds its target | `UpdateMarketOrders(inv)` when excess is cleared |
 | `Research` | `StructController.Construct()` when a lab is placed | Lab deconstructed (`RemoveForTile`) |
+| `Craft` | `RegisterWorkstation(building)` when an `isWorkstation` building is placed or loaded | Building deconstructed (`RemoveWorkstationOrders`) |
 
 Research and Harvest orders are **per-source** (one order per lab/plant, keyed by `o.tile`). `ResearchTask` is constructed with the specific `Building lab` so it doesn't re-pathfind at init time.
 
@@ -215,7 +218,7 @@ All `Register*` methods are safe to call unconditionally — they self-guard wit
 3. **Add `OrderType`** to the `WorkOrderManager.OrderType` enum.
 4. **Add `Register*` method** with a predicate self-guard and a dedup guard (`orders.Exists(...)`). Returns `bool` (true = new order inserted).
 5. **Add a "needs order" predicate** (`private static bool XNeedsOrder(...)`) — shared by `Register*`, `Reconcile`, and `AuditOrders`. Does **not** need to check reservation state.
-6. **Set capacity if needed**: for multi-slot sources (e.g. a building that can have 2 workers), set `res = new Reservable(N)` in the `new WorkOrder { ... }` initializer. Default is 1.
+6. **Set capacity if needed**: for multi-slot sources (e.g. a building that can have 2 workers), set `res = new Reservable(N)` in the `new WorkOrder { ... }` initializer. Default is 1. If the player should be able to reduce slots at runtime, use `res.effectiveCapacity` — `Available()` gates on it rather than `capacity`. See `RegisterWorkstation` for the pattern.
 7. **Add removal**: use `RemoveForBlueprint`, `RemoveForTile`, or add a new `RemoveFor*` method for when the underlying need permanently disappears.
 8. **Register at the right moment**: push-register whenever the triggering condition first becomes true (state change, structure placed, etc.).
 9. **Save/load**: in `SaveSystem.Restore*`, register the order if the saved state requires it.

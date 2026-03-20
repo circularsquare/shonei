@@ -129,6 +129,7 @@
         "id": 230,
         "name": "soymilk",
         "decayRate": 1.5,
+        "foodValue": 15,
         "isLiquid": true,
         "children": null
     }
