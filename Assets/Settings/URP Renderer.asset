@@ -25,6 +25,9 @@ MonoBehaviour:
   directionalOnlyLayers:
     serializedVersion: 2
     m_Bits: 64
+  waterLayer:
+    serializedVersion: 2
+    m_Bits: 16
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
