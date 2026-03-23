@@ -14,6 +14,7 @@ Shader "Water/WaterSurface" {
         // Total game-pixel dimensions of the world (nx*PPT, ny*PPT).
         // Used only to compute per-pixel shimmer phase.
         _WorldPixelSize  ("World Pixel Size XY", Vector) = (1600, 800, 0, 0)
+        _SparkleWidth    ("Sparkle Width (px)", Float) = 2.0
     }
 
     SubShader {
@@ -46,6 +47,7 @@ Shader "Water/WaterSurface" {
                 float4 _WaterColorLight;
                 float4 _SurfaceColor;
                 float4 _WorldPixelSize;  // (totalPixW, totalPixH, 0, 0)
+                float  _SparkleWidth;
             CBUFFER_END
 
             struct Attributes {
@@ -65,6 +67,11 @@ Shader "Water/WaterSurface" {
                 return OUT;
             }
 
+            // Cheap pseudo-random hash: maps a 2D cell coordinate to 0–1.
+            float hash(float2 p) {
+                return frac(sin(dot(p, float2(127.1, 311.7))) * 43758.5453);
+            }
+
             half4 frag(Varyings IN) : SV_Target {
                 // One texture sample tells us everything — no neighbor checks needed.
                 float mask = SAMPLE_TEXTURE2D(_SurfaceTex, sampler_SurfaceTex, IN.uv).r;
@@ -77,7 +84,29 @@ Shader "Water/WaterSurface" {
                 float px = floor(IN.uv.x * _WorldPixelSize.x);
                 float py = floor(IN.uv.y * _WorldPixelSize.y);
                 float s = (sin(_Time.y * 1.8 + px * 0.3 + py * 0.5) * 0.5 + 0.5) * 0.4;
-                return lerp(_WaterColorDark, _WaterColorLight, s);
+                half4 waterCol = lerp(_WaterColorDark, _WaterColorLight, s);
+
+                // --- Sparkles: small bright regions that fade in and out ---
+                // Divide into cells (~10×1 pixels). Thin horizontal rows.
+                float2 cell = floor(float2(px / 10.0, py));
+                float cellRand = hash(cell);
+
+                // Only ~15% of cells are sparkle candidates at any moment.
+                // Each cell has a unique phase; sparkle activates when wave peaks.
+                float sparkleWave = sin(_Time.y * 0.6 + cellRand * 40.0);
+                float sparkleActive = smoothstep(0.82, 1.0, sparkleWave);
+
+                // Horizontal streak: ~3px wide, exactly 1px tall (row already locked).
+                float localX = px - cell.x * 10.0;
+                float centerX = hash(cell + 0.5) * 6.0 + 2.0;
+                float inCluster = 1.0 - saturate(abs(localX - centerX) / _SparkleWidth);
+
+                // Per-pixel flicker within the cluster for a lively look.
+                float pixelPhase = hash(float2(px, py));
+                float flicker = sin(_Time.y * 2.5 + pixelPhase * 20.0) * 0.5 + 0.5;
+
+                float sparkle = sparkleActive * inCluster * flicker;
+                return lerp(waterCol, half4(1, 1, 1, waterCol.a), sparkle * 0.7);
             }
 
             ENDHLSL

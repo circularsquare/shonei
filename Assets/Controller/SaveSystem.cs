@@ -457,5 +457,37 @@ public class SaveSystem : MonoBehaviour {
 
     public bool SlotExists(string slotName) => System.IO.File.Exists(SlotPath(slotName));
 
+    public void DeleteSlot(string slotName) {
+        string path = SlotPath(slotName);
+        if (!System.IO.File.Exists(path)) { Debug.LogError("DeleteSlot: slot not found: " + slotName); return; }
+        System.IO.File.Delete(path);
+        Debug.Log("Deleted slot: " + slotName);
+    }
+
+    // Renames a save file on disk. Returns true on success.
+    public bool RenameSlot(string oldName, string newName) {
+        string oldPath = SlotPath(oldName);
+        string newPath = SlotPath(newName);
+        if (!System.IO.File.Exists(oldPath)) { Debug.LogError("RenameSlot: source not found: " + oldName); return false; }
+        if (System.IO.File.Exists(newPath)) { Debug.LogError("RenameSlot: destination exists: " + newName); return false; }
+        System.IO.File.Move(oldPath, newPath);
+        Debug.Log("Renamed slot \"" + oldName + "\" → \"" + newName + "\"");
+        return true;
+    }
+
+    // Returns animal count stored in a save file (reads from disk). Returns 0 on failure.
+    public int GetAnimalCount(string slotName) {
+        string path = SlotPath(slotName);
+        if (!System.IO.File.Exists(path)) { Debug.LogError("GetAnimalCount: slot not found: " + slotName); return 0; }
+        try {
+            string json = System.IO.File.ReadAllText(path);
+            WorldSaveData data = JsonConvert.DeserializeObject<WorldSaveData>(json);
+            return data?.animals?.Length ?? 0;
+        } catch (System.Exception e) {
+            Debug.LogError("GetAnimalCount: failed to parse \"" + slotName + "\": " + e.Message);
+            return 0;
+        }
+    }
+
     string SlotPath(string slotName) => System.IO.Path.Combine(SaveDir, slotName + ".json");
 }

@@ -63,6 +63,8 @@ Assets/
 │   ├── BuildPanel.cs, InfoPanel.cs, MenuPanel.cs, SaveMenuPanel.cs
 │   ├── TradingPanel.cs, RecipePanel.cs, ResearchPanel.cs
 │   ├── ItemDisplay.cs, JobDisplay.cs, OrderDisplay.cs, ResearchDisplay.cs
+│   ├── SaveSlotEntry.cs   Per-row component for the save slot scroll list
+│   ├── ConfirmationPopup.cs  Reusable yes/cancel modal (singleton)
 │   ├── TooltipSystem.cs, Tooltippable.cs
 │   └── UI.cs          Static singleton accessor hub
 ├── Lighting/          Custom lighting pipeline (ScriptableRendererFeature)

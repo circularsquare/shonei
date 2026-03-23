@@ -63,7 +63,7 @@ Tasks decompose into an ordered queue of Objectives. Each task:
 | `ResearchTask` | WOM p4 | scientist | Navigate to a specific lab, work in loops |
 | `ObtainTask` | survival | any | Fetch a specific item (food/equip) |
 | `EepTask` | survival | any | Navigate home and sleep |
-| `DropTask` | survival | any | Drop excess main inventory |
+| `DropTask` | survival | any | Drop excess main inventory — prefers nearby storage/tank (10-tile bonus) over floor |
 | `GoTask` | survival | any | Navigate to a tile |
 
 **Objectives (atomic steps):**

@@ -56,6 +56,54 @@ Load:    ClearWorld() + SaveSystem.ApplySaveData()  →  PostLoadInit (next fram
 
 ---
 
+## Save Slot UI
+
+### SaveMenuPanel (`Assets/UI/SaveMenuPanel.cs`)
+
+Singleton panel. Opened via `Toggle()`. On open it calls `RefreshSlotList()`, which reads all `.json` files from `SaveDir`, instantiates a `SaveSlotEntry` prefab per slot, and passes each entry its slot name, mouse count (read from the JSON on disk), and whether to auto-focus the rename field.
+
+| Button | Method | Behaviour |
+|--------|--------|-----------|
+| New Save | `OnClickNewSave()` | Saves current game to a unique name ("new save", "new save (2)", …), refreshes list, auto-focuses the new entry's name field for renaming |
+| Reset | `OnClickReset()` | Opens `ConfirmationPopup` ("reset world?" / "reset"); on confirm: closes panel, calls `SaveSystem.Reset()` |
+
+Public `Refresh()` wrapper triggers a full list rebuild — called by `SaveSlotEntry` after a delete.
+
+### SaveSlotEntry (`Assets/UI/SaveSlotEntry.cs`)
+
+Per-row MonoBehaviour on the slot prefab (`Assets/Resources/Prefabs/SaveSlot.prefab`). Initialised by `SaveMenuPanel` via `Init(slotName, miceCount, startRenaming)`.
+
+| Element | Behaviour |
+|---------|-----------|
+| `nameInput` (TMP_InputField) | Editable slot name; `onEndEdit` triggers rename — validates non-empty and no collision, calls `SaveSystem.RenameSlot`, reverts on failure |
+| `miceLabel` (TMP) | "Mice: N" — read from the save file on panel open; refreshed after Save |
+| Save button | `SaveSystem.Save(slotName)`, refreshes mice label |
+| Load button | `SaveSystem.Load(slotName)`, closes panel |
+| Delete button | Opens `ConfirmationPopup` ("really delete …?"); on confirm: `SaveSystem.DeleteSlot`, `SaveMenuPanel.Refresh()` |
+
+### SaveSystem slot methods
+
+| Method | Description |
+|--------|-------------|
+| `GetSaveSlots()` | Returns all `.json` filenames in `SaveDir` (no extension) |
+| `SlotExists(name)` | File existence check |
+| `RenameSlot(old, new)` | `File.Move`; returns false + LogError on missing source or name collision |
+| `DeleteSlot(name)` | `File.Delete`; LogError if not found |
+| `GetAnimalCount(name)` | Deserialises the save and returns `animals.Length`; used for the mice label |
+
+### ConfirmationPopup (`Assets/UI/ConfirmationPopup.cs`)
+
+Reusable singleton modal. **Keep inactive in scene** — `Awake` hides it immediately if accidentally left active, and `Show` finds it via `FindObjectOfType<ConfirmationPopup>(true)` (searches inactive objects) on first call.
+
+```csharp
+ConfirmationPopup.Show("message", () => { /* on confirm */ });
+ConfirmationPopup.Show("message", onConfirm, confirmLabel: "delete"); // custom button label
+```
+
+Cancel always just closes. The popup sets itself as last sibling on show so it renders above all other panels. A full-screen transparent `Blocker` child (Raycast Target ON) absorbs clicks behind it.
+
+---
+
 ## Time System
 
 The main game clock lives in `World.Update()` (World.cs). Each frame it accumulates `timer += Time.deltaTime` and fires tick events at fixed intervals:

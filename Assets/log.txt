@@ -1,9 +1,12 @@
 meoww!!
 
+3/23
+- fixed cloud lighting again...
+- added tofu! and gypsum
+- multiple save file interface
 3/20
 - add water!
     - water surface balancing
-- fixed cloud lighting
 - fixed market / order placement with fen and liang, can have prices in cents
 - added mouse skills!
 - added pumps!

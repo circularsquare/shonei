@@ -132,5 +132,16 @@
         "foodValue": 15,
         "isLiquid": true,
         "children": null
+    },{
+        "id": 240,
+        "name": "gypsum",
+        "decayRate": 0.1,
+        "children": null
+    },{
+        "id": 241,
+        "name": "tofu",
+        "decayRate": 4.0,
+        "foodValue": 40,
+        "children": null
     }
 ]

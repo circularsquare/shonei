@@ -3,33 +3,26 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-// Save/Load/Reset menu panel.
+// Save/Load menu panel — scrollable per-slot list.
 //
-// Unity setup required:
-//   1. Create a GameObject "SaveSystem" in the scene, attach SaveSystem.cs to it.
-//   2. Create a UI Button (bottom-right corner) that calls SaveMenuPanel.Toggle().
-//   3. Create a Panel "SaveMenuPanel", attach this script to it, set inactive by default.
-//   4. Inside the panel:
-//      - An InputField named "SlotNameInput" (TMP_InputField) for typing slot names.
-//      - A Button "SaveButton"   -> onClick calls OnClickSave()
-//      - A Button "LoadButton"   -> onClick calls OnClickLoad()
-//      - A Button "ResetButton"  -> onClick calls OnClickReset()
-//      - A ScrollRect/VerticalLayoutGroup "SlotList" for listing existing save slots.
-//   5. Assign slotEntryPrefab: a prefab with a Button whose child text shows the slot name;
-//      clicking it populates the input field.
+// Unity setup:
+//   1. Panel "SaveMenuPanel" — attach this script, inactive by default.
+//   2. Top bar buttons:
+//      - "NewSaveButton"  → onClick: OnClickNewSave()
+//      - "ResetButton"    → onClick: OnClickReset()
+//   3. ScrollRect containing a VerticalLayoutGroup child — assign that child to slotList.
+//   4. slotEntryPrefab: prefab with SaveSlotEntry component; assign its 4 child refs in the prefab Inspector.
 
 public class SaveMenuPanel : MonoBehaviour {
     public static SaveMenuPanel instance { get; protected set; }
 
-    public TMP_InputField slotNameInput;
-    public Transform slotList;          // parent for slot entry buttons
-    public GameObject slotEntryPrefab;  // prefab: Button with TMP child text
-    public TextMeshProUGUI feedbackText;// optional: shows "Saved!" / "Loaded!" messages
+    [Header("Inspector Refs")]
+    public Transform  slotList;        // VerticalLayoutGroup content transform inside ScrollRect
+    public GameObject slotEntryPrefab; // prefab with SaveSlotEntry component
 
     void Start() {
         if (instance != null) { Debug.LogError("there should only be one SaveMenuPanel"); }
         instance = this;
-        //gameObject.SetActive(false);
     }
 
     public void Toggle() {
@@ -38,45 +31,59 @@ public class SaveMenuPanel : MonoBehaviour {
         if (opening) RefreshSlotList();
     }
 
-    public void OnClickSave() {
-        string slot;
-        if (slotNameInput == null) {slot = "default";}
-        else {slot = slotNameInput.text.Trim();}
-        SaveSystem.instance.Save(slot);
-        SetFeedback("Saved to \"" + slot + "\".");
-        RefreshSlotList();
-    }
+    // -----------------------------------------------------------------------
+    // Button handlers (wired in Inspector)
+    // -----------------------------------------------------------------------
 
-    public void OnClickLoad() {
-        string slot;
-        if (slotNameInput == null) {slot = "default";}
-        else {slot = slotNameInput.text.Trim();}
-        if (!SaveSystem.instance.SlotExists(slot)) { SetFeedback("Slot \"" + slot + "\" not found."); return; }
-        SaveSystem.instance.Load(slot);
-        gameObject.SetActive(false);
+    public void OnClickNewSave() {
+        if (SaveSystem.instance == null) { Debug.LogError("SaveMenuPanel: SaveSystem.instance is null"); return; }
+        string name = GenerateNewSlotName();
+        SaveSystem.instance.Save(name);
+        RefreshSlotList(startRenamingSlot: name);
     }
 
     public void OnClickReset() {
-        SaveSystem.instance.Reset();
+        ConfirmationPopup.Show("reset world?", () => {
+            gameObject.SetActive(false);
+            SaveSystem.instance.Reset();
+        }, confirmLabel: "reset");
     }
 
-    void RefreshSlotList() {
-        if (slotList == null || slotEntryPrefab == null) return;
+    // -----------------------------------------------------------------------
+    // Slot list
+    // -----------------------------------------------------------------------
+
+    // Clears and rebuilds the scroll list. If startRenamingSlot is set, that
+    // entry will auto-focus its name input field (used after creating a new save).
+    public void Refresh() => RefreshSlotList();
+
+    void RefreshSlotList(string startRenamingSlot = null) {
+        if (slotList == null || slotEntryPrefab == null) {
+            Debug.LogError("SaveMenuPanel: slotList or slotEntryPrefab not assigned");
+            return;
+        }
         foreach (Transform child in slotList) Destroy(child.gameObject);
 
         List<string> slots = SaveSystem.instance.GetSaveSlots();
         foreach (string slot in slots) {
-            string captured = slot;
-            GameObject entry = Instantiate(slotEntryPrefab, slotList);
-            entry.name = "Slot_" + slot;
-            TextMeshProUGUI label = entry.GetComponentInChildren<TextMeshProUGUI>();
-            if (label != null) label.text = slot;
-            Button btn = entry.GetComponent<Button>();
-            if (btn != null) btn.onClick.AddListener(() => slotNameInput.text = captured);
+            int miceCount = SaveSystem.instance.GetAnimalCount(slot);
+            GameObject go = Instantiate(slotEntryPrefab, slotList);
+            go.name = "SlotEntry_" + slot;
+            SaveSlotEntry entry = go.GetComponent<SaveSlotEntry>();
+            if (entry == null) { Debug.LogError("SaveMenuPanel: slotEntryPrefab missing SaveSlotEntry component"); continue; }
+            entry.Init(slot, miceCount, startRenaming: slot == startRenamingSlot);
         }
     }
 
-    void SetFeedback(string msg) {
-        if (feedbackText != null) feedbackText.text = msg;
+    // Returns "new save", "new save (2)", "new save (3)", etc. — first name with no file on disk.
+    string GenerateNewSlotName() {
+        string baseName = "new save";
+        if (!SaveSystem.instance.SlotExists(baseName)) return baseName;
+        int n = 2;
+        while (true) {
+            string candidate = baseName + " (" + n + ")";
+            if (!SaveSystem.instance.SlotExists(candidate)) return candidate;
+            n++;
+        }
     }
 }

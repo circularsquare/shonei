@@ -569,15 +569,17 @@ public class DeliverToBlueprintObjective : Objective { // always queued after Go
         }
     }
 }
-public class DropObjective : Objective { 
+public class DropObjective : Objective {
     private Item item;
+    private Inventory targetInv; // null = drop on floor
     public DropObjective(Task task, Item item) : base(task) {
         this.item = item;
     }
     public override void Start(){
         if (animal.inv.Quantity(item) == 0) {Complete(); return;}
-        Path dropPath = animal.nav.FindPathToDrop(item, animal.inv.Quantity(item));
+        var (dropPath, storageInv) = animal.nav.FindPathToDropTarget(item, animal.inv.Quantity(item));
         if (dropPath != null){
+            targetInv = storageInv;
             destination = dropPath.tile;
             animal.nav.Navigate(dropPath);
             animal.state = Animal.AnimalState.Moving;
@@ -587,7 +589,12 @@ public class DropObjective : Objective {
         }
     }
     public override void OnArrival(){
-        animal.DropItem(item);
+        if (targetInv != null && targetInv.GetStorageForItem(item) > 0) {
+            animal.inv.MoveItemTo(targetInv, item, animal.inv.Quantity(item));
+            // Any leftover (storage filled up between planning and arrival) stays in inv, retried next DropTask
+        } else {
+            animal.DropItem(item);
+        }
         Complete();
     }
 }

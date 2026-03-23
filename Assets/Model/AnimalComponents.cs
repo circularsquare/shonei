@@ -166,16 +166,31 @@ public class Nav {
 
     public Path FindPathToStorage(Item item, int r = 40) {
         return FindPathToInv(new[] { Inventory.InvType.Storage, Inventory.InvType.Liquid },
-            inv => inv.GetStorageForItem(item) > 0, r); }
+            inv => inv.GetStorageForItem(item) > 0, r).path; }
     public Path FindPathToDrop(Item item, int animalQuantity, int r = 3){
         return FindPathTo(t => {
             if (t.inv == null) return true; // empty tile: full stack worth of space
             int space = t.inv.GetMergeSpace(item);
             return space > 0 && (space >= Task.MinHaulQuantity || space >= animalQuantity);
         }, r, true); }
-    private Path FindPathToInv(Inventory.InvType[] types, Func<Inventory, bool> filter, int r) {
+    // Returns the best drop target: storage/liquid inv if within storageBonusTiles of nearest floor tile, else floor.
+    // targetInv is null when dropping on floor.
+    public (Path path, Inventory targetInv) FindPathToDropTarget(Item item, int animalQuantity, int storageBonusTiles = 10) {
+        Path floorPath = FindPathToDrop(item, animalQuantity);
+        float floorCost = floorPath != null ? floorPath.cost : float.MaxValue;
+        var (storagePath, storageInv) = FindPathToInv(new[] { Inventory.InvType.Storage, Inventory.InvType.Liquid },
+            inv => inv.GetStorageForItem(item) > 0, r: 40);
+        // Storage preferred if its cost minus the bonus is still <= floor cost
+        if (storageInv != null && storagePath.cost - storageBonusTiles <= floorCost)
+            return (storagePath, storageInv);
+        if (floorPath != null)
+            return (floorPath, null);
+        return (storagePath, storageInv); // no floor reachable: fall back to any storage
+    }
+    private (Path path, Inventory inv) FindPathToInv(Inventory.InvType[] types, Func<Inventory, bool> filter, int r) {
         var ic = InventoryController.instance;
         Path closestPath = null;
+        Inventory closestInv = null;
         float closestCost = float.MaxValue;
         Node myNode = a.TileHere().node;
         foreach (var type in types) {
@@ -189,10 +204,11 @@ public class Nav {
                 if (p != null && p.cost < closestCost) {
                     closestCost = p.cost;
                     closestPath = p;
+                    closestInv = inv;
                 }
             }
         }
-        return closestPath;
+        return (closestPath, closestInv);
     }
     private Path FindPathToStruct(StructType st, Func<Structure, bool> filter = null, int r = 40) {
         var list = StructController.instance.GetByType(st);
@@ -239,7 +255,7 @@ public class Nav {
     }
     public (Path, ItemStack) FindPathItemStack(Item item, int r = 40){
         Path path = FindPathToInv(new[] { Inventory.InvType.Floor, Inventory.InvType.Storage, Inventory.InvType.Liquid },
-            inv => inv.ContainsAvailableItem(item), r);
+            inv => inv.ContainsAvailableItem(item), r).path;
         if (path == null) return (null, null);
         return (path, path.tile.inv.GetItemStack(item));
     }
@@ -256,7 +272,7 @@ public class Nav {
         Path destPath = FindPathToInv(new[] { Inventory.InvType.Floor },
             inv => world.GetTileAt(inv.x, inv.y) != sourceTile
                 && inv.HasSpaceForItem(item)
-                && inv.Quantity(item) > sourceTile.inv.Quantity(item), r);
+                && inv.Quantity(item) > sourceTile.inv.Quantity(item), r).path;
         if (destPath == null) return null;
 
         Tile destTile = destPath.tile;
@@ -391,7 +407,7 @@ public class Happiness {
     public void NoteAte(Item food, float fraction = 1f) {
         if      (food.name == "wheat")   timeSinceAteWheat   = Mathf.Max(0f, timeSinceAteWheat   - fraction * recentThreshold);
         else if (food.name == "apple")   timeSinceAteFruit   = Mathf.Max(0f, timeSinceAteFruit   - fraction * recentThreshold);
-        else if (food.name == "soymilk") timeSinceAteSoymilk = Mathf.Max(0f, timeSinceAteSoymilk - fraction * recentThreshold);
+        else if (food.name == "soymilk" || food.name == "tofu") timeSinceAteSoymilk = Mathf.Max(0f, timeSinceAteSoymilk - fraction * recentThreshold);
         // add more mappings here as new foods are added
     }
 
@@ -399,7 +415,7 @@ public class Happiness {
     public bool WouldHelp(Item food) {
         if (food.name == "wheat")   return timeSinceAteWheat   >= recentThreshold - soonThreshold;
         if (food.name == "apple")   return timeSinceAteFruit   >= recentThreshold - soonThreshold;
-        if (food.name == "soymilk") return timeSinceAteSoymilk >= recentThreshold - soonThreshold;
+        if (food.name == "soymilk" || food.name == "tofu") return timeSinceAteSoymilk >= recentThreshold - soonThreshold;
         return false;
     }
 
@@ -418,7 +434,7 @@ public class Happiness {
         bool wheat   = timeSinceAteWheat   < recentThreshold;
         bool fruit   = timeSinceAteFruit   < recentThreshold;
         bool soymilk = timeSinceAteSoymilk < recentThreshold;
-        return $"wheat: {(wheat?1:0)}/1, fruit: {(fruit?1:0)}/1, soymilk: {(soymilk?1:0)}/1, housing: {(house?1:0)}/1  ({score:0.0})";
+        return $"wheat: {(wheat?1:0)}/1, fruit: {(fruit?1:0)}/1, soymilk/tofu: {(soymilk?1:0)}/1, housing: {(house?1:0)}/1  ({score:0.0})";
     }
 }
 

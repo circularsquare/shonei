@@ -32,13 +32,19 @@ Custom `ScriptableRendererFeature` pipeline — no URP Light2Ds used. Final resu
    - Pass 1 (`litLayers & ~shadowCasterLayers & ~directionalOnlyLayers`): alpha = 0.5
    - Pass 0 (`litLayers & shadowCasterLayers & ~directionalOnlyLayers`): alpha = 1.0
 
-2. **LightPass** (`AfterRenderingTransparents`) — clears light RT to `SunController.GetAmbientColor()`, then draws:
-   - Point lights (torches, etc.): per-light quad scaled to `outerRadius×2`, screen blend (`BlendOp Add, Blend One OneMinusSrcColor`), radial falloff × NdotL. **Skips pixels where normals RT alpha is 0–0.4** (directional-only tier).
-   - Sun (directional): fullscreen quad, additive blend (`BlendOp Add, Blend One One`), NdotL with `_SunDir` + 16-step shadow march.
+2. **LightPass** (`AfterRenderingTransparents`) — `ConfigureTarget(LightRTId)` in `OnCameraSetup` binds the temp RT (required for the clear and for `cmd.Blit` to target it correctly across all cameras). Clears light RT to `SunController.GetAmbientColor()`, then draws:
+   - Point lights (torches, etc.): `cmd.DrawMesh` per-light quad scaled to `outerRadius×2`, screen blend (`BlendOp Add, Blend One OneMinusSrcColor`), radial falloff × NdotL. **Skips pixels where normals RT alpha is 0–0.4** (directional-only tier).
+   - Sun (directional): `cmd.Blit(null, LightRTId, sunMat)`, additive blend (`BlendOp Add, Blend One One`), NdotL with `_SunDir` + 16-step shadow march. **Must use `cmd.Blit`, not `cmd.DrawMesh`** — DrawMesh silently fails to write to the temp RT for cameras without PixelPerfectCamera (e.g. BackgroundCamera). Blit handles its own fullscreen geometry and RT binding internally, bypassing the issue.
 
 3. **Composite** — `cmd.Blit(lightRT, scene, LightComposite)` multiplies scene by light map (`Blend DstColor Zero`). **No-op (returns `(1,1,1,1)`) for pixels with normals RT alpha < 0.25** (empty sky/background); those pixels are instead tinted by `BackgroundCamera.backgroundColor`.
 
 **LightFeature skips cameras with `cullingMask == 0`** to avoid wasted GPU work (e.g. the background camera).
+
+### URP render target gotchas
+
+- **`ConfigureTarget` vs `cmd.SetRenderTarget`**: URP docs say to use `ConfigureTarget` in `OnCameraSetup` rather than raw `cmd.SetRenderTarget` in `Execute`. `ConfigureTarget` integrates with URP's internal RT management and ensures the target is bound correctly for all cameras. Without it, `ClearRenderTarget` and `cmd.Blit` may write to stale/wrong targets.
+- **`cmd.DrawMesh` can silently fail on some cameras**: DrawMesh output may appear in Frame Debugger but produce no visible output on the temp RT for certain cameras (observed with BackgroundCamera, which lacks PixelPerfectCamera). The root cause is unclear but likely related to URP's internal state management. **Workaround**: use `cmd.Blit` for fullscreen passes (sun). Point lights still use DrawMesh and work because BackgroundCamera has no point-light-receiving sprites (directional-only tier skips torch contribution in LightCircle).
+- **Temp RT format**: `_CapturedNormalsRT` must be **ARGB32** (explicitly set in `OnCameraSetup`). The camera's default HDR format (B10G11R11) has no alpha channel, which breaks the tier encoding.
 
 ### Sky / background
 

@@ -68,7 +68,7 @@ public class SunController : MonoBehaviour {
         twilightFraction = _twilightFraction = CalcTwilightFraction(phase);
         brightness       = _brightness       = Brightness(phase);
         UpdateSun();
-        Camera.main.backgroundColor = SkyColor();
+        skyColor = SkyColor();
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
@@ -78,6 +78,9 @@ public class SunController : MonoBehaviour {
 
     // 0 at night, 1 during day; linear transition over twilightLength/2 around sunrise/sunset.
     public static float brightness { get; private set; }
+
+    // 5-stop sky gradient color for the current time of day.
+    public static Color skyColor { get; private set; }
 
     public static float GetDayPhase() {
         if (World.instance == null) return 0f;
@@ -132,6 +135,17 @@ public class SunController : MonoBehaviour {
         return Mathf.Clamp01((phase - srStart) / half);                               // sunrise 0→1
     }
 
+    // Like Brightness but transitions over the first half of twilight only:
+    // sunset 1→0 over (0.75-half → 0.75), sunrise 0→1 over (0.25 → 0.25+half).
+    // Torches use (1 - this) so they're fully lit by mid-sunset.
+    float TorchBrightness(float phase) {
+        float half = twilightLength * 0.5f;
+        if (phase >= 0.75f || phase < 0.25f) return 0f;                                  // night
+        if (phase >= 0.25f + half && phase <= 0.75f - half) return 1f;                    // full day
+        if (phase >= 0.75f - half) return 1f - Mathf.Clamp01((phase - (0.75f - half)) / half); // sunset 1→0
+        return Mathf.Clamp01((phase - 0.25f) / half);                                    // sunrise 0→1
+    }
+
     // Sunset:  day → earlyDusk (0.75-half) → dusk (0.75) → night (0.75+half)
     // Sunrise: symmetric reverse — night (0.25-half) → dusk (0.25) → earlyDusk (0.25+half) → day
     Color SunColor(float phase) {
@@ -171,9 +185,12 @@ public class SunController : MonoBehaviour {
         sunSource.lightColor = SunColor(phase);
         sunSource.intensity  = brightness * sunIntensityNoon;
 
+        // Torches ramp to full over the first half of sunset/sunrise,
+        // ahead of the sun — so they're already bright by deep dusk.
+        float torchFactor = 1f - TorchBrightness(GetDayPhase());
         foreach (LightSource ls in LightSource.all)
             if (!ls.isDirectional)
-                ls.intensity = ls.baseIntensity * (1f - brightness);
+                ls.intensity = ls.baseIntensity * torchFactor;
     }
 
     // 5-stop gradient: skyDay → skyTwilight1 → skyTwilight2 → skyTwilight3 → skyNight

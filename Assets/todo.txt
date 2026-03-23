@@ -9,6 +9,12 @@
         - books for gaining skills 
         - manuals for learning technologies
         - scriptoriums
+- mice should be able to drop into inventories... not just floor. they should prefer inventories
+
+- tofu  
+    - need to make sure target system works properly...
+- have pump drain water 
+- add rain that replenishes water?
 - consider whether itemstacks are useful
     - need for drawers...
 - inventory
@@ -19,6 +25,9 @@
 - visuals
     - improve mouse animation
     - add icons to inventory panel view / itemdisplay
+- trading
+    - show nothing when offline
+    - have neither buy or selected by default
 - ponder inventory management
     - global, market, need to have set target 
     - global can have
@@ -40,8 +49,9 @@
 
 
 BUGS
+- mouse can get stuck if you reassign job on an unstandable tile and they have to drop, i think?
 
 TODAY GOALS
-- add water shinies
-- fix cloud paralla
-- 
+- save
+    - multiple slots 
+        - at least a confirmation window lol

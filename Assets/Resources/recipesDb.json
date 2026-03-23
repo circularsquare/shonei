@@ -52,7 +52,7 @@
         ]
     },{
         "id": 13,
-        "job": "farmer",
+        "job": "cook",
         "tile": "press",
         "description": "press soybeans into soymilk",
         "workload": 3.0,
@@ -86,7 +86,21 @@
         "noutputs": [
             { "name": "stone", "quantity": 1 },
             { "name": "coal", "quantity": 1, "chance": 0.10 },
-            { "name": "iron ore", "quantity": 1, "chance": 0.10 }
+            { "name": "iron ore", "quantity": 1, "chance": 0.10 },
+            { "name": "gypsum", "quantity": 1, "chance": 0.05 }
+        ]
+    },{
+        "id": 15,
+        "job": "cook",
+        "tile": "press",
+        "description": "coagulate soymilk into tofu",
+        "workload": 5.0,
+        "ninputs": [
+            { "name": "soymilk", "quantity": 2.0 },
+            { "name": "gypsum", "quantity": 0.2 }
+        ],
+        "noutputs": [
+            { "name": "tofu", "quantity": 1.0 }
         ]
     }
 ]

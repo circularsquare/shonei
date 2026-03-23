@@ -6,9 +6,9 @@ using UnityEngine;
 //   isDirectional = false  → point light (torch, lantern, etc.)
 //   isDirectional = true   → directional light (sun); drawn fullscreen, no falloff
 public class LightSource : MonoBehaviour {
-    public Color lightColor   = new Color(1f, 0.8f, 0.5f);
+    public Color lightColor   = new Color(1f, 0.75f, 0.3f);
     public float intensity    = 0.0f;
-    public float baseIntensity = 0.8f;
+    public float baseIntensity = 0.80f;
 
     [Header("Point light")]
     public float outerRadius = 10f;

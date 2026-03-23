@@ -201,6 +201,8 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         var desc = rd.cameraData.cameraTargetDescriptor;
         desc.depthBufferBits = 0;
         cmd.GetTemporaryRT(LightRTId, desc, FilterMode.Bilinear);
+        // Required: binds the RT so ClearRenderTarget in Execute targets it.
+        ConfigureTarget(LightRTId);
     }
 
     public override void Execute(ScriptableRenderContext context, ref RenderingData rd) {
@@ -213,10 +215,7 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         cmd.SetViewMatrix(view);
         cmd.SetProjectionMatrix(proj);
 
-        var fullscreenMatrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(10000f, 10000f, 1f));
-
         // ── 1. Clear light RT to ambient color ───────────────────────────────
-        cmd.SetRenderTarget(LightRTId);
         Color ambient = SunController.GetAmbientColor();
         cmd.ClearRenderTarget(false, true, ambient);
 
@@ -257,7 +256,9 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
             cmd.SetGlobalVector("_SunDir",       SunController.GetSunDirection());
             cmd.SetGlobalFloat("_SunHeight",     src.lightHeight);
             cmd.SetGlobalFloat("_AmbientNormal", ambientNormal);
-            cmd.DrawMesh(quad, fullscreenMatrix, sunMat, 0, 0, null);
+            // Blit instead of DrawMesh — DrawMesh silently fails to write to
+            // the temp RT for some cameras (e.g. BackgroundCamera without PixelPerfectCamera).
+            cmd.Blit(null, LightRTId, sunMat);
         }
 
         // ── 4. Multiply-blit light RT onto the scene ─────────────────────────
