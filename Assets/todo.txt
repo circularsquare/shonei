@@ -43,5 +43,5 @@ BUGS
 
 TODAY GOALS
 - add water shinies
-- crafttask WOM
-    - set workplace capacity manually (to 0 for inactive)
+- fix cloud paralla
+- 

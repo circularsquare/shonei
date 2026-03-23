@@ -9,14 +9,14 @@ using System.Linq;
 public class ItemDisplay : MonoBehaviour {
     public Item item;
     public GameObject toggleGo;
-    [System.NonSerialized] public bool open;
+    [System.NonSerialized] public bool open = true;
     public Sprite spriteOpen;
     public Sprite spriteCollapsed;
     public Sprite spriteLeaf; // no children
     private Image dropdownImage;
 
     public void Start(){
-        open = true; // always start expanded, overrides any serialized value
+        // open = true is set at field declaration to avoid timing issues with UpdateItemDisplay running before Start()
         item = Db.itemByName[gameObject.name.Split('_')[1]];
         Transform btn = transform.Find("HorizontalLayout/ButtonDropdown");
         if (btn != null) dropdownImage = btn.GetComponent<Image>();
@@ -38,11 +38,13 @@ public class ItemDisplay : MonoBehaviour {
         foreach (Item child in item.children){
             if (child.IsDiscovered()){ // don't toggle if undiscovered
                 InventoryController.instance.itemDisplayGos[child.id].SetActive(open);
-                RectTransform rectTransform = GetComponent<RectTransform>();
-                LayoutRebuilder.ForceRebuildLayoutImmediate(rectTransform);
             }
         }
         RefreshDropdownSprite();
+        // Rebuild from the panel root so all parent containers reflow, not just this row.
+        Canvas.ForceUpdateCanvases();
+        RectTransform panelRect = InventoryController.instance.inventoryPanel.GetComponent<RectTransform>();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(panelRect);
     }
     public void OnClickTargetUp(){
         Inventory sel = InventoryController.instance.selectedInventory;

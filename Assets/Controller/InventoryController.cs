@@ -96,6 +96,14 @@ public class InventoryController : MonoBehaviour {
         }
         return false;
     }
+    // Returns false if any ancestor ItemDisplay is collapsed, meaning this item should be hidden.
+    bool IsVisibleInTree(Item item){
+        if (item.parent == null) return true;
+        ItemDisplay parentDisplay = itemDisplayGos[item.parent.id]?.GetComponent<ItemDisplay>();
+        if (parentDisplay == null) return true;
+        return parentDisplay.open && IsVisibleInTree(item.parent);
+    }
+
     void UpdateItemDisplay(Item item){
         if (item == null) return;
 
@@ -112,7 +120,7 @@ public class InventoryController : MonoBehaviour {
         // Handle first-time discovery
         if (hasItem && discoveredItems[item.id] == false){
             discoveredItems[item.id] = true;
-            itemDisplayGos[item.id].SetActive(true);
+            itemDisplayGos[item.id].SetActive(IsVisibleInTree(item));
             Canvas.ForceUpdateCanvases();
             LayoutRebuilder.ForceRebuildLayoutImmediate(inventoryPanel.GetComponent<RectTransform>());
             // Refresh parent's dropdown sprite now that it has a discovered child
@@ -121,9 +129,9 @@ public class InventoryController : MonoBehaviour {
         }
 
         // Update text if discovered (even if quantity is now 0, e.g. after Reset).
-        // Also re-activate the GO here in case a previous inventory type filter hid it.
+        // Respect tree collapse state — don't re-activate items whose parent is collapsed.
         if (discoveredItems[item.id]){
-            itemDisplayGos[item.id]?.SetActive(true);
+            itemDisplayGos[item.id]?.SetActive(IsVisibleInTree(item));
             GameObject itemDisplayGo = itemDisplayGos[item.id];
             if (itemDisplayGo == null){Debug.LogError("itemdisplaygo not found: " + item.name);return;}
 
