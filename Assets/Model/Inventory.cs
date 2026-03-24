@@ -52,7 +52,7 @@ public class Inventory{
         return space - incomingRes[item].reserved;
     }
 
-    public Inventory(int n = 1, int stackSize = 1000, InvType invType = InvType.Floor, int x = 0, int y = 0) {
+    public Inventory(int n = 1, int stackSize = 2500, InvType invType = InvType.Floor, int x = 0, int y = 0) {
         nStacks = n;
         this.stackSize = stackSize;
         this.invType = invType;
@@ -430,6 +430,41 @@ public class Inventory{
                 else
                     WorkOrderManager.instance?.RemoveHaulForStack(stack);
             }
+        }
+    }
+    /// <summary>Toggles item and all its descendant leaf items together.</summary>
+    public void ToggleAllowItemWithChildren(Item item){
+        bool newState = !allowed[item.id];
+        SetAllowRecursive(item, newState);
+    }
+    void SetAllowRecursive(Item item, bool state){
+        if (state) AllowItem(item);
+        else       DisallowItem(item);
+        if (item.children != null)
+            foreach (Item child in item.children)
+                SetAllowRecursive(child, state);
+    }
+    /// <summary>Allow all compatible items in this inventory.</summary>
+    public void AllowAll(){
+        foreach (Item item in Db.itemsFlat) {
+            if (item == null) continue;
+            if (!ItemTypeCompatible(invType, item)) continue;
+            AllowItem(item);
+        }
+    }
+    /// <summary>Disallow all items in this inventory.</summary>
+    public void DenyAll(){
+        foreach (Item item in Db.itemsFlat) {
+            if (item == null) continue;
+            DisallowItem(item);
+        }
+    }
+    /// <summary>Copies allowed state from another inventory's allowed dictionary.</summary>
+    public void PasteAllowed(Dictionary<int, bool> source){
+        foreach (var kvp in source) {
+            if (!allowed.ContainsKey(kvp.Key)) continue;
+            if (kvp.Value) AllowItem(Db.items[kvp.Key]);
+            else           DisallowItem(Db.items[kvp.Key]);
         }
     }
 

@@ -14,6 +14,11 @@ using UnityEngine;
 //   Ambient:       0.90  (–10%)
 //
 // Transitions lerp over lerpDuration seconds (default 5s).
+//
+// Wind: Ornstein-Uhlenbeck random walk, updated each hour.
+//   step = -0.02 * wind  +  Uniform(-0.05, 0.05)
+//   The -0.02*wind term pulls back toward zero (at wind=0.5, mean step = -0.01).
+//   Positive = blowing right. Used by RainParticles for sideways drop velocity.
 public class WeatherSystem {
     public static WeatherSystem instance { get; private set; }
 
@@ -22,7 +27,10 @@ public class WeatherSystem {
     // 0 = fully clear, 1 = fully raining. Lerps smoothly on weather change.
     public float rainAmount { get; private set; }
 
-    const float lerpDuration = 5f;
+    // Positive = wind blowing right. Updated each hour via random walk.
+    public float wind { get; private set; }
+
+    const float lerpDuration = 4f;
 
     // Called by World.Update() every frame.
     public void Tick(float dt) {
@@ -32,8 +40,10 @@ public class WeatherSystem {
 
     // Called by World.Update() once per in-game hour.
     public void OnHourElapsed() {
+        wind += -0.02f * wind + Random.Range(-0.05f, 0.05f);
+
         if (!isRaining) {
-            if (Random.value < 0.1f) SetRain(true);
+            if (Random.value < 0.2f) SetRain(true);
         } else {
             if (Random.value < 0.2f) SetRain(false);
             ReplenishRainwater();
@@ -62,7 +72,8 @@ public class WeatherSystem {
     }
 
     void SetRain(bool rain) {
+        if (rain){Debug.Log("raining");}
+        else {Debug.Log("unraining");}
         isRaining = rain;
-        Debug.Log("Weather: " + (rain ? "Rain started" : "Rain stopped"));
     }
 }

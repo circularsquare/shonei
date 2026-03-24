@@ -8,10 +8,20 @@
         - books for gaining skills 
         - manuals for learning technologies
         - scriptoriums
-- mice should be able to drop into inventories... not just floor. they should prefer inventories
 
-- consider whether itemstacks are useful
-    - need for drawers...
+- item hierachy
+    - make items only leaves. groups can be nested. display groups differently. 
+        - basically make wood separate.
+- storage stuff
+    - blueprint stacking on solid blueprints 
+        - higher are inactive 
+    - bulk inv selection?
+    - global storages overview panel? 
+    - haulers need to stop just pumping infinite water...
+- UI
+    - item icons, with tooltip
+    - automatically close other panels when you open a temporary panel... like market, research, recipe, or inventory (?)
+    - move functionality out of infopanel and into more specialized panels?
 - inventory
     - have a "keep" setting that invs can toggle to keep food for consumption and stuff like that. 
 - plant
@@ -33,14 +43,14 @@
     - lock postrequisites?
 - dynamic objectives!
 - crafttask priority...
-- incentivize building lots of storage at once, make it easy i guess?
+
 - re-clean up audit/reconcile?
 - leisure!
 - workplace workorder capacity system is kinda indirect
-- move functionality out of infopanel and into more specialized panels?
+
 
 
 BUGS
-- mouse can get stuck if you reassign job on an unstandable tile and they have to drop, i think?
+- mouse can get stuck if you reassign job on an unstandable tile and they have to drop. might be fixed
 
 TODAY GOALS

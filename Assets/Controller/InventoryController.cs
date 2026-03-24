@@ -12,7 +12,7 @@ public class InventoryController : MonoBehaviour {
     public static InventoryController instance {get; protected set;}
     public GlobalInventory globalInventory;
     public GameObject inventoryPanel;
-    public GameObject itemDisplay; // prefab 
+    public GameObject itemDisplay; // prefab
     private World world;
     public Inventory selectedInventory; // if u click on a drawer, allows u to set what its assigned to
     public Dictionary<int, bool> discoveredItems;
@@ -20,6 +20,8 @@ public class InventoryController : MonoBehaviour {
     public Dictionary<int, int> targets;
 
     public TextMeshProUGUI inventoryTitle; // assign in inspector
+    [SerializeField] private StoragePanel storagePanel; // assign in inspector
+    public Dictionary<int, bool> allowedClipboard; // copied filter config for paste
     public List<Inventory> inventories = new List<Inventory>(); // list of invs
     public Dictionary<Inventory.InvType, List<Inventory>> byType = new Dictionary<Inventory.InvType, List<Inventory>>();
 
@@ -66,6 +68,9 @@ public class InventoryController : MonoBehaviour {
             inv.TickUpdate();
         }
         UpdateItemsDisplay();
+        // Update the storage panel if it's visible
+        if (storagePanel != null && storagePanel.gameObject.activeSelf)
+            storagePanel.UpdateDisplay();
     }
 
     void AddItemDisplay(Item item){
@@ -81,7 +86,12 @@ public class InventoryController : MonoBehaviour {
         itemDisplayGos[item.id] = itemDisplayGo;
         itemDisplayGo.name = "ItemDisplay_" + item.name;
         itemDisplayGo.SetActive(discoveredItems[item.id]);
-        UpdateItemDisplay(item);    
+
+        // Global panel items: show targets, hide allow toggle
+        ItemDisplay display = itemDisplayGo.GetComponent<ItemDisplay>();
+        display.SetDisplayMode(ItemDisplay.DisplayMode.Global);
+
+        UpdateItemDisplay(item);
     }
     bool HaveAnyOfChildren(Item item){ // this is a temporary fix while items are not actually their parents!
         if (globalInventory.Quantity(item.id) != 0){
@@ -104,17 +114,18 @@ public class InventoryController : MonoBehaviour {
         return parentDisplay.open && IsVisibleInTree(item.parent);
     }
 
+    /// <summary>True when the global panel is being used to show a market inventory.</summary>
+    private bool IsMarketMode => selectedInventory != null && selectedInventory.invType == Inventory.InvType.Market;
+
     void UpdateItemDisplay(Item item){
         if (item == null) return;
 
-        // Hide items that can't physically go in the selected inventory type.
-        // This prevents liquids appearing in dry-storage views and vice versa.
-        if (selectedInventory != null && !Inventory.ItemTypeCompatible(selectedInventory.invType, item)) {
+        // In market mode, hide items incompatible with the market inventory.
+        if (IsMarketMode && !Inventory.ItemTypeCompatible(selectedInventory.invType, item)) {
             itemDisplayGos[item.id]?.SetActive(false);
             return;
         }
 
-        // TODO: add thing at the top that indicates ur looking at a specific inventory
         bool hasItem = HaveAnyOfChildren(item);
 
         // Handle first-time discovery
@@ -135,21 +146,23 @@ public class InventoryController : MonoBehaviour {
             GameObject itemDisplayGo = itemDisplayGos[item.id];
             if (itemDisplayGo == null){Debug.LogError("itemdisplaygo not found: " + item.name);return;}
 
+            // Global panel always shows global quantities; market mode shows market quantities.
+            ItemDisplay itemDisplayComp = itemDisplayGo.GetComponent<ItemDisplay>();
             string text;
-            if (selectedInventory != null){text = item.name + ": " + ItemStack.FormatQ(selectedInventory.Quantity(item), item.discrete);}
+            if (IsMarketMode){text = item.name + ": " + ItemStack.FormatQ(selectedInventory.Quantity(item), item.discrete);}
             else {text = item.name + ": " + ItemStack.FormatQ(globalInventory.Quantity(item.id), item.discrete);}
-            Transform textGo = itemDisplayGo.transform.Find("HorizontalLayout/TextItem");
-            if (textGo != null){textGo.gameObject.GetComponent<TMPro.TextMeshProUGUI>().text = text;}
+            if (itemDisplayComp.itemText != null) itemDisplayComp.itemText.text = text;
 
-            int targetQty = (selectedInventory?.invType == Inventory.InvType.Market)
+            int targetQty = IsMarketMode
                 ? selectedInventory.targets[item]
                 : targets[item.id];
             text = "/" + ItemStack.FormatQ(targetQty, item.discrete);
-            Transform textTargetGo = itemDisplayGo.transform.Find("HorizontalLayout/TextItemTarget");
-            if (textTargetGo != null){textTargetGo.gameObject.GetComponent<TMPro.TextMeshProUGUI>().text = text;}
+            if (itemDisplayComp.targetText != null) itemDisplayComp.targetText.text = text;
 
-            ItemDisplay itemDisplayComp = itemDisplayGo.GetComponent<ItemDisplay>();
-            itemDisplayComp.LoadAllowed();
+            // LoadAllowed only relevant in market mode (global panel has no toggles)
+            if (IsMarketMode) {
+                itemDisplayComp.LoadAllowed();
+            }
 
             if (item.parent != null){
                 UpdateItemDisplay(item.parent);
@@ -176,8 +189,47 @@ public class InventoryController : MonoBehaviour {
     }
     public void SelectInventory(Inventory inv){
         selectedInventory = inv;
-        if (inventoryTitle != null)
-            inventoryTitle.text = inv == null ? "town" : inv.displayName;
+
+        if (inv == null) {
+            // Deselect: show global view, hide storage panel
+            if (inventoryTitle != null) inventoryTitle.text = "town";
+            if (storagePanel != null) storagePanel.Hide();
+        } else if (inv.invType == Inventory.InvType.Storage || inv.invType == Inventory.InvType.Liquid) {
+            // Storage/Liquid: global panel stays as global, storage panel shows details
+            if (inventoryTitle != null) inventoryTitle.text = "town";
+            if (storagePanel != null) storagePanel.Show(inv);
+        } else {
+            // Market (or other): overwrite global panel with this inventory's view (existing behavior)
+            if (inventoryTitle != null) inventoryTitle.text = inv.displayName;
+            if (storagePanel != null) storagePanel.Hide();
+        }
+
         UpdateItemsDisplay();
+    }
+
+    // --- Allow All / Deny All (wire to UI buttons in editor) ---
+    // These now only apply to market mode on the global panel.
+    // Storage allow/deny is handled by StoragePanel.
+    public void OnClickAllowAll(){
+        if (selectedInventory == null) return;
+        selectedInventory.AllowAll();
+        UpdateItemsDisplay();
+    }
+    public void OnClickDenyAll(){
+        if (selectedInventory == null) return;
+        selectedInventory.DenyAll();
+        UpdateItemsDisplay();
+    }
+
+    // --- Copy / Paste filters (Factorio-style: shift+LMB copy, shift+RMB paste) ---
+    public void CopyAllowed(Inventory inv){
+        allowedClipboard = new Dictionary<int, bool>(inv.allowed);
+        Debug.Log($"Copied filter from {inv.displayName} at ({inv.x},{inv.y})");
+    }
+    public void PasteAllowed(Inventory inv){
+        if (allowedClipboard == null) { Debug.Log("No filter copied yet"); return; }
+        inv.PasteAllowed(allowedClipboard);
+        if (selectedInventory == inv) UpdateItemsDisplay();
+        Debug.Log($"Pasted filter to {inv.displayName} at ({inv.x},{inv.y})");
     }
 }

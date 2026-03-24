@@ -5,11 +5,14 @@ meoww!!
 - deferred task refresh to fix mice getting stuck on unreachable tiles sometimes
 - rain! particle system
     - replenishes world water 
+- dedicated display for storage inv!
+- copy paste storage filters (shift left click, right click)
 3/23
 - fixed cloud lighting again...
 - added tofu! and gypsum
 - multiple save file interface
 - recipe first search for crafttasks (but also check proximity of workorders)
+- mice drop to inventories first
 3/20
 - add water!
     - water surface balancing

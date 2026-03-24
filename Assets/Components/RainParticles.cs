@@ -11,6 +11,7 @@ public class RainParticles : MonoBehaviour {
     [SerializeField] float         maxEmissionRate          = 200f;
     [SerializeField] float         maxAlpha                 = 0.7f;
     [SerializeField] float         emitterHeightAboveCamera = 12f;
+    [SerializeField] float         windSpeedScale           = 3f;   // world-units/s per unit of wind
     [SerializeField] ParticleSystem splashPS;
     [SerializeField] int            splashCountPerDrop      = 3;
     [SerializeField] float          splashMinSpeed          = 0f;
@@ -38,6 +39,11 @@ public class RainParticles : MonoBehaviour {
         }
 
         float amount = WeatherSystem.instance?.rainAmount ?? 0f;
+        float wind   = WeatherSystem.instance?.wind      ?? 0f;
+
+        var vel = ps.velocityOverLifetime;
+        vel.enabled = true;
+        vel.x = wind * windSpeedScale;
 
         var emission = ps.emission;
         emission.rateOverTime = maxEmissionRate * amount;

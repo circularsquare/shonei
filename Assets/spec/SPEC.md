@@ -34,7 +34,7 @@ Assets/
 │   ├── AnimalController.cs  Animal spawning + rendering
 │   ├── StructController.cs  Structure placement + rendering
 │   ├── PlantController.cs   Plant rendering
-│   ├── InventoryController.cs  Global inventory tracking + item sprite display + haul logic
+│   ├── InventoryController.cs  Global inventory tracking + item display + selection routing (see SPEC-ui.md)
 │   ├── AnimationController.cs  Animal sprite animation
 │   ├── WorkOrderManager.cs  Centralised work queue — registers, prioritises, and dispatches tasks
 │   ├── SaveSystem.cs        Save/load/reset — all Gather* and Restore* methods live here
@@ -63,6 +63,7 @@ Assets/
 │   ├── BuildPanel.cs, InfoPanel.cs, MenuPanel.cs, SaveMenuPanel.cs
 │   ├── TradingPanel.cs, RecipePanel.cs, ResearchPanel.cs
 │   ├── ItemDisplay.cs, JobDisplay.cs, OrderDisplay.cs, ResearchDisplay.cs
+│   ├── StoragePanel.cs        Storage/liquid detail panel (slot view + allow tree, see SPEC-ui.md)
 │   ├── SaveSlotEntry.cs   Per-row component for the save slot scroll list
 │   ├── ConfirmationPopup.cs  Reusable yes/cancel modal (singleton)
 │   ├── TooltipSystem.cs, Tooltippable.cs
@@ -113,3 +114,4 @@ Depth-0 buildings with custom behaviour subclass `Building` (e.g. `PumpBuilding`
 | [SPEC-rendering.md](SPEC-rendering.md) | Depth layers, sprite sorting, custom lighting pipeline, normal maps |
 | [SPEC-trading.md](SPEC-trading.md) | WebSocket protocol, matching engine, TradingClient, TradingPanel, in-game market logistics |
 | [SPEC-research.md](SPEC-research.md) | Research points mechanic, node structure, key classes, save data |
+| [SPEC-ui.md](SPEC-ui.md) | Inventory UI panels — global panel, StoragePanel, ItemDisplay DisplayMode, selection routing |

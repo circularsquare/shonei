@@ -113,10 +113,22 @@ public class MouseController : MonoBehaviour {
         }
 
 
+        // Shift+RMB on storage = paste filters (before drag handling consumes the click)
+        if (Input.GetMouseButtonDown(1) && mouseMode == MouseMode.Select
+            && (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+            && tileAt?.inv != null && IsStorageType(tileAt.inv.invType)) {
+            InventoryController.instance.PasteAllowed(tileAt.inv);
+        }
+
         // register click
         if (Input.GetMouseButtonDown(0)) {
             Vector3 clickPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             if (mouseMode == MouseMode.Select){ // display info
+                // Shift+LMB on storage = copy filters
+                bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+                if (shift && tileAt?.inv != null && IsStorageType(tileAt.inv.invType)) {
+                    InventoryController.instance.CopyAllowed(tileAt.inv);
+                } else {
                 Collider2D[] hits = Physics2D.OverlapPointAll(clickPos);
                 var animals = new System.Collections.Generic.List<Animal>();
                 foreach (var col in hits) {
@@ -135,6 +147,7 @@ public class MouseController : MonoBehaviour {
                         InventoryController.instance.SelectInventory(null); // deselect inventory (show global)
                     }
                 }
+                } // end shift-else
 
             } else if (mouseMode == MouseMode.Build) {
                 Tile placeTile = anchorTile ?? tileAt;
@@ -164,4 +177,7 @@ public class MouseController : MonoBehaviour {
             BuildPanel.instance.CloseSubPanel();
         }
     }
+
+    static bool IsStorageType(Inventory.InvType t) =>
+        t == Inventory.InvType.Storage || t == Inventory.InvType.Market || t == Inventory.InvType.Liquid;
 }
