@@ -111,6 +111,12 @@ public class StructController : MonoBehaviour {
         // After any tile/building change, check if items on the tile above are now floating.
         world.FallIfUnstandable(tile.x, tile.y + 1);
         world.graph.RebuildComponents();
+        // Refresh any blueprints stacked directly above — they may have just become unsuspended.
+        for (int i = 0; i < st.nx; i++) {
+            Tile above = world.GetTileAt(tile.x + i, tile.y + 1);
+            if (above == null) continue;
+            for (int d = 0; d < 4; d++) above.GetBlueprintAt(d)?.RefreshColor();
+        }
         return true;
     }
 

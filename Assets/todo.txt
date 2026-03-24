@@ -3,18 +3,18 @@
     - bunnies
     - magic / qi
     - farming buildings
+        - silk 
+        - grooming?
     - mouse skills, flesh out?
     - books
         - books for gaining skills 
         - manuals for learning technologies
         - scriptoriums
 - storage stuff
-    - blueprint stacking on solid blueprints 
         - higher are inactive 
     - bulk inv selection?
     - global storages overview panel? 
 - UI
-    - item icons, with tooltip
     - automatically close other panels when you open a temporary panel... like market, research, recipe, or inventory (?)
     - move functionality out of infopanel and into more specialized panels?
 
@@ -23,7 +23,7 @@
     - make plants grow from sunlight? shading
 - visuals
     - improve mouse animation
-    - add icons to inventory panel view / itemdisplay
+    - make item icons more... uniformly round? satisfying looking?
 - ponder inventory management
     - global, market, need to have set target 
     - global can have
@@ -48,3 +48,6 @@ BUGS
 - mouse can get stuck if you reassign job on an unstandable tile and they have to drop. might be fixed
 
 TODAY GOALS
+    - blueprint stacking on solid blueprints 
+    - test this!!
+        - i think currently doesn't work, it needs to not have a workorder

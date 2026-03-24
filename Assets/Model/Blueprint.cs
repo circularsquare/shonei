@@ -68,12 +68,32 @@ public class Blueprint {
             }
         }
         StructController.instance.AddBlueprint(this);
+        RefreshColor(); // apply suspended tint if placed without solid support below
     }
     public void RefreshColor() {
-        var color = state == BlueprintState.Deconstructing
-            ? new Color(1f, 0.3f, 0.3f, 0.5f)
-            : new Color(0.8f, 0.9f, 1f, 0.5f);
+        Color color;
+        if (state == BlueprintState.Deconstructing)
+            color = new Color(1f, 0.3f, 0.3f, 0.5f);
+        else if (IsSuspended())
+            color = new Color(0.6f, 0.6f, 0.7f, 0.4f); // greyed-out: waiting for support below
+        else
+            color = new Color(0.8f, 0.9f, 1f, 0.5f);
         go.GetComponent<SpriteRenderer>().color = color;
+    }
+
+    /// <summary>
+    /// True when this blueprint is waiting for support below to be built.
+    /// Suspended blueprints are placed validly but mice should not supply or construct them
+    /// until the surface below becomes solid.
+    /// </summary>
+    public bool IsSuspended() {
+        if (structType.isTile || structType.name == "empty" || structType.requiredTileName != null)
+            return false;
+        for (int i = 0; i < structType.nx; i++) {
+            Node node = World.instance.graph.nodes[tile.x + i, tile.y];
+            if (node != null && !node.standable) return true;
+        }
+        return false;
     }
 
     public static Blueprint CreateDeconstructBlueprint(Tile tile) {

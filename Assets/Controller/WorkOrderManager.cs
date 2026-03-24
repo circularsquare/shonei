@@ -120,7 +120,8 @@ public class WorkOrderManager : MonoBehaviour {
             factory = a => new ConstructTask(a, bp),
             blueprint = bp,
             canDo = a => a.job == bp.structType.job,
-            getDistance = a => Mathf.Abs(bp.tile.x - a.x) + Mathf.Abs(bp.tile.y - a.y)
+            getDistance = a => Mathf.Abs(bp.tile.x - a.x) + Mathf.Abs(bp.tile.y - a.y),
+            isActive = () => !bp.IsSuspended()
         });
         return true;
     }
@@ -134,7 +135,8 @@ public class WorkOrderManager : MonoBehaviour {
             factory = a => new SupplyBlueprintTask(a, bp),
             blueprint = bp,
             canDo = a => a.job == bp.structType.job,
-            getDistance = a => Mathf.Abs(bp.tile.x - a.x) + Mathf.Abs(bp.tile.y - a.y)
+            getDistance = a => Mathf.Abs(bp.tile.x - a.x) + Mathf.Abs(bp.tile.y - a.y),
+            isActive = () => !bp.IsSuspended()
         });
         return true;
     }

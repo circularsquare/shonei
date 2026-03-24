@@ -23,7 +23,9 @@ public static class StructPlacement {
             }
         }
 
-        if (st.name != "empty" && st.requiredTileName == null && !world.graph.nodes[tile.x, tile.y].standable) return false;
+        if (st.name != "empty" && st.requiredTileName == null
+            && !world.graph.nodes[tile.x, tile.y].standable
+            && !SupportedByBlueprintBelow(tile.x, tile.y)) return false;
 
         // Data-driven per-tile constraints from JSON
         if (st.tileRequirements != null) {
@@ -38,5 +40,17 @@ public static class StructPlacement {
         }
 
         return true;
+    }
+
+    // Returns true if any blueprint on the tile below (x, y-1) would provide solid-top support once built.
+    // Used to allow stacking blueprints before their support is constructed.
+    private static bool SupportedByBlueprintBelow(int x, int y) {
+        Tile below = World.instance.GetTileAt(x, y - 1);
+        if (below == null) return false;
+        for (int d = 0; d < 4; d++) {
+            Blueprint bp = below.GetBlueprintAt(d);
+            if (bp != null && !bp.cancelled && bp.structType.solidTop) return true;
+        }
+        return false;
     }
 }
