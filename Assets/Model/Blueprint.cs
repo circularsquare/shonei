@@ -88,6 +88,26 @@ public class Blueprint {
         return bp;
     }
 
+    // Locks each group cost (e.g. "wood") to the specific leaf first delivered (e.g. "pine").
+    // Prevents future haulers from bringing a mismatched type that won't fit the occupied slot.
+    // No-op if all costs are already leaves.
+    public void LockGroupCostsAfterDelivery() {
+        foreach (ItemQuantity cost in costs) {
+            if (cost.item.children == null) continue; // already locked to a leaf
+            foreach (ItemStack stack in inv.itemStacks) {
+                if (stack.item == null) continue;
+                // Walk up the delivered item's ancestry to see if it belongs to this group cost.
+                for (Item cur = stack.item.parent; cur != null; cur = cur.parent) {
+                    if (cur != cost.item) continue;
+                    cost.item = stack.item;
+                    cost.id   = stack.item.id;
+                    break;
+                }
+                if (cost.item.children == null) break; // locked — move on to next cost
+            }
+        }
+    }
+
     public bool IsFullyDelivered() {
         foreach (var cost in costs)
             if (inv.Quantity(cost.item) < cost.quantity) return false;

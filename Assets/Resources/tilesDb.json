@@ -19,7 +19,7 @@
         "name": "stone",
         "solid": 1,
         "nproducts": [
-            { "name": "stone", "quantity": 10 }
+            { "name": "limestone", "quantity": 10 }
         ]
     },{  
         "id": 5,

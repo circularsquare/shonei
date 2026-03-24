@@ -12,6 +12,9 @@ public class WorldSaveData {
     public int[] disabledRecipeIds; // null = all enabled
     public ushort[] waterLevels;    // flat array, index = y * nx + x; null if all-dry
     public bool isRaining;          // false = clear (safe default for old saves)
+    // Global item targets set by the player via ItemDisplay UI (item name → target qty in fen).
+    // Only non-default entries (≠ 10000) are stored; absent entries load as default (10000).
+    public System.Collections.Generic.Dictionary<string, int> globalItemTargets;
 }
 
 public class ResearchSaveData {

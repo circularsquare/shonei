@@ -20,6 +20,10 @@ public class GlobalInventory {
     }
 
     public void AddItem(Item item, int quantity){
+        if (item.children != null && item.children.Length > 0) {
+            Debug.LogError($"GlobalInventory.AddItem: '{item.name}' is a group item and cannot be tracked in inventory. Only leaf items may be added.");
+            return;
+        }
         AddItem(item.id, quantity);
     }
     public void AddItem(int iid, int quantity){
@@ -45,16 +49,26 @@ public class GlobalInventory {
     public int Quantity(string name){
         return Quantity(Db.iidByName[name]);
     }
+    // Exact lookup by id — always returns 0 for group items since they never physically exist.
+    // Prefer Quantity(Item) for any call that may involve group items.
     public int Quantity(int iid){
         if (itemAmounts.ContainsKey(iid)){
             return itemAmounts[iid];
         } else {return 0;}
     }
+    // Group-aware: sums leaf descendants if item has children, otherwise exact.
+    public int Quantity(Item item){
+        if (item.children == null) return Quantity(item.id);
+        int total = 0;
+        foreach (Item child in item.children)
+            total += Quantity(child);
+        return total;
+    }
 
     public bool SufficientResources(ItemQuantity[] iqs){
         bool sufficient = true;
         foreach (ItemQuantity iq in iqs){
-            if (Quantity(iq.item.id) < iq.quantity){
+            if (Quantity(iq.item) < iq.quantity){
                 sufficient = false;
             }
         }

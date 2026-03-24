@@ -116,6 +116,17 @@ public class SaveSystem : MonoBehaviour {
 
         data.isRaining = WeatherSystem.instance?.isRaining ?? false;
 
+        var ic = InventoryController.instance;
+        if (ic?.targets != null) {
+            var savedTargets = new Dictionary<string, int>();
+            foreach (var kv in ic.targets) {
+                if (kv.Value == 10000) continue; // skip default — no need to save
+                Item item = kv.Key < Db.items.Length ? Db.items[kv.Key] : null;
+                if (item != null) savedTargets[item.name] = kv.Value;
+            }
+            if (savedTargets.Count > 0) data.globalItemTargets = savedTargets;
+        }
+
         return data;
     }
 
@@ -228,6 +239,7 @@ public class SaveSystem : MonoBehaviour {
         string json = System.IO.File.ReadAllText(path);
         WorldSaveData data = JsonConvert.DeserializeObject<WorldSaveData>(json);
         WorldController.instance.ClearWorld();
+        InventoryController.instance?.ResetState();
         ApplySaveData(data);
 
         if (data.research != null && ResearchSystem.instance != null) {
@@ -293,6 +305,12 @@ public class SaveSystem : MonoBehaviour {
         if (save.animals != null)
             foreach (AnimalSaveData asd in save.animals)
                 AnimalController.instance.LoadAnimal(asd);
+
+        if (save.globalItemTargets != null && InventoryController.instance != null) {
+            foreach (var kv in save.globalItemTargets)
+                if (Db.itemByName.TryGetValue(kv.Key, out Item item))
+                    InventoryController.instance.targets[item.id] = kv.Value;
+        }
 
         InventoryController.instance.ValidateGlobalInventory();
 
@@ -446,6 +464,7 @@ public class SaveSystem : MonoBehaviour {
 
     public void Reset() {
         WorldController.instance.ClearWorld();
+        InventoryController.instance?.ResetState();
         WorldController.instance.GenerateDefault();
         StartCoroutine(PostLoadInit());
     }

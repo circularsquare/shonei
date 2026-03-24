@@ -145,6 +145,10 @@ public class Inventory{
     // returns leftover size
     private int AddItem(Item item, int quantity, bool force = false){
         if (item == null) {Debug.LogError("tried adding null item"); return quantity;}
+        if (item.children != null && item.children.Length > 0) {
+            Debug.LogError($"Inventory.AddItem: '{item.name}' is a group item and cannot be added to inventories. Only leaf items may exist in inventories.");
+            return quantity;
+        }
         if (!force && !ItemTypeCompatible(invType, item) && quantity > 0){
             Debug.Log($"tried adding type-incompatible item {item.name} (isLiquid={item.isLiquid}) to {invType} '{displayName}' at ({x},{y})");
             return quantity;
@@ -181,6 +185,12 @@ public class Inventory{
     }
 
     public int MoveItemTo(Inventory otherInv, Item item, int quantity){
+        // Group items (e.g. "wood") can't exist as physical stacks — resolve to the best available leaf.
+        if (item.children != null) {
+            ItemStack stack = GetItemStack(item);
+            if (stack == null) return quantity; // nothing available
+            item = stack.item;
+        }
         int taken = quantity + AddItem(item, -quantity);
         int overFill = otherInv.AddItem(item, taken);
         if (overFill > 0){
@@ -227,10 +237,20 @@ public class Inventory{
     // =========================
     // ---- GETTING INFO -----
     // =========================
+    // Returns true if `candidate` is `query` itself or any leaf descendant of it.
+    // Used so that group items (e.g. "wood") act as wildcards matching any child (e.g. "oak", "pine").
+    static bool MatchesItem(Item candidate, Item query) {
+        if (candidate == query) return true;
+        if (query.children == null) return false;
+        foreach (Item child in query.children)
+            if (MatchesItem(candidate, child)) return true;
+        return false;
+    }
+
     public int Quantity(Item item){
         int amount = 0;
         foreach (ItemStack stack in itemStacks){
-            if (stack != null && stack.item == item){
+            if (stack != null && stack.item != null && MatchesItem(stack.item, item)){
                 amount += stack.quantity;
             }
         }
@@ -239,7 +259,7 @@ public class Inventory{
     public bool ContainsAvailableItem(Item item){
         if (item == null){ return !IsEmpty(); }
         foreach (ItemStack stack in itemStacks){
-            if (stack != null && stack.item == item && stack.quantity > 0  && stack.Available()){
+            if (stack != null && stack.item != null && stack.quantity > 0 && stack.Available() && MatchesItem(stack.item, item)){
                 return true;
             }
         }
@@ -306,7 +326,7 @@ public class Inventory{
     public int AvailableQuantity(Item item){
         int total = 0;
         foreach (ItemStack stack in itemStacks){
-            if (stack.item == item) total += Math.Max(0, stack.quantity - stack.resAmount);
+            if (stack.item != null && MatchesItem(stack.item, item)) total += Math.Max(0, stack.quantity - stack.resAmount);
         }
         return total;
     }
@@ -342,7 +362,7 @@ public class Inventory{
     public ItemStack GetItemStack(Item item){
         ItemStack best = null;
         foreach (ItemStack stack in itemStacks){
-            if (stack != null && stack.item == item && stack.quantity > 0 && stack.Available()){
+            if (stack != null && stack.item != null && stack.quantity > 0 && stack.Available() && MatchesItem(stack.item, item)){
                 if (best == null || stack.quantity > best.quantity){
                     best = stack;
                 }
@@ -483,7 +503,7 @@ public class Inventory{
                     sr.sprite = null;
                     continue;
                 }
-                string sName = stack.item.name.Replace(" ", "");
+                string sName = stack.item.name.Trim().Replace(" ", "");
                 float qFill = stack.quantity / (float)stack.stackSize;
                 string qVariant = qFill >= 0.75f ? "qhigh" : qFill < 0.2f ? "qlow" : "qmid";
                 Sprite sSprite  = Resources.Load<Sprite>($"Sprites/Items/{sName}/{qVariant}");
@@ -508,7 +528,7 @@ public class Inventory{
                 mostAmount = stack.quantity;
             }
         }
-        String iName = mostItem.name;
+        String iName = mostItem.name.Trim().Replace(" ", "");
         float fill = mostAmount / (float)stackSize;
         Sprite sprite;
         if (invType == InvType.Floor) {

@@ -50,15 +50,17 @@ ID ranges:
 | Range | Category |
 |-------|----------|
 | 0 | none |
-| 1–9 | currency (silver) |
-| 5–9 | raw wood |
-| 10–19 | raw stone |
+| 1–4 | currency (silver) |
+| 5–9 | raw wood group + leaves (wood=5, oak=6, maple=7, pine=8) |
+| 10–19 | raw stone group + leaves (stone=10, slate=11, granite=12, limestone=13) |
 | 20–29 | dirt |
 | 30–39 | ores (iron ore, coal) |
 | 40–49 | metals (iron) |
-| 100–119 | processed wood (planks, sawdust) |
+| 100–119 | processed wood group + leaves (planks=100, oak planks=101, maple planks=102, pine planks=103, sawdust=110) |
 | 150–199 | food and seeds |
 | 200+ | tools and equipment |
+
+**Item tree / group items**: Items with `children` are *group items* — they act as wildcards in recipe inputs and building costs (e.g. a building costing `"wood"` accepts any of oak/maple/pine). Group items are **never physically produced or stored**; only leaf items (those without `children`) exist in inventories. `Db.ValidateNoGroupOutputs()` logs errors at startup if a group item appears in any recipe output, plant product, or tile drop. Default wood is `pine`; default stone is `limestone`.
 
 Fields:
 
@@ -66,10 +68,10 @@ Fields:
 |-------|------|-------|
 | `id` | int | unique |
 | `name` | string | lookup key |
-| `decayRate` | float | decay per tick on floors (0 = no decay) |
+| `decayRate` | float | decay per tick on floors (0 = no decay); inherited by children if not specified |
 | `foodValue` | int? | hunger restored when eaten |
 | `discrete` | bool? | stored/moved in whole-liang (100 fen) units only (e.g. tools) |
-| `children` | array? | sub-types satisfied by this type in recipes (e.g. `"wood"` matches `"oak"`, `"maple"`) |
+| `children` | array? | leaf sub-types; see group item note above |
 
 ## `recipesDb.json` — Recipes
 

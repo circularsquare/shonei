@@ -235,6 +235,7 @@ public class Animal : MonoBehaviour{
             if (r == null) continue;
             if (RecipePanel.instance != null && !RecipePanel.instance.IsAllowed(r.id)) continue;
             if (!ginv.SufficientResources(r.inputs)) continue;
+            if (r.AllOutputsSatisfied(targets)) continue;
             scored.Add((r, r.Score(targets)));
         }
         scored.Sort((a, b) => b.score.CompareTo(a.score)); // highest score first
@@ -432,6 +433,7 @@ public class Animal : MonoBehaviour{
             if (recipe.tile != building.structType.name) continue;
             if (RecipePanel.instance != null && !RecipePanel.instance.IsAllowed(recipe.id)) continue;
             if (!ginv.SufficientResources(recipe.inputs)) continue;
+            if (recipe.AllOutputsSatisfied(targets)) continue;
             float score = recipe.Score(targets);
             if (score > maxScore){
                 maxScore = score;

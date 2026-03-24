@@ -6,7 +6,7 @@
             { "name": "acorn", "quantity": 1 }
         ],
         "nproducts": [
-            { "name": "wood", "quantity": 10 },
+            { "name": "pine", "quantity": 10 },
             { "name": "acorn", "quantity": 1 }
         ],
         "growthTime": 40,

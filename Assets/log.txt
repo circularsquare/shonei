@@ -7,6 +7,10 @@ meoww!!
     - replenishes world water 
 - dedicated display for storage inv!
 - copy paste storage filters (shift left click, right click)
+- recipes turned off when all outputs > target 
+- moved to only leaf-items, got rid of generic "wood"
+- recipes/buildings can take generic group input
+- item icons..?
 3/23
 - fixed cloud lighting again...
 - added tofu! and gypsum
@@ -102,7 +106,7 @@ meoww!!
 - added quarter sprites for drawers
 - changed itemstack reservation to reserve a number instead of binary
 2/26
-- added world saving and loading!
+- added world saveing and loading!
 - clouds!
 - more specific item sprite loading depending on inventory type
 2/24

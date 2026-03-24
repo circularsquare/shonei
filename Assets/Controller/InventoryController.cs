@@ -93,7 +93,9 @@ public class InventoryController : MonoBehaviour {
 
         UpdateItemDisplay(item);
     }
-    bool HaveAnyOfChildren(Item item){ // this is a temporary fix while items are not actually their parents!
+    // Returns true if this item or any descendant has quantity > 0.
+    // Used to decide whether to show/highlight a parent group node in the inventory tree.
+    bool HaveAnyOfChildren(Item item){
         if (globalInventory.Quantity(item.id) != 0){
             return true;
         }
@@ -150,7 +152,7 @@ public class InventoryController : MonoBehaviour {
             ItemDisplay itemDisplayComp = itemDisplayGo.GetComponent<ItemDisplay>();
             string text;
             if (IsMarketMode){text = item.name + ": " + ItemStack.FormatQ(selectedInventory.Quantity(item), item.discrete);}
-            else {text = item.name + ": " + ItemStack.FormatQ(globalInventory.Quantity(item.id), item.discrete);}
+            else {text = item.name + ": " + ItemStack.FormatQ(globalInventory.Quantity(item), item.discrete);}
             if (itemDisplayComp.itemText != null) itemDisplayComp.itemText.text = text;
 
             int targetQty = IsMarketMode
@@ -205,6 +207,18 @@ public class InventoryController : MonoBehaviour {
         }
 
         UpdateItemsDisplay();
+    }
+
+    // Resets targets to defaults and clears discovery state. Called on world reset.
+    public void ResetState() {
+        foreach (var key in targets.Keys.ToList())
+            targets[key] = 10000;
+        foreach (var key in discoveredItems.Keys.ToList())
+            discoveredItems[key] = false;
+        foreach (var kv in itemDisplayGos)
+            kv.Value?.SetActive(false);
+        Canvas.ForceUpdateCanvases();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(inventoryPanel.GetComponent<RectTransform>());
     }
 
     // --- Allow All / Deny All (wire to UI buttons in editor) ---

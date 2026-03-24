@@ -563,6 +563,7 @@ public class DeliverToBlueprintObjective : Objective { // always queued after Go
             foreach (var cost in blueprint.costs)
                 if (cost.item == iq.item) { needed = cost.quantity - blueprint.inv.Quantity(iq.item); break; }
             animal.inv.MoveItemTo(blueprint.inv, iq.item, Math.Min(animal.inv.Quantity(iq.item), needed));
+            blueprint.LockGroupCostsAfterDelivery();
             if (blueprint.IsFullyDelivered()) {
                 blueprint.state = Blueprint.BlueprintState.Constructing;
                 WorkOrderManager.instance?.PromoteToConstruct(blueprint);

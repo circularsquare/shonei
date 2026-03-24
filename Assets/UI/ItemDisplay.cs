@@ -14,6 +14,7 @@ public class ItemDisplay : MonoBehaviour {
     public enum DisplayMode { Global, Storage, Market }
 
     public Item item;
+    public ItemIcon itemIcon;                  // assign in inspector (HorizontalLayout/ItemIcon)
     public TMPro.TextMeshProUGUI itemText;     // assign in inspector (HorizontalLayout/TextItem)
     public TMPro.TextMeshProUGUI targetText;   // assign in inspector (HorizontalLayout/TextItemTarget)
     public GameObject toggleGo;
@@ -35,6 +36,7 @@ public class ItemDisplay : MonoBehaviour {
     public void Start(){
         // open = true is set at field declaration to avoid timing issues with UpdateItemDisplay running before Start()
         item = Db.itemByName[gameObject.name.Split('_')[1]];
+        if (itemIcon != null) itemIcon.SetItem(item);
         Transform btn = transform.Find("HorizontalLayout/ButtonDropdown");
         if (btn != null) dropdownImage = btn.GetComponent<Image>();
         RefreshDropdownSprite();

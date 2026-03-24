@@ -2,6 +2,8 @@
 
 ## Project spec
 
+meow!
+
 This is a big project. A Dream Project. Lets be ambitious and try to make scaleable solutions that will be clean to work with years down the line, as I have a lot of time to spend on this and you are very capable. 
 
 Please feel free to explain your thought process in your responses.

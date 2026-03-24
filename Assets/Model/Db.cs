@@ -63,8 +63,43 @@ public class Db : MonoBehaviour {
         itemsFlat = itemsFlat.Take(itemsCount).ToArray();
         edibleItems = itemsFlat.Where(i => i.foodValue > 0).OrderByDescending(i => i.foodValue).ToList();
         equipmentItems = itemsFlat.Where(i => { Item cur = i; while (cur != null) { if (cur.name == "tools") return true; cur = cur.parent; } return false; }).ToList();
+        ValidateNoGroupOutputs();
+        LoadItemIcons();
         Debug.Log("db loaded");
-    } 
+    }
+
+    void LoadItemIcons() {
+        Sprite fallback = Resources.Load<Sprite>("Sprites/Items/default/icon");
+        if (fallback == null) Debug.LogError("Db: missing default item icon at Sprites/Items/default/icon");
+        foreach (Item item in itemsFlat) {
+            string iName = item.name.Trim().Replace(" ", "");
+            Sprite loaded = Resources.Load<Sprite>($"Sprites/Items/{iName}/icon");
+            item.icon = loaded != null ? loaded : fallback;
+        }
+    }
+
+    // Validates that no group/parent items appear as recipe outputs, plant products, or tile drops.
+    // Group items (those with children) are only valid as recipe *inputs* (where they act as wildcards).
+    void ValidateNoGroupOutputs(){
+        foreach (Recipe recipe in recipes){
+            if (recipe == null) continue;
+            foreach (ItemQuantity iq in recipe.outputs)
+                if (iq.item.children != null)
+                    Debug.LogError($"Db validation: recipe '{recipe.description}' output '{iq.item.name}' is a group item. Only leaf items may be produced.");
+        }
+        foreach (PlantType pt in plantTypes){
+            if (pt == null || pt.products == null) continue;
+            foreach (ItemQuantity iq in pt.products)
+                if (iq.item.children != null)
+                    Debug.LogError($"Db validation: plant '{pt.name}' product '{iq.item.name}' is a group item. Only leaf items may be produced.");
+        }
+        foreach (TileType tt in tileTypes){
+            if (tt == null || tt.products == null) continue;
+            foreach (ItemQuantity iq in tt.products)
+                if (iq.item.children != null)
+                    Debug.LogError($"Db validation: tile '{tt.name}' product '{iq.item.name}' is a group item. Only leaf items may be produced.");
+        }
+    }
 
     void ReadJson(){
         // read Items
@@ -203,14 +238,29 @@ public class Recipe {
         foreach (ItemQuantity iq in inputs){
             int target = targets[iq.item.id];
             if (target == 0) continue; // no target set — treat as neutral
-            score *= ((float)GlobalInventory.instance.Quantity(iq.item.id) / target);
+            score *= ((float)GlobalInventory.instance.Quantity(iq.item) / target);
         }
         foreach (ItemQuantity iq in outputs){
             int target = targets[iq.item.id];
             if (target == 0) continue; // no target set — treat as neutral
-            score /= ((float)GlobalInventory.instance.Quantity(iq.item.id) / target);
+            score /= ((float)GlobalInventory.instance.Quantity(iq.item) / target);
         }
         return score;
+    }
+
+    // Returns true if every tracked output is already at or above its target,
+    // meaning this recipe should not be chosen (production is unneeded).
+    // target=0 means "produce none" — any quantity ≥ 0 satisfies it.
+    // Items missing from the targets dict are skipped as a safe fallback.
+    public bool AllOutputsSatisfied(Dictionary<int, int> targets) {
+        if (targets == null) return false;
+        bool anyTracked = false;
+        foreach (var iq in outputs) {
+            if (!targets.TryGetValue(iq.item.id, out int target)) continue;
+            anyTracked = true;
+            if (GlobalInventory.instance.Quantity(iq.item) < target) return false;
+        }
+        return anyTracked; // only suppress if at least one output was tracked
     }
 }
 

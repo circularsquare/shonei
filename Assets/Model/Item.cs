@@ -8,7 +8,7 @@ using System.Runtime.Serialization;
 
 
 // this class holds mostly permanent attributes about an item in general.
-// items don't have unique attributes. they are like resources. 
+// items don't have unique attributes. they are like resources.
 // if you want unique attributes make something else.
 public class Item {
     public int id {get; set;}
@@ -19,7 +19,8 @@ public class Item {
     public bool discrete {get; set;}    // true = stored/moved in whole-liang (100 fen) multiples only
     public bool isLiquid {get; set;}    // true = liquid (water, soymilk, etc.); used to restrict which inventory types can hold it
     public Item parent;
-    
+    // Loaded at startup by Db. Falls back to Sprites/Items/default/icon if no item-specific icon exists.
+    public Sprite icon;
 
     public bool IsDiscovered(){
         if (InventoryController.instance != null){

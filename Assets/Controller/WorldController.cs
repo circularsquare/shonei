@@ -58,7 +58,7 @@ public class WorldController : MonoBehaviour {
     }
 
     IEnumerator ItemFallAnimCoroutine(int srcX, int srcY, int dstX, int dstY, Item item) {
-        string iName = item.name.Replace(" ", "");
+        string iName = item.name.Trim().Replace(" ", "");
         Sprite sprite = Resources.Load<Sprite>($"Sprites/Items/{iName}/floor");
         sprite ??= Resources.Load<Sprite>($"Sprites/Items/{iName}/icon");
         sprite ??= Resources.Load<Sprite>("Sprites/Items/default/icon");

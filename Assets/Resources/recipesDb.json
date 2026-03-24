@@ -3,13 +3,39 @@
         "id": 0,
         "job": "sawyer",
         "tile": "sawmill",
-        "description": "cut wood into planks",
+        "description": "cut pine into pine planks",
         "workload": 2.0,
         "ninputs": [
-            { "name": "wood", "quantity": 1 }
+            { "name": "pine", "quantity": 1 }
         ],
         "noutputs": [
-            { "name": "planks", "quantity": 1 },
+            { "name": "pine planks", "quantity": 1 },
+            { "name": "sawdust", "quantity": 1, "chance": 0.2 }
+        ]
+    },{
+        "id": 16,
+        "job": "sawyer",
+        "tile": "sawmill",
+        "description": "cut oak into oak planks",
+        "workload": 2.0,
+        "ninputs": [
+            { "name": "oak", "quantity": 1 }
+        ],
+        "noutputs": [
+            { "name": "oak planks", "quantity": 1 },
+            { "name": "sawdust", "quantity": 1, "chance": 0.2 }
+        ]
+    },{
+        "id": 17,
+        "job": "sawyer",
+        "tile": "sawmill",
+        "description": "cut maple into maple planks",
+        "workload": 2.0,
+        "ninputs": [
+            { "name": "maple", "quantity": 1 }
+        ],
+        "noutputs": [
+            { "name": "maple planks", "quantity": 1 },
             { "name": "sawdust", "quantity": 1, "chance": 0.2 }
         ]
     },{
@@ -84,7 +110,7 @@
         "ninputs": [
         ],
         "noutputs": [
-            { "name": "stone", "quantity": 1 },
+            { "name": "limestone", "quantity": 1 },
             { "name": "coal", "quantity": 1, "chance": 0.10 },
             { "name": "iron ore", "quantity": 1, "chance": 0.10 },
             { "name": "gypsum", "quantity": 1, "chance": 0.05 }
