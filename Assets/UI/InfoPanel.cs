@@ -150,6 +150,9 @@ public class InfoPanel : MonoBehaviour {
                     "  solid: " + tile.type.solid);
             }
 
+            if (tile.water > 0)
+                sb.Append($"\nwater: {tile.water}/{WaterController.WaterMax}");
+
             string[] layerLabels = { "b", "m", "f", "r" };
             for (int d = 0; d < 4; d++) {
                 Structure s = tile.structs[d];

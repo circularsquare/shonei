@@ -114,6 +114,8 @@ public class SaveSystem : MonoBehaviour {
             if (disabled.Length > 0) data.disabledRecipeIds = disabled;
         }
 
+        data.isRaining = WeatherSystem.instance?.isRaining ?? false;
+
         return data;
     }
 
@@ -301,6 +303,8 @@ public class SaveSystem : MonoBehaviour {
                 foreach (int id in save.disabledRecipeIds)
                     rp.SetAllowed(id, false);
         }
+
+        WeatherSystem.instance?.RestoreState(save.isRaining);
     }
 
     void RestoreStructure(StructureSaveData ssd) {
@@ -321,7 +325,10 @@ public class SaveSystem : MonoBehaviour {
             WorkOrderManager.instance?.RegisterHarvest(plant);
             structure = plant;
         } else if (st.depth == 0) {
-            structure = new Building(st, ssd.x, ssd.y) { uses = ssd.uses };
+            // Dispatch to subclass — keep in sync with StructController.Construct
+            structure = st.name == "pump"
+                ? new PumpBuilding(st, ssd.x, ssd.y) { uses = ssd.uses }
+                : new Building(st, ssd.x, ssd.y) { uses = ssd.uses };
         } else if (st.name == "platform") {
             structure = new Platform(st, ssd.x, ssd.y);
         } else if (st.name == "stairs") {

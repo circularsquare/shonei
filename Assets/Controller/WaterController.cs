@@ -285,6 +285,23 @@ public class WaterController : MonoBehaviour {
     }
 
     /// <summary>
+    /// Adds 2 water units to every partially-filled tile.
+    /// Called by WeatherSystem.OnHourElapsed() when it is raining.
+    /// Only affects tiles that already contain water (> 0) and aren't full,
+    /// representing rain collecting in existing puddles/pools.
+    /// </summary>
+    public void RainReplenish() {
+        World world = World.instance;
+        for (int x = 0; x < world.nx; x++) {
+            for (int y = 0; y < world.ny; y++) {
+                Tile tile = world.GetTileAt(x, y);
+                if (tile.type.solid || tile.water == 0 || tile.water >= WaterMax) continue;
+                tile.water = (ushort)Mathf.Min(tile.water + 2, WaterMax);
+            }
+        }
+    }
+
+    /// <summary>
     /// Zeros all tile water and clears the surface mask texture.
     /// Called from WorldController.ClearWorld() before regenerating the world.
     /// </summary>

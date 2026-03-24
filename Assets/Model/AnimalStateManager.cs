@@ -29,6 +29,11 @@ public class AnimalStateManager {
     }
 
     private void HandleIdle() {
+        if (animal.pendingRefresh) {
+            animal.pendingRefresh = false;
+            animal.Refresh();
+            return;
+        }
         animal.ChooseTask();
         if (animal.state == AnimalState.Idle) {
             // Random walking when nothing else to do
@@ -111,6 +116,8 @@ public class AnimalStateManager {
                         if (output.chance >= 1f || UnityEngine.Random.value < output.chance)
                             animal.Produce(output.item, output.quantity);
                     }
+                    // Pump buildings drain water from their source tile on each completed round
+                    if (craftTask.workplace?.building is PumpBuilding pump) pump.DrainForCraft();
                     // Passive research progress from this recipe cycle
                     if (recipe.research != null)
                         ResearchSystem.instance?.AddPassiveProgress(recipe.research, recipe.skillPoints);

@@ -77,6 +77,12 @@ Assets/
     └── researchDb.json
 ```
 
+### Building subclasses
+
+Depth-0 buildings with custom behaviour subclass `Building` (e.g. `PumpBuilding`). The dispatch lives inline at two call sites — `StructController.Construct` and the `SaveSystem` load path — both marked with a comment to keep them in sync.
+
+---
+
 ## Key Design Decisions
 
 - **Hierarchical tasks over behavior trees**: simple objective queue is easy to reason about and extend

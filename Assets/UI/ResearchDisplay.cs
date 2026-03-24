@@ -28,16 +28,16 @@ public class ResearchDisplay : MonoBehaviour {
         float p          = _rs.GetProgress(_node.id);
 
         if (background != null)
-            background.color = isActive    ? new Color(0.55f, 0.45f, 0.10f, 0.8f)
-                             : unlocked    ? new Color(0.20f, 0.45f, 0.20f, 0.6f)
-                             : canSetActive ? new Color(0.20f, 0.35f, 0.55f, 0.6f)
-                             :               new Color(0.20f, 0.20f, 0.20f, 0.6f);
+            background.color = isActive    ? new Color(0.75f, 0.65f, 0.30f, 0.8f)
+                             : unlocked    ? new Color(0.45f, 0.70f, 0.45f, 0.6f)
+                             : canSetActive ? new Color(0.75f, 0.80f, 0.90f, 0.7f)
+                             :               new Color(0.55f, 0.55f, 0.55f, 0.6f);
 
         if (cost != null) {
             cost.text  = $"{p:0.0} / {_node.cost:0}";
-            cost.color = unlocked    ? new Color(0.4f, 0.9f, 0.4f)
-                       : canSetActive ? Color.white
-                       :               new Color(0.55f, 0.55f, 0.55f);
+            cost.color = unlocked     ? new Color(0.15f, 0.50f, 0.15f) // dark green
+                       : canSetActive ? Color.black
+                       :               new Color(0.55f, 0.55f, 0.55f); // grey
         }
 
         float cap = _node.cost;

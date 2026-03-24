@@ -45,7 +45,8 @@ public class TradingPanel : MonoBehaviour {
     [Header("Status")]
     public GameObject onlineIndicator;
 
-    bool _orderIsBuy = true;
+    bool _orderIsBuy   = true;
+    bool _orderSideSet = false; // neither buy nor sell selected by default
 
     Image            indicatorImage;
     TextMeshProUGUI  indicatorText;
@@ -64,7 +65,9 @@ public class TradingPanel : MonoBehaviour {
             indicatorText  = onlineIndicator.GetComponentInChildren<TextMeshProUGUI>();
         }
 
-        SetBuy(_orderIsBuy);
+        // Start with neither side selected — both buttons grey
+        if (buyButton  != null) buyButton.image.color  = ColorInactive;
+        if (sellButton != null) sellButton.image.color = ColorInactive;
 
         if (itemInput != null) itemInput.onSubmit.AddListener(_ => OnClickQuery());
         if (chatInput != null) chatInput.onSubmit.AddListener(_ => OnClickSendChat());
@@ -108,8 +111,10 @@ public class TradingPanel : MonoBehaviour {
         if (indicatorText)  indicatorText.text    = online ? "online" : "offline";
     }
 
-    // toggle panel active
+    // toggle panel active — no-op when not connected
     public void Toggle() {
+        var client = TradingClient.instance;
+        if (client == null || !client.isOnline) return;
         gameObject.SetActive(!gameObject.activeSelf);
     }
 
@@ -151,12 +156,14 @@ public class TradingPanel : MonoBehaviour {
     static readonly Color ColorInactive    = new Color(0.80f, 0.80f, 0.80f); // grey
 
     public void SetBuy(bool isBuy) {
-        _orderIsBuy = isBuy;
+        _orderIsBuy   = isBuy;
+        _orderSideSet = true;
         if (buyButton  != null) buyButton.image.color  = isBuy  ? ColorBuyActive  : ColorInactive;
         if (sellButton != null) sellButton.image.color = !isBuy ? ColorSellActive : ColorInactive;
     }
 
     public void OnClickPlaceOrder() {
+        if (!_orderSideSet) { ShowAlert("Select Buy or Sell."); return; }
         string itemName = ItemName();
         if (itemName.Length == 0) { ShowAlert("Enter an item name."); return; }
 
@@ -210,7 +217,12 @@ public class TradingPanel : MonoBehaviour {
         if (chatInput == null) return;
         string text = chatInput.text.Trim();
         if (text.Length == 0) return;
-        TradingClient.instance?.SendChat(text);
+        var client = TradingClient.instance;
+        if (client == null || !client.isOnline) {
+            AddChat("<color=#cc3333>not connected to server 3:</color>");
+            return;
+        }
+        client.SendChat(text);
         chatInput.text = "";
         chatInput.ActivateInputField();
     }
@@ -240,6 +252,8 @@ public class TradingPanel : MonoBehaviour {
         tmp.text               = text;
         tmp.fontSize           = 16;
         tmp.enableWordWrapping = true;
+        tmp.color              = Color.white;
+        tmp.richText           = true;
         var csf = go.AddComponent<ContentSizeFitter>();
         csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
         if (chatList.childCount > 20)

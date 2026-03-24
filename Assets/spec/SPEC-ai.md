@@ -30,14 +30,25 @@ Any  → Falling (involuntary; interrupts current task) → Idle on landing
 `Animal.ChooseTask()` runs top-to-bottom when an animal is Idle:
 
 1. **Survival** (always first): drop inventory → eat if hungry → sleep if eepy at night → equip tool/food
-2. **Work orders (fully WOM-driven):**
+2. **Work orders:**
    - `wom.PruneStale()` — call once before the tier sequence
    - `wom.ChooseOrder(this, 1)` — hauls unblocking a deconstruct
    - `wom.ChooseOrder(this, 2)` — construct / supply / harvest
-   - `wom.ChooseOrder(this, 3)` — haul / market / **craft**
+   - `wom.ChooseOrder(this, 3, exclude: Craft)` — haul / market (distance-sorted)
+   - `ChooseCraftTask()` — craft (recipe-score sorted; see below)
    - `wom.ChooseOrder(this, 4)` — deconstruct, research
 
-`ChooseOrder(animal, priority)` only considers the single requested tier, filters to `res.Available()` orders, additionally skips haul orders where `stack.Available()` is false (stack fully reserved by in-flight tasks), distance-sorts remaining candidates, and on success calls `order.res.Reserve()` and assigns `task.workOrder = order`. Orders are **never removed when claimed** — they stay in the queue so they can be re-claimed after the task ends. WOM tasks are job-filtered via the `canDo` predicate on each `WorkOrder`.
+`ChooseOrder(animal, priority, exclude?)` only considers the single requested tier, optionally filters out a specific `OrderType`, filters to `res.Available()` orders, additionally skips haul orders where `stack.Available()` is false (stack fully reserved by in-flight tasks), distance-sorts remaining candidates, and on success calls `order.res.Reserve()` and assigns `task.workOrder = order`. Orders are **never removed when claimed** — they stay in the queue so they can be re-claimed after the task ends. WOM tasks are job-filtered via the `canDo` predicate on each `WorkOrder`.
+
+**Recipe-first craft selection (`Animal.ChooseCraftTask`):**
+Craft tasks are separated from `ChooseOrder` p3 so that recipe economic score — not building proximity — drives which workstation an animal visits. The algorithm:
+1. Score all of the animal's recipes (filtered by `IsAllowed` and `SufficientResources`) using `Recipe.Score(targets)`.
+2. Sort descending by score.
+3. For each recipe, call `wom.FindCraftOrder(recipe.tile, animal)` — returns the nearest available craft `WorkOrder` for that building type, without reserving.
+4. Try `new CraftTask(animal, building, recipe).Start()`. On success, reserve the order and return the task.
+5. Fall through to the next recipe if no building is available or pathfinding fails.
+
+`CraftTask` accepts an optional `preChosenRecipe` parameter. When set, `Initialize()` uses it directly instead of calling `PickRecipeForBuilding` — avoiding redundant re-evaluation. `PickRecipeForBuilding` remains as a fallback for any caller that creates `CraftTask` without a pre-chosen recipe.
 
 ### Task System
 
@@ -79,7 +90,7 @@ Tasks decompose into an ordered queue of Objectives. Each task:
 
 ### Job System
 
-Each animal has one Job. Jobs filter which WOM orders and fallback tasks an animal can take. For crafting, recipe selection uses a score that balances global item quantities against configurable targets.
+Each animal has one Job. Jobs filter which WOM orders and fallback tasks an animal can take. For crafting, `ChooseCraftTask` scores all of the animal's recipes globally against configurable inventory targets, then finds the nearest building for the top-scoring recipe — so economic need drives building selection rather than proximity.
 
 ---
 

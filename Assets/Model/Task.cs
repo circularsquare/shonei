@@ -65,9 +65,9 @@ public abstract class Task {
     }
     public void Fail(){ // end task, go idle
         if (currentObjective == null){
-            Debug.Log(animal.aName + " failed " + ToString() + " task, null objective");
+            Debug.Log($"{animal.aName} ({animal.job.name}) failed {ToString()} task, null objective");
         } else {
-            Debug.Log(animal.aName + " failed " + ToString() + " task at " + currentObjective.ToString());
+            Debug.Log($"{animal.aName} ({animal.job.name}) failed {ToString()} task at {currentObjective}");
         }
         Cleanup();
         animal.task = null;
@@ -109,11 +109,15 @@ public class CraftTask : Task {
     private List<(Item item, int perRound)> _inputsToFetch;
     private int _fetchInputIndex;
     private readonly Building _building; // always set — assigned by WOM via RegisterWorkstation
+    private readonly Recipe _preChosenRecipe; // set by ChooseCraftTask; null → PickRecipeForBuilding fallback
 
-    public CraftTask(Animal animal, Building building) : base(animal){ _building = building; }
+    public CraftTask(Animal animal, Building building, Recipe preChosenRecipe = null) : base(animal){
+        _building = building;
+        _preChosenRecipe = preChosenRecipe;
+    }
 
     public override bool Initialize(){
-        recipe = animal.PickRecipeForBuilding(_building);
+        recipe = _preChosenRecipe ?? animal.PickRecipeForBuilding(_building);
         if (recipe == null) { return false; }
         Path p = animal.nav.PathTo(_building.workTile);
         if (p == null) { return false; }
@@ -473,6 +477,7 @@ public class FetchObjective : Objective {
         this.targetInv = targetInv;
         this.softFetch = softFetch;
     }
+    public override string GetObjectiveName() { return $"Fetch({iq.item.name})"; }
     public override void Start(){
         // Start() may be called more than once (non-soft): if the animal arrives and the stack is partially
         // exhausted, sourceTile is cleared and Start() re-runs to find a new source tile.

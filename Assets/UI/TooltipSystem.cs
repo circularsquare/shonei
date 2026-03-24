@@ -29,6 +29,8 @@ public class TooltipSystem : MonoBehaviour {
         titleGo.transform.SetParent(panelGo.transform, false);
         titleText           = titleGo.AddComponent<TextMeshProUGUI>();
         titleText.fontSize  = 16;
+        titleText.color     = Color.black;
+        titleText.alignment = TextAlignmentOptions.TopLeft;
         // titleText.fontStyle = FontStyles.Bold;
         titleText.enableWordWrapping = false;
         var titleCsf = titleGo.AddComponent<ContentSizeFitter>();
@@ -37,15 +39,28 @@ public class TooltipSystem : MonoBehaviour {
         // Body
         var bodyGo = new GameObject("Body", typeof(RectTransform));
         bodyGo.transform.SetParent(panelGo.transform, false);
-        bodyText          = bodyGo.AddComponent<TextMeshProUGUI>();
-        bodyText.fontSize = 16;
-        bodyText.color    = new Color(0.80f, 0.80f, 0.80f);
+        bodyText           = bodyGo.AddComponent<TextMeshProUGUI>();
+        bodyText.fontSize  = 16;
+        bodyText.color     = new Color(0.20f, 0.20f, 0.20f);
+        bodyText.alignment = TextAlignmentOptions.TopLeft;
         var bodyLe = bodyGo.AddComponent<LayoutElement>();
         bodyLe.preferredWidth = 200;
         var bodyCsf = bodyGo.AddComponent<ContentSizeFitter>();
         bodyCsf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
         panelGo.SetActive(false);
+    }
+
+    // Snap text rect heights to integers after ContentSizeFitter runs
+    void LateUpdate() {
+        SnapHeight(titleText);
+        SnapHeight(bodyText);
+    }
+
+    static void SnapHeight(TextMeshProUGUI tmp) {
+        if (tmp == null) return;
+        var r = tmp.rectTransform;
+        r.sizeDelta = new Vector2(r.sizeDelta.x, Mathf.Round(r.sizeDelta.y));
     }
 
     void Update() {
@@ -61,7 +76,8 @@ public class TooltipSystem : MonoBehaviour {
         if (pos.x + size.x > Screen.width)  pos.x = mouse.x - size.x - 14f;
         if (pos.y - size.y < 0)             pos.y = mouse.y + size.y + 14f;
 
-        tooltipPanel.position = pos;
+        // Snap to integer pixels to avoid sub-pixel text blur
+        tooltipPanel.position = new Vector2(Mathf.Round(pos.x), Mathf.Round(pos.y));
     }
 
     public static void Show(string title, string body) {

@@ -11,6 +11,7 @@ public class WorldSaveData {
     public ResearchSaveData research;
     public int[] disabledRecipeIds; // null = all enabled
     public ushort[] waterLevels;    // flat array, index = y * nx + x; null if all-dry
+    public bool isRaining;          // false = clear (safe default for old saves)
 }
 
 public class ResearchSaveData {

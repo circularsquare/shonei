@@ -60,7 +60,7 @@ public class StructController : MonoBehaviour {
                 if (t == null) { Debug.LogError("tile out of bounds at " + (tile.x+i) + "," + tile.y); return false; }
                 if (t.structs[st.depth] != null) { Debug.LogError("depth " + st.depth + " occupied at " + (tile.x+i) + "," + tile.y); return false; }
             }
-            // Dispatch to subclass
+            // Dispatch to subclass — keep in sync with SaveSystem load path
             if (st.depth == 0) {
                 structure = st.name == "pump"
                     ? new PumpBuilding(st, tile.x, tile.y)

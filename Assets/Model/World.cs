@@ -55,6 +55,7 @@ public class World : MonoBehaviour {
         animalController = AnimalController.instance;
         plantController = PlantController.instance;
         waterController = WaterController.instance;
+        WeatherSystem.Create();
     }
 
     public void Update(){
@@ -72,6 +73,10 @@ public class World : MonoBehaviour {
             waterController?.TickUpdate();
             InfoPanel.instance.UpdateInfo();
         }
+        float hourPeriod = ticksInDay / 24f; // 10 seconds = 1 in-game hour
+        if (Math.Floor((timer + Time.deltaTime) / hourPeriod) - Math.Floor(timer / hourPeriod) > 0)
+            WeatherSystem.instance?.OnHourElapsed();
+        WeatherSystem.instance?.Tick(Time.deltaTime);
         timer += Time.deltaTime;
     }
         

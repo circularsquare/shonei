@@ -13,6 +13,7 @@ public class Animal : MonoBehaviour{
     public float y;
     public float maxSpeed = 2f;
     public bool isMovingRight = true;
+    public bool pendingRefresh = false; // deferred Refresh() when SetJob fires mid-waypoint
 
     public Tile target;         // where you are currently going
     public Tile homeTile;
@@ -206,17 +207,50 @@ public class Animal : MonoBehaviour{
             if (task.Start()) return; }
         if (FindEquipment()) return;
 
-        // 2. Work orders: p1 → p2 → p3 (haul + craft) → p4
-        //    Craft orders are registered per-workstation building via RegisterWorkstation().
+        // 2. Work orders: p1 → p2 → p3 (haul, then craft via recipe-first) → p4
+        //    Craft uses ChooseCraftTask() instead of ChooseOrder so recipe score drives building selection.
         var wom = WorkOrderManager.instance;
         if (wom != null) {
             wom.PruneStale();
             task = wom.ChooseOrder(this, 1); if (task != null) return;
             task = wom.ChooseOrder(this, 2); if (task != null) return;
-            task = wom.ChooseOrder(this, 3); if (task != null) return;
+            task = wom.ChooseOrder(this, 3, exclude: WorkOrderManager.OrderType.Craft); if (task != null) return;
+            task = ChooseCraftTask(); if (task != null) return;
             task = wom.ChooseOrder(this, 4); if (task != null) return;
         }
         task = null;
+    }
+
+    // Scores all of this animal's recipes globally, then finds the nearest building for the
+    // top-scoring recipe. Falls through to lower-scoring recipes when no building is available.
+    // This is recipe-first selection: economic score drives which building type to visit,
+    // rather than proximity driving which recipes are considered.
+    private Task ChooseCraftTask() {
+        var wom = WorkOrderManager.instance;
+        if (wom == null) return null;
+        var targets = InventoryController.instance?.targets;
+
+        var scored = new List<(Recipe recipe, float score)>();
+        foreach (var r in job.recipes) {
+            if (r == null) continue;
+            if (RecipePanel.instance != null && !RecipePanel.instance.IsAllowed(r.id)) continue;
+            if (!ginv.SufficientResources(r.inputs)) continue;
+            scored.Add((r, r.Score(targets)));
+        }
+        scored.Sort((a, b) => b.score.CompareTo(a.score)); // highest score first
+
+        foreach (var (recipe, _) in scored) {
+            var found = wom.FindCraftOrder(recipe.tile, this);
+            if (found == null) continue;
+            var (order, building) = found.Value;
+            var craftTask = new CraftTask(this, building, recipe);
+            if (craftTask.Start()) {
+                order.res.Reserve();
+                craftTask.workOrder = order;
+                return craftTask;
+            }
+        }
+        return null;
     }
 
     // Picks up one tool into toolSlotInv if the slot is empty.
@@ -262,6 +296,7 @@ public class Animal : MonoBehaviour{
 
     public void Refresh(){ // end task, go idle, AND drop items
         // Debug.Log(aName + " refreshed! interrupting current task");
+        pendingRefresh = false; // clear in case this was deferred
         task?.Fail();
         task = new DropTask(this);
         if (!task.Start()){
@@ -436,7 +471,14 @@ public class Animal : MonoBehaviour{
         if (cbAnimalChanged != null){
             cbAnimalChanged(this, oldJob);
         }
-        Refresh();
+        // Defer Refresh until solid ground if we're mid-waypoint traversal.
+        // preventFall==true means the animal is between waypoint nodes (cliff/stair);
+        // calling Refresh now would leave them frozen on an unstandable tile.
+        if (nav != null && nav.preventFall){
+            pendingRefresh = true;
+        } else {
+            Refresh();
+        }
     }
     public void SetJob(string jobStr) { SetJob(Db.GetJobByName(jobStr)); }
 

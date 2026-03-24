@@ -94,7 +94,7 @@ public class SunController : MonoBehaviour {
         if (instance == null) return Color.white;
         Color tint   = Color.Lerp(instance.ambientNight, instance.ambientDay, twilightFraction);
         float bright = brightness * 0.4f + 0.6f;
-        return tint * bright;
+        return tint * bright * WeatherSystem.GetAmbientMultiplier();
     }
 
     // Normalized direction from scene toward the sun (used as _SunDir in LightSun shader).
@@ -183,7 +183,7 @@ public class SunController : MonoBehaviour {
         sunSR.color   = SunColor(phase);
 
         sunSource.lightColor = SunColor(phase);
-        sunSource.intensity  = brightness * sunIntensityNoon;
+        sunSource.intensity  = brightness * sunIntensityNoon * WeatherSystem.GetSunMultiplier();
 
         // Torches ramp to full over the first half of sunset/sunrise,
         // ahead of the sun — so they're already bright by deep dusk.

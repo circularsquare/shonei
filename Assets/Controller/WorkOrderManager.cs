@@ -63,9 +63,11 @@ public class WorkOrderManager : MonoBehaviour {
 
     // Returns the best (distance-sorted) startable task at exactly this priority tier, or null.
     // Removes the claimed order on success. Call PruneStale() once before a ChooseOrder sequence.
-    public Task ChooseOrder(Animal animal, int priority) {
+    // Pass exclude to skip a specific order type (e.g. exclude craft orders when ChooseCraftTask handles them separately).
+    public Task ChooseOrder(Animal animal, int priority, OrderType? exclude = null) {
         List<WorkOrder> tier = orders[priority - 1];
         var candidates = tier
+            .Where(o => exclude == null || o.type != exclude)
             .Where(o => o.isActive == null || o.isActive())
             .Where(o => o.res.Available())
             .Where(o => o.canDo == null || o.canDo(animal))
@@ -79,6 +81,22 @@ public class WorkOrderManager : MonoBehaviour {
                 task.workOrder = order;
                 return task;
             }
+        }
+        return null;
+    }
+
+    // Returns the nearest available craft WorkOrder for the given building type name, without reserving.
+    // Used by Animal.ChooseCraftTask() after recipe scoring selects which building type to target.
+    // Caller reserves after task.Start() succeeds.
+    public (WorkOrder order, Building building)? FindCraftOrder(string buildingTypeName, Animal animal) {
+        foreach (var order in orders[2]
+            .Where(o => o.type == OrderType.Craft)
+            .Where(o => o.building.structType.name == buildingTypeName)
+            .Where(o => o.isActive == null || o.isActive())
+            .Where(o => o.res.Available())
+            .Where(o => o.canDo == null || o.canDo(animal))
+            .OrderBy(o => o.getDistance?.Invoke(animal) ?? 0f)) {
+            return (order, order.building);
         }
         return null;
     }

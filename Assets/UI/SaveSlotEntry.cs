@@ -7,7 +7,7 @@ using TMPro;
 //
 // Expected prefab children:
 //   NameInput  (TMP_InputField)   — editable slot name; EndEdit triggers rename
-//   MiceLabel  (TextMeshProUGUI)  — "Mice: N"
+//   MiceLabel  (TextMeshProUGUI)  — "mice: N"
 //   SaveButton (Button)
 //   LoadButton (Button)
 public class SaveSlotEntry : MonoBehaviour {
@@ -29,7 +29,7 @@ public class SaveSlotEntry : MonoBehaviour {
         nameInput.text = slotName;
         nameInput.onEndEdit.AddListener(OnRename);
 
-        if (miceLabel != null) miceLabel.text = "Mice: " + miceCount;
+        if (miceLabel != null) miceLabel.text = "mice: " + miceCount;
 
         if (saveButton != null) saveButton.onClick.AddListener(OnSave);
         else Debug.LogWarning("SaveSlotEntry: saveButton not assigned on slot: " + slotName);
@@ -62,7 +62,7 @@ public class SaveSlotEntry : MonoBehaviour {
 
     void OnSave() {
         SaveSystem.instance.Save(_slotName);
-        if (miceLabel != null) miceLabel.text = "Mice: " + SaveSystem.instance.GetAnimalCount(_slotName);
+        if (miceLabel != null) miceLabel.text = "mice: " + SaveSystem.instance.GetAnimalCount(_slotName);
     }
 
     void OnLoad() {

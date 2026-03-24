@@ -1,9 +1,15 @@
 meoww!!
 
+3/24
+- ui tweaks
+- deferred task refresh to fix mice getting stuck on unreachable tiles sometimes
+- rain! particle system
+    - replenishes world water 
 3/23
 - fixed cloud lighting again...
 - added tofu! and gypsum
 - multiple save file interface
+- recipe first search for crafttasks (but also check proximity of workorders)
 3/20
 - add water!
     - water surface balancing
