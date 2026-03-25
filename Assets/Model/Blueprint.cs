@@ -53,19 +53,28 @@ public class Blueprint {
         if (loadedSprite == null)
             go.transform.localScale = new Vector3(structType.nx, Mathf.Max(1, structType.ny), 1f);
 
-        costs = structType.costs;
+        // Deep-copy costs so LockGroupCostsAfterDelivery only affects this blueprint,
+        // not every blueprint sharing the same StructType.
+        costs = new ItemQuantity[structType.costs.Length];
+        for (int i = 0; i < costs.Length; i++) {
+            var src = structType.costs[i];
+            costs[i] = new ItemQuantity(src.item, src.quantity);
+        }
         // One stack per cost item, capacity capped to exactly that item's cost quantity.
         inv = new Inventory(Math.Max(1, costs.Length), 0, Inventory.InvType.Blueprint, x, y);
         for (int i = 0; i < costs.Length; i++)
             inv.itemStacks[i].stackSize = costs[i].quantity;
 
         if (autoRegister) {
-            if (structType.costs.Length == 0) {
+            if (costs.Length == 0) {
                 state = BlueprintState.Constructing;
-                WorkOrderManager.instance?.RegisterConstruct(this);
-            } else {
+                if (!IsSuspended())
+                    WorkOrderManager.instance?.RegisterConstruct(this);
+            } else if (!IsSuspended()) {
                 WorkOrderManager.instance?.RegisterSupplyBlueprint(this);
             }
+            // If suspended, no order is registered — RegisterOrdersIfUnsuspended()
+            // will pick it up when the support below is built.
         }
         StructController.instance.AddBlueprint(this);
         RefreshColor(); // apply suspended tint if placed without solid support below
@@ -79,6 +88,20 @@ public class Blueprint {
         else
             color = new Color(0.8f, 0.9f, 1f, 0.5f);
         go.GetComponent<SpriteRenderer>().color = color;
+        // When support below is built, register orders for newly-unsuspended blueprints.
+        RegisterOrdersIfUnsuspended();
+    }
+
+    /// <summary>
+    /// If this blueprint is not suspended and has no work order yet, register one.
+    /// Called from RefreshColor() when the structure below completes.
+    /// </summary>
+    public void RegisterOrdersIfUnsuspended() {
+        if (IsSuspended() || cancelled) return;
+        if (state == BlueprintState.Receiving)
+            WorkOrderManager.instance?.RegisterSupplyBlueprint(this);
+        else if (state == BlueprintState.Constructing)
+            WorkOrderManager.instance?.RegisterConstruct(this);
     }
 
     /// <summary>

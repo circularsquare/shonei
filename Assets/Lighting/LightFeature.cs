@@ -48,8 +48,12 @@ public class LightFeature : ScriptableRendererFeature {
 
     public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData) {
         if (!Application.isPlaying) return;
-        // Skip cameras that render nothing — avoids wasted NormalsCapture + LightPass GPU work.
-        if (renderingData.cameraData.camera.cullingMask == 0) return;
+        // Skip cameras that see no sprites participating in the normals RT pipeline
+        // (lit, directional-only, or water). The Unlit overlay camera hits this check
+        // because its culling mask only contains layers excluded from all three masks.
+        var cullingMask = renderingData.cameraData.camera.cullingMask;
+        if (cullingMask == 0) return;
+        if ((cullingMask & (litLayers | directionalOnlyLayers | waterLayer)) == 0) return;
         capturePass.Setup(litLayers, shadowCasterLayers, directionalOnlyLayers, waterLayer);
         renderer.EnqueuePass(capturePass);
         lightPass.Setup(renderer.cameraColorTarget, ambientNormal, shadowLength, shadowDarkness);

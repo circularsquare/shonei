@@ -15,6 +15,9 @@ public class InventoryController : MonoBehaviour {
     public GameObject itemDisplay; // prefab
     private World world;
     public Inventory selectedInventory; // if u click on a drawer, allows u to set what its assigned to
+    public List<Inventory> selectedInventories = new List<Inventory>(); // all selected storage invs (multi-select)
+    [SerializeField] private GameObject tileHighlightPrefab; // assign in inspector — prefab copy of InfoPanel's tileHighlight
+    private List<GameObject> _highlightPool = new List<GameObject>();
     public Dictionary<int, bool> discoveredItems;
     public Dictionary<int, GameObject> itemDisplayGos; // keyed by itemid
     public Dictionary<int, int> targets;
@@ -190,7 +193,10 @@ public class InventoryController : MonoBehaviour {
         }
     }
     public void SelectInventory(Inventory inv){
+        selectedInventories.Clear();
+        if (inv != null) selectedInventories.Add(inv);
         selectedInventory = inv;
+        RefreshHighlights();
 
         if (inv == null) {
             // Deselect: show global view, hide storage panel
@@ -209,8 +215,66 @@ public class InventoryController : MonoBehaviour {
         UpdateItemsDisplay();
     }
 
+    /// <summary>Selects multiple storage inventories at once (from drag-rect). Primary is shown in StoragePanel.</summary>
+    public void SelectInventories(List<Inventory> invs, Inventory primary) {
+        selectedInventories = new List<Inventory>(invs);
+        selectedInventory = primary;
+        RefreshHighlights();
+        if (primary == null) {
+            if (inventoryTitle != null) inventoryTitle.text = "town";
+            if (storagePanel != null) storagePanel.Hide();
+        } else if (primary.invType == Inventory.InvType.Storage || primary.invType == Inventory.InvType.Liquid) {
+            if (inventoryTitle != null) inventoryTitle.text = "town";
+            if (storagePanel != null) storagePanel.Show(primary);
+        }
+        UpdateItemsDisplay();
+    }
+
+    /// <summary>Ctrl+LMB: adds inv to selection if absent, removes it if present. Updates primary and StoragePanel.</summary>
+    public void CtrlToggleInventory(Inventory inv) {
+        if (inv == null) return;
+        if (selectedInventories.Contains(inv)) {
+            selectedInventories.Remove(inv);
+            if (inv == selectedInventory)
+                selectedInventory = selectedInventories.Count > 0
+                    ? selectedInventories[selectedInventories.Count - 1] : null;
+        } else {
+            selectedInventories.Add(inv);
+            selectedInventory = inv;
+        }
+        RefreshHighlights();
+        if (selectedInventory == null) {
+            if (inventoryTitle != null) inventoryTitle.text = "town";
+            if (storagePanel != null) storagePanel.Hide();
+        } else if (selectedInventory.invType == Inventory.InvType.Storage || selectedInventory.invType == Inventory.InvType.Liquid) {
+            if (storagePanel != null) storagePanel.Show(selectedInventory);
+        }
+        UpdateItemsDisplay();
+    }
+
+    /// <summary>Positions highlight pool GOs over all selected inventory tiles. Grows pool on demand, never shrinks.</summary>
+    private void RefreshHighlights() {
+        if (tileHighlightPrefab == null) return;
+        while (_highlightPool.Count < selectedInventories.Count) {
+            GameObject go = Instantiate(tileHighlightPrefab);
+            go.SetActive(false);
+            _highlightPool.Add(go);
+        }
+        for (int i = 0; i < _highlightPool.Count; i++) {
+            if (i < selectedInventories.Count) {
+                Inventory inv = selectedInventories[i];
+                _highlightPool[i].transform.position = new Vector3(inv.x, inv.y, -1);
+                _highlightPool[i].SetActive(true);
+            } else {
+                _highlightPool[i].SetActive(false);
+            }
+        }
+    }
+
     // Resets targets to defaults and clears discovery state. Called on world reset.
     public void ResetState() {
+        selectedInventories.Clear();
+        RefreshHighlights();
         foreach (var key in targets.Keys.ToList())
             targets[key] = 10000;
         foreach (var key in discoveredItems.Keys.ToList())

@@ -160,8 +160,8 @@ Orders are created once when the need first arises and removed only when the nee
 
 | Order type | Registered when | Removed when |
 |------------|----------------|--------------|
-| `Construct` | Blueprint created with no costs; or `PromoteToConstruct` when last supply delivered | Blueprint completed or destroyed (`RemoveForBlueprint`) |
-| `SupplyBlueprint` | Blueprint created with costs | Promoted to Construct; blueprint destroyed |
+| `Construct` | Blueprint created with no costs (if not suspended); or `PromoteToConstruct` when last supply delivered; or `RegisterOrdersIfUnsuspended()` when support below completes | Blueprint completed or destroyed (`RemoveForBlueprint`) |
+| `SupplyBlueprint` | Blueprint created with costs (if not suspended); or `RegisterOrdersIfUnsuspended()` when support below completes | Promoted to Construct; blueprint destroyed |
 | `Deconstruct` | `Blueprint.CreateDeconstructBlueprint()` called | Blueprint completed or destroyed |
 | `Haul` (priority 3, floor) | Items land on a floor inventory (`Inventory.Produce` or `MoveItemTo` destination hooks) | Eagerly: `MoveItemTo` source scan when a stack goes null; `Inventory.Decay()` when decay empties a stack; `Inventory.Destroy()` when floor inv is torn down. `PruneStaleHauls()` is a warning-level safety net only. |
 | `Haul` (priority 3, storage eviction) | Item is disallowed in a storage inventory while the stack is non-empty — triggered by `DisallowItem`, `ToggleAllowItem`, force-`AddItem`, or `Reconcile`. Uses `RegisterStorageEvictionHaul` — `HaulTask` only, no `ConsolidateTask` fallback. | Eagerly: stack empties (`AddItem` source hook); item re-allowed (`AllowItem`/`ToggleAllowItem`); storage destroyed (`Inventory.Destroy`). `PruneStaleHauls()` is a warning-level safety net. |
@@ -220,7 +220,17 @@ All `Register*` methods are safe to call unconditionally — they self-guard wit
 
 `new Blueprint(st, x, y)` auto-registers the appropriate order by default (`autoRegister = true`). Pass `autoRegister: false` when the caller will handle registration explicitly:
 - `Blueprint.CreateDeconstructBlueprint()` — sets state to Deconstructing and calls `RegisterDeconstruct` directly
-- `SaveSystem.RestoreBlueprint()` — sets state from save data and registers via a switch statement
+- `SaveSystem.RestoreBlueprint()` — sets state from save data; `RefreshColor()` handles Receiving/Constructing registration via `RegisterOrdersIfUnsuspended()`; Deconstructing is registered explicitly
+
+### Blueprint stacking & suspension
+
+Blueprints can be placed on top of other blueprints at different depths if the lower blueprint has `solidTop` (`StructPlacement.SupportedByBlueprintBelow()`). The upper blueprint is **suspended** (`IsSuspended() == true`) until the support below is actually built.
+
+**Suspended blueprints have no work orders.** The constructor skips registration when `IsSuspended()`. When the lower structure completes, `StructController.Construct()` calls `RefreshColor()` on blueprints above, which calls `RegisterOrdersIfUnsuspended()` — this registers the appropriate order (Supply or Construct) now that the blueprint is unsuspended. The `isActive = () => !bp.IsSuspended()` lambda on orders is kept as defense-in-depth. `Reconcile` and `AuditOrders` both skip suspended blueprints.
+
+### Blueprint costs: deep copy & group item locking
+
+Each blueprint deep-copies its `StructType.costs` array so that `LockGroupCostsAfterDelivery()` — which mutates `cost.item` from a parent (e.g. "wood") to a specific leaf (e.g. "pine") — only affects that individual blueprint, not every blueprint of the same type. Called in `DeliverToBlueprintObjective.Start()` after the first delivery.
 
 ### Adding a new WOM-based task type
 

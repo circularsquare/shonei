@@ -14,4 +14,12 @@ public class StorageSlotDisplay : MonoBehaviour {
         else
             text.text = $"{stack.item.name}: {ItemStack.FormatQ(stack.quantity, stack.item.discrete)}/{ItemStack.FormatQ(stackSize)}";
     }
+
+    /// <summary>Aggregated row: total qty of one item type across multiple inventories.</summary>
+    public void UpdateSlot(Item item, int totalQty, int totalCapacity) {
+        if (item == null)
+            text.text = $"empty: 0/{ItemStack.FormatQ(totalCapacity)}";
+        else
+            text.text = $"{item.name}: {ItemStack.FormatQ(totalQty, item.discrete)}/{ItemStack.FormatQ(totalCapacity)}";
+    }
 }

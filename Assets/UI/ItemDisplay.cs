@@ -12,12 +12,18 @@ using System.Linq;
 //   Market  — targets visible, toggle hidden (used when market overwrites the global panel)
 public class ItemDisplay : MonoBehaviour {
     public enum DisplayMode { Global, Storage, Market }
+    /// <summary>Allow state for the tri-state toggle in Storage mode.</summary>
+    public enum AllowState { Allowed, Disallowed, Mixed }
 
     public Item item;
     public ItemIcon itemIcon;                  // assign in inspector (HorizontalLayout/ItemIcon)
     public TMPro.TextMeshProUGUI itemText;     // assign in inspector (HorizontalLayout/TextItem)
     public TMPro.TextMeshProUGUI targetText;   // assign in inspector (HorizontalLayout/TextItemTarget)
-    public GameObject toggleGo;
+    public GameObject toggleGo;               // assign in inspector — Button (not Toggle) with an Image child
+    public Sprite spriteAllowed;              // assign in inspector
+    public Sprite spriteDisallowed;           // assign in inspector
+    public Sprite spriteMixed;                // assign in inspector — shown when selection has mixed allow states
+    private Image _allowImage;               // cached from toggleGo at Start
     public GameObject targetUpGo;   // assign in inspector (ButtonTargetUp)
     public GameObject targetDownGo; // assign in inspector (ButtonTargetDown)
     public GameObject targetTextGo; // assign in inspector (TextItemTarget)
@@ -40,6 +46,7 @@ public class ItemDisplay : MonoBehaviour {
         Transform btn = transform.Find("HorizontalLayout/ButtonDropdown");
         if (btn != null) dropdownImage = btn.GetComponent<Image>();
         RefreshDropdownSprite();
+        if (toggleGo != null) _allowImage = toggleGo.GetComponent<Image>();
     }
 
     /// <summary>Configures which UI elements are visible based on the display mode.</summary>
@@ -116,35 +123,94 @@ public class ItemDisplay : MonoBehaviour {
         InventoryController.instance.UpdateItemsDisplay();
     }
 
+    /// <summary>Refreshes the allow button sprite to reflect the current tri-state across all selected inventories.</summary>
     public void LoadAllowed(){
         if (item == null) return; // Start() hasn't run yet
-        Inventory inv = GetTargetInventory();
-        bool allowed = false;
-        if (inv != null){
-            allowed = inv.allowed[item.id];
-        }
-        if (allowed != toggleGo.GetComponent<Toggle>().isOn){
-            toggleGo.GetComponent<Toggle>().SetIsOnWithoutNotify(allowed);}
+        // _allowImage may not be cached yet if StoragePanel sets item before Start() runs; try to fetch it now
+        if (_allowImage == null && toggleGo != null) _allowImage = toggleGo.GetComponent<Image>();
+        if (_allowImage == null) return;
+        AllowState state = ComputeAllowState();
+        Sprite sprite = state == AllowState.Allowed    ? spriteAllowed
+                      : state == AllowState.Disallowed ? spriteDisallowed
+                      : spriteMixed;
+        if (sprite != null) _allowImage.sprite = sprite;
     }
-    public void SetAllowed(bool allowed){GetComponent<Toggle>().isOn = allowed;}
+
+    private AllowState ComputeAllowState() {
+        var selected = InventoryController.instance.selectedInventories;
+        if (selected.Count == 0) {
+            Inventory inv = GetTargetInventory();
+            if (inv == null) return AllowState.Disallowed;
+            return GetItemAllowState(inv);
+        }
+        bool anyAllowed = false, anyDisallowed = false;
+        foreach (Inventory inv in selected) {
+            AllowState s = GetItemAllowState(inv);
+            if (s == AllowState.Mixed) return AllowState.Mixed;
+            if (s == AllowState.Allowed) anyAllowed    = true;
+            else                         anyDisallowed = true;
+            if (anyAllowed && anyDisallowed) return AllowState.Mixed;
+        }
+        return anyAllowed ? AllowState.Allowed : AllowState.Disallowed;
+    }
+
+    /// <summary>Returns the allow state for this item within a single inventory.
+    /// For group items, Mixed if some discovered children are allowed and some aren't.</summary>
+    private AllowState GetItemAllowState(Inventory inv) {
+        if (item.children == null || item.children.Length == 0)
+            return inv.allowed[item.id] ? AllowState.Allowed : AllowState.Disallowed;
+        bool anyAllowed = false, anyDisallowed = false;
+        foreach (Item child in item.children) {
+            if (!child.IsDiscovered()) continue;
+            if (inv.allowed[child.id]) anyAllowed    = true;
+            else                       anyDisallowed = true;
+            if (anyAllowed && anyDisallowed) return AllowState.Mixed;
+        }
+        return anyAllowed ? AllowState.Allowed : AllowState.Disallowed;
+    }
 
     public void OnClickAllow(){ //  allow item in inv
-        Inventory inv = GetTargetInventory();
-        if (inv == null){return;}
-        if (item.children != null && item.children.Length > 0)
-            inv.ToggleAllowItemWithChildren(item);
-        else {
-            inv.ToggleAllowItem(item);
-            // If all discovered siblings are now allowed, auto-allow parent (catches undiscovered children too)
-            if (item.parent != null && inv.allowed[item.id])
-                CheckAutoAllowParent(inv, item.parent);
+        var selected = InventoryController.instance.selectedInventories;
+        // Mixed or Disallowed → allow all; Allowed → disallow all
+        AllowState current = selected.Count > 0 ? ComputeAllowState() : AllowState.Disallowed;
+        bool targetState = current != AllowState.Allowed;
+
+        if (selected.Count == 0) {
+            Inventory inv = GetTargetInventory();
+            if (inv == null) return;
+            ApplyAllowState(inv, item, targetState);
+        } else {
+            foreach (Inventory inv in selected)
+                ApplyAllowState(inv, item, targetState);
         }
+
         // Refresh the appropriate display
         if (displayMode == DisplayMode.Storage) {
             StoragePanel.instance?.UpdateDisplay();
         } else {
             InventoryController.instance.UpdateItemsDisplay();
         }
+    }
+
+    /// <summary>Applies an absolute allow state to an item (and children if group) without toggle semantics.
+    /// Used when fanning a primary inventory's toggle result out to secondary selected inventories.</summary>
+    private void ApplyAllowState(Inventory inv, Item item, bool state) {
+        if (item.children != null && item.children.Length > 0) {
+            SetAllowStateRecursive(inv, item, state);
+        } else {
+            if (state) inv.AllowItem(item);
+            else       inv.DisallowItem(item);
+            if (item.parent != null && state)
+                CheckAutoAllowParent(inv, item.parent);
+        }
+    }
+
+    private void SetAllowStateRecursive(Inventory inv, Item item, bool state) {
+        if (state) inv.AllowItem(item);
+        else       inv.DisallowItem(item);
+        if (item.children != null)
+            foreach (Item child in item.children)
+                SetAllowStateRecursive(inv, child, state);
     }
 
     /// <summary>If every discovered child of parent is allowed, allow the whole group.</summary>

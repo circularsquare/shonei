@@ -158,11 +158,26 @@ public class Inventory{
             Debug.Log($"tried adding {reason} item {item.name} to {invType} '{displayName}' at ({x},{y})");
             return quantity;
         }
-        for (int i = 0; i < nStacks; i++){
+        // Build iteration order for consolidation:
+        // 1. Existing stacks holding this item, fullest first (top off rather than spreading to a new slot)
+        // 2. Empty stacks in original order (overflow into fresh slots as needed)
+        // Stacks occupied by a different item are skipped — ItemStack.AddItem returns null for them anyway.
+        var matchingIndices = new List<(int idx, int qty)>();
+        var emptyIndices = new List<int>();
+        for (int i = 0; i < nStacks; i++) {
+            if (itemStacks[i].item == item) matchingIndices.Add((i, itemStacks[i].quantity));
+            else if (itemStacks[i].item == null) emptyIndices.Add(i);
+        }
+        matchingIndices.Sort((a, b) => b.qty.CompareTo(a.qty)); // fullest first
+
+        var sortedIndices = new List<int>(nStacks);
+        foreach (var (idx, _) in matchingIndices) sortedIndices.Add(idx);
+        sortedIndices.AddRange(emptyIndices);
+
+        foreach (int i in sortedIndices){
             Item prevItem = itemStacks[i].item;
             int? result = itemStacks[i].AddItem(item, quantity);
-            // should probably just check if the itemstack is the right item instead of using this null thing.
-            if (result == null){ continue; } // item slot occupied by different item. go next
+            if (result == null){ continue; } // shouldn't happen with the pre-filter, but guard anyway
             // Floor haul side effects: remove order when stack empties, register when items arrive.
             if (invType == InvType.Floor) {
                 if (prevItem != null && itemStacks[i].item == null)
@@ -363,7 +378,7 @@ public class Inventory{
         ItemStack best = null;
         foreach (ItemStack stack in itemStacks){
             if (stack != null && stack.item != null && stack.quantity > 0 && stack.Available() && MatchesItem(stack.item, item)){
-                if (best == null || stack.quantity > best.quantity){
+                if (best == null || stack.quantity < best.quantity){ // prefer smallest — drains thin stacks first
                     best = stack;
                 }
             }

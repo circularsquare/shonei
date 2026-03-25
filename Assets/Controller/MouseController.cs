@@ -20,6 +20,12 @@ public class MouseController : MonoBehaviour {
     Component ppcComponent;
     PropertyInfo ppcAssetsPPU;
 
+    // --- drag-select state ---
+    private Vector3 _dragStartScreenPos;
+    private bool _isDragging = false;
+    private const float DragThresholdPixels = 8f;
+    [SerializeField] private RectTransform dragRectTransform; // assign in inspector (Screen Space Overlay Image)
+
     void Start() {
         if (instance != null) {
             Debug.LogError("there should only be one mouse controller");}
@@ -120,44 +126,122 @@ public class MouseController : MonoBehaviour {
             InventoryController.instance.PasteAllowed(tileAt.inv);
         }
 
-        // register click
+        // LMB down: record drag start for Select mode; immediate action for Build/Remove
         if (Input.GetMouseButtonDown(0)) {
-            Vector3 clickPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            if (mouseMode == MouseMode.Select){ // display info
-                // Shift+LMB on storage = copy filters
-                bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-                if (shift && tileAt?.inv != null && IsStorageType(tileAt.inv.invType)) {
-                    InventoryController.instance.CopyAllowed(tileAt.inv);
-                } else {
-                Collider2D[] hits = Physics2D.OverlapPointAll(clickPos);
-                var animals = new System.Collections.Generic.List<Animal>();
-                foreach (var col in hits) {
-                    Animal a = col.gameObject.GetComponent<Animal>();
-                    if (a != null) animals.Add(a);
-                }
-                if (animals.Count > 0) {
-                    InfoPanel.instance.ShowInfo(animals); // clicked on animal(s)
-                } else if (tileAt != null) {
-                    InfoPanel.instance.ShowInfo(tileAt); // clicked on tile
-                    if (tileAt.inv != null && (tileAt.inv.invType == Inventory.InvType.Storage
-                                            || tileAt.inv.invType == Inventory.InvType.Market
-                                            || tileAt.inv.invType == Inventory.InvType.Liquid)) {
-                        InventoryController.instance.SelectInventory(tileAt.inv);  // select inventory if storage
-                    } else {
-                        InventoryController.instance.SelectInventory(null); // deselect inventory (show global)
-                    }
-                }
-                } // end shift-else
-
+            if (mouseMode == MouseMode.Select) {
+                _dragStartScreenPos = Input.mousePosition;
+                _isDragging = false;
             } else if (mouseMode == MouseMode.Build) {
                 Tile placeTile = anchorTile ?? tileAt;
-                if (BuildPanel.instance.PlaceBlueprint(placeTile) && !Input.GetKey(KeyCode.LeftShift) && !Input.GetKey(KeyCode.RightShift)) {
+                bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+                if (BuildPanel.instance.PlaceBlueprint(placeTile) && !shift)
                     mouseMode = MouseMode.Select;
-                }
             } else if (mouseMode == MouseMode.Remove) {
                 BuildPanel.instance.Remove(tileAt);
             }
         }
+
+        // LMB held in Select mode: check drag threshold and update visual rect
+        if (Input.GetMouseButton(0) && mouseMode == MouseMode.Select) {
+            float dist = Vector3.Distance(Input.mousePosition, _dragStartScreenPos);
+            if (!_isDragging && dist > DragThresholdPixels)
+                _isDragging = true;
+            if (dragRectTransform != null)
+                dragRectTransform.gameObject.SetActive(_isDragging);
+            if (_isDragging)
+                UpdateDragRect(_dragStartScreenPos, Input.mousePosition);
+        }
+
+        // LMB up in Select mode: commit drag-select or handle as single click
+        if (Input.GetMouseButtonUp(0) && mouseMode == MouseMode.Select) {
+            if (dragRectTransform != null) dragRectTransform.gameObject.SetActive(false);
+            if (_isDragging) {
+                CommitDragSelect(_dragStartScreenPos, Input.mousePosition);
+            } else {
+                HandleSelectClick(tileAt, Camera.main.ScreenToWorldPoint(Input.mousePosition));
+            }
+            _isDragging = false;
+        }
+    }
+
+    private void HandleSelectClick(Tile tileAt, Vector3 clickPos) {
+        bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+        bool ctrl  = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+
+        // Shift+LMB on storage = copy filters
+        if (shift && tileAt?.inv != null && IsStorageType(tileAt.inv.invType)) {
+            InventoryController.instance.CopyAllowed(tileAt.inv);
+            return;
+        }
+
+        Collider2D[] hits = Physics2D.OverlapPointAll(clickPos);
+        var animals = new System.Collections.Generic.List<Animal>();
+        foreach (var col in hits) {
+            Animal a = col.gameObject.GetComponent<Animal>();
+            if (a != null) animals.Add(a);
+        }
+
+        if (animals.Count > 0) {
+            InfoPanel.instance.ShowInfo(animals);
+            InventoryController.instance.SelectInventory(null);
+        } else if (tileAt != null) {
+            bool hasStorageInv = tileAt.inv != null && IsStorageType(tileAt.inv.invType);
+            if (ctrl && hasStorageInv) {
+                // Ctrl+LMB: toggle this inventory in/out of the multi-selection
+                InventoryController.instance.CtrlToggleInventory(tileAt.inv);
+                Inventory primary = InventoryController.instance.selectedInventory;
+                if (primary != null) {
+                    Tile primaryTile = WorldController.instance.world.GetTileAt(primary.x, primary.y);
+                    InfoPanel.instance.ShowInfo(primaryTile);
+                }
+            } else {
+                InfoPanel.instance.ShowInfo(tileAt);
+                if (hasStorageInv)
+                    InventoryController.instance.SelectInventory(tileAt.inv);
+                else
+                    InventoryController.instance.SelectInventory(null);
+            }
+        }
+    }
+
+    /// <summary>Selects all storage inventories whose tile falls inside the screen-space drag rectangle.</summary>
+    private void CommitDragSelect(Vector3 startScreen, Vector3 endScreen) {
+        Vector3 worldA = Camera.main.ScreenToWorldPoint(startScreen); worldA.z = 0;
+        Vector3 worldB = Camera.main.ScreenToWorldPoint(endScreen);   worldB.z = 0;
+        float minX = Mathf.Min(worldA.x, worldB.x), maxX = Mathf.Max(worldA.x, worldB.x);
+        float minY = Mathf.Min(worldA.y, worldB.y), maxY = Mathf.Max(worldA.y, worldB.y);
+
+        var found = new System.Collections.Generic.List<Inventory>();
+        Inventory primary = null;
+        foreach (Inventory inv in InventoryController.instance.inventories) {
+            if (!IsStorageType(inv.invType)) continue;
+            if (inv.x >= minX && inv.x <= maxX && inv.y >= minY && inv.y <= maxY) {
+                found.Add(inv);
+                primary = inv;
+            }
+        }
+
+        if (found.Count == 0) {
+            InventoryController.instance.SelectInventory(null);
+            InfoPanel.instance.ShowInfo((Tile)null);
+            return;
+        }
+
+        Tile primaryTile = WorldController.instance.world.GetTileAt(primary.x, primary.y);
+        if (primaryTile != null) InfoPanel.instance.ShowInfo(primaryTile);
+        InventoryController.instance.SelectInventories(found, primary);
+    }
+
+    /// <summary>Positions the drag-rect UI image between the two screen-space corners.</summary>
+    private void UpdateDragRect(Vector3 startScreen, Vector3 currentScreen) {
+        if (dragRectTransform == null) return;
+        // Screen Space Overlay: RectTransform.position is in screen pixels, same origin as Input.mousePosition
+        dragRectTransform.position = new Vector3(
+            (startScreen.x + currentScreen.x) / 2f,
+            (startScreen.y + currentScreen.y) / 2f, 0f);
+        dragRectTransform.sizeDelta = new Vector2(
+            Mathf.Abs(currentScreen.x - startScreen.x),
+            Mathf.Abs(currentScreen.y - startScreen.y));
     }
 
     public void SetModeBuild() {

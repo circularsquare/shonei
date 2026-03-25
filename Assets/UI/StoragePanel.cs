@@ -28,12 +28,19 @@ public class StoragePanel : MonoBehaviour {
         gameObject.SetActive(false);
     }
 
-    /// <summary>Show the panel for the given storage or liquid inventory.</summary>
+    /// <summary>Show the panel for the given storage or liquid inventory (primary of the current selection).</summary>
     public void Show(Inventory inv) {
         if (inv == null) { Hide(); return; }
         currentInv = inv;
         gameObject.SetActive(true);
-        titleText.text = inv.displayName ?? "storage";
+        var sel = InventoryController.instance.selectedInventories;
+        if (sel.Count > 1) {
+            string first = sel[0].displayName ?? "storage";
+            bool allSame = sel.TrueForAll(i => (i.displayName ?? "storage") == first);
+            titleText.text = $"{(allSame ? first : "storage")} x {sel.Count}";
+        } else {
+            titleText.text = inv.displayName ?? "storage";
+        }
         PopulateSlots();
         PopulateAllowTree();
         // Force layout recalculation so ContentSizeFitters update before the frame renders
@@ -60,19 +67,57 @@ public class StoragePanel : MonoBehaviour {
 
     private void PopulateSlots() {
         ClearSlots();
-        foreach (ItemStack stack in currentInv.itemStacks) {
+        var selected = InventoryController.instance.selectedInventories;
+
+        if (selected.Count <= 1) {
+            // Single inventory: show individual stacks as before
+            Inventory inv = selected.Count == 1 ? selected[0] : currentInv;
+            foreach (ItemStack stack in inv.itemStacks) {
+                GameObject go = Instantiate(storageSlotPrefab, slotContainer);
+                slotGos.Add(go);
+                go.GetComponent<StorageSlotDisplay>().UpdateSlot(stack, inv.stackSize);
+            }
+            return;
+        }
+
+        // Multiple inventories: aggregate by item type across all selected
+        var totalQty = new Dictionary<Item, int>();
+        var occupiedCap = new Dictionary<Item, int>();
+        int totalEmptyCap = 0;
+
+        foreach (Inventory inv in selected) {
+            foreach (ItemStack stack in inv.itemStacks) {
+                if (stack.item != null && stack.quantity > 0) {
+                    if (!totalQty.ContainsKey(stack.item))    totalQty[stack.item]    = 0;
+                    if (!occupiedCap.ContainsKey(stack.item)) occupiedCap[stack.item] = 0;
+                    totalQty[stack.item]    += stack.quantity;
+                    occupiedCap[stack.item] += inv.stackSize;
+                } else {
+                    totalEmptyCap += inv.stackSize;
+                }
+            }
+        }
+
+        // One row per item type, sorted by name
+        var sortedItems = new List<Item>(totalQty.Keys);
+        sortedItems.Sort((a, b) => string.Compare(a.name, b.name, System.StringComparison.Ordinal));
+        foreach (Item item in sortedItems) {
             GameObject go = Instantiate(storageSlotPrefab, slotContainer);
             slotGos.Add(go);
-            StorageSlotDisplay slot = go.GetComponent<StorageSlotDisplay>();
-            slot.UpdateSlot(stack, currentInv.stackSize);
+            go.GetComponent<StorageSlotDisplay>().UpdateSlot(item, totalQty[item], occupiedCap[item]);
+        }
+
+        // One combined row for all empty capacity
+        if (totalEmptyCap > 0) {
+            GameObject go = Instantiate(storageSlotPrefab, slotContainer);
+            slotGos.Add(go);
+            go.GetComponent<StorageSlotDisplay>().UpdateSlot(null, 0, totalEmptyCap);
         }
     }
 
     private void UpdateSlots() {
-        for (int i = 0; i < slotGos.Count && i < currentInv.itemStacks.Length; i++) {
-            StorageSlotDisplay slot = slotGos[i].GetComponent<StorageSlotDisplay>();
-            slot.UpdateSlot(currentInv.itemStacks[i], currentInv.stackSize);
-        }
+        // Repopulate rather than update in-place: aggregated row count can change each tick
+        PopulateSlots();
     }
 
     private void ClearSlots() {
@@ -142,13 +187,15 @@ public class StoragePanel : MonoBehaviour {
 
     public void OnClickAllowAll() {
         if (currentInv == null) return;
-        currentInv.AllowAll();
+        foreach (Inventory inv in InventoryController.instance.selectedInventories)
+            inv.AllowAll();
         UpdateDisplay();
     }
 
     public void OnClickDenyAll() {
         if (currentInv == null) return;
-        currentInv.DenyAll();
+        foreach (Inventory inv in InventoryController.instance.selectedInventories)
+            inv.DenyAll();
         UpdateDisplay();
     }
 }

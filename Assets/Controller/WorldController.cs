@@ -170,11 +170,13 @@ public class WorldController : MonoBehaviour {
         StructController.instance.Place(plant4);
         Plant plant5 = new Plant(Db.plantTypeByName["wheat"], 26, 10);
         StructController.instance.Place(plant5);
+        Plant plant6 = new Plant(Db.plantTypeByName["soybean"], 14, 10);
+        StructController.instance.Place(plant6);
 
         // Seed water sources at the surface (y=10) in the specified x ranges.
         // Clear the tile first so water isn't blocked by solid terrain.
         for (int x = 0; x < world.nx; x++) {
-            if ((x >= 0 && x <= 3) || (x >= 30 && x <= 40)) {
+            if ((x >= 0 && x <= 3) || (x >= 34 && x <= 44)) {
                 Tile t = world.GetTileAt(x, 9);
                 t.type = Db.tileTypeByName["empty"];
                 t.water = WaterController.WaterMax;

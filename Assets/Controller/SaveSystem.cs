@@ -400,14 +400,10 @@ public class SaveSystem : MonoBehaviour {
         bp.RefreshColor();
         if (bp.state == Blueprint.BlueprintState.Deconstructing && bp.tile.building?.storage != null)
             bp.tile.building.storage.locked = true;
-        switch (bp.state) {
-            case Blueprint.BlueprintState.Constructing:
-                WorkOrderManager.instance?.RegisterConstruct(bp); break;
-            case Blueprint.BlueprintState.Receiving:
-                WorkOrderManager.instance?.RegisterSupplyBlueprint(bp); break;
-            case Blueprint.BlueprintState.Deconstructing:
-                WorkOrderManager.instance?.RegisterDeconstruct(bp); break;
-        }
+        // RefreshColor() above already calls RegisterOrdersIfUnsuspended() for
+        // Receiving/Constructing. Deconstructing blueprints are never suspended.
+        if (bp.state == Blueprint.BlueprintState.Deconstructing)
+            WorkOrderManager.instance?.RegisterDeconstruct(bp);
     }
 
     void RestoreInventory(InventorySaveData isd, Tile tile) {

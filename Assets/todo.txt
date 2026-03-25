@@ -11,8 +11,6 @@
         - manuals for learning technologies
         - scriptoriums
 - storage stuff
-        - higher are inactive 
-    - bulk inv selection?
     - global storages overview panel? 
 - UI
     - automatically close other panels when you open a temporary panel... like market, research, recipe, or inventory (?)
@@ -43,11 +41,9 @@
 - workplace workorder capacity system is kinda indirect
 
 
-
 BUGS
-- mouse can get stuck if you reassign job on an unstandable tile and they have to drop. might be fixed
 
 TODAY GOALS
-    - blueprint stacking on solid blueprints 
-    - test this!!
-        - i think currently doesn't work, it needs to not have a workorder
+    - bulk inv selection?
+    - make storagepanel show sum, and aggregate by item type
+        make title crate x n if theyre all crates

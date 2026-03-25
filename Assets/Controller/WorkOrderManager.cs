@@ -440,9 +440,10 @@ public class WorkOrderManager : MonoBehaviour {
                 Debug.LogWarning($"WOM reconcile: registered missing harvest order for {p.plantType.name} at ({p.x},{p.y})");
 
         foreach (Blueprint bp in StructController.instance.GetBlueprints()) {
+            // Suspended blueprints intentionally have no orders — skip them.
             bool inserted = bp.state switch {
-                Blueprint.BlueprintState.Constructing   => RegisterConstruct(bp),
-                Blueprint.BlueprintState.Receiving      => RegisterSupplyBlueprint(bp),
+                Blueprint.BlueprintState.Constructing   => !bp.IsSuspended() && RegisterConstruct(bp),
+                Blueprint.BlueprintState.Receiving      => !bp.IsSuspended() && RegisterSupplyBlueprint(bp),
                 Blueprint.BlueprintState.Deconstructing => RegisterDeconstruct(bp),
                 _ => false
             };
@@ -494,9 +495,10 @@ public class WorkOrderManager : MonoBehaviour {
             if (o.type == OrderType.Harvest && !(o.tile?.building is Plant))
                 Debug.LogError($"WOM audit: harvest order at ({o.tile?.x},{o.tile?.y}) has no plant");
 
-        // Blueprints — direction 1: every active blueprint must have a matching order
+        // Blueprints — direction 1: every non-suspended blueprint must have a matching order
         var bps = StructController.instance.GetBlueprints();
         foreach (Blueprint bp in bps) {
+            if (bp.IsSuspended()) continue; // suspended blueprints intentionally have no orders
             OrderType expected = bp.state switch {
                 Blueprint.BlueprintState.Constructing   => OrderType.Construct,
                 Blueprint.BlueprintState.Receiving      => OrderType.SupplyBlueprint,

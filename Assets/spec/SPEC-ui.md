@@ -28,7 +28,29 @@ Canvas
 | Storage / Liquid | Global quantities + targets (unchanged) | Shown with inv details |
 | Market | Market quantities + targets (title: market name) | Hidden |
 
-Triggered by `MouseController` on left-click: storage/liquid/market tiles call `SelectInventory(tileAt.inv)`, everything else calls `SelectInventory(null)`.
+Triggered by `MouseController` on left-click (fires on `MouseButtonUp`): storage/liquid/market tiles call `SelectInventory(tileAt.inv)`, everything else calls `SelectInventory(null)`.
+
+### Multi-selection
+
+Multiple storage inventories can be selected simultaneously. The **primary** inventory (most recently touched) is shown in StoragePanel. All selected inventories are highlighted with pool GOs managed by `InventoryController`.
+
+| Control | Action |
+|---------|--------|
+| LMB drag | Draw rectangle; select all storage/liquid inventories whose tile falls inside |
+| Ctrl+LMB | Toggle a single storage in/out of the current selection |
+| LMB click (no modifier) | Clear selection, select only the clicked inventory |
+
+**State**: `InventoryController.selectedInventories` (`List<Inventory>`) — the full selection. `selectedInventory` remains the primary. `SelectInventories(invs, primary)` sets both at once (used by drag-rect). `CtrlToggleInventory(inv)` adds/removes one entry.
+
+**Filter operations on multi-selection**:
+- **Allow/disallow toggle** (`ItemDisplay.OnClickAllow`): toggles the primary, then fans the resulting absolute state to all others (avoids flip-flop when secondary inventories diverge). Group items recurse via `SetAllowStateRecursive`.
+- **AllowAll / DenyAll buttons**: apply to all `selectedInventories`.
+- **Copy filters** (Shift+LMB): copies from the single clicked tile only — unaffected by multi-selection.
+- **Paste filters** (Shift+RMB): pastes to the single clicked tile only.
+
+**Drag-rect visual**: a screen-space `Image` UI element (`DragRect`) on the Canvas, positioned and sized each frame by `MouseController.UpdateDragRect`. Inactive when not dragging.
+
+**Highlight pool**: `InventoryController._highlightPool` — list of `tileHighlightPrefab` instances grown on demand, never destroyed. `RefreshHighlights()` positions and activates/deactivates them to match `selectedInventories`.
 
 ## ItemDisplay (row component)
 
@@ -100,11 +122,11 @@ A second set of ItemDisplay instances (separate from the global panel's) with `D
 
 ### Allow/Disallow
 
-- Toggle click → `ItemDisplay.OnClickAllow()` → `inv.ToggleAllowItem()` or `ToggleAllowItemWithChildren()` (for parent groups)
+- Toggle click → `ItemDisplay.OnClickAllow()` → `inv.ToggleAllowItem()` or `ToggleAllowItemWithChildren()` (for parent groups) on primary, then fans absolute state to all `selectedInventories`
 - Disallowing an item with existing quantity triggers `RegisterStorageEvictionHaul` (p3 haul work order)
 - Auto-allow parent: if all discovered siblings become allowed, the parent group is auto-enabled
-- AllowAll / DenyAll buttons wired to `StoragePanel.OnClickAllowAll/DenyAll`
-- Copy/paste filters: Shift+LMB on storage = copy, Shift+RMB = paste (handled by `MouseController` → `InventoryController.CopyAllowed/PasteAllowed`)
+- AllowAll / DenyAll buttons wired to `StoragePanel.OnClickAllowAll/DenyAll` — apply to all `selectedInventories`
+- Copy/paste filters: Shift+LMB on storage = copy, Shift+RMB = paste (handled by `MouseController` → `InventoryController.CopyAllowed/PasteAllowed`); operates on the single clicked tile regardless of multi-selection
 
 ## Key Files
 

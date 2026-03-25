@@ -38,7 +38,7 @@ Custom `ScriptableRendererFeature` pipeline — no URP Light2Ds used. Final resu
 
 3. **Composite** — `cmd.Blit(lightRT, scene, LightComposite)` multiplies scene by light map (`Blend DstColor Zero`). **No-op (returns `(1,1,1,1)`) for pixels with normals RT alpha < 0.25** (empty sky/background); those pixels are instead tinted by `BackgroundCamera.backgroundColor`.
 
-**LightFeature skips cameras with `cullingMask == 0`** to avoid wasted GPU work (e.g. the background camera).
+**LightFeature skips cameras** where `cullingMask == 0` or where `(cullingMask & (litLayers | directionalOnlyLayers | waterLayer)) == 0` — i.e. cameras that see no sprites participating in the normals RT. The `UnlitOverlayCamera` (see Sky/background below) hits the second check because the Unlit layer is excluded from all three masks.
 
 ### URP render target gotchas
 
@@ -48,7 +48,15 @@ Custom `ScriptableRendererFeature` pipeline — no URP Light2Ds used. Final resu
 
 ### Sky / background
 
-`BackgroundCamera` (depth 0, ClearFlags = Solid Color) renders before the main camera. Its `backgroundColor` is set each frame to `baseSkyColor * SunController.GetAmbientColor()`, so the sky darkens at night and warms at sunrise. The main camera (depth 1, ClearFlags = Don't Clear) renders on top.
+Three cameras render in depth order:
+
+| Camera | Depth | Clear Flags | Culling Mask | Notes |
+|--------|-------|-------------|--------------|-------|
+| `BackgroundCamera` | 0 | Solid Color | Background layer | `backgroundColor` set to `baseSkyColor × GetAmbientColor()` each frame — sky darkens at night |
+| Main Camera | 1 | Don't Clear | Everything except Unlit | PixelPerfectCamera; lighting composite applied here |
+| `UnlitOverlayCamera` | 2 | Don't Clear | Unlit only | Renders after composite — sprites on the **Unlit** layer appear at full brightness, unaffected by lighting. Has `MatchCameraZoom` component to sync `assetsPPU` from Main Camera. LightFeature pipeline is skipped for this camera entirely. |
+
+**Unlit layer pattern**: any sprite that should always appear at full brightness (tile highlights, selection overlays, debug markers) goes on the `Unlit` layer. Keep it excluded from `litLayers`, `shadowCasterLayers`, and `directionalOnlyLayers` in the LightFeature Inspector.
 
 ### Key files
 
