@@ -41,6 +41,9 @@ public class StructureSaveData {
     // null = field absent (old saves) → RegisterWorkstation defaults to full capacity.
     // 0 = explicitly disabled. 1..capacity = player-set limit.
     public int? workOrderEffectiveCapacity;
+    // Fuel-inv buildings only: leaf-item stack data for building.fuelInv at save time.
+    // null = no fuel inv, or inv was empty (treated as empty on load).
+    public InventorySaveData fuelInvData;
 }
 
 public class BlueprintSaveData {

@@ -45,9 +45,6 @@ public class Structure {
         // Workstations don't use Structure.res — their WOM Craft order owns the reservation.
         res = (structType.capacity > 0 && !structType.isWorkstation) ? new Reservable(structType.capacity) : null;
 
-        if (structType.name == "torch") {
-            go.AddComponent<LightSource>();
-        }
         if (structType.name == "clock") {
             go.AddComponent<ClockHand>();
         }
@@ -120,6 +117,17 @@ public class StructType {
     public int storageTileX {get; set;} // tile offset to the storage inventory tile (default 0,0 = anchor)
     public int storageTileY {get; set;}
     public TileRequirement[] tileRequirements {get; set;} // extra per-tile constraints checked at placement
+    // isBuilding: true = use Building class regardless of depth (default false = depth 0 uses Building; others don't).
+    // Allows foreground/other-depth structures to have full Building features (fuelInv, uses, storage, etc.).
+    public bool isBuilding {get; set;}
+    // Fuel inventory: internal resource consumed over time (torch burns wood; furnace burns coal, etc.).
+    // hasFuelInv = true → Building creates a fuelInv and WOM registers a standing supply order on placement.
+    public bool hasFuelInv {get; set;}
+    public string fuelItemName {get; set;} // group or leaf item name (e.g. "wood"); resolved to fuelItem on load
+    public Item fuelItem;                  // resolved from fuelItemName in OnDeserialized
+    public int fuelCapacity {get; set;}    // max stack size in fen (JSON in liang, converted in OnDeserialized)
+    public int fuelTarget {get; set;}      // WOM keeps fuelInv.Quantity >= this (JSON in liang, converted in OnDeserialized)
+    public float fuelBurnRate {get; set;}  // liang/day consumed; LightSource converts to fen/s at runtime
 
     public virtual Sprite LoadSprite() {
         if (isTile) {
@@ -141,9 +149,18 @@ public class StructType {
             costs[i] = new ItemQuantity(ncosts[i].name, (int)Math.Round(ncosts[i].quantity * 100));
         }
         if (njob != null){
-            job = Db.jobByName[njob]; 
+            job = Db.jobByName[njob];
         } else {
             job = Db.jobByName["hauler"]; // default if no njob provided
+        }
+        // Fuel inventory: convert liang → fen; resolve fuel item reference.
+        if (hasFuelInv) {
+            if (fuelCapacity > 0) fuelCapacity = (int)Math.Round(fuelCapacity * 100f);
+            if (fuelTarget  > 0) fuelTarget  = (int)Math.Round(fuelTarget  * 100f);
+            if (fuelItemName != null && Db.itemByName.ContainsKey(fuelItemName))
+                fuelItem = Db.itemByName[fuelItemName];
+            else
+                Debug.LogError($"StructType '{name}': hasFuelInv=true but fuelItemName '{fuelItemName}' not found in Db");
         }
     }
 }

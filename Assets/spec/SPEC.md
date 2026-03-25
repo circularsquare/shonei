@@ -67,7 +67,7 @@ Assets/
 │   ├── SaveSlotEntry.cs   Per-row component for the save slot scroll list
 │   ├── ConfirmationPopup.cs  Reusable yes/cancel modal (singleton)
 │   ├── TooltipSystem.cs, Tooltippable.cs
-│   └── UI.cs          Static singleton accessor hub
+│   └── UI.cs          Static singleton hub; also owns exclusive-panel registry (RegisterExclusive / OpenExclusive)
 ├── Lighting/          Custom lighting pipeline (ScriptableRendererFeature)
 └── Resources/
     ├── buildingsDb.json
@@ -75,7 +75,10 @@ Assets/
     ├── recipesDb.json
     ├── itemsDb.json
     ├── jobsDb.json
-    └── researchDb.json
+    ├── researchDb.json
+    └── Sprites/Items/
+        ├── Sheets/    ← source sprite sheets (not loaded at runtime)
+        └── split/     ← split output loaded by Resources.Load at runtime
 ```
 
 ### Building subclasses
@@ -115,3 +118,33 @@ Depth-0 buildings with custom behaviour subclass `Building` (e.g. `PumpBuilding`
 | [SPEC-trading.md](SPEC-trading.md) | WebSocket protocol, matching engine, TradingClient, TradingPanel, in-game market logistics |
 | [SPEC-research.md](SPEC-research.md) | Research points mechanic, node structure, key classes, save data |
 | [SPEC-ui.md](SPEC-ui.md) | Inventory UI panels — global panel, StoragePanel, ItemDisplay DisplayMode, selection routing |
+
+---
+
+## Canonical examples
+
+When adding new content, read these files first and match their pattern:
+
+| Adding... | Model after | Key file(s) |
+|-----------|-------------|-------------|
+| New Task type | `HaulTask` (simple) or `CraftTask` (complex) | `Task.cs` — also see 11-step checklist in SPEC-ai.md |
+| New Objective | `FetchObjective` (retry) or `WorkObjective` (simple) | `Task.cs` |
+| New WOM order type | `RegisterConstructOrder` / `RegisterWorkstation` | `WorkOrderManager.cs` + SPEC-ai.md checklist |
+| New Building subclass | `PumpBuilding` | `Assets/Components/PumpBuilding.cs` |
+| New UI panel (exclusive) | `ResearchPanel` | `Assets/UI/ResearchPanel.cs` |
+| New UI panel (detail) | `StoragePanel` | `Assets/UI/StoragePanel.cs` |
+| New item/building/recipe | Existing JSON entries | `Assets/Resources/*.json` — see SPEC-data.md |
+| New save data | `ResearchSaveData` | `WorldSaveData.cs` + `SaveSystem.cs` checklist |
+| New item sprite | Existing sheets | `Sprites/Items/Sheets/` → Tools → Split All → Generate Normal Maps |
+| New lit object | Existing sprite setup | Must be on a `litLayers` layer — see SPEC-rendering.md |
+
+---
+
+## Anti-patterns (system-specific)
+
+Non-obvious gotchas that have caused bugs before. Cross-system anti-patterns live in CLAUDE.md.
+
+- **Craft order job check** (AI): Do NOT use `structType.job` for craft eligibility — that's the *construction* job (e.g. "hauler" for a sawmill). Use `Array.Exists(a.job.recipes, r => r != null && r.tile == buildingName)`. See SPEC-ai.md.
+- **Normals RT format** (Rendering): Must be **ARGB32**, not the camera's default HDR format (lacks alpha). Alpha encodes the lighting tier.
+- **`cmd.DrawMesh` for fullscreen passes** (Rendering): Use `cmd.Blit` for sun pass, not `cmd.DrawMesh` — DrawMesh silently fails on cameras without PixelPerfectCamera.
+- **Stale WOM orders after world clear** (AI): `ClearAllOrders()` must be called at the start of `ClearWorld()`, before destroying any objects.

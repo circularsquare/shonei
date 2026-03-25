@@ -98,9 +98,18 @@ public class Blueprint {
     /// </summary>
     public void RegisterOrdersIfUnsuspended() {
         if (IsSuspended() || cancelled) return;
-        if (state == BlueprintState.Receiving)
-            WorkOrderManager.instance?.RegisterSupplyBlueprint(this);
-        else if (state == BlueprintState.Constructing)
+        if (state == BlueprintState.Receiving) {
+            // After save/load, LockGroupCostsAfterDelivery() is not re-run so cost.item reverts to
+            // the group ("wood"). IsFullyDelivered() uses MatchesItem so it still works correctly.
+            // If the blueprint is already fully supplied, heal the state rather than registering
+            // a supply order that would immediately fail in SupplyBlueprintTask.Initialize().
+            if (IsFullyDelivered()) {
+                state = BlueprintState.Constructing;
+                WorkOrderManager.instance?.RegisterConstruct(this);
+            } else {
+                WorkOrderManager.instance?.RegisterSupplyBlueprint(this);
+            }
+        } else if (state == BlueprintState.Constructing)
             WorkOrderManager.instance?.RegisterConstruct(this);
     }
 
@@ -175,9 +184,13 @@ public class Blueprint {
     public void Complete(){
         StructController.instance.RemoveBlueprint(this);
         WorkOrderManager.instance?.RemoveForBlueprint(this);
-        // Consume delivered materials — removes them from globalInv now that they're used up
-        foreach (var cost in costs)
-            inv.Produce(cost.item, -inv.Quantity(cost.item));
+        // Consume delivered materials — removes them from globalInv now that they're used up.
+        // Use the actual stack items (not cost.item) because group costs (e.g. "wood") are only locked
+        // to their delivered leaf ("pine") in-memory; after a save/load cost.item reverts to the group
+        // and Produce("wood", ...) would fail the group-item guard in AddItem.
+        foreach (var stack in inv.itemStacks)
+            if (stack.item != null && stack.quantity > 0)
+                inv.Produce(stack.item, -stack.quantity);
         // Capture tile products before Construct() changes the tile type
         if (structType.isTile && structType.name == "empty" && tile.type.products != null)
             pendingOutput = new List<ItemQuantity>(tile.type.products);
@@ -192,8 +205,16 @@ public class Blueprint {
         pendingOutput = new List<ItemQuantity>(); // given in asm.handleworking
         foreach (ItemQuantity cost in costs) {
             int amount = Mathf.FloorToInt(cost.quantity / 2f);
-            if (amount > 0)
-                pendingOutput.Add(new ItemQuantity(cost.item, amount));
+            if (amount <= 0) continue;
+            // Resolve group costs (e.g. "wood") to the actual leaf item that was delivered (e.g. "pine").
+            // cost.item reverts to the group after save/load, so check the inv stack directly.
+            Item item = cost.item;
+            if (item.children != null) {
+                ItemStack delivered = inv.GetItemStack(item);
+                if (delivered == null) continue; // nothing was delivered for this cost
+                item = delivered.item;
+            }
+            pendingOutput.Add(new ItemQuantity(item, amount));
         }
         // destroy the building
         for (int i = 0; i < 4; i++) { if (tile.structs[i] != null) { tile.structs[i].Destroy(); break; } }

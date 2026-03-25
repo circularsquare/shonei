@@ -8,7 +8,7 @@ public class Inventory{
     public int nStacks;
     public int stackSize; 
     public ItemStack[] itemStacks;
-    public enum InvType {Floor, Storage, Animal, Market, Equip, Blueprint, Liquid};
+    public enum InvType {Floor, Storage, Animal, Market, Equip, Blueprint, Liquid, Fuel};
 
     // Returns true if this item type is physically compatible with this inventory type.
     // This is a hard constraint checked before the per-item allowed[] dict.
@@ -130,6 +130,7 @@ public class Inventory{
             InvType.Animal     => 0f,
             InvType.Equip      => 1f,
             InvType.Blueprint  => 0f,
+            InvType.Fuel       => 0f, // fuel items don't decay in building reserves
             _                  => 1f
         };
         if (invTypeMult == 0f) return;
@@ -146,7 +147,7 @@ public class Inventory{
     private int AddItem(Item item, int quantity, bool force = false){
         if (item == null) {Debug.LogError("tried adding null item"); return quantity;}
         if (item.children != null && item.children.Length > 0) {
-            Debug.LogError($"Inventory.AddItem: '{item.name}' is a group item and cannot be added to inventories. Only leaf items may exist in inventories.");
+            Debug.LogError($"Inventory.AddItem: '{item.name}' is a group item and cannot be added to inventories. Only leaf items may exist in inventories. (inv: '{displayName}', type: {invType}, pos: ({x},{y}))");
             return quantity;
         }
         if (!force && !ItemTypeCompatible(invType, item) && quantity > 0){
@@ -302,7 +303,7 @@ public class Inventory{
         return mostItem;
     }
     public ItemStack GetItemToHaul(){   // returns null if nothing, or item if something need to haul
-        if (invType == InvType.Market || invType == InvType.Blueprint) return null;
+        if (invType == InvType.Market || invType == InvType.Blueprint || invType == InvType.Fuel) return null;
         foreach (ItemStack stack in itemStacks){
             if (!stack.Empty() && stack.Available() &&
                 (locked || allowed[stack.item.id] == false || invType == InvType.Floor)){
@@ -312,7 +313,7 @@ public class Inventory{
         return null;
     }
     public bool HasItemToHaul(Item item){ // if null, finds any item to haul
-        if (invType == InvType.Market || invType == InvType.Blueprint) return false;
+        if (invType == InvType.Market || invType == InvType.Blueprint || invType == InvType.Fuel) return false;
         foreach (ItemStack stack in itemStacks){
             if ((item == null || stack.item == item) && stack.quantity > 0 && stack.Available() &&
                 (locked || allowed[stack.item.id] == false || invType == InvType.Floor)){
@@ -324,7 +325,7 @@ public class Inventory{
     // How much space is available for item in this inventory (allowed Storage/Animal only).
     // Counts both empty stacks (any item could fill them) and partially-filled stacks of the same item.
     public int GetStorageForItem(Item item){
-        if (invType == InvType.Market || invType == InvType.Blueprint) return 0;
+        if (invType == InvType.Market || invType == InvType.Blueprint || invType == InvType.Fuel) return 0;
         if (!ItemTypeCompatible(invType, item)) return 0;
         if (locked || allowed[item.id] == false || invType == InvType.Floor){return 0;}
         int space = 0;
@@ -506,7 +507,7 @@ public class Inventory{
     public enum ItemSpriteType { Icon, Floor, Storage }
 
     public void UpdateSprite(){
-        if (invType == InvType.Animal || invType == InvType.Market || invType == InvType.Equip || invType == InvType.Blueprint) return;
+        if (invType == InvType.Animal || invType == InvType.Market || invType == InvType.Equip || invType == InvType.Blueprint || invType == InvType.Fuel) return;
         if (stackGos != null){
             // Multi-stack storage (drawer): update each slot independently
             for (int i = 0; i < nStacks && i < stackGos.Length; i++){
@@ -521,10 +522,10 @@ public class Inventory{
                 string sName = stack.item.name.Trim().Replace(" ", "");
                 float qFill = stack.quantity / (float)stack.stackSize;
                 string qVariant = qFill >= 0.75f ? "qhigh" : qFill < 0.2f ? "qlow" : "qmid";
-                Sprite sSprite  = Resources.Load<Sprite>($"Sprites/Items/{sName}/{qVariant}");
-                sSprite ??= Resources.Load<Sprite>($"Sprites/Items/{sName}/qmid");
-                sSprite ??= Resources.Load<Sprite>($"Sprites/Items/default/{qVariant}");
-                sSprite ??= Resources.Load<Sprite>("Sprites/Items/default/qmid");
+                Sprite sSprite  = Resources.Load<Sprite>($"Sprites/Items/split/{sName}/{qVariant}");
+                sSprite ??= Resources.Load<Sprite>($"Sprites/Items/split/{sName}/qmid");
+                sSprite ??= Resources.Load<Sprite>($"Sprites/Items/split/default/{qVariant}");
+                sSprite ??= Resources.Load<Sprite>("Sprites/Items/split/default/qmid");
                 stackGos[i].name = "inventorystack_" + sName;
                 sr.sprite = sSprite;
             }
@@ -547,18 +548,18 @@ public class Inventory{
         float fill = mostAmount / (float)stackSize;
         Sprite sprite;
         if (invType == InvType.Floor) {
-            sprite = Resources.Load<Sprite>($"Sprites/Items/{iName}/floor");
+            sprite = Resources.Load<Sprite>($"Sprites/Items/split/{iName}/floor");
         } else if (invType == InvType.Storage || invType == InvType.Liquid) {
             string sVariant = fill >= 0.75f ? "shigh" : fill < 0.2f ? "slow" : "smid";
-            sprite  = Resources.Load<Sprite>($"Sprites/Items/{iName}/{sVariant}");
-            sprite ??= Resources.Load<Sprite>($"Sprites/Items/{iName}/smid");
-            sprite ??= Resources.Load<Sprite>($"Sprites/Items/default/{sVariant}");
-            sprite ??= Resources.Load<Sprite>("Sprites/Items/default/smid");
+            sprite  = Resources.Load<Sprite>($"Sprites/Items/split/{iName}/{sVariant}");
+            sprite ??= Resources.Load<Sprite>($"Sprites/Items/split/{iName}/smid");
+            sprite ??= Resources.Load<Sprite>($"Sprites/Items/split/default/{sVariant}");
+            sprite ??= Resources.Load<Sprite>("Sprites/Items/split/default/smid");
         } else {
-            sprite = Resources.Load<Sprite>($"Sprites/Items/{iName}/icon");
+            sprite = Resources.Load<Sprite>($"Sprites/Items/split/{iName}/icon");
         }
-        sprite ??= Resources.Load<Sprite>($"Sprites/Items/{iName}/icon");
-        sprite ??= Resources.Load<Sprite>("Sprites/Items/default/icon");
+        sprite ??= Resources.Load<Sprite>($"Sprites/Items/split/{iName}/icon");
+        sprite ??= Resources.Load<Sprite>("Sprites/Items/split/default/icon");
         go.name = "inventory_" + mostItem.name;
         go.GetComponent<SpriteRenderer>().sprite = sprite;
     }

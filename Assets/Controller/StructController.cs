@@ -60,8 +60,9 @@ public class StructController : MonoBehaviour {
                 if (t == null) { Debug.LogError("tile out of bounds at " + (tile.x+i) + "," + tile.y); return false; }
                 if (t.structs[st.depth] != null) { Debug.LogError("depth " + st.depth + " occupied at " + (tile.x+i) + "," + tile.y); return false; }
             }
-            // Dispatch to subclass — keep in sync with SaveSystem load path
-            if (st.depth == 0) {
+            // Dispatch to subclass — keep in sync with SaveSystem load path.
+            // isBuilding=true allows non-depth-0 structures (e.g. foreground torches) to use Building.
+            if (st.depth == 0 || st.isBuilding) {
                 structure = st.name == "pump"
                     ? new PumpBuilding(st, tile.x, tile.y)
                     : new Building(st, tile.x, tile.y);
@@ -85,6 +86,8 @@ public class StructController : MonoBehaviour {
                 WorkOrderManager.instance?.RegisterResearch(lab);
             if (st.isWorkstation && structure is Building ws)
                 WorkOrderManager.instance?.RegisterWorkstation(ws);
+            if (st.hasFuelInv && structure is Building fb)
+                WorkOrderManager.instance?.RegisterFuelSupply(fb);
         }
         if (world == null) {world = World.instance;}
         world.graph.UpdateNeighbors(tile.x, tile.y);

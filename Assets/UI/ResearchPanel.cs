@@ -39,6 +39,7 @@ public class ResearchPanel : MonoBehaviour {
     void Awake() {
         if (instance != null) { Debug.LogError("two ResearchPanels!"); }
         instance = this;
+        UI.RegisterExclusive(gameObject);
     }
 
     void Start() {
@@ -66,7 +67,8 @@ public class ResearchPanel : MonoBehaviour {
     }
 
     public void Toggle() {
-        gameObject.SetActive(!gameObject.activeSelf);
+        if (gameObject.activeSelf) gameObject.SetActive(false);
+        else UI.OpenExclusive(gameObject);
     }
 
     public void Refresh() {

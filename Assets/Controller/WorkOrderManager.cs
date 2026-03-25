@@ -26,7 +26,7 @@ using UnityEngine;
 public class WorkOrderManager : MonoBehaviour {
     public static WorkOrderManager instance { get; private set; }
 
-    public enum OrderType { Haul, Harvest, Construct, SupplyBlueprint, Deconstruct, HaulToMarket, HaulFromMarket, Research, Craft }
+    public enum OrderType { Haul, Harvest, Construct, SupplyBlueprint, Deconstruct, HaulToMarket, HaulFromMarket, Research, Craft, SupplyBuilding }
 
     public class WorkOrder {
         public OrderType type;
@@ -361,6 +361,32 @@ public class WorkOrderManager : MonoBehaviour {
         orders[2].RemoveAll(o => o.type == OrderType.Craft && o.building == building);
     }
 
+    // Registers a standing SupplyBuilding order for a building that has a fuel inventory.
+    // The order is always present in the queue; isActive suppresses it when fuel is already at target.
+    // Haulers fulfill it by delivering fuel items to the building's fuelInv.
+    // Returns true if a new order was inserted.
+    public bool RegisterFuelSupply(Building building) {
+        if (building?.fuelInv == null) return false;
+        if (orders[2].Exists(o => o.type == OrderType.SupplyBuilding && o.building == building)) return false;
+        Item fuelItem = building.structType.fuelItem;
+        int fuelTarget = building.structType.fuelTarget;
+        Add(new WorkOrder {
+            type       = OrderType.SupplyBuilding,
+            priority   = 3,
+            factory    = a => new SupplyFuelTask(a, building),
+            building   = building,
+            isActive   = () => building.fuelInv != null && building.fuelInv.Quantity(fuelItem) < fuelTarget,
+            canDo      = a => a.job.name == "hauler",
+            getDistance = a => Mathf.Abs(building.x - a.x) + Mathf.Abs(building.y - a.y)
+        });
+        return true;
+    }
+
+    // Removes the fuel supply order for a building (call when building is destroyed).
+    public void RemoveFuelSupplyOrders(Building building) {
+        orders[2].RemoveAll(o => o.type == OrderType.SupplyBuilding && o.building == building);
+    }
+
     // ── REMOVAL ────────────────────────────────────────────────────────────────────
 
     // Remove haul orders for a specific stack (call when the stack becomes empty).
@@ -441,12 +467,21 @@ public class WorkOrderManager : MonoBehaviour {
 
         foreach (Blueprint bp in StructController.instance.GetBlueprints()) {
             // Suspended blueprints intentionally have no orders — skip them.
-            bool inserted = bp.state switch {
-                Blueprint.BlueprintState.Constructing   => !bp.IsSuspended() && RegisterConstruct(bp),
-                Blueprint.BlueprintState.Receiving      => !bp.IsSuspended() && RegisterSupplyBlueprint(bp),
-                Blueprint.BlueprintState.Deconstructing => RegisterDeconstruct(bp),
-                _ => false
-            };
+            // For Receiving blueprints, heal state to Constructing if fully delivered (can happen
+            // after save/load when LockGroupCostsAfterDelivery isn't re-run) rather than registering
+            // a supply order that would immediately fail.
+            bool inserted;
+            if (bp.state == Blueprint.BlueprintState.Receiving && !bp.IsSuspended() && bp.IsFullyDelivered()) {
+                bp.state = Blueprint.BlueprintState.Constructing;
+                inserted = RegisterConstruct(bp);
+            } else {
+                inserted = bp.state switch {
+                    Blueprint.BlueprintState.Constructing   => !bp.IsSuspended() && RegisterConstruct(bp),
+                    Blueprint.BlueprintState.Receiving      => !bp.IsSuspended() && RegisterSupplyBlueprint(bp),
+                    Blueprint.BlueprintState.Deconstructing => RegisterDeconstruct(bp),
+                    _ => false
+                };
+            }
             if (inserted)
                 Debug.LogWarning($"WOM reconcile: registered missing {bp.state} order for {bp.structType.name} at ({bp.x},{bp.y})");
         }
@@ -481,6 +516,11 @@ public class WorkOrderManager : MonoBehaviour {
         foreach (Structure s in StructController.instance.GetStructures()) {
             if (s.structType.isWorkstation && s is Building ws && RegisterWorkstation(ws))
                 Debug.LogWarning($"WOM reconcile: registered missing Craft order for {ws.structType.name} at ({ws.x},{ws.y})");
+        }
+
+        foreach (Structure s in StructController.instance.GetStructures()) {
+            if (s.structType.hasFuelInv && s is Building fb && RegisterFuelSupply(fb))
+                Debug.LogWarning($"WOM reconcile: registered missing SupplyBuilding order for {fb.structType.name} at ({fb.x},{fb.y})");
         }
     }
 
@@ -569,6 +609,18 @@ public class WorkOrderManager : MonoBehaviour {
             if (o.type == OrderType.Craft
                 && (o.building == null || o.building.go == null))
                 Debug.LogError($"WOM audit: Craft order references a destroyed building ({o.building?.structType?.name})");
+        }
+
+        // FuelSupply — direction 1: every placed fuel-inv building must have a SupplyBuilding order
+        foreach (Structure s in StructController.instance.GetStructures()) {
+            if (s.structType.hasFuelInv && s is Building fb
+                && !orders[2].Exists(o => o.type == OrderType.SupplyBuilding && o.building == fb))
+                Debug.LogError($"WOM audit: fuel building {fb.structType.name} at ({fb.x},{fb.y}) has no SupplyBuilding order");
+        }
+        // FuelSupply — direction 2: every SupplyBuilding order must reference a live building
+        foreach (WorkOrder o in orders[2]) {
+            if (o.type == OrderType.SupplyBuilding && (o.building == null || o.building.go == null))
+                Debug.LogError($"WOM audit: SupplyBuilding order references a destroyed building ({o.building?.structType?.name})");
         }
 
         int total = orders.Sum(t => t.Count);

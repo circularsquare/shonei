@@ -59,9 +59,9 @@ public class WorldController : MonoBehaviour {
 
     IEnumerator ItemFallAnimCoroutine(int srcX, int srcY, int dstX, int dstY, Item item) {
         string iName = item.name.Trim().Replace(" ", "");
-        Sprite sprite = Resources.Load<Sprite>($"Sprites/Items/{iName}/floor");
-        sprite ??= Resources.Load<Sprite>($"Sprites/Items/{iName}/icon");
-        sprite ??= Resources.Load<Sprite>("Sprites/Items/default/icon");
+        Sprite sprite = Resources.Load<Sprite>($"Sprites/Items/split/{iName}/floor");
+        sprite ??= Resources.Load<Sprite>($"Sprites/Items/split/{iName}/icon");
+        sprite ??= Resources.Load<Sprite>("Sprites/Items/split/default/icon");
 
         GameObject go = new GameObject("FallAnim_" + iName);
         go.transform.SetParent(transform, true);

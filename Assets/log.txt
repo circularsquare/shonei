@@ -2,6 +2,7 @@ meoww!!
 3/25
 - blueprint stacking
 - multi inventory selection! 
+- buildings with fuel, partially working..
 3/24
 - ui tweaks
 - deferred task refresh to fix mice getting stuck on unreachable tiles sometimes

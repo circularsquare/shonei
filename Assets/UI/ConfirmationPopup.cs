@@ -23,11 +23,13 @@ public class ConfirmationPopup : MonoBehaviour {
 
     System.Action _onConfirm;
     bool _listenersAdded;
+    bool _showRequested;
 
     void Awake() {
-        // Runs only if accidentally left active in the scene — hide immediately.
         instance = this;
-        gameObject.SetActive(false);
+        // Hide on startup unless Show() is already activating us.
+        if (!_showRequested)
+            gameObject.SetActive(false);
     }
 
     // Show a confirmation dialog. onConfirm is called only if the user clicks Confirm.
@@ -46,6 +48,7 @@ public class ConfirmationPopup : MonoBehaviour {
         instance._onConfirm = onConfirm;
         instance.messageText.text = message;
         instance.confirmButton.GetComponentInChildren<TextMeshProUGUI>().text = confirmLabel;
+        instance._showRequested = true;
         instance.gameObject.SetActive(true);
         instance.transform.SetAsLastSibling(); // render on top of all other panels
     }

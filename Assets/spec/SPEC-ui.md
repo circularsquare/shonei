@@ -128,6 +128,17 @@ A second set of ItemDisplay instances (separate from the global panel's) with `D
 - AllowAll / DenyAll buttons wired to `StoragePanel.OnClickAllowAll/DenyAll` — apply to all `selectedInventories`
 - Copy/paste filters: Shift+LMB on storage = copy, Shift+RMB = paste (handled by `MouseController` → `InventoryController.CopyAllowed/PasteAllowed`); operates on the single clicked tile regardless of multi-selection
 
+## Exclusive Panels
+
+`TradingPanel`, `RecipePanel`, and `ResearchPanel` are mutually exclusive — at most one may be visible at a time. This is enforced via two static helpers on `UI.cs`:
+
+- `UI.RegisterExclusive(gameObject)` — called in each panel's `Awake`/`Start`; adds it to a static registry.
+- `UI.OpenExclusive(gameObject)` — closes all other registered panels, then activates this one.
+
+Each panel's `Toggle()` calls `UI.OpenExclusive(gameObject)` when opening, and `SetActive(false)` when closing.
+
+**To add a new exclusive panel**: call `UI.RegisterExclusive(gameObject)` in `Awake`/`Start`, and replace any `SetActive(true)` in the toggle path with `UI.OpenExclusive(gameObject)`.
+
 ## Key Files
 
 | File | Role |

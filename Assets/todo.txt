@@ -10,12 +10,13 @@
         - books for gaining skills 
         - manuals for learning technologies
         - scriptoriums
-- storage stuff
-    - global storages overview panel? 
-- UI
-    - automatically close other panels when you open a temporary panel... like market, research, recipe, or inventory (?)
-    - move functionality out of infopanel and into more specialized panels?
 
+
+- mouse names
+- clean up distinction between building and structure? what needs to be a building what doesnt 
+- clean up structtype... has so many fields
+- UI
+    - move functionality out of infopanel and into more specialized panels?
 - plant
     - flesh out plant growth, moisture and temperature
     - make plants grow from sunlight? shading
@@ -26,24 +27,36 @@
     - global, market, need to have set target 
     - global can have
         - consume above amount?
-- priority  
+- priori-
     - add inventory priority? or inventory pull orders
 - research
     - queue research projects, decide what fraction to move onto next project at
     - decide what fraction to maintain researches at?
         - assign scientists to "maintain" duty?
     - lock postrequisites?
-- dynamic objectives!
+- trading 
+    - add automatic foreign traders
+- dynamic mouse objectives? for tasks
 - crafttask priority...
-
 - re-clean up audit/reconcile?
 - leisure!
 - workplace workorder capacity system is kinda indirect
+- auto job swap 
+- 
 
 
 BUGS
 
 TODAY GOALS
-    - bulk inv selection?
-    - make storagepanel show sum, and aggregate by item type
-        make title crate x n if theyre all crates
+    - fireplace 
+        - consumes wood... also make torches consume wood. need to supply them. they need an inv i guess. 
+        - fountain, which needs water 
+        - temperature
+    - reorganize structtype 
+        - factor out "fuel" into its own component... 
+        - its sort of like a building equip. maybe rename fuel invtype to building?
+        - other building refactors.. 
+            - workstation?
+                - depleteable? 
+            - worktileX -> tuple?
+    - potentially lots of replicated code in WOM and in like normal blueprint pacement? 

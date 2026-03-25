@@ -61,6 +61,18 @@ public class SaveSlotEntry : MonoBehaviour {
     }
 
     void OnSave() {
+        // If saving to a slot that isn't the currently loaded one, confirm to prevent accidental overwrites.
+        if (SaveSystem.instance.currentSlot != _slotName) {
+            ConfirmationPopup.Show(
+                "overwrite \"" + _slotName + "\"?",
+                () => DoSave()
+            );
+        } else {
+            DoSave();
+        }
+    }
+
+    void DoSave() {
         SaveSystem.instance.Save(_slotName);
         if (miceLabel != null) miceLabel.text = "mice: " + SaveSystem.instance.GetAnimalCount(_slotName);
     }

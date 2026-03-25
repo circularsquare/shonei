@@ -168,6 +168,10 @@ public class InfoPanel : MonoBehaviour {
                         if (s is Building bldg) {
                             if (bldg.structType.depleteAt > 0)
                                 sb.Append("\n  uses: " + bldg.uses + "/" + bldg.structType.depleteAt);
+                            if (bldg.fuelInv != null) {
+                                int fuelQty = bldg.fuelInv.Quantity(bldg.structType.fuelItem);
+                                sb.Append($"\n  fuel: {ItemStack.FormatQ(fuelQty)}/{ItemStack.FormatQ(bldg.structType.fuelCapacity)} {bldg.structType.fuelItemName}");
+                            }
                             // tile-keyed orders (e.g. research on lab)
                             AppendTileOrders(sb, bldg.tile);
                             // building-keyed orders (e.g. craft on workstations)

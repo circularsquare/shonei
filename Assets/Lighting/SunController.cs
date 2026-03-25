@@ -190,7 +190,7 @@ public class SunController : MonoBehaviour {
         float torchFactor = 1f - TorchBrightness(GetDayPhase());
         foreach (LightSource ls in LightSource.all)
             if (!ls.isDirectional)
-                ls.intensity = ls.baseIntensity * torchFactor;
+                ls.intensity = ls.isLit ? ls.baseIntensity * torchFactor : 0f;
     }
 
     // 5-stop gradient: skyDay → skyTwilight1 → skyTwilight2 → skyTwilight3 → skyNight

@@ -67,12 +67,18 @@
     },{
         "id": 20,
         "name": "torch",
-        "description": "a small torch that lights the area",
+        "description": "a small torch that lights the area. requires wood to burn.",
         "nx": 1, "ny": 1,
         "ncosts": [
             { "name": "wood", "quantity": 5 }
         ],
         "depth": 2,
+        "isBuilding": true,
+        "hasFuelInv": true,
+        "fuelItemName": "wood",
+        "fuelCapacity": 10,
+        "fuelTarget": 5,
+        "fuelBurnRate": 1.0,
         "category": "structures"
     },{
         "id": 10,

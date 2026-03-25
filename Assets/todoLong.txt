@@ -1,12 +1,12 @@
 meow
 
-- local inventories
-    - assignable/filterable
 - job things
     - deciding what to craft
     - recipe list per job 
         - make if have > x lots of input and < y of primary output?
         - priority
+- storage stuff
+    - global storages overview panel? 
 - happiness
     - food
     - leisure

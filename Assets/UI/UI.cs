@@ -11,6 +11,23 @@ public class UI : MonoBehaviour {
 
     [SerializeField] GameObject chatWindow;
 
+    // Exclusive panels — at most one may be visible at a time.
+    // Call RegisterExclusive() in Awake/Start; call OpenExclusive() instead of SetActive(true).
+    static readonly List<GameObject> exclusivePanels = new List<GameObject>();
+
+    public static void RegisterExclusive(GameObject panel) {
+        if (!exclusivePanels.Contains(panel))
+            exclusivePanels.Add(panel);
+    }
+
+    /// <summary>Close all other exclusive panels, then open this one.</summary>
+    public static void OpenExclusive(GameObject panel) {
+        foreach (var p in exclusivePanels)
+            if (p != panel && p.activeSelf)
+                p.SetActive(false);
+        panel.SetActive(true);
+    }
+
     void Start() {
         if (instance != null) {
             Debug.LogError("there should only be one ui controller");}

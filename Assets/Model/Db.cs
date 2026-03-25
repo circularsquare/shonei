@@ -69,11 +69,11 @@ public class Db : MonoBehaviour {
     }
 
     void LoadItemIcons() {
-        Sprite fallback = Resources.Load<Sprite>("Sprites/Items/default/icon");
-        if (fallback == null) Debug.LogError("Db: missing default item icon at Sprites/Items/default/icon");
+        Sprite fallback = Resources.Load<Sprite>("Sprites/Items/split/default/icon");
+        if (fallback == null) Debug.LogError("Db: missing default item icon at Sprites/Items/split/default/icon");
         foreach (Item item in itemsFlat) {
             string iName = item.name.Trim().Replace(" ", "");
-            Sprite loaded = Resources.Load<Sprite>($"Sprites/Items/{iName}/icon");
+            Sprite loaded = Resources.Load<Sprite>($"Sprites/Items/split/{iName}/icon");
             item.icon = loaded != null ? loaded : fallback;
         }
     }

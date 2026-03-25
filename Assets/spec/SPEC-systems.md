@@ -35,7 +35,7 @@ Both stairs and one-block cliff climbs are represented as **waypoint chains** �
 
 ## Inventory System
 
-Five inventory types:
+Six inventory types:
 
 | Type | Slots | Stack Size | Decay Rate | Notes |
 |------|-------|-----------|-----------|-------|
@@ -44,6 +44,27 @@ Five inventory types:
 | Floor | 4 | 1000 fen | 5× normal | Created/destroyed dynamically; up to 4 item types can share a tile |
 | Equip | 1 | varies | none | Animal equip slots (food, tool) |
 | Market | varies | varies | none | Market building only; set via `SetMarket()` on a Storage inv |
+| Fuel | 1 | varies | none | Internal building resource (torch wood, furnace coal). No sprite, no tile. See below. |
+
+### Fuel Inventory (`InvType.Fuel`)
+
+Created by `Building` constructor when `structType.hasFuelInv = true`. Fields:
+- Not tied to a tile position (x/y = building anchor, used for nav targeting only)
+- No sprite, no decay
+- All item types accepted (no `allowed` filter at inv level)
+- Not searchable as a haul source (`GetItemToHaul`, `HasItemToHaul`, `GetStorageForItem`, and `FindPathItemStack` all exclude Fuel invs)
+- Registered with InventoryController for GlobalInventory tracking
+
+WOM registers a standing `SupplyBuilding` (priority 3) order when a fuel-inv building is placed. `isActive` suppresses the order when `fuelInv.Quantity(fuelItem) >= fuelTarget`. Haulers fulfill it via `SupplyFuelTask` + `DeliverToInventoryObjective`.
+
+JSON fields on StructType:
+- `hasFuelInv: bool` — opt-in
+- `fuelItemName: string` — group or leaf item (e.g. `"wood"`)
+- `fuelCapacity: float` — max fen (liang in JSON, × 100 in `OnDeserialized`)
+- `fuelTarget: float` — refill trigger level (liang in JSON)
+- `fuelBurnRate: float` — liang/day consumed; `LightSource.Update()` converts to fen/sec using `World.ticksInDay`
+
+`isBuilding: true` on StructType makes StructController use the `Building` class for any depth (e.g. foreground torches at depth 2). `tile.building` (= `structs[0] as Building`) is still depth-0 specific; fuel buildings at other depths are accessed directly via task/WOM references.
 
 - Items decay over time (Floor fastest; Animal/Equip/Market never)
 - **Discrete items** (`Item.discrete = true`, e.g. tools): always stored/moved in whole-liang (100 fen) multiples; decay removes whole items only; display shows integer count. Adding a non-multiple-of-100 quantity logs a warning.

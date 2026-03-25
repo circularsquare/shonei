@@ -19,7 +19,7 @@ using SysDir  = System.IO.Directory;
 // To add future variants, uncomment rows in the Slots array below.
 //
 // Source:  Assets/Resources/Sheets/{itemName}.png
-// Output:  Assets/Resources/Sprites/Items/{itemName}/{slotName}.png
+// Output:  Assets/Resources/Sprites/Items/split/{itemName}/{slotName}.png
 //
 // Usage:
 //   Tools → Split All Item Sheets       — processes every sheet in Sheets/
@@ -27,18 +27,20 @@ using SysDir  = System.IO.Directory;
 public static class ItemSheetSplitter {
     const int CellSize   = 16;
     const string SheetsFolder = "Assets/Resources/Sprites/Items/Sheets";
-    const string ItemsFolder  = "Assets/Resources/Sprites/Items";
+    const string ItemsFolder  = "Assets/Resources/Sprites/Items/split";
 
-    // (row, col, outputFileName, cropSize)  cropSize <= CellSize; top-left of cell is used
+    // (row, col, outputFileName, cropSize)  cropSize <= CellSize; top-left of cell is used.
+    // Quarter sprites (q*) use cropSize=6 so that when placed at ±0.25 Unity units (±4 px at PPU=16),
+    // the sprite edges land on exact pixel boundaries (4±3 = 1 and 7). 7×7 would give ±3.5 px = misaligned.
     static readonly (int row, int col, string name, int cropSize)[] Slots = {
         (0, 0, "icon",  CellSize),
         (0, 1, "floor", CellSize),
         (1, 0, "slow",  CellSize),
         (1, 1, "smid",  CellSize),
         (1, 2, "shigh", CellSize),
-        (2, 0, "qlow",  7),
-        (2, 1, "qmid",  7),
-        (2, 2, "qhigh", 7),
+        (2, 0, "qlow",  6),
+        (2, 1, "qmid",  6),
+        (2, 2, "qhigh", 6),
     };
 
     // ── batch: all sheets in Sheets/ ─────────────────────────────────────────

@@ -95,6 +95,39 @@ See `SPEC-systems.md` for the simulation. The renderer is a separate GPU shader 
 
 **Lighting**: water is lit via a dedicated path. `LightFeature` has a `waterLayer` field (set to `Water` in the Inspector) which triggers a separate `DrawRenderers` call in `NormalsCapturePass` using `Hidden/NormalsCaptureWater` (pass 1, lit-only, alpha=0.5). That shader samples the global `_WaterSurfaceTex` (set each tick by `WaterController.UpdateSurfaceMask()`) for transparency, discarding pixels with no water. Outputs flat forward normals. This means water darkens at night and receives ambient light, but torch NdotL is minimal (flat normal faces away from scene).
 
+---
+
+## Item Sprites
+
+Item sprites live under `Assets/Resources/Sprites/Items/` in two sub-folders:
+
+| Folder | Contents |
+|--------|----------|
+| `Sheets/` | Source sprite sheets (one per item, 2-col × N-row grid, `CellSize=16`). Kept in source control; not loaded at runtime. |
+| `split/` | Split output — one sub-folder per item name (e.g. `split/wood/`), containing individual PNGs named by variant. These are what `Resources.Load` targets at runtime. |
+
+### Split-folder variant names
+
+| File | Usage |
+|------|-------|
+| `icon.png` | Default display (UI, animal inventory, fallback) |
+| `floor.png` | Item dropped on a floor tile |
+| `slow/smid/shigh.png` | Storage fill level (low / mid / high) |
+| `qlow/qmid/qhigh.png` | Animal carry-stack quantity level |
+
+A `default/` folder inside `split/` holds fallback sprites used when an item has no specific sprite.
+
+### ItemSheetSplitter
+
+`Assets/Editor/ItemSheetSplitter.cs` — editor-only tool. Reads `Sheets/{itemName}.png`, cuts it into individual PNGs, and writes them to `split/{itemName}/{slotName}.png`.
+
+- **Tools → Split All Item Sheets** — processes every sheet in `Sheets/`
+- **Right-click sheet → Split Item Sheet** — processes selected sheet(s)
+
+After splitting, normal maps for the new files can be regenerated via **Tools → Generate All Sprite Normal Maps**.
+
+---
+
 ### Normal maps
 
 **Encoding**: world-space, packed 0–1. Flat camera-facing sprite = `(0,0,−1)` → `(0.5, 0.5, 0.0)`. Black = no sprite, shader uses flat fallback. No Y-flip on screen UV (DrawRenderers and the light pass projection both use OpenGL convention, V=0 at bottom).

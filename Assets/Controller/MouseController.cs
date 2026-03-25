@@ -23,6 +23,7 @@ public class MouseController : MonoBehaviour {
     // --- drag-select state ---
     private Vector3 _dragStartScreenPos;
     private bool _isDragging = false;
+    private bool _dragStartedInSelect = false;
     private const float DragThresholdPixels = 8f;
     [SerializeField] private RectTransform dragRectTransform; // assign in inspector (Screen Space Overlay Image)
 
@@ -131,6 +132,7 @@ public class MouseController : MonoBehaviour {
             if (mouseMode == MouseMode.Select) {
                 _dragStartScreenPos = Input.mousePosition;
                 _isDragging = false;
+                _dragStartedInSelect = true;
             } else if (mouseMode == MouseMode.Build) {
                 Tile placeTile = anchorTile ?? tileAt;
                 bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
@@ -142,7 +144,7 @@ public class MouseController : MonoBehaviour {
         }
 
         // LMB held in Select mode: check drag threshold and update visual rect
-        if (Input.GetMouseButton(0) && mouseMode == MouseMode.Select) {
+        if (Input.GetMouseButton(0) && mouseMode == MouseMode.Select && _dragStartedInSelect) {
             float dist = Vector3.Distance(Input.mousePosition, _dragStartScreenPos);
             if (!_isDragging && dist > DragThresholdPixels)
                 _isDragging = true;
@@ -161,6 +163,7 @@ public class MouseController : MonoBehaviour {
                 HandleSelectClick(tileAt, Camera.main.ScreenToWorldPoint(Input.mousePosition));
             }
             _isDragging = false;
+            _dragStartedInSelect = false;
         }
     }
 

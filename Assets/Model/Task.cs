@@ -356,6 +356,34 @@ public class SupplyBlueprintTask : Task {
         return false;
     }
 }
+// Hauls fuel items to a building's internal fuel inventory (torch wood, furnace coal, etc.).
+// Registered as a standing SupplyBuilding order; isActive suppresses it when fuel >= target.
+public class SupplyFuelTask : Task {
+    private readonly Building building;
+    public SupplyFuelTask(Animal animal, Building building) : base(animal) {
+        this.building = building;
+    }
+    public override bool Initialize() {
+        if (building?.fuelInv == null) return false;
+        Item fuelItem = building.structType.fuelItem;
+        int needed = building.structType.fuelTarget - building.fuelInv.Quantity(fuelItem);
+        if (needed <= 0) return false;
+        if (!animal.nav.CanReach(building.tile)) return false;
+        Path standPath = animal.nav.PathToOrAdjacent(building.tile);
+        if (standPath == null) return false;
+        (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(fuelItem);
+        if (itemPath == null) return false;
+        int available = stack.quantity - stack.resAmount;
+        int qty = Math.Min(needed, available);
+        if (qty <= 0) return false;
+        if (qty < MinHaulQuantity && qty < available) return false; // de minimis
+        ItemQuantity iq = new ItemQuantity(fuelItem, qty);
+        FetchAndReserve(iq, itemPath.tile, stack);
+        objectives.AddLast(new GoObjective(this, standPath.tile));
+        objectives.AddLast(new DeliverToInventoryObjective(this, iq, building.fuelInv));
+        return true;
+    }
+}
 public class HaulToMarketTask : Task {
     public HaulToMarketTask(Animal animal) : base(animal) {}
     public override bool Initialize() {
@@ -573,6 +601,27 @@ public class DeliverToBlueprintObjective : Objective { // always queued after Go
             Debug.Log($"{animal.aName} could not deliver {iq.item.name} to blueprint at ({blueprint.x},{blueprint.y})");
             Fail();
         }
+    }
+}
+// Generic delivery objective: moves items from the animal's inventory into any target inventory.
+// Always queued after GoObjective so the animal is already in position when Start() runs.
+public class DeliverToInventoryObjective : Objective {
+    private ItemQuantity iq;
+    private Inventory targetInv;
+    public DeliverToInventoryObjective(Task task, ItemQuantity iq, Inventory targetInv) : base(task) {
+        this.iq = iq;
+        this.targetInv = targetInv;
+    }
+    public override string GetObjectiveName() { return $"DeliverTo({iq.item.name}>{targetInv.displayName})"; }
+    public override void Start(){
+        if (targetInv == null) { Fail(); return; }
+        int have = animal.inv.Quantity(iq.item);
+        if (have <= 0) { Debug.Log($"{animal.aName} DeliverToInventoryObjective: missing {iq.item.name}"); Fail(); return; }
+        int toDeliver = Math.Min(have, iq.quantity);
+        int moved = animal.inv.MoveItemTo(targetInv, iq.item, toDeliver);
+        if (moved < toDeliver)
+            Debug.Log($"{animal.aName} delivered {moved}/{toDeliver} {iq.item.name} to {targetInv.displayName} — partial fill");
+        Complete();
     }
 }
 public class DropObjective : Objective {

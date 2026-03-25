@@ -20,10 +20,8 @@ public class GlobalInventory {
     }
 
     public void AddItem(Item item, int quantity){
-        if (item.children != null && item.children.Length > 0) {
-            Debug.LogError($"GlobalInventory.AddItem: '{item.name}' is a group item and cannot be tracked in inventory. Only leaf items may be added.");
-            return;
-        }
+        // Group-item check is handled upstream in Inventory.AddItem — no need to re-log here.
+        if (item.children != null && item.children.Length > 0) return;
         AddItem(item.id, quantity);
     }
     public void AddItem(int iid, int quantity){

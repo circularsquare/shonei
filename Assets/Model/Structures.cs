@@ -6,16 +6,19 @@ public class Building : Structure {
     public int uses = 0;
     public Tile storageTile => World.instance.GetTileAt(x + structType.storageTileX, y + structType.storageTileY);
     public Inventory storage { get; private set; }
+    // Internal fuel inventory: not tied to a tile, no sprite. Null when structType.hasFuelInv is false.
+    public Inventory fuelInv { get; private set; }
     public Building(StructType st, int x, int y) : base(st, x, y){
-        // Register building on all occupied tiles
+        // Register building on all occupied tiles using the JSON-specified depth (not hardcoded to 0).
+        int depth = st.depth;
         for (int i = 0; i < st.nx; i++) {
             Tile t = World.instance.GetTileAt(x + i, y);
-            if (t.structs[0] != null) Debug.LogError("already a building at " + (x+i) + "," + y + "!");
-            t.structs[0] = this;
+            if (t.structs[depth] != null) Debug.LogError($"already a depth-{depth} structure at {(x+i)},{y}!");
+            t.structs[depth] = this;
         }
 
         go.name = "building_" + structType.name;
-        sr.sortingOrder = 10;
+        sr.sortingOrder = depth == 2 ? 80 : 10; // foreground buildings match foreground sort order
 
         if (structType.isStorage){
             Tile storageTile = World.instance.GetTileAt(x + st.storageTileX, y + st.storageTileY);
@@ -33,6 +36,17 @@ public class Building : Structure {
                 oldInv.Destroy();
             }
         }
+
+        if (structType.hasFuelInv) {
+            // Fuel inv: 1 stack, capacity from JSON, positioned at building anchor for nav targeting.
+            fuelInv = new Inventory(1, structType.fuelCapacity, Inventory.InvType.Fuel, x, y);
+            fuelInv.displayName = structType.name + "_fuel";
+            // Attach LightSource for buildings that are light sources (currently only torch).
+            if (structType.name == "torch") {
+                var ls = go.AddComponent<LightSource>();
+                ls.fuelBuilding = this;
+            }
+        }
     }
     public override void Destroy() {
         if (structType.isWorkstation)
@@ -43,6 +57,22 @@ public class Building : Structure {
                 Debug.LogError($"Destroying building storage with items in it at ({x},{y})!");
             storage.Destroy();
             if (st != null) st.inv = null;
+        }
+        if (fuelInv != null) {
+            WorkOrderManager.instance?.RemoveFuelSupplyOrders(this);
+            // Return remaining fuel to the floor so items aren't silently lost on deconstruct.
+            // Iterate actual leaf stacks (fuelItem may be a group like "wood", which can't be Produce'd directly).
+            if (!WorldController.isClearing && !fuelInv.IsEmpty()) {
+                Tile here = tile;
+                foreach (ItemStack stack in fuelInv.itemStacks) {
+                    if (stack.item == null || stack.quantity == 0) continue;
+                    int qty = stack.quantity;
+                    fuelInv.Produce(stack.item, -qty); // remove leaf item from fuelInv + ginv
+                    if (here != null)
+                        World.instance.ProduceAtTile(stack.item, qty, here); // place on floor + re-add to ginv
+                }
+            }
+            fuelInv.Destroy();
         }
         base.Destroy();
     }

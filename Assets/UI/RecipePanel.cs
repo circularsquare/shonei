@@ -34,6 +34,7 @@ public class RecipePanel : MonoBehaviour {
     void Awake() {
         if (instance != null) { Debug.LogError("two RecipePanels!"); }
         instance = this;
+        UI.RegisterExclusive(gameObject);
     }
 
     void OnEnable() {
@@ -53,7 +54,8 @@ public class RecipePanel : MonoBehaviour {
     }
 
     public void Toggle() {
-        gameObject.SetActive(!gameObject.activeSelf);
+        if (gameObject.activeSelf) gameObject.SetActive(false);
+        else UI.OpenExclusive(gameObject);
     }
 
     void Rebuild() {

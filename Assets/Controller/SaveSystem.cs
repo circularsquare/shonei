@@ -21,9 +21,24 @@ using Newtonsoft.Json;
 //   3. Add a Restore* method in the LOAD section and call it from the
 //      appropriate parent (ApplySaveData, RestoreTile, etc.)
 // -----------------------------------------------------------------------
+// Current saveable state checklist:
+//   [x] World timer
+//   [x] Tile types and floor inventories
+//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData)
+//   [x] Blueprints (type, position, state, constructionProgress, inv, priority)
+//   [x] Animals (position, job, energy, food, happiness, inv, foodSlotInv, toolSlotInv)
+//   [x] Research (progress, activeResearchId, unlockedIds)
+//   [x] Disabled recipe ids
+//   [x] Water levels
+//   [x] Is raining
+//   [x] Global item targets
+// -----------------------------------------------------------------------
 
 public class SaveSystem : MonoBehaviour {
     public static SaveSystem instance { get; protected set; }
+
+    /// <summary>Name of the slot that was last loaded or saved. Null for a fresh/reset world.</summary>
+    public string currentSlot { get; private set; }
 
     string SaveDir {
         get {
@@ -50,6 +65,7 @@ public class SaveSystem : MonoBehaviour {
         string json = JsonConvert.SerializeObject(data, Formatting.Indented,
             new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
         System.IO.File.WriteAllText(SlotPath(slotName), json);
+        currentSlot = slotName;
         Debug.Log("Saved world to slot: " + slotName);
     }
 
@@ -159,6 +175,8 @@ public class SaveSystem : MonoBehaviour {
                 if (order != null)
                     ssd.workOrderEffectiveCapacity = order.res.effectiveCapacity;
             }
+            if (b.structType.hasFuelInv && b.fuelInv != null && !b.fuelInv.IsEmpty())
+                ssd.fuelInvData = GatherInventory(b.fuelInv);
         }
         return ssd;
     }
@@ -238,6 +256,7 @@ public class SaveSystem : MonoBehaviour {
         if (!System.IO.File.Exists(path)) { Debug.LogError("Save slot not found: " + slotName); return; }
         string json = System.IO.File.ReadAllText(path);
         WorldSaveData data = JsonConvert.DeserializeObject<WorldSaveData>(json);
+        currentSlot = slotName;
         WorldController.instance.ClearWorld();
         InventoryController.instance?.ResetState();
         ApplySaveData(data);
@@ -342,8 +361,9 @@ public class SaveSystem : MonoBehaviour {
             plant.UpdateSprite();
             WorkOrderManager.instance?.RegisterHarvest(plant);
             structure = plant;
-        } else if (st.depth == 0) {
-            // Dispatch to subclass — keep in sync with StructController.Construct
+        } else if (st.depth == 0 || st.isBuilding) {
+            // Dispatch to subclass — keep in sync with StructController.Construct.
+            // isBuilding=true allows non-depth-0 structures (e.g. torches) to use Building.
             structure = st.name == "pump"
                 ? new PumpBuilding(st, ssd.x, ssd.y) { uses = ssd.uses }
                 : new Building(st, ssd.x, ssd.y) { uses = ssd.uses };
@@ -373,6 +393,18 @@ public class SaveSystem : MonoBehaviour {
                 int ec = ssd.workOrderEffectiveCapacity ?? -1;
                 WorkOrderManager.instance?.RegisterWorkstation(ws, ec);
             }
+            if (st.hasFuelInv && structure is Building fb && fb.fuelInv != null && ssd.fuelInvData != null) {
+                foreach (ItemStackSaveData sd in ssd.fuelInvData.stacks ?? System.Array.Empty<ItemStackSaveData>()) {
+                    if (string.IsNullOrEmpty(sd.itemName) || sd.quantity <= 0) continue;
+                    if (!Db.itemByName.TryGetValue(sd.itemName, out Item leafItem)) {
+                        Debug.LogError($"RestoreStructure: unknown fuel item '{sd.itemName}' in fuelInv of {st.name} at ({ssd.x},{ssd.y})");
+                        continue;
+                    }
+                    fb.fuelInv.Produce(leafItem, sd.quantity);
+                }
+            }
+            if (st.hasFuelInv && structure is Building fuelBuilding)
+                WorkOrderManager.instance?.RegisterFuelSupply(fuelBuilding);
         }
     }
 
@@ -397,6 +429,11 @@ public class SaveSystem : MonoBehaviour {
                 }
             }
         }
+        // Heal race condition: if the game was saved after all materials were delivered but before
+        // DeliverToBlueprintObjective had a chance to transition state to Constructing, restore
+        // directly into Constructing so we don't spin a supply order that immediately fails.
+        if (bp.state == Blueprint.BlueprintState.Receiving && bp.IsFullyDelivered())
+            bp.state = Blueprint.BlueprintState.Constructing;
         bp.RefreshColor();
         if (bp.state == Blueprint.BlueprintState.Deconstructing && bp.tile.building?.storage != null)
             bp.tile.building.storage.locked = true;
@@ -459,6 +496,7 @@ public class SaveSystem : MonoBehaviour {
     }
 
     public void Reset() {
+        currentSlot = null;
         WorldController.instance.ClearWorld();
         InventoryController.instance?.ResetState();
         WorldController.instance.GenerateDefault();

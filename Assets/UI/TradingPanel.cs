@@ -56,6 +56,7 @@ public class TradingPanel : MonoBehaviour {
     void Start() {
         if (instance != null) { Debug.LogError("there should only be one TradingPanel"); }
         instance = this;
+        UI.RegisterExclusive(gameObject);
 
         spriteGreen = Resources.Load<Sprite>("Sprites/Misc/indicator/green");
         spriteRed   = Resources.Load<Sprite>("Sprites/Misc/indicator/red");
@@ -115,7 +116,8 @@ public class TradingPanel : MonoBehaviour {
     public void Toggle() {
         var client = TradingClient.instance;
         if (client == null || !client.isOnline) return;
-        gameObject.SetActive(!gameObject.activeSelf);
+        if (gameObject.activeSelf) gameObject.SetActive(false);
+        else UI.OpenExclusive(gameObject);
     }
 
     // -------------------------------------------------------------------------
