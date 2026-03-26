@@ -235,7 +235,8 @@ public class HarvestTask : Task {
         this.tile = tile;
     }
     public override bool Initialize() {
-        if (!(tile.building is Plant plant)) return false;
+        Plant plant = tile.plant;
+        if (plant == null) return false;
         if (!plant.harvestable) return false;
 
         objectives.AddLast(new GoObjective(this, tile));
@@ -343,10 +344,17 @@ public class SupplyBlueprintTask : Task {
         for (int i = 0; i < blueprint.costs.Length; i++) {
             int needed = blueprint.costs[i].quantity - blueprint.inv.Quantity(blueprint.costs[i].item);
             if (needed <= 0) continue;
-            iq = new ItemQuantity(blueprint.costs[i].item, needed);
+            Item costItem = blueprint.costs[i].item;
+            iq = new ItemQuantity(costItem, needed);
             if (!animal.inv.ContainsItem(iq)) {
-                (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(iq.item);
+                // For group-item costs (e.g. "wood"), commit to the specific leaf with the most
+                // global inventory before pathfinding. This prevents the animal from collecting a
+                // mix of leaf types that would then lock the blueprint to whichever leaf happens to
+                // be delivered first — potentially a scarce one (e.g. 2 oak over 20 pine).
+                Item supplyItem = PickSupplyLeaf(costItem);
+                (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(supplyItem);
                 if (itemPath == null) continue; // can't find this item — try next cost slot
+                iq = new ItemQuantity(supplyItem, needed);
                 FetchAndReserve(iq, itemPath.tile, stack);
             }
             objectives.AddLast(new GoObjective(this, standPath.tile));
@@ -354,6 +362,24 @@ public class SupplyBlueprintTask : Task {
             return true;
         }
         return false;
+    }
+
+    // Returns the leaf item of a group with the highest global inventory (most available to use).
+    // If item is already a leaf, returns it unchanged.
+    private static Item PickSupplyLeaf(Item item) {
+        if (item.children == null) return item;
+        Item best = null;
+        int bestQty = -1;
+        CollectBestLeaf(item, ref best, ref bestQty);
+        return best ?? item; // fallback to group if tree is somehow empty (shouldn't happen)
+    }
+    private static void CollectBestLeaf(Item item, ref Item best, ref int bestQty) {
+        if (item.children == null || item.children.Length == 0) {
+            int qty = GlobalInventory.instance.Quantity(item);
+            if (qty > bestQty) { bestQty = qty; best = item; }
+            return;
+        }
+        foreach (Item child in item.children) CollectBestLeaf(child, ref best, ref bestQty);
     }
 }
 // Hauls fuel items to a building's internal fuel inventory (torch wood, furnace coal, etc.).
@@ -364,23 +390,23 @@ public class SupplyFuelTask : Task {
         this.building = building;
     }
     public override bool Initialize() {
-        if (building?.fuelInv == null) return false;
-        Item fuelItem = building.structType.fuelItem;
-        int needed = building.structType.fuelTarget - building.fuelInv.Quantity(fuelItem);
+        var fuel = building?.reservoir;
+        if (fuel == null) return false;
+        int needed = fuel.capacity - fuel.Quantity();
         if (needed <= 0) return false;
         if (!animal.nav.CanReach(building.tile)) return false;
         Path standPath = animal.nav.PathToOrAdjacent(building.tile);
         if (standPath == null) return false;
-        (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(fuelItem);
+        (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(fuel.fuelItem);
         if (itemPath == null) return false;
         int available = stack.quantity - stack.resAmount;
         int qty = Math.Min(needed, available);
         if (qty <= 0) return false;
         if (qty < MinHaulQuantity && qty < available) return false; // de minimis
-        ItemQuantity iq = new ItemQuantity(fuelItem, qty);
+        ItemQuantity iq = new ItemQuantity(fuel.fuelItem, qty);
         FetchAndReserve(iq, itemPath.tile, stack);
         objectives.AddLast(new GoObjective(this, standPath.tile));
-        objectives.AddLast(new DeliverToInventoryObjective(this, iq, building.fuelInv));
+        objectives.AddLast(new DeliverToInventoryObjective(this, iq, fuel.inv));
         return true;
     }
 }
@@ -573,7 +599,7 @@ public class DeliverObjective : Objective { // navigates and drops off item
         if (animal.inv.Quantity(iq.item) == 0){ Debug.Log($"{animal.aName} DeliverObjective: missing {iq.item.name} to deliver to ({destination.x},{destination.y})"); Fail(); return; }
         int moved = animal.DropItem(iq);  // drops the amount you have up to iq.quantity. if have less, just drops that.
         if (moved < iq.quantity)
-            Debug.Log($"{animal.aName} ({animal.job.name}) at ({(int)animal.x},{(int)animal.y}): partial/failed drop of {iq.item.name} — moved {moved}/{iq.quantity} to ({destination.x},{destination.y})");
+            Debug.Log($"{animal.aName} ({animal.job.name}) [{task}] at ({(int)animal.x},{(int)animal.y}): partial/failed drop of {iq.item.name} — moved {moved}/{iq.quantity} to ({destination.x},{destination.y})");
         Complete();
     }
 }
@@ -588,8 +614,10 @@ public class DeliverToBlueprintObjective : Objective { // always queued after Go
         if (blueprint == null || blueprint.cancelled) { Fail(); return; }
         if (animal.inv.Quantity(iq.item) > 0) {
             int needed = 0;
+            // Use MatchesItem so a leaf iq.item (e.g. "pine") matches a group cost.item (e.g. "wood")
+            // that hasn't been locked yet, as well as the exact match once it is locked.
             foreach (var cost in blueprint.costs)
-                if (cost.item == iq.item) { needed = cost.quantity - blueprint.inv.Quantity(iq.item); break; }
+                if (Inventory.MatchesItem(iq.item, cost.item)) { needed = cost.quantity - blueprint.inv.Quantity(cost.item); break; }
             animal.inv.MoveItemTo(blueprint.inv, iq.item, Math.Min(animal.inv.Quantity(iq.item), needed));
             blueprint.LockGroupCostsAfterDelivery();
             if (blueprint.IsFullyDelivered()) {

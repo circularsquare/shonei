@@ -14,6 +14,9 @@ public class BuildPanel : MonoBehaviour {
     public Button btnTiles;
     public static BuildPanel instance { get; protected set; }
     public StructType structType;
+    // Whether the next placed blueprint will be horizontally mirrored.
+    // Toggled by the F key during Build mode. Resets when a new building type is selected.
+    public bool mirrored = false;
 
     static readonly string[] CategoryNames = { "structures", "plants", "production", "storage", "tiles" };
 
@@ -143,18 +146,21 @@ public class BuildPanel : MonoBehaviour {
 
     public void SetStructType(StructType st) {
         structType = st;
+        mirrored = false;
         MouseController.instance.SetModeBuild();
     }
 
+    public void ToggleMirror() { mirrored = !mirrored; }
+
     public bool CanPlaceHere(StructType st, Tile tile) {
-        return StructPlacement.CanPlaceHere(st, tile);
+        return StructPlacement.CanPlaceHere(st, tile, mirrored);
     }
 
     public bool PlaceBlueprint(Tile tile) {
         if (structType == null) return false;
         if (!CanPlaceHere(structType, tile)) return false;
 
-        Blueprint blueprint = new Blueprint(structType, tile.x, tile.y);
+        Blueprint blueprint = new Blueprint(structType, tile.x, tile.y, mirrored);
         return true;
     }
 

@@ -14887,6 +14887,7 @@ MonoBehaviour:
   btnProduction: {fileID: 208756308}
   btnStorage: {fileID: 947969938}
   btnTiles: {fileID: 1402048671}
+  mirrored: 0
 --- !u!1 &1140733187
 GameObject:
   m_ObjectHideFlags: 0
@@ -18060,6 +18061,7 @@ MonoBehaviour:
   innerRadius: 1.5
   lightHeight: 0.2
   isDirectional: 1
+  isLit: 1
 --- !u!114 &1427312141
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -27993,9 +27995,9 @@ RectTransform:
   m_Father: {fileID: 3105635537402017501}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 81, y: -10}
   m_SizeDelta: {x: 50, y: 20}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &3522735642610976716
@@ -28230,9 +28232,9 @@ RectTransform:
   m_Father: {fileID: 3105635537402017501}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 25, y: -10}
   m_SizeDelta: {x: 50, y: 20}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &5018510387999353151
@@ -28475,7 +28477,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!1 &6948182517620702046
 GameObject:
   m_ObjectHideFlags: 0

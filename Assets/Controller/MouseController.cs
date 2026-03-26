@@ -43,6 +43,8 @@ public class MouseController : MonoBehaviour {
     void Update() {
         if (Input.GetKeyDown(KeyCode.Escape) && mouseMode != MouseMode.Select)
             SetModeSelect();
+        if (Input.GetKeyDown(KeyCode.F) && mouseMode == MouseMode.Build)
+            BuildPanel.instance?.ToggleMirror();
         if (Input.GetKeyDown(KeyCode.D) && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))) {
             WorkOrderManager.instance?.AuditOrders();
             InventoryController.instance?.ValidateGlobalInventory();
@@ -102,6 +104,7 @@ public class MouseController : MonoBehaviour {
             if (mouseMode == MouseMode.Build && st != null && anchorTile != null) {
                 Sprite buildSprite = st.LoadSprite();
                 buildPreviewSr.sprite = buildSprite != null ? buildSprite : buildPreviewDefaultSprite;
+                buildPreviewSr.flipX = BuildPanel.instance != null && BuildPanel.instance.mirrored;
                 buildPreviewSr.color = buildSprite != null ? new Color(1f, 1f, 1f, 0.3f) : Color.white;
                 buildPreview.transform.localScale = buildSprite == null
                     ? new Vector3(st.nx, Mathf.Max(1, st.ny), 1f)
@@ -111,6 +114,7 @@ public class MouseController : MonoBehaviour {
             } else {
                 buildPreview.transform.position = new Vector3(tileAt.x, tileAt.y, -1);
                 buildPreviewSr.sprite = buildPreviewDefaultSprite;
+                buildPreviewSr.flipX = false;
                 buildPreviewSr.color = Color.white;
                 buildPreview.transform.localScale = Vector3.one;
             }

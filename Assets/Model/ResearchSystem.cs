@@ -171,4 +171,16 @@ public class ResearchSystem : MonoBehaviour {
             if (nodeById.TryGetValue(id, out var node))
                 ApplyEffect(node);
     }
+
+    // Resets all research state to blank defaults (called by SaveSystem.ResetSystemState).
+    // Reverts node effects (e.g. building unlocks) before clearing, so the build panel stays consistent.
+    public void ResetAll() {
+        foreach (int id in unlockedIds)
+            if (nodeById.TryGetValue(id, out var node))
+                RevertEffect(node);
+        unlockedIds.Clear();
+        foreach (var key in new List<int>(progress.Keys)) progress[key] = 0f;
+        activeResearchId = -1;
+        CheckTransitions();
+    }
 }

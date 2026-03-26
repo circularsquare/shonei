@@ -45,6 +45,11 @@
                 "id": 13,
                 "name": "limestone",
                 "children": null
+            },{
+                "id": 14,
+                "name": "gypsum",
+                "decayRate": 0.05,
+                "children": null
             }
         ]
     },{
@@ -143,11 +148,6 @@
         "decayRate": 1.5,
         "foodValue": 15,
         "isLiquid": true,
-        "children": null
-    },{
-        "id": 240,
-        "name": "gypsum",
-        "decayRate": 0.1,
         "children": null
     },{
         "id": 241,

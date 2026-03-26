@@ -43,9 +43,9 @@ public class WeatherSystem {
         wind += -0.02f * wind + Random.Range(-0.05f, 0.05f);
 
         if (!isRaining) {
-            if (Random.value < 0.2f) SetRain(true);
+            if (Random.value < 0.08f) SetRain(true);
         } else {
-            if (Random.value < 0.2f) SetRain(false);
+            if (Random.value < 0.12f) SetRain(false);
             ReplenishRainwater();
         }
     }
@@ -72,8 +72,8 @@ public class WeatherSystem {
     }
 
     void SetRain(bool rain) {
-        if (rain){Debug.Log("raining");}
-        else {Debug.Log("unraining");}
+        // if (rain){Debug.Log("raining");}
+        // else {Debug.Log("unraining");}
         isRaining = rain;
     }
 }

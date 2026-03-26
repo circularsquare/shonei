@@ -43,22 +43,38 @@ Assets/
 │   ├── BackgroundCamera.cs  Background parallax camera
 │   └── CloudLayer.cs        Cloud rendering
 ├── Model/             Pure C# game logic (no MonoBehaviours)
+│   ├── Animal/
+│   │   ├── Animal.cs            Agent data + task dispatch
+│   │   ├── AnimalStateManager.cs  State machine logic
+│   │   ├── Nav.cs               Movement, pathfinding helpers (Move, Find*, FindPath*)
+│   │   ├── Eating.cs            Hunger/food state
+│   │   ├── Happiness.cs         Happiness tracking (food variety, housing, decorations)
+│   │   ├── Eeping.cs            Sleep/tiredness state
+│   │   └── Skills.cs            Skill enum + SkillSet (XP, levels, work speed bonus)
+│   ├── Structure/
+│   │   ├── Structure.cs         Placed buildings + StructType
+│   │   ├── Building.cs          Building subclass + Workstation, Reservoir
+│   │   ├── Blueprint.cs         Unfinished structures awaiting construction
+│   │   └── Plant.cs             Growing plants
+│   ├── Inventory/
+│   │   ├── Inventory.cs         Item containers (animal/storage/floor)
+│   │   ├── GlobalInventory.cs   World-wide item totals
+│   │   ├── ItemStack.cs         Single item stack within an inventory
+│   │   └── Item.cs              Item type definitions
 │   ├── World.cs       Tile grid, tick loop, ProduceAtTile, FallItems
-│   ├── Animal.cs      Agent data + task dispatch
-│   ├── AnimalStateManager.cs  State machine logic
-│   ├── AnimalComponents.cs  Nav, movement, pathfinding helpers (Move, Find*, FindPath*)
 │   ├── Task.cs        All Task + Objective class definitions
 │   ├── Navigation.cs  A* pathfinding
-│   ├── Inventory.cs   Item containers (animal/storage/floor)
-│   ├── Plant.cs       Growing plants
-│   ├── Structure.cs   Placed buildings + StructType
 │   ├── Tile.cs        Grid cell
-│   ├── Item.cs        Item type definitions
 │   ├── Db.cs          JSON database loader
 │   ├── ResearchSystem.cs  Research points + unlock logic
-│   ├── SkillSystem.cs     Skill enum + SkillSet (XP, levels, work speed bonus)
+│   ├── Reservable.cs  Resource reservation (capacity-based)
 │   ├── WorldSaveData.cs   Save data classes (add fields here when extending save)
-│   └── Reservable.cs  Resource reservation (capacity-based)
+│   └── ModifierSystem.cs  Runtime stat modifiers
+├── Components/        Small, single-purpose classes and MonoBehaviours
+│   ├── PumpBuilding.cs    Building subclass (depth-0 pump with water check)
+│   │   (Workstation and Reservoir classes now live in Building.cs alongside Building)
+│   ├── ClockHand.cs       Clock hand rotation MonoBehaviour
+│   └── ...                ItemIcon, StorageSlotDisplay, PixelSnapText, MatchCameraZoom, RainParticles
 ├── UI/                UI panels, displays, and tooltip system
 │   ├── BuildPanel.cs, InfoPanel.cs, MenuPanel.cs, SaveMenuPanel.cs
 │   ├── TradingPanel.cs, RecipePanel.cs, ResearchPanel.cs
@@ -83,7 +99,11 @@ Assets/
 
 ### Building subclasses
 
-Depth-0 buildings with custom behaviour subclass `Building` (e.g. `PumpBuilding`). The dispatch lives inline at two call sites — `StructController.Construct` and the `SaveSystem` load path — both marked with a comment to keep them in sync.
+Depth-0 buildings with custom behaviour subclass `Building` (e.g. `PumpBuilding`). Subclass dispatch is handled by a single shared factory method `Structure.Create(StructType, int, int)` in `Structure.cs`, called by both `StructController.Construct` (gameplay) and `SaveSystem.RestoreStructure` (load). When adding a new subclass, add its case to `Structure.Create` — no other dispatch site needed.
+
+**Components**: Building optionally owns `Workstation` (player-adjustable worker slots) and `Reservoir` (consumable-resource inventory, burn rate, supply target — used for fuel, water, etc.). These are non-null only when the StructType flags are set (`isWorkstation`, `hasFuelInv`). Both classes live in `Building.cs`.
+
+**OnPlaced() hook**: Virtual method on `Structure`, called by `StructController.Construct()` after `Place()`. Building overrides to register WOM orders (`RegisterOrdersFor`), Plant overrides to register its harvest order. Not called during load — `Reconcile()` handles that.
 
 ---
 
@@ -130,7 +150,7 @@ When adding new content, read these files first and match their pattern:
 | New Task type | `HaulTask` (simple) or `CraftTask` (complex) | `Task.cs` — also see 11-step checklist in SPEC-ai.md |
 | New Objective | `FetchObjective` (retry) or `WorkObjective` (simple) | `Task.cs` |
 | New WOM order type | `RegisterConstructOrder` / `RegisterWorkstation` | `WorkOrderManager.cs` + SPEC-ai.md checklist |
-| New Building subclass | `PumpBuilding` | `Assets/Components/PumpBuilding.cs` |
+| New Building subclass | `PumpBuilding` | `Assets/Components/PumpBuilding.cs` + `Structure.Create` in `Structure.cs` |
 | New UI panel (exclusive) | `ResearchPanel` | `Assets/UI/ResearchPanel.cs` |
 | New UI panel (detail) | `StoragePanel` | `Assets/UI/StoragePanel.cs` |
 | New item/building/recipe | Existing JSON entries | `Assets/Resources/*.json` — see SPEC-data.md |

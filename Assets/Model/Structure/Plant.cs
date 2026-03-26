@@ -5,7 +5,7 @@ using System;
 using System.Linq;
 using System.Runtime.Serialization;
 
-public class Plant : Building { 
+public class Plant : Structure {
     public PlantType plantType;
 
     public float timer;
@@ -27,8 +27,10 @@ public class Plant : Building {
         sprite = plantType.LoadSprite() ?? Resources.Load<Sprite>("Sprites/Plants/default");
         sr.sprite = sprite;
         sr.sortingOrder = 60;
+    }
 
-        // Every plant always has a standing harvest order. isActive suppresses it between cycles.
+    public override void OnPlaced() {
+        // Standing harvest order — isActive suppresses it between grow cycles.
         WorkOrderManager.instance?.RegisterHarvest(this);
     }
 
@@ -50,6 +52,11 @@ public class Plant : Building {
         age = 0; // autoreplant
         growthStage = 0;
         return plantType.products;
+    }
+
+    public override void Destroy() {
+        PlantController.instance.Remove(this);
+        base.Destroy();
     }
 
     public void UpdateSprite(){

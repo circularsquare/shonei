@@ -45,7 +45,7 @@ public class SaveMenuPanel : MonoBehaviour {
     public void OnClickReset() {
         ConfirmationPopup.Show("reset world?", () => {
             gameObject.SetActive(false);
-            SaveSystem.instance.Reset();
+            SaveSystem.instance.LoadDefault();
         }, confirmLabel: "reset");
     }
 

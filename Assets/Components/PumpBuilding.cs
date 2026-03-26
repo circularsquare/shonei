@@ -15,11 +15,13 @@ public class PumpBuilding : Building {
     /// </summary>
     private const int WaterDrainPerRound = WaterController.WaterMax/32;
 
-    public PumpBuilding(StructType st, int x, int y) : base(st, x, y) { }
+    public PumpBuilding(StructType st, int x, int y, bool mirrored = false) : base(st, x, y, mirrored) { }
+
+    // Pump head is at dx=1 normally; mirrored pump head is at dx=0.
+    private int PumpHeadDx => mirrored ? 0 : 1;
 
     public override bool IsActive() {
-        // Pump head is at dx=1; check the tile *below* it for water
-        Tile belowPumpTile = World.instance.GetTileAt(x + 1, y - 1);
+        Tile belowPumpTile = World.instance.GetTileAt(x + PumpHeadDx, y - 1);
         return belowPumpTile != null && belowPumpTile.water > 0;
     }
 
@@ -28,7 +30,7 @@ public class PumpBuilding : Building {
     /// Drains WaterDrainPerRound units from the source tile (clamped to 0).
     /// </summary>
     public void DrainForCraft() {
-        Tile waterTile = World.instance.GetTileAt(x + 1, y - 1);
+        Tile waterTile = World.instance.GetTileAt(x + PumpHeadDx, y - 1);
         if (waterTile == null) return;
         waterTile.water = (ushort)UnityEngine.Mathf.Max(0, waterTile.water - WaterDrainPerRound);
     }

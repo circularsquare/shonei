@@ -122,8 +122,8 @@ At full efficiency with a tool (1.25× base), an animal gains 0.125 XP/tick. Lev
 
 | Class | File | Role |
 |-------|------|------|
-| `Skill` | `SkillSystem.cs` | Enum of 5 domains |
-| `SkillSet` | `SkillSystem.cs` | Per-animal XP/level container; `GainXp`, `GetBonus`, `Deserialize` |
+| `Skill` | `Animal/Skills.cs` | Enum of 5 domains |
+| `SkillSet` | `Animal/Skills.cs` | Per-animal XP/level container; `GainXp`, `GetBonus`, `Deserialize` |
 
 `Animal.skills` (`SkillSet`) is initialized on construction. `ModifierSystem.GetWorkMultiplier(animal, skill?)` incorporates the level bonus; `GetBaseWorkEfficiency(animal)` is used for the XP calculation specifically.
 
@@ -141,7 +141,7 @@ Orders are stored as `List<WorkOrder>[] orders` — an array of four lists, one 
 
 Each `WorkOrder` carries a `Reservable res` (default capacity 1). **Orders stay in the queue permanently** — they are only removed when the underlying need goes away (blueprint destroyed, plant gone, etc.), not when claimed. `ChooseOrder` filters to `o.res.Available()`, tries each factory, and on success calls `order.res.Reserve(); task.workOrder = order`. When the task ends (success or fail), `Task.Cleanup()` calls `workOrder?.res.Unreserve(); workOrder = null`, making the order available for the next animal.
 
-`Reservable` has two capacity fields: `capacity` (hard max, set at registration from `structType.capacity`) and `effectiveCapacity` (player-adjustable; defaults to `capacity`). `Available()` gates on `effectiveCapacity`. For Craft orders, the player can lower `effectiveCapacity` via InfoPanel +/- buttons to restrict how many workers use a workstation at once. `effectiveCapacity` is persisted in `StructureSaveData.workOrderEffectiveCapacity` (nullable int; null on old saves → defaults to full capacity on load). `Structure.res` is **not** created for workstations — the WOM Craft order's `res` is the sole reservation tracker for them.
+`Reservable` has two capacity fields: `capacity` (hard max, set at registration from `structType.capacity`) and `effectiveCapacity` (player-adjustable; defaults to `capacity`). `Available()` gates on `effectiveCapacity`. For Craft orders, the player can lower `effectiveCapacity` via InfoPanel +/- buttons to restrict how many workers use a workstation at once. The player-set limit is stored on `Building.workstation.effectiveCapacity` (-1 = full capacity), persisted via `StructureSaveData.workOrderEffectiveCapacity`, and read by `RegisterWorkstation` when creating the order. `Structure.res` is **not** created for workstations — the WOM Craft order's `res` is the sole reservation tracker for them.
 
 This replaces the old pattern where claiming removed the order and `Cleanup` had to re-register it.
 
@@ -199,14 +199,16 @@ private static bool MarketNeedsHaulFrom(Inventory inv) =>
 
 All `Register*` methods are safe to call unconditionally — they self-guard with the predicate and a dedup check.
 
-### Safety net: Reconcile + Audit
+### Safety net: ScanOrders (Reconcile + Audit unified)
 
-- **`Reconcile()`**: iterates plants, blueprints, floor stacks, market inventories, and labs. Calls the appropriate `Register*` for anything that passes its predicate but has no order (reserved or not — dedup prevents double-insertion). Logs a warning on any real insertion. Since orders persist while claimed, this is purely a "was the order ever created?" check — it no longer needs to catch re-registration failures.
-- **`AuditOrders()`** (Ctrl+D in-game): bidirectional invariant check. For each order type: every object that passes the predicate has an order (reserved or not), and every order references a live valid object. `Debug.LogError`s any violation.
+Both reconciliation and auditing are handled by a single `ScanOrders(mode, silent)` method. Each order type's direction-1 check (world object → order) and direction-2 check (order → valid world object) appears once.
+
+- **`Reconcile(silent)`**: calls `ScanOrders(Repair, silent)`. Registers missing orders. During gameplay, logs warnings on any insertion (indicates a gap in push-registration). Called once at load time with `silent=true` — this is the **sole mechanism** for registering all WOM orders after a save is loaded (no Register* calls in SaveSystem).
+- **`AuditOrders()`**: calls `ScanOrders(Audit)`. Reports direction-1 violations as `LogError` without repairing, then checks direction-2 (orphaned orders). Ctrl+D in-game.
 
 ### Stale orders on world clear / load
 
-`WorldController.ClearWorld()` calls `WorkOrderManager.ClearAllOrders()` at the start before destroying any objects. This prevents stale `WorkOrder` references (pointing at pre-load `ItemStack`/`Blueprint` objects) from surviving into the new session.
+`WorldController.ClearWorld()` calls `WorkOrderManager.ClearAllOrders()` at the start before destroying any objects. This prevents stale `WorkOrder` references (pointing at pre-load `ItemStack`/`Blueprint` objects) from surviving into the new session. After all world objects are restored, `SaveSystem.ApplySaveData` calls `Reconcile(silent: true)` to register all orders in one pass.
 
 `Inventory.Destroy()` eagerly removes haul orders for all floor and storage stacks, then zeros `stack.quantity` / `stack.resAmount` as a safety net for other inventory types.
 
@@ -220,7 +222,7 @@ All `Register*` methods are safe to call unconditionally — they self-guard wit
 
 `new Blueprint(st, x, y)` auto-registers the appropriate order by default (`autoRegister = true`). Pass `autoRegister: false` when the caller will handle registration explicitly:
 - `Blueprint.CreateDeconstructBlueprint()` — sets state to Deconstructing and calls `RegisterDeconstruct` directly
-- `SaveSystem.RestoreBlueprint()` — sets state from save data; `RefreshColor()` handles Receiving/Constructing registration via `RegisterOrdersIfUnsuspended()`; Deconstructing is registered explicitly
+- `SaveSystem.RestoreBlueprint()` — sets state from save data; all WOM orders are registered by `Reconcile(silent: true)` at the end of `ApplySaveData()` once the graph is fully built
 
 ### Blueprint stacking & suspension
 
@@ -238,10 +240,8 @@ Each blueprint deep-copies its `StructType.costs` array so that `LockGroupCostsA
 2. **Job check**: add `if (animal.job.name != "myjob") return false;` as the first line of `Initialize()`, or check against the target object's `structType.job` field. **Note:** for Craft orders specifically, `canDo` uses `Array.Exists(a.job.recipes, r => r != null && r.tile == buildingName)` — *not* `structType.job` (which is the construction job, not the crafting job).
 3. **Add `OrderType`** to the `WorkOrderManager.OrderType` enum.
 4. **Add `Register*` method** with a predicate self-guard and a dedup guard (`orders.Exists(...)`). Returns `bool` (true = new order inserted).
-5. **Add a "needs order" predicate** (`private static bool XNeedsOrder(...)`) — shared by `Register*`, `Reconcile`, and `AuditOrders`. Does **not** need to check reservation state.
-6. **Set capacity if needed**: for multi-slot sources (e.g. a building that can have 2 workers), set `res = new Reservable(N)` in the `new WorkOrder { ... }` initializer. Default is 1. If the player should be able to reduce slots at runtime, use `res.effectiveCapacity` — `Available()` gates on it rather than `capacity`. See `RegisterWorkstation` for the pattern.
+5. **Add a "needs order" predicate** (`private static bool XNeedsOrder(...)`) — shared by `Register*` and `ScanOrders`. Does **not** need to check reservation state.
+6. **Set capacity if needed**: for multi-slot sources (e.g. a building that can have 2 workers), set `res = new Reservable(N)` in the `new WorkOrder { ... }` initializer. Default is 1. If the player should be able to reduce slots at runtime, store `effectiveCapacity` on the `Building.workstation` component — `RegisterWorkstation` reads it. `Available()` gates on `res.effectiveCapacity` rather than `res.capacity`.
 7. **Add removal**: use `RemoveForBlueprint`, `RemoveForTile`, or add a new `RemoveFor*` method for when the underlying need permanently disappears.
-8. **Register at the right moment**: push-register whenever the triggering condition first becomes true (state change, structure placed, etc.).
-9. **Save/load**: in `SaveSystem.Restore*`, register the order if the saved state requires it.
-10. **Reconcile**: add a scan loop in `WOM.Reconcile()` over the relevant state holder, guarded by the predicate.
-11. **Audit**: add bidirectional checks in `WOM.AuditOrders()` — "every X that passes predicate has an order (reserved or not)" and "every order of this type points to a valid X".
+8. **Register at the right moment**: push-register whenever the triggering condition first becomes true (state change, structure placed, etc.). For standing building orders (research, craft, fuel supply), add the registration to `WorkOrderManager.RegisterOrdersFor(Building)` and it will be called automatically via `Building.OnPlaced()`. For non-Building structures, override `Structure.OnPlaced()` directly (see `Plant.OnPlaced()` for an example).
+9. **Add scan in `ScanOrders()`**: add direction-1 check (world object → order exists) and direction-2 check (order → valid world object). `ScanOrders` handles both reconciliation and auditing — no need to touch SaveSystem or write separate Reconcile/Audit logic. `Reconcile()` calls `ScanOrders(Repair)` and is called once at load time to register all orders.

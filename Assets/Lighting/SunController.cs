@@ -76,6 +76,10 @@ public class SunController : MonoBehaviour {
     // 1 = full day, 0 = full night. Smooth transitions over twilightLength.
     public static float twilightFraction { get; private set; }
 
+    // 0 = full day (torch off), 1 = full night (torch fully on). Partial values during twilight.
+    // Used by LightSource to gate fuel consumption — no burn when torchFactor == 0.
+    public static float torchFactor { get; private set; }
+
     // 0 at night, 1 during day; linear transition over twilightLength/2 around sunrise/sunset.
     public static float brightness { get; private set; }
 
@@ -187,7 +191,7 @@ public class SunController : MonoBehaviour {
 
         // Torches ramp to full over the first half of sunset/sunrise,
         // ahead of the sun — so they're already bright by deep dusk.
-        float torchFactor = 1f - TorchBrightness(GetDayPhase());
+        torchFactor = 1f - TorchBrightness(GetDayPhase());
         foreach (LightSource ls in LightSource.all)
             if (!ls.isDirectional)
                 ls.intensity = ls.isLit ? ls.baseIntensity * torchFactor : 0f;

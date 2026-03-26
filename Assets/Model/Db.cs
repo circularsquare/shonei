@@ -30,20 +30,11 @@ public class Db : MonoBehaviour {
     public static PlantType[] plantTypes = new PlantType[600];
     public static TileType[] tileTypes = new TileType[100];
 
-    // sprite sorting orders
-        // 100: blueprint
-        // 80: fStruct
-        // 70: item on floor
-        // 60: plant
-        // 40: animal
-        // 30: item in storage
-        // 20: building
-        // 0: tile
+    // Mouse name pools loaded from Resources/Misc/names.csv.
+    public static List<string> chineseNames = new List<string>();
+    public static List<string> inventedNames = new List<string>();
 
-    // items: stored in csv and accessible through here
-    // jobs: stored in Animal.Jobs enum
-    // recipes: stored in json
-        // should there just be one recipe per possible (inputs, outputs)?
+    // Sprite sorting orders: see SPEC-rendering.md § "Sorting orders" for the authoritative list.
 
     private Db(){
         if (instance != null){
@@ -65,7 +56,33 @@ public class Db : MonoBehaviour {
         equipmentItems = itemsFlat.Where(i => { Item cur = i; while (cur != null) { if (cur.name == "tools") return true; cur = cur.parent; } return false; }).ToList();
         ValidateNoGroupOutputs();
         LoadItemIcons();
+        LoadNames();
         Debug.Log("db loaded");
+    }
+
+    void LoadNames() {
+        TextAsset csv = Resources.Load<TextAsset>("Misc/names");
+        if (csv == null) { Debug.LogError("Db: names.csv not found at Resources/Misc/names"); return; }
+        foreach (string line in csv.text.Split('\n')) {
+            string trimmed = line.Trim();
+            if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith("name")) continue; // skip header
+            string[] parts = trimmed.Split(',');
+            if (parts.Length != 2) continue;
+            string n = parts[0].Trim();
+            string pool = parts[1].Trim();
+            if (pool == "chinese") chineseNames.Add(n);
+            else if (pool == "invented") inventedNames.Add(n);
+            else Debug.LogWarning($"Db: unknown pool '{pool}' for name '{n}'");
+        }
+    }
+
+    // Draw a random mouse name from the combined pool.
+    // Pools are kept separate so frequency weighting can be added later.
+    public static string DrawName() {
+        int total = chineseNames.Count + inventedNames.Count;
+        if (total == 0) { Debug.LogError("Db: name pool is empty, falling back to 'mouse'"); return "mouse"; }
+        int i = UnityEngine.Random.Range(0, total);
+        return i < chineseNames.Count ? chineseNames[i] : inventedNames[i - chineseNames.Count];
     }
 
     void LoadItemIcons() {
@@ -74,7 +91,14 @@ public class Db : MonoBehaviour {
         foreach (Item item in itemsFlat) {
             string iName = item.name.Trim().Replace(" ", "");
             Sprite loaded = Resources.Load<Sprite>($"Sprites/Items/split/{iName}/icon");
-            item.icon = loaded != null ? loaded : fallback;
+            if (loaded != null) {
+                item.icon = loaded;
+            } else if (item.children == null) {
+                // Leaf items always get at least the fallback icon.
+                item.icon = fallback;
+            }
+            // Group items with no dedicated sprite stay null — ItemIcon resolves
+            // them dynamically to the most-owned child leaf at display time.
         }
     }
 

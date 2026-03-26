@@ -63,7 +63,7 @@ public class AnimalStateManager {
         float  workEfficiency = ModifierSystem.instance.GetWorkMultiplier(animal, taskSkill);
 
         if (animal.task is HarvestTask harvestTask) {
-            Plant plant = harvestTask.tile.building as Plant;
+            Plant plant = harvestTask.tile.plant;
             if (plant == null || !plant.harvestable) { harvestTask.Fail(); return; }
             animal.workProgress += workEfficiency;
             animal.skills.GainXp(Skill.Farming, baseWorkEff * 0.1f);
@@ -121,13 +121,13 @@ public class AnimalStateManager {
                     // Passive research progress from this recipe cycle
                     if (recipe.research != null)
                         ResearchSystem.instance?.AddPassiveProgress(recipe.research, recipe.skillPoints);
-                    // Track uses and deplete building if applicable
-                    Building workBuilding = craftTask.workplace?.building;
-                    if (workBuilding != null && workBuilding.structType.depleteAt > 0) {
-                        workBuilding.uses++;
-                        if (workBuilding.uses >= workBuilding.structType.depleteAt) {
+                    // Track uses and deplete workstation if applicable
+                    Building wb = craftTask.workplace?.building;
+                    if (wb?.workstation != null && wb.structType.depleteAt > 0) {
+                        wb.workstation.uses++;
+                        if (wb.workstation.uses >= wb.structType.depleteAt) {
                             Tile depletedTile = craftTask.workplace;
-                            workBuilding.Destroy();
+                            wb.Destroy();
                             StructController.instance.Construct(Db.structTypeByName["platform"], depletedTile);
                             craftTask.Complete();
                             return;
@@ -174,7 +174,11 @@ public class AnimalStateManager {
 
     public void UpdateMovement(float deltaTime) {
         // Fall unless the current nav edge is deliberately vertical (ladder/cliff/stair)
-        if (!animal.nav.preventFall && !animal.TileHere().node.standable
+        Tile tileHere = animal.TileHere();
+        if (tileHere == null) {
+            Debug.LogError($"{animal.name} is out of bounds at ({animal.x}, {animal.y})!");
+            if (animal.state != AnimalState.Falling) animal.nav.Fall();
+        } else if (!animal.nav.preventFall && !tileHere.node.standable
             && animal.state != AnimalState.Falling) {
             animal.nav.Fall();
         }

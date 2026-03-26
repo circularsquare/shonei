@@ -15,6 +15,10 @@ public class PixelSnapText : MonoBehaviour {
     }
 
     void LateUpdate() {
+        // Force TMP to recalculate its layout so we always snap from clean
+        // (unmodified) vertex positions. Without this, we'd be re-snapping
+        // already-snapped vertices each frame, causing leftward drift.
+        tmp.ForceMeshUpdate();
         var textInfo = tmp.textInfo;
         if (textInfo == null) return;
 

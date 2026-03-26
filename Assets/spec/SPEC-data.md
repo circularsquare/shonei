@@ -8,16 +8,15 @@ Lookups: `itemByName`, `jobByName`, `structTypeByName`, `plantTypeByName`, `tile
 
 ID ranges (keep entries ordered and thematically grouped):
 
-| Range | Category |
-|-------|----------|
-| 0 | dig (empty tile designator) |
-| 1–9 | storage buildings (house, drawer, crate, market) |
-| 10–19 | structural pieces (platform, stairs, ladder) |
-| 20–29 | decorations / terrain features (torch, road) |
-| 50–59 | placeable tile fills (dirt, stone) |
-| 100–119 | material processing (sawmill, workshop, furnace) |
-| 120–129 | extraction (dirt pit, quarry) |
-| 130–139 | research (laboratory) |
+| Range | Category | Examples |
+|-------|----------|---------|
+| 1–19 | structural / navigation | platform, stairs, ladder, road |
+| 20–39 | storage | house, drawer, crate, tank, market |
+| 40–79 | decoration / ambience | torch, fountain, clock |
+| 80–99 | placeable tiles | empty (dig), dirt, stone |
+| 101–109 | production — basic workstations | sawmill, workshop, furnace, press, pump |
+| 110–119 | production — extraction | dirt pit, quarry |
+| 120–139 | production — research / specialised | laboratory |
 
 Fields:
 

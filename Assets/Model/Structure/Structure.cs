@@ -15,17 +15,32 @@ public class Structure {
     public Sprite sprite;
     public SpriteRenderer sr;
     public Tile tile => World.instance.GetTileAt(x, y);
-    public Tile workTile => World.instance.GetTileAt(x + structType.workTileX, y + structType.workTileY);
+    public Tile workTile => World.instance.GetTileAt(
+        x + (mirrored ? (structType.nx - 1 - structType.workTileX) : structType.workTileX),
+        y + structType.workTileY);
     public Reservable res;
+
+    // Local pixel offsets (bottom-left origin, unmirrored) of WaterMarkerColor pixels in this
+    // sprite. Null when none found. Registered with WaterController by StructController.Place().
+    public List<Vector2Int> waterPixelOffsets { get; private set; }
 
     // Returns false to suppress the WOM craft order for this building without removing it.
     // Override in subclasses to add runtime conditions (e.g. pump needs water below).
     public virtual bool IsActive() => true;
 
-    public Structure(StructType st, int x, int y){
+    // Called by StructController after Place(). Override to register WOM orders or other post-placement setup.
+    // Not called during load or world generation — Reconcile() handles order registration on both paths.
+    public virtual void OnPlaced() { }
+
+    // Whether this structure is horizontally mirrored (flipped left-right).
+    // Affects sprite flipX, workTile/storageTile offsets, tileRequirement offsets, and stair pathfinding.
+    public bool mirrored = false;
+
+    public Structure(StructType st, int x, int y, bool mirrored = false){
         this.structType = st;
         this.x = x;
         this.y = y;
+        this.mirrored = mirrored;
 
         go = new GameObject();
         float visualX = st.nx > 1 ? x + (st.nx - 1) / 2.0f : x;
@@ -34,12 +49,12 @@ public class Structure {
             : new Vector3(visualX, y, 0);
         go.transform.SetParent(StructController.instance.transform, true);
         go.name = "structure_" + structType.name;
-        
+
         Sprite loadedSprite = structType.LoadSprite();
         sprite = loadedSprite ?? Resources.Load<Sprite>("Sprites/Buildings/default");
         sr = go.AddComponent<SpriteRenderer>();
         sr.sprite = sprite;
-        if (structType.depth == 3) sr.sortingOrder = 1; // above tile (order 0), below buildings
+        sr.flipX = mirrored;
         if (loadedSprite == null)
             go.transform.localScale = new Vector3(structType.nx, Mathf.Max(1, structType.ny), 1f);
         // Workstations don't use Structure.res — their WOM Craft order owns the reservation.
@@ -48,12 +63,42 @@ public class Structure {
         if (structType.name == "clock") {
             go.AddComponent<ClockHand>();
         }
+
+        // Register on tiles at the appropriate depth layer.
+        int depth = st.depth;
+        for (int i = 0; i < st.nx; i++) {
+            Tile t = World.instance.GetTileAt(x + i, y);
+            if (t.structs[depth] != null)
+                Debug.LogError($"Already a depth-{depth} structure at {x+i},{y}!");
+            t.structs[depth] = this;
+        }
+        // Sort order by depth: 0=building(10), 1=platform(11), 2=foreground(80), 3=road(1).
+        if (depth == 0) sr.sortingOrder = 10;
+        else if (depth == 1) sr.sortingOrder = 11;
+        else if (depth == 2) sr.sortingOrder = 80;
+        else if (depth == 3) sr.sortingOrder = 1;
+
+        // Scan sprite for water-marker pixels. Registration happens in StructController.Place().
+        waterPixelOffsets = WaterController.ScanWaterPixels(sprite);
+    }
+
+    // Shared factory: dispatches to the correct subclass based on StructType properties.
+    // Used by both StructController.Construct (gameplay) and SaveSystem.RestoreStructure (load).
+    // When adding a new Structure subclass, add its case here — no other dispatch site needed.
+    public static Structure Create(StructType st, int x, int y, bool mirrored = false) {
+        if (st.isPlant)
+            return new Plant(st as PlantType, x, y);
+        if (st.depth == 0 || st.isBuilding) {
+            return st.name == "pump"
+                ? new PumpBuilding(st, x, y, mirrored)
+                : new Building(st, x, y, mirrored);
+        }
+        return new Structure(st, x, y, mirrored); // platforms, ladders, stairs, foreground, roads
     }
 
     public virtual void Destroy(){
-        if (this is Plant plant) {
-            PlantController.instance.Remove(plant);
-        }
+        if (waterPixelOffsets != null)
+            WaterController.instance?.UnregisterDecorativeWater(this);
         StructController.instance.Remove(this);
         int depth = structType.depth;
         for (int i = 0; i < structType.nx; i++) {
@@ -125,9 +170,13 @@ public class StructType {
     public bool hasFuelInv {get; set;}
     public string fuelItemName {get; set;} // group or leaf item name (e.g. "wood"); resolved to fuelItem on load
     public Item fuelItem;                  // resolved from fuelItemName in OnDeserialized
-    public int fuelCapacity {get; set;}    // max stack size in fen (JSON in liang, converted in OnDeserialized)
-    public int fuelTarget {get; set;}      // WOM keeps fuelInv.Quantity >= this (JSON in liang, converted in OnDeserialized)
+    public int fuelCapacity {get; set;}    // max stack size in fen (JSON in liang, converted in OnDeserialized); supply triggers below half capacity
     public float fuelBurnRate {get; set;}  // liang/day consumed; LightSource converts to fen/s at runtime
+
+    // Decoration: nearby animals gain a happiness point when within decorRadius (Chebyshev) of this building.
+    // A decoration with hasFuelInv=true only counts when its reservoir has fuel (e.g. fountain needs water).
+    public bool isDecoration {get; set;}
+    public int decorRadius {get; set;}     // Chebyshev radius; 0 means not a decoration
 
     public virtual Sprite LoadSprite() {
         if (isTile) {
@@ -156,7 +205,6 @@ public class StructType {
         // Fuel inventory: convert liang → fen; resolve fuel item reference.
         if (hasFuelInv) {
             if (fuelCapacity > 0) fuelCapacity = (int)Math.Round(fuelCapacity * 100f);
-            if (fuelTarget  > 0) fuelTarget  = (int)Math.Round(fuelTarget  * 100f);
             if (fuelItemName != null && Db.itemByName.ContainsKey(fuelItemName))
                 fuelItem = Db.itemByName[fuelItemName];
             else

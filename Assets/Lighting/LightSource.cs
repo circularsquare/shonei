@@ -6,7 +6,7 @@ using UnityEngine;
 //   isDirectional = false  → point light (torch, lantern, etc.)
 //   isDirectional = true   → directional light (sun); drawn fullscreen, no falloff
 //
-// For fuel-consuming light sources (e.g. torch), set fuelBuilding after AddComponent.
+// For fuel-consuming light sources (e.g. torch), set reservoir after AddComponent.
 // The Update() loop will burn fuel and set isLit=false when the fuel inv is empty.
 // SunController reads isLit to zero out intensity for unlit sources.
 public class LightSource : MonoBehaviour {
@@ -23,8 +23,8 @@ public class LightSource : MonoBehaviour {
     [Header("Directional (sun)")]
     public bool isDirectional = false;
 
-    /// <summary>Set to the Building that owns this light's fuel inventory. Null = no fuel needed (always lit).</summary>
-    [HideInInspector] public Building fuelBuilding;
+    /// <summary>Set to the Reservoir that powers this light. Null = no fuel needed (always lit).</summary>
+    [HideInInspector] public Reservoir reservoir;
     /// <summary>False when fuel has run out; SunController sets intensity to 0 when false.</summary>
     public bool isLit = true;
 
@@ -37,29 +37,13 @@ public class LightSource : MonoBehaviour {
     void OnDisable() => all.Remove(this);
 
     void Update() {
-        if (fuelBuilding?.fuelInv == null) return; // no fuel needed — always lit
+        if (reservoir == null) return; // no fuel needed — always lit
 
-        Item fuelItem = fuelBuilding.structType.fuelItem;
-        // Convert liang/day burn rate to fen/second:
-        //   burnRate (liang/day) × 100 (fen/liang) / ticksInDay (seconds/day)
-        float fenPerSecond = fuelBuilding.structType.fuelBurnRate * 100f / World.ticksInDay;
-        _fuelAccumulator += fenPerSecond * Time.deltaTime;
-
-        if (_fuelAccumulator >= 1f) {
-            int toConsume = Mathf.FloorToInt(_fuelAccumulator);
-            // Consume from the actual leaf stacks (fuelItem may be a group like "wood").
-            int remaining = toConsume;
-            foreach (ItemStack stack in fuelBuilding.fuelInv.itemStacks) {
-                if (stack.item == null || stack.quantity == 0 || remaining <= 0) continue;
-                int fromThisStack = Mathf.Min(remaining, stack.quantity);
-                fuelBuilding.fuelInv.Produce(stack.item, -fromThisStack); // remove from inv + ginv
-                remaining -= fromThisStack;
-            }
-            int consumed = toConsume - remaining;
-            _fuelAccumulator -= consumed > 0 ? consumed : toConsume;
-            if (_fuelAccumulator < 0f) _fuelAccumulator = 0f;
-        }
-
-        isLit = fuelBuilding.fuelInv.Quantity(fuelItem) > 0;
+        // Only burn fuel while the torch is emitting light (torchFactor > 0).
+        // During full day (torchFactor == 0) the torch is off and consumes nothing.
+        // Partial twilight (torchFactor > 0) counts as on — still consumes.
+        if (SunController.torchFactor > 0f)
+            reservoir.Burn(Time.deltaTime, ref _fuelAccumulator);
+        isLit = reservoir.HasFuel();
     }
 }

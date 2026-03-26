@@ -19,14 +19,17 @@ public class Blueprint {
     public BlueprintState state = BlueprintState.Receiving;
     public bool cancelled = false;
     public int priority = 0;
+    // Whether this blueprint (and the structure it builds) is horizontally mirrored.
+    public bool mirrored = false;
     // Items to give to the completing animal after construction/deconstruction finishes.
     // Set by StructController.Construct (mining output) or Deconstruct (refunded materials).
     public List<ItemQuantity> pendingOutput;
 
-    public Blueprint(StructType structType, int x, int y, bool autoRegister = true){
+    public Blueprint(StructType structType, int x, int y, bool mirrored = false, bool autoRegister = true){
         this.structType = structType;
         this.x = x;
         this.y = y;
+        this.mirrored = mirrored;
         this.tile = World.instance.GetTileAt(x, y);
         tile.SetBlueprintAt(structType.depth, this);
 
@@ -49,6 +52,7 @@ public class Blueprint {
         SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
         sr.sortingOrder = 100;
         sr.sprite = sprite;
+        sr.flipX = mirrored;
         sr.color = new Color(0.8f, 0.9f, 1f, 0.5f); // blueprint half alpha
         if (loadedSprite == null)
             go.transform.localScale = new Vector3(structType.nx, Mathf.Max(1, structType.ny), 1f);
@@ -65,6 +69,7 @@ public class Blueprint {
         for (int i = 0; i < costs.Length; i++)
             inv.itemStacks[i].stackSize = costs[i].quantity;
 
+        StructController.instance.AddBlueprint(this);
         if (autoRegister) {
             if (costs.Length == 0) {
                 state = BlueprintState.Constructing;
@@ -75,9 +80,10 @@ public class Blueprint {
             }
             // If suspended, no order is registered — RegisterOrdersIfUnsuspended()
             // will pick it up when the support below is built.
+            RefreshColor(); // apply suspended tint if placed without solid support below
         }
-        StructController.instance.AddBlueprint(this);
-        RefreshColor(); // apply suspended tint if placed without solid support below
+        // For autoRegister: false (load path), RestoreBlueprint calls RefreshColor() separately
+        // after restoring inventory and state, so we don't register stale orders here.
     }
     public void RefreshColor() {
         Color color;
@@ -114,13 +120,30 @@ public class Blueprint {
     }
 
     /// <summary>
-    /// True when this blueprint is waiting for support below to be built.
-    /// Suspended blueprints are placed validly but mice should not supply or construct them
-    /// until the surface below becomes solid.
+    /// True when this blueprint is waiting for world conditions to be met before it can be worked on.
+    /// Suspended blueprints are placed validly but mice should not supply or construct them yet.
+    ///
+    /// If the StructType has tileRequirements, those drive the suspension check (only dynamic
+    /// world-state flags are tested: mustBeStandable and mustHaveWater). This lets buildings like
+    /// the pump declare their own preconditions rather than relying on standability as a proxy.
+    ///
+    /// Otherwise: suspended when any tile in the building footprint lacks solid ground below it.
     /// </summary>
     public bool IsSuspended() {
         if (structType.isTile || structType.name == "empty" || structType.requiredTileName != null)
             return false;
+
+        if (structType.tileRequirements != null) {
+            foreach (TileRequirement req in structType.tileRequirements) {
+                int effectiveDx = mirrored ? (structType.nx - 1 - req.dx) : req.dx;
+                Tile t = World.instance.GetTileAt(tile.x + effectiveDx, tile.y + req.dy);
+                if (t == null) return true;
+                if (req.mustBeStandable && !World.instance.graph.nodes[t.x, t.y].standable) return true;
+                if (req.mustHaveWater && t.water == 0) return true;
+            }
+            return false;
+        }
+
         for (int i = 0; i < structType.nx; i++) {
             Node node = World.instance.graph.nodes[tile.x + i, tile.y];
             if (node != null && !node.standable) return true;
@@ -131,7 +154,7 @@ public class Blueprint {
     public static Blueprint CreateDeconstructBlueprint(Tile tile) {
         Structure structure = tile.structs[0] ?? tile.structs[1] ?? tile.structs[2] ?? tile.structs[3];
         if (structure == null) return null;
-        Blueprint bp = new Blueprint(structure.structType, tile.x, tile.y, autoRegister: false);
+        Blueprint bp = new Blueprint(structure.structType, tile.x, tile.y, structure.mirrored, autoRegister: false);
         bp.state = BlueprintState.Deconstructing;
         bp.RefreshColor();
         WorkOrderManager.instance?.RegisterDeconstruct(bp);
@@ -194,7 +217,7 @@ public class Blueprint {
         // Capture tile products before Construct() changes the tile type
         if (structType.isTile && structType.name == "empty" && tile.type.products != null)
             pendingOutput = new List<ItemQuantity>(tile.type.products);
-        StructController.instance.Construct(structType, tile);
+        StructController.instance.Construct(structType, tile, mirrored);
         tile.SetBlueprintAt(structType.depth, null);
         GameObject.Destroy(go);
         if (InfoPanel.instance?.obj == tile) InfoPanel.instance.UpdateInfo();

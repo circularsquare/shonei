@@ -41,9 +41,10 @@ public class StructureSaveData {
     // null = field absent (old saves) → RegisterWorkstation defaults to full capacity.
     // 0 = explicitly disabled. 1..capacity = player-set limit.
     public int? workOrderEffectiveCapacity;
-    // Fuel-inv buildings only: leaf-item stack data for building.fuelInv at save time.
+    // Fuel buildings only: leaf-item stack data for building.fuel.inv at save time.
     // null = no fuel inv, or inv was empty (treated as empty on load).
     public InventorySaveData fuelInvData;
+    public bool mirrored;
 }
 
 public class BlueprintSaveData {
@@ -53,6 +54,7 @@ public class BlueprintSaveData {
     public float constructionProgress;
     public InventorySaveData inv;
     public int priority = 0;
+    public bool mirrored;
 }
 
 public class InventorySaveData {
@@ -76,9 +78,10 @@ public class AnimalSaveData {
     public float energy;
     public float food;
     public float eep;
-    public float timeSinceAteWheat;   // happiness
-    public float timeSinceAteFruit;   // happiness
-    public float timeSinceAteSoymilk; // happiness
+    public float timeSinceAteWheat;    // happiness
+    public float timeSinceAteFruit;    // happiness
+    public float timeSinceAteSoymilk;  // happiness
+    public float? timeSinceSawFountain; // null on old saves → starts at maxTime (never seen)
     public InventorySaveData inv;
     public InventorySaveData foodSlotInv; // null on old saves → slot starts empty
     public InventorySaveData toolSlotInv;

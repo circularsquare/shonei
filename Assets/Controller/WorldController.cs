@@ -186,6 +186,10 @@ public class WorldController : MonoBehaviour {
         world.timer = World.ticksInDay * 0.3f;
         world.graph.Initialize();
 
+        // Register WOM orders for all placed structures (harvest, market, etc.) now that the
+        // graph is built. Mirrors the Reconcile() call at the end of ApplySaveData().
+        WorkOrderManager.instance?.Reconcile(silent: true);
+
         for (int i = 0; i < 4; i++) AnimalController.instance.AddAnimal(20, 10);
         Camera.main.transform.position = new Vector3(20f, 13f, Camera.main.transform.position.z);
         defaultSetupCoroutine = StartCoroutine(DefaultJobSetup());

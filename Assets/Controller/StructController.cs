@@ -40,9 +40,11 @@ public class StructController : MonoBehaviour {
             structsByType[structure.structType] = list;
         }
         list.Add(structure);
+        if (structure.waterPixelOffsets != null)
+            WaterController.instance?.RegisterDecorativeWater(structure);
     }
 
-    public bool Construct(StructType st, Tile tile){
+    public bool Construct(StructType st, Tile tile, bool mirrored = false){
         Structure structure = null;
         if (st.isTile){ // tiles are not real structures, should just turn into tile
             if (st.name == "empty"){
@@ -51,8 +53,8 @@ public class StructController : MonoBehaviour {
             }
             tile.type = Db.tileTypeByName[st.name];}
         else if (st.isPlant){
-            if (tile.building != null){Debug.LogError("already a building or plant here!"); return false;}
-            structure = new Plant(st as PlantType, tile.x, tile.y);}
+            if (tile.structs[0] != null){Debug.LogError("already a building or plant here!"); return false;}
+            structure = Structure.Create(st, tile.x, tile.y, mirrored);}
         else {
             // Generic multi-tile collision check for all depths
             for (int i = 0; i < st.nx; i++) {
@@ -60,20 +62,8 @@ public class StructController : MonoBehaviour {
                 if (t == null) { Debug.LogError("tile out of bounds at " + (tile.x+i) + "," + tile.y); return false; }
                 if (t.structs[st.depth] != null) { Debug.LogError("depth " + st.depth + " occupied at " + (tile.x+i) + "," + tile.y); return false; }
             }
-            // Dispatch to subclass — keep in sync with SaveSystem load path.
-            // isBuilding=true allows non-depth-0 structures (e.g. foreground torches) to use Building.
-            if (st.depth == 0 || st.isBuilding) {
-                structure = st.name == "pump"
-                    ? new PumpBuilding(st, tile.x, tile.y)
-                    : new Building(st, tile.x, tile.y);
-            }
-            else if (st.name == "platform") { structure = new Platform(st, tile.x, tile.y); }
-            else if (st.name == "stairs") { structure = new Stairs(st, tile.x, tile.y); }
-            else if (st.name == "ladder") { structure = new Ladder(st, tile.x, tile.y); }
-            else if (st.depth == 1) { structure = new Platform(st, tile.x, tile.y); }
-            else if (st.depth == 2) { structure = new ForegroundStructure(st, tile.x, tile.y); }
-            else if (st.depth == 3) { structure = new Road(st, tile.x, tile.y); }
-            else { Debug.LogError("unknown type of structure? depth=" + st.depth); return false; }
+            structure = Structure.Create(st, tile.x, tile.y, mirrored);
+            if (structure == null) return false;
         }
         
 
@@ -82,12 +72,7 @@ public class StructController : MonoBehaviour {
         }
         if (!st.isTile){
             Place(structure);
-            if (st.name == "laboratory" && structure is Building lab)
-                WorkOrderManager.instance?.RegisterResearch(lab);
-            if (st.isWorkstation && structure is Building ws)
-                WorkOrderManager.instance?.RegisterWorkstation(ws);
-            if (st.hasFuelInv && structure is Building fb)
-                WorkOrderManager.instance?.RegisterFuelSupply(fb);
+            structure.OnPlaced();
         }
         if (world == null) {world = World.instance;}
         world.graph.UpdateNeighbors(tile.x, tile.y);

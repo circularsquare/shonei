@@ -331,18 +331,18 @@ public class WorkOrderManager : MonoBehaviour {
 
     // Registers a Craft order for a workstation building. One order per building instance.
     // The order stays in the queue permanently; isActive gates it when the building is inactive.
-    // effectiveCapacity: -1 = use full capacity (default for new placements).
-    //                     0 = disabled (no workers). 1..capacity = player-set limit.
+    // Reads building.workstation for the player-adjustable worker limit.
     // Returns true if a new order was inserted.
-    public bool RegisterWorkstation(Building building, int effectiveCapacity = -1) {
-        if (building == null) return false;
+    public bool RegisterWorkstation(Building building) {
+        if (building?.workstation == null) return false;
         if (orders[2].Exists(o => o.type == OrderType.Craft && o.building == building)) return false;
         // canDo checks recipe job, not construction job (structType.job = njob = who builds it).
         // PickRecipeForBuilding filters by recipe.tile, so the correct gate is: does this animal's
         // job have any recipe for this building type?
         string buildingName = building.structType.name;
-        var res = new Reservable(Mathf.Max(1, building.structType.capacity));
-        if (effectiveCapacity >= 0) res.effectiveCapacity = effectiveCapacity;
+        var ws = building.workstation;
+        var res = new Reservable(ws.capacity);
+        if (ws.effectiveCapacity >= 0) res.effectiveCapacity = ws.effectiveCapacity;
         Add(new WorkOrder {
             type = OrderType.Craft,
             priority = 3,
@@ -361,21 +361,20 @@ public class WorkOrderManager : MonoBehaviour {
         orders[2].RemoveAll(o => o.type == OrderType.Craft && o.building == building);
     }
 
-    // Registers a standing SupplyBuilding order for a building that has a fuel inventory.
-    // The order is always present in the queue; isActive suppresses it when fuel is already at target.
-    // Haulers fulfill it by delivering fuel items to the building's fuelInv.
+    // Registers a standing SupplyBuilding order for a building that has a Reservoir.
+    // The order is always present in the queue; isActive suppresses it when the reservoir is already at target.
+    // Haulers fulfill it by delivering items to building.reservoir.inv.
     // Returns true if a new order was inserted.
     public bool RegisterFuelSupply(Building building) {
-        if (building?.fuelInv == null) return false;
+        if (building?.reservoir == null) return false;
         if (orders[2].Exists(o => o.type == OrderType.SupplyBuilding && o.building == building)) return false;
-        Item fuelItem = building.structType.fuelItem;
-        int fuelTarget = building.structType.fuelTarget;
+        var reservoir = building.reservoir;
         Add(new WorkOrder {
             type       = OrderType.SupplyBuilding,
             priority   = 3,
             factory    = a => new SupplyFuelTask(a, building),
             building   = building,
-            isActive   = () => building.fuelInv != null && building.fuelInv.Quantity(fuelItem) < fuelTarget,
+            isActive   = () => reservoir.NeedsSupply(),
             canDo      = a => a.job.name == "hauler",
             getDistance = a => Mathf.Abs(building.x - a.x) + Mathf.Abs(building.y - a.y)
         });
@@ -385,6 +384,20 @@ public class WorkOrderManager : MonoBehaviour {
     // Removes the fuel supply order for a building (call when building is destroyed).
     public void RemoveFuelSupplyOrders(Building building) {
         orders[2].RemoveAll(o => o.type == OrderType.SupplyBuilding && o.building == building);
+    }
+
+    // Registers all standing WOM orders appropriate for a building (research, craft, fuel supply).
+    // Called from StructController.Construct after a building is placed. Each Register* method
+    // self-guards with dedup checks, so this is safe to call unconditionally.
+    // Note: Plant harvest orders are registered via Plant.OnPlaced() on the gameplay path, or Reconcile() on load/worldgen.
+    public void RegisterOrdersFor(Building building) {
+        if (building == null) return;
+        if (building.structType.name == "laboratory")
+            RegisterResearch(building);
+        if (building.workstation != null)
+            RegisterWorkstation(building);
+        if (building.reservoir != null)
+            RegisterFuelSupply(building);
     }
 
     // ── REMOVAL ────────────────────────────────────────────────────────────────────
@@ -458,174 +471,198 @@ public class WorkOrderManager : MonoBehaviour {
     private static bool MarketNeedsHaulFrom(Inventory inv) =>
         inv.targets != null && inv.targets.Any(kvp => inv.Quantity(kvp.Key) > kvp.Value);
 
-    // Called periodically as a safety net. Register* methods return true only when a new order
-    // is actually inserted (false = already existed, no-op). Logs a warning on any real fix.
-    public void Reconcile() {
-        foreach (Plant p in PlantController.instance.Plants)
-            if (RegisterHarvest(p))
-                Debug.LogWarning($"WOM reconcile: registered missing harvest order for {p.plantType.name} at ({p.x},{p.y})");
+    private enum ScanMode { Repair, Audit }
 
-        foreach (Blueprint bp in StructController.instance.GetBlueprints()) {
-            // Suspended blueprints intentionally have no orders — skip them.
-            // For Receiving blueprints, heal state to Constructing if fully delivered (can happen
-            // after save/load when LockGroupCostsAfterDelivery isn't re-run) rather than registering
-            // a supply order that would immediately fail.
-            bool inserted;
-            if (bp.state == Blueprint.BlueprintState.Receiving && !bp.IsSuspended() && bp.IsFullyDelivered()) {
-                bp.state = Blueprint.BlueprintState.Constructing;
-                inserted = RegisterConstruct(bp);
-            } else {
-                inserted = bp.state switch {
-                    Blueprint.BlueprintState.Constructing   => !bp.IsSuspended() && RegisterConstruct(bp),
-                    Blueprint.BlueprintState.Receiving      => !bp.IsSuspended() && RegisterSupplyBlueprint(bp),
-                    Blueprint.BlueprintState.Deconstructing => RegisterDeconstruct(bp),
-                    _ => false
-                };
+    // Unified scan: direction 1 checks that every world object that needs an order has one.
+    //   Repair mode: registers missing orders (Reconcile). silent=true suppresses warnings (used at load time).
+    //   Audit mode:  logs errors for violations AND checks direction 2 (orphaned orders).
+    // When adding a new order type, add both direction-1 and direction-2 checks here.
+    private void ScanOrders(ScanMode mode, bool silent = false) {
+        bool repair = mode == ScanMode.Repair;
+
+        // ── Harvest ──
+        foreach (Plant p in PlantController.instance.Plants) {
+            bool has = orders[1].Exists(o => o.type == OrderType.Harvest && o.tile == p.tile);
+            if (!has) {
+                if (repair) {
+                    RegisterHarvest(p);
+                    if (!silent) Debug.LogWarning($"WOM reconcile: registered missing harvest order for {p.plantType.name} at ({p.x},{p.y})");
+                } else {
+                    Debug.LogError($"WOM audit: plant at ({p.x},{p.y}) has no harvest order");
+                }
             }
-            if (inserted)
-                Debug.LogWarning($"WOM reconcile: registered missing {bp.state} order for {bp.structType.name} at ({bp.x},{bp.y})");
         }
 
+        // ── Blueprints ──
+        var bps = StructController.instance.GetBlueprints();
+        foreach (Blueprint bp in bps) {
+            if (bp.IsSuspended()) continue; // suspended blueprints intentionally have no orders
+            if (repair) {
+                // For Receiving blueprints, heal state to Constructing if fully delivered (can happen
+                // after save/load when LockGroupCostsAfterDelivery isn't re-run).
+                bool inserted;
+                if (bp.state == Blueprint.BlueprintState.Receiving && bp.IsFullyDelivered()) {
+                    bp.state = Blueprint.BlueprintState.Constructing;
+                    inserted = RegisterConstruct(bp);
+                } else {
+                    inserted = bp.state switch {
+                        Blueprint.BlueprintState.Constructing   => RegisterConstruct(bp),
+                        Blueprint.BlueprintState.Receiving      => RegisterSupplyBlueprint(bp),
+                        Blueprint.BlueprintState.Deconstructing => RegisterDeconstruct(bp),
+                        _ => false
+                    };
+                }
+                if (inserted && !silent)
+                    Debug.LogWarning($"WOM reconcile: registered missing {bp.state} order for {bp.structType.name} at ({bp.x},{bp.y})");
+            } else {
+                OrderType expected = bp.state switch {
+                    Blueprint.BlueprintState.Constructing   => OrderType.Construct,
+                    Blueprint.BlueprintState.Receiving      => OrderType.SupplyBlueprint,
+                    Blueprint.BlueprintState.Deconstructing => OrderType.Deconstruct,
+                    _ => (OrderType)(-1)
+                };
+                if (expected != (OrderType)(-1) && !HasOrderFor(expected, bp))
+                    Debug.LogError($"WOM audit: blueprint {bp.structType.name} at ({bp.x},{bp.y}) missing {expected} order");
+            }
+        }
+
+        // ── Floor hauls ──
         if (InventoryController.instance.byType.TryGetValue(Inventory.InvType.Floor, out var floors)) {
             foreach (Inventory inv in floors)
-                foreach (ItemStack stack in inv.itemStacks)
-                    if (RegisterHaul(stack))
-                        Debug.LogWarning($"WOM reconcile: registered missing haul order for {stack.item?.name} at ({inv.x},{inv.y})");
+                foreach (ItemStack stack in inv.itemStacks) {
+                    if (!StackNeedsHaulOrder(stack)) continue;
+                    bool has = orders[0].Exists(o => o.type == OrderType.Haul && o.stack == stack)
+                            || orders[2].Exists(o => o.type == OrderType.Haul && o.stack == stack);
+                    if (!has) {
+                        if (repair) {
+                            RegisterHaul(stack);
+                            if (!silent) Debug.LogWarning($"WOM reconcile: registered missing haul order for {stack.item?.name} at ({inv.x},{inv.y})");
+                        } else {
+                            Debug.LogError($"WOM audit: floor stack {stack.item?.name} at ({inv.x},{inv.y}) has no haul order");
+                        }
+                    }
+                }
         }
 
+        // ── Storage/liquid eviction hauls ──
         foreach (var evictType in new[] { Inventory.InvType.Storage, Inventory.InvType.Liquid }) {
             if (InventoryController.instance.byType.TryGetValue(evictType, out var storages))
                 foreach (Inventory inv in storages)
-                    foreach (ItemStack stack in inv.itemStacks)
-                        if (stack.item != null && stack.quantity > 0 && inv.allowed[stack.item.id] == false)
-                            if (RegisterStorageEvictionHaul(stack))
-                                Debug.LogWarning($"WOM reconcile: registered missing eviction haul for {stack.item.name} at ({inv.x},{inv.y}) [{evictType}]");
+                    foreach (ItemStack stack in inv.itemStacks) {
+                        if (stack.item == null || stack.quantity <= 0 || inv.allowed[stack.item.id] != false) continue;
+                        bool has = orders[0].Exists(o => o.type == OrderType.Haul && o.stack == stack)
+                                || orders[2].Exists(o => o.type == OrderType.Haul && o.stack == stack);
+                        if (!has) {
+                            if (repair) {
+                                RegisterStorageEvictionHaul(stack);
+                                if (!silent) Debug.LogWarning($"WOM reconcile: registered missing eviction haul for {stack.item.name} at ({inv.x},{inv.y}) [{evictType}]");
+                            } else {
+                                Debug.LogError($"WOM audit: disallowed {evictType} stack {stack.item.name} at ({inv.x},{inv.y}) has no haul order");
+                            }
+                        }
+                    }
         }
 
+        // ── Market hauls ──
         if (InventoryController.instance.byType.TryGetValue(Inventory.InvType.Market, out var markets)) {
             foreach (Inventory inv in markets)
                 UpdateMarketOrders(inv);
         }
 
+        // ── Research ──
         if (Db.structTypeByName.TryGetValue("laboratory", out var labSt)) {
-            foreach (Structure s in StructController.instance.GetByType(labSt) ?? new List<Structure>())
-                if (s is Building lab && RegisterResearch(lab))
-                    Debug.LogWarning($"WOM reconcile: registered missing Research order for lab at ({lab.tile.x},{lab.tile.y})");
-        }
-
-        foreach (Structure s in StructController.instance.GetStructures()) {
-            if (s.structType.isWorkstation && s is Building ws && RegisterWorkstation(ws))
-                Debug.LogWarning($"WOM reconcile: registered missing Craft order for {ws.structType.name} at ({ws.x},{ws.y})");
-        }
-
-        foreach (Structure s in StructController.instance.GetStructures()) {
-            if (s.structType.hasFuelInv && s is Building fb && RegisterFuelSupply(fb))
-                Debug.LogWarning($"WOM reconcile: registered missing SupplyBuilding order for {fb.structType.name} at ({fb.x},{fb.y})");
-        }
-    }
-
-    // Ctrl+D dev tool: checks invariants in both directions and logs violations.
-    public void AuditOrders() {
-        // Harvest — direction 1: every plant must have a standing harvest order (active or not)
-        foreach (Plant p in PlantController.instance.Plants)
-            if (!orders[1].Exists(o => o.type == OrderType.Harvest && o.tile == p.tile))
-                Debug.LogError($"WOM audit: plant at ({p.x},{p.y}) has no harvest order");
-        // Harvest — direction 2: every harvest order must reference a tile with a living plant
-        foreach (WorkOrder o in orders[1])
-            if (o.type == OrderType.Harvest && !(o.tile?.building is Plant))
-                Debug.LogError($"WOM audit: harvest order at ({o.tile?.x},{o.tile?.y}) has no plant");
-
-        // Blueprints — direction 1: every non-suspended blueprint must have a matching order
-        var bps = StructController.instance.GetBlueprints();
-        foreach (Blueprint bp in bps) {
-            if (bp.IsSuspended()) continue; // suspended blueprints intentionally have no orders
-            OrderType expected = bp.state switch {
-                Blueprint.BlueprintState.Constructing   => OrderType.Construct,
-                Blueprint.BlueprintState.Receiving      => OrderType.SupplyBlueprint,
-                Blueprint.BlueprintState.Deconstructing => OrderType.Deconstruct,
-                _ => (OrderType)(-1)
-            };
-            if (expected != (OrderType)(-1) && !HasOrderFor(expected, bp))
-                Debug.LogError($"WOM audit: blueprint {bp.structType.name} at ({bp.x},{bp.y}) missing {expected} order");
-        }
-        // Blueprints — direction 2: every blueprint order must reference a live blueprint
-        foreach (WorkOrder o in AllOrders())
-            if (o.blueprint != null && !bps.Contains(o.blueprint))
-                Debug.LogError($"WOM audit: {o.type} order references a blueprint not in StructController");
-
-        // Prune stale haul orders before checking direction-2, so timing artifacts don't fire.
-        PruneStaleHauls();
-
-        // Hauls — direction 1a: every haulable floor stack must have an order
-        if (InventoryController.instance.byType.TryGetValue(Inventory.InvType.Floor, out var floors)) {
-            foreach (Inventory inv in floors)
-                foreach (ItemStack stack in inv.itemStacks)
-                    if (StackNeedsHaulOrder(stack)
-                        && !orders[0].Exists(o => o.type == OrderType.Haul && o.stack == stack)
-                        && !orders[2].Exists(o => o.type == OrderType.Haul && o.stack == stack))
-                        Debug.LogError($"WOM audit: floor stack {stack.item?.name} at ({inv.x},{inv.y}) has no haul order");
-        }
-        // Hauls — direction 1b: every disallowed storage/liquid stack must have a haul order
-        foreach (var evictType in new[] { Inventory.InvType.Storage, Inventory.InvType.Liquid }) {
-            if (InventoryController.instance.byType.TryGetValue(evictType, out var evictInvs))
-                foreach (Inventory inv in evictInvs)
-                    foreach (ItemStack stack in inv.itemStacks)
-                        if (stack.item != null && stack.quantity > 0 && inv.allowed[stack.item.id] == false
-                            && !orders[0].Exists(o => o.type == OrderType.Haul && o.stack == stack)
-                            && !orders[2].Exists(o => o.type == OrderType.Haul && o.stack == stack))
-                            Debug.LogError($"WOM audit: disallowed {evictType} stack {stack.item.name} at ({inv.x},{inv.y}) has no haul order");
-        }
-        // Hauls — direction 2: every haul order must reference a valid stack
-        foreach (WorkOrder o in AllOrders())
-            if (o.type == OrderType.Haul && !StackNeedsHaulOrder(o.stack))
-                Debug.LogError($"WOM audit: haul order references stale/empty stack ({o.stack?.item?.name})");
-
-        // Research — one order per lab
-        if (Db.structTypeByName.TryGetValue("laboratory", out var labSt2)) {
-            var allLabs = StructController.instance.GetByType(labSt2);
-            if (allLabs != null) {
-                // Direction 1: every unreserved lab must have a Research order
-                // Direction 1: every lab must have a Research order (reserved or not)
-                foreach (Structure s in allLabs)
-                    if (s is Building lab
-                        && !orders[3].Exists(o => o.type == OrderType.Research && o.tile == lab.tile))
+            var allLabs = StructController.instance.GetByType(labSt) ?? new List<Structure>();
+            foreach (Structure s in allLabs) {
+                if (s is not Building lab) continue;
+                bool has = orders[3].Exists(o => o.type == OrderType.Research && o.tile == lab.tile);
+                if (!has) {
+                    if (repair) {
+                        RegisterResearch(lab);
+                        if (!silent) Debug.LogWarning($"WOM reconcile: registered missing Research order for lab at ({lab.tile.x},{lab.tile.y})");
+                    } else {
                         Debug.LogError($"WOM audit: lab at ({lab.tile.x},{lab.tile.y}) has no Research order");
-                // Direction 2: every Research order must reference a live lab
-                foreach (WorkOrder o in orders[3])
-                    if (o.type == OrderType.Research
-                        && !(o.tile?.building is Building b && b.structType == labSt2))
-                        Debug.LogError($"WOM audit: Research order at ({o.tile?.x},{o.tile?.y}) has no valid lab");
+                    }
+                }
             }
         }
 
-        // Craft — direction 1: every placed workstation must have a Craft order
+        // ── Craft (workstations) ──
         foreach (Structure s in StructController.instance.GetStructures()) {
-            if (s.structType.isWorkstation && s is Building ws
-                && !orders[2].Exists(o => o.type == OrderType.Craft && o.building == ws))
-                Debug.LogError($"WOM audit: workstation {ws.structType.name} at ({ws.x},{ws.y}) has no Craft order");
-        }
-        // Craft — direction 2: every Craft order must reference a live building
-        foreach (WorkOrder o in orders[2]) {
-            if (o.type == OrderType.Craft
-                && (o.building == null || o.building.go == null))
-                Debug.LogError($"WOM audit: Craft order references a destroyed building ({o.building?.structType?.name})");
+            if (!s.structType.isWorkstation || s is not Building ws) continue;
+            bool has = orders[2].Exists(o => o.type == OrderType.Craft && o.building == ws);
+            if (!has) {
+                if (repair) {
+                    RegisterWorkstation(ws);
+                    if (!silent) Debug.LogWarning($"WOM reconcile: registered missing Craft order for {ws.structType.name} at ({ws.x},{ws.y})");
+                } else {
+                    Debug.LogError($"WOM audit: workstation {ws.structType.name} at ({ws.x},{ws.y}) has no Craft order");
+                }
+            }
         }
 
-        // FuelSupply — direction 1: every placed fuel-inv building must have a SupplyBuilding order
+        // ── Fuel supply ──
         foreach (Structure s in StructController.instance.GetStructures()) {
-            if (s.structType.hasFuelInv && s is Building fb
-                && !orders[2].Exists(o => o.type == OrderType.SupplyBuilding && o.building == fb))
-                Debug.LogError($"WOM audit: fuel building {fb.structType.name} at ({fb.x},{fb.y}) has no SupplyBuilding order");
-        }
-        // FuelSupply — direction 2: every SupplyBuilding order must reference a live building
-        foreach (WorkOrder o in orders[2]) {
-            if (o.type == OrderType.SupplyBuilding && (o.building == null || o.building.go == null))
-                Debug.LogError($"WOM audit: SupplyBuilding order references a destroyed building ({o.building?.structType?.name})");
+            if (s is not Building fb || fb.reservoir == null) continue;
+            bool has = orders[2].Exists(o => o.type == OrderType.SupplyBuilding && o.building == fb);
+            if (!has) {
+                if (repair) {
+                    RegisterFuelSupply(fb);
+                    if (!silent) Debug.LogWarning($"WOM reconcile: registered missing SupplyBuilding order for {fb.structType.name} at ({fb.x},{fb.y})");
+                } else {
+                    Debug.LogError($"WOM audit: fuel building {fb.structType.name} at ({fb.x},{fb.y}) has no SupplyBuilding order");
+                }
+            }
         }
 
-        int total = orders.Sum(t => t.Count);
-        Debug.Log($"WOM audit complete. {total} orders.");
+        // ── Direction 2: orphaned orders (audit only) ──
+        if (mode == ScanMode.Audit) {
+            // Prune stale haul orders first so timing artifacts don't fire.
+            PruneStaleHauls();
+
+            // Harvest: every harvest order must reference a tile with a living plant
+            foreach (WorkOrder o in orders[1])
+                if (o.type == OrderType.Harvest && o.tile?.plant == null)
+                    Debug.LogError($"WOM audit: harvest order at ({o.tile?.x},{o.tile?.y}) has no plant");
+
+            // Blueprints: every blueprint order must reference a live blueprint
+            foreach (WorkOrder o in AllOrders())
+                if (o.blueprint != null && !bps.Contains(o.blueprint))
+                    Debug.LogError($"WOM audit: {o.type} order references a blueprint not in StructController");
+
+            // Hauls: every haul order must reference a valid stack
+            foreach (WorkOrder o in AllOrders())
+                if (o.type == OrderType.Haul && !StackNeedsHaulOrder(o.stack))
+                    Debug.LogError($"WOM audit: haul order references stale/empty stack ({o.stack?.item?.name})");
+
+            // Research: every Research order must reference a live lab
+            if (Db.structTypeByName.TryGetValue("laboratory", out var labStAudit)) {
+                foreach (WorkOrder o in orders[3])
+                    if (o.type == OrderType.Research
+                        && !(o.tile?.building is Building b && b.structType == labStAudit))
+                        Debug.LogError($"WOM audit: Research order at ({o.tile?.x},{o.tile?.y}) has no valid lab");
+            }
+
+            // Craft: every Craft order must reference a live building
+            foreach (WorkOrder o in orders[2])
+                if (o.type == OrderType.Craft && (o.building == null || o.building.go == null))
+                    Debug.LogError($"WOM audit: Craft order references a destroyed building ({o.building?.structType?.name})");
+
+            // FuelSupply: every SupplyBuilding order must reference a live building
+            foreach (WorkOrder o in orders[2])
+                if (o.type == OrderType.SupplyBuilding && (o.building == null || o.building.go == null))
+                    Debug.LogError($"WOM audit: SupplyBuilding order references a destroyed building ({o.building?.structType?.name})");
+
+            int total = orders.Sum(t => t.Count);
+            Debug.Log($"WOM audit complete. {total} orders.");
+        }
     }
+
+    // Called periodically as a safety net, and once at load time to register all orders.
+    // silent=true suppresses warnings (used during load where every registration is expected).
+    public void Reconcile(bool silent = false) => ScanOrders(ScanMode.Repair, silent);
+
+    // Ctrl+D dev tool: checks invariants in both directions and logs violations.
+    public void AuditOrders() => ScanOrders(ScanMode.Audit);
 
     // ── INSPECT ────────────────────────────────────────────────────────────────────
 

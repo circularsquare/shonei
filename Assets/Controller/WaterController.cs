@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -40,6 +41,16 @@ public class WaterController : MonoBehaviour {
     private bool[] _tileIsSolid;       // true if tile.type.solid
 
     private Material _waterMat;
+
+    // The exact RGBA color used in building sprite textures to mark pixels that should render
+    // as water. Paint this color in a sprite (with Read/Write Enabled in Import Settings) and
+    // those pixels will receive the water shader overlay, gated by the building's reservoir.
+    public static readonly Color32 WaterMarkerColor = new Color32(0, 0, 255, 2);
+
+    // Structures whose sprites contain WaterMarkerColor pixels register their world-pixel
+    // coordinates here. Overlaid into _surfaceBytes each UpdateSurfaceMask tick.
+    private readonly Dictionary<Structure, List<Vector2Int>> _decorativeZones
+        = new Dictionary<Structure, List<Vector2Int>>();
 
     /// <summary>
     /// Internal fixed-point scale: 10 internal units = 1 display unit (tile fully filled at 160).
@@ -110,7 +121,9 @@ public class WaterController : MonoBehaviour {
         SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
         sr.sprite      = waterSprite;
         sr.material    = _waterMat;
-        sr.sortingOrder = 2;
+        // Render above buildings (10) and platforms (11) so decorative water zones
+        // (e.g. fountain basin) are visible on top of the building sprite.
+        sr.sortingOrder = 12;
 
         // Sync with any water already present (e.g. from world gen or save load).
         UpdateSurfaceMask();
@@ -276,6 +289,18 @@ public class WaterController : MonoBehaviour {
             }
         }
 
+        // Overlay decorative water zones (e.g. fountain basin).
+        // All marker pixels render as interior water (127) — no surface highlight for thin zones.
+        // Gated by reservoir: if the building has a water reservoir and it's empty, skip.
+        foreach (var kvp in _decorativeZones) {
+            Structure s = kvp.Key;
+            if (s is Building b && b.reservoir != null && !b.reservoir.HasFuel()) continue;
+            foreach (Vector2Int px in kvp.Value) {
+                if ((uint)px.x < (uint)_texW && (uint)px.y < (uint)_texH)
+                    _surfaceBytes[px.y * _texW + px.x] = 127;
+            }
+        }
+
         _surfaceTex.LoadRawTextureData(_surfaceBytes);
         _surfaceTex.Apply(false); // false = skip mipmap update
 
@@ -299,6 +324,56 @@ public class WaterController : MonoBehaviour {
                 tile.water = (ushort)Mathf.Min(tile.water + 2, WaterMax);
             }
         }
+    }
+
+    /// <summary>
+    /// Scans a sprite for WaterMarkerColor pixels and returns their local offsets
+    /// (bottom-left origin, unmirrored). Returns null if none found.
+    /// The sprite's texture must have Read/Write Enabled in its Unity Import Settings.
+    /// </summary>
+    public static List<Vector2Int> ScanWaterPixels(Sprite sprite) {
+        if (sprite == null || sprite.texture == null) return null;
+        Texture2D tex = sprite.texture;
+        if (!tex.isReadable) return null; // Read/Write not enabled — skip silently
+        var rect  = sprite.textureRect;
+        int sprW  = (int)rect.width;
+        int sprH  = (int)rect.height;
+        int texW  = tex.width;
+        Color32[] pixels = tex.GetPixels32();
+
+        List<Vector2Int> offsets = null;
+        for (int ly = 0; ly < sprH; ly++) {
+            for (int lx = 0; lx < sprW; lx++) {
+                Color32 col = pixels[((int)rect.y + ly) * texW + (int)rect.x + lx];
+                if (col.r == WaterMarkerColor.r && col.g == WaterMarkerColor.g &&
+                    col.b == WaterMarkerColor.b && col.a == WaterMarkerColor.a) {
+                    if (offsets == null) offsets = new List<Vector2Int>();
+                    offsets.Add(new Vector2Int(lx, ly));
+                }
+            }
+        }
+        return offsets;
+    }
+
+    /// <summary>
+    /// Registers a structure's water-marker pixels for overlay each tick.
+    /// Converts local sprite offsets to world-pixel coordinates, accounting for mirroring.
+    /// Called by StructController.Place() for any structure with waterPixelOffsets.
+    /// </summary>
+    public void RegisterDecorativeWater(Structure s) {
+        if (s.waterPixelOffsets == null || s.waterPixelOffsets.Count == 0) return;
+        int sprW = (int)s.sprite.textureRect.width;
+        var worldPixels = new List<Vector2Int>(s.waterPixelOffsets.Count);
+        foreach (Vector2Int local in s.waterPixelOffsets) {
+            int lx = s.mirrored ? (sprW - 1 - local.x) : local.x;
+            worldPixels.Add(new Vector2Int(s.x * PixelsPerTile + lx, s.y * PixelsPerTile + local.y));
+        }
+        _decorativeZones[s] = worldPixels;
+    }
+
+    /// <summary>Removes a structure's water-marker pixels. Called from Structure.Destroy().</summary>
+    public void UnregisterDecorativeWater(Structure s) {
+        _decorativeZones.Remove(s);
     }
 
     /// <summary>

@@ -24,7 +24,8 @@ public class Tile {
     }
     public Structure[] structs = new Structure[4];   // indexed by depth: 0=building, 1=platform, 2=foreground, 3=road
     public Blueprint[] blueprints = new Blueprint[4]; // indexed by depth
-    public Building building => structs[0] as Building; // alias for depth 0 (Plant extends Building, so this covers both)
+    public Building building => structs[0] as Building; // alias for depth-0 Building (does NOT match Plant)
+    public Plant plant => structs[0] as Plant;           // alias for depth-0 Plant
     public Inventory inv; // this encapsulates all inventory types
     public ushort water; // 0–160 internal fixed-point (10 units = 1 display unit); 160 = fully filled tile
     public Node node;
@@ -57,9 +58,9 @@ public class Tile {
 
     // space: floor allowed
     public bool HasSpaceForItem(Item item){return (inv == null || inv.HasSpaceForItem(item));}
-    public bool HasLadder(){ return (structs[2] != null && structs[2] is Ladder); }
-    public bool HasStairRight(){ return (structs[2] != null && structs[2] is Stairs && (structs[2] as Stairs).right); }
-    public bool HasStairLeft(){ return (structs[2] != null && structs[2] is Stairs && !(structs[2] as Stairs).right); }
+    public bool HasLadder(){ return structs[2]?.structType.name == "ladder"; }
+    public bool HasStairRight(){ return structs[2]?.structType.name == "stairs" && !structs[2].mirrored; }
+    public bool HasStairLeft(){ return structs[2]?.structType.name == "stairs" && structs[2].mirrored; }
 
     public Blueprint GetAnyBlueprint(){
         foreach (var bp in blueprints) if (bp != null) return bp;

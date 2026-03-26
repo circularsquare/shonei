@@ -1,6 +1,44 @@
 [
     {
         "id": 1,
+        "name": "platform",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 3 }
+        ],
+        "depth": 1,
+        "solidTop": true,
+        "category": "structures"
+    },{
+        "id": 2,
+        "name": "stairs",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 5 }
+        ],
+        "depth": 2,
+        "category": "structures"
+    },{
+        "id": 3,
+        "name": "ladder",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 5 }
+        ],
+        "depth": 2,
+        "category": "structures"
+    },{
+        "id": 4,
+        "name": "road",
+        "description": "paved road that increases movement speed",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+        ],
+        "depth": 3,
+        "pathCostReduction": 0.1,
+        "category": "structures"
+    },{
+        "id": 20,
         "name": "house",
         "description": "a simple house for 4 mice",
         "nx": 1, "ny": 1,
@@ -13,7 +51,7 @@
         "solidTop": true,
         "category": "storage"
     },{
-        "id": 2,
+        "id": 21,
         "name": "drawer",
         "description": "stores 4 stacks of things",
         "nx": 1, "ny": 1,
@@ -28,7 +66,7 @@
         "solidTop": true,
         "category": "storage"
     },{
-        "id": 3,
+        "id": 22,
         "name": "crate",
         "description": "stores 1 stack of things",
         "nx": 1, "ny": 1,
@@ -42,7 +80,21 @@
         "solidTop": true,
         "category": "storage"
     },{
-        "id": 5,
+        "id": 23,
+        "name": "tank",
+        "description": "stores liquids",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 4 },
+            { "name": "planks", "quantity": 3 }
+        ],
+        "isStorage": true,
+        "liquidStorage": true,
+        "nStacks": 1,
+        "storageStackSize": 100,
+        "category": "storage"
+    },{
+        "id": 24,
         "name": "market",
         "description": "place to exchange goods with other settlements",
         "nx": 3, "ny": 1,
@@ -54,18 +106,7 @@
         "category": "storage",
         "defaultLocked": true
     },{
-        "id": 22,
-        "name": "clock",
-        "description": "tells the time of day",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "wood", "quantity": 5 }
-        ],
-        "depth": 0,
-        "solidTop": true,
-        "category": "structures"
-    },{
-        "id": 20,
+        "id": 40,
         "name": "torch",
         "description": "a small torch that lights the area. requires wood to burn.",
         "nx": 1, "ny": 1,
@@ -76,40 +117,39 @@
         "isBuilding": true,
         "hasFuelInv": true,
         "fuelItemName": "wood",
-        "fuelCapacity": 10,
-        "fuelTarget": 5,
+        "fuelCapacity": 5,
         "fuelBurnRate": 1.0,
         "category": "structures"
     },{
-        "id": 10,
-        "name": "platform",
+        "id": 41,
+        "name": "fountain",
+        "description": "a decorative fountain. requires water to stay full. nearby mice feel happier.",
         "nx": 1, "ny": 1,
         "ncosts": [
-            { "name": "wood", "quantity": 3 }
+            { "name": "limestone", "quantity": 10 }
         ],
-        "depth": 1,
+        "depth": 0,
+        "isBuilding": true,
+        "isDecoration": true,
+        "decorRadius": 3,
+        "hasFuelInv": true,
+        "fuelItemName": "water",
+        "fuelCapacity": 10,
+        "fuelBurnRate": 0.5,
+        "category": "structures"
+    },{
+        "id": 42,
+        "name": "clock",
+        "description": "tells the time of day",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 5 }
+        ],
+        "depth": 0,
         "solidTop": true,
         "category": "structures"
     },{
-        "id": 11,
-        "name": "stairs",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "wood", "quantity": 5 }
-        ],
-        "depth": 2,
-        "category": "structures"
-    },{
-        "id": 12,
-        "name": "ladder",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "wood", "quantity": 5 }
-        ],
-        "depth": 2,
-        "category": "structures"
-    },{
-        "id": 0,
+        "id": 80,
         "name": "empty",
         "description": "dig",
         "nx": 1, "ny": 1,
@@ -119,7 +159,7 @@
         "njob": "digger",
         "category": "tiles"
     },{
-        "id": 50,
+        "id": 81,
         "name": "dirt",
         "description": "block of dirt",
         "nx": 1, "ny": 1,
@@ -130,7 +170,7 @@
         "njob": "hauler",
         "category": "tiles"
     },{
-        "id": 51,
+        "id": 82,
         "name": "stone",
         "description": "block of stone",
         "nx": 1, "ny": 1,
@@ -141,7 +181,7 @@
         "njob": "hauler",
         "category": "tiles"
     },{
-        "id": 100,
+        "id": 101,
         "name": "sawmill",
         "description": "wood processing",
         "nx": 1, "ny": 1,
@@ -154,7 +194,7 @@
         "solidTop": true,
         "category": "production"
     },{
-        "id": 101,
+        "id": 102,
         "name": "workshop",
         "description": "tool creation",
         "nx": 1, "ny": 1,
@@ -167,7 +207,7 @@
         "solidTop": true,
         "category": "production"
     },{
-        "id": 102,
+        "id": 103,
         "name": "furnace",
         "description": "smelts and processes materials; storage on the right",
         "nx": 2, "ny": 1,
@@ -184,66 +224,7 @@
         "solidTop": true,
         "category": "production"
     },{
-        "id": 120,
-        "name": "dirt pit",
-        "description": "dig for dirt",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "dirt", "quantity": 10 },
-            { "name": "wood", "quantity": 2 }
-        ],
-        "njob": "digger",
-        "capacity": 1,
-        "isWorkstation": true,
-        "requiredTileName": "dirt",
-        "solidTop": true,
-        "category": "production",
-        "defaultLocked": true
-    },{
-        "id": 130,
-        "name": "laboratory",
-        "description": "scientists conduct research here",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "wood", "quantity": 10 },
-            { "name": "planks", "quantity": 5 }
-        ],
-        "njob": "hauler",
-        "capacity": 1,
-        "solidTop": true,
-        "category": "production"
-    },{
-        "id": 121,
-        "name": "quarry",
-        "description": "dig for stone",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "wood", "quantity": 5 }
-        ],
-        "njob": "miner",
-        "capacity": 1,
-        "isWorkstation": true,
-        "requiredTileName": "stone",
-        "solidTop": true,
-        "category": "production",
-        "defaultLocked": true,
-        "depleteAt": 100
-    },{
-        "id": 142,
-        "name": "tank",
-        "description": "stores liquids",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "wood", "quantity": 4 },
-            { "name": "planks", "quantity": 3 }
-        ],
-        "isStorage": true,
-        "liquidStorage": true,
-        "nStacks": 1,
-        "storageStackSize": 100,
-        "category": "storage"
-    },{
-        "id": 141,
+        "id": 104,
         "name": "press",
         "description": "press soybeans and water into soymilk",
         "nx": 1, "ny": 1,
@@ -256,7 +237,7 @@
         "capacity": 1,
         "category": "production"
     },{
-        "id": 140,
+        "id": 105,
         "name": "pump",
         "description": "pumps water from an adjacent water tile",
         "nx": 2, "ny": 1,
@@ -275,14 +256,49 @@
             { "dx": 1, "dy": -1, "mustHaveWater": true }
         ]
     },{
-        "id": 21,
-        "name": "road",
-        "description": "paved road that increases movement speed",
+        "id": 110,
+        "name": "dirt pit",
+        "description": "dig for dirt",
         "nx": 1, "ny": 1,
         "ncosts": [
+            { "name": "dirt", "quantity": 10 },
+            { "name": "wood", "quantity": 2 }
         ],
-        "depth": 3,
-        "pathCostReduction": 0.1,
-        "category": "structures"
+        "njob": "digger",
+        "capacity": 1,
+        "isWorkstation": true,
+        "requiredTileName": "dirt",
+        "solidTop": true,
+        "category": "production",
+        "defaultLocked": true
+    },{
+        "id": 111,
+        "name": "quarry",
+        "description": "dig for stone",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 5 }
+        ],
+        "njob": "miner",
+        "capacity": 1,
+        "isWorkstation": true,
+        "requiredTileName": "stone",
+        "solidTop": true,
+        "category": "production",
+        "defaultLocked": true,
+        "depleteAt": 100
+    },{
+        "id": 120,
+        "name": "laboratory",
+        "description": "scientists conduct research here",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 10 },
+            { "name": "planks", "quantity": 5 }
+        ],
+        "njob": "hauler",
+        "capacity": 1,
+        "solidTop": true,
+        "category": "production"
     }
 ]

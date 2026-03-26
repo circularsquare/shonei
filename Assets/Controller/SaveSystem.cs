@@ -20,13 +20,14 @@ using Newtonsoft.Json;
 //      appropriate parent (GatherSaveData, GatherTile, GatherAnimal, etc.)
 //   3. Add a Restore* method in the LOAD section and call it from the
 //      appropriate parent (ApplySaveData, RestoreTile, etc.)
+//   4. Add a reset line in ResetSystemState() so LoadDefault() also clears it.
 // -----------------------------------------------------------------------
 // Current saveable state checklist:
 //   [x] World timer
 //   [x] Tile types and floor inventories
-//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData)
-//   [x] Blueprints (type, position, state, constructionProgress, inv, priority)
-//   [x] Animals (position, job, energy, food, happiness, inv, foodSlotInv, toolSlotInv)
+//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, mirrored)
+//   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored)
+//   [x] Animals (position, job, energy, food, happiness, decoration happiness, inv, foodSlotInv, toolSlotInv)
 //   [x] Research (progress, activeResearchId, unlockedIds)
 //   [x] Disabled recipe ids
 //   [x] Water levels
@@ -161,22 +162,18 @@ public class SaveSystem : MonoBehaviour {
     }
 
     StructureSaveData GatherStructure(Structure s) {
-        var ssd = new StructureSaveData { x = s.x, y = s.y, typeName = s.structType.name };
+        var ssd = new StructureSaveData { x = s.x, y = s.y, typeName = s.structType.name, mirrored = s.mirrored };
         if (s is Plant plant) {
             ssd.plantAge         = plant.age;
             ssd.plantGrowthStage = plant.growthStage;
             ssd.plantHarvestable = plant.harvestable;
         }
         if (s is Building b) {
-            if (b.uses > 0) ssd.uses = b.uses;
-            if (b.structType.isWorkstation && WorkOrderManager.instance != null) {
-                var order = WorkOrderManager.instance.FindOrdersForBuilding(b)
-                    .FirstOrDefault(o => o.type == WorkOrderManager.OrderType.Craft);
-                if (order != null)
-                    ssd.workOrderEffectiveCapacity = order.res.effectiveCapacity;
-            }
-            if (b.structType.hasFuelInv && b.fuelInv != null && !b.fuelInv.IsEmpty())
-                ssd.fuelInvData = GatherInventory(b.fuelInv);
+            if (b.workstation != null && b.workstation.uses > 0) ssd.uses = b.workstation.uses;
+            if (b.workstation != null && b.workstation.effectiveCapacity >= 0)
+                ssd.workOrderEffectiveCapacity = b.workstation.effectiveCapacity;
+            if (b.reservoir != null && !b.reservoir.inv.IsEmpty())
+                ssd.fuelInvData = GatherInventory(b.reservoir.inv);
         }
         return ssd;
     }
@@ -189,7 +186,8 @@ public class SaveSystem : MonoBehaviour {
             state                = (int)bp.state,
             constructionProgress = bp.constructionProgress,
             inv                  = bp.costs.Length > 0 ? GatherInventory(bp.inv) : null,
-            priority             = bp.priority
+            priority             = bp.priority,
+            mirrored             = bp.mirrored
         };
     }
 
@@ -236,9 +234,10 @@ public class SaveSystem : MonoBehaviour {
             energy             = a.energy,
             food               = a.eating.food,
             eep                = a.eeping.eep,
-            timeSinceAteWheat   = a.happiness.timeSinceAteWheat,
-            timeSinceAteFruit   = a.happiness.timeSinceAteFruit,
-            timeSinceAteSoymilk = a.happiness.timeSinceAteSoymilk,
+            timeSinceAteWheat    = a.happiness.timeSinceAteWheat,
+            timeSinceAteFruit    = a.happiness.timeSinceAteFruit,
+            timeSinceAteSoymilk  = a.happiness.timeSinceAteSoymilk,
+            timeSinceSawFountain = a.happiness.timeSinceSawFountain,
             inv                = GatherInventory(a.inv),
             foodSlotInv        = GatherInventory(a.foodSlotInv),
             toolSlotInv        = GatherInventory(a.toolSlotInv),
@@ -251,6 +250,17 @@ public class SaveSystem : MonoBehaviour {
     // LOAD
     // -----------------------------------------------------------------------
 
+    // Resets all persistent singleton systems to blank defaults.
+    // Called by both LoadDefault() and Load() before world content is recreated.
+    // When adding a new system with saveable state, add its reset here AND
+    // add Gather*/Restore* methods for the load path (see checklist above).
+    void ResetSystemState() {
+        InventoryController.instance?.ResetState();
+        WeatherSystem.instance?.RestoreState(false);
+        RecipePanel.instance?.ClearDisabled();
+        ResearchSystem.instance?.ResetAll();
+    }
+
     public void Load(string slotName) {
         string path = SlotPath(slotName);
         if (!System.IO.File.Exists(path)) { Debug.LogError("Save slot not found: " + slotName); return; }
@@ -258,7 +268,7 @@ public class SaveSystem : MonoBehaviour {
         WorldSaveData data = JsonConvert.DeserializeObject<WorldSaveData>(json);
         currentSlot = slotName;
         WorldController.instance.ClearWorld();
-        InventoryController.instance?.ResetState();
+        ResetSystemState();
         ApplySaveData(data);
 
         if (data.research != null && ResearchSystem.instance != null) {
@@ -321,6 +331,12 @@ public class SaveSystem : MonoBehaviour {
 
         world.graph.Initialize();
 
+        // Register all WOM orders in one pass now that the world is fully restored and the
+        // pathfinding graph is built. Reconcile scans plants, blueprints, floor stacks,
+        // workstations, labs, fuel buildings, markets, and storage evictions.
+        // silent=true suppresses warnings (every registration is expected during load).
+        WorkOrderManager.instance?.Reconcile(silent: true);
+
         if (save.animals != null)
             foreach (AnimalSaveData asd in save.animals)
                 AnimalController.instance.LoadAnimal(asd);
@@ -334,12 +350,9 @@ public class SaveSystem : MonoBehaviour {
         InventoryController.instance.ValidateGlobalInventory();
 
         var rp = RecipePanel.instance;
-        if (rp != null) {
-            rp.ClearDisabled();
-            if (save.disabledRecipeIds != null)
-                foreach (int id in save.disabledRecipeIds)
-                    rp.SetAllowed(id, false);
-        }
+        if (rp != null && save.disabledRecipeIds != null)
+            foreach (int id in save.disabledRecipeIds)
+                rp.SetAllowed(id, false);
 
         WeatherSystem.instance?.RestoreState(save.isRaining);
     }
@@ -353,59 +366,40 @@ public class SaveSystem : MonoBehaviour {
         if (tile == null) { Debug.LogError("Null tile on load for struct: " + ssd.typeName); return; }
         Structure structure = null;
 
-        if (st.isPlant) {
-            Plant plant = new Plant(st as PlantType, ssd.x, ssd.y);
+        structure = Structure.Create(st, ssd.x, ssd.y, ssd.mirrored);
+        if (structure == null) {
+            Debug.LogError("Structure.Create returned null on load: " + ssd.typeName); return;
+        }
+
+        // Restore subclass-specific state that Create() can't know about.
+        if (structure is Plant plant) {
             plant.age          = ssd.plantAge;
             plant.growthStage  = ssd.plantGrowthStage;
             plant.harvestable  = ssd.plantHarvestable;
             plant.UpdateSprite();
-            WorkOrderManager.instance?.RegisterHarvest(plant);
-            structure = plant;
-        } else if (st.depth == 0 || st.isBuilding) {
-            // Dispatch to subclass — keep in sync with StructController.Construct.
-            // isBuilding=true allows non-depth-0 structures (e.g. torches) to use Building.
-            structure = st.name == "pump"
-                ? new PumpBuilding(st, ssd.x, ssd.y) { uses = ssd.uses }
-                : new Building(st, ssd.x, ssd.y) { uses = ssd.uses };
-        } else if (st.name == "platform") {
-            structure = new Platform(st, ssd.x, ssd.y);
-        } else if (st.name == "stairs") {
-            structure = new Stairs(st, ssd.x, ssd.y);
-        } else if (st.name == "ladder") {
-            structure = new Ladder(st, ssd.x, ssd.y);
-        } else if (st.depth == 1) {
-            structure = new Platform(st, ssd.x, ssd.y);
-        } else if (st.depth == 2) {
-            structure = new ForegroundStructure(st, ssd.x, ssd.y);
-        } else if (st.depth == 3) {
-            structure = new Structure(st, ssd.x, ssd.y);
-            tile.structs[3] = structure;
-        } else {
-            Debug.LogError("Unhandled struct type on load: " + ssd.typeName); return;
+        }
+        if (structure is Building b && b.workstation != null) {
+            b.workstation.uses = ssd.uses;
         }
 
-        if (structure != null) {
-            StructController.instance.Place(structure);
-            World.instance.graph.UpdateNeighbors(ssd.x, ssd.y);
-            World.instance.graph.UpdateNeighbors(ssd.x, ssd.y + 1);
-            if (st.isWorkstation && structure is Building ws) {
-                // null → old save; pass -1 so RegisterWorkstation defaults to full capacity
-                int ec = ssd.workOrderEffectiveCapacity ?? -1;
-                WorkOrderManager.instance?.RegisterWorkstation(ws, ec);
-            }
-            if (st.hasFuelInv && structure is Building fb && fb.fuelInv != null && ssd.fuelInvData != null) {
-                foreach (ItemStackSaveData sd in ssd.fuelInvData.stacks ?? System.Array.Empty<ItemStackSaveData>()) {
-                    if (string.IsNullOrEmpty(sd.itemName) || sd.quantity <= 0) continue;
-                    if (!Db.itemByName.TryGetValue(sd.itemName, out Item leafItem)) {
-                        Debug.LogError($"RestoreStructure: unknown fuel item '{sd.itemName}' in fuelInv of {st.name} at ({ssd.x},{ssd.y})");
-                        continue;
-                    }
-                    fb.fuelInv.Produce(leafItem, sd.quantity);
-                }
-            }
-            if (st.hasFuelInv && structure is Building fuelBuilding)
-                WorkOrderManager.instance?.RegisterFuelSupply(fuelBuilding);
+        StructController.instance.Place(structure);
+        World.instance.graph.UpdateNeighbors(ssd.x, ssd.y);
+        World.instance.graph.UpdateNeighbors(ssd.x, ssd.y + 1);
+        if (structure is Building ws && ws.workstation != null) {
+            // null → old save; -1 means full capacity (the default)
+            ws.workstation.effectiveCapacity = ssd.workOrderEffectiveCapacity ?? -1;
         }
+        if (structure is Building fb && fb.reservoir != null && ssd.fuelInvData != null) {
+            foreach (ItemStackSaveData sd in ssd.fuelInvData.stacks ?? System.Array.Empty<ItemStackSaveData>()) {
+                if (string.IsNullOrEmpty(sd.itemName) || sd.quantity <= 0) continue;
+                if (!Db.itemByName.TryGetValue(sd.itemName, out Item leafItem)) {
+                    Debug.LogError($"RestoreStructure: unknown fuel item '{sd.itemName}' in fuelInv of {st.name} at ({ssd.x},{ssd.y})");
+                    continue;
+                }
+                fb.reservoir.inv.Produce(leafItem, sd.quantity);
+            }
+        }
+        // WOM orders (harvest, workstation, fuel supply) are registered by Reconcile() after all objects are restored.
     }
 
     void RestoreBlueprint(BlueprintSaveData bsd) {
@@ -413,7 +407,7 @@ public class SaveSystem : MonoBehaviour {
             Debug.LogError("Unknown blueprint struct type on load: " + bsd.typeName); return;
         }
         StructType st = Db.structTypeByName[bsd.typeName];
-        Blueprint bp = new Blueprint(st, bsd.x, bsd.y, autoRegister: false);
+        Blueprint bp = new Blueprint(st, bsd.x, bsd.y, mirrored: bsd.mirrored, autoRegister: false);
         bp.state                = (Blueprint.BlueprintState)bsd.state;
         bp.constructionProgress = bsd.constructionProgress;
         bp.priority             = bsd.priority;
@@ -437,10 +431,8 @@ public class SaveSystem : MonoBehaviour {
         bp.RefreshColor();
         if (bp.state == Blueprint.BlueprintState.Deconstructing && bp.tile.building?.storage != null)
             bp.tile.building.storage.locked = true;
-        // RefreshColor() above already calls RegisterOrdersIfUnsuspended() for
-        // Receiving/Constructing. Deconstructing blueprints are never suspended.
-        if (bp.state == Blueprint.BlueprintState.Deconstructing)
-            WorkOrderManager.instance?.RegisterDeconstruct(bp);
+        // WOM orders are registered by Reconcile(silent:true) at the end of ApplySaveData(), once the graph is fully built.
+        // RefreshColor() above may also fire RegisterOrdersIfUnsuspended() — dedup guards in Register* make it harmless.
     }
 
     void RestoreInventory(InventorySaveData isd, Tile tile) {
@@ -455,8 +447,6 @@ public class SaveSystem : MonoBehaviour {
                 inv.itemStacks[i].decayCounter  = ssd.decayCounter;
                 inv.itemStacks[i].resAmount = 0;
                 GlobalInventory.instance.AddItem(item, ssd.quantity);
-                if (inv.invType == Inventory.InvType.Floor)
-                    WorkOrderManager.instance?.RegisterHaul(inv.itemStacks[i]);
             }
         }
         // Constructor defaults serve as baseline (Storage=all-disallowed, Liquid=liquids-allowed, others=all-allowed).
@@ -495,10 +485,10 @@ public class SaveSystem : MonoBehaviour {
         AnimalController.instance.Load();
     }
 
-    public void Reset() {
+    public void LoadDefault() {
         currentSlot = null;
         WorldController.instance.ClearWorld();
-        InventoryController.instance?.ResetState();
+        ResetSystemState();
         WorldController.instance.GenerateDefault();
         StartCoroutine(PostLoadInit());
     }

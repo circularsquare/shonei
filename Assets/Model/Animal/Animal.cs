@@ -92,7 +92,7 @@ public class Animal : MonoBehaviour{
         random = new System.Random();
 
         if (pendingSaveData != null) {
-            this.aName = pendingSaveData.aName;
+            this.aName = string.IsNullOrEmpty(pendingSaveData.aName) ? Db.DrawName() : pendingSaveData.aName;
             this.go.name = "animal_" + aName;
             this.energy = pendingSaveData.energy;
             this.eating = new Eating();
@@ -100,9 +100,10 @@ public class Animal : MonoBehaviour{
             this.eeping = new Eeping();
             this.eeping.eep = pendingSaveData.eep;
             this.happiness = new Happiness();
-            this.happiness.timeSinceAteWheat   = pendingSaveData.timeSinceAteWheat;
-            this.happiness.timeSinceAteFruit   = pendingSaveData.timeSinceAteFruit;
-            this.happiness.timeSinceAteSoymilk = pendingSaveData.timeSinceAteSoymilk;
+            this.happiness.timeSinceAteWheat    = pendingSaveData.timeSinceAteWheat;
+            this.happiness.timeSinceAteFruit    = pendingSaveData.timeSinceAteFruit;
+            this.happiness.timeSinceAteSoymilk  = pendingSaveData.timeSinceAteSoymilk;
+            this.happiness.timeSinceSawFountain = pendingSaveData.timeSinceSawFountain ?? Happiness.maxTime;
             this.job = Db.GetJobByName(pendingSaveData.jobName) ?? Db.jobs[0];
             this.state = AnimalState.Idle;
             this.efficiency = eating.Efficiency() * eeping.Efficiency();
@@ -120,7 +121,7 @@ public class Animal : MonoBehaviour{
             skills.Deserialize(pendingSaveData.skillXp, pendingSaveData.skillLevel);
             pendingSaveData = null;
         } else {
-            this.aName = "mouse" + id.ToString();
+            this.aName = Db.DrawName();
             this.go.name = "animal_" + aName;
             this.state = AnimalState.Idle;
             this.job = Db.jobs[0];
@@ -187,6 +188,32 @@ public class Animal : MonoBehaviour{
         FindHome();
         eating.SlowUpdate();
         happiness.SlowUpdate(this);
+        ScanForNearbyDecorations();
+    }
+
+    // Scans the Chebyshev neighbourhood for active decoration buildings and notifies Happiness.
+    // Each decoration type has its own timer — all in-range types are refreshed per call.
+    // A decoration with a reservoir only counts when it has fuel (e.g. fountain needs water).
+    // MaxDecoScanRadius must be >= the largest decorRadius defined in any structType.
+    private const int MaxDecoScanRadius = 5;
+
+    private void ScanForNearbyDecorations() {
+        int ax = Mathf.RoundToInt(x);
+        int ay = Mathf.RoundToInt(y);
+        for (int dx = -MaxDecoScanRadius; dx <= MaxDecoScanRadius; dx++) {
+            for (int dy = -MaxDecoScanRadius; dy <= MaxDecoScanRadius; dy++) {
+                Tile t = world.GetTileAt(ax + dx, ay + dy);
+                if (t == null) continue;
+                foreach (Structure s in t.structs) {
+                    if (s == null) continue;
+                    if (!(s is Building b) || !b.structType.isDecoration) continue;
+                    int dist = Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy));
+                    if (dist > b.structType.decorRadius) continue;
+                    if (b.reservoir != null && !b.reservoir.HasFuel()) continue;
+                    happiness.NoteSawDecoration(b.structType.name);
+                }
+            }
+        }
     }
 
     public void Update() { // called all the time, for movement and detecting arrival

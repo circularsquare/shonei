@@ -4,7 +4,7 @@
 /// All placement logic should live here; BuildPanel.CanPlaceHere delegates to this.
 /// </summary>
 public static class StructPlacement {
-    public static bool CanPlaceHere(StructType st, Tile tile) {
+    public static bool CanPlaceHere(StructType st, Tile tile, bool mirrored = false) {
         World world = World.instance;
 
         if (tile.GetBlueprintAt(st.depth) != null) return false;
@@ -13,7 +13,7 @@ public static class StructPlacement {
         if (st.requiredTileName != null && tile.type.name != st.requiredTileName) return false;
 
         if (!st.isTile) {
-            if (st.isPlant && tile.building != null) return false;
+            if (st.isPlant && tile.structs[0] != null) return false;
             if (!st.isPlant) {
                 for (int i = 0; i < st.nx; i++) {
                     Tile t = world.GetTileAt(tile.x + i, tile.y);
@@ -23,14 +23,19 @@ public static class StructPlacement {
             }
         }
 
+        // When mirrored, the "body" side of the building is at (nx-1) rather than 0, so
+        // standability must be checked there instead of the anchor.
+        int bodyDx = mirrored ? st.nx - 1 : 0;
         if (st.name != "empty" && st.requiredTileName == null
-            && !world.graph.nodes[tile.x, tile.y].standable
-            && !SupportedByBlueprintBelow(tile.x, tile.y)) return false;
+            && !world.graph.nodes[tile.x + bodyDx, tile.y].standable
+            && !SupportedByBlueprintBelow(tile.x + bodyDx, tile.y)) return false;
 
-        // Data-driven per-tile constraints from JSON
+        // Data-driven per-tile constraints from JSON.
+        // When mirrored, X offsets are flipped: effectiveDx = (nx - 1 - dx).
         if (st.tileRequirements != null) {
             foreach (TileRequirement req in st.tileRequirements) {
-                Tile t = world.GetTileAt(tile.x + req.dx, tile.y + req.dy);
+                int effectiveDx = mirrored ? (st.nx - 1 - req.dx) : req.dx;
+                Tile t = world.GetTileAt(tile.x + effectiveDx, tile.y + req.dy);
                 if (t == null) return false;
                 if (req.mustBeStandable && !world.graph.nodes[t.x, t.y].standable) return false;
                 if (req.mustHaveWater && t.water == 0) return false;

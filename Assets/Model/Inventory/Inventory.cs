@@ -8,7 +8,7 @@ public class Inventory{
     public int nStacks;
     public int stackSize; 
     public ItemStack[] itemStacks;
-    public enum InvType {Floor, Storage, Animal, Market, Equip, Blueprint, Liquid, Fuel};
+    public enum InvType {Floor, Storage, Animal, Market, Equip, Blueprint, Liquid, Reservoir};
 
     // Returns true if this item type is physically compatible with this inventory type.
     // This is a hard constraint checked before the per-item allowed[] dict.
@@ -130,7 +130,7 @@ public class Inventory{
             InvType.Animal     => 0f,
             InvType.Equip      => 1f,
             InvType.Blueprint  => 0f,
-            InvType.Fuel       => 0f, // fuel items don't decay in building reserves
+            InvType.Reservoir       => 0f, // fuel items don't decay in building reserves
             _                  => 1f
         };
         if (invTypeMult == 0f) return;
@@ -201,10 +201,13 @@ public class Inventory{
     }
 
     public int MoveItemTo(Inventory otherInv, Item item, int quantity){
-        // Group items (e.g. "wood") can't exist as physical stacks — resolve to the best available leaf.
+        // Group items (e.g. "wood") can't exist as physical stacks — resolve to the leaf via GetLeafStack.
+        // GetLeafStack (not GetItemStack) is used here because MoveItemTo is an execution step: the
+        // caller already holds the reservation and must be able to draw down on it even if the stack is
+        // fully reserved (Available() == false). GetItemStack's Available() guard is for planning only.
         if (item.children != null) {
-            ItemStack stack = GetItemStack(item);
-            if (stack == null) return quantity; // nothing available
+            ItemStack stack = GetLeafStack(item);
+            if (stack == null) return quantity; // nothing here
             item = stack.item;
         }
         int taken = quantity + AddItem(item, -quantity);
@@ -255,7 +258,7 @@ public class Inventory{
     // =========================
     // Returns true if `candidate` is `query` itself or any leaf descendant of it.
     // Used so that group items (e.g. "wood") act as wildcards matching any child (e.g. "oak", "pine").
-    static bool MatchesItem(Item candidate, Item query) {
+    public static bool MatchesItem(Item candidate, Item query) {
         if (candidate == query) return true;
         if (query.children == null) return false;
         foreach (Item child in query.children)
@@ -303,7 +306,7 @@ public class Inventory{
         return mostItem;
     }
     public ItemStack GetItemToHaul(){   // returns null if nothing, or item if something need to haul
-        if (invType == InvType.Market || invType == InvType.Blueprint || invType == InvType.Fuel) return null;
+        if (invType == InvType.Market || invType == InvType.Blueprint || invType == InvType.Reservoir) return null;
         foreach (ItemStack stack in itemStacks){
             if (!stack.Empty() && stack.Available() &&
                 (locked || allowed[stack.item.id] == false || invType == InvType.Floor)){
@@ -313,7 +316,7 @@ public class Inventory{
         return null;
     }
     public bool HasItemToHaul(Item item){ // if null, finds any item to haul
-        if (invType == InvType.Market || invType == InvType.Blueprint || invType == InvType.Fuel) return false;
+        if (invType == InvType.Market || invType == InvType.Blueprint || invType == InvType.Reservoir) return false;
         foreach (ItemStack stack in itemStacks){
             if ((item == null || stack.item == item) && stack.quantity > 0 && stack.Available() &&
                 (locked || allowed[stack.item.id] == false || invType == InvType.Floor)){
@@ -325,7 +328,7 @@ public class Inventory{
     // How much space is available for item in this inventory (allowed Storage/Animal only).
     // Counts both empty stacks (any item could fill them) and partially-filled stacks of the same item.
     public int GetStorageForItem(Item item){
-        if (invType == InvType.Market || invType == InvType.Blueprint || invType == InvType.Fuel) return 0;
+        if (invType == InvType.Market || invType == InvType.Blueprint || invType == InvType.Reservoir) return 0;
         if (!ItemTypeCompatible(invType, item)) return 0;
         if (locked || allowed[item.id] == false || invType == InvType.Floor){return 0;}
         int space = 0;
@@ -384,6 +387,35 @@ public class Inventory{
                 }
             }
         }
+        return best;
+    }
+    // Like GetItemStack but does NOT require Available() — for use in MoveItemTo (execution),
+    // where the caller holds the reservation and must be able to draw down on a fully-reserved stack.
+    // Strategy: pick the leaf type with the highest combined quantity (avoids locking consumers to a
+    // scarce type), then return its smallest individual stack (drains thin stacks first within that type).
+    private ItemStack GetLeafStack(Item item){
+        // Fast path: single-slot inventories (floor, animal, fuel, etc.).
+        if (nStacks == 1) {
+            var s = itemStacks[0];
+            return s != null && s.item != null && s.quantity > 0 && MatchesItem(s.item, item) ? s : null;
+        }
+        // Find the leaf type with the highest combined quantity across all stacks.
+        Item bestLeaf = null;
+        int bestTotal = 0;
+        foreach (ItemStack s in itemStacks) {
+            if (s == null || s.item == null || s.quantity <= 0 || !MatchesItem(s.item, item)) continue;
+            if (s.item == bestLeaf) continue; // already evaluated this leaf type
+            int total = 0;
+            foreach (ItemStack t in itemStacks)
+                if (t != null && t.item == s.item) total += t.quantity;
+            if (total > bestTotal) { bestTotal = total; bestLeaf = s.item; }
+        }
+        if (bestLeaf == null) return null;
+        // Return the smallest stack of the winning leaf type.
+        ItemStack best = null;
+        foreach (ItemStack s in itemStacks)
+            if (s != null && s.item == bestLeaf && s.quantity > 0)
+                if (best == null || s.quantity < best.quantity) best = s;
         return best;
     }
     public bool HasDisallowedItem(){
@@ -507,7 +539,7 @@ public class Inventory{
     public enum ItemSpriteType { Icon, Floor, Storage }
 
     public void UpdateSprite(){
-        if (invType == InvType.Animal || invType == InvType.Market || invType == InvType.Equip || invType == InvType.Blueprint || invType == InvType.Fuel) return;
+        if (invType == InvType.Animal || invType == InvType.Market || invType == InvType.Equip || invType == InvType.Blueprint || invType == InvType.Reservoir) return;
         if (stackGos != null){
             // Multi-stack storage (drawer): update each slot independently
             for (int i = 0; i < nStacks && i < stackGos.Length; i++){

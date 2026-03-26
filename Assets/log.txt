@@ -1,4 +1,10 @@
 meoww!!
+3/26
+- lots of building and wom refactoring 
+    - factor out workstation and reservoir (fuel)
+- decoration buildings! and buildings with fuel working now
+    - fountain, which gives decoration happiness periodically
+- mirrored buildings! (f key)
 3/25
 - blueprint stacking
 - multi inventory selection! 

@@ -5,7 +5,7 @@ using System;
 public class Nav {
     public Animal a; // have this be more generic? idk
     public World world;
-    
+
     public Path path;
     private int pathIndex = 0;
     private Node prevNode = null;
@@ -106,7 +106,7 @@ public class Nav {
                 }
             }
         }
-        if (persistent && closestTile == null && r < 60){ 
+        if (persistent && closestTile == null && r < 60){
             Debug.Log("no tile found. expanding radius to " + (r + 5));
             return (Find(condition, r + 4, persistent));
         }
@@ -130,14 +130,14 @@ public class Nav {
                     }
                 }
             }
-        } 
-        if (persistent && closestPath == null && r < 20){ 
+        }
+        if (persistent && closestPath == null && r < 20){
             Debug.Log("no tile found for " + a.aName + " (" + a.job.name + "), expanding radius to " + (r + 5));
             return (FindPathTo(condition, r + 4, persistent));
         }
         return closestPath;
     }
-    
+
     // Returns (matchingTile, pathToStandingPosition).
     // Use when the target tile might not be standable (e.g. blueprints for walls/stairs).
     public (Tile, Path) FindPathAdjacentTo(Func<Tile, bool> condition, int r = 40){
@@ -159,7 +159,7 @@ public class Nav {
     }
 
     // =========================================================
-    //  SPECIFIC PATH FINDERS 
+    //  SPECIFIC PATH FINDERS
     //  "FindPathToX"  = animal walks to the tile
     //  "FindPathAdjacentToX" = animal walks next to the tile
     // =========================================================
@@ -357,115 +357,3 @@ public class Nav {
 
 
 }
-
-
-public class Eating {
-    public float maxFood = 100f;
-    public float food = 90f;
-    public float hungerRate = 0.5f;
-    public float timeSinceLastAte = 9999f;
-
-public Eating(){ }
-
-    public float Fullness(){ return food / maxFood; }
-    public bool Hungry(){ return food / maxFood < 0.5f; }
-    public bool AteRecently(){ return timeSinceLastAte < 300f; } // within 5 min
-
-    public float Efficiency(){
-        if (Fullness() > 0.5f){
-            return 1f;
-        } else {
-            return Fullness() * 2f * 0.8f + 0.2f; // 20% at worst.
-        }
-    }
-    public void Eat(float nFood){
-        food += nFood;
-        timeSinceLastAte = 0f;
-    }
-    public void SlowUpdate(float t = 10f){
-        timeSinceLastAte += t;
-    }
-    public void Update(float t = 1f){
-        food -= hungerRate * t;
-        if (food < 0f){food = 0f;}
-    }
-}
-
-public class Happiness {
-    public bool house;
-    public float score;
-
-    const float recentThreshold = 120f;
-    const float soonThreshold = 30f;
-    const float maxTime = recentThreshold * 1.5f;
-    public float timeSinceAteWheat   = maxTime;
-    public float timeSinceAteFruit   = maxTime;
-    public float timeSinceAteSoymilk = maxTime;
-
-    public Happiness(){}
-
-    public void NoteAte(Item food, float fraction = 1f) {
-        if      (food.name == "wheat")   timeSinceAteWheat   = Mathf.Max(0f, timeSinceAteWheat   - fraction * recentThreshold);
-        else if (food.name == "apple")   timeSinceAteFruit   = Mathf.Max(0f, timeSinceAteFruit   - fraction * recentThreshold);
-        else if (food.name == "soymilk" || food.name == "tofu") timeSinceAteSoymilk = Mathf.Max(0f, timeSinceAteSoymilk - fraction * recentThreshold);
-        // add more mappings here as new foods are added
-    }
-
-    // True if eating this food would satisfy a currently-unhappy category
-    public bool WouldHelp(Item food) {
-        if (food.name == "wheat")   return timeSinceAteWheat   >= recentThreshold - soonThreshold;
-        if (food.name == "apple")   return timeSinceAteFruit   >= recentThreshold - soonThreshold;
-        if (food.name == "soymilk" || food.name == "tofu") return timeSinceAteSoymilk >= recentThreshold - soonThreshold;
-        return false;
-    }
-
-    public void SlowUpdate(Animal a){
-        timeSinceAteWheat   = Mathf.Min(timeSinceAteWheat   + 10f, maxTime);
-        timeSinceAteFruit   = Mathf.Min(timeSinceAteFruit   + 10f, maxTime);
-        timeSinceAteSoymilk = Mathf.Min(timeSinceAteSoymilk + 10f, maxTime);
-        bool wheat   = timeSinceAteWheat   < recentThreshold;
-        bool fruit   = timeSinceAteFruit   < recentThreshold;
-        bool soymilk = timeSinceAteSoymilk < recentThreshold;
-        house = a.HasHouse;
-        score = (wheat ? 1f : 0f) + (fruit ? 1f : 0f) + (soymilk ? 1f : 0f) + (house ? 1f : 0f);
-    }
-
-    public override string ToString(){
-        bool wheat   = timeSinceAteWheat   < recentThreshold;
-        bool fruit   = timeSinceAteFruit   < recentThreshold;
-        bool soymilk = timeSinceAteSoymilk < recentThreshold;
-        return $"wheat: {(wheat?1:0)}/1, fruit: {(fruit?1:0)}/1, soymilk/tofu: {(soymilk?1:0)}/1, housing: {(house?1:0)}/1  ({score:0.0})";
-    }
-}
-
-public class Eeping {
-    public float maxEep = 100f;
-    public float eep = 90f;
-    public static float tireRate = 0.1f;
-    public static float eepRate = 2f;
-    public static float outsideEepRate = 1f;
-
-    public Eeping(){}
-    public bool Eepy(){
-        return eep / maxEep < 0.8f;
-    }
-    public float Efficiency(){
-        if (eep / maxEep > 0.5f){
-            return 1f;
-        } else {
-            return eep / maxEep * 2f * 0.8f + 0.2f; // 20% at worst.
-        }
-    }
-    public float Eepness(){ return eep / maxEep; }
-    public void Eep(float t, bool atHome){
-        if (atHome){ eep += t * eepRate; }
-        else { eep += t * outsideEepRate; }
-    }
-    public void Update(float t = 1f){
-        eep -= tireRate * t;
-        if (eep < 0f){eep = 0f;}
-    }
-
-}
-
-

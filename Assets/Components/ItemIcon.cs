@@ -20,8 +20,36 @@ public class ItemIcon : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
     public void SetItem(Item newItem) {
         item = newItem;
         if (item == null) { gameObject.SetActive(false); return; }
-        image.sprite = item.icon;
+        image.sprite = ResolveIcon(item);
         gameObject.SetActive(true);
+    }
+
+    /// <summary>
+    /// Returns the sprite to display for an item. Group items with no dedicated
+    /// sprite (icon == null) fall back to the icon of the leaf child you have the
+    /// most of globally; if all quantities are zero the first leaf is used.
+    /// </summary>
+    static Sprite ResolveIcon(Item item) {
+        if (item.icon != null) return item.icon;
+
+        // Group item with no dedicated sprite — find best leaf by global inventory.
+        Item best = null;
+        int bestQty = -1;
+        FindBestLeaf(item, ref best, ref bestQty);
+        return best != null ? best.icon : null;
+    }
+
+    static void FindBestLeaf(Item group, ref Item best, ref int bestQty) {
+        if (group.children == null) return;
+        var ginv = GlobalInventory.instance;
+        foreach (Item child in group.children) {
+            if (child.children != null && child.children.Length > 0) {
+                FindBestLeaf(child, ref best, ref bestQty);
+            } else {
+                int qty = ginv != null ? ginv.Quantity(child.id) : 0;
+                if (qty > bestQty) { bestQty = qty; best = child; }
+            }
+        }
     }
 
     public void OnPointerEnter(PointerEventData eventData) {

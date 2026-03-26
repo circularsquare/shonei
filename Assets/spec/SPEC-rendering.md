@@ -2,6 +2,26 @@
 
 ## Rendering & Layers
 
+### Sorting orders (authoritative — keep this up to date)
+
+| sortingOrder | What |
+|---|---|
+| 0 | Tiles |
+| 1 | Roads (depth-3 structures) |
+| 10 | Buildings (depth-0 structures) |
+| 11 | Platforms (depth-1 structures); also clock hand (one above its body) |
+| 12 | Water overlay sprite (`WaterController`) |
+| 30 | Items in storage/inventory display |
+| 50 | Animals |
+| 60 | Plants |
+| 65 | Falling items (mid-air animation) |
+| 70 | Items on floor |
+| 80 | Foreground structures (depth-2: stairs, ladders, torches) |
+| 100 | Blueprints |
+| 200 | Build preview (mouse cursor ghost) |
+
+### Structure depth layers
+
 Structures render in four depth layers per tile. Each tile holds `Structure[] structs` and `Blueprint[] blueprints`, both indexed by depth int:
 
 | Depth | `structs[d]` | Contents | Sprite position | sortingOrder |
@@ -94,6 +114,18 @@ See `SPEC-systems.md` for the simulation. The renderer is a separate GPU shader 
 - `BackgroundCamera` culling mask (otherwise water appears in the sky)
 
 **Lighting**: water is lit via a dedicated path. `LightFeature` has a `waterLayer` field (set to `Water` in the Inspector) which triggers a separate `DrawRenderers` call in `NormalsCapturePass` using `Hidden/NormalsCaptureWater` (pass 1, lit-only, alpha=0.5). That shader samples the global `_WaterSurfaceTex` (set each tick by `WaterController.UpdateSurfaceMask()`) for transparency, discarding pixels with no water. Outputs flat forward normals. This means water darkens at night and receives ambient light, but torch NdotL is minimal (flat normal faces away from scene).
+
+**sortingOrder**: `12` — above buildings (10) and platforms (11) so decorative water zones render on top of building sprites.
+
+### Decorative water zones
+
+Building sprites can have pixels that render as water shimmer without participating in the fluid simulation. This is used for e.g. the fountain basin.
+
+**Marker color**: `R=0 G=0 B=255 A=2` (exact RGBA match). Paint pixels this color in a building sprite to mark them as water. Alpha=2 makes them nearly invisible so the water shader colour shows through cleanly.
+
+**Requirements**: the building sprite's texture must have **Read/Write Enabled** in its Unity Import Settings. `Assets/Editor/BuildingSpritePostprocessor.cs` auto-enables this for all textures under `Resources/Sprites/Buildings/` on import — reimport the folder once after adding the postprocessor.
+
+**How it works**: `WaterController.ScanWaterPixels()` scans the sprite at structure construction time and stores matching local pixel offsets on the `Structure`. `StructController.Place()` registers them with `WaterController.RegisterDecorativeWater()`, which converts offsets to world-pixel coordinates (accounting for `mirrored` flipX). Each `UpdateSurfaceMask()` tick, registered zones are overlaid into `_surfaceBytes` as `127` (interior shimmer). If the structure has a `Reservoir`, the zone is only shown when `reservoir.HasFuel()` — dry fountain = no water pixels.
 
 ---
 

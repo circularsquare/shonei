@@ -60,12 +60,14 @@ public class InfoPanel : MonoBehaviour {
 
     void ChangeWorkerSlots(int delta) {
         if (obj is Tile tile && tile.building is Building building) {
-            if (!building.structType.isWorkstation || building.structType.capacity <= 1) return;
+            if (building.workstation == null || building.workstation.capacity <= 1) return;
             var order = WorkOrderManager.instance?.FindOrdersForBuilding(building)
                 .FirstOrDefault(o => o.type == WorkOrderManager.OrderType.Craft);
             if (order == null) return;
             order.res.effectiveCapacity = Mathf.Clamp(
                 order.res.effectiveCapacity + delta, 0, order.res.capacity);
+            // Keep Workstation in sync so save/load round-trips correctly.
+            building.workstation.effectiveCapacity = order.res.effectiveCapacity;
             UpdateInfo();
         }
     }
@@ -166,11 +168,11 @@ public class InfoPanel : MonoBehaviour {
                         sb.Append("\n" + layerLabels[d] + ": " + s.structType.name);
                         if (s.res != null) sb.Append("\n res: " + s.res.reserved + "/" + s.res.capacity);
                         if (s is Building bldg) {
-                            if (bldg.structType.depleteAt > 0)
-                                sb.Append("\n  uses: " + bldg.uses + "/" + bldg.structType.depleteAt);
-                            if (bldg.fuelInv != null) {
-                                int fuelQty = bldg.fuelInv.Quantity(bldg.structType.fuelItem);
-                                sb.Append($"\n  fuel: {ItemStack.FormatQ(fuelQty)}/{ItemStack.FormatQ(bldg.structType.fuelCapacity)} {bldg.structType.fuelItemName}");
+                            if (bldg.structType.depleteAt > 0 && bldg.workstation != null)
+                                sb.Append("\n  uses: " + bldg.workstation.uses + "/" + bldg.structType.depleteAt);
+                            if (bldg.reservoir != null) {
+                                int fuelQty = bldg.reservoir.Quantity();
+                                sb.Append($"\n  fuel: {ItemStack.FormatQ(fuelQty)}/{ItemStack.FormatQ(bldg.reservoir.capacity)} {bldg.reservoir.fuelItem.name}");
                             }
                             // tile-keyed orders (e.g. research on lab)
                             AppendTileOrders(sb, bldg.tile);

@@ -46,7 +46,7 @@ Six inventory types:
 | Market | varies | varies | none | Market building only; set via `SetMarket()` on a Storage inv |
 | Fuel | 1 | varies | none | Internal building resource (torch wood, furnace coal). No sprite, no tile. See below. |
 
-### Fuel Inventory (`InvType.Fuel`)
+### Fuel Inventory (`InvType.Reservoir`)
 
 Created by `Building` constructor when `structType.hasFuelInv = true`. Fields:
 - Not tied to a tile position (x/y = building anchor, used for nav targeting only)
@@ -55,14 +55,14 @@ Created by `Building` constructor when `structType.hasFuelInv = true`. Fields:
 - Not searchable as a haul source (`GetItemToHaul`, `HasItemToHaul`, `GetStorageForItem`, and `FindPathItemStack` all exclude Fuel invs)
 - Registered with InventoryController for GlobalInventory tracking
 
-WOM registers a standing `SupplyBuilding` (priority 3) order when a fuel-inv building is placed. `isActive` suppresses the order when `fuelInv.Quantity(fuelItem) >= fuelTarget`. Haulers fulfill it via `SupplyFuelTask` + `DeliverToInventoryObjective`.
+WOM registers a standing `SupplyBuilding` (priority 3) order when a fuel building is placed (via `Building.OnPlaced()`). `isActive` suppresses the order when `building.reservoir.NeedsSupply()` is false. Haulers fulfill it via `SupplyFuelTask` + `DeliverToInventoryObjective`. All runtime state lives in the `Reservoir` component (`building.reservoir`), not on Building directly.
 
 JSON fields on StructType:
 - `hasFuelInv: bool` — opt-in
 - `fuelItemName: string` — group or leaf item (e.g. `"wood"`)
 - `fuelCapacity: float` — max fen (liang in JSON, × 100 in `OnDeserialized`)
 - `fuelTarget: float` — refill trigger level (liang in JSON)
-- `fuelBurnRate: float` — liang/day consumed; `LightSource.Update()` converts to fen/sec using `World.ticksInDay`
+- `fuelBurnRate: float` — liang/day consumed; `Reservoir.Burn()` converts to fen/sec using `World.ticksInDay`
 
 `isBuilding: true` on StructType makes StructController use the `Building` class for any depth (e.g. foreground torches at depth 2). `tile.building` (= `structs[0] as Building`) is still depth-0 specific; fuel buildings at other depths are accessed directly via task/WOM references.
 
@@ -72,7 +72,7 @@ JSON fields on StructType:
 - `Reservable` (capacity-based) prevents multiple animals targeting same resource. Has two fields: `capacity` (hard max from JSON) and `effectiveCapacity` (player-adjustable; defaults to `capacity`); `Available()` gates on `effectiveCapacity`. **Not** created for workstation buildings — WOM Craft orders own their reservation directly.
 - `Produce()` adds to inventory and global inventory simultaneously; `MoveItemTo()` moves between inventories without touching global inventory
 - `AddItem()` is private — always use `Produce`, `MoveItemTo`, or `TakeItem` externally
-- **Group-item wildcard**: `Quantity`, `ContainsAvailableItem`, `GetItemStack`, `AvailableQuantity`, and `MoveItemTo` all expand group items to their leaf descendants (`MatchesItem` helper). Passing `"wood"` to any of these matches oak/maple/pine transparently. `AddItem` and `GlobalInventory.AddItem` reject group items with a `LogError` — only leaf items may physically exist in inventories.
+- **Group-item wildcard**: `Quantity`, `ContainsAvailableItem`, `GetItemStack`, `AvailableQuantity`, and `MoveItemTo` all expand group items to their leaf descendants (`MatchesItem` helper). Passing `"wood"` to any of these matches oak/maple/pine transparently. `AddItem` and `GlobalInventory.AddItem` reject group items with a `LogError` — only leaf items may physically exist in inventories. `MatchesItem(candidate, query)` is `public static` — use it externally when matching a leaf iq.item against a group cost.item (e.g. in `DeliverToBlueprintObjective`). `MoveItemTo` uses the private `GetLeafStack` (not `GetItemStack`) for group resolution: `GetLeafStack` does not require `Available()` (the caller already holds the reservation) and picks the leaf type with the highest combined quantity, then the smallest individual stack of that type.
 - **`InventoryController.byType`**: `Dictionary<InvType, List<Inventory>>` maintained alongside the flat `inventories` list. Use for type-filtered lookups (e.g. iterate only Storage invs) instead of tile scans. All add/remove/type-change paths go through `AddInventory`, `RemoveInventory`, `MoveInventoryType`.
 - **`ValidateGlobalInventory()`**: sums all registered inventory stacks and compares against `GlobalInventory.itemAmounts`; called at end of save load. `LogError`s any mismatch.
 
@@ -114,6 +114,8 @@ Each animal has two `InvType.Equip` inventory instances (1 stack each, registere
 `Blueprint` has its own `Inventory inv` (Animal type, not registered with InventoryController — no decay, no tick overhead). Materials are delivered into it via `MoveItemTo` from the animal's inventory. On `Complete()`, `inv.Produce(item, -qty)` is called for each cost item to decrement GlobalInventory (the items were already counted in GlobalInventory when originally harvested). On cancel (`BuildPanel.Remove`), materials are returned to the floor via `MoveItemTo`.
 
 One slot per cost item (`stackSize = cost.quantity`). Because a slot can only hold one leaf type, `LockGroupCostsAfterDelivery()` is called after the first delivery of each group cost: it updates `blueprint.costs[i].item` from the group (e.g. "wood") to the specific leaf delivered (e.g. "pine"). Subsequent `SupplyBlueprintTask` initializations read the locked type and fetch only that leaf, avoiding slot conflicts.
+
+`SupplyBlueprintTask.Initialize()` commits to a specific leaf *before* pathfinding via `PickSupplyLeaf`: it walks the group's leaf tree and picks the leaf with the highest `GlobalInventory` quantity. This prevents collecting a mix of leaf types that would lock the blueprint to whichever happened to be delivered first — potentially a scarce one (e.g. 2 oak when 20 pine is available). `DeliverToBlueprintObjective` uses `Inventory.MatchesItem(iq.item, cost.item)` for the cost-slot lookup so a leaf `iq.item` correctly matches an unlocked group `cost.item`.
 
 ---
 
