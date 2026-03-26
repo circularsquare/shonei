@@ -36,6 +36,10 @@ public class AnimalStateManager {
         }
         animal.ChooseTask();
         if (animal.state == AnimalState.Idle) {
+            // Try job swap every 5 ticks when truly idle
+            if (animal.tickCounter % 5 == 3) {
+                JobSwapper.TrySwap(animal);
+            }
             // Random walking when nothing else to do
             if (UnityEngine.Random.Range(0, 5) == 0) {
                 animal.task = new GoTask(animal,

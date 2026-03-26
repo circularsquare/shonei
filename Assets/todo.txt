@@ -53,6 +53,7 @@
 
 
 BUGS
+- mouse on stairs falls on load through the floor...
 
 TODAY GOALS
 - auto job swap 

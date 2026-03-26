@@ -151,6 +151,18 @@ public class Db : MonoBehaviour {
             }
         }
 
+        // Resolve skill weight string keys to Skill enum values for fast runtime lookup.
+        foreach (Job job in jobsUnplaced) {
+            if (job.skillWeights == null) continue;
+            job.resolvedSkillWeights = new Dictionary<Skill, float>();
+            foreach (var kv in job.skillWeights) {
+                if (System.Enum.TryParse<Skill>(kv.Key, true, out Skill s))
+                    job.resolvedSkillWeights[s] = kv.Value;
+                else
+                    Debug.LogWarning($"Job '{job.name}': unknown skill '{kv.Key}' in skillWeights");
+            }
+        }
+
         // read Structures
         string jsonStructTypes = File.ReadAllText(Application.dataPath + "/Resources/buildingsDb.json");
         StructType[] structTypesUnplaced = JsonConvert.DeserializeObject<StructType[]>(jsonStructTypes);
@@ -228,6 +240,11 @@ public class Job {
     public int nRecipes = 0;
     public static int maxRecipes = 100;
     public Recipe[] recipes = new Recipe[maxRecipes]; // max 100 recipes per job
+
+    // Job-skill affinity weights for automatic job swapping (e.g. farmer → farming:0.8, construction:0.2).
+    // Authored in JSON as string keys; resolved to Skill enum at load time.
+    public Dictionary<string, float> skillWeights {get; set;}
+    [JsonIgnore] public Dictionary<Skill, float> resolvedSkillWeights;
 }
 
 public class Recipe {

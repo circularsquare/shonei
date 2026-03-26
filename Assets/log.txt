@@ -5,6 +5,7 @@ meoww!!
 - decoration buildings! and buildings with fuel working now
     - fountain, which gives decoration happiness periodically
 - mirrored buildings! (f key)
+- job swapping
 3/25
 - blueprint stacking
 - multi inventory selection! 

@@ -19845,8 +19845,8 @@ MonoBehaviour:
   orbitRadius: 500
   twilightLength: 0.12
   skyDay: {r: 0.77874684, g: 0.92606467, b: 0.9433962, a: 1}
-  skyTwilight1: {r: 0.6156863, g: 0.860481, b: 0.9254902, a: 1}
-  skyTwilight2: {r: 0.5372549, g: 0.7279969, b: 0.8666667, a: 0}
+  skyTwilight1: {r: 0.69166076, g: 0.88888764, b: 0.9339623, a: 1}
+  skyTwilight2: {r: 0.5372549, g: 0.763344, b: 0.8666667, a: 0}
   skyTwilight3: {r: 0.51063544, g: 0.62844497, b: 0.8018868, a: 0}
   skyNight: {r: 0.54509807, g: 0.6089909, b: 0.7254902, a: 0}
   sunColorDay: {r: 0.9930751, g: 1, b: 0.8915094, a: 1}

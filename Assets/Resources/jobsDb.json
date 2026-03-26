@@ -6,7 +6,8 @@
     },{
         "id": 1,
         "name": "hauler",
-        "jobType": "none"
+        "jobType": "none",
+        "skillWeights": { "construction": 0.5 }
     },{
         "id": 2,
         "name": "merchant",
@@ -15,37 +16,44 @@
         "id": 3,
         "name": "logger",
         "jobType": "gatherer",
-        "defaultSkill": "farming"
+        "defaultSkill": "farming",
+        "skillWeights": { "farming": 0.6, "construction": 0.2 }
     },{
         "id": 4,
         "name": "miner",
         "jobType": "gatherer",
-        "defaultSkill": "mining"
+        "defaultSkill": "mining",
+        "skillWeights": { "mining": 0.8, "construction": 0.2 }
     },{
         "id": 6,
         "name": "farmer",
         "jobType": "gatherer",
-        "defaultSkill": "farming"
+        "defaultSkill": "farming",
+        "skillWeights": { "farming": 0.8, "construction": 0.2 }
     },{
         "id": 10,
         "name": "digger",
         "jobType": "gatherer",
-        "defaultSkill": "mining"
+        "defaultSkill": "mining",
+        "skillWeights": { "mining": 0.8, "construction": 0.2 }
     },{
         "id": 11,
         "name": "sawyer",
         "jobType": "crafter",
-        "defaultSkill": "woodworking"
+        "defaultSkill": "woodworking",
+        "skillWeights": { "woodworking": 0.8 }
     },{
         "id": 12,
         "name": "scientist",
         "jobType": "researcher",
-        "defaultSkill": "science"
+        "defaultSkill": "science",
+        "skillWeights": { "science": 0.8 }
     },{
         "id": 13,
         "name": "smith",
         "jobType": "crafter",
-        "defaultSkill": "woodworking"
+        "defaultSkill": "woodworking",
+        "skillWeights": { "woodworking": 0.8 }
     },{
         "id": 14,
         "name": "cook",
