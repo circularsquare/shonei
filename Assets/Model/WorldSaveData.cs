@@ -45,6 +45,8 @@ public class StructureSaveData {
     // null = no fuel inv, or inv was empty (treated as empty on load).
     public InventorySaveData fuelInvData;
     public bool mirrored;
+    // Building-only: player-set disabled state. false on old saves (default).
+    public bool disabled;
 }
 
 public class BlueprintSaveData {
@@ -55,6 +57,7 @@ public class BlueprintSaveData {
     public InventorySaveData inv;
     public int priority = 0;
     public bool mirrored;
+    public bool disabled;
 }
 
 public class InventorySaveData {

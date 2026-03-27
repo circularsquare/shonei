@@ -105,6 +105,10 @@ public class Reservoir {
 }
 
 public class Building : Structure {
+    /// When true, all work orders for this building are suppressed. Player-togglable via UI.
+    /// Distinct from IsActive() which checks runtime conditions (e.g. pump has water).
+    public bool disabled = false;
+
     // Non-null only for workstation buildings. Owns the player-adjustable worker slot limit.
     public Workstation workstation { get; private set; }
     public Tile storageTile => World.instance.GetTileAt(
@@ -125,10 +129,8 @@ public class Building : Structure {
                 x + (mirrored ? (st.nx - 1 - st.storageTileX) : st.storageTileX),
                 y + st.storageTileY);
             Inventory oldInv = storageTile.inv;
-            var invType = structType.name == "market"  ? Inventory.InvType.Market
-                        : structType.liquidStorage      ? Inventory.InvType.Liquid
-                        :                                 Inventory.InvType.Storage;
-            storageTile.inv = new Inventory(structType.nStacks, structType.storageStackSize, invType, storageTile.x, storageTile.y);
+            var invType = structType.name == "market" ? Inventory.InvType.Market : Inventory.InvType.Storage;
+            storageTile.inv = new Inventory(structType.nStacks, structType.storageStackSize, invType, storageTile.x, storageTile.y, isLiquidStorage: structType.liquidStorage);
             storageTile.inv.displayName = structType.name;
             storage = storageTile.inv;
             if (oldInv != null && oldInv.invType == Inventory.InvType.Floor) {

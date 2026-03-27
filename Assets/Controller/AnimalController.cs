@@ -71,6 +71,7 @@ public class AnimalController : MonoBehaviour{
 
     public void LoadAnimal(AnimalSaveData asd) {
         Animal animal = AddAnimal(asd.x, asd.y); // adds +1 to "none" job count
+        SnapToStandableBelow(animal);             // fix position if saved on non-standable tile (e.g. stairs)
         animal.pendingSaveData = asd; // Animal.Start() (next frame) will apply name/stats/inv/job
 
         // Fix job counts now: move from "none" to saved job
@@ -86,6 +87,26 @@ public class AnimalController : MonoBehaviour{
     public void Load() {
         for (int a = 0; a < na; a++) animals[a].SlowUpdate(); // init happiness immediately on load
         UpdateColonyStats();
+    }
+
+    // Snaps an animal down to the nearest standable tile below their current position.
+    // Called after LoadAnimal to handle cases where a mouse was saved on a non-standable tile (e.g. stairs).
+    private void SnapToStandableBelow(Animal animal) {
+        int ax = Mathf.RoundToInt(animal.x);
+        int ay = Mathf.RoundToInt(animal.y);
+        Tile t = World.instance.GetTileAt(ax, ay);
+        if (t != null && t.node.standable) return; // already on a valid tile
+
+        for (int checkY = ay - 1; checkY >= 0; checkY--) {
+            Tile below = World.instance.GetTileAt(ax, checkY);
+            if (below == null) break;
+            if (below.node.standable) {
+                animal.y = checkY;
+                animal.gameObject.transform.position = new Vector3(animal.x, animal.y, 0);
+                return;
+            }
+        }
+        Debug.LogError($"SnapToStandableBelow: no standable tile found below ({ax},{ay}) for loaded animal");
     }
 
     public void AddJob(string jobstr, int n = 1){

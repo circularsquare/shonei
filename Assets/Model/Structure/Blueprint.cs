@@ -18,6 +18,7 @@ public class Blueprint {
     public enum BlueprintState { Receiving, Constructing, Deconstructing}
     public BlueprintState state = BlueprintState.Receiving;
     public bool cancelled = false;
+    public bool disabled = false;
     public int priority = 0;
     // Whether this blueprint (and the structure it builds) is horizontally mirrored.
     public bool mirrored = false;
@@ -85,9 +86,23 @@ public class Blueprint {
         // For autoRegister: false (load path), RestoreBlueprint calls RefreshColor() separately
         // after restoring inventory and state, so we don't register stale orders here.
     }
+    /// <summary>
+    /// Disable or re-enable this blueprint. Removes or re-registers WOM orders accordingly.
+    /// </summary>
+    public void SetDisabled(bool value) {
+        disabled = value;
+        RefreshColor();
+        if (disabled)
+            WorkOrderManager.instance?.RemoveForBlueprint(this);
+        else
+            RegisterOrdersIfUnsuspended();
+    }
+
     public void RefreshColor() {
         Color color;
-        if (state == BlueprintState.Deconstructing)
+        if (disabled)
+            color = new Color(0.6f, 0.55f, 0.5f, 0.4f); // warm grey: disabled
+        else if (state == BlueprintState.Deconstructing)
             color = new Color(1f, 0.3f, 0.3f, 0.5f);
         else if (IsSuspended())
             color = new Color(0.6f, 0.6f, 0.7f, 0.4f); // greyed-out: waiting for support below
@@ -103,7 +118,7 @@ public class Blueprint {
     /// Called from RefreshColor() when the structure below completes.
     /// </summary>
     public void RegisterOrdersIfUnsuspended() {
-        if (IsSuspended() || cancelled) return;
+        if (IsSuspended() || cancelled || disabled) return;
         if (state == BlueprintState.Receiving) {
             // After save/load, LockGroupCostsAfterDelivery() is not re-run so cost.item reverts to
             // the group ("wood"). IsFullyDelivered() uses MatchesItem so it still works correctly.
@@ -220,7 +235,11 @@ public class Blueprint {
         StructController.instance.Construct(structType, tile, mirrored);
         tile.SetBlueprintAt(structType.depth, null);
         GameObject.Destroy(go);
-        if (InfoPanel.instance?.obj == tile) InfoPanel.instance.UpdateInfo();
+        if (InfoPanel.instance?.obj == tile) {
+            // Auto-select the newly constructed structure if one was placed (non-tile blueprints only).
+            Structure newStructure = structType.isTile ? null : tile.structs[structType.depth];
+            InfoPanel.instance.RebuildSelection(newStructure);
+        }
     }
     public void Deconstruct() {
         StructController.instance.RemoveBlueprint(this);
@@ -244,7 +263,7 @@ public class Blueprint {
         // remove blueprint
         tile.SetBlueprintAt(structType.depth, null);
         GameObject.Destroy(go);
-        if (InfoPanel.instance?.obj == tile) InfoPanel.instance.UpdateInfo();
+        if (InfoPanel.instance?.obj == tile) InfoPanel.instance.RebuildSelection();
     }
 
     // Returns true if this is a deconstruct blueprint on a storage building and the storage still has items.

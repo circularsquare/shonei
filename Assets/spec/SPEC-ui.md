@@ -2,7 +2,7 @@
 
 ## Overview
 
-The inventory UI uses a **split-panel approach**: a global panel that's always visible, and a separate storage panel that appears when a storage or liquid inventory is selected. Market inventories temporarily overwrite the global panel (to be reworked later).
+The inventory UI uses a **split-panel approach**: a global panel that's always visible, and a separate storage panel that appears when a storage inventory is selected (including liquid storage buildings such as tanks). Market inventories temporarily overwrite the global panel (to be reworked later).
 
 ```
 Canvas
@@ -10,7 +10,7 @@ Canvas
 │   ├── Title ("town" or market name)
 │   └── ItemDisplay rows (collapsible tree, quantities, targets)
 │
-└── StoragePanel (visible when storage/liquid selected)
+└── StoragePanel (visible when storage selected, incl. liquid storage)
     ├── Title (inventory displayName, e.g. "oak drawer")
     ├── Slot view (compact: "acorns: 8/20", "empty: 0/40")
     └── Allow sub-panel
@@ -25,10 +25,10 @@ Canvas
 | `inv` | Global panel shows | StoragePanel |
 |-------|-------------------|--------------|
 | `null` | Global quantities + targets (title: "town") | Hidden |
-| Storage / Liquid | Global quantities + targets (unchanged) | Shown with inv details |
+| Storage (incl. liquid) | Global quantities + targets (unchanged) | Shown with inv details |
 | Market | Market quantities + targets (title: market name) | Hidden |
 
-Triggered by `MouseController` on left-click (fires on `MouseButtonUp`): storage/liquid/market tiles call `SelectInventory(tileAt.inv)`, everything else calls `SelectInventory(null)`.
+Triggered by `MouseController` on left-click (fires on `MouseButtonUp`): storage/market tiles call `SelectInventory(tileAt.inv)`, everything else calls `SelectInventory(null)`.
 
 ### Multi-selection
 
@@ -36,7 +36,7 @@ Multiple storage inventories can be selected simultaneously. The **primary** inv
 
 | Control | Action |
 |---------|--------|
-| LMB drag | Draw rectangle; select all storage/liquid inventories whose tile falls inside |
+| LMB drag | Draw rectangle; select all storage inventories whose tile falls inside |
 | Ctrl+LMB | Toggle a single storage in/out of the current selection |
 | LMB click (no modifier) | Clear selection, select only the clicked inventory |
 
@@ -128,6 +128,32 @@ A second set of ItemDisplay instances (separate from the global panel's) with `D
 - AllowAll / DenyAll buttons wired to `StoragePanel.OnClickAllowAll/DenyAll` — apply to all `selectedInventories`
 - Copy/paste filters: Shift+LMB on storage = copy, Shift+RMB = paste (handled by `MouseController` → `InventoryController.CopyAllowed/PasteAllowed`); operates on the single clicked tile regardless of multi-selection
 
+## InfoPanel (tabbed)
+
+`Assets/UI/InfoPanel.cs` — singleton tab container that displays details about selected entities.
+
+When the player clicks a tile, `MouseController` builds a `SelectionContext` (tile + structures + blueprints + animals) and calls `InfoPanel.ShowSelection(ctx)`. InfoPanel creates one tab button per entity and delegates rendering to three sub-views:
+
+| Sub-view | File | Shows |
+|----------|------|-------|
+| `AnimalInfoView` | `Assets/UI/InfoViews/AnimalInfoView.cs` | Single animal stats, task, skills |
+| `StructureInfoView` | `Assets/UI/InfoViews/StructureInfoView.cs` | Structure/blueprint info + controls |
+| `TileInfoView` | `Assets/UI/InfoViews/TileInfoView.cs` | Tile coords, type, water, floor inventory |
+
+### Tab ordering
+Animals first → structures by increasing depth → blueprints by depth → tile last. First tab is auto-selected.
+
+### StructureInfoView controls
+- **Enable/Disable** toggle (buildings only) — sets `Building.disabled`, which gates all WOM orders via `isActive` callbacks.
+- **Priority +/-** (blueprints only) — adjusts `Blueprint.priority`.
+- **Worker slots +/-** (multi-slot workstations only) — adjusts `Reservable.effectiveCapacity`. Priority and worker values render on dedicated TMP labels next to their buttons, not in the main text.
+
+### SelectionContext
+`Assets/Model/SelectionContext.cs` — plain C# class built by `MouseController.HandleSelectClick`. Contains `tile`, `List<Structure>`, `List<Blueprint>`, `List<Animal>`. Factory: `SelectionContext.FromTile(tile, animals)`.
+
+### Backward compatibility
+`ShowInfo(object)` wraps raw args into a `SelectionContext`. `UpdateInfo()` refreshes the active sub-view (called each tick from `World.cs`). `obj` property returns `currentSelection?.tile` for Blueprint.cs checks.
+
 ## Exclusive Panels
 
 `TradingPanel`, `RecipePanel`, and `ResearchPanel` are mutually exclusive — at most one may be visible at a time. This is enforced via two static helpers on `UI.cs`:
@@ -145,7 +171,12 @@ Each panel's `Toggle()` calls `UI.OpenExclusive(gameObject)` when opening, and `
 |------|------|
 | `Assets/Controller/InventoryController.cs` | Global panel, selection routing, discovery, targets |
 | `Assets/UI/ItemDisplay.cs` | Row prefab component (tree collapse, targets, allow toggle) |
-| `Assets/UI/StoragePanel.cs` | Storage/liquid detail panel (slot view + allow tree) |
+| `Assets/UI/StoragePanel.cs` | Storage detail panel (slot view + allow tree; handles liquid storage too) |
 | `Assets/Components/StorageSlotDisplay.cs` | Compact slot row text display |
 | `Assets/Model/Inventory.cs` | Data model (itemStacks, allowed dict, InvType) |
 | `Assets/Model/GlobalInventory.cs` | Global quantity totals |
+| `Assets/UI/InfoPanel.cs` | Tabbed info panel container (selection → tabs → sub-views) |
+| `Assets/UI/InfoViews/StructureInfoView.cs` | Structure/blueprint info + enable/disable, priority, worker controls |
+| `Assets/UI/InfoViews/AnimalInfoView.cs` | Single animal info display |
+| `Assets/UI/InfoViews/TileInfoView.cs` | Tile-only info (coords, water, floor inv) |
+| `Assets/Model/SelectionContext.cs` | Structured selection data (tile + structures + blueprints + animals) |

@@ -77,9 +77,13 @@ Assets/
 │   └── ...                ItemIcon, StorageSlotDisplay, PixelSnapText, MatchCameraZoom, RainParticles
 ├── UI/                UI panels, displays, and tooltip system
 │   ├── BuildPanel.cs, InfoPanel.cs, MenuPanel.cs, SaveMenuPanel.cs
+│   ├── InfoViews/             Sub-views for the tabbed InfoPanel (see SPEC-ui.md)
+│   │   ├── StructureInfoView.cs  Structure/blueprint info + enable/disable, priority, worker controls
+│   │   ├── AnimalInfoView.cs     Single animal info display
+│   │   └── TileInfoView.cs       Tile-only info (coords, water, floor inv)
 │   ├── TradingPanel.cs, RecipePanel.cs, ResearchPanel.cs
 │   ├── ItemDisplay.cs, JobDisplay.cs, OrderDisplay.cs, ResearchDisplay.cs
-│   ├── StoragePanel.cs        Storage/liquid detail panel (slot view + allow tree, see SPEC-ui.md)
+│   ├── StoragePanel.cs        Storage detail panel (slot view + allow tree; handles liquid storage, see SPEC-ui.md)
 │   ├── SaveSlotEntry.cs   Per-row component for the save slot scroll list
 │   ├── ConfirmationPopup.cs  Reusable yes/cancel modal (singleton)
 │   ├── TooltipSystem.cs, Tooltippable.cs

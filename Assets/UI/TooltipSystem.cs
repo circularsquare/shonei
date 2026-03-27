@@ -12,6 +12,7 @@ public class TooltipSystem : MonoBehaviour {
     RectTransform tooltipPanel;
     TextMeshProUGUI titleText;
     TextMeshProUGUI bodyText;
+    LayoutElement bodyLe;
 
     void Awake() {
         if (instance != null) { Debug.LogError("two TooltipSystems!"); return; }
@@ -23,6 +24,7 @@ public class TooltipSystem : MonoBehaviour {
         var panelGo = gameObject;
 
         tooltipPanel = panelGo.GetComponent<RectTransform>();
+        tooltipPanel.pivot = new Vector2(0f, 1f); // top-left — must match position math below
 
         // Title
         var titleGo = new GameObject("Title", typeof(RectTransform));
@@ -33,8 +35,10 @@ public class TooltipSystem : MonoBehaviour {
         titleText.alignment = TextAlignmentOptions.TopLeft;
         // titleText.fontStyle = FontStyles.Bold;
         titleText.enableWordWrapping = false;
+        titleText.raycastTarget = false;
         var titleCsf = titleGo.AddComponent<ContentSizeFitter>();
-        titleCsf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        titleCsf.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+        titleCsf.verticalFit   = ContentSizeFitter.FitMode.PreferredSize;
 
         // Body
         var bodyGo = new GameObject("Body", typeof(RectTransform));
@@ -43,10 +47,14 @@ public class TooltipSystem : MonoBehaviour {
         bodyText.fontSize  = 16;
         bodyText.color     = new Color(0.20f, 0.20f, 0.20f);
         bodyText.alignment = TextAlignmentOptions.TopLeft;
-        var bodyLe = bodyGo.AddComponent<LayoutElement>();
-        bodyLe.preferredWidth = 200;
+        bodyText.raycastTarget = false;
+        bodyLe = bodyGo.AddComponent<LayoutElement>();
         var bodyCsf = bodyGo.AddComponent<ContentSizeFitter>();
-        bodyCsf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        bodyCsf.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+        bodyCsf.verticalFit   = ContentSizeFitter.FitMode.PreferredSize;
+
+        var panelCsf = panelGo.AddComponent<ContentSizeFitter>();
+        panelCsf.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
 
         panelGo.SetActive(false);
     }
@@ -65,26 +73,32 @@ public class TooltipSystem : MonoBehaviour {
 
     void Update() {
         if (tooltipPanel == null || !tooltipPanel.gameObject.activeSelf) return;
+        UpdatePosition();
+    }
 
+    // Clamp so the panel doesn't go off-screen, then snap to integer pixels.
+    // sizeDelta is accurate after ForceRebuildLayoutImmediate (called in Show) or after
+    // the first layout pass.
+    void UpdatePosition() {
         Vector2 mouse = Input.mousePosition;
-        Vector2 offset = new Vector2(0f, -16f);
-        Vector2 pos = mouse + offset;
+        Vector2 pos   = mouse + new Vector2(18f, -18f);
 
-        // Clamp so the panel doesn't go off-screen.
-        // Use sizeDelta as a proxy for actual size (valid after first layout pass).
         Vector2 size = tooltipPanel.sizeDelta;
         if (pos.x + size.x > Screen.width)  pos.x = mouse.x - size.x - 14f;
         if (pos.y - size.y < 0)             pos.y = mouse.y + size.y + 14f;
 
-        // Snap to integer pixels to avoid sub-pixel text blur
         tooltipPanel.position = new Vector2(Mathf.Round(pos.x), Mathf.Round(pos.y));
     }
 
     public static void Show(string title, string body) {
         if (instance == null) return;
-        instance.titleText.text = title;
-        instance.bodyText.text  = body;
+        instance.titleText.text        = title;
+        instance.bodyText.text         = body;
+        instance.bodyLe.preferredWidth = string.IsNullOrEmpty(body) ? -1f : 200f;
         instance.tooltipPanel.gameObject.SetActive(true);
+        // Force layout so sizeDelta is current before we position (avoids one-frame snap).
+        LayoutRebuilder.ForceRebuildLayoutImmediate(instance.tooltipPanel);
+        instance.UpdatePosition();
         // Render on top of everything else in the canvas.
         // instance.transform.SetAsLastSibling();
     }

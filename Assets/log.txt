@@ -1,4 +1,8 @@
 meoww!!
+3/27
+- info panel tabs!
+- removed liquid invs 
+- z path stairs
 3/26
 - lots of building and wom refactoring 
     - factor out workstation and reservoir (fuel)

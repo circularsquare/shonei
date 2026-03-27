@@ -148,7 +148,7 @@ public class StructType {
     public int capacity {get; set;} // number of animals that can reserve this struct at once
     public string requiredTileName {get; set;} // tile that this struct must be built on
     public bool isStorage {get; set;} // true for storage buildings (drawers, crates, etc.)
-    public bool liquidStorage {get; set;} // true = creates InvType.Liquid instead of InvType.Storage (use on tank-type buildings)
+    public bool liquidStorage {get; set;} // true = sets Inventory.isLiquidStorage, enforcing liquid-only constraint (use on tank-type buildings)
     public int nStacks {get; set;} // number of item stacks in storage
     public int storageStackSize {get; set;} // max items per stack in storage
     public string category {get; set;} // build menu category: "structures", "plants", "production", "storage"

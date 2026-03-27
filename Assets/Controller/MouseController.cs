@@ -188,22 +188,22 @@ public class MouseController : MonoBehaviour {
             if (a != null) animals.Add(a);
         }
 
-        if (animals.Count > 0) {
-            InfoPanel.instance.ShowInfo(animals);
-            InventoryController.instance.SelectInventory(null);
-        } else if (tileAt != null) {
-            bool hasStorageInv = tileAt.inv != null && IsStorageType(tileAt.inv.invType);
+        if (tileAt != null || animals.Count > 0) {
+            var ctx = SelectionContext.FromTile(tileAt, animals);
+            bool hasStorageInv = tileAt?.inv != null && IsStorageType(tileAt.inv.invType);
             if (ctrl && hasStorageInv) {
                 // Ctrl+LMB: toggle this inventory in/out of the multi-selection
                 InventoryController.instance.CtrlToggleInventory(tileAt.inv);
                 Inventory primary = InventoryController.instance.selectedInventory;
                 if (primary != null) {
                     Tile primaryTile = WorldController.instance.world.GetTileAt(primary.x, primary.y);
-                    InfoPanel.instance.ShowInfo(primaryTile);
+                    InfoPanel.instance.ShowSelection(SelectionContext.FromTile(primaryTile));
                 }
             } else {
-                InfoPanel.instance.ShowInfo(tileAt);
-                if (hasStorageInv)
+                InfoPanel.instance.ShowSelection(ctx);
+                if (animals.Count > 0)
+                    InventoryController.instance.SelectInventory(null);
+                else if (hasStorageInv)
                     InventoryController.instance.SelectInventory(tileAt.inv);
                 else
                     InventoryController.instance.SelectInventory(null);
@@ -270,5 +270,5 @@ public class MouseController : MonoBehaviour {
     }
 
     static bool IsStorageType(Inventory.InvType t) =>
-        t == Inventory.InvType.Storage || t == Inventory.InvType.Market || t == Inventory.InvType.Liquid;
+        t == Inventory.InvType.Storage || t == Inventory.InvType.Market;
 }

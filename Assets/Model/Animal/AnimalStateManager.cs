@@ -188,13 +188,31 @@ public class AnimalStateManager {
         }
         if (animal.state == AnimalState.Falling) {
             animal.nav.fallVelocity += World.fallGravity * deltaTime;
-            animal.y -= animal.nav.fallVelocity * deltaTime;
-            animal.go.transform.position = new Vector3(animal.x, animal.y, 0);
-            Tile here = animal.TileHere();
-            if (here != null && here.node.standable && animal.y <= here.y) {
-                animal.y = here.y;
-                animal.go.transform.position = new Vector3(animal.x, animal.y, 0);
+            float nextY = animal.y - animal.nav.fallVelocity * deltaTime;
+
+            Tile nextTile = animal.world.GetTileAt(animal.x, nextY);
+
+            if (nextTile == null) {
+                // Would fall out of world bounds — halt in place
+                Debug.LogError($"{animal.aName} fall would exit world bounds at ({animal.x}, {nextY}), stopping.");
+                animal.nav.fallVelocity = 0f;
                 animal.state = AnimalState.Idle;
+            } else if (nextTile.type.solid) {
+                // Would enter a solid tile — snap to its top surface
+                animal.y = nextTile.y + 1;
+                animal.go.transform.position = new Vector3(animal.x, animal.y, 0);
+                animal.nav.fallVelocity = 0f;
+                animal.state = AnimalState.Idle;
+            } else {
+                // Safe to move — apply and check for standable landing
+                animal.y = nextY;
+                animal.go.transform.position = new Vector3(animal.x, animal.y, 0);
+                if (nextTile.node.standable && animal.y <= nextTile.y) {
+                    animal.y = nextTile.y;
+                    animal.go.transform.position = new Vector3(animal.x, animal.y, 0);
+                    animal.nav.fallVelocity = 0f;
+                    animal.state = AnimalState.Idle;
+                }
             }
         } else if (IsMovingState(animal.state)) {
             if (animal.target == null) {

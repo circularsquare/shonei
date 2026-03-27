@@ -247,8 +247,8 @@ public class WorkOrderManager : MonoBehaviour {
     // Returns true if a new order was inserted.
     public bool RegisterStorageEvictionHaul(ItemStack stack) {
         if (!StackNeedsHaulOrder(stack)) return false;
-        if (stack.inv.invType != Inventory.InvType.Storage && stack.inv.invType != Inventory.InvType.Liquid) {
-            Debug.LogError($"WOM RegisterStorageEvictionHaul: called on non-storage/liquid stack (type={stack.inv.invType})");
+        if (stack.inv.invType != Inventory.InvType.Storage) {
+            Debug.LogError($"WOM RegisterStorageEvictionHaul: called on non-storage stack (type={stack.inv.invType})");
             return false;
         }
         if (orders[0].Exists(o => o.type == OrderType.Haul && o.stack == stack)) return false;
@@ -323,6 +323,7 @@ public class WorkOrderManager : MonoBehaviour {
             factory = a => new ResearchTask(a, lab),
             tile = lab.tile,
             res = new(Mathf.Max(1, lab.structType.capacity)),
+            isActive = () => !lab.disabled,
             canDo = a => a.job.name == "scientist",
             getDistance = a => Mathf.Abs(lab.tile.x - a.x) + Mathf.Abs(lab.tile.y - a.y)
         });
@@ -349,7 +350,7 @@ public class WorkOrderManager : MonoBehaviour {
             factory = a => new CraftTask(a, building),
             building = building,
             res = res,
-            isActive = () => building.IsActive(),
+            isActive = () => !building.disabled && building.IsActive(),
             canDo = a => Array.Exists(a.job.recipes, r => r != null && r.tile == buildingName),
             getDistance = a => Mathf.Abs(building.workTile.x - a.x) + Mathf.Abs(building.workTile.y - a.y)
         });
@@ -374,7 +375,7 @@ public class WorkOrderManager : MonoBehaviour {
             priority   = 3,
             factory    = a => new SupplyFuelTask(a, building),
             building   = building,
-            isActive   = () => reservoir.NeedsSupply(),
+            isActive   = () => !building.disabled && reservoir.NeedsSupply(),
             canDo      = a => a.job.name == "hauler",
             getDistance = a => Mathf.Abs(building.x - a.x) + Mathf.Abs(building.y - a.y)
         });
@@ -496,7 +497,7 @@ public class WorkOrderManager : MonoBehaviour {
         // ── Blueprints ──
         var bps = StructController.instance.GetBlueprints();
         foreach (Blueprint bp in bps) {
-            if (bp.IsSuspended()) continue; // suspended blueprints intentionally have no orders
+            if (bp.IsSuspended() || bp.disabled) continue; // suspended/disabled blueprints intentionally have no orders
             if (repair) {
                 // For Receiving blueprints, heal state to Constructing if fully delivered (can happen
                 // after save/load when LockGroupCostsAfterDelivery isn't re-run).
@@ -544,8 +545,8 @@ public class WorkOrderManager : MonoBehaviour {
                 }
         }
 
-        // ── Storage/liquid eviction hauls ──
-        foreach (var evictType in new[] { Inventory.InvType.Storage, Inventory.InvType.Liquid }) {
+        // ── Storage eviction hauls (includes liquid storage) ──
+        foreach (var evictType in new[] { Inventory.InvType.Storage }) {
             if (InventoryController.instance.byType.TryGetValue(evictType, out var storages))
                 foreach (Inventory inv in storages)
                     foreach (ItemStack stack in inv.itemStacks) {

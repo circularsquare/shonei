@@ -139,7 +139,7 @@ public class StoragePanel : MonoBehaviour {
         foreach (Item item in Db.items) {
             if (item == null) continue;
             // Hard filter: skip items incompatible with this inventory type
-            if (!Inventory.ItemTypeCompatible(currentInv.invType, item)) continue;
+            if (!currentInv.ItemTypeCompatible(item)) continue;
 
             Transform parent = item.parent == null
                 ? allowContainer

@@ -25,8 +25,8 @@ using Newtonsoft.Json;
 // Current saveable state checklist:
 //   [x] World timer
 //   [x] Tile types and floor inventories
-//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, mirrored)
-//   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored)
+//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, mirrored, disabled)
+//   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored, disabled)
 //   [x] Animals (position, job, energy, food, happiness, decoration happiness, inv, foodSlotInv, toolSlotInv)
 //   [x] Research (progress, activeResearchId, unlockedIds)
 //   [x] Disabled recipe ids
@@ -174,6 +174,7 @@ public class SaveSystem : MonoBehaviour {
                 ssd.workOrderEffectiveCapacity = b.workstation.effectiveCapacity;
             if (b.reservoir != null && !b.reservoir.inv.IsEmpty())
                 ssd.fuelInvData = GatherInventory(b.reservoir.inv);
+            if (b.disabled) ssd.disabled = true;
         }
         return ssd;
     }
@@ -187,7 +188,8 @@ public class SaveSystem : MonoBehaviour {
             constructionProgress = bp.constructionProgress,
             inv                  = bp.costs.Length > 0 ? GatherInventory(bp.inv) : null,
             priority             = bp.priority,
-            mirrored             = bp.mirrored
+            mirrored             = bp.mirrored,
+            disabled             = bp.disabled
         };
     }
 
@@ -201,9 +203,9 @@ public class SaveSystem : MonoBehaviour {
                 decayCounter = stack.decayCounter
             };
         }
-        // Only Storage/Liquid use explicit allow lists — Floor/Animal default to all-allowed so skip them.
+        // Only Storage uses explicit allow lists — Floor/Animal default to all-allowed so skip them.
         int[] allowedIds = null;
-        if (inv.invType == Inventory.InvType.Storage || inv.invType == Inventory.InvType.Liquid) {
+        if (inv.invType == Inventory.InvType.Storage) {
             var allowedList = new List<int>();
             foreach (var kv in inv.allowed)
                 if (kv.Value) allowedList.Add(kv.Key);
@@ -378,8 +380,9 @@ public class SaveSystem : MonoBehaviour {
             plant.harvestable  = ssd.plantHarvestable;
             plant.UpdateSprite();
         }
-        if (structure is Building b && b.workstation != null) {
-            b.workstation.uses = ssd.uses;
+        if (structure is Building b) {
+            if (b.workstation != null) b.workstation.uses = ssd.uses;
+            b.disabled = ssd.disabled;
         }
 
         StructController.instance.Place(structure);
@@ -411,6 +414,7 @@ public class SaveSystem : MonoBehaviour {
         bp.state                = (Blueprint.BlueprintState)bsd.state;
         bp.constructionProgress = bsd.constructionProgress;
         bp.priority             = bsd.priority;
+        bp.disabled             = bsd.disabled;
 
         if (bsd.inv != null) {
             for (int i = 0; i < bsd.inv.stacks.Length && i < bp.inv.itemStacks.Length; i++) {

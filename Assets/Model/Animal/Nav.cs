@@ -165,7 +165,7 @@ public class Nav {
     // =========================================================
 
     public Path FindPathToStorage(Item item, int r = 40) {
-        return FindPathToInv(new[] { Inventory.InvType.Storage, Inventory.InvType.Liquid },
+        return FindPathToInv(new[] { Inventory.InvType.Storage },
             inv => inv.GetStorageForItem(item) > 0, r).path; }
     public Path FindPathToDrop(Item item, int animalQuantity, int r = 3){
         return FindPathTo(t => {
@@ -178,7 +178,7 @@ public class Nav {
     public (Path path, Inventory targetInv) FindPathToDropTarget(Item item, int animalQuantity, int storageBonusTiles = 10) {
         Path floorPath = FindPathToDrop(item, animalQuantity);
         float floorCost = floorPath != null ? floorPath.cost : float.MaxValue;
-        var (storagePath, storageInv) = FindPathToInv(new[] { Inventory.InvType.Storage, Inventory.InvType.Liquid },
+        var (storagePath, storageInv) = FindPathToInv(new[] { Inventory.InvType.Storage },
             inv => inv.GetStorageForItem(item) > 0, r: 40);
         // Storage preferred if its cost minus the bonus is still <= floor cost
         if (storageInv != null && storagePath.cost - storageBonusTiles <= floorCost)
@@ -254,7 +254,7 @@ public class Nav {
         return closestPath;
     }
     public (Path, ItemStack) FindPathItemStack(Item item, int r = 40){
-        Path path = FindPathToInv(new[] { Inventory.InvType.Floor, Inventory.InvType.Storage, Inventory.InvType.Liquid },
+        Path path = FindPathToInv(new[] { Inventory.InvType.Floor, Inventory.InvType.Storage },
             inv => inv.ContainsAvailableItem(item), r).path;
         if (path == null) return (null, null);
         return (path, path.tile.inv.GetItemStack(item));

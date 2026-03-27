@@ -48,15 +48,13 @@ public class InventoryController : MonoBehaviour {
         inventories.Remove(inv);
         if (byType.TryGetValue(inv.invType, out var list)) list.Remove(inv);
     }
-    // Sums unreserved quantity across Floor + Storage + Liquid — the same scope FindPathItemStack searches.
+    // Sums unreserved quantity across Floor + Storage (includes liquid storage) — the same scope FindPathItemStack searches.
     public int TotalAvailableQuantity(Item item) {
         int total = 0;
         if (byType.TryGetValue(Inventory.InvType.Floor, out var f))
             foreach (Inventory inv in f) total += inv.AvailableQuantity(item);
         if (byType.TryGetValue(Inventory.InvType.Storage, out var s))
             foreach (Inventory inv in s) total += inv.AvailableQuantity(item);
-        if (byType.TryGetValue(Inventory.InvType.Liquid, out var l))
-            foreach (Inventory inv in l) total += inv.AvailableQuantity(item);
         return total;
     }
 
@@ -126,7 +124,7 @@ public class InventoryController : MonoBehaviour {
         if (item == null) return;
 
         // In market mode, hide items incompatible with the market inventory.
-        if (IsMarketMode && !Inventory.ItemTypeCompatible(selectedInventory.invType, item)) {
+        if (IsMarketMode && !selectedInventory.ItemTypeCompatible(item)) {
             itemDisplayGos[item.id]?.SetActive(false);
             return;
         }
@@ -202,8 +200,8 @@ public class InventoryController : MonoBehaviour {
             // Deselect: show global view, hide storage panel
             if (inventoryTitle != null) inventoryTitle.text = "town";
             if (storagePanel != null) storagePanel.Hide();
-        } else if (inv.invType == Inventory.InvType.Storage || inv.invType == Inventory.InvType.Liquid) {
-            // Storage/Liquid: global panel stays as global, storage panel shows details
+        } else if (inv.invType == Inventory.InvType.Storage) {
+            // Storage (includes liquid storage): global panel stays as global, storage panel shows details
             if (inventoryTitle != null) inventoryTitle.text = "town";
             if (storagePanel != null) storagePanel.Show(inv);
         } else {
@@ -223,7 +221,7 @@ public class InventoryController : MonoBehaviour {
         if (primary == null) {
             if (inventoryTitle != null) inventoryTitle.text = "town";
             if (storagePanel != null) storagePanel.Hide();
-        } else if (primary.invType == Inventory.InvType.Storage || primary.invType == Inventory.InvType.Liquid) {
+        } else if (primary.invType == Inventory.InvType.Storage) {
             if (inventoryTitle != null) inventoryTitle.text = "town";
             if (storagePanel != null) storagePanel.Show(primary);
         }
@@ -246,7 +244,7 @@ public class InventoryController : MonoBehaviour {
         if (selectedInventory == null) {
             if (inventoryTitle != null) inventoryTitle.text = "town";
             if (storagePanel != null) storagePanel.Hide();
-        } else if (selectedInventory.invType == Inventory.InvType.Storage || selectedInventory.invType == Inventory.InvType.Liquid) {
+        } else if (selectedInventory.invType == Inventory.InvType.Storage) {
             if (storagePanel != null) storagePanel.Show(selectedInventory);
         }
         UpdateItemsDisplay();

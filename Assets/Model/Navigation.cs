@@ -162,8 +162,10 @@ public class Graph {
         }
         // Refresh stair waypoints for this tile and any adjacent stair tiles that use this as an endpoint.
         // Candidates: self + 4 positions that could be stairs with (x,y) as their entry/exit.
-        int[] scx = { x, x+1, x-1, x-1, x+1 };
-        int[] scy = { y, y,   y,   y-1, y-1  };
+        // Candidates: self + 4 positions whose far endpoints include (x,y) + (x,y-1) for
+        // the new exit↔(sx,sy+1) connection (stair below may now link to this tile).
+        int[] scx = { x, x+1, x-1, x-1, x+1, x };
+        int[] scy = { y, y,   y,   y-1, y-1, y-1 };
         for (int i = 0; i < 5; i++){
             int cx = scx[i], cy = scy[i];
             if (cx < 0 || cx >= world.nx || cy < 0 || cy >= world.ny) continue;
@@ -242,6 +244,10 @@ public class Graph {
             entry.AddNeighbor(exit, true);
             entry.AddNeighbor(nodes[sx-1, sy],   true);
             exit.AddNeighbor( nodes[sx+1, sy+1], true);
+            // Z-paths: also connect to the stair tile itself and the tile above it,
+            // so mice don't have to walk to the far endpoint before using the stair.
+            if (nodes[sx, sy].standable)                           entry.AddNeighbor(nodes[sx, sy],     true);
+            if (sy + 1 < world.ny && nodes[sx, sy + 1].standable) exit.AddNeighbor( nodes[sx, sy + 1], true);
             stairWaypoints[(sx, sy)] = (entry, exit);
         } else {
             if (sx + 1 >= world.nx || sx - 1 < 0 || sy + 1 >= world.ny) return;
@@ -251,6 +257,9 @@ public class Graph {
             entry.AddNeighbor(exit, true);
             entry.AddNeighbor(nodes[sx+1, sy],   true);
             exit.AddNeighbor( nodes[sx-1, sy+1], true);
+            // Z-paths: also connect to the stair tile itself and the tile above it.
+            if (nodes[sx, sy].standable)                           entry.AddNeighbor(nodes[sx, sy],     true);
+            if (sy + 1 < world.ny && nodes[sx, sy + 1].standable) exit.AddNeighbor( nodes[sx, sy + 1], true);
             stairWaypoints[(sx, sy)] = (entry, exit);
         }
     }
