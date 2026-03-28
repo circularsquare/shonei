@@ -48,7 +48,7 @@ Assets/
 │   │   ├── AnimalStateManager.cs  State machine logic
 │   │   ├── Nav.cs               Movement, pathfinding helpers (Move, Find*, FindPath*)
 │   │   ├── Eating.cs            Hunger/food state
-│   │   ├── Happiness.cs         Happiness tracking (food variety, housing, decorations)
+│   │   ├── Happiness.cs         Happiness tracking (food variety, housing, decorations, temperature comfort)
 │   │   ├── Eeping.cs            Sleep/tiredness state
 │   │   └── Skills.cs            Skill enum + SkillSet (XP, levels, work speed bonus)
 │   ├── Structure/

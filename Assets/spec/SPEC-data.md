@@ -16,7 +16,8 @@ ID ranges (keep entries ordered and thematically grouped):
 | 80–99 | placeable tiles | empty (dig), dirt, stone |
 | 101–109 | production — basic workstations | sawmill, workshop, furnace, press, pump |
 | 110–119 | production — extraction | dirt pit, quarry |
-| 120–139 | production — research / specialised | laboratory |
+| 120–129 | production — research | laboratory |
+| 130–139 | production — clothing | weaver, tailor |
 
 Fields:
 
@@ -57,7 +58,11 @@ ID ranges:
 | 40–49 | metals (iron) |
 | 100–119 | processed wood group + leaves (planks=100, oak planks=101, maple planks=102, pine planks=103, sawdust=110) |
 | 150–199 | food and seeds |
-| 200+ | tools and equipment |
+| 200–209 | tools and equipment |
+| 210–239 | liquids and processed food (water, soymilk, tofu) |
+| 250–259 | fiber group (ramie) |
+| 260–269 | cloth group (ramie cloth) |
+| 270–279 | clothing group (ramie shirt) |
 
 **Item tree / group items**: Items with `children` are *group items* — they act as wildcards in recipe inputs and building costs (e.g. a building costing `"wood"` accepts any of oak/maple/pine). Group items are **never physically produced or stored**; only leaf items (those without `children`) exist in inventories. `Db.ValidateNoGroupOutputs()` logs errors at startup if a group item appears in any recipe output, plant product, or tile drop. Default wood is `pine`; default stone is `limestone`.
 
@@ -67,9 +72,10 @@ Fields:
 |-------|------|-------|
 | `id` | int | unique |
 | `name` | string | lookup key |
-| `decayRate` | float | decay per tick on floors (0 = no decay); inherited by children if not specified |
+| `decayRate` | float | decay per tick on floors (0 = no decay); inherited by children if not specified on child |
 | `foodValue` | int? | hunger restored when eaten |
-| `discrete` | bool? | stored/moved in whole-liang (100 fen) units only (e.g. tools) |
+| `discrete` | bool? | stored/moved in whole-liang (100 fen) units only (e.g. tools, clothing); inherited by children |
+| `isLiquid` | bool? | liquid item (water, soymilk); only fits in liquid-storage containers; inherited by children |
 | `children` | array? | leaf sub-types; see group item note above |
 
 ## `recipesDb.json` — Recipes
@@ -99,7 +105,7 @@ ID ranges:
 | 1–2 | `"none"` | hauler, merchant |
 | 3–9 | `"gatherer"` | logger, miner, farmer |
 | 10 | `"gatherer"` | digger |
-| 11–19 | `"crafter"` / `"researcher"` | sawyer, scientist, smith |
+| 11–19 | `"crafter"` / `"researcher"` | sawyer, scientist, smith, cook, clothier |
 
 Fields:
 

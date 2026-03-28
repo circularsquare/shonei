@@ -4,10 +4,10 @@ using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// Manages the storage/liquid inventory detail panel.
+/// Manages the storage inventory detail panel.
 /// Shows a compact slot view (item: qty/max) and an allow/disallow sub-panel
 /// with the full collapsible item tree. Appears below the global inventory panel
-/// when a storage or liquid inventory is selected.
+/// when a storage inventory is selected.
 /// </summary>
 public class StoragePanel : MonoBehaviour {
     public static StoragePanel instance { get; private set; }
@@ -152,7 +152,10 @@ public class StoragePanel : MonoBehaviour {
             // Only show discovered items, respecting tree collapse
             bool discovered = InventoryController.instance.discoveredItems.ContainsKey(item.id)
                 && InventoryController.instance.discoveredItems[item.id];
-            go.SetActive(discovered);
+            // Also respect parent's open state — if parent is collapsed, hide this child
+            bool parentOpen = item.parent == null || !allowDisplayGos.ContainsKey(item.parent.id)
+                || allowDisplayGos[item.parent.id].GetComponent<ItemDisplay>().open;
+            go.SetActive(discovered && parentOpen);
 
             ItemDisplay display = go.GetComponent<ItemDisplay>();
             display.item = item; // set immediately (Start() won't run until next frame)
@@ -161,6 +164,9 @@ public class StoragePanel : MonoBehaviour {
             display.targetInventory = currentInv;
             display.getDisplayGo = id => allowDisplayGos.ContainsKey(id) ? allowDisplayGos[id] : null;
             display.SetDisplayMode(ItemDisplay.DisplayMode.Storage);
+
+            // Default collapse: groups with ≤1 discovered child start collapsed
+            display.open = ItemDisplay.DefaultOpenForGroup(item);
 
             // Set the item name text and toggle state immediately
             if (display.itemText != null) display.itemText.text = item.name;

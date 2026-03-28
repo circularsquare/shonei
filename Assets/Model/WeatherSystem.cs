@@ -30,12 +30,18 @@ public class WeatherSystem {
     // Positive = wind blowing right. Updated each hour via random walk.
     public float wind { get; private set; }
 
+    // Ambient temperature in Celsius, driven by yearly + daily sine waves.
+    // Yearly: peaks midsummer (day 7.5) at ~30°C high, troughs midwinter (day 17.5) at ~5°C high.
+    // Daily: peaks at 2pm, amplitude ±4°C around the daily mean.
+    public float temperature { get; private set; }
+
     const float lerpDuration = 4f;
 
     // Called by World.Update() every frame.
     public void Tick(float dt) {
         float target = isRaining ? 1f : 0f;
         rainAmount = Mathf.MoveTowards(rainAmount, target, dt / lerpDuration);
+        UpdateTemperature();
     }
 
     // Called by World.Update() once per in-game hour.
@@ -58,6 +64,7 @@ public class WeatherSystem {
     public void RestoreState(bool rain) {
         isRaining   = rain;
         rainAmount  = rain ? 1f : 0f;
+        UpdateTemperature();
     }
 
     // Multiplier applied to sunSource.intensity by SunController.
@@ -69,6 +76,39 @@ public class WeatherSystem {
     public static WeatherSystem Create() {
         instance = new WeatherSystem();
         return instance;
+    }
+
+    // Returns fractional day-of-year (0 to daysInYear) from the world timer.
+    public float GetDayOfYear() {
+        float totalDays = World.instance.timer / World.ticksInDay;
+        return totalDays % World.daysInYear;
+    }
+
+    // Returns the current season name. Time 0 = start of spring.
+    // Each season spans daysInYear/4 days.
+    public string GetSeason() {
+        float day = GetDayOfYear();
+        float seasonLength = World.daysInYear / 4f;
+        if (day < seasonLength)     return "Spring";
+        if (day < seasonLength * 2) return "Summer";
+        if (day < seasonLength * 3) return "Fall";
+        return "Winter";
+    }
+
+    // Recalculates temperature from the current world timer.
+    // temperature = 13.5 + 12.5*sin(yearly) + 4*sin(daily)
+    //   yearly peaks at midsummer (day 7.5/20), daily peaks at 2pm (hour 14/24).
+    void UpdateTemperature() {
+        float timer = World.instance.timer;
+        float yearLength = World.ticksInDay * World.daysInYear;
+        float yearFrac = (timer % yearLength) / yearLength;
+        float dayFrac  = (timer % World.ticksInDay) / World.ticksInDay;
+
+        const float twoPi = 2f * Mathf.PI;
+        float yearly = Mathf.Sin(twoPi * yearFrac - Mathf.PI / 4f);   // peaks at day 7.5
+        float daily  = Mathf.Sin(twoPi * dayFrac  - 2f * Mathf.PI / 3f); // peaks at hour 14
+
+        temperature = 13.5f + 12.5f * yearly + 4f * daily;
     }
 
     void SetRain(bool rain) {

@@ -1,8 +1,13 @@
 meoww!!
+3/28
+- added clothes! ramie, weaver, tailor. clothes widen comfortable temperature range
+- 
 3/27
 - info panel tabs!
 - removed liquid invs 
 - z path stairs
+- skill displays!
+- added temperature, and comfortable temperature range
 3/26
 - lots of building and wom refactoring 
     - factor out workstation and reservoir (fuel)

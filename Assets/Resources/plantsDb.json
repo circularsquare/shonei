@@ -52,6 +52,19 @@
         "harvestTime": 2.0,
         "njob": "farmer",
         "capacity": 1
+    },{
+        "id": 570,
+        "name": "ramie",
+        "ncosts": [
+            { "name": "ramie", "quantity": 1 }
+        ],
+        "nproducts": [
+            { "name": "ramie", "quantity": 3 }
+        ],
+        "growthTime": 35,
+        "harvestTime": 3.0,
+        "njob": "farmer",
+        "capacity": 1
     }
 
 ]  

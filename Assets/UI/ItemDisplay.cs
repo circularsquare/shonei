@@ -40,11 +40,22 @@ public class ItemDisplay : MonoBehaviour {
     [System.NonSerialized] public System.Func<int, GameObject> getDisplayGo;   // tree lookup; null = use itemDisplayGos
 
     public void Start(){
-        // open = true is set at field declaration to avoid timing issues with UpdateItemDisplay running before Start()
         item = Db.itemByName[gameObject.name.Split('_')[1]];
         if (itemIcon != null) itemIcon.SetItem(item);
         Transform btn = transform.Find("HorizontalLayout/ButtonDropdown");
         if (btn != null) dropdownImage = btn.GetComponent<Image>();
+        // Apply default collapse: groups with ≤1 discovered child start collapsed
+        open = DefaultOpenForGroup(item);
+        if (!open && item.children != null) {
+            foreach (Item child in item.children) {
+                if (child.IsDiscovered()) {
+                    GameObject go = LookupDisplayGo(child.id);
+                    if (go != null) go.SetActive(false);
+                }
+            }
+            // No forced rebuild needed — SetActive(false) marks layout dirty,
+            // and Unity auto-rebuilds before rendering.
+        }
         RefreshDropdownSprite();
         if (toggleGo != null) _allowImage = toggleGo.GetComponent<Image>();
     }
@@ -77,6 +88,19 @@ public class ItemDisplay : MonoBehaviour {
 
     private bool HasOpenableChildren() =>
         item != null && item.children != null && System.Array.Exists(item.children, c => c.IsDiscovered());
+
+    /// <summary>Returns whether a group item should default to open.
+    /// Groups with 0–1 discovered children start collapsed to reduce visual noise.
+    /// Shared by both the global panel (InventoryController) and the StoragePanel allow tree.</summary>
+    public static bool DefaultOpenForGroup(Item item) {
+        if (item == null || item.children == null) return true; // leaf items: doesn't matter
+        int discovered = 0;
+        foreach (Item child in item.children) {
+            if (child.IsDiscovered()) discovered++;
+            if (discovered > 1) return true;
+        }
+        return false; // 0 or 1 discovered child → collapsed
+    }
 
     public void RefreshDropdownSprite(){
         if (dropdownImage == null) return;

@@ -42,7 +42,7 @@ Six inventory types:
 | Animal | 5 | 1000 fen | none | General-purpose carry inventory |
 | Storage | varies | varies | normal | `allowed` dict restricts item types |
 | Floor | 4 | 1000 fen | 5× normal | Created/destroyed dynamically; up to 4 item types can share a tile |
-| Equip | 1 | varies | none | Animal equip slots (food, tool) |
+| Equip | 1 | varies | normal | Animal equip slots (food, tool, clothing) |
 | Market | varies | varies | none | Market building only; set via `SetMarket()` on a Storage inv |
 | Fuel | 1 | varies | none | Internal building resource (torch wood, furnace coal). No sprite, no tile. See below. |
 
@@ -66,7 +66,7 @@ JSON fields on StructType:
 
 `isBuilding: true` on StructType makes StructController use the `Building` class for any depth (e.g. foreground torches at depth 2). `tile.building` (= `structs[0] as Building`) is still depth-0 specific; fuel buildings at other depths are accessed directly via task/WOM references.
 
-- Items decay over time (Floor fastest; Animal/Equip/Market never)
+- Items decay over time (Floor fastest; Animal/Market never; Equip at normal rate)
 - **Discrete items** (`Item.discrete = true`, e.g. tools): always stored/moved in whole-liang (100 fen) multiples; decay removes whole items only; display shows integer count. Adding a non-multiple-of-100 quantity logs a warning.
 - `allowed` dict filters what item types a storage accepts (all allowed by default for other types)
 - `Reservable` (capacity-based) prevents multiple animals targeting same resource. Has two fields: `capacity` (hard max from JSON) and `effectiveCapacity` (player-adjustable; defaults to `capacity`); `Available()` gates on `effectiveCapacity`. **Not** created for workstation buildings — WOM Craft orders own their reservation directly.
@@ -89,12 +89,15 @@ When a tile or building change reduces standability, items on the tile above tha
 
 ### Equip Slots
 
-Each animal has two `InvType.Equip` inventory instances (1 stack each, registered with InventoryController for GlobalInventory tracking, no sprite, no decay):
+Each animal has three `InvType.Equip` inventory instances (1 stack each, registered with InventoryController for GlobalInventory tracking, no sprite, decay at normal rate):
 
 | Slot | Field | Capacity | Purpose |
 |------|-------|----------|---------|
 | Food | `foodSlotInv` | 500 fen (5 liang) | Carries food for eating |
-| Tool | `toolSlotInv` | 1000 fen | Reserved for future tool use |
+| Tool | `toolSlotInv` | 1000 fen | Equipped tool (work speed bonus) |
+| Clothing | `clothingSlotInv` | 200 fen | Equipped clothing (temperature comfort bonus) |
+
+**Clothing system**: `Db.clothingItems` lists all items whose parent chain includes `"clothing"`. `FindClothing()` in `ChooseTask()` equips one clothing item into `clothingSlotInv` when idle (after tool equip, before work orders). `Happiness.UpdateClothingBonus()` adjusts `comfortTempLow`/`comfortTempHigh` by ±3°C when any clothing is equipped. Clothing items are discrete (like tools) and decay at normal rate in equip slots.
 
 **Food acquisition flow:**
 1. Animal gets hungry → `FindFood()` checks `foodSlotInv` for room
@@ -146,6 +149,27 @@ Volume is conserved exactly (integer math, explicit transfers).
 **Save/load**: `WorldSaveData.waterLevels` — flat `byte[]`, index `y * nx + x`. Omitted (null) if all-dry. Restored in `SaveSystem.ApplySaveData()` before tile types are applied.
 
 **ClearWorld**: `WaterController.ClearWater()` zeros all `tile.water`, clears the surface mask texture, and calls `UpdateSurfaceMask()`.
+
+## Weather & Temperature
+
+`Assets/Model/WeatherSystem.cs` — singleton, created by `World.Awake()`. Ticked every frame by `World.Update()`.
+
+**Temperature** is a global ambient value in Celsius, driven by two additive sine waves:
+- **Yearly**: peaks midsummer (day 7.5/20), troughs midwinter. Amplitude ±12.5°C around 13.5°C mean.
+- **Daily**: peaks at 2pm, amplitude ±4°C.
+- Formula: `T = 13.5 + 12.5·sin(yearly) + 4·sin(daily)`
+- Range: ~−3°C (midwinter night) to ~30°C (midsummer afternoon).
+
+**Seasons** (time 0 = first day of spring, `daysInYear = 20`): Spring 0–4, Summer 5–9, Fall 10–14, Winter 15–19. `GetSeason()` returns the name, `GetDayOfYear()` returns the fractional day.
+
+**Temperature comfort** (on `Happiness`): each animal has `comfortTempLow` (default 10°C) and `comfortTempHigh` (25°C).
+- In range → +2 happiness, 100% efficiency.
+- Outside range → −1 happiness per 5°C deviation; efficiency = `max(0.7, 1.0 − deviation × 0.04)`.
+- Clothing expands the comfort range: `UpdateClothingBonus()` shifts both bounds by ±3°C when any clothing item is equipped (7–28°C with a ramie shirt).
+
+**Rain/wind**: see header comment in `WeatherSystem.cs`. Rain also affects sun/ambient light multipliers and replenishes water via `WaterController.RainReplenish()`.
+
+---
 
 ## Unit System — Fen / Liang
 

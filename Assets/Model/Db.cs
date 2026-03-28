@@ -24,6 +24,7 @@ public class Db : MonoBehaviour {
     public static int itemsCount = 0;
     public static List<Item> edibleItems;
     public static List<Item> equipmentItems;
+    public static List<Item> clothingItems;
     public static Job[] jobs = new Job[100];
     public static Recipe[] recipes = new Recipe[500];
     public static StructType[] structTypes = new StructType[600];
@@ -54,6 +55,7 @@ public class Db : MonoBehaviour {
         itemsFlat = itemsFlat.Take(itemsCount).ToArray();
         edibleItems = itemsFlat.Where(i => i.foodValue > 0).OrderByDescending(i => i.foodValue).ToList();
         equipmentItems = itemsFlat.Where(i => { Item cur = i; while (cur != null) { if (cur.name == "tools") return true; cur = cur.parent; } return false; }).ToList();
+        clothingItems = itemsFlat.Where(i => { Item cur = i; while (cur != null) { if (cur.name == "clothing") return true; cur = cur.parent; } return false; }).ToList();
         ValidateNoGroupOutputs();
         LoadItemIcons();
         LoadNames();
@@ -227,6 +229,8 @@ public class Db : MonoBehaviour {
                 AddItemToDb(child);
                 child.parent = item;
                 if (child.decayRate == 0f) child.decayRate = item.decayRate;
+                if (!child.discrete) child.discrete = item.discrete;
+                if (!child.isLiquid) child.isLiquid = item.isLiquid;
             }
         }
     }

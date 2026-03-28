@@ -136,12 +136,19 @@ When the player clicks a tile, `MouseController` builds a `SelectionContext` (ti
 
 | Sub-view | File | Shows |
 |----------|------|-------|
-| `AnimalInfoView` | `Assets/UI/InfoViews/AnimalInfoView.cs` | Single animal stats, task, skills |
+| `AnimalInfoView` | `Assets/UI/InfoViews/AnimalInfoView.cs` | Single animal stats, task, skill widgets |
 | `StructureInfoView` | `Assets/UI/InfoViews/StructureInfoView.cs` | Structure/blueprint info + controls |
 | `TileInfoView` | `Assets/UI/InfoViews/TileInfoView.cs` | Tile coords, type, water, floor inventory |
 
 ### Tab ordering
-Animals first → structures by increasing depth → blueprints by depth → tile last. First tab is auto-selected.
+Animals first → structures by increasing depth → blueprints by depth → tile last. Tab label uses tile type name (e.g. "dirt") if non-empty, otherwise "tile". First tab is auto-selected.
+
+### AnimalInfoView skill widgets
+Skills are shown as `SkillDisplay` prefab instances (`Assets/Components/SkillDisplay.cs`) spawned into a `skillsContainer` layout group. One widget per `Skill` enum value, rebuilt on `Show()`, refreshed on `Refresh()`.
+
+Each widget: icon (hover → skill name tooltip) + "lv{n}" label + progress bar. Bar fill uses anchor-based sizing (`anchorMax.x = xp/threshold`) so the rect actually resizes rather than just clipping rendering. Bar hover tooltip shows exact xp (e.g. "1.0/20").
+
+Sprites loaded from `Resources/Sprites/Skills/{skillname}` with `Sprites/Skills/default` fallback.
 
 ### StructureInfoView controls
 - **Enable/Disable** toggle (buildings only) — sets `Building.disabled`, which gates all WOM orders via `isActive` callbacks.
@@ -177,6 +184,7 @@ Each panel's `Toggle()` calls `UI.OpenExclusive(gameObject)` when opening, and `
 | `Assets/Model/GlobalInventory.cs` | Global quantity totals |
 | `Assets/UI/InfoPanel.cs` | Tabbed info panel container (selection → tabs → sub-views) |
 | `Assets/UI/InfoViews/StructureInfoView.cs` | Structure/blueprint info + enable/disable, priority, worker controls |
-| `Assets/UI/InfoViews/AnimalInfoView.cs` | Single animal info display |
+| `Assets/UI/InfoViews/AnimalInfoView.cs` | Single animal info display (spawns SkillDisplay widgets) |
+| `Assets/Components/SkillDisplay.cs` | Skill icon + level + XP bar widget (anchor-based fill, Tooltippable on icon + bar hitbox) |
 | `Assets/UI/InfoViews/TileInfoView.cs` | Tile-only info (coords, water, floor inv) |
 | `Assets/Model/SelectionContext.cs` | Structured selection data (tile + structures + blueprints + animals) |

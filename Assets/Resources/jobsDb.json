@@ -59,5 +59,9 @@
         "name": "cook",
         "jobType": "crafter",
         "defaultSkill": "cooking"
+    },{
+        "id": 15,
+        "name": "clothier",
+        "jobType": "crafter"
     }
 ]

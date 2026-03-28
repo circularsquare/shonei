@@ -88,6 +88,7 @@ public class AnimalSaveData {
     public InventorySaveData inv;
     public InventorySaveData foodSlotInv; // null on old saves → slot starts empty
     public InventorySaveData toolSlotInv;
+    public InventorySaveData clothingSlotInv; // null on old saves → slot starts empty
     public float[] skillXp;    // null on old saves → all skills start at 0 xp
     public int[]   skillLevel; // null on old saves → all skills start at level 0
 }

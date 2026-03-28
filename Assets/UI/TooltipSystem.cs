@@ -94,7 +94,7 @@ public class TooltipSystem : MonoBehaviour {
         if (instance == null) return;
         instance.titleText.text        = title;
         instance.bodyText.text         = body;
-        instance.bodyLe.preferredWidth = string.IsNullOrEmpty(body) ? -1f : 200f;
+        instance.bodyLe.preferredWidth = -1f; // auto-size; body text uses explicit \n breaks
         instance.tooltipPanel.gameObject.SetActive(true);
         // Force layout so sizeDelta is current before we position (avoids one-frame snap).
         LayoutRebuilder.ForceRebuildLayoutImmediate(instance.tooltipPanel);

@@ -149,8 +149,10 @@ public class InfoPanel : MonoBehaviour {
         foreach (var bp in ctx.blueprints)
             tabs.Add(new TabEntry { type = TabType.Blueprint, label = "bp: " + bp.structType.name, data = bp });
 
-        // Tile tab last
-        tabs.Add(new TabEntry { type = TabType.Tile, label = "Tile", data = ctx.tile });
+        // Tile tab last — use tile type name if available, otherwise generic "tile"
+        string tileName = ctx.tile?.type?.name;
+        string tileLabel = string.IsNullOrEmpty(tileName) || tileName == "empty" ? "tile" : tileName;
+        tabs.Add(new TabEntry { type = TabType.Tile, label = tileLabel, data = ctx.tile });
 
         // Spawn tab buttons
         for (int i = 0; i < tabs.Count; i++) {

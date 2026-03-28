@@ -300,5 +300,32 @@
         "capacity": 1,
         "solidTop": true,
         "category": "production"
+    },{
+        "id": 130,
+        "name": "weaver",
+        "description": "weave fiber into cloth",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 5 },
+            { "name": "planks", "quantity": 3 }
+        ],
+        "njob": "hauler",
+        "capacity": 1,
+        "isWorkstation": true,
+        "solidTop": true,
+        "category": "production"
+    },{
+        "id": 131,
+        "name": "tailor",
+        "description": "sew cloth into clothing",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "planks", "quantity": 5 }
+        ],
+        "njob": "hauler",
+        "capacity": 1,
+        "isWorkstation": true,
+        "solidTop": true,
+        "category": "production"
     }
 ]

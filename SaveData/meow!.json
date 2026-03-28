@@ -1,5 +1,5 @@
 {
-  "timer": 206.126328,
+  "timer": 738.2279,
   "tiles": [
     {
       "x": 0,
@@ -658,153 +658,153 @@
     },
     {
       "x": 15,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 15,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 15,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 15,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 15,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 15,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 15,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 15,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 15,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 16,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 16,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 16,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 16,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 16,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 16,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 16,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 16,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 16,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 17,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 17,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 17,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 17,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 17,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 17,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 17,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 17,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 17,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 18,
       "y": 10,
       "tileType": "empty",
       "inv": {
         "invType": "Floor",
         "stacks": [
           {
-            "itemName": "apple",
-            "quantity": 548,
-            "decayCounter": 186752
+            "itemName": "pine planks",
+            "quantity": 891,
+            "decayCounter": 960999
           }
         ]
       }
-    },
-    {
-      "x": 15,
-      "y": 9,
-      "tileType": "dirt"
-    },
-    {
-      "x": 15,
-      "y": 8,
-      "tileType": "dirt"
-    },
-    {
-      "x": 15,
-      "y": 7,
-      "tileType": "stone"
-    },
-    {
-      "x": 15,
-      "y": 6,
-      "tileType": "stone"
-    },
-    {
-      "x": 15,
-      "y": 5,
-      "tileType": "stone"
-    },
-    {
-      "x": 15,
-      "y": 4,
-      "tileType": "stone"
-    },
-    {
-      "x": 15,
-      "y": 3,
-      "tileType": "stone"
-    },
-    {
-      "x": 15,
-      "y": 2,
-      "tileType": "stone"
-    },
-    {
-      "x": 15,
-      "y": 1,
-      "tileType": "stone"
-    },
-    {
-      "x": 16,
-      "y": 9,
-      "tileType": "dirt"
-    },
-    {
-      "x": 16,
-      "y": 8,
-      "tileType": "dirt"
-    },
-    {
-      "x": 16,
-      "y": 7,
-      "tileType": "stone"
-    },
-    {
-      "x": 16,
-      "y": 6,
-      "tileType": "stone"
-    },
-    {
-      "x": 16,
-      "y": 5,
-      "tileType": "stone"
-    },
-    {
-      "x": 16,
-      "y": 4,
-      "tileType": "stone"
-    },
-    {
-      "x": 16,
-      "y": 3,
-      "tileType": "stone"
-    },
-    {
-      "x": 16,
-      "y": 2,
-      "tileType": "stone"
-    },
-    {
-      "x": 16,
-      "y": 1,
-      "tileType": "stone"
-    },
-    {
-      "x": 17,
-      "y": 9,
-      "tileType": "dirt"
-    },
-    {
-      "x": 17,
-      "y": 8,
-      "tileType": "dirt"
-    },
-    {
-      "x": 17,
-      "y": 7,
-      "tileType": "stone"
-    },
-    {
-      "x": 17,
-      "y": 6,
-      "tileType": "stone"
-    },
-    {
-      "x": 17,
-      "y": 5,
-      "tileType": "stone"
-    },
-    {
-      "x": 17,
-      "y": 4,
-      "tileType": "stone"
-    },
-    {
-      "x": 17,
-      "y": 3,
-      "tileType": "stone"
-    },
-    {
-      "x": 17,
-      "y": 2,
-      "tileType": "stone"
-    },
-    {
-      "x": 17,
-      "y": 1,
-      "tileType": "stone"
     },
     {
       "x": 18,
@@ -856,13 +856,19 @@
       "y": 10,
       "tileType": "empty",
       "inv": {
-        "invType": "Floor",
+        "invType": "Storage",
         "stacks": [
           {
-            "itemName": "sawdust",
-            "quantity": 100,
-            "decayCounter": 183304
+            "itemName": "pine planks",
+            "quantity": 9999,
+            "decayCounter": 747552
           }
+        ],
+        "allowedItemIds": [
+          100,
+          101,
+          102,
+          103
         ]
       }
     },
@@ -916,13 +922,32 @@
       "y": 10,
       "tileType": "empty",
       "inv": {
-        "invType": "Floor",
+        "invType": "Storage",
         "stacks": [
           {
-            "itemName": "pine planks",
-            "quantity": 200,
-            "decayCounter": 337453
+            "itemName": "sawdust",
+            "quantity": 862,
+            "decayCounter": 388074
+          },
+          {
+            "itemName": "sawdust",
+            "quantity": 2000,
+            "decayCounter": 903953
+          },
+          {
+            "itemName": "silver",
+            "quantity": 50,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
           }
+        ],
+        "allowedItemIds": [
+          1,
+          110
         ]
       }
     },
@@ -979,9 +1004,9 @@
         "invType": "Floor",
         "stacks": [
           {
-            "itemName": "silver",
-            "quantity": 50,
-            "decayCounter": 0
+            "itemName": "pine planks",
+            "quantity": 85,
+            "decayCounter": 653376
           }
         ]
       }
@@ -1085,8 +1110,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 2756,
-            "decayCounter": 140273
+            "quantity": 9683,
+            "decayCounter": 465963
           }
         ],
         "allowedItemIds": [
@@ -1151,8 +1176,8 @@
         "stacks": [
           {
             "itemName": "acorn",
-            "quantity": 479,
-            "decayCounter": 409787
+            "quantity": 2351,
+            "decayCounter": 60477
           }
         ],
         "allowedItemIds": [
@@ -1250,6 +1275,21 @@
       "x": 25,
       "y": 1,
       "tileType": "stone"
+    },
+    {
+      "x": 26,
+      "y": 10,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Floor",
+        "stacks": [
+          {
+            "itemName": "wheat",
+            "quantity": 1597,
+            "decayCounter": 352426
+          }
+        ]
+      }
     },
     {
       "x": 26,
@@ -4541,8 +4581,8 @@
       "x": 22,
       "y": 10,
       "typeName": "tree",
-      "plantAge": 27,
-      "plantGrowthStage": 2,
+      "plantAge": 16,
+      "plantGrowthStage": 1,
       "plantHarvestable": false,
       "uses": 0
     },
@@ -4550,26 +4590,26 @@
       "x": 15,
       "y": 10,
       "typeName": "appletree",
-      "plantAge": 19,
-      "plantGrowthStage": 1,
-      "plantHarvestable": false,
+      "plantAge": 31,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
       "uses": 0
     },
     {
       "x": 18,
       "y": 10,
       "typeName": "tree",
-      "plantAge": 39,
-      "plantGrowthStage": 2,
-      "plantHarvestable": false,
+      "plantAge": 46,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
       "uses": 0
     },
     {
       "x": 25,
       "y": 10,
       "typeName": "wheat",
-      "plantAge": 35,
-      "plantGrowthStage": 2,
+      "plantAge": 20,
+      "plantGrowthStage": 1,
       "plantHarvestable": false,
       "uses": 0
     },
@@ -4577,9 +4617,9 @@
       "x": 26,
       "y": 10,
       "typeName": "wheat",
-      "plantAge": 30,
-      "plantGrowthStage": 2,
-      "plantHarvestable": false,
+      "plantAge": 51,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
       "uses": 0
     },
     {
@@ -4618,20 +4658,93 @@
       "plantHarvestable": false,
       "uses": 0,
       "workOrderEffectiveCapacity": 2
+    },
+    {
+      "x": 20,
+      "y": 10,
+      "typeName": "drawer",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0
+    },
+    {
+      "x": 19,
+      "y": 10,
+      "typeName": "crate",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0
+    },
+    {
+      "x": 24,
+      "y": 11,
+      "typeName": "house",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0
+    },
+    {
+      "x": 20,
+      "y": 11,
+      "typeName": "torch",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0
+    },
+    {
+      "x": 27,
+      "y": 10,
+      "typeName": "crate",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0
+    },
+    {
+      "x": 22,
+      "y": 10,
+      "typeName": "platform",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0
     }
   ],
-  "blueprints": [],
+  "blueprints": [
+    {
+      "x": 28,
+      "y": 10,
+      "typeName": "crate",
+      "state": 0,
+      "constructionProgress": 0.0,
+      "inv": {
+        "invType": "Blueprint",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "priority": 0
+    }
+  ],
   "animals": [
     {
       "aName": "mouse0",
       "x": 24.0,
-      "y": 10.0,
+      "y": 11.0,
       "jobName": "logger",
-      "energy": 0.5600002,
-      "food": 53.5,
-      "eep": 86.7002,
-      "timeSinceAteWheat": 80.0,
-      "timeSinceAteFruit": 180.0,
+      "energy": 0.886397243,
+      "food": 53.44999,
+      "eep": 98.5010147,
+      "timeSinceAteWheat": 120.0,
+      "timeSinceAteFruit": 20.0,
       "timeSinceAteSoymilk": 180.0,
       "inv": {
         "invType": "Animal",
@@ -4667,9 +4780,9 @@
         "invType": "Equip",
         "stacks": [
           {
-            "itemName": "wheat",
-            "quantity": 147,
-            "decayCounter": 57372
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 94554
           }
         ]
       },
@@ -4684,14 +4797,14 @@
         ]
       },
       "skillXp": [
-        2.57840037,
+        3.834242,
         0.0,
         0.0,
         0.0,
         0.0
       ],
       "skillLevel": [
-        0,
+        1,
         0,
         0,
         0,
@@ -4700,13 +4813,13 @@
     },
     {
       "aName": "mouse1",
-      "x": 21.0,
+      "x": 22.3510818,
       "y": 10.0,
       "jobName": "hauler",
-      "energy": 0.952000141,
-      "food": 53.5,
-      "eep": 86.7002,
-      "timeSinceAteWheat": 90.0,
+      "energy": 0.670398355,
+      "food": 50.34999,
+      "eep": 92.5010147,
+      "timeSinceAteWheat": 60.0,
       "timeSinceAteFruit": 180.0,
       "timeSinceAteSoymilk": 180.0,
       "inv": {
@@ -4744,8 +4857,8 @@
         "stacks": [
           {
             "itemName": "wheat",
-            "quantity": 199,
-            "decayCounter": 895464
+            "quantity": 97,
+            "decayCounter": 691068
           }
         ]
       },
@@ -4762,7 +4875,7 @@
       "skillXp": [
         0.0,
         0.0,
-        0.8000001,
+        2.00000024,
         0.0,
         0.0
       ],
@@ -4776,14 +4889,14 @@
     },
     {
       "aName": "mouse2",
-      "x": 15.0,
-      "y": 10.0,
+      "x": 23.6489182,
+      "y": 11.0,
       "jobName": "farmer",
-      "energy": 0.8800001,
-      "food": 53.5,
-      "eep": 86.7002,
-      "timeSinceAteWheat": 90.0,
-      "timeSinceAteFruit": 180.0,
+      "energy": 0.876802444,
+      "food": 68.75,
+      "eep": 100.501015,
+      "timeSinceAteWheat": 0.0,
+      "timeSinceAteFruit": 100.0,
       "timeSinceAteSoymilk": 180.0,
       "inv": {
         "invType": "Animal",
@@ -4820,8 +4933,8 @@
         "stacks": [
           {
             "itemName": "wheat",
-            "quantity": 199,
-            "decayCounter": 771094
+            "quantity": 99,
+            "decayCounter": 347858
           }
         ]
       },
@@ -4836,14 +4949,14 @@
         ]
       },
       "skillXp": [
-        1.8920002,
+        0.7276814,
         0.0,
         0.0,
         0.0,
         0.0
       ],
       "skillLevel": [
-        0,
+        1,
         0,
         0,
         0,
@@ -4852,14 +4965,14 @@
     },
     {
       "aName": "mouse3",
-      "x": 21.6934872,
+      "x": 18.3510818,
       "y": 10.0,
       "jobName": "sawyer",
-      "energy": 0.8800001,
-      "food": 53.5,
-      "eep": 86.7002,
-      "timeSinceAteWheat": 90.0,
-      "timeSinceAteFruit": 180.0,
+      "energy": 0.889601469,
+      "food": 69.3,
+      "eep": 99.5010147,
+      "timeSinceAteWheat": 0.0,
+      "timeSinceAteFruit": 90.0,
       "timeSinceAteSoymilk": 180.0,
       "inv": {
         "invType": "Animal",
@@ -4896,8 +5009,8 @@
         "stacks": [
           {
             "itemName": "wheat",
-            "quantity": 199,
-            "decayCounter": 715159
+            "quantity": 99,
+            "decayCounter": 379108
           }
         ]
       },
@@ -4916,7 +5029,83 @@
         0.0,
         0.0,
         0.0,
-        0.4
+        13.5436945
+      ],
+      "skillLevel": [
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "aName": "mouse4",
+      "x": 12.0,
+      "y": 10.0,
+      "jobName": "none",
+      "energy": 0.6432004,
+      "food": 50.4,
+      "eep": 93.20038,
+      "timeSinceAteWheat": 100.0,
+      "timeSinceAteFruit": 80.0,
+      "timeSinceAteSoymilk": 180.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "apple",
+            "quantity": 98,
+            "decayCounter": 704875
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "skillXp": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
       ],
       "skillLevel": [
         0,
@@ -9938,5 +10127,5 @@
     0,
     0
   ],
-  "isRaining": true
+  "isRaining": false
 }

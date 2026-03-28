@@ -45,8 +45,32 @@ public static class ItemSheetSplitter {
 
     // ── batch: all sheets in Sheets/ ─────────────────────────────────────────
     [MenuItem("Tools/Split All Item Sheets")]
-    static void SplitAll() {
-        string[] guids = AssetDatabase.FindAssets("t:Texture2D", new[] { SheetsFolder });
+    internal static void SplitAll() {
+        SplitFolders(new[] { SheetsFolder });
+    }
+
+    // ── folder: right-click a folder to split all sheets in it ───────────────
+    [MenuItem("Assets/Split Item Sheets in Folder", validate = true)]
+    static bool ValidateFolder() {
+        foreach (Object o in Selection.objects) {
+            string path = AssetDatabase.GetAssetPath(o);
+            if (AssetDatabase.IsValidFolder(path)) return true;
+        }
+        return false;
+    }
+
+    [MenuItem("Assets/Split Item Sheets in Folder")]
+    static void SplitFolder() {
+        var folders = new List<string>();
+        foreach (Object o in Selection.objects) {
+            string path = AssetDatabase.GetAssetPath(o);
+            if (AssetDatabase.IsValidFolder(path)) folders.Add(path);
+        }
+        SplitFolders(folders.ToArray());
+    }
+
+    static void SplitFolders(string[] folders) {
+        string[] guids = AssetDatabase.FindAssets("t:Texture2D", folders);
         int count = 0;
         List<string> written = new List<string>();
         foreach (string guid in guids) {
@@ -139,6 +163,13 @@ public static class ItemSheetSplitter {
         }
 
         if (!wasReadable) { imp.isReadable = false; imp.SaveAndReimport(); }
+    }
+
+    // ── combo: split sheets then generate normal maps for everything ───────
+    [MenuItem("Tools/Split Sheets + Generate Normal Maps")]
+    static void SplitThenGenerateNormals() {
+        SplitAll();
+        SpriteNormalMapGenerator.GenerateAll();
     }
 
     // Apply import settings to newly written sprites to match expected game settings

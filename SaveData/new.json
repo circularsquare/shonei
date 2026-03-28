@@ -1,5 +1,5 @@
 {
-  "timer": 74.1668549,
+  "timer": 73.7788544,
   "tiles": [
     {
       "x": 0,
@@ -1348,450 +1348,465 @@
     },
     {
       "x": 30,
-      "y": 8,
-      "tileType": "dirt"
-    },
-    {
-      "x": 30,
-      "y": 7,
-      "tileType": "stone"
-    },
-    {
-      "x": 30,
-      "y": 6,
-      "tileType": "stone"
-    },
-    {
-      "x": 30,
-      "y": 5,
-      "tileType": "stone"
-    },
-    {
-      "x": 30,
-      "y": 4,
-      "tileType": "stone"
-    },
-    {
-      "x": 30,
-      "y": 3,
-      "tileType": "stone"
-    },
-    {
-      "x": 30,
-      "y": 2,
-      "tileType": "stone"
-    },
-    {
-      "x": 30,
-      "y": 1,
-      "tileType": "stone"
-    },
-    {
-      "x": 31,
-      "y": 8,
-      "tileType": "dirt"
-    },
-    {
-      "x": 31,
-      "y": 7,
-      "tileType": "stone"
-    },
-    {
-      "x": 31,
-      "y": 6,
-      "tileType": "stone"
-    },
-    {
-      "x": 31,
-      "y": 5,
-      "tileType": "stone"
-    },
-    {
-      "x": 31,
-      "y": 4,
-      "tileType": "stone"
-    },
-    {
-      "x": 31,
-      "y": 3,
-      "tileType": "stone"
-    },
-    {
-      "x": 31,
-      "y": 2,
-      "tileType": "stone"
-    },
-    {
-      "x": 31,
-      "y": 1,
-      "tileType": "stone"
-    },
-    {
-      "x": 32,
-      "y": 8,
-      "tileType": "dirt"
-    },
-    {
-      "x": 32,
-      "y": 7,
-      "tileType": "stone"
-    },
-    {
-      "x": 32,
-      "y": 6,
-      "tileType": "stone"
-    },
-    {
-      "x": 32,
-      "y": 5,
-      "tileType": "stone"
-    },
-    {
-      "x": 32,
-      "y": 4,
-      "tileType": "stone"
-    },
-    {
-      "x": 32,
-      "y": 3,
-      "tileType": "stone"
-    },
-    {
-      "x": 32,
-      "y": 2,
-      "tileType": "stone"
-    },
-    {
-      "x": 32,
-      "y": 1,
-      "tileType": "stone"
-    },
-    {
-      "x": 33,
-      "y": 8,
-      "tileType": "dirt"
-    },
-    {
-      "x": 33,
-      "y": 7,
-      "tileType": "stone"
-    },
-    {
-      "x": 33,
-      "y": 6,
-      "tileType": "stone"
-    },
-    {
-      "x": 33,
-      "y": 5,
-      "tileType": "stone"
-    },
-    {
-      "x": 33,
-      "y": 4,
-      "tileType": "stone"
-    },
-    {
-      "x": 33,
-      "y": 3,
-      "tileType": "stone"
-    },
-    {
-      "x": 33,
-      "y": 2,
-      "tileType": "stone"
-    },
-    {
-      "x": 33,
-      "y": 1,
-      "tileType": "stone"
-    },
-    {
-      "x": 34,
-      "y": 8,
-      "tileType": "dirt"
-    },
-    {
-      "x": 34,
-      "y": 7,
-      "tileType": "stone"
-    },
-    {
-      "x": 34,
-      "y": 6,
-      "tileType": "stone"
-    },
-    {
-      "x": 34,
-      "y": 5,
-      "tileType": "stone"
-    },
-    {
-      "x": 34,
-      "y": 4,
-      "tileType": "stone"
-    },
-    {
-      "x": 34,
-      "y": 3,
-      "tileType": "stone"
-    },
-    {
-      "x": 34,
-      "y": 2,
-      "tileType": "stone"
-    },
-    {
-      "x": 34,
-      "y": 1,
-      "tileType": "stone"
-    },
-    {
-      "x": 35,
-      "y": 8,
-      "tileType": "dirt"
-    },
-    {
-      "x": 35,
-      "y": 7,
-      "tileType": "stone"
-    },
-    {
-      "x": 35,
-      "y": 6,
-      "tileType": "stone"
-    },
-    {
-      "x": 35,
-      "y": 5,
-      "tileType": "stone"
-    },
-    {
-      "x": 35,
-      "y": 4,
-      "tileType": "stone"
-    },
-    {
-      "x": 35,
-      "y": 3,
-      "tileType": "stone"
-    },
-    {
-      "x": 35,
-      "y": 2,
-      "tileType": "stone"
-    },
-    {
-      "x": 35,
-      "y": 1,
-      "tileType": "stone"
-    },
-    {
-      "x": 36,
-      "y": 8,
-      "tileType": "dirt"
-    },
-    {
-      "x": 36,
-      "y": 7,
-      "tileType": "stone"
-    },
-    {
-      "x": 36,
-      "y": 6,
-      "tileType": "stone"
-    },
-    {
-      "x": 36,
-      "y": 5,
-      "tileType": "stone"
-    },
-    {
-      "x": 36,
-      "y": 4,
-      "tileType": "stone"
-    },
-    {
-      "x": 36,
-      "y": 3,
-      "tileType": "stone"
-    },
-    {
-      "x": 36,
-      "y": 2,
-      "tileType": "stone"
-    },
-    {
-      "x": 36,
-      "y": 1,
-      "tileType": "stone"
-    },
-    {
-      "x": 37,
-      "y": 8,
-      "tileType": "dirt"
-    },
-    {
-      "x": 37,
-      "y": 7,
-      "tileType": "stone"
-    },
-    {
-      "x": 37,
-      "y": 6,
-      "tileType": "stone"
-    },
-    {
-      "x": 37,
-      "y": 5,
-      "tileType": "stone"
-    },
-    {
-      "x": 37,
-      "y": 4,
-      "tileType": "stone"
-    },
-    {
-      "x": 37,
-      "y": 3,
-      "tileType": "stone"
-    },
-    {
-      "x": 37,
-      "y": 2,
-      "tileType": "stone"
-    },
-    {
-      "x": 37,
-      "y": 1,
-      "tileType": "stone"
-    },
-    {
-      "x": 38,
-      "y": 8,
-      "tileType": "dirt"
-    },
-    {
-      "x": 38,
-      "y": 7,
-      "tileType": "stone"
-    },
-    {
-      "x": 38,
-      "y": 6,
-      "tileType": "stone"
-    },
-    {
-      "x": 38,
-      "y": 5,
-      "tileType": "stone"
-    },
-    {
-      "x": 38,
-      "y": 4,
-      "tileType": "stone"
-    },
-    {
-      "x": 38,
-      "y": 3,
-      "tileType": "stone"
-    },
-    {
-      "x": 38,
-      "y": 2,
-      "tileType": "stone"
-    },
-    {
-      "x": 38,
-      "y": 1,
-      "tileType": "stone"
-    },
-    {
-      "x": 39,
-      "y": 8,
-      "tileType": "dirt"
-    },
-    {
-      "x": 39,
-      "y": 7,
-      "tileType": "stone"
-    },
-    {
-      "x": 39,
-      "y": 6,
-      "tileType": "stone"
-    },
-    {
-      "x": 39,
-      "y": 5,
-      "tileType": "stone"
-    },
-    {
-      "x": 39,
-      "y": 4,
-      "tileType": "stone"
-    },
-    {
-      "x": 39,
-      "y": 3,
-      "tileType": "stone"
-    },
-    {
-      "x": 39,
-      "y": 2,
-      "tileType": "stone"
-    },
-    {
-      "x": 39,
-      "y": 1,
-      "tileType": "stone"
-    },
-    {
-      "x": 40,
-      "y": 8,
-      "tileType": "dirt"
-    },
-    {
-      "x": 40,
-      "y": 7,
-      "tileType": "stone"
-    },
-    {
-      "x": 40,
-      "y": 6,
-      "tileType": "stone"
-    },
-    {
-      "x": 40,
-      "y": 5,
-      "tileType": "stone"
-    },
-    {
-      "x": 40,
-      "y": 4,
-      "tileType": "stone"
-    },
-    {
-      "x": 40,
-      "y": 3,
-      "tileType": "stone"
-    },
-    {
-      "x": 40,
-      "y": 2,
-      "tileType": "stone"
-    },
-    {
-      "x": 40,
-      "y": 1,
-      "tileType": "stone"
-    },
-    {
-      "x": 41,
       "y": 9,
       "tileType": "dirt"
     },
     {
+      "x": 30,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 30,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 30,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 30,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 30,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 30,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 30,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 30,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 31,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 31,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 31,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 31,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 31,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 31,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 31,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 31,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 31,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 32,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 32,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 32,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 32,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 32,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 32,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 32,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 32,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 32,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 33,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 33,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 33,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 33,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 33,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 33,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 33,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 33,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 33,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 34,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 34,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 34,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 34,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 34,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 34,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 34,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 34,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 35,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 35,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 35,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 35,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 35,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 35,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 35,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 35,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 36,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 36,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 36,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 36,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 36,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 36,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 36,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 36,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 37,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 37,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 37,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 37,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 37,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 37,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 37,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 37,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 38,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 38,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 38,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 38,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 38,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 38,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 38,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 38,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 39,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 39,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 39,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 39,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 39,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 39,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 39,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 39,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 40,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 40,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 40,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 40,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 40,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 40,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 40,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 40,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
       "x": 41,
       "y": 8,
       "tileType": "dirt"
@@ -1833,11 +1848,6 @@
     },
     {
       "x": 42,
-      "y": 9,
-      "tileType": "dirt"
-    },
-    {
-      "x": 42,
       "y": 8,
       "tileType": "dirt"
     },
@@ -1878,11 +1888,6 @@
     },
     {
       "x": 43,
-      "y": 9,
-      "tileType": "dirt"
-    },
-    {
-      "x": 43,
       "y": 8,
       "tileType": "dirt"
     },
@@ -1920,11 +1925,6 @@
       "x": 43,
       "y": 1,
       "tileType": "stone"
-    },
-    {
-      "x": 44,
-      "y": 9,
-      "tileType": "dirt"
     },
     {
       "x": 44,
@@ -4456,7 +4456,7 @@
       "x": 22,
       "y": 10,
       "typeName": "tree",
-      "plantAge": 42,
+      "plantAge": 41,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "uses": 0
@@ -4465,7 +4465,7 @@
       "x": 15,
       "y": 10,
       "typeName": "appletree",
-      "plantAge": 2,
+      "plantAge": 1,
       "plantGrowthStage": 0,
       "plantHarvestable": false,
       "uses": 0
@@ -4474,7 +4474,7 @@
       "x": 18,
       "y": 10,
       "typeName": "tree",
-      "plantAge": 2,
+      "plantAge": 1,
       "plantGrowthStage": 0,
       "plantHarvestable": false,
       "uses": 0
@@ -4483,7 +4483,7 @@
       "x": 25,
       "y": 10,
       "typeName": "wheat",
-      "plantAge": 2,
+      "plantAge": 1,
       "plantGrowthStage": 0,
       "plantHarvestable": false,
       "uses": 0
@@ -4492,7 +4492,16 @@
       "x": 26,
       "y": 10,
       "typeName": "wheat",
-      "plantAge": 2,
+      "plantAge": 1,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0
+    },
+    {
+      "x": 14,
+      "y": 10,
+      "typeName": "soybean",
+      "plantAge": 1,
       "plantGrowthStage": 0,
       "plantHarvestable": false,
       "uses": 0
@@ -4502,12 +4511,12 @@
   "animals": [
     {
       "aName": "mouse0",
-      "x": 20.2587337,
+      "x": 20.0,
       "y": 10.0,
       "jobName": "logger",
       "energy": 1.0,
-      "food": 99.0,
-      "eep": 99.8,
+      "food": 99.5,
+      "eep": 99.9,
       "timeSinceAteWheat": 180.0,
       "timeSinceAteFruit": 180.0,
       "timeSinceAteSoymilk": 180.0,
@@ -4582,8 +4591,8 @@
       "y": 10.0,
       "jobName": "hauler",
       "energy": 1.0,
-      "food": 99.0,
-      "eep": 99.8,
+      "food": 99.5,
+      "eep": 99.9,
       "timeSinceAteWheat": 180.0,
       "timeSinceAteFruit": 180.0,
       "timeSinceAteSoymilk": 180.0,
@@ -4658,8 +4667,8 @@
       "y": 10.0,
       "jobName": "farmer",
       "energy": 1.0,
-      "food": 99.0,
-      "eep": 99.8,
+      "food": 99.5,
+      "eep": 99.9,
       "timeSinceAteWheat": 180.0,
       "timeSinceAteFruit": 180.0,
       "timeSinceAteSoymilk": 180.0,
@@ -4734,8 +4743,8 @@
       "y": 10.0,
       "jobName": "none",
       "energy": 1.0,
-      "food": 99.0,
-      "eep": 99.8,
+      "food": 99.5,
+      "eep": 99.9,
       "timeSinceAteWheat": 180.0,
       "timeSinceAteFruit": 180.0,
       "timeSinceAteSoymilk": 180.0,
@@ -5745,21 +5754,21 @@
     0,
     0,
     0,
-    160,
-    160,
-    160,
-    160,
-    160,
-    160,
-    160,
-    160,
-    160,
-    160,
-    160,
     0,
     0,
     0,
     0,
+    160,
+    160,
+    160,
+    160,
+    160,
+    160,
+    160,
+    160,
+    160,
+    160,
+    160,
     0,
     0,
     0,
@@ -9816,5 +9825,5 @@
     0,
     0
   ],
-  "isRaining": false
+  "isRaining": true
 }

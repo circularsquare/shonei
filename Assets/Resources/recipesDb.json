@@ -128,5 +128,29 @@
         "noutputs": [
             { "name": "tofu", "quantity": 1.0 }
         ]
+    },{
+        "id": 20,
+        "job": "clothier",
+        "tile": "weaver",
+        "description": "weave ramie into ramie cloth",
+        "workload": 3.0,
+        "ninputs": [
+            { "name": "ramie", "quantity": 2 }
+        ],
+        "noutputs": [
+            { "name": "ramie cloth", "quantity": 1 }
+        ]
+    },{
+        "id": 21,
+        "job": "clothier",
+        "tile": "tailor",
+        "description": "sew ramie cloth into ramie shirt",
+        "workload": 5.0,
+        "ninputs": [
+            { "name": "ramie cloth", "quantity": 2 }
+        ],
+        "noutputs": [
+            { "name": "ramie shirt", "quantity": 1 }
+        ]
     }
 ]

@@ -1,0 +1,10918 @@
+{
+  "timer": 1896.44189,
+  "tiles": [
+    {
+      "x": 0,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 0,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 0,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 0,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 0,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 0,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 1,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 1,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 1,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 1,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 1,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 1,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 1,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 1,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 2,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 2,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 2,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 2,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 2,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 2,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 2,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 2,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 3,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 3,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 3,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 3,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 3,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 3,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 3,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 3,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 4,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 4,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 4,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 4,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 4,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 4,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 4,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 4,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 4,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 5,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 5,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 5,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 5,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 5,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 5,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 5,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 5,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 5,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 6,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 6,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 6,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 6,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 6,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 6,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 6,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 6,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 6,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 7,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 7,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 7,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 7,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 7,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 7,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 7,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 7,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 7,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 8,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 8,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 8,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 8,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 8,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 8,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 8,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 8,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 8,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 9,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 9,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 9,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 9,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 9,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 9,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 9,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 9,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 9,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 10,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 10,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 10,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 10,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 10,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 10,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 10,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 10,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 10,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 11,
+      "y": 10,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Market",
+        "stacks": [
+          {
+            "itemName": "silver",
+            "quantity": 48,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ],
+        "marketTargets": {
+          "silver": 512
+        }
+      }
+    },
+    {
+      "x": 11,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 11,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 11,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 11,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 11,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 11,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 11,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 11,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 11,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 12,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 12,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 12,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 12,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 12,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 12,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 12,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 12,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 12,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 13,
+      "y": 10,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Storage",
+        "stacks": [
+          {
+            "itemName": "ramie",
+            "quantity": 196,
+            "decayCounter": 40285
+          },
+          {
+            "itemName": "ramie cloth",
+            "quantity": 198,
+            "decayCounter": 491056
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ],
+        "allowedItemIds": [
+          250,
+          251,
+          260,
+          261,
+          270,
+          271
+        ]
+      }
+    },
+    {
+      "x": 13,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 13,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 13,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 13,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 13,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 13,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 13,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 13,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 13,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 14,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 14,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 14,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 14,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 14,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 14,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 14,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 14,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 14,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 15,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 15,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 15,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 15,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 15,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 15,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 15,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 15,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 15,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 16,
+      "y": 9,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Storage",
+        "stacks": [
+          {
+            "itemName": "dirt",
+            "quantity": 1971,
+            "decayCounter": 161108
+          }
+        ],
+        "allowedItemIds": [
+          20
+        ]
+      }
+    },
+    {
+      "x": 16,
+      "y": 8,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Storage",
+        "stacks": [
+          {
+            "itemName": "limestone",
+            "quantity": 3866,
+            "decayCounter": 109266
+          }
+        ],
+        "allowedItemIds": [
+          10,
+          11,
+          12,
+          13
+        ]
+      }
+    },
+    {
+      "x": 16,
+      "y": 7,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Storage",
+        "stacks": [
+          {
+            "itemName": "limestone",
+            "quantity": 1994,
+            "decayCounter": 751926
+          },
+          {
+            "itemName": "iron ore",
+            "quantity": 199,
+            "decayCounter": 191126
+          },
+          {
+            "itemName": "coal",
+            "quantity": 597,
+            "decayCounter": 505346
+          },
+          {
+            "itemName": "gypsum",
+            "quantity": 193,
+            "decayCounter": 982265
+          }
+        ],
+        "allowedItemIds": [
+          10,
+          11,
+          12,
+          13,
+          30,
+          31,
+          32
+        ]
+      }
+    },
+    {
+      "x": 16,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 16,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 16,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 16,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 16,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 16,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 17,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 17,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 17,
+      "y": 7,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Floor",
+        "stacks": [
+          {
+            "itemName": "gypsum",
+            "quantity": 87,
+            "decayCounter": 766731
+          }
+        ]
+      }
+    },
+    {
+      "x": 17,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 17,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 17,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 17,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 17,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 17,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 18,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 18,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 18,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 18,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 18,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 18,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 18,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 18,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 18,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 19,
+      "y": 11,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Storage",
+        "stacks": [
+          {
+            "itemName": "pine planks",
+            "quantity": 7854,
+            "decayCounter": 927951
+          }
+        ],
+        "allowedItemIds": [
+          100,
+          101,
+          102,
+          103
+        ]
+      }
+    },
+    {
+      "x": 19,
+      "y": 10,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Storage",
+        "stacks": [
+          {
+            "itemName": "pine planks",
+            "quantity": 9335,
+            "decayCounter": 457505
+          }
+        ],
+        "allowedItemIds": [
+          100,
+          101,
+          102,
+          103
+        ]
+      }
+    },
+    {
+      "x": 19,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 19,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 19,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 19,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 19,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 19,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 19,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 19,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 19,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 20,
+      "y": 10,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Storage",
+        "stacks": [
+          {
+            "itemName": "sawdust",
+            "quantity": 1964,
+            "decayCounter": 120427
+          },
+          {
+            "itemName": "sawdust",
+            "quantity": 1964,
+            "decayCounter": 979286
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "sawdust",
+            "quantity": 749,
+            "decayCounter": 869866
+          }
+        ],
+        "allowedItemIds": [
+          1,
+          110
+        ]
+      }
+    },
+    {
+      "x": 20,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 20,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 20,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 20,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 20,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 20,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 20,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 20,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 20,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 21,
+      "y": 11,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Storage",
+        "stacks": [
+          {
+            "itemName": "wheat",
+            "quantity": 2941,
+            "decayCounter": 804356
+          }
+        ],
+        "allowedItemIds": [
+          151
+        ]
+      }
+    },
+    {
+      "x": 21,
+      "y": 10,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Floor",
+        "stacks": [
+          {
+            "itemName": "pine",
+            "quantity": 1072,
+            "decayCounter": 43453
+          }
+        ]
+      }
+    },
+    {
+      "x": 21,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 21,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 21,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 21,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 21,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 21,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 21,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 21,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 21,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 22,
+      "y": 10,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Floor",
+        "stacks": [
+          {
+            "itemName": "pine",
+            "quantity": 2477,
+            "decayCounter": 456875
+          }
+        ]
+      }
+    },
+    {
+      "x": 22,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 22,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 22,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 22,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 22,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 22,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 22,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 22,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 22,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 23,
+      "y": 10,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Storage",
+        "stacks": [
+          {
+            "itemName": "pine",
+            "quantity": 9984,
+            "decayCounter": 441767
+          }
+        ],
+        "allowedItemIds": [
+          5,
+          6,
+          7,
+          8
+        ]
+      }
+    },
+    {
+      "x": 23,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 23,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 23,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 23,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 23,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 23,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 23,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 23,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 23,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 24,
+      "y": 10,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Storage",
+        "stacks": [
+          {
+            "itemName": "acorn",
+            "quantity": 3320,
+            "decayCounter": 440595
+          }
+        ],
+        "allowedItemIds": [
+          150,
+          152
+        ]
+      }
+    },
+    {
+      "x": 24,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 24,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 24,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 24,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 24,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 24,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 24,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 24,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 24,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 25,
+      "y": 10,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Floor",
+        "stacks": [
+          {
+            "itemName": "pine",
+            "quantity": 296,
+            "decayCounter": 928751
+          }
+        ]
+      }
+    },
+    {
+      "x": 25,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 25,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 25,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 25,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 25,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 25,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 25,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 25,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 25,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 26,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 26,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 26,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 26,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 26,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 26,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 26,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 26,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 26,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 27,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 27,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 27,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 27,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 27,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 27,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 27,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 27,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 27,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 28,
+      "y": 10,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Storage",
+        "stacks": [
+          {
+            "itemName": "water",
+            "quantity": 9600,
+            "decayCounter": 0
+          }
+        ],
+        "allowedItemIds": [
+          210,
+          230
+        ]
+      }
+    },
+    {
+      "x": 28,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 28,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 28,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 28,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 28,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 28,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 28,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 28,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 28,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 29,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 29,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 29,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 29,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 29,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 29,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 29,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 29,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 29,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 30,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 30,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 30,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 30,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 30,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 30,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 30,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 30,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 31,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 31,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 31,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 31,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 31,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 31,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 31,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 31,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 32,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 32,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 32,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 32,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 32,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 32,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 32,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 32,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 33,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 33,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 33,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 33,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 33,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 33,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 33,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 33,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 34,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 34,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 34,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 34,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 34,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 34,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 34,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 34,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 35,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 35,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 35,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 35,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 35,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 35,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 35,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 35,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 36,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 36,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 36,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 36,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 36,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 36,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 36,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 36,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 37,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 37,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 37,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 37,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 37,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 37,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 37,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 37,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 38,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 38,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 38,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 38,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 38,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 38,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 38,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 38,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 39,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 39,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 39,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 39,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 39,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 39,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 39,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 39,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 40,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 40,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 40,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 40,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 40,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 40,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 40,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 40,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 41,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 41,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 41,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 41,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 41,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 41,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 41,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 41,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 41,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 42,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 42,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 42,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 42,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 42,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 42,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 42,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 42,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 42,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 43,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 43,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 43,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 43,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 43,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 43,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 43,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 43,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 43,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 44,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 44,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 44,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 44,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 44,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 44,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 44,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 44,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 44,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 45,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 45,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 45,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 45,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 45,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 45,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 45,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 45,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 45,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 46,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 46,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 46,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 46,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 46,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 46,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 46,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 46,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 46,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 47,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 47,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 47,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 47,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 47,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 47,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 47,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 47,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 47,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 48,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 48,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 48,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 48,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 48,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 48,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 48,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 48,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 48,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 49,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 49,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 49,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 49,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 49,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 49,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 49,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 49,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 49,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 50,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 50,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 50,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 50,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 50,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 50,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 50,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 50,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 50,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 51,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 51,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 51,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 51,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 51,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 51,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 51,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 51,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 51,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 52,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 52,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 52,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 52,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 52,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 52,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 52,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 52,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 52,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 53,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 53,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 53,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 53,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 53,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 53,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 53,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 53,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 53,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 54,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 54,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 54,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 54,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 54,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 54,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 54,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 54,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 54,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 55,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 55,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 55,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 55,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 55,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 55,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 55,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 55,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 55,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 56,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 56,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 56,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 56,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 56,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 56,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 56,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 56,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 56,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 57,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 57,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 57,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 57,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 57,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 57,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 57,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 57,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 57,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 58,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 58,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 58,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 58,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 58,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 58,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 58,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 58,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 58,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 59,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 59,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 59,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 59,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 59,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 59,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 59,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 59,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 59,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 60,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 60,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 60,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 60,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 60,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 60,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 60,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 60,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 60,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 61,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 61,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 61,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 61,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 61,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 61,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 61,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 61,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 61,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 62,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 62,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 62,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 62,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 62,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 62,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 62,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 62,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 62,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 63,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 63,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 63,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 63,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 63,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 63,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 63,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 63,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 63,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 64,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 64,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 64,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 64,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 64,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 64,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 64,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 64,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 64,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 65,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 65,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 65,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 65,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 65,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 65,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 65,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 65,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 65,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 66,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 66,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 66,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 66,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 66,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 66,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 66,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 66,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 66,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 67,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 67,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 67,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 67,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 67,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 67,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 67,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 67,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 67,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 68,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 68,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 68,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 68,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 68,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 68,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 68,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 68,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 68,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 69,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 69,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 69,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 69,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 69,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 69,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 69,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 69,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 69,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 70,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 70,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 70,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 70,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 70,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 70,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 70,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 70,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 70,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 71,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 71,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 71,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 71,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 71,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 71,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 71,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 71,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 71,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 72,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 72,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 72,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 72,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 72,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 72,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 72,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 72,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 72,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 73,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 73,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 73,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 73,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 73,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 73,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 73,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 73,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 73,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 74,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 74,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 74,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 74,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 74,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 74,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 74,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 74,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 74,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 75,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 75,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 75,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 75,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 75,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 75,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 75,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 75,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 75,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 76,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 76,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 76,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 76,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 76,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 76,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 76,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 76,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 76,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 77,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 77,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 77,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 77,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 77,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 77,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 77,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 77,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 77,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 78,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 78,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 78,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 78,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 78,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 78,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 78,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 78,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 78,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 79,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 79,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 79,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 79,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 79,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 79,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 79,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 79,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 79,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 80,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 80,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 80,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 80,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 80,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 80,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 80,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 80,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 80,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 81,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 81,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 81,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 81,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 81,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 81,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 81,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 81,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 81,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 82,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 82,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 82,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 82,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 82,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 82,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 82,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 82,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 82,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 83,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 83,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 83,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 83,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 83,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 83,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 83,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 83,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 83,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 84,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 84,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 84,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 84,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 84,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 84,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 84,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 84,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 84,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 85,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 85,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 85,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 85,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 85,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 85,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 85,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 85,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 85,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 86,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 86,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 86,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 86,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 86,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 86,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 86,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 86,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 86,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 87,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 87,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 87,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 87,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 87,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 87,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 87,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 87,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 87,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 88,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 88,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 88,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 88,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 88,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 88,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 88,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 88,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 88,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 89,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 89,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 89,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 89,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 89,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 89,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 89,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 89,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 89,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 90,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 90,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 90,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 90,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 90,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 90,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 90,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 90,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 90,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 91,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 91,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 91,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 91,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 91,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 91,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 91,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 91,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 91,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 92,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 92,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 92,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 92,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 92,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 92,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 92,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 92,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 92,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 93,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 93,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 93,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 93,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 93,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 93,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 93,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 93,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 93,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 94,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 94,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 94,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 94,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 94,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 94,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 94,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 94,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 94,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 95,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 95,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 95,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 95,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 95,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 95,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 95,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 95,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 95,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 96,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 96,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 96,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 96,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 96,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 96,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 96,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 96,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 96,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 97,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 97,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 97,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 97,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 97,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 97,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 97,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 97,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 97,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 98,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 98,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 98,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 98,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 98,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 98,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 98,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 98,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 98,
+      "y": 1,
+      "tileType": "stone"
+    },
+    {
+      "x": 99,
+      "y": 9,
+      "tileType": "dirt"
+    },
+    {
+      "x": 99,
+      "y": 8,
+      "tileType": "dirt"
+    },
+    {
+      "x": 99,
+      "y": 7,
+      "tileType": "stone"
+    },
+    {
+      "x": 99,
+      "y": 6,
+      "tileType": "stone"
+    },
+    {
+      "x": 99,
+      "y": 5,
+      "tileType": "stone"
+    },
+    {
+      "x": 99,
+      "y": 4,
+      "tileType": "stone"
+    },
+    {
+      "x": 99,
+      "y": 3,
+      "tileType": "stone"
+    },
+    {
+      "x": 99,
+      "y": 2,
+      "tileType": "stone"
+    },
+    {
+      "x": 99,
+      "y": 1,
+      "tileType": "stone"
+    }
+  ],
+  "structures": [
+    {
+      "x": 10,
+      "y": 10,
+      "typeName": "market",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 22,
+      "y": 10,
+      "typeName": "tree",
+      "plantAge": 338,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 15,
+      "y": 10,
+      "typeName": "appletree",
+      "plantAge": 55,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 18,
+      "y": 10,
+      "typeName": "tree",
+      "plantAge": 317,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 25,
+      "y": 10,
+      "typeName": "wheat",
+      "plantAge": 6,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 26,
+      "y": 10,
+      "typeName": "wheat",
+      "plantAge": 28,
+      "plantGrowthStage": 2,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 23,
+      "y": 10,
+      "typeName": "crate",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 23,
+      "y": 10,
+      "typeName": "ladder",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 24,
+      "y": 10,
+      "typeName": "crate",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 21,
+      "y": 10,
+      "typeName": "sawmill",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "workOrderEffectiveCapacity": 2,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 20,
+      "y": 10,
+      "typeName": "drawer",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 19,
+      "y": 10,
+      "typeName": "crate",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 24,
+      "y": 11,
+      "typeName": "house",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 20,
+      "y": 11,
+      "typeName": "torch",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "fuelInvData": {
+        "invType": "Reservoir",
+        "stacks": [
+          {
+            "itemName": "pine",
+            "quantity": 413,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 22,
+      "y": 10,
+      "typeName": "platform",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 21,
+      "y": 11,
+      "typeName": "crate",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 16,
+      "y": 9,
+      "typeName": "ladder",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 16,
+      "y": 8,
+      "typeName": "ladder",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 16,
+      "y": 7,
+      "typeName": "ladder",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 16,
+      "y": 8,
+      "typeName": "crate",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 16,
+      "y": 9,
+      "typeName": "crate",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 16,
+      "y": 7,
+      "typeName": "drawer",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 17,
+      "y": 7,
+      "typeName": "quarry",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 59,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 29,
+      "y": 10,
+      "typeName": "pump",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 28,
+      "y": 10,
+      "typeName": "tank",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 25,
+      "y": 10,
+      "typeName": "stairs",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": true,
+      "disabled": false
+    },
+    {
+      "x": 18,
+      "y": 10,
+      "typeName": "stairs",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 19,
+      "y": 11,
+      "typeName": "crate",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 22,
+      "y": 10,
+      "typeName": "road",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 21,
+      "y": 10,
+      "typeName": "road",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 20,
+      "y": 10,
+      "typeName": "road",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 19,
+      "y": 10,
+      "typeName": "road",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 18,
+      "y": 10,
+      "typeName": "road",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 17,
+      "y": 10,
+      "typeName": "road",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 17,
+      "y": 10,
+      "typeName": "fountain",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "fuelInvData": {
+        "invType": "Reservoir",
+        "stacks": [
+          {
+            "itemName": "water",
+            "quantity": 1000,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 14,
+      "y": 10,
+      "typeName": "weaver",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 13,
+      "y": 10,
+      "typeName": "drawer",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 14,
+      "y": 10,
+      "typeName": "ladder",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 9,
+      "y": 10,
+      "typeName": "ramie",
+      "plantAge": 46,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 14,
+      "y": 11,
+      "typeName": "tailor",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    }
+  ],
+  "blueprints": [],
+  "animals": [
+    {
+      "aName": "mouse0",
+      "x": 24.0,
+      "y": 11.0,
+      "jobName": "hauler",
+      "energy": 0.5418074,
+      "food": 66.0,
+      "eep": 83.202774,
+      "timeSinceAteWheat": 0.0,
+      "timeSinceAteFruit": 160.0,
+      "timeSinceAteSoymilk": 180.0,
+      "timeSinceSawFountain": 110.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "wheat",
+            "quantity": 200,
+            "decayCounter": 934966
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "skillXp": [
+        17.0315247,
+        0.0,
+        0.9663505,
+        0.0,
+        0.0
+      ],
+      "skillLevel": [
+        1,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "aName": "mouse1",
+      "x": 17.943861,
+      "y": 10.443862,
+      "jobName": "clothier",
+      "energy": 0.959112763,
+      "food": 62.84999,
+      "eep": 79.202774,
+      "timeSinceAteWheat": 10.0,
+      "timeSinceAteFruit": 120.0,
+      "timeSinceAteSoymilk": 180.0,
+      "timeSinceSawFountain": 30.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 116655
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "ramie shirt",
+            "quantity": 89,
+            "decayCounter": 847808
+          }
+        ]
+      },
+      "skillXp": [
+        0.0,
+        0.0,
+        5.271198,
+        0.0,
+        4.499998
+      ],
+      "skillLevel": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "aName": "mouse2",
+      "x": 23.1512051,
+      "y": 11.0,
+      "jobName": "farmer",
+      "energy": 0.094943285,
+      "food": 61.6000061,
+      "eep": 79.202774,
+      "timeSinceAteWheat": 10.0,
+      "timeSinceAteFruit": 105.2,
+      "timeSinceAteSoymilk": 180.0,
+      "timeSinceSawFountain": 10.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "wheat",
+            "quantity": 199,
+            "decayCounter": 398
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "skillXp": [
+        1.25879753,
+        0.0,
+        0.2,
+        0.0,
+        0.0
+      ],
+      "skillLevel": [
+        2,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "aName": "mouse3",
+      "x": 24.0,
+      "y": 11.0,
+      "jobName": "sawyer",
+      "energy": 0.373904228,
+      "food": 52.10002,
+      "eep": 82.202774,
+      "timeSinceAteWheat": 30.0,
+      "timeSinceAteFruit": 130.0,
+      "timeSinceAteSoymilk": 180.0,
+      "timeSinceSawFountain": 0.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 124639
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "skillXp": [
+        0.0,
+        0.0,
+        0.5,
+        0.0,
+        9.647714
+      ],
+      "skillLevel": [
+        0,
+        0,
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "aName": "mouse4",
+      "x": 21.0,
+      "y": 10.0,
+      "jobName": "hauler",
+      "energy": 0.5917733,
+      "food": 64.6,
+      "eep": 81.90214,
+      "timeSinceAteWheat": 100.0,
+      "timeSinceAteFruit": 0.0,
+      "timeSinceAteSoymilk": 180.0,
+      "timeSinceSawFountain": 30.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 955331
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "skillXp": [
+        0.0,
+        8.640301,
+        0.8000001,
+        0.0,
+        0.0
+      ],
+      "skillLevel": [
+        0,
+        1,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "research": {
+    "progress": {
+      "1": 0.0,
+      "2": 0.0,
+      "3": 0.0
+    },
+    "activeResearchId": -1,
+    "unlockedIds": []
+  },
+  "waterLevels": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    160,
+    160,
+    160,
+    160,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    145,
+    145,
+    145,
+    145,
+    145,
+    145,
+    145,
+    145,
+    145,
+    146,
+    146,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "isRaining": true,
+  "globalItemTargets": {
+    "sawdust": 2500
+  }
+}

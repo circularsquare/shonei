@@ -48,6 +48,9 @@ public class MouseController : MonoBehaviour {
         if (Input.GetKeyDown(KeyCode.D) && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))) {
             WorkOrderManager.instance?.AuditOrders();
             InventoryController.instance?.ValidateGlobalInventory();
+            var ws = WeatherSystem.instance;
+            if (ws != null)
+                Debug.Log($"Temperature: {ws.temperature:F1}°C, Season: {ws.GetSeason()} (day {ws.GetDayOfYear():F1})");
         }
 
         if (EventSystem.current.IsPointerOverGameObject()){

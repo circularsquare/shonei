@@ -155,5 +155,39 @@
         "decayRate": 4.0,
         "foodValue": 40,
         "children": null
+    },{
+        "id": 250,
+        "name": "fiber",
+        "decayRate": 0.1,
+        "children": [
+            {
+                "id": 251,
+                "name": "ramie",
+                "children": null
+            }
+        ]
+    },{
+        "id": 260,
+        "name": "cloth",
+        "decayRate": 0.08,
+        "children": [
+            {
+                "id": 261,
+                "name": "ramie cloth",
+                "children": null
+            }
+        ]
+    },{
+        "id": 270,
+        "name": "clothing",
+        "decayRate": 2.0,
+        "discrete": true,
+        "children": [
+            {
+                "id": 271,
+                "name": "ramie shirt",
+                "children": null
+            }
+        ]
     }
 ]

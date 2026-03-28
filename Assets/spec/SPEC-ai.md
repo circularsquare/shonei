@@ -21,15 +21,16 @@ Any  → Falling (involuntary; interrupts current task) → Idle on landing
 
 | Need | Effect |
 |------|--------|
-| Hunger | Reduces efficiency; eating wheat restores |
+| Hunger | Reduces efficiency; eating restores |
 | Sleep | Reduces efficiency; sleeping at home restores |
-| Efficiency | `eating.Efficiency() * eeping.Efficiency()` — scales move speed and work rate |
+| Temperature | Reduces efficiency when outside comfort range (default 10–25°C). Clothing expands the range by ±3°C. |
+| Efficiency | `eating.Efficiency() * eeping.Efficiency() * happiness.TemperatureEfficiency()` — scales move speed and work rate |
 
 ### Task dispatch (ChooseTask priority order)
 
 `Animal.ChooseTask()` runs top-to-bottom when an animal is Idle:
 
-1. **Survival** (always first): drop inventory → eat if hungry → sleep if eepy at night → equip tool/food
+1. **Survival** (always first): drop inventory → eat if hungry → sleep if eepy at night → equip tool → equip clothing
 2. **Work orders:**
    - `wom.PruneStale()` — call once before the tier sequence
    - `wom.ChooseOrder(this, 1)` — hauls unblocking a deconstruct

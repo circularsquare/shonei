@@ -31,6 +31,28 @@ public static class SpriteNormalMapGenerator {
         AssetDatabase.Refresh();
     }
 
+    // ── folder: right-click a folder to process all textures in it ──────────
+    [MenuItem("Assets/Generate Normal Maps in Folder", validate = true)]
+    static bool ValidateFolder() {
+        foreach (Object o in Selection.objects) {
+            string path = AssetDatabase.GetAssetPath(o);
+            if (AssetDatabase.IsValidFolder(path)) return true;
+        }
+        return false;
+    }
+
+    [MenuItem("Assets/Generate Normal Maps in Folder")]
+    static void GenerateFolder() {
+        var folders = new List<string>();
+        foreach (Object o in Selection.objects) {
+            string path = AssetDatabase.GetAssetPath(o);
+            if (AssetDatabase.IsValidFolder(path)) folders.Add(path);
+        }
+        int count = ProcessFolders(folders.ToArray());
+        AssetDatabase.Refresh();
+        Debug.Log($"[NormalMapGen] Done — processed {count} texture(s) in {folders.Count} folder(s).");
+    }
+
     // ── batch: all textures under Assets/Sprites that aren't already _n ──────
     static readonly string[] BatchFolders = {
         "Assets/Resources/Sprites/Animals",
@@ -40,8 +62,14 @@ public static class SpriteNormalMapGenerator {
     };
 
     [MenuItem("Tools/Generate All Sprite Normal Maps")]
-    static void GenerateAll() {
-        string[] guids = AssetDatabase.FindAssets("t:Texture2D", BatchFolders);
+    internal static void GenerateAll() {
+        int count = ProcessFolders(BatchFolders);
+        AssetDatabase.Refresh();
+        Debug.Log($"[NormalMapGen] Done — processed {count} texture(s).");
+    }
+
+    static int ProcessFolders(string[] folders) {
+        string[] guids = AssetDatabase.FindAssets("t:Texture2D", folders);
         int count = 0;
         foreach (string guid in guids) {
             string path = AssetDatabase.GUIDToAssetPath(guid);
@@ -50,8 +78,7 @@ public static class SpriteNormalMapGenerator {
             Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
             if (tex != null) { ProcessTexture(tex); count++; }
         }
-        AssetDatabase.Refresh();
-        Debug.Log($"[NormalMapGen] Done — processed {count} texture(s).");
+        return count;
     }
 
     // ── core ─────────────────────────────────────────────────────────────────

@@ -26,6 +26,7 @@ public class Animal : MonoBehaviour{
     public Inventory inv;
     public Inventory foodSlotInv; // equip slot: food only, 1 stack, 5 liang capacity
     public Inventory toolSlotInv; // equip slot: tool, 1 stack
+    public Inventory clothingSlotInv; // equip slot: clothing (top), 1 stack
     public GlobalInventory ginv;
 
     public float energy;     // every time you get 1 energy you can do 1 work
@@ -87,6 +88,7 @@ public class Animal : MonoBehaviour{
         this.inv = new Inventory(5, 1000, Inventory.InvType.Animal);
         this.foodSlotInv = new Inventory(1, 300, Inventory.InvType.Equip);
         this.toolSlotInv = new Inventory(1, 200, Inventory.InvType.Equip);
+        this.clothingSlotInv = new Inventory(1, 200, Inventory.InvType.Equip);
         this.nav = new Nav(this);
         ginv = GlobalInventory.instance;
         random = new System.Random();
@@ -106,7 +108,7 @@ public class Animal : MonoBehaviour{
             this.happiness.timeSinceSawFountain = pendingSaveData.timeSinceSawFountain ?? Happiness.maxTime;
             this.job = Db.GetJobByName(pendingSaveData.jobName) ?? Db.jobs[0];
             this.state = AnimalState.Idle;
-            this.efficiency = eating.Efficiency() * eeping.Efficiency();
+            this.efficiency = eating.Efficiency() * eeping.Efficiency() * happiness.TemperatureEfficiency();
             // Restore animal inventory items
             foreach (ItemStackSaveData ssd in pendingSaveData.inv.stacks) {
                 if (!string.IsNullOrEmpty(ssd.itemName) && Db.itemByName.ContainsKey(ssd.itemName) && ssd.quantity > 0) {
@@ -118,6 +120,8 @@ public class Animal : MonoBehaviour{
                 SaveSystem.LoadInventory(foodSlotInv, pendingSaveData.foodSlotInv);
             if (pendingSaveData.toolSlotInv != null)
                 SaveSystem.LoadInventory(toolSlotInv, pendingSaveData.toolSlotInv);
+            if (pendingSaveData.clothingSlotInv != null)
+                SaveSystem.LoadInventory(clothingSlotInv, pendingSaveData.clothingSlotInv);
             skills.Deserialize(pendingSaveData.skillXp, pendingSaveData.skillLevel);
             pendingSaveData = null;
         } else {
@@ -174,7 +178,7 @@ public class Animal : MonoBehaviour{
         }
     }
     private void UpdateEfficiency() {
-        efficiency = eating.Efficiency() * eeping.Efficiency();
+        efficiency = eating.Efficiency() * eeping.Efficiency() * happiness.TemperatureEfficiency();
         maxSpeed = 1.5f * efficiency;
     }
 
@@ -187,6 +191,7 @@ public class Animal : MonoBehaviour{
     public void SlowUpdate() { // called every 10 or so seconds
         FindHome();
         eating.SlowUpdate();
+        happiness.UpdateClothingBonus(this);
         happiness.SlowUpdate(this);
         ScanForNearbyDecorations();
     }
@@ -233,6 +238,7 @@ public class Animal : MonoBehaviour{
             task = new EepTask(this);
             if (task.Start()) return; }
         if (FindEquipment()) return;
+        if (FindClothing()) return;
 
         // 2. Work orders: p1 → p2 → p3 (haul, then craft via recipe-first) → p4
         //    Craft uses ChooseCraftTask() instead of ChooseOrder so recipe score drives building selection.
@@ -286,6 +292,16 @@ public class Animal : MonoBehaviour{
         if (toolSlotInv.itemStacks[0].item != null) return false; // already holding a tool
         foreach (Item equipment in Db.equipmentItems) {
             task = new ObtainTask(this, equipment, 100, toolSlotInv);
+            if (task.Start()) return true;
+        }
+        return false;
+    }
+
+    // Picks up one clothing item into clothingSlotInv if the slot is empty.
+    private bool FindClothing() {
+        if (clothingSlotInv.itemStacks[0].item != null) return false; // already wearing clothing
+        foreach (Item clothing in Db.clothingItems) {
+            task = new ObtainTask(this, clothing, 100, clothingSlotInv);
             if (task.Start()) return true;
         }
         return false;

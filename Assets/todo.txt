@@ -10,10 +10,18 @@
         - books for gaining skills 
         - manuals for learning technologies
         - scriptoriums
+    - clothing
+        - ramie
+            - add plant sprite sheet?
+        - silkworm building? -> silk cocoons -> cloth -> clothing
+        - figure out how to display clothing on mice
 
+- trading 
+    - add automatic foreign traders
 - plant
     - flesh out plant growth, moisture and temperature
     - make plants grow from sunlight? shading
+
 - visuals
     - improve mouse animation
     - make item icons more... uniformly round? satisfying looking?
@@ -22,17 +30,17 @@
     - global can have
         - consume above amount?
 - priority
-    - add inventory priority? or inventory pull orders
+    - crafttask priority
+    - work station priority
+    - inventory priority? or inventory pull orders
+
 - research
     - queue research projects, decide what fraction to move onto next project at
     - decide what fraction to maintain researches at?
         - assign scientists to "maintain" duty?
     - lock postrequisites?
-- trading 
-    - add automatic foreign traders
+
 - dynamic mouse objectives? for tasks
-- crafttask priority...
-    - work station priority
 - leisure!
 - workplace workorder capacity system is kinda indirect
 - rain sounds
@@ -42,7 +50,6 @@
 - fireplace 
     - temperature
         - mouse temperature tolerance
-- add animal skill icons?
 - tab styling, add building icons?
 
 
