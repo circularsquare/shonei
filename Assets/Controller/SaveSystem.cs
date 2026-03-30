@@ -117,10 +117,13 @@ public class SaveSystem : MonoBehaviour {
         if (rs != null) {
             var ids = new int[rs.unlockedIds.Count];
             rs.unlockedIds.CopyTo(ids);
+            var mids = new int[rs.maintainIds.Count];
+            rs.maintainIds.CopyTo(mids);
             data.research = new ResearchSaveData {
                 progress         = new System.Collections.Generic.Dictionary<int, float>(rs.progress),
                 activeResearchId = rs.activeResearchId,
-                unlockedIds      = ids
+                unlockedIds      = ids,
+                maintainIds      = mids
             };
         }
 
@@ -170,8 +173,8 @@ public class SaveSystem : MonoBehaviour {
         }
         if (s is Building b) {
             if (b.workstation != null && b.workstation.uses > 0) ssd.uses = b.workstation.uses;
-            if (b.workstation != null && b.workstation.effectiveCapacity >= 0)
-                ssd.workOrderEffectiveCapacity = b.workstation.effectiveCapacity;
+            if (b.workstation != null)
+                ssd.workOrderEffectiveCapacity = b.workstation.workerLimit;
             if (b.reservoir != null && !b.reservoir.inv.IsEmpty())
                 ssd.fuelInvData = GatherInventory(b.reservoir.inv);
             if (b.disabled) ssd.disabled = true;
@@ -285,6 +288,10 @@ public class SaveSystem : MonoBehaviour {
             if (data.research.unlockedIds != null)
                 foreach (int id in data.research.unlockedIds)
                     rs.unlockedIds.Add(id);
+            rs.maintainIds.Clear();
+            if (data.research.maintainIds != null)
+                foreach (int id in data.research.maintainIds)
+                    rs.maintainIds.Add(id);
             rs.CheckTransitions();
             rs.ReapplyAllEffects();
         }
@@ -391,8 +398,8 @@ public class SaveSystem : MonoBehaviour {
         World.instance.graph.UpdateNeighbors(ssd.x, ssd.y);
         World.instance.graph.UpdateNeighbors(ssd.x, ssd.y + 1);
         if (structure is Building ws && ws.workstation != null) {
-            // null → old save; -1 means full capacity (the default)
-            ws.workstation.effectiveCapacity = ssd.workOrderEffectiveCapacity ?? -1;
+            // null → old save without this field; default to full capacity
+            ws.workstation.workerLimit = ssd.workOrderEffectiveCapacity ?? ws.workstation.capacity;
         }
         if (structure is Building fb && fb.reservoir != null && ssd.fuelInvData != null) {
             foreach (ItemStackSaveData sd in ssd.fuelInvData.stacks ?? System.Array.Empty<ItemStackSaveData>()) {

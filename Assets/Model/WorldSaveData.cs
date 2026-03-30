@@ -21,6 +21,7 @@ public class ResearchSaveData {
     public System.Collections.Generic.Dictionary<int, float> progress;
     public int   activeResearchId;
     public int[] unlockedIds;
+    public int[] maintainIds;  // null on old saves → empty set
 }
 
 public class TileSaveData {
@@ -37,8 +38,8 @@ public class StructureSaveData {
     public int plantGrowthStage;
     public bool plantHarvestable;
     public int uses;
-    // Workstation-only: persists the WOM Craft order's effectiveCapacity (player-set worker slot limit).
-    // null = field absent (old saves) → RegisterWorkstation defaults to full capacity.
+    // Workstation-only: persists the player-set worker slot limit (Building.workstation.workerLimit).
+    // null = field absent (old saves) → defaults to full capacity on load.
     // 0 = explicitly disabled. 1..capacity = player-set limit.
     public int? workOrderEffectiveCapacity;
     // Fuel buildings only: leaf-item stack data for building.fuel.inv at save time.

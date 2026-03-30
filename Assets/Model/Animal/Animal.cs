@@ -11,6 +11,7 @@ public class Animal : MonoBehaviour{
     public int id;
     public float x;
     public float y;
+    public float z => -0.0001f * id; // tiny per-animal Z offset to prevent sprite flicker
     public float maxSpeed = 2f;
     public bool facingRight = true;
     public bool pendingRefresh = false; // deferred Refresh() when SetJob fires mid-waypoint
@@ -96,7 +97,7 @@ public class Animal : MonoBehaviour{
         random = new System.Random();
 
         if (pendingSaveData != null) {
-            this.aName = string.IsNullOrEmpty(pendingSaveData.aName) ? Db.DrawName() : pendingSaveData.aName;
+            this.aName = string.IsNullOrEmpty(pendingSaveData.aName) ? Db.DrawName(AnimalController.instance.UsedNames()) : pendingSaveData.aName;
             this.go.name = "animal_" + aName;
             this.energy = pendingSaveData.energy;
             this.eating = new Eating();
@@ -128,7 +129,7 @@ public class Animal : MonoBehaviour{
             skills.Deserialize(pendingSaveData.skillXp, pendingSaveData.skillLevel);
             pendingSaveData = null;
         } else {
-            this.aName = Db.DrawName();
+            this.aName = Db.DrawName(AnimalController.instance.UsedNames());
             this.go.name = "animal_" + aName;
             this.state = AnimalState.Idle;
             this.job = Db.jobs[0];
@@ -144,11 +145,14 @@ public class Animal : MonoBehaviour{
         // Register initial tile occupancy
         _currentTile = TileHere();
         AnimalController.instance.RegisterAnimalOnTile(_currentTile);
+        // Add to the tickable animals array now that we're fully initialized.
+        // This is deferred from AddAnimal() so TickUpdate/UpdateColonyStats never
+        // iterate over an animal whose Start() hasn't run yet.
+        AnimalController.instance.RegisterReady(this);
     }
 
 
     public void TickUpdate() { // called from animalcontroller each second.
-        if (this.eating == null) { return; } // animal not fully initted yet
         tickCounter++;
         if (tickCounter % 10 == 0) {
             SlowUpdate();
@@ -452,6 +456,15 @@ public class Animal : MonoBehaviour{
         return b != null && inv.ContainsItems(recipe.inputs) && recipe.tile == b.structType.name;
     }
     public void Consume(Item item, int quantity = 1){
+        // Group items (e.g. "planks") can't exist in inventories — resolve to the leaf actually held.
+        if (item.children != null) {
+            ItemStack stack = inv.GetItemStack(item);
+            if (stack == null) {
+                Debug.LogError($"tried consuming {item.name} but no matching leaf found in inventory!");
+                return;
+            }
+            item = stack.item;
+        }
         if (inv.Produce(item, -quantity) < 0){
             Debug.LogError("tried consuming more than you have!");
         }

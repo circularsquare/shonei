@@ -161,6 +161,7 @@ public class BuildPanel : MonoBehaviour {
         if (!CanPlaceHere(structType, tile)) return false;
 
         Blueprint blueprint = new Blueprint(structType, tile.x, tile.y, mirrored);
+        SoundManager.instance?.PlaySFX("click");
         return true;
     }
 

@@ -78,13 +78,26 @@ public class Db : MonoBehaviour {
         }
     }
 
-    // Draw a random mouse name from the combined pool.
-    // Pools are kept separate so frequency weighting can be added later.
-    public static string DrawName() {
+    // Draw a random mouse name from the combined pool, avoiding names already in use.
+    // Falls back to "mouse0", "mouse1", ... if all pool names are taken.
+    public static string DrawName(HashSet<string> usedNames = null) {
         int total = chineseNames.Count + inventedNames.Count;
         if (total == 0) { Debug.LogError("Db: name pool is empty, falling back to 'mouse'"); return "mouse"; }
-        int i = UnityEngine.Random.Range(0, total);
-        return i < chineseNames.Count ? chineseNames[i] : inventedNames[i - chineseNames.Count];
+        if (usedNames == null || usedNames.Count == 0) {
+            int i = UnityEngine.Random.Range(0, total);
+            return i < chineseNames.Count ? chineseNames[i] : inventedNames[i - chineseNames.Count];
+        }
+        // Build list of available names
+        List<string> available = new List<string>();
+        foreach (string n in chineseNames) if (!usedNames.Contains(n)) available.Add(n);
+        foreach (string n in inventedNames) if (!usedNames.Contains(n)) available.Add(n);
+        if (available.Count > 0) return available[UnityEngine.Random.Range(0, available.Count)];
+        // All pool names taken — generate numbered fallback
+        for (int k = 0; k < 10000; k++) {
+            string fallback = "mouse" + k;
+            if (!usedNames.Contains(fallback)) return fallback;
+        }
+        return "mouse" + UnityEngine.Random.Range(10000, 99999);
     }
 
     void LoadItemIcons() {

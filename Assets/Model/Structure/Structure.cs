@@ -72,10 +72,10 @@ public class Structure {
                 Debug.LogError($"Already a depth-{depth} structure at {x+i},{y}!");
             t.structs[depth] = this;
         }
-        // Sort order by depth: 0=building(10), 1=platform(11), 2=foreground(80), 3=road(1).
+        // Sort order by depth: 0=building(10), 1=platform(11), 2=foreground(40), 3=road(1).
         if (depth == 0) sr.sortingOrder = 10;
         else if (depth == 1) sr.sortingOrder = 11;
-        else if (depth == 2) sr.sortingOrder = 80;
+        else if (depth == 2) sr.sortingOrder = 40;
         else if (depth == 3) sr.sortingOrder = 1;
 
         // Scan sprite for water-marker pixels. Registration happens in StructController.Place().

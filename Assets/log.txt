@@ -4,6 +4,9 @@ meoww!!
     - movement slows down if overlapping with mice or floor invs
 - added leisure time 
     - added chatting, a task
+- plant sprite sheet
+- research maintenance
+- rain sounds!
 3/28
 - added clothes! ramie, weaver, tailor. clothes widen comfortable temperature range
 3/27

@@ -90,7 +90,7 @@ public class ResearchPanel : MonoBehaviour {
     void SpawnCard(ResearchNodeData node, ResearchSystem rs) {
         var card = Instantiate(cardPrefab, nodeListContent, false);
         card.name = "Card_" + node.id;
-        card.Setup(node, rs, OnClickSetActive);
+        card.Setup(node, rs, OnClickSetActive, OnClickToggleMaintain);
         spawnedCards.Add(card);
     }
 
@@ -101,6 +101,11 @@ public class ResearchPanel : MonoBehaviour {
 
     void OnClickSetActive(ResearchNodeData node) {
         ResearchSystem.instance?.SetActiveResearch(node.id);
+        Refresh();
+    }
+
+    void OnClickToggleMaintain(ResearchNodeData node) {
+        ResearchSystem.instance?.ToggleMaintain(node.id);
         Refresh();
     }
 
@@ -120,6 +125,9 @@ public class ResearchPanel : MonoBehaviour {
             sb.AppendLine($"Unlocks: {node.unlocks}");
 
         float p = rs.GetProgress(node.id);
+        if (rs.IsMaintained(node.id))
+            sb.AppendLine("Maintained.");
+
         if (rs.IsUnlocked(node.id))
             sb.Append($"Known. ({p:0.0} / {node.cost:0})");
         else if (!rs.PrereqsMet(node))

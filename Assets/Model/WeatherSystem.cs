@@ -112,8 +112,6 @@ public class WeatherSystem {
     }
 
     void SetRain(bool rain) {
-        // if (rain){Debug.Log("raining");}
-        // else {Debug.Log("unraining");}
         isRaining = rain;
     }
 }

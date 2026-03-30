@@ -1,28 +1,30 @@
-- content
-    - trains
-    - bunnies
-    - magic / qi
-    - farming buildings
-        - grooming?
-    - mouse skills, flesh out?
-    - books
-        - books for gaining skills 
-        - manuals for learning technologies
-        - scriptoriums
-    - clothing
-        - silkworm building? -> silk cocoons -> cloth -> clothing
-
+CONTENT
+- trains
+- bunnies
+- magic / qi
+- farming buildings
+- grooming?
+- clothing
+    - silkworm building? -> silk cocoons -> cloth -> clothing
+- fireplace 
 - trading 
     - add automatic foreign traders
 - plant
     - flesh out plant growth, moisture and temperature
     - make plants grow from sunlight?
+- research
+    - queue research projects? priorities?
+- books
+    - books for gaining skills 
+    - manuals for learning technologies
+    - scriptoriums
 
-- visuals
-    - make item icons more coherent / similar
-    - plant sprite sheet
-    - tab styling, add building icons?
+VISUALS
+- make item icons more coherent / similar
+- tab styling, add building icons?
+- happiness panel
 
+MOUSE AI
 - ponder inventory management
     - global, market, need to have set target 
     - global can have
@@ -31,24 +33,10 @@
     - crafttask priority
     - work station priority
     - inventory priority? or inventory pull orders
-
-- research
-    - queue research projects, decide what fraction to move onto next project at
-    - decide what fraction to maintain researches at?
-        - assign scientists to "maintain" duty?
-    - lock postrequisites?
-
-- disincentivize mouse stacking 
-    - reconsider movement speed multipliers to not be tile based?
 - dynamic mouse task objectives
+- reserve item stack space
+    - too many partial hauler drops right now
 
-- workplace workorder capacity system is kinda indirect
-- rain sounds
-    - build sounds, etc.
-
-- we're getting a lot of partial hauler drops... 
-    - reserve item stack space
-- fireplace 
 
 
 BUGS

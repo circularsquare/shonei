@@ -27,6 +27,7 @@ public static class JobSwapper {
     public static bool TrySwap(Animal idle) {
         AnimalController ac = AnimalController.instance;
         if (ac == null) return false;
+        if (idle.job == null) return false;
 
         float bestGain = 0f;
         Animal bestPartner = null;
@@ -34,6 +35,7 @@ public static class JobSwapper {
         for (int i = 0; i < ac.na; i++) {
             Animal other = ac.animals[i];
             if (other == idle) continue;
+            if (other.job == null) continue;
             if (other.job.id == idle.job.id) continue; // same job, no benefit
             if (other.state == Animal.AnimalState.Falling) continue;
             if (other.state == Animal.AnimalState.Eeping) continue;

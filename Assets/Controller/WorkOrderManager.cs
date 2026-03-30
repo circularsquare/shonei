@@ -320,7 +320,11 @@ public class WorkOrderManager : MonoBehaviour {
         Add(new WorkOrder {
             type = OrderType.Research,
             priority = 4,
-            factory = a => new ResearchTask(a, lab),
+            factory = a => {
+                var task = new ResearchTask(a, lab);
+                task.maintenanceTargetId = ResearchSystem.instance?.ClaimMaintenanceTarget(a) ?? -1;
+                return task;
+            },
             tile = lab.tile,
             res = new(Mathf.Max(1, lab.structType.capacity)),
             isActive = () => !lab.disabled,
@@ -343,7 +347,7 @@ public class WorkOrderManager : MonoBehaviour {
         string buildingName = building.structType.name;
         var ws = building.workstation;
         var res = new Reservable(ws.capacity);
-        if (ws.effectiveCapacity >= 0) res.effectiveCapacity = ws.effectiveCapacity;
+        res.effectiveCapacity = ws.workerLimit;
         Add(new WorkOrder {
             type = OrderType.Craft,
             priority = 3,
@@ -355,6 +359,21 @@ public class WorkOrderManager : MonoBehaviour {
             getDistance = a => Mathf.Abs(building.workTile.x - a.x) + Mathf.Abs(building.workTile.y - a.y)
         });
         return true;
+    }
+
+    // Sets the player-adjustable worker limit for a workstation. Syncs both the WOM order's
+    // Reservable (runtime enforcement) and building.workstation (persistence). Clamped to [0, capacity].
+    public void SetWorkstationCapacity(Building building, int effectiveCapacity) {
+        if (building?.workstation == null || building.workstation.capacity <= 1) return;
+        var order = FindOrdersForBuilding(building)
+            .FirstOrDefault(o => o.type == OrderType.Craft);
+        if (order == null) {
+            Debug.LogError($"SetWorkstationCapacity: no Craft order for {building.structType.name}");
+            return;
+        }
+        int clamped = Mathf.Clamp(effectiveCapacity, 0, order.res.capacity);
+        order.res.effectiveCapacity = clamped;
+        building.workstation.workerLimit = clamped;
     }
 
     // Removes the Craft order for a specific building (call when building is deconstructed).

@@ -16,6 +16,8 @@ public class StructureInfoView : MonoBehaviour {
     [SerializeField] GameObject enableBar;  // the full row; hidden when enable isn't applicable
     [SerializeField] Button enableDisableButton;
     [SerializeField] TextMeshProUGUI enableDisableLabel;
+    [SerializeField] Sprite spriteEnabled;
+    [SerializeField] Sprite spriteDisabled;
 
     [Header("Blueprint Priority")]
     [SerializeField] Button priorityUpButton;
@@ -82,8 +84,6 @@ public class StructureInfoView : MonoBehaviour {
                 sb.Append("\n res: " + structure.res.reserved + "/" + structure.res.capacity);
             AppendTileOrders(sb, plant.tile);
         } else if (structure is Building bldg) {
-            if (bldg.disabled)
-                sb.Append("  [DISABLED]");
             if (bldg.structType.depleteAt > 0 && bldg.workstation != null)
                 sb.Append("\n uses: " + bldg.workstation.uses + "/" + bldg.structType.depleteAt);
             if (bldg.reservoir != null) {
@@ -109,7 +109,8 @@ public class StructureInfoView : MonoBehaviour {
         SetEnableDisableVisible(isBuilding);
         if (isBuilding) {
             Building b = (Building)structure;
-            enableDisableLabel.text = b.disabled ? "Enable" : "Disable";
+            enableDisableLabel.text = b.disabled ? "enable: " : "disable: ";
+            UpdateEnableDisableSprite(b.disabled);
         }
         SetPriorityVisible(false);
         bool showWorkerSlots = isBuilding && ((Building)structure).structType.isWorkstation
@@ -131,8 +132,6 @@ public class StructureInfoView : MonoBehaviour {
     void RefreshBlueprint() {
         var sb = new System.Text.StringBuilder();
         sb.Append("blueprint: " + blueprint.structType.name);
-        if (blueprint.disabled)
-            sb.Append("\n [DISABLED]");
         sb.Append("\n progress: " + blueprint.GetProgress());
         var bpOrder = WorkOrderManager.instance?.FindOrderForBlueprint(blueprint);
         if (bpOrder != null)
@@ -144,6 +143,7 @@ public class StructureInfoView : MonoBehaviour {
         SetEnableDisableVisible(true);
         if (enableDisableLabel != null)
             enableDisableLabel.text = blueprint.disabled ? "Enable" : "Disable";
+        UpdateEnableDisableSprite(blueprint.disabled);
         SetPriorityVisible(true);
         if (priorityText != null)
             priorityText.text = "priority: " + blueprint.priority;
@@ -171,12 +171,8 @@ public class StructureInfoView : MonoBehaviour {
 
     void ChangeWorkerSlots(int delta) {
         if (structure is Building building && building.workstation != null && building.workstation.capacity > 1) {
-            var order = WorkOrderManager.instance?.FindOrdersForBuilding(building)
-                .FirstOrDefault(o => o.type == WorkOrderManager.OrderType.Craft);
-            if (order == null) return;
-            order.res.effectiveCapacity = Mathf.Clamp(
-                order.res.effectiveCapacity + delta, 0, order.res.capacity);
-            building.workstation.effectiveCapacity = order.res.effectiveCapacity;
+            int current = building.workstation.workerLimit;
+            WorkOrderManager.instance?.SetWorkstationCapacity(building, current + delta);
             Refresh();
         }
     }
@@ -185,6 +181,12 @@ public class StructureInfoView : MonoBehaviour {
 
     void SetEnableDisableVisible(bool visible) {
         if (enableBar != null) enableBar.SetActive(visible);
+    }
+
+    void UpdateEnableDisableSprite(bool disabled) {
+        if (enableDisableButton == null) return;
+        var sprite = disabled ? spriteDisabled : spriteEnabled;
+        if (sprite != null) enableDisableButton.image.sprite = sprite;
     }
 
     void SetPriorityVisible(bool visible) {

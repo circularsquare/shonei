@@ -180,10 +180,10 @@ public class AnimalStateManager {
                     craftTask.Complete(); return; // out of inputs
                 }
             }
-        } else if (animal.task is ResearchTask) {
+        } else if (animal.task is ResearchTask rt) {
             animal.workProgress += workEfficiency;
             animal.skills.GainXp(Skill.Science, baseWorkEff * 0.1f);
-            ResearchSystem.instance?.AddScientistProgress(workEfficiency);
+            ResearchSystem.instance?.AddScientistProgress(workEfficiency, rt.maintenanceTargetId);
             if (animal.workProgress < 10f) return;
             animal.workProgress = 0f;
             animal.task.Complete();
@@ -194,10 +194,15 @@ public class AnimalStateManager {
 
     private void HandleEeping() {
         animal.eeping.Eep(1f, animal.AtHome());
-        // reproduction: logistic growth, gated by population and housing capacity
+        // reproduction: logistic growth, gated by population, housing capacity, and food supply
         if (animal.AtHome()) {
             AnimalController ac = AnimalController.instance;
             if (ac.na < ac.populationCapacity && ac.na < ac.totalHousingCapacity) {
+                // Require global food > 4 × population before allowing births
+                int totalFood = 0;
+                GlobalInventory ginv = GlobalInventory.instance;
+                foreach (Item food in Db.edibleItems) totalFood += ginv.Quantity(food);
+                if (totalFood <= ac.na * 400) return; // 4 liang per mouse (400 fen)
                 float p = ac.na;
                 float pmax = ac.populationCapacity;
                 float birthChance = 0.2f * (pmax - p) / pmax;
@@ -238,7 +243,6 @@ public class AnimalStateManager {
         if (chat?.partner != null) {
             var partnerTask = chat.partner.task as ChatTask;
             if (partnerTask == null || partnerTask.partner != animal) {
-                Debug.Log($"{animal.aName} chat partner {chat.partner.aName} left (state={chat.partner.state}, task={chat.partner.task?.GetType().Name}). Ending chat.");
                 if (chat.socializedEarly) { animal.task.Complete(); } else { animal.task.Fail(); }
             }
         }
@@ -268,16 +272,16 @@ public class AnimalStateManager {
             } else if (nextTile.type.solid) {
                 // Would enter a solid tile — snap to its top surface
                 animal.y = nextTile.y + 1;
-                animal.go.transform.position = new Vector3(animal.x, animal.y, 0);
+                animal.go.transform.position = new Vector3(animal.x, animal.y, animal.z);
                 animal.nav.fallVelocity = 0f;
                 animal.state = AnimalState.Idle;
             } else {
                 // Safe to move — apply and check for standable landing
                 animal.y = nextY;
-                animal.go.transform.position = new Vector3(animal.x, animal.y, 0);
+                animal.go.transform.position = new Vector3(animal.x, animal.y, animal.z);
                 if (nextTile.node.standable && animal.y <= nextTile.y) {
                     animal.y = nextTile.y;
-                    animal.go.transform.position = new Vector3(animal.x, animal.y, 0);
+                    animal.go.transform.position = new Vector3(animal.x, animal.y, animal.z);
                     animal.nav.fallVelocity = 0f;
                     animal.state = AnimalState.Idle;
                 }
@@ -295,7 +299,7 @@ public class AnimalStateManager {
                     // Arrived at destination
                     animal.x = animal.target.x;
                     animal.y = animal.target.y;
-                    animal.go.transform.position = new Vector3(animal.x, animal.y, 0);
+                    animal.go.transform.position = new Vector3(animal.x, animal.y, animal.z);
 
                     HandleArrival();
                 }

@@ -10,6 +10,9 @@ public class ResearchDisplay : MonoBehaviour {
     public Image            icon;
     public TextMeshProUGUI  cost;
     public Button           buttonResearch;
+    public Button           buttonMaintain;
+    public Sprite           spriteMaintainOn;
+    public Sprite           spriteMaintainOff;
     public Image            progressBarGreen;
     public Image            progressBarBlue;
 
@@ -43,9 +46,17 @@ public class ResearchDisplay : MonoBehaviour {
         float cap = _node.cost;
         if (progressBarGreen != null) progressBarGreen.fillAmount = Mathf.Clamp01(p / cap);
         if (progressBarBlue  != null) progressBarBlue.fillAmount  = Mathf.Clamp01((p - cap) / cap);
+
+        if (buttonMaintain != null) {
+            bool maintained = _rs.IsMaintained(_node.id);
+            var sprite = maintained ? spriteMaintainOn : spriteMaintainOff;
+            if (sprite != null) buttonMaintain.image.sprite = sprite;
+        }
     }
 
-    public void Setup(ResearchNodeData node, ResearchSystem rs, System.Action<ResearchNodeData> onSetActive) {
+    public void Setup(ResearchNodeData node, ResearchSystem rs,
+                      System.Action<ResearchNodeData> onSetActive,
+                      System.Action<ResearchNodeData> onToggleMaintain) {
         _node = node;
         _rs   = rs;
 
@@ -68,6 +79,17 @@ public class ResearchDisplay : MonoBehaviour {
                 cb.highlightedColor = new Color(1f, 1f, 1f, 0.85f);
                 buttonResearch.colors = cb;
             }
+        }
+
+        // Maintain toggle — visible when prereqs are met.
+        if (buttonMaintain != null) {
+            buttonMaintain.gameObject.SetActive(canSetActive);
+            if (canSetActive) {
+                var cap = node;
+                buttonMaintain.onClick.AddListener(() => onToggleMaintain(cap));
+            }
+            var maintainTip = buttonMaintain.GetComponent<Tooltippable>();
+            if (maintainTip != null) maintainTip.title = "maintain?";
         }
 
         // Progress bars — configure fill mode and color

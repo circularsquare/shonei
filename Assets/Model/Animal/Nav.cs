@@ -79,7 +79,7 @@ public class Nav {
             new Vector2(a.x, a.y), new Vector2(nextNode.wx, nextNode.wy),
             speed * edgeLen / edgeCost * deltaTime);
         a.x = newPos.x; a.y = newPos.y;
-        a.go.transform.position = new Vector3(a.x, a.y, 0);
+        a.go.transform.position = new Vector3(a.x, a.y, a.z);
 
         a.facingRight = (nextNode.wx - a.x > 0);
         return false;

@@ -15,6 +15,8 @@ public class ModifierSystem {
     public const float ToolWorkBonus               = 1.25f;
     public const float ResearchEfficiencyPerUnlock = 1.2f;
     public const float BaseAnimalSpeed             = 1.5f;
+    public const float FloorItemSpeedPenalty        = 0.8f;
+    public const float CrowdingSpeedPenalty         = 0.8f;
 
     // --- Query methods ---
 
@@ -59,11 +61,11 @@ public class ModifierSystem {
 
         // Floor items on tile: 25% slowdown (storage inventories don't count)
         if (tile.inv != null && tile.inv.invType == Inventory.InvType.Floor && !tile.inv.IsEmpty())
-            speed *= 0.75f;
+            speed *= FloorItemSpeedPenalty;
 
         // Crowding: any other mice on this tile = 25% slowdown
         if (AnimalController.instance.HasMultipleAnimalsOnTile(tile))
-            speed *= 0.75f;
+            speed *= CrowdingSpeedPenalty;
 
         return speed;
     }

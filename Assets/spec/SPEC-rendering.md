@@ -12,12 +12,12 @@
 | 11 | Platforms (depth-1 structures); also clock hand (one above its body) |
 | 12 | Water overlay sprite (`WaterController`) |
 | 30 | Items in storage/inventory display |
+| 40 | Foreground structures (depth-2: stairs, ladders, torches) |
 | 50 | Animals |
 | 51 | Clothing overlay (child SpriteRenderer on Animal) |
 | 60 | Plants |
 | 65 | Falling items (mid-air animation) |
 | 70 | Items on floor |
-| 80 | Foreground structures (depth-2: stairs, ladders, torches) |
 | 100 | Blueprints |
 | 200 | Build preview (mouse cursor ghost) |
 
@@ -29,7 +29,7 @@ Structures render in four depth layers per tile. Each tile holds `Structure[] st
 |-------|-------------|----------|----------------|-------------|
 | 0 | building layer | Buildings, plants (`Building`/`Plant`) | `(x, y)` | 10 |
 | 1 | platform layer | Platforms | `(x, y)` | 11 |
-| 2 | foreground layer | Stairs, ladders, torches | `(x, y)` | 80 |
+| 2 | foreground layer | Stairs, ladders, torches | `(x, y)` | 20 |
 | 3 | road layer | Roads | `(x, y−1/8)` — sits on tile surface | 1 |
 
 `tile.building` is a convenience property: `structs[0] as Building` (Plant extends Building, so both are accessible through it). Multiple layers can coexist on the same tile. `GetBlueprintAt(int depth)` / `SetBlueprintAt(int depth, Blueprint bp)` directly index into `blueprints[]`.

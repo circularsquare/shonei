@@ -5,17 +5,18 @@ using UnityEngine;
 /// <summary>
 /// Optional component of a Building that represents a workstation (crafting station).
 /// Owns the player-adjustable worker slot limit. Non-null only when structType.isWorkstation.
-/// WOM reads workstation.effectiveCapacity when registering craft orders.
+/// WOM reads workstation.workerLimit when registering craft orders.
 /// </summary>
 public class Workstation {
     /// <summary>Max workers from StructType.capacity.</summary>
     public int capacity;
 
     /// <summary>
-    /// Player-adjustable worker limit. -1 = use full capacity.
+    /// Player-adjustable worker limit. Defaults to capacity (all slots open).
     /// Persisted via StructureSaveData.workOrderEffectiveCapacity.
+    /// Use WorkOrderManager.SetWorkstationCapacity() to change at runtime.
     /// </summary>
-    public int effectiveCapacity = -1;
+    public int workerLimit;
 
     /// <summary>
     /// Completed craft rounds at this workstation. Compared against structType.depleteAt
@@ -25,6 +26,7 @@ public class Workstation {
 
     public Workstation(int capacity) {
         this.capacity = capacity;
+        this.workerLimit = capacity;
     }
 }
 

@@ -482,6 +482,8 @@ public class HaulFromMarketTask : Task {
 }
 public class ResearchTask : Task {
     private readonly Building _lab;
+    // Which research this scientist is maintaining, or -1 to work on activeResearchId.
+    public int maintenanceTargetId = -1;
     public ResearchTask(Animal animal, Building lab) : base(animal) { _lab = lab; }
     public override bool Initialize() {
         if (_lab == null) return false;
@@ -490,6 +492,11 @@ public class ResearchTask : Task {
         objectives.AddLast(new GoObjective(this, p.tile));
         objectives.AddLast(new ResearchObjective(this));
         return true;
+    }
+    public override void Cleanup() {
+        if (maintenanceTargetId >= 0)
+            ResearchSystem.instance?.ReleaseMaintenanceClaim(maintenanceTargetId);
+        base.Cleanup();
     }
 }
 
@@ -807,7 +814,6 @@ public class ChatTask : Task {
             Tile initiatorTile = FindAdjacentChatTile(partnerTile);
             if (initiatorTile != null) {
                 myTile = initiatorTile;
-                Debug.Log($"{animal.aName} started chatting with {partner.aName} (adjacent tiles)");
                 // Recruit partner — give them a reciprocal ChatTask
                 if (partner.task == null && partner.state == Animal.AnimalState.Idle) {
                     var partnerChat = new ChatTask(partner, animal);
@@ -819,7 +825,6 @@ public class ChatTask : Task {
             } else {
                 // Fallback: no horizontal neighbor available, walk to partner's tile
                 if (animal.nav.PathTo(partnerTile) == null) return false;
-                Debug.Log($"{animal.aName} started chatting with {partner.aName} (same tile fallback)");
                 if (partner.task == null && partner.state == Animal.AnimalState.Idle) {
                     partner.task = new ChatTask(partner, animal);
                     partner.task.Start();

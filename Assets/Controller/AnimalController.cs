@@ -55,20 +55,39 @@ public class AnimalController : MonoBehaviour{
         if (colonyTickCounter % 10 == 0) UpdateColonyStats();
     }
 
+    public HashSet<string> UsedNames() {
+        HashSet<string> names = new HashSet<string>();
+        for (int i = 0; i < na; i++)
+            if (animals[i] != null && !string.IsNullOrEmpty(animals[i].aName))
+                names.Add(animals[i].aName);
+        return names;
+    }
+
+    private int nextId = 0; // monotonic ID counter (not tied to array index)
+
     public Animal AddAnimal(float x = 10, float y = 4){
         GameObject animalPrefab = Resources.Load<GameObject>("Prefabs/Animal");
-        GameObject go = GameObject.Instantiate(animalPrefab, new Vector3(x, y, 0), Quaternion.identity);
+        GameObject go = GameObject.Instantiate(animalPrefab, new Vector3(x, y, -0.0001f * nextId), Quaternion.identity);
         Animal animal = go.GetComponent<Animal>(); // already made in prefab!
         animal.x = x;
         animal.y = y;
-        animal.id = na;
+        animal.id = nextId++;
         animal.RegisterCbAnimalChanged(OnAnimalChanged);
         animal.transform.SetParent(transform);
-        animals[na] = animal;
+        // Don't add to animals[] yet — Animal.Start() calls RegisterReady()
+        // once fully initialized, preventing ticks on half-constructed animals.
         jobCounts[Db.jobs[0]] += 1;
-        na += 1;
         UpdateJobCount(Db.jobs[0]);
         return animal;
+    }
+
+    /// <summary>
+    /// Called from Animal.Start() once the animal is fully initialized.
+    /// Adds it to the tickable animals array.
+    /// </summary>
+    public void RegisterReady(Animal animal) {
+        animals[na] = animal;
+        na += 1;
     }
 
     public void LoadAnimal(AnimalSaveData asd) {

@@ -35,6 +35,13 @@ public class ResearchSystem : MonoBehaviour {
     public Dictionary<int, ResearchNodeData> nodeById    = new Dictionary<int, ResearchNodeData>();
     public HashSet<int>                      unlockedIds = new HashSet<int>();
 
+    // Maintain system: nodes the player wants scientists to keep above the unlock threshold.
+    // Scientists prioritise maintained nodes that have fallen below cost before working on activeResearchId.
+    public HashSet<int>            maintainIds       = new HashSet<int>();
+    // Exclusive claims: non-active maintained nodes currently being worked on (nodeId → scientist).
+    // The active research is never exclusively claimed — multiple scientists may maintain it.
+    Dictionary<int, Animal>        maintenanceClaims = new Dictionary<int, Animal>();
+
     void Awake() {
         if (instance != null) { Debug.LogError("two ResearchSystems!"); }
         instance = this;
@@ -98,15 +105,70 @@ public class ResearchSystem : MonoBehaviour {
     public bool CanSetActive(ResearchNodeData node) => PrereqsMet(node);
 
     public void SetActiveResearch(int id) {
-        activeResearchId = (activeResearchId == id) ? -1 : id;
+        bool turningOn = activeResearchId != id;
+        activeResearchId = turningOn ? id : -1;
+        if (turningOn) SetMaintain(id, true);
     }
 
+    // ── Maintain API ──────────────────────────────────────────────────
+
+    public void ToggleMaintain(int id) {
+        if (maintainIds.Contains(id)) maintainIds.Remove(id);
+        else maintainIds.Add(id);
+    }
+
+    public void SetMaintain(int id, bool state) {
+        if (state) maintainIds.Add(id);
+        else maintainIds.Remove(id);
+    }
+
+    public bool IsMaintained(int id) => maintainIds.Contains(id);
+
+    // Called when a scientist picks up a ResearchTask.
+    // Returns the node ID the scientist should work on, or -1 for normal active research.
+    //
+    // Priority: (1) active research if it is maintained and below cost — no exclusive claim,
+    //               multiple scientists may maintain it.
+    //           (2) first non-active maintained node below cost that isn't already claimed.
+    //           (3) -1 → fall through to activeResearchId in the caller.
+    public int ClaimMaintenanceTarget(Animal scientist) {
+        // (1) Active research maintenance — highest priority, no exclusive claim.
+        if (activeResearchId >= 0
+                && maintainIds.Contains(activeResearchId)
+                && nodeById.TryGetValue(activeResearchId, out var activeNode)
+                && GetProgress(activeResearchId) < activeNode.cost
+                && PrereqsMet(activeNode)) {
+            return activeResearchId;
+        }
+
+        // (2) Other maintained nodes — one scientist per node.
+        foreach (int id in maintainIds) {
+            if (id == activeResearchId) continue;
+            if (!nodeById.TryGetValue(id, out var node)) continue;
+            if (GetProgress(id) >= node.cost) continue;
+            if (!PrereqsMet(node)) continue;
+            if (maintenanceClaims.ContainsKey(id)) continue;
+            maintenanceClaims[id] = scientist;
+            return id;
+        }
+
+        return -1;
+    }
+
+    public void ReleaseMaintenanceClaim(int nodeId) {
+        maintenanceClaims.Remove(nodeId);
+    }
+
+    // ── Scientist progress ──────────────────────────────────────────
+
     // Called from AnimalStateManager each research tick with the scientist's work efficiency.
-    public void AddScientistProgress(float workEfficiency) {
-        if (activeResearchId < 0) return;
-        if (!nodeById.TryGetValue(activeResearchId, out var node)) return;
+    // targetId comes from ResearchTask.maintenanceTargetId; -1 means use activeResearchId.
+    public void AddScientistProgress(float workEfficiency, int targetId) {
+        int id = targetId >= 0 ? targetId : activeResearchId;
+        if (id < 0) return;
+        if (!nodeById.TryGetValue(id, out var node)) return;
         float gained = workEfficiency * ScientistRate * ModifierSystem.instance.GetResearchMultiplier();
-        progress[activeResearchId] = Mathf.Min(GetProgress(activeResearchId) + gained, GetCap(node));
+        progress[id] = Mathf.Min(GetProgress(id) + gained, GetCap(node));
         CheckTransitions();
     }
 
@@ -181,6 +243,8 @@ public class ResearchSystem : MonoBehaviour {
         unlockedIds.Clear();
         foreach (var key in new List<int>(progress.Keys)) progress[key] = 0f;
         activeResearchId = -1;
+        maintainIds.Clear();
+        maintenanceClaims.Clear();
         CheckTransitions();
     }
 }
