@@ -14213,7 +14213,7 @@ MonoBehaviour:
   text: {fileID: 1443354244}
   enableBar: {fileID: 1051842824}
   enableDisableButton: {fileID: 1584542168}
-  enableDisableLabel: {fileID: 1277655806}
+  enableDisableLabel: {fileID: 517483106}
   spriteEnabled: {fileID: 21300000, guid: 93fe099cb9de3e847aa4783aadc530eb, type: 3}
   spriteDisabled: {fileID: 21300000, guid: cb796b94e005703479b8d43890cc38a1, type: 3}
   priorityUpButton: {fileID: 1769927009}

@@ -82,11 +82,16 @@ public class AnimalSaveData {
     public float energy;
     public float food;
     public float eep;
-    public float timeSinceAteWheat;    // happiness
-    public float timeSinceAteFruit;    // happiness
-    public float timeSinceAteSoymilk;  // happiness
-    public float? timeSinceSawFountain; // null on old saves → starts at maxTime (never seen)
-    public float? timeSinceSocialized;  // null on old saves → starts at maxTime (never chatted)
+    public float timeSinceAteWheat;    // legacy happiness (kept for old save compat)
+    public float timeSinceAteFruit;    // legacy happiness
+    public float timeSinceAteSoymilk;  // legacy happiness
+    public float? timeSinceSawFountain; // legacy happiness
+    public float? timeSinceSocialized;  // legacy happiness
+    public float? satWheat;     // satisfaction points (null on old saves → converted from legacy)
+    public float? satFruit;
+    public float? satSoymilk;
+    public float? satFountain;
+    public float? satSocial;
     public InventorySaveData inv;
     public InventorySaveData foodSlotInv; // null on old saves → slot starts empty
     public InventorySaveData toolSlotInv;

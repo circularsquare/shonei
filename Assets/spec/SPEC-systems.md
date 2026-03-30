@@ -107,7 +107,7 @@ Each animal has three `InvType.Equip` inventory instances (1 stack each, registe
 **Food acquisition flow:**
 1. Animal gets hungry → `FindFood()` checks `foodSlotInv` for room
 2. If room exists, creates `ObtainTask(food, amount, foodSlotInv)` — item goes to slot, not main inventory
-3. `HandleNeeds()` eats from `foodSlotInv`: full meals (≥100 fen) restore `foodValue` and trigger happiness; partial meals (remaining fen) scale nutrition proportionally and don't count for happiness
+3. `HandleNeeds()` eats from `foodSlotInv`: full meals (≥100 fen) restore `foodValue` and grant full satisfaction; partial meals (remaining fen) scale both nutrition and satisfaction proportionally
 
 **Key methods on `Animal`:**
 - `TakeItem(iq, targetInv = null)` — picks up from floor tile; pass `foodSlotInv` to equip directly

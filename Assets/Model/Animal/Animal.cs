@@ -64,6 +64,7 @@ public class Animal : MonoBehaviour{
     }
 
     public System.Random random;
+    public float tickOffset;    // [0,1) — stagger phase for per-frame tick dispatch
     public int tickCounter = 0;
 
     // Set before Start() runs when loading a save; Start() checks this and applies it.
@@ -105,11 +106,21 @@ public class Animal : MonoBehaviour{
             this.eeping = new Eeping();
             this.eeping.eep = pendingSaveData.eep;
             this.happiness = new Happiness();
-            this.happiness.timeSinceAteWheat    = pendingSaveData.timeSinceAteWheat;
-            this.happiness.timeSinceAteFruit    = pendingSaveData.timeSinceAteFruit;
-            this.happiness.timeSinceAteSoymilk  = pendingSaveData.timeSinceAteSoymilk;
-            this.happiness.timeSinceSawFountain = pendingSaveData.timeSinceSawFountain ?? Happiness.maxTime;
-            this.happiness.timeSinceSocialized  = pendingSaveData.timeSinceSocialized  ?? Happiness.maxTime;
+            if (pendingSaveData.satWheat.HasValue) {
+                // New satisfaction format
+                this.happiness.satWheat    = pendingSaveData.satWheat.Value;
+                this.happiness.satFruit    = pendingSaveData.satFruit ?? 0f;
+                this.happiness.satSoymilk  = pendingSaveData.satSoymilk ?? 0f;
+                this.happiness.satFountain = pendingSaveData.satFountain ?? 0f;
+                this.happiness.satSocial   = pendingSaveData.satSocial ?? 0f;
+            } else {
+                // Legacy format: convert timeSince counters to satisfaction points
+                this.happiness.satWheat    = ConvertTimerToSat(pendingSaveData.timeSinceAteWheat);
+                this.happiness.satFruit    = ConvertTimerToSat(pendingSaveData.timeSinceAteFruit);
+                this.happiness.satSoymilk  = ConvertTimerToSat(pendingSaveData.timeSinceAteSoymilk);
+                this.happiness.satFountain = ConvertTimerToSat(pendingSaveData.timeSinceSawFountain ?? 180f);
+                this.happiness.satSocial   = ConvertTimerToSat(pendingSaveData.timeSinceSocialized ?? 180f);
+            }
             this.job = Db.GetJobByName(pendingSaveData.jobName) ?? Db.jobs[0];
             this.state = AnimalState.Idle;
             this.efficiency = eating.Efficiency() * eeping.Efficiency() * happiness.TemperatureEfficiency();
@@ -142,6 +153,8 @@ public class Animal : MonoBehaviour{
             this.happiness = new Happiness();
             FindHome();
         }
+        // Stagger SlowUpdate across animals so they don't all fire on the same tick
+        tickCounter = id % 10;
         // Register initial tile occupancy
         _currentTile = TileHere();
         AnimalController.instance.RegisterAnimalOnTile(_currentTile);
@@ -149,6 +162,13 @@ public class Animal : MonoBehaviour{
         // This is deferred from AddAnimal() so TickUpdate/UpdateColonyStats never
         // iterate over an animal whose Start() hasn't run yet.
         AnimalController.instance.RegisterReady(this);
+    }
+
+    /// Converts a legacy timeSinceX value to satisfaction points.
+    /// 0 (just did it) → activityGrant (2.0), 120+ (unsatisfied) → 0.
+    private static float ConvertTimerToSat(float timeSince) {
+        if (timeSince >= 120f) return 0f;
+        return Happiness.activityGrant * (120f - timeSince) / 120f;
     }
 
 
@@ -260,7 +280,7 @@ public class Animal : MonoBehaviour{
         //     50% try leisure, 20% fall through to work, 30% idle.
         if (IsLeisureTime()) {
             float roll = (float)random.NextDouble();
-            if (roll < 0.5f && happiness.timeSinceSocialized >= Happiness.recentThreshold - Happiness.soonThreshold) {
+            if (roll < 0.5f && happiness.satSocial <= Happiness.wantThreshold) {
                 if (FindChatPartner()) return;
                 task = null; return; // no partner — idle, don't work
             } else if (roll < 0.8f) {

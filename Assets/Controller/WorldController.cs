@@ -44,8 +44,13 @@ public class WorldController : MonoBehaviour {
         }
 
         yield return null; // wait one frame so all other Start()s finish before we generate the world
-        GenerateDefault();
-        StartCoroutine(SaveSystem.instance.PostLoadInit());
+        string mostRecent = SaveSystem.instance.GetMostRecentSlot();
+        if (mostRecent != null) {
+            SaveSystem.instance.Load(mostRecent);
+        } else {
+            GenerateDefault();
+            StartCoroutine(SaveSystem.instance.PostLoadInit());
+        }
         World.OnItemFall += SpawnItemFallAnimation;
     }
 
@@ -121,6 +126,7 @@ public class WorldController : MonoBehaviour {
         AnimalController.instance.na = 0;
         AnimalController.instance.ResetJobCounts();
         AnimalController.instance.ClearTileOccupancy();
+        AnimalController.instance.ResetTickAccumulator();
 
         // 4. Destroy remaining inventories (tile invs; animal invs already gone)
         foreach (Inventory inv in new List<Inventory>(InventoryController.instance.inventories)) {
@@ -191,7 +197,7 @@ public class WorldController : MonoBehaviour {
         // graph is built. Mirrors the Reconcile() call at the end of ApplySaveData().
         WorkOrderManager.instance?.Reconcile(silent: true);
 
-        for (int i = 0; i < 4; i++) AnimalController.instance.AddAnimal(20, 10);
+        for (int i = 0; i < 4; i++) AnimalController.instance.AddAnimal(19 + i, 10);
         Camera.main.transform.position = new Vector3(20f, 13f, Camera.main.transform.position.z);
         defaultSetupCoroutine = StartCoroutine(DefaultJobSetup());
     }

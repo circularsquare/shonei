@@ -60,7 +60,7 @@ public class World : MonoBehaviour {
 
     public void Update(){
         if (Math.Floor(timer + Time.deltaTime) - Math.Floor(timer) > 0){ // every 1 sec
-            animalController.TickUpdate();
+            // AnimalController self-drives staggered ticks from its own Update()
             plantController.TickUpdate();
             if (ResearchSystem.instance != null) ResearchSystem.instance.TickUpdate();
         }

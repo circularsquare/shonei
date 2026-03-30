@@ -60,11 +60,14 @@ public class AnimalStateManager {
                 }
                 return;
             }
-            // Random walking when nothing else to do
-            if (UnityEngine.Random.Range(0, 5) == 0) {
-                animal.task = new GoTask(animal,
-                    animal.world.GetTileAt(animal.x + UnityEngine.Random.Range(-1, 2), animal.y));
-                if (!animal.task.Start()) animal.task = null;
+            // Random walking when nothing else to do — prefer tiles without mice,
+            // only consider direct nav-graph neighbours (no detours via ladders etc.)
+            if (here != null && UnityEngine.Random.Range(0, 5) == 0) {
+                Tile dest = PickRandomNavNeighbour(here);
+                if (dest != null) {
+                    animal.task = new GoTask(animal, dest);
+                    if (!animal.task.Start()) animal.task = null;
+                }
             }
         }
     }
@@ -82,6 +85,22 @@ public class AnimalStateManager {
         }
         if (candidates.Count == 0) return null;
         return candidates[UnityEngine.Random.Range(0, candidates.Count)];
+    }
+
+    // Returns a random direct nav-graph neighbour tile (no waypoints).
+    // Prefers tiles with no other animals; returns null if none are available.
+    private Tile PickRandomNavNeighbour(Tile here) {
+        var ac = AnimalController.instance;
+        List<Tile> candidates = null;
+        foreach (Node n in here.node.neighbors) {
+            if (n.isWaypoint || n.tile == null || !n.standable) continue;
+            if (ac.AnyOtherAnimalOnTile(n.tile, animal)) continue;
+            if (candidates == null) candidates = new List<Tile>();
+            candidates.Add(n.tile);
+        }
+        if (candidates != null && candidates.Count > 0)
+            return candidates[UnityEngine.Random.Range(0, candidates.Count)];
+        return null; // don't wander if all neighbours have mice
     }
 
     // Returns the skill domain for the animal's current task, or null if the task

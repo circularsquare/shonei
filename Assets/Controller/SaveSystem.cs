@@ -239,11 +239,11 @@ public class SaveSystem : MonoBehaviour {
             energy             = a.energy,
             food               = a.eating.food,
             eep                = a.eeping.eep,
-            timeSinceAteWheat    = a.happiness.timeSinceAteWheat,
-            timeSinceAteFruit    = a.happiness.timeSinceAteFruit,
-            timeSinceAteSoymilk  = a.happiness.timeSinceAteSoymilk,
-            timeSinceSawFountain = a.happiness.timeSinceSawFountain,
-            timeSinceSocialized  = a.happiness.timeSinceSocialized,
+            satWheat             = a.happiness.satWheat,
+            satFruit             = a.happiness.satFruit,
+            satSoymilk           = a.happiness.satSoymilk,
+            satFountain          = a.happiness.satFountain,
+            satSocial            = a.happiness.satSocial,
             inv                = GatherInventory(a.inv),
             foodSlotInv        = GatherInventory(a.foodSlotInv),
             toolSlotInv        = GatherInventory(a.toolSlotInv),
@@ -512,10 +512,23 @@ public class SaveSystem : MonoBehaviour {
 
     public List<string> GetSaveSlots() {
         var slots = new List<string>();
-        if (System.IO.Directory.Exists(SaveDir))
-            foreach (string file in System.IO.Directory.GetFiles(SaveDir, "*.json"))
-                slots.Add(System.IO.Path.GetFileNameWithoutExtension(file));
+        if (!System.IO.Directory.Exists(SaveDir)) return slots;
+        var files = new System.IO.DirectoryInfo(SaveDir).GetFiles("*.json");
+        System.Array.Sort(files, (a, b) => b.LastWriteTime.CompareTo(a.LastWriteTime));
+        foreach (var fi in files)
+            slots.Add(System.IO.Path.GetFileNameWithoutExtension(fi.Name));
         return slots;
+    }
+
+    // Returns the name of the most recently modified save slot, or null if none exist.
+    public string GetMostRecentSlot() {
+        if (!System.IO.Directory.Exists(SaveDir)) return null;
+        var files = new System.IO.DirectoryInfo(SaveDir).GetFiles("*.json");
+        if (files.Length == 0) return null;
+        System.IO.FileInfo newest = files[0];
+        for (int i = 1; i < files.Length; i++)
+            if (files[i].LastWriteTime > newest.LastWriteTime) newest = files[i];
+        return System.IO.Path.GetFileNameWithoutExtension(newest.Name);
     }
 
     public bool SlotExists(string slotName) => System.IO.File.Exists(SlotPath(slotName));

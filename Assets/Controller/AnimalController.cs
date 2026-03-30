@@ -19,6 +19,9 @@ public class AnimalController : MonoBehaviour{
     private Dictionary<Tile, int> tileOccupancy;
     private TMPro.TextMeshProUGUI happinessDisplay;
     private int colonyTickCounter = 0;
+    private float tickAccumulator = 0f;
+    private float prevTickAccumulator = 0f;
+    private bool jobCountsInitialized = false;
 
     public float avgHappiness = 0f;
     public int totalHousingCapacity = 0;
@@ -43,16 +46,29 @@ public class AnimalController : MonoBehaviour{
     }
 
 
-    public void TickUpdate(){ // called on a timer from World.cs
-        if (world == null){
+    // Staggered tick dispatch: each animal ticks exactly once per game-second,
+    // but at a different point within that second based on its tickOffset.
+    void Update() {
+        if (na == 0) return;
+        // Lazy init: job counts UI needs world to exist (frame 1+)
+        if (!jobCountsInitialized && WorldController.instance?.world != null) {
             world = WorldController.instance.world;
-            AddJobCounts();  // this needs to run AFTER world has already been populated!
+            AddJobCounts();
+            jobCountsInitialized = true;
         }
-        for (int a = 0; a < na; a++){
-            animals[a].TickUpdate();
+        prevTickAccumulator = tickAccumulator;
+        tickAccumulator += Time.deltaTime;
+        for (int a = 0; a < na; a++) {
+            float off = animals[a].tickOffset;
+            // Boundary crossing: has floor(t - offset) increased?
+            if (Mathf.Floor(prevTickAccumulator - off) < Mathf.Floor(tickAccumulator - off))
+                animals[a].TickUpdate();
         }
-        colonyTickCounter++;
-        if (colonyTickCounter % 10 == 0) UpdateColonyStats();
+        // Colony-wide bookkeeping: once per full second boundary
+        if (Mathf.Floor(prevTickAccumulator) < Mathf.Floor(tickAccumulator)) {
+            colonyTickCounter++;
+            if (colonyTickCounter % 10 == 0) UpdateColonyStats();
+        }
     }
 
     public HashSet<string> UsedNames() {
@@ -86,6 +102,8 @@ public class AnimalController : MonoBehaviour{
     /// Adds it to the tickable animals array.
     /// </summary>
     public void RegisterReady(Animal animal) {
+        // Golden ratio spread gives excellent distribution for any animal count
+        animal.tickOffset = (animal.id * 0.618034f) % 1f;
         animals[na] = animal;
         na += 1;
     }
@@ -246,6 +264,7 @@ public class AnimalController : MonoBehaviour{
         return t != null && tileOccupancy.TryGetValue(t, out int count) && count > 1;
     }
     public void ClearTileOccupancy() { tileOccupancy.Clear(); }
+    public void ResetTickAccumulator() { tickAccumulator = 0f; prevTickAccumulator = 0f; }
 
     // Returns the nearest truly idle animal (no task, Idle state) within `radius` tiles, or null.
     public Animal FindIdleAnimalNear(Animal exclude, int radius) {

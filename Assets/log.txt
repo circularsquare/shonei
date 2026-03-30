@@ -7,6 +7,8 @@ meoww!!
 - plant sprite sheet
 - research maintenance
 - rain sounds!
+- happiness rework 
+- stagger animal tick updates
 3/28
 - added clothes! ramie, weaver, tailor. clothes widen comfortable temperature range
 3/27
