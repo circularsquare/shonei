@@ -8,6 +8,7 @@
 Idle → Working
      → Moving → (arrives) → back to Working or Idle
 Idle → Eeping (sleeping)
+Idle → Leisuring (chatting, tea house, etc.)
 Any  → Falling (involuntary; interrupts current task) → Idle on landing
 ```
 
@@ -15,6 +16,7 @@ Any  → Falling (involuntary; interrupts current task) → Idle on landing
 - **Working**: executes current objective (craft, harvest, build, sleep)
 - **Moving**: navigates path via A*; calls `OnArrival()` on completion
 - **Eeping**: sleeps at home, restores sleep meter; can trigger reproduction
+- **Leisuring**: ticks `workProgress` until `LeisureObjective.duration` reached, then completes
 - **Falling**: triggered when `!preventFall && !standable`; moves mouse straight down each frame using gravity (`World.fallGravity`); snaps to tile center on landing; bypasses task and nav systems entirely
 
 ### Needs
@@ -31,7 +33,8 @@ Any  → Falling (involuntary; interrupts current task) → Idle on landing
 `Animal.ChooseTask()` runs top-to-bottom when an animal is Idle:
 
 1. **Survival** (always first): drop inventory → eat if hungry → sleep if eepy at night → equip tool → equip clothing
-2. **Work orders:**
+2. **Leisure** (4–9 pm only): 50% try `FindChatPartner()` (idle if no partner), 30% idle, 20% fall through to work
+3. **Work orders:**
    - `wom.PruneStale()` — call once before the tier sequence
    - `wom.ChooseOrder(this, 1)` — hauls unblocking a deconstruct
    - `wom.ChooseOrder(this, 2)` — construct / supply / harvest
@@ -77,9 +80,10 @@ Tasks decompose into an ordered queue of Objectives. Each task:
 | `EepTask` | survival | any | Navigate home and sleep |
 | `DropTask` | survival | any | Drop excess main inventory — prefers nearby storage/tank (10-tile bonus) over floor |
 | `GoTask` | survival | any | Navigate to a tile |
+| `ChatTask` | leisure | any | Walk to idle partner, both leisure 20 ticks, grants socialization happiness |
 
 **Objectives (atomic steps):**
-`GoObjective`, `FetchObjective`, `DeliverObjective`, `DeliverToBlueprintObjective`, `WorkObjective`, `HarvestObjective`, `ConstructObjective`, `EepObjective`, `DropObjective`, `ResearchObjective`
+`GoObjective`, `FetchObjective`, `DeliverObjective`, `DeliverToBlueprintObjective`, `WorkObjective`, `HarvestObjective`, `ConstructObjective`, `EepObjective`, `DropObjective`, `ResearchObjective`, `LeisureObjective`
 
 **`FetchObjective` behaviour:**
 - Navigates to a source tile and picks up `iq.quantity` of an item into the animal's inventory (or an equip slot if `targetInv` is set).

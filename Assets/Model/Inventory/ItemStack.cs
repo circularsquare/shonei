@@ -55,8 +55,10 @@ public class ItemStack {
             this.item = item; }
         if (item != this.item){ // item slot occupied by different item. go next
             return null; }
-        if (item.discrete && quantity % 100 != 0)
+        if (item.discrete && quantity % 100 != 0){
             Debug.LogWarning($"Discrete item '{item.name}': non-whole-liang quantity {quantity} fen passed to AddItem");
+            return 0; // discard the fractional item entirely
+        }
         if (this.quantity + quantity > stackSize){
             int sizeOver = this.quantity + quantity - stackSize;
             this.quantity = stackSize;

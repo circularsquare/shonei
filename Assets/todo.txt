@@ -3,7 +3,6 @@
     - bunnies
     - magic / qi
     - farming buildings
-        - silk 
         - grooming?
     - mouse skills, flesh out?
     - books
@@ -11,20 +10,19 @@
         - manuals for learning technologies
         - scriptoriums
     - clothing
-        - ramie
-            - add plant sprite sheet?
         - silkworm building? -> silk cocoons -> cloth -> clothing
-        - figure out how to display clothing on mice
 
 - trading 
     - add automatic foreign traders
 - plant
     - flesh out plant growth, moisture and temperature
-    - make plants grow from sunlight? shading
+    - make plants grow from sunlight?
 
 - visuals
-    - improve mouse animation
-    - make item icons more... uniformly round? satisfying looking?
+    - make item icons more coherent / similar
+    - plant sprite sheet
+    - tab styling, add building icons?
+
 - ponder inventory management
     - global, market, need to have set target 
     - global can have
@@ -40,17 +38,17 @@
         - assign scientists to "maintain" duty?
     - lock postrequisites?
 
-- dynamic mouse objectives? for tasks
-- leisure!
+- disincentivize mouse stacking 
+    - reconsider movement speed multipliers to not be tile based?
+- dynamic mouse task objectives
+
 - workplace workorder capacity system is kinda indirect
 - rain sounds
+    - build sounds, etc.
 
 - we're getting a lot of partial hauler drops... 
     - reserve item stack space
 - fireplace 
-    - temperature
-        - mouse temperature tolerance
-- tab styling, add building icons?
 
 
 BUGS

@@ -12,11 +12,12 @@ public class Animal : MonoBehaviour{
     public float x;
     public float y;
     public float maxSpeed = 2f;
-    public bool isMovingRight = true;
+    public bool facingRight = true;
     public bool pendingRefresh = false; // deferred Refresh() when SetJob fires mid-waypoint
 
     public Tile target;         // where you are currently going
     public Tile homeTile;
+    private Tile _currentTile;  // cached for O(1) tile-occupancy tracking
 
     public Recipe recipe;
     public int numRounds = 0;
@@ -48,6 +49,7 @@ public class Animal : MonoBehaviour{
         Eeping,
         Moving,         // any type of moving, under the task system
         Falling,        // involuntary fall, bypasses task and nav systems
+        Leisuring,      // leisure activity (chatting, tea house, etc.)
     }
     private AnimalStateManager stateManager;
     private AnimalState _state;
@@ -106,6 +108,7 @@ public class Animal : MonoBehaviour{
             this.happiness.timeSinceAteFruit    = pendingSaveData.timeSinceAteFruit;
             this.happiness.timeSinceAteSoymilk  = pendingSaveData.timeSinceAteSoymilk;
             this.happiness.timeSinceSawFountain = pendingSaveData.timeSinceSawFountain ?? Happiness.maxTime;
+            this.happiness.timeSinceSocialized  = pendingSaveData.timeSinceSocialized  ?? Happiness.maxTime;
             this.job = Db.GetJobByName(pendingSaveData.jobName) ?? Db.jobs[0];
             this.state = AnimalState.Idle;
             this.efficiency = eating.Efficiency() * eeping.Efficiency() * happiness.TemperatureEfficiency();
@@ -138,6 +141,9 @@ public class Animal : MonoBehaviour{
             this.happiness = new Happiness();
             FindHome();
         }
+        // Register initial tile occupancy
+        _currentTile = TileHere();
+        AnimalController.instance.RegisterAnimalOnTile(_currentTile);
     }
 
 
@@ -186,6 +192,12 @@ public class Animal : MonoBehaviour{
     private bool IsNighttime() {
         float phase = (World.instance.timer % World.ticksInDay) / (float)World.ticksInDay;
         return phase >= 21f / 24f || phase < 6f / 24f;
+    }
+
+    // True between 5 pm and 9 pm — mice prefer leisure over work during this window.
+    private bool IsLeisureTime() {
+        float phase = (World.instance.timer % World.ticksInDay) / (float)World.ticksInDay;
+        return phase >= 17f / 24f && phase < 21f / 24f;
     }
 
     public void SlowUpdate() { // called every 10 or so seconds
@@ -239,6 +251,19 @@ public class Animal : MonoBehaviour{
             if (task.Start()) return; }
         if (FindEquipment()) return;
         if (FindClothing()) return;
+
+        // 1b. Leisure window (4–9 pm): prefer leisure over work.
+        //     50% try leisure, 20% fall through to work, 30% idle.
+        if (IsLeisureTime()) {
+            float roll = (float)random.NextDouble();
+            if (roll < 0.5f && happiness.timeSinceSocialized >= Happiness.recentThreshold - Happiness.soonThreshold) {
+                if (FindChatPartner()) return;
+                task = null; return; // no partner — idle, don't work
+            } else if (roll < 0.8f) {
+                task = null; return; // idle
+            }
+            // else: 20% — fall through to work orders
+        }
 
         // 2. Work orders: p1 → p2 → p3 (haul, then craft via recipe-first) → p4
         //    Craft uses ChooseCraftTask() instead of ChooseOrder so recipe score drives building selection.
@@ -332,6 +357,15 @@ public class Animal : MonoBehaviour{
         return false;
     }
 
+
+    private bool FindChatPartner() {
+        Animal partner = AnimalController.instance.FindIdleAnimalNear(this, 15);
+        if (partner == null) return false;
+        task = new ChatTask(this, partner);
+        if (task.Start()) return true;
+        task = null;
+        return false;
+    }
 
     // this uses the task/objective system!
     public void OnArrival(){
@@ -486,10 +520,22 @@ public class Animal : MonoBehaviour{
         return bestRecipe;
     }
 
+    const float MaxCraftSeconds = 20f;
+
     public int CalculateWorkPossible(Recipe recipe){
         // looks at inputs in gInv, and first available storage you can find in animal range, at least 1.
         // the storage thing makes it a bit conservative.
-        int numRounds = 10; // will try to gather this amount of input at once.
+
+        // Cap rounds by estimated time rather than a fixed count, so slow recipes
+        // don't lock the mouse for ages. We estimate seconds-per-round from the
+        // recipe workload and the animal's current work efficiency (ticks are 1 s).
+        Skill? skill = null;
+        if (recipe.skill != null && System.Enum.TryParse<Skill>(recipe.skill, ignoreCase: true, out Skill s))
+            skill = s;
+        float workEff = ModifierSystem.instance.GetWorkMultiplier(this, skill);
+        int numRounds = workEff > 0f
+            ? Math.Max((int)(MaxCraftSeconds * workEff / recipe.workload), 1)
+            : 1;
         int n;
         foreach (ItemQuantity input in recipe.inputs){
             n = InventoryController.instance.TotalAvailableQuantity(input.item) / input.quantity;
@@ -557,6 +603,16 @@ public class Animal : MonoBehaviour{
 
     public Tile TileHere() { return world.GetTileAt(x, y); }
 
+    // Call after any position change to keep tile-occupancy tracking up to date.
+    public void UpdateCurrentTile() {
+        Tile newTile = TileHere();
+        if (newTile != _currentTile) {
+            AnimalController.instance.UnregisterAnimalFromTile(_currentTile);
+            AnimalController.instance.RegisterAnimalOnTile(newTile);
+            _currentTile = newTile;
+        }
+    }
+
     public bool AtHome() {
         return homeTile != null && homeTile == TileHere() && homeTile.building?.structType.name == "house";
     }
@@ -564,12 +620,13 @@ public class Animal : MonoBehaviour{
     public bool HasHouse => homeTile?.building?.structType.name == "house";
 
     public bool IsMoving(){
-        return !(state == AnimalState.Idle || state == AnimalState.Working
-            || state == AnimalState.Eeping);
+        return state == AnimalState.Moving || state == AnimalState.Falling;
     }
 
     public float SquareDistance(float x1, float x2, float y1, float y2) { return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2); }
     public void Destroy() {
+        AnimalController.instance.UnregisterAnimalFromTile(_currentTile);
+        _currentTile = null;
         if (inv != null) { inv.Destroy(); inv = null; }
         GameObject.Destroy(gameObject);
     }

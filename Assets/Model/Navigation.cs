@@ -292,6 +292,26 @@ public class Graph {
     }
     public float GetEdgeCost(Node from, Node to) => GetEdgeInfo(from, to).cost;
 
+    // Edge info without road cost reduction — used by Nav.Move() for runtime movement speed.
+    // Road bonus is instead applied per-tile via ModifierSystem.GetTravelSpeedMultiplier().
+    // Waypoint, vertical, and water modifiers are kept (they affect traversal physics, not tile bonuses).
+    public (float cost, float length) GetRawEdgeInfo(Node from, Node to) {
+        if (from.isWaypoint && to.isWaypoint) {
+            if (Math.Abs(to.wx - from.wx) < 0.1f) return (3.0f, 1.0f);
+            return (1.8f, 1.4142f);
+        }
+        if (from.isWaypoint || to.isWaypoint) {
+            float dist = Math.Abs(to.wx - from.wx);
+            return (dist, dist);
+        }
+        if (Math.Abs(to.wy - from.wy) > 0.1f) return (2.0f, 1.0f);
+        // Horizontal — no road reduction; water still applies
+        float baseCost = 1.0f;
+        bool inWater = (from.tile != null && from.tile.water > 0)
+                    || (to.tile   != null && to.tile.water   > 0);
+        return (inWater ? baseCost * 2f : baseCost, 1.0f);
+    }
+
     public bool GetStandability(int x, int y){
         Tile tileHere = world.GetTileAt(x, y);
         Tile tileBelow = world.GetTileAt(x, y-1);

@@ -11,6 +11,7 @@ public class Happiness {
     public float timeSinceAteFruit   = maxTime;
     public float timeSinceAteSoymilk = maxTime;
     public float timeSinceSawFountain = maxTime;
+    public float timeSinceSocialized = maxTime;
 
     // Comfortable temperature range (°C). Updated by UpdateClothingBonus().
     public float comfortTempLow  = 10f;
@@ -31,6 +32,10 @@ public class Happiness {
     public void NoteSawDecoration(string decorType) {
         if (decorType == "fountain") timeSinceSawFountain = 0f;
         // else if (decorType == "garden") timeSinceSawGarden = 0f;
+    }
+
+    public void NoteSocialized() {
+        timeSinceSocialized = 0f;
     }
 
     // True if eating this food would satisfy a currently-unhappy category
@@ -56,10 +61,12 @@ public class Happiness {
         timeSinceAteFruit    = Mathf.Min(timeSinceAteFruit    + 10f, maxTime);
         timeSinceAteSoymilk  = Mathf.Min(timeSinceAteSoymilk  + 10f, maxTime);
         timeSinceSawFountain = Mathf.Min(timeSinceSawFountain + 10f, maxTime);
-        bool wheat    = timeSinceAteWheat    < recentThreshold;
-        bool fruit    = timeSinceAteFruit    < recentThreshold;
-        bool soymilk  = timeSinceAteSoymilk  < recentThreshold;
-        bool fountain = timeSinceSawFountain < recentThreshold;
+        timeSinceSocialized  = Mathf.Min(timeSinceSocialized  + 10f, maxTime);
+        bool wheat      = timeSinceAteWheat    < recentThreshold;
+        bool fruit      = timeSinceAteFruit    < recentThreshold;
+        bool soymilk    = timeSinceAteSoymilk  < recentThreshold;
+        bool fountain   = timeSinceSawFountain < recentThreshold;
+        bool socialized = timeSinceSocialized  < recentThreshold;
         house = a.HasHouse;
 
         // Temperature comfort: +2 if in range, else -1 per 5°C outside range.
@@ -71,7 +78,7 @@ public class Happiness {
             temperatureScore = -deviation / 5f;
         }
 
-        score = (wheat ? 1f : 0f) + (fruit ? 1f : 0f) + (soymilk ? 1f : 0f) + (house ? 1f : 0f) + (fountain ? 1f : 0f) + temperatureScore;
+        score = (wheat ? 1f : 0f) + (fruit ? 1f : 0f) + (soymilk ? 1f : 0f) + (house ? 1f : 0f) + (fountain ? 1f : 0f) + (socialized ? 1f : 0f) + temperatureScore;
     }
 
     // Efficiency multiplier from temperature comfort. 1.0 when comfortable,
@@ -87,7 +94,8 @@ public class Happiness {
         bool wheat    = timeSinceAteWheat    < recentThreshold;
         bool fruit    = timeSinceAteFruit    < recentThreshold;
         bool soymilk  = timeSinceAteSoymilk  < recentThreshold;
-        bool fountain = timeSinceSawFountain < recentThreshold;
-        return $"wheat: {(wheat?1:0)}/1, fruit: {(fruit?1:0)}/1, soy: {(soymilk?1:0)}/1, housing: {(house?1:0)}/1, fountain: {(fountain?1:0)}/1, temp: {temperatureScore:0.0}/2  ({score:0.0})";
+        bool fountain   = timeSinceSawFountain < recentThreshold;
+        bool socialized = timeSinceSocialized  < recentThreshold;
+        return $"wheat: {(wheat?1:0)}/1, fruit: {(fruit?1:0)}/1, soy: {(soymilk?1:0)}/1, housing: {(house?1:0)}/1, fountain: {(fountain?1:0)}/1, social: {(socialized?1:0)}/1, temp: {temperatureScore:0.0}/2  ({score:0.0})";
     }
 }

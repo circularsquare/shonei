@@ -120,6 +120,7 @@ public class WorldController : MonoBehaviour {
         }
         AnimalController.instance.na = 0;
         AnimalController.instance.ResetJobCounts();
+        AnimalController.instance.ClearTileOccupancy();
 
         // 4. Destroy remaining inventories (tile invs; animal invs already gone)
         foreach (Inventory inv in new List<Inventory>(InventoryController.instance.inventories)) {

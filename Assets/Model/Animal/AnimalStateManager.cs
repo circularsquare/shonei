@@ -25,6 +25,9 @@ public class AnimalStateManager {
             case AnimalState.Eeping:
                 HandleEeping();
                 break;
+            case AnimalState.Leisuring:
+                HandleLeisure();
+                break;
         }
     }
 
@@ -40,6 +43,23 @@ public class AnimalStateManager {
             if (animal.tickCounter % 5 == 3) {
                 JobSwapper.TrySwap(animal);
             }
+            // De-stack: if sharing a tile with another mouse, try to walk to a random reachable
+            // neighbour. Only attempt 70% of the time so a large stack doesn't move in lockstep.
+            // Skips the random walk below — that's for non-stacked idle behaviour.
+            Tile here = animal.TileHere();
+            if (here != null && AnimalController.instance.AnyOtherAnimalOnTile(here, animal)) {
+                if (UnityEngine.Random.value < 0.70f) {
+                    Tile[] neighbours = here.GetAdjacents();
+                    // Prefer a neighbour with no other mice; fall back to any reachable neighbour.
+                    Tile dest = PickRandomReachableNeighbour(neighbours, preferEmpty: true)
+                             ?? PickRandomReachableNeighbour(neighbours, preferEmpty: false);
+                    if (dest != null) {
+                        animal.task = new GoTask(animal, dest);
+                        if (!animal.task.Start()) animal.task = null;
+                    }
+                }
+                return;
+            }
             // Random walking when nothing else to do
             if (UnityEngine.Random.Range(0, 5) == 0) {
                 animal.task = new GoTask(animal,
@@ -47,6 +67,21 @@ public class AnimalStateManager {
                 if (!animal.task.Start()) animal.task = null;
             }
         }
+    }
+
+    // Returns a random standable, reachable neighbour from `tiles`.
+    // If preferEmpty is true, only considers tiles with no other animals on them.
+    private Tile PickRandomReachableNeighbour(Tile[] tiles, bool preferEmpty) {
+        var ac = AnimalController.instance;
+        var candidates = new System.Collections.Generic.List<Tile>();
+        foreach (Tile t in tiles) {
+            if (t == null || !t.node.standable) continue;
+            if (!animal.nav.CanReach(t)) continue;
+            if (preferEmpty && ac.AnyOtherAnimalOnTile(t, animal)) continue;
+            candidates.Add(t);
+        }
+        if (candidates.Count == 0) return null;
+        return candidates[UnityEngine.Random.Range(0, candidates.Count)];
     }
 
     // Returns the skill domain for the animal's current task, or null if the task
@@ -176,6 +211,39 @@ public class AnimalStateManager {
         }
     }
 
+    private void HandleLeisure() {
+        if (animal.task == null) { animal.state = AnimalState.Idle; return; }
+        var obj = animal.task.currentObjective as LeisureObjective;
+        if (obj == null) { Debug.LogError($"{animal.aName} in Leisuring state but objective is not LeisureObjective"); animal.task.Fail(); return; }
+
+        var chat = animal.task as ChatTask;
+
+        // Chat-specific: wait for initiator arrival, grant early happiness
+        if (chat?.partner != null) {
+            if (!chat.chatStarted) return;
+            if (!chat.socializedEarly && animal.workProgress >= 8f) {
+                chat.socializedEarly = true;
+                animal.happiness.NoteSocialized();
+            }
+        }
+
+        animal.workProgress += 1f;
+        if (animal.workProgress >= obj.duration) {
+            animal.task.Complete();
+            return;
+        }
+
+        // Check partner after duration check — if both finish on the same tick,
+        // the second to process should complete, not see the first as "gone".
+        if (chat?.partner != null) {
+            var partnerTask = chat.partner.task as ChatTask;
+            if (partnerTask == null || partnerTask.partner != animal) {
+                Debug.Log($"{animal.aName} chat partner {chat.partner.aName} left (state={chat.partner.state}, task={chat.partner.task?.GetType().Name}). Ending chat.");
+                if (chat.socializedEarly) { animal.task.Complete(); } else { animal.task.Fail(); }
+            }
+        }
+    }
+
     public void UpdateMovement(float deltaTime) {
         // Fall unless the current nav edge is deliberately vertical (ladder/cliff/stair)
         Tile tileHere = animal.TileHere();
@@ -231,9 +299,10 @@ public class AnimalStateManager {
 
                     HandleArrival();
                 }
-                animal.sr.flipX = !animal.isMovingRight;
+                animal.sr.flipX = !animal.facingRight;
             }
         }
+        animal.UpdateCurrentTile();
     }
     private bool IsMovingState(AnimalState state) {
         return state == AnimalState.Moving;

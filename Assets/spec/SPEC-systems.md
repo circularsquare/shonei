@@ -3,10 +3,13 @@
 ## Navigation
 
 - **Algorithm**: A* with Euclidean heuristic. Edge costs vary by traversal type (see below).
-- **Locomotion**: `speed = maxSpeed * edgeLength / edgeCost`. Both values come from `Graph.GetEdgeInfo(from, to)`, so speed automatically adjusts for sub-tile and slow edges.
+- **Locomotion**: `speed = GetTravelSpeedMultiplier(animal) * edgeLength / edgeCost`. Edge info comes from `Graph.GetRawEdgeInfo()` (excludes road cost — road bonus is tile-based via `ModifierSystem`). A* pathfinding still uses `GetEdgeInfo()` with road-reduced costs so paths prefer roads.
 - **Standability**: tile is standable if tile below is solid, has a platform/building, or has a ladder.
 - **Vertical movement**: ladders produce direct node-to-node vertical edges (cost 2.0). Cliff climbing and stairs use **waypoint chains** (see below).
-- **Road speed boost**: road tiles reduce A* edge cost by `pathCostReduction` (both endpoints contribute), making roads faster to path through. Base movement speed is `1 tile/sec × efficiency`.
+- **Road speed boost**: road bonus is per-tile — only the tile the mouse is currently standing on contributes its `pathCostReduction` (doubled to match old two-endpoint feel). No bonus from adjacent road tiles.
+- **Floor item slowdown**: tiles with floor items reduce movement speed by 25% (×0.75).
+- **Crowding slowdown**: tiles with multiple mice reduce movement speed by 25% (×0.75, flat regardless of count). All speed modifiers are multiplicative.
+- **Tile occupancy tracking**: `AnimalController` maintains a `Dictionary<Tile, int>` for O(1) crowding queries. Animals register/unregister via `UpdateCurrentTile()` after position changes.
 - **Helper queries**: `FindPathToBuilding`, `FindPathToItem`, `FindPathToStorage`, `FindPathAdjacentToBlueprint`, `FindPathToHarvestable`
 
 ### Connected-components reachability cache
@@ -98,6 +101,8 @@ Each animal has three `InvType.Equip` inventory instances (1 stack each, registe
 | Clothing | `clothingSlotInv` | 200 fen | Equipped clothing (temperature comfort bonus) |
 
 **Clothing system**: `Db.clothingItems` lists all items whose parent chain includes `"clothing"`. `FindClothing()` in `ChooseTask()` equips one clothing item into `clothingSlotInv` when idle (after tool equip, before work orders). `Happiness.UpdateClothingBonus()` adjusts `comfortTempLow`/`comfortTempHigh` by ±3°C when any clothing is equipped. Clothing items are discrete (like tools) and decay at normal rate in equip slots.
+
+**Clothing overlay**: equipped clothing renders as a child `SpriteRenderer` ("ClothingOverlay") on the Animal prefab, assigned to `AnimationController.clothingRenderer`. Sprites loaded by item name from `Resources/Sprites/Animals/Clothing/{itemName}/` (`idle`, `walk`, `eep` — walk and eep fall back to idle if missing). `AnimationController.UpdateClothingOverlay()` swaps sprite on state change; `LateUpdate` syncs `flipX`. Adding a new clothing visual = add sprites to a new folder, no code changes.
 
 **Food acquisition flow:**
 1. Animal gets hungry → `FindFood()` checks `foodSlotInv` for room

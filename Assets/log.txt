@@ -1,7 +1,11 @@
 meoww!!
+3/30
+- mice avoid overlapping somewhat
+    - movement slows down if overlapping with mice or floor invs
+- added leisure time 
+    - added chatting, a task
 3/28
 - added clothes! ramie, weaver, tailor. clothes widen comfortable temperature range
-- 
 3/27
 - info panel tabs!
 - removed liquid invs 

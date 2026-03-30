@@ -16,6 +16,7 @@ public class AnimalController : MonoBehaviour{
     public GameObject JobDisplay; 
     private World world;
     public Dictionary<Job, int> jobCounts;
+    private Dictionary<Tile, int> tileOccupancy;
     private TMPro.TextMeshProUGUI happinessDisplay;
     private int colonyTickCounter = 0;
 
@@ -32,6 +33,7 @@ public class AnimalController : MonoBehaviour{
 
         animals = new Animal[maxna];
         jobCounts = new Dictionary<Job, int>();
+        tileOccupancy = new Dictionary<Tile, int>();
 
     }
     // FRAME 0 — populates jobCounts with jobs from Db (Db.Awake has already run).
@@ -198,6 +200,53 @@ public class AnimalController : MonoBehaviour{
             if (animals[i].TileHere() == tile) return true;
         }
         return false;
+    }
+
+    // True if any animal other than `exclude` is standing on `tile`.
+    public bool AnyOtherAnimalOnTile(Tile tile, Animal exclude) {
+        for (int i = 0; i < na; i++) {
+            if (animals[i] != exclude && animals[i].TileHere() == tile) return true;
+        }
+        return false;
+    }
+
+    // --- Tile occupancy tracking (O(1) crowding queries for movement speed) ---
+    public void RegisterAnimalOnTile(Tile t) {
+        if (t == null) return;
+        tileOccupancy.TryGetValue(t, out int count);
+        tileOccupancy[t] = count + 1;
+    }
+    public void UnregisterAnimalFromTile(Tile t) {
+        if (t == null) return;
+        if (tileOccupancy.TryGetValue(t, out int count)) {
+            if (count <= 1) tileOccupancy.Remove(t);
+            else tileOccupancy[t] = count - 1;
+        }
+    }
+    public bool HasMultipleAnimalsOnTile(Tile t) {
+        return t != null && tileOccupancy.TryGetValue(t, out int count) && count > 1;
+    }
+    public void ClearTileOccupancy() { tileOccupancy.Clear(); }
+
+    // Returns the nearest truly idle animal (no task, Idle state) within `radius` tiles, or null.
+    public Animal FindIdleAnimalNear(Animal exclude, int radius) {
+        Animal best = null;
+        float bestDist = float.MaxValue;
+        float r2 = radius * radius;
+        for (int i = 0; i < na; i++) {
+            Animal a = animals[i];
+            if (a == exclude) continue;
+            if (a.state != Animal.AnimalState.Idle) continue;
+            if (a.task != null) continue;
+            float dx = a.x - exclude.x;
+            float dy = a.y - exclude.y;
+            float dist = dx * dx + dy * dy;
+            if (dist < bestDist && dist <= r2) {
+                best = a;
+                bestDist = dist;
+            }
+        }
+        return best;
     }
 
     public void ResetJobCounts() {

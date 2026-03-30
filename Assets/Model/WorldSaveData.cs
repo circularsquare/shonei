@@ -85,6 +85,7 @@ public class AnimalSaveData {
     public float timeSinceAteFruit;    // happiness
     public float timeSinceAteSoymilk;  // happiness
     public float? timeSinceSawFountain; // null on old saves → starts at maxTime (never seen)
+    public float? timeSinceSocialized;  // null on old saves → starts at maxTime (never chatted)
     public InventorySaveData inv;
     public InventorySaveData foodSlotInv; // null on old saves → slot starts empty
     public InventorySaveData toolSlotInv;

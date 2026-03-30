@@ -60,9 +60,10 @@ public class Plant : Structure {
     }
 
     public void UpdateSprite(){
-        sprite = Resources.Load<Sprite>("Sprites/Plants/" + plantType.name + growthStage.ToString());
+        string n = plantType.name.Replace(" ", "");
+        sprite = Resources.Load<Sprite>("Sprites/Plants/Split/" + n + "/g" + growthStage.ToString());
         if (sprite == null || sprite.texture == null){
-            sprite = Resources.Load<Sprite>("Sprites/Plants/" + plantType.name);} 
+            sprite = Resources.Load<Sprite>("Sprites/Plants/Split/" + n + "/g0");}
         if (sprite == null || sprite.texture == null){
             sprite = Resources.Load<Sprite>("Sprites/Plants/default");}
         sr.sprite = sprite;
@@ -77,8 +78,7 @@ public class PlantType : StructType {
 
     public override Sprite LoadSprite() {
         string n = name.Replace(" ", "");
-        Sprite s = Resources.Load<Sprite>("Sprites/Plants/" + n + "0");
-        s ??= Resources.Load<Sprite>("Sprites/Plants/" + n);
+        Sprite s = Resources.Load<Sprite>("Sprites/Plants/Split/" + n + "/g0");
         return s != null && s.texture != null ? s : null;
     }
 

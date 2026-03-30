@@ -13,6 +13,7 @@
 | 12 | Water overlay sprite (`WaterController`) |
 | 30 | Items in storage/inventory display |
 | 50 | Animals |
+| 51 | Clothing overlay (child SpriteRenderer on Animal) |
 | 60 | Plants |
 | 65 | Falling items (mid-air animation) |
 | 70 | Items on floor |
@@ -157,6 +158,14 @@ A `default/` folder inside `split/` holds fallback sprites used when an item has
 - **Right-click sheet → Split Item Sheet** — processes selected sheet(s)
 
 After splitting, normal maps for the new files can be regenerated via **Tools → Generate All Sprite Normal Maps**.
+
+---
+
+## Plant Sprites
+
+Same Sheets/Split pattern as items. Source sheets live in `Assets/Resources/Sprites/Plants/Sheets/`, split output in `Assets/Resources/Sprites/Plants/Split/{plantName}/`. Each sheet is 64×16 (4 columns of 16×16 cells), producing `g0.png`–`g3.png` for growth stages 0–3.
+
+`PlantSheetSplitter.cs` — **Tools → Split All Plant Sheets**. Sprite loading falls back: `g{stage}` → `g0` → `default`.
 
 ---
 

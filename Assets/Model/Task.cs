@@ -757,4 +757,114 @@ public class ResearchObjective : Objective {
     }
 }
 
+// ── Leisure ──────────────────────────────────────────────────────────
+
+public class LeisureObjective : Objective {
+    public int duration;
+    public LeisureObjective(Task task, int duration) : base(task) {
+        this.duration = duration;
+    }
+    public override void Start() {
+        animal.workProgress = 0f;
+        animal.state = Animal.AnimalState.Leisuring;
+        // Chat sync and facing
+        if (task is ChatTask chat && chat.partner != null) {
+            // If initiator just arrived, sync both timers so they start on the same tick.
+            if (chat.partner.task is ChatTask partnerChat && partnerChat.partner == animal
+                && chat.partner.state == Animal.AnimalState.Leisuring) {
+                chat.chatStarted = true;
+                partnerChat.chatStarted = true;
+                chat.partner.workProgress = 0f;
+            }
+            // Face partner
+            animal.facingRight = (chat.partner.x > animal.x);
+            if (animal.sr != null) animal.sr.flipX = !animal.facingRight;
+        }
+        // AnimalStateManager.HandleLeisure ticks workProgress and calls Complete() when done.
+    }
+}
+
+public class ChatTask : Task {
+    public Animal partner;
+    public bool socializedEarly; // true once happiness granted at 8 ticks
+    public bool chatStarted;     // set by initiator's LeisureObjective.Start — syncs both timers
+    public Tile myTile;          // tile this animal should stand on during chat
+    public ChatTask(Animal animal, Animal partner) : base(animal) {
+        this.partner = partner;
+    }
+    public override bool Initialize() {
+        Tile partnerTile = partner.TileHere();
+        if (partnerTile == null) return false;
+
+        // Detect whether we're the initiator or the recruited partner.
+        // The recruited partner's Initialize() is called second, after the initiator
+        // already assigned us a ChatTask pointing back at them.
+        bool isInitiator = !(partner.task is ChatTask ct && ct.partner == animal);
+
+        if (isInitiator) {
+            // Find a pair of horizontally adjacent tiles so the animals stand side by side.
+            // Partner stays on (or near) their current tile; initiator takes the neighbor.
+            Tile initiatorTile = FindAdjacentChatTile(partnerTile);
+            if (initiatorTile != null) {
+                myTile = initiatorTile;
+                Debug.Log($"{animal.aName} started chatting with {partner.aName} (adjacent tiles)");
+                // Recruit partner — give them a reciprocal ChatTask
+                if (partner.task == null && partner.state == Animal.AnimalState.Idle) {
+                    var partnerChat = new ChatTask(partner, animal);
+                    partnerChat.myTile = partnerTile;
+                    partner.task = partnerChat;
+                    partner.task.Start();
+                }
+                objectives.AddLast(new GoObjective(this, initiatorTile));
+            } else {
+                // Fallback: no horizontal neighbor available, walk to partner's tile
+                if (animal.nav.PathTo(partnerTile) == null) return false;
+                Debug.Log($"{animal.aName} started chatting with {partner.aName} (same tile fallback)");
+                if (partner.task == null && partner.state == Animal.AnimalState.Idle) {
+                    partner.task = new ChatTask(partner, animal);
+                    partner.task.Start();
+                }
+                objectives.AddLast(new GoObjective(this, partnerTile));
+            }
+        } else if (myTile != null && myTile != animal.TileHere()) {
+            // Partner was assigned a tile by the initiator — walk there if not already on it
+            objectives.AddLast(new GoObjective(this, myTile));
+        }
+
+        objectives.AddLast(new LeisureObjective(this, 10));
+        return true;
+    }
+
+    /// Try horizontal neighbors of partnerTile (left and right). Return the one the
+    /// initiator can path to, preferring the shorter path. Returns null if neither works.
+    private Tile FindAdjacentChatTile(Tile partnerTile) {
+        World w = animal.world;
+        Tile left  = w.GetTileAt(partnerTile.x - 1, partnerTile.y);
+        Tile right = w.GetTileAt(partnerTile.x + 1, partnerTile.y);
+
+        Path pathLeft  = (left  != null && left.node.standable)  ? animal.nav.PathTo(left)  : null;
+        Path pathRight = (right != null && right.node.standable) ? animal.nav.PathTo(right) : null;
+
+        if (pathLeft != null && pathRight != null)
+            return pathLeft.cost <= pathRight.cost ? left : right;
+        return pathLeft != null ? left : right; // right may be null (= no neighbor found)
+    }
+    public override void Complete() {
+        if (!socializedEarly) animal.happiness.NoteSocialized();
+        base.Complete();
+    }
+    public override void Cleanup() {
+        // If the initiator fails before arriving (chatStarted=false), the partner
+        // is stuck waiting forever. Release them. Once started, HandleLeisure manages it.
+        if (!chatStarted) {
+            Animal p = partner;
+            partner = null;
+            if (p?.task is ChatTask pt && pt.partner == animal) {
+                p.task.Fail();
+            }
+        }
+        base.Cleanup();
+    }
+}
+
 

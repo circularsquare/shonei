@@ -73,14 +73,15 @@ public class Nav {
         // is gone — cliff traversal now uses waypoints which are already covered above.
         preventFall = prevNode.isWaypoint || nextNode.isWaypoint
                    || Mathf.Abs(nextNode.wy - prevNode.wy) > 0.1f;
-        var (edgeCost, edgeLen) = Graph.instance.GetEdgeInfo(prevNode, nextNode);
+        var (edgeCost, edgeLen) = Graph.instance.GetRawEdgeInfo(prevNode, nextNode);
+        float speed = ModifierSystem.instance.GetTravelSpeedMultiplier(a);
         Vector2 newPos = Vector2.MoveTowards(
             new Vector2(a.x, a.y), new Vector2(nextNode.wx, nextNode.wy),
-            a.maxSpeed * edgeLen / edgeCost * deltaTime);
+            speed * edgeLen / edgeCost * deltaTime);
         a.x = newPos.x; a.y = newPos.y;
         a.go.transform.position = new Vector3(a.x, a.y, 0);
 
-        a.isMovingRight = (nextNode.wx - a.x > 0);
+        a.facingRight = (nextNode.wx - a.x > 0);
         return false;
     }
 

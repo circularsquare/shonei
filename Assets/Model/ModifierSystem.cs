@@ -42,10 +42,30 @@ public class ModifierSystem {
         return Mathf.Pow(ResearchEfficiencyPerUnlock, unlocks);
     }
 
-    // Travel speed for an animal (base × efficiency).
+    // Travel speed for an animal on its current tile.
+    // Combines base speed, efficiency, road bonus, and tile-based penalties.
+    // All factors are multiplicative.
     public float GetTravelSpeedMultiplier(Animal animal) {
-        return BaseAnimalSpeed * animal.efficiency;
-        // future: × speed research bonus, × road tile bonus, etc.
+        float speed = BaseAnimalSpeed * animal.efficiency;
+
+        Tile tile = animal.TileHere();
+        if (tile == null) return speed;
+
+        // Road bonus: per-tile only (not averaged with destination).
+        // Doubles pathCostReduction to match the old two-endpoint system's feel.
+        float roadReduction = tile.structs[3]?.structType.pathCostReduction ?? 0f;
+        if (roadReduction > 0f)
+            speed /= Mathf.Max(0.1f, 1.0f - roadReduction * 2f);
+
+        // Floor items on tile: 25% slowdown (storage inventories don't count)
+        if (tile.inv != null && tile.inv.invType == Inventory.InvType.Floor && !tile.inv.IsEmpty())
+            speed *= 0.75f;
+
+        // Crowding: any other mice on this tile = 25% slowdown
+        if (AnimalController.instance.HasMultipleAnimalsOnTile(tile))
+            speed *= 0.75f;
+
+        return speed;
     }
 
     // Recipe output multiplier (placeholder for future bonuses).

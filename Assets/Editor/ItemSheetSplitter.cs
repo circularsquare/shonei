@@ -165,10 +165,11 @@ public static class ItemSheetSplitter {
         if (!wasReadable) { imp.isReadable = false; imp.SaveAndReimport(); }
     }
 
-    // ── combo: split sheets then generate normal maps for everything ───────
+    // ── combo: split all sheets then generate normal maps for everything ────
     [MenuItem("Tools/Split Sheets + Generate Normal Maps")]
     static void SplitThenGenerateNormals() {
         SplitAll();
+        PlantSheetSplitter.SplitAll();
         SpriteNormalMapGenerator.GenerateAll();
     }
 

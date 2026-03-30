@@ -27,7 +27,7 @@ using Newtonsoft.Json;
 //   [x] Tile types and floor inventories
 //   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, mirrored, disabled)
 //   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored, disabled)
-//   [x] Animals (position, job, energy, food, happiness, decoration happiness, inv, foodSlotInv, toolSlotInv, clothingSlotInv)
+//   [x] Animals (position, job, energy, food, happiness, decoration happiness, socialization, inv, foodSlotInv, toolSlotInv, clothingSlotInv)
 //   [x] Research (progress, activeResearchId, unlockedIds)
 //   [x] Disabled recipe ids
 //   [x] Water levels
@@ -240,6 +240,7 @@ public class SaveSystem : MonoBehaviour {
             timeSinceAteFruit    = a.happiness.timeSinceAteFruit,
             timeSinceAteSoymilk  = a.happiness.timeSinceAteSoymilk,
             timeSinceSawFountain = a.happiness.timeSinceSawFountain,
+            timeSinceSocialized  = a.happiness.timeSinceSocialized,
             inv                = GatherInventory(a.inv),
             foodSlotInv        = GatherInventory(a.foodSlotInv),
             toolSlotInv        = GatherInventory(a.toolSlotInv),
