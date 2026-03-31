@@ -322,7 +322,7 @@ public class AnimalStateManager {
 
                     HandleArrival();
                 }
-                animal.sr.flipX = !animal.facingRight;
+                animal.go.transform.localScale = new Vector3(animal.facingRight ? 1 : -1, 1, 1);
             }
         }
         animal.UpdateCurrentTile();

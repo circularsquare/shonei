@@ -28,6 +28,14 @@ For unity gameobjects, please lean towards telling me what to do in editor rathe
 
 For style, have open brace on first line of function declaration.
 
+## Comment style
+
+- **Class-level**: `//` line-block comments. No `/// <summary>` XML anywhere.
+- **Section dividers**: `// ── Section name ──────────────────` (em-dash, ~70 chars total).
+- **Method comments**: plain `//` above. Comment the "why", not the "what". Skip obvious ones.
+- **Field comments**: trailing `//` for one-liners; above `//` block for multi-line.
+- **TODOs**: `// TODO:` (uppercase T, colon).
+
 
 ## Folder conventions
 
@@ -73,7 +81,7 @@ Both paths use `Structure.Create()` (shared factory in `Structure.cs`) for subcl
 When adding new saveable state, update the checklist comment at the top of `SaveSystem.cs`. Gather in `Gather*`, restore in `Restore*`/`ApplySaveData()`. Use `PostLoadInit` coroutine for anything that depends on animals being fully ready (frame 2+).
 
 ### Exclusive panels
-`TradingPanel`, `RecipePanel`, `ResearchPanel` are mutually exclusive via `UI.RegisterExclusive()` / `UI.OpenExclusive()`. New exclusive panels must follow this pattern.
+`TradingPanel`, `RecipePanel`, `ResearchPanel`, and `GlobalHappinessPanel` are mutually exclusive via `UI.RegisterExclusive()` / `UI.OpenExclusive()`. New exclusive panels must follow this pattern.
 
 ## Anti-patterns (known past mistakes)
 

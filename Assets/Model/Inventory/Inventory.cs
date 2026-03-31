@@ -145,9 +145,7 @@ public class Inventory{
         }
     }
 
-    // =========================
-    // ----- MOVING ITEMS ------
-    // =========================
+    // ── Moving items ─────────────────────────────────────────────────────────
 
     // returns leftover size
     private int AddItem(Item item, int quantity, bool force = false){
@@ -259,9 +257,8 @@ public class Inventory{
         return quantity - produced;
     }
 
-    // =========================
-    // ---- GETTING INFO -----
-    // =========================
+    // ── Getting info ─────────────────────────────────────────────────────────
+
     // Returns true if `candidate` is `query` itself or any leaf descendant of it.
     // Used so that group items (e.g. "wood") act as wildcards matching any child (e.g. "oak", "pine").
     public static bool MatchesItem(Item candidate, Item query) {
@@ -449,9 +446,7 @@ public class Inventory{
     }
 
 
-    // =========================
-    // ------ OTHER ------------
-    // =========================
+    // ── Other ────────────────────────────────────────────────────────────────
 
     public void Restack(){
         var restackedInventory = new ItemStack[itemStacks.Length];

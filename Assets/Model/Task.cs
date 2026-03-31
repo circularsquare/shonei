@@ -785,7 +785,7 @@ public class LeisureObjective : Objective {
             }
             // Face partner
             animal.facingRight = (chat.partner.x > animal.x);
-            if (animal.sr != null) animal.sr.flipX = !animal.facingRight;
+            if (animal.go != null) animal.go.transform.localScale = new Vector3(animal.facingRight ? 1 : -1, 1, 1);
         }
         // AnimalStateManager.HandleLeisure ticks workProgress and calls Complete() when done.
     }

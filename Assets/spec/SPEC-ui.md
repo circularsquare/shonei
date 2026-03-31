@@ -161,9 +161,35 @@ Sprites loaded from `Resources/Sprites/Skills/{skillname}` with `Sprites/Skills/
 ### Backward compatibility
 `ShowInfo(object)` wraps raw args into a `SelectionContext`. `UpdateInfo()` refreshes the active sub-view (called each tick from `World.cs`). `obj` property returns `currentSelection?.tile` for Blueprint.cs checks.
 
+## GlobalHappinessPanel
+
+`Assets/UI/GlobalHappinessPanel.cs` — exclusive panel showing colony-wide happiness.
+
+Opened by clicking the happiness HUD element (`AnimalController.happinessPanel`); that GameObject needs a **Button** component with onClick wired to `GlobalHappinessPanel.instance.Toggle()`.
+
+**Layout** (set up in editor):
+- `headerText` TMP — colony average score + pop capacity
+- `needContainer` Transform (VerticalLayoutGroup) — `HappinessNeedRow` instances spawned here at `Start()`
+- `needRowPrefab` — `HappinessNeedRow` prefab
+
+Rows are spawned once (one per need) and updated on each `Refresh()`. Refreshes every 1 s while open; also refreshes on `OnEnable()`. Closes on click-outside.
+
+### HappinessNeedRow
+
+`Assets/UI/HappinessNeedRow.cs` — one row in the needs table.
+
+Prefab has a HorizontalLayoutGroup with four children: `NeedName` TMP, `Count` TMP (e.g. "4/5"), `FillBar`, `AvgValue` TMP. Three refresh methods:
+- `Refresh(satisfied, total, avgVal)` — value-based needs (wheat, fruit, soymilk, fountain, social)
+- `RefreshBool(satisfied, total)` — housing (no meaningful avg value)
+- `RefreshTemp(avgTempScore)` — temperature (hides the fill bar; only shows score)
+
+### FillBar
+
+`Assets/Components/FillBar.cs` — reusable horizontal fill bar. Single `SetFill(float 0–1)` method, drives `fillImage.fillAmount`. Prefab: root Image (background) + child "Fill" Image (type = Filled, method = Horizontal, origin = Left).
+
 ## Exclusive Panels
 
-`TradingPanel`, `RecipePanel`, and `ResearchPanel` are mutually exclusive — at most one may be visible at a time. This is enforced via two static helpers on `UI.cs`:
+`TradingPanel`, `RecipePanel`, `ResearchPanel`, and `GlobalHappinessPanel` are mutually exclusive — at most one may be visible at a time. This is enforced via two static helpers on `UI.cs`:
 
 - `UI.RegisterExclusive(gameObject)` — called in each panel's `Awake`/`Start`; adds it to a static registry.
 - `UI.OpenExclusive(gameObject)` — closes all other registered panels, then activates this one.
@@ -186,5 +212,8 @@ Each panel's `Toggle()` calls `UI.OpenExclusive(gameObject)` when opening, and `
 | `Assets/UI/InfoViews/StructureInfoView.cs` | Structure/blueprint info + enable/disable, priority, worker controls |
 | `Assets/UI/InfoViews/AnimalInfoView.cs` | Single animal info display (spawns SkillDisplay widgets) |
 | `Assets/Components/SkillDisplay.cs` | Skill icon + level + XP bar widget (anchor-based fill, Tooltippable on icon + bar hitbox) |
+| `Assets/Components/FillBar.cs` | Reusable fill bar (0–1 fraction → fillAmount); used by HappinessNeedRow |
+| `Assets/UI/GlobalHappinessPanel.cs` | Exclusive panel: colony happiness overview + per-need breakdown |
+| `Assets/UI/HappinessNeedRow.cs` | One need row: name, count, fill bar, avg value |
 | `Assets/UI/InfoViews/TileInfoView.cs` | Tile-only info (coords, water, floor inv) |
 | `Assets/Model/SelectionContext.cs` | Structured selection data (tile + structures + blueprints + animals) |

@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: cc9c9369eb5ddf443b14216cb967c185
+guid: 93709fad2515dbf45ba6c5b6f1b529ca
 TextureImporter:
   internalIDToNameTable: []
   externalObjects: {}
@@ -43,12 +43,12 @@ TextureImporter:
   lightmap: 0
   compressionQuality: 50
   spriteMode: 1
-  spriteExtrude: 0
-  spriteMeshType: 0
+  spriteExtrude: 1
+  spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 160
-  spriteBorder: {x: 2, y: 0, z: 2, w: 0}
+  spritePixelsToUnits: 16
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
   alphaIsTransparency: 1
@@ -120,13 +120,13 @@ TextureImporter:
     physicsShape: []
     bones: []
     spriteID: 8ac580ca9e9494dcbba186d77211d718
-    internalID: 1766320633
+    internalID: 0
     vertices: []
     indices: 
     edges: []
     weights: []
     secondaryTextures:
-    - texture: {instanceID: 0}
+    - texture: {fileID: 2800000, guid: d50a872b7cb24e8439c373f99b8e1e71, type: 3}
       name: _NormalMap
     nameFileIdTable: {}
   spritePackingTag: 

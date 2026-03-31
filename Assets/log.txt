@@ -1,4 +1,7 @@
 meoww!!
+3/31
+- added happiness panel
+- converted mouse sprite to skeleton
 3/30
 - mice avoid overlapping somewhat
     - movement slows down if overlapping with mice or floor invs

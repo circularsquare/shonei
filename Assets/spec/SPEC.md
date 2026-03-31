@@ -74,6 +74,7 @@ Assets/
 │   ├── PumpBuilding.cs    Building subclass (depth-0 pump with water check)
 │   │   (Workstation and Reservoir classes now live in Building.cs alongside Building)
 │   ├── ClockHand.cs       Clock hand rotation MonoBehaviour
+│   ├── FillBar.cs         Reusable horizontal fill bar (0–1 fraction → fillAmount)
 │   └── ...                ItemIcon, StorageSlotDisplay, PixelSnapText, MatchCameraZoom, RainParticles
 ├── UI/                UI panels, displays, and tooltip system
 │   ├── BuildPanel.cs, InfoPanel.cs, MenuPanel.cs, SaveMenuPanel.cs
@@ -81,7 +82,8 @@ Assets/
 │   │   ├── StructureInfoView.cs  Structure/blueprint info + enable/disable, priority, worker controls
 │   │   ├── AnimalInfoView.cs     Single animal info display
 │   │   └── TileInfoView.cs       Tile-only info (coords, water, floor inv)
-│   ├── TradingPanel.cs, RecipePanel.cs, ResearchPanel.cs
+│   ├── TradingPanel.cs, RecipePanel.cs, ResearchPanel.cs, GlobalHappinessPanel.cs
+│   ├── HappinessNeedRow.cs
 │   ├── ItemDisplay.cs, JobDisplay.cs, OrderDisplay.cs, ResearchDisplay.cs
 │   ├── StoragePanel.cs        Storage detail panel (slot view + allow tree; handles liquid storage, see SPEC-ui.md)
 │   ├── SaveSlotEntry.cs   Per-row component for the save slot scroll list

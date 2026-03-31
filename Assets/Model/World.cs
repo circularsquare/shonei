@@ -81,9 +81,7 @@ public class World : MonoBehaviour {
     }
         
 
-    // ---------------------------------
-    // TILE STUFF
-    // ---------------------------------
+    // ── Tile stuff ───────────────────────────────────────────────────────────
     public Tile GetTileAt(int x, int y){
         if (x >= nx || x < 0 || y >= ny || y < 0){
             // Debug.Log("tile " + x + "," + y +  " out of range");
@@ -171,9 +169,7 @@ public class World : MonoBehaviour {
         tile.inv = null;
     }
 
-    // ---------------------------------
-    // CALLBACKS
-    // ---------------------------------
+    // ── Callbacks ────────────────────────────────────────────────────────────
 
 
 }

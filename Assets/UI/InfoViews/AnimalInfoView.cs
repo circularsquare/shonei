@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text;
 using UnityEngine;
 using TMPro;
 
@@ -54,6 +55,22 @@ public class AnimalInfoView : MonoBehaviour {
 
     // ── Text formatting ────────────────────────────────────────────────────
 
+    static string OX(bool sat) => sat ? "o" : "x";
+
+    static string FormatHappiness(Happiness h) {
+        string tempPrefix = h.temperatureScore >= 0 ? "+" : "";
+        var sb = new StringBuilder();
+        sb.AppendLine($"\nhappiness: {h.score:0.0} / 7.0");
+        sb.AppendLine($"  wheat:    {OX(h.satWheat    >= Happiness.satisfiedThreshold)}  ({h.satWheat:0.0})");
+        sb.AppendLine($"  fruit:    {OX(h.satFruit    >= Happiness.satisfiedThreshold)}  ({h.satFruit:0.0})");
+        sb.AppendLine($"  soymilk:  {OX(h.satSoymilk  >= Happiness.satisfiedThreshold)}  ({h.satSoymilk:0.0})");
+        sb.AppendLine($"  housing:  {OX(h.house)}");
+        sb.AppendLine($"  fountain: {OX(h.satFountain >= Happiness.satisfiedThreshold)}  ({h.satFountain:0.0})");
+        sb.AppendLine($"  social:   {OX(h.satSocial   >= Happiness.satisfiedThreshold)}  ({h.satSocial:0.0})");
+        sb.Append    ($"  temp:     {tempPrefix}{h.temperatureScore:0.0}  (comfort {h.comfortTempLow:0}-{h.comfortTempHigh:0}C)");
+        return sb.ToString();
+    }
+
     static string FormatSlot(Inventory slot) {
         var s = slot.itemStacks[0];
         return s.item != null ? s.item.name + " " + ItemStack.FormatQ(s.quantity, s.item.discrete) : "empty";
@@ -75,7 +92,7 @@ public class AnimalInfoView : MonoBehaviour {
             "\n eff: " + ani.efficiency.ToString("F2") +
             "\n full: " + ani.eating.Fullness().ToString("F2") +
             "\n eep: " + ani.eeping.Eepness().ToString("F2") +
-            "\n happiness: " + ani.happiness.ToString();
+            FormatHappiness(ani.happiness);
         return t;
     }
 }

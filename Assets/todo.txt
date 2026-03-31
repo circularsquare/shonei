@@ -22,7 +22,6 @@ CONTENT
 VISUALS
 - make item icons more coherent / similar
 - tab styling, add building icons?
-- happiness panel
 
 MOUSE AI
 - ponder inventory management
@@ -37,8 +36,7 @@ MOUSE AI
 - reserve item stack space
     - too many partial hauler drops right now
 
-
-
 BUGS
 
 TODAY GOALS
+- improve mouse anim, finish non-moving states

@@ -86,12 +86,10 @@ public class Nav {
     }
 
 
-    // =========================================================
-    //  Naming convention:
-    //    Find(...)            -> returns Tile. No pathfinding. Can find unreachable tiles.
-    //    FindPathTo(...)      -> returns Path. Animal goes TO the matching tile.
+    // ── Naming convention ────────────────────────────────────────────────────
+    //    Find(...)                -> returns Tile. No pathfinding. Can find unreachable tiles.
+    //    FindPathTo(...)          -> returns Path. Animal goes TO the matching tile.
     //    FindPathAdjacentTo(...)  -> returns (Tile, Path). Animal stands NEXT TO matching tile.
-    // =========================================================
     public Tile Find(Func <Tile, bool> condition, int r = 40, bool persistent = false){
         Tile closestTile = null;
         float closestDistance = float.MaxValue;
@@ -159,11 +157,9 @@ public class Nav {
         return best;
     }
 
-    // =========================================================
-    //  SPECIFIC PATH FINDERS
-    //  "FindPathToX"  = animal walks to the tile
-    //  "FindPathAdjacentToX" = animal walks next to the tile
-    // =========================================================
+    // ── Specific path finders ────────────────────────────────────────────────
+    //    FindPathToX           = animal walks to the tile
+    //    FindPathAdjacentToX   = animal walks next to the tile
 
     public Path FindPathToStorage(Item item, int r = 40) {
         return FindPathToInv(new[] { Inventory.InvType.Storage },
@@ -284,9 +280,7 @@ public class Nav {
     }
 
 
-    // =========================================================
-    //  PATH TO SPECIFIC KNOWN TILE
-    // =========================================================
+    // ── Path to specific known tile ──────────────────────────────────────────
 
     public Path PathTo(Tile tile){
         if (tile == null || a.TileHere() == null){Debug.LogError("path to or from null tile?");}
@@ -331,7 +325,7 @@ public class Nav {
 
 
 
-    // ========= utils =============
+    // ── Utils ────────────────────────────────────────────────────────────────
     public float SquareDistance(float x1, float x2, float y1, float y2){return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);}
     public bool CanReach(Tile t) {
         if (t?.node == null) return false;

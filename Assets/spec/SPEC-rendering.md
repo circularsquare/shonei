@@ -13,8 +13,12 @@
 | 12 | Water overlay sprite (`WaterController`) |
 | 30 | Items in storage/inventory display |
 | 40 | Foreground structures (depth-2: stairs, ladders, torches) |
-| 50 | Animals |
-| 51 | Clothing overlay (child SpriteRenderer on Animal) |
+| 48 | Animal tail (paper-doll part) |
+| 49 | Animal back foot (paper-doll part) |
+| 50 | Animal body (paper-doll part) |
+| 51 | Animal front foot (paper-doll part) |
+| 52 | Animal arm (paper-doll part) |
+| 55–57 | Clothing overlays (per-part children: body 55, foot 56, arm 57) |
 | 60 | Plants |
 | 65 | Falling items (mid-air animation) |
 | 70 | Items on floor |
@@ -94,6 +98,32 @@ All lighting C# scripts and shaders live in `Assets/Lighting/`.
 | `LightComposite.shader` | Multiply blit onto scene. |
 
 `Assets/Editor/SpriteNormalMapGenerator.cs` — sprite normal map batch tool (must stay in `Editor/`).
+
+---
+
+## Animal Paper-Doll System
+
+Animals use a paper-doll (multi-sprite) approach: each body part is a separate child GameObject with its own `SpriteRenderer`, animated via transform keyframes (rotation, position) rather than sprite-swapping.
+
+### Prefab hierarchy
+```
+Animal (root — Animator, Animal.cs, BoxCollider2D, no SpriteRenderer)
+├─ Tail           (order 48)
+├─ BackFoot       (order 49)
+├─ Body           (order 50)  ← Animal.sr references this renderer
+│  └─ ClothingBody  (order 55)
+├─ FrontFoot      (order 51)
+└─ Arm            (order 52)
+```
+
+### Facing direction
+Flip is done via `transform.localScale.x = -1` on the root, which mirrors all children. No per-renderer `flipX`.
+
+### Per-part clothing
+`AnimationController.clothingParts` is a serialized array of `PartClothing` entries (partName + renderer reference). Each entry loads its sprite from `Resources/Sprites/Animals/Clothing/{item}/{partName}.png`. Missing sprites are handled gracefully (renderer stays disabled). Clothing renderers are children of their body part, so they inherit transforms automatically.
+
+### Sprite assets
+Part sprites in `Assets/Resources/Sprites/Animals/`: `mouse_body.png`, `mouse_tail.png`, `mouse_foot.png`, `mouse_arm.png` (+ `_n.png` normal maps). Pivots set in Sprite Editor per part (feet: top, arm: top, tail: base, body: center).
 
 ---
 

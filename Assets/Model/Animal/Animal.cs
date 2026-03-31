@@ -86,9 +86,8 @@ public class Animal : MonoBehaviour{
         world = World.instance;
         this.stateManager = new AnimalStateManager(this);
         this.go = this.gameObject;
-        this.sr = go.GetComponent<SpriteRenderer>();
+        this.sr = go.transform.Find("Body").GetComponent<SpriteRenderer>();
         animationController = go.GetComponent<AnimationController>();
-        sr.sortingOrder = 50;
         this.inv = new Inventory(5, 1000, Inventory.InvType.Animal);
         this.foodSlotInv = new Inventory(1, 300, Inventory.InvType.Equip);
         this.toolSlotInv = new Inventory(1, 200, Inventory.InvType.Equip);
@@ -407,9 +406,7 @@ public class Animal : MonoBehaviour{
         }
     }
 
-    //--------------
-    // ITEM MOVEMENT (maybe these should be moved into Inventory class??)
-    // -----------------------
+    // ── Item movement (maybe these should be moved into Inventory class??) ───
     // Picks up item at current location, returns amount *not* taken.
     // Pass targetInv to deposit into an equip slot instead of main inventory.
     public int TakeItem(Item item, int quantity, Inventory targetInv = null){
@@ -491,9 +488,7 @@ public class Animal : MonoBehaviour{
     }
 
 
-    // -----------------------
-    // THINKING
-    // -----------------------
+    // ── Thinking ─────────────────────────────────────────────────────────────
     public Recipe PickRecipeRandom(){ // randomized selection
         if (job.recipes.Length == 0) { return null; }
         List<Recipe> eligibleRecipes = new List<Recipe>();
@@ -586,9 +581,7 @@ public class Animal : MonoBehaviour{
     }
 
 
-    // -----------------------
-    // UTILS
-    // -----------------------
+    // ── Utils ────────────────────────────────────────────────────────────────
     public void SetJob(Job newJob){
         Job oldJob = this.job;
         this.job = newJob;
