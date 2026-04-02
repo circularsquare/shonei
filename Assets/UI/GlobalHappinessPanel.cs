@@ -27,8 +27,8 @@ public class GlobalHappinessPanel : MonoBehaviour {
     readonly List<HappinessNeedRow> rows = new List<HappinessNeedRow>();
 
     // SYNC: if happiness needs change in Happiness.cs, update NeedIndex, NeedNames, and Refresh() here.
-    enum NeedIndex { Wheat, Fruit, Soymilk, Housing, Fountain, Social, Temperature }
-    static readonly string[] NeedNames = { "wheat", "fruit", "soymilk", "housing", "fountain", "social", "temperature" };
+    enum NeedIndex { Wheat, Fruit, Soymilk, Housing, Fountain, Social, Fireplace, Temperature }
+    static readonly string[] NeedNames = { "wheat", "fruit", "soymilk", "housing", "fountain", "social", "fireplace", "temperature" };
 
     float refreshTimer;
     const float RefreshInterval = 1f;
@@ -92,9 +92,9 @@ public class GlobalHappinessPanel : MonoBehaviour {
         int n = ac.na;
         float totalScore = 0f;
         int satWheat = 0, satFruit = 0, satSoymilk = 0;
-        int satHousing = 0, satFountain = 0, satSocial = 0;
+        int satHousing = 0, satFountain = 0, satSocial = 0, satFireplace = 0;
         float sumWheat = 0f, sumFruit = 0f, sumSoymilk = 0f;
-        float sumFountain = 0f, sumSocial = 0f, sumTemp = 0f;
+        float sumFountain = 0f, sumSocial = 0f, sumFireplace = 0f, sumTemp = 0f;
 
         for (int i = 0; i < n; i++) {
             var h = ac.animals[i].happiness;
@@ -105,17 +105,19 @@ public class GlobalHappinessPanel : MonoBehaviour {
             if (h.house)                                        satHousing++;
             if (h.satFountain >= Happiness.satisfiedThreshold) satFountain++;
             if (h.satSocial   >= Happiness.satisfiedThreshold) satSocial++;
+            if (h.satFireplace >= Happiness.satisfiedThreshold) satFireplace++;
             sumWheat    += h.satWheat;
             sumFruit    += h.satFruit;
             sumSoymilk  += h.satSoymilk;
             sumFountain += h.satFountain;
             sumSocial   += h.satSocial;
+            sumFireplace += h.satFireplace;
             sumTemp     += h.temperatureScore;
         }
 
         if (headerText != null) {
             headerText.text =
-                $"Colony Happiness: {totalScore / n:0.0} / 7.0   ({n} mice)\n" +
+                $"Colony Happiness: {totalScore / n:0.0} / 8.0   ({n} mice)\n" +
                 $"pop capacity: {ac.populationCapacity}";
         }
 
@@ -126,6 +128,7 @@ public class GlobalHappinessPanel : MonoBehaviour {
         rows[(int)NeedIndex.Housing  ].RefreshBool(satHousing,  n);
         rows[(int)NeedIndex.Fountain ].Refresh    (satFountain, n, sumFountain / n);
         rows[(int)NeedIndex.Social   ].Refresh    (satSocial,   n, sumSocial   / n);
+        rows[(int)NeedIndex.Fireplace].Refresh    (satFireplace, n, sumFireplace / n);
         rows[(int)NeedIndex.Temperature].RefreshTemp(sumTemp / n);
     }
 }

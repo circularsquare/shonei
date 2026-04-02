@@ -100,7 +100,7 @@ Each animal has three `InvType.Equip` inventory instances (1 stack each, registe
 | Tool | `toolSlotInv` | 1000 fen | Equipped tool (work speed bonus) |
 | Clothing | `clothingSlotInv` | 200 fen | Equipped clothing (temperature comfort bonus) |
 
-**Clothing system**: `Db.clothingItems` lists all items whose parent chain includes `"clothing"`. `FindClothing()` in `ChooseTask()` equips one clothing item into `clothingSlotInv` when idle (after tool equip, before work orders). `Happiness.UpdateClothingBonus()` adjusts `comfortTempLow`/`comfortTempHigh` by ±3°C when any clothing is equipped. Clothing items are discrete (like tools) and decay at normal rate in equip slots.
+**Clothing system**: `Db.clothingItems` lists all items whose parent chain includes `"clothing"`. `FindClothing()` in `ChooseTask()` equips one clothing item into `clothingSlotInv` when idle (after tool equip, before work orders). `Happiness.UpdateComfortRange()` adjusts `comfortTempLow`/`comfortTempHigh` by ±3°C when any clothing is equipped, and additionally widens `comfortTempLow` by up to 5°C from the fireplace warmth buff. Clothing items are discrete (like tools) and decay at normal rate in equip slots.
 
 **Clothing overlay**: equipped clothing renders as a child `SpriteRenderer` ("ClothingOverlay") on the Animal prefab, assigned to `AnimationController.clothingRenderer`. Sprites loaded by item name from `Resources/Sprites/Animals/Clothing/{itemName}/` (`idle`, `walk`, `eep` — walk and eep fall back to idle if missing). `AnimationController.UpdateClothingOverlay()` swaps sprite on state change; `LateUpdate` syncs `flipX`. Adding a new clothing visual = add sprites to a new folder, no code changes.
 
@@ -170,7 +170,8 @@ Volume is conserved exactly (integer math, explicit transfers).
 **Temperature comfort** (on `Happiness`): each animal has `comfortTempLow` (default 10°C) and `comfortTempHigh` (25°C).
 - In range → +2 happiness, 100% efficiency.
 - Outside range → −1 happiness per 5°C deviation; efficiency = `max(0.7, 1.0 − deviation × 0.04)`.
-- Clothing expands the comfort range: `UpdateClothingBonus()` shifts both bounds by ±3°C when any clothing item is equipped (7–28°C with a ramie shirt).
+- Clothing expands the comfort range: `UpdateComfortRange()` shifts both bounds by ±3°C when any clothing item is equipped (7–28°C with a ramie shirt).
+- Fireplace warmth buff: leisuring at a fireplace grants a `warmth` value (0–5) that widens `comfortTempLow` by up to 5°C. Decays slowly over ~2 days (`×0.94` per SlowUpdate).
 
 **Rain/wind**: see header comment in `WeatherSystem.cs`. Rain also affects sun/ambient light multipliers and replenishes water via `WaterController.RainReplenish()`.
 

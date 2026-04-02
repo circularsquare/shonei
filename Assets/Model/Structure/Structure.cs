@@ -19,6 +19,25 @@ public class Structure {
         x + (mirrored ? (structType.nx - 1 - structType.workTileX) : structType.workTileX),
         y + structType.workTileY);
     public Reservable res;
+    // Per-seat reservables for leisure buildings. Each work tile gets its own Reservable(1)
+    // so two mice won't path to the same seat. Null for non-leisure buildings.
+    public Reservable[] seatRes;
+
+    // Returns true if any seat reservable is available. Only meaningful for leisure buildings.
+    public bool AnySeatAvailable() {
+        if (seatRes == null) return false;
+        for (int i = 0; i < seatRes.Length; i++)
+            if (seatRes[i].Available()) return true;
+        return false;
+    }
+
+    // Returns the tile for a specific work tile index (from structType.nworkTiles), with mirroring applied.
+    public Tile WorkTileAt(int index) {
+        var wt = structType.nworkTiles[index];
+        return World.instance.GetTileAt(
+            x + (mirrored ? (structType.nx - 1 - wt.dx) : wt.dx),
+            y + wt.dy);
+    }
 
     // Local pixel offsets (bottom-left origin, unmirrored) of WaterMarkerColor pixels in this
     // sprite. Null when none found. Registered with WaterController by StructController.Place().
@@ -55,10 +74,20 @@ public class Structure {
         sr = go.AddComponent<SpriteRenderer>();
         sr.sprite = sprite;
         sr.flipX = mirrored;
-        if (loadedSprite == null)
-            go.transform.localScale = new Vector3(structType.nx, Mathf.Max(1, structType.ny), 1f);
+        if (loadedSprite == null) {
+            sr.drawMode = SpriteDrawMode.Sliced;
+            sr.size = new Vector2(structType.nx, Mathf.Max(1, structType.ny));
+        }
         // Workstations don't use Structure.res — their WOM Craft order owns the reservation.
-        res = (structType.capacity > 0 && !structType.isWorkstation) ? new Reservable(structType.capacity) : null;
+        // Leisure buildings use per-seat seatRes[] instead of a single res.
+        if (structType.isLeisure && structType.capacity > 0) {
+            res = null;
+            seatRes = new Reservable[structType.nworkTiles.Length];
+            for (int i = 0; i < seatRes.Length; i++)
+                seatRes[i] = new Reservable(1);
+        } else {
+            res = (structType.capacity > 0 && !structType.isWorkstation) ? new Reservable(structType.capacity) : null;
+        }
 
         if (structType.name == "clock") {
             go.AddComponent<ClockHand>();
@@ -123,6 +152,13 @@ public class Structure {
 /// Per-tile constraint checked by StructPlacement.CanPlaceHere before allowing placement.
 /// dx/dy offsets are relative to the placement anchor tile.
 /// </summary>
+// Work tile offset: a position within a multi-tile building where an animal can stand to interact.
+// Used by nworkTiles[] on StructType. Mirroring is applied at runtime by Structure.WorkTileAt().
+public class WorkTileOffset {
+    public int dx {get; set;}
+    public int dy {get; set;}
+}
+
 public class TileRequirement {
     public int dx {get; set;}
     public int dy {get; set;}
@@ -159,6 +195,7 @@ public class StructType {
     public bool isWorkstation {get; set;} // true = registers a WOM Craft order when placed; use IsActive() to gate it
     public int workTileX {get; set;} // tile offset to the interaction/nav tile (default 0,0 = anchor)
     public int workTileY {get; set;}
+    public WorkTileOffset[] nworkTiles {get; set;} // multiple work positions (e.g. fireplace seats); populated from legacy workTileX/Y if absent
     public int storageTileX {get; set;} // tile offset to the storage inventory tile (default 0,0 = anchor)
     public int storageTileY {get; set;}
     public TileRequirement[] tileRequirements {get; set;} // extra per-tile constraints checked at placement
@@ -177,6 +214,17 @@ public class StructType {
     // A decoration with hasFuelInv=true only counts when its reservoir has fuel (e.g. fountain needs water).
     public bool isDecoration {get; set;}
     public int decorRadius {get; set;}     // Chebyshev radius; 0 means not a decoration
+
+    // Leisure: mice actively visit this building during leisure time (fireplace, tea house, etc.).
+    // A leisure building with hasFuelInv=true only attracts mice when its reservoir has fuel.
+    // leisureNeed identifies which happiness satisfaction this building targets (e.g. "fireplace").
+    public bool isLeisure {get; set;}
+    public string leisureNeed {get; set;}
+
+    // Light source: building emits point light and passively burns fuel while torchFactor > 0.
+    // lightIntensity is the baseIntensity passed to LightSource (default 0.80).
+    public bool isLightSource {get; set;}
+    public float lightIntensity {get; set;}
 
     public virtual Sprite LoadSprite() {
         if (isTile) {
@@ -202,6 +250,9 @@ public class StructType {
         } else {
             job = Db.jobByName["hauler"]; // default if no njob provided
         }
+        if (isLightSource && lightIntensity == 0f) lightIntensity = 0.80f;
+        if (nworkTiles == null || nworkTiles.Length == 0)
+            nworkTiles = new[] { new WorkTileOffset { dx = workTileX, dy = workTileY } };
         // Fuel inventory: convert liang → fen; resolve fuel item reference.
         if (hasFuelInv) {
             if (fuelCapacity > 0) fuelCapacity = (int)Math.Round(fuelCapacity * 100f);

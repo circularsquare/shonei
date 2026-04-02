@@ -1,4 +1,6 @@
 meoww!!
+4/2
+- animation work
 3/31
 - added happiness panel
 - converted mouse sprite to skeleton

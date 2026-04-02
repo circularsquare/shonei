@@ -145,9 +145,9 @@ public class Building : Structure {
 
         if (st.hasFuelInv) {
             reservoir = new Reservoir(st.fuelItem, st.fuelCapacity, st.fuelBurnRate, x, y, st.name);
-            // Attach LightSource for buildings that are light sources (currently only torch).
-            if (st.name == "torch") {
+            if (st.isLightSource) {
                 var ls = go.AddComponent<LightSource>();
+                ls.baseIntensity = st.lightIntensity;
                 ls.reservoir = reservoir;
             }
         }

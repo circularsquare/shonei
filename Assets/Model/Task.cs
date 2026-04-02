@@ -787,6 +787,12 @@ public class LeisureObjective : Objective {
             animal.facingRight = (chat.partner.x > animal.x);
             if (animal.go != null) animal.go.transform.localScale = new Vector3(animal.facingRight ? 1 : -1, 1, 1);
         }
+        // Leisure building: face toward the center of the building
+        if (task is LeisureTask leisure && leisure.building != null) {
+            float center = leisure.building.x + leisure.building.structType.nx / 2f;
+            animal.facingRight = (animal.x < center);
+            if (animal.go != null) animal.go.transform.localScale = new Vector3(animal.facingRight ? 1 : -1, 1, 1);
+        }
         // AnimalStateManager.HandleLeisure ticks workProgress and calls Complete() when done.
     }
 }
@@ -868,6 +874,89 @@ public class ChatTask : Task {
                 p.task.Fail();
             }
         }
+        base.Cleanup();
+    }
+}
+
+// ── LeisureTask ──────────────────────────────────────────────────────
+// Generic "go to a leisure building and spend time there" task.
+// The building dispatches its benefit on completion (fireplace → warmth, etc.).
+// Adding a new leisure building: add a case in Complete() for the building name.
+public class LeisureTask : Task {
+    public Building building;
+    public Tile seatTile; // the specific work tile this animal is heading to
+    private int seatIndex = -1; // index into building.seatRes[] for per-seat reservation
+
+    public LeisureTask(Animal animal, Building building) : base(animal) {
+        this.building = building;
+    }
+
+    public override bool Initialize() {
+        Path bestPath = null;
+
+        if (building.seatRes != null) {
+            // Per-seat reservation: find the first seat that is available AND reachable
+            for (int i = 0; i < building.seatRes.Length; i++) {
+                if (!building.seatRes[i].Available()) continue;
+                Tile seat = building.WorkTileAt(i);
+                if (seat == null) continue;
+                Path p = animal.nav.PathTo(seat);
+                if (p != null) {
+                    building.seatRes[i].Reserve();
+                    seatIndex = i;
+                    bestPath = p;
+                    seatTile = seat;
+                    break;
+                }
+            }
+        } else {
+            // Legacy single-res path for non-leisure buildings (shouldn't normally hit)
+            if (building.res != null) {
+                if (!building.res.Available()) return false;
+                building.res.Reserve();
+            }
+            for (int i = 0; i < building.structType.nworkTiles.Length; i++) {
+                Tile seat = building.WorkTileAt(i);
+                if (seat == null) continue;
+                Path p = animal.nav.PathTo(seat);
+                if (p != null) { bestPath = p; seatTile = seat; break; }
+            }
+        }
+
+        // Fall back to adjacent if no direct path to any seat
+        if (bestPath == null) {
+            bestPath = animal.nav.PathToOrAdjacent(building.workTile);
+            if (bestPath != null) seatTile = bestPath.tile;
+        }
+        if (bestPath == null) {
+            // Undo any reservation we made
+            if (seatIndex >= 0) building.seatRes[seatIndex].Unreserve();
+            else if (building.res != null) building.res.Unreserve();
+            seatIndex = -1;
+            return false;
+        }
+
+        objectives.AddLast(new GoObjective(this, bestPath.tile));
+        objectives.AddLast(new LeisureObjective(this, 15));
+        return true;
+    }
+
+    public override void Complete() {
+        // Grant the happiness benefit for this building's leisure need
+        string need = building.structType.leisureNeed;
+        if (!string.IsNullOrEmpty(need)) {
+            animal.happiness.NoteLeisure(need);
+        } else {
+            Debug.LogError($"LeisureTask.Complete: building '{building.structType.name}' has no leisureNeed");
+        }
+        base.Complete();
+    }
+
+    public override void Cleanup() {
+        if (seatIndex >= 0 && building.seatRes != null)
+            building.seatRes[seatIndex].Unreserve();
+        else if (building.res != null)
+            building.res.Unreserve();
         base.Cleanup();
     }
 }

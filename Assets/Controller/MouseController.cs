@@ -109,9 +109,13 @@ public class MouseController : MonoBehaviour {
                 buildPreviewSr.sprite = buildSprite != null ? buildSprite : buildPreviewDefaultSprite;
                 buildPreviewSr.flipX = BuildPanel.instance != null && BuildPanel.instance.mirrored;
                 buildPreviewSr.color = buildSprite != null ? new Color(1f, 1f, 1f, 0.3f) : Color.white;
-                buildPreview.transform.localScale = buildSprite == null
-                    ? new Vector3(st.nx, Mathf.Max(1, st.ny), 1f)
-                    : Vector3.one;
+                if (buildSprite == null) {
+                    buildPreviewSr.drawMode = SpriteDrawMode.Sliced;
+                    buildPreviewSr.size = new Vector2(st.nx, Mathf.Max(1, st.ny));
+                } else {
+                    buildPreviewSr.drawMode = SpriteDrawMode.Simple;
+                }
+                buildPreview.transform.localScale = Vector3.one;
                 float visualX = anchorTile.x + (st.nx - 1) / 2.0f;
                 buildPreview.transform.position = new Vector3(visualX, anchorTile.y, -1);
             } else {
@@ -119,6 +123,7 @@ public class MouseController : MonoBehaviour {
                 buildPreviewSr.sprite = buildPreviewDefaultSprite;
                 buildPreviewSr.flipX = false;
                 buildPreviewSr.color = Color.white;
+                buildPreviewSr.drawMode = SpriteDrawMode.Simple;
                 buildPreview.transform.localScale = Vector3.one;
             }
         }

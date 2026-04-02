@@ -10,6 +10,7 @@ public class StructController : MonoBehaviour {
     private List<Structure> structures = new List<Structure>();
     private Dictionary<StructType, List<Structure>> structsByType = new Dictionary<StructType, List<Structure>>();
     private List<Blueprint> blueprints = new List<Blueprint>();
+    private List<Building> leisureBuildings = new List<Building>();
     public int n = 0;
     private World world;
     public Dictionary<Job, int> jobCounts;
@@ -26,9 +27,12 @@ public class StructController : MonoBehaviour {
         n -= 1;
         if (structsByType.TryGetValue(structure.structType, out var list))
             list.Remove(structure);
+        if (structure is Building b && b.structType.isLeisure)
+            leisureBuildings.Remove(b);
     }
 
     public List<Structure> GetStructures() => new List<Structure>(structures);
+    public List<Building> GetLeisureBuildings() => leisureBuildings;
 
     // Place a structure that was already created directly (load path, world generation).
     // Unlike Construct(), this does not touch GlobalInventory costs.
@@ -40,6 +44,8 @@ public class StructController : MonoBehaviour {
             structsByType[structure.structType] = list;
         }
         list.Add(structure);
+        if (structure is Building b && b.structType.isLeisure)
+            leisureBuildings.Add(b);
         if (structure.waterPixelOffsets != null)
             WaterController.instance?.RegisterDecorativeWater(structure);
     }

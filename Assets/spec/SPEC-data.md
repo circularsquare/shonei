@@ -12,7 +12,7 @@ ID ranges (keep entries ordered and thematically grouped):
 |-------|----------|---------|
 | 1–19 | structural / navigation | platform, stairs, ladder, road |
 | 20–39 | storage | house, drawer, crate, tank, market |
-| 40–79 | decoration / ambience | torch, fountain, clock |
+| 40–79 | decoration / ambience / leisure | torch, fountain, clock, fireplace |
 | 80–99 | placeable tiles | empty (dig), dirt, stone |
 | 101–109 | production — basic workstations | sawmill, workshop, furnace, press, pump |
 | 110–119 | production — extraction | dirt pit, quarry |
@@ -42,6 +42,15 @@ Fields:
 | `requiredTileName` | string? | tile type this building must be placed on |
 | `depleteAt` | int? | production count at which this building depletes |
 | `pathCostReduction` | float? | reduces A* edge cost (roads) |
+| `isWorkstation` | bool? | registers a WOM Craft order when placed |
+| `isDecoration` | bool? | nearby animals gain passive happiness |
+| `decorRadius` | int? | Chebyshev radius for decoration effect |
+| `isLeisure` | bool? | mice actively visit during leisure time (e.g. fireplace) |
+| `leisureNeed` | string? | which happiness satisfaction this building targets (e.g. "fireplace"); required when `isLeisure` is true |
+| `hasFuelInv` | bool? | building has an internal fuel reservoir |
+| `fuelItemName` | string? | item consumed by reservoir (group or leaf) |
+| `fuelCapacity` | float? | max fuel in liang |
+| `fuelBurnRate` | float? | consumption rate in liang/day |
 
 ## `itemsDb.json` — Item types
 

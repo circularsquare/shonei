@@ -112,6 +112,8 @@ public class Animal : MonoBehaviour{
                 this.happiness.satSoymilk  = pendingSaveData.satSoymilk ?? 0f;
                 this.happiness.satFountain = pendingSaveData.satFountain ?? 0f;
                 this.happiness.satSocial   = pendingSaveData.satSocial ?? 0f;
+                this.happiness.satFireplace = pendingSaveData.satFireplace ?? 0f;
+                this.happiness.warmth       = pendingSaveData.warmth ?? 0f;
             } else {
                 // Legacy format: convert timeSince counters to satisfaction points
                 this.happiness.satWheat    = ConvertTimerToSat(pendingSaveData.timeSinceAteWheat);
@@ -226,7 +228,7 @@ public class Animal : MonoBehaviour{
     public void SlowUpdate() { // called every 10 or so seconds
         FindHome();
         eating.SlowUpdate();
-        happiness.UpdateClothingBonus(this);
+        happiness.UpdateComfortRange(this);
         happiness.SlowUpdate(this);
         ScanForNearbyDecorations();
     }
@@ -275,13 +277,13 @@ public class Animal : MonoBehaviour{
         if (FindEquipment()) return;
         if (FindClothing()) return;
 
-        // 1b. Leisure window (4–9 pm): prefer leisure over work.
-        //     50% try leisure, 20% fall through to work, 30% idle.
+        // 1b. Leisure window (5–9 pm): 50% try leisure, 30% idle, 20% work.
+        //     Leisure pick is need-based: target the lowest happiness satisfaction.
         if (IsLeisureTime()) {
             float roll = (float)random.NextDouble();
-            if (roll < 0.5f && happiness.satSocial <= Happiness.wantThreshold) {
-                if (FindChatPartner()) return;
-                task = null; return; // no partner — idle, don't work
+            if (roll < 0.5f) {
+                if (TryPickLeisure()) return;
+                task = null; return; // no leisure available — idle
             } else if (roll < 0.8f) {
                 task = null; return; // idle
             }
@@ -381,10 +383,63 @@ public class Animal : MonoBehaviour{
     }
 
 
+    // Picks the best available leisure activity by targeting the lowest happiness satisfaction.
+    // Gathers all options (chat + each leisure building need), sorts by satisfaction, tries in order.
+    private bool TryPickLeisure() {
+        var candidates = new List<(float sat, System.Func<bool> tryStart)>();
+
+        // Chat option (social need)
+        if (AnimalController.instance.FindIdleAnimalNear(this, 15) != null)
+            candidates.Add((happiness.satSocial, FindChatPartner));
+
+        // Building options: find nearest available building per leisure need
+        var sc = StructController.instance;
+        if (sc != null) {
+            // Group by leisureNeed, pick nearest available building per need
+            var bestPerNeed = new Dictionary<string, (Building b, float dist)>();
+            foreach (Building b in sc.GetLeisureBuildings()) {
+                if (b.disabled) continue;
+                if (b.reservoir != null && !b.reservoir.HasFuel()) continue;
+                if (b.seatRes != null) { if (!b.AnySeatAvailable()) continue; }
+                else if (b.res != null && !b.res.Available()) continue;
+                string need = b.structType.leisureNeed;
+                if (string.IsNullOrEmpty(need)) {
+                    Debug.LogError($"Leisure building '{b.structType.name}' has no leisureNeed set");
+                    continue;
+                }
+                float dist = Mathf.Abs(b.x - x) + Mathf.Abs(b.y - y);
+                if (!bestPerNeed.ContainsKey(need) || dist < bestPerNeed[need].dist)
+                    bestPerNeed[need] = (b, dist);
+            }
+            foreach (var kvp in bestPerNeed) {
+                string need = kvp.Key;
+                Building building = kvp.Value.b;
+                float sat = happiness.GetLeisureSatisfaction(need);
+                candidates.Add((sat, () => TryStartLeisureAt(building)));
+            }
+        }
+
+        if (candidates.Count == 0) return false;
+
+        // Sort by satisfaction ascending — try the least-satisfied need first
+        candidates.Sort((a, b) => a.sat.CompareTo(b.sat));
+        foreach (var c in candidates) {
+            if (c.tryStart()) return true;
+        }
+        return false;
+    }
+
     private bool FindChatPartner() {
         Animal partner = AnimalController.instance.FindIdleAnimalNear(this, 15);
         if (partner == null) return false;
         task = new ChatTask(this, partner);
+        if (task.Start()) return true;
+        task = null;
+        return false;
+    }
+
+    private bool TryStartLeisureAt(Building building) {
+        task = new LeisureTask(this, building);
         if (task.Start()) return true;
         task = null;
         return false;

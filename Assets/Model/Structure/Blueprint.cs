@@ -55,8 +55,10 @@ public class Blueprint {
         sr.sprite = sprite;
         sr.flipX = mirrored;
         sr.color = new Color(0.8f, 0.9f, 1f, 0.5f); // blueprint half alpha
-        if (loadedSprite == null)
-            go.transform.localScale = new Vector3(structType.nx, Mathf.Max(1, structType.ny), 1f);
+        if (loadedSprite == null) {
+            sr.drawMode = SpriteDrawMode.Sliced;
+            sr.size = new Vector2(structType.nx, Mathf.Max(1, structType.ny));
+        }
 
         // Deep-copy costs so LockGroupCostsAfterDelivery only affects this blueprint,
         // not every blueprint sharing the same StructType.

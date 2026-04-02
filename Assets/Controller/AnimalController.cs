@@ -83,7 +83,7 @@ public class AnimalController : MonoBehaviour{
 
     public Animal AddAnimal(float x = 10, float y = 4){
         GameObject animalPrefab = Resources.Load<GameObject>("Prefabs/Animal");
-        GameObject go = GameObject.Instantiate(animalPrefab, new Vector3(x, y, -0.0001f * nextId), Quaternion.identity);
+        GameObject go = GameObject.Instantiate(animalPrefab, new Vector3(x, y, -0.001f * nextId), Quaternion.identity);
         Animal animal = go.GetComponent<Animal>(); // already made in prefab!
         animal.x = x;
         animal.y = y;

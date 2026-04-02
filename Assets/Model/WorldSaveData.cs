@@ -92,6 +92,8 @@ public class AnimalSaveData {
     public float? satSoymilk;
     public float? satFountain;
     public float? satSocial;
+    public float? satFireplace;
+    public float? warmth;
     public InventorySaveData inv;
     public InventorySaveData foodSlotInv; // null on old saves → slot starts empty
     public InventorySaveData toolSlotInv;
