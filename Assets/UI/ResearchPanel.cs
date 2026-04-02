@@ -47,7 +47,7 @@ public class ResearchPanel : MonoBehaviour {
             debugUnlockAllButton.onClick.AddListener(OnClickUnlockAll);
     }
 
-    // todo: move to mousecontroller?
+    // TODO: move to mousecontroller?
     void Update() {
         if (gameObject.activeSelf
                 && Input.GetMouseButtonDown(0)

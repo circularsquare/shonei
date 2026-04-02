@@ -57,9 +57,7 @@ public class SaveSystem : MonoBehaviour {
         if (!System.IO.Directory.Exists(SaveDir)) System.IO.Directory.CreateDirectory(SaveDir);
     }
 
-    // -----------------------------------------------------------------------
-    // SAVE
-    // -----------------------------------------------------------------------
+    // ── Save ─────────────────────────────────────────────────────────────────
 
     public void Save(string slotName) {
         WorldSaveData data = GatherSaveData();
@@ -253,9 +251,7 @@ public class SaveSystem : MonoBehaviour {
         };
     }
 
-    // -----------------------------------------------------------------------
-    // LOAD
-    // -----------------------------------------------------------------------
+    // ── Load ─────────────────────────────────────────────────────────────────
 
     // Resets all persistent singleton systems to blank defaults.
     // Called by both LoadDefault() and Load() before world content is recreated.

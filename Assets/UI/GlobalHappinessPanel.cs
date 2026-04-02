@@ -26,6 +26,7 @@ public class GlobalHappinessPanel : MonoBehaviour {
     // Rows are spawned once and reused — indices match NeedIndex enum.
     readonly List<HappinessNeedRow> rows = new List<HappinessNeedRow>();
 
+    // SYNC: if happiness needs change in Happiness.cs, update NeedIndex, NeedNames, and Refresh() here.
     enum NeedIndex { Wheat, Fruit, Soymilk, Housing, Fountain, Social, Temperature }
     static readonly string[] NeedNames = { "wheat", "fruit", "soymilk", "housing", "fountain", "social", "temperature" };
 

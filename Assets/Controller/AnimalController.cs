@@ -190,9 +190,6 @@ public class AnimalController : MonoBehaviour{
         UpdateJobCount(newJob);
     }
 
-    // this maybe probably be an interface or something (shared code w inv controller)
-    // updates the number of mice with this job in the ui
-
     void AddJobCounts(){
         foreach(Job job in Db.jobs){
             if (job != null){
@@ -247,7 +244,7 @@ public class AnimalController : MonoBehaviour{
         return false;
     }
 
-    // --- Tile occupancy tracking (O(1) crowding queries for movement speed) ---
+    // ── Tile occupancy tracking (O(1) crowding queries for movement speed) ───
     public void RegisterAnimalOnTile(Tile t) {
         if (t == null) return;
         tileOccupancy.TryGetValue(t, out int count);

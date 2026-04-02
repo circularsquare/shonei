@@ -3,7 +3,7 @@ using UnityEngine;
 using System;
 
 public class Nav {
-    public Animal a; // have this be more generic? idk
+    public Animal a;
     public World world;
 
     public Path path;

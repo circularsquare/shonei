@@ -107,8 +107,8 @@ public class Reservoir {
 }
 
 public class Building : Structure {
-    /// When true, all work orders for this building are suppressed. Player-togglable via UI.
-    /// Distinct from IsActive() which checks runtime conditions (e.g. pump has water).
+    // When true, all work orders for this building are suppressed. Player-togglable via UI.
+    // Distinct from IsActive() which checks runtime conditions (e.g. pump has water).
     public bool disabled = false;
 
     // Non-null only for workstation buildings. Owns the player-adjustable worker slot limit.
