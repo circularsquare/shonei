@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 // Save data classes used with Newtonsoft.Json only — no [Serializable] needed.
 // [Serializable] would cause Unity's serializer to materialize default instances
 // on MonoBehaviour fields (e.g. pendingSaveData) instead of leaving them null.
@@ -87,12 +89,13 @@ public class AnimalSaveData {
     public float timeSinceAteSoymilk;  // legacy happiness
     public float? timeSinceSawFountain; // legacy happiness
     public float? timeSinceSocialized;  // legacy happiness
-    public float? satWheat;     // satisfaction points (null on old saves → converted from legacy)
-    public float? satFruit;
-    public float? satSoymilk;
-    public float? satFountain;
-    public float? satSocial;
-    public float? satFireplace;
+    public float? satWheat;     // legacy v2 satisfaction (null on new saves using dict)
+    public float? satFruit;     // legacy v2
+    public float? satSoymilk;   // legacy v2
+    public float? satFountain;  // legacy v2
+    public float? satSocial;    // legacy v2
+    public float? satFireplace; // legacy v2
+    public Dictionary<string, float> satisfactions; // current: keyed by need name (null on old saves)
     public float? warmth;
     public InventorySaveData inv;
     public InventorySaveData foodSlotInv; // null on old saves → slot starts empty

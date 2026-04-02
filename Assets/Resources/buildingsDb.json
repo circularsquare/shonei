@@ -132,6 +132,7 @@
         "depth": 0,
         "isBuilding": true,
         "isDecoration": true,
+        "decorationNeed": "fountain",
         "decorRadius": 3,
         "hasFuelInv": true,
         "fuelItemName": "water",

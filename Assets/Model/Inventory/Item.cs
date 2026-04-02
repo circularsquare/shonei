@@ -16,6 +16,7 @@ public class Item {
     public Item[] children {get; set;}
     public float decayRate{get; set;}
     public float foodValue {get; set;}  // 0 = not edible; >0 = nutrition restored per unit eaten
+    public string happinessNeed {get; set;} // which happiness satisfaction eating this food grants (e.g. "wheat", "fruit"); null = none
     public bool discrete {get; set;}    // true = stored/moved in whole-liang (100 fen) multiples only
     public bool isLiquid {get; set;}    // true = liquid (water, soymilk, etc.); used to restrict which inventory types can hold it
     public Item parent;

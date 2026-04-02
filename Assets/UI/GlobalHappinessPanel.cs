@@ -3,19 +3,17 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using TMPro;
 
-/// <summary>
-/// Full-screen exclusive panel showing colony-wide happiness breakdown.
-/// Opened by clicking the happiness HUD element.
-///
-/// Unity setup:
-///   headerText    — TextMeshProUGUI  (colony average + pop capacity)
-///   needContainer — Transform        (VerticalLayoutGroup — rows are spawned here)
-///   needRowPrefab — HappinessNeedRow prefab
-///
-///   RectTransform: Anchor Min=(0,0) Max=(1,1), Left/Right/Top/Bottom = 20
-///
-///   HUD: add Button to AnimalController.happinessPanel, onClick → GlobalHappinessPanel.instance.Toggle()
-/// </summary>
+// Full-screen exclusive panel showing colony-wide happiness breakdown.
+// Opened by clicking the happiness HUD element.
+//
+// Unity setup:
+//   headerText    -- TextMeshProUGUI  (colony average + pop capacity)
+//   needContainer -- Transform        (VerticalLayoutGroup -- rows are spawned here)
+//   needRowPrefab -- HappinessNeedRow prefab
+//
+//   RectTransform: Anchor Min=(0,0) Max=(1,1), Left/Right/Top/Bottom = 20
+//
+//   HUD: add Button to AnimalController.happinessPanel, onClick -> GlobalHappinessPanel.instance.Toggle()
 public class GlobalHappinessPanel : MonoBehaviour {
     public static GlobalHappinessPanel instance { get; private set; }
 
@@ -23,12 +21,9 @@ public class GlobalHappinessPanel : MonoBehaviour {
     [SerializeField] Transform        needContainer;
     [SerializeField] HappinessNeedRow needRowPrefab;
 
-    // Rows are spawned once and reused — indices match NeedIndex enum.
+    // Rows are spawned once and reused. Order: Db.happinessNeedsSorted, then housing, then temperature.
     readonly List<HappinessNeedRow> rows = new List<HappinessNeedRow>();
-
-    // SYNC: if happiness needs change in Happiness.cs, update NeedIndex, NeedNames, and Refresh() here.
-    enum NeedIndex { Wheat, Fruit, Soymilk, Housing, Fountain, Social, Fireplace, Temperature }
-    static readonly string[] NeedNames = { "wheat", "fruit", "soymilk", "housing", "fountain", "social", "fireplace", "temperature" };
+    readonly List<string> rowKeys = new List<string>(); // parallel to rows — need key or "housing"/"temperature"
 
     float refreshTimer;
     const float RefreshInterval = 1f;
@@ -72,11 +67,25 @@ public class GlobalHappinessPanel : MonoBehaviour {
         if (needRowPrefab == null || needContainer == null) return;
         foreach (Transform child in needContainer) Destroy(child.gameObject);
         rows.Clear();
-        foreach (string name in NeedNames) {
+        rowKeys.Clear();
+
+        // One row per satisfaction need (sorted), then housing, then temperature
+        foreach (string need in Db.happinessNeedsSorted) {
             var row = Instantiate(needRowPrefab, needContainer);
-            row.SetNeedName(name);
+            row.SetNeedName(need);
             rows.Add(row);
+            rowKeys.Add(need);
         }
+        // Housing row
+        var housingRow = Instantiate(needRowPrefab, needContainer);
+        housingRow.SetNeedName("housing");
+        rows.Add(housingRow);
+        rowKeys.Add("housing");
+        // Temperature row
+        var tempRow = Instantiate(needRowPrefab, needContainer);
+        tempRow.SetNeedName("temperature");
+        rows.Add(tempRow);
+        rowKeys.Add("temperature");
     }
 
     // ── Refresh ───────────────────────────────────────────────────────────
@@ -91,44 +100,51 @@ public class GlobalHappinessPanel : MonoBehaviour {
 
         int n = ac.na;
         float totalScore = 0f;
-        int satWheat = 0, satFruit = 0, satSoymilk = 0;
-        int satHousing = 0, satFountain = 0, satSocial = 0, satFireplace = 0;
-        float sumWheat = 0f, sumFruit = 0f, sumSoymilk = 0f;
-        float sumFountain = 0f, sumSocial = 0f, sumFireplace = 0f, sumTemp = 0f;
+
+        // Accumulate per-need stats
+        Dictionary<string, int> satCounts = new Dictionary<string, int>();
+        Dictionary<string, float> satSums = new Dictionary<string, float>();
+        foreach (string need in Db.happinessNeedsSorted) {
+            satCounts[need] = 0;
+            satSums[need] = 0f;
+        }
+        int satHousing = 0;
+        float sumTemp = 0f;
 
         for (int i = 0; i < n; i++) {
             var h = ac.animals[i].happiness;
             totalScore += h.score;
-            if (h.satWheat    >= Happiness.satisfiedThreshold) satWheat++;
-            if (h.satFruit    >= Happiness.satisfiedThreshold) satFruit++;
-            if (h.satSoymilk  >= Happiness.satisfiedThreshold) satSoymilk++;
-            if (h.house)                                        satHousing++;
-            if (h.satFountain >= Happiness.satisfiedThreshold) satFountain++;
-            if (h.satSocial   >= Happiness.satisfiedThreshold) satSocial++;
-            if (h.satFireplace >= Happiness.satisfiedThreshold) satFireplace++;
-            sumWheat    += h.satWheat;
-            sumFruit    += h.satFruit;
-            sumSoymilk  += h.satSoymilk;
-            sumFountain += h.satFountain;
-            sumSocial   += h.satSocial;
-            sumFireplace += h.satFireplace;
-            sumTemp     += h.temperatureScore;
+            foreach (string need in Db.happinessNeedsSorted) {
+                float val = h.GetSatisfaction(need);
+                if (val >= Happiness.satisfiedThreshold) satCounts[need]++;
+                satSums[need] += val;
+            }
+            if (h.house) satHousing++;
+            sumTemp += h.temperatureScore;
         }
 
         if (headerText != null) {
             headerText.text =
-                $"Colony Happiness: {totalScore / n:0.0} / 8.0   ({n} mice)\n" +
+                $"Colony Happiness: {totalScore / n:0.0} / {Db.happinessMaxScore}.0   ({n} mice)\n" +
                 $"pop capacity: {ac.populationCapacity}";
         }
 
-        if (rows.Count < NeedNames.Length) return; // prefab not assigned yet
-        rows[(int)NeedIndex.Wheat    ].Refresh    (satWheat,    n, sumWheat    / n);
-        rows[(int)NeedIndex.Fruit    ].Refresh    (satFruit,    n, sumFruit    / n);
-        rows[(int)NeedIndex.Soymilk  ].Refresh    (satSoymilk,  n, sumSoymilk  / n);
-        rows[(int)NeedIndex.Housing  ].RefreshBool(satHousing,  n);
-        rows[(int)NeedIndex.Fountain ].Refresh    (satFountain, n, sumFountain / n);
-        rows[(int)NeedIndex.Social   ].Refresh    (satSocial,   n, sumSocial   / n);
-        rows[(int)NeedIndex.Fireplace].Refresh    (satFireplace, n, sumFireplace / n);
-        rows[(int)NeedIndex.Temperature].RefreshTemp(sumTemp / n);
+        // Update rows
+        int rowIdx = 0;
+        foreach (string need in Db.happinessNeedsSorted) {
+            if (rowIdx >= rows.Count) break;
+            rows[rowIdx].Refresh(satCounts[need], n, satSums[need] / n);
+            rowIdx++;
+        }
+        // Housing
+        if (rowIdx < rows.Count) {
+            rows[rowIdx].RefreshBool(satHousing, n);
+            rowIdx++;
+        }
+        // Temperature
+        if (rowIdx < rows.Count) {
+            rows[rowIdx].RefreshTemp(sumTemp / n);
+            rowIdx++;
+        }
     }
 }

@@ -1,6 +1,7 @@
 meoww!!
 4/2
 - animation work
+- added fireplace! several multi-tile building tweaks
 3/31
 - added happiness panel
 - converted mouse sprite to skeleton

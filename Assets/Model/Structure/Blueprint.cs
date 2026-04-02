@@ -9,7 +9,9 @@ public class Blueprint {
     public int y;
     public StructType structType;
     public Sprite sprite;
-    public Tile tile; // not really sure how this will work for multi-tile buildings...
+    public Tile tile; // anchor tile (bottom-left of footprint)
+    // Center tile of the footprint — used as the pathfinding target for delivery/construction.
+    public Tile centerTile => World.instance.GetTileAt(x + (structType.nx - 1) / 2, y);
 
     public Inventory inv;  // holds delivered materials; InvType.Blueprint keeps it out of haul/consolidate searches
     public ItemQuantity[] costs;

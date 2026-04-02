@@ -28,6 +28,23 @@ Any  → Falling (involuntary; interrupts current task) → Idle on landing
 | Temperature | Reduces efficiency when outside comfort range (default 10–25°C). Clothing expands the range by ±3°C. |
 | Efficiency | `eating.Efficiency() * eeping.Efficiency() * happiness.TemperatureEfficiency()` — scales move speed and work rate |
 
+### Happiness satisfactions
+
+`Happiness.cs` tracks a `Dictionary<string, float> satisfactions` keyed by need name (e.g. "wheat", "fruit", "fountain", "social", "fireplace"). All need keys are collected at startup in `Db.happinessNeeds` from three data sources plus one hardcoded source:
+
+| Source | JSON field | Example |
+|--------|-----------|---------|
+| Food items | `Item.happinessNeed` | wheat → "wheat", apple → "fruit", soymilk/tofu → "soymilk" |
+| Decoration buildings | `StructType.decorationNeed` | fountain → "fountain" |
+| Leisure buildings | `StructType.leisureNeed` | fireplace → "fireplace" |
+| ChatTask (hardcoded) | — | "social" |
+
+Each satisfaction decays exponentially each SlowUpdate (`×0.9044`). Score = count of satisfied needs (≥1.0 threshold) + housing (bool) + temperature (−1/5°C to +2). `Db.happinessMaxScore` = need count + 1 (housing) + 2 (temp max).
+
+Adding a new food or building happiness source requires only JSON changes — both UI panels auto-discover needs from `Db.happinessNeedsSorted`.
+
+**Special**: `warmth` is separate from satisfactions — it's a cold-tolerance buff granted by fireplace leisure, not a happiness need.
+
 ### Task dispatch (ChooseTask priority order)
 
 `Animal.ChooseTask()` runs top-to-bottom when an animal is Idle:

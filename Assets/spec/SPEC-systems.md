@@ -169,11 +169,38 @@ Volume is conserved exactly (integer math, explicit transfers).
 
 **Temperature comfort** (on `Happiness`): each animal has `comfortTempLow` (default 10°C) and `comfortTempHigh` (25°C).
 - In range → +2 happiness, 100% efficiency.
-- Outside range → −1 happiness per 5°C deviation; efficiency = `max(0.7, 1.0 − deviation × 0.04)`.
+- Outside range → `2 − deviation/5` happiness (smooth falloff from +2, crosses zero at 10°C deviation); efficiency = `max(0.7, 1.0 − deviation × 0.04)`.
 - Clothing expands the comfort range: `UpdateComfortRange()` shifts both bounds by ±3°C when any clothing item is equipped (7–28°C with a ramie shirt).
 - Fireplace warmth buff: leisuring at a fireplace grants a `warmth` value (0–5) that widens `comfortTempLow` by up to 5°C. Decays slowly over ~2 days (`×0.94` per SlowUpdate).
 
 **Rain/wind**: see header comment in `WeatherSystem.cs`. Rain also affects sun/ambient light multipliers and replenishes water via `WaterController.RainReplenish()`.
+
+---
+
+## Reservation Systems
+
+`Reservable` (`Reservable.cs`) is the shared primitive — a capacity counter with `Reserve()`/`Unreserve()`/`Available()`. It appears in three conceptually different roles:
+
+### Structure-level capacity ("can I go here?")
+
+| Mechanism | Created by | Used by | What it gates |
+|-----------|------------|---------|---------------|
+| `Structure.res` | Structure constructor (`capacity > 0`, not workstation, not leisure) | `Animal.FindHome()` | House sleeping slots |
+| `Structure.seatRes[]` | Structure constructor (leisure buildings only) | `LeisureTask` | Per-seat leisure access — each work tile gets its own `Reservable(1)` so two mice sit on different seats |
+| `WorkOrder.res` (craft) | `RegisterWorkstation()` | `ChooseOrder()` / `Task.Cleanup()` | Workstation worker slots (player-adjustable via `workerLimit`) |
+
+Workstations don't use `Structure.res` — the WOM Craft order's `res` is the sole reservation tracker. Leisure buildings don't use `Structure.res` — they use `seatRes[]` instead. Houses use `Structure.res`.
+
+### WOM dispatch gating ("can I take this work?")
+
+`WorkOrder.res` defaults to `Reservable(1)`. Harvest, research, and fuel-supply orders set capacity from the building/plant. `ChooseOrder()` reserves on dispatch; `Task.Cleanup()` unreserves. Orders stay in the queue permanently — reservation state determines availability.
+
+### Item reservation ("can I take these items?")
+
+| Mechanism | Where | What it gates |
+|-----------|-------|---------------|
+| `ItemStack.resAmount` | Per-stack int counter | Prevents two tasks from fetching the same items. Reserved via `Task.ReserveStack()` / `FetchAndReserve()`. Stale reservations expire after 60s via `Inventory.TickUpdate()`. |
+| `Inventory.incomingRes` | Per-item `Reservable(9999)` on market inventories | Prevents overbooking market space when placing trade orders |
 
 ---
 

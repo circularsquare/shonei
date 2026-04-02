@@ -12,12 +12,13 @@ CONTENT
     - only enabled in evening?
     - chat at fireplace?
 - clean up all reservation systems
-    - workorder res, structure res, structure.seatres
+    - workorder res, structure res, structure.seatres (claude thoughts are in memory)
 - happiness
     - systematize leisure satisfactions
-    - systematize food satisfactions
+    - systematize food satisfactions (this was done i think? test it)
     - infopanel happiness systematize?
         - how are we doing it for global happiness panel?
+    - make global happiness panel instaupdate
 - trading 
     - add automatic foreign traders
 - plant
@@ -33,7 +34,6 @@ CONTENT
 VISUALS
 - make item icons more coherent / similar
 - tab styling, add building icons?
-- mice deliver to left tile of blueprint instead of central one 
 
 MOUSE AI
 - ponder inventory management

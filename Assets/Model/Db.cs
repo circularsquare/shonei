@@ -25,6 +25,12 @@ public class Db : MonoBehaviour {
     public static List<Item> edibleItems;
     public static List<Item> equipmentItems;
     public static List<Item> clothingItems;
+
+    // All unique happiness satisfaction keys defined across items, buildings, and hardcoded sources.
+    // Built at startup; used by Happiness.cs and both happiness panels to auto-discover needs.
+    public static HashSet<string> happinessNeeds;
+    public static List<string> happinessNeedsSorted; // stable ordering for panel display
+    public static int happinessMaxScore; // happinessNeeds.Count + 1 (housing) + 2 (temp max)
     public static Job[] jobs = new Job[100];
     public static Recipe[] recipes = new Recipe[500];
     public static StructType[] structTypes = new StructType[600];
@@ -56,10 +62,29 @@ public class Db : MonoBehaviour {
         edibleItems = itemsFlat.Where(i => i.foodValue > 0).OrderByDescending(i => i.foodValue).ToList();
         equipmentItems = itemsFlat.Where(i => { Item cur = i; while (cur != null) { if (cur.name == "tools") return true; cur = cur.parent; } return false; }).ToList();
         clothingItems = itemsFlat.Where(i => { Item cur = i; while (cur != null) { if (cur.name == "clothing") return true; cur = cur.parent; } return false; }).ToList();
+        BuildHappinessNeedRegistry();
         ValidateNoGroupOutputs();
         LoadItemIcons();
         LoadNames();
         Debug.Log("db loaded");
+    }
+
+    // Collects all unique happiness satisfaction keys from items (happinessNeed),
+    // buildings (decorationNeed, leisureNeed), and hardcoded sources (social).
+    void BuildHappinessNeedRegistry() {
+        happinessNeeds = new HashSet<string>();
+        foreach (Item item in edibleItems)
+            if (!string.IsNullOrEmpty(item.happinessNeed))
+                happinessNeeds.Add(item.happinessNeed);
+        foreach (StructType st in structTypes) {
+            if (st == null) continue;
+            if (!string.IsNullOrEmpty(st.decorationNeed)) happinessNeeds.Add(st.decorationNeed);
+            if (!string.IsNullOrEmpty(st.leisureNeed))    happinessNeeds.Add(st.leisureNeed);
+        }
+        happinessNeeds.Add("social"); // ChatTask — not data-driven
+        happinessNeedsSorted = new List<string>(happinessNeeds);
+        happinessNeedsSorted.Sort();
+        happinessMaxScore = happinessNeeds.Count + 1 + 2; // +1 housing, +2 temp max
     }
 
     void LoadNames() {

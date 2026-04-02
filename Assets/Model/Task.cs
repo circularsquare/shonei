@@ -321,7 +321,7 @@ public class ConstructTask : Task {
         }
         Path standPath = blueprint.structType.isTile
             ? animal.nav.PathStrictlyAdjacent(blueprint.tile)
-            : animal.nav.PathToOrAdjacent(blueprint.tile);
+            : animal.nav.PathToOrAdjacent(blueprint.centerTile);
         if (standPath == null) return false;
         objectives.AddLast(new GoObjective(this, standPath.tile));
         objectives.AddLast(new ConstructObjective(this, blueprint));
@@ -339,7 +339,7 @@ public class SupplyBlueprintTask : Task {
         if (blueprint.state != Blueprint.BlueprintState.Receiving) return false;
         Path standPath = blueprint.structType.isTile
             ? animal.nav.PathStrictlyAdjacent(blueprint.tile)
-            : animal.nav.PathToOrAdjacent(blueprint.tile);
+            : animal.nav.PathToOrAdjacent(blueprint.centerTile);
         if (standPath == null) return false;
         for (int i = 0; i < blueprint.costs.Length; i++) {
             int needed = blueprint.costs[i].quantity - blueprint.inv.Quantity(blueprint.costs[i].item);

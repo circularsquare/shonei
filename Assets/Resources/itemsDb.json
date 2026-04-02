@@ -111,6 +111,7 @@
                 "name": "wheat",
                 "decayRate": 0.3,
                 "foodValue": 20,
+                "happinessNeed": "wheat",
                 "children": null
             },{
                 "id": 152,
@@ -124,6 +125,7 @@
         "name": "apple",
         "decayRate": 0.3,
         "foodValue": 15,
+        "happinessNeed": "fruit",
         "children": null
     },{
         "id": 200,
@@ -147,6 +149,7 @@
         "name": "soymilk",
         "decayRate": 1.5,
         "foodValue": 15,
+        "happinessNeed": "soymilk",
         "isLiquid": true,
         "children": null
     },{
@@ -154,6 +157,7 @@
         "name": "tofu",
         "decayRate": 4.0,
         "foodValue": 40,
+        "happinessNeed": "soymilk",
         "children": null
     },{
         "id": 250,

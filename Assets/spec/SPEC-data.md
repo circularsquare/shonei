@@ -44,6 +44,7 @@ Fields:
 | `pathCostReduction` | float? | reduces A* edge cost (roads) |
 | `isWorkstation` | bool? | registers a WOM Craft order when placed |
 | `isDecoration` | bool? | nearby animals gain passive happiness |
+| `decorationNeed` | string? | which happiness satisfaction this decoration targets (e.g. "fountain"); required when `isDecoration` is true |
 | `decorRadius` | int? | Chebyshev radius for decoration effect |
 | `isLeisure` | bool? | mice actively visit during leisure time (e.g. fireplace) |
 | `leisureNeed` | string? | which happiness satisfaction this building targets (e.g. "fireplace"); required when `isLeisure` is true |
@@ -83,6 +84,7 @@ Fields:
 | `name` | string | lookup key |
 | `decayRate` | float | decay per tick on floors (0 = no decay); inherited by children if not specified on child |
 | `foodValue` | int? | hunger restored when eaten |
+| `happinessNeed` | string? | which happiness satisfaction eating this food grants (e.g. "wheat", "fruit", "soymilk"); null = none |
 | `discrete` | bool? | stored/moved in whole-liang (100 fen) units only (e.g. tools, clothing); inherited by children |
 | `isLiquid` | bool? | liquid item (water, soymilk); only fits in liquid-storage containers; inherited by children |
 | `children` | array? | leaf sub-types; see group item note above |

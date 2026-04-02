@@ -172,14 +172,14 @@ Opened by clicking the happiness HUD element (`AnimalController.happinessPanel`)
 - `needContainer` Transform (VerticalLayoutGroup) — `HappinessNeedRow` instances spawned here at `Start()`
 - `needRowPrefab` — `HappinessNeedRow` prefab
 
-Rows are spawned once (one per need) and updated on each `Refresh()`. Refreshes every 1 s while open; also refreshes on `OnEnable()`. Closes on click-outside.
+Rows are spawned dynamically from `Db.happinessNeedsSorted` (one per satisfaction need, plus housing and temperature). Adding a new need to JSON auto-adds a row — no code changes needed. Refreshes every 1 s while open; also refreshes on `OnEnable()`. Closes on click-outside.
 
 ### HappinessNeedRow
 
 `Assets/UI/HappinessNeedRow.cs` — one row in the needs table.
 
 Prefab has a HorizontalLayoutGroup with four children: `NeedName` TMP, `Count` TMP (e.g. "4/5"), `FillBar`, `AvgValue` TMP. Three refresh methods:
-- `Refresh(satisfied, total, avgVal)` — value-based needs (wheat, fruit, soymilk, fountain, social)
+- `Refresh(satisfied, total, avgVal)` — value-based needs (all satisfaction dictionary entries)
 - `RefreshBool(satisfied, total)` — housing (no meaningful avg value)
 - `RefreshTemp(avgTempScore)` — temperature (hides the fill bar; only shows score)
 

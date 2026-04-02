@@ -212,8 +212,10 @@ public class StructType {
 
     // Decoration: nearby animals gain a happiness point when within decorRadius (Chebyshev) of this building.
     // A decoration with hasFuelInv=true only counts when its reservoir has fuel (e.g. fountain needs water).
+    // decorationNeed identifies which happiness satisfaction this decoration targets (e.g. "fountain").
     public bool isDecoration {get; set;}
     public int decorRadius {get; set;}     // Chebyshev radius; 0 means not a decoration
+    public string decorationNeed {get; set;}
 
     // Leisure: mice actively visit this building during leisure time (fireplace, tea house, etc.).
     // A leisure building with hasFuelInv=true only attracts mice when its reservoir has fuel.

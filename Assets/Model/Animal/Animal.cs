@@ -105,22 +105,28 @@ public class Animal : MonoBehaviour{
             this.eeping = new Eeping();
             this.eeping.eep = pendingSaveData.eep;
             this.happiness = new Happiness();
-            if (pendingSaveData.satWheat.HasValue) {
-                // New satisfaction format
-                this.happiness.satWheat    = pendingSaveData.satWheat.Value;
-                this.happiness.satFruit    = pendingSaveData.satFruit ?? 0f;
-                this.happiness.satSoymilk  = pendingSaveData.satSoymilk ?? 0f;
-                this.happiness.satFountain = pendingSaveData.satFountain ?? 0f;
-                this.happiness.satSocial   = pendingSaveData.satSocial ?? 0f;
-                this.happiness.satFireplace = pendingSaveData.satFireplace ?? 0f;
-                this.happiness.warmth       = pendingSaveData.warmth ?? 0f;
+            if (pendingSaveData.satisfactions != null) {
+                // Current format: dictionary of need → value
+                foreach (var kv in pendingSaveData.satisfactions)
+                    if (this.happiness.satisfactions.ContainsKey(kv.Key))
+                        this.happiness.satisfactions[kv.Key] = kv.Value;
+                this.happiness.warmth = pendingSaveData.warmth ?? 0f;
+            } else if (pendingSaveData.satWheat.HasValue) {
+                // Legacy v2: individual satXxx fields
+                this.happiness.satisfactions["wheat"]     = pendingSaveData.satWheat.Value;
+                this.happiness.satisfactions["fruit"]     = pendingSaveData.satFruit ?? 0f;
+                this.happiness.satisfactions["soymilk"]   = pendingSaveData.satSoymilk ?? 0f;
+                this.happiness.satisfactions["fountain"]  = pendingSaveData.satFountain ?? 0f;
+                this.happiness.satisfactions["social"]    = pendingSaveData.satSocial ?? 0f;
+                this.happiness.satisfactions["fireplace"] = pendingSaveData.satFireplace ?? 0f;
+                this.happiness.warmth                     = pendingSaveData.warmth ?? 0f;
             } else {
-                // Legacy format: convert timeSince counters to satisfaction points
-                this.happiness.satWheat    = ConvertTimerToSat(pendingSaveData.timeSinceAteWheat);
-                this.happiness.satFruit    = ConvertTimerToSat(pendingSaveData.timeSinceAteFruit);
-                this.happiness.satSoymilk  = ConvertTimerToSat(pendingSaveData.timeSinceAteSoymilk);
-                this.happiness.satFountain = ConvertTimerToSat(pendingSaveData.timeSinceSawFountain ?? 180f);
-                this.happiness.satSocial   = ConvertTimerToSat(pendingSaveData.timeSinceSocialized ?? 180f);
+                // Legacy v1: convert timeSince counters to satisfaction points
+                this.happiness.satisfactions["wheat"]    = ConvertTimerToSat(pendingSaveData.timeSinceAteWheat);
+                this.happiness.satisfactions["fruit"]    = ConvertTimerToSat(pendingSaveData.timeSinceAteFruit);
+                this.happiness.satisfactions["soymilk"]  = ConvertTimerToSat(pendingSaveData.timeSinceAteSoymilk);
+                this.happiness.satisfactions["fountain"] = ConvertTimerToSat(pendingSaveData.timeSinceSawFountain ?? 180f);
+                this.happiness.satisfactions["social"]   = ConvertTimerToSat(pendingSaveData.timeSinceSocialized ?? 180f);
             }
             this.job = Db.GetJobByName(pendingSaveData.jobName) ?? Db.jobs[0];
             this.state = AnimalState.Idle;
@@ -252,7 +258,11 @@ public class Animal : MonoBehaviour{
                     int dist = Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy));
                     if (dist > b.structType.decorRadius) continue;
                     if (b.reservoir != null && !b.reservoir.HasFuel()) continue;
-                    happiness.NoteSawDecoration(b.structType.name);
+                    if (string.IsNullOrEmpty(b.structType.decorationNeed)) {
+                        Debug.LogError($"Decoration building '{b.structType.name}' has no decorationNeed set");
+                        continue;
+                    }
+                    happiness.NoteSawDecoration(b.structType.decorationNeed);
                 }
             }
         }
@@ -390,7 +400,7 @@ public class Animal : MonoBehaviour{
 
         // Chat option (social need)
         if (AnimalController.instance.FindIdleAnimalNear(this, 15) != null)
-            candidates.Add((happiness.satSocial, FindChatPartner));
+            candidates.Add((happiness.GetSatisfaction("social"), FindChatPartner));
 
         // Building options: find nearest available building per leisure need
         var sc = StructController.instance;
