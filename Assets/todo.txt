@@ -5,10 +5,11 @@ CONTENT
 - farming buildings
 - grooming?
 - clothing
-    - silkworm building? -> silk cocoons -> cloth -> clothing
+    - silkworm building? -> silk cocoons -> cloth -> clothing 
 - clean up all reservation systems
     - workorder res, structure res, structure.seatres (claude thoughts are in memory)
 - trading 
+    - move market off screen?
 - plant
     - flesh out plant growth, moisture and temperature
     - make plants grow from sunlight?
@@ -18,12 +19,11 @@ CONTENT
     - books for gaining skills 
     - manuals for learning technologies
     - scriptoriums
-- "food" item group
+- chat speech bubbles
 
 VISUALS
 - make item icons more coherent / similar
 - tab styling, add building icons?
-- make trading panel being inactive from start okay for setting onlineindicator
 
 MOUSE AI
 - ponder inventory management
@@ -35,8 +35,11 @@ MOUSE AI
     - work station priority
     - inventory priority? or inventory pull orders
 - dynamic mouse task objectives
-- allow storage inv and floor inv on the same tile?
 
 BUGS
 
 TODAY GOALS
+- fix market inv display... somehow...
+    - address stale reservation?
+    - improve food fetching for journey
+    - address game save whiel merchant is mid-journey

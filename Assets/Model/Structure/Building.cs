@@ -151,6 +151,9 @@ public class Building : Structure {
                 ls.reservoir = reservoir;
                 ls.activeStartHour = st.activeStartHour;
                 ls.activeEndHour   = st.activeEndHour;
+                // Start unlit — Update() will set isLit correctly on the first frame
+                // once fuel state is known. Avoids a one-frame flicker on placement/load.
+                ls.isLit = false;
             }
         }
     }

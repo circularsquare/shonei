@@ -58,6 +58,50 @@ public abstract class Task {
         ReserveStack(stack, iq.quantity);
     }
 
+    // Prepends a soft food-fetch to the front of the objective queue if the animal's food slot
+    // is less than half full. Call at the end of Initialize() for tasks involving long journeys.
+    // Uses softFetch so a missing food source won't fail the whole task.
+    protected void PrependFoodFetchIfNeeded() {
+        ItemStack slotStack = animal.foodSlotInv.itemStacks[0];
+        int have     = slotStack.quantity;
+        int capacity = animal.foodSlotInv.stackSize; // 300 fen = 3 liang
+        if (have >= capacity / 2) return; // already half-stocked, good enough
+
+        int space    = capacity - have;
+        Item slotItem = slotStack.item; // null if slot is currently empty
+
+        Path bestPath     = null;
+        ItemStack bestStack = null;
+        Item bestFood     = null;
+
+        if (slotItem != null) {
+            // Top up whatever food type is already loaded in the slot.
+            (bestPath, bestStack) = animal.nav.FindPathItemStack(slotItem);
+            if (bestPath != null) bestFood = slotItem;
+        }
+        if (bestPath == null) {
+            // Slot is empty — find the closest available food of any type.
+            // Db.edibleItems is sorted by foodValue desc, but we prefer proximity here.
+            foreach (Item food in Db.edibleItems) {
+                (Path p, ItemStack s) = animal.nav.FindPathItemStack(food);
+                if (p == null) continue;
+                if (bestPath == null || p.cost < bestPath.cost) {
+                    bestPath = p; bestStack = s; bestFood = food;
+                }
+            }
+        }
+        if (bestPath == null) return; // no food reachable — travel hungry
+
+        int qty = Math.Min(space, bestStack.quantity - bestStack.resAmount);
+        if (qty <= 0) return;
+
+        ItemQuantity foodIq = new(bestFood, qty);
+        // AddFirst so food is fetched before any other objectives run.
+        // softFetch=true: if food is gone on arrival, objective completes rather than fails.
+        objectives.AddFirst(new FetchObjective(this, foodIq, bestPath.tile, animal.foodSlotInv, softFetch: true));
+        ReserveStack(bestStack, qty);
+    }
+
     public bool Start(){ // calls some task specific Initialize
         bool initialized = Initialize();
         if (initialized && objectives.Count > 0){StartNextObjective();}
@@ -434,15 +478,19 @@ public class SupplyFuelTask : Task {
         return true;
     }
 }
+// Travel duration for market journeys: one quarter of a game day.
+// The market is off-screen at the left world edge; merchants walk there and disappear
+// while "travelling to/from market", then reappear when the trip is complete.
 public class HaulToMarketTask : Task {
+    private static readonly int MarketTransitTicks = World.ticksInDay / 8;
     public HaulToMarketTask(Animal animal) : base(animal) {}
     public override bool Initialize() {
         Path marketPath = animal.nav.FindMarketPath();
         if (marketPath == null) return false;
         Building market = marketPath.tile.building as Building;
         if (market == null) return false;
-        Tile marketStorageTile = market.storageTile;
-        Inventory marketInv = marketStorageTile.inv;
+        Tile marketTile = marketPath.tile;
+        Inventory marketInv = market.storageTile.inv;
         if (marketInv == null) return false;
 
         foreach (var kvp in marketInv.targets) {
@@ -459,7 +507,6 @@ public class HaulToMarketTask : Task {
 
             int qty = Math.Min(quantityNeeded, stack.quantity - stack.resAmount);
             if (qty <= 0) continue;
-            // Reserve destination space on market inventory
             int spaceReserved = ReserveSpace(marketInv, item, qty);
             if (spaceReserved <= 0) continue;
             qty = Math.Min(qty, spaceReserved);
@@ -468,21 +515,26 @@ public class HaulToMarketTask : Task {
             if (!worthHauling) continue;
             ItemQuantity iq = new(item, qty);
             FetchAndReserve(iq, itemPath.tile, stack, qty);
-            objectives.AddLast(new DeliverObjective(this, iq, marketStorageTile));
+            // Walk to the market portal, disappear for the journey, then deliver on arrival.
+            objectives.AddLast(new GoObjective(this, marketTile));
+            objectives.AddLast(new TravelingObjective(this, MarketTransitTicks));
+            objectives.AddLast(new DeliverToInventoryObjective(this, iq, marketInv));
+            PrependFoodFetchIfNeeded();
             return true;
         }
         return false;
     }
 }
 public class HaulFromMarketTask : Task {
+    private static readonly int MarketTransitTicks = World.ticksInDay / 4;
     public HaulFromMarketTask(Animal animal) : base(animal) {}
     public override bool Initialize() {
         Path marketPath = animal.nav.FindMarketPath();
         if (marketPath == null) return false;
         Building market = marketPath.tile.building as Building;
         if (market == null) return false;
-        Tile marketStorageTile = market.storageTile;
-        Inventory marketInv = marketStorageTile.inv;
+        Tile marketTile = marketPath.tile;
+        Inventory marketInv = market.storageTile.inv;
         if (marketInv == null) return false;
 
         foreach (var kvp in marketInv.targets) {
@@ -497,7 +549,6 @@ public class HaulFromMarketTask : Task {
 
             int qty = Math.Min(excess, stack.quantity - stack.resAmount);
             if (qty <= 0) continue;
-            // Reserve destination space on storage inventory
             int spaceReserved = ReserveSpace(storagePath.tile.inv, item, qty);
             if (spaceReserved <= 0) continue;
             qty = Math.Min(qty, spaceReserved);
@@ -505,7 +556,13 @@ public class HaulFromMarketTask : Task {
             bool worthHauling = qty >= MinHaulQuantity || qty >= sourceQty || qty >= excess / 4;
             if (!worthHauling) continue;
             ItemQuantity iq = new(item, qty);
-            FetchAndReserve(iq, marketStorageTile, stack, qty);
+            // Reserve the items in the market now so no other task double-counts them.
+            ReserveStack(stack, qty);
+            // Walk to portal → travel to market → receive goods → travel back → deliver to storage.
+            objectives.AddLast(new GoObjective(this, marketTile));
+            objectives.AddLast(new TravelingObjective(this, MarketTransitTicks));
+            objectives.AddLast(new ReceiveFromInventoryObjective(this, iq, marketInv));
+            objectives.AddLast(new TravelingObjective(this, MarketTransitTicks));
             objectives.AddLast(new DeliverObjective(this, iq, storagePath.tile));
             return true;
         }
@@ -689,6 +746,42 @@ public class DeliverToInventoryObjective : Objective {
         if (moved < toDeliver)
             Debug.Log($"{animal.aName} delivered {moved}/{toDeliver} {iq.item.name} to {targetInv.displayName} — partial fill");
         Complete();
+    }
+}
+// Moves items from a source inventory directly into the animal's inventory.
+// Always queued after a TravelingObjective — the animal is conceptually "at" the source
+// (the market), so no navigation is needed. Symmetric counterpart to DeliverToInventoryObjective.
+public class ReceiveFromInventoryObjective : Objective {
+    private ItemQuantity iq;
+    private Inventory sourceInv;
+    public ReceiveFromInventoryObjective(Task task, ItemQuantity iq, Inventory sourceInv) : base(task) {
+        this.iq = iq;
+        this.sourceInv = sourceInv;
+    }
+    public override string GetObjectiveName() => $"ReceiveFrom({iq.item.name})";
+    public override void Start() {
+        if (sourceInv == null) { Fail(); return; }
+        ItemStack stack = sourceInv.GetItemStack(iq.item);
+        int available = stack != null ? stack.quantity - stack.resAmount : 0;
+        if (available <= 0) { Debug.Log($"{animal.aName} ReceiveFromInventory: no {iq.item.name} available in source"); Fail(); return; }
+        int toReceive = Math.Min(available, iq.quantity);
+        int moved = sourceInv.MoveItemTo(animal.inv, iq.item, toReceive);
+        if (moved <= 0) { Debug.Log($"{animal.aName} ReceiveFromInventory: couldn't move {iq.item.name} to animal inv"); Fail(); return; }
+        Complete();
+    }
+}
+// Hides the animal and waits for durationTicks before reappearing — representing travel time
+// to/from the off-screen market. AnimalStateManager.HandleTraveling drives the timer.
+public class TravelingObjective : Objective {
+    public readonly int durationTicks;
+    public TravelingObjective(Task task, int durationTicks) : base(task) {
+        this.durationTicks = durationTicks;
+    }
+    public override string GetObjectiveName() => $"Traveling({durationTicks}t)";
+    public override void Start() {
+        animal.workProgress = 0f;
+        animal.state = Animal.AnimalState.Traveling;
+        animal.go.SetActive(false);
     }
 }
 public class DropObjective : Objective {

@@ -228,7 +228,8 @@ public class Nav {
         return FindPathToStruct(structType, s => s.res.Available(), r);
     }
     public Path FindMarketPath() {
-        return FindPathToStruct(Db.structTypeByName["market"]);
+        // Market sits at the far left world edge (x=0); use a wide radius to reach it from anywhere.
+        return FindPathToStruct(Db.structTypeByName["market"], r: 120);
     }
     public Path FindPathToHarvestable(Job job, int r = 40) {
         Path closestPath = null;

@@ -33,6 +33,7 @@ using Newtonsoft.Json;
 //   [x] Water levels
 //   [x] Is raining
 //   [x] Global item targets
+//   [x] Camera position
 // -----------------------------------------------------------------------
 
 public class SaveSystem : MonoBehaviour {
@@ -143,6 +144,12 @@ public class SaveSystem : MonoBehaviour {
                 if (item != null) savedTargets[item.name] = kv.Value;
             }
             if (savedTargets.Count > 0) data.globalItemTargets = savedTargets;
+        }
+
+        var cam = Camera.main;
+        if (cam != null) {
+            data.cameraX = cam.transform.position.x;
+            data.cameraY = cam.transform.position.y;
         }
 
         return data;
@@ -324,6 +331,9 @@ public class SaveSystem : MonoBehaviour {
             foreach (StructureSaveData ssd in save.structures)
                 RestoreStructure(ssd);
 
+        // Backwards-compat migration: move market to x=0 if it was saved at the old position.
+        MigrateMarketPosition();
+
         // Restore tile inventories after structures (storage inventories are created by Building constructor)
         if (save.tiles != null) {
             foreach (TileSaveData tsd in save.tiles) {
@@ -359,6 +369,31 @@ public class SaveSystem : MonoBehaviour {
                 rp.SetAllowed(id, false);
 
         WeatherSystem.instance?.RestoreState(save.isRaining);
+
+        var cam = Camera.main;
+        if (cam != null && save.cameraX.HasValue && save.cameraY.HasValue)
+            cam.transform.position = new Vector3(save.cameraX.Value, save.cameraY.Value, cam.transform.position.z);
+    }
+
+    // Temporary migration: if the market was saved at the old position (x!=0), destroy it and
+    // re-create it at x=0 so the off-screen market portal is in the right place.
+    // Safe to remove once all save files have been re-saved with the new layout.
+    void MigrateMarketPosition() {
+        if (!Db.structTypeByName.TryGetValue("market", out StructType marketType)) return;
+        var list = StructController.instance.GetByType(marketType);
+        if (list == null) return;
+        // Collect markets not already at x=0 (copy since Destroy modifies the list)
+        var toMove = new System.Collections.Generic.List<Structure>();
+        foreach (Structure s in list)
+            if (s.x != 0) toMove.Add(s);
+        if (toMove.Count == 0) return;
+        foreach (Structure s in toMove) {
+            int oldX = s.x, oldY = s.y;
+            s.Destroy();
+            Debug.Log($"SaveSystem: migrated market from ({oldX},{oldY}) → (0,{oldY})");
+        }
+        Building market = new Building(marketType, 0, toMove[0].y);
+        StructController.instance.Place(market);
     }
 
     void RestoreStructure(StructureSaveData ssd) {

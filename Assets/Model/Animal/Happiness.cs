@@ -55,7 +55,7 @@ public class Happiness {
 
     public void NoteAte(Item food, float fraction = 1f) {
         if (food.happinessNeed == null) return;
-        Grant(food.happinessNeed, activityGrant * fraction);
+        Grant(food.happinessNeed, food.foodValue / 20f * fraction);
     }
 
     // Called when a nearby decoration building is spotted.

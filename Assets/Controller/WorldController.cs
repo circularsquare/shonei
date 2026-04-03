@@ -157,37 +157,37 @@ public class WorldController : MonoBehaviour {
     // graph.Initialize() here is what makes node.standable valid — must happen before DefaultJobSetup.
     public void GenerateDefault() {
         for (int x = 0; x < world.nx; x++) {
-            for (int y = world.ny - 1; y > 0; y--) {
-                if (y < 10) world.GetTileAt(x, y).type = Db.tileTypeByName["dirt"];
-                if (y < 8)  world.GetTileAt(x, y).type = Db.tileTypeByName["stone"];
+            for (int y = world.ny - 1; y >= 0; y--) {
+                if (y < 20) world.GetTileAt(x, y).type = Db.tileTypeByName["dirt"];
+                if (y < 18) world.GetTileAt(x, y).type = Db.tileTypeByName["stone"];
             }
         }
 
-        Building market = new(Db.structTypeByName["market"], 10, 10);
+        // Market is placed at the left world edge and is intentionally off-screen.
+        // Merchants walk here and "disappear" for a travel period before goods arrive.
+        Building market = new(Db.structTypeByName["market"], 0, 20);
         StructController.instance.Place(market);
 
-        Plant plant1 = new Plant(Db.plantTypeByName["tree"], 22, 10);
+        Plant plant1 = new Plant(Db.plantTypeByName["tree"], 32, 20);
         plant1.Mature();
         StructController.instance.Place(plant1);
-        Plant plant2 = new Plant(Db.plantTypeByName["appletree"], 15, 10);
+        Plant plant2 = new Plant(Db.plantTypeByName["appletree"], 25, 20);
         StructController.instance.Place(plant2);
-        Plant plant3 = new Plant(Db.plantTypeByName["tree"], 18, 10);
+        Plant plant3 = new Plant(Db.plantTypeByName["tree"], 28, 20);
         StructController.instance.Place(plant3);
-        Plant plant4 = new Plant(Db.plantTypeByName["wheat"], 25, 10);
+        Plant plant4 = new Plant(Db.plantTypeByName["wheat"], 35, 20);
         StructController.instance.Place(plant4);
-        Plant plant5 = new Plant(Db.plantTypeByName["wheat"], 26, 10);
+        Plant plant5 = new Plant(Db.plantTypeByName["wheat"], 36, 20);
         StructController.instance.Place(plant5);
-        Plant plant6 = new Plant(Db.plantTypeByName["soybean"], 14, 10);
+        Plant plant6 = new Plant(Db.plantTypeByName["soybean"], 24, 20);
         StructController.instance.Place(plant6);
 
-        // Seed water sources at the surface (y=10) in the specified x ranges.
+        // Seed water source just below the surface (y=19) on the right side.
         // Clear the tile first so water isn't blocked by solid terrain.
-        for (int x = 0; x < world.nx; x++) {
-            if ((x >= 0 && x <= 3) || (x >= 34 && x <= 44)) {
-                Tile t = world.GetTileAt(x, 9);
-                t.type = Db.tileTypeByName["empty"];
-                t.water = WaterController.WaterMax;
-            }
+        for (int x = 44; x <= 54; x++) {
+            Tile t = world.GetTileAt(x, 19);
+            t.type = Db.tileTypeByName["empty"];
+            t.water = WaterController.WaterMax;
         }
 
         world.timer = World.ticksInDay * 0.3f;
@@ -197,8 +197,8 @@ public class WorldController : MonoBehaviour {
         // graph is built. Mirrors the Reconcile() call at the end of ApplySaveData().
         WorkOrderManager.instance?.Reconcile(silent: true);
 
-        for (int i = 0; i < 4; i++) AnimalController.instance.AddAnimal(19 + i, 10);
-        Camera.main.transform.position = new Vector3(20f, 13f, Camera.main.transform.position.z);
+        for (int i = 0; i < 4; i++) AnimalController.instance.AddAnimal(29 + i, 20);
+        Camera.main.transform.position = new Vector3(30f, 24f, Camera.main.transform.position.z);
         defaultSetupCoroutine = StartCoroutine(DefaultJobSetup());
     }
 
@@ -210,7 +210,7 @@ public class WorldController : MonoBehaviour {
         AnimalController.instance.AddJob("logger", 1);
         AnimalController.instance.AddJob("hauler", 1);
         AnimalController.instance.AddJob("farmer", 1);
-        world.ProduceAtTile("silver", 50, world.GetTileAt(21, 10));
+        world.ProduceAtTile("silver", 50, world.GetTileAt(31, 20));
     }
 
     // Updates the gameobject sprite and shadow caster when the tile data is changed

@@ -54,9 +54,9 @@ public class SkillSet {
     public float[] SerializeXp()    => (float[])xp.Clone();
     public int[]   SerializeLevel() => (int[])level.Clone();
 
-    /// <summary>Restores skill data from save. Handles null (old saves) gracefully — leaves arrays at zero.</summary>
+    // Length-clamped copy in case the skill count ever changes between saves.
     public void Deserialize(float[] savedXp, int[] savedLevel) {
-        if (savedXp    != null) System.Array.Copy(savedXp,    xp,    System.Math.Min(savedXp.Length,    Count));
-        if (savedLevel != null) System.Array.Copy(savedLevel, level, System.Math.Min(savedLevel.Length, Count));
+        System.Array.Copy(savedXp,    xp,    System.Math.Min(savedXp.Length,    Count));
+        System.Array.Copy(savedLevel, level, System.Math.Min(savedLevel.Length, Count));
     }
 }

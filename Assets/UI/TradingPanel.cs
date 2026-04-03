@@ -38,6 +38,9 @@ public class TradingPanel : MonoBehaviour {
     public TMP_InputField orderQty;
     public TextMeshProUGUI orderAlert; // assign in inspector; shows validation errors
 
+    [Header("Market Inventory")]
+    public Transform      marketInvList; // scroll content for live market inventory display
+
     [Header("Chat")]
     public Transform      chatList;
     public TMP_InputField chatInput;
@@ -94,7 +97,37 @@ public class TradingPanel : MonoBehaviour {
             return;
         }
         if (gameObject.activeSelf) gameObject.SetActive(false);
-        else UI.OpenExclusive(gameObject);
+        else {
+            UI.OpenExclusive(gameObject);
+            RefreshMarketInventory();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Market inventory display
+    // -------------------------------------------------------------------------
+
+    public void RefreshMarketInventory() {
+        if (marketInvList == null) return;
+        foreach (Transform child in marketInvList) Destroy(child.gameObject);
+
+        Inventory market = TradingClient.FindMarketInventory();
+        if (market == null) {
+            AddRow("no market found", marketInvList);
+            return;
+        }
+
+        bool anyItems = false;
+        foreach (ItemStack stack in market.itemStacks) {
+            if (stack.quantity <= 0) continue;
+            anyItems = true;
+            bool discrete = stack.item.discrete;
+            string label = $"{stack.item.name}: {ItemStack.FormatQ(stack.quantity, discrete)}";
+            if (market.targets != null && market.targets.TryGetValue(stack.item, out int target) && target > 0)
+                label += $" / {ItemStack.FormatQ(target, discrete)}";
+            AddRow(label, marketInvList);
+        }
+        if (!anyItems) AddRow("(empty)", marketInvList);
     }
 
     // -------------------------------------------------------------------------
@@ -278,6 +311,7 @@ public class TradingPanel : MonoBehaviour {
     void DisplayFill(Fill fill) {
         bool discrete = Db.itemByName.TryGetValue(fill.item, out Item item) && item.discrete;
         AddChat($"<color=#55aa55>[fill] {fill.buyer} bought {ItemStack.FormatQ(fill.quantity, discrete)} {fill.item} from {fill.seller} @ {fill.price / 100f:0.##}</color>");
+        RefreshMarketInventory();
     }
 
     // -------------------------------------------------------------------------

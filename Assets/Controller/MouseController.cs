@@ -66,28 +66,34 @@ public class MouseController : MonoBehaviour {
         float scroll = Input.GetAxis("Mouse ScrollWheel");
         if (scroll != 0f && ppcAssetsPPU != null) {
             int[] zoomLevels = {8, 12, 16, 24 }; // in PPU
-            int current = (int)ppcAssetsPPU.GetValue(ppcComponent);
-            int idx = System.Array.IndexOf(zoomLevels, current);
-            if (idx == -1) idx = System.Array.BinarySearch(zoomLevels, current);
+            int currentPPU = (int)ppcAssetsPPU.GetValue(ppcComponent);
+            int idx = System.Array.IndexOf(zoomLevels, currentPPU);
+            if (idx == -1) idx = System.Array.BinarySearch(zoomLevels, currentPPU);
             if (idx < 0) idx = ~idx;
             idx = Mathf.Clamp(idx + (scroll > 0 ? 1 : -1), 0, zoomLevels.Length - 1);
-            ppcAssetsPPU.SetValue(ppcComponent, zoomLevels[idx]);
+            int newPPU = zoomLevels[idx];
+            ppcAssetsPPU.SetValue(ppcComponent, newPPU);
+            // PPC updates orthographicSize in its own LateUpdate, so estimate the new
+            // half-height by scaling the current size by the PPU ratio (exact if zoom factor is stable).
+            float estimatedHalfH = Camera.main.orthographicSize * currentPPU / newPPU;
+            ClampCameraToWorld(estimatedHalfH);
         }
 
         // draggin world around
         Vector3 currPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
         currPosition.z = 1f;
-        if (Input.GetMouseButtonDown(1)){ 
+        if (Input.GetMouseButtonDown(1)){
             prevPosition = Input.mousePosition;
             // if (mouseMode == MouseMode.Build) SetModeSelect();             // cancels build mode on right click
         }
         if (Input.GetMouseButton(1)) {
             Vector3 currScreenPosition = Input.mousePosition;
-            Vector3 delta = Camera.main.ScreenToWorldPoint(prevPosition) 
+            Vector3 delta = Camera.main.ScreenToWorldPoint(prevPosition)
                         - Camera.main.ScreenToWorldPoint(currScreenPosition);
             delta.z = 0f;
             Camera.main.transform.Translate(delta);
             prevPosition = currScreenPosition;
+            ClampCameraToWorld();
         }
 
         // set buildPreview if in build/remove mode
@@ -279,4 +285,34 @@ public class MouseController : MonoBehaviour {
 
     static bool IsStorageType(Inventory.InvType t) =>
         t == Inventory.InvType.Storage || t == Inventory.InvType.Market;
+
+    // ── Camera bounds ──────────────────────────────────────────────────────
+    // Clamps the camera so the viewport never shows outside the world rectangle.
+    // Tiles occupy x ∈ [0, nx-1] and y ∈ [0, ny-1] (centered on integers),
+    // so the world edge is 0.5 tiles beyond the outermost tile centres.
+    // ppu: pass explicitly after a zoom change because PPC updates orthographicSize
+    // one frame later; omit (or pass 0) to read the current PPC value.
+    // estimatedHalfH: pass after a zoom change (PPC hasn't updated orthographicSize yet).
+    // Omit (or pass 0) during pan — orthographicSize is already current.
+    void ClampCameraToWorld(float estimatedHalfH = 0f) {
+        if (world == null) return;
+
+        float halfH = estimatedHalfH > 0f ? estimatedHalfH : Camera.main.orthographicSize;
+        float halfW = halfH * Camera.main.aspect;
+
+        float worldW = world.nx; // tile centres at 0..nx-1, edges at -0.5..nx-0.5
+        float worldH = world.ny;
+
+        // Stop when the world edge aligns with the viewport edge.
+        float minX = halfW - 0.5f;
+        float maxX = worldW - 0.5f - halfW;
+        float minY = halfH - 0.5f;
+        float maxY = worldH - 0.5f - halfH;
+
+        Vector3 pos = Camera.main.transform.position;
+        // If the viewport is wider/taller than the world, centre on that axis.
+        pos.x = (minX > maxX) ? (worldW - 1f) / 2f : Mathf.Clamp(pos.x, minX, maxX);
+        pos.y = (minY > maxY) ? (worldH - 1f) / 2f : Mathf.Clamp(pos.y, minY, maxY);
+        Camera.main.transform.position = pos;
+    }
 }

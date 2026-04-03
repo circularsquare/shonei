@@ -51,6 +51,7 @@ public class Animal : MonoBehaviour{
         Moving,         // any type of moving, under the task system
         Falling,        // involuntary fall, bypasses task and nav systems
         Leisuring,      // leisure activity (chatting, tea house, etc.)
+        Traveling,      // hidden while journeying to/from the off-screen market
     }
     private AnimalStateManager stateManager;
     private AnimalState _state;
@@ -105,29 +106,11 @@ public class Animal : MonoBehaviour{
             this.eeping = new Eeping();
             this.eeping.eep = pendingSaveData.eep;
             this.happiness = new Happiness();
-            if (pendingSaveData.satisfactions != null) {
-                // Current format: dictionary of need → value
+            if (pendingSaveData.satisfactions != null)
                 foreach (var kv in pendingSaveData.satisfactions)
                     if (this.happiness.satisfactions.ContainsKey(kv.Key))
                         this.happiness.satisfactions[kv.Key] = kv.Value;
-                this.happiness.warmth = pendingSaveData.warmth ?? 0f;
-            } else if (pendingSaveData.satWheat.HasValue) {
-                // Legacy v2: individual satXxx fields
-                this.happiness.satisfactions["wheat"]     = pendingSaveData.satWheat.Value;
-                this.happiness.satisfactions["fruit"]     = pendingSaveData.satFruit ?? 0f;
-                this.happiness.satisfactions["soymilk"]   = pendingSaveData.satSoymilk ?? 0f;
-                this.happiness.satisfactions["fountain"]  = pendingSaveData.satFountain ?? 0f;
-                this.happiness.satisfactions["social"]    = pendingSaveData.satSocial ?? 0f;
-                this.happiness.satisfactions["fireplace"] = pendingSaveData.satFireplace ?? 0f;
-                this.happiness.warmth                     = pendingSaveData.warmth ?? 0f;
-            } else {
-                // Legacy v1: convert timeSince counters to satisfaction points
-                this.happiness.satisfactions["wheat"]    = ConvertTimerToSat(pendingSaveData.timeSinceAteWheat);
-                this.happiness.satisfactions["fruit"]    = ConvertTimerToSat(pendingSaveData.timeSinceAteFruit);
-                this.happiness.satisfactions["soymilk"]  = ConvertTimerToSat(pendingSaveData.timeSinceAteSoymilk);
-                this.happiness.satisfactions["fountain"] = ConvertTimerToSat(pendingSaveData.timeSinceSawFountain ?? 180f);
-                this.happiness.satisfactions["social"]   = ConvertTimerToSat(pendingSaveData.timeSinceSocialized ?? 180f);
-            }
+            this.happiness.warmth = pendingSaveData.warmth;
             this.job = Db.GetJobByName(pendingSaveData.jobName) ?? Db.jobs[0];
             this.state = AnimalState.Idle;
             this.efficiency = eating.Efficiency() * eeping.Efficiency() * happiness.TemperatureEfficiency();
@@ -137,13 +120,9 @@ public class Animal : MonoBehaviour{
                     inv.Produce(Db.itemByName[ssd.itemName], ssd.quantity);
                 }
             }
-            // Restore equip slots (null on old saves — slots start empty)
-            if (pendingSaveData.foodSlotInv != null)
-                SaveSystem.LoadInventory(foodSlotInv, pendingSaveData.foodSlotInv);
-            if (pendingSaveData.toolSlotInv != null)
-                SaveSystem.LoadInventory(toolSlotInv, pendingSaveData.toolSlotInv);
-            if (pendingSaveData.clothingSlotInv != null)
-                SaveSystem.LoadInventory(clothingSlotInv, pendingSaveData.clothingSlotInv);
+            SaveSystem.LoadInventory(foodSlotInv, pendingSaveData.foodSlotInv);
+            SaveSystem.LoadInventory(toolSlotInv, pendingSaveData.toolSlotInv);
+            SaveSystem.LoadInventory(clothingSlotInv, pendingSaveData.clothingSlotInv);
             skills.Deserialize(pendingSaveData.skillXp, pendingSaveData.skillLevel);
             pendingSaveData = null;
         } else {
@@ -170,14 +149,6 @@ public class Animal : MonoBehaviour{
         // iterate over an animal whose Start() hasn't run yet.
         AnimalController.instance.RegisterReady(this);
     }
-
-    /// Converts a legacy timeSinceX value to satisfaction points.
-    /// 0 (just did it) → activityGrant (2.0), 120+ (unsatisfied) → 0.
-    private static float ConvertTimerToSat(float timeSince) {
-        if (timeSince >= 120f) return 0f;
-        return Happiness.activityGrant * (120f - timeSince) / 120f;
-    }
-
 
     public void TickUpdate() { // called from animalcontroller each second.
         tickCounter++;

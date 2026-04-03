@@ -28,6 +28,9 @@ public class AnimalStateManager {
             case AnimalState.Leisuring:
                 HandleLeisure();
                 break;
+            case AnimalState.Traveling:
+                HandleTraveling();
+                break;
         }
     }
 
@@ -231,6 +234,26 @@ public class AnimalStateManager {
             }
         }
         if (animal.eeping.eep >= animal.eeping.maxEep) {
+            animal.task.Complete();
+        }
+    }
+
+    private void HandleTraveling() {
+        if (animal.task == null) {
+            animal.go.SetActive(true);
+            animal.state = AnimalState.Idle;
+            return;
+        }
+        var obj = animal.task.currentObjective as TravelingObjective;
+        if (obj == null) {
+            Debug.LogError($"{animal.aName} in Traveling state but currentObjective is not TravelingObjective");
+            animal.go.SetActive(true);
+            animal.state = AnimalState.Idle;
+            return;
+        }
+        animal.workProgress += 1f;
+        if (animal.workProgress >= obj.durationTicks) {
+            animal.go.SetActive(true); // reappear at the market portal tile
             animal.task.Complete();
         }
     }

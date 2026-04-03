@@ -103,8 +103,8 @@
         "children": null
     },{
         "id": 150,
-        "name": "seeds",
-        "decayRate": 0.4,
+        "name": "food",
+        "decayRate": 0.3,
         "children": [
             {
                 "id": 151,
@@ -117,16 +117,44 @@
                 "id": 152,
                 "name": "acorn",
                 "decayRate": 0.4,
+                "foodValue": 5,
+                "children": null
+            },{
+                "id": 160,
+                "name": "apple",
+                "decayRate": 0.3,
+                "foodValue": 15,
+                "happinessNeed": "fruit",
+                "children": null
+            },{
+                "id": 230,
+                "name": "soymilk",
+                "decayRate": 2.0,
+                "foodValue": 15,
+                "happinessNeed": "soymilk",
+                "isLiquid": true,
+                "children": null
+            },{
+                "id": 241,
+                "name": "tofu",
+                "decayRate": 3.0,
+                "foodValue": 40,
+                "happinessNeed": "soymilk",
+                "children": null
+            },{
+                "id": 220,
+                "name": "soybeans",
+                "decayRate": 0.2,
+                "children": null
+            },{
+                "id": 242,
+                "name": "cheese",
+                "decayRate": 3.0,
+                "foodValue": 40,
+                "happinessNeed": "dairy",
                 "children": null
             }
         ]
-    },{
-        "id": 160,
-        "name": "apple",
-        "decayRate": 0.3,
-        "foodValue": 15,
-        "happinessNeed": "fruit",
-        "children": null
     },{
         "id": 200,
         "name": "tools",
@@ -138,33 +166,6 @@
         "name": "water",
         "decayRate": 0,
         "isLiquid": true,
-        "children": null
-    },{
-        "id": 220,
-        "name": "soybeans",
-        "decayRate": 0.2,
-        "children": null
-    },{
-        "id": 230,
-        "name": "soymilk",
-        "decayRate": 1.5,
-        "foodValue": 15,
-        "happinessNeed": "soymilk",
-        "isLiquid": true,
-        "children": null
-    },{
-        "id": 241,
-        "name": "tofu",
-        "decayRate": 4.0,
-        "foodValue": 40,
-        "happinessNeed": "soymilk",
-        "children": null
-    },{
-        "id": 242,
-        "name": "cheese",
-        "decayRate": 3.0,
-        "foodValue": 30,
-        "happinessNeed": "dairy",
         "children": null
     },{
         "id": 250,

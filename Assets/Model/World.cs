@@ -36,7 +36,7 @@ public class World : MonoBehaviour {
         if (instance != null){
             Debug.LogError("there should only be one world?");}
         instance = this;
-        Application.targetFrameRate = 60;
+        Application.targetFrameRate = 100;
 
         graph = new Graph(this);
 

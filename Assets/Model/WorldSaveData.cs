@@ -17,6 +17,8 @@ public class WorldSaveData {
     // Global item targets set by the player via ItemDisplay UI (item name → target qty in fen).
     // Only non-default entries (≠ 10000) are stored; absent entries load as default (10000).
     public System.Collections.Generic.Dictionary<string, int> globalItemTargets;
+    public float? cameraX; // null on old saves → camera not repositioned on load
+    public float? cameraY;
 }
 
 public class ResearchSaveData {
@@ -84,23 +86,12 @@ public class AnimalSaveData {
     public float energy;
     public float food;
     public float eep;
-    public float timeSinceAteWheat;    // legacy happiness (kept for old save compat)
-    public float timeSinceAteFruit;    // legacy happiness
-    public float timeSinceAteSoymilk;  // legacy happiness
-    public float? timeSinceSawFountain; // legacy happiness
-    public float? timeSinceSocialized;  // legacy happiness
-    public float? satWheat;     // legacy v2 satisfaction (null on new saves using dict)
-    public float? satFruit;     // legacy v2
-    public float? satSoymilk;   // legacy v2
-    public float? satFountain;  // legacy v2
-    public float? satSocial;    // legacy v2
-    public float? satFireplace; // legacy v2
-    public Dictionary<string, float> satisfactions; // current: keyed by need name (null on old saves)
-    public float? warmth;
+    public Dictionary<string, float> satisfactions;
+    public float warmth;
     public InventorySaveData inv;
-    public InventorySaveData foodSlotInv; // null on old saves → slot starts empty
+    public InventorySaveData foodSlotInv;
     public InventorySaveData toolSlotInv;
-    public InventorySaveData clothingSlotInv; // null on old saves → slot starts empty
-    public float[] skillXp;    // null on old saves → all skills start at 0 xp
-    public int[]   skillLevel; // null on old saves → all skills start at level 0
+    public InventorySaveData clothingSlotInv;
+    public float[] skillXp;
+    public int[]   skillLevel;
 }
