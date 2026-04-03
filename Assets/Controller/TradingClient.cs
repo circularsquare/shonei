@@ -20,7 +20,7 @@ public class TradingClient : MonoBehaviour {
     public event Action<Fill>       OnFill;
     public event Action<ChatMsg>    OnChat;
 
-    async void Connect() {
+    public async void Connect() {
         if (isConnecting || isOnline) return;
         isConnecting = true;
 
@@ -39,7 +39,7 @@ public class TradingClient : MonoBehaviour {
                 Debug.Log("ServerError: " + e);
             }
         };
-        //ws.OnClose += (e) => { Debug.Log("disconnected from server"); SetOnline(false); };
+        ws.OnClose += (e) => { Debug.Log("disconnected from server"); SetOnline(false); };
 
         await ws.Connect();
         isConnecting = false;
@@ -77,8 +77,8 @@ public class TradingClient : MonoBehaviour {
         if (!Db.itemByName.ContainsKey(fill.item)) { Debug.LogError($"Fill: unknown item '{fill.item}'"); return; }
         Item item   = Db.itemByName[fill.item];
         Item silver = Db.itemByName["silver"];
-        // quantity is in fen; price is liang/liang ratio → silverAmt in fen
-        int  silverAmt = Mathf.RoundToInt(fill.quantity * fill.price);
+        // both quantity and price are in fen; divide by 100 to get silver in fen
+        int  silverAmt = fill.quantity * fill.price / 100;
 
         if (fill.buyer == playerName) {
             // We bought: pay silver, receive item
@@ -126,30 +126,42 @@ public class TradingClient : MonoBehaviour {
     public async void QueryMarket(string item) {
         if (!isOnline) return;
         var envelope = $"{{\"type\":\"market_query\",\"payload\":{{\"item\":\"{item}\"}}}}";
-        await ws.SendText(envelope);
+        if (!await TrySend(envelope)) return;
     }
 
     public async void SendChat(string text) {
         if (!isOnline) return;
         var payload = JsonUtility.ToJson(new ChatPayload { text = text });
         var envelope = $"{{\"type\":\"chat\",\"payload\":{payload}}}";
-        await ws.SendText(envelope);
+        if (!await TrySend(envelope)) return;
     }
 
-    // qty is in fen; price is liang/liang (e.g. 0.3)
-    public async void SendOrder(string item, string side, float price, int qty) {
+    // qty and price are both in fen
+    public async void SendOrder(string item, string side, int priceFen, int qty) {
         if (!isOnline) return;
-        string priceStr = price.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
-        var payload = $"{{\"item\":\"{item}\",\"side\":\"{side}\",\"price\":{priceStr},\"quantity\":{qty}}}";
+        var payload = $"{{\"item\":\"{item}\",\"side\":\"{side}\",\"price\":{priceFen},\"quantity\":{qty}}}";
         var envelope = $"{{\"type\":\"order\",\"payload\":{payload}}}";
-        await ws.SendText(envelope);
+        if (!await TrySend(envelope)) return;
         QueryMarket(item);
     }
 
     public async void SendCancel(long id) {
         if (!isOnline) return;
         var envelope = $"{{\"type\":\"cancel_order\",\"payload\":{{\"id\":{id}}}}}";
-        await ws.SendText(envelope);
+        if (!await TrySend(envelope)) return;
+    }
+
+    // Sends text over the websocket; if the socket was disposed between the
+    // isOnline check and the actual send, catches the exception and marks offline.
+    async System.Threading.Tasks.Task<bool> TrySend(string text) {
+        try {
+            await ws.SendText(text);
+            return true;
+        } catch (ObjectDisposedException) {
+            Debug.Log("WebSocket disposed during send — marking offline");
+            SetOnline(false);
+            return false;
+        }
     }
 
     async void OnDestroy() {
@@ -163,8 +175,8 @@ public class TradingClient : MonoBehaviour {
 [Serializable] class FillEnvelope           { public string type; public Fill     payload; }
 [Serializable] class ChatEnvelope           { public string type; public ChatMsg  payload; }
 [Serializable] public class MarketBook  { public string item; public MarketOrder[] buys; public MarketOrder[] sells; }
-// price is liang/liang (float); quantity is fen (int)
-[Serializable] public class MarketOrder { public long id; public string from; public string side; public float price; public int quantity; }
-[Serializable] public class Fill        { public string buyer; public string seller; public string item; public float price; public int quantity; }
+// price and quantity are both in fen (100 fen = 1 liang)
+[Serializable] public class MarketOrder { public long id; public string from; public string side; public int price; public int quantity; public string client_type; }
+[Serializable] public class Fill        { public string buyer; public string seller; public string item; public int price; public int quantity; }
 [Serializable] public class ChatMsg     { public string from; public string text; }
 [Serializable] class ChatPayload        { public string text; }

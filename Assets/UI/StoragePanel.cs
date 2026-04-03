@@ -83,15 +83,18 @@ public class StoragePanel : MonoBehaviour {
         // Multiple inventories: aggregate by item type across all selected
         var totalQty = new Dictionary<Item, int>();
         var occupiedCap = new Dictionary<Item, int>();
+        var totalResSpace = new Dictionary<Item, int>();
         int totalEmptyCap = 0;
 
         foreach (Inventory inv in selected) {
             foreach (ItemStack stack in inv.itemStacks) {
                 if (stack.item != null && stack.quantity > 0) {
-                    if (!totalQty.ContainsKey(stack.item))    totalQty[stack.item]    = 0;
-                    if (!occupiedCap.ContainsKey(stack.item)) occupiedCap[stack.item] = 0;
-                    totalQty[stack.item]    += stack.quantity;
-                    occupiedCap[stack.item] += inv.stackSize;
+                    if (!totalQty.ContainsKey(stack.item))      totalQty[stack.item]      = 0;
+                    if (!occupiedCap.ContainsKey(stack.item))   occupiedCap[stack.item]   = 0;
+                    if (!totalResSpace.ContainsKey(stack.item)) totalResSpace[stack.item] = 0;
+                    totalQty[stack.item]      += stack.quantity;
+                    occupiedCap[stack.item]   += inv.stackSize;
+                    totalResSpace[stack.item] += stack.resSpace;
                 } else {
                     totalEmptyCap += inv.stackSize;
                 }
@@ -104,7 +107,7 @@ public class StoragePanel : MonoBehaviour {
         foreach (Item item in sortedItems) {
             GameObject go = Instantiate(storageSlotPrefab, slotContainer);
             slotGos.Add(go);
-            go.GetComponent<StorageSlotDisplay>().UpdateSlot(item, totalQty[item], occupiedCap[item]);
+            go.GetComponent<StorageSlotDisplay>().UpdateSlot(item, totalQty[item], occupiedCap[item], totalResSpace[item]);
         }
 
         // One combined row for all empty capacity

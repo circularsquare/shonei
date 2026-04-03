@@ -36,7 +36,7 @@ public class Db : MonoBehaviour {
     // Food needs first, then decoration, then social, then leisure.
     // Needs not in this list are appended alphabetically at the end (future-proofing).
     private static readonly string[] happinessNeedsDisplayOrder = {
-        "wheat", "fruit", "soymilk",  // food
+        "wheat", "fruit", "soymilk", "dairy",  // food
         "fountain",                    // decoration
         "social",                      // social
         "fireplace",                   // leisure

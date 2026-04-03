@@ -245,7 +245,7 @@ public class AnimalStateManager {
         // Chat-specific: wait for initiator arrival, grant early happiness
         if (chat?.partner != null) {
             if (!chat.chatStarted) return;
-            if (!chat.socializedEarly && animal.workProgress >= 8f) {
+            if (!chat.socializedEarly && animal.workProgress >= 7f) {
                 chat.socializedEarly = true;
                 animal.happiness.NoteSocialized();
             }

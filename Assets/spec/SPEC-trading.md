@@ -217,6 +217,29 @@ New field on `Inventory`: `Dictionary<Item, int> reservedIncoming`.
 - `BuildPanel.Start()` skips locked buildings when building sub-panels.
 - `BuildPanel.UnlockBuilding(name)` adds the entry to the correct sub-panel at runtime, called from `ResearchSystem.ApplyEffect`.
 
+## Foreign Traders
+
+Foreign nations (e.g. Fulan) maintain always-on standing orders without being
+WebSocket clients. They run entirely server-side in `shonei-server/bots.go`
+with direct exchange access.
+
+**Data:** `foreignTraders` slice in `bots.go` — one `ForeignTrader` per nation,
+each with a list of `ForeignTraderOrder` (item, side, price in fen, quantity).
+
+**Startup:** `main()` calls `seedForeignTraders(hub.exchange)` before the HTTP
+server starts. This is single-threaded, so no concurrency issues.
+
+**Re-seeding:** After each fill in `readPump`, `reseedForeignTradersAfterFill`
+checks if the fill involved a foreign trader and calls `seedForeignTrader` for
+them. `seedForeignTrader` is idempotent — it only places a new order if the
+trader has no resting order for that item/side (partial fills leave the order
+in the book with reduced quantity, so re-seeding only triggers on full
+consumption).
+
+**To add a new nation:** append a `ForeignTrader` entry to `foreignTraders`.  
+**To add more orders for an existing nation:** append to their `orders` slice.  
+**Prices:** always in fen (100 fen = 1 liang).
+
 ### Known gaps / TODO
 
 - **Concurrency**: `Exchange.placeOrder` is called from per-client goroutines
@@ -228,6 +251,5 @@ New field on `Inventory`: `Dictionary<Item, int> reservedIncoming`.
 - **Player name**: hardcoded as `"anita"`; make configurable later.
 - **Authentication**: none; name is trusted from query param.
 - **LAN/internet play**: change server bind to `0.0.0.0` and update `WsUrl`.
-- **NPC / bot orders**: no server-side liquidity seeding.
 - **Redundant order broadcast**: the `order` broadcast after matching is noisy
   since clients already receive `fill` messages; consider removing.

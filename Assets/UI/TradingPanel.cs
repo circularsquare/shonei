@@ -42,29 +42,13 @@ public class TradingPanel : MonoBehaviour {
     public Transform      chatList;
     public TMP_InputField chatInput;
 
-    [Header("Status")]
-    public GameObject onlineIndicator;
-
     bool _orderIsBuy   = true;
     bool _orderSideSet = false; // neither buy nor sell selected by default
-
-    Image            indicatorImage;
-    TextMeshProUGUI  indicatorText;
-    Sprite           spriteGreen;
-    Sprite           spriteRed;
 
     void Start() {
         if (instance != null) { Debug.LogError("there should only be one TradingPanel"); }
         instance = this;
         UI.RegisterExclusive(gameObject);
-
-        spriteGreen = Resources.Load<Sprite>("Sprites/Misc/indicator/green");
-        spriteRed   = Resources.Load<Sprite>("Sprites/Misc/indicator/red");
-
-        if (onlineIndicator != null) {
-            indicatorImage = onlineIndicator.GetComponentInChildren<Image>();
-            indicatorText  = onlineIndicator.GetComponentInChildren<TextMeshProUGUI>();
-        }
 
         // Start with neither side selected — both buttons grey
         if (buyButton  != null) buyButton.image.color  = ColorInactive;
@@ -76,13 +60,9 @@ public class TradingPanel : MonoBehaviour {
 
         var client = TradingClient.instance;
         if (client != null) {
-            SetIndicator(client.isOnline);
-            client.OnConnectionChanged += SetIndicator;
-            client.OnMarketResponse    += DisplayMarketBook;
-            client.OnFill              += DisplayFill;
-            client.OnChat              += DisplayChat;
-        } else {
-            SetIndicator(false);
+            client.OnMarketResponse += DisplayMarketBook;
+            client.OnFill           += DisplayFill;
+            client.OnChat           += DisplayChat;
         }
         gameObject.SetActive(false);
     }
@@ -99,23 +79,20 @@ public class TradingPanel : MonoBehaviour {
     void OnDestroy() {
         var client = TradingClient.instance;
         if (client != null) {
-            client.OnConnectionChanged -= SetIndicator;
-            client.OnMarketResponse    -= DisplayMarketBook;
-            client.OnFill              -= DisplayFill;
-            client.OnChat              -= DisplayChat;
+            client.OnMarketResponse -= DisplayMarketBook;
+            client.OnFill           -= DisplayFill;
+            client.OnChat           -= DisplayChat;
         }
     }
 
-    // set connected indicator
-    void SetIndicator(bool online) {
-        if (indicatorImage) indicatorImage.sprite = online ? spriteGreen : spriteRed;
-        if (indicatorText)  indicatorText.text    = online ? "online" : "offline";
-    }
-
-    // toggle panel active — no-op when not connected
+    // toggle panel active — attempts connection if offline
     public void Toggle() {
         var client = TradingClient.instance;
-        if (client == null || !client.isOnline) return;
+        if (client == null) return;
+        if (!client.isOnline) {
+            client.Connect();
+            return;
+        }
         if (gameObject.activeSelf) gameObject.SetActive(false);
         else UI.OpenExclusive(gameObject);
     }
@@ -144,7 +121,7 @@ public class TradingPanel : MonoBehaviour {
     }
 
     void SpawnOrder(MarketOrder order, Transform parent) {
-        if (orderDisplayPrefab == null) { AddRow($"{order.from}  x{ItemStack.FormatQ(order.quantity)}  @ {order.price:0.##}", parent); return; }
+        if (orderDisplayPrefab == null) { AddRow($"{order.from}  x{ItemStack.FormatQ(order.quantity)}  @ {order.price / 100f:0.##}", parent); return; }
         var go = Instantiate(orderDisplayPrefab, parent, false);
         go.GetComponent<OrderDisplay>()?.Init(order);
     }
@@ -169,12 +146,12 @@ public class TradingPanel : MonoBehaviour {
         string itemName = ItemName();
         if (itemName.Length == 0) { ShowAlert("Enter an item name."); return; }
 
-        // Price: liang/liang ratio, supports decimals (e.g. 0.3)
+        // Price: entered in liang (e.g. 0.3), converted to fen for wire
         if (!float.TryParse(orderPrice?.text, System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture, out float price) || price <= 0f) {
+                System.Globalization.CultureInfo.InvariantCulture, out float priceLiang) || priceLiang <= 0f) {
             ShowAlert("Enter a valid price (e.g. 0.3)."); return;
         }
-        price = Mathf.Round(price * 100f) / 100f; // clamp to nearest cent
+        int priceFen = Mathf.RoundToInt(priceLiang * 100f);
 
         // Qty: whole liang entered by user; converted to fen for wire/inventory
         if (!int.TryParse(orderQty?.text, out int qtyLiang) || qtyLiang <= 0) {
@@ -189,7 +166,7 @@ public class TradingPanel : MonoBehaviour {
         if (market == null) { ShowAlert("No market building found."); return; }
 
         if (_orderIsBuy) {
-            int silverNeeded = Mathf.RoundToInt(qtyFen * price);
+            int silverNeeded = qtyFen * priceFen / 100;
             int silverHave   = market.AvailableQuantity(silver);
             if (silverHave < silverNeeded) { ShowAlert($"Need {ItemStack.FormatQ(silverNeeded)} silver in market (have {ItemStack.FormatQ(silverHave)})."); return; }
             int spaceForItem = market.GetMarketSpace(item);
@@ -198,13 +175,13 @@ public class TradingPanel : MonoBehaviour {
             int itemHave = market.AvailableQuantity(item);
             if (itemHave < qtyFen) { ShowAlert($"Need {ItemStack.FormatQ(qtyFen)} {itemName} in market (have {ItemStack.FormatQ(itemHave)})."); return; }
             int silverSpace = market.GetMarketSpace(silver);
-            int silverIncoming = Mathf.RoundToInt(qtyFen * price);
+            int silverIncoming = qtyFen * priceFen / 100;
             if (silverSpace < silverIncoming) { ShowAlert($"Need {ItemStack.FormatQ(silverIncoming)} space for silver in market (have {ItemStack.FormatQ(silverSpace)})."); return; }
         }
 
         ShowAlert("");
         string side = _orderIsBuy ? "b" : "s";
-        TradingClient.instance?.SendOrder(itemName, side, price, qtyFen);
+        TradingClient.instance?.SendOrder(itemName, side, priceFen, qtyFen);
     }
 
     void ShowAlert(string msg) {
@@ -219,6 +196,15 @@ public class TradingPanel : MonoBehaviour {
         if (chatInput == null) return;
         string text = chatInput.text.Trim();
         if (text.Length == 0) return;
+
+        // Console commands: messages starting with "/" are parsed locally
+        if (text.StartsWith("/")) {
+            chatInput.text = "";
+            chatInput.ActivateInputField();
+            HandleCommand(text);
+            return;
+        }
+
         var client = TradingClient.instance;
         if (client == null || !client.isOnline) {
             AddChat("<color=#cc3333>not connected to server 3:</color>");
@@ -229,13 +215,69 @@ public class TradingPanel : MonoBehaviour {
         chatInput.ActivateInputField();
     }
 
+    // ── Console commands ─────────────────────────────────────────────────────
+
+    void HandleCommand(string input) {
+        // Split on whitespace: ["/give", "oak", "5"] etc.
+        string[] parts = input.Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries);
+        string cmd = parts[0].ToLower();
+
+        switch (cmd) {
+            case "/give": CmdGive(parts); break;
+            default:
+                AddChat($"<color=#cc3333>Unknown command: {cmd}</color>");
+                break;
+        }
+    }
+
+    // /give [itemname] [quantity in liang]
+    // Produces the item directly into the market inventory.
+    void CmdGive(string[] parts) {
+        if (parts.Length < 3) {
+            AddChat("<color=#cc3333>Usage: /give [item] [quantity]</color>");
+            return;
+        }
+
+        // Item name may contain spaces — everything between first and last arg is the name.
+        // Last arg is always the quantity.
+        string qtyStr = parts[parts.Length - 1];
+        string itemName = string.Join(" ", parts, 1, parts.Length - 2);
+
+        if (!float.TryParse(qtyStr, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out float qtyLiang) || qtyLiang <= 0f) {
+            AddChat("<color=#cc3333>Quantity must be a positive number (in liang).</color>");
+            return;
+        }
+        int qtyFen = Mathf.RoundToInt(qtyLiang * 100f);
+
+        if (!Db.itemByName.ContainsKey(itemName)) {
+            AddChat($"<color=#cc3333>Unknown item: {itemName}</color>");
+            return;
+        }
+        Item item = Db.itemByName[itemName];
+
+        Inventory market = TradingClient.FindMarketInventory();
+        if (market == null) {
+            AddChat("<color=#cc3333>No market building found.</color>");
+            return;
+        }
+
+        int leftover = market.Produce(item, qtyFen);
+        int produced = qtyFen - leftover;
+        bool discrete = item.discrete;
+        if (produced > 0)
+            AddChat($"<color=#aaffaa>Gave {ItemStack.FormatQ(produced, discrete)} {itemName} to market.</color>");
+        if (leftover > 0)
+            AddChat($"<color=#cc3333>Could not fit {ItemStack.FormatQ(leftover, discrete)} {itemName} — market full.</color>");
+    }
+
     void DisplayChat(ChatMsg msg) {
         AddChat($"{msg.from}: {msg.text}");
     }
 
     void DisplayFill(Fill fill) {
         bool discrete = Db.itemByName.TryGetValue(fill.item, out Item item) && item.discrete;
-        AddChat($"<color=#aaffaa>[fill] {fill.buyer} bought {ItemStack.FormatQ(fill.quantity, discrete)} {fill.item} from {fill.seller} @ {fill.price:0.##}</color>");
+        AddChat($"<color=#55aa55>[fill] {fill.buyer} bought {ItemStack.FormatQ(fill.quantity, discrete)} {fill.item} from {fill.seller} @ {fill.price / 100f:0.##}</color>");
     }
 
     // -------------------------------------------------------------------------

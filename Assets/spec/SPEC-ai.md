@@ -81,6 +81,21 @@ Tasks decompose into an ordered queue of Objectives. Each task:
 
 `Task.Start()` only calls `StartNextObjective()` if `Initialize()` returned `true`. This prevents half-built objective queues from executing when a late reservation check fails.
 
+### Reservation system (source + destination)
+
+Tasks reserve both **source items** and **destination space** during `Initialize()` to prevent conflicts. Both reservation types are tracked in the base `Task` class and automatically released by `Cleanup()`.
+
+| Reservation | Field on ItemStack | Task API | Purpose |
+|-------------|-------------------|----------|---------|
+| Source (`resAmount`) | `ItemStack.resAmount` | `Task.ReserveStack(stack, amount)` | Prevents other tasks from picking up reserved items |
+| Destination (`resSpace`) | `ItemStack.resSpace` | `Task.ReserveSpace(inv, item, amount)` | Prevents other tasks from targeting the same storage/floor space |
+
+`resSpace` works via `ItemStack.FreeSpace(item)` which returns `stackSize - quantity - resSpace`. All space-checking methods (`GetStorageForItem`, `GetMergeSpace`, `HasSpaceForItem`) account for it, so pathfinding naturally routes haulers to destinations with genuinely available space.
+
+Empty stacks track `resSpaceItem` to prevent two different items from claiming the same empty slot. Both reservation types are ephemeral (not saved) and have staleness expiry (60s) as a safety net for orphaned reservations.
+
+**Tasks using destination reservation:** `HaulTask`, `ConsolidateTask`, `HaulToMarketTask`, `HaulFromMarketTask`, `SupplyFuelTask`, `DropObjective` (best-effort).
+
 **Tasks (implemented):**
 
 | Task | Source | Job | Description |

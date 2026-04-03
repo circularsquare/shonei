@@ -276,7 +276,7 @@ public class Animal : MonoBehaviour{
 
 
     public void ChooseTask() {
-        if (task != null){ return; } // TODO: change when this func is called to just whenever task is null?
+        if (task != null){ return; }
 
         // 1. Survival needs (always first)
         if (!inv.IsEmpty()) { // drop all main inventory when idle (food/tools are in equip slots)

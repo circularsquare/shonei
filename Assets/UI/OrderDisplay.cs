@@ -14,8 +14,13 @@ public class OrderDisplay : MonoBehaviour {
 
     public void Init(MarketOrder order) {
         _orderId = order.id;
-        if (label != null)
-            label.text = $"{order.from}  x{ItemStack.FormatQ(order.quantity)}  @ {order.price:0.##}";
+        if (label != null) {
+            string nameColor;
+            if (order.from == TradingClient.playerName) nameColor = "#bb55dd"; // purple — own order
+            else if (order.client_type == "bot")        nameColor = "#55aa55"; // green — bot
+            else                                        nameColor = "#5588dd"; // blue — other player
+            label.text = $"<color={nameColor}>{order.from}</color>  x{ItemStack.FormatQ(order.quantity)}  @ {order.price / 100f:0.##}";
+        }
 
         bool isOwn = order.from == TradingClient.playerName;
         if (cancelButton != null) cancelButton.SetActive(isOwn);

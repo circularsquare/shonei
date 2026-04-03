@@ -1,6 +1,8 @@
 meoww!!
 4/3
 - fireplace tweaks (only on in evening, can socialize there)
+- haulers reserve space in item stacks!
+- added foreign traders! maintain internal stock 
 4/2
 - animation work
 - added fireplace! several multi-tile building tweaks

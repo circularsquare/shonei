@@ -113,7 +113,8 @@
             { "name": "limestone", "quantity": 1 },
             { "name": "coal", "quantity": 1, "chance": 0.10 },
             { "name": "iron ore", "quantity": 1, "chance": 0.10 },
-            { "name": "gypsum", "quantity": 1, "chance": 0.05 }
+            { "name": "gypsum", "quantity": 1, "chance": 0.05 },
+            { "name": "silver", "quantity": 0.5, "chance": 0.02 }
         ]
     },{
         "id": 15,

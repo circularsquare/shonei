@@ -109,7 +109,7 @@ public class Inventory{
         if (invType == InvType.Floor || invType == InvType.Storage)
             foreach (ItemStack stack in itemStacks)
                 WorkOrderManager.instance?.RemoveHaulForStack(stack);
-        foreach (ItemStack stack in itemStacks) { stack.quantity = 0; stack.resAmount = 0; }
+        foreach (ItemStack stack in itemStacks) { stack.quantity = 0; stack.resAmount = 0; stack.resSpace = 0; stack.resSpaceItem = null; }
         if (go != null){GameObject.Destroy(go); go = null;}
         if (stackGos != null){
             foreach (GameObject sgo in stackGos){ if (sgo != null) GameObject.Destroy(sgo); }
@@ -330,18 +330,14 @@ public class Inventory{
     }
     // How much space is available for item in this inventory (allowed Storage/Animal only).
     // Counts both empty stacks (any item could fill them) and partially-filled stacks of the same item.
+    // Accounts for resSpace (destination reservations) so in-flight deliveries don't double-book space.
     public int GetStorageForItem(Item item){
         if (invType == InvType.Market || invType == InvType.Blueprint || invType == InvType.Reservoir) return 0;
         if (!ItemTypeCompatible(item)) return 0;
         if (locked || allowed[item.id] == false || invType == InvType.Floor){return 0;}
         int space = 0;
-        foreach (ItemStack stack in itemStacks){
-            if (stack.item == null){
-                space += stackSize;
-            } else if (stack.item == item && stack.quantity < stackSize){
-                space += stackSize - stack.quantity;
-            }
-        }
+        foreach (ItemStack stack in itemStacks)
+            space += stack.FreeSpace(item);
         return space;
     }
     // Quantity not reserved by any task (usable for order placement checks).
@@ -353,25 +349,92 @@ public class Inventory{
         return total;
     }
     // Space in an existing partial stack of `item` (for floor consolidation).
+    // Accounts for resSpace so in-flight deliveries don't double-book merge space.
     public int GetMergeSpace(Item item) {
         if (!ItemTypeCompatible(item)) return 0;
         if (locked || allowed[item.id] == false) return 0;
         foreach (ItemStack stack in itemStacks)
-            if (stack.item == item && stack.quantity < stackSize)
-                return stackSize - stack.quantity;
+            if (stack.item == item) {
+                int free = stack.FreeSpace(item);
+                if (free > 0) return free;
+            }
         return 0;
     }
     // Unlike GetStorageForItem, only checks stacks already holding this item (no empty stacks).
     // Use to top up an existing stack without claiming a new slot.
+    // Accounts for resSpace so in-flight deliveries don't double-book space.
     public bool HasSpaceForItem(Item item){
         if (locked || invType == InvType.Market || invType == InvType.Blueprint) return false;
         foreach (ItemStack stack in itemStacks){
-            if (stack.item == item && stack.quantity < stackSize){
+            if (stack.item == item && stack.FreeSpace(item) > 0)
                 return true;
-            }
         }
         return false;
     }
+    // ── Destination space reservations ──────────────────────────
+    // Distributes a space reservation across stacks: matching partial first (fullest first),
+    // then empty stacks. Returns total amount actually reserved.
+    public int ReserveSpace(Item item, int quantity) {
+        if (quantity <= 0) return 0;
+        // Build iteration order matching AddItem: matching stacks fullest-first, then empty
+        var matchingIndices = new List<(int idx, int qty)>();
+        var emptyIndices = new List<int>();
+        for (int i = 0; i < nStacks; i++) {
+            if (itemStacks[i].item == item && itemStacks[i].quantity > 0)
+                matchingIndices.Add((i, itemStacks[i].quantity));
+            else if (itemStacks[i].item == null || itemStacks[i].quantity == 0)
+                emptyIndices.Add(i);
+        }
+        matchingIndices.Sort((a, b) => b.qty.CompareTo(a.qty)); // fullest first
+
+        int remaining = quantity;
+        foreach (var (idx, _) in matchingIndices) {
+            if (remaining <= 0) break;
+            remaining -= itemStacks[idx].ReserveSpace(item, remaining);
+        }
+        foreach (int idx in emptyIndices) {
+            if (remaining <= 0) break;
+            remaining -= itemStacks[idx].ReserveSpace(item, remaining);
+        }
+        return quantity - remaining;
+    }
+    // Releases a space reservation. Distributes across stacks with matching resSpaceItem,
+    // emptiest first (to free up empty stacks sooner for other items).
+    public void UnreserveSpace(Item item, int quantity) {
+        if (quantity <= 0) return;
+        // Collect stacks that hold reservations for this item, sorted emptiest-first
+        var candidates = new List<(int idx, int qty)>();
+        for (int i = 0; i < nStacks; i++) {
+            ItemStack s = itemStacks[i];
+            if (s.resSpace <= 0) continue;
+            // Match: stack holds this item, or empty stack reserved for this item
+            if ((s.item == item) || (s.item == null && s.resSpaceItem == item))
+                candidates.Add((i, s.quantity));
+        }
+        candidates.Sort((a, b) => a.qty.CompareTo(b.qty)); // emptiest first
+
+        int remaining = quantity;
+        foreach (var (idx, _) in candidates) {
+            if (remaining <= 0) break;
+            int toRelease = Math.Min(remaining, itemStacks[idx].resSpace);
+            itemStacks[idx].UnreserveSpace(toRelease);
+            remaining -= toRelease;
+        }
+        if (remaining > 0)
+            Debug.LogError($"Inventory.UnreserveSpace: could not release {remaining} of {quantity} for {item.name} at ({x},{y})");
+    }
+
+    // Total resSpace currently held for a given item across all stacks.
+    public int ReservedSpaceFor(Item item) {
+        int total = 0;
+        foreach (ItemStack stack in itemStacks) {
+            if (stack.resSpace <= 0) continue;
+            if (stack.item == item || (stack.item == null && stack.resSpaceItem == item))
+                total += stack.resSpace;
+        }
+        return total;
+    }
+
     public int GetSpace(){ // only coutns empty stacks
         int amount = 0;
         foreach (ItemStack stack in itemStacks){

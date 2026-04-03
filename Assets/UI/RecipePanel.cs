@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 // Full-screen recipe panel — scrollable list of recipe cards.
@@ -42,10 +41,6 @@ public class RecipePanel : MonoBehaviour {
     }
 
     void Update() {
-        if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject()) {
-            gameObject.SetActive(false);
-            return;
-        }
         refreshTimer += Time.deltaTime;
         if (refreshTimer >= RefreshInterval) {
             refreshTimer = 0f;

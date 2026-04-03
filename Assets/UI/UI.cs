@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using System;
 using System.Linq;
 
@@ -20,7 +21,7 @@ public class UI : MonoBehaviour {
             exclusivePanels.Add(panel);
     }
 
-    /// <summary>Close all other exclusive panels, then open this one.</summary>
+    // Close all other exclusive panels, then open this one.
     public static void OpenExclusive(GameObject panel) {
         foreach (var p in exclusivePanels)
             if (p != panel && p.activeSelf)
@@ -44,6 +45,11 @@ public class UI : MonoBehaviour {
     void Update() {
         if (world == null){
             StartLate();
+        }
+        // Close whichever exclusive panel is open when the user clicks outside UI
+        if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject()) {
+            foreach (var p in exclusivePanels)
+                if (p.activeSelf) { p.SetActive(false); break; }
         }
     }
 

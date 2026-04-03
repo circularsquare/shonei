@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.EventSystems;
 using TMPro;
 
 // Full-screen research panel — icon grid with hover tooltips.
@@ -47,14 +46,7 @@ public class ResearchPanel : MonoBehaviour {
             debugUnlockAllButton.onClick.AddListener(OnClickUnlockAll);
     }
 
-    // TODO: move to mousecontroller?
     void Update() {
-        if (gameObject.activeSelf
-                && Input.GetMouseButtonDown(0)
-                && !EventSystem.current.IsPointerOverGameObject()) {
-            gameObject.SetActive(false);
-            return;
-        }
         refreshTimer += Time.deltaTime;
         if (refreshTimer >= RefreshInterval) {
             refreshTimer = 0f;

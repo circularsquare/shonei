@@ -42,12 +42,13 @@ public class TileInfoView : MonoBehaviour {
             foreach (var stack in tile.inv.itemStacks) {
                 if (stack.item != null) {
                     string resStr = stack.resAmount > 0 ? " (r" + ItemStack.FormatQ(stack.resAmount, stack.item.discrete) + ")" : "";
+                    string spcStr = stack.resSpace > 0 ? " (s" + ItemStack.FormatQ(stack.resSpace, stack.item.discrete) + ")" : "";
                     var stackOrder = WorkOrderManager.instance?.FindOrderForStack(stack);
                     string woStr = stackOrder == null ? "" :
                         stackOrder.type == WorkOrderManager.OrderType.Haul && stackOrder.priority == 1
                             ? $" [wo:Haul! {stackOrder.res.reserved}/{stackOrder.res.capacity}]"
                             : $" [wo:{stackOrder.type} {stackOrder.res.reserved}/{stackOrder.res.capacity}]";
-                    sb.Append("\n  " + stack.item.name + " x " + ItemStack.FormatQ(stack.quantity, stack.item.discrete) + resStr + woStr);
+                    sb.Append("\n  " + stack.item.name + " x " + ItemStack.FormatQ(stack.quantity, stack.item.discrete) + resStr + spcStr + woStr);
                 }
             }
         }

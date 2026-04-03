@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using TMPro;
 
 // Full-screen exclusive panel showing colony-wide happiness breakdown.
@@ -42,12 +41,6 @@ public class GlobalHappinessPanel : MonoBehaviour {
     }
 
     void Update() {
-        if (gameObject.activeSelf
-                && Input.GetMouseButtonDown(0)
-                && !EventSystem.current.IsPointerOverGameObject()) {
-            gameObject.SetActive(false);
-            return;
-        }
         refreshTimer += Time.deltaTime;
         if (refreshTimer >= RefreshInterval) {
             refreshTimer = 0f;

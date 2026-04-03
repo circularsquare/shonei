@@ -16,6 +16,7 @@ public abstract class Task {
     protected LinkedList<Objective> objectives = new LinkedList<Objective>();
     public Objective currentObjective;
     private readonly List<(ItemStack stack, int amount)> reservedStacks = new();
+    private readonly List<(Inventory inv, Item item, int amount)> reservedSpaces = new();
     // Set by WorkOrderManager.ChooseOrder when this task fulfills a work order.
     // Null for non-WOM tasks (Craft, Eep, Obtain, etc.). Released in Cleanup().
     public WorkOrderManager.WorkOrder workOrder;
@@ -30,10 +31,17 @@ public abstract class Task {
         this.animal = animal;
     }
 
-    // Reserves items on a stack and tracks for cleanup. Single entry point for all item reservations.
+    // Reserves items on a stack and tracks for cleanup. Single entry point for all source reservations.
     public void ReserveStack(ItemStack stack, int amount){
         int reserved = stack.Reserve(amount);
         if (reserved > 0) reservedStacks.Add((stack, reserved));
+    }
+
+    // Reserves destination space in an inventory and tracks for cleanup. Returns amount reserved.
+    public int ReserveSpace(Inventory inv, Item item, int amount){
+        int reserved = inv.ReserveSpace(item, amount);
+        if (reserved > 0) reservedSpaces.Add((inv, item, reserved));
+        return reserved;
     }
 
     // Enqueues a FetchObjective and reserves items on the stack, tracking for cleanup.
@@ -80,6 +88,10 @@ public abstract class Task {
             stack.Unreserve(Math.Min(amount, stack.resAmount));
         }
         reservedStacks.Clear();
+        foreach (var (inv, item, amount) in reservedSpaces){
+            inv.UnreserveSpace(item, Math.Min(amount, inv.ReservedSpaceFor(item)));
+        }
+        reservedSpaces.Clear();
         objectives.Clear();
     }
     public void EnqueueFront(Objective obj) { objectives.AddFirst(obj); }
@@ -264,6 +276,10 @@ public class HaulTask : Task {
         int available = targetStack.quantity - targetStack.resAmount;
         int quantity = Math.Min(available, storagePath.tile.GetStorageForItem(item));
         if (quantity <= 0) return false;
+        // Reserve destination space so other haulers don't target the same slots
+        int spaceReserved = ReserveSpace(storagePath.tile.inv, item, quantity);
+        if (spaceReserved <= 0) return false;
+        quantity = Math.Min(quantity, spaceReserved);
         if (quantity < MinHaulQuantity && quantity < available) return false; // de minimis
         ItemQuantity iq = new(item, quantity);
         FetchAndReserve(iq, itemTile, targetStack, quantity);
@@ -281,9 +297,13 @@ public class ConsolidateTask : Task {
         HaulInfo h = animal.nav.FindFloorConsolidation(stack);
         if (h == null) return false;
         int available = h.itemStack.quantity - h.itemStack.resAmount;
-        if (h.quantity < MinHaulQuantity && h.quantity < available) return false; // de minimis
-        ItemQuantity iq = new(h.item, h.quantity);
-        FetchAndReserve(iq, h.itemTile, h.itemStack, h.quantity);
+        // Reserve destination space on the floor merge target
+        int spaceReserved = ReserveSpace(h.storageTile.inv, h.item, h.quantity);
+        if (spaceReserved <= 0) return false;
+        int quantity = Math.Min(h.quantity, spaceReserved);
+        if (quantity < MinHaulQuantity && quantity < available) return false; // de minimis
+        ItemQuantity iq = new(h.item, quantity);
+        FetchAndReserve(iq, h.itemTile, h.itemStack, quantity);
         objectives.AddLast(new DeliverObjective(this, iq, h.storageTile));
         return true;
     }
@@ -402,6 +422,10 @@ public class SupplyFuelTask : Task {
         int available = stack.quantity - stack.resAmount;
         int qty = Math.Min(needed, available);
         if (qty <= 0) return false;
+        // Reserve destination space on fuel inventory
+        int spaceReserved = ReserveSpace(fuel.inv, fuel.fuelItem, qty);
+        if (spaceReserved <= 0) return false;
+        qty = Math.Min(qty, spaceReserved);
         if (qty < MinHaulQuantity && qty < available) return false; // de minimis
         ItemQuantity iq = new ItemQuantity(fuel.fuelItem, qty);
         FetchAndReserve(iq, itemPath.tile, stack);
@@ -435,6 +459,10 @@ public class HaulToMarketTask : Task {
 
             int qty = Math.Min(quantityNeeded, stack.quantity - stack.resAmount);
             if (qty <= 0) continue;
+            // Reserve destination space on market inventory
+            int spaceReserved = ReserveSpace(marketInv, item, qty);
+            if (spaceReserved <= 0) continue;
+            qty = Math.Min(qty, spaceReserved);
             int sourceQty = stack.quantity - stack.resAmount;
             bool worthHauling = qty >= MinHaulQuantity || qty >= sourceQty || qty >= quantityNeeded / 4;
             if (!worthHauling) continue;
@@ -469,6 +497,10 @@ public class HaulFromMarketTask : Task {
 
             int qty = Math.Min(excess, stack.quantity - stack.resAmount);
             if (qty <= 0) continue;
+            // Reserve destination space on storage inventory
+            int spaceReserved = ReserveSpace(storagePath.tile.inv, item, qty);
+            if (spaceReserved <= 0) continue;
+            qty = Math.Min(qty, spaceReserved);
             int sourceQty = stack.quantity - stack.resAmount;
             bool worthHauling = qty >= MinHaulQuantity || qty >= sourceQty || qty >= excess / 4;
             if (!worthHauling) continue;
@@ -667,10 +699,14 @@ public class DropObjective : Objective {
     }
     public override void Start(){
         if (animal.inv.Quantity(item) == 0) {Complete(); return;}
-        var (dropPath, storageInv) = animal.nav.FindPathToDropTarget(item, animal.inv.Quantity(item));
+        int qty = animal.inv.Quantity(item);
+        var (dropPath, storageInv) = animal.nav.FindPathToDropTarget(item, qty);
         if (dropPath != null){
             targetInv = storageInv;
             destination = dropPath.tile;
+            // Reserve destination space (best-effort — don't fail if no space, floor drop is always possible)
+            Inventory destInv = storageInv ?? dropPath.tile.EnsureFloorInventory();
+            task.ReserveSpace(destInv, item, qty);
             animal.nav.Navigate(dropPath);
             animal.state = Animal.AnimalState.Moving;
         } else {
@@ -681,7 +717,6 @@ public class DropObjective : Objective {
     public override void OnArrival(){
         if (targetInv != null && targetInv.GetStorageForItem(item) > 0) {
             animal.inv.MoveItemTo(targetInv, item, animal.inv.Quantity(item));
-            // Any leftover (storage filled up between planning and arrival) stays in inv, retried next DropTask
         } else {
             animal.DropItem(item);
         }
@@ -799,7 +834,7 @@ public class LeisureObjective : Objective {
 
 public class ChatTask : Task {
     public Animal partner;
-    public bool socializedEarly; // true once happiness granted at 8 ticks
+    public bool socializedEarly; // true once happiness granted at 7 ticks
     public bool chatStarted;     // set by initiator's LeisureObjective.Start — syncs both timers
     public Tile myTile;          // tile this animal should stand on during chat
     public ChatTask(Animal animal, Animal partner) : base(animal) {

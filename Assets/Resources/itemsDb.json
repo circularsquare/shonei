@@ -160,6 +160,13 @@
         "happinessNeed": "soymilk",
         "children": null
     },{
+        "id": 242,
+        "name": "cheese",
+        "decayRate": 3.0,
+        "foodValue": 30,
+        "happinessNeed": "dairy",
+        "children": null
+    },{
         "id": 250,
         "name": "fiber",
         "decayRate": 0.1,
