@@ -165,6 +165,7 @@ public class TileRequirement {
     public bool mustBeStandable {get; set;}
     public bool mustHaveWater {get; set;}    // tile.water > 0
     public bool mustBeEmpty {get; set;}      // structs[0] (building layer) must be null
+    public bool mustBeSolidTile {get; set;}  // tile.type.solid must be true (ground tiles only, not solidTop buildings)
     public string requiredTileName {get; set;}
 }
 
@@ -222,6 +223,11 @@ public class StructType {
     // leisureNeed identifies which happiness satisfaction this building targets (e.g. "fireplace").
     public bool isLeisure {get; set;}
     public string leisureNeed {get; set;}
+    public bool socialWhenShared {get; set;} // true = grant half social happiness to both mice when one finishes and another is still seated
+    // When activeStartHour >= 0, this building is only active during [activeStartHour, activeEndHour).
+    // Hours 0–24; end < start wraps midnight (e.g. 16→6 = 4pm–6am). -1 = always active.
+    public float activeStartHour {get; set;} = -1f;
+    public float activeEndHour   {get; set;}
 
     // Light source: building emits point light and passively burns fuel while torchFactor > 0.
     // lightIntensity is the baseIntensity passed to LightSource (default 0.80).

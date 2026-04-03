@@ -170,6 +170,12 @@
         "fuelBurnRate": 4.0,
         "isLightSource": true,
         "lightIntensity": 0.85,
+        "socialWhenShared": true,
+        "activeStartHour": 16,
+        "activeEndHour": 6,
+        "tileRequirements": [
+            { "dx": 1, "dy": -1, "mustBeSolidTile": true }
+        ],
         "category": "structures"
     },{
         "id": 80,

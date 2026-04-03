@@ -41,7 +41,7 @@ Any  → Falling (involuntary; interrupts current task) → Idle on landing
 
 Each satisfaction decays exponentially each SlowUpdate (`×0.9044`). Score = count of satisfied needs (≥1.0 threshold) + housing (bool) + temperature (−1/5°C to +2). `Db.happinessMaxScore` = need count + 1 (housing) + 2 (temp max).
 
-Adding a new food or building happiness source requires only JSON changes — both UI panels auto-discover needs from `Db.happinessNeedsSorted`.
+Adding a new food or building happiness source: JSON changes auto-register the need, and both UI panels discover it from `Db.happinessNeedsSorted`. Also update `Db.happinessNeedsDisplayOrder` (the manual ordering array in `Db.cs`) to place it in the correct display group — if omitted, it appears alphabetically at the end.
 
 **Special**: `warmth` is separate from satisfactions — it's a cold-tolerance buff granted by fireplace leisure, not a happiness need.
 

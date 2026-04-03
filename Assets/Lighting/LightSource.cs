@@ -25,8 +25,13 @@ public class LightSource : MonoBehaviour {
 
     /// <summary>Set to the Reservoir that powers this light. Null = no fuel needed (always lit).</summary>
     [HideInInspector] public Reservoir reservoir;
-    /// <summary>False when fuel has run out; SunController sets intensity to 0 when false.</summary>
+    /// <summary>False when fuel has run out or outside the active time window.</summary>
     public bool isLit = true;
+
+    // Optional time gate: fuel only burns and light only shows within [activeStartHour, activeEndHour).
+    // Hours 0–24; end < start wraps midnight (e.g. 16→6 = 4pm–6am). -1 = always active.
+    [HideInInspector] public float activeStartHour = -1f;
+    [HideInInspector] public float activeEndHour   =  0f;
 
     public static readonly List<LightSource> all = new();
 
@@ -39,11 +44,12 @@ public class LightSource : MonoBehaviour {
     void Update() {
         if (reservoir == null) return; // no fuel needed — always lit
 
-        // Only burn fuel while the torch is emitting light (torchFactor > 0).
-        // During full day (torchFactor == 0) the torch is off and consumes nothing.
-        // Partial twilight (torchFactor > 0) counts as on — still consumes.
-        if (SunController.torchFactor > 0f)
+        bool inWindow = IsInActiveWindow();
+        // Only burn fuel while in the active time window and torch is emitting light.
+        if (inWindow && SunController.torchFactor > 0f)
             reservoir.Burn(Time.deltaTime, ref _fuelAccumulator);
-        isLit = reservoir.HasFuel();
+        isLit = inWindow && reservoir.HasFuel();
     }
+
+    private bool IsInActiveWindow() => SunController.IsHourInRange(activeStartHour, activeEndHour);
 }

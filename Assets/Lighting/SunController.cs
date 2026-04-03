@@ -91,6 +91,17 @@ public class SunController : MonoBehaviour {
         return World.instance.timer % World.ticksInDay / World.ticksInDay;
     }
 
+    // Returns true if the current hour falls within [startHour, endHour).
+    // endHour < startHour means the window wraps midnight (e.g. 16→6 = 4pm–6am).
+    // startHour < 0 means no gate — always returns true.
+    public static bool IsHourInRange(float startHour, float endHour) {
+        if (startHour < 0f) return true;
+        float hour = GetDayPhase() * 24f;
+        return startHour < endHour
+            ? hour >= startHour && hour < endHour   // normal window
+            : hour >= startHour || hour < endHour;  // wraps midnight
+    }
+
     // Ambient light color for the current time of day.
     // Color tint: lerp(ambientNight, ambientDay, twilightFraction).
     // Brightness factor: brightness * 0.6 + 0.4  (never fully dark).

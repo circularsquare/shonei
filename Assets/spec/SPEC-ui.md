@@ -169,10 +169,10 @@ Opened by clicking the happiness HUD element (`AnimalController.happinessPanel`)
 
 **Layout** (set up in editor):
 - `headerText` TMP — colony average score + pop capacity
-- `needContainer` Transform (VerticalLayoutGroup) — `HappinessNeedRow` instances spawned here at `Start()`
+- `needContainer` Transform (VerticalLayoutGroup) — `HappinessNeedRow` instances spawned here lazily on first open
 - `needRowPrefab` — `HappinessNeedRow` prefab
 
-Rows are spawned dynamically from `Db.happinessNeedsSorted` (one per satisfaction need, plus housing and temperature). Adding a new need to JSON auto-adds a row — no code changes needed. Refreshes every 1 s while open; also refreshes on `OnEnable()`. Closes on click-outside.
+Rows are spawned lazily on first open (in `OnEnable`) from `Db.happinessNeedsSorted` (one per satisfaction need, plus housing and temperature), so data populates immediately with no 1-frame delay. Adding a new need to JSON auto-adds a row — no code changes needed (but update `Db.happinessNeedsDisplayOrder` for correct ordering). Refreshes every 1 s while open. Closes on click-outside.
 
 ### HappinessNeedRow
 

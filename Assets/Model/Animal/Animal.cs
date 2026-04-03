@@ -231,6 +231,8 @@ public class Animal : MonoBehaviour{
         return phase >= 17f / 24f && phase < 21f / 24f;
     }
 
+    private static bool IsHourInRange(float startHour, float endHour) => SunController.IsHourInRange(startHour, endHour);
+
     public void SlowUpdate() { // called every 10 or so seconds
         FindHome();
         eating.SlowUpdate();
@@ -242,8 +244,8 @@ public class Animal : MonoBehaviour{
     // Scans the Chebyshev neighbourhood for active decoration buildings and notifies Happiness.
     // Each decoration type has its own timer — all in-range types are refreshed per call.
     // A decoration with a reservoir only counts when it has fuel (e.g. fountain needs water).
-    // MaxDecoScanRadius must be >= the largest decorRadius defined in any structType.
-    private const int MaxDecoScanRadius = 5;
+    // Computed from DB at startup — always equals the largest decorRadius across all structTypes.
+    private static int MaxDecoScanRadius => Db.maxDecoScanRadius;
 
     private void ScanForNearbyDecorations() {
         int ax = Mathf.RoundToInt(x);
@@ -410,6 +412,7 @@ public class Animal : MonoBehaviour{
             foreach (Building b in sc.GetLeisureBuildings()) {
                 if (b.disabled) continue;
                 if (b.reservoir != null && !b.reservoir.HasFuel()) continue;
+                if (!IsHourInRange(b.structType.activeStartHour, b.structType.activeEndHour)) continue;
                 if (b.seatRes != null) { if (!b.AnySeatAvailable()) continue; }
                 else if (b.res != null && !b.res.Available()) continue;
                 string need = b.structType.leisureNeed;

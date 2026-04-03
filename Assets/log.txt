@@ -1,4 +1,6 @@
 meoww!!
+4/3
+- fireplace tweaks (only on in evening, can socialize there)
 4/2
 - animation work
 - added fireplace! several multi-tile building tweaks

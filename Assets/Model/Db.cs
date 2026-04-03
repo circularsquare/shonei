@@ -31,6 +31,19 @@ public class Db : MonoBehaviour {
     public static HashSet<string> happinessNeeds;
     public static List<string> happinessNeedsSorted; // stable ordering for panel display
     public static int happinessMaxScore; // happinessNeeds.Count + 1 (housing) + 2 (temp max)
+
+    // Preferred display order for the happiness panel.
+    // Food needs first, then decoration, then social, then leisure.
+    // Needs not in this list are appended alphabetically at the end (future-proofing).
+    private static readonly string[] happinessNeedsDisplayOrder = {
+        "wheat", "fruit", "soymilk",  // food
+        "fountain",                    // decoration
+        "social",                      // social
+        "fireplace",                   // leisure
+    };
+
+    // Largest decorRadius across all structTypes. Computed at startup; used by Animal.ScanForNearbyDecorations.
+    public static int maxDecoScanRadius;
     public static Job[] jobs = new Job[100];
     public static Recipe[] recipes = new Recipe[500];
     public static StructType[] structTypes = new StructType[600];
@@ -82,9 +95,20 @@ public class Db : MonoBehaviour {
             if (!string.IsNullOrEmpty(st.leisureNeed))    happinessNeeds.Add(st.leisureNeed);
         }
         happinessNeeds.Add("social"); // ChatTask — not data-driven
-        happinessNeedsSorted = new List<string>(happinessNeeds);
-        happinessNeedsSorted.Sort();
+
+        // Build sorted list using manual display order; unknown future needs fall through alphabetically.
+        happinessNeedsSorted = new List<string>();
+        foreach (string need in happinessNeedsDisplayOrder)
+            if (happinessNeeds.Contains(need)) happinessNeedsSorted.Add(need);
+        foreach (string need in happinessNeeds.OrderBy(n => n))
+            if (!happinessNeedsSorted.Contains(need)) happinessNeedsSorted.Add(need);
+
         happinessMaxScore = happinessNeeds.Count + 1 + 2; // +1 housing, +2 temp max
+
+        maxDecoScanRadius = 0;
+        foreach (StructType st in structTypes)
+            if (st != null && st.decorRadius > maxDecoScanRadius)
+                maxDecoScanRadius = st.decorRadius;
     }
 
     void LoadNames() {

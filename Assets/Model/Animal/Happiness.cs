@@ -67,6 +67,10 @@ public class Happiness {
         Grant("social", activityGrant);
     }
 
+    public void NoteSocialized(float amount) {
+        Grant("social", amount);
+    }
+
     // Granted when a mouse finishes leisuring at a fireplace (or other leisure building).
     // Special side-effects (warmth) are handled here; the satisfaction grant is generic.
     public void NoteLeisure(string need) {
@@ -101,9 +105,9 @@ public class Happiness {
     }
 
     public void SlowUpdate(Animal a) {
-        // Exponential decay: each SlowUpdate (10 ticks) multiplies by ~0.9044
-        var keys = new List<string>(satisfactions.Keys);
-        foreach (string key in keys)
+        // Exponential decay: each SlowUpdate (10 ticks) multiplies by ~0.9044.
+        // Iterates Db.happinessNeedsSorted (pre-allocated) rather than allocating a key copy each call.
+        foreach (string key in Db.happinessNeedsSorted)
             satisfactions[key] *= decayFactor10;
 
         // Warmth decays much slower (~2 days from full to negligible)

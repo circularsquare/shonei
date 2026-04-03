@@ -159,6 +159,7 @@ public class Blueprint {
                 if (t == null) return true;
                 if (req.mustBeStandable && !World.instance.graph.nodes[t.x, t.y].standable) return true;
                 if (req.mustHaveWater && t.water == 0) return true;
+                if (req.mustBeSolidTile && !t.type.solid) return true;
             }
             return false;
         }

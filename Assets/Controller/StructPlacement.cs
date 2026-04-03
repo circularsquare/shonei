@@ -40,6 +40,7 @@ public static class StructPlacement {
                 if (req.mustBeStandable && !world.graph.nodes[t.x, t.y].standable) return false;
                 if (req.mustHaveWater && t.water == 0) return false;
                 if (req.mustBeEmpty && t.structs[0] != null) return false;
+                if (req.mustBeSolidTile && !t.type.solid) return false;
                 if (req.requiredTileName != null && t.type.name != req.requiredTileName) return false;
             }
         }

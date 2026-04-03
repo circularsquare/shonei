@@ -34,11 +34,10 @@ public class GlobalHappinessPanel : MonoBehaviour {
         UI.RegisterExclusive(gameObject);
     }
 
-    void Start() {
-        SpawnRows();
-    }
-
     void OnEnable() {
+        // SpawnRows on first open rather than Start() — OnEnable fires before Start on first activation,
+        // so rows must exist before Refresh() runs or data shows as 0 until the next periodic refresh.
+        if (rows.Count == 0) SpawnRows();
         Refresh();
     }
 

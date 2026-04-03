@@ -949,7 +949,31 @@ public class LeisureTask : Task {
         } else {
             Debug.LogError($"LeisureTask.Complete: building '{building.structType.name}' has no leisureNeed");
         }
+
+        // If this building grants social happiness when shared, find a seated partner
+        // and grant both mice half a socialization point — like a quiet chat by the fire.
+        if (building.structType.socialWhenShared) {
+            Animal partner = FindSeatedPartner();
+            if (partner != null) {
+                float halfGrant = Happiness.activityGrant * 0.5f;
+                animal.happiness.NoteSocialized(halfGrant);
+                partner.happiness.NoteSocialized(halfGrant);
+            }
+        }
+
         base.Complete();
+    }
+
+    // Returns another animal that is currently Leisuring at this same building, or null.
+    private Animal FindSeatedPartner() {
+        AnimalController ac = World.instance.animalController;
+        for (int i = 0; i < ac.na; i++) {
+            Animal other = ac.animals[i];
+            if (other == animal) continue;
+            if (other.state != Animal.AnimalState.Leisuring) continue;
+            if (other.task is LeisureTask lt && lt.building == building) return other;
+        }
+        return null;
     }
 
     public override void Cleanup() {
