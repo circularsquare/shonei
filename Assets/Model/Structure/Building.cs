@@ -113,9 +113,6 @@ public class Building : Structure {
 
     // Non-null only for workstation buildings. Owns the player-adjustable worker slot limit.
     public Workstation workstation { get; private set; }
-    public Tile storageTile => World.instance.GetTileAt(
-        x + (mirrored ? (structType.nx - 1 - structType.storageTileX) : structType.storageTileX),
-        y + structType.storageTileY);
     public Inventory storage { get; private set; }
     // Non-null only for buildings with a consumable resource reservoir (torch, furnace, fountain, etc.).
     public Reservoir reservoir { get; private set; }
@@ -127,19 +124,20 @@ public class Building : Structure {
             workstation = new Workstation(Mathf.Max(1, st.capacity));
 
         if (structType.isStorage){
-            Tile storageTile = World.instance.GetTileAt(
+            Tile sTile = World.instance.GetTileAt(
                 x + (mirrored ? (st.nx - 1 - st.storageTileX) : st.storageTileX),
                 y + st.storageTileY);
-            Inventory oldInv = storageTile.inv;
+            Inventory oldInv = sTile.inv;
             var invType = structType.name == "market" ? Inventory.InvType.Market : Inventory.InvType.Storage;
-            storageTile.inv = new Inventory(structType.nStacks, structType.storageStackSize, invType, storageTile.x, storageTile.y, isLiquidStorage: structType.liquidStorage);
-            storageTile.inv.displayName = structType.name;
-            storage = storageTile.inv;
+            storage = new Inventory(structType.nStacks, structType.storageStackSize, invType, sTile.x, sTile.y, isLiquidStorage: structType.liquidStorage);
+            storage.displayName = structType.name;
+            // Storage lives on building.storage only — not on tile.inv
             if (oldInv != null && oldInv.invType == Inventory.InvType.Floor) {
                 foreach (Item item in oldInv.GetItemsList()) {
-                    oldInv.ForceMoveItemTo(storageTile.inv, item, oldInv.Quantity(item));
+                    oldInv.ForceMoveItemTo(storage, item, oldInv.Quantity(item));
                 }
                 oldInv.Destroy();
+                sTile.inv = null;
             }
         }
 
@@ -166,11 +164,9 @@ public class Building : Structure {
         if (workstation != null)
             WorkOrderManager.instance?.RemoveWorkstationOrders(this);
         if (structType.isStorage && storage != null) {
-            Tile st = storageTile;
             if (!storage.IsEmpty() && !WorldController.isClearing)
                 Debug.LogError($"Destroying building storage with items in it at ({x},{y})!");
             storage.Destroy();
-            if (st != null) st.inv = null;
         }
         if (reservoir != null) {
             WorkOrderManager.instance?.RemoveFuelSupplyOrders(this);

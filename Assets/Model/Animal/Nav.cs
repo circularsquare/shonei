@@ -81,7 +81,10 @@ public class Nav {
         a.x = newPos.x; a.y = newPos.y;
         a.go.transform.position = new Vector3(a.x, a.y, a.z);
 
-        a.facingRight = (nextNode.wx - a.x > 0);
+        // Use the edge direction rather than the live position delta, so we don't
+        // flicker facing when the animal lands exactly on a waypoint mid-frame.
+        float facingDx = nextNode.wx - prevNode.wx;
+        if (Mathf.Abs(facingDx) > 0.01f) a.facingRight = facingDx > 0;
         return false;
     }
 
@@ -161,9 +164,9 @@ public class Nav {
     //    FindPathToX           = animal walks to the tile
     //    FindPathAdjacentToX   = animal walks next to the tile
 
-    public Path FindPathToStorage(Item item, int r = 40) {
+    public (Path path, Inventory inv) FindPathToStorage(Item item, int r = 40) {
         return FindPathToInv(new[] { Inventory.InvType.Storage },
-            inv => inv.GetStorageForItem(item) > 0, r).path; }
+            inv => inv.GetStorageForItem(item) > 0, r); }
     public Path FindPathToDrop(Item item, int animalQuantity, int r = 3){
         return FindPathTo(t => {
             if (t.inv == null) return true; // empty tile: full stack worth of space
@@ -228,8 +231,9 @@ public class Nav {
         return FindPathToStruct(structType, s => s.res.Available(), r);
     }
     public Path FindMarketPath() {
-        // Market sits at the far left world edge (x=0); use a wide radius to reach it from anywhere.
-        return FindPathToStruct(Db.structTypeByName["market"], r: 120);
+        // Any standable tile on the x=0 column acts as the portal to the off-screen market.
+        // Searching the whole column means a wall at the market's exact tile won't block merchants.
+        return FindPathTo(t => t.x == 0 && t.node.standable, r: 120);
     }
     public Path FindPathToHarvestable(Job job, int r = 40) {
         Path closestPath = null;
@@ -252,10 +256,11 @@ public class Nav {
         return closestPath;
     }
     public (Path, ItemStack) FindPathItemStack(Item item, int r = 40){
-        Path path = FindPathToInv(new[] { Inventory.InvType.Floor, Inventory.InvType.Storage },
-            inv => inv.ContainsAvailableItem(item), r).path;
-        if (path == null) return (null, null);
-        return (path, path.tile.inv.GetItemStack(item));
+        var (path, foundInv) = FindPathToInv(
+            new[] { Inventory.InvType.Floor, Inventory.InvType.Storage },
+            inv => inv.ContainsAvailableItem(item), r);
+        if (path == null || foundInv == null) return (null, null);
+        return (path, foundInv.GetItemStack(item));
     }
 
     // WOM always provides the exact source stack (targeted mode only).
@@ -264,7 +269,7 @@ public class Nav {
         Item item = sourceStack.item;
         Tile sourceTile = world.GetTileAt(sourceStack.inv.x, sourceStack.inv.y);
         if (sourceTile == null) return null;
-        if (FindPathToStorage(item) != null) return null; // storage exists — should haul instead
+        if (FindPathToStorage(item).path != null) return null; // storage exists — should haul instead
 
         // Find a dest floor tile: same item, room to receive, more quantity than source
         Path destPath = FindPathToInv(new[] { Inventory.InvType.Floor },

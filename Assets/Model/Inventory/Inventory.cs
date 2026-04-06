@@ -42,18 +42,20 @@ public class Inventory{
     // target quantity per item for the market; merchants aim to keep inventory at these levels.
     // null on non-market inventories.
     public Dictionary<Item, int> targets;
-    // reserved incoming space per item; used when placing orders to guarantee room for incoming goods.
-    public Dictionary<Item, Reservable> incomingRes;
 
+    // World.timer value when the player last manually edited a market target.
+    // HaulToMarket orders are suppressed for 3 reconcile ticks (30s) after a change
+    // so targets can settle before merchants are dispatched.
+    // NegativeInfinity = never updated, so the guard is always inactive at startup/load.
+    public float lastTargetManualUpdateTimer = float.NegativeInfinity;
 
-    // Returns unreserved space in this market inventory for the given item.
+    // Available space for an item in the market inventory (respects in-flight delivery reservations).
+    // Separate from GetStorageForItem, which intentionally excludes market to prevent normal haulers routing here.
     public int GetMarketSpace(Item item) {
         int space = 0;
-        foreach (ItemStack stack in itemStacks) {
-            if (stack.item == null) space += stackSize;
-            else if (stack.item == item && stack.quantity < stackSize) space += stackSize - stack.quantity;
-        }
-        return space - incomingRes[item].reserved;
+        foreach (ItemStack stack in itemStacks)
+            space += stack.FreeSpace(item);
+        return space;
     }
 
     public Inventory(int n = 1, int stackSize = 2500, InvType invType = InvType.Floor, int x = 0, int y = 0, bool isLiquidStorage = false) {
@@ -97,7 +99,6 @@ public class Inventory{
 
         if (invType == InvType.Market) {
             targets = Db.itemsFlat.ToDictionary(i => i, i => 0);
-            incomingRes = Db.itemsFlat.ToDictionary(i => i, i => new Reservable(9999));
         }
 
         InventoryController.instance.AddInventory(this);
@@ -118,15 +119,17 @@ public class Inventory{
         InventoryController.instance.RemoveInventory(this);
     }
     const int   ReservationExpireInterval = 120; // ticks between expiry sweeps per inventory
-    const float ReservationMaxAge         = 60f; // seconds before a reservation is considered stale
+    const float ReservationMaxAge         = 60f;  // seconds before a reservation is considered stale
+    const float MarketReservationMaxAge   = 120f; // longer timeout for market hauls (travel takes time)
     int _expireTick = 0;
 
     public void TickUpdate(){
         Decay();
         if (++_expireTick >= ReservationExpireInterval) {
             _expireTick = 0;
+            float maxAge = invType == InvType.Market ? MarketReservationMaxAge : ReservationMaxAge;
             foreach (ItemStack stack in itemStacks)
-                stack?.ExpireIfStale(ReservationMaxAge);
+                stack?.ExpireIfStale(maxAge);
         }
     }
     public void Decay(float time = 1f){
@@ -374,7 +377,7 @@ public class Inventory{
     // ── Destination space reservations ──────────────────────────
     // Distributes a space reservation across stacks: matching partial first (fullest first),
     // then empty stacks. Returns total amount actually reserved.
-    public int ReserveSpace(Item item, int quantity) {
+    public int ReserveSpace(Item item, int quantity, Task by = null) {
         if (quantity <= 0) return 0;
         // Build iteration order matching AddItem: matching stacks fullest-first, then empty
         var matchingIndices = new List<(int idx, int qty)>();
@@ -390,11 +393,11 @@ public class Inventory{
         int remaining = quantity;
         foreach (var (idx, _) in matchingIndices) {
             if (remaining <= 0) break;
-            remaining -= itemStacks[idx].ReserveSpace(item, remaining);
+            remaining -= itemStacks[idx].ReserveSpace(item, remaining, by);
         }
         foreach (int idx in emptyIndices) {
             if (remaining <= 0) break;
-            remaining -= itemStacks[idx].ReserveSpace(item, remaining);
+            remaining -= itemStacks[idx].ReserveSpace(item, remaining, by);
         }
         return quantity - remaining;
     }

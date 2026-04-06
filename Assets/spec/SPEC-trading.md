@@ -151,9 +151,24 @@ special **Market building**, which represents a distant city.
 ### Market building
 
 - StructType `"market"`, `isMarket = true` on the StructType.
-- Auto-spawned once at world gen at tile `(10, 10)`; never player-buildable.
+- Auto-spawned once at world gen at tile `(0, 20)` (left world edge, off normal camera view); never player-buildable. Represents a distant city.
 - Does **not** appear in the build menu (enforced via the unlock system — see below).
 - The Market inventory starts as `InvType.Storage` then `SetMarket()` flips it to `InvType.Market` and initializes `targets`/`incomingRes`. Normal haul logic (HaulTask) skips market inventories; only merchant mice may target them.
+
+### Travel mechanic
+
+Merchants walk to the market tile at x=0 (the "portal"), then disappear for a
+transit period representing the journey to/from the distant city.
+
+- `TravelingObjective(durationTicks)` hides the animal (`go.SetActive(false)`)
+  and sets `AnimalState.Traveling`. `AnimalStateManager.HandleTraveling()` ticks
+  `workProgress` until the duration is reached, then reappears the animal.
+- Transit duration: `World.ticksInDay / 8` per leg, same both ways (`Task.MarketTransitTicks`).
+- `Nav.FindMarketPath()` uses r=120 (market at x=0 is outside the default r=40
+  search range).
+- Save/load: traveling state is persisted (`isTraveling`, `travelProgress`,
+  `travelDuration` on `AnimalSaveData`). On load, a `ResumeTravelTask` finishes
+  the remaining travel ticks before the animal goes idle.
 
 ### Player name
 
@@ -164,7 +179,14 @@ which side of a fill belongs to this player.
 
 Dedicated `"merchant"` job in jobsDb. Merchant mice only perform `HaulToMarketTask` and `HaulFromMarketTask`; they do not take craft/harvest jobs. They are the only mice allowed to path to the market building.
 
-Both tasks are registered with `WorkOrderManager` at priority 3 (same tier as general floor hauls). `RegisterMarketHauls(marketInv)` registers a `HaulToMarket` order when the market has any item below target, and a `HaulFromMarket` order when any item is above target. Orders are deduped by market inventory reference. Registration happens in `Reconcile()` (every 10 s) and in `HaulToMarketTask.Cleanup()` / `HaulFromMarketTask.Cleanup()` after each task finishes.
+Both tasks are registered with `WorkOrderManager` at priority 3 (same tier as general floor hauls). `UpdateMarketOrders(marketInv)` adds a `HaulToMarket` order when the market has any item below target, and a `HaulFromMarket` order when any item is above target. Orders are deduped by market inventory reference. Registration happens in `Reconcile()` (every 10 s), on inventory changes, and after each task finishes.
+
+**Dispatch gate — target edit delay:** `HaulToMarket` orders are suppressed for 30 s after the player manually edits a market target (`Inventory.lastTargetManualUpdateTimer`). This lets multiple target adjustments settle before merchants are dispatched. `HaulFromMarket` is unaffected.
+
+**Task initialization gates (both market tasks):**
+- Eep < 80 %: merchant refuses the trip (`animal.eeping.Eepy()`).
+- Food provisioning: `PrependFoodFetchForMarketJourney(transitTicks)` estimates food needed as `hungerRate × 2 × (WalkToPortalSeconds=20 + transitTicks)` + `maxFood × hungryThreshold` buffer (so the merchant arrives above the efficiency-drop threshold). It checks body food + food slot, then fetches from the nearest available food source into the food slot if the deficit can be covered. Returns false (aborts Initialize) if it cannot provision enough food. `HaulToMarket` passes `MarketTransitTicks`; `HaulFromMarket` passes `2 × MarketTransitTicks` (two legs).
+- Minimum haul quantity: `MinMarketHaulQuantity = 100 fen` (1.0 liang), no exceptions.
 
 ### Order placement flow
 
@@ -198,14 +220,13 @@ playerName`:
 
 Partial fills are handled — only the filled quantity is deducted/released.
 
-### Space (incoming capacity) reservation
+### Space (incoming capacity)
 
-New field on `Inventory`: `Dictionary<Item, int> reservedIncoming`.
-
-- Counts how many units of each item are pre-allocated for pending buy orders.
-- Available incoming capacity for item X = `(totalSlots - usedSlots) -
-  reservedIncoming[X]`.
-- Initially only used for the market inventory; can generalize later.
+`Inventory.GetStorageForItem(item)` returns available space for an item,
+accounting for in-flight delivery reservations (`resSpace`). TradingPanel uses
+this to validate buy/sell orders before sending to the server. No client-side
+order reservation is tracked — if the market fills between placement and fill
+arrival, excess goods are simply rejected or overflow.
 
 ### Building unlock system
 
@@ -219,26 +240,30 @@ New field on `Inventory`: `Dictionary<Item, int> reservedIncoming`.
 
 ## Foreign Traders
 
-Foreign nations (e.g. Fulan) maintain always-on standing orders without being
-WebSocket clients. They run entirely server-side in `shonei-server/bots.go`
-with direct exchange access.
+Foreign nations (e.g. Fulan) are `DynamicTrader` instances running entirely
+server-side in `shonei-server/bots.go` with direct exchange access. Each trader
+manages one item and maintains dynamic buy/sell prices based on internal stock.
 
-**Data:** `foreignTraders` slice in `bots.go` — one `ForeignTrader` per nation,
-each with a list of `ForeignTraderOrder` (item, side, price in fen, quantity).
+**Pricing:**
+```
+sellPrice = clamp(defaultPrice × defaultStock / stock + minPrice, _, maxPrice)
+buyPrice  = sellPrice / 2
+```
 
-**Startup:** `main()` calls `seedForeignTraders(hub.exchange)` before the HTTP
-server starts. This is single-threaded, so no concurrency issues.
+**Stock dynamics:** `startFarming()` ticks every 10 s, adjusting stock toward
+`defaultStock`. Low stock → gains; excess stock → losses. Max gain/loss per tick
+configurable per trader.
 
-**Re-seeding:** After each fill in `readPump`, `reseedForeignTradersAfterFill`
-checks if the fill involved a foreign trader and calls `seedForeignTrader` for
-them. `seedForeignTrader` is idempotent — it only places a new order if the
-trader has no resting order for that item/side (partial fills leave the order
-in the book with reduced quantity, so re-seeding only triggers on full
-consumption).
+**Order refresh:** `refreshOrders()` calls `cancelOrdersForItem(name, item)` (scoped
+to this trader's item only — important when a nation has multiple traders) then
+re-places buy/sell orders at current prices. Called on fill and on each farming tick.
 
-**To add a new nation:** append a `ForeignTrader` entry to `foreignTraders`.  
-**To add more orders for an existing nation:** append to their `orders` slice.  
-**Prices:** always in fen (100 fen = 1 liang).
+**Config:** `traders.json` — one entry per `DynamicTrader`. Multiple entries can
+share the same `name` for a nation that trades multiple items.
+
+**To add a new nation:** add an entry to `traders.json`.  
+**To add more items for a nation:** add another entry with the same `name`.  
+**Prices/quantities:** always in fen (100 fen = 1 liang).
 
 ### Known gaps / TODO
 

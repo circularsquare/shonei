@@ -9,7 +9,6 @@ CONTENT
 - clean up all reservation systems
     - workorder res, structure res, structure.seatres (claude thoughts are in memory)
 - trading 
-    - move market off screen?
 - plant
     - flesh out plant growth, moisture and temperature
     - make plants grow from sunlight?
@@ -23,7 +22,11 @@ CONTENT
 
 VISUALS
 - make item icons more coherent / similar
-- tab styling, add building icons?
+- tab styling, add building icons?\
+
+- fix market inv display...
+    - make it full screen like research and others
+    - put the global inv display there
 
 MOUSE AI
 - ponder inventory management
@@ -36,10 +39,10 @@ MOUSE AI
     - inventory priority? or inventory pull orders
 - dynamic mouse task objectives
 
+
 BUGS
 
 TODAY GOALS
-- fix market inv display... somehow...
-    - address stale reservation?
-    - improve food fetching for journey
-    - address game save whiel merchant is mid-journey
+- get rid of tile invs... test according to plan!
+- clean up chatting ordering? seems messy
+- small chance to leisure even in the daytime

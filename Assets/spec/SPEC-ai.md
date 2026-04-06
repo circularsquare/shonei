@@ -254,7 +254,9 @@ Both reconciliation and auditing are handled by a single `ScanOrders(mode, silen
 
 ### De minimis haul threshold
 
-`Task.MinHaulQuantity = 20` (0.20 liang). `HaulTask`, `ConsolidateTask`, `HaulToMarketTask`, and `HaulFromMarketTask` all skip a haul move if the quantity to move is below this threshold **and** it would not drain the source stack entirely. This prevents animals spending time on trivial trickle-hauls. Hauling that clears the source stack is always allowed regardless of quantity.
+`Task.MinHaulQuantity = 20` (0.20 liang). `HaulTask` and `ConsolidateTask` skip a haul if the quantity is below this threshold **and** it would not drain the source stack entirely.
+
+`Task.MinMarketHaulQuantity = 100` (1.0 liang). `HaulToMarketTask` and `HaulFromMarketTask` use this stricter threshold with **no exceptions** — not for stack-clearing or topping off. Merchants shouldn't make a trip for a trickle.
 
 ### Blueprint constructor: autoRegister
 

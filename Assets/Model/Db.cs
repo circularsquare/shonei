@@ -376,14 +376,14 @@ public class HaulInfo {
     public Item item;
     public int quantity;
     public Tile itemTile;
-    public Tile storageTile;
+    public Tile destTile; // floor consolidation destination (not storage — storage is on building.storage)
     public ItemStack itemStack;
-    
-    public HaulInfo(Item item, int quantity, Tile itemTile, Tile storageTile, ItemStack itemStack) {
+
+    public HaulInfo(Item item, int quantity, Tile itemTile, Tile destTile, ItemStack itemStack) {
         this.item = item;
         this.quantity = quantity;
         this.itemTile = itemTile;
-        this.storageTile = storageTile;
+        this.destTile = destTile;
         this.itemStack = itemStack;
     }
 }

@@ -25,7 +25,7 @@ using Newtonsoft.Json;
 // Current saveable state checklist:
 //   [x] World timer
 //   [x] Tile types and floor inventories
-//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, mirrored, disabled)
+//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, mirrored, disabled)
 //   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored, disabled)
 //   [x] Animals (position, job, energy, food, happiness, decoration happiness, socialization, fireplace warmth, inv, foodSlotInv, toolSlotInv, clothingSlotInv)
 //   [x] Research (progress, activeResearchId, unlockedIds)
@@ -33,6 +33,7 @@ using Newtonsoft.Json;
 //   [x] Water levels
 //   [x] Is raining
 //   [x] Global item targets
+//   [x] Market targets (via MarketBuilding.instance)
 //   [x] Camera position
 // -----------------------------------------------------------------------
 
@@ -146,6 +147,13 @@ public class SaveSystem : MonoBehaviour {
             if (savedTargets.Count > 0) data.globalItemTargets = savedTargets;
         }
 
+        if (MarketBuilding.instance?.storage?.targets != null) {
+            var mt = new Dictionary<string, int>();
+            foreach (var kv in MarketBuilding.instance.storage.targets)
+                if (kv.Value != 0) mt[kv.Key.name] = kv.Value;
+            if (mt.Count > 0) data.marketTargets = mt;
+        }
+
         var cam = Camera.main;
         if (cam != null) {
             data.cameraX = cam.transform.position.x;
@@ -156,6 +164,7 @@ public class SaveSystem : MonoBehaviour {
     }
 
     TileSaveData GatherTile(Tile tile) {
+        // tile.inv is now always Floor or null (storage lives on building.storage)
         bool hasContent =
             tile.type.name != "empty" ||
             (tile.inv != null && !tile.inv.IsEmpty());
@@ -182,6 +191,8 @@ public class SaveSystem : MonoBehaviour {
                 ssd.workOrderEffectiveCapacity = b.workstation.workerLimit;
             if (b.reservoir != null && !b.reservoir.inv.IsEmpty())
                 ssd.fuelInvData = GatherInventory(b.reservoir.inv);
+            if (b.storage != null)
+                ssd.storageInvData = GatherInventory(b.storage);
             if (b.disabled) ssd.disabled = true;
         }
         return ssd;
@@ -220,18 +231,10 @@ public class SaveSystem : MonoBehaviour {
             allowedIds = allowedList.Count > 0 ? allowedList.ToArray() : null;
         }
 
-        System.Collections.Generic.Dictionary<string, int> marketTargets = null;
-        if (inv.targets != null) {
-            marketTargets = new System.Collections.Generic.Dictionary<string, int>();
-            foreach (var kv in inv.targets)
-                if (kv.Value != 0) marketTargets[kv.Key.name] = kv.Value;
-        }
-
         return new InventorySaveData {
             invType        = inv.invType.ToString(),
             stacks         = stacks,
             allowedItemIds = allowedIds,
-            marketTargets  = marketTargets != null && marketTargets.Count > 0 ? marketTargets : null
         };
     }
 
@@ -252,6 +255,11 @@ public class SaveSystem : MonoBehaviour {
             clothingSlotInv    = GatherInventory(a.clothingSlotInv),
             skillXp            = a.skills.SerializeXp(),
             skillLevel         = a.skills.SerializeLevel(),
+            isTraveling        = a.state == Animal.AnimalState.Traveling,
+            travelProgress     = a.state == Animal.AnimalState.Traveling ? a.workProgress : 0f,
+            travelDuration     = (a.state == Animal.AnimalState.Traveling
+                                  && a.task?.currentObjective is TravelingObjective tObj)
+                                  ? tObj.durationTicks : 0,
         };
     }
 
@@ -331,9 +339,6 @@ public class SaveSystem : MonoBehaviour {
             foreach (StructureSaveData ssd in save.structures)
                 RestoreStructure(ssd);
 
-        // Backwards-compat migration: move market to x=0 if it was saved at the old position.
-        MigrateMarketPosition();
-
         // Restore tile inventories after structures (storage inventories are created by Building constructor)
         if (save.tiles != null) {
             foreach (TileSaveData tsd in save.tiles) {
@@ -361,6 +366,12 @@ public class SaveSystem : MonoBehaviour {
                     InventoryController.instance.targets[item.id] = kv.Value;
         }
 
+        if (save.marketTargets != null && MarketBuilding.instance?.storage?.targets != null) {
+            foreach (var kv in save.marketTargets)
+                if (Db.itemByName.TryGetValue(kv.Key, out Item item))
+                    MarketBuilding.instance.storage.targets[item] = kv.Value;
+        }
+
         InventoryController.instance.ValidateGlobalInventory();
 
         var rp = RecipePanel.instance;
@@ -373,27 +384,6 @@ public class SaveSystem : MonoBehaviour {
         var cam = Camera.main;
         if (cam != null && save.cameraX.HasValue && save.cameraY.HasValue)
             cam.transform.position = new Vector3(save.cameraX.Value, save.cameraY.Value, cam.transform.position.z);
-    }
-
-    // Temporary migration: if the market was saved at the old position (x!=0), destroy it and
-    // re-create it at x=0 so the off-screen market portal is in the right place.
-    // Safe to remove once all save files have been re-saved with the new layout.
-    void MigrateMarketPosition() {
-        if (!Db.structTypeByName.TryGetValue("market", out StructType marketType)) return;
-        var list = StructController.instance.GetByType(marketType);
-        if (list == null) return;
-        // Collect markets not already at x=0 (copy since Destroy modifies the list)
-        var toMove = new System.Collections.Generic.List<Structure>();
-        foreach (Structure s in list)
-            if (s.x != 0) toMove.Add(s);
-        if (toMove.Count == 0) return;
-        foreach (Structure s in toMove) {
-            int oldX = s.x, oldY = s.y;
-            s.Destroy();
-            Debug.Log($"SaveSystem: migrated market from ({oldX},{oldY}) → (0,{oldY})");
-        }
-        Building market = new Building(marketType, 0, toMove[0].y);
-        StructController.instance.Place(market);
     }
 
     void RestoreStructure(StructureSaveData ssd) {
@@ -439,6 +429,24 @@ public class SaveSystem : MonoBehaviour {
                 fb.reservoir.inv.Produce(leafItem, sd.quantity);
             }
         }
+        // Restore storage inventory (items + allowed filter)
+        if (structure is Building sb && sb.storage != null && ssd.storageInvData != null) {
+            for (int i = 0; i < ssd.storageInvData.stacks.Length && i < sb.storage.itemStacks.Length; i++) {
+                ItemStackSaveData sd = ssd.storageInvData.stacks[i];
+                if (!string.IsNullOrEmpty(sd.itemName) && Db.itemByName.TryGetValue(sd.itemName, out Item item) && sd.quantity > 0) {
+                    sb.storage.itemStacks[i].item         = item;
+                    sb.storage.itemStacks[i].quantity      = sd.quantity;
+                    sb.storage.itemStacks[i].decayCounter  = sd.decayCounter;
+                    sb.storage.itemStacks[i].resAmount = 0;
+                    GlobalInventory.instance.AddItem(item, sd.quantity);
+                }
+            }
+            if (ssd.storageInvData.allowedItemIds != null)
+                foreach (int id in ssd.storageInvData.allowedItemIds)
+                    if (id < Db.items.Length && Db.items[id] != null)
+                        sb.storage.AllowItem(Db.items[id]);
+            sb.storage.UpdateSprite();
+        }
         // WOM orders (harvest, workstation, fuel supply) are registered by Reconcile() after all objects are restored.
     }
 
@@ -476,8 +484,9 @@ public class SaveSystem : MonoBehaviour {
         // RefreshColor() above may also fire RegisterOrdersIfUnsuspended() — dedup guards in Register* make it harmless.
     }
 
+    // Restores a floor inventory from save data. Storage inventories are restored in RestoreStructure.
     void RestoreInventory(InventorySaveData isd, Tile tile) {
-        Inventory inv = tile.inv ?? tile.EnsureFloorInventory();
+        Inventory inv = tile.EnsureFloorInventory();
 
         for (int i = 0; i < isd.stacks.Length && i < inv.itemStacks.Length; i++) {
             ItemStackSaveData ssd = isd.stacks[i];
@@ -490,19 +499,6 @@ public class SaveSystem : MonoBehaviour {
                 GlobalInventory.instance.AddItem(item, ssd.quantity);
             }
         }
-        // Constructor defaults serve as baseline (Storage=all-disallowed, Liquid=liquids-allowed, others=all-allowed).
-        // Apply the explicit allow list on top; null means "use defaults as-is" (e.g. Floor/Animal, or old saves).
-        if (isd.allowedItemIds != null)
-            foreach (int id in isd.allowedItemIds)
-                if (id < Db.items.Length && Db.items[id] != null)
-                    inv.AllowItem(Db.items[id]);
-
-        if (isd.marketTargets != null && inv.targets != null) {
-            foreach (var kv in isd.marketTargets)
-                if (Db.itemByName.TryGetValue(kv.Key, out Item item))
-                    inv.targets[item] = kv.Value;
-        }
-
         inv.UpdateSprite();
     }
 

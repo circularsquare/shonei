@@ -7,7 +7,7 @@ public class Eeping {
 
     public Eeping(){}
     public bool Eepy(){
-        return eep / maxEep < 0.8f;
+        return eep / maxEep < 0.7f;
     }
     public float Efficiency(){
         if (eep / maxEep > 0.5f){

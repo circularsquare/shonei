@@ -102,7 +102,7 @@
         "ncosts": [ ],
         "isStorage": true,
         "nStacks": 50,
-        "storageStackSize": 50,
+        "storageStackSize": 10000,
         "category": "storage",
         "defaultLocked": true
     },{
@@ -326,7 +326,6 @@
             { "name": "planks", "quantity": 5 }
         ],
         "njob": "hauler",
-        "capacity": 1,
         "solidTop": true,
         "category": "production"
     },{

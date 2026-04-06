@@ -124,6 +124,14 @@ public class Animal : MonoBehaviour{
             SaveSystem.LoadInventory(toolSlotInv, pendingSaveData.toolSlotInv);
             SaveSystem.LoadInventory(clothingSlotInv, pendingSaveData.clothingSlotInv);
             skills.Deserialize(pendingSaveData.skillXp, pendingSaveData.skillLevel);
+            // Resume mid-journey travel if the animal was saved while traveling
+            if (pendingSaveData.isTraveling && pendingSaveData.travelDuration > 0) {
+                int remaining = pendingSaveData.travelDuration - (int)pendingSaveData.travelProgress;
+                if (remaining > 0) {
+                    this.task = new ResumeTravelTask(this, remaining);
+                    if (!this.task.Start()) this.task = null;
+                }
+            }
             pendingSaveData = null;
         } else {
             this.aName = Db.DrawName(AnimalController.instance.UsedNames());
@@ -184,6 +192,7 @@ public class Animal : MonoBehaviour{
                 }
             }
         }
+
     }
     private void UpdateEfficiency() {
         efficiency = eating.Efficiency() * eeping.Efficiency() * happiness.TemperatureEfficiency();
@@ -609,10 +618,10 @@ public class Animal : MonoBehaviour{
             if (n < numRounds) { numRounds = n; }
         }
         foreach (ItemQuantity output in recipe.outputs){
-            Path storePath = nav.FindPathToStorage(output.item);
+            var (storePath, storeInv) = nav.FindPathToStorage(output.item);
             if (storePath == null) { n = 0; }
             else{
-                n = storePath.tile.GetStorageForItem(output.item) / output.quantity;
+                n = storeInv.GetStorageForItem(output.item) / output.quantity;
             }
             if (n < numRounds) { numRounds = Math.Max(n, 1); }
         }
@@ -649,7 +658,7 @@ public class Animal : MonoBehaviour{
                 // should maybe also unreserve previous house, if you can?
                 if (homeTile?.building?.structType.name == "house") homeTile.building.res.Unreserve();
                 homeTile = housePath.tile;
-                homeTile.building.res.Reserve();
+                homeTile.building.res.Reserve(aName);
             }
         } else if (!homeTile.building.res.Available()) {
             // current house is full — look for another house with >= 2 free slots
@@ -661,7 +670,7 @@ public class Animal : MonoBehaviour{
             if (betterPath != null) {
                 homeTile.building.res.Unreserve();
                 homeTile = betterPath.tile;
-                homeTile.building.res.Reserve();
+                homeTile.building.res.Reserve(aName);
             }
         }
     }

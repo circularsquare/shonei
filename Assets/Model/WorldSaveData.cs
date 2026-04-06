@@ -19,6 +19,8 @@ public class WorldSaveData {
     public System.Collections.Generic.Dictionary<string, int> globalItemTargets;
     public float? cameraX; // null on old saves → camera not repositioned on load
     public float? cameraY;
+    // Market targets set by the player (item name → quantity in fen). null = no market or all zero.
+    public System.Collections.Generic.Dictionary<string, int> marketTargets;
 }
 
 public class ResearchSaveData {
@@ -49,6 +51,9 @@ public class StructureSaveData {
     // Fuel buildings only: leaf-item stack data for building.fuel.inv at save time.
     // null = no fuel inv, or inv was empty (treated as empty on load).
     public InventorySaveData fuelInvData;
+    // Storage buildings only: the building's storage inventory data.
+    // null = no storage, or storage was empty with default config.
+    public InventorySaveData storageInvData;
     public bool mirrored;
     // Building-only: player-set disabled state. false on old saves (default).
     public bool disabled;
@@ -94,4 +99,7 @@ public class AnimalSaveData {
     public InventorySaveData clothingSlotInv;
     public float[] skillXp;
     public int[]   skillLevel;
+    public bool  isTraveling;     // was animal mid-journey (hidden) at save time?
+    public float travelProgress;  // ticks elapsed so far in current travel leg
+    public int   travelDuration;  // total ticks for current travel leg
 }

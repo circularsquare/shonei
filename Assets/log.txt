@@ -1,8 +1,14 @@
 meoww!!
+4/6
+- market journey preparation improvements 
+- food eating improvements
+- move storage inventories to building rather than tile
+- chat bubbles
 4/3
 - fireplace tweaks (only on in evening, can socialize there)
 - haulers reserve space in item stacks!
 - added foreign traders! maintain internal stock 
+    - added cheese
 - moved market off map, added journeying
 4/2
 - animation work

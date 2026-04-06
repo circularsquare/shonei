@@ -77,7 +77,7 @@ public class WorkOrderManager : MonoBehaviour {
         foreach (WorkOrder order in candidates) {
             Task task = order.factory(animal);
             if (task.Start()) {
-                order.res.Reserve();
+                order.res.Reserve(animal.aName);
                 task.workOrder = order;
                 return task;
             }
@@ -178,7 +178,7 @@ public class WorkOrderManager : MonoBehaviour {
             type = OrderType.Haul,
             priority = 3,
             factory = a => {
-                if (a.nav.FindPathToStorage(stack.item) != null) return new HaulTask(a, stack);
+                if (a.nav.FindPathToStorage(stack.item).path != null) return new HaulTask(a, stack);
                 return new ConsolidateTask(a, stack);
             },
             stack = stack,
@@ -230,7 +230,7 @@ public class WorkOrderManager : MonoBehaviour {
                 type = OrderType.Haul,
                 priority = 1,
                 factory = a => {
-                    if (a.nav.FindPathToStorage(stack.item) != null) return new HaulTask(a, stack);
+                    if (a.nav.FindPathToStorage(stack.item).path != null) return new HaulTask(a, stack);
                     return new ConsolidateTask(a, stack);
                 },
                 stack = stack,
@@ -268,8 +268,17 @@ public class WorkOrderManager : MonoBehaviour {
     // Call immediately whenever the market inventory changes or a target is updated.
     // Orders are removed eagerly even if in-flight: the active task still holds a workOrder
     // reference and base.Cleanup() will Unreserve() it safely even after removal from the queue.
+    //
+    // HaulToMarket is suppressed for 3 reconcile ticks (3s) after the player manually
+    // edits a target, so multiple target edits can settle before merchants are dispatched.
+    const float marketHaulDelayAfterTargetChange = 3f;
     public void UpdateMarketOrders(Inventory marketInv) {
-        if (MarketNeedsHaulTo(marketInv) && !orders[2].Exists(o => o.type == OrderType.HaulToMarket && o.inv == marketInv))
+        float timeSinceTargetEdit = World.instance != null
+            ? World.instance.timer - marketInv.lastTargetManualUpdateTimer
+            : float.MaxValue;
+        bool targetRecentlyEdited = timeSinceTargetEdit < marketHaulDelayAfterTargetChange;
+
+        if (!targetRecentlyEdited && MarketNeedsHaulTo(marketInv) && !orders[2].Exists(o => o.type == OrderType.HaulToMarket && o.inv == marketInv))
             Add(new WorkOrder {
                 type = OrderType.HaulToMarket,
                 priority = 3,

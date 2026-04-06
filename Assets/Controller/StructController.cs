@@ -11,6 +11,7 @@ public class StructController : MonoBehaviour {
     private Dictionary<StructType, List<Structure>> structsByType = new Dictionary<StructType, List<Structure>>();
     private List<Blueprint> blueprints = new List<Blueprint>();
     private List<Building> leisureBuildings = new List<Building>();
+    private int _seatResExpireTick = 0;
     public int n = 0;
     private World world;
     public Dictionary<Job, int> jobCounts;
@@ -131,6 +132,13 @@ public class StructController : MonoBehaviour {
     }
 
     public void TickUpdate(){
+        if (++_seatResExpireTick >= 120) {
+            _seatResExpireTick = 0;
+            foreach (Building b in leisureBuildings)
+                if (b.seatRes != null)
+                    foreach (var seat in b.seatRes)
+                        seat.ExpireIfStale(60f, $"{b.structType.name} seat");
+        }
         foreach (Structure structure in structures){
             //
         }

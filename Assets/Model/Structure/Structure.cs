@@ -118,9 +118,9 @@ public class Structure {
         if (st.isPlant)
             return new Plant(st as PlantType, x, y);
         if (st.depth == 0 || st.isBuilding) {
-            return st.name == "pump"
-                ? new PumpBuilding(st, x, y, mirrored)
-                : new Building(st, x, y, mirrored);
+            if (st.name == "pump")   return new PumpBuilding(st, x, y, mirrored);
+            if (st.name == "market") return new MarketBuilding(st, x, y, mirrored);
+            return new Building(st, x, y, mirrored);
         }
         return new Structure(st, x, y, mirrored); // platforms, ladders, stairs, foreground, roads
     }

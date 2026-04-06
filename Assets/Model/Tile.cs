@@ -47,14 +47,6 @@ public class Tile {
         else{return inv.GetItemToHaul();}
     }
     public bool HasItemToHaul(Item item){return inv != null && inv.HasItemToHaul(item);} // can be null for any item
-    public int GetStorageForItem(Item item){
-        if (inv != null && inv.invType == Inventory.InvType.Storage){
-            return inv.GetStorageForItem(item);
-        }
-        return 0;
-    }
-    // storage: floor not allowed
-    public bool HasStorageForItem(Item item){return (inv != null && inv.GetStorageForItem(item) > 0); }
 
     // space: floor allowed
     public bool HasSpaceForItem(Item item){return (inv == null || inv.HasSpaceForItem(item));}

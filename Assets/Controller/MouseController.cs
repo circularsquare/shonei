@@ -139,10 +139,11 @@ public class MouseController : MonoBehaviour {
 
 
         // Shift+RMB on storage = paste filters (before drag handling consumes the click)
+        Inventory storageHere = GetStorageAt(tileAt);
         if (Input.GetMouseButtonDown(1) && mouseMode == MouseMode.Select
             && (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
-            && tileAt?.inv != null && IsStorageType(tileAt.inv.invType)) {
-            InventoryController.instance.PasteAllowed(tileAt.inv);
+            && storageHere != null) {
+            InventoryController.instance.PasteAllowed(storageHere);
         }
 
         // LMB down: record drag start for Select mode; immediate action for Build/Remove
@@ -190,8 +191,9 @@ public class MouseController : MonoBehaviour {
         bool ctrl  = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
 
         // Shift+LMB on storage = copy filters
-        if (shift && tileAt?.inv != null && IsStorageType(tileAt.inv.invType)) {
-            InventoryController.instance.CopyAllowed(tileAt.inv);
+        Inventory clickStorage = GetStorageAt(tileAt);
+        if (shift && clickStorage != null) {
+            InventoryController.instance.CopyAllowed(clickStorage);
             return;
         }
 
@@ -204,10 +206,10 @@ public class MouseController : MonoBehaviour {
 
         if (tileAt != null || animals.Count > 0) {
             var ctx = SelectionContext.FromTile(tileAt, animals);
-            bool hasStorageInv = tileAt?.inv != null && IsStorageType(tileAt.inv.invType);
-            if (ctrl && hasStorageInv) {
+            Inventory tileStorage = GetStorageAt(tileAt);
+            if (ctrl && tileStorage != null) {
                 // Ctrl+LMB: toggle this inventory in/out of the multi-selection
-                InventoryController.instance.CtrlToggleInventory(tileAt.inv);
+                InventoryController.instance.CtrlToggleInventory(tileStorage);
                 Inventory primary = InventoryController.instance.selectedInventory;
                 if (primary != null) {
                     Tile primaryTile = WorldController.instance.world.GetTileAt(primary.x, primary.y);
@@ -217,8 +219,8 @@ public class MouseController : MonoBehaviour {
                 InfoPanel.instance.ShowSelection(ctx);
                 if (animals.Count > 0)
                     InventoryController.instance.SelectInventory(null);
-                else if (hasStorageInv)
-                    InventoryController.instance.SelectInventory(tileAt.inv);
+                else if (tileStorage != null)
+                    InventoryController.instance.SelectInventory(tileStorage);
                 else
                     InventoryController.instance.SelectInventory(null);
             }
@@ -285,6 +287,12 @@ public class MouseController : MonoBehaviour {
 
     static bool IsStorageType(Inventory.InvType t) =>
         t == Inventory.InvType.Storage || t == Inventory.InvType.Market;
+
+    // Returns the storage/market inventory at a tile via the building, or null.
+    static Inventory GetStorageAt(Tile t) {
+        Inventory s = t?.building?.storage;
+        return (s != null && IsStorageType(s.invType)) ? s : null;
+    }
 
     // ── Camera bounds ──────────────────────────────────────────────────────
     // Clamps the camera so the viewport never shows outside the world rectangle.

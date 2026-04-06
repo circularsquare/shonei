@@ -14,6 +14,8 @@ using System.Linq;
 public abstract class Task {
     public Animal animal;
     protected LinkedList<Objective> objectives = new LinkedList<Objective>();
+    // One-way travel time to/from the off-screen market. Symmetric — same duration each leg.
+    protected static readonly int MarketTransitTicks = World.ticksInDay / 8;
     public Objective currentObjective;
     private readonly List<(ItemStack stack, int amount)> reservedStacks = new();
     private readonly List<(Inventory inv, Item item, int amount)> reservedSpaces = new();
@@ -24,6 +26,11 @@ public abstract class Task {
     // De minimis: skip hauls/drops below this unless it clears the source stack entirely.
     public const int MinHaulQuantity = 20; // 0.20 liang
 
+    // Strict minimum for market hauls — no exceptions for stack-clearing or topping off.
+    // Merchants shouldn't make a trip for a trickle.
+    public const int MinMarketHaulQuantity = 100;       // 1.0 liang (most items)
+    public const int MinMarketHaulQuantitySilver = 40;  // 0.4 liang (silver moves in smaller amounts)
+
     // check whether a task is possible. create objectives, make reservations
     public abstract bool Initialize();
 
@@ -33,20 +40,20 @@ public abstract class Task {
 
     // Reserves items on a stack and tracks for cleanup. Single entry point for all source reservations.
     public void ReserveStack(ItemStack stack, int amount){
-        int reserved = stack.Reserve(amount);
+        int reserved = stack.Reserve(amount, this);
         if (reserved > 0) reservedStacks.Add((stack, reserved));
     }
 
     // Reserves destination space in an inventory and tracks for cleanup. Returns amount reserved.
     public int ReserveSpace(Inventory inv, Item item, int amount){
-        int reserved = inv.ReserveSpace(item, amount);
+        int reserved = inv.ReserveSpace(item, amount, this);
         if (reserved > 0) reservedSpaces.Add((inv, item, reserved));
         return reserved;
     }
 
     // Enqueues a FetchObjective and reserves items on the stack, tracking for cleanup.
     protected void FetchAndReserve(ItemQuantity iq, Tile tile, ItemStack stack, int amount){
-        objectives.AddLast(new FetchObjective(this, iq, tile));
+        objectives.AddLast(new FetchObjective(this, iq, tile, sourceInv: stack.inv));
         ReserveStack(stack, amount);
     }
     protected void FetchAndReserve(ItemQuantity iq, Tile tile, ItemStack stack){
@@ -54,8 +61,67 @@ public abstract class Task {
     }
     // Overload that routes pickup into an equip slot instead of the animal's main inventory.
     protected void FetchAndReserve(ItemQuantity iq, Tile tile, ItemStack stack, Inventory targetInv){
-        objectives.AddLast(new FetchObjective(this, iq, tile, targetInv));
+        objectives.AddLast(new FetchObjective(this, iq, tile, targetInv, sourceInv: stack.inv));
         ReserveStack(stack, iq.quantity);
+    }
+
+    // Estimated walk time from anywhere on-map to the market portal at x=0.
+    private const float WalkToPortalSeconds = 20f;
+
+    // Checks whether the animal is provisioned for a market journey and fetches food if not.
+    // transitTicks = total transit ticks (MarketTransitTicks for HaulToMarket; 2× for HaulFromMarket).
+    // Accounts for body food + food slot. Only tops up the slot item already loaded; if the slot
+    // is empty, picks the nearest available food.
+    // Returns false (→ Initialize should abort) if enough food cannot be secured.
+    protected bool PrependFoodFetchForMarketJourney(int transitTicks) {
+        float journeySeconds = 2f * (WalkToPortalSeconds + transitTicks);
+        // Buffer so the animal arrives with food above the efficiency drop threshold.
+        float foodNeeded = animal.eating.hungerRate * journeySeconds + animal.eating.maxFood * Eating.hungryThreshold;
+
+        ItemStack slotStack = animal.foodSlotInv.itemStacks[0];
+        float slotFoodPoints = slotStack.item != null
+            ? (slotStack.quantity / 100f) * slotStack.item.foodValue
+            : 0f;
+        float foodHave = animal.eating.food + slotFoodPoints;
+
+        if (foodHave >= foodNeeded) return true; // already provisioned
+
+        float deficit = foodNeeded - foodHave;
+
+        // Find a food source to close the gap.
+        // If the slot already has a food type, only look for more of that same type
+        // (can't mix foods in the slot). If empty, pick the nearest available food.
+        Item slotItem = slotStack.item;
+        Path bestPath = null;
+        ItemStack bestStack = null;
+        Item bestFood = null;
+
+        if (slotItem != null) {
+            (bestPath, bestStack) = animal.nav.FindPathItemStack(slotItem);
+            if (bestPath != null) bestFood = slotItem;
+        } else {
+            foreach (Item food in Db.edibleItems) {
+                (Path p, ItemStack s) = animal.nav.FindPathItemStack(food);
+                if (p == null) continue;
+                if (bestPath == null || p.cost < bestPath.cost) {
+                    bestPath = p; bestStack = s; bestFood = food;
+                }
+            }
+        }
+        if (bestPath == null) return false; // no food reachable — refuse the journey
+
+        int fenNeeded = (int)Math.Ceiling(deficit * 100f / bestFood.foodValue);
+        int slotSpace = animal.foodSlotInv.stackSize - slotStack.quantity;
+        int qty = Math.Min(slotSpace, Math.Min(bestStack.quantity - bestStack.resAmount, fenNeeded));
+        if (qty <= 0) return false;
+
+        // Verify the fetch will actually cover the deficit.
+        float fetchedPoints = (qty / 100f) * bestFood.foodValue;
+        if (foodHave + fetchedPoints < foodNeeded) return false;
+        ItemQuantity foodIq = new(bestFood, qty);
+        objectives.AddFirst(new FetchObjective(this, foodIq, bestPath.tile, animal.foodSlotInv, softFetch: false, sourceInv: bestStack.inv));
+        ReserveStack(bestStack, qty);
+        return true;
     }
 
     // Prepends a soft food-fetch to the front of the objective queue if the animal's food slot
@@ -98,13 +164,14 @@ public abstract class Task {
         ItemQuantity foodIq = new(bestFood, qty);
         // AddFirst so food is fetched before any other objectives run.
         // softFetch=true: if food is gone on arrival, objective completes rather than fails.
-        objectives.AddFirst(new FetchObjective(this, foodIq, bestPath.tile, animal.foodSlotInv, softFetch: true));
+        objectives.AddFirst(new FetchObjective(this, foodIq, bestPath.tile, animal.foodSlotInv, softFetch: true, sourceInv: bestStack.inv));
         ReserveStack(bestStack, qty);
     }
 
     public bool Start(){ // calls some task specific Initialize
         bool initialized = Initialize();
-        if (initialized && objectives.Count > 0){StartNextObjective();}
+        if (!initialized) Cleanup(); // release any reservations made before Initialize bailed
+        else if (objectives.Count > 0) StartNextObjective();
         return initialized;
     }
     public virtual void Complete(){ // called whenever an objective is complete;
@@ -203,7 +270,7 @@ public class CraftTask : Task {
             (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(item);
             if (itemPath == null) { return false; }
             ReserveStack(stack, toFetch);
-            objectives.AddFirst(new FetchObjective(this, new ItemQuantity(item, toFetch), itemPath.tile, softFetch: true));
+            objectives.AddFirst(new FetchObjective(this, new ItemQuantity(item, toFetch), itemPath.tile, softFetch: true, sourceInv: stack.inv));
         }
 
         return true;
@@ -224,7 +291,7 @@ public class CraftTask : Task {
                     // (have >= iq.quantity) only fires when the animal truly has everything it needs.
                     // OnArrival calculates how much to take as (iq.quantity - have), so it still fetches
                     // only the remaining gap.
-                    EnqueueFront(new FetchObjective(this, new ItemQuantity(item, needed), p.tile, softFetch: true));
+                    EnqueueFront(new FetchObjective(this, new ItemQuantity(item, needed), p.tile, softFetch: true, sourceInv: stack.inv));
                     // Don't increment — check this ingredient again after the retry
                     base.Complete();
                     return;
@@ -315,19 +382,22 @@ public class HaulTask : Task {
         Tile itemTile = World.instance.GetTileAt(targetStack.inv.x, targetStack.inv.y);
         if (itemTile == null) return false;
         if (!animal.nav.CanReach(itemTile)) return false;
-        Path storagePath = animal.nav.FindPathToStorage(item);
+        var (storagePath, storageInv) = animal.nav.FindPathToStorage(item);
         if (storagePath == null) return false;
         int available = targetStack.quantity - targetStack.resAmount;
-        int quantity = Math.Min(available, storagePath.tile.GetStorageForItem(item));
+        int quantity = Math.Min(available, storageInv.GetStorageForItem(item));
         if (quantity <= 0) return false;
+        // De minimis check before reserving: GetStorageForItem already accounts for resSpace,
+        // so this is safe. Avoids leaking a space reservation that would linger until stale expiry.
+        if (quantity < MinHaulQuantity && quantity < available) return false; // de minimis — no reservation made yet
         // Reserve destination space so other haulers don't target the same slots
-        int spaceReserved = ReserveSpace(storagePath.tile.inv, item, quantity);
+        int spaceReserved = ReserveSpace(storageInv, item, quantity);
         if (spaceReserved <= 0) return false;
         quantity = Math.Min(quantity, spaceReserved);
-        if (quantity < MinHaulQuantity && quantity < available) return false; // de minimis
         ItemQuantity iq = new(item, quantity);
         FetchAndReserve(iq, itemTile, targetStack, quantity);
-        objectives.AddLast(new DeliverObjective(this, iq, storagePath.tile));
+        objectives.AddLast(new GoObjective(this, storagePath.tile));
+        objectives.AddLast(new DeliverToInventoryObjective(this, iq, storageInv));
         return true;
     }
 }
@@ -342,13 +412,14 @@ public class ConsolidateTask : Task {
         if (h == null) return false;
         int available = h.itemStack.quantity - h.itemStack.resAmount;
         // Reserve destination space on the floor merge target
-        int spaceReserved = ReserveSpace(h.storageTile.inv, h.item, h.quantity);
+        int spaceReserved = ReserveSpace(h.destTile.inv, h.item, h.quantity);
         if (spaceReserved <= 0) return false;
         int quantity = Math.Min(h.quantity, spaceReserved);
+        // Cleanup releases the space reservation we just made before bailing.
         if (quantity < MinHaulQuantity && quantity < available) return false; // de minimis
         ItemQuantity iq = new(h.item, quantity);
         FetchAndReserve(iq, h.itemTile, h.itemStack, quantity);
-        objectives.AddLast(new DeliverObjective(this, iq, h.storageTile));
+        objectives.AddLast(new DeliverObjective(this, iq, h.destTile));
         return true;
     }
 }
@@ -482,16 +553,16 @@ public class SupplyFuelTask : Task {
 // The market is off-screen at the left world edge; merchants walk there and disappear
 // while "travelling to/from market", then reappear when the trip is complete.
 public class HaulToMarketTask : Task {
-    private static readonly int MarketTransitTicks = World.ticksInDay / 8;
     public HaulToMarketTask(Animal animal) : base(animal) {}
     public override bool Initialize() {
+        if (animal.eeping.Eepy()) return false; // too tired for a long journey
+        if (MarketBuilding.instance == null) return false;
+        Inventory marketInv = MarketBuilding.instance.storage;
+        if (marketInv == null) return false;
+        // Any reachable x=0 tile is a valid portal — not just the market building's own tile.
         Path marketPath = animal.nav.FindMarketPath();
         if (marketPath == null) return false;
-        Building market = marketPath.tile.building as Building;
-        if (market == null) return false;
         Tile marketTile = marketPath.tile;
-        Inventory marketInv = market.storageTile.inv;
-        if (marketInv == null) return false;
 
         foreach (var kvp in marketInv.targets) {
             int quantityNeeded = kvp.Value - marketInv.Quantity(kvp.Key);
@@ -499,43 +570,40 @@ public class HaulToMarketTask : Task {
             Item item = kvp.Key;
             if (marketInv.allowed[item.id] == false) continue;
 
-            Path itemPath = animal.nav.FindPathTo(
-                t => t.inv != null && t.inv.invType != Inventory.InvType.Market && t.inv.invType != Inventory.InvType.Blueprint && t.inv.ContainsAvailableItem(item));
-            if (itemPath == null) continue;
-            ItemStack stack = itemPath.tile.inv.GetItemStack(item);
-            if (stack == null) continue;
+            var (itemPath, stack) = animal.nav.FindPathItemStack(item);
+            if (itemPath == null || stack == null) continue;
 
-            int qty = Math.Min(quantityNeeded, stack.quantity - stack.resAmount);
-            if (qty <= 0) continue;
-            int spaceReserved = ReserveSpace(marketInv, item, qty);
+            int firstAvail = stack.quantity - stack.resAmount;
+            if (firstAvail <= 0) continue;
+            // Reserve market space for the full amount needed so FetchObjective can aggregate
+            // from multiple stacks in one trip, rather than one small trip per stack.
+            int spaceReserved = ReserveSpace(marketInv, item, quantityNeeded);
             if (spaceReserved <= 0) continue;
-            qty = Math.Min(qty, spaceReserved);
-            int sourceQty = stack.quantity - stack.resAmount;
-            bool worthHauling = qty >= MinHaulQuantity || qty >= sourceQty || qty >= quantityNeeded / 4;
-            if (!worthHauling) continue;
-            ItemQuantity iq = new(item, qty);
-            FetchAndReserve(iq, itemPath.tile, stack, qty);
+            if (spaceReserved < (item.name == "silver" ? MinMarketHaulQuantitySilver : MinMarketHaulQuantity)) { Cleanup(); continue; }
+            ItemQuantity iq = new(item, spaceReserved);
+            // Pre-reserve only the nearest stack; FetchObjective reserves additional stacks
+            // as it visits them until iq.quantity is gathered.
+            FetchAndReserve(iq, itemPath.tile, stack, firstAvail);
             // Walk to the market portal, disappear for the journey, then deliver on arrival.
             objectives.AddLast(new GoObjective(this, marketTile));
             objectives.AddLast(new TravelingObjective(this, MarketTransitTicks));
             objectives.AddLast(new DeliverToInventoryObjective(this, iq, marketInv));
-            PrependFoodFetchIfNeeded();
-            return true;
+            return PrependFoodFetchForMarketJourney(MarketTransitTicks);
         }
         return false;
     }
 }
 public class HaulFromMarketTask : Task {
-    private static readonly int MarketTransitTicks = World.ticksInDay / 4;
     public HaulFromMarketTask(Animal animal) : base(animal) {}
     public override bool Initialize() {
+        if (animal.eeping.Eepy()) return false; // too tired for a long journey
+        if (MarketBuilding.instance == null) return false;
+        Inventory marketInv = MarketBuilding.instance.storage;
+        if (marketInv == null) return false;
+        // Any reachable x=0 tile is a valid portal — not just the market building's own tile.
         Path marketPath = animal.nav.FindMarketPath();
         if (marketPath == null) return false;
-        Building market = marketPath.tile.building as Building;
-        if (market == null) return false;
         Tile marketTile = marketPath.tile;
-        Inventory marketInv = market.storageTile.inv;
-        if (marketInv == null) return false;
 
         foreach (var kvp in marketInv.targets) {
             int excess = marketInv.Quantity(kvp.Key) - kvp.Value;
@@ -544,17 +612,15 @@ public class HaulFromMarketTask : Task {
 
             ItemStack stack = marketInv.GetItemStack(item);
             if (stack == null) continue;
-            Path storagePath = animal.nav.FindPathToStorage(item);
+            var (storagePath, storageInv) = animal.nav.FindPathToStorage(item);
             if (storagePath == null) continue;
 
             int qty = Math.Min(excess, stack.quantity - stack.resAmount);
             if (qty <= 0) continue;
-            int spaceReserved = ReserveSpace(storagePath.tile.inv, item, qty);
+            int spaceReserved = ReserveSpace(storageInv, item, qty);
             if (spaceReserved <= 0) continue;
             qty = Math.Min(qty, spaceReserved);
-            int sourceQty = stack.quantity - stack.resAmount;
-            bool worthHauling = qty >= MinHaulQuantity || qty >= sourceQty || qty >= excess / 4;
-            if (!worthHauling) continue;
+            if (qty < (item.name == "silver" ? MinMarketHaulQuantitySilver : MinMarketHaulQuantity)) { Cleanup(); continue; }
             ItemQuantity iq = new(item, qty);
             // Reserve the items in the market now so no other task double-counts them.
             ReserveStack(stack, qty);
@@ -563,10 +629,24 @@ public class HaulFromMarketTask : Task {
             objectives.AddLast(new TravelingObjective(this, MarketTransitTicks));
             objectives.AddLast(new ReceiveFromInventoryObjective(this, iq, marketInv));
             objectives.AddLast(new TravelingObjective(this, MarketTransitTicks));
-            objectives.AddLast(new DeliverObjective(this, iq, storagePath.tile));
-            return true;
+            objectives.AddLast(new GoObjective(this, storagePath.tile));
+            objectives.AddLast(new DeliverToInventoryObjective(this, iq, storageInv));
+            return PrependFoodFetchForMarketJourney(2 * MarketTransitTicks);
         }
         return false;
+    }
+}
+// Created on load to finish an interrupted TravelingObjective.
+// After completion the animal becomes idle at x=0 and WOM assigns fresh work.
+public class ResumeTravelTask : Task {
+    private readonly int remainingTicks;
+    public ResumeTravelTask(Animal animal, int remainingTicks) : base(animal) {
+        this.remainingTicks = remainingTicks;
+    }
+    public override bool Initialize() {
+        if (remainingTicks <= 0) return false;
+        objectives.AddLast(new TravelingObjective(this, remainingTicks));
+        return true;
     }
 }
 public class ResearchTask : Task {
@@ -618,19 +698,21 @@ public abstract class Objective {
 public class FetchObjective : Objective {
     private ItemQuantity iq;
     private Tile sourceTile;
+    private Inventory sourceInv; // which inventory to take from (storage or floor); set by Start() or caller
     private Inventory targetInv; // null = animal's main inventory; non-null = equip into that slot
     private bool softFetch; // if true: Complete (not Fail) when no path found or nothing taken; no cross-tile retry
     private Inventory Dest => targetInv ?? animal.inv;
-    public FetchObjective(Task task, ItemQuantity iq, Tile sourceTile = null, Inventory targetInv = null, bool softFetch = false) : base(task) {
+    public FetchObjective(Task task, ItemQuantity iq, Tile sourceTile = null, Inventory targetInv = null, bool softFetch = false, Inventory sourceInv = null) : base(task) {
         this.iq = iq;
         this.sourceTile = sourceTile;
+        this.sourceInv = sourceInv;
         this.targetInv = targetInv;
         this.softFetch = softFetch;
     }
     public override string GetObjectiveName() { return $"Fetch({iq.item.name})"; }
     public override void Start(){
         // Start() may be called more than once (non-soft): if the animal arrives and the stack is partially
-        // exhausted, sourceTile is cleared and Start() re-runs to find a new source tile.
+        // exhausted, sourceTile/sourceInv are cleared and Start() re-runs to find a new source.
         if (Dest.Quantity(iq.item) >= iq.quantity){Complete(); return;}
         Path itemPath;
         if (sourceTile != null) {
@@ -641,6 +723,7 @@ public class FetchObjective : Objective {
             if (itemPath != null) {
                 task.ReserveStack(stack, iq.quantity);
                 sourceTile = itemPath.tile;
+                sourceInv = stack.inv;
             }
         }
         if (itemPath != null){
@@ -661,9 +744,18 @@ public class FetchObjective : Objective {
     public override void OnArrival(){
         int needed = iq.quantity - Dest.Quantity(iq.item); // how much more we still need
         if (needed <= 0) { Complete(); return; }
-        int amountBefore = Dest.Quantity(iq.item);
-        animal.TakeItem(new ItemQuantity(iq.item, needed), targetInv); // only take what's still needed
-        int amountTaken = Dest.Quantity(iq.item) - amountBefore;
+        // Use tracked sourceInv (storage or floor); fall back to tile.inv for floor items
+        Inventory src = sourceInv ?? animal.TileHere()?.inv;
+        if (src == null) {
+            if (softFetch) { Complete(); return; }
+            Fail(); Debug.Log($"{animal.aName} FetchObjective: no source inv at ({(int)animal.x},{(int)animal.y})"); return;
+        }
+        int amountTaken = src.MoveItemTo(Dest, iq.item, needed);
+        // Clean up empty floor inventories (replicates TakeItem behavior)
+        if (src.invType == Inventory.InvType.Floor && src.IsEmpty()) {
+            Tile t = World.instance.GetTileAt(src.x, src.y);
+            if (t != null) { src.Destroy(); t.inv = null; }
+        }
         if (amountTaken == 0) {
             if (softFetch) { Complete(); return; }
             Fail(); Debug.Log($"{animal.aName} Couldn't fetch any {iq.item.name} (needed {needed} fen)"); return;
@@ -674,6 +766,7 @@ public class FetchObjective : Objective {
             Complete();
         } else {
             sourceTile = null; // source tile may be exhausted; search for another
+            sourceInv = null;
             Start();
         }
     }
@@ -910,6 +1003,10 @@ public class LeisureObjective : Objective {
                 chat.chatStarted = true;
                 partnerChat.chatStarted = true;
                 chat.partner.workProgress = 0f;
+                // Re-fire animation state so both animals show their chat bubbles
+                // (the state setter already fired before chatStarted was set).
+                animal.animationController?.UpdateState();
+                chat.partner.animationController?.UpdateState();
             }
             // Face partner
             animal.facingRight = (chat.partner.x > animal.x);
@@ -1030,7 +1127,7 @@ public class LeisureTask : Task {
                 if (seat == null) continue;
                 Path p = animal.nav.PathTo(seat);
                 if (p != null) {
-                    building.seatRes[i].Reserve();
+                    building.seatRes[i].Reserve(animal.aName);
                     seatIndex = i;
                     bestPath = p;
                     seatTile = seat;
@@ -1041,7 +1138,7 @@ public class LeisureTask : Task {
             // Legacy single-res path for non-leisure buildings (shouldn't normally hit)
             if (building.res != null) {
                 if (!building.res.Available()) return false;
-                building.res.Reserve();
+                building.res.Reserve(animal.aName);
             }
             for (int i = 0; i < building.structType.nworkTiles.Length; i++) {
                 Tile seat = building.WorkTileAt(i);
@@ -1057,11 +1154,7 @@ public class LeisureTask : Task {
             if (bestPath != null) seatTile = bestPath.tile;
         }
         if (bestPath == null) {
-            // Undo any reservation we made
-            if (seatIndex >= 0) building.seatRes[seatIndex].Unreserve();
-            else if (building.res != null) building.res.Unreserve();
-            seatIndex = -1;
-            return false;
+            return false; // Start() calls Cleanup() which unreserves via seatIndex/building.res
         }
 
         objectives.AddLast(new GoObjective(this, bestPath.tile));

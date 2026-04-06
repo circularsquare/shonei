@@ -19,6 +19,10 @@ public class AnimationController : MonoBehaviour {
     }
     public PartClothing[] clothingParts;
 
+    // Assign in prefab inspector — the ChatBubble child's SpriteRenderer.
+    // Shown while the animal is actively chatting; counter-flipped so it stays world-upright.
+    public SpriteRenderer chatBubble;
+
     private Item cachedClothingItem;  // tracks equipped item so we only reload on change
 
     void Start() {
@@ -27,6 +31,7 @@ public class AnimationController : MonoBehaviour {
     }
 
     public void UpdateState() {
+        if (animator == null) return; // AnimationController.Start() not yet called
         if (animal.state == Animal.AnimalState.Idle){ animator.SetInteger("state", 0); }
         else if (animal.state == Animal.AnimalState.Moving){ animator.SetInteger("state", 1); }
         else if (animal.state == Animal.AnimalState.Eeping){ animator.SetInteger("state", 2); }
@@ -34,6 +39,24 @@ public class AnimationController : MonoBehaviour {
         else { animator.SetInteger("state", 0); }
 
         UpdateClothingOverlay();
+        UpdateChatBubble();
+    }
+
+    // LateUpdate runs after Animal.Update() sets the root localScale for facing direction,
+    // so we can correctly counter-flip the bubble here.
+    void LateUpdate() {
+        if (chatBubble == null || !chatBubble.enabled) return;
+        // The root flips by setting localScale.x to ±1.  Setting the bubble's localScale.x
+        // to the same value cancels it out (−1 × −1 = 1 world scale), keeping the sprite upright.
+        float parentFlip = animal.go.transform.localScale.x;
+        chatBubble.transform.localScale = new Vector3(parentFlip, 1, 1);
+    }
+
+    private void UpdateChatBubble() {
+        if (chatBubble == null) return;
+        bool chatting = animal.state == Animal.AnimalState.Leisuring
+                     && animal.task is ChatTask ct && ct.chatStarted;
+        chatBubble.enabled = chatting;
     }
 
     private void UpdateClothingOverlay() {

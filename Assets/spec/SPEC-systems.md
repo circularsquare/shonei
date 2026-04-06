@@ -201,7 +201,6 @@ Workstations don't use `Structure.res` — the WOM Craft order's `res` is the so
 |-----------|-------|---------------|
 | `ItemStack.resAmount` | Per-stack int counter (source) | Prevents two tasks from fetching the same items. Reserved via `Task.ReserveStack()` / `FetchAndReserve()`. Stale reservations expire after 60s via `Inventory.TickUpdate()`. |
 | `ItemStack.resSpace` | Per-stack int counter (destination) | Prevents two tasks from delivering to the same space. Reserved via `Task.ReserveSpace(inv, item, amount)`. `FreeSpace(item)` returns `stackSize - quantity - resSpace`. All space-checking methods (`GetStorageForItem`, `GetMergeSpace`, `HasSpaceForItem`) account for it. Empty stacks track `resSpaceItem` to prevent conflicting item claims. Stale reservations expire after 60s. |
-| `Inventory.incomingRes` | Per-item `Reservable(9999)` on market inventories | Prevents overbooking market space when placing trade orders |
 
 ---
 

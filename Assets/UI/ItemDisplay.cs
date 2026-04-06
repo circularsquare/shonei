@@ -128,6 +128,7 @@ public class ItemDisplay : MonoBehaviour {
         Inventory sel = InventoryController.instance.selectedInventory;
         if (sel?.invType == Inventory.InvType.Market) {
             sel.targets[item] = sel.targets[item] == 0 ? 1 : sel.targets[item] * 2;
+            sel.lastTargetManualUpdateTimer = World.instance?.timer ?? float.NegativeInfinity;
             WorkOrderManager.instance?.UpdateMarketOrders(sel);
         } else {
             var t = InventoryController.instance.targets;
@@ -140,6 +141,7 @@ public class ItemDisplay : MonoBehaviour {
         Inventory sel = InventoryController.instance.selectedInventory;
         if (sel?.invType == Inventory.InvType.Market) {
             sel.targets[item] /= 2;
+            sel.lastTargetManualUpdateTimer = World.instance?.timer ?? float.NegativeInfinity;
             WorkOrderManager.instance?.UpdateMarketOrders(sel);
         } else {
             InventoryController.instance.targets[item.id] /= 2;

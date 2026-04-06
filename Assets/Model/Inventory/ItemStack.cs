@@ -14,9 +14,11 @@ public class ItemStack {
     public Inventory inv;
     public int resAmount = 0;    // how much of this stack is reserved by pending tasks (source reservation)
     public float resTime = 0f;   // Time.time when last Reserve() was called (for staleness)
+    public Task resTask;         // task that made the source reservation (for validity checking + logging)
     public int resSpace = 0;     // space reserved for incoming deliveries (destination reservation)
     public Item resSpaceItem;    // which item the space reservation is for (needed for empty stacks)
     public float resSpaceTime = 0f; // Time.time when last ReserveSpace() was called (for staleness)
+    public Task resSpaceTask;    // task that made the space reservation (for validity checking + logging)
 
     // Formats a fen quantity as a liang string (e.g. 250 → "2.5", 200 → "2", 5 → "0.05")
     public static string FormatQ(int fen, bool discrete = false){
@@ -97,22 +99,25 @@ public class ItemStack {
 
     // ── Source reservations (resAmount) ─────────────────────────
     public bool Available() => resAmount < quantity;
-    public int Reserve(int n) {
+    public int Reserve(int n, Task by = null) {
         int amount = Math.Min(n, quantity - resAmount);
         if (amount <= 0) return 0;
         resAmount += amount;
         resTime = Time.time;
+        resTask = by;
         return amount;
     }
-    public bool Reserve() {
+    public bool Reserve(Task by = null) {
         if (!Available()) return false;
         resAmount++;
         resTime = Time.time;
+        resTask = by;
         return true;
     }
     public void Unreserve(int n = 1) {
-        if (resAmount < n) { Debug.LogError("ItemStack.Unreserve: underflow!"); resAmount = 0; return; }
+        if (resAmount < n) { Debug.LogError($"ItemStack.Unreserve: underflow! item={item?.name ?? "null"} resAmount={FormatQ(resAmount)} n={FormatQ(n)}"); resAmount = 0; resTask = null; return; }
         resAmount -= n;
+        if (resAmount == 0) resTask = null;
     }
 
     // ── Destination reservations (resSpace) ──────────────────
@@ -129,33 +134,46 @@ public class ItemStack {
         return 0; // occupied by a different item
     }
     // Reserves up to `n` units of free space for incoming `item`. Returns amount reserved.
-    public int ReserveSpace(Item forItem, int n) {
+    public int ReserveSpace(Item forItem, int n, Task by = null) {
         int free = FreeSpace(forItem);
         int amount = Math.Min(n, free);
         if (amount <= 0) return 0;
         resSpace += amount;
         resSpaceTime = Time.time;
+        resSpaceTask = by;
         if (item == null && quantity == 0) resSpaceItem = forItem;
         return amount;
     }
     public void UnreserveSpace(int n) {
-        if (resSpace < n) { Debug.LogError($"ItemStack.UnreserveSpace: underflow! resSpace={resSpace}, n={n}"); resSpace = 0; resSpaceItem = null; return; }
+        if (resSpace < n) { Debug.LogError($"ItemStack.UnreserveSpace: underflow! resSpace={resSpace}, n={n}"); resSpace = 0; resSpaceItem = null; resSpaceTask = null; return; }
         resSpace -= n;
-        if (resSpace == 0 && (item == null || quantity == 0)) resSpaceItem = null;
+        if (resSpace == 0) { resSpaceItem = null; resSpaceTask = null; }
     }
 
     // ── Staleness expiry ─────────────────────────────────────
+    // A reservation is only expired if BOTH conditions are met:
+    //   1. Held longer than maxAge (time-based safety net)
+    //   2. The task that made the reservation is no longer the animal's active task
+    // This prevents false-positive expiry on legitimately long tasks (e.g. market journeys).
+    private static bool TaskStillActive(Task t) => t != null && t.animal.task == t;
+
     public bool ExpireIfStale(float maxAge) {
         bool expired = false;
-        if (resAmount > 0 && Time.time - resTime > maxAge) {
-            Debug.LogWarning($"Cleared stale ItemStack source reservation (held {Time.time - resTime:F0}s)");
+        if (resAmount > 0 && Time.time - resTime > maxAge && !TaskStillActive(resTask)) {
+            string itemName = item?.name ?? "null";
+            string by = resTask != null ? $" by {resTask.animal.aName}" : "";
+            Debug.LogWarning($"Cleared stale ItemStack source reservation{by}: item={itemName} resAmount={FormatQ(resAmount)} qty={FormatQ(quantity)} inv={inv.invType} ({inv.x},{inv.y}) held={Time.time - resTime:F0}s");
             resAmount = 0;
+            resTask = null;
             expired = true;
         }
-        if (resSpace > 0 && Time.time - resSpaceTime > maxAge) {
-            Debug.LogWarning($"Cleared stale ItemStack space reservation (held {Time.time - resSpaceTime:F0}s)");
+        if (resSpace > 0 && Time.time - resSpaceTime > maxAge && !TaskStillActive(resSpaceTask)) {
+            string itemName = resSpaceItem?.name ?? item?.name ?? "null";
+            string by = resSpaceTask != null ? $" by {resSpaceTask.animal.aName}" : "";
+            Debug.LogWarning($"Cleared stale ItemStack space reservation{by}: item={itemName} resSpace={FormatQ(resSpace)} qty={FormatQ(quantity)} inv={inv.invType} ({inv.x},{inv.y}) held={Time.time - resSpaceTime:F0}s");
             resSpace = 0;
             resSpaceItem = null;
+            resSpaceTask = null;
             expired = true;
         }
         return expired;

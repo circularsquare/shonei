@@ -71,6 +71,7 @@ public class World : MonoBehaviour {
         if (Math.Floor((timer + Time.deltaTime) / period) - Math.Floor(timer / period) > 0){  // every 0.2 sec
             invController.TickUpdate(); // update itemdisplay, add controller instances
             waterController?.TickUpdate();
+            StructController.instance?.TickUpdate();
             InfoPanel.instance.UpdateInfo();
         }
         float hourPeriod = ticksInDay / 24f; // 10 seconds = 1 in-game hour
