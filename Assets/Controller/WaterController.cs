@@ -183,7 +183,20 @@ public class WaterController : MonoBehaviour {
 
                 int flow = (tile.water - neighbor.water) / 2;
                 if (flow <= 0) continue;
-                tile.water     -= (ushort)flow;
+                tile.water -= (ushort)flow;
+
+                // Diagonal fall: if the tile below the neighbor has space,
+                // send as much of the flow downward as possible instead of
+                // letting it sit on a tile above partially-filled water.
+                if (y > 0) {
+                    Tile belowNeighbor = world.GetTileAt(nx, y - 1);
+                    if (belowNeighbor != null && !belowNeighbor.type.solid
+                        && belowNeighbor.water < WaterMax) {
+                        int diag = Mathf.Min(flow, WaterMax - belowNeighbor.water);
+                        belowNeighbor.water += (ushort)diag;
+                        flow -= diag;
+                    }
+                }
                 neighbor.water += (ushort)flow;
             }
         }

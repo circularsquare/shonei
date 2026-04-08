@@ -11,6 +11,7 @@ public class WorldController : MonoBehaviour {
     public Transform tilesTransform;
     Dictionary<Tile, GameObject> tileGameObjectMap;
     Coroutine defaultSetupCoroutine;
+    Material tileMaterial; // Custom/TileSprite shader for jagged tile edges
 
     // FRAME 0: runs up to the first yield, pausing to let all other Start()s finish.
     // FRAME 1: resumes and calls GenerateDefault() (or waits for save/reset to do so).
@@ -24,6 +25,11 @@ public class WorldController : MonoBehaviour {
 
         tileGameObjectMap = new Dictionary<Tile, GameObject>();
         tilesTransform = transform.Find("Tiles");
+
+        // Create material with Custom/TileSprite shader for jagged tile edges.
+        var tileShader = Shader.Find("Custom/TileSprite");
+        if (tileShader != null) tileMaterial = new Material(tileShader);
+        else Debug.LogError("WorldController: Custom/TileSprite shader not found");
 
         // Create tile GameObjects and register callbacks (persists across resets)
         for (int x = 0; x < world.nx; x++){
@@ -39,6 +45,7 @@ public class WorldController : MonoBehaviour {
 
                 SpriteRenderer tile_sr = tile_go.AddComponent<SpriteRenderer>();
                 tile_sr.sortingOrder = 0;
+                if (tileMaterial != null) tile_sr.material = tileMaterial;
                 tile.RegisterCbTileTypeChanged(OnTileTypeChanged);
             }
         }
@@ -156,39 +163,40 @@ public class WorldController : MonoBehaviour {
     // Called synchronously in frame 1 (from Start, Reset, or Load path).
     // graph.Initialize() here is what makes node.standable valid — must happen before DefaultJobSetup.
     public void GenerateDefault() {
-        for (int x = 0; x < world.nx; x++) {
-            for (int y = world.ny - 1; y >= 0; y--) {
-                if (y < 20) world.GetTileAt(x, y).type = Db.tileTypeByName["dirt"];
-                if (y < 18) world.GetTileAt(x, y).type = Db.tileTypeByName["stone"];
-            }
-        }
+        int seed = UnityEngine.Random.Range(0, 100000);
+        int[] surfaceY = WorldGen.Generate(world, seed);
+        int sy = surfaceY[WorldGen.SpawnMinX]; // surface height at spawn zone (flat)
 
         // Market is placed at the left world edge and is intentionally off-screen.
         // Merchants walk here and "disappear" for a travel period before goods arrive.
-        Building market = new(Db.structTypeByName["market"], 0, 20);
+        Building market = new(Db.structTypeByName["market"], 0, surfaceY[0]);
         StructController.instance.Place(market);
 
-        Plant plant1 = new Plant(Db.plantTypeByName["tree"], 32, 20);
-        plant1.Mature();
-        StructController.instance.Place(plant1);
-        Plant plant2 = new Plant(Db.plantTypeByName["appletree"], 25, 20);
-        StructController.instance.Place(plant2);
-        Plant plant3 = new Plant(Db.plantTypeByName["tree"], 28, 20);
-        StructController.instance.Place(plant3);
-        Plant plant4 = new Plant(Db.plantTypeByName["wheat"], 35, 20);
-        StructController.instance.Place(plant4);
-        Plant plant5 = new Plant(Db.plantTypeByName["wheat"], 36, 20);
-        StructController.instance.Place(plant5);
-        Plant plant6 = new Plant(Db.plantTypeByName["soybean"], 24, 20);
-        StructController.instance.Place(plant6);
-
-        // Seed water source just below the surface (y=19) on the right side.
-        // Clear the tile first so water isn't blocked by solid terrain.
-        for (int x = 44; x <= 54; x++) {
-            Tile t = world.GetTileAt(x, 19);
-            t.type = Db.tileTypeByName["empty"];
-            t.water = WaterController.WaterMax;
+        void PlantAt(string plantName, int x, bool mature = false) {
+            Plant p = new Plant(Db.plantTypeByName[plantName], x, surfaceY[x]);
+            if (mature) p.Mature();
+            StructController.instance.Place(p);
         }
+        PlantAt("tree", 32, mature: true);
+        PlantAt("appletree", 25);
+        PlantAt("tree", 28);
+        PlantAt("wheat", 35);
+        PlantAt("wheat", 36);
+        PlantAt("soybean", 24);
+
+        // Re-fire tile type callbacks now that all terrain + caves are placed.
+        // During generation, cave carving can expose dirt tiles to air above them
+        // without re-triggering the neighbor's sprite (grass vs dirt). This pass
+        // ensures every tile's sprite reflects its final surroundings.
+        RefreshAllTileSprites();
+
+        // Set background walls for underground tiles. Tiles at y <= 45 get a
+        // background wall (gray cave backdrop); above that is open sky.
+        for (int x = 0; x < world.nx; x++)
+            for (int y = 0; y <= 45 && y < world.ny; y++)
+                world.GetTileAt(x, y).hasBackgroundWall = true;
+
+        CaveAtmosphere.InitializeWorld(world);
 
         world.timer = World.ticksInDay * 0.3f;
         world.graph.Initialize();
@@ -197,20 +205,28 @@ public class WorldController : MonoBehaviour {
         // graph is built. Mirrors the Reconcile() call at the end of ApplySaveData().
         WorkOrderManager.instance?.Reconcile(silent: true);
 
-        for (int i = 0; i < 4; i++) AnimalController.instance.AddAnimal(29 + i, 20);
-        Camera.main.transform.position = new Vector3(30f, 24f, Camera.main.transform.position.z);
-        defaultSetupCoroutine = StartCoroutine(DefaultJobSetup());
+        for (int i = 0; i < 4; i++) AnimalController.instance.AddAnimal(29 + i, sy);
+        Camera.main.transform.position = new Vector3(30f, sy + 4f, Camera.main.transform.position.z);
+        defaultSetupCoroutine = StartCoroutine(DefaultJobSetup(sy));
     }
 
     // FRAME 2 — one frame after GenerateDefault(). By this point:
     //   Animal.Start() has run (safe to assign jobs)
     //   graph.Initialize() has run (safe to call ProduceAtTile — standability is valid)
-    IEnumerator DefaultJobSetup() {
+    IEnumerator DefaultJobSetup(int surfaceY) {
         yield return null; // wait one frame for Animal.Start() to run
         AnimalController.instance.AddJob("logger", 1);
         AnimalController.instance.AddJob("hauler", 1);
         AnimalController.instance.AddJob("farmer", 1);
-        world.ProduceAtTile("silver", 50, world.GetTileAt(31, 20));
+        world.ProduceAtTile("silver", 50, world.GetTileAt(31, surfaceY));
+    }
+
+    // Re-fires OnTileTypeChanged for every tile so sprites reflect final terrain.
+    // Called once after world generation to fix grass/dirt on cave boundaries.
+    void RefreshAllTileSprites() {
+        for (int x = 0; x < world.nx; x++)
+            for (int y = 0; y < world.ny; y++)
+                OnTileTypeChanged(world.GetTileAt(x, y));
     }
 
     // Updates the gameobject sprite and shadow caster when the tile data is changed
@@ -244,13 +260,17 @@ public class WorldController : MonoBehaviour {
             if (sc != null) Destroy(sc);
         }
 
-        // Update normal map for this tile and its 4 orthogonal neighbours
-        // (a neighbour's exposed/covered edges change whenever this tile changes).
+        // Update normal map for this tile and all 8 neighbours
+        // (a neighbour's exposed edges and corner depths change when this tile changes).
         ApplyTileNormalMap(tile);
         ApplyTileNormalMap(world.GetTileAt(tile.x - 1, tile.y));
         ApplyTileNormalMap(world.GetTileAt(tile.x + 1, tile.y));
         ApplyTileNormalMap(world.GetTileAt(tile.x, tile.y - 1));
         ApplyTileNormalMap(world.GetTileAt(tile.x, tile.y + 1));
+        ApplyTileNormalMap(world.GetTileAt(tile.x - 1, tile.y - 1));
+        ApplyTileNormalMap(world.GetTileAt(tile.x + 1, tile.y - 1));
+        ApplyTileNormalMap(world.GetTileAt(tile.x - 1, tile.y + 1));
+        ApplyTileNormalMap(world.GetTileAt(tile.x + 1, tile.y + 1));
 
         world.graph.UpdateNeighbors(tile.x, tile.y); // i think this is redundant. should laready be called
         // in structcontroller whenever a tile type changes?
@@ -261,12 +281,16 @@ public class WorldController : MonoBehaviour {
         var sr = tileGameObjectMap[tile].GetComponent<SpriteRenderer>();
         if (!tile.type.solid) { TileNormalMaps.Clear(sr); return; }
 
-        // Build 4-bit mask: bit 0=left, 1=right, 2=down, 3=up
+        // Build 8-bit mask: bits 0-3 = cardinal (L/R/D/U), bits 4-7 = diagonal (BL/BR/TL/TR)
         int mask = 0;
-        if (IsSolidAt(tile.x - 1, tile.y)) mask |= 1;
-        if (IsSolidAt(tile.x + 1, tile.y)) mask |= 2;
+        if (IsSolidAt(tile.x - 1, tile.y))     mask |= 1;
+        if (IsSolidAt(tile.x + 1, tile.y))     mask |= 2;
         if (IsSolidAt(tile.x,     tile.y - 1)) mask |= 4;
         if (IsSolidAt(tile.x,     tile.y + 1)) mask |= 8;
+        if (IsSolidAt(tile.x - 1, tile.y - 1)) mask |= 16;
+        if (IsSolidAt(tile.x + 1, tile.y - 1)) mask |= 32;
+        if (IsSolidAt(tile.x - 1, tile.y + 1)) mask |= 64;
+        if (IsSolidAt(tile.x + 1, tile.y + 1)) mask |= 128;
         TileNormalMaps.Apply(sr, mask);
     }
 

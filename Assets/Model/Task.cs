@@ -5,11 +5,21 @@ using UnityEngine.EventSystems;
 using System;
 using System.Linq;
 
-/*
-    an Idle mouse will ChooseTask, which generate a Task that depends on their job.
-    a Task will queue several Objectives, which may Fail, or all succeed and Complete the Task.
-    then the mouse will become Idle again.
-*/
+// Task / Objective system
+//
+// Lifecycle:  Idle → ChooseTask() → task.Start()
+//   Start() calls Initialize(), which validates feasibility, builds the objective queue,
+//   and reserves resources (source items via ReserveStack, destination space via ReserveSpace).
+//   If Initialize returns false, Cleanup() releases any partial reservations.
+//   Otherwise objectives execute sequentially via StartNextObjective().
+//   When the last objective completes → Complete() → Cleanup() → Idle.
+//   Any objective can call Fail() → Cleanup() → Idle.
+//
+// WOM linkage: most tasks are dispatched via WorkOrderManager. When a WOM order is claimed,
+//   task.workOrder is set; Cleanup() calls workOrder.res.Unreserve() so the order becomes
+//   available for the next animal. See SPEC-ai.md for the full dispatch sequence.
+//
+// Adding a new task: see the 11-step checklist in SPEC-ai.md.
 
 public abstract class Task {
     public Animal animal;
@@ -30,6 +40,9 @@ public abstract class Task {
     // Merchants shouldn't make a trip for a trickle.
     public const int MinMarketHaulQuantity = 100;       // 1.0 liang (most items)
     public const int MinMarketHaulQuantitySilver = 40;  // 0.4 liang (silver moves in smaller amounts)
+
+    protected static int MinMarketHaul(Item item) =>
+        item.name == "silver" ? MinMarketHaulQuantitySilver : MinMarketHaulQuantity;
 
     // check whether a task is possible. create objectives, make reservations
     public abstract bool Initialize();
@@ -68,6 +81,29 @@ public abstract class Task {
     // Estimated walk time from anywhere on-map to the market portal at x=0.
     private const float WalkToPortalSeconds = 20f;
 
+    // Finds the nearest reachable food source. If slotItem is non-null, only searches
+    // for that item (can't mix foods in the slot). Otherwise picks nearest of any edible item.
+    private (Path path, ItemStack stack, Item food) FindNearestFood(Item slotItem) {
+        Path bestPath = null;
+        ItemStack bestStack = null;
+        Item bestFood = null;
+
+        if (slotItem != null) {
+            (bestPath, bestStack) = animal.nav.FindPathItemStack(slotItem);
+            if (bestPath != null) bestFood = slotItem;
+        }
+        if (bestPath == null) {
+            foreach (Item food in Db.edibleItems) {
+                (Path p, ItemStack s) = animal.nav.FindPathItemStack(food);
+                if (p == null) continue;
+                if (bestPath == null || p.cost < bestPath.cost) {
+                    bestPath = p; bestStack = s; bestFood = food;
+                }
+            }
+        }
+        return (bestPath, bestStack, bestFood);
+    }
+
     // Checks whether the animal is provisioned for a market journey and fetches food if not.
     // transitTicks = total transit ticks (MarketTransitTicks for HaulToMarket; 2× for HaulFromMarket).
     // Accounts for body food + food slot. Only tops up the slot item already loaded; if the slot
@@ -88,26 +124,7 @@ public abstract class Task {
 
         float deficit = foodNeeded - foodHave;
 
-        // Find a food source to close the gap.
-        // If the slot already has a food type, only look for more of that same type
-        // (can't mix foods in the slot). If empty, pick the nearest available food.
-        Item slotItem = slotStack.item;
-        Path bestPath = null;
-        ItemStack bestStack = null;
-        Item bestFood = null;
-
-        if (slotItem != null) {
-            (bestPath, bestStack) = animal.nav.FindPathItemStack(slotItem);
-            if (bestPath != null) bestFood = slotItem;
-        } else {
-            foreach (Item food in Db.edibleItems) {
-                (Path p, ItemStack s) = animal.nav.FindPathItemStack(food);
-                if (p == null) continue;
-                if (bestPath == null || p.cost < bestPath.cost) {
-                    bestPath = p; bestStack = s; bestFood = food;
-                }
-            }
-        }
+        var (bestPath, bestStack, bestFood) = FindNearestFood(slotStack.item);
         if (bestPath == null) return false; // no food reachable — refuse the journey
 
         int fenNeeded = (int)Math.Ceiling(deficit * 100f / bestFood.foodValue);
@@ -133,29 +150,9 @@ public abstract class Task {
         int capacity = animal.foodSlotInv.stackSize; // 300 fen = 3 liang
         if (have >= capacity / 2) return; // already half-stocked, good enough
 
-        int space    = capacity - have;
-        Item slotItem = slotStack.item; // null if slot is currently empty
+        int space = capacity - have;
 
-        Path bestPath     = null;
-        ItemStack bestStack = null;
-        Item bestFood     = null;
-
-        if (slotItem != null) {
-            // Top up whatever food type is already loaded in the slot.
-            (bestPath, bestStack) = animal.nav.FindPathItemStack(slotItem);
-            if (bestPath != null) bestFood = slotItem;
-        }
-        if (bestPath == null) {
-            // Slot is empty — find the closest available food of any type.
-            // Db.edibleItems is sorted by foodValue desc, but we prefer proximity here.
-            foreach (Item food in Db.edibleItems) {
-                (Path p, ItemStack s) = animal.nav.FindPathItemStack(food);
-                if (p == null) continue;
-                if (bestPath == null || p.cost < bestPath.cost) {
-                    bestPath = p; bestStack = s; bestFood = food;
-                }
-            }
-        }
+        var (bestPath, bestStack, bestFood) = FindNearestFood(slotStack.item);
         if (bestPath == null) return; // no food reachable — travel hungry
 
         int qty = Math.Min(space, bestStack.quantity - bestStack.resAmount);
@@ -174,7 +171,7 @@ public abstract class Task {
         else if (objectives.Count > 0) StartNextObjective();
         return initialized;
     }
-    public virtual void Complete(){ // called whenever an objective is complete;
+    public virtual void Complete(){ // advances to next objective, or finishes the task if none remain
         if (objectives.Count > 0){StartNextObjective();}
         else {
             Cleanup();
@@ -205,6 +202,15 @@ public abstract class Task {
         reservedSpaces.Clear();
         objectives.Clear();
     }
+    // Undoes the most recently added space reservation. Use when Initialize needs to
+    // back out a single reservation without clearing all task state (vs full Cleanup).
+    protected void UndoLastSpaceReservation() {
+        if (reservedSpaces.Count == 0) return;
+        var (inv, item, amount) = reservedSpaces[^1];
+        inv.UnreserveSpace(item, amount);
+        reservedSpaces.RemoveAt(reservedSpaces.Count - 1);
+    }
+
     public void EnqueueFront(Objective obj) { objectives.AddFirst(obj); }
 
     public void StartNextObjective(){
@@ -305,9 +311,6 @@ public class CraftTask : Task {
             _fetchInputIndex++;
         }
         base.Complete();
-    }
-    public override void Cleanup(){
-        base.Cleanup();
     }
 }
 
@@ -411,7 +414,8 @@ public class ConsolidateTask : Task {
         HaulInfo h = animal.nav.FindFloorConsolidation(stack);
         if (h == null) return false;
         int available = h.itemStack.quantity - h.itemStack.resAmount;
-        // Reserve destination space on the floor merge target
+        // Reserve first because spaceReserved caps the quantity we'll actually move.
+        // If de minimis fails below, Start() → Cleanup() releases this reservation.
         int spaceReserved = ReserveSpace(h.destTile.inv, h.item, h.quantity);
         if (spaceReserved <= 0) return false;
         int quantity = Math.Min(h.quantity, spaceReserved);
@@ -579,7 +583,7 @@ public class HaulToMarketTask : Task {
             // from multiple stacks in one trip, rather than one small trip per stack.
             int spaceReserved = ReserveSpace(marketInv, item, quantityNeeded);
             if (spaceReserved <= 0) continue;
-            if (spaceReserved < (item.name == "silver" ? MinMarketHaulQuantitySilver : MinMarketHaulQuantity)) { Cleanup(); continue; }
+            if (spaceReserved < MinMarketHaul(item)) { UndoLastSpaceReservation(); continue; }
             ItemQuantity iq = new(item, spaceReserved);
             // Pre-reserve only the nearest stack; FetchObjective reserves additional stacks
             // as it visits them until iq.quantity is gathered.
@@ -620,7 +624,7 @@ public class HaulFromMarketTask : Task {
             int spaceReserved = ReserveSpace(storageInv, item, qty);
             if (spaceReserved <= 0) continue;
             qty = Math.Min(qty, spaceReserved);
-            if (qty < (item.name == "silver" ? MinMarketHaulQuantitySilver : MinMarketHaulQuantity)) { Cleanup(); continue; }
+            if (qty < MinMarketHaul(item)) { UndoLastSpaceReservation(); continue; }
             ItemQuantity iq = new(item, qty);
             // Reserve the items in the market now so no other task double-counts them.
             ReserveStack(stack, qty);
@@ -669,14 +673,176 @@ public class ResearchTask : Task {
     }
 }
 
+// ── Leisure tasks ───────────────────────────────────────────────────
 
-// ------------------------------
-// ------ OBJECTIVES ------------
-// ------------------------------
+public class ChatTask : Task {
+    public Animal partner;
+    public Tile myTile; // tile this animal should stand on during chat
+    public ChatTask(Animal animal, Animal partner) : base(animal) {
+        this.partner = partner;
+    }
+    public override bool Initialize() {
+        Tile partnerTile = partner.TileHere();
+        if (partnerTile == null) return false;
+
+        // Detect whether we're the initiator or the recruited partner.
+        // The recruited partner's Initialize() is called second, after the initiator
+        // already assigned us a ChatTask pointing back at them.
+        bool isInitiator = !(partner.task is ChatTask ct && ct.partner == animal);
+
+        if (isInitiator) {
+            // Find a pair of horizontally adjacent tiles so the animals stand side by side.
+            // Partner stays on (or near) their current tile; initiator takes the neighbor.
+            Tile initiatorTile = FindAdjacentChatTile(partnerTile);
+            if (initiatorTile != null) {
+                myTile = initiatorTile;
+                // Recruit partner — give them a reciprocal ChatTask
+                if (partner.task == null && partner.state == Animal.AnimalState.Idle) {
+                    var partnerChat = new ChatTask(partner, animal);
+                    partnerChat.myTile = partnerTile;
+                    partner.task = partnerChat;
+                    partner.task.Start();
+                }
+                objectives.AddLast(new GoObjective(this, initiatorTile));
+            } else {
+                // Fallback: no horizontal neighbor available, walk to partner's tile
+                if (animal.nav.PathTo(partnerTile) == null) return false;
+                if (partner.task == null && partner.state == Animal.AnimalState.Idle) {
+                    partner.task = new ChatTask(partner, animal);
+                    partner.task.Start();
+                }
+                objectives.AddLast(new GoObjective(this, partnerTile));
+            }
+        } else if (myTile != null && myTile != animal.TileHere()) {
+            // Partner was assigned a tile by the initiator — walk there if not already on it
+            objectives.AddLast(new GoObjective(this, myTile));
+        }
+
+        objectives.AddLast(new ChatObjective(this, partner, 10));
+        return true;
+    }
+
+    // Try horizontal neighbors of partnerTile (left and right). Return the one the
+    // initiator can path to, preferring the shorter path. Returns null if neither works.
+    private Tile FindAdjacentChatTile(Tile partnerTile) {
+        World w = animal.world;
+        Tile left  = w.GetTileAt(partnerTile.x - 1, partnerTile.y);
+        Tile right = w.GetTileAt(partnerTile.x + 1, partnerTile.y);
+
+        Path pathLeft  = (left  != null && left.node.standable)  ? animal.nav.PathTo(left)  : null;
+        Path pathRight = (right != null && right.node.standable) ? animal.nav.PathTo(right) : null;
+
+        if (pathLeft != null && pathRight != null)
+            return pathLeft.cost <= pathRight.cost ? left : right;
+        if (pathLeft != null) return left;
+        if (pathRight != null) return right;
+        return null;
+    }
+    public override void Complete() {
+        // Social satisfaction is granted gradually per-tick in HandleChatting — no lump grant here.
+        base.Complete();
+    }
+    public override void Cleanup() {
+        // If partner hasn't entered the chat phase yet, force-fail them.
+        // If they're already chatting, HandleChatting will detect our departure.
+        Animal p = partner;
+        partner = null;
+        if (p?.task is ChatTask pt && pt.partner == animal) {
+            bool partnerChatting = p.state == Animal.AnimalState.Leisuring
+                && p.task.currentObjective is ChatObjective;
+            if (!partnerChatting) {
+                pt.partner = null;
+                p.task.Fail();
+            }
+        }
+        base.Cleanup();
+    }
+}
+
+// Generic "go to a leisure building and spend time there" task.
+// The building dispatches its benefit on completion (fireplace → warmth, etc.).
+// Adding a new leisure building: add a case in Complete() for the building name.
+public class LeisureTask : Task {
+    public Building building;
+    public Tile seatTile; // the specific work tile this animal is heading to
+    private int seatIndex = -1; // index into building.seatRes[] for per-seat reservation
+
+    public LeisureTask(Animal animal, Building building) : base(animal) {
+        this.building = building;
+    }
+
+    public override bool Initialize() {
+        Path bestPath = null;
+
+        if (building.seatRes != null) {
+            // Per-seat reservation: find the first seat that is available AND reachable
+            for (int i = 0; i < building.seatRes.Length; i++) {
+                if (!building.seatRes[i].Available()) continue;
+                Tile seat = building.WorkTileAt(i);
+                if (seat == null) continue;
+                Path p = animal.nav.PathTo(seat);
+                if (p != null) {
+                    building.seatRes[i].Reserve(animal.aName);
+                    seatIndex = i;
+                    bestPath = p;
+                    seatTile = seat;
+                    break;
+                }
+            }
+        } else {
+            // Legacy single-res path for non-leisure buildings (shouldn't normally hit)
+            if (building.res != null) {
+                if (!building.res.Available()) return false;
+                building.res.Reserve(animal.aName);
+            }
+            for (int i = 0; i < building.structType.nworkTiles.Length; i++) {
+                Tile seat = building.WorkTileAt(i);
+                if (seat == null) continue;
+                Path p = animal.nav.PathTo(seat);
+                if (p != null) { bestPath = p; seatTile = seat; break; }
+            }
+        }
+
+        // Fall back to adjacent if no direct path to any seat
+        if (bestPath == null) {
+            bestPath = animal.nav.PathToOrAdjacent(building.workTile);
+            if (bestPath != null) seatTile = bestPath.tile;
+        }
+        if (bestPath == null) {
+            return false; // Start() calls Cleanup() which unreserves via seatIndex/building.res
+        }
+
+        objectives.AddLast(new GoObjective(this, bestPath.tile));
+        objectives.AddLast(new LeisureObjective(this, 15));
+        return true;
+    }
+
+    public override void Complete() {
+        // Grant the happiness benefit for this building's leisure need
+        string need = building.structType.leisureNeed;
+        if (!string.IsNullOrEmpty(need)) {
+            animal.happiness.NoteLeisure(need);
+        } else {
+            Debug.LogError($"LeisureTask.Complete: building '{building.structType.name}' has no leisureNeed");
+        }
+
+        // Social satisfaction for socialWhenShared buildings is granted per-tick in HandleLeisure.
+        base.Complete();
+    }
+
+    public override void Cleanup() {
+        if (seatIndex >= 0 && building.seatRes != null)
+            building.seatRes[seatIndex].Unreserve();
+        else if (building.res != null)
+            building.res.Unreserve();
+        base.Cleanup();
+    }
+}
+
+// ── Objectives ──────────────────────────────────────────────────────
 public abstract class Objective {
     protected Task task;
     protected Animal animal;
-    protected Tile destination;
     public Objective(Task task){
         this.task = task;
         this.animal = task.animal;
@@ -697,6 +863,7 @@ public abstract class Objective {
 
 public class FetchObjective : Objective {
     private ItemQuantity iq;
+    private Tile destination;
     private Tile sourceTile;
     private Inventory sourceInv; // which inventory to take from (storage or floor); set by Start() or caller
     private Inventory targetInv; // null = animal's main inventory; non-null = equip into that slot
@@ -772,7 +939,8 @@ public class FetchObjective : Objective {
     }
 }
 public class DeliverObjective : Objective { // navigates and drops off item
-    private ItemQuantity iq; 
+    private ItemQuantity iq;
+    private Tile destination;
     public DeliverObjective(Task task, ItemQuantity iq, Tile destination) : base(task) {
         this.iq = iq;
         this.destination = destination;
@@ -879,6 +1047,7 @@ public class TravelingObjective : Objective {
 }
 public class DropObjective : Objective {
     private Item item;
+    private Tile destination;
     private Inventory targetInv; // null = drop on floor
     public DropObjective(Task task, Item item) : base(task) {
         this.item = item;
@@ -911,6 +1080,7 @@ public class DropObjective : Objective {
 }
 
 public class GoObjective : Objective {
+    private Tile destination;
     public GoObjective(Task task, Tile destination) : base(task) {
         this.destination = destination;
     }
@@ -985,33 +1155,15 @@ public class ResearchObjective : Objective {
     }
 }
 
-// ── Leisure ──────────────────────────────────────────────────────────
-
 public class LeisureObjective : Objective {
     public int duration;
+    public bool isSocializing; // set per-tick by HandleLeisure when co-seated at a socialWhenShared building
     public LeisureObjective(Task task, int duration) : base(task) {
         this.duration = duration;
     }
     public override void Start() {
         animal.workProgress = 0f;
         animal.state = Animal.AnimalState.Leisuring;
-        // Chat sync and facing
-        if (task is ChatTask chat && chat.partner != null) {
-            // If initiator just arrived, sync both timers so they start on the same tick.
-            if (chat.partner.task is ChatTask partnerChat && partnerChat.partner == animal
-                && chat.partner.state == Animal.AnimalState.Leisuring) {
-                chat.chatStarted = true;
-                partnerChat.chatStarted = true;
-                chat.partner.workProgress = 0f;
-                // Re-fire animation state so both animals show their chat bubbles
-                // (the state setter already fired before chatStarted was set).
-                animal.animationController?.UpdateState();
-                chat.partner.animationController?.UpdateState();
-            }
-            // Face partner
-            animal.facingRight = (chat.partner.x > animal.x);
-            if (animal.go != null) animal.go.transform.localScale = new Vector3(animal.facingRight ? 1 : -1, 1, 1);
-        }
         // Leisure building: face toward the center of the building
         if (task is LeisureTask leisure && leisure.building != null) {
             float center = leisure.building.x + leisure.building.structType.nx / 2f;
@@ -1022,188 +1174,28 @@ public class LeisureObjective : Objective {
     }
 }
 
-public class ChatTask : Task {
+// ChatObjective: handles the "stand and chat" phase of a ChatTask.
+// All chat-specific tick logic lives in AnimalStateManager.HandleChatting().
+public class ChatObjective : Objective {
     public Animal partner;
-    public bool socializedEarly; // true once happiness granted at 7 ticks
-    public bool chatStarted;     // set by initiator's LeisureObjective.Start — syncs both timers
-    public Tile myTile;          // tile this animal should stand on during chat
-    public ChatTask(Animal animal, Animal partner) : base(animal) {
+    public int duration;
+    public ChatObjective(Task task, Animal partner, int duration) : base(task) {
         this.partner = partner;
+        this.duration = duration;
     }
-    public override bool Initialize() {
-        Tile partnerTile = partner.TileHere();
-        if (partnerTile == null) return false;
-
-        // Detect whether we're the initiator or the recruited partner.
-        // The recruited partner's Initialize() is called second, after the initiator
-        // already assigned us a ChatTask pointing back at them.
-        bool isInitiator = !(partner.task is ChatTask ct && ct.partner == animal);
-
-        if (isInitiator) {
-            // Find a pair of horizontally adjacent tiles so the animals stand side by side.
-            // Partner stays on (or near) their current tile; initiator takes the neighbor.
-            Tile initiatorTile = FindAdjacentChatTile(partnerTile);
-            if (initiatorTile != null) {
-                myTile = initiatorTile;
-                // Recruit partner — give them a reciprocal ChatTask
-                if (partner.task == null && partner.state == Animal.AnimalState.Idle) {
-                    var partnerChat = new ChatTask(partner, animal);
-                    partnerChat.myTile = partnerTile;
-                    partner.task = partnerChat;
-                    partner.task.Start();
-                }
-                objectives.AddLast(new GoObjective(this, initiatorTile));
-            } else {
-                // Fallback: no horizontal neighbor available, walk to partner's tile
-                if (animal.nav.PathTo(partnerTile) == null) return false;
-                if (partner.task == null && partner.state == Animal.AnimalState.Idle) {
-                    partner.task = new ChatTask(partner, animal);
-                    partner.task.Start();
-                }
-                objectives.AddLast(new GoObjective(this, partnerTile));
-            }
-        } else if (myTile != null && myTile != animal.TileHere()) {
-            // Partner was assigned a tile by the initiator — walk there if not already on it
-            objectives.AddLast(new GoObjective(this, myTile));
+    public override void Start() {
+        animal.workProgress = 0f;
+        animal.state = Animal.AnimalState.Leisuring;
+        // Face partner
+        animal.facingRight = (partner.x > animal.x);
+        if (animal.go != null) animal.go.transform.localScale = new Vector3(animal.facingRight ? 1 : -1, 1, 1);
+        // If partner is already waiting in their ChatObjective, sync both timers
+        if (partner.state == Animal.AnimalState.Leisuring
+            && partner.task?.currentObjective is ChatObjective partnerObj) {
+            partner.workProgress = 0f;
+            animal.animationController?.UpdateState();
+            partner.animationController?.UpdateState();
         }
-
-        objectives.AddLast(new LeisureObjective(this, 10));
-        return true;
-    }
-
-    /// Try horizontal neighbors of partnerTile (left and right). Return the one the
-    /// initiator can path to, preferring the shorter path. Returns null if neither works.
-    private Tile FindAdjacentChatTile(Tile partnerTile) {
-        World w = animal.world;
-        Tile left  = w.GetTileAt(partnerTile.x - 1, partnerTile.y);
-        Tile right = w.GetTileAt(partnerTile.x + 1, partnerTile.y);
-
-        Path pathLeft  = (left  != null && left.node.standable)  ? animal.nav.PathTo(left)  : null;
-        Path pathRight = (right != null && right.node.standable) ? animal.nav.PathTo(right) : null;
-
-        if (pathLeft != null && pathRight != null)
-            return pathLeft.cost <= pathRight.cost ? left : right;
-        return pathLeft != null ? left : right; // right may be null (= no neighbor found)
-    }
-    public override void Complete() {
-        if (!socializedEarly) animal.happiness.NoteSocialized();
-        base.Complete();
-    }
-    public override void Cleanup() {
-        // If the initiator fails before arriving (chatStarted=false), the partner
-        // is stuck waiting forever. Release them. Once started, HandleLeisure manages it.
-        if (!chatStarted) {
-            Animal p = partner;
-            partner = null;
-            if (p?.task is ChatTask pt && pt.partner == animal) {
-                p.task.Fail();
-            }
-        }
-        base.Cleanup();
+        // AnimalStateManager.HandleChatting ticks workProgress and calls Complete() when done.
     }
 }
-
-// ── LeisureTask ──────────────────────────────────────────────────────
-// Generic "go to a leisure building and spend time there" task.
-// The building dispatches its benefit on completion (fireplace → warmth, etc.).
-// Adding a new leisure building: add a case in Complete() for the building name.
-public class LeisureTask : Task {
-    public Building building;
-    public Tile seatTile; // the specific work tile this animal is heading to
-    private int seatIndex = -1; // index into building.seatRes[] for per-seat reservation
-
-    public LeisureTask(Animal animal, Building building) : base(animal) {
-        this.building = building;
-    }
-
-    public override bool Initialize() {
-        Path bestPath = null;
-
-        if (building.seatRes != null) {
-            // Per-seat reservation: find the first seat that is available AND reachable
-            for (int i = 0; i < building.seatRes.Length; i++) {
-                if (!building.seatRes[i].Available()) continue;
-                Tile seat = building.WorkTileAt(i);
-                if (seat == null) continue;
-                Path p = animal.nav.PathTo(seat);
-                if (p != null) {
-                    building.seatRes[i].Reserve(animal.aName);
-                    seatIndex = i;
-                    bestPath = p;
-                    seatTile = seat;
-                    break;
-                }
-            }
-        } else {
-            // Legacy single-res path for non-leisure buildings (shouldn't normally hit)
-            if (building.res != null) {
-                if (!building.res.Available()) return false;
-                building.res.Reserve(animal.aName);
-            }
-            for (int i = 0; i < building.structType.nworkTiles.Length; i++) {
-                Tile seat = building.WorkTileAt(i);
-                if (seat == null) continue;
-                Path p = animal.nav.PathTo(seat);
-                if (p != null) { bestPath = p; seatTile = seat; break; }
-            }
-        }
-
-        // Fall back to adjacent if no direct path to any seat
-        if (bestPath == null) {
-            bestPath = animal.nav.PathToOrAdjacent(building.workTile);
-            if (bestPath != null) seatTile = bestPath.tile;
-        }
-        if (bestPath == null) {
-            return false; // Start() calls Cleanup() which unreserves via seatIndex/building.res
-        }
-
-        objectives.AddLast(new GoObjective(this, bestPath.tile));
-        objectives.AddLast(new LeisureObjective(this, 15));
-        return true;
-    }
-
-    public override void Complete() {
-        // Grant the happiness benefit for this building's leisure need
-        string need = building.structType.leisureNeed;
-        if (!string.IsNullOrEmpty(need)) {
-            animal.happiness.NoteLeisure(need);
-        } else {
-            Debug.LogError($"LeisureTask.Complete: building '{building.structType.name}' has no leisureNeed");
-        }
-
-        // If this building grants social happiness when shared, find a seated partner
-        // and grant both mice half a socialization point — like a quiet chat by the fire.
-        if (building.structType.socialWhenShared) {
-            Animal partner = FindSeatedPartner();
-            if (partner != null) {
-                float halfGrant = Happiness.activityGrant * 0.5f;
-                animal.happiness.NoteSocialized(halfGrant);
-                partner.happiness.NoteSocialized(halfGrant);
-            }
-        }
-
-        base.Complete();
-    }
-
-    // Returns another animal that is currently Leisuring at this same building, or null.
-    private Animal FindSeatedPartner() {
-        AnimalController ac = World.instance.animalController;
-        for (int i = 0; i < ac.na; i++) {
-            Animal other = ac.animals[i];
-            if (other == animal) continue;
-            if (other.state != Animal.AnimalState.Leisuring) continue;
-            if (other.task is LeisureTask lt && lt.building == building) return other;
-        }
-        return null;
-    }
-
-    public override void Cleanup() {
-        if (seatIndex >= 0 && building.seatRes != null)
-            building.seatRes[seatIndex].Unreserve();
-        else if (building.res != null)
-            building.res.Unreserve();
-        base.Cleanup();
-    }
-}
-
-

@@ -127,18 +127,10 @@ public class Building : Structure {
             Tile sTile = World.instance.GetTileAt(
                 x + (mirrored ? (st.nx - 1 - st.storageTileX) : st.storageTileX),
                 y + st.storageTileY);
-            Inventory oldInv = sTile.inv;
             var invType = structType.name == "market" ? Inventory.InvType.Market : Inventory.InvType.Storage;
             storage = new Inventory(structType.nStacks, structType.storageStackSize, invType, sTile.x, sTile.y, isLiquidStorage: structType.liquidStorage);
             storage.displayName = structType.name;
-            // Storage lives on building.storage only — not on tile.inv
-            if (oldInv != null && oldInv.invType == Inventory.InvType.Floor) {
-                foreach (Item item in oldInv.GetItemsList()) {
-                    oldInv.ForceMoveItemTo(storage, item, oldInv.Quantity(item));
-                }
-                oldInv.Destroy();
-                sTile.inv = null;
-            }
+            // Floor items stay on the floor — storage is separate (building.storage).
         }
 
         if (st.hasFuelInv) {

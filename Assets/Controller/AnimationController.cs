@@ -28,6 +28,7 @@ public class AnimationController : MonoBehaviour {
     void Start() {
         animator = GetComponent<Animator>();
         animal = GetComponent<Animal>();
+        if (chatBubble != null) chatBubble.enabled = false;
     }
 
     public void UpdateState() {
@@ -55,8 +56,15 @@ public class AnimationController : MonoBehaviour {
     private void UpdateChatBubble() {
         if (chatBubble == null) return;
         bool chatting = animal.state == Animal.AnimalState.Leisuring
-                     && animal.task is ChatTask ct && ct.chatStarted;
-        chatBubble.enabled = chatting;
+                     && animal.task?.currentObjective is ChatObjective co
+                     && co.partner.state == Animal.AnimalState.Leisuring
+                     && co.partner.task?.currentObjective is ChatObjective;
+        // Also show bubble when socializing at a shared leisure building (e.g. fireplace)
+        bool fireplaceChat = !chatting
+                     && animal.state == Animal.AnimalState.Leisuring
+                     && animal.task?.currentObjective is LeisureObjective lo
+                     && lo.isSocializing;
+        chatBubble.enabled = chatting || fireplaceChat;
     }
 
     private void UpdateClothingOverlay() {

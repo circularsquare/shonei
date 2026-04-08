@@ -41,7 +41,7 @@ public class World : MonoBehaviour {
         graph = new Graph(this);
 
         nx = 100;
-        ny = 50;
+        ny = 80;
         tiles = new Tile[nx, ny];
         graph.nodes = new Node[nx, ny];
         for (int x = 0; x < nx; x++){

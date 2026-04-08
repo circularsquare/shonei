@@ -10,8 +10,8 @@ using UnityEngine;
 //   Rain  → Clear: 25%
 //
 // Light multipliers at full rain (rainAmount = 1):
-//   Sun intensity: 0.10  (–90%)
-//   Ambient:       0.90  (–10%)
+//   Sun intensity: 0.25 
+//   Ambient:       0.90 
 //
 // Transitions lerp over lerpDuration seconds (default 5s).
 //
@@ -49,7 +49,7 @@ public class WeatherSystem {
         wind += -0.02f * wind + Random.Range(-0.05f, 0.05f);
 
         if (!isRaining) {
-            if (Random.value < 0.08f) SetRain(true);
+            if (Random.value < 0.04f) SetRain(true);
         } else {
             if (Random.value < 0.12f) SetRain(false);
             ReplenishRainwater();
@@ -68,7 +68,7 @@ public class WeatherSystem {
     }
 
     // Multiplier applied to sunSource.intensity by SunController.
-    public static float GetSunMultiplier()     => Mathf.Lerp(1.0f, 0.10f, instance?.rainAmount ?? 0f);
+    public static float GetSunMultiplier()     => Mathf.Lerp(1.0f, 0.25f, instance?.rainAmount ?? 0f);
 
     // Multiplier applied to the ambient color returned by SunController.GetAmbientColor().
     public static float GetAmbientMultiplier() => Mathf.Lerp(1.0f, 0.90f, instance?.rainAmount ?? 0f);

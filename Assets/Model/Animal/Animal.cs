@@ -269,17 +269,24 @@ public class Animal : MonoBehaviour{
         if (FindEquipment()) return;
         if (FindClothing()) return;
 
-        // 1b. Leisure window (5–9 pm): 50% try leisure, 30% idle, 20% work.
+        // 1b. Time-of-day behavior roll.
+        //     Leisure (5–9 pm): 40% leisure, 40% idle, 20% work.
+        //     Work (rest of day): 5% leisure, 15% idle, 80% work.
         //     Leisure pick is need-based: target the lowest happiness satisfaction.
+        float leisureChance, idleChance;
         if (IsLeisureTime()) {
-            float roll = (float)random.NextDouble();
-            if (roll < 0.5f) {
-                if (TryPickLeisure()) return;
-                task = null; return; // no leisure available — idle
-            } else if (roll < 0.8f) {
-                task = null; return; // idle
-            }
-            // else: 20% — fall through to work orders
+            leisureChance = 0.40f; idleChance = 0.40f;
+        } else {
+            leisureChance = 0.05f; idleChance = 0.15f;
+        }
+
+        float roll = (float)random.NextDouble();
+        if (roll < leisureChance) {
+            if (TryPickLeisure()) return;
+            task = null; return; // no leisure available — idle
+        }
+        if (roll < leisureChance + idleChance) {
+            task = null; return; // idle
         }
 
         // 2. Work orders: p1 → p2 → p3 (haul, then craft via recipe-first) → p4
@@ -380,9 +387,10 @@ public class Animal : MonoBehaviour{
     private bool TryPickLeisure() {
         var candidates = new List<(float sat, System.Func<bool> tryStart)>();
 
-        // Chat option (social need)
-        if (AnimalController.instance.FindIdleAnimalNear(this, 15) != null)
-            candidates.Add((happiness.GetSatisfaction("social"), FindChatPartner));
+        // Chat option (social need) — only seek chat when social is low
+        float socialSat = happiness.GetSatisfaction("social");
+        if (socialSat < 2.0f && AnimalController.instance.FindIdleAnimalNear(this, 6) != null)
+            candidates.Add((socialSat, FindChatPartner));
 
         // Building options: find nearest available building per leisure need
         var sc = StructController.instance;
@@ -423,7 +431,7 @@ public class Animal : MonoBehaviour{
     }
 
     private bool FindChatPartner() {
-        Animal partner = AnimalController.instance.FindIdleAnimalNear(this, 15);
+        Animal partner = AnimalController.instance.FindIdleAnimalNear(this, 6);
         if (partner == null) return false;
         task = new ChatTask(this, partner);
         if (task.Start()) return true;

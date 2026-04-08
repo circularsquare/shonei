@@ -8,7 +8,7 @@ using UnityEngine.Rendering.Universal;
 // Pipeline each frame:
 //   1. NormalsCapturePass renders all sprites' _NormalMap textures into
 //      _CapturedNormalsRT (world-space normals, packed 0–1).
-//   2. Clear light RT to SunController.GetAmbientColor().
+//   2. Clear light RT to black, then blit ambient × sky exposure (CaveAtmosphere).
 //   3. Draw point LightSources (torches) as circle quads — NdotL × radial falloff.
 //   4. Draw directional LightSources (sun) fullscreen — NdotL from _CapturedNormalsRT.
 //      Shadow: 16-step ray march in LightSun.shader along the sun direction.
@@ -16,6 +16,10 @@ using UnityEngine.Rendering.Universal;
 public class LightFeature : ScriptableRendererFeature {
     [Tooltip("Minimum NdotL floor applied to all lights — prevents back-faces from going fully black.")]
     [Range(0f, 1f)] public float ambientNormal = 0.50f;
+
+    [Header("Underground Darkening")]
+    [Tooltip("Brightness floor for deep interior tile pixels. 0 = pitch black, 1 = no darkening.")]
+    [Range(0f, 1f)] public float deepFloor = 0.2f;
 
     [Header("Sun Shadows")]
     [Tooltip("Shadow length in world units. Automatically scales with camera zoom/PPU.")]
@@ -56,7 +60,7 @@ public class LightFeature : ScriptableRendererFeature {
         if ((cullingMask & (litLayers | directionalOnlyLayers | waterLayer)) == 0) return;
         capturePass.Setup(litLayers, shadowCasterLayers, directionalOnlyLayers, waterLayer);
         renderer.EnqueuePass(capturePass);
-        lightPass.Setup(renderer.cameraColorTarget, ambientNormal, shadowLength, shadowDarkness);
+        lightPass.Setup(renderer.cameraColorTarget, ambientNormal, shadowLength, shadowDarkness, deepFloor);
         renderer.EnqueuePass(lightPass);
     }
 
@@ -81,6 +85,9 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
 
     public NormalsCapturePass() {
         mat      = CoreUtils.CreateEngineMaterial("Hidden/NormalsCapture");
+        // Default _AdjacencyMask = 15 (all neighbours solid = no jagged clipping).
+        // Tile SpriteRenderers override this via MPB; non-tile sprites get 15.
+        mat.SetFloat("_AdjacencyMask", 15f);
         waterMat = CoreUtils.CreateEngineMaterial("Hidden/NormalsCaptureWater");
     }
 
@@ -174,31 +181,36 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
     float ambientNormal;
     float shadowLength;
     float shadowDarkness;
+    float deepFloor;
     RenderTargetIdentifier colorBuffer;
     readonly Material circleMat;
     readonly Material sunMat;
     readonly Material compositeMat;
+    readonly Material ambientFillMat;
     readonly Mesh     quad;
 
     public LightPass() {
-        circleMat    = CoreUtils.CreateEngineMaterial("Hidden/LightCircle");
-        sunMat       = CoreUtils.CreateEngineMaterial("Hidden/LightSun");
-        compositeMat = CoreUtils.CreateEngineMaterial("Hidden/LightComposite");
-        quad         = CreateQuad();
+        circleMat       = CoreUtils.CreateEngineMaterial("Hidden/LightCircle");
+        sunMat          = CoreUtils.CreateEngineMaterial("Hidden/LightSun");
+        compositeMat    = CoreUtils.CreateEngineMaterial("Hidden/LightComposite");
+        ambientFillMat  = CoreUtils.CreateEngineMaterial("Hidden/LightAmbientFill");
+        quad            = CreateQuad();
     }
 
     public void Dispose() {
         CoreUtils.Destroy(circleMat);
         CoreUtils.Destroy(sunMat);
         CoreUtils.Destroy(compositeMat);
+        CoreUtils.Destroy(ambientFillMat);
         CoreUtils.Destroy(quad);
     }
 
-    public void Setup(RenderTargetIdentifier colorBuffer, float ambientNormal, float shadowLength, float shadowDarkness) {
+    public void Setup(RenderTargetIdentifier colorBuffer, float ambientNormal, float shadowLength, float shadowDarkness, float deepFloor) {
         this.colorBuffer    = colorBuffer;
         this.ambientNormal  = ambientNormal;
         this.shadowLength   = shadowLength;
         this.shadowDarkness = shadowDarkness;
+        this.deepFloor      = deepFloor;
     }
 
     public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData rd) {
@@ -219,9 +231,24 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         cmd.SetViewMatrix(view);
         cmd.SetProjectionMatrix(proj);
 
-        // ── 1. Clear light RT to ambient color ───────────────────────────────
+        // ── 1. Base ambient (universal floor) + sky ambient (exposure-gated) ──
+        // Base ambient: always present everywhere, even deep underground.
+        // Sky ambient: extra brightness from the open sky, zero underground.
         Color ambient = SunController.GetAmbientColor();
-        cmd.ClearRenderTarget(false, true, ambient);
+        Color baseAmbient = ambient * 0.5f;
+        Color skyAmbient  = ambient * 0.5f;
+
+        cmd.ClearRenderTarget(false, true, baseAmbient);
+
+        var cam = rd.cameraData.camera;
+        float orthoH = cam.orthographicSize * 2f;
+        float orthoW = orthoH * cam.aspect;
+        float camMinX = cam.transform.position.x - orthoW * 0.5f;
+        float camMinY = cam.transform.position.y - orthoH * 0.5f;
+
+        cmd.SetGlobalColor("_AmbientColor", skyAmbient);
+        cmd.SetGlobalVector("_CamWorldBounds", new Vector4(camMinX, camMinY, orthoW, orthoH));
+        cmd.Blit(null, LightRTId, ambientFillMat);
 
         // ── 2. Draw point lights (torches, lanterns, etc.) — Max blend ───────
         var mpb = new MaterialPropertyBlock();
@@ -246,9 +273,6 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
 
         // ── 3. Draw directional lights (sun) — NdotL × shadow march ──────────
         // World→UV scale lets LightSun.shader convert shadow length (world units) to UV offset.
-        var cam = rd.cameraData.camera;
-        float orthoH = cam.orthographicSize * 2f;
-        float orthoW = orthoH * cam.aspect;
         cmd.SetGlobalVector("_WorldToUV",     new Vector2(1f / orthoW, 1f / orthoH));
         cmd.SetGlobalFloat("_ShadowLength",   shadowLength);
         cmd.SetGlobalFloat("_ShadowDarkness", shadowDarkness);
@@ -266,6 +290,8 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         }
 
         // ── 4. Multiply-blit light RT onto the scene ─────────────────────────
+        compositeMat.SetFloat("_DeepFloor", deepFloor);
+        compositeMat.SetColor("_BaseAmbient", baseAmbient);
         cmd.Blit(LightRTId, colorBuffer, compositeMat);
 
         context.ExecuteCommandBuffer(cmd);

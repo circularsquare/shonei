@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Active: 1
   ambientNormal: 0.095
+  deepFloor: 0.5
   shadowLength: 5
   shadowDarkness: 0.563
   litLayers:

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The inventory UI uses a **split-panel approach**: a global panel that's always visible, and a separate storage panel that appears when a storage inventory is selected (including liquid storage buildings such as tanks). Market inventories temporarily overwrite the global panel (to be reworked later).
+The inventory UI uses a **split-panel approach**: a global panel that's always visible, and a separate storage panel that appears when a storage inventory is selected (including liquid storage buildings such as tanks). Market inventory display lives in TradingPanel (right side, independent ItemDisplay tree).
 
 ```
 Canvas
@@ -26,7 +26,7 @@ Canvas
 |-------|-------------------|--------------|
 | `null` | Global quantities + targets (title: "town") | Hidden |
 | Storage (incl. liquid) | Global quantities + targets (unchanged) | Shown with inv details |
-| Market | Market quantities + targets (title: market name) | Hidden |
+| Market / other | Global quantities + targets (unchanged) | Hidden |
 
 Triggered by `MouseController` on left-click (fires on `MouseButtonUp`): storage/market tiles call `SelectInventory(tileAt.inv)`, everything else calls `SelectInventory(null)`.
 
@@ -62,7 +62,7 @@ Each row represents one item type in the tree. The same prefab is used in both t
 |-------------|---------------|-------------|--------------|---------|
 | `Global` | Visible | Visible | Hidden | Global panel |
 | `Storage` | Hidden | Hidden | Visible | StoragePanel allow tree |
-| `Market` | Visible | Visible | Hidden | Global panel in market mode |
+| `Market` | Visible | Visible | Hidden | TradingPanel market inventory tree |
 
 ### Per-panel configuration fields
 
@@ -89,7 +89,7 @@ Managed by `InventoryController` (`Assets/Controller/InventoryController.cs`).
 - **Discovery**: items are hidden until `globalInventory.Quantity > 0` (checked recursively via `HaveAnyOfChildren`). Once discovered, stays visible even if quantity drops to 0.
 - **Tree collapse**: `IsVisibleInTree` walks ancestors — if any parent ItemDisplay has `open == false`, the item is hidden.
 - **Targets**: stored in `InventoryController.targets[itemId]` (default 10000 fen = 100 liang). Adjusted via +/- buttons (doubles/halves). Used by `Recipe.Score()` for work order prioritization.
-- **Market mode**: when a market is selected, the global panel temporarily shows market quantities and market-specific targets (`inv.targets[item]`) instead of global ones.
+- **Market display**: handled by TradingPanel's own ItemDisplay tree (see TradingPanel section). The global panel always shows global quantities.
 
 ## StoragePanel
 

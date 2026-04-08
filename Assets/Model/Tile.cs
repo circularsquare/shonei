@@ -8,6 +8,7 @@ using System.Runtime.Serialization;
 
 public class Tile {
     Action<Tile> cbTileTypeChanged;
+    Action<Tile> cbBackgroundWallChanged;
 
     World world;
     public int x, y;
@@ -20,6 +21,15 @@ public class Tile {
             if (cbTileTypeChanged != null){
                 cbTileTypeChanged(this);
             }
+        }
+    }
+    private bool _hasBackgroundWall;
+    public bool hasBackgroundWall {
+        get { return _hasBackgroundWall; }
+        set {
+            if (_hasBackgroundWall == value) return;
+            _hasBackgroundWall = value;
+            cbBackgroundWallChanged?.Invoke(this);
         }
     }
     public Structure[] structs = new Structure[4];   // indexed by depth: 0=building, 1=platform, 2=foreground, 3=road
@@ -41,6 +51,8 @@ public class Tile {
     
     public void RegisterCbTileTypeChanged(Action<Tile> callback){cbTileTypeChanged += callback;}
     public void UnregisterCbTileTypeChanged(Action<Tile> callback){cbTileTypeChanged -= callback;}
+    public void RegisterCbBackgroundWallChanged(Action<Tile> callback){cbBackgroundWallChanged += callback;}
+    public void UnregisterCbBackgroundWallChanged(Action<Tile> callback){cbBackgroundWallChanged -= callback;}
     public bool ContainsAvailableItem(Item item){return inv != null && inv.ContainsAvailableItem(item);}
     public ItemStack GetItemToHaul(){
         if (inv == null){return null;}

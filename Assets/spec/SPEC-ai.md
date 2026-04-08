@@ -45,12 +45,28 @@ Adding a new food or building happiness source: JSON changes auto-register the n
 
 **Special**: `warmth` is separate from satisfactions — it's a cold-tolerance buff granted by fireplace leisure, not a happiness need.
 
+### Social satisfaction
+
+Social satisfaction is granted **gradually** at `Happiness.socialTickGrant` (0.2) per tick, not as a lump sum. This applies to both standalone chatting and fireplace co-leisure.
+
+**Thresholds** (apply to both chat and fireplace socializing):
+- **Initiate**: a mouse only seeks chat / starts fireplace socializing when social < 2.0
+- **Accept**: a mouse won't accept chat recruitment (or participate in fireplace socializing) when social > 4.0
+- **Interrupt**: a chatting mouse completes early when social reaches the 5.0 cap
+
+**Standalone chat** (`ChatTask` / `HandleChatting`): both mice run `HandleChatting` independently, each granting themselves 0.2/tick. Partner search radius is 6 tiles. `FindIdleAnimalNear` filters out animals with social > 4.0.
+
+**Fireplace co-leisure** (`LeisureTask` / `HandleLeisure`): each tick, `HandleLeisure` checks if a `socialWhenShared` building has another mouse present. Either mouse having social < 2.0 is enough to spark conversation (symmetric — the chatty one draws the other in). Both mice get the grant and show chat bubbles. The socializing aspect stops naturally once both mice exceed 2.0, but the fireplace leisure session continues for its warmth/need benefit.
+
 ### Task dispatch (ChooseTask priority order)
 
 `Animal.ChooseTask()` runs top-to-bottom when an animal is Idle:
 
 1. **Survival** (always first): drop inventory → eat if hungry → sleep if eepy at night → equip tool → equip clothing
-2. **Leisure** (5–9 pm only): 50% try best leisure, 30% idle, 20% fall through to work. Leisure pick is need-based: `TryPickLeisure()` gathers all options (chat = "social", each available leisure building grouped by `structType.leisureNeed`), sorts by the animal's current satisfaction for that need (ascending), and tries each in order — so the mouse targets its least-satisfied need first. Falls back to idle if nothing is available.
+2. **Time-of-day behavior roll** — before work orders, a random roll determines whether the animal tries leisure, idles, or falls through to work. The weights depend on the time window:
+   - **Leisure window (5–9 pm)**: 40% try leisure, 40% idle, 20% work.
+   - **Work time (rest of day)**: 5% try leisure, 15% idle, 80% work.
+   Leisure pick is need-based: `TryPickLeisure()` gathers all options (chat = "social", each available leisure building grouped by `structType.leisureNeed`), sorts by the animal's current satisfaction for that need (ascending), and tries each in order — so the mouse targets its least-satisfied need first. Falls back to idle if nothing is available.
 3. **Work orders:**
    - `wom.PruneStale()` — call once before the tier sequence
    - `wom.ChooseOrder(this, 1)` — hauls unblocking a deconstruct
@@ -102,7 +118,7 @@ Empty stacks track `resSpaceItem` to prevent two different items from claiming t
 |------|--------|-----|-------------|
 | `CraftTask` | WOM p3 | recipe's job | Navigate to station, fetch inputs, work, drop outputs |
 | `HarvestTask` | WOM p2 | plant's `njob` | Navigate to plant, harvest when ready, drop products |
-| `HaulTask` | WOM p1/p3 | hauler | Move a floor stack to storage (or consolidate if no storage) |
+| `HaulTask` | WOM p1/p3 | hauler | Fetch floor stack → Go to storage tile → DeliverToInventoryObjective into `building.storage` |
 | `HaulToMarketTask` | WOM p3 | merchant | Haul items from storage to the market building to meet targets |
 | `HaulFromMarketTask` | WOM p3 | merchant | Haul excess items from market back to storage |
 | `ConstructTask` | WOM p2/p4 | building's `njob` | Build or deconstruct a blueprint |
@@ -116,15 +132,18 @@ Empty stacks track `resSpaceItem` to prevent two different items from claiming t
 | `LeisureTask` | leisure | any | Walk to an `isLeisure` building seat (picks from `nworkTiles`), reserves via `Structure.res`, leisure 20 ticks, faces center, grants benefit via `Happiness.NoteLeisure(structType.leisureNeed)` |
 
 **Objectives (atomic steps):**
-`GoObjective`, `FetchObjective`, `DeliverObjective`, `DeliverToBlueprintObjective`, `WorkObjective`, `HarvestObjective`, `ConstructObjective`, `EepObjective`, `DropObjective`, `ResearchObjective`, `LeisureObjective`
+`GoObjective`, `FetchObjective`, `DeliverObjective`, `DeliverToBlueprintObjective`, `DeliverToInventoryObjective`, `ReceiveFromInventoryObjective`, `WorkObjective`, `HarvestObjective`, `ConstructObjective`, `EepObjective`, `DropObjective`, `ResearchObjective`, `LeisureObjective`
 
 **`FetchObjective` behaviour:**
 - Navigates to a source tile and picks up `iq.quantity` of an item into the animal's inventory (or an equip slot if `targetInv` is set).
-- If `sourceTile` is not specified at construction, pathfinds to the nearest available stack and reserves it.
-- On arrival: takes as many items as possible; if the stack was partially depleted by another animal, clears `sourceTile` and calls `Start()` again to find a new source tile — unless `softFetch` is true (see below).
-- **Cross-tile retry**: if the animal still doesn't have enough after arrival, `sourceTile` is cleared and `Start()` re-runs to locate a new source tile. This repeats until `iq.quantity` is satisfied or no path exists.
+- Tracks `sourceInv` (the inventory to take from). Set explicitly by callers via `FetchAndReserve` / constructor, or discovered by `FindPathItemStack` during `Start()`. This allows fetching from both floor and storage inventories (since storage is on `building.storage`, not `tile.inv`).
+- If `sourceTile` is not specified at construction, pathfinds to the nearest available stack, reserves it, and sets `sourceInv = stack.inv`.
+- On arrival: moves items from `sourceInv` into the destination (falls back to `tile.inv` if `sourceInv` is null). Cleans up empty floor inventories after taking.
+- **Cross-tile retry**: if the animal still doesn't have enough after arrival, `sourceTile` and `sourceInv` are cleared and `Start()` re-runs to locate a new source. This repeats until `iq.quantity` is satisfied or no path exists.
 - **`softFetch = true`**: `Complete` (never `Fail`) when no path is found or nothing was taken. Used by `CraftTask` and `ObtainTask` where partial or zero delivery is acceptable.
 - **Partial-delivery fallback**: if no path to more items exists but the animal already holds a partial amount (e.g., the original stack was raided mid-task), `FetchObjective` calls `Complete` instead of `Fail`. This avoids a tight drop-and-re-fetch loop where the animal would otherwise drop the partial amount, see it on the floor, and immediately pick it up again.
+
+**`DeliverToInventoryObjective`**: moves items from animal inventory into a specific target inventory (used by `HaulTask` for storage delivery, `HaulFromMarketTask`, `SupplyFuelTask`). Always queued after `GoObjective`. Fails with log if target is null or animal has nothing to deliver.
 
 ### Job System
 

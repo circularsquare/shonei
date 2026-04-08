@@ -25,7 +25,7 @@ public class MouseController : MonoBehaviour {
     private bool _isDragging = false;
     private bool _dragStartedInSelect = false;
     private const float DragThresholdPixels = 8f;
-    [SerializeField] private RectTransform dragRectTransform; // assign in inspector (Screen Space Overlay Image)
+    [SerializeField] private RectTransform dragRectTransform;
 
     void Start() {
         if (instance != null) {
@@ -53,7 +53,8 @@ public class MouseController : MonoBehaviour {
                 Debug.Log($"Temperature: {ws.temperature:F1}°C, Season: {ws.GetSeason()} (day {ws.GetDayOfYear():F1})");
         }
 
-        if (EventSystem.current.IsPointerOverGameObject()){
+        bool overUI = EventSystem.current.IsPointerOverGameObject();
+        if (overUI && !_isDragging) {
             if (Input.GetMouseButtonDown(0) && mouseMode == MouseMode.Build)
                 SetModeSelect();
             return;

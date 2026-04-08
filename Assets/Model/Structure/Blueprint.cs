@@ -34,7 +34,8 @@ public class Blueprint {
         this.y = y;
         this.mirrored = mirrored;
         this.tile = World.instance.GetTileAt(x, y);
-        tile.SetBlueprintAt(structType.depth, this);
+        for (int i = 0; i < structType.nx; i++)
+            World.instance.GetTileAt(x + i, y).SetBlueprintAt(structType.depth, this);
 
         if (structType.constructionCost == 0f){
             constructionCost = 2f; // default
@@ -238,7 +239,7 @@ public class Blueprint {
         if (structType.isTile && structType.name == "empty" && tile.type.products != null)
             pendingOutput = new List<ItemQuantity>(tile.type.products);
         StructController.instance.Construct(structType, tile, mirrored);
-        tile.SetBlueprintAt(structType.depth, null);
+        ClearBlueprintFromTiles();
         GameObject.Destroy(go);
         if (InfoPanel.instance?.obj == tile) {
             // Auto-select the newly constructed structure if one was placed (non-tile blueprints only).
@@ -266,7 +267,7 @@ public class Blueprint {
         // destroy the building
         for (int i = 0; i < 4; i++) { if (tile.structs[i] != null) { tile.structs[i].Destroy(); break; } }
         // remove blueprint
-        tile.SetBlueprintAt(structType.depth, null);
+        ClearBlueprintFromTiles();
         GameObject.Destroy(go);
         if (InfoPanel.instance?.obj == tile) InfoPanel.instance.RebuildSelection();
     }
@@ -317,8 +318,13 @@ public class Blueprint {
         cancelled = true;
         if (state == BlueprintState.Deconstructing && tile.building?.storage != null)
             tile.building.storage.locked = false;
-        tile.SetBlueprintAt(structType.depth, null);
+        ClearBlueprintFromTiles();
         GameObject.Destroy(go);
+    }
+
+    private void ClearBlueprintFromTiles() {
+        for (int i = 0; i < structType.nx; i++)
+            World.instance.GetTileAt(x + i, y)?.SetBlueprintAt(structType.depth, null);
     }
 
     public string GetProgress(){ // for display string

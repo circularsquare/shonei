@@ -273,6 +273,7 @@ public class AnimalController : MonoBehaviour{
             if (a == exclude) continue;
             if (a.state != Animal.AnimalState.Idle) continue;
             if (a.task != null) continue;
+            if (a.happiness.GetSatisfaction("social") > 4.0f) continue; // too socialized to chat
             float dx = a.x - exclude.x;
             float dy = a.y - exclude.y;
             float dist = dx * dx + dy * dy;

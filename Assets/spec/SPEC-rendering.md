@@ -6,6 +6,7 @@
 
 | sortingOrder | What |
 |---|---|
+| -10 | Background cave wall (`CaveAtmosphere`) |
 | 0 | Tiles |
 | 1 | Roads (depth-3 structures) |
 | 10 | Buildings (depth-0 structures) |
@@ -46,22 +47,28 @@ Custom `ScriptableRendererFeature` pipeline — no URP Light2Ds used. Final resu
 
 ### Render pipeline (per frame)
 
-1. **NormalsCapturePass** (`BeforeRenderingTransparents`) — draws sprites with `Hidden/NormalsCapture` override into `_CapturedNormalsRT` (format: **ARGB32** — must have alpha; camera's default HDR format has none). Outputs world-space normals packed 0–1 in RGB. **Alpha encodes lighting tier:**
-   - `1.0` — shadow caster (full light, casts shadows)
+1. **NormalsCapturePass** (`BeforeRenderingTransparents`) — draws sprites with `Hidden/NormalsCapture` override into `_CapturedNormalsRT` (format: **ARGB32** — must have alpha; camera's default HDR format has none). Outputs world-space normals packed 0–1 in RGB. **Alpha encodes lighting tier + edge depth:**
+   - `0.80–1.0` — shadow caster. The range encodes **edge depth** for underground darkening: `1.0` = at exposed tile surface (fully lit), `0.80` = deep interior (darkened to `deepFloor`). Non-tile shadow casters output `1.0`. Extracted as `saturate((alpha - 0.80) / 0.20)` in `LightComposite`.
    - `0.5` — lit-only (full light, no shadow cast)
    - `0.3` — directional-only (sun + ambient only; `LightCircle` skips torch for these pixels)
    - `0.0` — no sprite (flat-normal fallback in light shaders)
 
+   **Jagged tile edges**: NormalsCapture includes `TileEdge.hlsl` and reads `_AdjacencyMask` (float 0–15, set via MPB on tile SpriteRenderers). Pixels outside the procedural jagged edge profile are discarded. The override material defaults `_AdjacencyMask = 15` (no clipping) so non-tile sprites are unaffected.
+
    Three draw calls in order (later overwrites earlier where they overlap, `Blend Off`):
    - Pass 2 (`directionalOnlyLayers`): alpha = 0.3 — drawn first so shadow-caster pass can't overwrite
    - Pass 1 (`litLayers & ~shadowCasterLayers & ~directionalOnlyLayers`): alpha = 0.5
-   - Pass 0 (`litLayers & shadowCasterLayers & ~directionalOnlyLayers`): alpha = 1.0
+   - Pass 0 (`litLayers & shadowCasterLayers & ~directionalOnlyLayers`): alpha = `lerp(0.80, 1.0, _NormalMap.a)` where `_NormalMap.a` carries edge-distance falloff from `TileNormalMaps`
 
-2. **LightPass** (`AfterRenderingTransparents`) — `ConfigureTarget(LightRTId)` in `OnCameraSetup` binds the temp RT (required for the clear and for `cmd.Blit` to target it correctly across all cameras). Clears light RT to `SunController.GetAmbientColor()`, then draws:
+2. **LightPass** (`AfterRenderingTransparents`) — `ConfigureTarget(LightRTId)` in `OnCameraSetup` binds the temp RT (required for the clear and for `cmd.Blit` to target it correctly across all cameras). Ambient light is split into two parts:
+   - **Base ambient** (universal): `SunController.GetAmbientColor() × 0.5` — clears the light RT. Present everywhere, even deep underground.
+   - **Sky ambient** (exposure-gated): `SunController.GetAmbientColor() × 0.5` — blitted via `LightAmbientFill.shader` which samples `_SkyExposureTex` (set by `CaveAtmosphere`). Full contribution above ground, zero underground.
+   
+   Then draws:
    - Point lights (torches, etc.): `cmd.DrawMesh` per-light quad scaled to `outerRadius×2`, screen blend (`BlendOp Add, Blend One OneMinusSrcColor`), radial falloff × NdotL. **Skips pixels where normals RT alpha is 0–0.4** (directional-only tier).
    - Sun (directional): `cmd.Blit(null, LightRTId, sunMat)`, additive blend (`BlendOp Add, Blend One One`), NdotL with `_SunDir` + 16-step shadow march. **Must use `cmd.Blit`, not `cmd.DrawMesh`** — DrawMesh silently fails to write to the temp RT for cameras without PixelPerfectCamera (e.g. BackgroundCamera). Blit handles its own fullscreen geometry and RT binding internally, bypassing the issue.
 
-3. **Composite** — `cmd.Blit(lightRT, scene, LightComposite)` multiplies scene by light map (`Blend DstColor Zero`). **No-op (returns `(1,1,1,1)`) for pixels with normals RT alpha < 0.25** (empty sky/background); those pixels are instead tinted by `BackgroundCamera.backgroundColor`.
+3. **Composite** — `cmd.Blit(lightRT, scene, LightComposite)` multiplies scene by light map (`Blend DstColor Zero`). **No-op (returns `(1,1,1,1)`) for pixels with normals RT alpha < 0.25** (empty sky/background); those pixels are instead tinted by `BackgroundCamera.backgroundColor`. **Underground darkening**: shadow-caster pixels (alpha > 0.75) are additionally scaled by `lerp(deepFloor, 1.0, edgeDepth)` — deep tile interiors get dimmed to `deepFloor` brightness (tunable on `LightFeature` inspector, default 0.2). After deepFloor dimming, a `max(light, baseAmbient)` clamp ensures tile interiors never go below the universal base ambient.
 
 **LightFeature skips cameras** where `cullingMask == 0` or where `(cullingMask & (litLayers | directionalOnlyLayers | waterLayer)) == 0` — i.e. cameras that see no sprites participating in the normals RT. The `UnlitOverlayCamera` (see Sky/background below) hits the second check because the Unlit layer is excluded from all three masks.
 
@@ -70,6 +77,7 @@ Custom `ScriptableRendererFeature` pipeline — no URP Light2Ds used. Final resu
 - **`ConfigureTarget` vs `cmd.SetRenderTarget`**: URP docs say to use `ConfigureTarget` in `OnCameraSetup` rather than raw `cmd.SetRenderTarget` in `Execute`. `ConfigureTarget` integrates with URP's internal RT management and ensures the target is bound correctly for all cameras. Without it, `ClearRenderTarget` and `cmd.Blit` may write to stale/wrong targets.
 - **`cmd.DrawMesh` can silently fail on some cameras**: DrawMesh output may appear in Frame Debugger but produce no visible output on the temp RT for certain cameras (observed with BackgroundCamera, which lacks PixelPerfectCamera). The root cause is unclear but likely related to URP's internal state management. **Workaround**: use `cmd.Blit` for fullscreen passes (sun). Point lights still use DrawMesh and work because BackgroundCamera has no point-light-receiving sprites (directional-only tier skips torch contribution in LightCircle).
 - **Temp RT format**: `_CapturedNormalsRT` must be **ARGB32** (explicitly set in `OnCameraSetup`). The camera's default HDR format (B10G11R11) has no alpha channel, which breaks the tier encoding.
+- **`_AdjacencyMask` default on override material**: `NormalsCapturePass` sets `mat.SetFloat("_AdjacencyMask", 15f)` on the override material so non-tile sprites don't get jagged-edge clipped. If the material is ever recreated (shader hot reload), this default is re-applied in the constructor — but if you change when/how the pass is constructed, make sure this line survives or every non-tile sprite will be invisible.
 
 ### Sky / background
 
@@ -83,6 +91,20 @@ Three cameras render in depth order:
 
 **Unlit layer pattern**: any sprite that should always appear at full brightness (tile highlights, selection overlays, debug markers) goes on the `Unlit` layer. Keep it excluded from `litLayers`, `shadowCasterLayers`, and `directionalOnlyLayers` in the LightFeature Inspector.
 
+### Cave atmosphere (underground lighting + background)
+
+`CaveAtmosphere.cs` — auto-created singleton, initialized by `WorldController.GenerateDefault()` and `SaveSystem.Load()`.
+
+**Two-part ambient model**: ambient light = base ambient (universal) + sky ambient (exposure-gated).
+- **Base ambient** = `GetAmbientColor() × 0.5` — clears the light RT. Always present, even underground. The composite shader's `max(light, baseAmbient)` clamp ensures deepFloor dimming never goes below this.
+- **Sky ambient** = `GetAmbientColor() × 0.5` — added via `LightAmbientFill.shader`, modulated by `_SkyExposureTex`. Full where `!hasBackgroundWall`, zero where `hasBackgroundWall`.
+
+**Per-tile background wall**: each `Tile` has a `hasBackgroundWall` bool (with `cbBackgroundWallChanged` callback). During world generation, tiles at y ≤ 45 are given a background wall. The flag is saved/loaded in `TileSaveData`.
+
+**Sky exposure texture** (`_SkyExposureTex`): R8, nx×ny, bilinear filtered. Set as global shader texture. Driven by `tile.hasBackgroundWall` — 255 where no wall (sky), 0 where wall (underground). Rebuilt when any tile's background wall changes.
+
+**Background cave wall sprite**: a world-spanning sprite on the **Default layer** at **sorting order −10** (behind tiles at 0). Uses an RGBA32 texture (nx×ny, PPU=1) — cave wall color where `hasBackgroundWall`, transparent elsewhere. Participates in normal lighting (sun, torches) but receives no sky ambient because `_SkyExposureTex` is 0 for `hasBackgroundWall` tiles. Rebuilt on background wall or tile type change via dirty flag.
+
 ### Key files
 
 All lighting C# scripts and shaders live in `Assets/Lighting/`.
@@ -92,10 +114,15 @@ All lighting C# scripts and shaders live in `Assets/Lighting/`.
 | `LightFeature.cs` | `ScriptableRendererFeature` containing `NormalsCapturePass` + `LightPass` |
 | `LightSource.cs` | Component: `lightColor`, `intensity`, `outerRadius`, `innerRadius`, `lightHeight`, `isDirectional`. Registers itself in a static list read by `LightPass`. |
 | `SunController.cs` | Orbiting sun, sky color, `GetAmbientColor()`, `GetSunDirection()`. Sun child has a `LightSource (isDirectional=true)`. |
-| `NormalsCapture.shader` | Tangent→world normal transform for flat 2D sprites: `(x, y, z) → (x, y, −z)`. |
+| `NormalsCapture.shader` | Tangent→world normal transform for flat 2D sprites: `(x, y, z) → (x, y, −z)`. Includes `TileEdge.hlsl` for jagged clip + edge depth alpha. |
+| `TileEdge.hlsl` | Shared HLSL include: PCG hash noise + `TileEdgeClip()` for jagged tile borders. Used by NormalsCapture and TileSprite. |
+| `TileSprite.shader` | Custom tile sprite shader with jagged-edge clipping. Assigned to tile SpriteRenderers by WorldController. |
+| `TileNormalMaps.cs` | 16 cached normal maps (4-bit adjacency). Alpha channel encodes edge-distance falloff for light penetration. Also sets `_AdjacencyMask` via MPB. |
 | `LightCircle.shader` | Point light pass: radial falloff × NdotL. |
-| `LightSun.shader` | Directional sun pass: fullscreen NdotL. |
-| `LightComposite.shader` | Multiply blit onto scene. |
+| `LightSun.shader` | Directional sun pass: fullscreen NdotL + shadow march. |
+| `LightAmbientFill.shader` | Fullscreen pass: writes `skyAmbient × exposure` per pixel. Additive onto base-ambient-cleared RT. |
+| `LightComposite.shader` | Multiply blit onto scene + underground darkening via edgeDepth + base ambient floor clamp. |
+| `CaveAtmosphere.cs` | Manages underground atmosphere: sky exposure texture (R8, per-tile, driven by `hasBackgroundWall`) and background cave wall sprite (Default layer, sort -10). Auto-created singleton. |
 
 `Assets/Editor/SpriteNormalMapGenerator.cs` — sprite normal map batch tool (must stay in `Editor/`).
 

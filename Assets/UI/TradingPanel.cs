@@ -1,26 +1,17 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
 // Trading panel — market query, order entry, chat.
 //
-// Unity setup required:  (see bottom of file for full layout)
-//   Assign in Inspector:
-//     itemInput        — TMP_InputField  (item name, shared by query + order)
-//     orderPrice       — TMP_InputField  (price)
-//     orderQty         — TMP_InputField  (quantity)
-//     resultList       — Transform       (scroll content for order book)
-//     chatList         — Transform       (scroll content for chat + fills)
-//     chatInput        — TMP_InputField  (chat message)
-//     onlineIndicator  — GameObject      (Image + TMP child)
-//
-//   Button onClick wiring:
-//     TradingToggle button  -> TradingPanel.instance.Toggle()
-//     QueryButton           -> TradingPanel.instance.OnClickQuery()
-//     BuyButton             -> TradingPanel.instance.SetBuy(true)   [pass bool via UnityEvent]
-//     SellButton            -> TradingPanel.instance.SetBuy(false)
-//     PlaceOrderButton      -> TradingPanel.instance.OnClickPlaceOrder()
-//     ChatSendButton        -> TradingPanel.instance.OnClickSendChat()
+// Button onClick wiring:
+//   TradingToggle  -> Toggle()
+//   QueryButton    -> OnClickQuery()
+//   BuyButton      -> SetBuy(true)
+//   SellButton     -> SetBuy(false)
+//   PlaceOrder     -> OnClickPlaceOrder()
+//   ChatSend       -> OnClickSendChat()
 
 public class TradingPanel : MonoBehaviour {
     public static TradingPanel instance { get; protected set; }
@@ -36,10 +27,13 @@ public class TradingPanel : MonoBehaviour {
     public Button         sellButton;
     public TMP_InputField orderPrice;
     public TMP_InputField orderQty;
-    public TextMeshProUGUI orderAlert; // assign in inspector; shows validation errors
+    public TextMeshProUGUI orderAlert;
 
     [Header("Market Inventory")]
-    public Transform      marketInvList; // scroll content for live market inventory display
+    public Transform      marketInvContent;
+    public GameObject     itemDisplayPrefab;
+    private Dictionary<int, GameObject> marketDisplayGos = new Dictionary<int, GameObject>();
+    private Inventory     currentMarket;
 
     [Header("Chat")]
     public Transform      chatList;
@@ -77,9 +71,12 @@ public class TradingPanel : MonoBehaviour {
             orderPrice.ActivateInputField();
             orderPrice.MoveTextEnd(false);
         }
+        // Refresh market tree quantities each frame while open
+        if (currentMarket != null) UpdateMarketTree();
     }
 
     void OnDestroy() {
+        ClearMarketTree();
         var client = TradingClient.instance;
         if (client != null) {
             client.OnMarketResponse -= DisplayMarketBook;
@@ -99,35 +96,90 @@ public class TradingPanel : MonoBehaviour {
         if (gameObject.activeSelf) gameObject.SetActive(false);
         else {
             UI.OpenExclusive(gameObject);
-            RefreshMarketInventory();
+            PopulateMarketTree();
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Market inventory display
-    // -------------------------------------------------------------------------
+    // ── Market inventory ItemDisplay tree ──────────────────────────
 
-    public void RefreshMarketInventory() {
-        if (marketInvList == null) return;
-        foreach (Transform child in marketInvList) Destroy(child.gameObject);
+    // Builds the full collapsible ItemDisplay tree for the market inventory.
+    // Follows the same pattern as StoragePanel.PopulateAllowTree.
+    void PopulateMarketTree() {
+        ClearMarketTree();
+        if (marketInvContent == null || itemDisplayPrefab == null) return;
 
-        Inventory market = TradingClient.FindMarketInventory();
-        if (market == null) {
-            AddRow("no market found", marketInvList);
-            return;
+        currentMarket = TradingClient.FindMarketInventory();
+        if (currentMarket == null) return;
+
+        RectTransform panelRoot = marketInvContent.GetComponent<RectTransform>();
+
+        foreach (Item item in Db.items) {
+            if (item == null) continue;
+            if (!currentMarket.ItemTypeCompatible(item)) continue;
+
+            Transform parent = item.parent == null
+                ? marketInvContent
+                : (marketDisplayGos.ContainsKey(item.parent.id)
+                    ? marketDisplayGos[item.parent.id].transform
+                    : marketInvContent);
+
+            GameObject go = Instantiate(itemDisplayPrefab, parent);
+            go.name = "ItemDisplay_" + item.name;
+            marketDisplayGos[item.id] = go;
+
+            bool discovered = InventoryController.instance.discoveredItems.ContainsKey(item.id)
+                && InventoryController.instance.discoveredItems[item.id];
+            bool parentOpen = item.parent == null
+                || !marketDisplayGos.ContainsKey(item.parent.id)
+                || marketDisplayGos[item.parent.id].GetComponent<ItemDisplay>().open;
+            go.SetActive(discovered && parentOpen);
+
+            ItemDisplay display = go.GetComponent<ItemDisplay>();
+            display.item = item;
+            display.displayMode = ItemDisplay.DisplayMode.Market;
+            display.panelRoot = panelRoot;
+            display.targetInventory = currentMarket;
+            display.getDisplayGo = id => marketDisplayGos.ContainsKey(id) ? marketDisplayGos[id] : null;
+            display.SetDisplayMode(ItemDisplay.DisplayMode.Market);
+            display.open = ItemDisplay.DefaultOpenForGroup(item);
+
+            // Set initial text
+            UpdateMarketItemDisplay(display, item);
         }
 
-        bool anyItems = false;
-        foreach (ItemStack stack in market.itemStacks) {
-            if (stack.quantity <= 0) continue;
-            anyItems = true;
-            bool discrete = stack.item.discrete;
-            string label = $"{stack.item.name}: {ItemStack.FormatQ(stack.quantity, discrete)}";
-            if (market.targets != null && market.targets.TryGetValue(stack.item, out int target) && target > 0)
-                label += $" / {ItemStack.FormatQ(target, discrete)}";
-            AddRow(label, marketInvList);
+        Canvas.ForceUpdateCanvases();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(panelRoot);
+    }
+
+    void ClearMarketTree() {
+        foreach (var kvp in marketDisplayGos) {
+            kvp.Value.SetActive(false);
+            Destroy(kvp.Value);
         }
-        if (!anyItems) AddRow("(empty)", marketInvList);
+        marketDisplayGos.Clear();
+        currentMarket = null;
+    }
+
+    // Refreshes quantities and targets on existing ItemDisplay rows.
+    public void UpdateMarketTree() {
+        if (currentMarket == null) return;
+        foreach (var kvp in marketDisplayGos) {
+            ItemDisplay display = kvp.Value.GetComponent<ItemDisplay>();
+            if (display == null || display.item == null) continue;
+            UpdateMarketItemDisplay(display, display.item);
+        }
+    }
+
+    void UpdateMarketItemDisplay(ItemDisplay display, Item item) {
+        if (display.itemText != null) {
+            int qty = currentMarket.Quantity(item);
+            display.itemText.text = item.name + ": " + ItemStack.FormatQ(qty, item.discrete);
+        }
+        if (display.targetText != null) {
+            int target = currentMarket.targets != null && currentMarket.targets.ContainsKey(item)
+                ? currentMarket.targets[item] : 0;
+            display.targetText.text = "/" + ItemStack.FormatQ(target, item.discrete);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -311,7 +363,7 @@ public class TradingPanel : MonoBehaviour {
     void DisplayFill(Fill fill) {
         bool discrete = Db.itemByName.TryGetValue(fill.item, out Item item) && item.discrete;
         AddChat($"<color=#55aa55>[fill] {fill.buyer} bought {ItemStack.FormatQ(fill.quantity, discrete)} {fill.item} from {fill.seller} @ {fill.price / 100f:0.##}</color>");
-        RefreshMarketInventory();
+        UpdateMarketTree();
     }
 
     // -------------------------------------------------------------------------

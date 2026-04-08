@@ -12,8 +12,8 @@ public class InfoPanel : MonoBehaviour {
     public static InfoPanel instance { get; protected set; }
 
     [Header("Highlights")]
-    public GameObject animalHighlight;    // assign in Inspector; follows selected animal
-    public GameObject tileHighlight;      // assign in Inspector; overlays selected tile
+    public GameObject animalHighlight;
+    public GameObject tileHighlight;
 
     [Header("Tab Bar")]
     [SerializeField] ScrollRect tabScrollRect;        // wraps tabContent for horizontal scroll

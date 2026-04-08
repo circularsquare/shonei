@@ -260,33 +260,65 @@ public class AnimalStateManager {
 
     private void HandleLeisure() {
         if (animal.task == null) { animal.state = AnimalState.Idle; return; }
+
+        // Chat has its own handler — dispatch if the current objective is a ChatObjective
+        if (animal.task.currentObjective is ChatObjective co) { HandleChatting(co); return; }
+
         var obj = animal.task.currentObjective as LeisureObjective;
         if (obj == null) { Debug.LogError($"{animal.aName} in Leisuring state but objective is not LeisureObjective"); animal.task.Fail(); return; }
 
-        var chat = animal.task as ChatTask;
-
-        // Chat-specific: wait for initiator arrival, grant early happiness
-        if (chat?.partner != null) {
-            if (!chat.chatStarted) return;
-            if (!chat.socializedEarly && animal.workProgress >= 7f) {
-                chat.socializedEarly = true;
-                animal.happiness.NoteSocialized();
+        // Per-tick social grant for socialWhenShared buildings (e.g. fireplace) when another mouse is present.
+        // Either mouse having social < 2.0 is enough to start chatting; neither may be > 4.0.
+        obj.isSocializing = false;
+        float socialSat = animal.happiness.GetSatisfaction("social");
+        if (socialSat <= 4.0f && animal.task is LeisureTask lt
+            && lt.building != null && lt.building.structType.socialWhenShared) {
+            AnimalController ac = World.instance.animalController;
+            for (int i = 0; i < ac.na; i++) {
+                Animal other = ac.animals[i];
+                if (other == animal) continue;
+                if (other.state != AnimalState.Leisuring) continue;
+                if (other.task is LeisureTask otherLt && otherLt.building == lt.building) {
+                    float otherSat = other.happiness.GetSatisfaction("social");
+                    if (otherSat > 4.0f) continue;
+                    // At least one mouse must have social < 2.0 to spark conversation
+                    if (socialSat >= 2.0f && otherSat >= 2.0f) continue;
+                    obj.isSocializing = true;
+                    animal.happiness.NoteSocialized(Happiness.socialTickGrant);
+                    break;
+                }
             }
         }
 
         animal.workProgress += 1f;
         if (animal.workProgress >= obj.duration) {
             animal.task.Complete();
+        }
+    }
+
+    // Ticks the chat phase of a ChatTask. Both animals run this independently once
+    // they enter ChatObjective; the "waiting for partner" state is detected by
+    // checking whether the partner is also in a ChatObjective (no sync flag needed).
+    private void HandleChatting(ChatObjective co) {
+        Animal partner = co.partner;
+        bool partnerChatting = partner.state == AnimalState.Leisuring
+            && partner.task?.currentObjective is ChatObjective;
+
+        if (!partnerChatting) {
+            // Partner not in chat yet — are they still on their way?
+            bool enRoute = partner.task is ChatTask ct && ct.partner == animal;
+            if (enRoute) return; // wait for them to arrive
+            // Partner abandoned or finished — keep whatever partial satisfaction was earned
+            animal.task.Complete();
             return;
         }
 
-        // Check partner after duration check — if both finish on the same tick,
-        // the second to process should complete, not see the first as "gone".
-        if (chat?.partner != null) {
-            var partnerTask = chat.partner.task as ChatTask;
-            if (partnerTask == null || partnerTask.partner != animal) {
-                if (chat.socializedEarly) { animal.task.Complete(); } else { animal.task.Fail(); }
-            }
+        // Both chatting — grant social satisfaction gradually and tick timer
+        animal.happiness.NoteSocialized(Happiness.socialTickGrant);
+        animal.workProgress += 1f;
+        if (animal.workProgress >= co.duration
+            || animal.happiness.GetSatisfaction("social") >= Happiness.satisfactionCap) {
+            animal.task.Complete();
         }
     }
 

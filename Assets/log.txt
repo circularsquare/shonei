@@ -1,4 +1,8 @@
 meoww!!
+4/8
+- lighting darkens in interior of tile
+- tile border jaggedness (idk if i like)
+- world generation! caves! wow!
 4/6
 - market journey preparation improvements 
 - food eating improvements

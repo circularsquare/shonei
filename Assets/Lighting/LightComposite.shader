@@ -10,6 +10,7 @@ Shader "Hidden/LightComposite" {
     Properties {
         _MainTex ("Light Map", 2D) = "white" {}
         _SkyLightBlend ("Sky Light Blend", Range(0, 1)) = 0.4
+        _DeepFloor ("Deep Interior Floor", Range(0, 1)) = 0.2
     }
     SubShader {
         Tags { "RenderType"="Opaque" }
@@ -29,6 +30,14 @@ Shader "Hidden/LightComposite" {
             TEXTURE2D(_MainTex);
             SAMPLER(sampler_MainTex);
             float _SkyLightBlend;
+            float _DeepFloor;
+            float4 _BaseAmbient;
+
+            // Camera world bounds and grid size for sky exposure lookup.
+            float4 _CamWorldBounds;
+            float4 _GridSize;
+            TEXTURE2D(_SkyExposureTex);
+            SAMPLER(sampler_SkyExposureTex);
 
             // Normals RT alpha > 0 means main camera rendered a sprite at this pixel.
             TEXTURE2D(_CapturedNormalsRT);
@@ -61,7 +70,29 @@ Shader "Hidden/LightComposite" {
                     return lerp(float4(1, 1, 1, 1), light, _SkyLightBlend);
                 }
 
-                return SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, IN.uv);
+                float4 light = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, IN.uv);
+
+                // Edge-depth darkening: shadow-caster pixels deep inside tiles
+                // get dimmed based on distance from exposed surface.
+                // edgeDepth: 1.0 at surface, 0.0 at DEPTH_PX deep.
+                // _DeepFloor keeps deep interior from going fully black.
+                // Skipped underground (exposure=0) so tiles get flat lighting
+                // with no edge-depth variation.
+                if (normsAlpha > 0.75) {
+                    float2 worldPos = _CamWorldBounds.xy + IN.uv * _CamWorldBounds.zw;
+                    float2 tileUV = (worldPos + 0.5) / _GridSize.xy;
+                    float exposure = SAMPLE_TEXTURE2D(_SkyExposureTex, sampler_SkyExposureTex, tileUV).r;
+                    if (exposure > 0.5) {
+                        float edgeDepth = saturate((normsAlpha - 0.80) / 0.20);
+                        light.rgb *= lerp(_DeepFloor, 1.0, edgeDepth);
+                    }
+                }
+
+                // Base ambient floor: never dim below the universal ambient,
+                // even deep inside solid tiles underground.
+                light.rgb = max(light.rgb, _BaseAmbient.rgb);
+
+                return light;
             }
             ENDHLSL
         }

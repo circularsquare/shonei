@@ -11,6 +11,7 @@ public class Happiness {
     public const float satisfactionCap = 5.0f;
     public const float decayPerTick = 0.005f; // proportion of current amount that decays per tick
     public const float activityGrant = 2.0f;
+    public const float socialTickGrant = 0.2f; // social satisfaction per tick while chatting
 
     // Precomputed decay factor for 10 ticks (one SlowUpdate): pow(0.99, 10) ~ 0.9044
     private static readonly float decayFactor10 = Mathf.Pow(1f - decayPerTick, 10f);
@@ -61,10 +62,6 @@ public class Happiness {
     // Called when a nearby decoration building is spotted.
     public void NoteSawDecoration(string need) {
         Grant(need, activityGrant);
-    }
-
-    public void NoteSocialized() {
-        Grant("social", activityGrant);
     }
 
     public void NoteSocialized(float amount) {

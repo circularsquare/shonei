@@ -34,6 +34,7 @@ public class TileSaveData {
     public int x, y;
     public string tileType;
     public InventorySaveData inv; // floor inventory only; storage building inventories are filled after structures are restored
+    public bool hasBackgroundWall;
 }
 
 public class StructureSaveData {

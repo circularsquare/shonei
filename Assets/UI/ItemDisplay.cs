@@ -16,17 +16,17 @@ public class ItemDisplay : MonoBehaviour {
     public enum AllowState { Allowed, Disallowed, Mixed }
 
     public Item item;
-    public ItemIcon itemIcon;                  // assign in inspector (HorizontalLayout/ItemIcon)
-    public TMPro.TextMeshProUGUI itemText;     // assign in inspector (HorizontalLayout/TextItem)
-    public TMPro.TextMeshProUGUI targetText;   // assign in inspector (HorizontalLayout/TextItemTarget)
-    public GameObject toggleGo;               // assign in inspector — Button (not Toggle) with an Image child
-    public Sprite spriteAllowed;              // assign in inspector
-    public Sprite spriteDisallowed;           // assign in inspector
-    public Sprite spriteMixed;                // assign in inspector — shown when selection has mixed allow states
-    private Image _allowImage;               // cached from toggleGo at Start
-    public GameObject targetUpGo;   // assign in inspector (ButtonTargetUp)
-    public GameObject targetDownGo; // assign in inspector (ButtonTargetDown)
-    public GameObject targetTextGo; // assign in inspector (TextItemTarget)
+    public ItemIcon itemIcon;
+    public TMPro.TextMeshProUGUI itemText;
+    public TMPro.TextMeshProUGUI targetText;
+    public GameObject toggleGo;  // allow/disallow button with Image child
+    public Sprite spriteAllowed;
+    public Sprite spriteDisallowed;
+    public Sprite spriteMixed;   // shown when selection has mixed allow states
+    private Image _allowImage;
+    public GameObject targetUpGo;
+    public GameObject targetDownGo;
+    public GameObject targetTextGo;
     [System.NonSerialized] public bool open = true;
     public Sprite spriteOpen;
     public Sprite spriteCollapsed;
@@ -123,30 +123,44 @@ public class ItemDisplay : MonoBehaviour {
         LayoutRebuilder.ForceRebuildLayoutImmediate(GetPanelRoot());
     }
 
+    // Resolve which inventory to use for market-target operations.
+    // Prefers targetInventory (set by TradingPanel/StoragePanel), falls back to IC selected.
+    private Inventory ResolveMarketInventory() {
+        if (targetInventory != null && targetInventory.invType == Inventory.InvType.Market)
+            return targetInventory;
+        Inventory sel = InventoryController.instance.selectedInventory;
+        return (sel?.invType == Inventory.InvType.Market) ? sel : null;
+    }
+
     public void OnClickTargetUp(){
         if (displayMode == DisplayMode.Storage) return; // no targets in storage allow panel
-        Inventory sel = InventoryController.instance.selectedInventory;
-        if (sel?.invType == Inventory.InvType.Market) {
-            sel.targets[item] = sel.targets[item] == 0 ? 1 : sel.targets[item] * 2;
-            sel.lastTargetManualUpdateTimer = World.instance?.timer ?? float.NegativeInfinity;
-            WorkOrderManager.instance?.UpdateMarketOrders(sel);
+        Inventory market = ResolveMarketInventory();
+        if (market != null) {
+            market.targets[item] = market.targets[item] == 0 ? 1 : market.targets[item] * 2;
+            market.lastTargetManualUpdateTimer = World.instance?.timer ?? float.NegativeInfinity;
+            WorkOrderManager.instance?.UpdateMarketOrders(market);
         } else {
             var t = InventoryController.instance.targets;
             t[item.id] = t[item.id] == 0 ? 1 : t[item.id] * 2;
         }
-        InventoryController.instance.UpdateItemsDisplay();
+        RefreshAfterTargetChange();
     }
     public void OnClickTargetDown(){
         if (displayMode == DisplayMode.Storage) return; // no targets in storage allow panel
-        Inventory sel = InventoryController.instance.selectedInventory;
-        if (sel?.invType == Inventory.InvType.Market) {
-            sel.targets[item] /= 2;
-            sel.lastTargetManualUpdateTimer = World.instance?.timer ?? float.NegativeInfinity;
-            WorkOrderManager.instance?.UpdateMarketOrders(sel);
+        Inventory market = ResolveMarketInventory();
+        if (market != null) {
+            market.targets[item] /= 2;
+            market.lastTargetManualUpdateTimer = World.instance?.timer ?? float.NegativeInfinity;
+            WorkOrderManager.instance?.UpdateMarketOrders(market);
         } else {
             InventoryController.instance.targets[item.id] /= 2;
         }
+        RefreshAfterTargetChange();
+    }
+
+    private void RefreshAfterTargetChange() {
         InventoryController.instance.UpdateItemsDisplay();
+        if (targetInventory != null) TradingPanel.instance?.UpdateMarketTree();
     }
 
     /// <summary>Refreshes the allow button sprite to reflect the current tri-state across all selected inventories.</summary>

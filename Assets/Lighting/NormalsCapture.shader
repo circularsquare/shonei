@@ -3,16 +3,22 @@
 // to world-space for a flat 2D sprite: tangent (x,y,z) → world (x, y, -z).
 // Output is packed 0–1: float3(worldNormal * 0.5 + 0.5).
 // Alpha encodes lighting tier:
-//   1.0 = shadow caster (buildings, tiles)   — full light, casts shadows
+//   0.80–1.0 = shadow caster (tiles/buildings) — range encodes edge depth for light penetration
 //   0.5 = lit-only, no shadow (decorations)  — full light, no shadow cast
 //   0.3 = directional-only (clouds, etc.)    — sun + ambient only, no torch/point lights
 //   0.0 = no sprite (cleared black — flat normal fallback in LightSun)
 // Transparent pixels are discarded so the background stays black (flat fallback).
 //
-// Pass 0 — shadow casters (alpha = 1.0)
+// Tiles set _AdjacencyMask (0–15) via MaterialPropertyBlock. Non-tile sprites
+// get the material default of 15 (no exposed edges = no jagged clipping).
+//
+// Pass 0 — shadow casters (alpha = edge depth mapped to 0.80–1.0)
 // Pass 1 — lit-only, no shadow (alpha = 0.5)
 // Pass 2 — directional-only, no shadow (alpha = 0.3)
 Shader "Hidden/NormalsCapture" {
+    Properties {
+        _AdjacencyMask ("Adjacency Mask", Float) = 15
+    }
     SubShader {
         Tags { "RenderType"="Opaque" }
         ZWrite Off
@@ -22,9 +28,12 @@ Shader "Hidden/NormalsCapture" {
 
         HLSLINCLUDE
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+        #include "Assets/Lighting/TileEdge.hlsl"
 
         TEXTURE2D(_MainTex);   SAMPLER(sampler_MainTex);
         TEXTURE2D(_NormalMap); SAMPLER(sampler_NormalMap);
+
+        float _AdjacencyMask; // 0–15 via MPB, default 15 on override material
 
         struct Attributes {
             float3 positionOS : POSITION;
@@ -34,12 +43,15 @@ Shader "Hidden/NormalsCapture" {
         struct Varyings {
             float4 positionCS : SV_POSITION;
             float2 uv         : TEXCOORD0;
+            float2 worldPos   : TEXCOORD1;
         };
 
         Varyings vert(Attributes IN) {
             Varyings OUT;
-            OUT.positionCS = TransformObjectToHClip(IN.positionOS);
+            float3 wp      = TransformObjectToWorld(IN.positionOS);
+            OUT.positionCS = TransformWorldToHClip(wp);
             OUT.uv         = IN.uv;
+            OUT.worldPos   = wp.xy;
             return OUT;
         }
 
@@ -47,6 +59,12 @@ Shader "Hidden/NormalsCapture" {
             // Discard transparent pixels — background stays black (flat fallback).
             float alpha = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, IN.uv).a;
             clip(alpha - 0.1);
+
+            // Jagged edge clip — only affects tiles with _AdjacencyMask < 15.
+            // Non-tile sprites have _AdjacencyMask = 15 (set on override material),
+            // so TileEdgeClip returns true immediately.
+            if (!TileEdgeClip(_AdjacencyMask, IN.worldPos))
+                discard;
 
             // Tangent-space normal, RGBA32 packed 0–1.
             float4 ns = SAMPLE_TEXTURE2D(_NormalMap, sampler_NormalMap, IN.uv);
@@ -59,11 +77,20 @@ Shader "Hidden/NormalsCapture" {
             // For flat 2D sprites facing the camera:
             // tangent X → world +X, tangent Y → world +Y, tangent Z → world -Z.
             float3 wn = normalize(float3(tn.x, tn.y, -tn.z));
-            return float4(wn * 0.5 + 0.5, shadowAlpha);
+
+            // For shadow casters (pass 0), encode edge depth in alpha.
+            // _NormalMap.a carries edge-distance falloff from TileNormalMaps:
+            //   1.0 = at exposed edge (fully lit), 0.0 = deep interior (dark).
+            // Non-tile sprites have _NormalMap.a = 1.0 → lerp(0.80, 1.0, 1.0) = 1.0.
+            float outAlpha = shadowAlpha;
+            if (shadowAlpha > 0.75)
+                outAlpha = lerp(0.80, 1.0, ns.a);
+
+            return float4(wn * 0.5 + 0.5, outAlpha);
         }
         ENDHLSL
 
-        // Pass 0: shadow casters — alpha = 1.0
+        // Pass 0: shadow casters — alpha = edge depth mapped to 0.80–1.0
         Pass {
             HLSLPROGRAM
             #pragma vertex vert

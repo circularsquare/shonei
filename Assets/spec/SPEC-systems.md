@@ -49,6 +49,14 @@ Six inventory types:
 | Market | varies | varies | none | Market building only; set via `SetMarket()` on a Storage inv |
 | Fuel | 1 | varies | none | Internal building resource (torch wood, furnace coal). No sprite, no tile. See below. |
 
+### Inventory ownership
+
+- **`tile.inv`** is always a Floor inventory or null. Never Storage/Market.
+- **Storage/Market inventories** live on `building.storage`. Created in Building constructor, auto-registered with `InventoryController.byType` via the Inventory constructor. Not placed on `tile.inv`.
+- **`FindPathToInv`** iterates `InventoryController.byType[type]` — not tiles — so pathfinding works for all inventory types regardless of tile ownership.
+- **`FindPathToStorage`** returns `(Path, Inventory)` — callers destructure to get both the navigation target and the storage inventory directly.
+- **`FindPathItemStack`** returns `(Path, ItemStack)` using the inventory from `FindPathToInv`, not `path.tile.inv`.
+
 ### Fuel Inventory (`InvType.Reservoir`)
 
 Created by `Building` constructor when `structType.hasFuelInv = true`. Fields:

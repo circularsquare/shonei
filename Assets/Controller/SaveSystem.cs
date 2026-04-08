@@ -24,7 +24,7 @@ using Newtonsoft.Json;
 // -----------------------------------------------------------------------
 // Current saveable state checklist:
 //   [x] World timer
-//   [x] Tile types and floor inventories
+//   [x] Tile types, floor inventories, and background wall
 //   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, mirrored, disabled)
 //   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored, disabled)
 //   [x] Animals (position, job, energy, food, happiness, decoration happiness, socialization, fireplace warmth, inv, foodSlotInv, toolSlotInv, clothingSlotInv)
@@ -167,7 +167,8 @@ public class SaveSystem : MonoBehaviour {
         // tile.inv is now always Floor or null (storage lives on building.storage)
         bool hasContent =
             tile.type.name != "empty" ||
-            (tile.inv != null && !tile.inv.IsEmpty());
+            (tile.inv != null && !tile.inv.IsEmpty()) ||
+            tile.hasBackgroundWall;
         if (!hasContent) return null;
 
         return new TileSaveData {
@@ -175,6 +176,7 @@ public class SaveSystem : MonoBehaviour {
             y        = tile.y,
             tileType = tile.type.name,
             inv      = tile.inv != null ? GatherInventory(tile.inv) : null,
+            hasBackgroundWall = tile.hasBackgroundWall,
         };
     }
 
@@ -285,6 +287,7 @@ public class SaveSystem : MonoBehaviour {
         WorldController.instance.ClearWorld();
         ResetSystemState();
         ApplySaveData(data);
+        CaveAtmosphere.InitializeWorld(World.instance);
 
         if (data.research != null && ResearchSystem.instance != null) {
             var rs = ResearchSystem.instance;
@@ -322,11 +325,21 @@ public class SaveSystem : MonoBehaviour {
         }
 
         if (save.tiles != null) {
+            bool anyWall = false;
             foreach (TileSaveData tsd in save.tiles) {
                 Tile tile = world.GetTileAt(tsd.x, tsd.y);
                 if (tile == null) continue;
                 if (!string.IsNullOrEmpty(tsd.tileType) && Db.tileTypeByName.ContainsKey(tsd.tileType))
                     tile.type = Db.tileTypeByName[tsd.tileType];
+                tile.hasBackgroundWall = tsd.hasBackgroundWall;
+                anyWall |= tsd.hasBackgroundWall;
+            }
+
+            // Old saves predate hasBackgroundWall — apply default y <= 45 threshold.
+            if (!anyWall) {
+                for (int x = 0; x < world.nx; x++)
+                    for (int y = 0; y <= 45 && y < world.ny; y++)
+                        world.GetTileAt(x, y).hasBackgroundWall = true;
             }
         }
 

@@ -18,15 +18,17 @@ CONTENT
     - books for gaining skills 
     - manuals for learning technologies
     - scriptoriums
-- chat speech bubbles
-
 VISUALS
 - make item icons more coherent / similar
-- tab styling, add building icons?\
+- tab styling, add building icons?
+- market panel show mice on route
+- lighting, make light height vary depending on sorting order? at least for background.
+WORLD GEN
+- tidy up worm exit to surface 
+    - have water not fall into caves
 
-- fix market inv display...
-    - make it full screen like research and others
-    - put the global inv display there
+- generate plants in a more distributed way
+- more fractally caves? 2 perlin noises?
 
 MOUSE AI
 - ponder inventory management
@@ -39,10 +41,9 @@ MOUSE AI
     - inventory priority? or inventory pull orders
 - dynamic mouse task objectives
 
-
 BUGS
 
 TODAY GOALS
-- get rid of tile invs... test according to plan!
-- clean up chatting ordering? seems messy
-- small chance to leisure even in the daytime
+
+- darken underground layer background 
+    - why do we have "caveatmosphere?" is that necessary? i think instead just add a texture per tile maybe.
