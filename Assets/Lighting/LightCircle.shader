@@ -1,11 +1,12 @@
 // Draws a soft radial gradient for one point light source, modulated by NdotL
 // from _CapturedNormalsRT (world-space normals rendered by NormalsCapturePass).
-// Screen blend: overlapping sources accumulate softly without blowing out.
+// Max blend: overlapping sources take the brightest value without blowing out,
+// and torches compete with (rather than stack on) ambient light.
 Shader "Hidden/LightCircle" {
     SubShader {
         Tags { "RenderType"="Opaque" }
-        BlendOp Add
-        Blend One OneMinusSrcColor
+        BlendOp Max
+        Blend One One
         ZWrite Off
         ZTest Always
         Cull Off

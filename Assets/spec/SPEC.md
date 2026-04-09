@@ -40,7 +40,7 @@ Assets/
 │   ├── SaveSystem.cs        Save/load/reset — all Gather* and Restore* methods live here
 │   ├── TradingClient.cs     WebSocket connection to trading server
 │   ├── MouseController.cs   Input handling
-│   ├── BackgroundCamera.cs  Background parallax camera
+│   ├── SkyCamera.cs         Sky parallax camera
 │   └── CloudLayer.cs        Cloud rendering
 ├── Model/             Pure C# game logic (no MonoBehaviours)
 │   ├── Animal/

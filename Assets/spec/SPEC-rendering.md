@@ -6,7 +6,7 @@
 
 | sortingOrder | What |
 |---|---|
-| -10 | Background cave wall (`CaveAtmosphere`) |
+| -10 | Background tile (`BackgroundTile`) |
 | 0 | Tiles |
 | 1 | Roads (depth-3 structures) |
 | 10 | Buildings (depth-0 structures) |
@@ -48,34 +48,35 @@ Custom `ScriptableRendererFeature` pipeline — no URP Light2Ds used. Final resu
 ### Render pipeline (per frame)
 
 1. **NormalsCapturePass** (`BeforeRenderingTransparents`) — draws sprites with `Hidden/NormalsCapture` override into `_CapturedNormalsRT` (format: **ARGB32** — must have alpha; camera's default HDR format has none). Outputs world-space normals packed 0–1 in RGB. **Alpha encodes lighting tier + edge depth:**
-   - `0.80–1.0` — shadow caster. The range encodes **edge depth** for underground darkening: `1.0` = at exposed tile surface (fully lit), `0.80` = deep interior (darkened to `deepFloor`). Non-tile shadow casters output `1.0`. Extracted as `saturate((alpha - 0.80) / 0.20)` in `LightComposite`.
-   - `0.5` — lit-only (full light, no shadow cast)
+   - `0.80–1.0` — solid tile. The range encodes **edge depth** for underground darkening: `1.0` = at exposed tile surface (fully lit), `0.80` = deep interior (darkened to `deepFloor`). Extracted as `saturate((alpha - 0.80) / 0.20)` in `LightComposite`. (Previously also used for shadow casting — ray march is commented out in `LightSun.shader`.)
+   - `0.5` — lit-only (full light)
    - `0.3` — directional-only (sun + ambient only; `LightCircle` skips torch for these pixels)
    - `0.0` — no sprite (flat-normal fallback in light shaders)
 
    **Jagged tile edges**: NormalsCapture includes `TileEdge.hlsl` and reads `_AdjacencyMask` (float 0–15, set via MPB on tile SpriteRenderers). Pixels outside the procedural jagged edge profile are discarded. The override material defaults `_AdjacencyMask = 15` (no clipping) so non-tile sprites are unaffected.
 
-   Three draw calls in order (later overwrites earlier where they overlap, `Blend Off`):
-   - Pass 2 (`directionalOnlyLayers`): alpha = 0.3 — drawn first so shadow-caster pass can't overwrite
+   Draw calls in order (later overwrites earlier where they overlap, `Blend Off`):
+   - Background (`backgroundLayer`): `NormalsCaptureBackground` override, pass 1 (alpha = 0.5, lit-only). Clips transparent top pixels so they read as sky. Drawn earliest so tiles/sprites overwrite.
+   - Pass 2 (`directionalOnlyLayers`): alpha = 0.3 — drawn next so shadow-caster pass can't overwrite
    - Pass 1 (`litLayers & ~shadowCasterLayers & ~directionalOnlyLayers`): alpha = 0.5
    - Pass 0 (`litLayers & shadowCasterLayers & ~directionalOnlyLayers`): alpha = `lerp(0.80, 1.0, _NormalMap.a)` where `_NormalMap.a` carries edge-distance falloff from `TileNormalMaps`
 
 2. **LightPass** (`AfterRenderingTransparents`) — `ConfigureTarget(LightRTId)` in `OnCameraSetup` binds the temp RT (required for the clear and for `cmd.Blit` to target it correctly across all cameras). Ambient light is split into two parts:
-   - **Base ambient** (universal): `SunController.GetAmbientColor() × 0.5` — clears the light RT. Present everywhere, even deep underground.
-   - **Sky ambient** (exposure-gated): `SunController.GetAmbientColor() × 0.5` — blitted via `LightAmbientFill.shader` which samples `_SkyExposureTex` (set by `CaveAtmosphere`). Full contribution above ground, zero underground.
+   - **Deep ambient** (constant): `LightFeature.deepAmbientColor` — clears the light RT. Present everywhere, even deep underground. Not affected by time of day. Tunable on `LightFeature` inspector.
+   - **Sky light** (time-varying, distance falloff): `SunController.GetAmbientColor()` — blitted via `LightAmbientFill.shader` which samples `_SkyExposureTex` (set by `SkyExposure`). Falls off with distance from sky-exposed tiles. Changes with day/night cycle.
    
    Then draws:
    - Point lights (torches, etc.): `cmd.DrawMesh` per-light quad scaled to `outerRadius×2`, screen blend (`BlendOp Add, Blend One OneMinusSrcColor`), radial falloff × NdotL. **Skips pixels where normals RT alpha is 0–0.4** (directional-only tier).
-   - Sun (directional): `cmd.Blit(null, LightRTId, sunMat)`, additive blend (`BlendOp Add, Blend One One`), NdotL with `_SunDir` + 16-step shadow march. **Must use `cmd.Blit`, not `cmd.DrawMesh`** — DrawMesh silently fails to write to the temp RT for cameras without PixelPerfectCamera (e.g. BackgroundCamera). Blit handles its own fullscreen geometry and RT binding internally, bypassing the issue.
+   - Sun (directional): `cmd.Blit(null, LightRTId, sunMat)`, additive blend (`BlendOp Add, Blend One One`), NdotL with `_SunDir`. Shadow ray march is **disabled** (commented out in `LightSun.shader` for performance). **Must use `cmd.Blit`, not `cmd.DrawMesh`** — DrawMesh silently fails to write to the temp RT for cameras without PixelPerfectCamera (e.g. SkyCamera). Blit handles its own fullscreen geometry and RT binding internally, bypassing the issue.
 
-3. **Composite** — `cmd.Blit(lightRT, scene, LightComposite)` multiplies scene by light map (`Blend DstColor Zero`). **No-op (returns `(1,1,1,1)`) for pixels with normals RT alpha < 0.25** (empty sky/background); those pixels are instead tinted by `BackgroundCamera.backgroundColor`. **Underground darkening**: shadow-caster pixels (alpha > 0.75) are additionally scaled by `lerp(deepFloor, 1.0, edgeDepth)` — deep tile interiors get dimmed to `deepFloor` brightness (tunable on `LightFeature` inspector, default 0.2). After deepFloor dimming, a `max(light, baseAmbient)` clamp ensures tile interiors never go below the universal base ambient.
+3. **Composite** — `cmd.Blit(lightRT, scene, LightComposite)` multiplies scene by light map (`Blend DstColor Zero`). Empty sky/background pixels (normals RT alpha < 0.25) use a precomputed `_SkyLightColor` (sun + time-of-day ambient, no sky-exposure modulation, no point lights), blended via `skyLightBlend` (tunable on `LightFeature` inspector, default 1.0). Those pixels' base color comes from `SkyCamera.backgroundColor`. **Underground darkening**: solid-tile pixels (alpha > 0.75) are additionally scaled by `lerp(deepFloor, 1.0, edgeDepth)` — deep tile interiors get dimmed to `deepFloor` brightness (tunable on `LightFeature` inspector, default 0.2). After deepFloor dimming, a `max(light, deepAmbient)` clamp ensures tile interiors never go below the universal deep ambient.
 
-**LightFeature skips cameras** where `cullingMask == 0` or where `(cullingMask & (litLayers | directionalOnlyLayers | waterLayer)) == 0` — i.e. cameras that see no sprites participating in the normals RT. The `UnlitOverlayCamera` (see Sky/background below) hits the second check because the Unlit layer is excluded from all three masks.
+**LightFeature skips cameras** where `cullingMask == 0` or where `(cullingMask & (litLayers | directionalOnlyLayers | waterLayer | backgroundLayer)) == 0` — i.e. cameras that see no sprites participating in the normals RT. The `UnlitOverlayCamera` (see Sky/background below) hits this check because the Unlit layer is excluded from all four masks.
 
 ### URP render target gotchas
 
 - **`ConfigureTarget` vs `cmd.SetRenderTarget`**: URP docs say to use `ConfigureTarget` in `OnCameraSetup` rather than raw `cmd.SetRenderTarget` in `Execute`. `ConfigureTarget` integrates with URP's internal RT management and ensures the target is bound correctly for all cameras. Without it, `ClearRenderTarget` and `cmd.Blit` may write to stale/wrong targets.
-- **`cmd.DrawMesh` can silently fail on some cameras**: DrawMesh output may appear in Frame Debugger but produce no visible output on the temp RT for certain cameras (observed with BackgroundCamera, which lacks PixelPerfectCamera). The root cause is unclear but likely related to URP's internal state management. **Workaround**: use `cmd.Blit` for fullscreen passes (sun). Point lights still use DrawMesh and work because BackgroundCamera has no point-light-receiving sprites (directional-only tier skips torch contribution in LightCircle).
+- **`cmd.DrawMesh` can silently fail on some cameras**: DrawMesh output may appear in Frame Debugger but produce no visible output on the temp RT for certain cameras (observed with SkyCamera, which lacks PixelPerfectCamera). The root cause is unclear but likely related to URP's internal state management. **Workaround**: use `cmd.Blit` for fullscreen passes (sun). Point lights still use DrawMesh and work because SkyCamera has no point-light-receiving sprites (directional-only tier skips torch contribution in LightCircle).
 - **Temp RT format**: `_CapturedNormalsRT` must be **ARGB32** (explicitly set in `OnCameraSetup`). The camera's default HDR format (B10G11R11) has no alpha channel, which breaks the tier encoding.
 - **`_AdjacencyMask` default on override material**: `NormalsCapturePass` sets `mat.SetFloat("_AdjacencyMask", 15f)` on the override material so non-tile sprites don't get jagged-edge clipped. If the material is ever recreated (shader hot reload), this default is re-applied in the constructor — but if you change when/how the pass is constructed, make sure this line survives or every non-tile sprite will be invisible.
 
@@ -85,25 +86,33 @@ Three cameras render in depth order:
 
 | Camera | Depth | Clear Flags | Culling Mask | Notes |
 |--------|-------|-------------|--------------|-------|
-| `BackgroundCamera` | 0 | Solid Color | Background layer | `backgroundColor` set to `baseSkyColor × GetAmbientColor()` each frame — sky darkens at night |
+| `SkyCamera` | 0 | Solid Color | Sky layer | `backgroundColor` set to `baseSkyColor × GetAmbientColor()` each frame — sky darkens at night |
 | Main Camera | 1 | Don't Clear | Everything except Unlit | PixelPerfectCamera; lighting composite applied here |
 | `UnlitOverlayCamera` | 2 | Don't Clear | Unlit only | Renders after composite — sprites on the **Unlit** layer appear at full brightness, unaffected by lighting. Has `MatchCameraZoom` component to sync `assetsPPU` from Main Camera. LightFeature pipeline is skipped for this camera entirely. |
 
 **Unlit layer pattern**: any sprite that should always appear at full brightness (tile highlights, selection overlays, debug markers) goes on the `Unlit` layer. Keep it excluded from `litLayers`, `shadowCasterLayers`, and `directionalOnlyLayers` in the LightFeature Inspector.
 
-### Cave atmosphere (underground lighting + background)
+### Sky exposure (`SkyExposure.cs`)
 
-`CaveAtmosphere.cs` — auto-created singleton, initialized by `WorldController.GenerateDefault()` and `SaveSystem.Load()`.
+`Assets/Lighting/SkyExposure.cs` — scene singleton (under Lighting), initialized by `WorldController.GenerateDefault()` and `SaveSystem.Load()`.
 
-**Two-part ambient model**: ambient light = base ambient (universal) + sky ambient (exposure-gated).
-- **Base ambient** = `GetAmbientColor() × 0.5` — clears the light RT. Always present, even underground. The composite shader's `max(light, baseAmbient)` clamp ensures deepFloor dimming never goes below this.
-- **Sky ambient** = `GetAmbientColor() × 0.5` — added via `LightAmbientFill.shader`, modulated by `_SkyExposureTex`. Full where `!hasBackgroundWall`, zero where `hasBackgroundWall`.
+**Two-part ambient model**: ambient light = deep ambient (constant) + sky light (time-varying, distance falloff).
+- **Deep ambient** = `LightFeature.deepAmbientColor` — constant color, clears the light RT. Always present, even deep underground. Not affected by day/night cycle.
+- **Sky light** = `GetAmbientColor()` — added via `LightAmbientFill.shader`, modulated by `_SkyExposureTex`. Emitted from sky-exposed tiles (`!hasBackground`), falls off with Chebyshev distance into surrounding material. Falloff depth = `LightFeature.lightPenetrationDepth` (shared with `TileNormalMaps` sub-tile edge depth). Changes with day/night cycle. Sun is also modulated by `_SkyExposureTex` in `LightSun.shader`.
 
-**Per-tile background wall**: each `Tile` has a `hasBackgroundWall` bool (with `cbBackgroundWallChanged` callback). During world generation, tiles at y ≤ 45 are given a background wall. The flag is saved/loaded in `TileSaveData`.
+**Sky exposure texture** (`_SkyExposureTex`): R8, nx×ny, **Bilinear filtered** for smooth sub-tile gradients. Set as global shader texture. Built via multi-source BFS flood fill from sky-exposed tiles — distance mapped through smoothstep to 0–255. Falloff range is `penetrationDepth + 1` so that `penetrationDepth = 1` means "1 tile of visible reach beyond the source" (the +1 offset prevents the first neighbor from getting zero exposure). Rebuilt when any tile's background wall changes.
 
-**Sky exposure texture** (`_SkyExposureTex`): R8, nx×ny, bilinear filtered. Set as global shader texture. Driven by `tile.hasBackgroundWall` — 255 where no wall (sky), 0 where wall (underground). Rebuilt when any tile's background wall changes.
+**Edge-depth blending** (`LightComposite`): shadow-caster pixels blend toward `deepAmbientColor` based on edge depth: `lerp(deepAmbient, light, edgeDepth)`. Deep tile interiors are exactly `deepAmbientColor` everywhere regardless of sky/sun contribution.
 
-**Background cave wall sprite**: a world-spanning sprite on the **Default layer** at **sorting order −10** (behind tiles at 0). Uses an RGBA32 texture (nx×ny, PPU=1) — cave wall color where `hasBackgroundWall`, transparent elsewhere. Participates in normal lighting (sun, torches) but receives no sky ambient because `_SkyExposureTex` is 0 for `hasBackgroundWall` tiles. Rebuilt on background wall or tile type change via dirty flag.
+**Sky camera ambient**: `LightPass` detects `SkyCamera` and clears the light RT to **full ambient** (skipping the `LightAmbientFill` blit). This prevents sky light spatial falloff from affecting clouds on the Sky layer. Clouds still receive sun via the directional light pass.
+
+### Background tile (`BackgroundTile.cs`)
+
+`Assets/Controller/BackgroundTile.cs` — scene singleton (under Lighting), initialized by `WorldController.GenerateDefault()` and `SaveSystem.Load()`.
+
+**Per-tile background**: each `Tile` has a `hasBackground` bool (with `cbBackgroundChanged` callback). During world generation, tiles at y ≤ 43 are given a background. The flag is saved/loaded in `TileSaveData` (as `hasBackgroundWall` for backward compat).
+
+**Background sprite**: a world-spanning sprite on the **Background layer** at **sorting order −10** (behind tiles at 0). Uses `BackgroundTile.shader` (tagged `Universal2D` for normals capture), masked by a low-res RGBA32 texture (nx × ny, 1 pixel per tile). The mask encodes two things: **alpha** = background present (opaque/transparent), **green** = top-row flag (G=255 if the tile above has no background, G=0 otherwise). The shader samples one of two tileable 16×16 textures based on the green channel: `_WallTex` (`undergroundwall`) for interior tiles, `_WallTopTex` (`undergroundwalltop`) for top-row tiles. Both tile at 1 repetition per world unit via world-space UVs. Participates in normal lighting (sun, torches, sky light) via dedicated `NormalsCaptureBackground` override in `NormalsCapturePass` — clips transparent top pixels so they read as sky in the normals RT. Wall textures are set as globals (`_BackgroundTex`, `_BackgroundTopTex`) by `BackgroundTile.cs` for the override shader to access. Rebuilt on background or tile type change via dirty flag.
 
 ### Key files
 
@@ -111,20 +120,46 @@ All lighting C# scripts and shaders live in `Assets/Lighting/`.
 
 | File | Role |
 |------|------|
-| `LightFeature.cs` | `ScriptableRendererFeature` containing `NormalsCapturePass` + `LightPass` |
-| `LightSource.cs` | Component: `lightColor`, `intensity`, `outerRadius`, `innerRadius`, `lightHeight`, `isDirectional`. Registers itself in a static list read by `LightPass`. |
-| `SunController.cs` | Orbiting sun, sky color, `GetAmbientColor()`, `GetSunDirection()`. Sun child has a `LightSource (isDirectional=true)`. |
+| `LightFeature.cs` | `ScriptableRendererFeature` containing `NormalsCapturePass` + `LightPass`. Inspector tunables: `ambientNormal`, `lightPenetrationDepth`, `deepAmbientColor`, `skyLightBlend`, layer masks. |
+| `LightSource.cs` | Component: `lightColor`, `intensity`, `outerRadius`, `innerRadius`, `lightHeight`, `isDirectional`. Registers itself in a static list read by `LightPass`. `sunModulated` (default false): when true, `SunController` overrides intensity by time of day (torches/fireplaces). Non-modulated lights keep their set intensity always. |
+| `SunController.cs` | Orbiting sun, sky color, `GetAmbientColor()`, `GetSunDirection()`. Sun child has a `LightSource (isDirectional=true)`. Inspector tunables: orbit, twilight timing, sky/sun/ambient color gradients, `sunIntensityNoon`, `ambientBrightnessMin`/`ambientBrightnessRange`. |
 | `NormalsCapture.shader` | Tangent→world normal transform for flat 2D sprites: `(x, y, z) → (x, y, −z)`. Includes `TileEdge.hlsl` for jagged clip + edge depth alpha. |
 | `TileEdge.hlsl` | Shared HLSL include: PCG hash noise + `TileEdgeClip()` for jagged tile borders. Used by NormalsCapture and TileSprite. |
 | `TileSprite.shader` | Custom tile sprite shader with jagged-edge clipping. Assigned to tile SpriteRenderers by WorldController. |
 | `TileNormalMaps.cs` | 16 cached normal maps (4-bit adjacency). Alpha channel encodes edge-distance falloff for light penetration. Also sets `_AdjacencyMask` via MPB. |
 | `LightCircle.shader` | Point light pass: radial falloff × NdotL. |
-| `LightSun.shader` | Directional sun pass: fullscreen NdotL + shadow march. |
-| `LightAmbientFill.shader` | Fullscreen pass: writes `skyAmbient × exposure` per pixel. Additive onto base-ambient-cleared RT. |
-| `LightComposite.shader` | Multiply blit onto scene + underground darkening via edgeDepth + base ambient floor clamp. |
-| `CaveAtmosphere.cs` | Manages underground atmosphere: sky exposure texture (R8, per-tile, driven by `hasBackgroundWall`) and background cave wall sprite (Default layer, sort -10). Auto-created singleton. |
+| `LightSun.shader` | Directional sun pass: fullscreen NdotL × sky exposure. Shadow ray march disabled (commented out for performance). |
+| `LightAmbientFill.shader` | Fullscreen pass: writes `skyLight × exposure` per pixel. Max blend onto deep-ambient-cleared RT. |
+| `LightComposite.shader` | Multiply blit onto scene + edge-depth blending toward deepAmbient for deep tile interiors. |
+| `SkyExposure.hlsl` | Shared HLSL include: declares `_CamWorldBounds`, `_GridSize`, `_SkyExposureTex` and provides `SampleSkyExposure(screenUV)`. Used by LightAmbientFill and LightSun. |
+| `BackgroundTile.shader` | Tiles `_WallTex` or `_WallTopTex` (selected by mask green channel) at world-space UVs, masked by `_MainTex`. Tagged `Universal2D` for normals capture. |
+| `NormalsCaptureBackground.shader` | Normals capture override for background. Samples `_BackgroundTex`/`_BackgroundTopTex` (globals set by `BackgroundTile.cs`) and clips transparent pixels — fixes jagged top-edge lighting. |
+| `SkyExposure.cs` | Sky exposure texture (R8, per-tile, BFS distance falloff from sky-exposed tiles). Scene singleton (under Lighting). |
 
 `Assets/Editor/SpriteNormalMapGenerator.cs` — sprite normal map batch tool (must stay in `Editor/`).
+
+### Global shader properties
+
+All globals are set via `cmd.SetGlobal*()` in C#. **Rule**: per-camera globals go in the dedicated "Per-camera globals" block at the top of `LightPass.Execute()`, before any camera-specific branching. This prevents cameras from inheriting stale values from a previous camera's render.
+
+| Property | Type | Set by | Frequency | Read by |
+|----------|------|--------|-----------|---------|
+| `_CamWorldBounds` | Vector4 | LightPass §1 | Per-camera | LightAmbientFill, LightSun (via `SkyExposure.hlsl`) |
+| `_WorldToUV` | Vector2 | LightPass §1 | Per-camera | LightSun |
+| `_AmbientNormal` | float | LightPass §1 | Per-camera | LightSun, LightCircle |
+| `_DeepAmbient` | Color | LightPass §1 | Per-camera | LightComposite |
+| `_AmbientColor` | Color | LightPass §2 | Per-camera (Main only) | LightAmbientFill |
+| `_SunColor` | Color | LightPass §4 | Per-light | LightSun |
+| `_SunIntensity` | float | LightPass §4 | Per-light | LightSun |
+| `_SunDir` | Vector3 | LightPass §4 | Per-light | LightSun |
+| `_SunHeight` | float | LightPass §4 | Per-light | LightSun |
+| `_SkyExposureTex` | Texture2D | SkyExposure.cs | On dirty | LightAmbientFill, LightSun (via `SkyExposure.hlsl`) |
+| `_GridSize` | Vector4 | SkyExposure.cs | On dirty | LightAmbientFill, LightSun (via `SkyExposure.hlsl`) |
+| `_WaterSurfaceTex` | Texture2D | WaterController.cs | Every 0.2s | NormalsCaptureWater |
+| `_BackgroundTex` | Texture2D | BackgroundTile.cs | Once (init) | NormalsCaptureBackground |
+| `_BackgroundTopTex` | Texture2D | BackgroundTile.cs | Once (init) | NormalsCaptureBackground |
+
+**§1–§5** refer to the numbered sections inside `LightPass.Execute()`. "On dirty" means the property is only re-set when the underlying data changes (e.g. a background tile is placed/removed), not every frame.
 
 ---
 
@@ -169,7 +204,7 @@ See `SPEC-systems.md` for the simulation. The renderer is a separate GPU shader 
 
 **Layer**: the `WaterSprite` GameObject must be on the **`Water`** Unity layer, excluded from:
 - `LightFeature` `litLayers` / `shadowCasterLayers` / `directionalOnlyLayers` — water is NOT handled by the standard NormalsCapture path
-- `BackgroundCamera` culling mask (otherwise water appears in the sky)
+- `SkyCamera` culling mask (otherwise water appears in the sky)
 
 **Lighting**: water is lit via a dedicated path. `LightFeature` has a `waterLayer` field (set to `Water` in the Inspector) which triggers a separate `DrawRenderers` call in `NormalsCapturePass` using `Hidden/NormalsCaptureWater` (pass 1, lit-only, alpha=0.5). That shader samples the global `_WaterSurfaceTex` (set each tick by `WaterController.UpdateSurfaceMask()`) for transparency, discarding pixels with no water. Outputs flat forward normals. This means water darkens at night and receives ambient light, but torch NdotL is minimal (flat normal faces away from scene).
 

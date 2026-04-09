@@ -168,7 +168,7 @@ public class SaveSystem : MonoBehaviour {
         bool hasContent =
             tile.type.name != "empty" ||
             (tile.inv != null && !tile.inv.IsEmpty()) ||
-            tile.hasBackgroundWall;
+            tile.hasBackground;
         if (!hasContent) return null;
 
         return new TileSaveData {
@@ -176,7 +176,7 @@ public class SaveSystem : MonoBehaviour {
             y        = tile.y,
             tileType = tile.type.name,
             inv      = tile.inv != null ? GatherInventory(tile.inv) : null,
-            hasBackgroundWall = tile.hasBackgroundWall,
+            hasBackgroundWall = tile.hasBackground,
         };
     }
 
@@ -287,7 +287,8 @@ public class SaveSystem : MonoBehaviour {
         WorldController.instance.ClearWorld();
         ResetSystemState();
         ApplySaveData(data);
-        CaveAtmosphere.InitializeWorld(World.instance);
+        SkyExposure.InitializeWorld(World.instance);
+        BackgroundTile.InitializeWorld(World.instance);
 
         if (data.research != null && ResearchSystem.instance != null) {
             var rs = ResearchSystem.instance;
@@ -331,15 +332,15 @@ public class SaveSystem : MonoBehaviour {
                 if (tile == null) continue;
                 if (!string.IsNullOrEmpty(tsd.tileType) && Db.tileTypeByName.ContainsKey(tsd.tileType))
                     tile.type = Db.tileTypeByName[tsd.tileType];
-                tile.hasBackgroundWall = tsd.hasBackgroundWall;
+                tile.hasBackground = tsd.hasBackgroundWall;
                 anyWall |= tsd.hasBackgroundWall;
             }
 
-            // Old saves predate hasBackgroundWall — apply default y <= 45 threshold.
+            // Old saves predate hasBackground — apply default y <= 43 threshold.
             if (!anyWall) {
                 for (int x = 0; x < world.nx; x++)
-                    for (int y = 0; y <= 45 && y < world.ny; y++)
-                        world.GetTileAt(x, y).hasBackgroundWall = true;
+                    for (int y = 0; y <= 43 && y < world.ny; y++)
+                        world.GetTileAt(x, y).hasBackground = true;
             }
         }
 

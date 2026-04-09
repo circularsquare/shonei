@@ -28,6 +28,9 @@ public class LightSource : MonoBehaviour {
     /// <summary>False when fuel has run out or outside the active time window.</summary>
     public bool isLit = true;
 
+    /// <summary>When true, SunController modulates intensity by time of day (torches, fireplaces).</summary>
+    [HideInInspector] public bool sunModulated = false;
+
     // Optional time gate: fuel only burns and light only shows within [activeStartHour, activeEndHour).
     // Hours 0–24; end < start wraps midnight (e.g. 16→6 = 4pm–6am). -1 = always active.
     [HideInInspector] public float activeStartHour = -1f;

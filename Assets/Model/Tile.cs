@@ -8,7 +8,7 @@ using System.Runtime.Serialization;
 
 public class Tile {
     Action<Tile> cbTileTypeChanged;
-    Action<Tile> cbBackgroundWallChanged;
+    Action<Tile> cbBackgroundChanged;
 
     World world;
     public int x, y;
@@ -23,13 +23,13 @@ public class Tile {
             }
         }
     }
-    private bool _hasBackgroundWall;
-    public bool hasBackgroundWall {
-        get { return _hasBackgroundWall; }
+    private bool _hasBackground;
+    public bool hasBackground {
+        get { return _hasBackground; }
         set {
-            if (_hasBackgroundWall == value) return;
-            _hasBackgroundWall = value;
-            cbBackgroundWallChanged?.Invoke(this);
+            if (_hasBackground == value) return;
+            _hasBackground = value;
+            cbBackgroundChanged?.Invoke(this);
         }
     }
     public Structure[] structs = new Structure[4];   // indexed by depth: 0=building, 1=platform, 2=foreground, 3=road
@@ -51,8 +51,8 @@ public class Tile {
     
     public void RegisterCbTileTypeChanged(Action<Tile> callback){cbTileTypeChanged += callback;}
     public void UnregisterCbTileTypeChanged(Action<Tile> callback){cbTileTypeChanged -= callback;}
-    public void RegisterCbBackgroundWallChanged(Action<Tile> callback){cbBackgroundWallChanged += callback;}
-    public void UnregisterCbBackgroundWallChanged(Action<Tile> callback){cbBackgroundWallChanged -= callback;}
+    public void RegisterCbBackgroundChanged(Action<Tile> callback){cbBackgroundChanged += callback;}
+    public void UnregisterCbBackgroundChanged(Action<Tile> callback){cbBackgroundChanged -= callback;}
     public bool ContainsAvailableItem(Item item){return inv != null && inv.ContainsAvailableItem(item);}
     public ItemStack GetItemToHaul(){
         if (inv == null){return null;}

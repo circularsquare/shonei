@@ -67,6 +67,7 @@ public static class WorldGen {
         RefineCavesCA(isCave, nx, ny);
         RemoveSmallCaves(isCave, nx, ny);
         ApplyCaves(world, isCave, surfaceY);
+        RemoveSurfaceOutcroppings(world, surfaceY);
 
         FillDepressions(world, surfaceY);
 
@@ -210,15 +211,6 @@ public static class WorldGen {
                     isCave[x, y] = buffer[x, y];
         }
 
-        // Remove 1-wide outcroppings: solid tiles with cave on both opposite sides.
-        // These are thin nubs poking into cave interiors.
-        for (int x = 1; x < nx - 1; x++) {
-            for (int y = 1; y < ny - 1; y++) {
-                if (isCave[x, y]) continue; // already cave
-                if (isCave[x - 1, y] && isCave[x + 1, y])
-                    isCave[x, y] = true;
-            }
-        }
     }
 
     static int CountSolidNeighbors(bool[,] isCave, int cx, int cy, int nx, int ny) {
@@ -351,6 +343,44 @@ public static class WorldGen {
         }
     }
 
+    // ── Post-cave cleanup: remove hanging outcroppings near surface ────────
+
+    // Removes 1-wide solid nubs left where worm tunnels exit to the surface.
+    // Operates on actual world tiles (after ApplyCaves) so it sees the full
+    // picture: surface air + cave openings + worm exits.
+    // Scoped to near-surface to avoid eating deep cave walls.
+    static void RemoveSurfaceOutcroppings(World world, int[] surfaceY) {
+        TileType empty = Db.tileTypeByName["empty"];
+        int nx = world.nx;
+
+        // Check a band around the surface where worms exit
+        bool changed = true;
+        while (changed) {
+            changed = false;
+            for (int x = 1; x < nx - 1; x++) {
+                int yMin = Math.Max(0, surfaceY[x] - CaveExclusionBelow - 2);
+                int yMax = Math.Min(world.ny - 1, surfaceY[x] + 2);
+
+                for (int y = yMin; y <= yMax; y++) {
+                    Tile t = world.GetTileAt(x, y);
+                    if (!t.type.solid) continue;
+
+                    // Empty on both horizontal sides → hanging nub
+                    bool emptyLeft = !world.GetTileAt(x - 1, y).type.solid;
+                    bool emptyRight = !world.GetTileAt(x + 1, y).type.solid;
+                    // Empty on both vertical sides → floating pixel
+                    bool emptyBelow = y > 0 && !world.GetTileAt(x, y - 1).type.solid;
+                    bool emptyAbove = y < world.ny - 1 && !world.GetTileAt(x, y + 1).type.solid;
+
+                    if ((emptyLeft && emptyRight) || (emptyBelow && emptyAbove)) {
+                        t.type = empty;
+                        changed = true;
+                    }
+                }
+            }
+        }
+    }
+
     // ── Surface water — depression filling ────────────────────────────────
 
     // Finds natural basins in the surface heightmap and fills them with water.
@@ -392,7 +422,16 @@ public static class WorldGen {
                 x1++;
             }
 
-            if (volume >= MinPoolVolume) {
+            // Skip basins that would drain into caves — check if any
+            // column has an empty tile just below the surface.
+            bool drains = false;
+            for (int x = x0; x < x1 && !drains; x++) {
+                for (int y = surfaceY[x] - 1; y >= Math.Max(0, surfaceY[x] - 3); y--) {
+                    if (!world.GetTileAt(x, y).type.solid) { drains = true; break; }
+                }
+            }
+
+            if (!drains && volume >= MinPoolVolume) {
                 // If volume exceeds the cap, binary search for the highest uniform
                 // water level that keeps total volume ≤ MaxPoolVolume.
                 // Water only spawns below the water line.
@@ -424,6 +463,68 @@ public static class WorldGen {
 
             x0 = x1;
         }
+    }
+
+    // ── Plant scattering ──────────────────────────────────────────────────
+
+    // Scatters random plant clusters across the surface. Each eligible column
+    // has a small chance to seed a cluster of 1-3 plants (pine, apple, ramie).
+    // Called from WorldController.GenerateDefault after terrain + caves + water.
+    const float PlantChance = 0.08f;   // per-column chance to start a cluster
+    const int ClusterMin = 1;
+    const int ClusterMax = 3;
+
+    public static void ScatterPlants(World world, int[] surfaceY, int seed) {
+        System.Random rng = new(seed + 999);
+        TileType dirt = Db.tileTypeByName["dirt"];
+        int nx = world.nx;
+
+        // Track which columns already have a plant to avoid overlap
+        bool[] occupied = new bool[nx];
+
+        for (int x = 0; x < nx; x++) {
+            if (occupied[x]) continue;
+            // Skip spawn zone — leave room for the player
+            if (x >= SpawnMinX - 2 && x <= SpawnMaxX + 2) continue;
+            // Must have solid dirt at surface and no water above
+            if (!IsPlantEligible(world, surfaceY, x, dirt)) continue;
+
+            if (rng.NextDouble() >= PlantChance) continue;
+
+            // Pick plant type: 50% pine, 25% apple, 25% ramie
+            string plantName = PickPlantType(rng);
+            int clusterSize = rng.Next(ClusterMin, ClusterMax + 1);
+
+            for (int i = 0; i < clusterSize; i++) {
+                // Place cluster members nearby (within +-2 columns)
+                int px = x + i;
+                if (px < 0 || px >= nx) continue;
+                if (occupied[px]) continue;
+                if (!IsPlantEligible(world, surfaceY, px, dirt)) continue;
+
+                Plant p = new Plant(Db.plantTypeByName[plantName], px, surfaceY[px]);
+                p.Mature();
+                StructController.instance.Place(p);
+                occupied[px] = true;
+            }
+        }
+    }
+
+    static bool IsPlantEligible(World world, int[] surfaceY, int x, TileType dirt) {
+        int sy = surfaceY[x];
+        if (sy <= 0 || sy >= world.ny) return false;
+        // Surface tile must be dirt
+        if (world.GetTileAt(x, sy - 1).type != dirt) return false;
+        // No water at the surface
+        if (world.GetTileAt(x, sy).water > 0) return false;
+        return true;
+    }
+
+    static string PickPlantType(System.Random rng) {
+        double roll = rng.NextDouble();
+        if (roll < 0.50) return "tree";       // pine
+        if (roll < 0.75) return "appletree";
+        return "ramie";
     }
 
     // ── Noise utilities ──────────────────────────────────────────────────

@@ -15,7 +15,6 @@ using UnityEngine;
 public static class TileNormalMaps {
     const int   SIZE     = 16;
     const float BEVEL_Z  = 1f;
-    const float DEPTH_PX = 12f; // light penetration depth in pixels
     static readonly int NormalMapID     = Shader.PropertyToID("_NormalMap");
     static readonly int AdjacencyMaskID = Shader.PropertyToID("_AdjacencyMask");
 
@@ -121,8 +120,9 @@ public static class TileNormalMaps {
                 if (!hasTR && hasRight && hasUp)
                     minDist = Mathf.Min(minDist, Mathf.Sqrt((SIZE-1-x)*(SIZE-1-x) + (SIZE-1-y)*(SIZE-1-y)));
 
-                // Smoothstep falloff: 1.0 at edge, 0.0 at DEPTH_PX deep.
-                float t = Mathf.Clamp01(1f - minDist / DEPTH_PX);
+                // Smoothstep falloff: 1.0 at edge, 0.0 at penetration depth.
+                float depthPx = LightFeature.penetrationDepth * SIZE;
+                float t = Mathf.Clamp01(1f - minDist / depthPx);
                 float edgeDepth = t * t * (3f - 2f * t); // smoothstep
 
                 pixels[y * SIZE + x] = new Color32(

@@ -52,6 +52,10 @@ public class SunController : MonoBehaviour {
     [Header("Ambient Colors")]
     [SerializeField] Color ambientDay;
     [SerializeField] Color ambientNight;
+    [Tooltip("Minimum ambient brightness at night (0 = fully dark, 1 = full brightness).")]
+    [SerializeField] [Range(0f, 1f)] float ambientBrightnessMin = 0.6f;
+    [Tooltip("Additional brightness added on top of min, scaled by sun elevation.")]
+    [SerializeField] [Range(0f, 1f)] float ambientBrightnessRange = 0.4f;
 
     [Header("Debug (read-only in play mode)")]
     [SerializeField] float _twilightFraction;
@@ -108,7 +112,7 @@ public class SunController : MonoBehaviour {
     public static Color GetAmbientColor() {
         if (instance == null) return Color.white;
         Color tint   = Color.Lerp(instance.ambientNight, instance.ambientDay, twilightFraction);
-        float bright = brightness * 0.4f + 0.6f;
+        float bright = brightness * instance.ambientBrightnessRange + instance.ambientBrightnessMin;
         return tint * bright * WeatherSystem.GetAmbientMultiplier();
     }
 
@@ -204,7 +208,7 @@ public class SunController : MonoBehaviour {
         // ahead of the sun — so they're already bright by deep dusk.
         torchFactor = 1f - TorchBrightness(GetDayPhase());
         foreach (LightSource ls in LightSource.all)
-            if (!ls.isDirectional)
+            if (!ls.isDirectional && ls.sunModulated)
                 ls.intensity = ls.isLit ? ls.baseIntensity * torchFactor : 0f;
     }
 

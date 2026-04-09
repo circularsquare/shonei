@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Rendering.Universal;
 using System;
 
 // this class handles tile sprites, and also places initial objects into world.
@@ -172,6 +171,7 @@ public class WorldController : MonoBehaviour {
         Building market = new(Db.structTypeByName["market"], 0, surfaceY[0]);
         StructController.instance.Place(market);
 
+        // Starter plants near spawn
         void PlantAt(string plantName, int x, bool mature = false) {
             Plant p = new Plant(Db.plantTypeByName[plantName], x, surfaceY[x]);
             if (mature) p.Mature();
@@ -184,19 +184,22 @@ public class WorldController : MonoBehaviour {
         PlantAt("wheat", 36);
         PlantAt("soybean", 24);
 
+        WorldGen.ScatterPlants(world, surfaceY, seed);
+
         // Re-fire tile type callbacks now that all terrain + caves are placed.
         // During generation, cave carving can expose dirt tiles to air above them
         // without re-triggering the neighbor's sprite (grass vs dirt). This pass
         // ensures every tile's sprite reflects its final surroundings.
         RefreshAllTileSprites();
 
-        // Set background walls for underground tiles. Tiles at y <= 45 get a
-        // background wall (gray cave backdrop); above that is open sky.
+        // Set background walls for underground tiles. Tiles at y <= 43 get a
+        // background (underground backdrop); above that is open sky.
         for (int x = 0; x < world.nx; x++)
-            for (int y = 0; y <= 45 && y < world.ny; y++)
-                world.GetTileAt(x, y).hasBackgroundWall = true;
+            for (int y = 0; y <= 43 && y < world.ny; y++)
+                world.GetTileAt(x, y).hasBackground = true;
 
-        CaveAtmosphere.InitializeWorld(world);
+        SkyExposure.InitializeWorld(world);
+        BackgroundTile.InitializeWorld(world);
 
         world.timer = World.ticksInDay * 0.3f;
         world.graph.Initialize();
@@ -248,17 +251,6 @@ public class WorldController : MonoBehaviour {
             sprite = Resources.Load<Sprite>("Sprites/Tiles/default");
         }
         tile_go.GetComponent<SpriteRenderer>().sprite = sprite;
-
-        // Solid tiles cast shadows; non-solid tiles don't.
-        ShadowCaster2D sc = tile_go.GetComponent<ShadowCaster2D>();
-        if (tile.type.solid) {
-            if (sc == null) {
-                sc = tile_go.AddComponent<ShadowCaster2D>();
-                sc.selfShadows = false;
-            }
-        } else {
-            if (sc != null) Destroy(sc);
-        }
 
         // Update normal map for this tile and all 8 neighbours
         // (a neighbour's exposed edges and corner depths change when this tile changes).

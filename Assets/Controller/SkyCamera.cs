@@ -1,5 +1,5 @@
 using UnityEngine;
-public class BackgroundCamera : MonoBehaviour {
+public class SkyCamera : MonoBehaviour {
     [Tooltip("How much of the main camera's zoom applies to the background. 0 = never zoom, 1 = zoom equally.")]
     [Range(0f, 1f)] public float zoomFactor = 0.25f;
 

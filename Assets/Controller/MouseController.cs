@@ -27,6 +27,10 @@ public class MouseController : MonoBehaviour {
     private const float DragThresholdPixels = 8f;
     [SerializeField] private RectTransform dragRectTransform;
 
+    // --- debug cursor light (Ctrl+T) ---
+    private GameObject _debugLight;
+    private LightSource _debugLightSource;
+
     void Start() {
         if (instance != null) {
             Debug.LogError("there should only be one mouse controller");}
@@ -51,6 +55,31 @@ public class MouseController : MonoBehaviour {
             var ws = WeatherSystem.instance;
             if (ws != null)
                 Debug.Log($"Temperature: {ws.temperature:F1}°C, Season: {ws.GetSeason()} (day {ws.GetDayOfYear():F1})");
+        }
+
+        // Debug cursor light toggle
+        if (Input.GetKeyDown(KeyCode.T) && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))) {
+            if (_debugLight == null) {
+                _debugLight = new GameObject("DebugCursorLight");
+                _debugLightSource = _debugLight.AddComponent<LightSource>();
+                _debugLightSource.lightColor     = new Color(1f, 0.9f, 0.7f);
+                _debugLightSource.baseIntensity  = 1.0f;
+                _debugLightSource.intensity      = 1.0f;
+                _debugLightSource.outerRadius    = 10f;
+                _debugLightSource.innerRadius    = 3f;
+                _debugLightSource.lightHeight    = 0.5f;
+                _debugLightSource.isLit          = true;
+                Debug.Log("Debug cursor light ON");
+            } else {
+                Destroy(_debugLight);
+                _debugLight = null;
+                _debugLightSource = null;
+                Debug.Log("Debug cursor light OFF");
+            }
+        }
+        if (_debugLight != null) {
+            Vector3 mouseWorld = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            _debugLight.transform.position = new Vector3(mouseWorld.x, mouseWorld.y, 0f);
         }
 
         bool overUI = EventSystem.current.IsPointerOverGameObject();

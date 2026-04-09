@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: LightFeature
   m_EditorClassIdentifier: 
   m_Active: 1
-  ambientNormal: 0.095
-  deepFloor: 0.5
-  shadowLength: 5
-  shadowDarkness: 0.563
+  ambientNormal: 0.114
+  lightPenetrationDepth: 1
+  deepAmbientColor: {r: 0.3018868, g: 0.3018868, b: 0.3018868, a: 1}
+  skyLightBlend: 0.682
   litLayers:
     serializedVersion: 2
     m_Bits: 75
@@ -29,6 +29,9 @@ MonoBehaviour:
   waterLayer:
     serializedVersion: 2
     m_Bits: 16
+  backgroundLayer:
+    serializedVersion: 2
+    m_Bits: 256
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0

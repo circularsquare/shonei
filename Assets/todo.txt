@@ -23,12 +23,7 @@ VISUALS
 - tab styling, add building icons?
 - market panel show mice on route
 - lighting, make light height vary depending on sorting order? at least for background.
-WORLD GEN
-- tidy up worm exit to surface 
-    - have water not fall into caves
 
-- generate plants in a more distributed way
-- more fractally caves? 2 perlin noises?
 
 MOUSE AI
 - ponder inventory management
@@ -45,5 +40,9 @@ BUGS
 
 TODAY GOALS
 
-- darken underground layer background 
-    - why do we have "caveatmosphere?" is that necessary? i think instead just add a texture per tile maybe.
+world gen
+- more fractally caves? 2 tier perlin noises?
+
+- lighting 
+    - improve undergroundwall sprite 
+    - procedurally generate rocks with normalmaps?

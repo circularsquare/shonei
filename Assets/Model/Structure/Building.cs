@@ -139,6 +139,7 @@ public class Building : Structure {
                 var ls = go.AddComponent<LightSource>();
                 ls.baseIntensity = st.lightIntensity;
                 ls.reservoir = reservoir;
+                ls.sunModulated    = true;
                 ls.activeStartHour = st.activeStartHour;
                 ls.activeEndHour   = st.activeEndHour;
                 // Start unlit — Update() will set isLit correctly on the first frame
