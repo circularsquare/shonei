@@ -53,7 +53,7 @@ Custom `ScriptableRendererFeature` pipeline — no URP Light2Ds used. Final resu
    - `0.3` — directional-only (sun + ambient only; `LightCircle` skips torch for these pixels)
    - `0.0` — no sprite (flat-normal fallback in light shaders)
 
-   **Jagged tile edges**: NormalsCapture includes `TileEdge.hlsl` and reads `_AdjacencyMask` (float 0–15, set via MPB on tile SpriteRenderers). Pixels outside the procedural jagged edge profile are discarded. The override material defaults `_AdjacencyMask = 15` (no clipping) so non-tile sprites are unaffected.
+   **Tile border clipping**: Tiles use pre-baked 20×20 sprites (from `TileSpriteCache`) whose alpha already encodes the border shape. NormalsCapture clips on `_MainTex` alpha for both tiles and non-tiles — no per-pixel atlas lookup needed.
 
    Draw calls in order (later overwrites earlier where they overlap, `Blend Off`):
    - Background (`backgroundLayer`): `NormalsCaptureBackground` override, pass 1 (alpha = 0.5, lit-only). Clips transparent top pixels so they read as sky. Drawn earliest so tiles/sprites overwrite.
@@ -78,7 +78,7 @@ Custom `ScriptableRendererFeature` pipeline — no URP Light2Ds used. Final resu
 - **`ConfigureTarget` vs `cmd.SetRenderTarget`**: URP docs say to use `ConfigureTarget` in `OnCameraSetup` rather than raw `cmd.SetRenderTarget` in `Execute`. `ConfigureTarget` integrates with URP's internal RT management and ensures the target is bound correctly for all cameras. Without it, `ClearRenderTarget` and `cmd.Blit` may write to stale/wrong targets.
 - **`cmd.DrawMesh` can silently fail on some cameras**: DrawMesh output may appear in Frame Debugger but produce no visible output on the temp RT for certain cameras (observed with SkyCamera, which lacks PixelPerfectCamera). The root cause is unclear but likely related to URP's internal state management. **Workaround**: use `cmd.Blit` for fullscreen passes (sun). Point lights still use DrawMesh and work because SkyCamera has no point-light-receiving sprites (directional-only tier skips torch contribution in LightCircle).
 - **Temp RT format**: `_CapturedNormalsRT` must be **ARGB32** (explicitly set in `OnCameraSetup`). The camera's default HDR format (B10G11R11) has no alpha channel, which breaks the tier encoding.
-- **`_AdjacencyMask` default on override material**: `NormalsCapturePass` sets `mat.SetFloat("_AdjacencyMask", 15f)` on the override material so non-tile sprites don't get jagged-edge clipped. If the material is ever recreated (shader hot reload), this default is re-applied in the constructor — but if you change when/how the pass is constructed, make sure this line survives or every non-tile sprite will be invisible.
+- **Tile border clipping**: Previously `NormalsCapturePass` set `_AdjacencyMask` and `_BorderAtlas` defaults on the override material. This is no longer needed — tiles use pre-baked 20×20 sprites (from `TileSpriteCache`) and NormalsCapture simply clips on `_MainTex` alpha.
 
 ### Sky / background
 
@@ -123,10 +123,10 @@ All lighting C# scripts and shaders live in `Assets/Lighting/`.
 | `LightFeature.cs` | `ScriptableRendererFeature` containing `NormalsCapturePass` + `LightPass`. Inspector tunables: `ambientNormal`, `lightPenetrationDepth`, `deepAmbientColor`, `skyLightBlend`, layer masks. |
 | `LightSource.cs` | Component: `lightColor`, `intensity`, `outerRadius`, `innerRadius`, `lightHeight`, `isDirectional`. Registers itself in a static list read by `LightPass`. `sunModulated` (default false): when true, `SunController` overrides intensity by time of day (torches/fireplaces). Non-modulated lights keep their set intensity always. |
 | `SunController.cs` | Orbiting sun, sky color, `GetAmbientColor()`, `GetSunDirection()`. Sun child has a `LightSource (isDirectional=true)`. Inspector tunables: orbit, twilight timing, sky/sun/ambient color gradients, `sunIntensityNoon`, `ambientBrightnessMin`/`ambientBrightnessRange`. |
-| `NormalsCapture.shader` | Tangent→world normal transform for flat 2D sprites: `(x, y, z) → (x, y, −z)`. Includes `TileEdge.hlsl` for jagged clip + edge depth alpha. |
-| `TileEdge.hlsl` | Shared HLSL include: PCG hash noise + `TileEdgeClip()` for jagged tile borders. Used by NormalsCapture and TileSprite. |
-| `TileSprite.shader` | Custom tile sprite shader with jagged-edge clipping. Assigned to tile SpriteRenderers by WorldController. |
-| `TileNormalMaps.cs` | 16 cached normal maps (4-bit adjacency). Alpha channel encodes edge-distance falloff for light penetration. Also sets `_AdjacencyMask` via MPB. |
+| `NormalsCapture.shader` | Tangent→world normal transform for flat 2D sprites: `(x, y, z) → (x, y, −z)`. Clips on `_MainTex` alpha (tiles have pre-baked borders, non-tiles use sprite alpha). |
+| `TileSprite.shader` | Simple tile sprite shader: samples `_MainTex` (pre-baked 20×20 from `TileSpriteCache`), clips transparent pixels. Assigned to tile SpriteRenderers by WorldController. |
+| `TileSpriteCache.cs` | Bakes 20×20 tile sprites at load time from 32×32 border atlases. 16 cardinal-mask variants per tile type. PPU=16 → sprites natively span 1.25 units. |
+| `TileNormalMaps.cs` | 256 cached 20×20 normal maps (8-bit adjacency). 4px gradient bevel on exposed edges within the 16×16 interior; border pixels get flat normals. Alpha channel encodes edge-distance falloff for light penetration. |
 | `LightCircle.shader` | Point light pass: radial falloff × NdotL. |
 | `LightSun.shader` | Directional sun pass: fullscreen NdotL × sky exposure. Shadow ray march disabled (commented out for performance). |
 | `LightAmbientFill.shader` | Fullscreen pass: writes `skyLight × exposure` per pixel. Max blend onto deep-ambient-cleared RT. |
@@ -265,7 +265,9 @@ Same Sheets/Split pattern as items. Source sheets live in `Assets/Resources/Spri
 
 **Encoding**: world-space, packed 0–1. Flat camera-facing sprite = `(0,0,−1)` → `(0.5, 0.5, 0.0)`. Black = no sprite, shader uses flat fallback. No Y-flip on screen UV (DrawRenderers and the light pass projection both use OpenGL convention, V=0 at bottom).
 
-**Tile normal maps** (`TileNormalMaps.cs`): 16 procedural variants (4-bit adjacency mask). Exposed edges bevel outward; interior stays flat. Applied via `MaterialPropertyBlock` on tile `SpriteRenderer`s.
+**Tile normal maps** (`TileNormalMaps.cs`): 256 procedural 20×20 variants (8-bit adjacency mask: 4 cardinal + 4 diagonal). The 16×16 interior (pixels 2–17) has 4px gradient bevel on exposed edges; border pixels (0–1 and 18–19) get flat normals and full edge depth. Applied via `MaterialPropertyBlock` on tile `SpriteRenderer`s.
+
+**Tile border atlases** (source format): 32×32 artist-authored textures in `Assets/Resources/Sprites/Tiles/Sheets/{name}.png`. Layout: main 16×16 at (8,8), top/bottom 16×4 borders at (8,0)/(8,28), left/right 4×16 borders at (0,8)/(28,8), four 4×4 corner pieces at (0,0)/(28,0)/(0,28)/(28,28). Columns 1,6 and rows 1,6 are empty separators. **Not sampled at runtime** — `TileSpriteCache` reads pixel data at load time to bake 16 cardinal-mask variants per tile type as 20×20 Sprites (PPU=16 → 1.25 units). Textures must have Read/Write enabled (`TileSpritePostprocessor` handles this automatically).
 
 **Sprite normal maps** (`SpriteNormalMapGenerator.cs`): editor tool (**Tools → Generate All Sprite Normal Maps**) batch-processes `Assets/Resources/Sprites/`. For each texture:
 1. Generates `_n.png` — edge pixels get outward normals, interior gets flat forward normal.

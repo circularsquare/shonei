@@ -46,3 +46,11 @@ world gen
 - lighting 
     - improve undergroundwall sprite 
     - procedurally generate rocks with normalmaps?
+
+
+    i guess its not that much work if we only have to draw like two or three sets of masks instead of one for every tile type. we can have like one mask for any dirt type tile, one for any stone type tile. (those are the only tiles we have right now lol. but like if we were to add like other stone tiles, we would use the same shape cutouts for their edges.)
+    so yeah i think like 
+    2 possible top edges, 2 possible side edges, 2 possible bottom edges (16x4 each) 
+    4 corners
+    i think thats all we need. they also should have normals calculated. their normals should be flat on the side that faces the center of the tile of course. and to clarify, the reason we have 2 for each is just to jumble it up a bit. we can also add more if we want and itll randomly select from those.
+    wait. if like the side isnt exposed and the top is exposed, then we should just use the full 16x4 top texture. no need for a separate corner texture. we only need the corners for when both are exposed.  

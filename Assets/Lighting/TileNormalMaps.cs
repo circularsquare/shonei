@@ -1,22 +1,27 @@
 using UnityEngine;
 
-// Generates and caches 256 normal map variants for solid 16x16 tiles.
+// Generates and caches 256 normal map variants for solid 20×20 tiles.
 // Each variant corresponds to an 8-bit adjacency mask describing which
 // neighbours are solid. Cardinal neighbours control edge bevels; diagonal
 // neighbours affect light penetration into inside corners.
 //
+// The 20×20 map matches the baked sprite size from TileSpriteCache:
+// pixels (2,2)–(17,17) are the 16×16 tile interior with bevel normals.
+// Border pixels (0-1 and 18-19) get flat normals and full edge depth.
+//
 // Mask bits:  0=left  1=right  2=down  3=up  4=BL  5=BR  6=TL  7=TR
-// Cardinal bits (0-3) control beveled normals and jagged edge clipping.
-// Diagonal bits (4-7) only affect edge-depth (alpha) for light penetration
-// into inside corners.
+// Cardinal bits (0-3) control beveled normals.
+// Diagonal bits (4-7) only affect edge-depth (alpha) for light penetration.
 //
 // Usage: TileNormalMaps.Apply(spriteRenderer, mask)  — solid tiles
 //        TileNormalMaps.Clear(spriteRenderer)         — non-solid tiles
 public static class TileNormalMaps {
-    const int   SIZE     = 16;
-    const float BEVEL_Z  = 1f;
-    static readonly int NormalMapID     = Shader.PropertyToID("_NormalMap");
-    static readonly int AdjacencyMaskID = Shader.PropertyToID("_AdjacencyMask");
+    const int TILE     = 16; // interior tile size
+    const int BORDER   = 2;  // overhang per side
+    const int SIZE     = TILE + BORDER * 2; // 20
+    const int BEVEL_PX = 4;  // bevel gradient width in interior pixels
+    const float BEVEL_Z = 1f;
+    static readonly int NormalMapID = Shader.PropertyToID("_NormalMap");
 
     // 256 variants (8-bit adjacency: 4 cardinal + 4 diagonal) + 1 fully-flat fallback
     static Texture2D[] cache;
@@ -27,18 +32,15 @@ public static class TileNormalMaps {
         var mpb = new MaterialPropertyBlock();
         sr.GetPropertyBlock(mpb);
         mpb.SetTexture(NormalMapID, cache[mask & 0xFF]);
-        mpb.SetFloat(AdjacencyMaskID, mask & 0xF); // jagged edge shader uses cardinal bits only
         sr.SetPropertyBlock(mpb);
     }
 
     // Clears the normal map by applying a fully-flat texture.
-    // Sets adjacency mask to 15 (fully surrounded = no jagged clipping).
     public static void Clear(SpriteRenderer sr) {
         EnsureCache();
         var mpb = new MaterialPropertyBlock();
         sr.GetPropertyBlock(mpb);
         mpb.SetTexture(NormalMapID, flatTex);
-        mpb.SetFloat(AdjacencyMaskID, 15f);
         sr.SetPropertyBlock(mpb);
     }
 
@@ -82,17 +84,32 @@ public static class TileNormalMaps {
         bool hasTR = (mask & 128) != 0;
 
         var pixels = new Color32[SIZE * SIZE];
-        for (int y = 0; y < SIZE; y++) {
-            for (int x = 0; x < SIZE; x++) {
-                // An edge is "open" if it's on the texture border AND the neighbour in that
-                // direction is absent (not solid), so it deserves an outward-facing normal.
-                bool eL = x == 0      && !hasLeft;
-                bool eR = x == SIZE-1 && !hasRight;
-                bool eD = y == 0      && !hasDown;
-                bool eU = y == SIZE-1 && !hasUp;
+        byte flatZ = (byte)(1.0f * 127.5f + 128f);
 
-                float nx = (eR ? 1f : 0f) - (eL ? 1f : 0f);
-                float ny = (eU ? 1f : 0f) - (eD ? 1f : 0f);
+        for (int oy = 0; oy < SIZE; oy++) {
+            for (int ox = 0; ox < SIZE; ox++) {
+                // Interior coords: remap from 20×20 to 16×16 interior
+                int x = ox - BORDER; // -2 to 17
+                int y = oy - BORDER;
+
+                bool isBorder = x < 0 || x >= TILE || y < 0 || y >= TILE;
+
+                if (isBorder) {
+                    // Border pixels: flat normal, full edge depth (at the surface)
+                    pixels[oy * SIZE + ox] = new Color32(128, 128, flatZ, 255);
+                    continue;
+                }
+
+                // ── Interior pixel: bevel + edge depth (same as before) ──
+
+                // Bevel normal: gradient across the BEVEL_PX-wide border region.
+                float bL = (!hasLeft  && x < BEVEL_PX)          ? 1f - x / (float)BEVEL_PX               : 0f;
+                float bR = (!hasRight && (TILE-1-x) < BEVEL_PX) ? 1f - (TILE-1-x) / (float)BEVEL_PX     : 0f;
+                float bD = (!hasDown  && y < BEVEL_PX)          ? 1f - y / (float)BEVEL_PX               : 0f;
+                float bU = (!hasUp    && (TILE-1-y) < BEVEL_PX) ? 1f - (TILE-1-y) / (float)BEVEL_PX     : 0f;
+
+                float nx = bR - bL;
+                float ny = bU - bD;
                 float nz = BEVEL_Z;
 
                 float len = Mathf.Sqrt(nx * nx + ny * ny + nz * nz);
@@ -100,32 +117,28 @@ public static class TileNormalMaps {
                 else          { nz = 1f; }
 
                 // ── Edge depth for light penetration ──────────────────────
-                // Distance to nearest exposed edge or corner in pixels.
-                float minDist = SIZE; // large default = deep interior
+                float minDist = TILE; // large default = deep interior
                 if (!hasLeft)  minDist = Mathf.Min(minDist, x);
-                if (!hasRight) minDist = Mathf.Min(minDist, SIZE - 1 - x);
+                if (!hasRight) minDist = Mathf.Min(minDist, TILE - 1 - x);
                 if (!hasDown)  minDist = Mathf.Min(minDist, y);
-                if (!hasUp)    minDist = Mathf.Min(minDist, SIZE - 1 - y);
+                if (!hasUp)    minDist = Mathf.Min(minDist, TILE - 1 - y);
 
-                // Diagonal openings: light enters from corner when the diagonal
-                // neighbour is absent AND both adjacent cardinals are solid (otherwise
-                // the cardinal edge is already closer). Euclidean distance gives a
-                // round quarter-circle falloff at each corner.
+                // Diagonal openings: light enters from corner
                 if (!hasBL && hasLeft && hasDown)
                     minDist = Mathf.Min(minDist, Mathf.Sqrt(x * x + y * y));
                 if (!hasBR && hasRight && hasDown)
-                    minDist = Mathf.Min(minDist, Mathf.Sqrt((SIZE-1-x)*(SIZE-1-x) + y*y));
+                    minDist = Mathf.Min(minDist, Mathf.Sqrt((TILE-1-x)*(TILE-1-x) + y*y));
                 if (!hasTL && hasLeft && hasUp)
-                    minDist = Mathf.Min(minDist, Mathf.Sqrt(x*x + (SIZE-1-y)*(SIZE-1-y)));
+                    minDist = Mathf.Min(minDist, Mathf.Sqrt(x*x + (TILE-1-y)*(TILE-1-y)));
                 if (!hasTR && hasRight && hasUp)
-                    minDist = Mathf.Min(minDist, Mathf.Sqrt((SIZE-1-x)*(SIZE-1-x) + (SIZE-1-y)*(SIZE-1-y)));
+                    minDist = Mathf.Min(minDist, Mathf.Sqrt((TILE-1-x)*(TILE-1-x) + (TILE-1-y)*(TILE-1-y)));
 
                 // Smoothstep falloff: 1.0 at edge, 0.0 at penetration depth.
-                float depthPx = LightFeature.penetrationDepth * SIZE;
+                float depthPx = LightFeature.penetrationDepth * TILE;
                 float t = Mathf.Clamp01(1f - minDist / depthPx);
                 float edgeDepth = t * t * (3f - 2f * t); // smoothstep
 
-                pixels[y * SIZE + x] = new Color32(
+                pixels[oy * SIZE + ox] = new Color32(
                     (byte)(nx * 127.5f + 128f),
                     (byte)(ny * 127.5f + 128f),
                     (byte)(nz * 127.5f + 128f),

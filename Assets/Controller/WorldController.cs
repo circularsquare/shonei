@@ -10,7 +10,7 @@ public class WorldController : MonoBehaviour {
     public Transform tilesTransform;
     Dictionary<Tile, GameObject> tileGameObjectMap;
     Coroutine defaultSetupCoroutine;
-    Material tileMaterial; // Custom/TileSprite shader for jagged tile edges
+    Material tileMaterial; // Custom/TileSprite shader for tiles
 
     // FRAME 0: runs up to the first yield, pausing to let all other Start()s finish.
     // FRAME 1: resumes and calls GenerateDefault() (or waits for save/reset to do so).
@@ -25,7 +25,7 @@ public class WorldController : MonoBehaviour {
         tileGameObjectMap = new Dictionary<Tile, GameObject>();
         tilesTransform = transform.Find("Tiles");
 
-        // Create material with Custom/TileSprite shader for jagged tile edges.
+        // Create material with Custom/TileSprite shader.
         var tileShader = Shader.Find("Custom/TileSprite");
         if (tileShader != null) tileMaterial = new Material(tileShader);
         else Debug.LogError("WorldController: Custom/TileSprite shader not found");
@@ -238,21 +238,16 @@ public class WorldController : MonoBehaviour {
             Debug.LogError("tile data is not in tile game object map!");
         }
         GameObject tile_go = tileGameObjectMap[tile];
-        Sprite sprite;
-        if (tile.type.name == "dirt") {
-            if (tile.y < world.ny - 1 && world.GetTileAt(tile.x, tile.y + 1).type != Db.tileTypes[0])
-                sprite = LoadTileSprite("dirt");
-            else
-                sprite = LoadTileSprite("grass");
-        } else {
-            sprite = LoadTileSprite(tile.type.name);
-        }
-        if (sprite == null || sprite.texture == null){
-            sprite = Resources.Load<Sprite>("Sprites/Tiles/default");
-        }
-        tile_go.GetComponent<SpriteRenderer>().sprite = sprite;
+        SpriteRenderer sr = tile_go.GetComponent<SpriteRenderer>();
 
-        // Update normal map for this tile and all 8 neighbours
+        if (!tile.type.solid) {
+            sr.sprite = null;
+            tile_go.transform.localScale = Vector3.one;
+        }
+        // Sprite for solid tiles is set in ApplyTileNormalMap (depends on adjacency).
+        // Scale stays at 1 — baked 20×20 sprites are natively 1.25 units at PPU=16.
+
+        // Update normal map + sprite for this tile and all 8 neighbours
         // (a neighbour's exposed edges and corner depths change when this tile changes).
         ApplyTileNormalMap(tile);
         ApplyTileNormalMap(world.GetTileAt(tile.x - 1, tile.y));
@@ -284,19 +279,13 @@ public class WorldController : MonoBehaviour {
         if (IsSolidAt(tile.x - 1, tile.y + 1)) mask |= 64;
         if (IsSolidAt(tile.x + 1, tile.y + 1)) mask |= 128;
         TileNormalMaps.Apply(sr, mask);
+
+        // Set the baked 20×20 sprite for this tile's type and cardinal adjacency.
+        sr.sprite = TileSpriteCache.Get(tile.type.name, mask & 0xF);
     }
 
     bool IsSolidAt(int x, int y) {
         Tile t = world.GetTileAt(x, y);
         return t != null && t.type.solid;
     }
-    Sprite LoadTileSprite(string name) {
-        Sprite variant = Resources.Load<Sprite>("Sprites/Tiles/" + name + "2");
-        Sprite original = Resources.Load<Sprite>("Sprites/Tiles/" + name);
-        
-        if (variant != null && UnityEngine.Random.value > 0.5f)
-            return variant;
-        return original ?? Resources.Load<Sprite>("Sprites/Tiles/default");
-    }
-
 }

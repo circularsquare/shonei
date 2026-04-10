@@ -101,9 +101,6 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
 
     public NormalsCapturePass() {
         mat      = CoreUtils.CreateEngineMaterial("Hidden/NormalsCapture");
-        // Default _AdjacencyMask = 15 (all neighbours solid = no jagged clipping).
-        // Tile SpriteRenderers override this via MPB; non-tile sprites get 15.
-        mat.SetFloat("_AdjacencyMask", 15f);
         waterMat  = CoreUtils.CreateEngineMaterial("Hidden/NormalsCaptureWater");
         backgroundMat = CoreUtils.CreateEngineMaterial("Hidden/NormalsCaptureBackground");
     }
@@ -148,6 +145,7 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
                 new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
             ds.overrideMaterial          = backgroundMat;
             ds.overrideMaterialPassIndex = 1; // alpha = 0.5 (lit-only)
+
             var fs = new FilteringSettings(RenderQueueRange.all, backgroundMask);
             context.DrawRenderers(rd.cullResults, ref ds, ref fs);
         }
@@ -159,6 +157,7 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
                 new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
             ds.overrideMaterial          = mat;
             ds.overrideMaterialPassIndex = 2; // alpha = 0.3 (directional-only)
+
             var fs = new FilteringSettings(RenderQueueRange.all, dirOnlyMask);
             context.DrawRenderers(rd.cullResults, ref ds, ref fs);
         }
@@ -172,6 +171,7 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
                 new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
             ds.overrideMaterial          = mat;
             ds.overrideMaterialPassIndex = 1; // alpha = 0.5 (lit, no shadow)
+
             var fs = new FilteringSettings(RenderQueueRange.all, litOnlyMask);
             context.DrawRenderers(rd.cullResults, ref ds, ref fs);
         }
@@ -182,6 +182,7 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
                 new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
             ds.overrideMaterial          = mat;
             ds.overrideMaterialPassIndex = 0; // alpha = 1.0 (casts shadow)
+
             var fs = new FilteringSettings(RenderQueueRange.all, litMask & shadowMask & ~dirOnlyMask);
             context.DrawRenderers(rd.cullResults, ref ds, ref fs);
         }
@@ -194,6 +195,7 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
                 new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
             ds.overrideMaterial          = waterMat;
             ds.overrideMaterialPassIndex = 1; // alpha = 0.5 (lit-only)
+
             var fs = new FilteringSettings(RenderQueueRange.all, waterMask);
             context.DrawRenderers(rd.cullResults, ref ds, ref fs);
         }
