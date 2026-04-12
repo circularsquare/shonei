@@ -7,7 +7,10 @@ using UnityEngine;
 //
 // The 20×20 map matches the baked sprite size from TileSpriteCache:
 // pixels (2,2)–(17,17) are the 16×16 tile interior with bevel normals.
-// Border pixels (0-1 and 18-19) get flat normals and full edge depth.
+// The 2px overhang pixels (0-1 and 18-19) inherit the adjacent interior-edge
+// bevel via coordinate clamping — so art that straddles the tile bounds
+// (e.g. top-of-grass teeth) catches grazing sun light instead of reading
+// as flat camera-facing normals.
 //
 // Mask bits:  0=left  1=right  2=down  3=up  4=BL  5=BR  6=TL  7=TR
 // Cardinal bits (0-3) control beveled normals.
@@ -84,25 +87,21 @@ public static class TileNormalMaps {
         bool hasTR = (mask & 128) != 0;
 
         var pixels = new Color32[SIZE * SIZE];
-        byte flatZ = (byte)(1.0f * 127.5f + 128f);
 
         for (int oy = 0; oy < SIZE; oy++) {
             for (int ox = 0; ox < SIZE; ox++) {
-                // Interior coords: remap from 20×20 to 16×16 interior
-                int x = ox - BORDER; // -2 to 17
-                int y = oy - BORDER;
-
-                bool isBorder = x < 0 || x >= TILE || y < 0 || y >= TILE;
-
-                if (isBorder) {
-                    // Border pixels: flat normal, full edge depth (at the surface)
-                    pixels[oy * SIZE + ox] = new Color32(128, 128, flatZ, 255);
-                    continue;
-                }
-
-                // ── Interior pixel: bevel + edge depth (same as before) ──
+                // Clamp to interior 0..TILE-1 so the 2px overhang inherits the
+                // adjacent interior-edge bevel and edge-depth. Without this,
+                // border pixels would read as flat camera-facing normals and
+                // miss grazing-angle sun lighting on art that straddles the
+                // tile bounds (e.g. top-of-grass teeth).
+                int x = Mathf.Clamp(ox - BORDER, 0, TILE - 1);
+                int y = Mathf.Clamp(oy - BORDER, 0, TILE - 1);
 
                 // Bevel normal: gradient across the BEVEL_PX-wide border region.
+                // Peaks at the outermost edge pixel (distance 0) and fades to
+                // flat at BEVEL_PX pixels inward. Overhang pixels share the
+                // peak value with the adjacent interior-edge row.
                 float bL = (!hasLeft  && x < BEVEL_PX)          ? 1f - x / (float)BEVEL_PX               : 0f;
                 float bR = (!hasRight && (TILE-1-x) < BEVEL_PX) ? 1f - (TILE-1-x) / (float)BEVEL_PX     : 0f;
                 float bD = (!hasDown  && y < BEVEL_PX)          ? 1f - y / (float)BEVEL_PX               : 0f;

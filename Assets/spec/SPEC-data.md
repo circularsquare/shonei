@@ -126,6 +126,8 @@ Fields:
 | `name` | string | lookup key; matched against `recipe.job` |
 | `jobType` | string | category: `"logistics"`, `"none"`, `"gatherer"`, `"crafter"`, `"researcher"` |
 | `defaultSkill` | string? | skill domain awarded to all recipes of this job unless overridden; null for hauler/merchant |
+| `defaultLocked` | bool? | hidden from the jobs panel until a tech with a matching `{"type":"job"}` entry is unlocked |
+| `skillWeights` | `{skill: float}`? | affinity weights used by auto job-swapping |
 
 ## `plantsDb.json` — PlantTypes
 
@@ -152,16 +154,24 @@ Fields:
 | `solid` | int | 0=passable, 1=solid (blocks movement) |
 | `nproducts` | `[{name, quantity}]`? | items dropped when mined |
 
-## `researchDb.json` — Research nodes
+## `researchDb.json` — Technologies
 
 Fields:
 
 | Field | Type | Notes |
 |-------|------|-------|
 | `id` | int | unique |
-| `name` | string | display name |
+| `name` | string | display name (also used to look up icon at `Sprites/Researches/{name}`) |
 | `description` | string | shown in tooltip |
-| `type` | string | `"building"`, `"recipe"`, or `"misc"` |
-| `unlocks` | string | building name, recipe id, or effect key (e.g. `"research_efficiency"`) |
-| `prereqs` | `[int]` | required research node ids |
-| `cost` | int | research points to unlock |
+| `unlocks` | `[{type, target}]` | per-entry unlocks (see below) — empty array allowed |
+| `prereqs` | `[int]` | required technology ids |
+| `cost` | float | research points to unlock |
+
+Each `unlocks` entry:
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `type` | string | `"building"`, `"recipe"`, `"job"`, or `"misc"` |
+| `target` | string | building name / recipe id (as string) / job name / misc effect key |
+
+A single technology can grant multiple unlocks of mixed types. Gating uses reverse indexes built at load (`ResearchSystem.recipeToTechNode`, `jobToTechNode`): anything referenced by some tech's `unlocks` entry is considered locked until that tech is unlocked. Ungated entries are always available. `"misc"` currently has no effect handler — add a case to `ResearchSystem.ApplyEffect`/`RevertEffect` when introducing one.

@@ -103,7 +103,7 @@ public class ResearchPanel : MonoBehaviour {
 
     public static string BuildTooltipBody(ResearchNodeData node, ResearchSystem rs) {
         var sb = new StringBuilder();
-        sb.AppendLine($"[{node.type}]   threshold: {node.cost:0} pts");
+        sb.AppendLine($"threshold: {node.cost:0} pts");
         if (!string.IsNullOrEmpty(node.description))
             sb.AppendLine(node.description);
         if (node.prereqs != null && node.prereqs.Length > 0) {
@@ -113,8 +113,10 @@ public class ResearchPanel : MonoBehaviour {
                 return n?.name ?? id.ToString();
             })));
         }
-        if (!string.IsNullOrEmpty(node.unlocks))
-            sb.AppendLine($"Unlocks: {node.unlocks}");
+        if (node.unlocks != null && node.unlocks.Length > 0) {
+            sb.Append("Unlocks: ");
+            sb.AppendLine(string.Join(", ", System.Array.ConvertAll(node.unlocks, FormatUnlock)));
+        }
 
         float p = rs.GetProgress(node.id);
         if (rs.IsMaintained(node.id))
@@ -125,10 +127,20 @@ public class ResearchPanel : MonoBehaviour {
         else if (!rs.PrereqsMet(node))
             sb.Append("Prerequisites not met.");
         else if (rs.activeResearchId == node.id)
-            sb.Append("Active research project. Click to deselect.");
+            sb.Append("Active technology. Click to deselect.");
         else
-            sb.Append("Click to set as active research project.");
+            sb.Append("Click to set as active technology.");
 
         return sb.ToString().TrimEnd();
+    }
+
+    // Resolve an unlock entry to a player-readable label. Recipe ids become recipe descriptions;
+    // buildings/misc show the raw target string.
+    static string FormatUnlock(UnlockEntry e) {
+        if (e == null) return "?";
+        if (e.type == "recipe" && int.TryParse(e.target, out int rid)
+                && rid >= 0 && rid < Db.recipes.Length && Db.recipes[rid] != null)
+            return Db.recipes[rid].description;
+        return e.target;
     }
 }

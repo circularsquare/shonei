@@ -192,12 +192,52 @@ public class AnimalController : MonoBehaviour{
 
     void AddJobCounts(){
         foreach(Job job in Db.jobs){
-            if (job != null){
-                GameObject textDisplayGo = Instantiate(JobDisplay, jobsPanel.transform);
-                textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = job.name + ": " + (GetJobCount(job)).ToString();
-                textDisplayGo.name = "JobCount_" + job.name;
-            }
+            if (job == null) continue;
+            if (!IsJobVisible(job)) continue;
+            AddJobRow(job);
         }
+    }
+
+    // True if this job should appear in the jobs panel right now.
+    // Unlocked by default unless the job is flagged defaultLocked AND its gating
+    // tech is not currently unlocked.
+    bool IsJobVisible(Job job){
+        if (!job.defaultLocked) return true;
+        ResearchSystem rs = ResearchSystem.instance;
+        return rs != null && rs.IsJobUnlocked(job.name);
+    }
+
+    void AddJobRow(Job job){
+        if (jobsPanel == null || JobDisplay == null) return;
+        if (jobsPanel.transform.Find("JobCount_" + job.name) != null) return; // idempotent
+        GameObject textDisplayGo = Instantiate(JobDisplay, jobsPanel.transform);
+        textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = job.name + ": " + (GetJobCount(job)).ToString();
+        textDisplayGo.name = "JobCount_" + job.name;
+    }
+
+    // Called from ResearchSystem.ApplyEffect when a tech unlocks a job.
+    // Idempotent: no-op if the row already exists or the panel hasn't been built yet
+    // (AddJobCounts will pick it up once it runs, since IsJobVisible queries research state).
+    public void UnlockJob(string jobName){
+        Job job = Db.GetJobByName(jobName);
+        if (job == null) { Debug.LogWarning($"UnlockJob: unknown job '{jobName}'"); return; }
+        if (!jobCountsInitialized) return;
+        AddJobRow(job);
+    }
+
+    // Called from ResearchSystem.RevertEffect when a tech is forgotten.
+    // Reassigns all animals working this job back to "none" (so the tech decay
+    // automatically frees them), then removes the row from the panel.
+    public void LockJob(string jobName){
+        Job job = Db.GetJobByName(jobName);
+        if (job == null) { Debug.LogWarning($"LockJob: unknown job '{jobName}'"); return; }
+        for (int a = 0; a < na; a++){
+            if (animals[a] != null && animals[a].job != null && animals[a].job.name == jobName)
+                animals[a].SetJob("none");
+        }
+        if (jobsPanel == null) return;
+        Transform row = jobsPanel.transform.Find("JobCount_" + jobName);
+        if (row != null) Destroy(row.gameObject);
     }
     void UpdateJobCount(Job job){
         if (job != null && jobsPanel != null){

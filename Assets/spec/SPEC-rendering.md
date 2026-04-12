@@ -126,7 +126,7 @@ All lighting C# scripts and shaders live in `Assets/Lighting/`.
 | `NormalsCapture.shader` | Tangent→world normal transform for flat 2D sprites: `(x, y, z) → (x, y, −z)`. Clips on `_MainTex` alpha (tiles have pre-baked borders, non-tiles use sprite alpha). |
 | `TileSprite.shader` | Simple tile sprite shader: samples `_MainTex` (pre-baked 20×20 from `TileSpriteCache`), clips transparent pixels. Assigned to tile SpriteRenderers by WorldController. |
 | `TileSpriteCache.cs` | Bakes 20×20 tile sprites at load time from 32×32 border atlases. 16 cardinal-mask variants per tile type. PPU=16 → sprites natively span 1.25 units. |
-| `TileNormalMaps.cs` | 256 cached 20×20 normal maps (8-bit adjacency). 4px gradient bevel on exposed edges within the 16×16 interior; border pixels get flat normals. Alpha channel encodes edge-distance falloff for light penetration. |
+| `TileNormalMaps.cs` | 256 cached 20×20 normal maps (8-bit adjacency). 4px gradient bevel on exposed edges within the 16×16 interior; the 2px overhang inherits the adjacent interior-edge bevel via coordinate clamping. Alpha channel encodes edge-distance falloff for light penetration. |
 | `LightCircle.shader` | Point light pass: radial falloff × NdotL. |
 | `LightSun.shader` | Directional sun pass: fullscreen NdotL × sky exposure. Shadow ray march disabled (commented out for performance). |
 | `LightAmbientFill.shader` | Fullscreen pass: writes `skyLight × exposure` per pixel. Max blend onto deep-ambient-cleared RT. |
@@ -265,7 +265,7 @@ Same Sheets/Split pattern as items. Source sheets live in `Assets/Resources/Spri
 
 **Encoding**: world-space, packed 0–1. Flat camera-facing sprite = `(0,0,−1)` → `(0.5, 0.5, 0.0)`. Black = no sprite, shader uses flat fallback. No Y-flip on screen UV (DrawRenderers and the light pass projection both use OpenGL convention, V=0 at bottom).
 
-**Tile normal maps** (`TileNormalMaps.cs`): 256 procedural 20×20 variants (8-bit adjacency mask: 4 cardinal + 4 diagonal). The 16×16 interior (pixels 2–17) has 4px gradient bevel on exposed edges; border pixels (0–1 and 18–19) get flat normals and full edge depth. Applied via `MaterialPropertyBlock` on tile `SpriteRenderer`s.
+**Tile normal maps** (`TileNormalMaps.cs`): 256 procedural 20×20 variants (8-bit adjacency mask: 4 cardinal + 4 diagonal). The 16×16 interior (pixels 2–17) has 4px gradient bevel on exposed edges. The 2px overhang (pixels 0–1 and 18–19) inherits the adjacent interior-edge bevel via coordinate clamping — so art that straddles the tile bounds (e.g. top-of-grass teeth) catches grazing sun light instead of reading as flat camera-facing normals. Applied via `MaterialPropertyBlock` on tile `SpriteRenderer`s.
 
 **Tile border atlases** (source format): 32×32 artist-authored textures in `Assets/Resources/Sprites/Tiles/Sheets/{name}.png`. Layout: main 16×16 at (8,8), top/bottom 16×4 borders at (8,0)/(8,28), left/right 4×16 borders at (0,8)/(28,8), four 4×4 corner pieces at (0,0)/(28,0)/(0,28)/(28,28). Columns 1,6 and rows 1,6 are empty separators. **Not sampled at runtime** — `TileSpriteCache` reads pixel data at load time to bake 16 cardinal-mask variants per tile type as 20×20 Sprites (PPU=16 → 1.25 units). Textures must have Read/Write enabled (`TileSpritePostprocessor` handles this automatically).
 

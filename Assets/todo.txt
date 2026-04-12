@@ -14,15 +14,31 @@ CONTENT
     - make plants grow from sunlight?
 - research
     - queue research projects? priorities?
+    - additional levels display?
+        - lvl 1, 57/100 to lvl 2 
+        - maybe rework 2x bar fill system 
+    - building unlock techs should passive gain from construction and maintenance
+    - check that passive gains are wired correctly
 - books
     - books for gaining skills 
     - manuals for learning technologies
     - scriptoriums
+        - bookshelves
+        - scribes can write book for a tech once we have unlocked it 
+            - need to manually assign write book job?
+    - scientists will read book if available instead of manual research 
+    - mice randomly read book as leisure 
+world gen
+- more fractally caves? 2 tier perlin noises?
 VISUALS
 - make item icons more coherent / similar
 - tab styling, add building icons?
 - market panel show mice on route
 - lighting, make light height vary depending on sorting order? at least for background.
+- lighting 
+    - improve undergroundwall sprite 
+    - procedurally generate rocks with normalmaps?
+
 
 
 MOUSE AI
@@ -40,17 +56,3 @@ BUGS
 
 TODAY GOALS
 
-world gen
-- more fractally caves? 2 tier perlin noises?
-
-- lighting 
-    - improve undergroundwall sprite 
-    - procedurally generate rocks with normalmaps?
-
-
-    i guess its not that much work if we only have to draw like two or three sets of masks instead of one for every tile type. we can have like one mask for any dirt type tile, one for any stone type tile. (those are the only tiles we have right now lol. but like if we were to add like other stone tiles, we would use the same shape cutouts for their edges.)
-    so yeah i think like 
-    2 possible top edges, 2 possible side edges, 2 possible bottom edges (16x4 each) 
-    4 corners
-    i think thats all we need. they also should have normals calculated. their normals should be flat on the side that faces the center of the tile of course. and to clarify, the reason we have 2 for each is just to jumble it up a bit. we can also add more if we want and itll randomly select from those.
-    wait. if like the side isnt exposed and the top is exposed, then we should just use the full 16x4 top texture. no need for a separate corner texture. we only need the corners for when both are exposed.  

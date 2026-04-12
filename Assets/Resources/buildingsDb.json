@@ -36,7 +36,8 @@
         ],
         "depth": 3,
         "pathCostReduction": 0.1,
-        "category": "structures"
+        "category": "structures",
+        "defaultLocked": true
     },{
         "id": 20,
         "name": "house",
@@ -92,7 +93,8 @@
         "liquidStorage": true,
         "nStacks": 1,
         "storageStackSize": 100,
-        "category": "storage"
+        "category": "storage",
+        "defaultLocked": true
     },{
         "id": 24,
         "name": "market",
@@ -149,7 +151,8 @@
         ],
         "depth": 0,
         "solidTop": true,
-        "category": "structures"
+        "category": "structures",
+        "defaultLocked": true
     },{
         "id": 43,
         "name": "fireplace",
@@ -264,7 +267,8 @@
         "njob": "farmer",
         "isWorkstation": true,
         "capacity": 1,
-        "category": "production"
+        "category": "production",
+        "defaultLocked": true
     },{
         "id": 105,
         "name": "pump",
@@ -283,7 +287,8 @@
             { "dx": 0, "mustBeStandable": true },
             { "dx": 1, "mustBeEmpty": true },
             { "dx": 1, "dy": -1, "mustHaveWater": true }
-        ]
+        ],
+        "defaultLocked": true
     },{
         "id": 110,
         "name": "dirt pit",
@@ -341,7 +346,8 @@
         "capacity": 1,
         "isWorkstation": true,
         "solidTop": true,
-        "category": "production"
+        "category": "production",
+        "defaultLocked": true
     },{
         "id": 131,
         "name": "tailor",
@@ -354,6 +360,7 @@
         "capacity": 1,
         "isWorkstation": true,
         "solidTop": true,
-        "category": "production"
+        "category": "production",
+        "defaultLocked": true
     }
 ]

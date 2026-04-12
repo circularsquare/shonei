@@ -551,6 +551,7 @@ public class Animal : MonoBehaviour{
         foreach (Recipe recipe in job.recipes){
             if (recipe == null) continue;
             if (RecipePanel.instance != null && !RecipePanel.instance.IsAllowed(recipe.id)) continue;
+            if (ResearchSystem.instance != null && !ResearchSystem.instance.IsRecipeUnlocked(recipe.id)) continue;
             if (ginv.SufficientResources(recipe.inputs)){
                 if (!Db.structTypeByName.ContainsKey(recipe.tile) ||
                     !nav.CanReachBuilding(Db.structTypeByName[recipe.tile])) continue;
@@ -569,6 +570,7 @@ public class Animal : MonoBehaviour{
         foreach (Recipe recipe in job.recipes){
             if (recipe == null) continue;
             if (RecipePanel.instance != null && !RecipePanel.instance.IsAllowed(recipe.id)) continue;
+            if (ResearchSystem.instance != null && !ResearchSystem.instance.IsRecipeUnlocked(recipe.id)) continue;
             if (ginv.SufficientResources(recipe.inputs)){
                 if (!Db.structTypeByName.ContainsKey(recipe.tile) ||
                     !nav.CanReachBuilding(Db.structTypeByName[recipe.tile])) continue;
@@ -593,6 +595,7 @@ public class Animal : MonoBehaviour{
             if (recipe == null) continue;
             if (recipe.tile != building.structType.name) continue;
             if (RecipePanel.instance != null && !RecipePanel.instance.IsAllowed(recipe.id)) continue;
+            if (ResearchSystem.instance != null && !ResearchSystem.instance.IsRecipeUnlocked(recipe.id)) continue;
             if (!ginv.SufficientResources(recipe.inputs)) continue;
             if (recipe.AllOutputsSatisfied(targets)) continue;
             float score = recipe.Score(targets);

@@ -90,3 +90,11 @@ When adding new saveable state, update the checklist comment at the top of `Save
 
 For system-specific anti-patterns and canonical examples for adding new content, see the bottom of `Assets/spec/SPEC.md`.
 
+## Session wrap-up checklist
+
+When the user says anything like "let's wrap up", "running low on context", "let's finish this session", or similar — run through this checklist before ending:
+
+1. **Update specs**: Review all changes made this session. Update the relevant `Assets/spec/SPEC-*.md` files so they reflect what was built or changed.
+2. **Flag future work**: Call out anything worth revisiting — messy code, incomplete features, things that work but could be cleaner, potential refactors that would make the system easier to build on.
+3. **Suggest reorgs**: If you noticed anything during the session that could be reorganized for clarity or extensibility, mention it even if it wasn't part of the task.
+

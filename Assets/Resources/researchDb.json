@@ -3,25 +3,89 @@
         "id": 1,
         "name": "Excavation",
         "description": "Learn to dig efficient dirt pits.",
-        "type": "building",
-        "unlocks": "dirt pit",
         "prereqs": [],
-        "cost": 5
+        "cost": 5,
+        "unlocks": [
+            { "type": "building", "target": "dirt pit" },
+            { "type": "job",      "target": "digger" }
+        ]
     },{
         "id": 2,
         "name": "Quarry",
         "description": "Establish stone quarries to extract raw stone.",
-        "type": "building",
-        "unlocks": "quarry",
         "prereqs": [1],
-        "cost": 5
+        "cost": 5,
+        "unlocks": [
+            { "type": "building", "target": "quarry" },
+            { "type": "job",      "target": "miner" }
+        ]
     },{
-        "id": 3,
-        "name": "Improved Research",
-        "description": "Better scientific methods increase research output by 20%.",
-        "type": "misc",
-        "unlocks": "research_efficiency",
+        "id": 4,
+        "name": "Timekeeping",
+        "description": "Track the passage of day and night.",
         "prereqs": [],
-        "cost": 5
+        "cost": 5,
+        "unlocks": [
+            { "type": "building", "target": "clock" }
+        ]
+    },{
+        "id": 5,
+        "name": "Pumps",
+        "description": "Draw water from underground sources and store it.",
+        "prereqs": [],
+        "cost": 5,
+        "unlocks": [
+            { "type": "building", "target": "pump" },
+            { "type": "building", "target": "tank" }
+        ]
+    },{
+        "id": 6,
+        "name": "Soymilk",
+        "description": "Press soybeans into soymilk.",
+        "prereqs": [5],
+        "cost": 5,
+        "unlocks": [
+            { "type": "building", "target": "press" },
+            { "type": "recipe",   "target": "13" }
+        ]
+    },{
+        "id": 7,
+        "name": "Tofu",
+        "description": "Coagulate soymilk into tofu.",
+        "prereqs": [6],
+        "cost": 5,
+        "unlocks": [
+            { "type": "recipe", "target": "15" }
+        ]
+    },{
+        "id": 8,
+        "name": "Roads",
+        "description": "Pave roads so mice travel faster.",
+        "prereqs": [],
+        "cost": 5,
+        "unlocks": [
+            { "type": "building", "target": "road" }
+        ]
+    },{
+        "id": 9,
+        "name": "Weaving",
+        "description": "Weave plant fibres into cloth.",
+        "prereqs": [],
+        "cost": 5,
+        "unlocks": [
+            { "type": "building", "target": "weaver" },
+            { "type": "recipe",   "target": "20" },
+            { "type": "job",      "target": "clothier" }
+        ]
+    },{
+        "id": 10,
+        "name": "Tailoring",
+        "description": "Sew cloth into clothing.",
+        "prereqs": [9],
+        "cost": 5,
+        "unlocks": [
+            { "type": "building", "target": "tailor" },
+            { "type": "recipe",   "target": "21" }
+        ]
     }
 ]

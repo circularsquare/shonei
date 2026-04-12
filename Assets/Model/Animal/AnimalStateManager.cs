@@ -166,6 +166,10 @@ public class AnimalStateManager {
                 craftTask.Fail();
                 return;
             }
+            if (ResearchSystem.instance != null && !ResearchSystem.instance.IsRecipeUnlocked(recipe.id)) {
+                craftTask.Fail();
+                return;
+            }
             animal.workProgress += workEfficiency;
             if (taskSkill.HasValue) animal.skills.GainXp(taskSkill.Value, baseWorkEff * 0.1f);
             while (animal.workProgress >= recipe.workload) {

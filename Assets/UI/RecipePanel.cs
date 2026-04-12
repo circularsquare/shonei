@@ -63,7 +63,7 @@ public class RecipePanel : MonoBehaviour {
 
         foreach (Recipe recipe in Db.recipes) {
             if (recipe == null) continue;
-            // Future: filter by ResearchSystem.IsRecipeUnlocked(recipe.id)
+            if (ResearchSystem.instance != null && !ResearchSystem.instance.IsRecipeUnlocked(recipe.id)) continue;
             SpawnCard(recipe);
         }
 

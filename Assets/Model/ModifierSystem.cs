@@ -13,7 +13,6 @@ public class ModifierSystem {
 
     // --- Constants ---
     public const float ToolWorkBonus               = 1.25f;
-    public const float ResearchEfficiencyPerUnlock = 1.2f;
     public const float BaseAnimalSpeed             = 1.5f;
     public const float FloorItemSpeedPenalty        = 0.8f;
     public const float CrowdingSpeedPenalty         = 0.8f;
@@ -35,13 +34,6 @@ public class ModifierSystem {
         bool hasTool = animal.toolSlotInv.itemStacks[0].item != null;
         float toolMult = hasTool ? ToolWorkBonus : 1f;
         return animal.efficiency * toolMult;
-    }
-
-    // Research speed multiplier from unlocked research nodes.
-    public float GetResearchMultiplier() {
-        if (ResearchSystem.instance == null) return 1f;
-        int unlocks = ResearchSystem.instance.CountUnlocks("research_efficiency");
-        return Mathf.Pow(ResearchEfficiencyPerUnlock, unlocks);
     }
 
     // Travel speed for an animal on its current tile.

@@ -27,6 +27,10 @@ public class Inventory{
     public Dictionary<int, bool> allowed;
     public bool locked = false; // when true, no items accepted and all existing items are treated as needing haul-out
     public string displayName;
+    // Set true at the top of Destroy(). Any mutation/render op on a destroyed inv is a stale-reference
+    // bug (animal still holds a cached Inventory ref after the inv was torn down). AddItem / MoveItemTo /
+    // UpdateSprite check this and LogError-no-op instead of NREing on the nulled-out `go`.
+    public bool destroyed { get; private set; }
     public GameObject go;
     private GameObject[] stackGos; // per-stack sprites for multi-stack storage (e.g. drawer)
 
@@ -105,6 +109,7 @@ public class Inventory{
         ginv = GlobalInventory.instance;
     }
     public void Destroy(){
+        destroyed = true;
         // Eagerly remove haul orders for floor and storage stacks, then zero quantities as a safety net
         // for PruneStaleHauls (covers other inv types and any orders that slip through).
         if (invType == InvType.Floor || invType == InvType.Storage)
@@ -152,6 +157,10 @@ public class Inventory{
 
     // returns leftover size
     private int AddItem(Item item, int quantity, bool force = false){
+        if (destroyed) {
+            Debug.LogError($"Inventory.AddItem called on destroyed {invType} '{displayName}' at ({x},{y}) — stale reference (item={item?.name}, qty={quantity}). Returning no-op.");
+            return quantity; // full "overflow" — nothing added
+        }
         if (item == null) {Debug.LogError("tried adding null item"); return quantity;}
         if (item.children != null && item.children.Length > 0) {
             Debug.LogError($"Inventory.AddItem: '{item.name}' is a group item and cannot be added to inventories. Only leaf items may exist in inventories. (inv: '{displayName}', type: {invType}, pos: ({x},{y}))");
@@ -208,6 +217,12 @@ public class Inventory{
     }
 
     public int MoveItemTo(Inventory otherInv, Item item, int quantity){
+        if (destroyed || otherInv == null || otherInv.destroyed) {
+            Inventory dead = destroyed ? this : otherInv;
+            string role = destroyed ? "source" : "destination";
+            Debug.LogError($"Inventory.MoveItemTo called with destroyed {role} ({dead?.invType} '{dead?.displayName}' at ({dead?.x},{dead?.y})) — stale reference (item={item?.name}, qty={quantity}). Returning 0.");
+            return 0;
+        }
         // Group items (e.g. "wood") can't exist as physical stacks — resolve to the leaf via GetLeafStack.
         // GetLeafStack (not GetItemStack) is used here because MoveItemTo is an execution step: the
         // caller already holds the reservation and must be able to draw down on it even if the stack is
@@ -606,6 +621,10 @@ public class Inventory{
     public enum ItemSpriteType { Icon, Floor, Storage }
 
     public void UpdateSprite(){
+        if (destroyed) {
+            Debug.LogError($"Inventory.UpdateSprite called on destroyed {invType} '{displayName}' at ({x},{y}) — stale reference. Skipping.");
+            return;
+        }
         if (invType == InvType.Animal || invType == InvType.Market || invType == InvType.Equip || invType == InvType.Blueprint || invType == InvType.Reservoir) return;
         if (stackGos != null){
             // Multi-stack storage (drawer): update each slot independently

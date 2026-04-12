@@ -1,5 +1,7 @@
 meoww!!
 
+4/12
+- added more researches, added research/job unlocking
 4/10
 - tile border system
 4/9

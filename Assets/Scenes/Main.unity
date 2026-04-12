@@ -22407,7 +22407,7 @@ MonoBehaviour:
   skyTwilight2: {r: 0.55869526, g: 0.7782188, b: 0.8773585, a: 0}
   skyTwilight3: {r: 0.51063544, g: 0.62844497, b: 0.8018868, a: 0}
   skyNight: {r: 0.54509807, g: 0.6089909, b: 0.7254902, a: 0}
-  sunColorDay: {r: 0.96102625, g: 0.9622642, b: 0.94864726, a: 1}
+  sunColorDay: {r: 1, g: 1, b: 1, a: 1}
   sunColorEarlyDusk: {r: 1, g: 0.8206692, b: 0.3254717, a: 0}
   sunColorDusk: {r: 1, g: 0.4668439, b: 0.1372549, a: 1}
   sunColorNight: {r: 0.7647059, g: 0.051289286, b: 0, a: 0}

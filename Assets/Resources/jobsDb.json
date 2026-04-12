@@ -23,7 +23,8 @@
         "name": "miner",
         "jobType": "gatherer",
         "defaultSkill": "mining",
-        "skillWeights": { "mining": 0.8, "construction": 0.2 }
+        "skillWeights": { "mining": 0.8, "construction": 0.2 },
+        "defaultLocked": true
     },{
         "id": 6,
         "name": "farmer",
@@ -35,7 +36,8 @@
         "name": "digger",
         "jobType": "gatherer",
         "defaultSkill": "mining",
-        "skillWeights": { "mining": 0.8, "construction": 0.2 }
+        "skillWeights": { "mining": 0.8, "construction": 0.2 },
+        "defaultLocked": true
     },{
         "id": 11,
         "name": "sawyer",
@@ -62,6 +64,7 @@
     },{
         "id": 15,
         "name": "clothier",
-        "jobType": "crafter"
+        "jobType": "crafter",
+        "defaultLocked": true
     }
 ]

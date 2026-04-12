@@ -4,14 +4,23 @@ using UnityEngine;
 using Newtonsoft.Json;
 
 // Research node definition — loaded from researchDb.json.
+// A single technology can grant multiple unlocks of mixed types (e.g. a tech that
+// unlocks both a building and a recipe), so `unlocks` is an array of per-entry rows.
 public class ResearchNodeData {
-    public int    id;
-    public string name;
-    public string description;
-    public string type;      // "building", "recipe", "misc"
-    public int[]  prereqs;
-    public float  cost;
-    public string unlocks;  // building/recipe name for typed nodes
+    public int           id;
+    public string        name;
+    public string        description;
+    public int[]         prereqs;
+    public float         cost;
+    public UnlockEntry[] unlocks;
+}
+
+// One unlock granted by a technology.
+//   type   = "building", "recipe", or "misc"
+//   target = building name | recipe id (as string) | misc effect key
+public class UnlockEntry {
+    public string type;
+    public string target;
 }
 
 // ResearchSystem tracks per-node research progress.
@@ -35,6 +44,16 @@ public class ResearchSystem : MonoBehaviour {
     public Dictionary<int, ResearchNodeData> nodeById    = new Dictionary<int, ResearchNodeData>();
     public HashSet<int>                      unlockedIds = new HashSet<int>();
 
+    // Reverse index: recipeId → technology node id that gates it.
+    // Built once at load. Recipes not present in the map are unlocked by default.
+    Dictionary<int, int>                     recipeToTechNode = new Dictionary<int, int>();
+
+    // Reverse index: jobName → technology node id that gates it.
+    // Built once at load. Jobs not present in the map are unlocked by default
+    // (unless they are still flagged defaultLocked, in which case they are permanently
+    // locked — a data-authoring error worth catching).
+    Dictionary<string, int>                  jobToTechNode    = new Dictionary<string, int>();
+
     // Maintain system: nodes the player wants scientists to keep above the unlock threshold.
     // Scientists prioritise maintained nodes that have fallen below cost before working on activeResearchId.
     public HashSet<int>            maintainIds       = new HashSet<int>();
@@ -48,6 +67,11 @@ public class ResearchSystem : MonoBehaviour {
         LoadNodes();
     }
 
+    // Validation that depends on Db (jobs, etc.) runs in Start so Awake ordering doesn't matter.
+    void Start() {
+        ValidateJobUnlocks();
+    }
+
     void LoadNodes() {
         string path = Application.dataPath + "/Resources/researchDb.json";
         if (!File.Exists(path)) { Debug.LogWarning("researchDb.json not found"); return; }
@@ -55,9 +79,65 @@ public class ResearchSystem : MonoBehaviour {
         var loaded = JsonConvert.DeserializeObject<ResearchNodeData[]>(json);
         foreach (var node in loaded) {
             if (node.prereqs == null) node.prereqs = new int[0];
+            if (node.unlocks == null) node.unlocks = new UnlockEntry[0];
             nodes.Add(node);
             nodeById[node.id] = node;
             progress[node.id] = 0f;
+        }
+        BuildRecipeLockIndex();
+        BuildJobLockIndex();
+    }
+
+    // Walks all node unlocks and records recipe-type entries into the reverse index.
+    // A recipe gated by multiple techs would only remember the last one written — flagged here.
+    void BuildRecipeLockIndex() {
+        recipeToTechNode.Clear();
+        foreach (var node in nodes) {
+            if (node.unlocks == null) continue;
+            foreach (var e in node.unlocks) {
+                if (e == null || e.type != "recipe") continue;
+                if (!int.TryParse(e.target, out int rid)) {
+                    Debug.LogError($"Tech '{node.name}' recipe unlock has non-integer target '{e.target}'");
+                    continue;
+                }
+                if (recipeToTechNode.ContainsKey(rid))
+                    Debug.LogError($"Recipe {rid} is gated by multiple techs (last: '{node.name}') — using last.");
+                recipeToTechNode[rid] = node.id;
+            }
+        }
+    }
+
+    // Walks all node unlocks and records job-type entries into the reverse index.
+    // A job gated by multiple techs would only remember the last one written — flagged here.
+    // Runs in Awake before Db is guaranteed loaded, so target-name validation is deferred
+    // to ValidateJobUnlocks() which runs in Start.
+    void BuildJobLockIndex() {
+        jobToTechNode.Clear();
+        foreach (var node in nodes) {
+            if (node.unlocks == null) continue;
+            foreach (var e in node.unlocks) {
+                if (e == null || e.type != "job") continue;
+                if (jobToTechNode.ContainsKey(e.target))
+                    Debug.LogError($"Job '{e.target}' is gated by multiple techs (last: '{node.name}') — using last.");
+                jobToTechNode[e.target] = node.id;
+            }
+        }
+    }
+
+    // Called from Start() — after Db.Awake has populated jobByName.
+    // Flags typos (tech pointing at a non-existent job name) and orphans
+    // (defaultLocked jobs with no gating tech).
+    void ValidateJobUnlocks() {
+        foreach (var kv in jobToTechNode) {
+            if (Db.GetJobByName(kv.Key) == null) {
+                if (nodeById.TryGetValue(kv.Value, out var node))
+                    Debug.LogError($"Tech '{node.name}' job unlock has unknown target '{kv.Key}'");
+            }
+        }
+        foreach (Job j in Db.jobs) {
+            if (j == null || !j.defaultLocked) continue;
+            if (!jobToTechNode.ContainsKey(j.name))
+                Debug.LogError($"Job '{j.name}' is defaultLocked but no tech unlocks it — it will never appear in the jobs panel.");
         }
     }
 
@@ -167,7 +247,7 @@ public class ResearchSystem : MonoBehaviour {
         int id = targetId >= 0 ? targetId : activeResearchId;
         if (id < 0) return;
         if (!nodeById.TryGetValue(id, out var node)) return;
-        float gained = workEfficiency * ScientistRate * ModifierSystem.instance.GetResearchMultiplier();
+        float gained = workEfficiency * ScientistRate;
         progress[id] = Mathf.Min(GetProgress(id) + gained, GetCap(node));
         CheckTransitions();
     }
@@ -183,27 +263,64 @@ public class ResearchSystem : MonoBehaviour {
         }
     }
 
-    // Applies the gameplay effect of a research node (called on unlock).
+    // True if the recipe is either ungated or its gating tech is currently unlocked.
+    // Ungated recipes (no tech references them) are always considered unlocked.
+    public bool IsRecipeUnlocked(int recipeId) {
+        if (!recipeToTechNode.TryGetValue(recipeId, out int techNodeId)) return true;
+        return unlockedIds.Contains(techNodeId);
+    }
+
+    // True if the job is unlocked: either no tech gates it (via an unlocks entry), or
+    // its gating tech is currently unlocked. Used by AnimalController to decide whether
+    // to show a job row in the jobs panel.
+    public bool IsJobUnlocked(string jobName) {
+        if (!jobToTechNode.TryGetValue(jobName, out int techNodeId)) return true;
+        return unlockedIds.Contains(techNodeId);
+    }
+
+    // Applies the gameplay effect of a technology (called on unlock).
+    // Recipe unlocks need no action here — animal recipe filters query IsRecipeUnlocked
+    // live, and RecipePanel rebuilds on open so newly-unlocked recipes appear automatically.
     public void ApplyEffect(ResearchNodeData node) {
-        switch (node.type) {
-            case "building":
-                BuildPanel.instance?.UnlockBuilding(node.unlocks);
-                break;
-            case "misc":
-                // research_efficiency is computed on demand by ModifierSystem.GetResearchMultiplier()
-                break;
+        if (node.unlocks == null) return;
+        foreach (var e in node.unlocks) {
+            if (e == null) continue;
+            switch (e.type) {
+                case "building":
+                    BuildPanel.instance?.UnlockBuilding(e.target);
+                    break;
+                case "job":
+                    AnimalController.instance?.UnlockJob(e.target);
+                    break;
+                case "recipe":
+                case "misc":
+                    break;
+                default:
+                    Debug.LogError($"Tech '{node.name}' has unknown unlock type '{e.type}'");
+                    break;
+            }
         }
     }
 
-    // Reverts the gameplay effect of a research node (called on forget).
+    // Reverts the gameplay effect of a technology (called on forget).
     public void RevertEffect(ResearchNodeData node) {
-        switch (node.type) {
-            case "building":
-                BuildPanel.instance?.LockBuilding(node.unlocks);
-                break;
-            case "misc":
-                // research_efficiency is computed on demand by ModifierSystem.GetResearchMultiplier()
-                break;
+        if (node.unlocks == null) return;
+        foreach (var e in node.unlocks) {
+            if (e == null) continue;
+            switch (e.type) {
+                case "building":
+                    BuildPanel.instance?.LockBuilding(e.target);
+                    break;
+                case "job":
+                    AnimalController.instance?.LockJob(e.target);
+                    break;
+                case "recipe":
+                case "misc":
+                    break;
+                default:
+                    Debug.LogError($"Tech '{node.name}' has unknown unlock type '{e.type}'");
+                    break;
+            }
         }
     }
 
@@ -216,15 +333,6 @@ public class ResearchSystem : MonoBehaviour {
                 ApplyEffect(node);
             }
         }
-    }
-
-    // Returns how many currently-unlocked nodes have the given unlocks value.
-    public int CountUnlocks(string unlocksValue) {
-        int count = 0;
-        foreach (int id in unlockedIds)
-            if (nodeById.TryGetValue(id, out var node) && node.unlocks == unlocksValue)
-                count++;
-        return count;
     }
 
     // Re-apply effects for all already-unlocked nodes (called after save load).

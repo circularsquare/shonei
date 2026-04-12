@@ -303,6 +303,7 @@ public class Job {
     public string name {get; set;}
     public string jobType {get; set;}
     public string defaultSkill {get; set;} // optional; skill domain used for recipes of this job (e.g. "woodworking")
+    public bool defaultLocked {get; set;} // true = hidden from jobs panel until unlocked via research
     public int nRecipes = 0;
     public static int maxRecipes = 100;
     public Recipe[] recipes = new Recipe[maxRecipes]; // max 100 recipes per job

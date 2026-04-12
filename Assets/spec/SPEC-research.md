@@ -2,9 +2,13 @@
 
 Scientists working in **laboratory** buildings generate research progress. Progress decays over time, so ongoing work is needed to maintain unlocks.
 
+## Terminology
+
+The individual unlockable things are called **technologies** (player- and user-facing noun). The *action* of working towards them is **research** (verb). The system, panel, task, and code identifiers are all still named "Research" — only the per-node noun changed. User and Claude may use "research" and "technology" interchangeably when referring to a single node; prefer "technology" in new player-facing copy.
+
 ## Progress & decay
 
-Each research node has a progress value (0 to 2x cost). Every tick, all nodes with progress > 0 lose `DecayRate` (0.02) progress. Scientists add `workEfficiency * ScientistRate (0.1) * researchMultiplier` per tick. Passive progress comes from certain crafting recipes (`recipe.research` field).
+Each technology has a progress value (0 to 2x cost). Every tick, all nodes with progress > 0 lose `DecayRate` (0.02) progress. Scientists add `workEfficiency * ScientistRate (0.1)` per tick. Passive progress comes from certain crafting recipes (`recipe.research` field).
 
 - **Unlock**: progress >= cost AND all prerequisites currently unlocked.
 - **Forget**: progress < 0.8 x cost (hysteresis prevents flickering).
@@ -12,7 +16,7 @@ Each research node has a progress value (0 to 2x cost). Every tick, all nodes wi
 
 ## Maintain system
 
-Each node has a per-player **maintain** toggle (`ResearchSystem.maintainIds`). When enabled, scientists prioritise keeping that node above the unlock threshold before working on new research.
+Each technology has a per-player **maintain** toggle (`ResearchSystem.maintainIds`). When enabled, scientists prioritise keeping that technology above the unlock threshold before working on new research.
 
 **Scientist priority when picking up a ResearchTask:**
 1. If the **active research** is maintained AND below cost: work on it (no exclusive claim — multiple scientists can help).
@@ -23,13 +27,33 @@ Claims are stored in `maintenanceClaims` (nodeId -> Animal). Released on task Cl
 
 Setting a research as active auto-enables maintain for it.
 
-## Research nodes (`researchDb.json`)
+## Technologies (`researchDb.json`)
+
+Each technology can grant multiple unlocks of mixed types. See SPEC-data.md for the full field schema.
 
 ```json
-{ "id": 1, "name": "Excavation", "type": "building", "unlocks": "dirt pit", "prereqs": [], "cost": 5 }
+{ "id": 1, "name": "Excavation", "prereqs": [], "cost": 5,
+  "unlocks": [ { "type": "building", "target": "dirt pit" } ] }
 ```
 
-Types: `"building"`, `"recipe"`, `"misc"`. Prerequisites are node `id` integers.
+Unlock entry `type` is one of `"building"`, `"recipe"`, `"job"`, or `"misc"`. For recipes, `target` is the recipe id as a string. `"misc"` currently has no effect handler — add a case to `ResearchSystem.ApplyEffect`/`RevertEffect` when introducing one.
+
+## Recipe gating
+
+Recipes referenced by a tech's unlocks are filtered out of:
+- `Animal.PickRecipeRandom` / `PickRecipe` / `PickRecipeForBuilding`
+- `AnimalStateManager` mid-craft check (fails the task if the tech gets forgotten mid-craft)
+- `RecipePanel.Rebuild` (hidden from the UI until unlocked)
+
+Ungated recipes are always craftable. The reverse index `recipeToTechNode` is built once in `LoadNodes`; use `ResearchSystem.IsRecipeUnlocked(recipeId)` anywhere a new recipe-pick site is added. `RecipePanel` rebuilds on `OnEnable`, so the exclusive-panel swap (research → recipe) naturally refreshes the list — no explicit callback needed.
+
+## Job gating
+
+Jobs flagged `defaultLocked: true` in `jobsDb.json` are hidden from the jobs panel until a tech with a matching `{"type":"job","target":"<name>"}` entry is unlocked. The reverse index `jobToTechNode` is built once in `LoadNodes`; `IsJobUnlocked(name)` returns true when the job is ungated or its gating tech is currently unlocked.
+
+On **unlock** (`ApplyEffect`): `AnimalController.UnlockJob(name)` adds a row to the jobs panel. Idempotent — safe to call before the panel is built (lazy `AddJobCounts` queries research state on first run).
+
+On **forget** (`RevertEffect`): `AnimalController.LockJob(name)` reassigns every animal currently working that job back to `"none"` and destroys the row. Players don't need to manually unassign — losing the tech automatically frees the workers.
 
 ## Key classes
 
