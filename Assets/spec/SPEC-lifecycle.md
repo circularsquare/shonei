@@ -8,16 +8,11 @@ World state is serialized to JSON via Newtonsoft.Json and stored in `Application
 
 Plain C# classes — **no `[Serializable]`** (not needed by Newtonsoft.Json; adding it causes Unity's own serializer to materialize default instances on MonoBehaviour fields instead of null).
 
-### Structure creation rules
+### Bulk-teardown warnings (`WorldController.isClearing`)
 
-Two legitimate ways to put a structure into the world:
+`ClearWorld()` sets the static flag `WorldController.isClearing = true` for the duration of the teardown and clears it at the end. Destroy paths that emit diagnostics about dangling state (reserved inventory stacks, non-empty building storages, reservoir contents) gate those warnings on `!WorldController.isClearing`, since during bulk teardown everything is destroyed together and the dangling references are expected — not a bug.
 
-| Method | When to use |
-|--------|-------------|
-| `StructController.Construct(st, tile)` | Normal gameplay (via `Blueprint.Complete()`). Consumes `Blueprint.inv` via `Produce(-qty)`, decrementing GlobalInventory. |
-| `new Building/Plant/etc.(…)` + `StructController.Place(s)` | Load path and world generation. No cost side-effects. |
-
-Always call `Place()` after direct construction — it registers the structure for tracking so `ClearWorld()` can find and destroy it later. Direct `new X()` without `Place()` is a bug.
+Current call sites: `Inventory.Destroy` (reserved/resSpace stacks), `Building.Destroy` (non-empty storage, reservoir drop-to-floor). Add a similar guard to any new destroy-path diagnostic that would otherwise fire during a world reset.
 
 ### Startup ordering (frame by frame)
 
@@ -58,49 +53,10 @@ Load:    ClearWorld() + SaveSystem.ApplySaveData()  →  PostLoadInit (next fram
 
 ## Save Slot UI
 
-### SaveMenuPanel (`Assets/UI/SaveMenuPanel.cs`)
-
-Singleton panel. Opened via `Toggle()`. On open it calls `RefreshSlotList()`, which reads all `.json` files from `SaveDir`, instantiates a `SaveSlotEntry` prefab per slot, and passes each entry its slot name, mouse count (read from the JSON on disk), and whether to auto-focus the rename field.
-
-| Button | Method | Behaviour |
-|--------|--------|-----------|
-| New Save | `OnClickNewSave()` | Saves current game to a unique name ("new save", "new save (2)", …), refreshes list, auto-focuses the new entry's name field for renaming |
-| Reset | `OnClickReset()` | Opens `ConfirmationPopup` ("reset world?" / "reset"); on confirm: closes panel, calls `SaveSystem.Reset()` |
-
-Public `Refresh()` wrapper triggers a full list rebuild — called by `SaveSlotEntry` after a delete.
-
-### SaveSlotEntry (`Assets/UI/SaveSlotEntry.cs`)
-
-Per-row MonoBehaviour on the slot prefab (`Assets/Resources/Prefabs/SaveSlot.prefab`). Initialised by `SaveMenuPanel` via `Init(slotName, miceCount, startRenaming)`.
-
-| Element | Behaviour |
-|---------|-----------|
-| `nameInput` (TMP_InputField) | Editable slot name; `onEndEdit` triggers rename — validates non-empty and no collision, calls `SaveSystem.RenameSlot`, reverts on failure |
-| `miceLabel` (TMP) | "Mice: N" — read from the save file on panel open; refreshed after Save |
-| Save button | `SaveSystem.Save(slotName)`, refreshes mice label |
-| Load button | `SaveSystem.Load(slotName)`, closes panel |
-| Delete button | Opens `ConfirmationPopup` ("really delete …?"); on confirm: `SaveSystem.DeleteSlot`, `SaveMenuPanel.Refresh()` |
-
-### SaveSystem slot methods
-
-| Method | Description |
-|--------|-------------|
-| `GetSaveSlots()` | Returns all `.json` filenames in `SaveDir` (no extension) |
-| `SlotExists(name)` | File existence check |
-| `RenameSlot(old, new)` | `File.Move`; returns false + LogError on missing source or name collision |
-| `DeleteSlot(name)` | `File.Delete`; LogError if not found |
-| `GetAnimalCount(name)` | Deserialises the save and returns `animals.Length`; used for the mice label |
-
-### ConfirmationPopup (`Assets/UI/ConfirmationPopup.cs`)
-
-Reusable singleton modal. **Keep inactive in scene** — `Awake` hides it immediately if accidentally left active, and `Show` finds it via `FindObjectOfType<ConfirmationPopup>(true)` (searches inactive objects) on first call.
-
-```csharp
-ConfirmationPopup.Show("message", () => { /* on confirm */ });
-ConfirmationPopup.Show("message", onConfirm, confirmLabel: "delete"); // custom button label
-```
-
-Cancel always just closes. The popup sets itself as last sibling on show so it renders above all other panels. A full-screen transparent `Blocker` child (Raycast Target ON) absorbs clicks behind it.
+- `SaveMenuPanel` (`Assets/UI/SaveMenuPanel.cs`) — singleton. `Toggle()` opens and calls `RefreshSlotList()`, which scans `.json` files in `SaveDir` and instantiates a `SaveSlotEntry` per slot. "New Save" creates a uniquely-named slot and auto-focuses the rename field; "Reset" goes through `ConfirmationPopup` before calling `SaveSystem.Reset()`.
+- `SaveSlotEntry` (`Assets/UI/SaveSlotEntry.cs`) — per-row component on `Assets/Resources/Prefabs/SaveSlot.prefab`. Handles inline rename (validates non-empty + no collision), Save/Load buttons, and a Delete button that routes through `ConfirmationPopup`.
+- `SaveSystem` slot API: `GetSaveSlots`, `SlotExists`, `RenameSlot`, `DeleteSlot`, `GetAnimalCount` (deserialises just enough to read `animals.Length` for the mice-count label).
+- `ConfirmationPopup` (`Assets/UI/ConfirmationPopup.cs`) — reusable singleton modal. **Keep inactive in scene** — `Show` finds it via `FindObjectOfType<ConfirmationPopup>(true)` so the inactive version is reachable. Sets itself last sibling on show; `Blocker` child absorbs background clicks. `Show(msg, onConfirm, confirmLabel?)`.
 
 ---
 

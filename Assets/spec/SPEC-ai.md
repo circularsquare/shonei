@@ -99,16 +99,7 @@ Tasks decompose into an ordered queue of Objectives. Each task:
 
 ### Reservation system (source + destination)
 
-Tasks reserve both **source items** and **destination space** during `Initialize()` to prevent conflicts. Both reservation types are tracked in the base `Task` class and automatically released by `Cleanup()`.
-
-| Reservation | Field on ItemStack | Task API | Purpose |
-|-------------|-------------------|----------|---------|
-| Source (`resAmount`) | `ItemStack.resAmount` | `Task.ReserveStack(stack, amount)` | Prevents other tasks from picking up reserved items |
-| Destination (`resSpace`) | `ItemStack.resSpace` | `Task.ReserveSpace(inv, item, amount)` | Prevents other tasks from targeting the same storage/floor space |
-
-`resSpace` works via `ItemStack.FreeSpace(item)` which returns `stackSize - quantity - resSpace`. All space-checking methods (`GetStorageForItem`, `GetMergeSpace`, `HasSpaceForItem`) account for it, so pathfinding naturally routes haulers to destinations with genuinely available space.
-
-Empty stacks track `resSpaceItem` to prevent two different items from claiming the same empty slot. Both reservation types are ephemeral (not saved) and have staleness expiry (60s) as a safety net for orphaned reservations.
+Tasks reserve both **source items** (`ItemStack.resAmount`) and **destination space** (`ItemStack.resSpace`) during `Initialize()` via `Task.ReserveStack` / `Task.ReserveSpace`. Both are auto-released by `base.Cleanup()`. For the full mechanism (FreeSpace logic, empty-stack tracking, staleness sweep) see SPEC-systems.md §Reservation Systems.
 
 **Tasks using destination reservation:** `HaulTask`, `ConsolidateTask`, `HaulToMarketTask`, `HaulFromMarketTask`, `SupplyFuelTask`, `DropObjective` (best-effort).
 
@@ -144,6 +135,34 @@ Empty stacks track `resSpaceItem` to prevent two different items from claiming t
 - **Partial-delivery fallback**: if no path to more items exists but the animal already holds a partial amount (e.g., the original stack was raided mid-task), `FetchObjective` calls `Complete` instead of `Fail`. This avoids a tight drop-and-re-fetch loop where the animal would otherwise drop the partial amount, see it on the floor, and immediately pick it up again.
 
 **`DeliverToInventoryObjective`**: moves items from animal inventory into a specific target inventory (used by `HaulTask` for storage delivery, `HaulFromMarketTask`, `SupplyFuelTask`). Always queued after `GoObjective`. Fails with log if target is null or animal has nothing to deliver.
+
+### Path-cost radius gate
+
+Every task pathfind is gated by an absolute cap on the **actual A\* path cost** so a mouse never commits to a journey that looks close crow-flies but winds endlessly around terrain (e.g. a plant 5 tiles away across a chasm whose path is 150 tiles around the cave perimeter).
+
+**Constants** (top of `Task` class in [Task.cs](../Model/Task.cs)):
+
+```csharp
+public const int   MediumFindRadius   = 40;    // default for almost every task
+public const int   MarketFindRadius   = 120;   // market portal only — intentionally long
+public const float FindRadiusTolerance = 1.2f; // path cost may exceed radius by this factor
+```
+
+A candidate is rejected when `path.cost > r × FindRadiusTolerance`.
+
+**Gate helper** — `Nav.WithinRadius(Path p, int r)` in [Nav.cs](../Model/Animal/Nav.cs): returns `true` iff `p != null && p.cost <= r × tolerance`. WOM-dispatched tasks call this after their single `PathTo*` in `Initialize()`; if it returns false, the task aborts before reserving.
+
+**Applied in `Initialize()`** of: `CraftTask`, `HarvestTask`, `HaulTask`, `ConstructTask`, `SupplyBlueprintTask`, `SupplyFuelTask`, `ResearchTask`, `EepTask` (conditional — falls back to sleeping in place if home is too far), `ChatTask`, `LeisureTask`. `GoTask` is the sole unconditional exception — explicit player/system intent has no radius concept.
+
+**Built into `Nav.Find*` methods** — `FindPathTo`, `FindPathAdjacentTo`, `FindPathToInv`, `FindPathToStruct`, `FindPathToHarvestable` all use a **sort-by-Chebyshev + first-fit** pattern:
+
+1. Collect candidate tiles matching the filter within the `r` bounding box.
+2. Sort by Chebyshev distance (crow-flies lower bound on path cost).
+3. Pathfind candidates in order; return the **first** whose `path.cost ≤ r × tolerance`.
+
+This is not guaranteed minimum-cost across all candidates, but in practice the nearest crow-flies candidate is almost always also the shortest walk, and it avoids pathfinding the rest of the box — typical Find* call now runs ~1 A\* invocation instead of N.
+
+Market tasks pass `r = Task.MarketFindRadius` via `FindMarketPath`. Drop searches (`FindPathToDrop`) use a tight `r = 10` without the tolerance multiplier. The legacy `persistent` expansion mechanism (retry with doubling radius) has been removed — the single widened search is simpler and the gate makes it sufficient.
 
 ### Job System
 
@@ -192,15 +211,11 @@ At full efficiency with a tool (1.25× base), an animal gains 0.125 XP/tick. Lev
 
 ## WorkOrderManager
 
-`WorkOrderManager` (singleton MonoBehaviour) is the central registry of pending work. Instead of animals scanning the world themselves, work is pushed in as prioritised `WorkOrder` objects.
+`WorkOrderManager` (singleton MonoBehaviour) is the central registry of pending work. Orders are stored as `List<WorkOrder>[] orders` — four lists, one per priority tier (index = priority - 1), FIFO within each tier.
 
-Orders are stored as `List<WorkOrder>[] orders` — an array of four lists, one per priority tier (index = priority - 1). Within each tier, FIFO order is preserved.
+Each `WorkOrder` carries a `Reservable res` (default capacity 1). **Orders stay in the queue permanently** — removed only when the underlying need goes away (blueprint destroyed, plant gone, etc.), not when claimed. `ChooseOrder` filters to `o.res.Available()`, tries each factory, and on success calls `order.res.Reserve(); task.workOrder = order`. On task end, `Task.Cleanup()` calls `workOrder?.res.Unreserve()`, re-opening the slot.
 
-Each `WorkOrder` carries a `Reservable res` (default capacity 1). **Orders stay in the queue permanently** — they are only removed when the underlying need goes away (blueprint destroyed, plant gone, etc.), not when claimed. `ChooseOrder` filters to `o.res.Available()`, tries each factory, and on success calls `order.res.Reserve(); task.workOrder = order`. When the task ends (success or fail), `Task.Cleanup()` calls `workOrder?.res.Unreserve(); workOrder = null`, making the order available for the next animal.
-
-`Reservable` has two capacity fields: `capacity` (hard max, set at registration from `structType.capacity`) and `effectiveCapacity` (player-adjustable; defaults to `capacity`). `Available()` gates on `effectiveCapacity`. For Craft orders, the player can lower the limit via InfoPanel +/- buttons to restrict how many workers use a workstation at once. The player-set limit is stored on `Building.workstation.workerLimit` (defaults to `capacity`), persisted via `StructureSaveData.workOrderEffectiveCapacity`, and synced to the WOM order via `WorkOrderManager.SetWorkstationCapacity()`. `Structure.res` is **not** created for workstations — the WOM Craft order's `res` is the sole reservation tracker for them.
-
-This replaces the old pattern where claiming removed the order and `Cleanup` had to re-register it.
+Player-adjustable workstation slot count flows: `Building.workstation.workerLimit` → `WorkOrderManager.SetWorkstationCapacity()` → `WorkOrder.res.effectiveCapacity` (Available() gates on this). Persisted via `StructureSaveData.workOrderEffectiveCapacity`. See SPEC-systems.md §Reservation Systems for the full landscape of `Structure.res` vs `seatRes[]` vs `WorkOrder.res`.
 
 ### Priority tiers
 
@@ -217,19 +232,19 @@ Orders are created once when the need first arises and removed only when the nee
 
 | Order type | Registered when | Removed when |
 |------------|----------------|--------------|
-| `Construct` | Blueprint created with no costs (if not suspended); or `PromoteToConstruct` when last supply delivered; or `RegisterOrdersIfUnsuspended()` when support below completes | Blueprint completed or destroyed (`RemoveForBlueprint`) |
-| `SupplyBlueprint` | Blueprint created with costs (if not suspended); or `RegisterOrdersIfUnsuspended()` when support below completes | Promoted to Construct; blueprint destroyed |
-| `Deconstruct` | `Blueprint.CreateDeconstructBlueprint()` called | Blueprint completed or destroyed |
-| `Haul` (priority 3, floor) | Items land on a floor inventory (`Inventory.Produce` or `MoveItemTo` destination hooks) | Eagerly: `MoveItemTo` source scan when a stack goes null; `Inventory.Decay()` when decay empties a stack; `Inventory.Destroy()` when floor inv is torn down. `PruneStaleHauls()` is a warning-level safety net only. |
-| `Haul` (priority 3, storage eviction) | Item is disallowed in a storage inventory while the stack is non-empty — triggered by `DisallowItem`, `ToggleAllowItem`, force-`AddItem`, or `Reconcile`. Uses `RegisterStorageEvictionHaul` — `HaulTask` only, no `ConsolidateTask` fallback. | Eagerly: stack empties (`AddItem` source hook); item re-allowed (`AllowItem`/`ToggleAllowItem`); storage destroyed (`Inventory.Destroy`). `PruneStaleHauls()` is a warning-level safety net. |
-| `Haul` (priority 1) | `PromoteHaulsFor(bp)` promotes or creates a p1 haul for blocking items during deconstruct | `RemoveForBlueprint` on cancel/complete |
-| `Harvest` | Plant placed; `isActive = () => plant.harvestable` suppresses the order between grow cycles | Plant destroyed (`RemoveForTile`) |
-| `HaulToMarket` | `UpdateMarketOrders(inv)` when any item is below its target | `UpdateMarketOrders(inv)` when target is met; called from `MoveItemTo` (market dest/source) and `ItemDisplay` target buttons. `PruneStaleMarketOrders()` is a warning-level safety net only. |
-| `HaulFromMarket` | `UpdateMarketOrders(inv)` when any item exceeds its target | `UpdateMarketOrders(inv)` when excess is cleared |
-| `Research` | `StructController.Construct()` when a lab is placed | Lab deconstructed (`RemoveForTile`) |
-| `Craft` | `RegisterWorkstation(building)` when an `isWorkstation` building is placed or loaded | Building deconstructed (`RemoveWorkstationOrders`) |
+| `Construct` | Blueprint cost-free; last supply delivered (`PromoteToConstruct`); support below completes (unsuspension) | Blueprint completed or destroyed |
+| `SupplyBlueprint` | Blueprint created with costs; or unsuspension | Promoted to Construct; blueprint destroyed |
+| `Deconstruct` | `Blueprint.CreateDeconstructBlueprint()` | Blueprint completed or destroyed |
+| `Haul` (p3 floor) | Items land on a floor inventory | Stack empties (eager); floor inv destroyed |
+| `Haul` (p3 eviction) | Item disallowed while stack non-empty (via `RegisterStorageEvictionHaul`; `HaulTask` only, no consolidation fallback) | Stack empties; item re-allowed; storage destroyed |
+| `Haul` (p1) | `PromoteHaulsFor(bp)` for items blocking a deconstruct | Parent blueprint resolved |
+| `Harvest` | Plant placed (`isActive` suppresses between grow cycles) | Plant destroyed |
+| `HaulToMarket` | `UpdateMarketOrders` sees item below target | `UpdateMarketOrders` sees target met |
+| `HaulFromMarket` | `UpdateMarketOrders` sees item above target | `UpdateMarketOrders` sees excess cleared |
+| `Research` | Lab placed | Lab deconstructed |
+| `Craft` | `isWorkstation` building placed (via `RegisterWorkstation`) | Building deconstructed |
 
-Research and Harvest orders are **per-source** (one order per lab/plant, keyed by `o.tile`). `ResearchTask` is constructed with the specific `Building lab` so it doesn't re-pathfind at init time.
+Exact eager-removal hook sites live in code comments next to the relevant `Remove*` call — check them before editing. Research and Harvest orders are **per-source** (one per lab/plant, keyed by `o.tile`); `ResearchTask` is constructed with the specific `Building lab` so it doesn't re-pathfind at init.
 
 **`PromoteToConstruct` edge case:** removes the `SupplyBlueprint` order while the delivering task's `workOrder.res.reserved == 1` (task still running). `SupplyBlueprintTask.Cleanup` later calls `workOrder.res.Unreserve()` on the now-orphaned order object — harmless.
 
@@ -276,12 +291,6 @@ Both reconciliation and auditing are handled by a single `ScanOrders(mode, silen
 `Task.MinHaulQuantity = 20` (0.20 liang). `HaulTask` and `ConsolidateTask` skip a haul if the quantity is below this threshold **and** it would not drain the source stack entirely.
 
 `Task.MinMarketHaulQuantity = 100` (1.0 liang). `HaulToMarketTask` and `HaulFromMarketTask` use this stricter threshold with **no exceptions** — not for stack-clearing or topping off. Merchants shouldn't make a trip for a trickle.
-
-### Blueprint constructor: autoRegister
-
-`new Blueprint(st, x, y)` auto-registers the appropriate order by default (`autoRegister = true`). Pass `autoRegister: false` when the caller will handle registration explicitly:
-- `Blueprint.CreateDeconstructBlueprint()` — sets state to Deconstructing and calls `RegisterDeconstruct` directly
-- `SaveSystem.RestoreBlueprint()` — sets state from save data; all WOM orders are registered by `Reconcile(silent: true)` at the end of `ApplySaveData()` once the graph is fully built
 
 ### Blueprint stacking & suspension
 

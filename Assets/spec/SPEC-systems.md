@@ -72,7 +72,6 @@ JSON fields on StructType:
 - `hasFuelInv: bool` — opt-in
 - `fuelItemName: string` — group or leaf item (e.g. `"wood"`)
 - `fuelCapacity: float` — max fen (liang in JSON, × 100 in `OnDeserialized`)
-- `fuelTarget: float` — refill trigger level (liang in JSON)
 - `fuelBurnRate: float` — liang/day consumed; `Reservoir.Burn()` converts to fen/sec using `World.ticksInDay`
 
 `isBuilding: true` on StructType makes StructController use the `Building` class for any depth (e.g. foreground torches at depth 2). `tile.building` (= `structs[0] as Building`) is still depth-0 specific; fuel buildings at other depths are accessed directly via task/WOM references.

@@ -22,7 +22,9 @@ If you think my query is based on incorrect assumptions or doesn't make sense to
 
 **Before modifying any code**, read `Assets/spec/SPEC.md` to orient yourself, then read the relevant sub-document for the system you're touching. Do not skip this step even for small changes — most pattern violations come from not reading the spec first.
 
-You can also reference log.txt and todo.txt for my thoughts on what has happened recently and what we should work on in the future. But don't edit these. 
+You can also reference log.txt and todo.txt for my thoughts on what has happened recently and what we should work on in the future. But don't edit these.
+
+Design plans for non-trivial in-progress features live in `C:\Users\anita\.claude\projects\c--Users-anita-projects-shonei\plans\` (alongside memory). Check there when picking up unfinished work or when the user references a plan by name. Save new plans there when scoping out a multi-session feature.
 
 For unity gameobjects, please lean towards telling me what to do in editor rather than creating them and setting properties in code.
 
@@ -87,8 +89,8 @@ When adding new saveable state, update the checklist comment at the top of `Save
 
 - **MCP scene/prefab writes**: Do NOT write `.unity`/`.prefab` files via MCP when user may have unsaved editor work — MCP reads stale on-disk state, not Unity's in-memory state. Describe manual steps instead.
 - **`[Serializable]` on save data classes**: Don't add it — Newtonsoft.Json doesn't need it, and Unity's serializer will materialize default instances instead of null.
-
-For system-specific anti-patterns and canonical examples for adding new content, see the bottom of `Assets/spec/SPEC.md`.
+- **Craft order job check**: Do NOT use `structType.job` for craft eligibility — that's the *construction* job (e.g. "hauler" for a sawmill). Use `Array.Exists(a.job.recipes, r => r != null && r.tile == buildingName)`.
+- **Stale WOM orders after world clear**: `WorkOrderManager.ClearAllOrders()` must be called at the start of `ClearWorld()`, before destroying any objects — otherwise `WorkOrder` references survive into the new session pointing at pre-load `ItemStack`/`Blueprint` objects.
 
 ## Session wrap-up checklist
 

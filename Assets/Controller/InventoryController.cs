@@ -146,8 +146,7 @@ public class InventoryController : MonoBehaviour {
             string text = item.name + ": " + ItemStack.FormatQ(globalInventory.Quantity(item), item.discrete);
             if (itemDisplayComp.itemText != null) itemDisplayComp.itemText.text = text;
 
-            text = "/" + ItemStack.FormatQ(targets[item.id], item.discrete);
-            if (itemDisplayComp.targetText != null) itemDisplayComp.targetText.text = text;
+            itemDisplayComp.SetTargetDisplay(targets[item.id]);
 
             if (item.parent != null){
                 UpdateItemDisplay(item.parent);

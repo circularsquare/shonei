@@ -6,11 +6,11 @@
             { "name": "acorn", "quantity": 1 }
         ],
         "nproducts": [
-            { "name": "pine", "quantity": 10 },
+            { "name": "pine", "quantity": 12 },
             { "name": "acorn", "quantity": 1 }
         ],
-        "growthTime": 40,
-        "harvestTime": 5.0,
+        "growthTime": 80,
+        "harvestTime": 7.0,
         "njob": "logger",
         "capacity": 1
     },{

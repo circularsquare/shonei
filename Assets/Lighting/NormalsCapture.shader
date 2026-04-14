@@ -66,7 +66,7 @@ Shader "Hidden/NormalsCapture" {
             float3 wn = normalize(float3(tn.x, tn.y, -tn.z));
 
             // For shadow casters (pass 0), encode edge depth in alpha.
-            // _NormalMap.a carries edge-distance falloff from TileNormalMaps:
+            // _NormalMap.a carries edge-distance falloff baked by TileSpriteCache:
             //   1.0 = at exposed edge (fully lit), 0.0 = deep interior (dark).
             // Non-tile sprites have _NormalMap.a = 1.0 → lerp(0.80, 1.0, 1.0) = 1.0.
             float outAlpha = shadowAlpha;

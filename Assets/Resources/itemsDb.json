@@ -145,6 +145,7 @@
                 "id": 220,
                 "name": "soybeans",
                 "decayRate": 0.2,
+                "foodValue": 5,
                 "children": null
             },{
                 "id": 242,

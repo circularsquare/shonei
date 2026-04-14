@@ -40,20 +40,13 @@ Unlock entry `type` is one of `"building"`, `"recipe"`, `"job"`, or `"misc"`. Fo
 
 ## Recipe gating
 
-Recipes referenced by a tech's unlocks are filtered out of:
-- `Animal.PickRecipeRandom` / `PickRecipe` / `PickRecipeForBuilding`
-- `AnimalStateManager` mid-craft check (fails the task if the tech gets forgotten mid-craft)
-- `RecipePanel.Rebuild` (hidden from the UI until unlocked)
-
-Ungated recipes are always craftable. The reverse index `recipeToTechNode` is built once in `LoadNodes`; use `ResearchSystem.IsRecipeUnlocked(recipeId)` anywhere a new recipe-pick site is added. `RecipePanel` rebuilds on `OnEnable`, so the exclusive-panel swap (research → recipe) naturally refreshes the list — no explicit callback needed.
+Gated recipes are filtered out at every pick site (`Animal.PickRecipe*`, `AnimalStateManager` mid-craft check that fails the task on forget, `RecipePanel.Rebuild`). Use `ResearchSystem.IsRecipeUnlocked(recipeId)` at any new pick site. Reverse index `recipeToTechNode` is built in `LoadNodes`.
 
 ## Job gating
 
-Jobs flagged `defaultLocked: true` in `jobsDb.json` are hidden from the jobs panel until a tech with a matching `{"type":"job","target":"<name>"}` entry is unlocked. The reverse index `jobToTechNode` is built once in `LoadNodes`; `IsJobUnlocked(name)` returns true when the job is ungated or its gating tech is currently unlocked.
+Jobs flagged `defaultLocked: true` in `jobsDb.json` are hidden until a tech with `{"type":"job","target":"<name>"}` is unlocked. `IsJobUnlocked(name)` returns true when ungated or gating tech is currently unlocked. Reverse index `jobToTechNode` built in `LoadNodes`.
 
-On **unlock** (`ApplyEffect`): `AnimalController.UnlockJob(name)` adds a row to the jobs panel. Idempotent — safe to call before the panel is built (lazy `AddJobCounts` queries research state on first run).
-
-On **forget** (`RevertEffect`): `AnimalController.LockJob(name)` reassigns every animal currently working that job back to `"none"` and destroys the row. Players don't need to manually unassign — losing the tech automatically frees the workers.
+On unlock: `AnimalController.UnlockJob(name)` adds the jobs-panel row (idempotent). On forget: `LockJob(name)` reassigns any worker of that job back to `"none"` and removes the row.
 
 ## Key classes
 

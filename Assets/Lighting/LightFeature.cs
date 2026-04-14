@@ -33,8 +33,8 @@ public class LightFeature : ScriptableRendererFeature {
     [Tooltip("How much the sun tints empty sky/background pixels (0 = no tint, 1 = full lightmap applied).")]
     [Range(0f, 1f)] public float skyLightBlend = 1f;
 
-    // Static accessor so TileNormalMaps and SkyExposure can read the depth without
-    // needing a reference to the ScriptableRendererFeature asset.
+    // Static accessor so TileSpriteCache (normal-map bake) and SkyExposure can read
+    // the depth without needing a reference to the ScriptableRendererFeature asset.
     public static float penetrationDepth { get; private set; } = 1f;
 
     [Header("Normals")]

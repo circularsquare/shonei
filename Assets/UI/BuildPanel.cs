@@ -55,6 +55,7 @@ public class BuildPanel : MonoBehaviour {
             vlg.childForceExpandWidth = false;
             vlg.childForceExpandHeight = false;
             vlg.childControlHeight = false;
+            vlg.spacing = 2f;
             var csf = sp.AddComponent<ContentSizeFitter>();
             csf.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
             csf.verticalFit   = ContentSizeFitter.FitMode.PreferredSize;

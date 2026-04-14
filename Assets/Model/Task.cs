@@ -41,6 +41,15 @@ public abstract class Task {
     public const int MinMarketHaulQuantity = 100;       // 1.0 liang (most items)
     public const int MinMarketHaulQuantitySilver = 40;  // 0.4 liang (silver moves in smaller amounts)
 
+    // ── Search radii ─────────────────────────────────────────────────────
+    // Every task pathfind should be gated by one of these radii × FindRadiusTolerance.
+    // A candidate target is rejected if the *actual* path cost to reach it exceeds
+    // radius × tolerance. This prevents mice committing to journeys that look close
+    // crow-flies but wind endlessly around terrain.
+    public const int MediumFindRadius = 40;         // default for almost every task
+    public const int MarketFindRadius = 120;        // market portal only — intentionally long
+    public const float FindRadiusTolerance = 1.2f;  // path cost may exceed radius by this factor
+
     protected static int MinMarketHaul(Item item) =>
         item.name == "silver" ? MinMarketHaulQuantitySilver : MinMarketHaulQuantity;
 
@@ -213,6 +222,11 @@ public abstract class Task {
 
     public void EnqueueFront(Objective obj) { objectives.AddFirst(obj); }
 
+    // Objectives still queued AFTER currentObjective. StartNextObjective() pops the
+    // current one off before it runs, so the list equals the remaining queue.
+    // Used by MerchantJourneyDisplay to detect which leg a traveling merchant is on.
+    public IEnumerable<Objective> RemainingObjectives() => objectives;
+
     public void StartNextObjective(){
         currentObjective = objectives.First.Value;
         objectives.RemoveFirst();
@@ -249,7 +263,7 @@ public class CraftTask : Task {
         recipe = _preChosenRecipe ?? animal.PickRecipeForBuilding(_building);
         if (recipe == null) { return false; }
         Path p = animal.nav.PathTo(_building.workTile);
-        if (p == null) { return false; }
+        if (!animal.nav.WithinRadius(p, MediumFindRadius)) { return false; }
         workplace = _building.workTile;
 
         roundsRemaining = animal.CalculateWorkPossible(recipe);
@@ -348,7 +362,10 @@ public class EepTask : Task {
         if (animal.homeTile == null){
             animal.FindHome();
         }
-        if (animal.homeTile != null){
+        // Only walk home if within a reasonable radius; otherwise sleep in place (bed is a bonus,
+        // not required). Without this, a walled-off or distant home causes a fail-and-retry loop
+        // since the animal remains eepy and re-picks EepTask immediately.
+        if (animal.homeTile != null && animal.nav.WithinRadius(animal.nav.PathTo(animal.homeTile), MediumFindRadius)){
             objectives.AddLast(new GoObjective(this, animal.homeTile));
         }
         objectives.AddLast(new EepObjective(this));
@@ -364,6 +381,9 @@ public class HarvestTask : Task {
         Plant plant = tile.plant;
         if (plant == null) return false;
         if (!plant.harvestable) return false;
+        // Reject unreachable plants and plants whose actual path is significantly longer than the
+        // medium search radius (e.g. 5 tiles crow-flies but 150 tiles around a chasm).
+        if (!animal.nav.WithinRadius(animal.nav.PathTo(tile), MediumFindRadius)) return false;
 
         objectives.AddLast(new GoObjective(this, tile));
         objectives.AddLast(new HarvestObjective(this, plant));
@@ -384,7 +404,9 @@ public class HaulTask : Task {
         Item item = targetStack.item;
         Tile itemTile = World.instance.GetTileAt(targetStack.inv.x, targetStack.inv.y);
         if (itemTile == null) return false;
-        if (!animal.nav.CanReach(itemTile)) return false;
+        // Gate the source leg too — unreachable or obscenely-winding pickup should skip the task.
+        // Storage leg is already gated by FindPathToStorage's internal radius cap.
+        if (!animal.nav.WithinRadius(animal.nav.PathTo(itemTile), MediumFindRadius)) return false;
         var (storagePath, storageInv) = animal.nav.FindPathToStorage(item);
         if (storagePath == null) return false;
         int available = targetStack.quantity - targetStack.resAmount;
@@ -461,7 +483,7 @@ public class ConstructTask : Task {
         Path standPath = blueprint.structType.isTile
             ? animal.nav.PathStrictlyAdjacent(blueprint.tile)
             : animal.nav.PathToOrAdjacent(blueprint.centerTile);
-        if (standPath == null) return false;
+        if (!animal.nav.WithinRadius(standPath, MediumFindRadius)) return false;
         objectives.AddLast(new GoObjective(this, standPath.tile));
         objectives.AddLast(new ConstructObjective(this, blueprint));
         return true;
@@ -479,7 +501,7 @@ public class SupplyBlueprintTask : Task {
         Path standPath = blueprint.structType.isTile
             ? animal.nav.PathStrictlyAdjacent(blueprint.tile)
             : animal.nav.PathToOrAdjacent(blueprint.centerTile);
-        if (standPath == null) return false;
+        if (!animal.nav.WithinRadius(standPath, MediumFindRadius)) return false;
         for (int i = 0; i < blueprint.costs.Length; i++) {
             int needed = blueprint.costs[i].quantity - blueprint.inv.Quantity(blueprint.costs[i].item);
             if (needed <= 0) continue;
@@ -533,9 +555,8 @@ public class SupplyFuelTask : Task {
         if (fuel == null) return false;
         int needed = fuel.capacity - fuel.Quantity();
         if (needed <= 0) return false;
-        if (!animal.nav.CanReach(building.tile)) return false;
         Path standPath = animal.nav.PathToOrAdjacent(building.tile);
-        if (standPath == null) return false;
+        if (!animal.nav.WithinRadius(standPath, MediumFindRadius)) return false;
         (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(fuel.fuelItem);
         if (itemPath == null) return false;
         int available = stack.quantity - stack.resAmount;
@@ -661,7 +682,7 @@ public class ResearchTask : Task {
     public override bool Initialize() {
         if (_lab == null) return false;
         Path p = animal.nav.PathToOrAdjacent(_lab.tile);
-        if (p == null) return false;
+        if (!animal.nav.WithinRadius(p, MediumFindRadius)) return false;
         objectives.AddLast(new GoObjective(this, p.tile));
         objectives.AddLast(new ResearchObjective(this));
         return true;
@@ -706,7 +727,7 @@ public class ChatTask : Task {
                 objectives.AddLast(new GoObjective(this, initiatorTile));
             } else {
                 // Fallback: no horizontal neighbor available, walk to partner's tile
-                if (animal.nav.PathTo(partnerTile) == null) return false;
+                if (!animal.nav.WithinRadius(animal.nav.PathTo(partnerTile), MediumFindRadius)) return false;
                 if (partner.task == null && partner.state == Animal.AnimalState.Idle) {
                     partner.task = new ChatTask(partner, animal);
                     partner.task.Start();
@@ -731,6 +752,10 @@ public class ChatTask : Task {
 
         Path pathLeft  = (left  != null && left.node.standable)  ? animal.nav.PathTo(left)  : null;
         Path pathRight = (right != null && right.node.standable) ? animal.nav.PathTo(right) : null;
+
+        // Reject paths that blow past the medium radius — a chat shouldn't require a cross-map hike.
+        if (!animal.nav.WithinRadius(pathLeft,  Task.MediumFindRadius)) pathLeft  = null;
+        if (!animal.nav.WithinRadius(pathRight, Task.MediumFindRadius)) pathRight = null;
 
         if (pathLeft != null && pathRight != null)
             return pathLeft.cost <= pathRight.cost ? left : right;
@@ -775,13 +800,13 @@ public class LeisureTask : Task {
         Path bestPath = null;
 
         if (building.seatRes != null) {
-            // Per-seat reservation: find the first seat that is available AND reachable
+            // Per-seat reservation: find the first seat that is available AND reachable within radius
             for (int i = 0; i < building.seatRes.Length; i++) {
                 if (!building.seatRes[i].Available()) continue;
                 Tile seat = building.WorkTileAt(i);
                 if (seat == null) continue;
                 Path p = animal.nav.PathTo(seat);
-                if (p != null) {
+                if (animal.nav.WithinRadius(p, MediumFindRadius)) {
                     building.seatRes[i].Reserve(animal.aName);
                     seatIndex = i;
                     bestPath = p;
@@ -799,14 +824,17 @@ public class LeisureTask : Task {
                 Tile seat = building.WorkTileAt(i);
                 if (seat == null) continue;
                 Path p = animal.nav.PathTo(seat);
-                if (p != null) { bestPath = p; seatTile = seat; break; }
+                if (animal.nav.WithinRadius(p, MediumFindRadius)) { bestPath = p; seatTile = seat; break; }
             }
         }
 
         // Fall back to adjacent if no direct path to any seat
         if (bestPath == null) {
-            bestPath = animal.nav.PathToOrAdjacent(building.workTile);
-            if (bestPath != null) seatTile = bestPath.tile;
+            Path adj = animal.nav.PathToOrAdjacent(building.workTile);
+            if (animal.nav.WithinRadius(adj, MediumFindRadius)) {
+                bestPath = adj;
+                seatTile = adj.tile;
+            }
         }
         if (bestPath == null) {
             return false; // Start() calls Cleanup() which unreserves via seatIndex/building.res

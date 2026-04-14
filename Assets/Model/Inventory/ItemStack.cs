@@ -33,6 +33,25 @@ public class ItemStack {
     }
     public static string FormatQ(ItemQuantity iq) => FormatQ(iq.quantity, iq.item.discrete);
 
+    // Inverse of FormatQ — parses a user-typed liang string into fen.
+    // Empty/whitespace → 0. Discrete items must parse to a whole liang.
+    // Returns false for unparseable, negative, or overflowing input; callers should revert the display.
+    public static bool TryParseQ(string liangStr, bool discrete, out int fen) {
+        fen = 0;
+        if (string.IsNullOrWhiteSpace(liangStr)) return true;
+        if (!float.TryParse(liangStr.Trim(),
+                            System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            out float liang))
+            return false;
+        if (liang < 0) return false;
+        if (discrete && Mathf.Abs(liang - Mathf.Round(liang)) > 0.0001f) return false;
+        double fenD = Math.Round(liang * 100.0);
+        if (fenD > int.MaxValue) return false;
+        fen = (int)fenD;
+        return true;
+    }
+
     public ItemStack(Inventory inv, Item item, int quantity = 0, int stackSize = 100){
         this.item = item;
         this.quantity = quantity;

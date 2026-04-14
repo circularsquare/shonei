@@ -25,10 +25,13 @@ public static class WorldGen {
     // ── Caves ────────────────────────────────────────────────────────
     const float CaveFreqX = 0.06f;          // lower = wider caves horizontally
     const float CaveFreqY = 0.14f;          // higher = thinner caves vertically
+    const int CaveOctaves = 2;              // FBM detail layers for cave noise (more = rougher walls)
+    const float CavePersistence = 0.5f;     // amplitude falloff per octave
+    const float CaveLacunarity = 2f;        // frequency multiplier per octave
     const float CaveThresholdSurface = 0.27f; // near surface: fewer caves
     const float CaveThresholdDeep = 0.34f;  // deep underground: more caves
     const int CaveExclusionBelow = 6;       // no caves within this many tiles below surface
-    const int CACycles = 4;                 // cellular automata smoothing iterations
+    const int CACycles = 1;                 // cellular automata smoothing iterations (low = preserve FBM detail)
     const int MinCaveSize = 8;              // flood-fill removes voids smaller than this
 
     // ── Worm carvers ──────────────────────────────────────────────────
@@ -44,7 +47,8 @@ public static class WorldGen {
 
     // ── Water ────────────────────────────────────────────────────────
     public const int WaterLine = 50;        // depressions only fill below this y
-    const int MinPoolVolume = 5;            // ignore basins smaller than this
+    const int MaxPools = 2;                 // at most this many pools per map
+    const int MinPoolVolume = 3;            // ignore basins smaller than this (widened so subtle terrain qualifies)
     const int MaxPoolVolume = 50;           // cap large basins to this many water tiles
 
     // ── Main entry point ─────────────────────────────────────────────────
@@ -160,9 +164,10 @@ public static class WorldGen {
                     continue;
                 }
 
-                field[x, y] = Mathf.PerlinNoise(
+                field[x, y] = FBM2D(
                     (x + seedOffX) * CaveFreqX,
-                    (y + seedOffY) * CaveFreqY
+                    (y + seedOffY) * CaveFreqY,
+                    CaveOctaves, CavePersistence, CaveLacunarity
                 );
             }
         }
@@ -383,9 +388,13 @@ public static class WorldGen {
 
     // ── Surface water — depression filling ────────────────────────────────
 
-    // Finds natural basins in the surface heightmap and fills them with water.
-    // Uses the "trapping rain water" two-pass algorithm to compute the water level
-    // at each column, then fills empty tiles in each basin up to the volume cap.
+    // Finds natural basins in the surface heightmap and fills the top MaxPools
+    // by volume with water. Two-pass "trapping rain water" to compute per-column
+    // water level, then collect eligible basins and fill the largest ones.
+    //
+    // Capping at MaxPools (rather than filling every basin) keeps water presence
+    // consistent across seeds — otherwise lumpy heightmaps produce swampy maps
+    // and smooth ones produce dry maps.
     static void FillDepressions(World world, int[] surfaceY) {
         int nx = world.nx;
         ushort waterMax = WaterController.WaterMax;
@@ -406,15 +415,14 @@ public static class WorldGen {
         for (int x = 0; x < nx; x++)
             waterLevel[x] = Math.Min(maxLeft[x], maxRight[x]);
 
-        // Identify contiguous basins (runs of columns where waterLevel > surfaceY)
-        // and fill them, respecting volume thresholds.
-        int x0 = 0;
-        while (x0 < nx) {
-            // Skip columns that aren't depressed
-            if (waterLevel[x0] <= surfaceY[x0]) { x0++; continue; }
+        // Pass 1: collect all eligible basins (contiguous runs where
+        // waterLevel > surfaceY, not draining into caves, big enough).
+        List<(int x0, int x1, int volume, int waterLevel)> basins = new();
+        int cursor = 0;
+        while (cursor < nx) {
+            if (waterLevel[cursor] <= surfaceY[cursor]) { cursor++; continue; }
 
-            // Find the extent of this basin, computing volume capped at the water line
-            int x1 = x0;
+            int x0 = cursor, x1 = cursor;
             int volume = 0;
             while (x1 < nx && waterLevel[x1] > surfaceY[x1]) {
                 int cappedLevel = Math.Min(waterLevel[x1], WaterLine);
@@ -422,8 +430,8 @@ public static class WorldGen {
                 x1++;
             }
 
-            // Skip basins that would drain into caves — check if any
-            // column has an empty tile just below the surface.
+            // Skip basins that would drain into caves — any column with an
+            // empty tile just below the surface lets water out.
             bool drains = false;
             for (int x = x0; x < x1 && !drains; x++) {
                 for (int y = surfaceY[x] - 1; y >= Math.Max(0, surfaceY[x] - 3); y--) {
@@ -431,37 +439,43 @@ public static class WorldGen {
                 }
             }
 
-            if (!drains && volume >= MinPoolVolume) {
-                // If volume exceeds the cap, binary search for the highest uniform
-                // water level that keeps total volume ≤ MaxPoolVolume.
-                // Water only spawns below the water line.
-                int fillLevel = Math.Min(waterLevel[x0], WaterLine);
-                if (volume > MaxPoolVolume) {
-                    int lo = surfaceY[x0], hi = fillLevel;
-                    for (int x = x0; x < x1; x++)
-                        lo = Math.Min(lo, surfaceY[x]);
-                    while (lo < hi) {
-                        int mid = (lo + hi + 1) / 2;
-                        int vol = 0;
-                        for (int x = x0; x < x1; x++)
-                            vol += Math.Max(0, mid - surfaceY[x]);
-                        if (vol <= MaxPoolVolume) lo = mid;
-                        else hi = mid - 1;
-                    }
-                    fillLevel = lo;
-                }
+            if (!drains && volume >= MinPoolVolume)
+                basins.Add((x0, x1, volume, Math.Min(waterLevel[x0], WaterLine)));
 
-                // Fill tiles up to the computed level
-                for (int x = x0; x < x1; x++) {
-                    for (int y = surfaceY[x]; y < fillLevel; y++) {
-                        Tile t = world.GetTileAt(x, y);
-                        if (!t.type.solid)
-                            t.water = waterMax;
-                    }
+            cursor = x1;
+        }
+
+        // Pass 2: sort by volume descending, fill the top MaxPools.
+        basins.Sort((a, b) => b.volume.CompareTo(a.volume));
+        int toFill = Math.Min(MaxPools, basins.Count);
+        for (int i = 0; i < toFill; i++) {
+            var b = basins[i];
+            int fillLevel = b.waterLevel;
+
+            // Large basins: binary-search the highest uniform level that keeps
+            // total volume ≤ MaxPoolVolume, so oversized depressions don't flood.
+            if (b.volume > MaxPoolVolume) {
+                int lo = surfaceY[b.x0], hi = fillLevel;
+                for (int x = b.x0; x < b.x1; x++)
+                    lo = Math.Min(lo, surfaceY[x]);
+                while (lo < hi) {
+                    int mid = (lo + hi + 1) / 2;
+                    int vol = 0;
+                    for (int x = b.x0; x < b.x1; x++)
+                        vol += Math.Max(0, mid - surfaceY[x]);
+                    if (vol <= MaxPoolVolume) lo = mid;
+                    else hi = mid - 1;
                 }
+                fillLevel = lo;
             }
 
-            x0 = x1;
+            for (int x = b.x0; x < b.x1; x++) {
+                for (int y = surfaceY[x]; y < fillLevel; y++) {
+                    Tile t = world.GetTileAt(x, y);
+                    if (!t.type.solid)
+                        t.water = waterMax;
+                }
+            }
         }
     }
 
@@ -517,6 +531,8 @@ public static class WorldGen {
         if (world.GetTileAt(x, sy - 1).type != dirt) return false;
         // No water at the surface
         if (world.GetTileAt(x, sy).water > 0) return false;
+        // Space must be unoccupied (market, starter plants, etc. share depth 0)
+        if (world.GetTileAt(x, sy).structs[0] != null) return false;
         return true;
     }
 
@@ -528,6 +544,23 @@ public static class WorldGen {
     }
 
     // ── Noise utilities ──────────────────────────────────────────────────
+
+    // Fractal Brownian Motion (2D): layered Perlin noise, normalized to ~[0,1]
+    // so the existing cave thresholds (CaveThresholdSurface/Deep) stay meaningful.
+    // Each octave contributes amp * PerlinNoise; we divide by the total amp to renormalize.
+    static float FBM2D(float x, float y, int octaves, float persistence, float lacunarity) {
+        float value = 0f;
+        float amp = 1f;
+        float freq = 1f;
+        float ampSum = 0f;
+        for (int i = 0; i < octaves; i++) {
+            value += Mathf.PerlinNoise(x * freq, y * freq) * amp;
+            ampSum += amp;
+            amp *= persistence;
+            freq *= lacunarity;
+        }
+        return value / ampSum;
+    }
 
     // Fractal Brownian Motion (1D): layered Perlin noise for natural terrain.
     // Each octave doubles frequency and halves amplitude.

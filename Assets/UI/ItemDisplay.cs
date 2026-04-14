@@ -18,7 +18,7 @@ public class ItemDisplay : MonoBehaviour {
     public Item item;
     public ItemIcon itemIcon;
     public TMPro.TextMeshProUGUI itemText;
-    public TMPro.TextMeshProUGUI targetText;
+    public TMPro.TMP_InputField targetInput; // user-editable target field (Global/Market modes)
     public GameObject toggleGo;  // allow/disallow button with Image child
     public Sprite spriteAllowed;
     public Sprite spriteDisallowed;
@@ -132,30 +132,50 @@ public class ItemDisplay : MonoBehaviour {
         return (sel?.invType == Inventory.InvType.Market) ? sel : null;
     }
 
-    public void OnClickTargetUp(){
-        if (displayMode == DisplayMode.Storage) return; // no targets in storage allow panel
+    // Up/down buttons step the target by 1 liang (100 fen). Clamped to ≥0.
+    public void OnClickTargetUp()   => AdjustTarget(+100);
+    public void OnClickTargetDown() => AdjustTarget(-100);
+
+    private void AdjustTarget(int deltaFen) {
+        if (displayMode == DisplayMode.Storage) return;
         Inventory market = ResolveMarketInventory();
         if (market != null) {
-            market.targets[item] = market.targets[item] == 0 ? 1 : market.targets[item] * 2;
+            market.targets[item] = Mathf.Max(0, market.targets[item] + deltaFen);
             market.lastTargetManualUpdateTimer = World.instance?.timer ?? float.NegativeInfinity;
             WorkOrderManager.instance?.UpdateMarketOrders(market);
         } else {
             var t = InventoryController.instance.targets;
-            t[item.id] = t[item.id] == 0 ? 1 : t[item.id] * 2;
+            t[item.id] = Mathf.Max(0, t[item.id] + deltaFen);
         }
         RefreshAfterTargetChange();
     }
-    public void OnClickTargetDown(){
-        if (displayMode == DisplayMode.Storage) return; // no targets in storage allow panel
+
+    // Commits a typed value when the user finishes editing (Enter / focus loss).
+    // Invalid input reverts by simply refreshing from the authoritative target.
+    public void OnTargetEndEdit(string s) {
+        if (displayMode == DisplayMode.Storage) return;
+        if (item == null) return;
+        if (!ItemStack.TryParseQ(s, item.discrete, out int fen)) {
+            RefreshAfterTargetChange();
+            return;
+        }
         Inventory market = ResolveMarketInventory();
         if (market != null) {
-            market.targets[item] /= 2;
+            market.targets[item] = fen;
             market.lastTargetManualUpdateTimer = World.instance?.timer ?? float.NegativeInfinity;
             WorkOrderManager.instance?.UpdateMarketOrders(market);
         } else {
-            InventoryController.instance.targets[item.id] /= 2;
+            InventoryController.instance.targets[item.id] = fen;
         }
         RefreshAfterTargetChange();
+    }
+
+    // Writes an authoritative fen value into the input field without firing onValueChanged.
+    // Skipped while the field is focused so typed input isn't clobbered by background ticks.
+    public void SetTargetDisplay(int fenValue) {
+        if (targetInput == null || item == null) return;
+        if (targetInput.isFocused) return;
+        targetInput.SetTextWithoutNotify(ItemStack.FormatQ(fenValue, item.discrete));
     }
 
     private void RefreshAfterTargetChange() {

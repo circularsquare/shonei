@@ -1,5 +1,8 @@
 meoww!!
 
+4/13
+- ui cleanups 
+- added max find radii
 4/12
 - added more researches, added research/job unlocking
 4/10

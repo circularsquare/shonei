@@ -125,9 +125,7 @@ Singleton. Subscribes to TradingClient events in `Start()`, unsubscribes in
 
 `itemInput` and `chatInput` also trigger on Enter key (wired in `Start()`).
 
-**Chat/fill display:** capped at 20 entries; fills shown in green. Requires
-`chatList` VerticalLayoutGroup with **Control Child Size Width ON, Height OFF**;
-each row uses ContentSizeFitter (vertical = PreferredSize).
+**Chat/fill display:** capped at 20 entries; fills shown in green.
 
 **Indicator sprites:** loaded from `Resources/Sprites/Misc/indicator/green` and
 `Resources/Sprites/Misc/indicator/red`.
@@ -169,6 +167,32 @@ transit period representing the journey to/from the distant city.
 - Save/load: traveling state is persisted (`isTraveling`, `travelProgress`,
   `travelDuration` on `AnimalSaveData`). On load, a `ResumeTravelTask` finishes
   the remaining travel ticks before the animal goes idle.
+
+### Journey display UI
+
+`MerchantJourneyDisplay` (child strip inside TradingPanel) renders a head icon
+for every animal currently in `AnimalState.Traveling`. Icons lerp along a
+horizontal line between two RectTransform anchors — `marketAnchor` (left, the
+distant city) and `townAnchor` (right, home) — based on the merchant's progress
+through its `TravelingObjective`.
+
+Each icon is a `MerchantJourneyIcon`: an `Image` with an `IPointerClickHandler`
+that routes clicks to `InfoPanel.ShowInfo(new List<Animal>{ a })`. Icons are
+constructed in code via `MerchantJourneyIcon.Create(...)` (no prefab) and copy
+`sprite` + `color` from the animal's `Head` child SpriteRenderer, so per-mouse
+sprite/colour variation carries into the strip. `IPointerClickHandler` is
+preferred over `Button` to avoid unused transition/interactable machinery.
+
+Direction of travel is inferred from the animal's task:
+- `HaulToMarketTask` — always outbound (town → market).
+- `HaulFromMarketTask` — first leg outbound, second leg returning. Detected by
+  walking `Task.RemainingObjectives()`; if any later `TravelingObjective` or
+  `ReceiveFromInventoryObjective` is still queued, the merchant hasn't reached
+  the market yet.
+- `ResumeTravelTask` — direction isn't persisted, falls back to outbound.
+
+The display self-ticks from its own `Update` whenever the panel is visible; no
+wiring from TradingPanel is needed beyond the inspector reference.
 
 ### Player name
 

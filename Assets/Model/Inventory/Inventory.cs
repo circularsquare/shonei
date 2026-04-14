@@ -115,6 +115,19 @@ public class Inventory{
         if (invType == InvType.Floor || invType == InvType.Storage)
             foreach (ItemStack stack in itemStacks)
                 WorkOrderManager.instance?.RemoveHaulForStack(stack);
+        // Warn on reserved stacks being destroyed — the reservation holder is about to hit a stale reference.
+        // Identifies which task/animal was mid-fetch and what tore the inv out from under it.
+        // Skipped during ClearWorld: bulk teardown tears everything down together, so dangling
+        // reservations are expected and not a bug.
+        if (!WorldController.isClearing) {
+            foreach (ItemStack stack in itemStacks) {
+                if (stack == null) continue;
+                if (stack.resAmount > 0)
+                    Debug.LogWarning($"Inventory.Destroy: {invType} '{displayName}' at ({x},{y}) destroyed while stack reserved — item={stack.item?.name} qty={stack.quantity} resAmount={stack.resAmount} resTask={stack.resTask} animal={stack.resTask?.animal?.aName}");
+                if (stack.resSpace > 0)
+                    Debug.LogWarning($"Inventory.Destroy: {invType} '{displayName}' at ({x},{y}) destroyed while stack space reserved — resSpaceItem={stack.resSpaceItem?.name} resSpace={stack.resSpace} resSpaceTask={stack.resSpaceTask} animal={stack.resSpaceTask?.animal?.aName}");
+            }
+        }
         foreach (ItemStack stack in itemStacks) { stack.quantity = 0; stack.resAmount = 0; stack.resSpace = 0; stack.resSpaceItem = null; }
         if (go != null){GameObject.Destroy(go); go = null;}
         if (stackGos != null){
@@ -220,7 +233,7 @@ public class Inventory{
         if (destroyed || otherInv == null || otherInv.destroyed) {
             Inventory dead = destroyed ? this : otherInv;
             string role = destroyed ? "source" : "destination";
-            Debug.LogError($"Inventory.MoveItemTo called with destroyed {role} ({dead?.invType} '{dead?.displayName}' at ({dead?.x},{dead?.y})) — stale reference (item={item?.name}, qty={quantity}). Returning 0.");
+            Debug.LogWarning($"Inventory.MoveItemTo called with destroyed {role} ({dead?.invType} '{dead?.displayName}' at ({dead?.x},{dead?.y})) — stale reference (item={item?.name}, qty={quantity}). Returning 0.");
             return 0;
         }
         // Group items (e.g. "wood") can't exist as physical stacks — resolve to the leaf via GetLeafStack.

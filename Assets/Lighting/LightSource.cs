@@ -10,15 +10,15 @@ using UnityEngine;
 // The Update() loop will burn fuel and set isLit=false when the fuel inv is empty.
 // SunController reads isLit to zero out intensity for unlit sources.
 public class LightSource : MonoBehaviour {
-    public Color lightColor   = new Color(1f, 0.75f, 0.3f);
+    public Color lightColor   = new Color(1f, 0.8f, 0.5f);
     public float intensity    = 0.0f;
-    public float baseIntensity = 0.80f;
+    public float baseIntensity = 0.85f;
 
     [Header("Point light")]
     public float outerRadius = 10f;
-    public float innerRadius = 2f;
+    public float innerRadius = 4f;
     [Tooltip("Z height above the sprite plane — controls how steep the NdotL angle is")]
-    public float lightHeight = 0.5f;
+    public float lightHeight = 0.4f;
 
     [Header("Directional (sun)")]
     public bool isDirectional = false;

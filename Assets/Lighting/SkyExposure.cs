@@ -15,7 +15,8 @@ public class SkyExposure : MonoBehaviour {
     Texture2D exposureTex; // R8, nx x ny — sky light falloff (255 at sky, fades with distance)
     bool dirty;
 
-    // Falloff distance read from LightFeature.penetrationDepth (unified with TileNormalMaps).
+    // Falloff distance read from LightFeature.penetrationDepth (unified with the
+    // sub-tile edge-depth baked into tile normal maps by TileSpriteCache).
 
     // Called by WorldController/SaveSystem after tiles are ready.
     // The SkyExposure GameObject must exist in the scene (under Lighting).
@@ -70,7 +71,8 @@ public class SkyExposure : MonoBehaviour {
     // Sky light is emitted from sky-exposed tiles (!hasBackground) and falls
     // off with Chebyshev distance into surrounding material. Multi-source BFS
     // flood fill computes distance; smoothstep maps it to 0–255 falloff.
-    // Falloff depth = LightFeature.penetrationDepth (shared with TileNormalMaps).
+    // Falloff depth = LightFeature.penetrationDepth (shared with the sub-tile
+    // edge-depth baked into tile normal maps by TileSpriteCache).
     void RebuildExposureTexture() {
         if (world == null) return;
         int nx = world.nx;

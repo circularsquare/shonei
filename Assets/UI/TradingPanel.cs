@@ -39,6 +39,9 @@ public class TradingPanel : MonoBehaviour {
     public Transform      chatList;
     public TMP_InputField chatInput;
 
+    [Header("Merchant Journey")]
+    public MerchantJourneyDisplay merchantJourney;
+
     bool _orderIsBuy   = true;
     bool _orderSideSet = false; // neither buy nor sell selected by default
 
@@ -175,11 +178,9 @@ public class TradingPanel : MonoBehaviour {
             int qty = currentMarket.Quantity(item);
             display.itemText.text = item.name + ": " + ItemStack.FormatQ(qty, item.discrete);
         }
-        if (display.targetText != null) {
-            int target = currentMarket.targets != null && currentMarket.targets.ContainsKey(item)
-                ? currentMarket.targets[item] : 0;
-            display.targetText.text = "/" + ItemStack.FormatQ(target, item.discrete);
-        }
+        int target = currentMarket.targets != null && currentMarket.targets.ContainsKey(item)
+            ? currentMarket.targets[item] : 0;
+        display.SetTargetDisplay(target);
     }
 
     // -------------------------------------------------------------------------

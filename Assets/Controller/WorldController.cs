@@ -263,25 +263,41 @@ public class WorldController : MonoBehaviour {
         // in structcontroller whenever a tile type changes?
     }
 
+    static readonly int NormalMapID = Shader.PropertyToID("_NormalMap");
+    // Lazy-initialized: Unity forbids constructing MaterialPropertyBlock in a static
+    // field initializer that runs before the first Awake/Start on a MonoBehaviour type.
+    static MaterialPropertyBlock _normalMpb;
+    static MaterialPropertyBlock normalMpb => _normalMpb ??= new MaterialPropertyBlock();
+
     void ApplyTileNormalMap(Tile tile) {
         if (tile == null || !tileGameObjectMap.ContainsKey(tile)) return;
         var sr = tileGameObjectMap[tile].GetComponent<SpriteRenderer>();
-        if (!tile.type.solid) { TileNormalMaps.Clear(sr); return; }
+        if (!tile.type.solid) { SetNormalMap(sr, TileSpriteCache.FlatNormalMap); return; }
 
-        // Build 8-bit mask: bits 0-3 = cardinal (L/R/D/U), bits 4-7 = diagonal (BL/BR/TL/TR)
-        int mask = 0;
-        if (IsSolidAt(tile.x - 1, tile.y))     mask |= 1;
-        if (IsSolidAt(tile.x + 1, tile.y))     mask |= 2;
-        if (IsSolidAt(tile.x,     tile.y - 1)) mask |= 4;
-        if (IsSolidAt(tile.x,     tile.y + 1)) mask |= 8;
-        if (IsSolidAt(tile.x - 1, tile.y - 1)) mask |= 16;
-        if (IsSolidAt(tile.x + 1, tile.y - 1)) mask |= 32;
-        if (IsSolidAt(tile.x - 1, tile.y + 1)) mask |= 64;
-        if (IsSolidAt(tile.x + 1, tile.y + 1)) mask |= 128;
-        TileNormalMaps.Apply(sr, mask);
+        // Sprite uses the 4-bit cardinal mask (16 variants). Normal map uses
+        // the 8-bit mask with diagonals (256 variants) — the extra bits drive
+        // inside-corner edge-depth alpha (e.g. hasL && hasD && !hasBL lets
+        // light penetrate into the BL interior corner via the diagonal gap).
+        int cMask = 0;
+        if (IsSolidAt(tile.x - 1, tile.y))     cMask |= 1;
+        if (IsSolidAt(tile.x + 1, tile.y))     cMask |= 2;
+        if (IsSolidAt(tile.x,     tile.y - 1)) cMask |= 4;
+        if (IsSolidAt(tile.x,     tile.y + 1)) cMask |= 8;
 
-        // Set the baked 20×20 sprite for this tile's type and cardinal adjacency.
-        sr.sprite = TileSpriteCache.Get(tile.type.name, mask & 0xF);
+        int nMask = cMask;
+        if (IsSolidAt(tile.x - 1, tile.y - 1)) nMask |= 16;   // BL
+        if (IsSolidAt(tile.x + 1, tile.y - 1)) nMask |= 32;   // BR
+        if (IsSolidAt(tile.x - 1, tile.y + 1)) nMask |= 64;   // TL
+        if (IsSolidAt(tile.x + 1, tile.y + 1)) nMask |= 128;  // TR
+
+        sr.sprite = TileSpriteCache.Get(tile.type.name, cMask, tile.x, tile.y);
+        SetNormalMap(sr, TileSpriteCache.GetNormalMap(tile.type.name, nMask, tile.x, tile.y));
+    }
+
+    static void SetNormalMap(SpriteRenderer sr, Texture2D tex) {
+        sr.GetPropertyBlock(normalMpb);
+        normalMpb.SetTexture(NormalMapID, tex);
+        sr.SetPropertyBlock(normalMpb);
     }
 
     bool IsSolidAt(int x, int y) {

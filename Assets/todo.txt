@@ -28,8 +28,9 @@ CONTENT
             - need to manually assign write book job?
     - scientists will read book if available instead of manual research 
     - mice randomly read book as leisure 
-world gen
-- more fractally caves? 2 tier perlin noises?
+
+- add "harvest" selection for plants
+
 VISUALS
 - make item icons more coherent / similar
 - tab styling, add building icons?
@@ -39,7 +40,8 @@ VISUALS
     - improve undergroundwall sprite 
     - procedurally generate rocks with normalmaps?
 
-
+- clean up stale button toggle in itemdisplay
+- why are torches so dim?
 
 MOUSE AI
 - ponder inventory management
@@ -52,7 +54,8 @@ MOUSE AI
     - inventory priority? or inventory pull orders
 - dynamic mouse task objectives
 
+
 BUGS
 
 TODAY GOALS
-
+get rid of target for item groups?

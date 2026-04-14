@@ -143,7 +143,7 @@ public static class SpriteNormalMapGenerator {
         TextureImporter nImp = AssetImporter.GetAtPath(outPath) as TextureImporter;
         if (nImp != null) {
             // Use Default (not NormalMap) so the texture stays as plain RGBA32 —
-            // the same packed 0-1 format that TileNormalMaps uses and NormalsCapture decodes.
+            // the same packed 0-1 format that TileSpriteCache bakes and NormalsCapture decodes.
             nImp.textureType        = TextureImporterType.Default;
             nImp.textureCompression = TextureImporterCompression.Uncompressed;
             nImp.filterMode         = imp.filterMode;
