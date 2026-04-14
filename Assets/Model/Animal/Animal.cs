@@ -124,12 +124,55 @@ public class Animal : MonoBehaviour{
             SaveSystem.LoadInventory(toolSlotInv, pendingSaveData.toolSlotInv);
             SaveSystem.LoadInventory(clothingSlotInv, pendingSaveData.clothingSlotInv);
             skills.Deserialize(pendingSaveData.skillXp, pendingSaveData.skillLevel);
-            // Resume mid-journey travel if the animal was saved while traveling
+            // Resume mid-journey travel if the animal was saved while traveling.
+            // New saves carry a travelTaskType descriptor so we can rebuild the full
+            // HaulTo/FromMarketTask tail — delivering or receiving at the market and
+            // walking home with the goods. The resumed TravelingObjective runs the
+            // full canonical leg duration (MarketTransitTicks); we then restore
+            // workProgress from the save so the mouse picks up at the same fraction
+            // of the strip it was on at save time (workProgress is the single source
+            // of travel progress — travelProgress on save data is just its persisted
+            // form). Legacy saves, or cases where the market / storage building was
+            // demolished between save and load, fall through to ResumeTravelTask,
+            // which just finishes the remaining ticks and goes idle.
             if (pendingSaveData.isTraveling && pendingSaveData.travelDuration > 0) {
-                int remaining = pendingSaveData.travelDuration - (int)pendingSaveData.travelProgress;
-                if (remaining > 0) {
-                    this.task = new ResumeTravelTask(this, remaining);
-                    if (!this.task.Start()) this.task = null;
+                Task resumed = null;
+                switch (pendingSaveData.travelTaskType) {
+                    case "HaulToMarket":
+                        if (!string.IsNullOrEmpty(pendingSaveData.travelItemName)
+                            && Db.itemByName.TryGetValue(pendingSaveData.travelItemName, out Item htItem))
+                            resumed = new HaulToMarketTask(this,
+                                new ItemQuantity(htItem, pendingSaveData.travelItemQty),
+                                pendingSaveData.travelReturnLeg);
+                        break;
+                    case "HaulFromMarket":
+                        if (!string.IsNullOrEmpty(pendingSaveData.travelItemName)
+                            && Db.itemByName.TryGetValue(pendingSaveData.travelItemName, out Item hfItem)
+                            && pendingSaveData.travelStorageX.HasValue
+                            && pendingSaveData.travelStorageY.HasValue) {
+                            Tile storageTile = World.instance.GetTileAt(
+                                pendingSaveData.travelStorageX.Value,
+                                pendingSaveData.travelStorageY.Value);
+                            if (storageTile != null)
+                                resumed = new HaulFromMarketTask(this,
+                                    new ItemQuantity(hfItem, pendingSaveData.travelItemQty),
+                                    storageTile, pendingSaveData.travelReturnLeg);
+                        }
+                        break;
+                }
+                // Legacy fallback: ResumeTravelTask only knows how to finish the
+                // remaining ticks, so it takes the tail-only duration.
+                if (resumed == null) {
+                    int remaining = Mathf.Max(1, pendingSaveData.travelDuration - (int)pendingSaveData.travelProgress);
+                    resumed = new ResumeTravelTask(this, remaining);
+                }
+                this.task = resumed;
+                if (this.task.Start()) {
+                    // TravelingObjective.Start() zeroed workProgress; restore it so the
+                    // journey-display icon picks up where the save left off.
+                    this.workProgress = pendingSaveData.travelProgress;
+                } else {
+                    this.task = null;
                 }
             }
             pendingSaveData = null;
@@ -263,7 +306,7 @@ public class Animal : MonoBehaviour{
             task = new DropTask(this);
             if (task.Start()) return; }
         if (eating.Hungry()) { if (FindFood()) return; }
-        if (eeping.Eepy() && IsNighttime()) {
+        if (eeping.ShouldSleep(IsNighttime())) {
             task = new EepTask(this);
             if (task.Start()) return; }
         if (FindEquipment()) return;

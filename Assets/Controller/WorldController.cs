@@ -44,6 +44,7 @@ public class WorldController : MonoBehaviour {
 
                 SpriteRenderer tile_sr = tile_go.AddComponent<SpriteRenderer>();
                 tile_sr.sortingOrder = 0;
+                LightReceiverUtil.SetSortBucket(tile_sr);
                 if (tileMaterial != null) tile_sr.material = tileMaterial;
                 tile.RegisterCbTileTypeChanged(OnTileTypeChanged);
             }
@@ -79,6 +80,7 @@ public class WorldController : MonoBehaviour {
         SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
         sr.sprite = sprite;
         sr.sortingOrder = 65; // below floor items (sortingOrder 70)
+        LightReceiverUtil.SetSortBucket(sr);
 
         Vector3 start = new Vector3(srcX, srcY, 0);
         Vector3 end   = new Vector3(dstX, dstY, 0);

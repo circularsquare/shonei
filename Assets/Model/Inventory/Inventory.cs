@@ -89,6 +89,7 @@ public class Inventory{
                 stackGos[i].transform.SetParent(InventoryController.instance.transform, true);
                 SpriteRenderer sr = stackGos[i].AddComponent<SpriteRenderer>();
                 sr.sortingOrder = 30;
+                LightReceiverUtil.SetSortBucket(sr);
             }
         } else if (invType == InvType.Floor || invType == InvType.Storage){
             go = new GameObject();
@@ -97,6 +98,7 @@ public class Inventory{
             SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
             if (invType == InvType.Floor) {sr.sortingOrder = 70;}
             else {sr.sortingOrder = 30;}
+            LightReceiverUtil.SetSortBucket(sr);
             string spriteName = (invType == InvType.Storage && isLiquidStorage) ? "Liquid" : invType.ToString();
             sr.sprite = Resources.Load<Sprite>("Sprites/Inventory/" + spriteName);
         }

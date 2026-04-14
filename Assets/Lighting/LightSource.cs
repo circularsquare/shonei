@@ -18,10 +18,23 @@ public class LightSource : MonoBehaviour {
     public float outerRadius = 10f;
     public float innerRadius = 4f;
     [Tooltip("Z height above the sprite plane — controls how steep the NdotL angle is")]
-    public float lightHeight = 0.4f;
+    public float lightHeight = 1.0f;
 
     [Header("Directional (sun)")]
     public bool isDirectional = false;
+
+    [Header("Sort-aware height")]
+    [Tooltip("This light's sortingOrder for the sort-aware effective-height ramp. " +
+             "-1 = auto-detect from a SpriteRenderer on this GameObject or its parents " +
+             "(e.g. the torch sprite). Receivers whose sortingOrder > this value are lit " +
+             "as if the light were behind them. See LightCircle.shader.")]
+    public int sortOrderOverride = -1;
+
+    // Cached effective sortingOrder used to build sortBucket. Resolved in OnEnable.
+    private int _effectiveSort;
+
+    /// <summary>Normalized sort value (0–1) consumed by LightCircle.shader as _LightSortBucket.</summary>
+    public float sortBucket => Mathf.Clamp01(_effectiveSort / 255f);
 
     /// <summary>Set to the Reservoir that powers this light. Null = no fuel needed (always lit).</summary>
     [HideInInspector] public Reservoir reservoir;
@@ -41,8 +54,29 @@ public class LightSource : MonoBehaviour {
     // Fractional-fen accumulator so sub-fen burn rates work correctly across frames.
     private float _fuelAccumulator = 0f;
 
-    void OnEnable()  => all.Add(this);
+    void OnEnable() {
+        all.Add(this);
+        ResolveSortOrder();
+    }
     void OnDisable() => all.Remove(this);
+
+    private void ResolveSortOrder() {
+        if (sortOrderOverride >= 0) {
+            _effectiveSort = sortOrderOverride;
+            return;
+        }
+        // Walk up the hierarchy so a LightSource attached to a child GameObject
+        // (common for torches — the emitter is often a separate pivot) still
+        // picks up the structure's sortingOrder from the parent sprite.
+        var sr = GetComponentInParent<SpriteRenderer>();
+        if (sr == null) {
+            Debug.LogError($"LightSource on {name}: no SpriteRenderer in parents and no sortOrderOverride set. " +
+                           $"Defaulting to sortingOrder 0 for sort-aware lighting.");
+            _effectiveSort = 0;
+            return;
+        }
+        _effectiveSort = sr.sortingOrder;
+    }
 
     void Update() {
         if (reservoir == null) return; // no fuel needed — always lit

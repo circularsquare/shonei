@@ -10,8 +10,11 @@ using UnityEngine;
 
     Priority:  1 = highest (hauls unblocking a pending deconstruct)
                2 = construct, supply blueprint, harvest
-               3 = haul, consolidate, haul to/from market, craft
-               4 = deconstruct, research
+               3 = haul, consolidate, haul to market, craft
+               4 = deconstruct, research, haul from market
+                   (HaulFromMarket sits below HaulToMarket so merchants deliver first
+                    and opportunistically piggyback a pickup on the return leg; a pure
+                    pickup trip only fires when there's nothing to deliver.)
 
     In Animal.ChooseTask the tiers are:
         ChooseOrder(1) → ChooseOrder(2) → ChooseOrder(3) → ChooseOrder(4)
@@ -269,8 +272,9 @@ public class WorkOrderManager : MonoBehaviour {
     // Orders are removed eagerly even if in-flight: the active task still holds a workOrder
     // reference and base.Cleanup() will Unreserve() it safely even after removal from the queue.
     //
-    // HaulToMarket is suppressed for 3 reconcile ticks (3s) after the player manually
-    // edits a target, so multiple target edits can settle before merchants are dispatched.
+    // Market haul orders are suppressed for 3s after the player manually edits a target,
+    // so multiple target edits can settle before merchants are dispatched. Applies to both
+    // directions — an edit can flip an item from "below target" to "above" or vice versa.
     const float marketHaulDelayAfterTargetChange = 3f;
     public void UpdateMarketOrders(Inventory marketInv) {
         float timeSinceTargetEdit = World.instance != null
@@ -286,21 +290,35 @@ public class WorkOrderManager : MonoBehaviour {
                 inv = marketInv,
                 canDo = a => a.job.name == "merchant"
             });
-        if (MarketNeedsHaulFrom(marketInv) && !orders[2].Exists(o => o.type == OrderType.HaulFromMarket && o.inv == marketInv))
+        // HaulFromMarket sits at priority 4 so merchants exhaust all outbound delivery work
+        // at p3 before considering a pure pickup trip. Combined with HaulToMarketTask's
+        // opportunistic piggyback, most excess gets hauled back on the return leg of a
+        // delivery — a pure HaulFromMarket only fires when there is genuinely nothing to
+        // deliver. Merchants are the only job that matches this order's canDo, so sharing
+        // the p4 tier with Research/Deconstruct is collision-free.
+        if (!targetRecentlyEdited && MarketNeedsHaulFrom(marketInv) && !orders[3].Exists(o => o.type == OrderType.HaulFromMarket && o.inv == marketInv))
             Add(new WorkOrder {
                 type = OrderType.HaulFromMarket,
-                priority = 3,
+                priority = 4,
                 factory = a => new HaulFromMarketTask(a),
                 inv = marketInv,
                 canDo = a => a.job.name == "merchant"
             });
-        // Remove orders whose need has gone away.
-        orders[2].RemoveAll(o => {
-            if (o.inv != marketInv) return false;
-            if (o.type == OrderType.HaulToMarket   && !MarketNeedsHaulTo(marketInv))   return true;
-            if (o.type == OrderType.HaulFromMarket && !MarketNeedsHaulFrom(marketInv)) return true;
-            return false;
-        });
+        // Remove orders whose need has gone away — HaulTo lives at p3 (index 2), HaulFrom at p4 (index 3).
+        orders[2].RemoveAll(o => o.inv == marketInv && o.type == OrderType.HaulToMarket   && !MarketNeedsHaulTo(marketInv));
+        orders[3].RemoveAll(o => o.inv == marketInv && o.type == OrderType.HaulFromMarket && !MarketNeedsHaulFrom(marketInv));
+    }
+
+    // Returns the HaulFromMarket work order for this market (at any tier), or null.
+    // Used by HaulToMarketTask.TryAppendPickup to claim the order so a second merchant
+    // won't race the piggyback pickup. Scans all tiers defensively — the order's canonical
+    // tier is p4 (index 3), but keep this agnostic so a tier change doesn't break the lookup.
+    public WorkOrder FindMarketHaulFromOrder(Inventory marketInv) {
+        foreach (var tier in orders) {
+            WorkOrder o = tier.Find(x => x.type == OrderType.HaulFromMarket && x.inv == marketInv);
+            if (o != null) return o;
+        }
+        return null;
     }
 
     public bool RegisterHarvest(Plant plant) {
@@ -473,6 +491,7 @@ public class WorkOrderManager : MonoBehaviour {
     // Remove market haul orders where the need has gone away (safety net for edge cases
     // like a market being destroyed mid-task). UpdateMarketOrders now removes eagerly, so
     // this should rarely fire; LogWarning will tell you when it does.
+    // HaulToMarket lives at p3 (index 2); HaulFromMarket lives at p4 (index 3).
     private void PruneStaleMarketOrders() {
         orders[2].RemoveAll(o => {
             if (o.inv == null) return false;
@@ -480,6 +499,10 @@ public class WorkOrderManager : MonoBehaviour {
                 Debug.LogWarning($"WOM prune: stale HaulToMarket order for market at ({o.inv.x},{o.inv.y})");
                 return true;
             }
+            return false;
+        });
+        orders[3].RemoveAll(o => {
+            if (o.inv == null) return false;
             if (o.type == OrderType.HaulFromMarket && !MarketNeedsHaulFrom(o.inv)) {
                 Debug.LogWarning($"WOM prune: stale HaulFromMarket order for market at ({o.inv.x},{o.inv.y})");
                 return true;
@@ -495,10 +518,12 @@ public class WorkOrderManager : MonoBehaviour {
     private static bool StackNeedsHaulOrder(ItemStack stack) =>
         stack != null && stack.item != null && stack.quantity > 0;
 
+    // Group items are never physical (see SPEC-trading: "Market targets are leaf-only").
+    // Filter out group keys so their 0-default targets don't spuriously trigger haul orders.
     private static bool MarketNeedsHaulTo(Inventory inv) =>
-        inv.targets != null && inv.targets.Any(kvp => inv.Quantity(kvp.Key) < kvp.Value);
+        inv.targets != null && inv.targets.Any(kvp => !kvp.Key.IsGroup && inv.Quantity(kvp.Key) < kvp.Value);
     private static bool MarketNeedsHaulFrom(Inventory inv) =>
-        inv.targets != null && inv.targets.Any(kvp => inv.Quantity(kvp.Key) > kvp.Value);
+        inv.targets != null && inv.targets.Any(kvp => !kvp.Key.IsGroup && inv.Quantity(kvp.Key) > kvp.Value);
 
     private enum ScanMode { Repair, Audit }
 

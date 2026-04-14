@@ -124,6 +124,7 @@ public class WaterController : MonoBehaviour {
         // Render above buildings (10) and platforms (11) so decorative water zones
         // (e.g. fountain basin) are visible on top of the building sprite.
         sr.sortingOrder = 12;
+        LightReceiverUtil.SetSortBucket(sr);
 
         // Sync with any water already present (e.g. from world gen or save load).
         UpdateSurfaceMask();
@@ -336,6 +337,31 @@ public class WaterController : MonoBehaviour {
                 if (tile.type.solid || tile.water == 0 || tile.water >= WaterMax) continue;
                 tile.water = (ushort)Mathf.Min(tile.water + 2, WaterMax);
             }
+        }
+    }
+
+    /// <summary>
+    /// Rain-catching for open-air liquid-storage buildings (tanks).
+    /// Called once per rain-hour from WeatherSystem.OnHourElapsed().
+    /// Adds a fixed amount of water to any tank whose tile is sky-exposed
+    /// and whose storage filter allows water.
+    /// </summary>
+    public void RainFillTanks() {
+        const int fillPerHourFen = 100; // 1 liang/hour; tank capacity is 100 liang (~100h full rain to fill)
+
+        if (!Db.itemByName.TryGetValue("water", out Item water)) {
+            Debug.LogError("RainFillTanks: no 'water' item in Db");
+            return;
+        }
+
+        World world = World.instance;
+        foreach (Structure s in StructController.instance.GetStructures()) {
+            if (s is not Building b) continue;
+            if (!b.structType.liquidStorage) continue;
+            if (b.storage == null) continue;
+            if (!b.storage.allowed.TryGetValue(water.id, out bool ok) || !ok) continue;
+            if (!world.IsExposedAbove(b.x, b.y)) continue;
+            b.storage.Produce(water, fillPerHourFen);
         }
     }
 

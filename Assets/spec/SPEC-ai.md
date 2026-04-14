@@ -62,7 +62,7 @@ Social satisfaction is granted **gradually** at `Happiness.socialTickGrant` (0.2
 
 `Animal.ChooseTask()` runs top-to-bottom when an animal is Idle:
 
-1. **Survival** (always first): drop inventory → eat if hungry → sleep if eepy at night → equip tool → equip clothing
+1. **Survival** (always first): drop inventory → eat if hungry → sleep (see thresholds below) → equip tool → equip clothing. Sleep gate is `Eeping.ShouldSleep(isNighttime)`: eep < 85 % **at night** (9 pm–6 am) OR eep < 50 % **any time** (mid-shift exhaustion nap).
 2. **Time-of-day behavior roll** — before work orders, a random roll determines whether the animal tries leisure, idles, or falls through to work. The weights depend on the time window:
    - **Leisure window (5–9 pm)**: 40% try leisure, 40% idle, 20% work.
    - **Work time (rest of day)**: 5% try leisure, 15% idle, 80% work.
@@ -223,8 +223,8 @@ Player-adjustable workstation slot count flows: `Building.workstation.workerLimi
 |----------|-------------|
 | 1 | Haul unblocking a pending deconstruct |
 | 2 | Construct, SupplyBlueprint, Harvest |
-| 3 | Haul (floor items + storage evictions), HaulToMarket, HaulFromMarket, Craft |
-| 4 | Deconstruct, Research |
+| 3 | Haul (floor items + storage evictions), HaulToMarket, Craft |
+| 4 | Deconstruct, Research, HaulFromMarket |
 
 ### Registration rules
 

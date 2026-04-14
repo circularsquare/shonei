@@ -106,6 +106,7 @@ public class Structure {
         else if (depth == 1) sr.sortingOrder = 11;
         else if (depth == 2) sr.sortingOrder = 40;
         else if (depth == 3) sr.sortingOrder = 1;
+        LightReceiverUtil.SetSortBucket(sr);
 
         // Scan sprite for water-marker pixels. Registration happens in StructController.Place().
         waterPixelOffsets = WaterController.ScanWaterPixels(sprite);

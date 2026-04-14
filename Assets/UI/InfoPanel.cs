@@ -58,7 +58,10 @@ public class InfoPanel : MonoBehaviour {
     /// Called by MouseController after building a SelectionContext.
     /// </summary>
     public void ShowSelection(SelectionContext ctx) {
-        if (ctx == null || ctx.tile == null) {
+        // A ctx with a null tile is valid iff it carries animals (e.g. merchants
+        // in transit, clicked from MerchantJourneyDisplay — no tile context wanted).
+        bool hasAnimals = ctx != null && ctx.animals != null && ctx.animals.Count > 0;
+        if (ctx == null || (ctx.tile == null && !hasAnimals)) {
             Deselect();
             return;
         }
@@ -84,9 +87,10 @@ public class InfoPanel : MonoBehaviour {
         if (obj is Tile tile) {
             ShowSelection(SelectionContext.FromTile(tile));
         } else if (obj is List<Animal> animals) {
-            // Animals without a tile context — pick tile from first animal if possible
-            Tile aTile = animals.Count > 0 ? World.instance.GetTileAt((int)animals[0].x, (int)animals[0].y) : null;
-            ShowSelection(SelectionContext.FromTile(aTile, animals));
+            // Animals-only selection — no tile context. Used e.g. by
+            // MerchantJourneyDisplay so clicking a merchant in transit doesn't
+            // also surface the tile/building they happen to be standing on.
+            ShowSelection(SelectionContext.FromTile(null, animals));
         }
     }
 
@@ -149,10 +153,13 @@ public class InfoPanel : MonoBehaviour {
         foreach (var bp in ctx.blueprints)
             tabs.Add(new TabEntry { type = TabType.Blueprint, label = "bp: " + bp.structType.name, data = bp });
 
-        // Tile tab last — use tile type name if available, otherwise generic "tile"
-        string tileName = ctx.tile?.type?.name;
-        string tileLabel = string.IsNullOrEmpty(tileName) || tileName == "empty" ? "tile" : tileName;
-        tabs.Add(new TabEntry { type = TabType.Tile, label = tileLabel, data = ctx.tile });
+        // Tile tab last — use tile type name if available, otherwise generic "tile".
+        // Skipped entirely when there's no tile context (animals-only selection).
+        if (ctx.tile != null) {
+            string tileName = ctx.tile.type?.name;
+            string tileLabel = string.IsNullOrEmpty(tileName) || tileName == "empty" ? "tile" : tileName;
+            tabs.Add(new TabEntry { type = TabType.Tile, label = tileLabel, data = ctx.tile });
+        }
 
         // Spawn tab buttons
         for (int i = 0; i < tabs.Count; i++) {

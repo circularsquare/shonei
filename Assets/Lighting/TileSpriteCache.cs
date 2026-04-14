@@ -41,13 +41,12 @@ using UnityEngine;
 //
 // Sprites are keyed by the 4-bit cardinal mask (16 variants). Normal maps
 // are keyed by an 8-bit mask (cardinals + diagonals, 256 variants). The
-// diagonal bits only matter for the alpha channel: when an inside-corner
-// tile (e.g. solid L + solid D + empty BL diagonal) has the BL 2×2 overhang
-// classified as effectively transparent, the distance transform reaches
-// into the interior corner so light penetrates — same as the old
-// TileNormalMaps diagonal branch. RGB turns out bit-identical across the
-// 16 diagonal sub-variants, but RGB and A share one packed texture so we
-// store all 256 anyway.
+// diagonal bits affect both channels of the baked normal map: the RGB
+// bevel uses a Sobel kernel (cardinals + diagonals), so an inside-corner
+// tile (e.g. solid L + solid D + empty BL diagonal) gets a slight NE tilt
+// on the interior corner pixel; and the alpha distance transform reaches
+// through the transparent BL overhang into the interior corner, so light
+// also penetrates via the edge-depth fade.
 //
 // A single flat normal map (FlatNormalMap) is exposed for non-solid tiles.
 //
@@ -61,6 +60,13 @@ public static class TileSpriteCache {
     const int BORDER = 2;               // overhang pixels per side
     const int SIZE = TILE + BORDER * 2; // 20
     const int ATLAS = 32;
+
+    // Sobel-style bevel: cardinal neighbours contribute ±1 to the outward
+    // normal, diagonals contribute ±BevelDiagWeight to both axes. Widens the
+    // 1-pixel bevel ring so pixels only diagonally adjacent to empty space
+    // also catch a gentle outward tilt (~1.5px-wide effective bevel). Lower
+    // = closer to pure-cardinal (flatter 2nd ring), higher = softer/wider.
+    const float BevelDiagWeight = 0.5f;
 
     // One artist-authored texture → one Variant. sprites is indexed by the
     // 4-bit cardinal mask (16); normals is indexed by the 8-bit mask (256,
@@ -338,12 +344,14 @@ public static class TileSpriteCache {
     // Derives a 20×20 normal map from the baked sprite's own alpha plus the
     // cardinal adjacency mask:
     //
-    //   RGB = bevel normal. For each opaque pixel, if an effectively-transparent
-    //         pixel sits immediately ±1 in a cardinal direction, we add an
-    //         outward component in that direction. This catches every alpha
-    //         boundary in the sprite — so a pixel sitting one row below a
-    //         dither-hole in the top row correctly gets an upward-facing
-    //         normal and catches grazing sun.
+    //   RGB = bevel normal. Sobel-style combine of the 8 neighbours: each
+    //         effectively-transparent cardinal neighbour adds a full outward
+    //         unit in that direction, and each transparent diagonal adds
+    //         BevelDiagWeight to both axes. Effect: the directly-adjacent
+    //         ring gets a full bevel (as before) and the ring one step in
+    //         picks up a gentler diagonal tilt — a ~1.5px-wide soft bevel
+    //         that lets inside corners and 2nd-row pixels catch grazing
+    //         light.
     //
     //   A   = edge-distance falloff, Euclidean-distance transform to the
     //         nearest effectively-transparent pixel, then smoothstep over
@@ -417,14 +425,22 @@ public static class TileSpriteCache {
 
         for (int oy = 0; oy < SIZE; oy++) {
             for (int ox = 0; ox < SIZE; ox++) {
-                // Bevel normal — outward component per transparent neighbour.
-                float bL = EffOpaque(ox - 1, oy) ? 0f : 1f;
-                float bR = EffOpaque(ox + 1, oy) ? 0f : 1f;
-                float bD = EffOpaque(ox, oy - 1) ? 0f : 1f;
-                float bU = EffOpaque(ox, oy + 1) ? 0f : 1f;
+                // Bevel normal — Sobel-style: cardinals contribute ±1,
+                // diagonals contribute ±BevelDiagWeight to both axes. Pixels
+                // one step in from the bevel ring pick up a gentle tilt
+                // toward any diagonally-exposed corner, so inside-corner
+                // interiors also catch grazing light.
+                float bL  = EffOpaque(ox - 1, oy)     ? 0f : 1f;
+                float bR  = EffOpaque(ox + 1, oy)     ? 0f : 1f;
+                float bD  = EffOpaque(ox, oy - 1)     ? 0f : 1f;
+                float bU  = EffOpaque(ox, oy + 1)     ? 0f : 1f;
+                float bBL = EffOpaque(ox - 1, oy - 1) ? 0f : 1f;
+                float bBR = EffOpaque(ox + 1, oy - 1) ? 0f : 1f;
+                float bTL = EffOpaque(ox - 1, oy + 1) ? 0f : 1f;
+                float bTR = EffOpaque(ox + 1, oy + 1) ? 0f : 1f;
 
-                float nx = bR - bL;
-                float ny = bU - bD;
+                float nx = (bR - bL) + BevelDiagWeight * ((bBR + bTR) - (bBL + bTL));
+                float ny = (bU - bD) + BevelDiagWeight * ((bTL + bTR) - (bBL + bBR));
                 float nz = 1f;
 
                 float len = Mathf.Sqrt(nx * nx + ny * ny + nz * nz);

@@ -74,7 +74,8 @@ Set at instantiation time (defaults fall back to InventoryController for backwar
 
 ### Serialized inspector references
 
-- `itemText` — TMP text for item name + quantity
+- `itemText` — TMP text for the item name (left-aligned)
+- `quantityText` — TMP text for the current quantity, rendered immediately left of the slash (empty in Storage mode)
 - `targetText` — TMP text for target display ("/100")
 - `toggleGo` — the allow/disallow Toggle GameObject
 - `targetUpGo`, `targetDownGo`, `targetTextGo` — target button and text GameObjects (for show/hide)

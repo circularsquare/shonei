@@ -5,9 +5,15 @@ public class Eeping {
     public static float eepRate = 2f;
     public static float outsideEepRate = 1f;
 
+    // Sleep thresholds. Below nightSleepThreshold a mouse goes to bed at night;
+    // below exhaustedSleepThreshold it sleeps any time of day (mid-shift nap).
+    public const float nightSleepThreshold = 0.85f;
+    public const float exhaustedSleepThreshold = 0.5f;
+
     public Eeping(){}
-    public bool Eepy(){
-        return eep / maxEep < 0.7f;
+    public bool ShouldSleep(bool isNighttime){
+        float e = eep / maxEep;
+        return e < exhaustedSleepThreshold || (isNighttime && e < nightSleepThreshold);
     }
     public float Efficiency(){
         if (eep / maxEep > 0.5f){

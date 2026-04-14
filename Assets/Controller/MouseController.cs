@@ -27,9 +27,10 @@ public class MouseController : MonoBehaviour {
     private const float DragThresholdPixels = 8f;
     [SerializeField] private RectTransform dragRectTransform;
 
-    // --- debug cursor light (Ctrl+T) ---
-    private GameObject _debugLight;
-    private LightSource _debugLightSource;
+    // --- debug cursor light (Ctrl+T toggles SetActive) ---
+    // Wire a GameObject with a LightSource (and optional sortOrderOverride) in the
+    // inspector. Keep it disabled by default so it only appears when toggled on.
+    [SerializeField] private GameObject debugCursorLight;
 
     void Start() {
         if (instance != null) {
@@ -37,6 +38,7 @@ public class MouseController : MonoBehaviour {
         instance = this;
         buildPreviewSr = buildPreview.GetComponent<SpriteRenderer>();
         buildPreviewSr.sortingOrder = 200;
+        LightReceiverUtil.SetSortBucket(buildPreviewSr);
         buildPreviewDefaultSprite = buildPreviewSr.sprite;
         foreach (var c in Camera.main.GetComponents<Component>()) {
             var prop = c.GetType().GetProperty("assetsPPU");
@@ -59,27 +61,17 @@ public class MouseController : MonoBehaviour {
 
         // Debug cursor light toggle
         if (Input.GetKeyDown(KeyCode.T) && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))) {
-            if (_debugLight == null) {
-                _debugLight = new GameObject("DebugCursorLight");
-                _debugLightSource = _debugLight.AddComponent<LightSource>();
-                _debugLightSource.lightColor     = new Color(1f, 0.9f, 0.7f);
-                _debugLightSource.baseIntensity  = 1.0f;
-                _debugLightSource.intensity      = 1.0f;
-                _debugLightSource.outerRadius    = 10f;
-                _debugLightSource.innerRadius    = 3f;
-                _debugLightSource.lightHeight    = 0.5f;
-                _debugLightSource.isLit          = true;
-                Debug.Log("Debug cursor light ON");
+            if (debugCursorLight == null) {
+                Debug.LogError("Ctrl+T: debugCursorLight is not wired on MouseController — assign a LightSource GameObject in the inspector.");
             } else {
-                Destroy(_debugLight);
-                _debugLight = null;
-                _debugLightSource = null;
-                Debug.Log("Debug cursor light OFF");
+                bool turnOn = !debugCursorLight.activeSelf;
+                debugCursorLight.SetActive(turnOn);
+                Debug.Log(turnOn ? "Debug cursor light ON" : "Debug cursor light OFF");
             }
         }
-        if (_debugLight != null) {
+        if (debugCursorLight != null && debugCursorLight.activeSelf) {
             Vector3 mouseWorld = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            _debugLight.transform.position = new Vector3(mouseWorld.x, mouseWorld.y, 0f);
+            debugCursorLight.transform.position = new Vector3(mouseWorld.x, mouseWorld.y, 0f);
         }
 
         bool overUI = EventSystem.current.IsPointerOverGameObject();
@@ -322,6 +314,38 @@ public class MouseController : MonoBehaviour {
     static Inventory GetStorageAt(Tile t) {
         Inventory s = t?.building?.storage;
         return (s != null && IsStorageType(s.invType)) ? s : null;
+    }
+
+    // ── Zoom / camera API ──────────────────────────────────────────────────
+    // Small public surface so other systems (e.g. SaveSystem) can query and
+    // restore zoom without duplicating the assetsPPU reflection dance.
+
+    // Current PPU, or null if the PixelPerfectCamera wasn't located on Camera.main.
+    public int? GetZoomPPU() {
+        if (ppcAssetsPPU == null || ppcComponent == null) return null;
+        return (int)ppcAssetsPPU.GetValue(ppcComponent);
+    }
+
+    // Sets PPU and re-clamps the camera. Uses the same estimated half-height
+    // trick as the scroll-wheel path because PPC updates orthographicSize in
+    // its own LateUpdate, one frame after we change assetsPPU.
+    public void SetZoomPPU(int newPPU) {
+        if (ppcAssetsPPU == null || ppcComponent == null) {
+            Debug.LogError("SetZoomPPU: PixelPerfectCamera not found on Camera.main."); return;
+        }
+        int currentPPU = (int)ppcAssetsPPU.GetValue(ppcComponent);
+        if (currentPPU == newPPU) { ClampCamera(); return; }
+        ppcAssetsPPU.SetValue(ppcComponent, newPPU);
+        float estimatedHalfH = Camera.main.orthographicSize * currentPPU / newPPU;
+        if (world == null) world = WorldController.instance?.world;
+        ClampCameraToWorld(estimatedHalfH);
+    }
+
+    // Public wrapper so callers outside MouseController can re-clamp (e.g.
+    // after a save-load restores camera position).
+    public void ClampCamera() {
+        if (world == null) world = WorldController.instance?.world;
+        ClampCameraToWorld();
     }
 
     // ── Camera bounds ──────────────────────────────────────────────────────

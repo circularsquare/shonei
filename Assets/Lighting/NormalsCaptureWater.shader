@@ -23,6 +23,9 @@ Shader "Hidden/NormalsCaptureWater" {
         TEXTURE2D(_WaterSurfaceTex);
         SAMPLER(sampler_WaterSurfaceTex);
 
+        // Per-renderer MPB, written by LightReceiverUtil.SetSortBucket.
+        float _SortBucket;
+
         struct Attributes {
             float3 positionOS : POSITION;
             float2 uv         : TEXCOORD0;
@@ -44,8 +47,9 @@ Shader "Hidden/NormalsCaptureWater" {
             float mask = SAMPLE_TEXTURE2D(_WaterSurfaceTex, sampler_WaterSurfaceTex, IN.uv).r;
             // Discard pixels with no water — they stay black in the normals RT (flat fallback).
             clip(mask - 0.25);
-            // Flat camera-facing normal: world (0, 0, -1) packed → (0.5, 0.5, 0.0).
-            return float4(0.5, 0.5, 0.0, shadowAlpha);
+            // Flat camera-facing normal: world (0, 0, -1) → packed xy = (0.5, 0.5).
+            // B carries the sort bucket (not normal.z); shaders reconstruct z.
+            return float4(0.5, 0.5, _SortBucket, shadowAlpha);
         }
         ENDHLSL
 

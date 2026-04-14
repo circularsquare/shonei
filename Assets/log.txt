@@ -1,8 +1,12 @@
 meoww!!
 
+4/14
+- sorting order aware light receivers
+- haul to market improvements 
 4/13
-- ui cleanups 
+- ui cleanups (item targets, build menu, travelling merchant mice)
 - added max find radii
+- added back tile variants, lighting aware
 4/12
 - added more researches, added research/job unlocking
 4/10

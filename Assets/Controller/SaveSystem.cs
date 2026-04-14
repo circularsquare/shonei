@@ -28,13 +28,14 @@ using Newtonsoft.Json;
 //   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, mirrored, disabled)
 //   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored, disabled)
 //   [x] Animals (position, job, energy, food, happiness, decoration happiness, socialization, fireplace warmth, inv, foodSlotInv, toolSlotInv, clothingSlotInv)
+//   [x] Mid-transit merchant task descriptor (travelTaskType + iq + storage tile + leg)
 //   [x] Research (progress, activeResearchId, unlockedIds)
 //   [x] Disabled recipe ids
 //   [x] Water levels
 //   [x] Is raining
 //   [x] Global item targets
 //   [x] Market targets (via MarketBuilding.instance)
-//   [x] Camera position
+//   [x] Camera position and zoom (PPU)
 // -----------------------------------------------------------------------
 
 public class SaveSystem : MonoBehaviour {
@@ -156,8 +157,9 @@ public class SaveSystem : MonoBehaviour {
 
         var cam = Camera.main;
         if (cam != null) {
-            data.cameraX = cam.transform.position.x;
-            data.cameraY = cam.transform.position.y;
+            data.cameraX   = cam.transform.position.x;
+            data.cameraY   = cam.transform.position.y;
+            data.cameraPPU = MouseController.instance?.GetZoomPPU();
         }
 
         return data;
@@ -241,7 +243,7 @@ public class SaveSystem : MonoBehaviour {
     }
 
     AnimalSaveData GatherAnimal(Animal a) {
-        return new AnimalSaveData {
+        AnimalSaveData asd = new AnimalSaveData {
             aName              = a.aName,
             x                  = a.x,
             y                  = a.y,
@@ -263,6 +265,45 @@ public class SaveSystem : MonoBehaviour {
                                   && a.task?.currentObjective is TravelingObjective tObj)
                                   ? tObj.durationTicks : 0,
         };
+
+        // Travel task descriptor — lets Animal.Start() rebuild the full task tail on load
+        // (deliver to market / receive + return + deliver to storage) rather than dropping
+        // the merchant at the portal with a bare finish-travel. See HaulToMarketTask /
+        // HaulFromMarketTask resume constructors.
+        //
+        // Piggyback phase mapping: a HaulToMarketTask that has already completed its
+        // market delivery AND received pickup goods is carrying those goods home on
+        // the return leg — functionally indistinguishable from a HaulFromMarketTask
+        // on its return leg. We emit a "HaulFromMarket" descriptor in that case so
+        // Animal.Start rebuilds the [Travel → Go(storage) → DeliverHome] tail.
+        // Pre-delivery (outbound) saves always use the HaulToMarket descriptor; the
+        // planned pickup is silently dropped on load — we lose an opportunistic
+        // trip, not a committed task.
+        if (asd.isTraveling) {
+            if (a.task is HaulToMarketTask ht && ht.iq?.item != null) {
+                if (ht.IsReturnLeg && ht.PickupReceived && ht.pickupStorageTile != null) {
+                    asd.travelTaskType  = "HaulFromMarket";
+                    asd.travelItemName  = ht.pickupIq.item.name;
+                    asd.travelItemQty   = ht.pickupIq.quantity;
+                    asd.travelStorageX  = ht.pickupStorageTile.x;
+                    asd.travelStorageY  = ht.pickupStorageTile.y;
+                    asd.travelReturnLeg = true;
+                } else {
+                    asd.travelTaskType  = "HaulToMarket";
+                    asd.travelItemName  = ht.iq.item.name;
+                    asd.travelItemQty   = ht.iq.quantity;
+                    asd.travelReturnLeg = ht.IsReturnLeg;
+                }
+            } else if (a.task is HaulFromMarketTask hf && hf.iq?.item != null && hf.storageTile != null) {
+                asd.travelTaskType  = "HaulFromMarket";
+                asd.travelItemName  = hf.iq.item.name;
+                asd.travelItemQty   = hf.iq.quantity;
+                asd.travelStorageX  = hf.storageTile.x;
+                asd.travelStorageY  = hf.storageTile.y;
+                asd.travelReturnLeg = hf.IsReturnLeg;
+            }
+        }
+        return asd;
     }
 
     // ── Load ─────────────────────────────────────────────────────────────────
@@ -396,8 +437,18 @@ public class SaveSystem : MonoBehaviour {
         WeatherSystem.instance?.RestoreState(save.isRaining);
 
         var cam = Camera.main;
-        if (cam != null && save.cameraX.HasValue && save.cameraY.HasValue)
-            cam.transform.position = new Vector3(save.cameraX.Value, save.cameraY.Value, cam.transform.position.z);
+        if (cam != null) {
+            // Position first, then zoom: SetZoomPPU clamps against the new half-height,
+            // so restoring the saved position before it means the single clamp uses the
+            // correct position under the correct zoom. Swapping the order would clamp a
+            // stale (pre-load) position against the new zoom, then overwrite it anyway.
+            if (save.cameraX.HasValue && save.cameraY.HasValue)
+                cam.transform.position = new Vector3(save.cameraX.Value, save.cameraY.Value, cam.transform.position.z);
+            if (save.cameraPPU.HasValue)
+                MouseController.instance?.SetZoomPPU(save.cameraPPU.Value);
+            else
+                MouseController.instance?.ClampCamera(); // old saves: no PPU → still belt-and-braces clamp at current zoom
+        }
     }
 
     void RestoreStructure(StructureSaveData ssd) {

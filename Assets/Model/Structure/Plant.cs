@@ -27,6 +27,7 @@ public class Plant : Structure {
         sprite = plantType.LoadSprite() ?? Resources.Load<Sprite>("Sprites/Plants/default");
         sr.sprite = sprite;
         sr.sortingOrder = 60;
+        LightReceiverUtil.SetSortBucket(sr);
     }
 
     public override void OnPlaced() {

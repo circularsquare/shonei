@@ -143,8 +143,9 @@ public class InventoryController : MonoBehaviour {
             if (itemDisplayGo == null){Debug.LogError("itemdisplaygo not found: " + item.name);return;}
 
             ItemDisplay itemDisplayComp = itemDisplayGo.GetComponent<ItemDisplay>();
-            string text = item.name + ": " + ItemStack.FormatQ(globalInventory.Quantity(item), item.discrete);
-            if (itemDisplayComp.itemText != null) itemDisplayComp.itemText.text = text;
+            if (itemDisplayComp.itemText != null) itemDisplayComp.itemText.text = item.name;
+            if (itemDisplayComp.quantityText != null)
+                itemDisplayComp.quantityText.text = ItemStack.FormatQ(globalInventory.Quantity(item), item.discrete);
 
             itemDisplayComp.SetTargetDisplay(targets[item.id]);
 

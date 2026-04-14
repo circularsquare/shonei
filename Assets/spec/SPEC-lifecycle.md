@@ -84,3 +84,16 @@ All game logic is intended to be tick-driven. Movement and fall physics are the 
 | `daysInYear` | 20 | Calendar |
 | `fallSecondsPerTile` | 0.4s | Item and mouse fall physics |
 | `fallGravity` | 12.5 tiles/s² | Derived from above |
+
+## Weather & rain effects
+
+`WeatherSystem` (Assets/Model/WeatherSystem.cs) advances state per in-game hour from `World.Update`. Rain probabilities: Clear → Rain 4%, Rain → Clear 12%. Lighting hooks (sun/ambient multipliers) are polled by `SunController` each frame.
+
+When it is raining, `WeatherSystem.OnHourElapsed` runs rain effects via `WaterController`:
+
+| Effect | Amount | Target |
+|--------|--------|--------|
+| Puddle top-up (`RainReplenish`) | +2 fixed-point water units | every partially-filled, non-full, non-solid tile |
+| Tank rain-catch (`RainFillTanks`) | +100 fen (1 liang) water | every sky-exposed liquid-storage building whose filter allows water |
+
+**Sky exposure**: `World.IsExposedAbove(x, y)` is the shared primitive. Returns true if no solid tile and no `solidTop` structure layer exists on any tile above `(x, y)`. Reuse this for future plant systems (rain-watered crops, sun-dependent growth).

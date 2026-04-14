@@ -1,5 +1,5 @@
 {
-  "timer": 2550.23779,
+  "timer": 3322.7312,
   "tiles": [
     {
       "x": 0,
@@ -2691,22 +2691,6 @@
     },
     {
       "x": 9,
-      "y": 49,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 2392,
-            "decayCounter": 139609
-          }
-        ]
-      },
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 9,
       "y": 48,
       "tileType": "dirt",
       "hasBackgroundWall": false
@@ -3292,22 +3276,6 @@
       "y": 0,
       "tileType": "stone",
       "hasBackgroundWall": true
-    },
-    {
-      "x": 11,
-      "y": 50,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 2481,
-            "decayCounter": 913928
-          }
-        ]
-      },
-      "hasBackgroundWall": false
     },
     {
       "x": 11,
@@ -3618,8 +3586,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 2487,
-            "decayCounter": 708327
+            "quantity": 2326,
+            "decayCounter": 409311
           }
         ]
       },
@@ -3934,8 +3902,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 2469,
-            "decayCounter": 730991
+            "quantity": 2457,
+            "decayCounter": 5620
           }
         ]
       },
@@ -4240,22 +4208,6 @@
       "y": 0,
       "tileType": "stone",
       "hasBackgroundWall": true
-    },
-    {
-      "x": 14,
-      "y": 50,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 399,
-            "decayCounter": 843295
-          }
-        ]
-      },
-      "hasBackgroundWall": false
     },
     {
       "x": 14,
@@ -4559,6 +4511,306 @@
     },
     {
       "x": 15,
+      "y": 49,
+      "tileType": "dirt",
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 15,
+      "y": 48,
+      "tileType": "dirt",
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 15,
+      "y": 47,
+      "tileType": "dirt",
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 15,
+      "y": 46,
+      "tileType": "stone",
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 15,
+      "y": 45,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 44,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 43,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 42,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 41,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 40,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 39,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 38,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 37,
+      "tileType": "empty",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 36,
+      "tileType": "empty",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 35,
+      "tileType": "empty",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 34,
+      "tileType": "empty",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 33,
+      "tileType": "empty",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 32,
+      "tileType": "empty",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 31,
+      "tileType": "empty",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 30,
+      "tileType": "empty",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 29,
+      "tileType": "empty",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 28,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 27,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 26,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 25,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 24,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 23,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 22,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 21,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 20,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 19,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 18,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 17,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 16,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 15,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 14,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 13,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 12,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 11,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 10,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 9,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 8,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 7,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 6,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 5,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 4,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 3,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 2,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 1,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 15,
+      "y": 0,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 16,
       "y": 50,
       "tileType": "empty",
       "inv": {
@@ -4566,312 +4818,12 @@
         "stacks": [
           {
             "itemName": "apple",
-            "quantity": 196,
-            "decayCounter": 154671
+            "quantity": 390,
+            "decayCounter": 421236
           }
         ]
       },
       "hasBackgroundWall": false
-    },
-    {
-      "x": 15,
-      "y": 49,
-      "tileType": "dirt",
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 15,
-      "y": 48,
-      "tileType": "dirt",
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 15,
-      "y": 47,
-      "tileType": "dirt",
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 15,
-      "y": 46,
-      "tileType": "stone",
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 15,
-      "y": 45,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 44,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 43,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 42,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 41,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 40,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 39,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 38,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 37,
-      "tileType": "empty",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 36,
-      "tileType": "empty",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 35,
-      "tileType": "empty",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 34,
-      "tileType": "empty",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 33,
-      "tileType": "empty",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 32,
-      "tileType": "empty",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 31,
-      "tileType": "empty",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 30,
-      "tileType": "empty",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 29,
-      "tileType": "empty",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 28,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 27,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 26,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 25,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 24,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 23,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 22,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 21,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 20,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 19,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 18,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 17,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 16,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 15,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 14,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 13,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 12,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 11,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 10,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 9,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 8,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 7,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 6,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 5,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 4,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 3,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 2,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 1,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 0,
-      "tileType": "stone",
-      "hasBackgroundWall": true
     },
     {
       "x": 16,
@@ -5172,22 +5124,6 @@
       "y": 0,
       "tileType": "stone",
       "hasBackgroundWall": true
-    },
-    {
-      "x": 17,
-      "y": 51,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "silver",
-            "quantity": 50,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "hasBackgroundWall": false
     },
     {
       "x": 17,
@@ -6109,6 +6045,606 @@
     },
     {
       "x": 20,
+      "y": 49,
+      "tileType": "dirt",
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 48,
+      "tileType": "dirt",
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 47,
+      "tileType": "dirt",
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 46,
+      "tileType": "stone",
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 45,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 44,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 43,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 42,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 41,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 40,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 39,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 38,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 37,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 36,
+      "tileType": "empty",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 35,
+      "tileType": "empty",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 34,
+      "tileType": "empty",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 33,
+      "tileType": "empty",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 32,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 31,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 30,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 29,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 28,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 27,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 26,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 25,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 24,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 23,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 22,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 21,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 20,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 19,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 18,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 17,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 16,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 15,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 14,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 13,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 12,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 11,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 10,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 9,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 8,
+      "tileType": "empty",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 7,
+      "tileType": "empty",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 6,
+      "tileType": "empty",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 5,
+      "tileType": "empty",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 4,
+      "tileType": "empty",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 3,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 2,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 1,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 20,
+      "y": 0,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 49,
+      "tileType": "dirt",
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 48,
+      "tileType": "dirt",
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 47,
+      "tileType": "dirt",
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 46,
+      "tileType": "stone",
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 45,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 44,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 43,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 42,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 41,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 40,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 39,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 38,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 37,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 36,
+      "tileType": "empty",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 35,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 34,
+      "tileType": "empty",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 33,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 32,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 31,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 30,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 29,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 28,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 27,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 26,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 25,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 24,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 23,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 22,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 21,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 20,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 19,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 18,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 17,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 16,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 15,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 14,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 13,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 12,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 11,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 10,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 9,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 8,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 7,
+      "tileType": "empty",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 6,
+      "tileType": "empty",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 5,
+      "tileType": "empty",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 4,
+      "tileType": "empty",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 3,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 2,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 1,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 21,
+      "y": 0,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 22,
       "y": 50,
       "tileType": "empty",
       "inv": {
@@ -6116,614 +6652,14 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 422,
-            "decayCounter": 33079
+            "quantity": 2476,
+            "decayCounter": 810512
           }
         ]
       },
       "hasBackgroundWall": false
     },
     {
-      "x": 20,
-      "y": 49,
-      "tileType": "dirt",
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 48,
-      "tileType": "dirt",
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 47,
-      "tileType": "dirt",
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 46,
-      "tileType": "stone",
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 45,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 44,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 43,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 42,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 41,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 40,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 39,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 38,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 37,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 36,
-      "tileType": "empty",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 35,
-      "tileType": "empty",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 34,
-      "tileType": "empty",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 33,
-      "tileType": "empty",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 32,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 31,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 30,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 29,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 28,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 27,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 26,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 25,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 24,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 23,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 22,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 21,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 20,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 19,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 18,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 17,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 16,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 15,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 14,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 13,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 12,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 11,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 10,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 9,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 8,
-      "tileType": "empty",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 7,
-      "tileType": "empty",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 6,
-      "tileType": "empty",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 5,
-      "tileType": "empty",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 4,
-      "tileType": "empty",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 3,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 2,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 1,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 20,
-      "y": 0,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 49,
-      "tileType": "dirt",
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 48,
-      "tileType": "dirt",
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 47,
-      "tileType": "dirt",
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 46,
-      "tileType": "stone",
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 45,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 44,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 43,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 42,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 41,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 40,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 39,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 38,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 37,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 36,
-      "tileType": "empty",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 35,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 34,
-      "tileType": "empty",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 33,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 32,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 31,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 30,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 29,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 28,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 27,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 26,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 25,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 24,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 23,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 22,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 21,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 20,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 19,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 18,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 17,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 16,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 15,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 14,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 13,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 12,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 11,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 10,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 9,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 8,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 7,
-      "tileType": "empty",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 6,
-      "tileType": "empty",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 5,
-      "tileType": "empty",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 4,
-      "tileType": "empty",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 3,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 2,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 1,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 21,
-      "y": 0,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
       "x": 22,
       "y": 49,
       "tileType": "dirt",
@@ -8522,38 +8458,6 @@
       "y": 0,
       "tileType": "stone",
       "hasBackgroundWall": true
-    },
-    {
-      "x": 28,
-      "y": 51,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "soybeans",
-            "quantity": 803,
-            "decayCounter": 608299
-          }
-        ]
-      },
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 28,
-      "y": 50,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine planks",
-            "quantity": 367,
-            "decayCounter": 734403
-          }
-        ]
-      },
-      "hasBackgroundWall": false
     },
     {
       "x": 28,
@@ -8857,6 +8761,338 @@
     },
     {
       "x": 29,
+      "y": 50,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Floor",
+        "stacks": [
+          {
+            "itemName": "pine planks",
+            "quantity": 1180,
+            "decayCounter": 46119
+          }
+        ]
+      },
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 29,
+      "y": 49,
+      "tileType": "dirt",
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 29,
+      "y": 48,
+      "tileType": "dirt",
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 29,
+      "y": 47,
+      "tileType": "dirt",
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 29,
+      "y": 46,
+      "tileType": "stone",
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 29,
+      "y": 45,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 44,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 43,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 42,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 41,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 40,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 39,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 38,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 37,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 36,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 35,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 34,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 33,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 32,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 31,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 30,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 29,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 28,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 27,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 26,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 25,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 24,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 23,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 22,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 21,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 20,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 19,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 18,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 17,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 16,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 15,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 14,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 13,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 12,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 11,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 10,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 9,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 8,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 7,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 6,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 5,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 4,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 3,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 2,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 1,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 29,
+      "y": 0,
+      "tileType": "stone",
+      "hasBackgroundWall": true
+    },
+    {
+      "x": 30,
+      "y": 51,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Floor",
+        "stacks": [
+          {
+            "itemName": "pine",
+            "quantity": 12,
+            "decayCounter": 904266
+          }
+        ]
+      },
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 30,
       "y": 50,
       "tileType": "empty",
       "inv": {
@@ -8865,339 +9101,7 @@
           {
             "itemName": "pine",
             "quantity": 2466,
-            "decayCounter": 387680
-          }
-        ]
-      },
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 29,
-      "y": 49,
-      "tileType": "dirt",
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 29,
-      "y": 48,
-      "tileType": "dirt",
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 29,
-      "y": 47,
-      "tileType": "dirt",
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 29,
-      "y": 46,
-      "tileType": "stone",
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 29,
-      "y": 45,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 44,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 43,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 42,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 41,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 40,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 39,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 38,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 37,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 36,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 35,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 34,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 33,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 32,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 31,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 30,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 29,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 28,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 27,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 26,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 25,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 24,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 23,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 22,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 21,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 20,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 19,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 18,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 17,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 16,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 15,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 14,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 13,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 12,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 11,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 10,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 9,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 8,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 7,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 6,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 5,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 4,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 3,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 2,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 1,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 29,
-      "y": 0,
-      "tileType": "stone",
-      "hasBackgroundWall": true
-    },
-    {
-      "x": 30,
-      "y": 51,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 2088,
-            "decayCounter": 584014
-          }
-        ]
-      },
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 30,
-      "y": 50,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 2469,
-            "decayCounter": 214602
+            "decayCounter": 270954
           }
         ]
       },
@@ -9802,22 +9706,6 @@
       "y": 0,
       "tileType": "stone",
       "hasBackgroundWall": true
-    },
-    {
-      "x": 32,
-      "y": 50,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 1071,
-            "decayCounter": 768202
-          }
-        ]
-      },
-      "hasBackgroundWall": false
     },
     {
       "x": 32,
@@ -29951,13 +29839,13 @@
         "invType": "Market",
         "stacks": [
           {
-            "itemName": "",
-            "quantity": 0,
+            "itemName": "silver",
+            "quantity": 50,
             "decayCounter": 0
           },
           {
-            "itemName": "",
-            "quantity": 0,
+            "itemName": "soybeans",
+            "quantity": 1400,
             "decayCounter": 0
           },
           {
@@ -30209,9 +30097,9 @@
       "x": 32,
       "y": 50,
       "typeName": "tree",
-      "plantAge": 19,
-      "plantGrowthStage": 0,
-      "plantHarvestable": false,
+      "plantAge": 193,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
       "uses": 0,
       "mirrored": false,
       "disabled": false
@@ -30220,7 +30108,7 @@
       "x": 25,
       "y": 50,
       "typeName": "appletree",
-      "plantAge": 29,
+      "plantAge": 22,
       "plantGrowthStage": 2,
       "plantHarvestable": false,
       "uses": 0,
@@ -30231,9 +30119,9 @@
       "x": 28,
       "y": 50,
       "typeName": "tree",
-      "plantAge": 37,
-      "plantGrowthStage": 1,
-      "plantHarvestable": false,
+      "plantAge": 148,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
       "uses": 0,
       "mirrored": false,
       "disabled": false
@@ -30242,9 +30130,9 @@
       "x": 35,
       "y": 50,
       "typeName": "wheat",
-      "plantAge": 30,
-      "plantGrowthStage": 2,
-      "plantHarvestable": false,
+      "plantAge": 49,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
       "uses": 0,
       "mirrored": false,
       "disabled": false
@@ -30253,7 +30141,7 @@
       "x": 36,
       "y": 50,
       "typeName": "wheat",
-      "plantAge": 59,
+      "plantAge": 47,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "uses": 0,
@@ -30264,9 +30152,9 @@
       "x": 24,
       "y": 50,
       "typeName": "soybean",
-      "plantAge": 40,
-      "plantGrowthStage": 3,
-      "plantHarvestable": true,
+      "plantAge": 18,
+      "plantGrowthStage": 1,
+      "plantHarvestable": false,
       "uses": 0,
       "mirrored": false,
       "disabled": false
@@ -30275,7 +30163,7 @@
       "x": 9,
       "y": 49,
       "typeName": "tree",
-      "plantAge": 106,
+      "plantAge": 741,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "uses": 0,
@@ -30295,8 +30183,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 9989,
-            "decayCounter": 194286
+            "quantity": 9997,
+            "decayCounter": 208434
           }
         ],
         "allowedItemIds": [
@@ -30322,8 +30210,8 @@
         "stacks": [
           {
             "itemName": "wheat",
-            "quantity": 6479,
-            "decayCounter": 139542
+            "quantity": 9936,
+            "decayCounter": 218240
           }
         ],
         "allowedItemIds": [
@@ -30380,23 +30268,23 @@
         "stacks": [
           {
             "itemName": "acorn",
-            "quantity": 1962,
-            "decayCounter": 835696
+            "quantity": 1858,
+            "decayCounter": 212798
           },
           {
             "itemName": "sawdust",
-            "quantity": 1954,
-            "decayCounter": 529098
+            "quantity": 1997,
+            "decayCounter": 243954
           },
           {
-            "itemName": "apple",
-            "quantity": 546,
-            "decayCounter": 787357
+            "itemName": "acorn",
+            "quantity": 383,
+            "decayCounter": 303522
           },
           {
             "itemName": "sawdust",
-            "quantity": 818,
-            "decayCounter": 259282
+            "quantity": 1184,
+            "decayCounter": 379507
           }
         ],
         "allowedItemIds": [
@@ -30432,7 +30320,7 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 116,
+            "quantity": 423,
             "decayCounter": 0
           }
         ]
@@ -30475,8 +30363,8 @@
         "stacks": [
           {
             "itemName": "pine planks",
-            "quantity": 9989,
-            "decayCounter": 928093
+            "quantity": 9990,
+            "decayCounter": 441302
           }
         ],
         "allowedItemIds": [
@@ -30535,10 +30423,16 @@
         "invType": "Storage",
         "stacks": [
           {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
+            "itemName": "pine",
+            "quantity": 9992,
+            "decayCounter": 714890
           }
+        ],
+        "allowedItemIds": [
+          5,
+          6,
+          7,
+          8
         ]
       },
       "mirrored": false,
@@ -30557,23 +30451,23 @@
         "stacks": [
           {
             "itemName": "soybeans",
-            "quantity": 1992,
-            "decayCounter": 47424
+            "quantity": 1949,
+            "decayCounter": 98696
           },
           {
             "itemName": "soybeans",
-            "quantity": 1992,
-            "decayCounter": 77718
+            "quantity": 1950,
+            "decayCounter": 930710
           },
           {
             "itemName": "soybeans",
-            "quantity": 1992,
-            "decayCounter": 435413
+            "quantity": 1950,
+            "decayCounter": 637555
           },
           {
             "itemName": "tools",
             "quantity": 400,
-            "decayCounter": 52707694
+            "decayCounter": 63372827
           }
         ],
         "allowedItemIds": [
@@ -30676,7 +30570,7 @@
       "x": 37,
       "y": 50,
       "typeName": "wheat",
-      "plantAge": 66,
+      "plantAge": 57,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "uses": 0,
@@ -30698,9 +30592,9 @@
       "x": 38,
       "y": 50,
       "typeName": "wheat",
-      "plantAge": 55,
-      "plantGrowthStage": 3,
-      "plantHarvestable": true,
+      "plantAge": 35,
+      "plantGrowthStage": 2,
+      "plantHarvestable": false,
       "uses": 0,
       "mirrored": false,
       "disabled": false
@@ -30720,7 +30614,7 @@
       "x": 39,
       "y": 50,
       "typeName": "wheat",
-      "plantAge": 41,
+      "plantAge": 314,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "uses": 0,
@@ -30742,8 +30636,8 @@
       "x": 15,
       "y": 50,
       "typeName": "appletree",
-      "plantAge": 14,
-      "plantGrowthStage": 1,
+      "plantAge": 25,
+      "plantGrowthStage": 2,
       "plantHarvestable": false,
       "uses": 0,
       "mirrored": false,
@@ -30753,10 +30647,135 @@
       "x": 17,
       "y": 51,
       "typeName": "tree",
-      "plantAge": 73,
-      "plantGrowthStage": 2,
+      "plantAge": 391,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 10,
+      "y": 49,
+      "typeName": "platform",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
       "plantHarvestable": false,
       "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 6,
+      "y": 49,
+      "typeName": "platform",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 9,
+      "y": 49,
+      "typeName": "platform",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 5,
+      "y": 49,
+      "typeName": "platform",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 28,
+      "y": 52,
+      "typeName": "tank",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "storageInvData": {
+        "invType": "Storage",
+        "stacks": [
+          {
+            "itemName": "water",
+            "quantity": 100,
+            "decayCounter": 0
+          }
+        ],
+        "allowedItemIds": [
+          230,
+          210
+        ]
+      },
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 21,
+      "y": 50,
+      "typeName": "crate",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "storageInvData": {
+        "invType": "Storage",
+        "stacks": [
+          {
+            "itemName": "soybeans",
+            "quantity": 2184,
+            "decayCounter": 336318
+          }
+        ],
+        "allowedItemIds": [
+          220
+        ]
+      },
+      "mirrored": false,
+      "disabled": false
+    },
+    {
+      "x": 20,
+      "y": 50,
+      "typeName": "stairs",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": true,
+      "disabled": false
+    },
+    {
+      "x": 20,
+      "y": 50,
+      "typeName": "crate",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "storageInvData": {
+        "invType": "Storage",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
       "mirrored": false,
       "disabled": false
     }
@@ -30786,20 +30805,20 @@
   "animals": [
     {
       "aName": "Tangyuan",
-      "x": 24.0,
+      "x": 33.915432,
       "y": 50.0,
       "jobName": "farmer",
-      "energy": 0.571748734,
-      "food": 53.5975647,
-      "eep": 66.603775,
+      "energy": 0.8666334,
+      "food": 62.3463821,
+      "eep": 79.60495,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 2.63080668,
-        "fruit": 0.8917096,
+        "wheat": 3.51084375,
+        "fruit": 0.716923,
         "fountain": 0.0,
         "fireplace": 0.0,
-        "social": 2.630759
+        "social": 2.09896016
       },
       "warmth": 0.0,
       "inv": {
@@ -30838,7 +30857,7 @@
           {
             "itemName": "",
             "quantity": 0,
-            "decayCounter": 0
+            "decayCounter": 4627
           }
         ]
       },
@@ -30848,7 +30867,7 @@
           {
             "itemName": "tools",
             "quantity": 100,
-            "decayCounter": 1124982
+            "decayCounter": 22457974
           }
         ]
       },
@@ -30863,7 +30882,7 @@
         ]
       },
       "skillXp": [
-        8.381773,
+        26.47549,
         0.0,
         0.937652051,
         0.0,
@@ -30878,408 +30897,26 @@
       ],
       "isTraveling": false,
       "travelProgress": 0.0,
-      "travelDuration": 0
+      "travelDuration": 0,
+      "travelItemQty": 0,
+      "travelReturnLeg": false
     },
     {
       "aName": "Gossamer",
-      "x": 27.0,
+      "x": 32.0,
       "y": 50.0,
       "jobName": "hauler",
-      "energy": 0.9524362,
-      "food": 52.1974869,
-      "eep": 86.30378,
+      "energy": 0.6552173,
+      "food": 59.7963028,
+      "eep": 80.2049561,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 2.19164824,
-        "fruit": 1.21683681,
+        "wheat": 2.51161337,
+        "fruit": 1.6728673,
         "fountain": 0.0,
         "fireplace": 0.0,
-        "social": 2.06203127
-      },
-      "warmth": 0.0,
-      "inv": {
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "foodSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "apple",
-            "quantity": 99,
-            "decayCounter": 167049
-          }
-        ]
-      },
-      "toolSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "tools",
-            "quantity": 100,
-            "decayCounter": 1124982
-          }
-        ]
-      },
-      "clothingSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "skillXp": [
-        0.0,
-        0.0,
-        4.485157,
-        0.0,
-        0.0
-      ],
-      "skillLevel": [
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      "isTraveling": false,
-      "travelProgress": 0.0,
-      "travelDuration": 0
-    },
-    {
-      "aName": "Yuyu",
-      "x": 20.9389343,
-      "y": 50.000164,
-      "jobName": "farmer",
-      "energy": 0.3938402,
-      "food": 55.54622,
-      "eep": 86.0037842,
-      "satisfactions": {
-        "soymilk": 0.0,
-        "dairy": 0.0,
-        "wheat": 2.098002,
-        "fruit": 1.39457679,
-        "fountain": 0.0,
-        "fireplace": 0.0,
-        "social": 1.37554026
-      },
-      "warmth": 0.0,
-      "inv": {
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "foodSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "apple",
-            "quantity": 100,
-            "decayCounter": 168750
-          }
-        ]
-      },
-      "toolSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "tools",
-            "quantity": 100,
-            "decayCounter": 1124982
-          }
-        ]
-      },
-      "clothingSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "skillXp": [
-        15.4123907,
-        0.0,
-        0.0,
-        0.0,
-        0.0
-      ],
-      "skillLevel": [
-        2,
-        0,
-        0,
-        0,
-        0
-      ],
-      "isTraveling": false,
-      "travelProgress": 0.0,
-      "travelDuration": 0
-    },
-    {
-      "aName": "Ming",
-      "x": 29.0,
-      "y": 50.0,
-      "jobName": "sawyer",
-      "energy": 0.7200475,
-      "food": 0.0,
-      "eep": 38.4037781,
-      "satisfactions": {
-        "soymilk": 0.0,
-        "dairy": 0.0,
-        "wheat": 0.8871862,
-        "fruit": 0.329184443,
-        "fountain": 0.0,
-        "fireplace": 0.0,
-        "social": 2.84204483
-      },
-      "warmth": 0.0,
-      "inv": {
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "pine planks",
-            "quantity": 95,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "foodSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "toolSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "tools",
-            "quantity": 100,
-            "decayCounter": 1124982
-          }
-        ]
-      },
-      "clothingSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "skillXp": [
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        13.3439665
-      ],
-      "skillLevel": [
-        0,
-        0,
-        0,
-        0,
-        2
-      ],
-      "isTraveling": false,
-      "travelProgress": 0.0,
-      "travelDuration": 0
-    },
-    {
-      "aName": "Rong",
-      "x": 26.0,
-      "y": 51.0,
-      "jobName": "scientist",
-      "energy": 0.6552429,
-      "food": 59.99681,
-      "eep": 85.6031952,
-      "satisfactions": {
-        "soymilk": 0.0,
-        "dairy": 0.0,
-        "wheat": 2.56124735,
-        "fruit": 0.7426831,
-        "fountain": 0.0,
-        "fireplace": 0.0,
-        "social": 0.9746954
-      },
-      "warmth": 0.0,
-      "inv": {
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "foodSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "toolSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "tools",
-            "quantity": 100,
-            "decayCounter": 1124982
-          }
-        ]
-      },
-      "clothingSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "skillXp": [
-        0.0,
-        0.0,
-        0.0,
-        19.4640579,
-        0.0
-      ],
-      "skillLevel": [
-        0,
-        0,
-        0,
-        2,
-        0
-      ],
-      "isTraveling": false,
-      "travelProgress": 0.0,
-      "travelDuration": 0
-    },
-    {
-      "aName": "Rou",
-      "x": 16.8685284,
-      "y": 50.9999962,
-      "jobName": "hauler",
-      "energy": 0.518794537,
-      "food": 58.0990143,
-      "eep": 69.10099,
-      "satisfactions": {
-        "soymilk": 0.0,
-        "dairy": 0.0,
-        "wheat": 2.15620971,
-        "fruit": 1.09312129,
-        "fountain": 0.0,
-        "fireplace": 0.0,
-        "social": 1.62015414
+        "social": 2.25278187
       },
       "warmth": 0.0,
       "inv": {
@@ -31317,8 +30954,8 @@
         "stacks": [
           {
             "itemName": "wheat",
-            "quantity": 98,
-            "decayCounter": 165375
+            "quantity": 131,
+            "decayCounter": 4649
           }
         ]
       },
@@ -31328,7 +30965,7 @@
           {
             "itemName": "tools",
             "quantity": 100,
-            "decayCounter": 1124982
+            "decayCounter": 22457974
           }
         ]
       },
@@ -31345,7 +30982,7 @@
       "skillXp": [
         0.0,
         0.0,
-        0.838027537,
+        4.985157,
         0.0,
         0.0
       ],
@@ -31358,24 +30995,26 @@
       ],
       "isTraveling": false,
       "travelProgress": 0.0,
-      "travelDuration": 0
+      "travelDuration": 0,
+      "travelItemQty": 0,
+      "travelReturnLeg": false
     },
     {
-      "aName": "Ling",
-      "x": 13.012289,
+      "aName": "Yuyu",
+      "x": 27.25275,
       "y": 50.0,
-      "jobName": "hauler",
-      "energy": 0.582687736,
-      "food": 59.9490128,
-      "eep": 67.30099,
+      "jobName": "farmer",
+      "energy": 0.5748583,
+      "food": 52.09504,
+      "eep": 80.6049652,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 2.63641453,
-        "fruit": 0.6555859,
+        "wheat": 1.80890751,
+        "fruit": 1.73850453,
         "fountain": 0.0,
         "fireplace": 0.0,
-        "social": 2.042773
+        "social": 2.185734
       },
       "warmth": 0.0,
       "inv": {
@@ -31414,7 +31053,7 @@
           {
             "itemName": "",
             "quantity": 0,
-            "decayCounter": 0
+            "decayCounter": 439340
           }
         ]
       },
@@ -31424,7 +31063,105 @@
           {
             "itemName": "tools",
             "quantity": 100,
-            "decayCounter": 1124982
+            "decayCounter": 22457974
+          }
+        ]
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "skillXp": [
+        30.3881664,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "skillLevel": [
+        2,
+        0,
+        0,
+        0,
+        0
+      ],
+      "isTraveling": false,
+      "travelProgress": 0.0,
+      "travelDuration": 0,
+      "travelItemQty": 0,
+      "travelReturnLeg": false
+    },
+    {
+      "aName": "Ming",
+      "x": 27.0,
+      "y": 51.0,
+      "jobName": "sawyer",
+      "energy": 0.318383217,
+      "food": 50.5993347,
+      "eep": 69.20436,
+      "satisfactions": {
+        "soymilk": 0.0,
+        "dairy": 0.0,
+        "wheat": 1.91826308,
+        "fruit": 1.5008688,
+        "fountain": 0.0,
+        "fireplace": 0.0,
+        "social": 2.487104
+      },
+      "warmth": 0.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "wheat",
+            "quantity": 197,
+            "decayCounter": 375195
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "tools",
+            "quantity": 100,
+            "decayCounter": 22457974
           }
         ]
       },
@@ -31441,7 +31178,203 @@
       "skillXp": [
         0.0,
         0.0,
-        0.672858357,
+        0.0,
+        0.0,
+        20.1450367
+      ],
+      "skillLevel": [
+        0,
+        0,
+        0,
+        0,
+        2
+      ],
+      "isTraveling": false,
+      "travelProgress": 0.0,
+      "travelDuration": 0,
+      "travelItemQty": 0,
+      "travelReturnLeg": false
+    },
+    {
+      "aName": "Rong",
+      "x": 26.0,
+      "y": 51.0,
+      "jobName": "scientist",
+      "energy": 0.88808465,
+      "food": 48.04563,
+      "eep": 80.3043747,
+      "satisfactions": {
+        "soymilk": 0.0,
+        "dairy": 0.0,
+        "wheat": 2.358354,
+        "fruit": 0.8689782,
+        "fountain": 0.0,
+        "fireplace": 0.0,
+        "social": 3.67490077
+      },
+      "warmth": 0.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 789060
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "tools",
+            "quantity": 100,
+            "decayCounter": 22457974
+          }
+        ]
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "skillXp": [
+        0.0,
+        0.0,
+        0.0,
+        36.5103531,
+        0.0
+      ],
+      "skillLevel": [
+        0,
+        0,
+        0,
+        3,
+        0
+      ],
+      "isTraveling": false,
+      "travelProgress": 0.0,
+      "travelDuration": 0,
+      "travelItemQty": 0,
+      "travelReturnLeg": false
+    },
+    {
+      "aName": "Rou",
+      "x": 31.0,
+      "y": 50.0,
+      "jobName": "hauler",
+      "energy": 0.123706341,
+      "food": 64.69783,
+      "eep": 79.5021744,
+      "satisfactions": {
+        "soymilk": 0.0,
+        "dairy": 0.0,
+        "wheat": 1.68292165,
+        "fruit": 2.42404318,
+        "fountain": 0.0,
+        "fireplace": 0.0,
+        "social": 3.10874176
+      },
+      "warmth": 0.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 918826
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "tools",
+            "quantity": 100,
+            "decayCounter": 22457974
+          }
+        ]
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "skillXp": [
+        0.0,
+        0.0,
+        1.585178,
         0.0,
         0.0
       ],
@@ -31454,24 +31387,320 @@
       ],
       "isTraveling": false,
       "travelProgress": 0.0,
-      "travelDuration": 0
+      "travelDuration": 0,
+      "travelItemQty": 0,
+      "travelReturnLeg": false
     },
     {
-      "aName": "Lu",
-      "x": 19.7719212,
-      "y": 50.5188675,
-      "jobName": "logger",
-      "energy": 0.137084484,
-      "food": 50.99906,
-      "eep": 69.60098,
+      "aName": "Ling",
+      "x": 16.0,
+      "y": 50.0,
+      "jobName": "hauler",
+      "energy": 0.6422272,
+      "food": 50.94787,
+      "eep": 80.30216,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 1.96311355,
-        "fruit": 1.11597621,
+        "wheat": 2.53463674,
+        "fruit": 0.892581344,
         "fountain": 0.0,
         "fireplace": 0.0,
-        "social": 2.16018724
+        "social": 2.12523341
+      },
+      "warmth": 0.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 288230
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "tools",
+            "quantity": 100,
+            "decayCounter": 22457974
+          }
+        ]
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "skillXp": [
+        0.0,
+        0.0,
+        1.42285836,
+        0.0,
+        0.0
+      ],
+      "skillLevel": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "isTraveling": false,
+      "travelProgress": 0.0,
+      "travelDuration": 0,
+      "travelItemQty": 0,
+      "travelReturnLeg": false
+    },
+    {
+      "aName": "Lu",
+      "x": 25.42184,
+      "y": 50.0,
+      "jobName": "logger",
+      "energy": 0.800656259,
+      "food": 39.3479767,
+      "eep": 80.30216,
+      "satisfactions": {
+        "soymilk": 0.0,
+        "dairy": 0.0,
+        "wheat": 2.9399786,
+        "fruit": 0.151086181,
+        "fountain": 0.0,
+        "fireplace": 0.0,
+        "social": 1.020844
+      },
+      "warmth": 0.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "pine",
+            "quantity": 211,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 6230
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "tools",
+            "quantity": 100,
+            "decayCounter": 22457974
+          }
+        ]
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "skillXp": [
+        6.549356,
+        0.0,
+        0.249598354,
+        0.0,
+        0.0
+      ],
+      "skillLevel": [
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "isTraveling": false,
+      "travelProgress": 0.0,
+      "travelDuration": 0,
+      "travelItemQty": 0,
+      "travelReturnLeg": false
+    },
+    {
+      "aName": "Zephyr",
+      "x": 30.0,
+      "y": 50.0,
+      "jobName": "merchant",
+      "energy": 0.8261461,
+      "food": 59.6978531,
+      "eep": 80.7021561,
+      "satisfactions": {
+        "soymilk": 0.0,
+        "dairy": 0.0,
+        "wheat": 1.811975,
+        "fruit": 2.13820982,
+        "fountain": 0.0,
+        "fireplace": 0.0,
+        "social": 3.33270121
+      },
+      "warmth": 0.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 393990
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "tools",
+            "quantity": 100,
+            "decayCounter": 22457974
+          }
+        ]
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "skillXp": [
+        8.301101,
+        0.0,
+        0.25,
+        0.0,
+        0.0
+      ],
+      "skillLevel": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "isTraveling": false,
+      "travelProgress": 0.0,
+      "travelDuration": 0,
+      "travelItemQty": 0,
+      "travelReturnLeg": false
+    },
+    {
+      "aName": "Thimble",
+      "x": 26.0,
+      "y": 52.0,
+      "jobName": "scientist",
+      "energy": 0.00141620636,
+      "food": 57.2478867,
+      "eep": 80.20213,
+      "satisfactions": {
+        "soymilk": 0.0,
+        "dairy": 0.0,
+        "wheat": 2.02934337,
+        "fruit": 1.83147681,
+        "fountain": 0.0,
+        "fireplace": 0.0,
+        "social": 2.86383367
       },
       "warmth": 0.0,
       "inv": {
@@ -31510,7 +31739,7 @@
           {
             "itemName": "apple",
             "quantity": 99,
-            "decayCounter": 167049
+            "decayCounter": 809375
           }
         ]
       },
@@ -31520,199 +31749,7 @@
           {
             "itemName": "tools",
             "quantity": 100,
-            "decayCounter": 1124982
-          }
-        ]
-      },
-      "clothingSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "skillXp": [
-        8.426029,
-        0.0,
-        0.249598354,
-        0.0,
-        0.0
-      ],
-      "skillLevel": [
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      "isTraveling": false,
-      "travelProgress": 0.0,
-      "travelDuration": 0
-    },
-    {
-      "aName": "Zephyr",
-      "x": 17.0,
-      "y": 51.0,
-      "jobName": "merchant",
-      "energy": 0.7388687,
-      "food": 51.2490234,
-      "eep": 69.80098,
-      "satisfactions": {
-        "soymilk": 0.0,
-        "dairy": 0.0,
-        "wheat": 2.67354,
-        "fruit": 0.206583068,
-        "fountain": 0.0,
-        "fireplace": 0.0,
-        "social": 1.76832688
-      },
-      "warmth": 0.0,
-      "inv": {
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "foodSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "apple",
-            "quantity": 205,
-            "decayCounter": 345924
-          }
-        ]
-      },
-      "toolSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "tools",
-            "quantity": 100,
-            "decayCounter": 1124982
-          }
-        ]
-      },
-      "clothingSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "skillXp": [
-        8.301101,
-        0.0,
-        0.25,
-        0.0,
-        0.0
-      ],
-      "skillLevel": [
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      "isTraveling": false,
-      "travelProgress": 0.0,
-      "travelDuration": 0
-    },
-    {
-      "aName": "Thimble",
-      "x": 28.0,
-      "y": 50.0,
-      "jobName": "scientist",
-      "energy": 0.158766866,
-      "food": 55.999054,
-      "eep": 87.30096,
-      "satisfactions": {
-        "soymilk": 0.0,
-        "dairy": 0.0,
-        "wheat": 2.6405046,
-        "fruit": 0.477616131,
-        "fountain": 0.0,
-        "fireplace": 0.0,
-        "social": 1.151321
-      },
-      "warmth": 0.0,
-      "inv": {
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "foodSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "toolSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "tools",
-            "quantity": 100,
-            "decayCounter": 1124982
+            "decayCounter": 22457974
           }
         ]
       },
@@ -31730,30 +31767,32 @@
         0.0,
         0.0,
         0.0,
-        0.404062271,
+        8.40035248,
         0.0
       ],
       "skillLevel": [
         0,
         0,
         0,
-        2,
+        3,
         0
       ],
       "isTraveling": false,
       "travelProgress": 0.0,
-      "travelDuration": 0
+      "travelDuration": 0,
+      "travelItemQty": 0,
+      "travelReturnLeg": false
     }
   ],
   "research": {
     "progress": {
-      "1": 9.98,
+      "1": 9.539989,
       "2": 0.0,
-      "4": 5.02375,
-      "5": 5.527499,
+      "4": 5.34767246,
+      "5": 5.53522158,
       "6": 0.0,
       "7": 0.0,
-      "8": 5.619957,
+      "8": 5.236623,
       "9": 0.0,
       "10": 0.0,
       "3": 0.0
@@ -31772,12 +31811,12 @@
       4
     ]
   },
-  "isRaining": false,
-  "cameraX": 26.04167,
-  "cameraY": 51.45372,
+  "isRaining": true,
+  "cameraX": 28.72917,
+  "cameraY": 52.03706,
+  "cameraPPU": 24,
   "marketTargets": {
     "silver": 512,
-    "wood": 256,
-    "soybeans": 2048
+    "soybeans": 1100
   }
 }

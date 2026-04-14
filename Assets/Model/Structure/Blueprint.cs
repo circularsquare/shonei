@@ -55,6 +55,7 @@ public class Blueprint {
         sprite = loadedSprite ?? Resources.Load<Sprite>("Sprites/Buildings/default");
         SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
         sr.sortingOrder = 100;
+        LightReceiverUtil.SetSortBucket(sr);
         sr.sprite = sprite;
         sr.flipX = mirrored;
         sr.color = new Color(0.8f, 0.9f, 1f, 0.5f); // blueprint half alpha

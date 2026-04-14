@@ -185,6 +185,7 @@ GameObject:
   - component: {fileID: 8629159951262970954}
   - component: {fileID: 7466534813165653151}
   - component: {fileID: 5080775729284744739}
+  - component: {fileID: 3164112143120897927}
   m_Layer: 0
   m_Name: Animal
   m_TagString: Untagged
@@ -304,6 +305,19 @@ BoxCollider2D:
   serializedVersion: 2
   m_Size: {x: 0.625, y: 0.875}
   m_EdgeRadius: 0
+--- !u!114 &3164112143120897927
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3119841835361231821}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 570ff3d01fada0e48a20bbebd7cca153, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  target: {fileID: 0}
 --- !u!1 &3308956697744127132
 GameObject:
   m_ObjectHideFlags: 0

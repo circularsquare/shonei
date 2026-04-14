@@ -96,6 +96,24 @@ public class World : MonoBehaviour {
         return GetTileAt(xi, yi);
     }
 
+    // True if nothing blocks a line of rain (or sun) from reaching (x, y) from the sky.
+    // Blockers: solid ground tiles, or any structure layer with solidTop=true
+    // (buildings, platforms, foreground, road) on a tile above this one.
+    // Blueprints are ignored — unbuilt doesn't block.
+    // Shared primitive for rain-catching tanks and future plant sun/rain systems.
+    public bool IsExposedAbove(int x, int y){
+        if (x < 0 || x >= nx) return false;
+        for (int py = y + 1; py < ny; py++){
+            Tile t = tiles[x, py];
+            if (t.type.solid) return false;
+            for (int d = 0; d < t.structs.Length; d++){
+                Structure s = t.structs[d];
+                if (s != null && s.structType.solidTop) return false;
+            }
+        }
+        return true;
+    }
+
     // Produces items on a tile's floor inventory.
     // If the tile is full, searches nearby standable tiles (expanding rings, radius 5).
     public void ProduceAtTile(Item item, int quantity, Tile tile) {

@@ -23,6 +23,10 @@ public class Item {
     // Loaded at startup by Db. Falls back to Sprites/Items/split/default/icon if no item-specific icon exists.
     public Sprite icon;
 
+    // Group items are wildcards for recipe inputs / building costs and are never physical
+    // (see SPEC-trading). Only leaf items exist in inventories and on market targets.
+    public bool IsGroup => children != null && children.Length > 0;
+
     public bool IsDiscovered(){
         if (InventoryController.instance != null){
             return InventoryController.instance.discoveredItems[id];

@@ -165,9 +165,42 @@ public class Nav {
     //    FindPathToX           = animal walks to the tile
     //    FindPathAdjacentToX   = animal walks next to the tile
 
-    public (Path path, Inventory inv) FindPathToStorage(Item item, int r = Task.MediumFindRadius) {
+    // minSpace: minimum free capacity (fen) the storage must offer for `item`.
+    // Default 1 matches legacy "any space counts" behaviour. Callers that plan to deliver
+    // a meaningful batch (e.g. merchants with MinMarketHaul) should pass a higher floor so
+    // we skip near-full storages and route to one that can actually hold the trip.
+    public (Path path, Inventory inv) FindPathToStorage(Item item, int r = Task.MediumFindRadius, int minSpace = 1) {
         return FindPathToInv(new[] { Inventory.InvType.Storage },
-            inv => inv.GetStorageForItem(item) > 0, r); }
+            inv => inv.GetStorageForItem(item) >= minSpace, r); }
+
+    // Like FindPathToStorage, but picks the storage with the MOST free space for `item`
+    // among reachable candidates. Use for batch deliveries where fit matters more than
+    // proximity — e.g. merchant return trips where a cramped-but-close storage can't hold
+    // the whole payload. Still gated by `minSpace` and the radius cap.
+    public (Path path, Inventory inv) FindPathToStorageMostSpace(Item item, int r = Task.MediumFindRadius, int minSpace = 1) {
+        var ic = InventoryController.instance;
+        float maxCost = r * Task.FindRadiusTolerance;
+        Node myNode = a.TileHere().node;
+        var candidates = new List<(int space, Inventory inv, Tile tile)>();
+        if (ic.byType.TryGetValue(Inventory.InvType.Storage, out var list)) {
+            foreach (Inventory inv in list) {
+                int cheb = Mathf.Max(Mathf.Abs(inv.x - (int)a.x), Mathf.Abs(inv.y - (int)a.y));
+                if (cheb > r) continue;
+                int space = inv.GetStorageForItem(item);
+                if (space < minSpace) continue;
+                Tile t = world.GetTileAt(inv.x, inv.y);
+                if (t == null) continue;
+                candidates.Add((space, inv, t));
+            }
+        }
+        // Descending by free space — best-fit first, with reachability as the tiebreaker.
+        candidates.Sort((x, y) => y.space.CompareTo(x.space));
+        foreach (var (_, inv, t) in candidates) {
+            Path p = world.graph.Navigate(myNode, t.node);
+            if (p != null && p.cost <= maxCost) return (p, inv);
+        }
+        return (null, null);
+    }
     // Drop searches are intentionally tight — a mouse finishing a task shouldn't walk far just to put
     // items down. No tolerance multiplier applied here; the r cap is absolute.
     public Path FindPathToDrop(Item item, int animalQuantity, int r = 10){

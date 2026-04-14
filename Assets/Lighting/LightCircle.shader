@@ -21,10 +21,22 @@ Shader "Hidden/LightCircle" {
             // Set per-draw via MaterialPropertyBlock.
             float4 _LightColor;
             float  _Intensity;
-            float  _InnerFraction; // innerRadius / outerRadius  (0–1)
-            float4 _LightWorldPos; // world-space XY of the light source
-            float  _LightHeight;   // Z offset above sprite plane for NdotL angle
-            float  _AmbientNormal; // minimum NdotL floor (softens back-face darkness)
+            float  _InnerFraction;     // innerRadius / outerRadius  (0–1)
+            float4 _LightWorldPos;     // world-space XY of the light source
+            float  _LightHeight;       // Z offset above sprite plane for NdotL angle
+            float  _LightSortBucket;   // this light's sortingOrder / 255 (see LightSource.sortBucket)
+            float  _AmbientNormal;     // minimum NdotL floor (softens back-face darkness)
+
+            // Global ramp params (set once per frame by LightPass).
+            // _SortRampRange         = sort-delta range (in normalized bucket units) over
+            //                         which the effective height ramps, on the behind side,
+            //                         from +_LightHeight toward +_LightHeight*_BehindFarHeightFactor.
+            // _BehindFarHeightFactor = height scale at the far end of the behind ramp.
+            //                         1.0 = flat ramp (uniform behind lighting);
+            //                         >1 = steeper/more top-down for deep-behind receivers;
+            //                         <1 = shallower/more grazing.
+            float  _SortRampRange;
+            float  _BehindFarHeightFactor;
 
             // Populated each frame by NormalsCapturePass.
             TEXTURE2D(_CapturedNormalsRT);
@@ -71,12 +83,45 @@ Shader "Hidden/LightCircle" {
                 // write nothing here the lightmap only carries ambient + sun for them.
                 if (ns.a > 0.0 && ns.a < 0.4) return float4(0, 0, 0, 1);
 
-                // Black = no sprite here, use flat fallback (0,0,-1).
-                if (dot(ns.rgb, ns.rgb) < 0.01) ns = float4(0.5, 0.5, 0.0, 1.0);
+                // Alpha = 0 means no sprite: use flat camera-facing fallback.
+                // (We test alpha, not rgb, because B now carries the sort bucket
+                // and can be non-zero even with a flat forward normal.)
+                float2 nxy;
+                if (ns.a < 0.01) nxy = float2(0, 0);
+                else             nxy = ns.rg * 2.0 - 1.0;
 
-                float3 normal  = normalize(ns.rgb * 2.0 - 1.0);
-                float3 toLight = normalize(float3(_LightWorldPos.xy - IN.worldPos.xy, -_LightHeight));
-                float  ndotl   = max(_AmbientNormal, dot(normal, toLight));
+                // Reconstruct normal.z from xy. All sprite normal maps in this
+                // project have z ≤ 0 (camera-facing), so we take the negative root.
+                float nz = -sqrt(saturate(1.0 - dot(nxy, nxy)));
+                float3 normal = float3(nxy, nz);
+
+                // Sort-aware lighting:
+                //   In front (sortDelta > 0): flip effective height so the light appears
+                //     to come from behind the receiver. Forward-facing interior normals
+                //     then have negative NdotL (clamped to 0), while edge normals pointing
+                //     sideways toward the light's XY still catch it. Ambient floor = 0
+                //     prevents the radial falloff from bleeding warm light through the
+                //     silhouette.
+                //   Behind (sortDelta <= 0): effective height ramps from _LightHeight
+                //     (at delta=0) toward _LightHeight * _BehindFarHeightFactor as the
+                //     receiver sorts further behind. Default _BehindFarHeightFactor = 1.0
+                //     makes this the identity — matches pre-change lighting. Ambient
+                //     floor stays as _AmbientNormal.
+                float sortDelta = ns.b - _LightSortBucket;
+                float effectiveHeight;
+                if (sortDelta > 0.0) {
+                    effectiveHeight = -_LightHeight;
+                } else {
+                    float behindT = smoothstep(0.0, max(_SortRampRange, 1e-5), -sortDelta);
+                    effectiveHeight = lerp(_LightHeight, _LightHeight * _BehindFarHeightFactor, behindT);
+                }
+                // EXPERIMENT: ambient floor applied on both sides — radial falloff bleeds
+                // through silhouettes again. Set to 0.0 in the in-front branch to restore
+                // hard-block behaviour.
+                float ambientFloor = _AmbientNormal;
+
+                float3 toLight = normalize(float3(_LightWorldPos.xy - IN.worldPos.xy, -effectiveHeight));
+                float  ndotl   = max(ambientFloor, dot(normal, toLight));
 
                 return float4(saturate(_LightColor.rgb * (_Intensity * falloff * ndotl)), 1.0);
             }

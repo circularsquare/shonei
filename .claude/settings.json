@@ -13,13 +13,13 @@
       "Bash(git:*)",
       "Bash(node -e:*)",
       "WebSearch",
-      "WebFetch"
+      "WebFetch",
+      "Read(//tmp/**)"
     ],
     "additionalDirectories": [
-      "C:\\Users\\anita",
-      "c:\\Users\\anita\\projects\\shonei\\Assets",
+      "C:\\Users\\anita\\projects",
       "C:\\Users\\anita\\.claude\\projects\\c--Users-anita-projects-shonei\\memory",
-      "c:\\Users\\anita\\projects\\shonei\\Assets\\Resources"
+      "\\tmp"
     ]
   }
 }

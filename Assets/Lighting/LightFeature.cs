@@ -33,6 +33,19 @@ public class LightFeature : ScriptableRendererFeature {
     [Tooltip("How much the sun tints empty sky/background pixels (0 = no tint, 1 = full lightmap applied).")]
     [Range(0f, 1f)] public float skyLightBlend = 1f;
 
+    [Header("Sort-aware effective light height")]
+    [Tooltip("Sort-bucket delta (in normalized units, 1.0 = 255 sortingOrder units) over " +
+             "which the effective light height ramps across BEHIND receivers from +lightHeight " +
+             "(at delta=0) toward +lightHeight * behindFarHeightFactor (at full range). " +
+             "0.08 ≈ 20 sortingOrder units. In-front receivers always use -lightHeight " +
+             "(hard flip), independent of this range.")]
+    [Range(0.01f, 0.5f)] public float sortRampRange = 0.08f;
+    [Tooltip("Height scale at the far end of the behind ramp. 1.0 = flat ramp (uniform " +
+             "behind lighting). >1 = steeper/more top-down for deep-behind receivers. " +
+             "<1 = shallower/more grazing. Only affects the BEHIND branch — in-front " +
+             "receivers always flip to -lightHeight so the light reads as coming from behind.")]
+    [Range(0f, 4f)] public float behindFarHeightFactor = 2.0f;
+
     // Static accessor so TileSpriteCache (normal-map bake) and SkyExposure can read
     // the depth without needing a reference to the ScriptableRendererFeature asset.
     public static float penetrationDepth { get; private set; } = 1f;
@@ -74,7 +87,7 @@ public class LightFeature : ScriptableRendererFeature {
         if ((cullingMask & (litLayers | directionalOnlyLayers | waterLayer | backgroundLayer)) == 0) return;
         capturePass.Setup(litLayers, shadowCasterLayers, directionalOnlyLayers, waterLayer, backgroundLayer);
         renderer.EnqueuePass(capturePass);
-        lightPass.Setup(renderer.cameraColorTarget, ambientNormal, deepAmbientColor, skyLightBlend);
+        lightPass.Setup(renderer.cameraColorTarget, ambientNormal, deepAmbientColor, skyLightBlend, sortRampRange, behindFarHeightFactor);
         renderer.EnqueuePass(lightPass);
     }
 
@@ -214,6 +227,8 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
 
     float ambientNormal;
     float skyLightBlend;
+    float sortRampRange;
+    float behindFarHeightFactor;
     Color deepAmbientColor;
     RenderTargetIdentifier colorBuffer;
     readonly Material circleMat;
@@ -242,11 +257,13 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         CoreUtils.Destroy(quad);
     }
 
-    public void Setup(RenderTargetIdentifier colorBuffer, float ambientNormal, Color deepAmbientColor, float skyLightBlend) {
-        this.colorBuffer        = colorBuffer;
-        this.ambientNormal      = ambientNormal;
-        this.deepAmbientColor   = deepAmbientColor;
-        this.skyLightBlend      = skyLightBlend;
+    public void Setup(RenderTargetIdentifier colorBuffer, float ambientNormal, Color deepAmbientColor, float skyLightBlend, float sortRampRange, float behindFarHeightFactor) {
+        this.colorBuffer           = colorBuffer;
+        this.ambientNormal         = ambientNormal;
+        this.deepAmbientColor      = deepAmbientColor;
+        this.skyLightBlend         = skyLightBlend;
+        this.sortRampRange         = sortRampRange;
+        this.behindFarHeightFactor = behindFarHeightFactor;
     }
 
     public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData rd) {
@@ -284,6 +301,9 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         cmd.SetGlobalVector("_WorldToUV",      new Vector2(1f / orthoW, 1f / orthoH));
         cmd.SetGlobalFloat("_AmbientNormal",   ambientNormal);
         cmd.SetGlobalColor("_DeepAmbient",     deepAmbient);
+        // Ramp params consumed by LightCircle.shader for sort-aware effective height.
+        cmd.SetGlobalFloat("_SortRampRange",         sortRampRange);
+        cmd.SetGlobalFloat("_BehindFarHeightFactor", behindFarHeightFactor);
 
         // ── 2. Ambient setup (camera-specific) ──────────────────────────────
         // Deep ambient: constant color, always present including deep underground.
@@ -310,7 +330,8 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
             mpb.SetFloat("_InnerFraction",
                 src.outerRadius > 0f ? src.innerRadius / src.outerRadius : 0f);
             mpb.SetVector("_LightWorldPos", (Vector4)src.transform.position);
-            mpb.SetFloat("_LightHeight",   src.lightHeight);
+            mpb.SetFloat("_LightHeight",    src.lightHeight);
+            mpb.SetFloat("_LightSortBucket", src.sortBucket);
 
             float d = src.outerRadius * 2f;
             var matrix = Matrix4x4.TRS(

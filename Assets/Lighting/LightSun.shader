@@ -55,10 +55,12 @@ Shader "Hidden/LightSun" {
                 // (isCaster was used by shadow ray march — commented out below.)
                 float hasSprite = ns.a > 0.25 ? 1.0 : 0.0;
 
-                // Black = no sprite here; use flat camera-facing normal as fallback.
-                if (hasSprite < 0.5) ns = float4(0.5, 0.5, 0.0, 1.0);
-
-                float3 normal  = normalize(ns.rgb * 2.0 - 1.0);
+                // No sprite: use flat camera-facing normal (nxy = 0, nz = -1).
+                // B carries the receiver sort bucket (not normal.z); we reconstruct
+                // z from xy. All sprite normal maps here have z ≤ 0 (camera-facing).
+                float2 nxy = hasSprite > 0.5 ? (ns.rg * 2.0 - 1.0) : float2(0, 0);
+                float  nz  = -sqrt(saturate(1.0 - dot(nxy, nxy)));
+                float3 normal  = float3(nxy, nz);
                 float3 sunDir3 = normalize(float3(_SunDir.xy, -_SunHeight));
                 float  ndotl   = max(_AmbientNormal, dot(normal, sunDir3));
 

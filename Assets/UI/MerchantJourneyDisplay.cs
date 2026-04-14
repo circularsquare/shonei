@@ -14,7 +14,10 @@ using UnityEngine.UI;
 // mice render with their own head on the strip.
 //
 // Direction detection:
-//   HaulToMarketTask   → always outbound (one leg only).
+//   HaulToMarketTask   → first leg outbound, second leg returning.
+//                        Detected by peeking remaining objectives — if a
+//                        DeliverToInventoryObjective is still queued, we
+//                        haven't reached the market yet.
 //   HaulFromMarketTask → first leg outbound, second leg returning.
 //                        Detected by peeking remaining objectives — if a later
 //                        TravelingObjective or ReceiveFromInventoryObjective
@@ -86,6 +89,8 @@ public class MerchantJourneyDisplay : MonoBehaviour {
         // Outbound = town → market (right → left). Return = market → town (left → right).
         // Use world-space positions: the two anchor RectTransforms may have different
         // anchorMin/Max, so their anchoredPosition values aren't directly comparable.
+        // NOTE: workProgress ticks in discrete integer steps, so the icon visibly
+        // jumps rather than glides. Revisit if smooth inter-tick motion is wanted.
         bool outbound = IsOutbound(a);
         Vector3 start = outbound ? townAnchor.position   : marketAnchor.position;
         Vector3 end   = outbound ? marketAnchor.position : townAnchor.position;
@@ -93,12 +98,8 @@ public class MerchantJourneyDisplay : MonoBehaviour {
     }
 
     private static bool IsOutbound(Animal a) {
-        if (a.task is HaulToMarketTask) return true;
-        if (a.task is HaulFromMarketTask) {
-            foreach (Objective o in a.task.RemainingObjectives())
-                if (o is TravelingObjective || o is ReceiveFromInventoryObjective) return true;
-            return false;
-        }
+        if (a.task is HaulToMarketTask ht) return !ht.IsReturnLeg;
+        if (a.task is HaulFromMarketTask hf) return !hf.IsReturnLeg;
         return true; // ResumeTravelTask or anything unexpected — default outbound
     }
 

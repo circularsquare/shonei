@@ -57,7 +57,9 @@ public class WeatherSystem {
     }
 
     void ReplenishRainwater() {
-        if (WaterController.instance != null) WaterController.instance.RainReplenish();
+        if (WaterController.instance == null) return;
+        WaterController.instance.RainReplenish();
+        WaterController.instance.RainFillTanks();
     }
 
     // Called by SaveSystem when loading a save file — snaps immediately, no lerp.

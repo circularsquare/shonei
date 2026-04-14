@@ -35,6 +35,7 @@ public class ClockHand : MonoBehaviour {
         sr.sprite = handSprite;
         // One sorting order above the clock body (Building sets sortingOrder = 10).
         sr.sortingOrder = 11;
+        LightReceiverUtil.SetSortBucket(sr);
 
         handTransform = handGO.transform;
 

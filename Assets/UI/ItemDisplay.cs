@@ -17,8 +17,9 @@ public class ItemDisplay : MonoBehaviour {
 
     public Item item;
     public ItemIcon itemIcon;
-    public TMPro.TextMeshProUGUI itemText;
-    public TMPro.TMP_InputField targetInput; // user-editable target field (Global/Market modes)
+    public TMPro.TextMeshProUGUI itemText;      // item name only (e.g. "silver")
+    public TMPro.TextMeshProUGUI quantityText;  // current quantity, shown immediately left of the slash
+    public TMPro.TMP_InputField targetInput;    // user-editable target field (Global/Market modes)
     public GameObject toggleGo;  // allow/disallow button with Image child
     public Sprite spriteAllowed;
     public Sprite spriteDisallowed;
@@ -44,17 +45,22 @@ public class ItemDisplay : MonoBehaviour {
         if (itemIcon != null) itemIcon.SetItem(item);
         Transform btn = transform.Find("HorizontalLayout/ButtonDropdown");
         if (btn != null) dropdownImage = btn.GetComponent<Image>();
-        // Apply default collapse: groups with ≤1 discovered child start collapsed
-        open = DefaultOpenForGroup(item);
-        if (!open && item.children != null) {
-            foreach (Item child in item.children) {
-                if (child.IsDiscovered()) {
-                    GameObject go = LookupDisplayGo(child.id);
-                    if (go != null) go.SetActive(false);
+        // Market mode keeps every group expanded — no sense in hiding tradeable leaves behind collapses.
+        // Other modes apply the default: groups with ≤1 discovered child start collapsed.
+        if (displayMode == DisplayMode.Market) {
+            open = true;
+        } else {
+            open = DefaultOpenForGroup(item);
+            if (!open && item.children != null) {
+                foreach (Item child in item.children) {
+                    if (child.IsDiscovered()) {
+                        GameObject go = LookupDisplayGo(child.id);
+                        if (go != null) go.SetActive(false);
+                    }
                 }
+                // No forced rebuild needed — SetActive(false) marks layout dirty,
+                // and Unity auto-rebuilds before rendering.
             }
-            // No forced rebuild needed — SetActive(false) marks layout dirty,
-            // and Unity auto-rebuilds before rendering.
         }
         RefreshDropdownSprite();
         if (toggleGo != null) _allowImage = toggleGo.GetComponent<Image>();
@@ -63,7 +69,9 @@ public class ItemDisplay : MonoBehaviour {
     /// <summary>Configures which UI elements are visible based on the display mode.</summary>
     public void SetDisplayMode(DisplayMode mode) {
         displayMode = mode;
-        bool showTargets = mode == DisplayMode.Global || mode == DisplayMode.Market;
+        // Market mode hides targets on group items — only leaf items hold meaningful market targets
+        // (group targets never drove haul behaviour correctly, and haul orders key on leaves anyway).
+        bool showTargets = mode == DisplayMode.Global || (mode == DisplayMode.Market && item != null && !item.IsGroup);
         bool showToggle  = mode == DisplayMode.Storage;
         if (targetUpGo != null)   targetUpGo.SetActive(showTargets);
         if (targetDownGo != null) targetDownGo.SetActive(showTargets);
@@ -110,6 +118,7 @@ public class ItemDisplay : MonoBehaviour {
 
     public void OnClickDropdown(){
         if (item == null || item.children == null || item.children.Length == 0){ return; } // don't toggle if no children
+        if (displayMode == DisplayMode.Market){ return; } // market always keeps groups expanded
         open = !open;
         foreach (Item child in item.children){
             if (child.IsDiscovered()){ // don't toggle if undiscovered
@@ -139,15 +148,21 @@ public class ItemDisplay : MonoBehaviour {
     private void AdjustTarget(int deltaFen) {
         if (displayMode == DisplayMode.Storage) return;
         Inventory market = ResolveMarketInventory();
+        int newFen;
         if (market != null) {
-            market.targets[item] = Mathf.Max(0, market.targets[item] + deltaFen);
+            newFen = Mathf.Max(0, market.targets[item] + deltaFen);
+            market.targets[item] = newFen;
             market.lastTargetManualUpdateTimer = World.instance?.timer ?? float.NegativeInfinity;
             WorkOrderManager.instance?.UpdateMarketOrders(market);
         } else {
             var t = InventoryController.instance.targets;
-            t[item.id] = Mathf.Max(0, t[item.id] + deltaFen);
+            newFen = Mathf.Max(0, t[item.id] + deltaFen);
+            t[item.id] = newFen;
         }
         RefreshAfterTargetChange();
+        // User-driven step — bypass the focus guard so the input reflects the change
+        // even while focused (the guard only protects against background-tick clobber).
+        SetTargetDisplay(newFen, force: true);
     }
 
     // Commits a typed value when the user finishes editing (Enter / focus loss).
@@ -171,10 +186,11 @@ public class ItemDisplay : MonoBehaviour {
     }
 
     // Writes an authoritative fen value into the input field without firing onValueChanged.
-    // Skipped while the field is focused so typed input isn't clobbered by background ticks.
-    public void SetTargetDisplay(int fenValue) {
+    // Skipped while the field is focused (unless force=true) so background ticks don't
+    // clobber mid-typing. User-initiated changes (scroll, buttons) pass force=true.
+    public void SetTargetDisplay(int fenValue, bool force = false) {
         if (targetInput == null || item == null) return;
-        if (targetInput.isFocused) return;
+        if (!force && targetInput.isFocused) return;
         targetInput.SetTextWithoutNotify(ItemStack.FormatQ(fenValue, item.discrete));
     }
 

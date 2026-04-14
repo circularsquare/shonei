@@ -40,9 +40,6 @@ VISUALS
     - improve undergroundwall sprite 
     - procedurally generate rocks with normalmaps?
 
-- clean up stale button toggle in itemdisplay
-- why are torches so dim?
-
 MOUSE AI
 - ponder inventory management
     - global, market, need to have set target 
@@ -58,4 +55,4 @@ MOUSE AI
 BUGS
 
 TODAY GOALS
-get rid of target for item groups?
+- just make torches high sorting order?

@@ -17,8 +17,9 @@ public class WorldSaveData {
     // Global item targets set by the player via ItemDisplay UI (item name → target qty in fen).
     // Only non-default entries (≠ 10000) are stored; absent entries load as default (10000).
     public System.Collections.Generic.Dictionary<string, int> globalItemTargets;
-    public float? cameraX; // null on old saves → camera not repositioned on load
+    public float? cameraX;  // null on old saves → camera not repositioned on load
     public float? cameraY;
+    public int?   cameraPPU; // null on old saves → zoom not changed on load
     // Market targets set by the player (item name → quantity in fen). null = no market or all zero.
     public System.Collections.Generic.Dictionary<string, int> marketTargets;
 }
@@ -103,4 +104,14 @@ public class AnimalSaveData {
     public bool  isTraveling;     // was animal mid-journey (hidden) at save time?
     public float travelProgress;  // ticks elapsed so far in current travel leg
     public int   travelDuration;  // total ticks for current travel leg
+
+    // Task descriptor so a mid-journey merchant resumes the full task tail (deliver
+    // to market / receive + travel back + deliver to storage), not just the remaining
+    // travel ticks. Null taskType indicates a legacy save — falls back to ResumeTravelTask.
+    public string travelTaskType;     // "HaulToMarket" | "HaulFromMarket" | null
+    public string travelItemName;
+    public int    travelItemQty;      // fen
+    public int?   travelStorageX;     // HaulFromMarket only — destination Building.storage tile
+    public int?   travelStorageY;
+    public bool   travelReturnLeg;    // HaulFromMarket only — true if past the ReceiveFromInventory
 }

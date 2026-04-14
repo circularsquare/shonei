@@ -1,12 +1,20 @@
 // Renders all sprites into a world-space normals RT owned by LightFeature.
 // Each sprite's _NormalMap (tangent-space, RGBA32) is decoded and transformed
 // to world-space for a flat 2D sprite: tangent (x,y,z) → world (x, y, -z).
-// Output is packed 0–1: float3(worldNormal * 0.5 + 0.5).
-// Alpha encodes lighting tier:
-//   0.80–1.0 = shadow caster (tiles/buildings) — range encodes edge depth for light penetration
-//   0.5 = lit-only, no shadow (decorations)  — full light, no shadow cast
-//   0.3 = directional-only (clouds, etc.)    — sun + ambient only, no torch/point lights
-//   0.0 = no sprite (cleared black — flat normal fallback in LightSun)
+//
+// Output packing (ARGB32):
+//   R, G = world-space normal.x, normal.y packed 0–1 (z reconstructed in
+//          LightCircle / LightSun via z = -sqrt(1 - x² - y²), assumes
+//          camera-facing sprite normals)
+//   B    = receiver sort bucket (sortingOrder / 255), read per-pixel in
+//          LightCircle to ramp effective light height. Smuggled in via a
+//          per-renderer MaterialPropertyBlock (LightReceiverUtil).
+//   A    = lighting tier:
+//            0.80–1.0 = shadow caster (tiles/buildings) — range encodes
+//                       edge depth for light penetration
+//            0.5      = lit-only, no shadow (decorations)
+//            0.3      = directional-only (clouds, etc.) — sun + ambient only
+//            0.0      = no sprite (cleared black — flat fallback)
 // Transparent pixels are discarded so the background stays black (flat fallback).
 //
 // Tiles use pre-baked 20×20 sprites (TileSpriteCache) whose alpha already
@@ -28,6 +36,11 @@ Shader "Hidden/NormalsCapture" {
 
         TEXTURE2D(_MainTex);   SAMPLER(sampler_MainTex);
         TEXTURE2D(_NormalMap); SAMPLER(sampler_NormalMap);
+
+        // Per-renderer MPB, written by LightReceiverUtil.SetSortBucket.
+        // Default 0 for sprites that never had SetSortBucket called — they
+        // read as "sort 0" (ground level), which is safe for most fallbacks.
+        float _SortBucket;
 
         struct Attributes {
             float3 positionOS : POSITION;
@@ -73,7 +86,10 @@ Shader "Hidden/NormalsCapture" {
             if (shadowAlpha > 0.75)
                 outAlpha = lerp(0.80, 1.0, ns.a);
 
-            return float4(wn * 0.5 + 0.5, outAlpha);
+            // R, G = normal.xy packed. B = sort bucket (not normal.z — the
+            // light shaders reconstruct z from xy to free this channel).
+            float2 packedXY = wn.xy * 0.5 + 0.5;
+            return float4(packedXY, _SortBucket, outAlpha);
         }
         ENDHLSL
 

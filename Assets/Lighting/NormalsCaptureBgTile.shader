@@ -31,6 +31,9 @@ Shader "Hidden/NormalsCaptureBackground" {
         TEXTURE2D(_BackgroundTopTex);
         SAMPLER(sampler_BackgroundTopTex);
 
+        // Per-renderer MPB, written by LightReceiverUtil.SetSortBucket.
+        float _SortBucket;
+
         struct Attributes {
             float3 positionOS : POSITION;
             float2 uv         : TEXCOORD0;
@@ -69,8 +72,9 @@ Shader "Hidden/NormalsCaptureBackground" {
             // leaving the normals RT black (sky/no-sprite) at those pixels.
             clip(color.a - 0.5);
 
-            // Flat camera-facing normal: world (0, 0, -1) packed -> (0.5, 0.5, 0.0).
-            return float4(0.5, 0.5, 0.0, shadowAlpha);
+            // Flat camera-facing normal: world (0, 0, -1) → packed xy = (0.5, 0.5).
+            // B carries the sort bucket (not normal.z); shaders reconstruct z.
+            return float4(0.5, 0.5, _SortBucket, shadowAlpha);
         }
         ENDHLSL
 

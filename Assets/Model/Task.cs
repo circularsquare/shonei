@@ -25,7 +25,8 @@ public abstract class Task {
     public Animal animal;
     protected LinkedList<Objective> objectives = new LinkedList<Objective>();
     // One-way travel time to/from the off-screen market. Symmetric — same duration each leg.
-    protected static readonly int MarketTransitTicks = World.ticksInDay / 8;
+    // 1 tick = 1 second (ticksInDay=240, 10s = 1 in-game hour), so 20 ticks = 20 real seconds.
+    protected static readonly int MarketTransitTicks = World.ticksInDay / 12;
     public Objective currentObjective;
     private readonly List<(ItemStack stack, int amount)> reservedStacks = new();
     private readonly List<(Inventory inv, Item item, int amount)> reservedSpaces = new();
@@ -88,7 +89,9 @@ public abstract class Task {
     }
 
     // Estimated walk time from anywhere on-map to the market portal at x=0.
-    private const float WalkToPortalSeconds = 20f;
+    // protected so HaulToMarketTask can reuse it as a budget for the piggyback
+    // portal→storage walk (see TryAppendPickup).
+    protected const float WalkToPortalSeconds = 20f;
 
     // Finds the nearest reachable food source. If slotItem is non-null, only searches
     // for that item (can't mix foods in the slot). Otherwise picks nearest of any edible item.
@@ -114,12 +117,16 @@ public abstract class Task {
     }
 
     // Checks whether the animal is provisioned for a market journey and fetches food if not.
-    // transitTicks = total transit ticks (MarketTransitTicks for HaulToMarket; 2× for HaulFromMarket).
+    // transitTicks = per-leg transit ticks (MarketTransitTicks). The 2× factor inside
+    // journeySeconds covers the round trip (walk to portal + one transit + walk home + one transit).
+    // extraGroundSeconds adds slack for any extra on-map walking at trip end — used by the
+    // HaulToMarket piggyback path, which terminates with a walk from the portal to a
+    // specific home storage tile rather than going idle at x=0.
     // Accounts for body food + food slot. Only tops up the slot item already loaded; if the slot
     // is empty, picks the nearest available food.
     // Returns false (→ Initialize should abort) if enough food cannot be secured.
-    protected bool PrependFoodFetchForMarketJourney(int transitTicks) {
-        float journeySeconds = 2f * (WalkToPortalSeconds + transitTicks);
+    protected bool PrependFoodFetchForMarketJourney(int transitTicks, float extraGroundSeconds = 0f) {
+        float journeySeconds = 2f * (WalkToPortalSeconds + transitTicks) + extraGroundSeconds;
         // Buffer so the animal arrives with food above the efficiency drop threshold.
         float foodNeeded = animal.eating.hungerRate * journeySeconds + animal.eating.maxFood * Eating.hungryThreshold;
 
@@ -578,9 +585,81 @@ public class SupplyFuelTask : Task {
 // The market is off-screen at the left world edge; merchants walk there and disappear
 // while "travelling to/from market", then reappear when the trip is complete.
 public class HaulToMarketTask : Task {
+    // Persisted for save/load so a mid-transit merchant can reconstruct the delivery
+    // tail on load (see resume constructor below). Set by the normal Initialize once
+    // an item + quantity has been chosen.
+    public ItemQuantity iq;
+
+    // ── Opportunistic return-leg pickup (piggyback) ──────────────────────────
+    // If the market simultaneously needs items delivered AND has excess to haul away,
+    // a single merchant does both in one round trip: outbound delivery, then receive
+    // excess at market, return with goods, deliver into home storage. The pickup is
+    // planned at Initialize time and reserved up-front; if no viable pickup exists
+    // the task behaves identically to the pre-piggyback HaulToMarketTask.
+    // pickupIq / pickupStorageTile are null when no pickup is planned.
+    public ItemQuantity pickupIq;
+    public Tile pickupStorageTile;
+    // Claimed HaulFromMarket WOM order — reserved in TryAppendPickup so a second
+    // merchant doesn't race us, released in Cleanup override.
+    private WorkOrderManager.WorkOrder pickupOrder;
+
+    // True once the merchant has already delivered to market and is on the return leg.
+    // Distinguishes market-deliver from the piggyback home-deliver via TargetInv, so
+    // this stays correct even when the queue contains two DeliverToInventoryObjectives.
+    public bool IsReturnLeg {
+        get {
+            Inventory marketInv = MarketBuilding.instance?.storage;
+            if (marketInv == null) return true; // market demolished — no way back to a pre-deliver state
+            if (currentObjective is DeliverToInventoryObjective cd && cd.TargetInv == marketInv) return false;
+            foreach (var o in RemainingObjectives())
+                if (o is DeliverToInventoryObjective d && d.TargetInv == marketInv) return false;
+            return true;
+        }
+    }
+
+    // True once the piggyback pickup has been received into the animal's inventory
+    // (i.e. the ReceiveFromInventoryObjective has completed). Used by SaveSystem to
+    // decide whether a mid-return-travel save should be persisted as a HaulFromMarket
+    // descriptor (carrying goods home) or a plain HaulToMarket return descriptor.
+    public bool PickupReceived {
+        get {
+            if (pickupIq == null) return false;
+            if (currentObjective is ReceiveFromInventoryObjective) return false;
+            foreach (var o in RemainingObjectives())
+                if (o is ReceiveFromInventoryObjective) return false;
+            return true;
+        }
+    }
+
+    // Resume-mode flag — when true, Initialize skips gameplay gates (Eepness,
+    // food fetch, market path, item search) because the task is being re-created
+    // for a merchant already mid-journey. The merchant's travel progress lives
+    // on animal.workProgress, restored by Animal.Start() after task.Start().
+    private readonly bool isResume;
+    private readonly bool resumeReturnLeg;
+
     public HaulToMarketTask(Animal animal) : base(animal) {}
+
+    // Resume constructor. Called from Animal.Start() when a save records the
+    // merchant was mid-transit on a HaulToMarket. `returnLeg = true` means the
+    // merchant has already delivered and is on the second (homeward) TravelingObjective;
+    // false means still outbound with goods in inventory.
+    // Note: piggyback pickup state is never resumed — the pickup descriptor (when received)
+    // is saved as a HaulFromMarket entry instead, which routes to HaulFromMarketTask's
+    // resume constructor. See SaveSystem.GatherAnimal / SPEC-trading.md save-load mapping.
+    public HaulToMarketTask(Animal animal, ItemQuantity iq, bool returnLeg) : base(animal) {
+        this.iq              = iq;
+        this.isResume        = true;
+        this.resumeReturnLeg = returnLeg;
+    }
+
     public override bool Initialize() {
-        if (animal.eeping.Eepy()) return false; // too tired for a long journey
+        if (isResume) return InitializeResume();
+
+        // Market trips have a stricter eep gate than the general night-sleep threshold —
+        // a merchant who leaves close to the threshold could dip into efficiency-loss
+        // territory mid-transit and arrive useless at the far side.
+        if (animal.eeping.Eepness() < 0.75f) return false;
         if (MarketBuilding.instance == null) return false;
         Inventory marketInv = MarketBuilding.instance.storage;
         if (marketInv == null) return false;
@@ -590,9 +669,11 @@ public class HaulToMarketTask : Task {
         Tile marketTile = marketPath.tile;
 
         foreach (var kvp in marketInv.targets) {
-            int quantityNeeded = kvp.Value - marketInv.Quantity(kvp.Key);
-            if (quantityNeeded <= 0) continue;
             Item item = kvp.Key;
+            // Targets on groups are ignored — UI hides them and model skips them.
+            if (item.IsGroup) continue;
+            int quantityNeeded = kvp.Value - marketInv.Quantity(item);
+            if (quantityNeeded <= 0) continue;
             if (marketInv.allowed[item.id] == false) continue;
 
             var (itemPath, stack) = animal.nav.FindPathItemStack(item);
@@ -605,23 +686,174 @@ public class HaulToMarketTask : Task {
             int spaceReserved = ReserveSpace(marketInv, item, quantityNeeded);
             if (spaceReserved <= 0) continue;
             if (spaceReserved < MinMarketHaul(item)) { UndoLastSpaceReservation(); continue; }
-            ItemQuantity iq = new(item, spaceReserved);
+            this.iq = new ItemQuantity(item, spaceReserved);
             // Pre-reserve only the nearest stack; FetchObjective reserves additional stacks
             // as it visits them until iq.quantity is gathered.
             FetchAndReserve(iq, itemPath.tile, stack, firstAvail);
-            // Walk to the market portal, disappear for the journey, then deliver on arrival.
+            // Walk to portal → travel to market → deliver → [optional pickup tail] → travel back.
+            // If TryAppendPickup succeeds it splices in [Receive → Travel → GoStorage → DeliverHome],
+            // otherwise we just append the return travel and the merchant reappears at x=0 idle.
             objectives.AddLast(new GoObjective(this, marketTile));
             objectives.AddLast(new TravelingObjective(this, MarketTransitTicks));
             objectives.AddLast(new DeliverToInventoryObjective(this, iq, marketInv));
-            return PrependFoodFetchForMarketJourney(MarketTransitTicks);
+            float extraGround = 0f;
+            if (TryAppendPickup(marketInv)) {
+                // Piggyback adds a portal→storage walk at trip end; budget it in the food fetch.
+                // Over-estimating slightly (WalkToPortalSeconds) keeps it simple and safe.
+                extraGround = WalkToPortalSeconds;
+            } else {
+                objectives.AddLast(new TravelingObjective(this, MarketTransitTicks));
+            }
+            // transitTicks = per-leg; PrependFoodFetchForMarketJourney doubles internally for round trip.
+            return PrependFoodFetchForMarketJourney(MarketTransitTicks, extraGround);
         }
         return false;
     }
+
+    // Attempts to extend the current delivery queue with an opportunistic pickup from
+    // the same market visit. On success: reserves the market source stack + home storage
+    // space, claims the HaulFromMarket WOM order, populates pickupIq/pickupStorageTile,
+    // and appends [ReceiveFromInventory → Travel(return) → Go(storage) → DeliverHome]
+    // to the objective queue. On failure: no mutations, caller should append its own
+    // plain return TravelingObjective.
+    private bool TryAppendPickup(Inventory marketInv) {
+        if (marketInv.targets == null) return false;
+
+        // We scan all market targets for an item with (excess > 0) where we can secure a
+        // stack reservation, storage space, and reachable home storage. The WOM
+        // HaulFromMarket order is claimed only as a nicety (so a parallel pure-pickup
+        // merchant doesn't duplicate this excess) — its absence or prior reservation
+        // does NOT block piggyback, because stack-level `resAmount` already prevents
+        // double-booking of the physical items.
+        Item   chosenItem        = null;
+        int    chosenQty         = 0;
+        ItemStack chosenStack    = null;
+        Tile   chosenStorageTile = null;
+        Inventory chosenStorage  = null;
+
+        foreach (var kvp in marketInv.targets) {
+            Item item = kvp.Key;
+            if (item.IsGroup) continue; // targets on groups are ignored (see SPEC-trading: market targets are leaf-only)
+            int excess = marketInv.Quantity(item) - kvp.Value;
+            if (excess <= 0) continue;
+
+            ItemStack stack = marketInv.GetItemStack(item);
+            if (stack == null) continue;
+            int avail = stack.quantity - stack.resAmount;
+            if (avail <= 0) continue;
+
+            // Pick the storage with the most free space so the full piggyback payload lands in one
+            // drop-off — a near-full nearest storage would cap spaceReserved below MinMarketHaul.
+            var (storagePath, storageInv) = animal.nav.FindPathToStorageMostSpace(item, minSpace: MinMarketHaul(item));
+            if (storagePath == null) continue;
+
+            int qty = Math.Min(excess, avail);
+            if (qty < MinMarketHaul(item)) continue;
+
+            chosenItem        = item;
+            chosenQty         = qty;
+            chosenStack       = stack;
+            chosenStorageTile = storagePath.tile;
+            chosenStorage     = storageInv;
+            break;
+        }
+
+        if (chosenItem == null) return false;
+
+        // Reserve storage space now (may be smaller than chosenQty if space tightened).
+        int spaceReserved = ReserveSpace(chosenStorage, chosenItem, chosenQty);
+        if (spaceReserved <= 0) return false;
+        int finalQty = Math.Min(chosenQty, spaceReserved);
+        if (finalQty < MinMarketHaul(chosenItem)) {
+            UndoLastSpaceReservation();
+            return false;
+        }
+
+        this.pickupIq          = new ItemQuantity(chosenItem, finalQty);
+        this.pickupStorageTile = chosenStorageTile;
+        ReserveStack(chosenStack, finalQty);
+
+        // Opportunistically claim the HaulFromMarket WOM order if one exists and is free.
+        // If the order is missing or already reserved by another merchant, we proceed anyway
+        // — stack-level reservation is the real race guard. Cleanup only unreserves when we
+        // did reserve (pickupOrder is set).
+        WorkOrderManager wom = WorkOrderManager.instance;
+        WorkOrderManager.WorkOrder order = wom?.FindMarketHaulFromOrder(marketInv);
+        if (order != null && order.res.Available()) {
+            order.res.Reserve(animal.aName);
+            this.pickupOrder = order;
+        }
+
+        objectives.AddLast(new ReceiveFromInventoryObjective(this, pickupIq, marketInv));
+        objectives.AddLast(new TravelingObjective(this, MarketTransitTicks));
+        objectives.AddLast(new GoObjective(this, pickupStorageTile));
+        objectives.AddLast(new DeliverToInventoryObjective(this, pickupIq, chosenStorage));
+        return true;
+    }
+
+    public override void Cleanup() {
+        // Release the claimed HaulFromMarket order before base.Cleanup() clears objectives.
+        pickupOrder?.res.Unreserve();
+        pickupOrder = null;
+        base.Cleanup();
+    }
+
+    // Rebuilds the tail of the task for a merchant loaded mid-transit. Two shapes:
+    //   outbound: [Travel(remaining) → DeliverToInventory → Travel(return)]
+    //   return:   [Travel(remaining)]                  (items already delivered)
+    // Returns false only if the market has been demolished between save and load,
+    // in which case Animal.Start() falls back to ResumeTravelTask.
+    private bool InitializeResume() {
+        if (iq?.item == null) return false;
+        if (MarketBuilding.instance?.storage == null) return false;
+        Inventory marketInv = MarketBuilding.instance.storage;
+
+        if (resumeReturnLeg) {
+            // Items already delivered pre-save — no space reservation, no delivery step.
+            objectives.AddLast(new TravelingObjective(this, MarketTransitTicks));
+        } else {
+            // Re-issue the destination space reservation — reservations are not persisted
+            // across save/load so every task restores its own on load.
+            ReserveSpace(marketInv, iq.item, iq.quantity);
+            objectives.AddLast(new TravelingObjective(this, MarketTransitTicks));
+            objectives.AddLast(new DeliverToInventoryObjective(this, iq, marketInv));
+            objectives.AddLast(new TravelingObjective(this, MarketTransitTicks));
+        }
+        return true;
+    }
 }
 public class HaulFromMarketTask : Task {
+    // Persisted for save/load so a mid-transit merchant can reconstruct the
+    // receive/deliver tail on load. Set by the normal Initialize.
+    public ItemQuantity iq;
+    public Tile storageTile;
+
+    // True once the merchant has already fetched from market and is past the
+    // ReceiveFromInventoryObjective — i.e. on the return leg carrying goods home.
+    // Mirrors MerchantJourneyDisplay's leg-detection so behaviour stays consistent.
+    public bool IsReturnLeg => !RemainingObjectives().Any(o => o is ReceiveFromInventoryObjective)
+                            && !(currentObjective is ReceiveFromInventoryObjective);
+
+    // See HaulToMarketTask for isResume rationale. Travel progress itself lives on
+    // animal.workProgress; Animal.Start() restores it after task.Start() zeroes it.
+    private readonly bool isResume;
+    private readonly bool resumeReturnLeg;
+
     public HaulFromMarketTask(Animal animal) : base(animal) {}
+
+    // Resume constructor. `returnLeg = true` means the merchant has already visited
+    // the market and is heading home with goods; false means still outbound.
+    public HaulFromMarketTask(Animal animal, ItemQuantity iq, Tile storageTile, bool returnLeg) : base(animal) {
+        this.iq              = iq;
+        this.storageTile     = storageTile;
+        this.isResume        = true;
+        this.resumeReturnLeg = returnLeg;
+    }
+
     public override bool Initialize() {
-        if (animal.eeping.Eepy()) return false; // too tired for a long journey
+        if (isResume) return InitializeResume();
+
+        if (animal.eeping.Eepness() < 0.75f) return false; // see HaulToMarketTask for rationale
         if (MarketBuilding.instance == null) return false;
         Inventory marketInv = MarketBuilding.instance.storage;
         if (marketInv == null) return false;
@@ -631,13 +863,16 @@ public class HaulFromMarketTask : Task {
         Tile marketTile = marketPath.tile;
 
         foreach (var kvp in marketInv.targets) {
-            int excess = marketInv.Quantity(kvp.Key) - kvp.Value;
-            if (excess <= 0) continue;
             Item item = kvp.Key;
+            if (item.IsGroup) continue; // targets on groups are ignored (see SPEC-trading: market targets are leaf-only)
+            int excess = marketInv.Quantity(item) - kvp.Value;
+            if (excess <= 0) continue;
 
             ItemStack stack = marketInv.GetItemStack(item);
             if (stack == null) continue;
-            var (storagePath, storageInv) = animal.nav.FindPathToStorage(item);
+            // Pick the storage with the most free space so the full excess lands in one drop-off —
+            // a near-full nearest storage would cap spaceReserved below MinMarketHaul.
+            var (storagePath, storageInv) = animal.nav.FindPathToStorageMostSpace(item, minSpace: MinMarketHaul(item));
             if (storagePath == null) continue;
 
             int qty = Math.Min(excess, stack.quantity - stack.resAmount);
@@ -646,7 +881,8 @@ public class HaulFromMarketTask : Task {
             if (spaceReserved <= 0) continue;
             qty = Math.Min(qty, spaceReserved);
             if (qty < MinMarketHaul(item)) { UndoLastSpaceReservation(); continue; }
-            ItemQuantity iq = new(item, qty);
+            this.iq          = new ItemQuantity(item, qty);
+            this.storageTile = storagePath.tile;
             // Reserve the items in the market now so no other task double-counts them.
             ReserveStack(stack, qty);
             // Walk to portal → travel to market → receive goods → travel back → deliver to storage.
@@ -654,11 +890,50 @@ public class HaulFromMarketTask : Task {
             objectives.AddLast(new TravelingObjective(this, MarketTransitTicks));
             objectives.AddLast(new ReceiveFromInventoryObjective(this, iq, marketInv));
             objectives.AddLast(new TravelingObjective(this, MarketTransitTicks));
-            objectives.AddLast(new GoObjective(this, storagePath.tile));
+            objectives.AddLast(new GoObjective(this, storageTile));
             objectives.AddLast(new DeliverToInventoryObjective(this, iq, storageInv));
-            return PrependFoodFetchForMarketJourney(2 * MarketTransitTicks);
+            // transitTicks = per-leg; PrependFoodFetchForMarketJourney doubles internally for round trip.
+            return PrependFoodFetchForMarketJourney(MarketTransitTicks);
         }
         return false;
+    }
+
+    // Rebuilds the task tail for a merchant loaded mid-transit. Two shapes:
+    //   return leg:   [Travel(remaining) → Go(storage) → DeliverToInventory]
+    //   outbound leg: [Travel(remaining) → ReceiveFromInventory → Travel(return) →
+    //                   Go(storage) → DeliverToInventory]
+    // The home storage inventory is resolved from the saved tile each load —
+    // if the storage building or market has been demolished since save,
+    // returns false so Animal.Start() falls back to ResumeTravelTask.
+    private bool InitializeResume() {
+        if (iq?.item == null || storageTile == null) return false;
+        if (MarketBuilding.instance?.storage == null) return false;
+        Inventory marketInv  = MarketBuilding.instance.storage;
+        Inventory storageInv = storageTile.building?.storage;
+        if (storageInv == null) return false;
+
+        // Both legs still need to deliver into home storage — reserve space there now
+        // so other haul tasks don't eat the slot while we're still travelling.
+        ReserveSpace(storageInv, iq.item, iq.quantity);
+
+        if (resumeReturnLeg) {
+            objectives.AddLast(new TravelingObjective(this, MarketTransitTicks));
+            objectives.AddLast(new GoObjective(this, storageTile));
+            objectives.AddLast(new DeliverToInventoryObjective(this, iq, storageInv));
+        } else {
+            // Outbound — re-reserve the source stack eagerly so a competing merchant
+            // can't drain the market while we're still travelling toward it.
+            // Stack may have shrunk since save; ReceiveFromInventoryObjective tolerates
+            // shortfall (takes min(available, iq.quantity), only Fails on empty).
+            ItemStack stack = marketInv.GetItemStack(iq.item);
+            if (stack != null) ReserveStack(stack, Math.Min(iq.quantity, stack.quantity - stack.resAmount));
+            objectives.AddLast(new TravelingObjective(this, MarketTransitTicks));
+            objectives.AddLast(new ReceiveFromInventoryObjective(this, iq, marketInv));
+            objectives.AddLast(new TravelingObjective(this, MarketTransitTicks));
+            objectives.AddLast(new GoObjective(this, storageTile));
+            objectives.AddLast(new DeliverToInventoryObjective(this, iq, storageInv));
+        }
+        return true;
     }
 }
 // Created on load to finish an interrupted TravelingObjective.
@@ -1020,20 +1295,22 @@ public class DeliverToBlueprintObjective : Objective { // always queued after Go
 // Always queued after GoObjective so the animal is already in position when Start() runs.
 public class DeliverToInventoryObjective : Objective {
     private ItemQuantity iq;
-    private Inventory targetInv;
+    // Target inventory exposed read-only so tasks can introspect their queue
+    // (e.g. HaulToMarketTask distinguishes market-deliver vs home-deliver for phase detection).
+    public Inventory TargetInv { get; }
     public DeliverToInventoryObjective(Task task, ItemQuantity iq, Inventory targetInv) : base(task) {
         this.iq = iq;
-        this.targetInv = targetInv;
+        this.TargetInv = targetInv;
     }
-    public override string GetObjectiveName() { return $"DeliverTo({iq.item.name}>{targetInv.displayName})"; }
+    public override string GetObjectiveName() { return $"DeliverTo({iq.item.name}>{TargetInv.displayName})"; }
     public override void Start(){
-        if (targetInv == null) { Fail(); return; }
+        if (TargetInv == null) { Fail(); return; }
         int have = animal.inv.Quantity(iq.item);
         if (have <= 0) { Debug.Log($"{animal.aName} DeliverToInventoryObjective: missing {iq.item.name}"); Fail(); return; }
         int toDeliver = Math.Min(have, iq.quantity);
-        int moved = animal.inv.MoveItemTo(targetInv, iq.item, toDeliver);
+        int moved = animal.inv.MoveItemTo(TargetInv, iq.item, toDeliver);
         if (moved < toDeliver)
-            Debug.Log($"{animal.aName} delivered {moved}/{toDeliver} {iq.item.name} to {targetInv.displayName} — partial fill");
+            Debug.Log($"{animal.aName} delivered {moved}/{toDeliver} {iq.item.name} to {TargetInv.displayName} — partial fill");
         Complete();
     }
 }

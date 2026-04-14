@@ -88,14 +88,11 @@ public class TradingPanel : MonoBehaviour {
         }
     }
 
-    // toggle panel active — attempts connection if offline
+    // toggle panel active — attempts reconnection in background if offline,
+    // but always opens so targets/inventory can be viewed while disconnected
     public void Toggle() {
         var client = TradingClient.instance;
-        if (client == null) return;
-        if (!client.isOnline) {
-            client.Connect();
-            return;
-        }
+        if (client != null && !client.isOnline) client.Connect();
         if (gameObject.activeSelf) gameObject.SetActive(false);
         else {
             UI.OpenExclusive(gameObject);
@@ -132,10 +129,8 @@ public class TradingPanel : MonoBehaviour {
 
             bool discovered = InventoryController.instance.discoveredItems.ContainsKey(item.id)
                 && InventoryController.instance.discoveredItems[item.id];
-            bool parentOpen = item.parent == null
-                || !marketDisplayGos.ContainsKey(item.parent.id)
-                || marketDisplayGos[item.parent.id].GetComponent<ItemDisplay>().open;
-            go.SetActive(discovered && parentOpen);
+            // Market panel: groups are always expanded, so visibility depends only on discovery.
+            go.SetActive(discovered);
 
             ItemDisplay display = go.GetComponent<ItemDisplay>();
             display.item = item;
@@ -144,7 +139,7 @@ public class TradingPanel : MonoBehaviour {
             display.targetInventory = currentMarket;
             display.getDisplayGo = id => marketDisplayGos.ContainsKey(id) ? marketDisplayGos[id] : null;
             display.SetDisplayMode(ItemDisplay.DisplayMode.Market);
-            display.open = ItemDisplay.DefaultOpenForGroup(item);
+            display.open = true;
 
             // Set initial text
             UpdateMarketItemDisplay(display, item);
@@ -174,10 +169,12 @@ public class TradingPanel : MonoBehaviour {
     }
 
     void UpdateMarketItemDisplay(ItemDisplay display, Item item) {
-        if (display.itemText != null) {
-            int qty = currentMarket.Quantity(item);
-            display.itemText.text = item.name + ": " + ItemStack.FormatQ(qty, item.discrete);
-        }
+        int qty = currentMarket.Quantity(item);
+        if (display.itemText != null) display.itemText.text = item.name;
+        if (display.quantityText != null)
+            display.quantityText.text = ItemStack.FormatQ(qty, item.discrete);
+        // Groups don't get meaningful targets in market mode — only leaf items do.
+        if (item.IsGroup) return;
         int target = currentMarket.targets != null && currentMarket.targets.ContainsKey(item)
             ? currentMarket.targets[item] : 0;
         display.SetTargetDisplay(target);
