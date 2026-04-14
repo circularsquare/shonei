@@ -166,16 +166,23 @@ public class BuildPanel : MonoBehaviour {
         return true;
     }
 
+    // Unified cancel/deconstruct entry point.
+    //  - Regular blueprint on tile → refund delivered materials to floor, destroy bp.
+    //  - Deconstruct blueprint on tile → cancel the pending deconstruction (no refund —
+    //    deconstruct bps have no delivered materials; Destroy() also unlocks storage).
+    //  - No bp but a structure present → queue a new deconstruct blueprint.
+    //  - Empty tile → no-op, return false.
     public bool Remove(Tile tile) {
         Blueprint existingBp = tile.GetAnyBlueprint();
-        if (existingBp != null && existingBp.state != Blueprint.BlueprintState.Deconstructing) {
-            foreach (var cost in existingBp.costs)
-                existingBp.inv.MoveItemTo(tile.EnsureFloorInventory(), cost.item, existingBp.inv.Quantity(cost.item));
-            existingBp.Destroy(); // sets cancelled, nulls tile ref, removes from blueprint list, destroys GO
+        if (existingBp != null) {
+            if (existingBp.state != Blueprint.BlueprintState.Deconstructing) {
+                foreach (var cost in existingBp.costs)
+                    existingBp.inv.MoveItemTo(tile.EnsureFloorInventory(), cost.item, existingBp.inv.Quantity(cost.item));
+            }
+            existingBp.Destroy(); // sets cancelled, removes from bp list, WOM cleanup, unlocks storage if decon
             return true;
         }
         if (System.Array.Exists(tile.structs, s => s != null)) {
-            if (tile.GetMatchingBlueprint(bp => bp.state == Blueprint.BlueprintState.Deconstructing) != null) return false;
             Blueprint.CreateDeconstructBlueprint(tile);
             return true;
         }

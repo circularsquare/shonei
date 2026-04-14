@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
@@ -16,8 +17,8 @@ public class ResearchNodeData {
 }
 
 // One unlock granted by a technology.
-//   type   = "building", "recipe", or "misc"
-//   target = building name | recipe id (as string) | misc effect key
+//   type   = "building", "recipe", or "job"
+//   target = building name | recipe id (as string) | job name
 public class UnlockEntry {
     public string type;
     public string target;
@@ -34,8 +35,9 @@ public class UnlockEntry {
 public class ResearchSystem : MonoBehaviour {
     public static ResearchSystem instance { get; protected set; }
 
-    const float DecayRate     = 0.02f;  // progress lost per tick (all nodes with any progress)
-    const float ScientistRate = 0.1f;   // progress gained per workefficiency of a scientist each tick
+    const float DecayRate        = 0.02f;  // progress lost per tick (all nodes with any progress)
+    const float ScientistRate    = 0.1f;   // progress gained per workefficiency of a scientist each tick
+    const float ConstructionGain = 1f;     // flat progress granted when a gated building is constructed
 
     public Dictionary<int, float> progress       = new Dictionary<int, float>();
     public int                    activeResearchId = -1;
@@ -53,6 +55,11 @@ public class ResearchSystem : MonoBehaviour {
     // (unless they are still flagged defaultLocked, in which case they are permanently
     // locked — a data-authoring error worth catching).
     Dictionary<string, int>                  jobToTechNode    = new Dictionary<string, int>();
+
+    // Reverse index: buildingName → technology node id that gates it.
+    // Built once at load. Used by AddConstructionProgress to route a flat gain to
+    // the right tech each time a gated building is constructed.
+    Dictionary<string, int>                  buildingToTechNode = new Dictionary<string, int>();
 
     // Maintain system: nodes the player wants scientists to keep above the unlock threshold.
     // Scientists prioritise maintained nodes that have fallen below cost before working on activeResearchId.
@@ -86,43 +93,42 @@ public class ResearchSystem : MonoBehaviour {
         }
         BuildRecipeLockIndex();
         BuildJobLockIndex();
+        BuildBuildingLockIndex();
     }
 
-    // Walks all node unlocks and records recipe-type entries into the reverse index.
-    // A recipe gated by multiple techs would only remember the last one written — flagged here.
+    // Walks all node unlocks and records entries matching unlockType into the reverse index.
+    // A target gated by multiple techs keeps the last one written, and logs an error so the
+    // data-authoring mistake is caught. `parse` returns (false, _) to skip + log (e.g. recipe
+    // targets must parse as int); returning (true, key) inserts at `key`.
+    // Job validation against Db is deferred to ValidateJobUnlocks() because Db may not be
+    // loaded when this runs.
+    void BuildLockIndex<TKey>(string unlockType, Dictionary<TKey, int> index, Func<string, string, (bool ok, TKey key)> parse) {
+        index.Clear();
+        foreach (var node in nodes) {
+            if (node.unlocks == null) continue;
+            foreach (var e in node.unlocks) {
+                if (e == null || e.type != unlockType) continue;
+                var (ok, key) = parse(e.target, node.name);
+                if (!ok) continue;
+                if (index.ContainsKey(key))
+                    Debug.LogError($"{unlockType} '{e.target}' is gated by multiple techs (last: '{node.name}') — using last.");
+                index[key] = node.id;
+            }
+        }
+    }
+
     void BuildRecipeLockIndex() {
-        recipeToTechNode.Clear();
-        foreach (var node in nodes) {
-            if (node.unlocks == null) continue;
-            foreach (var e in node.unlocks) {
-                if (e == null || e.type != "recipe") continue;
-                if (!int.TryParse(e.target, out int rid)) {
-                    Debug.LogError($"Tech '{node.name}' recipe unlock has non-integer target '{e.target}'");
-                    continue;
-                }
-                if (recipeToTechNode.ContainsKey(rid))
-                    Debug.LogError($"Recipe {rid} is gated by multiple techs (last: '{node.name}') — using last.");
-                recipeToTechNode[rid] = node.id;
+        BuildLockIndex<int>("recipe", recipeToTechNode, (target, nodeName) => {
+            if (!int.TryParse(target, out int rid)) {
+                Debug.LogError($"Tech '{nodeName}' recipe unlock has non-integer target '{target}'");
+                return (false, 0);
             }
-        }
+            return (true, rid);
+        });
     }
 
-    // Walks all node unlocks and records job-type entries into the reverse index.
-    // A job gated by multiple techs would only remember the last one written — flagged here.
-    // Runs in Awake before Db is guaranteed loaded, so target-name validation is deferred
-    // to ValidateJobUnlocks() which runs in Start.
-    void BuildJobLockIndex() {
-        jobToTechNode.Clear();
-        foreach (var node in nodes) {
-            if (node.unlocks == null) continue;
-            foreach (var e in node.unlocks) {
-                if (e == null || e.type != "job") continue;
-                if (jobToTechNode.ContainsKey(e.target))
-                    Debug.LogError($"Job '{e.target}' is gated by multiple techs (last: '{node.name}') — using last.");
-                jobToTechNode[e.target] = node.id;
-            }
-        }
-    }
+    void BuildJobLockIndex()      { BuildLockIndex<string>("job",      jobToTechNode,      (target, _) => (true, target)); }
+    void BuildBuildingLockIndex() { BuildLockIndex<string>("building", buildingToTechNode, (target, _) => (true, target)); }
 
     // Called from Start() — after Db.Awake has populated jobByName.
     // Flags typos (tech pointing at a non-existent job name) and orphans
@@ -252,6 +258,17 @@ public class ResearchSystem : MonoBehaviour {
         CheckTransitions();
     }
 
+    // Called from Blueprint.Complete each time a building finishes construction (gameplay path only,
+    // not load/worldgen). Grants a flat ConstructionGain to the tech that gates the building.
+    // Passive gain is maintain-only: caps at 2×cost and cannot unlock a locked tech — which is fine,
+    // because a locked building cannot be constructed in the first place.
+    public void AddConstructionProgress(string buildingName) {
+        if (!buildingToTechNode.TryGetValue(buildingName, out int id)) return;
+        if (!nodeById.TryGetValue(id, out var node)) return;
+        progress[id] = Mathf.Min(GetProgress(id) + ConstructionGain, GetCap(node));
+        CheckTransitions();
+    }
+
     // Called from AnimalStateManager when a recipe cycle completes (passive skill gain).
     public void AddPassiveProgress(string researchName, float amount) {
         foreach (var node in nodes) {
@@ -293,7 +310,6 @@ public class ResearchSystem : MonoBehaviour {
                     AnimalController.instance?.UnlockJob(e.target);
                     break;
                 case "recipe":
-                case "misc":
                     break;
                 default:
                     Debug.LogError($"Tech '{node.name}' has unknown unlock type '{e.type}'");
@@ -315,7 +331,6 @@ public class ResearchSystem : MonoBehaviour {
                     AnimalController.instance?.LockJob(e.target);
                     break;
                 case "recipe":
-                case "misc":
                     break;
                 default:
                     Debug.LogError($"Tech '{node.name}' has unknown unlock type '{e.type}'");

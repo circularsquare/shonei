@@ -8,7 +8,11 @@ The individual unlockable things are called **technologies** (player- and user-f
 
 ## Progress & decay
 
-Each technology has a progress value (0 to 2x cost). Every tick, all nodes with progress > 0 lose `DecayRate` (0.02) progress. Scientists add `workEfficiency * ScientistRate (0.1)` per tick. Passive progress comes from certain crafting recipes (`recipe.research` field).
+Each technology has a progress value (0 to 2x cost). Every tick, all nodes with progress > 0 lose `DecayRate` (0.02) progress. Scientists add `workEfficiency * ScientistRate (0.1)` per tick.
+
+Passive progress sources (maintain-only — caps at 2x cost and cannot unlock a locked tech from scratch):
+- **Crafting**: recipes with a `research` field grant `researchPoints` to the named tech on each completed cycle. Hooked in `AnimalStateManager.ExecuteCraftTask`. Intended use: recipe-unlock techs gain from the recipe they unlock.
+- **Construction**: each time a tech-gated building finishes construction via `Blueprint.Complete`, the gating tech gets a flat `ConstructionGain` (1) progress. Routed through the `buildingToTechNode` reverse index built in `LoadNodes`. Only fires on the gameplay path — world load / worldgen go through `Structure.Create` directly and do not grant research.
 
 - **Unlock**: progress >= cost AND all prerequisites currently unlocked.
 - **Forget**: progress < 0.8 x cost (hysteresis prevents flickering).
@@ -36,7 +40,7 @@ Each technology can grant multiple unlocks of mixed types. See SPEC-data.md for 
   "unlocks": [ { "type": "building", "target": "dirt pit" } ] }
 ```
 
-Unlock entry `type` is one of `"building"`, `"recipe"`, `"job"`, or `"misc"`. For recipes, `target` is the recipe id as a string. `"misc"` currently has no effect handler — add a case to `ResearchSystem.ApplyEffect`/`RevertEffect` when introducing one.
+Unlock entry `type` is one of `"building"`, `"recipe"`, or `"job"`. For recipes, `target` is the recipe id as a string.
 
 ## Recipe gating
 

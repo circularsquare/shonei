@@ -46,7 +46,9 @@ public class WorkOrderManager : MonoBehaviour {
         public Reservable res = new(1);
         // Optional: returns false to temporarily suppress this order without removing it from the queue.
         // Null means always active. ChooseOrder checks this before calling factory.
-        // Example: harvest orders use () => plant.harvestable so the order stays alive across grow cycles.
+        // Example: harvest orders use () => plant.harvestable so the order stays alive across grow cycles
+        // (plant.harvestFlagged gates the order's existence instead — Plant.SetHarvestFlagged registers /
+        // unregisters as the flag flips, so unflagged plants carry no order at all).
         public Func<bool> isActive;
         public Building building;            // nullable; for Craft orders (dedup & cleanup)
     }
@@ -337,11 +339,22 @@ public class WorkOrderManager : MonoBehaviour {
             factory = a => new HarvestTask(a, tile),
             tile = tile,
             res = new(plant.plantType.capacity > 0 ? plant.plantType.capacity : 1),
+            // Gated on ripeness only — harvest orders only exist while the plant is flagged,
+            // so no need to re-check harvestFlagged here. SetHarvestFlagged(false) removes
+            // the order; dormancy across grow cycles comes from `harvestable`.
             isActive = () => plant.harvestable,
             canDo = a => a.job == harvestJob,
             getDistance = a => Mathf.Abs(tile.x - a.x) + Mathf.Abs(tile.y - a.y)
         });
         return true;
+    }
+
+    // If a HarvestTask is currently running on this plant, the task keeps its reservation
+    // and finishes this cycle (same graceful-completion behavior as cancelling a blueprint
+    // mid-construction) — only the standing queue entry is cleaned up.
+    public bool UnregisterHarvest(Plant plant) {
+        if (plant == null || plant.tile == null) return false;
+        return orders[1].RemoveAll(o => o.type == OrderType.Harvest && o.tile == plant.tile) > 0;
     }
 
     // Registers a Research order for a specific lab building if it's unreserved and no order exists for it.
@@ -540,14 +553,16 @@ public class WorkOrderManager : MonoBehaviour {
         bool repair = mode == ScanMode.Repair;
 
         // ── Harvest ──
+        // Only flagged plants should have an order. Unflagged plants legitimately have none.
         foreach (Plant p in PlantController.instance.Plants) {
+            if (!p.harvestFlagged) continue;
             bool has = orders[1].Exists(o => o.type == OrderType.Harvest && o.tile == p.tile);
             if (!has) {
                 if (repair) {
                     RegisterHarvest(p);
-                    if (!silent) Debug.LogWarning($"WOM reconcile: registered missing harvest order for {p.plantType.name} at ({p.x},{p.y})");
+                    if (!silent) Debug.LogWarning($"WOM reconcile: registered missing harvest order for flagged {p.plantType.name} at ({p.x},{p.y})");
                 } else {
-                    Debug.LogError($"WOM audit: plant at ({p.x},{p.y}) has no harvest order");
+                    Debug.LogError($"WOM audit: flagged plant at ({p.x},{p.y}) has no harvest order");
                 }
             }
         }
@@ -678,10 +693,14 @@ public class WorkOrderManager : MonoBehaviour {
             // Prune stale haul orders first so timing artifacts don't fire.
             PruneStaleHauls();
 
-            // Harvest: every harvest order must reference a tile with a living plant
-            foreach (WorkOrder o in orders[1])
-                if (o.type == OrderType.Harvest && o.tile?.plant == null)
-                    Debug.LogError($"WOM audit: harvest order at ({o.tile?.x},{o.tile?.y}) has no plant");
+            // Harvest: every harvest order must reference a tile with a living, flagged plant.
+            // Unflagged plants should have had their order removed by SetHarvestFlagged(false).
+            foreach (WorkOrder o in orders[1]) {
+                if (o.type != OrderType.Harvest) continue;
+                Plant p = o.tile?.plant;
+                if (p == null) Debug.LogError($"WOM audit: harvest order at ({o.tile?.x},{o.tile?.y}) has no plant");
+                else if (!p.harvestFlagged) Debug.LogError($"WOM audit: harvest order at ({o.tile?.x},{o.tile?.y}) references unflagged plant");
+            }
 
             // Blueprints: every blueprint order must reference a live blueprint
             foreach (WorkOrder o in AllOrders())

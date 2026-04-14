@@ -3,6 +3,9 @@ meoww!!
 4/14
 - sorting order aware light receivers
 - haul to market improvements 
+- specifically designate plants to harvest
+- better deconstruction / blueprint info
+- added missing tech passive point gains
 4/13
 - ui cleanups (item targets, build menu, travelling merchant mice)
 - added max find radii

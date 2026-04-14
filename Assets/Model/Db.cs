@@ -321,7 +321,7 @@ public class Recipe {
     public string tile {get; set;} // actually is a tile or a building...
     public float workload {get; set;}
     public string research   { get; set; }   // optional: research name to advance per cycle
-    public float  skillPoints { get; set; }  // progress added to that research per cycle
+    public float  researchPoints { get; set; }  // progress added to that research per cycle
     public string skill      { get; set; }   // optional: overrides job.defaultSkill for this recipe (e.g. "mining")
     public TileType tileType;
     public ItemNameQuantity[] ninputs {get; set;}

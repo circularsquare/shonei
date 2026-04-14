@@ -45,6 +45,9 @@ public class StructureSaveData {
     public int plantAge;
     public int plantGrowthStage;
     public bool plantHarvestable;
+    // Nullable so old saves deserialize as null → treated as false → plant is unflagged on load.
+    // Only saved when true (compact-when-false, matching the `disabled` pattern).
+    public bool? plantHarvestFlagged;
     public int uses;
     // Workstation-only: persists the player-set worker slot limit (Building.workstation.workerLimit).
     // null = field absent (old saves) → defaults to full capacity on load.

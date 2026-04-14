@@ -100,8 +100,8 @@ Fields:
 | `tile` | string | building name where recipe runs |
 | `description` | string | shown in UI |
 | `workload` | float | ticks to complete |
-| `research` | string? | research node name required to unlock |
-| `skillPoints` | float? | skill gained per completion |
+| `research` | string? | technology node that receives passive progress on each completed cycle (maintain-only) |
+| `researchPoints` | float? | passive research progress granted per cycle, paired with `research` |
 | `skill` | string? | skill domain for XP (e.g. `"mining"`); defaults to `job.defaultSkill` if omitted |
 | `ninputs` | `[{name, quantity}]` | consumed items in liang |
 | `noutputs` | `[{name, quantity, chance?}]` | produced items; `chance` (0–1) = probability of output |
@@ -171,7 +171,7 @@ Each `unlocks` entry:
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `type` | string | `"building"`, `"recipe"`, `"job"`, or `"misc"` |
-| `target` | string | building name / recipe id (as string) / job name / misc effect key |
+| `type` | string | `"building"`, `"recipe"`, or `"job"` |
+| `target` | string | building name / recipe id (as string) / job name |
 
-A single technology can grant multiple unlocks of mixed types. Gating uses reverse indexes built at load (`ResearchSystem.recipeToTechNode`, `jobToTechNode`): anything referenced by some tech's `unlocks` entry is considered locked until that tech is unlocked. Ungated entries are always available. `"misc"` currently has no effect handler — add a case to `ResearchSystem.ApplyEffect`/`RevertEffect` when introducing one.
+A single technology can grant multiple unlocks of mixed types. Gating uses reverse indexes built at load (`ResearchSystem.recipeToTechNode`, `jobToTechNode`, `buildingToTechNode`): anything referenced by some tech's `unlocks` entry is considered locked until that tech is unlocked. Ungated entries are always available.

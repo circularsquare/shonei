@@ -8,7 +8,7 @@ using System.Reflection;
 // note: this is not really a controller. it just manages mouse input
 
 public class MouseController : MonoBehaviour {
-    public enum MouseMode {Select, Build, Remove};
+    public enum MouseMode {Select, Build, Remove, Harvest};
     public MouseMode mouseMode = MouseMode.Select;
     public GameObject buildPreview;
     SpriteRenderer buildPreviewSr;
@@ -21,9 +21,11 @@ public class MouseController : MonoBehaviour {
     PropertyInfo ppcAssetsPPU;
 
     // --- drag-select state ---
+    // Shared across Select and Harvest modes — the input-time semantics differ (Select picks
+    // storage inventories; Harvest flags plants) but the threshold/visual-rect machinery is identical.
     private Vector3 _dragStartScreenPos;
     private bool _isDragging = false;
-    private bool _dragStartedInSelect = false;
+    private MouseMode? _dragStartedInMode = null;
     private const float DragThresholdPixels = 8f;
     [SerializeField] private RectTransform dragRectTransform;
 
@@ -130,7 +132,7 @@ public class MouseController : MonoBehaviour {
         }
 
         if (tileAt == null){ buildPreview.SetActive(false); }
-        else if ((mouseMode == MouseMode.Build) || (mouseMode == MouseMode.Remove)){
+        else if ((mouseMode == MouseMode.Build) || (mouseMode == MouseMode.Remove) || (mouseMode == MouseMode.Harvest)){
             buildPreview.SetActive(true);
             if (mouseMode == MouseMode.Build && st != null && anchorTile != null) {
                 Sprite buildSprite = st.LoadSprite();
@@ -168,12 +170,12 @@ public class MouseController : MonoBehaviour {
             InventoryController.instance.PasteAllowed(storageHere);
         }
 
-        // LMB down: record drag start for Select mode; immediate action for Build/Remove
+        // LMB down: record drag start for Select/Harvest modes; immediate action for Build/Remove
         if (Input.GetMouseButtonDown(0)) {
-            if (mouseMode == MouseMode.Select) {
+            if (mouseMode == MouseMode.Select || mouseMode == MouseMode.Harvest) {
                 _dragStartScreenPos = Input.mousePosition;
                 _isDragging = false;
-                _dragStartedInSelect = true;
+                _dragStartedInMode = mouseMode;
             } else if (mouseMode == MouseMode.Build) {
                 Tile placeTile = anchorTile ?? tileAt;
                 bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
@@ -184,8 +186,8 @@ public class MouseController : MonoBehaviour {
             }
         }
 
-        // LMB held in Select mode: check drag threshold and update visual rect
-        if (Input.GetMouseButton(0) && mouseMode == MouseMode.Select && _dragStartedInSelect) {
+        // LMB held in Select/Harvest mode: check drag threshold and update visual rect
+        if (Input.GetMouseButton(0) && _dragStartedInMode.HasValue) {
             float dist = Vector3.Distance(Input.mousePosition, _dragStartScreenPos);
             if (!_isDragging && dist > DragThresholdPixels)
                 _isDragging = true;
@@ -204,8 +206,40 @@ public class MouseController : MonoBehaviour {
                 HandleSelectClick(tileAt, Camera.main.ScreenToWorldPoint(Input.mousePosition));
             }
             _isDragging = false;
-            _dragStartedInSelect = false;
+            _dragStartedInMode = null;
         }
+
+        // Harvest tool is paint-only — both paths set harvestFlagged=true, never toggle.
+        if (Input.GetMouseButtonUp(0) && mouseMode == MouseMode.Harvest) {
+            if (dragRectTransform != null) dragRectTransform.gameObject.SetActive(false);
+            if (_isDragging) {
+                CommitHarvestDrag(_dragStartScreenPos, Input.mousePosition);
+            } else {
+                FlagHarvestAt(tileAt);
+            }
+            _isDragging = false;
+            _dragStartedInMode = null;
+        }
+    }
+
+    private void FlagHarvestAt(Tile t) {
+        if (t?.plant != null) t.plant.SetHarvestFlagged(true);
+    }
+
+    private void CommitHarvestDrag(Vector3 startScreen, Vector3 endScreen) {
+        var (minX, maxX, minY, maxY) = GetDragWorldBounds(startScreen, endScreen);
+        foreach (Plant p in PlantController.instance.Plants) {
+            if (p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY)
+                p.SetHarvestFlagged(true);
+        }
+    }
+
+    // Converts a screen-space drag to world-space min/max bounds via the main camera.
+    private (float minX, float maxX, float minY, float maxY) GetDragWorldBounds(Vector3 startScreen, Vector3 endScreen) {
+        Vector3 worldA = Camera.main.ScreenToWorldPoint(startScreen); worldA.z = 0;
+        Vector3 worldB = Camera.main.ScreenToWorldPoint(endScreen);   worldB.z = 0;
+        return (Mathf.Min(worldA.x, worldB.x), Mathf.Max(worldA.x, worldB.x),
+                Mathf.Min(worldA.y, worldB.y), Mathf.Max(worldA.y, worldB.y));
     }
 
     private void HandleSelectClick(Tile tileAt, Vector3 clickPos) {
@@ -251,11 +285,7 @@ public class MouseController : MonoBehaviour {
 
     /// <summary>Selects all storage inventories whose tile falls inside the screen-space drag rectangle.</summary>
     private void CommitDragSelect(Vector3 startScreen, Vector3 endScreen) {
-        Vector3 worldA = Camera.main.ScreenToWorldPoint(startScreen); worldA.z = 0;
-        Vector3 worldB = Camera.main.ScreenToWorldPoint(endScreen);   worldB.z = 0;
-        float minX = Mathf.Min(worldA.x, worldB.x), maxX = Mathf.Max(worldA.x, worldB.x);
-        float minY = Mathf.Min(worldA.y, worldB.y), maxY = Mathf.Max(worldA.y, worldB.y);
-
+        var (minX, maxX, minY, maxY) = GetDragWorldBounds(startScreen, endScreen);
         var found = new System.Collections.Generic.List<Inventory>();
         Inventory primary = null;
         foreach (Inventory inv in InventoryController.instance.inventories) {
@@ -294,6 +324,13 @@ public class MouseController : MonoBehaviour {
     }
     public void SetModeRemove() {
         mouseMode = MouseMode.Remove;
+        if (BuildPanel.instance != null){
+            BuildPanel.instance.structType = null;
+            BuildPanel.instance.CloseSubPanel();
+        }
+    }
+    public void SetModeHarvest() {
+        mouseMode = MouseMode.Harvest;
         if (BuildPanel.instance != null){
             BuildPanel.instance.structType = null;
             BuildPanel.instance.CloseSubPanel();

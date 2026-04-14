@@ -182,6 +182,10 @@ public class Blueprint {
         WorkOrderManager.instance?.RegisterDeconstruct(bp);
         if (tile.building?.storage != null)
             tile.building.storage.locked = true;
+        // If the player is looking at this tile, switch them to the new deconstruct bp tab
+        // rather than leaving the structure tab active (it's about to go away anyway).
+        if (InfoPanel.instance?.obj == tile)
+            InfoPanel.instance.RebuildSelection(preferBlueprint: bp);
         return bp;
     }
 
@@ -240,6 +244,9 @@ public class Blueprint {
         if (structType.isTile && structType.name == "empty" && tile.type.products != null)
             pendingOutput = new List<ItemQuantity>(tile.type.products);
         StructController.instance.Construct(structType, tile, mirrored);
+        // Passive research gain from constructing a tech-gated building.
+        // No-op for ungated structures (floors, walls, etc.).
+        ResearchSystem.instance?.AddConstructionProgress(structType.name);
         ClearBlueprintFromTiles();
         GameObject.Destroy(go);
         if (InfoPanel.instance?.obj == tile) {
@@ -321,6 +328,7 @@ public class Blueprint {
             tile.building.storage.locked = false;
         ClearBlueprintFromTiles();
         GameObject.Destroy(go);
+        if (InfoPanel.instance?.obj == tile) InfoPanel.instance.RebuildSelection();
     }
 
     private void ClearBlueprintFromTiles() {

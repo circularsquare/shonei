@@ -21,11 +21,13 @@ public class ItemStack {
     public Task resSpaceTask;    // task that made the space reservation (for validity checking + logging)
 
     // Formats a fen quantity as a liang string (e.g. 250 → "2.5", 200 → "2", 5 → "0.05")
+    // Once magnitude reaches 3 digits (≥99.5 liang), drops decimals entirely to keep UI compact.
     public static string FormatQ(int fen, bool discrete = false){
         if (discrete) return (fen / 100).ToString();
         if (fen % 100 == 0) return (fen / 100).ToString(); // exact integer, no decimals
         float val = fen / 100f;
         return Math.Abs(val) switch{
+            >= 99.5f => val.ToString("0"),
             >= 9.6f => val.ToString("0.#"),
             >= 0.96f => val.ToString("0.#"),
             _ => val.ToString("0.##")

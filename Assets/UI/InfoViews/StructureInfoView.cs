@@ -7,7 +7,7 @@ using TMPro;
 /// <summary>
 /// Sub-view for InfoPanel that displays info for a single Structure or Blueprint.
 /// Handles buildings, plants, and blueprints with appropriate controls for each.
-/// Controls: enable/disable toggle, blueprint priority +/-, worker slots +/-.
+/// Controls: enable/disable toggle, blueprint priority +/-, worker slots +/-, harvest flag toggle (plants).
 /// </summary>
 public class StructureInfoView : MonoBehaviour {
     [SerializeField] TextMeshProUGUI text;
@@ -18,6 +18,11 @@ public class StructureInfoView : MonoBehaviour {
     [SerializeField] TextMeshProUGUI enableDisableLabel;
     [SerializeField] Sprite spriteEnabled;
     [SerializeField] Sprite spriteDisabled;
+
+    [Header("Harvest Flag (plants only)")]
+    [SerializeField] GameObject harvestFlagBar;           // full row; hidden for non-plants
+    [SerializeField] Button harvestFlagButton;
+    [SerializeField] TextMeshProUGUI harvestFlagLabel;
 
     [Header("Blueprint Priority")]
     [SerializeField] Button priorityUpButton;
@@ -33,12 +38,18 @@ public class StructureInfoView : MonoBehaviour {
     [SerializeField] GameObject deconstructBar;  // the full row; hidden for blueprints and already-deconstructing tiles
     [SerializeField] Button deconstructButton;
 
+    [Header("Cancel")]
+    [SerializeField] GameObject cancelBar;       // hidden for completed structures; shown on any blueprint tab
+    [SerializeField] Button cancelButton;
+
     private Structure structure;
     private Blueprint blueprint;
 
     void Awake() {
         if (enableDisableButton != null)
             enableDisableButton.onClick.AddListener(OnClickEnableDisable);
+        if (harvestFlagButton != null)
+            harvestFlagButton.onClick.AddListener(OnClickHarvestFlag);
         if (priorityUpButton != null)
             priorityUpButton.onClick.AddListener(() => ChangeBlueprintPriority(1));
         if (priorityDownButton != null)
@@ -49,6 +60,8 @@ public class StructureInfoView : MonoBehaviour {
             workerSlotsDownButton.onClick.AddListener(() => ChangeWorkerSlots(-1));
         if (deconstructButton != null)
             deconstructButton.onClick.AddListener(OnClickDeconstruct);
+        if (cancelButton != null)
+            cancelButton.onClick.AddListener(OnClickCancel);
     }
 
     /// <summary>Show info for a completed structure (building, plant, or base structure).</summary>
@@ -72,6 +85,8 @@ public class StructureInfoView : MonoBehaviour {
         structure = null;
         blueprint = null;
         SetDeconstructVisible(false);
+        SetCancelVisible(false);
+        SetHarvestFlagVisible(false);
     }
 
     public void Refresh() {
@@ -111,25 +126,39 @@ public class StructureInfoView : MonoBehaviour {
 
         text.text = sb.ToString();
 
-        // Show/hide controls
-        bool isBuilding = structure is Building;
-        SetEnableDisableVisible(isBuilding);
-        if (isBuilding) {
-            Building b = (Building)structure;
+        // Show/hide controls.
+        // Enable/disable is only meaningful for buildings whose disabled flag actually
+        // gates behaviour: workstations (craft/research orders), reservoir buildings
+        // (fuel supply orders), and leisure buildings (animals skip disabled ones in
+        // Animal.TryPickLeisure). Hiding it for storage-only, beds, decorative, etc.
+        Building b = structure as Building;
+        bool canDisable = b != null
+            && (b.structType.isWorkstation
+                || b.reservoir != null
+                || !string.IsNullOrEmpty(b.structType.leisureNeed));
+        SetEnableDisableVisible(canDisable);
+        if (canDisable) {
             enableDisableLabel.text = b.disabled ? "enable: " : "disable: ";
             UpdateEnableDisableSprite(b.disabled);
         }
+        bool isPlant = structure is Plant;
+        SetHarvestFlagVisible(isPlant);
+        if (isPlant && harvestFlagLabel != null) {
+            Plant p = (Plant)structure;
+            harvestFlagLabel.text = p.harvestFlagged ? "unflag harvest" : "flag for harvest";
+        }
         SetPriorityVisible(false);
         // Hide deconstruct if this tile already has a pending deconstruct blueprint —
-        // matches the guard in BuildPanel.Remove so the button behavior stays in lockstep.
+        // clicking it would now cancel the deconstruct (BuildPanel.Remove is unified),
+        // which is confusing for a button labelled "deconstruct".
         bool alreadyDeconstructing = structure.tile?.GetMatchingBlueprint(
             bp => bp.state == Blueprint.BlueprintState.Deconstructing) != null;
         SetDeconstructVisible(!alreadyDeconstructing);
-        bool showWorkerSlots = isBuilding && ((Building)structure).structType.isWorkstation
-            && ((Building)structure).structType.capacity > 1;
+        SetCancelVisible(false);
+        bool showWorkerSlots = b != null && b.structType.isWorkstation && b.structType.capacity > 1;
         SetWorkerSlotsVisible(showWorkerSlots);
         if (showWorkerSlots) {
-            var bldg = (Building)structure;
+            var bldg = b;
             var order = WorkOrderManager.instance?.FindOrdersForBuilding(bldg)
                 .FirstOrDefault(o => o.type == WorkOrderManager.OrderType.Craft);
             if (order != null && workerSlotsText != null) {
@@ -161,6 +190,8 @@ public class StructureInfoView : MonoBehaviour {
             priorityText.text = "priority: " + blueprint.priority;
         SetWorkerSlotsVisible(false);
         SetDeconstructVisible(false);
+        SetCancelVisible(true);
+        SetHarvestFlagVisible(false);
     }
 
     // ── Controls ──
@@ -171,6 +202,15 @@ public class StructureInfoView : MonoBehaviour {
             Refresh();
         } else if (blueprint != null) {
             blueprint.SetDisabled(!blueprint.disabled);
+            Refresh();
+        }
+    }
+
+    // Toggles harvestFlagged on the selected plant. Routes through SetHarvestFlagged so
+    // the WOM order gets registered / unregistered and the overlay sprite updates.
+    void OnClickHarvestFlag() {
+        if (structure is Plant plant) {
+            plant.SetHarvestFlagged(!plant.harvestFlagged);
             Refresh();
         }
     }
@@ -191,25 +231,37 @@ public class StructureInfoView : MonoBehaviour {
     }
 
     // Spawns a deconstruct blueprint for the selected structure by delegating to
-    // BuildPanel.Remove — same path as right-click in the Build panel, so guards
-    // (no double-deconstruct, refund-on-cancel) stay centralized in one place.
+    // BuildPanel.Remove — same path as right-click in the Build panel. The InfoPanel
+    // auto-rebuilds (and switches to the new bp tab) inside CreateDeconstructBlueprint.
     void OnClickDeconstruct() {
         if (structure == null) return;
-        // Capture tile before calling Remove: RebuildSelection below will null `structure`.
-        Tile t = structure.tile;
         if (BuildPanel.instance == null) {
             Debug.LogError("StructureInfoView.OnClickDeconstruct: BuildPanel.instance is null");
             return;
         }
-        if (!BuildPanel.instance.Remove(t)) return; // no-op if already deconstructing
-        // Rebuild tabs so the new deconstruct blueprint shows up alongside the structure tab.
-        InfoPanel.instance?.RebuildSelection();
+        BuildPanel.instance.Remove(structure.tile);
+    }
+
+    // Cancels a blueprint (regular → refund + destroy, deconstruct → just destroy).
+    // Routes through BuildPanel.Remove so every cancel path shares the same logic.
+    // InfoPanel rebuild happens inside Blueprint.Destroy().
+    void OnClickCancel() {
+        if (blueprint == null) return;
+        if (BuildPanel.instance == null) {
+            Debug.LogError("StructureInfoView.OnClickCancel: BuildPanel.instance is null");
+            return;
+        }
+        BuildPanel.instance.Remove(blueprint.tile);
     }
 
     // ── Visibility helpers ──
 
     void SetEnableDisableVisible(bool visible) {
         if (enableBar != null) enableBar.SetActive(visible);
+    }
+
+    void SetHarvestFlagVisible(bool visible) {
+        if (harvestFlagBar != null) harvestFlagBar.SetActive(visible);
     }
 
     void UpdateEnableDisableSprite(bool disabled) {
@@ -232,6 +284,10 @@ public class StructureInfoView : MonoBehaviour {
 
     void SetDeconstructVisible(bool visible) {
         if (deconstructBar != null) deconstructBar.SetActive(visible);
+    }
+
+    void SetCancelVisible(bool visible) {
+        if (cancelBar != null) cancelBar.SetActive(visible);
     }
 
     // ── Work order display helpers (moved from InfoPanel) ──

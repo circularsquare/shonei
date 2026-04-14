@@ -25,7 +25,7 @@ using Newtonsoft.Json;
 // Current saveable state checklist:
 //   [x] World timer
 //   [x] Tile types, floor inventories, and background wall
-//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, mirrored, disabled)
+//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, mirrored, disabled, plantHarvestFlagged)
 //   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored, disabled)
 //   [x] Animals (position, job, energy, food, happiness, decoration happiness, socialization, fireplace warmth, inv, foodSlotInv, toolSlotInv, clothingSlotInv)
 //   [x] Mid-transit merchant task descriptor (travelTaskType + iq + storage tile + leg)
@@ -188,6 +188,7 @@ public class SaveSystem : MonoBehaviour {
             ssd.plantAge         = plant.age;
             ssd.plantGrowthStage = plant.growthStage;
             ssd.plantHarvestable = plant.harvestable;
+            if (plant.harvestFlagged) ssd.plantHarvestFlagged = true;
         }
         if (s is Building b) {
             if (b.workstation != null && b.workstation.uses > 0) ssd.uses = b.workstation.uses;
@@ -470,6 +471,7 @@ public class SaveSystem : MonoBehaviour {
             plant.age          = ssd.plantAge;
             plant.growthStage  = ssd.plantGrowthStage;
             plant.harvestable  = ssd.plantHarvestable;
+            plant.SetHarvestFlagged(ssd.plantHarvestFlagged ?? false);
             plant.UpdateSprite();
         }
         if (structure is Building b) {

@@ -70,7 +70,7 @@
         "description": "dig dirt",
         "workload": 2.0,
         "research": "Excavation",
-        "skillPoints": 0.025,
+        "researchPoints": 0.025,
         "ninputs": [
         ],
         "noutputs": [
@@ -82,6 +82,8 @@
         "tile": "press",
         "description": "press soybeans into soymilk",
         "workload": 3.0,
+        "research": "Soymilk",
+        "researchPoints": 0.025,
         "ninputs": [
             { "name": "soybeans", "quantity": 2.0 },
             { "name": "water", "quantity": 0.5 }
@@ -106,7 +108,7 @@
         "description": "mine stone",
         "workload": 3.0,
         "research": "Quarry",
-        "skillPoints": 0.025,
+        "researchPoints": 0.025,
         "ninputs": [
         ],
         "noutputs": [
@@ -122,6 +124,8 @@
         "tile": "press",
         "description": "coagulate soymilk into tofu",
         "workload": 5.0,
+        "research": "Tofu",
+        "researchPoints": 0.025,
         "ninputs": [
             { "name": "soymilk", "quantity": 2.0 },
             { "name": "gypsum", "quantity": 0.2 }
@@ -135,6 +139,8 @@
         "tile": "weaver",
         "description": "weave ramie into ramie cloth",
         "workload": 3.0,
+        "research": "Weaving",
+        "researchPoints": 0.025,
         "ninputs": [
             { "name": "ramie", "quantity": 2 }
         ],
@@ -147,6 +153,8 @@
         "tile": "tailor",
         "description": "sew ramie cloth into ramie shirt",
         "workload": 5.0,
+        "research": "Tailoring",
+        "researchPoints": 0.025,
         "ninputs": [
             { "name": "ramie cloth", "quantity": 2 }
         ],

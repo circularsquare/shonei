@@ -105,16 +105,24 @@ public class InfoPanel : MonoBehaviour {
 
     /// <summary>
     /// Rebuilds tabs from fresh tile state (e.g. after a blueprint completes or is deconstructed).
-    /// Optionally auto-selects the tab for a newly created structure.
+    /// Optionally auto-selects a specific structure or blueprint tab.
     /// Animals are preserved from the stored selection so their tabs aren't silently dropped.
     /// </summary>
-    public void RebuildSelection(Structure preferStructure = null) {
+    public void RebuildSelection(Structure preferStructure = null, Blueprint preferBlueprint = null) {
         if (currentSelection == null) return;
         currentSelection = SelectionContext.FromTile(currentSelection.tile, currentSelection.animals);
         BuildTabs();
         if (preferStructure != null) {
             for (int i = 0; i < tabs.Count; i++) {
                 if (tabs[i].type == TabType.Structure && (Structure)tabs[i].data == preferStructure) {
+                    SelectTab(i);
+                    return;
+                }
+            }
+        }
+        if (preferBlueprint != null) {
+            for (int i = 0; i < tabs.Count; i++) {
+                if (tabs[i].type == TabType.Blueprint && (Blueprint)tabs[i].data == preferBlueprint) {
                     SelectTab(i);
                     return;
                 }
@@ -145,13 +153,14 @@ public class InfoPanel : MonoBehaviour {
         foreach (var a in ctx.animals)
             tabs.Add(new TabEntry { type = TabType.Animal, label = a.aName, data = a });
 
+        // Blueprints before structures: queued/in-progress work is usually what the player wants
+        // to act on (e.g. cancel a deconstruct, adjust priority), so surface it to the left.
+        foreach (var bp in ctx.blueprints)
+            tabs.Add(new TabEntry { type = TabType.Blueprint, label = "bp: " + bp.structType.name, data = bp });
+
         // Structures by increasing depth (0=building, 1=platform, 2=foreground, 3=road)
         foreach (var s in ctx.structures)
             tabs.Add(new TabEntry { type = TabType.Structure, label = s.structType.name, data = s });
-
-        // Blueprints by increasing depth
-        foreach (var bp in ctx.blueprints)
-            tabs.Add(new TabEntry { type = TabType.Blueprint, label = "bp: " + bp.structType.name, data = bp });
 
         // Tile tab last — use tile type name if available, otherwise generic "tile".
         // Skipped entirely when there's no tile context (animals-only selection).

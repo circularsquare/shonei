@@ -108,7 +108,7 @@ Tasks reserve both **source items** (`ItemStack.resAmount`) and **destination sp
 | Task | Source | Job | Description |
 |------|--------|-----|-------------|
 | `CraftTask` | WOM p3 | recipe's job | Navigate to station, fetch inputs, work, drop outputs |
-| `HarvestTask` | WOM p2 | plant's `njob` | Navigate to plant, harvest when ready, drop products |
+| `HarvestTask` | WOM p2 | plant's `njob` | Navigate to plant, harvest when ready, drop products. Harvest orders only exist while `plant.harvestFlagged` is true (set by the player via the Harvest tool in the build bar). `Plant.SetHarvestFlagged` registers / unregisters the order; `isActive = () => plant.harvestable` gates dormancy across grow cycles. |
 | `HaulTask` | WOM p1/p3 | hauler | Fetch floor stack → Go to storage tile → DeliverToInventoryObjective into `building.storage` |
 | `HaulToMarketTask` | WOM p3 | merchant | Haul items from storage to the market building to meet targets |
 | `HaulFromMarketTask` | WOM p3 | merchant | Haul excess items from market back to storage |
@@ -259,8 +259,10 @@ Used by `Register*`, `Reconcile`, and `AuditOrders` to decide whether an order s
 private static bool StackNeedsHaulOrder(ItemStack stack) =>
     stack != null && stack.item != null && stack.quantity > 0;
 
-// True if a plant should have a harvest order (used by Reconcile)
-private static bool PlantNeedsOrder(Plant p) => p.harvestable;
+// True if a plant should have a harvest order (used by Reconcile).
+// Only flagged plants carry orders — Plant.SetHarvestFlagged registers / unregisters
+// as the flag flips. Unflagged plants legitimately have no order, so Reconcile skips them.
+private static bool PlantNeedsOrder(Plant p) => p.harvestFlagged;
 
 // True if a market inventory has at least one item below its target
 private static bool MarketNeedsHaulTo(Inventory inv) =>

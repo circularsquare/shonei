@@ -167,7 +167,7 @@ public class AnimalStateManager {
                     if (craftTask.workplace?.building is PumpBuilding pump) pump.DrainForCraft();
                     // Passive research progress from this recipe cycle
                     if (recipe.research != null)
-                        ResearchSystem.instance?.AddPassiveProgress(recipe.research, recipe.skillPoints);
+                        ResearchSystem.instance?.AddPassiveProgress(recipe.research, recipe.researchPoints);
                     // Track uses and deplete workstation if applicable
                     Building wb = craftTask.workplace?.building;
                     if (wb?.workstation != null && wb.structType.depleteAt > 0) {

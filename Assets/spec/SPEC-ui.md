@@ -152,9 +152,10 @@ Each widget: icon (hover → skill name tooltip) + "lv{n}" label + progress bar.
 Sprites loaded from `Resources/Sprites/Skills/{skillname}` with `Sprites/Skills/default` fallback.
 
 ### StructureInfoView controls
-- **Enable/Disable** toggle (buildings only) — sets `Building.disabled`, which gates all WOM orders via `isActive` callbacks.
+- **Enable/Disable** toggle — sets `Building.disabled`. Only shown when `disabled` actually gates behaviour: workstations (craft/research via `isActive`), reservoir buildings (fuel supply via `isActive`), and leisure buildings (animals skip disabled ones in `Animal.TryPickLeisure`). Hidden for storage-only, beds, decorative, plants, and base structures.
 - **Priority +/-** (blueprints only) — adjusts `Blueprint.priority`.
 - **Worker slots +/-** (multi-slot workstations only) — adjusts `Reservable.effectiveCapacity`. Priority and worker values render on dedicated TMP labels next to their buttons, not in the main text.
+- **Harvest flag toggle** (plants only) — calls `Plant.SetHarvestFlagged`, which registers or unregisters the harvest WOM order and toggles the overlay sprite. Label flips between "flag for harvest" / "unflag harvest".
 
 ### SelectionContext
 `Assets/Model/SelectionContext.cs` — plain C# class built by `MouseController.HandleSelectClick`. Contains `tile`, `List<Structure>`, `List<Blueprint>`, `List<Animal>`. Factory: `SelectionContext.FromTile(tile, animals)`.
@@ -187,6 +188,19 @@ Prefab has a HorizontalLayoutGroup with four children: `NeedName` TMP, `Count` T
 ### FillBar
 
 `Assets/Components/FillBar.cs` — reusable horizontal fill bar. Single `SetFill(float 0–1)` method, drives `fillImage.fillAmount`. Prefab: root Image (background) + child "Fill" Image (type = Filled, method = Horizontal, origin = Left).
+
+## Build Bar & Mouse Modes
+
+The build bar (`BuildCategoryBar` in Main.unity) holds both category buttons (Structures / Plants / Production / Storage / Tiles) and standalone mode buttons. Each standalone button calls a `SetMode*()` method on `MouseController`, which sets `MouseController.mouseMode` (enum `MouseMode { Select, Build, Remove, Harvest }`) and clears `BuildPanel.structType`.
+
+| Mode | Trigger | Behavior |
+|------|---------|----------|
+| `Select` | Default; Escape returns here | LMB = click/drag-select inventories; shows InfoPanel |
+| `Build` | Category → structure button | LMB = place blueprint of current `BuildPanel.structType` |
+| `Remove` | "Remove" button | LMB = cancel blueprint / mark structure for deconstruct |
+| `Harvest` | "Harvest" button | LMB click or drag calls `Plant.SetHarvestFlagged(true)` on all plants under the cursor/rect, which registers a harvest WOM order for each. By default plants are unflagged and carry no order at all. Paint-only in V1 — unflagging (which would call `SetHarvestFlagged(false)` → `WOM.UnregisterHarvest`) requires a dedicated tool (follow-up). |
+
+Harvest and Select both use the shared `_dragStartScreenPos` / `_isDragging` / `DragThresholdPixels` drag-rect machinery (tracked via a single nullable `_dragStartedInMode` so a mode change mid-drag can't commit into the wrong handler). Screen→world rect math is shared via `GetDragWorldBounds`. The visual indicator for a flagged plant is a child GameObject under `Plant.go` with its own `SpriteRenderer` (sprite at `Resources/Sprites/Misc/harvestselect`), toggled visible by `Plant.SetHarvestFlagged`.
 
 ## Exclusive Panels
 

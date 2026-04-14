@@ -18,7 +18,7 @@ public class LightSource : MonoBehaviour {
     public float outerRadius = 10f;
     public float innerRadius = 4f;
     [Tooltip("Z height above the sprite plane — controls how steep the NdotL angle is")]
-    public float lightHeight = 1.0f;
+    public float lightHeight = 0.4f;
 
     [Header("Directional (sun)")]
     public bool isDirectional = false;

@@ -1,9 +1,11 @@
 CONTENT
-- trains
+- elevators, trains
+- foot traffic view
 - bunnies
 - magic / qi
 - farming buildings
 - grooming?
+- building maintenance
 - clothing
     - silkworm building? -> silk cocoons -> cloth -> clothing 
 - clean up all reservation systems
@@ -18,7 +20,6 @@ CONTENT
         - lvl 1, 57/100 to lvl 2 
         - maybe rework 2x bar fill system 
     - building unlock techs should passive gain from construction and maintenance
-    - check that passive gains are wired correctly
 - books
     - books for gaining skills 
     - manuals for learning technologies
@@ -29,8 +30,6 @@ CONTENT
     - scientists will read book if available instead of manual research 
     - mice randomly read book as leisure 
 
-- add "harvest" selection for plants
-
 VISUALS
 - make item icons more coherent / similar
 - tab styling, add building icons?
@@ -39,6 +38,7 @@ VISUALS
 - lighting 
     - improve undergroundwall sprite 
     - procedurally generate rocks with normalmaps?
+- change blueprint back to being like an overlaid transparent square?
 
 MOUSE AI
 - ponder inventory management
@@ -55,5 +55,3 @@ MOUSE AI
 BUGS
 
 TODAY GOALS
-- just make torches high sorting order?
-- change blueprint back to being like an overlaid transparent square
