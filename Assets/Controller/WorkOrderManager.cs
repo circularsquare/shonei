@@ -157,12 +157,17 @@ public class WorkOrderManager : MonoBehaviour {
     public bool RegisterDeconstruct(Blueprint bp) {
         // No reserved-guard — see RegisterConstruct comment.
         if (HasOrderFor(OrderType.Deconstruct, bp)) return false;
+        // For plants, structType.job is the *harvest* job (logger / farmer), not a construction
+        // job — there's no hauler fallback on PlantType.OnDeserialized like there is on StructType.
+        // Without the hauler clause below, an unmanned job (e.g. no logger) would strand the
+        // deconstruct order indefinitely. Haulers can always pitch in on plant removal.
         Add(new WorkOrder {
             type = OrderType.Deconstruct,
             priority = 4,
             factory = a => new ConstructTask(a, bp, deconstructing: true),
             blueprint = bp,
-            canDo = a => a.job == bp.structType.job,
+            canDo = a => a.job == bp.structType.job
+                      || (bp.structType.isPlant && a.job.name == "hauler"),
             getDistance = a => Mathf.Abs(bp.tile.x - a.x) + Mathf.Abs(bp.tile.y - a.y)
         });
         PromoteHaulsFor(bp);

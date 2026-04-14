@@ -56,3 +56,4 @@ BUGS
 
 TODAY GOALS
 - just make torches high sorting order?
+- change blueprint back to being like an overlaid transparent square

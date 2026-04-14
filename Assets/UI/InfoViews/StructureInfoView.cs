@@ -29,6 +29,10 @@ public class StructureInfoView : MonoBehaviour {
     [SerializeField] Button workerSlotsDownButton;
     [SerializeField] TextMeshProUGUI workerSlotsText;  // label next to worker +/- buttons
 
+    [Header("Deconstruct")]
+    [SerializeField] GameObject deconstructBar;  // the full row; hidden for blueprints and already-deconstructing tiles
+    [SerializeField] Button deconstructButton;
+
     private Structure structure;
     private Blueprint blueprint;
 
@@ -43,6 +47,8 @@ public class StructureInfoView : MonoBehaviour {
             workerSlotsUpButton.onClick.AddListener(() => ChangeWorkerSlots(1));
         if (workerSlotsDownButton != null)
             workerSlotsDownButton.onClick.AddListener(() => ChangeWorkerSlots(-1));
+        if (deconstructButton != null)
+            deconstructButton.onClick.AddListener(OnClickDeconstruct);
     }
 
     /// <summary>Show info for a completed structure (building, plant, or base structure).</summary>
@@ -65,6 +71,7 @@ public class StructureInfoView : MonoBehaviour {
         gameObject.SetActive(false);
         structure = null;
         blueprint = null;
+        SetDeconstructVisible(false);
     }
 
     public void Refresh() {
@@ -113,6 +120,11 @@ public class StructureInfoView : MonoBehaviour {
             UpdateEnableDisableSprite(b.disabled);
         }
         SetPriorityVisible(false);
+        // Hide deconstruct if this tile already has a pending deconstruct blueprint —
+        // matches the guard in BuildPanel.Remove so the button behavior stays in lockstep.
+        bool alreadyDeconstructing = structure.tile?.GetMatchingBlueprint(
+            bp => bp.state == Blueprint.BlueprintState.Deconstructing) != null;
+        SetDeconstructVisible(!alreadyDeconstructing);
         bool showWorkerSlots = isBuilding && ((Building)structure).structType.isWorkstation
             && ((Building)structure).structType.capacity > 1;
         SetWorkerSlotsVisible(showWorkerSlots);
@@ -148,6 +160,7 @@ public class StructureInfoView : MonoBehaviour {
         if (priorityText != null)
             priorityText.text = "priority: " + blueprint.priority;
         SetWorkerSlotsVisible(false);
+        SetDeconstructVisible(false);
     }
 
     // ── Controls ──
@@ -177,6 +190,22 @@ public class StructureInfoView : MonoBehaviour {
         }
     }
 
+    // Spawns a deconstruct blueprint for the selected structure by delegating to
+    // BuildPanel.Remove — same path as right-click in the Build panel, so guards
+    // (no double-deconstruct, refund-on-cancel) stay centralized in one place.
+    void OnClickDeconstruct() {
+        if (structure == null) return;
+        // Capture tile before calling Remove: RebuildSelection below will null `structure`.
+        Tile t = structure.tile;
+        if (BuildPanel.instance == null) {
+            Debug.LogError("StructureInfoView.OnClickDeconstruct: BuildPanel.instance is null");
+            return;
+        }
+        if (!BuildPanel.instance.Remove(t)) return; // no-op if already deconstructing
+        // Rebuild tabs so the new deconstruct blueprint shows up alongside the structure tab.
+        InfoPanel.instance?.RebuildSelection();
+    }
+
     // ── Visibility helpers ──
 
     void SetEnableDisableVisible(bool visible) {
@@ -199,6 +228,10 @@ public class StructureInfoView : MonoBehaviour {
         if (workerSlotsUpButton != null) workerSlotsUpButton.gameObject.SetActive(visible);
         if (workerSlotsDownButton != null) workerSlotsDownButton.gameObject.SetActive(visible);
         if (workerSlotsText != null) workerSlotsText.gameObject.SetActive(visible);
+    }
+
+    void SetDeconstructVisible(bool visible) {
+        if (deconstructBar != null) deconstructBar.SetActive(visible);
     }
 
     // ── Work order display helpers (moved from InfoPanel) ──

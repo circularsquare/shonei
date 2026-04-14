@@ -102,7 +102,9 @@ public class Structure {
             t.structs[depth] = this;
         }
         // Sort order by depth: 0=building(10), 1=platform(11), 2=foreground(40), 3=road(1).
-        if (depth == 0) sr.sortingOrder = 10;
+        // StructType.sortingOrder overrides this when >= 0 (e.g. light-source buildings at 64).
+        if (st.sortingOrder >= 0) sr.sortingOrder = st.sortingOrder;
+        else if (depth == 0) sr.sortingOrder = 10;
         else if (depth == 1) sr.sortingOrder = 11;
         else if (depth == 2) sr.sortingOrder = 40;
         else if (depth == 3) sr.sortingOrder = 1;
@@ -181,6 +183,10 @@ public class StructType {
     public bool isTile {get; set;}
     public bool isPlant;
     public int depth {get; set;} // 0=building, 1=platform, 2=foreground, 3=road
+    // Optional sprite sortingOrder override. -1 = use depth-based default (see Structure ctor).
+    // Used for e.g. torches/fireplaces that need to sort above plants (60) and animals (48-57) so
+    // LightSource's auto-detected sort bucket front-lights those receivers. Also changes draw order.
+    public int sortingOrder {get; set;} = -1;
     public string njob {get; set;}
     public Job job;
     public int capacity {get; set;} // number of animals that can reserve this struct at once

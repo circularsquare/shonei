@@ -1,5 +1,5 @@
 {
-  "timer": 3322.7312,
+  "timer": 3378.04541,
   "tiles": [
     {
       "x": 0,
@@ -3586,8 +3586,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 2326,
-            "decayCounter": 409311
+            "quantity": 2273,
+            "decayCounter": 490397
           }
         ]
       },
@@ -3902,8 +3902,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 2457,
-            "decayCounter": 5620
+            "quantity": 2401,
+            "decayCounter": 84953
           }
         ]
       },
@@ -4808,22 +4808,6 @@
       "y": 0,
       "tileType": "stone",
       "hasBackgroundWall": true
-    },
-    {
-      "x": 16,
-      "y": 50,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "apple",
-            "quantity": 390,
-            "decayCounter": 421236
-          }
-        ]
-      },
-      "hasBackgroundWall": false
     },
     {
       "x": 16,
@@ -6652,8 +6636,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 2476,
-            "decayCounter": 810512
+            "quantity": 2499,
+            "decayCounter": 451934
           }
         ]
       },
@@ -8768,8 +8752,8 @@
         "stacks": [
           {
             "itemName": "pine planks",
-            "quantity": 1180,
-            "decayCounter": 46119
+            "quantity": 821,
+            "decayCounter": 31892
           }
         ]
       },
@@ -9077,22 +9061,6 @@
     },
     {
       "x": 30,
-      "y": 51,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 12,
-            "decayCounter": 904266
-          }
-        ]
-      },
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 30,
       "y": 50,
       "tileType": "empty",
       "inv": {
@@ -9100,8 +9068,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 2466,
-            "decayCounter": 270954
+            "quantity": 795,
+            "decayCounter": 460385
           }
         ]
       },
@@ -30094,22 +30062,11 @@
       "disabled": false
     },
     {
-      "x": 32,
-      "y": 50,
-      "typeName": "tree",
-      "plantAge": 193,
-      "plantGrowthStage": 3,
-      "plantHarvestable": true,
-      "uses": 0,
-      "mirrored": false,
-      "disabled": false
-    },
-    {
       "x": 25,
       "y": 50,
       "typeName": "appletree",
-      "plantAge": 22,
-      "plantGrowthStage": 2,
+      "plantAge": 17,
+      "plantGrowthStage": 1,
       "plantHarvestable": false,
       "uses": 0,
       "mirrored": false,
@@ -30119,7 +30076,7 @@
       "x": 28,
       "y": 50,
       "typeName": "tree",
-      "plantAge": 148,
+      "plantAge": 204,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "uses": 0,
@@ -30130,7 +30087,7 @@
       "x": 35,
       "y": 50,
       "typeName": "wheat",
-      "plantAge": 49,
+      "plantAge": 47,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "uses": 0,
@@ -30141,7 +30098,7 @@
       "x": 36,
       "y": 50,
       "typeName": "wheat",
-      "plantAge": 47,
+      "plantAge": 51,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "uses": 0,
@@ -30152,8 +30109,8 @@
       "x": 24,
       "y": 50,
       "typeName": "soybean",
-      "plantAge": 18,
-      "plantGrowthStage": 1,
+      "plantAge": 10,
+      "plantGrowthStage": 0,
       "plantHarvestable": false,
       "uses": 0,
       "mirrored": false,
@@ -30163,7 +30120,7 @@
       "x": 9,
       "y": 49,
       "typeName": "tree",
-      "plantAge": 741,
+      "plantAge": 797,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "uses": 0,
@@ -30183,8 +30140,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 9997,
-            "decayCounter": 208434
+            "quantity": 9987,
+            "decayCounter": 300190
           }
         ],
         "allowedItemIds": [
@@ -30210,8 +30167,8 @@
         "stacks": [
           {
             "itemName": "wheat",
-            "quantity": 9936,
-            "decayCounter": 218240
+            "quantity": 9929,
+            "decayCounter": 639725
           }
         ],
         "allowedItemIds": [
@@ -30268,23 +30225,23 @@
         "stacks": [
           {
             "itemName": "acorn",
-            "quantity": 1858,
-            "decayCounter": 212798
+            "quantity": 1856,
+            "decayCounter": 471425
           },
           {
             "itemName": "sawdust",
-            "quantity": 1997,
-            "decayCounter": 243954
+            "quantity": 1990,
+            "decayCounter": 846029
           },
           {
             "itemName": "acorn",
             "quantity": 383,
-            "decayCounter": 303522
+            "decayCounter": 144254
           },
           {
             "itemName": "sawdust",
             "quantity": 1184,
-            "decayCounter": 379507
+            "decayCounter": 112389
           }
         ],
         "allowedItemIds": [
@@ -30320,7 +30277,7 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 423,
+            "quantity": 400,
             "decayCounter": 0
           }
         ]
@@ -30363,8 +30320,8 @@
         "stacks": [
           {
             "itemName": "pine planks",
-            "quantity": 9990,
-            "decayCounter": 441302
+            "quantity": 9994,
+            "decayCounter": 3717
           }
         ],
         "allowedItemIds": [
@@ -30424,8 +30381,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 9992,
-            "decayCounter": 714890
+            "quantity": 9957,
+            "decayCounter": 785570
           }
         ],
         "allowedItemIds": [
@@ -30451,23 +30408,23 @@
         "stacks": [
           {
             "itemName": "soybeans",
-            "quantity": 1949,
-            "decayCounter": 98696
+            "quantity": 1927,
+            "decayCounter": 468981
           },
           {
             "itemName": "soybeans",
-            "quantity": 1950,
-            "decayCounter": 930710
+            "quantity": 1927,
+            "decayCounter": 302955
           },
           {
             "itemName": "soybeans",
-            "quantity": 1950,
-            "decayCounter": 637555
+            "quantity": 1927,
+            "decayCounter": 13260
           },
           {
             "itemName": "tools",
-            "quantity": 400,
-            "decayCounter": 63372827
+            "quantity": 300,
+            "decayCounter": 7164347
           }
         ],
         "allowedItemIds": [
@@ -30570,9 +30527,9 @@
       "x": 37,
       "y": 50,
       "typeName": "wheat",
-      "plantAge": 57,
-      "plantGrowthStage": 3,
-      "plantHarvestable": true,
+      "plantAge": 8,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
       "uses": 0,
       "mirrored": false,
       "disabled": false
@@ -30592,9 +30549,9 @@
       "x": 38,
       "y": 50,
       "typeName": "wheat",
-      "plantAge": 35,
-      "plantGrowthStage": 2,
-      "plantHarvestable": false,
+      "plantAge": 91,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
       "uses": 0,
       "mirrored": false,
       "disabled": false
@@ -30614,7 +30571,7 @@
       "x": 39,
       "y": 50,
       "typeName": "wheat",
-      "plantAge": 314,
+      "plantAge": 370,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "uses": 0,
@@ -30625,9 +30582,9 @@
       "x": 16,
       "y": 50,
       "typeName": "appletree",
-      "plantAge": 11,
-      "plantGrowthStage": 1,
-      "plantHarvestable": false,
+      "plantAge": 67,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
       "uses": 0,
       "mirrored": false,
       "disabled": false
@@ -30636,9 +30593,9 @@
       "x": 15,
       "y": 50,
       "typeName": "appletree",
-      "plantAge": 25,
-      "plantGrowthStage": 2,
-      "plantHarvestable": false,
+      "plantAge": 81,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
       "uses": 0,
       "mirrored": false,
       "disabled": false
@@ -30647,7 +30604,7 @@
       "x": 17,
       "y": 51,
       "typeName": "tree",
-      "plantAge": 391,
+      "plantAge": 447,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "uses": 0,
@@ -30711,7 +30668,7 @@
         "stacks": [
           {
             "itemName": "water",
-            "quantity": 100,
+            "quantity": 600,
             "decayCounter": 0
           }
         ],
@@ -30736,8 +30693,8 @@
         "stacks": [
           {
             "itemName": "soybeans",
-            "quantity": 2184,
-            "decayCounter": 336318
+            "quantity": 2459,
+            "decayCounter": 787980
           }
         ],
         "allowedItemIds": [
@@ -30778,929 +30735,47 @@
       },
       "mirrored": false,
       "disabled": false
-    }
-  ],
-  "blueprints": [
+    },
     {
       "x": 32,
       "y": 50,
-      "typeName": "tree",
-      "state": 2,
-      "constructionProgress": 0.0,
-      "inv": {
-        "invType": "Blueprint",
+      "typeName": "fireplace",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "fuelInvData": {
+        "invType": "Reservoir",
         "stacks": [
           {
-            "itemName": "",
-            "quantity": 0,
+            "itemName": "pine",
+            "quantity": 986,
             "decayCounter": 0
           }
         ]
       },
-      "priority": 0,
       "mirrored": false,
       "disabled": false
     }
   ],
+  "blueprints": [],
   "animals": [
     {
       "aName": "Tangyuan",
-      "x": 33.915432,
-      "y": 50.0,
+      "x": 16.2610645,
+      "y": 50.854393,
       "jobName": "farmer",
-      "energy": 0.8666334,
-      "food": 62.3463821,
-      "eep": 79.60495,
+      "energy": 0.3504598,
+      "food": 55.3463,
+      "eep": 98.1050339,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 3.51084375,
-        "fruit": 0.716923,
+        "wheat": 2.59894133,
+        "fruit": 1.24404287,
         "fountain": 0.0,
         "fireplace": 0.0,
-        "social": 2.09896016
-      },
-      "warmth": 0.0,
-      "inv": {
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "foodSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 4627
-          }
-        ]
-      },
-      "toolSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "tools",
-            "quantity": 100,
-            "decayCounter": 22457974
-          }
-        ]
-      },
-      "clothingSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "skillXp": [
-        26.47549,
-        0.0,
-        0.937652051,
-        0.0,
-        0.0
-      ],
-      "skillLevel": [
-        2,
-        0,
-        0,
-        0,
-        0
-      ],
-      "isTraveling": false,
-      "travelProgress": 0.0,
-      "travelDuration": 0,
-      "travelItemQty": 0,
-      "travelReturnLeg": false
-    },
-    {
-      "aName": "Gossamer",
-      "x": 32.0,
-      "y": 50.0,
-      "jobName": "hauler",
-      "energy": 0.6552173,
-      "food": 59.7963028,
-      "eep": 80.2049561,
-      "satisfactions": {
-        "soymilk": 0.0,
-        "dairy": 0.0,
-        "wheat": 2.51161337,
-        "fruit": 1.6728673,
-        "fountain": 0.0,
-        "fireplace": 0.0,
-        "social": 2.25278187
-      },
-      "warmth": 0.0,
-      "inv": {
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "foodSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "wheat",
-            "quantity": 131,
-            "decayCounter": 4649
-          }
-        ]
-      },
-      "toolSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "tools",
-            "quantity": 100,
-            "decayCounter": 22457974
-          }
-        ]
-      },
-      "clothingSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "skillXp": [
-        0.0,
-        0.0,
-        4.985157,
-        0.0,
-        0.0
-      ],
-      "skillLevel": [
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      "isTraveling": false,
-      "travelProgress": 0.0,
-      "travelDuration": 0,
-      "travelItemQty": 0,
-      "travelReturnLeg": false
-    },
-    {
-      "aName": "Yuyu",
-      "x": 27.25275,
-      "y": 50.0,
-      "jobName": "farmer",
-      "energy": 0.5748583,
-      "food": 52.09504,
-      "eep": 80.6049652,
-      "satisfactions": {
-        "soymilk": 0.0,
-        "dairy": 0.0,
-        "wheat": 1.80890751,
-        "fruit": 1.73850453,
-        "fountain": 0.0,
-        "fireplace": 0.0,
-        "social": 2.185734
-      },
-      "warmth": 0.0,
-      "inv": {
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "foodSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 439340
-          }
-        ]
-      },
-      "toolSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "tools",
-            "quantity": 100,
-            "decayCounter": 22457974
-          }
-        ]
-      },
-      "clothingSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "skillXp": [
-        30.3881664,
-        0.0,
-        0.0,
-        0.0,
-        0.0
-      ],
-      "skillLevel": [
-        2,
-        0,
-        0,
-        0,
-        0
-      ],
-      "isTraveling": false,
-      "travelProgress": 0.0,
-      "travelDuration": 0,
-      "travelItemQty": 0,
-      "travelReturnLeg": false
-    },
-    {
-      "aName": "Ming",
-      "x": 27.0,
-      "y": 51.0,
-      "jobName": "sawyer",
-      "energy": 0.318383217,
-      "food": 50.5993347,
-      "eep": 69.20436,
-      "satisfactions": {
-        "soymilk": 0.0,
-        "dairy": 0.0,
-        "wheat": 1.91826308,
-        "fruit": 1.5008688,
-        "fountain": 0.0,
-        "fireplace": 0.0,
-        "social": 2.487104
-      },
-      "warmth": 0.0,
-      "inv": {
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "foodSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "wheat",
-            "quantity": 197,
-            "decayCounter": 375195
-          }
-        ]
-      },
-      "toolSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "tools",
-            "quantity": 100,
-            "decayCounter": 22457974
-          }
-        ]
-      },
-      "clothingSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "skillXp": [
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        20.1450367
-      ],
-      "skillLevel": [
-        0,
-        0,
-        0,
-        0,
-        2
-      ],
-      "isTraveling": false,
-      "travelProgress": 0.0,
-      "travelDuration": 0,
-      "travelItemQty": 0,
-      "travelReturnLeg": false
-    },
-    {
-      "aName": "Rong",
-      "x": 26.0,
-      "y": 51.0,
-      "jobName": "scientist",
-      "energy": 0.88808465,
-      "food": 48.04563,
-      "eep": 80.3043747,
-      "satisfactions": {
-        "soymilk": 0.0,
-        "dairy": 0.0,
-        "wheat": 2.358354,
-        "fruit": 0.8689782,
-        "fountain": 0.0,
-        "fireplace": 0.0,
-        "social": 3.67490077
-      },
-      "warmth": 0.0,
-      "inv": {
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "foodSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 789060
-          }
-        ]
-      },
-      "toolSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "tools",
-            "quantity": 100,
-            "decayCounter": 22457974
-          }
-        ]
-      },
-      "clothingSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "skillXp": [
-        0.0,
-        0.0,
-        0.0,
-        36.5103531,
-        0.0
-      ],
-      "skillLevel": [
-        0,
-        0,
-        0,
-        3,
-        0
-      ],
-      "isTraveling": false,
-      "travelProgress": 0.0,
-      "travelDuration": 0,
-      "travelItemQty": 0,
-      "travelReturnLeg": false
-    },
-    {
-      "aName": "Rou",
-      "x": 31.0,
-      "y": 50.0,
-      "jobName": "hauler",
-      "energy": 0.123706341,
-      "food": 64.69783,
-      "eep": 79.5021744,
-      "satisfactions": {
-        "soymilk": 0.0,
-        "dairy": 0.0,
-        "wheat": 1.68292165,
-        "fruit": 2.42404318,
-        "fountain": 0.0,
-        "fireplace": 0.0,
-        "social": 3.10874176
-      },
-      "warmth": 0.0,
-      "inv": {
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "foodSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 918826
-          }
-        ]
-      },
-      "toolSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "tools",
-            "quantity": 100,
-            "decayCounter": 22457974
-          }
-        ]
-      },
-      "clothingSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "skillXp": [
-        0.0,
-        0.0,
-        1.585178,
-        0.0,
-        0.0
-      ],
-      "skillLevel": [
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      "isTraveling": false,
-      "travelProgress": 0.0,
-      "travelDuration": 0,
-      "travelItemQty": 0,
-      "travelReturnLeg": false
-    },
-    {
-      "aName": "Ling",
-      "x": 16.0,
-      "y": 50.0,
-      "jobName": "hauler",
-      "energy": 0.6422272,
-      "food": 50.94787,
-      "eep": 80.30216,
-      "satisfactions": {
-        "soymilk": 0.0,
-        "dairy": 0.0,
-        "wheat": 2.53463674,
-        "fruit": 0.892581344,
-        "fountain": 0.0,
-        "fireplace": 0.0,
-        "social": 2.12523341
-      },
-      "warmth": 0.0,
-      "inv": {
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "foodSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 288230
-          }
-        ]
-      },
-      "toolSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "tools",
-            "quantity": 100,
-            "decayCounter": 22457974
-          }
-        ]
-      },
-      "clothingSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "skillXp": [
-        0.0,
-        0.0,
-        1.42285836,
-        0.0,
-        0.0
-      ],
-      "skillLevel": [
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      "isTraveling": false,
-      "travelProgress": 0.0,
-      "travelDuration": 0,
-      "travelItemQty": 0,
-      "travelReturnLeg": false
-    },
-    {
-      "aName": "Lu",
-      "x": 25.42184,
-      "y": 50.0,
-      "jobName": "logger",
-      "energy": 0.800656259,
-      "food": 39.3479767,
-      "eep": 80.30216,
-      "satisfactions": {
-        "soymilk": 0.0,
-        "dairy": 0.0,
-        "wheat": 2.9399786,
-        "fruit": 0.151086181,
-        "fountain": 0.0,
-        "fireplace": 0.0,
-        "social": 1.020844
-      },
-      "warmth": 0.0,
-      "inv": {
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 211,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "foodSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 6230
-          }
-        ]
-      },
-      "toolSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "tools",
-            "quantity": 100,
-            "decayCounter": 22457974
-          }
-        ]
-      },
-      "clothingSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "skillXp": [
-        6.549356,
-        0.0,
-        0.249598354,
-        0.0,
-        0.0
-      ],
-      "skillLevel": [
-        1,
-        0,
-        0,
-        0,
-        0
-      ],
-      "isTraveling": false,
-      "travelProgress": 0.0,
-      "travelDuration": 0,
-      "travelItemQty": 0,
-      "travelReturnLeg": false
-    },
-    {
-      "aName": "Zephyr",
-      "x": 30.0,
-      "y": 50.0,
-      "jobName": "merchant",
-      "energy": 0.8261461,
-      "food": 59.6978531,
-      "eep": 80.7021561,
-      "satisfactions": {
-        "soymilk": 0.0,
-        "dairy": 0.0,
-        "wheat": 1.811975,
-        "fruit": 2.13820982,
-        "fountain": 0.0,
-        "fireplace": 0.0,
-        "social": 3.33270121
-      },
-      "warmth": 0.0,
-      "inv": {
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "foodSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 393990
-          }
-        ]
-      },
-      "toolSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "tools",
-            "quantity": 100,
-            "decayCounter": 22457974
-          }
-        ]
-      },
-      "clothingSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "skillXp": [
-        8.301101,
-        0.0,
-        0.25,
-        0.0,
-        0.0
-      ],
-      "skillLevel": [
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      "isTraveling": false,
-      "travelProgress": 0.0,
-      "travelDuration": 0,
-      "travelItemQty": 0,
-      "travelReturnLeg": false
-    },
-    {
-      "aName": "Thimble",
-      "x": 26.0,
-      "y": 52.0,
-      "jobName": "scientist",
-      "energy": 0.00141620636,
-      "food": 57.2478867,
-      "eep": 80.20213,
-      "satisfactions": {
-        "soymilk": 0.0,
-        "dairy": 0.0,
-        "wheat": 2.02934337,
-        "fruit": 1.83147681,
-        "fountain": 0.0,
-        "fireplace": 0.0,
-        "social": 2.86383367
+        "social": 1.55377889
       },
       "warmth": 0.0,
       "inv": {
@@ -31738,8 +30813,8 @@
         "stacks": [
           {
             "itemName": "apple",
-            "quantity": 99,
-            "decayCounter": 809375
+            "quantity": 100,
+            "decayCounter": 512500
           }
         ]
       },
@@ -31749,7 +30824,301 @@
           {
             "itemName": "tools",
             "quantity": 100,
-            "decayCounter": 22457974
+            "decayCounter": 11541482
+          }
+        ]
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "skillXp": [
+        27.28242,
+        0.0,
+        0.937652051,
+        0.0,
+        0.0
+      ],
+      "skillLevel": [
+        2,
+        0,
+        0,
+        0,
+        0
+      ],
+      "isTraveling": false,
+      "travelProgress": 0.0,
+      "travelDuration": 0,
+      "travelItemQty": 0,
+      "travelReturnLeg": false
+    },
+    {
+      "aName": "Gossamer",
+      "x": 32.7751274,
+      "y": 50.0,
+      "jobName": "hauler",
+      "energy": 0.437502146,
+      "food": 57.79622,
+      "eep": 98.70504,
+      "satisfactions": {
+        "soymilk": 0.0,
+        "dairy": 0.0,
+        "wheat": 2.71963429,
+        "fruit": 1.23835874,
+        "fountain": 0.0,
+        "fireplace": 0.0,
+        "social": 1.667647
+      },
+      "warmth": 0.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "wheat",
+            "quantity": 30,
+            "decayCounter": 295751
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "tools",
+            "quantity": 100,
+            "decayCounter": 11541482
+          }
+        ]
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "skillXp": [
+        0.0,
+        0.0,
+        5.275615,
+        0.0,
+        0.0
+      ],
+      "skillLevel": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "isTraveling": false,
+      "travelProgress": 0.0,
+      "travelDuration": 0,
+      "travelItemQty": 0,
+      "travelReturnLeg": false
+    },
+    {
+      "aName": "Yuyu",
+      "x": 32.3719749,
+      "y": 50.0,
+      "jobName": "farmer",
+      "energy": 0.8174688,
+      "food": 69.6949539,
+      "eep": 99.00505,
+      "satisfactions": {
+        "soymilk": 0.0,
+        "dairy": 0.0,
+        "wheat": 3.15738416,
+        "fruit": 1.28694761,
+        "fountain": 0.0,
+        "fireplace": 0.0,
+        "social": 1.618014
+      },
+      "warmth": 0.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "wheat",
+            "quantity": 98,
+            "decayCounter": 527085
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "tools",
+            "quantity": 100,
+            "decayCounter": 11541482
+          }
+        ]
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "skillXp": [
+        30.9947338,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "skillLevel": [
+        2,
+        0,
+        0,
+        0,
+        0
+      ],
+      "isTraveling": false,
+      "travelProgress": 0.0,
+      "travelDuration": 0,
+      "travelItemQty": 0,
+      "travelReturnLeg": false
+    },
+    {
+      "aName": "Ming",
+      "x": 27.8990135,
+      "y": 50.9761238,
+      "jobName": "sawyer",
+      "energy": 0.05807209,
+      "food": 67.79925,
+      "eep": 99.7044449,
+      "satisfactions": {
+        "soymilk": 0.0,
+        "dairy": 0.0,
+        "wheat": 3.15832877,
+        "fruit": 1.11103487,
+        "fountain": 0.0,
+        "fireplace": 0.0,
+        "social": 1.84110641
+      },
+      "warmth": 0.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "pine planks",
+            "quantity": 400,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 613734
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "tools",
+            "quantity": 100,
+            "decayCounter": 11541482
           }
         ]
       },
@@ -31767,7 +31136,599 @@
         0.0,
         0.0,
         0.0,
-        8.40035248,
+        0.0,
+        20.3347912
+      ],
+      "skillLevel": [
+        0,
+        0,
+        0,
+        0,
+        2
+      ],
+      "isTraveling": false,
+      "travelProgress": 0.0,
+      "travelDuration": 0,
+      "travelItemQty": 0,
+      "travelReturnLeg": false
+    },
+    {
+      "aName": "Rong",
+      "x": 31.0,
+      "y": 51.0,
+      "jobName": "scientist",
+      "energy": 0.33081305,
+      "food": 38.94555,
+      "eep": 100.804459,
+      "satisfactions": {
+        "soymilk": 0.0,
+        "dairy": 0.0,
+        "wheat": 1.745798,
+        "fruit": 1.19821882,
+        "fountain": 0.0,
+        "fireplace": 0.0,
+        "social": 2.72038627
+      },
+      "warmth": 0.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 21500
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "tools",
+            "quantity": 100,
+            "decayCounter": 11541482
+          }
+        ]
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "skillXp": [
+        0.0,
+        0.0,
+        0.0,
+        36.5103531,
+        0.0
+      ],
+      "skillLevel": [
+        0,
+        0,
+        0,
+        3,
+        0
+      ],
+      "isTraveling": false,
+      "travelProgress": 0.0,
+      "travelDuration": 0,
+      "travelItemQty": 0,
+      "travelReturnLeg": false
+    },
+    {
+      "aName": "Rou",
+      "x": 30.0,
+      "y": 51.0,
+      "jobName": "hauler",
+      "energy": 0.7027147,
+      "food": 65.49775,
+      "eep": 97.90226,
+      "satisfactions": {
+        "soymilk": 0.0,
+        "dairy": 0.0,
+        "wheat": 2.28074241,
+        "fruit": 1.70669591,
+        "fountain": 0.0,
+        "fireplace": 0.0,
+        "social": 2.18877172
+      },
+      "warmth": 0.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "wheat",
+            "quantity": 200,
+            "decayCounter": 598750
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "tools",
+            "quantity": 100,
+            "decayCounter": 11541482
+          }
+        ]
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "skillXp": [
+        0.0,
+        0.0,
+        1.81064332,
+        0.0,
+        0.0
+      ],
+      "skillLevel": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "isTraveling": false,
+      "travelProgress": 0.0,
+      "travelDuration": 0,
+      "travelItemQty": 0,
+      "travelReturnLeg": false
+    },
+    {
+      "aName": "Ling",
+      "x": 31.0,
+      "y": 52.0,
+      "jobName": "hauler",
+      "energy": 0.404307723,
+      "food": 58.9477844,
+      "eep": 98.8022461,
+      "satisfactions": {
+        "soymilk": 0.0,
+        "dairy": 0.0,
+        "wheat": 1.78456175,
+        "fruit": 1.89063239,
+        "fountain": 0.0,
+        "fireplace": 0.0,
+        "social": 1.4963131
+      },
+      "warmth": 0.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "apple",
+            "quantity": 98,
+            "decayCounter": 751210
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "tools",
+            "quantity": 100,
+            "decayCounter": 11541482
+          }
+        ]
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "skillXp": [
+        0.0,
+        0.0,
+        1.42285836,
+        0.0,
+        0.0
+      ],
+      "skillLevel": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "isTraveling": false,
+      "travelProgress": 0.0,
+      "travelDuration": 0,
+      "travelItemQty": 0,
+      "travelReturnLeg": false
+    },
+    {
+      "aName": "Lu",
+      "x": 22.0,
+      "y": 50.0,
+      "jobName": "logger",
+      "energy": 0.262232542,
+      "food": 17.3479633,
+      "eep": 74.8022461,
+      "satisfactions": {
+        "soymilk": 0.0,
+        "dairy": 0.0,
+        "wheat": 2.06995082,
+        "fruit": 0.106375232,
+        "fountain": 0.0,
+        "fireplace": 0.0,
+        "social": 0.718745649
+      },
+      "warmth": 0.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "pine",
+            "quantity": 119,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "tools",
+            "quantity": 100,
+            "decayCounter": 11541482
+          }
+        ]
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "skillXp": [
+        6.549356,
+        0.0,
+        0.249598354,
+        0.0,
+        0.0
+      ],
+      "skillLevel": [
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "isTraveling": false,
+      "travelProgress": 0.0,
+      "travelDuration": 0,
+      "travelItemQty": 0,
+      "travelReturnLeg": false
+    },
+    {
+      "aName": "Zephyr",
+      "x": 0.0,
+      "y": 50.0,
+      "jobName": "merchant",
+      "energy": 0.54967,
+      "food": 57.69777,
+      "eep": 75.20224,
+      "satisfactions": {
+        "soymilk": 0.0,
+        "dairy": 0.0,
+        "wheat": 2.1361413,
+        "fruit": 1.50544918,
+        "fountain": 0.0,
+        "fireplace": 0.0,
+        "social": 2.34645486
+      },
+      "warmth": 0.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "wheat",
+            "quantity": 16,
+            "decayCounter": 964000
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "tools",
+            "quantity": 100,
+            "decayCounter": 11541482
+          }
+        ]
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "skillXp": [
+        8.301101,
+        0.0,
+        0.25,
+        0.0,
+        0.0
+      ],
+      "skillLevel": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "isTraveling": true,
+      "travelProgress": 18.0,
+      "travelDuration": 20,
+      "travelTaskType": "HaulFromMarket",
+      "travelItemName": "soybeans",
+      "travelItemQty": 300,
+      "travelStorageX": 21,
+      "travelStorageY": 50,
+      "travelReturnLeg": false
+    },
+    {
+      "aName": "Thimble",
+      "x": 26.0,
+      "y": 52.0,
+      "jobName": "scientist",
+      "energy": 0.7963244,
+      "food": 50.0978,
+      "eep": 98.70222,
+      "satisfactions": {
+        "soymilk": 0.0,
+        "dairy": 0.0,
+        "wheat": 1.42879963,
+        "fruit": 1.89709055,
+        "fountain": 0.0,
+        "fireplace": 0.0,
+        "social": 2.01633954
+      },
+      "warmth": 0.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 575391
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "tools",
+            "quantity": 100,
+            "decayCounter": 11541482
+          }
+        ]
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "skillXp": [
+        0.0,
+        0.0,
+        0.0,
+        10.1352863,
         0.0
       ],
       "skillLevel": [
@@ -31786,13 +31747,13 @@
   ],
   "research": {
     "progress": {
-      "1": 9.539989,
+      "1": 9.11998,
       "2": 0.0,
-      "4": 5.34767246,
-      "5": 5.53522158,
+      "4": 4.22767353,
+      "5": 4.41522264,
       "6": 0.0,
       "7": 0.0,
-      "8": 5.236623,
+      "8": 5.088504,
       "9": 0.0,
       "10": 0.0,
       "3": 0.0
@@ -31812,8 +31773,8 @@
     ]
   },
   "isRaining": true,
-  "cameraX": 28.72917,
-  "cameraY": 52.03706,
+  "cameraX": 32.1666756,
+  "cameraY": 52.4537277,
   "cameraPPU": 24,
   "marketTargets": {
     "silver": 512,

@@ -13,7 +13,7 @@
 | 11 | Platforms (depth-1 structures); also clock hand (one above its body) |
 | 12 | Water overlay sprite (`WaterController`) |
 | 30 | Items in storage/inventory display |
-| 40 | Foreground structures (depth-2: stairs, ladders, torches) |
+| 40 | Foreground structures (depth-2: stairs, ladders) |
 | 48 | Animal tail (paper-doll part) |
 | 49 | Animal back foot (paper-doll part) |
 | 50 | Animal body (paper-doll part) |
@@ -21,6 +21,7 @@
 | 52 | Animal arm (paper-doll part) |
 | 55–57 | Clothing overlays (per-part children: body 55, foot 56, arm 57) |
 | 60 | Plants |
+| 64 | Light-source buildings (torch, fireplace) — per-type override via `StructType.sortingOrder`, sits above animals/plants so `LightSource` (auto-detect) front-lights them |
 | 65 | Falling items (mid-air animation) |
 | 70 | Items on floor |
 | 100 | Blueprints |
@@ -34,8 +35,10 @@ Structures render in four depth layers per tile. Each tile holds `Structure[] st
 |-------|-------------|----------|----------------|-------------|
 | 0 | building layer | Buildings, plants (`Building`/`Plant`) | `(x, y)` | 10 |
 | 1 | platform layer | Platforms | `(x, y)` | 11 |
-| 2 | foreground layer | Stairs, ladders, torches | `(x, y)` | 20 |
+| 2 | foreground layer | Stairs, ladders, torches | `(x, y)` | 40 |
 | 3 | road layer | Roads | `(x, y−1/8)` — sits on tile surface | 1 |
+
+Depth-based sortingOrder is the default; individual `StructType`s can override via the JSON `sortingOrder` field (e.g. torch=64, fireplace=64). Plant overrides to 60 in its constructor.
 
 `tile.building` is a convenience property: `structs[0] as Building` (Plant extends Building, so both are accessible through it). Multiple layers can coexist on the same tile. `GetBlueprintAt(int depth)` / `SetBlueprintAt(int depth, Blueprint bp)` directly index into `blueprints[]`.
 

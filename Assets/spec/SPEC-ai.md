@@ -248,6 +248,8 @@ Exact eager-removal hook sites live in code comments next to the relevant `Remov
 
 **`PromoteToConstruct` edge case:** removes the `SupplyBlueprint` order while the delivering task's `workOrder.res.reserved == 1` (task still running). `SupplyBlueprintTask.Cleanup` later calls `workOrder.res.Unreserve()` on the now-orphaned order object — harmless.
 
+**Plant deconstruct `canDo`:** Construct / SupplyBlueprint / Deconstruct orders normally gate on `a.job == bp.structType.job`. For plants, `structType.job` is the *harvest* job (logger / farmer), not a construction job, and PlantType's `OnDeserialized` has no hauler fallback. `RegisterDeconstruct` therefore adds an `|| (bp.structType.isPlant && a.job.name == "hauler")` clause so haulers can chop/uproot plants even when the harvest-job queue is unstaffed or backed up. The same category mismatch exists in `RegisterConstruct` / `RegisterSupplyBlueprint` for plants (planting a tree requires a logger) — intentionally *not* relaxed there; planting is deliberate.
+
 ### "Needs order" predicates
 
 Used by `Register*`, `Reconcile`, and `AuditOrders` to decide whether an order should exist. Because orders persist while claimed, these predicates no longer need to check reservation state — dedup guards (`orders.Exists(o => ...)`) prevent double-registration while an order is already in the queue.
