@@ -163,8 +163,8 @@ public class PlantType : StructType {
 
     [OnDeserialized]
     new internal void OnDeserialized(StreamingContext context){
-        costs = ncosts.Select(iq => new ItemQuantity(iq.name, (int)Math.Round(iq.quantity * 100))).ToArray();
-        products = nproducts.Select(iq => new ItemQuantity(iq.name, (int)Math.Round(iq.quantity * 100))).ToArray();
+        costs = ncosts.Select(iq => new ItemQuantity(iq.name, ItemStack.LiangToFen(iq.quantity))).ToArray();
+        products = nproducts.Select(iq => new ItemQuantity(iq.name, ItemStack.LiangToFen(iq.quantity))).ToArray();
         if (njob != null){
             job = Db.jobByName[njob]; 
         }

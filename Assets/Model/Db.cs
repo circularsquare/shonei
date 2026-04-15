@@ -333,10 +333,10 @@ public class Recipe {
         inputs = new ItemQuantity[ninputs.Length];
         outputs = new ItemQuantity[noutputs.Length];
         for (int i = 0; i < ninputs.Length; i++){
-            inputs[i] = new ItemQuantity(ninputs[i].name, (int)Math.Round(ninputs[i].quantity * 100));
+            inputs[i] = new ItemQuantity(ninputs[i].name, ItemStack.LiangToFen(ninputs[i].quantity));
         }
         for (int i = 0; i < noutputs.Length; i++){
-            outputs[i] = new ItemQuantity(noutputs[i].name, (int)Math.Round(noutputs[i].quantity * 100));
+            outputs[i] = new ItemQuantity(noutputs[i].name, ItemStack.LiangToFen(noutputs[i].quantity));
             outputs[i].chance = noutputs[i].chance;
         }
     }

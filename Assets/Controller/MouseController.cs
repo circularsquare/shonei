@@ -66,9 +66,7 @@ public class MouseController : MonoBehaviour {
             if (debugCursorLight == null) {
                 Debug.LogError("Ctrl+T: debugCursorLight is not wired on MouseController — assign a LightSource GameObject in the inspector.");
             } else {
-                bool turnOn = !debugCursorLight.activeSelf;
-                debugCursorLight.SetActive(turnOn);
-                Debug.Log(turnOn ? "Debug cursor light ON" : "Debug cursor light OFF");
+                debugCursorLight.SetActive(!debugCursorLight.activeSelf);
             }
         }
         if (debugCursorLight != null && debugCursorLight.activeSelf) {
@@ -283,7 +281,7 @@ public class MouseController : MonoBehaviour {
         }
     }
 
-    /// <summary>Selects all storage inventories whose tile falls inside the screen-space drag rectangle.</summary>
+    // Selects all storage inventories whose tile falls inside the screen-space drag rectangle.
     private void CommitDragSelect(Vector3 startScreen, Vector3 endScreen) {
         var (minX, maxX, minY, maxY) = GetDragWorldBounds(startScreen, endScreen);
         var found = new System.Collections.Generic.List<Inventory>();
@@ -307,7 +305,7 @@ public class MouseController : MonoBehaviour {
         InventoryController.instance.SelectInventories(found, primary);
     }
 
-    /// <summary>Positions the drag-rect UI image between the two screen-space corners.</summary>
+    // Positions the drag-rect UI image between the two screen-space corners.
     private void UpdateDragRect(Vector3 startScreen, Vector3 currentScreen) {
         if (dragRectTransform == null) return;
         // Screen Space Overlay: RectTransform.position is in screen pixels, same origin as Input.mousePosition

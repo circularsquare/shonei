@@ -28,6 +28,55 @@ public class Blueprint {
     // Set by StructController.Construct (mining output) or Deconstruct (refunded materials).
     public List<ItemQuantity> pendingOutput;
 
+    // Child SR rendering a sliced frame around the blueprint footprint. Always unlit so it
+    // stays visible at night and reads as an overlay. Tint/alpha is updated by RefreshColor.
+    private SpriteRenderer frameSr;
+
+    // ── Frame overlay asset cache ─────────────────────────────────────────
+    // Mirrors the pattern used in Plant.cs for its harvest overlay. If a future third user
+    // appears, extract a shared UnlitOverlayUtil helper.
+    // Two sprites: blueprintframe (blue — construct/supply) and bpdeconstructframe (red).
+    private static Sprite _constructFrameSprite;
+    private static bool   _constructFrameLoaded;
+    private static Sprite GetConstructFrameSprite() {
+        if (_constructFrameLoaded) return _constructFrameSprite;
+        _constructFrameSprite = Resources.Load<Sprite>("Sprites/Misc/blueprintframe");
+        if (_constructFrameSprite == null)
+            Debug.LogError("Blueprint: missing Resources/Sprites/Misc/blueprintframe — construct frame overlay will be invisible");
+        _constructFrameLoaded = true;
+        return _constructFrameSprite;
+    }
+    private static Sprite _deconstructFrameSprite;
+    private static bool   _deconstructFrameLoaded;
+    private static Sprite GetDeconstructFrameSprite() {
+        if (_deconstructFrameLoaded) return _deconstructFrameSprite;
+        _deconstructFrameSprite = Resources.Load<Sprite>("Sprites/Misc/bpdeconstructframe");
+        if (_deconstructFrameSprite == null)
+            Debug.LogError("Blueprint: missing Resources/Sprites/Misc/bpdeconstructframe — deconstruct frame overlay will be invisible");
+        _deconstructFrameLoaded = true;
+        return _deconstructFrameSprite;
+    }
+    private static Material _unlitOverlayMaterial;
+    private static Material GetUnlitOverlayMaterial() {
+        if (_unlitOverlayMaterial != null) return _unlitOverlayMaterial;
+        Shader shader = Shader.Find("Universal Render Pipeline/2D/Sprite-Unlit-Default");
+        if (shader == null) {
+            Debug.LogError("Blueprint: URP Sprite-Unlit-Default shader not found — frame overlay will render black");
+            return null;
+        }
+        _unlitOverlayMaterial = new Material(shader) { name = "BlueprintFrameUnlit" };
+        return _unlitOverlayMaterial;
+    }
+    private static int  _unlitLayer = -1;
+    private static bool _unlitLayerLookedUp;
+    private static int GetUnlitLayer() {
+        if (_unlitLayerLookedUp) return _unlitLayer;
+        _unlitLayer = LayerMask.NameToLayer("Unlit");
+        if (_unlitLayer < 0) Debug.LogError("Blueprint: 'Unlit' layer not found — frame overlay will be lit");
+        _unlitLayerLookedUp = true;
+        return _unlitLayer;
+    }
+
     public Blueprint(StructType structType, int x, int y, bool mirrored = false, bool autoRegister = true){
         this.structType = structType;
         this.x = x;
@@ -64,6 +113,8 @@ public class Blueprint {
             sr.size = new Vector2(structType.nx, Mathf.Max(1, structType.ny));
         }
 
+        CreateFrameOverlay();
+
         // Deep-copy costs so LockGroupCostsAfterDelivery only affects this blueprint,
         // not every blueprint sharing the same StructType.
         costs = new ItemQuantity[structType.costs.Length];
@@ -92,9 +143,7 @@ public class Blueprint {
         // For autoRegister: false (load path), RestoreBlueprint calls RefreshColor() separately
         // after restoring inventory and state, so we don't register stale orders here.
     }
-    /// <summary>
-    /// Disable or re-enable this blueprint. Removes or re-registers WOM orders accordingly.
-    /// </summary>
+    // Disable or re-enable this blueprint. Removes or re-registers WOM orders accordingly.
     public void SetDisabled(bool value) {
         disabled = value;
         RefreshColor();
@@ -104,6 +153,50 @@ public class Blueprint {
             RegisterOrdersIfUnsuspended();
     }
 
+    // Spawns a sliced-sprite frame overlay around the blueprint footprint on an Unlit child GO.
+    // Always visible regardless of lighting — serves as a persistent "this is a blueprint" cue.
+    // Colour is driven by RefreshColor below; see SPEC-rendering.md for the Unlit layer pipeline.
+    private void CreateFrameOverlay() {
+        GameObject frameGo = new GameObject("frame");
+        frameGo.transform.SetParent(go.transform, false);
+        // Centre the frame on the footprint, independent of the main blueprint GO's pivot
+        // (which for multi-tile buildings is the visual centre, and for depth-3 floor tiles
+        // is offset by -1/8 y). The anchor tile is (x, y); footprint centre is offset by
+        // ((nx-1)/2, (ny-1)/2) in world space from the anchor.
+        float fx = (structType.nx - 1) / 2f;
+        float fy = Mathf.Max(0, structType.ny - 1) / 2f;
+        frameGo.transform.position = new Vector3(x + fx, y + fy, 0);
+
+        int unlitLayer = GetUnlitLayer();
+        if (unlitLayer >= 0) frameGo.layer = unlitLayer;
+        frameSr = frameGo.AddComponent<SpriteRenderer>();
+        Material unlitMat = GetUnlitOverlayMaterial();
+        if (unlitMat != null) frameSr.sharedMaterial = unlitMat;
+        // Default to the construct frame so the SR always has a valid sliced sprite.
+        // RefreshColor swaps to the deconstruct sprite when appropriate.
+        frameSr.sprite = GetConstructFrameSprite();
+        frameSr.drawMode = SpriteDrawMode.Sliced;
+        frameSr.size = new Vector2(structType.nx, Mathf.Max(1, structType.ny));
+        frameSr.sortingOrder = 101; // above the blueprint sprite (100)
+    }
+
+    // Multiplicative red tint applied to the underlying structure's sprite while a deconstruct
+    // blueprint sits on this tile. Keeps the visual in sync with live sprite changes (plant
+    // growth stages, harvest cycles) without duplicating the sprite on the blueprint itself.
+    private static readonly Color DeconstructStructureTint = new Color(1f, 0.5f, 0.5f);
+
+    // Returns the structure that a deconstruct blueprint targets, or null if none is present.
+    // (The construct paths can't call this meaningfully — there's no target structure yet.)
+    private Structure GetDeconstructTarget() {
+        for (int i = 0; i < 4; i++)
+            if (tile.structs[i] != null) return tile.structs[i];
+        return null;
+    }
+
+    // Pure visual refresh — updates the sprite tint, frame colour, and underlying structure
+    // tint to reflect current state (disabled / deconstructing / suspended / normal).
+    // Does NOT touch WOM. Callers that also need to (re)register orders after a state
+    // transition must call RegisterOrdersIfUnsuspended() explicitly.
     public void RefreshColor() {
         Color color;
         if (disabled)
@@ -114,15 +207,34 @@ public class Blueprint {
             color = new Color(0.6f, 0.6f, 0.7f, 0.4f); // greyed-out: waiting for support below
         else
             color = new Color(0.8f, 0.9f, 1f, 0.5f);
-        go.GetComponent<SpriteRenderer>().color = color;
-        // When support below is built, register orders for newly-unsuspended blueprints.
-        RegisterOrdersIfUnsuspended();
+        SpriteRenderer mainSr = go.GetComponent<SpriteRenderer>();
+        mainSr.color = color;
+        // For deconstruct, the underlying structure is already visible — we don't need a ghost
+        // copy on top, just the frame + a red tint on the structure itself.
+        mainSr.enabled = state != BlueprintState.Deconstructing;
+
+        // Frame: red sprite for deconstruct, blue sprite otherwise. Half alpha when suspended
+        // or disabled so the inactive state still reads but doesn't compete with active blueprints.
+        if (frameSr != null) {
+            frameSr.sprite = state == BlueprintState.Deconstructing
+                ? GetDeconstructFrameSprite()
+                : GetConstructFrameSprite();
+            float a = (disabled || IsSuspended()) ? 0.5f : 1f;
+            frameSr.color = new Color(1f, 1f, 1f, a);
+        }
+
+        // Tint the underlying structure red for deconstruct blueprints. Applied every RefreshColor
+        // so it's idempotent and works on the load path too. Restored in Destroy() on cancel.
+        if (state == BlueprintState.Deconstructing) {
+            Structure target = GetDeconstructTarget();
+            if (target?.sr != null) target.sr.color = DeconstructStructureTint;
+        }
     }
 
-    /// <summary>
-    /// If this blueprint is not suspended and has no work order yet, register one.
-    /// Called from RefreshColor() when the structure below completes.
-    /// </summary>
+    // If this blueprint is not suspended and has no work order yet, register one.
+    // Called by StructController.Construct() when the structure below completes and
+    // may have unsuspended blueprints stacked above, and by SetDisabled() when
+    // re-enabling a blueprint.
     public void RegisterOrdersIfUnsuspended() {
         if (IsSuspended() || cancelled || disabled) return;
         if (state == BlueprintState.Receiving) {
@@ -140,16 +252,21 @@ public class Blueprint {
             WorkOrderManager.instance?.RegisterConstruct(this);
     }
 
-    /// <summary>
-    /// True when this blueprint is waiting for world conditions to be met before it can be worked on.
-    /// Suspended blueprints are placed validly but mice should not supply or construct them yet.
-    ///
-    /// If the StructType has tileRequirements, those drive the suspension check (only dynamic
-    /// world-state flags are tested: mustBeStandable and mustHaveWater). This lets buildings like
-    /// the pump declare their own preconditions rather than relying on standability as a proxy.
-    ///
-    /// Otherwise: suspended when any tile in the building footprint lacks solid ground below it.
-    /// </summary>
+    // Mirrors Structure.ConditionsMet by convention (Blueprint is a sibling of Structure, not a
+    // subclass — no polymorphism, just a shared name so WOM gates read the same on both: the order
+    // is live iff `!disabled && ConditionsMet()`). For blueprints, the only runtime condition is
+    // non-suspension. IsSuspended remains the named predicate for blueprint-specific paths (UI
+    // tinting, RegisterOrdersIfUnsuspended) where the reason is clearer than the abstract gate.
+    public bool ConditionsMet() => !IsSuspended();
+
+    // True when this blueprint is waiting for world conditions to be met before it can be worked on.
+    // Suspended blueprints are placed validly but mice should not supply or construct them yet.
+    //
+    // If the StructType has tileRequirements, those drive the suspension check (only dynamic
+    // world-state flags are tested: mustBeStandable and mustHaveWater). This lets buildings like
+    // the pump declare their own preconditions rather than relying on standability as a proxy.
+    //
+    // Otherwise: suspended when any tile in the building footprint lacks solid ground below it.
     public bool IsSuspended() {
         if (structType.isTile || structType.name == "empty" || structType.requiredTileName != null)
             return false;
@@ -178,6 +295,9 @@ public class Blueprint {
         if (structure == null) return null;
         Blueprint bp = new Blueprint(structure.structType, tile.x, tile.y, structure.mirrored, autoRegister: false);
         bp.state = BlueprintState.Deconstructing;
+        // RefreshColor hides the blueprint's duplicate sprite and applies a red multiplicative tint
+        // to the underlying structure's SR — so growth stages and other live sprite changes keep
+        // rendering through the tint. No per-deconstruct sprite copy needed.
         bp.RefreshColor();
         WorkOrderManager.instance?.RegisterDeconstruct(bp);
         if (tile.building?.storage != null)
@@ -326,6 +446,13 @@ public class Blueprint {
         cancelled = true;
         if (state == BlueprintState.Deconstructing && tile.building?.storage != null)
             tile.building.storage.locked = false;
+        // Restore the underlying structure's sprite tint if we were colouring it red. Safe
+        // to call unconditionally: structures default to white and we're the only writer.
+        // Skipped on world clear since Destroy() below tears the structure GO down anyway.
+        if (state == BlueprintState.Deconstructing && !WorldController.isClearing) {
+            Structure target = GetDeconstructTarget();
+            if (target?.sr != null) target.sr.color = Color.white;
+        }
         ClearBlueprintFromTiles();
         GameObject.Destroy(go);
         if (InfoPanel.instance?.obj == tile) InfoPanel.instance.RebuildSelection();

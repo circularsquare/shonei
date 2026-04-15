@@ -25,6 +25,7 @@
 | 65 | Falling items (mid-air animation) |
 | 70 | Items on floor |
 | 100 | Blueprints |
+| 101 | Blueprint frame overlay (unlit, sliced) |
 | 200 | Build preview (mouse cursor ghost) |
 
 ### Structure depth layers
@@ -41,6 +42,12 @@ Structures render in four depth layers per tile. Each tile holds `Structure[] st
 Depth-based sortingOrder is the default; individual `StructType`s can override via the JSON `sortingOrder` field (e.g. torch=64, fireplace=64). Plant overrides to 60 in its constructor.
 
 `tile.building` is a convenience property: `structs[0] as Building` (Plant extends Building, so both are accessible through it). Multiple layers can coexist on the same tile. `GetBlueprintAt(int depth)` / `SetBlueprintAt(int depth, Blueprint bp)` directly index into `blueprints[]`.
+
+### Blueprint visuals
+
+Each `Blueprint` renders a main sprite (order 100, lit, half-alpha ghost) plus a child **frame overlay** GameObject (order 101, **Unlit** layer, sliced to the footprint). The frame sprite swaps between `Sprites/Misc/blueprintframe` (blue — construct/supply) and `Sprites/Misc/bpdeconstructframe` (red — deconstruct). Frame alpha drops to `0.5` when `disabled || IsSuspended()`. The unlit layer keeps frames visible at night without participating in the lighting pipeline (same pattern as Plant's harvest overlay).
+
+Deconstruct blueprints **hide their own main sprite** and instead apply a multiplicative tint (`DeconstructStructureTint`, currently `(1, 0.5, 0.5)`) to the underlying structure's `sr.color`. Because we only touch `sr.color` and never `sr.sprite`, live sprite changes (plant growth stages, harvest cycles, variant swaps) render correctly through the tint. `Blueprint.Destroy()` restores the structure to `Color.white` on cancel (skipped during `WorldController.isClearing` since structures are being torn down anyway).
 
 ---
 

@@ -82,7 +82,7 @@ Depth-0 buildings with custom behaviour subclass `Building` (e.g. `PumpBuilding`
 | [SPEC-data.md](SPEC-data.md) | All JSON database schemas — buildings, items, recipes, jobs, plants, tiles, research |
 | [SPEC-lifecycle.md](SPEC-lifecycle.md) | Save/load/reset, startup ordering, time system, tick clock |
 | [SPEC-ai.md](SPEC-ai.md) | Animal AI state machine, needs, task system, job system, WorkOrderManager |
-| [SPEC-systems.md](SPEC-systems.md) | Navigation (A*, waypoints), inventory types, item falling, equip slots, fen/liang units |
+| [SPEC-systems.md](SPEC-systems.md) | Navigation (A*, waypoints), inventory types, item falling, equip slots, water, weather, reservations, non-operational mechanisms, fen/liang units |
 | [SPEC-rendering.md](SPEC-rendering.md) | Depth layers, sprite sorting, custom lighting pipeline, normal maps |
 | [SPEC-trading.md](SPEC-trading.md) | WebSocket protocol, matching engine, TradingClient, TradingPanel, in-game market logistics |
 | [SPEC-research.md](SPEC-research.md) | Research points mechanic, node structure, key classes, save data |

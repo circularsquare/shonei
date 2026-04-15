@@ -3,12 +3,10 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// Manages the storage inventory detail panel.
-/// Shows a compact slot view (item: qty/max) and an allow/disallow sub-panel
-/// with the full collapsible item tree. Appears below the global inventory panel
-/// when a storage inventory is selected.
-/// </summary>
+// Manages the storage inventory detail panel.
+// Shows a compact slot view (item: qty/max) and an allow/disallow sub-panel
+// with the full collapsible item tree. Appears below the global inventory panel
+// when a storage inventory is selected.
 public class StoragePanel : MonoBehaviour {
     public static StoragePanel instance { get; private set; }
 
@@ -28,7 +26,7 @@ public class StoragePanel : MonoBehaviour {
         gameObject.SetActive(false);
     }
 
-    /// <summary>Show the panel for the given storage or liquid inventory (primary of the current selection).</summary>
+    // Show the panel for the given storage or liquid inventory (primary of the current selection).
     public void Show(Inventory inv) {
         if (inv == null) { Hide(); return; }
         currentInv = inv;
@@ -48,7 +46,7 @@ public class StoragePanel : MonoBehaviour {
         LayoutRebuilder.ForceRebuildLayoutImmediate(GetComponent<RectTransform>());
     }
 
-    /// <summary>Hide the panel and clean up dynamic children.</summary>
+    // Hide the panel and clean up dynamic children.
     public void Hide() {
         currentInv = null;
         ClearSlots();
@@ -56,7 +54,7 @@ public class StoragePanel : MonoBehaviour {
         gameObject.SetActive(false);
     }
 
-    /// <summary>Refresh slot quantities and allow toggle states. Called from InventoryController.TickUpdate.</summary>
+    // Refresh slot quantities and allow toggle states. Called from InventoryController.TickUpdate.
     public void UpdateDisplay() {
         if (currentInv == null) return;
         UpdateSlots();

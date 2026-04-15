@@ -2,18 +2,16 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// Tabbed info panel that displays details about selected entities.
-/// When the player clicks a tile, InfoPanel builds tabs for each entity found
-/// (tile, structures, blueprints, animals) and delegates rendering to sub-views:
-/// TileInfoView, StructureInfoView, AnimalInfoView.
-/// </summary>
+// Tabbed info panel that displays details about selected entities.
+// When the player clicks a tile, InfoPanel builds tabs for each entity found
+// (tile, structures, blueprints, animals) and delegates rendering to sub-views:
+// TileInfoView, StructureInfoView, AnimalInfoView.
 public class InfoPanel : MonoBehaviour {
     public static InfoPanel instance { get; protected set; }
 
     [Header("Highlights")]
-    public GameObject animalHighlight;
-    public GameObject tileHighlight;
+    [SerializeField] GameObject animalHighlight;
+    [SerializeField] GameObject tileHighlight;
 
     [Header("Tab Bar")]
     [SerializeField] ScrollRect tabScrollRect;        // wraps tabContent for horizontal scroll
@@ -31,10 +29,10 @@ public class InfoPanel : MonoBehaviour {
     private int activeTabIndex = -1;
     private List<GameObject> tabButtonGos = new List<GameObject>();
 
-    /// <summary>Backward-compat: returns the selected tile, used by Blueprint.cs to check if info needs refresh.</summary>
+    // Backward-compat: returns the selected tile, used by Blueprint.cs to check if info needs refresh.
     public object obj => currentSelection?.tile;
 
-    /// <summary>What kind of entity each tab represents.</summary>
+    // What kind of entity each tab represents.
     private enum TabType { Tile, Structure, Blueprint, Animal }
 
     private struct TabEntry {
@@ -53,10 +51,8 @@ public class InfoPanel : MonoBehaviour {
 
     // ── Public API ──
 
-    /// <summary>
-    /// Primary entry point for showing a structured selection.
-    /// Called by MouseController after building a SelectionContext.
-    /// </summary>
+    // Primary entry point for showing a structured selection.
+    // Called by MouseController after building a SelectionContext.
     public void ShowSelection(SelectionContext ctx) {
         // A ctx with a null tile is valid iff it carries animals (e.g. merchants
         // in transit, clicked from MerchantJourneyDisplay — no tile context wanted).
@@ -74,11 +70,9 @@ public class InfoPanel : MonoBehaviour {
         SelectTab(0);
     }
 
-    /// <summary>
-    /// Backward-compatible entry point. Wraps raw objects into a SelectionContext.
-    /// Used by: World.UpdateInfo (tick refresh calls UpdateInfo directly),
-    /// WorldController.ShowInfo(null) (world clear), drag-select paths.
-    /// </summary>
+    // Backward-compatible entry point. Wraps raw objects into a SelectionContext.
+    // Used by: World.UpdateInfo (tick refresh calls UpdateInfo directly),
+    // WorldController.ShowInfo(null) (world clear), drag-select paths.
     public void ShowInfo(object obj) {
         if (obj == null) {
             Deselect();
@@ -94,7 +88,7 @@ public class InfoPanel : MonoBehaviour {
         }
     }
 
-    /// <summary>Refreshes the currently active sub-view. Called each tick from World.cs.</summary>
+    // Refreshes the currently active sub-view. Called each tick from World.cs.
     public void UpdateInfo() {
         if (currentSelection == null) {
             Deselect();
@@ -103,11 +97,9 @@ public class InfoPanel : MonoBehaviour {
         RefreshActiveView();
     }
 
-    /// <summary>
-    /// Rebuilds tabs from fresh tile state (e.g. after a blueprint completes or is deconstructed).
-    /// Optionally auto-selects a specific structure or blueprint tab.
-    /// Animals are preserved from the stored selection so their tabs aren't silently dropped.
-    /// </summary>
+    // Rebuilds tabs from fresh tile state (e.g. after a blueprint completes or is deconstructed).
+    // Optionally auto-selects a specific structure or blueprint tab.
+    // Animals are preserved from the stored selection so their tabs aren't silently dropped.
     public void RebuildSelection(Structure preferStructure = null, Blueprint preferBlueprint = null) {
         if (currentSelection == null) return;
         currentSelection = SelectionContext.FromTile(currentSelection.tile, currentSelection.animals);

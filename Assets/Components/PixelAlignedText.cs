@@ -2,13 +2,11 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// Rounds the preferred height of a TMP text element up to the nearest
-/// integer pixel. Attach alongside TextMeshProUGUI so that a parent
-/// VerticalLayoutGroup positions subsequent elements at integer offsets.
-/// Uses TMP's own text metrics (not LayoutUtility) to avoid recursive
-/// layout recalculation.
-/// </summary>
+// Rounds the preferred height of a TMP text element up to the nearest
+// integer pixel. Attach alongside TextMeshProUGUI so that a parent
+// VerticalLayoutGroup positions subsequent elements at integer offsets.
+// Uses TMP's own text metrics (not LayoutUtility) to avoid recursive
+// layout recalculation.
 [RequireComponent(typeof(TMP_Text))]
 public class PixelAlignedText : MonoBehaviour, ILayoutElement {
     TMP_Text text;

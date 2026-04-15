@@ -68,6 +68,11 @@ public class Animal : MonoBehaviour{
     public float tickOffset;    // [0,1) — stagger phase for per-frame tick dispatch
     public int tickCounter = 0;
 
+    // World.timer value after which DropTask attempts are allowed again. Set by
+    // DropObjective when no drop target is reachable, to avoid log-spamming every
+    // tick while the animal is boxed in. Transient — not saved.
+    [System.NonSerialized] public float dropCooldownUntil = 0f;
+
     // Set before Start() runs when loading a save; Start() checks this and applies it.
     // [NonSerialized] prevents Unity from serializing a default AnimalSaveData instance in place of null.
     [System.NonSerialized] public AnimalSaveData pendingSaveData = null;
@@ -282,6 +287,7 @@ public class Animal : MonoBehaviour{
                     if (!(s is Building b) || !b.structType.isDecoration) continue;
                     int dist = Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy));
                     if (dist > b.structType.decorRadius) continue;
+                    if (b.IsBroken) continue;
                     if (b.reservoir != null && !b.reservoir.HasFuel()) continue;
                     if (string.IsNullOrEmpty(b.structType.decorationNeed)) {
                         Debug.LogError($"Decoration building '{b.structType.name}' has no decorationNeed set");
@@ -302,7 +308,10 @@ public class Animal : MonoBehaviour{
         if (task != null){ return; }
 
         // 1. Survival needs (always first)
-        if (!inv.IsEmpty()) { // drop all main inventory when idle (food/tools are in equip slots)
+        // drop all main inventory when idle (food/tools are in equip slots)
+        // Skip if a recent drop attempt failed — the cooldown lets ChooseTask fall through
+        // to other branches (food, eep, work) instead of looping on an unreachable drop.
+        if (!inv.IsEmpty() && World.instance.timer >= dropCooldownUntil) {
             task = new DropTask(this);
             if (task.Start()) return; }
         if (eating.Hungry()) { if (FindFood()) return; }
@@ -442,6 +451,7 @@ public class Animal : MonoBehaviour{
             var bestPerNeed = new Dictionary<string, (Building b, float dist)>();
             foreach (Building b in sc.GetLeisureBuildings()) {
                 if (b.disabled) continue;
+                if (b.IsBroken) continue;
                 if (b.reservoir != null && !b.reservoir.HasFuel()) continue;
                 if (!IsHourInRange(b.structType.activeStartHour, b.structType.activeEndHour)) continue;
                 if (b.seatRes != null) { if (!b.AnySeatAvailable()) continue; }
@@ -662,7 +672,7 @@ public class Animal : MonoBehaviour{
         Skill? skill = null;
         if (recipe.skill != null && System.Enum.TryParse<Skill>(recipe.skill, ignoreCase: true, out Skill s))
             skill = s;
-        float workEff = ModifierSystem.instance.GetWorkMultiplier(this, skill);
+        float workEff = ModifierSystem.GetWorkMultiplier(this, skill);
         int numRounds = workEff > 0f
             ? Math.Max((int)(MaxCraftSeconds * workEff / recipe.workload), 1)
             : 1;
@@ -706,7 +716,7 @@ public class Animal : MonoBehaviour{
         if (nav == null) return;
         // if you have no home tile, or your hometile does not have a house,
             // if u can find a house, set ur hometile to that
-        if (homeTile == null || !(homeTile?.building?.structType.name == "house")){
+        if (homeTile == null || !(homeTile?.building?.structType.name == "house") || homeTile.building.IsBroken){
             Path housePath = nav.FindPathToBuilding(Db.structTypeByName["house"]);
             if (housePath != null && housePath.tile.building?.structType.name == "house") {
                 // should maybe also unreserve previous house, if you can?
@@ -720,6 +730,7 @@ public class Animal : MonoBehaviour{
             Path betterPath = nav.FindPathTo(t =>
                 t != currentHome &&
                 t.building?.structType.name == "house" &&
+                !t.building.IsBroken &&
                 t.building.res.capacity - t.building.res.reserved >= 2);
             if (betterPath != null) {
                 homeTile.building.res.Unreserve();
@@ -753,6 +764,8 @@ public class Animal : MonoBehaviour{
 
     public float SquareDistance(float x1, float x2, float y1, float y2) { return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2); }
     public void Destroy() {
+        // Fail before tearing down inv — otherwise in-flight reservations strand on about-to-die stacks.
+        task?.Fail();
         AnimalController.instance.UnregisterAnimalFromTile(_currentTile);
         _currentTile = null;
         if (inv != null) { inv.Destroy(); inv = null; }

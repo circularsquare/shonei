@@ -117,13 +117,14 @@ Tasks reserve both **source items** (`ItemStack.resAmount`) and **destination sp
 | `ResearchTask` | WOM p4 | scientist | Navigate to a specific lab, work in loops |
 | `ObtainTask` | survival | any | Fetch a specific item (food/equip) |
 | `EepTask` | survival | any | Navigate home and sleep |
-| `DropTask` | survival | any | Drop excess main inventory — prefers nearby storage/tank (10-tile bonus) over floor |
+| `DropTask` | survival | any | Drop excess main inventory — prefers nearby storage/tank (10-tile bonus) over floor. On no-reachable-target, logs a warning and sets `animal.dropCooldownUntil = timer + 3f` so `ChooseTask` falls through to other branches instead of respawning `DropTask` every tick |
 | `GoTask` | survival | any | Navigate to a tile |
 | `ChatTask` | leisure | any | Walk to idle partner, both leisure 20 ticks, grants socialization happiness |
 | `LeisureTask` | leisure | any | Walk to an `isLeisure` building seat (picks from `nworkTiles`), reserves via `Structure.res`, leisure 20 ticks, faces center, grants benefit via `Happiness.NoteLeisure(structType.leisureNeed)` |
+| `MaintenanceTask` | WOM p2 | mender | Fetch repair materials (¼ × build cost, scaled by repair amount) → walk to work tile → `MaintenanceObjective` ticks up `condition` by 0.05 × efficiency per tick, capped at +40 % per visit. Grants Construction XP. See SPEC-systems.md §Maintenance System. |
 
 **Objectives (atomic steps):**
-`GoObjective`, `FetchObjective`, `DeliverObjective`, `DeliverToBlueprintObjective`, `DeliverToInventoryObjective`, `ReceiveFromInventoryObjective`, `WorkObjective`, `HarvestObjective`, `ConstructObjective`, `EepObjective`, `DropObjective`, `ResearchObjective`, `LeisureObjective`
+`GoObjective`, `FetchObjective`, `DeliverObjective`, `DeliverToBlueprintObjective`, `DeliverToInventoryObjective`, `ReceiveFromInventoryObjective`, `WorkObjective`, `HarvestObjective`, `ConstructObjective`, `EepObjective`, `DropObjective`, `ResearchObjective`, `LeisureObjective`, `MaintenanceObjective`
 
 **`FetchObjective` behaviour:**
 - Navigates to a source tile and picks up `iq.quantity` of an item into the animal's inventory (or an equip slot if `targetInv` is set).
@@ -168,6 +169,8 @@ Market tasks pass `r = Task.MarketFindRadius` via `FindMarketPath`. Drop searche
 
 Each animal has one Job. Jobs filter which WOM orders and fallback tasks an animal can take. For crafting, `ChooseCraftTask` scores all of the animal's recipes globally against configurable inventory targets, then finds the nearest building for the top-scoring recipe — so economic need drives building selection rather than proximity.
 
+**Automatic job swapping** ([JobSwapper.cs](../Model/Animal/JobSwapper.cs)): when an idle animal has skills better suited to another *idle* animal's job (and vice versa), `JobSwapper.TrySwap` swaps them. Fires from `HandleIdle` every 2 ticks (stagger-phased by `tickCounter`). Score = `Σ (skillWeight × skillLevel)` using the job's `skillWeights` profile; swap commits when the combined score strictly improves. Only idle partners are considered — `SetJob` calls `Refresh()` which fails the current task, so swapping with a busy mouse would discard in-progress work.
+
 ---
 
 ## Skill System
@@ -180,7 +183,7 @@ Animals accumulate XP in skill domains as they work, gaining permanent speed bon
 |-------|-----------|
 | `Farming` | `HarvestTask` (all jobs — farmer, logger, etc.) |
 | `Mining` | `CraftTask` with digger/miner job (via `defaultSkill`) |
-| `Construction` | `ConstructTask` (build and deconstruct) |
+| `Construction` | `ConstructTask` (build and deconstruct), `MaintenanceTask` (mender) |
 | `Science` | `ResearchTask` (scientist job) |
 | `Woodworking` | `CraftTask` with sawyer/smith job (via `defaultSkill`) |
 
@@ -222,7 +225,7 @@ Player-adjustable workstation slot count flows: `Building.workstation.workerLimi
 | Priority | Order types |
 |----------|-------------|
 | 1 | Haul unblocking a pending deconstruct |
-| 2 | Construct, SupplyBlueprint, Harvest |
+| 2 | Construct, SupplyBlueprint, Harvest, Maintenance |
 | 3 | Haul (floor items + storage evictions), HaulToMarket, Craft |
 | 4 | Deconstruct, Research, HaulFromMarket |
 
@@ -243,6 +246,7 @@ Orders are created once when the need first arises and removed only when the nee
 | `HaulFromMarket` | `UpdateMarketOrders` sees item above target | `UpdateMarketOrders` sees excess cleared |
 | `Research` | Lab placed | Lab deconstructed |
 | `Craft` | `isWorkstation` building placed (via `RegisterWorkstation`) | Building deconstructed |
+| `Maintenance` | Structure's `condition` drops below `RegisterThreshold` (0.75) — registered by `MaintenanceSystem` on first downward crossing, or by `Reconcile`/`ScanOrders` at load. `isActive = () => s.WantsMaintenance` suppresses when fully repaired (no removal/churn on every decay tick). | Structure destroyed (`RemoveMaintenanceOrders` from `Structure.Destroy()`) |
 
 Exact eager-removal hook sites live in code comments next to the relevant `Remove*` call — check them before editing. Research and Harvest orders are **per-source** (one per lab/plant, keyed by `o.tile`); `ResearchTask` is constructed with the specific `Building lab` so it doesn't re-pathfind at init.
 
@@ -300,7 +304,9 @@ Both reconciliation and auditing are handled by a single `ScanOrders(mode, silen
 
 Blueprints can be placed on top of other blueprints at different depths if the lower blueprint has `solidTop` (`StructPlacement.SupportedByBlueprintBelow()`). The upper blueprint is **suspended** (`IsSuspended() == true`) until the support below is actually built.
 
-**Suspended blueprints have no work orders.** The constructor skips registration when `IsSuspended()`. When the lower structure completes, `StructController.Construct()` calls `RefreshColor()` on blueprints above, which calls `RegisterOrdersIfUnsuspended()` — this registers the appropriate order (Supply or Construct) now that the blueprint is unsuspended. The `isActive = () => !bp.IsSuspended()` lambda on orders is kept as defense-in-depth. `Reconcile` and `AuditOrders` both skip suspended blueprints.
+**Suspended blueprints have no work orders.** The constructor skips registration when `IsSuspended()`. When the lower structure completes, `StructController.Construct()` calls `RefreshColor()` (pure visual refresh) and then `RegisterOrdersIfUnsuspended()` on blueprints above — the latter registers the appropriate order (Supply or Construct) now that the blueprint is unsuspended. The `isActive = () => bp.ConditionsMet()` lambda on orders is kept as defense-in-depth. `Reconcile` and `AuditOrders` both skip suspended blueprints.
+
+`Blueprint.ConditionsMet()` returns `!IsSuspended()`, mirroring the `Structure.ConditionsMet()` convention by name (Blueprint is a sibling class, not a Structure subclass — there's no polymorphism, just a shared call-site shape: `!disabled && ConditionsMet()` reads the same on both). `IsSuspended()` is retained as the named reason in blueprint-only paths (UI tinting, `RegisterOrdersIfUnsuspended`).
 
 ### Blueprint costs: deep copy & group item locking
 

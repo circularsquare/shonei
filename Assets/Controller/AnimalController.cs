@@ -97,10 +97,8 @@ public class AnimalController : MonoBehaviour{
         return animal;
     }
 
-    /// <summary>
-    /// Called from Animal.Start() once the animal is fully initialized.
-    /// Adds it to the tickable animals array.
-    /// </summary>
+    // Called from Animal.Start() once the animal is fully initialized.
+    // Adds it to the tickable animals array.
     public void RegisterReady(Animal animal) {
         // Golden ratio spread gives excellent distribution for any animal count
         animal.tickOffset = (animal.id * 0.618034f) % 1f;

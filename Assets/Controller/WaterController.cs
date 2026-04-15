@@ -2,24 +2,22 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// Simulates and renders a cellular-automaton water fluid system.
-/// Water is stored as a ushort (0–160, fixed-point) on each Tile. Each TickUpdate:
-///   1. SimulateStep — water falls downward then spreads laterally (volume-preserving).
-///   2. UpdateSurfaceMask — builds a 1-byte-per-pixel surface mask and uploads it to the GPU.
-///
-/// GPU rendering (Assets/Lighting/Water.shader) is deliberately simple: one texture sample
-/// per pixel, then either discard / surface color / shimmer lerp. All neighbour-air detection
-/// happens on the CPU every 0.2 s instead of in the shader every frame, which is much cheaper
-/// on slow/integrated GPUs due to lower texture bandwidth and no branch divergence.
-///
-/// Surface mask encoding (TextureFormat.R8, one byte per game pixel):
-///   0   = transparent  (no water)
-///   127 = interior water
-///   255 = surface water (at least one of 8 neighbours is open air)
-///
-/// Called every 0.2 seconds from World.Update (same cadence as inventory tick).
-/// </summary>
+// Simulates and renders a cellular-automaton water fluid system.
+// Water is stored as a ushort (0–160, fixed-point) on each Tile. Each TickUpdate:
+//   1. SimulateStep — water falls downward then spreads laterally (volume-preserving).
+//   2. UpdateSurfaceMask — builds a 1-byte-per-pixel surface mask and uploads it to the GPU.
+//
+// GPU rendering (Assets/Lighting/Water.shader) is deliberately simple: one texture sample
+// per pixel, then either discard / surface color / shimmer lerp. All neighbour-air detection
+// happens on the CPU every 0.2 s instead of in the shader every frame, which is much cheaper
+// on slow/integrated GPUs due to lower texture bandwidth and no branch divergence.
+//
+// Surface mask encoding (TextureFormat.R8, one byte per game pixel):
+//   0   = transparent  (no water)
+//   127 = interior water
+//   255 = surface water (at least one of 8 neighbours is open air)
+//
+// Called every 0.2 seconds from World.Update (same cadence as inventory tick).
 public class WaterController : MonoBehaviour {
     public static WaterController instance { get; private set; }
 
@@ -52,12 +50,10 @@ public class WaterController : MonoBehaviour {
     private readonly Dictionary<Structure, List<Vector2Int>> _decorativeZones
         = new Dictionary<Structure, List<Vector2Int>>();
 
-    /// <summary>
-    /// Internal fixed-point scale: 10 internal units = 1 display unit (tile fully filled at 160).
-    /// Scaling up from 16 eliminates the integer-truncation dead zone in the spread formula
-    /// (diff/2 == 0 when diff == 1), which would otherwise leave water in a staircase pattern.
-    /// The dead zone shrinks to 1/10 of a visual unit — sub-pixel, undetectable.
-    /// </summary>
+    // Internal fixed-point scale: 10 internal units = 1 display unit (tile fully filled at 160).
+    // Scaling up from 16 eliminates the integer-truncation dead zone in the spread formula
+    // (diff/2 == 0 when diff == 1), which would otherwise leave water in a staircase pattern.
+    // The dead zone shrinks to 1/10 of a visual unit — sub-pixel, undetectable.
     public const ushort WaterMax = 160;
 
     // Alternates each SimulateStep to prevent directional spread bias.
@@ -130,23 +126,21 @@ public class WaterController : MonoBehaviour {
         UpdateSurfaceMask();
     }
 
-    /// <summary>Called by World.Update every 0.2 seconds.</summary>
+    // Called by World.Update every 0.2 seconds.
     public void TickUpdate() {
         SimulateStep();
         UpdateSurfaceMask();
     }
 
-    /// <summary>
-    /// One cellular-automaton step.
-    /// Pass 1 (bottom-to-top): pour water straight down into the tile below.
-    /// Pass 2 (bottom-to-top, alternating L/R): equalize with one horizontal neighbor (diff/2).
-    /// Pass 3 (same direction as Pass 2): look-ahead equalization for diff-1 slopes.
-    ///   When a tile is exactly 1 unit below its neighbor, scan further in that direction
-    ///   for a tile at +2 or higher (ignoring plateau tiles at +1). If found, pull 1 unit
-    ///   from that elevated source to the low tile, flattening the slope step by step.
-    ///   This prevents CA water from getting permanently stuck in a visible staircase.
-    /// Integer math guarantees volume conservation throughout.
-    /// </summary>
+    // One cellular-automaton step.
+    // Pass 1 (bottom-to-top): pour water straight down into the tile below.
+    // Pass 2 (bottom-to-top, alternating L/R): equalize with one horizontal neighbor (diff/2).
+    // Pass 3 (same direction as Pass 2): look-ahead equalization for diff-1 slopes.
+    //   When a tile is exactly 1 unit below its neighbor, scan further in that direction
+    //   for a tile at +2 or higher (ignoring plateau tiles at +1). If found, pull 1 unit
+    //   from that elevated source to the low tile, flattening the slope step by step.
+    //   This prevents CA water from getting permanently stuck in a visible staircase.
+    // Integer math guarantees volume conservation throughout.
     private void SimulateStep() {
         World world = World.instance;
 
@@ -244,16 +238,14 @@ public class WaterController : MonoBehaviour {
         flipDir = !flipDir;
     }
 
-    /// <summary>
-    /// Builds the R8 surface mask and uploads it to the GPU. Called every 0.2 s.
-    ///
-    /// Fast path: clears the entire byte array with a single memset, then only
-    /// iterates tiles that actually contain water. For a typical scene with 10% water
-    /// coverage this processes ~128k pixels instead of all 1.28M.
-    ///
-    /// Per water pixel, checks 8 neighbours to determine surface/interior.
-    /// A pixel is "surface" if any neighbour is open air (non-solid, no water there).
-    /// </summary>
+    // Builds the R8 surface mask and uploads it to the GPU. Called every 0.2 s.
+    //
+    // Fast path: clears the entire byte array with a single memset, then only
+    // iterates tiles that actually contain water. For a typical scene with 10% water
+    // coverage this processes ~128k pixels instead of all 1.28M.
+    //
+    // Per water pixel, checks 8 neighbours to determine surface/interior.
+    // A pixel is "surface" if any neighbour is open air (non-solid, no water there).
     private void UpdateSurfaceMask() {
         if (_surfaceTex == null) return;
         World world = World.instance;
@@ -323,12 +315,10 @@ public class WaterController : MonoBehaviour {
         Shader.SetGlobalTexture("_WaterSurfaceTex", _surfaceTex);
     }
 
-    /// <summary>
-    /// Adds 2 water units to every partially-filled tile.
-    /// Called by WeatherSystem.OnHourElapsed() when it is raining.
-    /// Only affects tiles that already contain water (> 0) and aren't full,
-    /// representing rain collecting in existing puddles/pools.
-    /// </summary>
+    // Adds 2 water units to every partially-filled tile.
+    // Called by WeatherSystem.OnHourElapsed() when it is raining.
+    // Only affects tiles that already contain water (> 0) and aren't full,
+    // representing rain collecting in existing puddles/pools.
     public void RainReplenish() {
         World world = World.instance;
         for (int x = 0; x < world.nx; x++) {
@@ -340,12 +330,10 @@ public class WaterController : MonoBehaviour {
         }
     }
 
-    /// <summary>
-    /// Rain-catching for open-air liquid-storage buildings (tanks).
-    /// Called once per rain-hour from WeatherSystem.OnHourElapsed().
-    /// Adds a fixed amount of water to any tank whose tile is sky-exposed
-    /// and whose storage filter allows water.
-    /// </summary>
+    // Rain-catching for open-air liquid-storage buildings (tanks).
+    // Called once per rain-hour from WeatherSystem.OnHourElapsed().
+    // Adds a fixed amount of water to any tank whose tile is sky-exposed
+    // and whose storage filter allows water.
     public void RainFillTanks() {
         const int fillPerHourFen = 100; // 1 liang/hour; tank capacity is 100 liang (~100h full rain to fill)
 
@@ -365,11 +353,9 @@ public class WaterController : MonoBehaviour {
         }
     }
 
-    /// <summary>
-    /// Scans a sprite for WaterMarkerColor pixels and returns their local offsets
-    /// (bottom-left origin, unmirrored). Returns null if none found.
-    /// The sprite's texture must have Read/Write Enabled in its Unity Import Settings.
-    /// </summary>
+    // Scans a sprite for WaterMarkerColor pixels and returns their local offsets
+    // (bottom-left origin, unmirrored). Returns null if none found.
+    // The sprite's texture must have Read/Write Enabled in its Unity Import Settings.
     public static List<Vector2Int> ScanWaterPixels(Sprite sprite) {
         if (sprite == null || sprite.texture == null) return null;
         Texture2D tex = sprite.texture;
@@ -394,11 +380,9 @@ public class WaterController : MonoBehaviour {
         return offsets;
     }
 
-    /// <summary>
-    /// Registers a structure's water-marker pixels for overlay each tick.
-    /// Converts local sprite offsets to world-pixel coordinates, accounting for mirroring.
-    /// Called by StructController.Place() for any structure with waterPixelOffsets.
-    /// </summary>
+    // Registers a structure's water-marker pixels for overlay each tick.
+    // Converts local sprite offsets to world-pixel coordinates, accounting for mirroring.
+    // Called by StructController.Place() for any structure with waterPixelOffsets.
     public void RegisterDecorativeWater(Structure s) {
         if (s.waterPixelOffsets == null || s.waterPixelOffsets.Count == 0) return;
         int sprW = (int)s.sprite.textureRect.width;
@@ -410,15 +394,13 @@ public class WaterController : MonoBehaviour {
         _decorativeZones[s] = worldPixels;
     }
 
-    /// <summary>Removes a structure's water-marker pixels. Called from Structure.Destroy().</summary>
+    // Removes a structure's water-marker pixels. Called from Structure.Destroy().
     public void UnregisterDecorativeWater(Structure s) {
         _decorativeZones.Remove(s);
     }
 
-    /// <summary>
-    /// Zeros all tile water and clears the surface mask texture.
-    /// Called from WorldController.ClearWorld() before regenerating the world.
-    /// </summary>
+    // Zeros all tile water and clears the surface mask texture.
+    // Called from WorldController.ClearWorld() before regenerating the world.
     public void ClearWater() {
         World world = World.instance;
         for (int x = 0; x < world.nx; x++) {

@@ -38,13 +38,10 @@ VISUALS
 - lighting 
     - improve undergroundwall sprite 
     - procedurally generate rocks with normalmaps?
-- change blueprint back to being like an overlaid transparent square?
 
 MOUSE AI
 - ponder inventory management
-    - global, market, need to have set target 
-    - global can have
-        - consume above amount?
+    - global can have consume above amount?
 - priority
     - crafttask priority
     - work station priority
@@ -55,3 +52,4 @@ MOUSE AI
 BUGS
 
 TODAY GOALS
+- many refactor

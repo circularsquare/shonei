@@ -2,11 +2,9 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// Compact skill widget: icon (with name tooltip) + "lv1" label + XP progress bar (with xp tooltip).
-/// Call Setup() once when instantiated, Refresh() whenever skill data changes.
-/// Sprite loaded from Sprites/Skills/{skillname}; falls back to Sprites/Skills/default.
-/// </summary>
+// Compact skill widget: icon (with name tooltip) + "lv1" label + XP progress bar (with xp tooltip).
+// Call Setup() once when instantiated, Refresh() whenever skill data changes.
+// Sprite loaded from Sprites/Skills/{skillname}; falls back to Sprites/Skills/default.
 public class SkillDisplay : MonoBehaviour {
     const string SpritePath     = "Sprites/Skills/";
     const string SpriteFallback = "Sprites/Skills/default";

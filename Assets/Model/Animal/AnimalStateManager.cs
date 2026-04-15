@@ -42,8 +42,10 @@ public class AnimalStateManager {
         }
         animal.ChooseTask();
         if (animal.state == AnimalState.Idle) {
-            // Try job swap every 5 ticks when truly idle
-            if (animal.tickCounter % 5 == 3) {
+            // Try job swap every 2 ticks when truly idle. Cadence is ~2.5× the prior
+            // every-5-ticks rate to compensate for the idle-only partner filter in
+            // JobSwapper, which makes individual attempts less likely to find a match.
+            if (animal.tickCounter % 2 == 1) {
                 JobSwapper.TrySwap(animal);
             }
             // De-stack: if sharing a tile with another mouse, try to walk to a direct nav-graph
@@ -88,12 +90,27 @@ public class AnimalStateManager {
         return null; // don't wander if all neighbours have mice
     }
 
+    // Walks a group item's leaf tree and returns the first leaf with at least `needed` on
+    // the animal. Used by the MaintenanceTask completion path when a cost is a group item
+    // (e.g. "wood") — PickMaintenanceSupplyLeaf committed to a single leaf at fetch time,
+    // so one will be present. Returns null if none found (genuine bug — log at call site).
+    private static Item FindLeafInInventory(Animal animal, Item groupItem, int needed) {
+        if (groupItem.children == null || groupItem.children.Length == 0)
+            return animal.inv.Quantity(groupItem) >= needed ? groupItem : null;
+        foreach (Item child in groupItem.children) {
+            Item leaf = FindLeafInInventory(animal, child, needed);
+            if (leaf != null) return leaf;
+        }
+        return null;
+    }
+
     // Returns the skill domain for the animal's current task, or null if the task
     // has no associated skill (e.g. hauling, idle wandering).
     private static Skill? GetTaskSkill(Animal animal) {
         Task t = animal.task;
         if (t is HarvestTask)   return Skill.Farming;
         if (t is ConstructTask) return Skill.Construction;
+        if (t is MaintenanceTask) return Skill.Construction;
         if (t is ResearchTask)  return Skill.Science;
         if (t is CraftTask craftTask && craftTask.recipe?.skill != null)
             if (System.Enum.TryParse<Skill>(craftTask.recipe.skill, ignoreCase: true, out Skill s)) return s;
@@ -102,8 +119,8 @@ public class AnimalStateManager {
 
     private void HandleWorking() {
         Skill? taskSkill      = GetTaskSkill(animal);
-        float  baseWorkEff    = ModifierSystem.instance.GetBaseWorkEfficiency(animal);
-        float  workEfficiency = ModifierSystem.instance.GetWorkMultiplier(animal, taskSkill);
+        float  baseWorkEff    = ModifierSystem.GetBaseWorkEfficiency(animal);
+        float  workEfficiency = ModifierSystem.GetWorkMultiplier(animal, taskSkill);
 
         if (animal.task is HarvestTask harvestTask) {
             Plant plant = harvestTask.tile.plant;
@@ -188,6 +205,43 @@ public class AnimalStateManager {
                     craftTask.Complete(); return; // out of inputs
                 }
             }
+        } else if (animal.task is MaintenanceTask maintTask) {
+            Structure target = maintTask.target;
+            if (target == null || target.go == null) { maintTask.Fail(); return; }
+            // Tick condition up. RepairWorkPerTick is the base rate; workEfficiency stretches
+            // or compresses it the same way as construction/craft.
+            float delta = Structure.RepairWorkPerTick * workEfficiency;
+            float before = target.condition;
+            float newCondition = Mathf.Min(maintTask.targetCondition, before + delta);
+            target.condition = newCondition;
+            animal.skills.GainXp(Skill.Construction, baseWorkEff * 0.1f);
+
+            // On completion: consume materials from the mender's inventory, fire repaired callback,
+            // and refresh tint if we crossed the break threshold upward.
+            if (newCondition >= maintTask.targetCondition || newCondition >= 1f) {
+                foreach (ItemQuantity cost in target.structType.costs) {
+                    int needed = Mathf.CeilToInt(cost.quantity * Structure.RepairCostFraction * maintTask.repairAmount);
+                    if (needed <= 0) continue;
+                    // Consume from whichever leaf the mender fetched. For leaf costs, that's cost.item
+                    // directly; for group costs, we need to find the leaf in inventory (there will be
+                    // exactly one thanks to PickMaintenanceSupplyLeaf committing to a single leaf per task).
+                    Item consume = cost.item.IsGroup
+                        ? FindLeafInInventory(animal, cost.item, needed)
+                        : cost.item;
+                    if (consume == null) {
+                        Debug.LogError($"MaintenanceTask complete: mender {animal.aName} missing {needed} {cost.item.name} for {target.structType.name}");
+                        continue;
+                    }
+                    animal.Consume(consume, needed);
+                }
+                MaintenanceSystem.instance?.OnRepaired(target);
+                target.RefreshTint();
+                // Passive research: a full 0→1 repair matches a fresh build of this structure type.
+                // repairAmount is the fraction of condition restored by this task (≤ MaxRepairPerTask).
+                ResearchSystem.instance?.AddConstructionProgress(target.structType.name, maintTask.repairAmount);
+                maintTask.Complete();
+            }
+            return;
         } else if (animal.task is ResearchTask rt) {
             animal.workProgress += workEfficiency;
             animal.skills.GainXp(Skill.Science, baseWorkEff * 0.1f);

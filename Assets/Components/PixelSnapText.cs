@@ -1,11 +1,9 @@
 using UnityEngine;
 using TMPro;
 
-/// <summary>
-/// Snaps TMP text glyph positions to integer pixels per-line.
-/// Fixes distorted text caused by center/right alignment placing
-/// the line origin at a fractional pixel. Attach to any TextMeshProUGUI.
-/// </summary>
+// Snaps TMP text glyph positions to integer pixels per-line.
+// Fixes distorted text caused by center/right alignment placing
+// the line origin at a fractional pixel. Attach to any TextMeshProUGUI.
 [RequireComponent(typeof(TextMeshProUGUI))]
 public class PixelSnapText : MonoBehaviour {
     private TextMeshProUGUI tmp;

@@ -1,22 +1,15 @@
 using System.Collections.Generic;
 
-/// <summary>
-/// Structured representation of what's at a clicked location.
-/// Built by MouseController, consumed by InfoPanel to generate tabs.
-/// </summary>
+// Structured representation of what's at a clicked location.
+// Built by MouseController, consumed by InfoPanel to generate tabs.
 public class SelectionContext {
     public Tile tile;
-    /// <summary>Non-null structures from tile.structs[0..3], in depth order.</summary>
-    public List<Structure> structures = new List<Structure>();
-    /// <summary>Non-null blueprints from tile.blueprints[0..3], in depth order.</summary>
-    public List<Blueprint> blueprints = new List<Blueprint>();
-    /// <summary>Animals at the click position (may be empty).</summary>
-    public List<Animal> animals = new List<Animal>();
+    public List<Structure> structures = new List<Structure>();  // non-null structures from tile.structs[0..3], in depth order
+    public List<Blueprint> blueprints = new List<Blueprint>();  // non-null blueprints from tile.blueprints[0..3], in depth order
+    public List<Animal> animals = new List<Animal>();           // animals at the click position (may be empty)
 
-    /// <summary>
-    /// Builds a SelectionContext from a tile and optional animal list.
-    /// Collects all non-null structures and blueprints from the tile's depth arrays.
-    /// </summary>
+    // Builds a SelectionContext from a tile and optional animal list.
+    // Collects all non-null structures and blueprints from the tile's depth arrays.
     public static SelectionContext FromTile(Tile tile, List<Animal> animals = null) {
         var ctx = new SelectionContext { tile = tile };
         if (tile != null) {

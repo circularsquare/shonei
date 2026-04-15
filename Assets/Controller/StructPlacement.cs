@@ -1,8 +1,6 @@
-/// <summary>
-/// Static helper that decides whether a StructType can be placed on a given tile.
-/// Extracted from BuildPanel so that the rule is testable and reusable outside the UI.
-/// All placement logic should live here; BuildPanel.CanPlaceHere delegates to this.
-/// </summary>
+// Static helper that decides whether a StructType can be placed on a given tile.
+// Extracted from BuildPanel so that the rule is testable and reusable outside the UI.
+// All placement logic should live here; BuildPanel.CanPlaceHere delegates to this.
 public static class StructPlacement {
     public static bool CanPlaceHere(StructType st, Tile tile, bool mirrored = false) {
         World world = World.instance;

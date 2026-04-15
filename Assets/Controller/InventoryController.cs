@@ -75,6 +75,10 @@ public class InventoryController : MonoBehaviour {
         UpdateItemsDisplay();
         if (storagePanel != null && storagePanel.gameObject.activeSelf)
             storagePanel.UpdateDisplay();
+        // TradingPanel market tree — same cadence, only while panel is open.
+        var tp = TradingPanel.instance;
+        if (tp != null && tp.gameObject.activeSelf)
+            tp.UpdateMarketTree();
     }
 
     void AddItemDisplay(Item item){

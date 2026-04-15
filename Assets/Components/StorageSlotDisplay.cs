@@ -1,10 +1,8 @@
 using UnityEngine;
 using TMPro;
 
-/// <summary>
-/// Displays a single item stack slot in the StoragePanel compact view.
-/// Shows "item: qty/max" or "empty: 0/max" for empty slots.
-/// </summary>
+// Displays a single item stack slot in the StoragePanel compact view.
+// Shows "item: qty/max" or "empty: 0/max" for empty slots.
 public class StorageSlotDisplay : MonoBehaviour {
     public TextMeshProUGUI text;
 

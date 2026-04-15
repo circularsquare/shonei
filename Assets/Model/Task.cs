@@ -30,6 +30,11 @@ public abstract class Task {
     public Objective currentObjective;
     private readonly List<(ItemStack stack, int amount)> reservedStacks = new();
     private readonly List<(Inventory inv, Item item, int amount)> reservedSpaces = new();
+#if UNITY_EDITOR
+    // Editor-only read access for ReservationInvariant.Check — debug only, zero runtime surface.
+    public IReadOnlyList<(ItemStack stack, int amount)> ReservedStacks => reservedStacks;
+    public IReadOnlyList<(Inventory inv, Item item, int amount)> ReservedSpaces => reservedSpaces;
+#endif
     // Set by WorkOrderManager.ChooseOrder when this task fulfills a work order.
     // Null for non-WOM tasks (Craft, Eep, Obtain, etc.). Released in Cleanup().
     public WorkOrderManager.WorkOrder workOrder;
@@ -403,6 +408,8 @@ public class HarvestTask : Task {
 // haultask is only for moving a specific floor stack to storage (always WOM-targeted).
 public class HaulTask : Task {
     private readonly ItemStack targetStack;
+    private ItemQuantity _iq;        // tracked for sub-threshold completion logging
+    private int _intendedQuantity;   // what we planned to haul at Initialize (for shrinkage detection)
     public HaulTask(Animal animal, ItemStack targetStack) : base(animal){
         this.targetStack = targetStack;
     }
@@ -426,16 +433,32 @@ public class HaulTask : Task {
         int spaceReserved = ReserveSpace(storageInv, item, quantity);
         if (spaceReserved <= 0) return false;
         quantity = Math.Min(quantity, spaceReserved);
-        ItemQuantity iq = new(item, quantity);
-        FetchAndReserve(iq, itemTile, targetStack, quantity);
+        _iq = new ItemQuantity(item, quantity);
+        _intendedQuantity = quantity;
+        FetchAndReserve(_iq, itemTile, targetStack, quantity);
         objectives.AddLast(new GoObjective(this, storagePath.tile));
-        objectives.AddLast(new DeliverToInventoryObjective(this, iq, storageInv));
+        objectives.AddLast(new DeliverToInventoryObjective(this, _iq, storageInv));
         return true;
+    }
+    public override void Complete() {
+        // When the last objective completes successfully, flag tiny hauls so task-churn patterns
+        // are visible. At Initialize the gate only permits sub-MinHaulQuantity when fully draining
+        // the source stack; anything else getting here means case 1 (decay / reservation drain)
+        // shrank the payload mid-task.
+        if (objectives.Count == 0 && _iq != null && _iq.quantity < MinHaulQuantity) {
+            string note = _iq.quantity < _intendedQuantity
+                ? $" (intended {_intendedQuantity} — shrunk mid-task)"
+                : " (intended this small — stack-clearing cleanup)";
+            Debug.Log($"{animal.aName} ({animal.job.name}) tiny Haul: delivered {_iq.quantity} fen of {_iq.item.name}{note}");
+        }
+        base.Complete();
     }
 }
 // consolidatetask is only for consolidating a specific floor stack when no storage is available (always WOM-targeted).
 public class ConsolidateTask : Task {
     private readonly ItemStack stack;
+    private ItemQuantity _iq;
+    private int _intendedQuantity;
     public ConsolidateTask(Animal animal, ItemStack stack) : base(animal) {
         this.stack = stack;
     }
@@ -450,10 +473,20 @@ public class ConsolidateTask : Task {
         int quantity = Math.Min(h.quantity, spaceReserved);
         // Cleanup releases the space reservation we just made before bailing.
         if (quantity < MinHaulQuantity && quantity < available) return false; // de minimis
-        ItemQuantity iq = new(h.item, quantity);
-        FetchAndReserve(iq, h.itemTile, h.itemStack, quantity);
-        objectives.AddLast(new DeliverObjective(this, iq, h.destTile));
+        _iq = new ItemQuantity(h.item, quantity);
+        _intendedQuantity = quantity;
+        FetchAndReserve(_iq, h.itemTile, h.itemStack, quantity);
+        objectives.AddLast(new DeliverObjective(this, _iq, h.destTile));
         return true;
+    }
+    public override void Complete() {
+        if (objectives.Count == 0 && _iq != null && _iq.quantity < MinHaulQuantity) {
+            string note = _iq.quantity < _intendedQuantity
+                ? $" (intended {_intendedQuantity} — shrunk mid-task)"
+                : " (intended this small — stack-clearing cleanup)";
+            Debug.Log($"{animal.aName} ({animal.job.name}) tiny Consolidate: moved {_iq.quantity} fen of {_iq.item.name}{note}");
+        }
+        base.Complete();
     }
 }
 public class DropTask : Task {
@@ -579,6 +612,85 @@ public class SupplyFuelTask : Task {
         objectives.AddLast(new GoObjective(this, standPath.tile));
         objectives.AddLast(new DeliverToInventoryObjective(this, iq, fuel.inv));
         return true;
+    }
+}
+// Repairs a structure's condition by fetching repair materials, walking to the work
+// tile, and gradually ticking condition back up over several ticks. Registered as a
+// WOM Maintenance order at priority 2; only menders accept it.
+//
+// Material cost: for every cost item in structType.costs,
+//     needed = ceil(cost.quantity × RepairCostFraction × repairAmount)
+// So a 0.40 repair of a furnace consumes 10% of its full build cost per item. All
+// cost items are required — the mender won't start a repair it can't fully supply.
+//
+// A single task restores at most MaxRepairPerTask (0.40) condition. A fully-broken
+// structure (condition=0) therefore needs three visits to reach 1.0 (0→0.40→0.80→1.0,
+// with the last visit capped to the remaining 0.20).
+public class MaintenanceTask : Task {
+    public readonly Structure target;
+    public readonly float startCondition;
+    public readonly float repairAmount;           // how much condition this task aims to restore
+    public float targetCondition => Mathf.Min(1f, startCondition + repairAmount);
+
+    public MaintenanceTask(Animal animal, Structure target) : base(animal) {
+        this.target = target;
+        this.startCondition = target != null ? target.condition : 0f;
+        this.repairAmount = target != null
+            ? Mathf.Min(Structure.MaxRepairPerTask, 1f - target.condition)
+            : 0f;
+    }
+
+    public override bool Initialize() {
+        if (animal.job.name != "mender") return false;
+        if (target == null || target.go == null) return false;
+        if (!target.NeedsMaintenance) return false;
+        if (repairAmount <= 0f) return false;
+        if (target.structType.costs == null || target.structType.costs.Length == 0) return false;
+
+        Tile workTile = target.workTile ?? target.tile;
+        Path standPath = animal.nav.PathToOrAdjacent(workTile);
+        if (!animal.nav.WithinRadius(standPath, MediumFindRadius)) return false;
+
+        // Fetch each cost item. Fail if any single item is unavailable — partial visits
+        // are wasteful (animal walks then can't finish) and leaves reserved materials stranded.
+        foreach (ItemQuantity cost in target.structType.costs) {
+            int needed = Mathf.CeilToInt(cost.quantity * Structure.RepairCostFraction * repairAmount);
+            if (needed <= 0) continue;
+
+            Item costItem = cost.item;
+            Item supplyItem = costItem.IsGroup ? PickMaintenanceSupplyLeaf(costItem) : costItem;
+            (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(supplyItem);
+            if (itemPath == null || stack == null) return false;
+            int available = stack.quantity - stack.resAmount;
+            if (available < needed) return false;
+
+            ItemQuantity iq = new ItemQuantity(supplyItem, needed);
+            FetchAndReserve(iq, itemPath.tile, stack);
+        }
+
+        objectives.AddLast(new GoObjective(this, standPath.tile));
+        objectives.AddLast(new MaintenanceObjective(this));
+        return true;
+    }
+
+    // Same logic as SupplyBlueprintTask.PickSupplyLeaf — highest-global-inventory leaf wins.
+    // Duplicated locally (rather than exposing PickSupplyLeaf) because MaintenanceTask lives in
+    // the same file and SupplyBlueprintTask's helper is private. If a third caller appears,
+    // lift it to a shared static.
+    private static Item PickMaintenanceSupplyLeaf(Item item) {
+        if (item.children == null || item.children.Length == 0) return item;
+        Item best = null;
+        int bestQty = -1;
+        Collect(item, ref best, ref bestQty);
+        return best ?? item;
+    }
+    private static void Collect(Item item, ref Item best, ref int bestQty) {
+        if (item.children == null || item.children.Length == 0) {
+            int qty = GlobalInventory.instance.Quantity(item);
+            if (qty > bestQty) { bestQty = qty; best = item; }
+            return;
+        }
+        foreach (Item child in item.children) Collect(child, ref best, ref bestQty);
     }
 }
 // Travel duration for market journeys: one quarter of a game day.
@@ -812,8 +924,13 @@ public class HaulToMarketTask : Task {
             // Items already delivered pre-save — no space reservation, no delivery step.
             objectives.AddLast(new TravelingObjective(this, MarketTransitTicks));
         } else {
-            // Re-issue the destination space reservation — reservations are not persisted
-            // across save/load so every task restores its own on load.
+            // Re-issue the destination space reservation. Save/load invariant: reservations
+            // are never persisted — on load, ItemStacks are freshly constructed (resAmount/
+            // resSpace = 0) and Reservables default to reserved=0. Non-resumable tasks are
+            // implicitly aborted at save, which is safe because their reservations vanish
+            // with the (recreated) world state. Only resumable tasks need to re-reserve here.
+            // Any new resumable task type MUST re-make every reservation its normal
+            // Initialize() made, or the task will run without backing reservations.
             ReserveSpace(marketInv, iq.item, iq.quantity);
             objectives.AddLast(new TravelingObjective(this, MarketTransitTicks));
             objectives.AddLast(new DeliverToInventoryObjective(this, iq, marketInv));
@@ -1072,6 +1189,7 @@ public class LeisureTask : Task {
     }
 
     public override bool Initialize() {
+        if (building == null || building.disabled || building.IsBroken) return false;
         Path bestPath = null;
 
         if (building.seatRes != null) {
@@ -1204,8 +1322,12 @@ public class FetchObjective : Objective {
             if (softFetch) { Complete(); return; }
             // If the animal already has a partial amount from a prior fetch attempt, deliver what it has
             // rather than failing and dropping everything — avoids a tight drop-and-re-fetch loop.
+            // Cap iq.quantity to what we actually fetched so downstream deliver objectives don't log
+            // spurious partial-fill mismatches (they compare moved against iq.quantity).
             if (Dest.Quantity(iq.item) > 0) {
-                Debug.Log($"{animal.aName} ({animal.job.name}) partial fetch: has {Dest.Quantity(iq.item)} {iq.item.name}, no more found — delivering partial");
+                int have = Dest.Quantity(iq.item);
+                Debug.Log($"{animal.aName} ({animal.job.name}) partial fetch: has {have}/{iq.quantity} {iq.item.name}, no more found — capping deliver target");
+                iq.quantity = have;
                 Complete(); return;
             }
             Fail(); Debug.Log($"{animal.aName} ({animal.job.name}) found no path to fetch {iq.item.name} at ({(int)animal.x},{(int)animal.y})");
@@ -1309,8 +1431,21 @@ public class DeliverToInventoryObjective : Objective {
         if (have <= 0) { Debug.Log($"{animal.aName} DeliverToInventoryObjective: missing {iq.item.name}"); Fail(); return; }
         int toDeliver = Math.Min(have, iq.quantity);
         int moved = animal.inv.MoveItemTo(TargetInv, iq.item, toDeliver);
-        if (moved < toDeliver)
-            Debug.Log($"{animal.aName} delivered {moved}/{toDeliver} {iq.item.name} to {TargetInv.displayName} — partial fill");
+        if (moved < toDeliver) {
+            // Diagnostic dump: destination-side partial fill means FreeSpace shrunk between reserve and
+            // delivery despite the reservation system. Dump every stack's reservation state so we can
+            // tell whether our resSpace was clamped, eaten by another task, or never set.
+            var sb = new System.Text.StringBuilder();
+            sb.Append($"{animal.aName} delivered {moved}/{toDeliver} {iq.item.name} to {TargetInv.displayName} — partial fill\n");
+            sb.Append($"  task={task} iq.quantity={iq.quantity} animal.inv.Quantity={have}\n");
+            sb.Append($"  TargetInv stacks ({TargetInv.invType} at ({TargetInv.x},{TargetInv.y})):\n");
+            for (int i = 0; i < TargetInv.nStacks; i++) {
+                var s = TargetInv.itemStacks[i];
+                string resOwner = s.resSpaceTask == this.task ? "OURS" : (s.resSpaceTask?.ToString() ?? "null");
+                sb.Append($"    [{i}] item={s.item?.name ?? "null"} qty={s.quantity}/{s.stackSize} resAmount={s.resAmount} resSpace={s.resSpace} resSpaceItem={s.resSpaceItem?.name ?? "null"} resSpaceTask={resOwner}\n");
+            }
+            Debug.LogWarning(sb.ToString());
+        }
         Complete();
     }
 }
@@ -1370,7 +1505,12 @@ public class DropObjective : Objective {
             animal.nav.Navigate(dropPath);
             animal.state = Animal.AnimalState.Moving;
         } else {
-            Debug.LogError($"{animal.aName} ({animal.job.name}) can't find a place to drop {item.name} at ({(int)animal.x},{(int)animal.y})!");
+            // No reachable drop target (boxed in, all neighbours full, etc.) — warn and
+            // back off for 3s so ChooseTask falls through to other branches instead of
+            // respawning DropTask every tick. Warning (not error) because this is a
+            // recoverable, expected-at-edge-of-colony condition.
+            Debug.LogWarning($"{animal.aName} ({animal.job.name}) can't find a place to drop {item.name} at ({(int)animal.x},{(int)animal.y}) — retrying in 3s");
+            animal.dropCooldownUntil = World.instance.timer + 3f;
             Fail();
         }
     }
@@ -1457,6 +1597,17 @@ public class ResearchObjective : Objective {
         animal.workProgress = 0f;
         animal.state = Animal.AnimalState.Working;
         // AnimalStateManager.HandleWorking calls task.Complete() when research finishes.
+    }
+}
+
+// Drives the "stand and repair" phase of a MaintenanceTask. The actual condition bump
+// happens in AnimalStateManager.HandleWorking (see the MaintenanceTask branch there) —
+// this objective just parks the animal in the Working state until that handler calls Complete().
+public class MaintenanceObjective : Objective {
+    public MaintenanceObjective(Task task) : base(task) {}
+    public override void Start() {
+        animal.workProgress = 0f;
+        animal.state = Animal.AnimalState.Working;
     }
 }
 

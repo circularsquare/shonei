@@ -33,15 +33,18 @@ public class LightSource : MonoBehaviour {
     // Cached effective sortingOrder used to build sortBucket. Resolved in OnEnable.
     private int _effectiveSort;
 
-    /// <summary>Normalized sort value (0–1) consumed by LightCircle.shader as _LightSortBucket.</summary>
+    // Normalized sort value (0–1) consumed by LightCircle.shader as _LightSortBucket.
     public float sortBucket => Mathf.Clamp01(_effectiveSort / 255f);
 
-    /// <summary>Set to the Reservoir that powers this light. Null = no fuel needed (always lit).</summary>
+    // Set to the Reservoir that powers this light. Null = no fuel needed (always lit).
     [HideInInspector] public Reservoir reservoir;
-    /// <summary>False when fuel has run out or outside the active time window.</summary>
+    // Owning Building, if any. Null for the sun and debug-cursor lights.
+    // When non-null, the LightSource pauses burn + emission while building.disabled is true.
+    [HideInInspector] public Building building;
+    // False when fuel has run out, outside the active time window, or owning building is disabled.
     public bool isLit = true;
 
-    /// <summary>When true, SunController modulates intensity by time of day (torches, fireplaces).</summary>
+    // When true, SunController modulates intensity by time of day (torches, fireplaces).
     [HideInInspector] public bool sunModulated = false;
 
     // Optional time gate: fuel only burns and light only shows within [activeStartHour, activeEndHour).
@@ -80,6 +83,13 @@ public class LightSource : MonoBehaviour {
 
     void Update() {
         if (reservoir == null) return; // no fuel needed — always lit
+
+        // Disabled or broken buildings: don't consume fuel, don't emit light.
+        // SunController zeros intensity for !isLit sun-modulated sources next frame.
+        if (building != null && (building.disabled || building.IsBroken)) {
+            isLit = false;
+            return;
+        }
 
         bool inWindow = IsInActiveWindow();
         // Only burn fuel while in the active time window and torch is emitting light.

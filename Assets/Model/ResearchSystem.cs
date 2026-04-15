@@ -259,13 +259,16 @@ public class ResearchSystem : MonoBehaviour {
     }
 
     // Called from Blueprint.Complete each time a building finishes construction (gameplay path only,
-    // not load/worldgen). Grants a flat ConstructionGain to the tech that gates the building.
+    // not load/worldgen). Grants ConstructionGain × scale to the tech that gates the building.
     // Passive gain is maintain-only: caps at 2×cost and cannot unlock a locked tech — which is fine,
     // because a locked building cannot be constructed in the first place.
-    public void AddConstructionProgress(string buildingName) {
+    //
+    // `scale` lets callers grant a fraction of the full per-build gain. Used by MaintenanceTask
+    // so a full 0→1 repair matches a fresh build, and a partial repair scales proportionally.
+    public void AddConstructionProgress(string buildingName, float scale = 1f) {
         if (!buildingToTechNode.TryGetValue(buildingName, out int id)) return;
         if (!nodeById.TryGetValue(id, out var node)) return;
-        progress[id] = Mathf.Min(GetProgress(id) + ConstructionGain, GetCap(node));
+        progress[id] = Mathf.Min(GetProgress(id) + ConstructionGain * scale, GetCap(node));
         CheckTransitions();
     }
 

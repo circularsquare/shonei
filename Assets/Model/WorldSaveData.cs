@@ -62,6 +62,10 @@ public class StructureSaveData {
     public bool mirrored;
     // Building-only: player-set disabled state. false on old saves (default).
     public bool disabled;
+    // Structure maintenance condition, 0..1. Set to 1.0 by GatherStructure when saving; old
+    // saves (field absent) deserialize as 0 which the restore path treats as "missing → default
+    // to 1.0" so pre-maintenance saves don't load every structure as broken.
+    public float condition;
 }
 
 public class BlueprintSaveData {

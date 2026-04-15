@@ -8,9 +8,7 @@ using UnityEngine;
 //
 // Scope: intentional design modifiers — tools, research, buildings, traits.
 // Out of scope: hunger/sleep penalties, which are biological and live on Animal.efficiency.
-public class ModifierSystem {
-    public static readonly ModifierSystem instance = new ModifierSystem();
-
+public static class ModifierSystem {
     // --- Constants ---
     public const float ToolWorkBonus               = 1.25f;
     public const float BaseAnimalSpeed             = 1.5f;
@@ -21,7 +19,7 @@ public class ModifierSystem {
 
     // Combined work speed multiplier for an animal (efficiency × tool bonus × skill level bonus).
     // Pass skill=null for tasks that have no associated skill domain (e.g. hauling).
-    public float GetWorkMultiplier(Animal animal, Skill? skill = null) {
+    public static float GetWorkMultiplier(Animal animal, Skill? skill = null) {
         bool hasTool = animal.toolSlotInv.itemStacks[0].item != null;
         float toolMult  = hasTool ? ToolWorkBonus : 1f;
         float skillMult = skill.HasValue ? animal.skills.GetBonus(skill.Value) : 1f;
@@ -30,7 +28,7 @@ public class ModifierSystem {
 
     // Base work efficiency before the skill bonus — used to calculate XP gain so that
     // the skill bonus doesn't accelerate its own XP accumulation.
-    public float GetBaseWorkEfficiency(Animal animal) {
+    public static float GetBaseWorkEfficiency(Animal animal) {
         bool hasTool = animal.toolSlotInv.itemStacks[0].item != null;
         float toolMult = hasTool ? ToolWorkBonus : 1f;
         return animal.efficiency * toolMult;
@@ -39,7 +37,7 @@ public class ModifierSystem {
     // Travel speed for an animal on its current tile.
     // Combines base speed, efficiency, road bonus, and tile-based penalties.
     // All factors are multiplicative.
-    public float GetTravelSpeedMultiplier(Animal animal) {
+    public static float GetTravelSpeedMultiplier(Animal animal) {
         float speed = BaseAnimalSpeed * animal.efficiency;
 
         Tile tile = animal.TileHere();
@@ -47,7 +45,8 @@ public class ModifierSystem {
 
         // Road bonus: per-tile only (not averaged with destination).
         // Doubles pathCostReduction to match the old two-endpoint system's feel.
-        float roadReduction = tile.structs[3]?.structType.pathCostReduction ?? 0f;
+        // Broken roads lose the bonus (EffectivePathCostReduction returns 0 when IsBroken).
+        float roadReduction = tile.structs[3]?.EffectivePathCostReduction ?? 0f;
         if (roadReduction > 0f)
             speed /= Mathf.Max(0.1f, 1.0f - roadReduction * 2f);
 
@@ -63,7 +62,7 @@ public class ModifierSystem {
     }
 
     // Recipe output multiplier (placeholder for future bonuses).
-    public float GetRecipeOutputMultiplier() {
+    public static float GetRecipeOutputMultiplier() {
         return 1f;
     }
 }

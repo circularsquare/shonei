@@ -66,5 +66,11 @@
         "name": "clothier",
         "jobType": "crafter",
         "defaultLocked": true
+    },{
+        "id": 16,
+        "name": "mender",
+        "jobType": "crafter",
+        "defaultSkill": "construction",
+        "skillWeights": { "construction": 1.0 }
     }
 ]

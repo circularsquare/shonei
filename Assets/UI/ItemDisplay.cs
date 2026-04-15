@@ -12,26 +12,29 @@ using System.Linq;
 //   Market  — targets visible, toggle hidden (used when market overwrites the global panel)
 public class ItemDisplay : MonoBehaviour {
     public enum DisplayMode { Global, Storage, Market }
-    /// <summary>Allow state for the tri-state toggle in Storage mode.</summary>
+    // Allow state for the tri-state toggle in Storage mode.
     public enum AllowState { Allowed, Disallowed, Mixed }
 
+    // Cross-class contract: TradingPanel/StoragePanel assign item and read itemText/quantityText directly.
     public Item item;
-    public ItemIcon itemIcon;
     public TMPro.TextMeshProUGUI itemText;      // item name only (e.g. "silver")
     public TMPro.TextMeshProUGUI quantityText;  // current quantity, shown immediately left of the slash
-    public TMPro.TMP_InputField targetInput;    // user-editable target field (Global/Market modes)
-    public GameObject toggleGo;  // allow/disallow button with Image child
-    public Sprite spriteAllowed;
-    public Sprite spriteDisallowed;
-    public Sprite spriteMixed;   // shown when selection has mixed allow states
+
+    // Inspector-wired internals.
+    [SerializeField] ItemIcon itemIcon;
+    [SerializeField] TMPro.TMP_InputField targetInput;    // user-editable target field (Global/Market modes)
+    [SerializeField] GameObject toggleGo;  // allow/disallow button with Image child
+    [SerializeField] Sprite spriteAllowed;
+    [SerializeField] Sprite spriteDisallowed;
+    [SerializeField] Sprite spriteMixed;   // shown when selection has mixed allow states
     private Image _allowImage;
-    public GameObject targetUpGo;
-    public GameObject targetDownGo;
-    public GameObject targetTextGo;
+    [SerializeField] GameObject targetUpGo;
+    [SerializeField] GameObject targetDownGo;
+    [SerializeField] GameObject targetTextGo;
     [System.NonSerialized] public bool open = true;
-    public Sprite spriteOpen;
-    public Sprite spriteCollapsed;
-    public Sprite spriteLeaf; // no children
+    [SerializeField] Sprite spriteOpen;
+    [SerializeField] Sprite spriteCollapsed;
+    [SerializeField] Sprite spriteLeaf; // no children
     private Image dropdownImage;
 
     // --- configurable per-panel fields (set at instantiation, defaults preserve existing behavior) ---
@@ -66,7 +69,7 @@ public class ItemDisplay : MonoBehaviour {
         if (toggleGo != null) _allowImage = toggleGo.GetComponent<Image>();
     }
 
-    /// <summary>Configures which UI elements are visible based on the display mode.</summary>
+    // Configures which UI elements are visible based on the display mode.
     public void SetDisplayMode(DisplayMode mode) {
         displayMode = mode;
         // Market mode hides targets on group items — only leaf items hold meaningful market targets
@@ -97,9 +100,9 @@ public class ItemDisplay : MonoBehaviour {
     private bool HasOpenableChildren() =>
         item != null && item.children != null && System.Array.Exists(item.children, c => c.IsDiscovered());
 
-    /// <summary>Returns whether a group item should default to open.
-    /// Groups with 0–1 discovered children start collapsed to reduce visual noise.
-    /// Shared by both the global panel (InventoryController) and the StoragePanel allow tree.</summary>
+    // Returns whether a group item should default to open.
+    // Groups with 0–1 discovered children start collapsed to reduce visual noise.
+    // Shared by both the global panel (InventoryController) and the StoragePanel allow tree.
     public static bool DefaultOpenForGroup(Item item) {
         if (item == null || item.children == null) return true; // leaf items: doesn't matter
         int discovered = 0;
@@ -199,7 +202,7 @@ public class ItemDisplay : MonoBehaviour {
         if (targetInventory != null) TradingPanel.instance?.UpdateMarketTree();
     }
 
-    /// <summary>Refreshes the allow button sprite to reflect the current tri-state across all selected inventories.</summary>
+    // Refreshes the allow button sprite to reflect the current tri-state across all selected inventories.
     public void LoadAllowed(){
         if (item == null) return; // Start() hasn't run yet
         // _allowImage may not be cached yet if StoragePanel sets item before Start() runs; try to fetch it now
@@ -230,8 +233,8 @@ public class ItemDisplay : MonoBehaviour {
         return anyAllowed ? AllowState.Allowed : AllowState.Disallowed;
     }
 
-    /// <summary>Returns the allow state for this item within a single inventory.
-    /// For group items, Mixed if some discovered children are allowed and some aren't.</summary>
+    // Returns the allow state for this item within a single inventory.
+    // For group items, Mixed if some discovered children are allowed and some aren't.
     private AllowState GetItemAllowState(Inventory inv) {
         if (item.children == null || item.children.Length == 0)
             return inv.allowed[item.id] ? AllowState.Allowed : AllowState.Disallowed;
@@ -268,8 +271,8 @@ public class ItemDisplay : MonoBehaviour {
         }
     }
 
-    /// <summary>Applies an absolute allow state to an item (and children if group) without toggle semantics.
-    /// Used when fanning a primary inventory's toggle result out to secondary selected inventories.</summary>
+    // Applies an absolute allow state to an item (and children if group) without toggle semantics.
+    // Used when fanning a primary inventory's toggle result out to secondary selected inventories.
     private void ApplyAllowState(Inventory inv, Item item, bool state) {
         if (item.children != null && item.children.Length > 0) {
             SetAllowStateRecursive(inv, item, state);
@@ -289,7 +292,7 @@ public class ItemDisplay : MonoBehaviour {
                 SetAllowStateRecursive(inv, child, state);
     }
 
-    /// <summary>If every discovered child of parent is allowed, allow the whole group.</summary>
+    // If every discovered child of parent is allowed, allow the whole group.
     void CheckAutoAllowParent(Inventory inv, Item parent){
         if (parent.children == null) return;
         foreach (Item sibling in parent.children)

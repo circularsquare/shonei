@@ -122,12 +122,27 @@ public class Inventory{
         // Skipped during ClearWorld: bulk teardown tears everything down together, so dangling
         // reservations are expected and not a bug.
         if (!WorldController.isClearing) {
+            bool anyRes = false;
             foreach (ItemStack stack in itemStacks) {
                 if (stack == null) continue;
-                if (stack.resAmount > 0)
+                if (stack.resAmount > 0) {
                     Debug.LogWarning($"Inventory.Destroy: {invType} '{displayName}' at ({x},{y}) destroyed while stack reserved — item={stack.item?.name} qty={stack.quantity} resAmount={stack.resAmount} resTask={stack.resTask} animal={stack.resTask?.animal?.aName}");
-                if (stack.resSpace > 0)
+                    anyRes = true;
+                }
+                if (stack.resSpace > 0) {
                     Debug.LogWarning($"Inventory.Destroy: {invType} '{displayName}' at ({x},{y}) destroyed while stack space reserved — resSpaceItem={stack.resSpaceItem?.name} resSpace={stack.resSpace} resSpaceTask={stack.resSpaceTask} animal={stack.resSpaceTask?.animal?.aName}");
+                    anyRes = true;
+                }
+            }
+            // When a reserved inv is torn down, dump the immediate caller stack so we can identify
+            // which code path destroyed it (e.g. FallIfUnstandable vs FetchObjective vs something else).
+            if (anyRes) {
+                string[] lines = System.Environment.StackTrace.Split('\n');
+                int startIdx = System.Array.FindIndex(lines, l => l.Contains("Inventory.Destroy"));
+                int from = startIdx >= 0 ? startIdx + 1 : 0;
+                int to = System.Math.Min(from + 4, lines.Length);
+                string trace = string.Join(" <- ", lines[from..to]).Replace("\r", "").Trim();
+                Debug.LogWarning($"  destroyer: {trace}");
             }
         }
         foreach (ItemStack stack in itemStacks) { stack.quantity = 0; stack.resAmount = 0; stack.resSpace = 0; stack.resSpaceItem = null; }
@@ -236,6 +251,13 @@ public class Inventory{
             Inventory dead = destroyed ? this : otherInv;
             string role = destroyed ? "source" : "destination";
             Debug.LogWarning($"Inventory.MoveItemTo called with destroyed {role} ({dead?.invType} '{dead?.displayName}' at ({dead?.x},{dead?.y})) — stale reference (item={item?.name}, qty={quantity}). Returning 0.");
+            // Dump immediate caller so we can identify which objective hit the stale ref.
+            string[] lines = System.Environment.StackTrace.Split('\n');
+            int startIdx = System.Array.FindIndex(lines, l => l.Contains("Inventory.MoveItemTo"));
+            int from = startIdx >= 0 ? startIdx + 1 : 0;
+            int to = System.Math.Min(from + 4, lines.Length);
+            string trace = string.Join(" <- ", lines[from..to]).Replace("\r", "").Trim();
+            Debug.LogWarning($"  caller: {trace}");
             return 0;
         }
         // Group items (e.g. "wood") can't exist as physical stacks — resolve to the leaf via GetLeafStack.
@@ -597,7 +619,7 @@ public class Inventory{
             }
         }
     }
-    /// <summary>Toggles item and all its descendant leaf items together.</summary>
+    // Toggles item and all its descendant leaf items together.
     public void ToggleAllowItemWithChildren(Item item){
         bool newState = !allowed[item.id];
         SetAllowRecursive(item, newState);
@@ -609,7 +631,7 @@ public class Inventory{
             foreach (Item child in item.children)
                 SetAllowRecursive(child, state);
     }
-    /// <summary>Allow all compatible items in this inventory.</summary>
+    // Allow all compatible items in this inventory.
     public void AllowAll(){
         foreach (Item item in Db.itemsFlat) {
             if (item == null) continue;
@@ -617,14 +639,14 @@ public class Inventory{
             AllowItem(item);
         }
     }
-    /// <summary>Disallow all items in this inventory.</summary>
+    // Disallow all items in this inventory.
     public void DenyAll(){
         foreach (Item item in Db.itemsFlat) {
             if (item == null) continue;
             DisallowItem(item);
         }
     }
-    /// <summary>Copies allowed state from another inventory's allowed dictionary.</summary>
+    // Copies allowed state from another inventory's allowed dictionary.
     public void PasteAllowed(Dictionary<int, bool> source){
         foreach (var kvp in source) {
             if (!allowed.ContainsKey(kvp.Key)) continue;

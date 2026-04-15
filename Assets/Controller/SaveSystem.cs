@@ -19,7 +19,11 @@ using Newtonsoft.Json;
 //   2. Add a Gather* method in the SAVE section and call it from the
 //      appropriate parent (GatherSaveData, GatherTile, GatherAnimal, etc.)
 //   3. Add a Restore* method in the LOAD section and call it from the
-//      appropriate parent (ApplySaveData, RestoreTile, etc.)
+//      appropriate parent. Place the call in the matching phase of
+//      ApplySaveData — see SPEC-lifecycle.md "Load phase ordering" and the
+//      `// ── Phase N: <name> ──` headers in ApplySaveData itself.
+//      Common slots: world skeleton (1), structures (2), contents (3),
+//      spatial caches (4), configuration/knobs (5), agents (7), view (9).
 //   4. Add a reset line in ResetSystemState() so LoadDefault() also clears it.
 // -----------------------------------------------------------------------
 // Current saveable state checklist:
@@ -41,7 +45,7 @@ using Newtonsoft.Json;
 public class SaveSystem : MonoBehaviour {
     public static SaveSystem instance { get; protected set; }
 
-    /// <summary>Name of the slot that was last loaded or saved. Null for a fresh/reset world.</summary>
+    // Name of the slot that was last loaded or saved. Null for a fresh/reset world.
     public string currentSlot { get; private set; }
 
     string SaveDir {
@@ -183,7 +187,7 @@ public class SaveSystem : MonoBehaviour {
     }
 
     StructureSaveData GatherStructure(Structure s) {
-        var ssd = new StructureSaveData { x = s.x, y = s.y, typeName = s.structType.name, mirrored = s.mirrored };
+        var ssd = new StructureSaveData { x = s.x, y = s.y, typeName = s.structType.name, mirrored = s.mirrored, condition = s.condition };
         if (s is Plant plant) {
             ssd.plantAge         = plant.age;
             ssd.plantGrowthStage = plant.growthStage;
@@ -329,32 +333,18 @@ public class SaveSystem : MonoBehaviour {
         WorldController.instance.ClearWorld();
         ResetSystemState();
         ApplySaveData(data);
-        SkyExposure.InitializeWorld(World.instance);
-        BackgroundTile.InitializeWorld(World.instance);
-
-        if (data.research != null && ResearchSystem.instance != null) {
-            var rs = ResearchSystem.instance;
-            if (data.research.progress != null)
-                foreach (var kv in data.research.progress)
-                    rs.progress[kv.Key] = kv.Value;
-            rs.activeResearchId = data.research.activeResearchId;
-            rs.unlockedIds.Clear();
-            if (data.research.unlockedIds != null)
-                foreach (int id in data.research.unlockedIds)
-                    rs.unlockedIds.Add(id);
-            rs.maintainIds.Clear();
-            if (data.research.maintainIds != null)
-                foreach (int id in data.research.maintainIds)
-                    rs.maintainIds.Add(id);
-            rs.CheckTransitions();
-            rs.ReapplyAllEffects();
-        }
-
         StartCoroutine(PostLoadInit());
     }
 
+    // ApplySaveData runs in a fixed phase order — see SPEC-lifecycle.md "Load phase ordering".
+    // The load-bearing rule: state must be restored before any cross-system observer runs.
+    // When adding new state, place it in the matching phase, not at the convenient end.
     void ApplySaveData(WorldSaveData save) {
         World world = World.instance;
+
+        // ── Phase 1: World skeleton ────────────────────────────────────────────────────
+        // Tile types, water, walls, world timer. Pure data on the world grid; nothing
+        // downstream queries observe these directly yet.
         world.timer = save.timer;
 
         if (save.waterLevels != null) {
@@ -386,7 +376,10 @@ public class SaveSystem : MonoBehaviour {
             }
         }
 
-        // Blueprints before structures so deconstruct blueprints can coexist with buildings
+        // ── Phase 2: Structures ────────────────────────────────────────────────────────
+        // Blueprints before structures so deconstruct blueprints can coexist with buildings.
+        // Building constructors create their own storage inventories with default state
+        // (e.g. Market.targets all-zeros) — Phase 5 overrides those defaults.
         if (save.blueprints != null)
             foreach (BlueprintSaveData bsd in save.blueprints)
                 RestoreBlueprint(bsd);
@@ -395,7 +388,17 @@ public class SaveSystem : MonoBehaviour {
             foreach (StructureSaveData ssd in save.structures)
                 RestoreStructure(ssd);
 
-        // Restore tile inventories after structures (storage inventories are created by Building constructor)
+        // Deconstruct blueprints tint their underlying structure's SR red. That tint can only be
+        // applied once the structure itself exists, so re-run RefreshColor after Phase 2's
+        // structure restore. No-op for construct blueprints (RefreshColor is idempotent).
+        foreach (Blueprint bp in StructController.instance.GetBlueprints())
+            if (bp.state == Blueprint.BlueprintState.Deconstructing)
+                bp.RefreshColor();
+
+        // ── Phase 3: Contents ──────────────────────────────────────────────────────────
+        // Fill tile inventories with their saved item stacks. Structure storage contents
+        // are filled inside RestoreStructure (Phase 2), since the storage inventory is
+        // owned by the Building. This pass covers floor/loose-tile inventories.
         if (save.tiles != null) {
             foreach (TileSaveData tsd in save.tiles) {
                 Tile tile = world.GetTileAt(tsd.x, tsd.y);
@@ -404,18 +407,18 @@ public class SaveSystem : MonoBehaviour {
             }
         }
 
+        // ── Phase 4: Spatial indexes ───────────────────────────────────────────────────
+        // Derived spatial caches that depend on final tile + structure geometry.
+        // Order matches WorldController.GenerateDefault for symmetry between paths.
+        SkyExposure.InitializeWorld(world);
+        BackgroundTile.InitializeWorld(world);
         world.graph.Initialize();
 
-        // Register all WOM orders in one pass now that the world is fully restored and the
-        // pathfinding graph is built. Reconcile scans plants, blueprints, floor stacks,
-        // workstations, labs, fuel buildings, markets, and storage evictions.
-        // silent=true suppresses warnings (every registration is expected during load).
-        WorkOrderManager.instance?.Reconcile(silent: true);
-
-        if (save.animals != null)
-            foreach (AnimalSaveData asd in save.animals)
-                AnimalController.instance.LoadAnimal(asd);
-
+        // ── Phase 5: Configuration ─────────────────────────────────────────────────────
+        // "Knob state" — overrides applied on top of defaults set by constructors. This
+        // MUST happen before Phase 6 (observers), since observers read configuration to
+        // decide what work to register. Bug history: market HaulFrom orders were
+        // registered against default zero-targets when this phase ran after Reconcile.
         if (save.globalItemTargets != null && InventoryController.instance != null) {
             foreach (var kv in save.globalItemTargets)
                 if (Db.itemByName.TryGetValue(kv.Key, out Item item))
@@ -428,15 +431,44 @@ public class SaveSystem : MonoBehaviour {
                     MarketBuilding.instance.storage.targets[item] = kv.Value;
         }
 
-        InventoryController.instance.ValidateGlobalInventory();
-
         var rp = RecipePanel.instance;
         if (rp != null && save.disabledRecipeIds != null)
             foreach (int id in save.disabledRecipeIds)
                 rp.SetAllowed(id, false);
 
+        RestoreResearch(save.research);
+
         WeatherSystem.instance?.RestoreState(save.isRaining);
 
+        // ── Phase 6: Observers ─────────────────────────────────────────────────────────
+        // Register all WOM orders in one pass now that the world + configuration is final
+        // and the pathfinding graph is built. Reconcile scans plants, blueprints, floor
+        // stacks, workstations, labs, fuel buildings, markets, and storage evictions.
+        // silent=true suppresses warnings (every registration is expected during load).
+        WorkOrderManager.instance?.Reconcile(silent: true);
+
+        // Rebuild MaintenanceSystem bookkeeping (registered + broken sets) from restored
+        // condition values. Runs after Reconcile so the WOM Maintenance orders it registers
+        // are consistent with the sets MaintenanceSystem tracks. Tint refresh catches any
+        // structure that loaded already broken.
+        MaintenanceSystem.instance?.RebuildFromWorld();
+        foreach (Structure s in StructController.instance.GetStructures())
+            if (s != null) s.RefreshTint();
+
+        // ── Phase 7: Agents ────────────────────────────────────────────────────────────
+        // LoadAnimal stages save data on Animal.pendingSaveData. Animal.Start() consumes
+        // it on frame 2 — see PostLoadInit and SPEC-lifecycle.md.
+        if (save.animals != null)
+            foreach (AnimalSaveData asd in save.animals)
+                AnimalController.instance.LoadAnimal(asd);
+
+        // ── Phase 8: Validation ────────────────────────────────────────────────────────
+        // Cross-system audits that need every prior phase to have completed. Animal
+        // inventories count toward global totals, so this must run after Phase 7.
+        InventoryController.instance.ValidateGlobalInventory();
+
+        // ── Phase 9: View ──────────────────────────────────────────────────────────────
+        // Camera and UI panel state. Pure presentation; no game logic depends on it.
         var cam = Camera.main;
         if (cam != null) {
             // Position first, then zoom: SetZoomPPU clamps against the new half-height,
@@ -452,6 +484,28 @@ public class SaveSystem : MonoBehaviour {
         }
     }
 
+    // Phase 5 helper — restores research progress and re-applies effects (building/job
+    // unlocks). Lives inside ApplySaveData so any future effect that touches building
+    // state is in place before Reconcile registers orders against it.
+    void RestoreResearch(ResearchSaveData rsd) {
+        if (rsd == null || ResearchSystem.instance == null) return;
+        var rs = ResearchSystem.instance;
+        if (rsd.progress != null)
+            foreach (var kv in rsd.progress)
+                rs.progress[kv.Key] = kv.Value;
+        rs.activeResearchId = rsd.activeResearchId;
+        rs.unlockedIds.Clear();
+        if (rsd.unlockedIds != null)
+            foreach (int id in rsd.unlockedIds)
+                rs.unlockedIds.Add(id);
+        rs.maintainIds.Clear();
+        if (rsd.maintainIds != null)
+            foreach (int id in rsd.maintainIds)
+                rs.maintainIds.Add(id);
+        rs.CheckTransitions();
+        rs.ReapplyAllEffects();
+    }
+
     void RestoreStructure(StructureSaveData ssd) {
         if (!Db.structTypeByName.ContainsKey(ssd.typeName)) {
             Debug.LogError("Unknown struct type on load: " + ssd.typeName); return;
@@ -465,6 +519,11 @@ public class SaveSystem : MonoBehaviour {
         if (structure == null) {
             Debug.LogError("Structure.Create returned null on load: " + ssd.typeName); return;
         }
+
+        // Condition: treat 0 (old saves — field absent) as "missing" → default to 1.0. Saved
+        // values are always > 0 in practice since MaintenanceSystem clamps at 0 and we write
+        // the current value regardless.
+        structure.condition = ssd.condition > 0f ? Mathf.Clamp01(ssd.condition) : 1.0f;
 
         // Restore subclass-specific state that Create() can't know about.
         if (structure is Plant plant) {
@@ -548,7 +607,6 @@ public class SaveSystem : MonoBehaviour {
         if (bp.state == Blueprint.BlueprintState.Deconstructing && bp.tile.building?.storage != null)
             bp.tile.building.storage.locked = true;
         // WOM orders are registered by Reconcile(silent:true) at the end of ApplySaveData(), once the graph is fully built.
-        // RefreshColor() above may also fire RegisterOrdersIfUnsuspended() — dedup guards in Register* make it harmless.
     }
 
     // Restores a floor inventory from save data. Storage inventories are restored in RestoreStructure.

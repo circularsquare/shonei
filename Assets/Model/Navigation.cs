@@ -281,9 +281,10 @@ public class Graph {
         // Vertical movement — only ladders produce direct vertical edges now;
         // cliff climbing goes through waypoints and is handled above.
         if (Math.Abs(to.wy - from.wy) > 0.1f) return (2.0f, 1.0f);
-        // Horizontal — road tiles reduce cost from both sides (length always 1)
-        float fromR = from.tile?.structs[3]?.structType.pathCostReduction ?? 0f;
-        float toR   = to.tile?.structs[3]?.structType.pathCostReduction   ?? 0f;
+        // Horizontal — road tiles reduce cost from both sides (length always 1).
+        // Broken roads lose their bonus (EffectivePathCostReduction returns 0 when IsBroken).
+        float fromR = from.tile?.structs[3]?.EffectivePathCostReduction ?? 0f;
+        float toR   = to.tile?.structs[3]?.EffectivePathCostReduction   ?? 0f;
         float baseCost = Mathf.Max(0.1f, 1.0f - fromR - toR);
         // Water on either endpoint tile halves traversal speed (doubles cost).
         bool inWater = (from.tile != null && from.tile.water > 0)

@@ -8,12 +8,58 @@ using System.Runtime.Serialization;
 
 
 public class Structure {
+    // ── Maintenance constants ──────────────────────────────────────────
+    // Condition is a 0-1 float tracked on every non-plant structure with construction costs.
+    // Below BreakThreshold the structure is non-functional (craft halts, road bonus lost,
+    // light sources go dark, etc.); below RegisterThreshold a WOM Maintenance order becomes
+    // active so menders will come repair it. A single visit restores up to MaxRepairPerTask.
+    public const float BreakThreshold     = 0.5f;   // below → IsBroken, functionality gated off
+    public const float RegisterThreshold  = 0.75f;  // below → WOM order active, mender may come
+    public const float MaxRepairPerTask   = 0.40f;  // cap on condition restored in one mender visit
+    public const float RepairWorkPerTick  = 0.05f;  // base condition gained per tick while working
+    public const float RepairCostFraction = 0.25f;  // full 0→1 repair = ¼ of construction cost
+    public const int   DaysToBreak        = 30;     // in-game days from 1.0 → BreakThreshold (0.5)
+
     public GameObject go;
     public int x;
     public int y;
     public StructType structType;
     public Sprite sprite;
     public SpriteRenderer sr;
+
+    // ── Maintenance state ──────────────────────────────────────────────
+    // 0.0 = fully broken, 1.0 = pristine. Decays in MaintenanceSystem.Tick(); restored by menders.
+    // Persisted via StructureSaveData.condition. Default 1.0 also covers old saves.
+    public float condition = 1.0f;
+
+    // Opt-in gate: plants, nav-only structures (platform/stairs/ladder, via noMaintenance JSON flag),
+    // and zero-cost structures are excluded from the maintenance system entirely.
+    public bool NeedsMaintenance =>
+        !structType.noMaintenance
+        && !structType.isPlant
+        && structType.ncosts != null
+        && structType.ncosts.Length > 0;
+
+    // Non-functional when broken. Gates craft/research/supply orders, road bonuses, light emission,
+    // decoration happiness, leisure seat availability, and house sleep assignment.
+    public bool IsBroken => NeedsMaintenance && condition < BreakThreshold;
+
+    // WOM Maintenance order's isActive lambda reads this — order goes idle once repaired past 75%.
+    public bool WantsMaintenance => NeedsMaintenance && condition < RegisterThreshold;
+
+    // Used by Navigation.cs and ModifierSystem.cs for road speed bonus — returns 0 when broken
+    // so neglected roads stop giving a path-cost discount / movement bonus.
+    public float EffectivePathCostReduction => IsBroken ? 0f : structType.pathCostReduction;
+
+    // Re-applies the sprite color based on broken state. Called from MaintenanceSystem on
+    // threshold crossings. Deconstruct blueprints override this via their own tint pass
+    // (Blueprint.CreateDeconstructBlueprint applies red/orange after the structure is
+    // replaced), so the deconstruct tint wins automatically.
+    public virtual void RefreshTint() {
+        if (sr == null) return;
+        sr.color = IsBroken ? brokenTint : Color.white;
+    }
+    static readonly Color brokenTint = new Color(0.75f, 0.75f, 0.75f, 1f);
     public Tile tile => World.instance.GetTileAt(x, y);
     public Tile workTile => World.instance.GetTileAt(
         x + (mirrored ? (structType.nx - 1 - structType.workTileX) : structType.workTileX),
@@ -43,9 +89,12 @@ public class Structure {
     // sprite. Null when none found. Registered with WaterController by StructController.Place().
     public List<Vector2Int> waterPixelOffsets { get; private set; }
 
-    // Returns false to suppress the WOM craft order for this building without removing it.
-    // Override in subclasses to add runtime conditions (e.g. pump needs water below).
-    public virtual bool IsActive() => true;
+    // "World conditions allow this structure to be worked on" gate for Structure subclasses.
+    // Returns false to suppress the WOM craft order without removing it. Combined with
+    // `Building.disabled` at the call site as `!disabled && ConditionsMet()`.
+    // Override in subclasses for runtime conditions (e.g. PumpBuilding requires water below).
+    // Blueprint mirrors this method by convention (it's a sibling class, not a Structure subclass).
+    public virtual bool ConditionsMet() => true;
 
     // Called by StructController after Place(). Override to register WOM orders or other post-placement setup.
     // Not called during load or world generation — Reconcile() handles order registration on both paths.
@@ -131,6 +180,8 @@ public class Structure {
     public virtual void Destroy(){
         if (waterPixelOffsets != null)
             WaterController.instance?.UnregisterDecorativeWater(this);
+        WorkOrderManager.instance?.RemoveMaintenanceOrders(this);
+        MaintenanceSystem.instance?.ForgetStructure(this);
         StructController.instance.Remove(this);
         int depth = structType.depth;
         for (int i = 0; i < structType.nx; i++) {
@@ -151,10 +202,6 @@ public class Structure {
 }
 
 
-/// <summary>
-/// Per-tile constraint checked by StructPlacement.CanPlaceHere before allowing placement.
-/// dx/dy offsets are relative to the placement anchor tile.
-/// </summary>
 // Work tile offset: a position within a multi-tile building where an animal can stand to interact.
 // Used by nworkTiles[] on StructType. Mirroring is applied at runtime by Structure.WorkTileAt().
 public class WorkTileOffset {
@@ -198,9 +245,13 @@ public class StructType {
     public string category {get; set;} // build menu category: "structures", "plants", "production", "storage"
     public bool defaultLocked {get; set;} // true = locked; hidden from build menu until unlocked via research
     public int depleteAt {get; set;} // 0 = never depletes; >0 = deplete after this many uses
+    // Maintenance opt-out. Set true on purely-structural nav pieces (platform, stairs, ladder)
+    // so they never break — otherwise neglected infrastructure would cut mice off from the world.
+    // All other structures with construction costs auto-opt-in (see Structure.NeedsMaintenance).
+    public bool noMaintenance {get; set;}
     public float pathCostReduction {get; set;} // subtracted from edge cost for horizontal moves (roads: 0.1)
     public bool solidTop {get; set;} // can animals stand on top of this structure?
-    public bool isWorkstation {get; set;} // true = registers a WOM Craft order when placed; use IsActive() to gate it
+    public bool isWorkstation {get; set;} // true = registers a WOM Craft order when placed; use ConditionsMet() to gate it
     public int workTileX {get; set;} // tile offset to the interaction/nav tile (default 0,0 = anchor)
     public int workTileY {get; set;}
     public WorkTileOffset[] nworkTiles {get; set;} // multiple work positions (e.g. fireplace seats); populated from legacy workTileX/Y if absent
@@ -258,7 +309,7 @@ public class StructType {
         if (storageStackSize > 0){ storageStackSize *= 100; } // convert liang → fen
         costs = new ItemQuantity[ncosts.Length];
         for (int i = 0; i < ncosts.Length; i++){
-            costs[i] = new ItemQuantity(ncosts[i].name, (int)Math.Round(ncosts[i].quantity * 100));
+            costs[i] = new ItemQuantity(ncosts[i].name, ItemStack.LiangToFen(ncosts[i].quantity));
         }
         if (njob != null){
             job = Db.jobByName[njob];
@@ -270,7 +321,7 @@ public class StructType {
             nworkTiles = new[] { new WorkTileOffset { dx = workTileX, dy = workTileY } };
         // Fuel inventory: convert liang → fen; resolve fuel item reference.
         if (hasFuelInv) {
-            if (fuelCapacity > 0) fuelCapacity = (int)Math.Round(fuelCapacity * 100f);
+            if (fuelCapacity > 0) fuelCapacity = ItemStack.LiangToFen(fuelCapacity);
             if (fuelItemName != null && Db.itemByName.ContainsKey(fuelItemName))
                 fuelItem = Db.itemByName[fuelItemName];
             else

@@ -114,7 +114,7 @@ public class TileType {
         if (nproducts != null){
             products = new ItemQuantity[nproducts.Length];
             for (int i = 0; i < nproducts.Length; i++){
-                products[i] = new ItemQuantity(nproducts[i].name, (int)Math.Round(nproducts[i].quantity * 100));
+                products[i] = new ItemQuantity(nproducts[i].name, ItemStack.LiangToFen(nproducts[i].quantity));
             }
         }
     }

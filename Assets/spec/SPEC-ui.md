@@ -152,7 +152,7 @@ Each widget: icon (hover → skill name tooltip) + "lv{n}" label + progress bar.
 Sprites loaded from `Resources/Sprites/Skills/{skillname}` with `Sprites/Skills/default` fallback.
 
 ### StructureInfoView controls
-- **Enable/Disable** toggle — sets `Building.disabled`. Only shown when `disabled` actually gates behaviour: workstations (craft/research via `isActive`), reservoir buildings (fuel supply via `isActive`), and leisure buildings (animals skip disabled ones in `Animal.TryPickLeisure`). Hidden for storage-only, beds, decorative, plants, and base structures.
+- **Enable/Disable** toggle — sets `Building.disabled`. Only shown when `disabled` actually gates behaviour: workstations (craft/research via `isActive`), reservoir buildings (fuel supply via `isActive`, plus `LightSource.Update` skips burn and forces `isLit=false` while disabled — so light goes dark and fuel stops draining), and leisure buildings (animals skip disabled ones in `Animal.TryPickLeisure`). Hidden for storage-only, beds, decorative, plants, and base structures.
 - **Priority +/-** (blueprints only) — adjusts `Blueprint.priority`.
 - **Worker slots +/-** (multi-slot workstations only) — adjusts `Reservable.effectiveCapacity`. Priority and worker values render on dedicated TMP labels next to their buttons, not in the main text.
 - **Harvest flag toggle** (plants only) — calls `Plant.SetHarvestFlagged`, which registers or unregisters the harvest WOM order and toggles the overlay sprite. Label flips between "flag for harvest" / "unflag harvest".

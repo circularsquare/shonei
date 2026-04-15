@@ -74,6 +74,8 @@ JSON fields on StructType:
 - `fuelCapacity: float` — max fen (liang in JSON, × 100 in `OnDeserialized`)
 - `fuelBurnRate: float` — liang/day consumed; `Reservoir.Burn()` converts to fen/sec using `World.ticksInDay`
 
+`LightSource` holds a back-ref to its owning `Building` (`ls.building`, set in `Building.cs` when the light is attached). While `building.disabled` is true, `LightSource.Update()` skips `Reservoir.Burn()` and sets `isLit=false` — so disabling a torch immediately stops fuel consumption and emission. Refuel hauls are also gated off via the WOM `isActive` check, so a disabled fuel building neither receives nor consumes fuel.
+
 `isBuilding: true` on StructType makes StructController use the `Building` class for any depth (e.g. foreground torches at depth 2). `tile.building` (= `structs[0] as Building`) is still depth-0 specific; fuel buildings at other depths are accessed directly via task/WOM references.
 
 - Items decay over time (Floor fastest; Animal/Market never; Equip at normal rate)
@@ -152,7 +154,7 @@ Volume is conserved exactly (integer math, explicit transfers).
 - Surface mask texture (`TextureFormat.R8`, 1600×800 for 100×50 world): rebuilt on the CPU every 0.2 s (sim tick only). Encodes: `0`=no water, `127`=interior water, `255`=surface pixel (any of 8 orthogonal+diagonal neighbours is open air — non-solid, non-water). Water touching solid walls is NOT highlighted.
 - World-spanning `WaterSprite` GameObject: 1×1 white pixel sprite at PPU=1, scaled to `(nx, ny)` Unity units, placed at `(−0.5, −0.5)`. sortingOrder=2. Must be on the **`Water`** Unity layer, excluded from `LightFeature` litLayers and SkyCamera culling mask.
 
-**Pump draining**: `PumpBuilding` (`Assets/Components/PumpBuilding.cs`) is a depth-0 Building subclass for the pump (id 140, nx=2). It overrides `IsActive()` to suppress the WOM Craft order when the source tile has no water. After each completed craft round, `AnimalStateManager` calls `pump.DrainForCraft()`, which subtracts `WaterDrainPerRound` units from the tile at `(x+1, y-1)` (directly below the pump head). Drain only happens when a mouse is actively pumping — not on a passive timer. `WaterDrainPerRound` is a private const; see the file for the current value.
+**Pump draining**: `PumpBuilding` (`Assets/Components/PumpBuilding.cs`) is a depth-0 Building subclass for the pump (id 140, nx=2). It overrides `ConditionsMet()` to suppress the WOM Craft order when the source tile has no water. After each completed craft round, `AnimalStateManager` calls `pump.DrainForCraft()`, which subtracts `WaterDrainPerRound` units from the tile at `(x+1, y-1)` (directly below the pump head). Drain only happens when a mouse is actively pumping — not on a passive timer. `WaterDrainPerRound` is a private const; see the file for the current value.
 
 **Mouse speed**: Water on either endpoint of a horizontal nav edge doubles the A* edge cost (→ 0.5× speed). Applied in `Graph.GetEdgeInfo()`.
 
@@ -209,6 +211,119 @@ Workstations don't use `Structure.res` — the WOM Craft order's `res` is the so
 | `ItemStack.resAmount` | Per-stack int counter (source) | Prevents two tasks from fetching the same items. Reserved via `Task.ReserveStack()` / `FetchAndReserve()`. Stale reservations expire after 60s via `Inventory.TickUpdate()`. |
 | `ItemStack.resSpace` | Per-stack int counter (destination) | Prevents two tasks from delivering to the same space. Reserved via `Task.ReserveSpace(inv, item, amount)`. `FreeSpace(item)` returns `stackSize - quantity - resSpace`. All space-checking methods (`GetStorageForItem`, `GetMergeSpace`, `HasSpaceForItem`) account for it. Empty stacks track `resSpaceItem` to prevent conflicting item claims. Stale reservations expire after 60s. |
 
+### Save/load invariant
+
+Reservations are **never persisted**. On load, `ItemStack.resAmount`/`resSpace` and every `Reservable.reserved` start at 0 (fresh construction + explicit `= 0` in `SaveSystem.Restore*`). Non-resumable tasks are implicitly aborted at save — safe because their reservations vanish with the recreated world. Resumable tasks (`HaulToMarketTask`, `HaulFromMarketTask`) must re-make every reservation in their `InitializeResume()`. Any new resumable task type must do the same.
+
+---
+
+## When a structure isn't running
+
+Multiple orthogonal mechanisms can cause a Building / Blueprint / Plant to skip work or be skipped over. They split cleanly into **player intent** (toggles set via UI) and **world state** (runtime conditions). The universal WOM-order gate is `!disabled && ConditionsMet()` on both Building and Blueprint (Blueprint mirrors the method by convention — it is *not* a Structure subclass).
+
+### Player-toggled
+
+| Mechanism | Owner | What it suppresses | Notes |
+|-----------|-------|--------------------|-------|
+| `Building.disabled` | `Building` | All WOM orders for this building (craft + research + supply hauls) | Order stays in queue, `isActive` returns false. Also gates LightSource burn/emission. |
+| `Blueprint.disabled` | `Blueprint` | Supply + construct orders for this blueprint | Order is *removed* on `SetDisabled(true)` and re-registered on re-enable (via `RegisterOrdersIfUnsuspended`). Asymmetric with Building — see "Disabled-enforcement asymmetry" below. |
+| `Blueprint.cancelled` | `Blueprint` | All orders, terminal | Set when blueprint is being torn down; not user-reversible. |
+| `Workstation.workerLimit` | `Building.workstation` | Reduces effective craft capacity (set to 0 = no workers assigned) | Read by WOM at order registration as `effectiveCapacity`. Only affects craft, not supply/research. |
+| `Plant.harvestFlagged` | `Plant` | Harvest order existence | Order only exists while flagged. `SetHarvestFlagged(false)` removes the order; `true` registers it. |
+
+### Runtime-gated (world state)
+
+| Mechanism | Owner | What it suppresses | Notes |
+|-----------|-------|--------------------|-------|
+| `Structure.ConditionsMet()` | `Structure` (virtual, default `true`) | Building craft order via `isActive` lambda | Override for runtime preconditions. Currently overridden only by `PumpBuilding` (requires water below pump head). |
+| `Blueprint.ConditionsMet()` | `Blueprint` | Supply + construct orders via `isActive` lambda | Returns `!IsSuspended()`. Same call-site shape as Structure but no inheritance. |
+| `Blueprint.IsSuspended()` | `Blueprint` | Order *registration* (constructor + `RegisterOrdersIfUnsuspended`); also drives UI tint | True when tile requirements fail or blueprint sits on unbuilt support. The reason behind `Blueprint.ConditionsMet()`. |
+| `Building.reservoir.HasFuel()` | `Building` (when `reservoir != null`) | Building skipped by animal AI work-finding, water routing, and light emission | Not a WOM gate — these are direct checks at use sites (`Animal.cs`, `WaterController.cs`, `LightSource.cs`). |
+| `LightSource.IsInActiveWindow()` | `LightSource` | Fuel burn + light emission outside `activeStartHour..activeEndHour` | StructType-driven schedule, e.g. torches lit only at night. |
+| `uses >= depleteAt` | `Workstation` (`uses`) + `StructType` (`depleteAt`) | Triggers building destruction at craft completion | Not technically a "skip" — the building gets removed. Checked in `AnimalStateManager` after each craft round. |
+| `Structure.IsBroken` | `Structure` (`condition < 0.5`) | Craft / research / fuel supply orders; decoration happiness; leisure seats; house sleep; road speed bonus; light burn + emission | Driven by the Maintenance System (see below). Gating sites mirror `disabled` — WOM `isActive` lambdas, plus direct checks in `Animal.cs`, `Navigation.cs`, `ModifierSystem.cs`, `LightSource.cs`. |
+
+### Disabled-enforcement asymmetry
+
+Building and Blueprint enforce `disabled` differently:
+- **Building**: order *kept* in queue; `isActive = () => !building.disabled && building.ConditionsMet()` returns false when disabled, so the dispatch loop skips it.
+- **Blueprint**: order *removed* entirely on `SetDisabled(true)` (via `RemoveForBlueprint`); re-registered on re-enable.
+
+The asymmetry exists because building craft orders carry `res` (worker-seat reservations) that are awkward to tear down and rebuild. Blueprints have no comparable per-seat state, so remove/re-register is cleaner. Reconciling this is a deferred goal — see the broader reservation-unification work.
+
+---
+
+## Maintenance System
+
+Structures slowly deteriorate over time and must be repaired by a dedicated **Mender** job. Purely-structural nav pieces (platform, stairs, ladder) are exempt so a neglected map doesn't cut mice off from parts of the world.
+
+### Condition model
+
+Every `Structure` carries a `condition` float in `[0, 1]` (1 = pristine, 0 = fully broken). Three thresholds govern behaviour:
+
+| Constant | Value | Meaning |
+|----------|-------|---------|
+| `BreakThreshold` | `0.5` | Below this → `IsBroken` → function gated off + grey tint. |
+| `RegisterThreshold` | `0.75` | Below this → `WantsMaintenance` → WOM Maintenance order is active. |
+| `MaxRepairPerTask` | `0.40` | A single mender visit can restore at most +40 % condition. Fully-broken (0 → 1) therefore requires 3 visits. |
+| `RepairWorkPerTick` | `0.05` | Base condition gained per work tick (≈ 8 ticks for a full-cap repair). |
+| `RepairCostFraction` | `0.25` | A full 0→1 repair costs ¼ × `StructType.ncosts`. A single visit scales by `repairAmount` (e.g. 40 % repair = 10 % of build cost for each cost item). |
+| `DaysToBreak` | `30` | In-game days from 1.0 down to `BreakThreshold` (0.5). Full 1.0 → 0.0 takes ~60 days. Decay per tick = `(1 - BreakThreshold) / (DaysToBreak × World.ticksInDay)`. |
+
+**Opt-out**: `StructType.noMaintenance = true` (JSON flag) exempts a type entirely. Plants and zero-cost structures are also auto-exempt (`NeedsMaintenance` is false). The three nav types — platform, stairs, ladder — carry the flag in `buildingsDb.json`.
+
+**Predicates on Structure**:
+- `NeedsMaintenance` — opt-in gate: non-plant, has build cost, not `noMaintenance`.
+- `IsBroken` — `NeedsMaintenance && condition < 0.5`.
+- `WantsMaintenance` — `NeedsMaintenance && condition < 0.75`.
+
+### Decay ticker (`MaintenanceSystem`)
+
+`MaintenanceSystem` is a singleton instantiated by `World.Awake` and ticked once per in-game second from `World.Update` (same cadence as `WeatherSystem`). Each tick:
+
+1. Iterate `StructController.GetStructures()`.
+2. For any `NeedsMaintenance` structure, decrement `condition` by the per-tick decay rate (clamped at 0).
+3. Track threshold crossings so edge callbacks fire exactly once:
+   - **Downward across `RegisterThreshold`**: `WorkOrderManager.RegisterMaintenance(s)` — Maintenance order enters the queue.
+   - **Downward across `BreakThreshold`**: `OnBroken(s)` — calls `s.RefreshTint()` (grey tint). WOM gates suppress craft/research/supply automatically via `IsBroken` in their `isActive` lambdas; no removal needed.
+   - **Upward across `BreakThreshold`**: `OnRepaired(s)` — restores normal tint. Order's `isActive = () => s.WantsMaintenance` suppresses it automatically once condition ≥ 0.75 (no removal, no churn on every tick).
+
+The Maintenance WOM order is **not removed** when condition climbs back into the "fine" band — it just becomes inactive. Removal only happens when the structure is destroyed (`WorkOrderManager.RemoveMaintenanceOrders` is called from `Structure.Destroy()`).
+
+### Mender job
+
+`mender` is a dedicated crafter-type job with `defaultSkill: construction`. No recipes — menders respond only to Maintenance orders (plus survival). Construction skill accelerates the work-tick rate.
+
+### MaintenanceTask flow
+
+`MaintenanceTask` lives in `Task.cs` and follows the same Initialize/Objective pattern as other supply-then-work tasks. At start it snapshots `startCondition` and `repairAmount = min(MaxRepairPerTask, 1 - condition)`.
+
+1. **Job gate**: `animal.job.name == "mender"`. 
+2. **Cost computation**: for each `ItemQuantity` in `structType.costs`, `needed = ceil(cost.quantity × RepairCostFraction × repairAmount)`.
+3. **Pathfind**: `Nav.FindPathTo(target.workTile)`; aborts if unreachable.
+4. **Leaf resolution**: `PickMaintenanceSupplyLeaf(group)` picks the highest-stock leaf per group cost item (single-leaf commit; no mixed-leaf delivery like blueprints).
+5. **Fetch chain**: one `FetchObjective` per cost item with reservations held by the task.
+6. **GoObjective** → **MaintenanceObjective** — ticks condition up by `RepairWorkPerTick × workEfficiency` per tick, grants Construction XP, stops at `startCondition + repairAmount` or `1.0`.
+7. **Completion**: consume fetched materials from mender inventory; call `MaintenanceSystem.OnRepaired(target)` + `target.RefreshTint()`.
+
+**Nearest-below-75-%** target selection is emergent — `WorkOrderManager.ChooseOrder` distance-sorts within a priority tier, and `isActive = () => s.WantsMaintenance` narrows the candidate pool to qualifying structures. No bespoke selection code.
+
+### Visual
+
+`Structure.RefreshTint()` applies `Color(0.75, 0.75, 0.75)` when broken, otherwise `Color.white`. Called on threshold crossings (`OnBroken` / `OnRepaired`) and on every structure at load (`SaveSystem` Phase 6). Deconstruct-blueprint tints (applied by `Blueprint`) run through a separate path and override this on the same renderer.
+
+### Save/load
+
+- `StructureSaveData.condition` (float) persists per-structure. Old saves missing the field deserialize to 0.0 which `RestoreStructure` treats as "default to 1.0" so pre-maintenance saves don't load every structure as broken.
+- Maintenance WOM orders are **not** persisted. `WorkOrderManager.Reconcile` registers them from world state at load via `ScanOrders`, same mechanism as every other order type.
+- `MaintenanceSystem.RebuildFromWorld()` runs in `SaveSystem` Phase 6 (after Reconcile) to rebuild the internal `registered`/`broken` sets from restored condition values. Tint refresh for every structure follows in the same block.
+
+### Audit (`Ctrl+D`)
+
+`ScanOrders` includes bi-directional Maintenance coverage:
+- **Direction 1**: every structure with `WantsMaintenance` must have a Maintenance order registered.
+- **Direction 2**: every Maintenance order must reference a live structure that still `NeedsMaintenance`.
+
 ---
 
 ## Unit System — Fen / Liang
@@ -216,6 +331,6 @@ Workstations don't use `Structure.res` — the WOM Craft order's `res` is the so
 All item quantities are stored as **fen** (integers), where **100 fen = 1 liang**. Display uses `ItemStack.FormatQ(int fen, bool discrete = false)` — drops trailing zeros, shows no decimals for exact integers. Overload `FormatQ(ItemQuantity iq)` uses `iq.item.discrete` automatically.
 
 - **JSON data** is authored in liang (can be decimal, e.g. `0.5`). The field type is `float` (`ItemNameQuantity.quantity`).
-- **Conversion** to fen happens at all `ItemNameQuantity → ItemQuantity` sites (Db.cs, Structure.cs, Tile.cs, Plant.cs): `(int)Math.Round(q * 100)`.
+- **Conversion** to fen happens at all `ItemNameQuantity → ItemQuantity` sites (Db.cs, Structure.cs, Tile.cs, Plant.cs) via `ItemStack.LiangToFen(q)`. User-typed input uses `ItemStack.TryParseQ` instead (adds overflow/validation).
 - **Stack sizes**: animal inv = 5 × 1000 fen; floor/default = 1000 fen; storage = `storageStackSize * 100` (converted in `StructType.OnDeserialized`).
 - Old saves are **incompatible** (quantities were in the old unit). Fresh start required after this change.

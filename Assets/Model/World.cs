@@ -56,6 +56,7 @@ public class World : MonoBehaviour {
         plantController = PlantController.instance;
         waterController = WaterController.instance;
         WeatherSystem.Create();
+        MaintenanceSystem.Create();
     }
 
     public void Update(){
@@ -63,6 +64,7 @@ public class World : MonoBehaviour {
             // AnimalController self-drives staggered ticks from its own Update()
             plantController.TickUpdate();
             if (ResearchSystem.instance != null) ResearchSystem.instance.TickUpdate();
+            MaintenanceSystem.instance?.Tick();
         }
         float reconcilePeriod = 10f;
         if (Math.Floor((timer + Time.deltaTime) / reconcilePeriod) - Math.Floor(timer / reconcilePeriod) > 0)
@@ -78,6 +80,13 @@ public class World : MonoBehaviour {
         if (Math.Floor((timer + Time.deltaTime) / hourPeriod) - Math.Floor(timer / hourPeriod) > 0)
             WeatherSystem.instance?.OnHourElapsed();
         WeatherSystem.instance?.Tick(Time.deltaTime);
+#if UNITY_EDITOR
+        // Editor-only leak canary: every 30s, flag any ItemStack whose resAmount/resSpace
+        // exceeds what live tasks claim. Silent on clean runs. See ItemResChecker.cs.
+        const float invariantPeriod = 30f;
+        if (Math.Floor((timer + Time.deltaTime) / invariantPeriod) - Math.Floor(timer / invariantPeriod) > 0)
+            ItemResChecker.Check();
+#endif
         timer += Time.deltaTime;
     }
         

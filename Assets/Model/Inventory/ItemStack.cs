@@ -35,6 +35,12 @@ public class ItemStack {
     }
     public static string FormatQ(ItemQuantity iq) => FormatQ(iq.quantity, iq.item.discrete);
 
+    // Converts an author-facing liang value (from JSON) into internal fen.
+    // All ItemNameQuantity → ItemQuantity conversion sites should use this to
+    // preserve the "fen in code, liang in JSON" invariant (see SPEC-systems.md).
+    // For user-typed input use TryParseQ instead — it handles overflow and validation.
+    public static int LiangToFen(float liang) => (int)Math.Round(liang * 100);
+
     // Inverse of FormatQ — parses a user-typed liang string into fen.
     // Empty/whitespace → 0. Discrete items must parse to a whole liang.
     // Returns false for unparseable, negative, or overflowing input; callers should revert the display.

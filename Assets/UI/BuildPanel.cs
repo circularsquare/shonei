@@ -4,14 +4,14 @@ using UnityEngine.UI;
 using TMPro;
 
 public class BuildPanel : MonoBehaviour {
-    public GameObject buildDisplayPrefab;
-    public GameObject textDisplayPrefab;
-    public Transform subpanel;
-    public Button btnStructures;
-    public Button btnPlants;
-    public Button btnProduction;
-    public Button btnStorage;
-    public Button btnTiles;
+    [SerializeField] GameObject buildDisplayPrefab;
+    [SerializeField] GameObject textDisplayPrefab;
+    [SerializeField] Transform subpanel;
+    [SerializeField] Button btnStructures;
+    [SerializeField] Button btnPlants;
+    [SerializeField] Button btnProduction;
+    [SerializeField] Button btnStorage;
+    [SerializeField] Button btnTiles;
     public static BuildPanel instance { get; protected set; }
     public StructType structType;
     // Whether the next placed blueprint will be horizontally mirrored.

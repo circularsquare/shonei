@@ -26,15 +26,6 @@ public class Reservable {
         reservedBy = by;
         return true;
     }
-    // Reserves up to n, clamped to what's available. Returns amount actually reserved.
-    public int Reserve(int n, string by = null){
-        int amount = Math.Min(n, capacity - reserved);
-        if (amount <= 0) return 0;
-        reserved += amount;
-        reservedAt = Time.time;
-        reservedBy = by;
-        return amount;
-    }
     public bool Unreserve(int n = 1, string label = ""){
         if (reserved < n){
             string ctx = label.Length > 0 ? $" [{label}]" : "";

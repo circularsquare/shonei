@@ -2,26 +2,19 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// Optional component of a Building that represents a workstation (crafting station).
-/// Owns the player-adjustable worker slot limit. Non-null only when structType.isWorkstation.
-/// WOM reads workstation.workerLimit when registering craft orders.
-/// </summary>
+// Optional component of a Building that represents a workstation (crafting station).
+// Owns the player-adjustable worker slot limit. Non-null only when structType.isWorkstation.
+// WOM reads workstation.workerLimit when registering craft orders.
 public class Workstation {
-    /// <summary>Max workers from StructType.capacity.</summary>
-    public int capacity;
+    public int capacity;  // max workers from StructType.capacity
 
-    /// <summary>
-    /// Player-adjustable worker limit. Defaults to capacity (all slots open).
-    /// Persisted via StructureSaveData.workOrderEffectiveCapacity.
-    /// Use WorkOrderManager.SetWorkstationCapacity() to change at runtime.
-    /// </summary>
+    // Player-adjustable worker limit. Defaults to capacity (all slots open).
+    // Persisted via StructureSaveData.workOrderEffectiveCapacity.
+    // Use WorkOrderManager.SetWorkstationCapacity() to change at runtime.
     public int workerLimit;
 
-    /// <summary>
-    /// Completed craft rounds at this workstation. Compared against structType.depleteAt
-    /// to trigger building depletion. Persisted via StructureSaveData.uses.
-    /// </summary>
+    // Completed craft rounds at this workstation. Compared against structType.depleteAt
+    // to trigger building depletion. Persisted via StructureSaveData.uses.
     public int uses = 0;
 
     public Workstation(int capacity) {
@@ -30,22 +23,16 @@ public class Workstation {
     }
 }
 
-/// <summary>
-/// Optional component of a Building that manages an internal consumable-resource inventory.
-/// Owns inv, fuelItem, capacity, and burn rate. Non-null only when structType.hasFuelInv.
-/// Works for any drainable resource (fuel, water, etc.).
-/// LightSource consumes via Burn(). WOM registers a standing SupplyBuilding order via building.reservoir.
-/// Supply is triggered when quantity falls below half of capacity.
-/// </summary>
+// Optional component of a Building that manages an internal consumable-resource inventory.
+// Owns inv, fuelItem, capacity, and burn rate. Non-null only when structType.hasFuelInv.
+// Works for any drainable resource (fuel, water, etc.).
+// LightSource consumes via Burn(). WOM registers a standing SupplyBuilding order via building.reservoir.
+// Supply is triggered when quantity falls below half of capacity.
 public class Reservoir {
-    /// <summary>The leaf or group item this reservoir accepts (e.g. "wood", "water").</summary>
-    public Item fuelItem;
-    /// <summary>Max stack size in fen.</summary>
-    public int capacity;
-    /// <summary>Liang/day consumed; LightSource converts to fen/s at runtime.</summary>
-    public float burnRate;
-    /// <summary>Internal inventory: 1 stack, not tied to a tile.</summary>
-    public Inventory inv;
+    public Item fuelItem;     // the leaf or group item this reservoir accepts (e.g. "wood", "water")
+    public int capacity;      // max stack size in fen
+    public float burnRate;    // liang/day consumed; LightSource converts to fen/s at runtime
+    public Inventory inv;     // internal inventory: 1 stack, not tied to a tile
 
     public Reservoir(Item fuelItem, int capacity, float burnRate, int buildingX, int buildingY, string buildingName) {
         this.fuelItem = fuelItem;
@@ -55,19 +42,17 @@ public class Reservoir {
         inv.displayName = buildingName + "_fuel";
     }
 
-    /// <summary>Current quantity for the configured item (checks all leaf stacks).</summary>
+    // Current quantity for the configured item (checks all leaf stacks).
     public int Quantity() => inv.Quantity(fuelItem);
 
-    /// <summary>True when level is below half of capacity — triggers a WOM supply order.</summary>
+    // True when level is below half of capacity — triggers a WOM supply order.
     public bool NeedsSupply() => inv.Quantity(fuelItem) < capacity / 2;
 
-    /// <summary>True when level is above zero.</summary>
+    // True when level is above zero.
     public bool HasFuel() => inv.Quantity(fuelItem) > 0;
 
-    /// <summary>
-    /// Consumes the resource over time. Call from Update(). Returns the amount actually consumed (fen).
-    /// Accumulates fractional fen across frames so sub-fen burn rates work correctly.
-    /// </summary>
+    // Consumes the resource over time. Call from Update(). Returns the amount actually consumed (fen).
+    // Accumulates fractional fen across frames so sub-fen burn rates work correctly.
     public int Burn(float deltaTime, ref float accumulator) {
         float fenPerSecond = burnRate * 100f / World.ticksInDay;
         accumulator += fenPerSecond * deltaTime;
@@ -87,10 +72,8 @@ public class Reservoir {
         return consumed;
     }
 
-    /// <summary>
-    /// Drops remaining contents onto the floor at the given tile. Used during building deconstruct
-    /// so items aren't silently lost.
-    /// </summary>
+    // Drops remaining contents onto the floor at the given tile. Used during building deconstruct
+    // so items aren't silently lost.
     public void DropToFloor(Tile here) {
         if (inv.IsEmpty() || here == null) return;
         foreach (ItemStack stack in inv.itemStacks) {
@@ -108,7 +91,8 @@ public class Reservoir {
 
 public class Building : Structure {
     // When true, all work orders for this building are suppressed. Player-togglable via UI.
-    // Distinct from IsActive() which checks runtime conditions (e.g. pump has water).
+    // Distinct from ConditionsMet() which checks runtime world conditions (e.g. pump has water).
+    // Player intent vs. world state — both must be satisfied for the building to accept orders.
     public bool disabled = false;
 
     // Non-null only for workstation buildings. Owns the player-adjustable worker slot limit.
@@ -139,6 +123,7 @@ public class Building : Structure {
                 var ls = go.AddComponent<LightSource>();
                 ls.baseIntensity = st.lightIntensity;
                 ls.reservoir = reservoir;
+                ls.building  = this; // gates burn + emission on this.disabled
                 ls.sunModulated    = true;
                 ls.activeStartHour = st.activeStartHour;
                 ls.activeEndHour   = st.activeEndHour;

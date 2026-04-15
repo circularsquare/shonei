@@ -2,12 +2,10 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 
-/// <summary>
-/// Reusable item icon widget. Attach to a UI Image GameObject.
-/// Call SetItem() to display the item's icon and register it for hover tooltips.
-/// The tooltip shows the item name; the icon falls back to the default if the item
-/// has no dedicated sprite.
-/// </summary>
+// Reusable item icon widget. Attach to a UI Image GameObject.
+// Call SetItem() to display the item's icon and register it for hover tooltips.
+// The tooltip shows the item name; the icon falls back to the default if the item
+// has no dedicated sprite.
 [RequireComponent(typeof(Image))]
 public class ItemIcon : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler {
     Image image;
@@ -24,11 +22,9 @@ public class ItemIcon : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
         gameObject.SetActive(true);
     }
 
-    /// <summary>
-    /// Returns the sprite to display for an item. Group items with no dedicated
-    /// sprite (icon == null) fall back to the icon of the leaf child you have the
-    /// most of globally; if all quantities are zero the first leaf is used.
-    /// </summary>
+    // Returns the sprite to display for an item. Group items with no dedicated
+    // sprite (icon == null) fall back to the icon of the leaf child you have the
+    // most of globally; if all quantities are zero the first leaf is used.
     static Sprite ResolveIcon(Item item) {
         if (item.icon != null) return item.icon;
 

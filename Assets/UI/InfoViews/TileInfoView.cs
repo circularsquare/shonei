@@ -1,11 +1,9 @@
 using UnityEngine;
 using TMPro;
 
-/// <summary>
-/// Sub-view for InfoPanel that displays tile-specific information:
-/// coordinates, tile type, standability, water level, and floor inventory contents.
-/// Does NOT show structures — those get their own tabs via StructureInfoView.
-/// </summary>
+// Sub-view for InfoPanel that displays tile-specific information:
+// coordinates, tile type, standability, water level, and floor inventory contents.
+// Does NOT show structures — those get their own tabs via StructureInfoView.
 public class TileInfoView : MonoBehaviour {
     [SerializeField] TextMeshProUGUI text;
 

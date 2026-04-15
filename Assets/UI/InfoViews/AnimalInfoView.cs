@@ -3,10 +3,8 @@ using System.Text;
 using UnityEngine;
 using TMPro;
 
-/// <summary>
-/// Sub-view for InfoPanel that displays a single animal's info:
-/// name, state, job, inventory, task, stats, and skill widgets.
-/// </summary>
+// Sub-view for InfoPanel that displays a single animal's info:
+// name, state, job, inventory, task, stats, and skill widgets.
 public class AnimalInfoView : MonoBehaviour {
     [SerializeField] TextMeshProUGUI text;
     [SerializeField] SkillDisplay    skillDisplayPrefab;

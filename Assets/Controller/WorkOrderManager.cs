@@ -29,7 +29,7 @@ using UnityEngine;
 public class WorkOrderManager : MonoBehaviour {
     public static WorkOrderManager instance { get; private set; }
 
-    public enum OrderType { Haul, Harvest, Construct, SupplyBlueprint, Deconstruct, HaulToMarket, HaulFromMarket, Research, Craft, SupplyBuilding }
+    public enum OrderType { Haul, Harvest, Construct, SupplyBlueprint, Deconstruct, HaulToMarket, HaulFromMarket, Research, Craft, SupplyBuilding, Maintenance }
 
     public class WorkOrder {
         public OrderType type;
@@ -51,6 +51,7 @@ public class WorkOrderManager : MonoBehaviour {
         // unregisters as the flag flips, so unflagged plants carry no order at all).
         public Func<bool> isActive;
         public Building building;            // nullable; for Craft orders (dedup & cleanup)
+        public Structure structure;          // nullable; for Maintenance orders (dedup & cleanup — any Structure, not just Building)
     }
 
     // orders[0] = priority 1 (highest), orders[3] = priority 4 (lowest).
@@ -126,7 +127,7 @@ public class WorkOrderManager : MonoBehaviour {
             blueprint = bp,
             canDo = a => a.job == bp.structType.job,
             getDistance = a => Mathf.Abs(bp.tile.x - a.x) + Mathf.Abs(bp.tile.y - a.y),
-            isActive = () => !bp.IsSuspended()
+            isActive = () => bp.ConditionsMet()
         });
         return true;
     }
@@ -141,7 +142,7 @@ public class WorkOrderManager : MonoBehaviour {
             blueprint = bp,
             canDo = a => a.job == bp.structType.job,
             getDistance = a => Mathf.Abs(bp.tile.x - a.x) + Mathf.Abs(bp.tile.y - a.y),
-            isActive = () => !bp.IsSuspended()
+            isActive = () => bp.ConditionsMet()
         });
         return true;
     }
@@ -372,7 +373,7 @@ public class WorkOrderManager : MonoBehaviour {
             },
             tile = lab.tile,
             res = new(Mathf.Max(1, lab.structType.capacity)),
-            isActive = () => !lab.disabled,
+            isActive = () => !lab.disabled && !lab.IsBroken,
             canDo = a => a.job.name == "scientist",
             getDistance = a => Mathf.Abs(lab.tile.x - a.x) + Mathf.Abs(lab.tile.y - a.y)
         });
@@ -399,7 +400,7 @@ public class WorkOrderManager : MonoBehaviour {
             factory = a => new CraftTask(a, building),
             building = building,
             res = res,
-            isActive = () => !building.disabled && building.IsActive(),
+            isActive = () => !building.disabled && !building.IsBroken && building.ConditionsMet(),
             canDo = a => Array.Exists(a.job.recipes, r => r != null && r.tile == buildingName),
             getDistance = a => Mathf.Abs(building.workTile.x - a.x) + Mathf.Abs(building.workTile.y - a.y)
         });
@@ -439,7 +440,7 @@ public class WorkOrderManager : MonoBehaviour {
             priority   = 3,
             factory    = a => new SupplyFuelTask(a, building),
             building   = building,
-            isActive   = () => !building.disabled && reservoir.NeedsSupply(),
+            isActive   = () => !building.disabled && !building.IsBroken && reservoir.NeedsSupply(),
             canDo      = a => a.job.name == "hauler",
             getDistance = a => Mathf.Abs(building.x - a.x) + Mathf.Abs(building.y - a.y)
         });
@@ -449,6 +450,34 @@ public class WorkOrderManager : MonoBehaviour {
     // Removes the fuel supply order for a building (call when building is destroyed).
     public void RemoveFuelSupplyOrders(Building building) {
         orders[2].RemoveAll(o => o.type == OrderType.SupplyBuilding && o.building == building);
+    }
+
+    // Registers a standing Maintenance order for any structure below RegisterThreshold.
+    // Called from MaintenanceSystem.Tick() on the downward threshold crossing, and from
+    // Reconcile() at load. Mender is the only job that matches canDo. isActive suppresses
+    // the order once condition climbs back above RegisterThreshold, so it sits idle in the
+    // queue instead of getting re-added on each decay tick.
+    // Priority 2 (same tier as Construct/Harvest) — catching wear before a structure breaks
+    // matters roughly as much as completing a building.
+    public bool RegisterMaintenance(Structure s) {
+        if (s == null || !s.NeedsMaintenance) return false;
+        if (orders[1].Exists(o => o.type == OrderType.Maintenance && o.structure == s)) return false;
+        Tile target = s.workTile ?? s.tile;
+        Add(new WorkOrder {
+            type        = OrderType.Maintenance,
+            priority    = 2,
+            factory     = a => new MaintenanceTask(a, s),
+            structure   = s,
+            isActive    = () => s.WantsMaintenance,
+            canDo       = a => a.job.name == "mender",
+            getDistance = a => Mathf.Abs(target.x - a.x) + Mathf.Abs(target.y - a.y)
+        });
+        return true;
+    }
+
+    // Removes the Maintenance order for a specific structure. Called from Structure.Destroy().
+    public void RemoveMaintenanceOrders(Structure s) {
+        orders[1].RemoveAll(o => o.type == OrderType.Maintenance && o.structure == s);
     }
 
     // Registers all standing WOM orders appropriate for a building (research, craft, fuel supply).
@@ -570,7 +599,7 @@ public class WorkOrderManager : MonoBehaviour {
         // ── Blueprints ──
         var bps = StructController.instance.GetBlueprints();
         foreach (Blueprint bp in bps) {
-            if (bp.IsSuspended() || bp.disabled) continue; // suspended/disabled blueprints intentionally have no orders
+            if (!bp.ConditionsMet() || bp.disabled) continue; // blueprints with conditions unmet (suspended) or disabled intentionally have no orders
             if (repair) {
                 // For Receiving blueprints, heal state to Constructing if fully delivered (can happen
                 // after save/load when LockGroupCostsAfterDelivery isn't re-run).
@@ -688,6 +717,24 @@ public class WorkOrderManager : MonoBehaviour {
             }
         }
 
+        // ── Maintenance ──
+        // Every structure currently below RegisterThreshold must have a Maintenance order.
+        // Order stays in the queue once registered — isActive suppresses it above threshold
+        // instead of removing, so the set of "has order" tracks "has been below threshold since
+        // last destroy" rather than "currently below threshold".
+        foreach (Structure s in StructController.instance.GetStructures()) {
+            if (s == null || !s.WantsMaintenance) continue;
+            bool has = orders[1].Exists(o => o.type == OrderType.Maintenance && o.structure == s);
+            if (!has) {
+                if (repair) {
+                    RegisterMaintenance(s);
+                    if (!silent) Debug.LogWarning($"WOM reconcile: registered missing Maintenance order for {s.structType.name} at ({s.x},{s.y}) (condition={s.condition:F2})");
+                } else {
+                    Debug.LogError($"WOM audit: structure {s.structType.name} at ({s.x},{s.y}) below 75% ({s.condition:F2}) has no Maintenance order");
+                }
+            }
+        }
+
         // ── Direction 2: orphaned orders (audit only) ──
         if (mode == ScanMode.Audit) {
             // Prune stale haul orders first so timing artifacts don't fire.
@@ -729,6 +776,11 @@ public class WorkOrderManager : MonoBehaviour {
             foreach (WorkOrder o in orders[2])
                 if (o.type == OrderType.SupplyBuilding && (o.building == null || o.building.go == null))
                     Debug.LogError($"WOM audit: SupplyBuilding order references a destroyed building ({o.building?.structType?.name})");
+
+            // Maintenance: every Maintenance order must reference a live, NeedsMaintenance structure
+            foreach (WorkOrder o in orders[1])
+                if (o.type == OrderType.Maintenance && (o.structure == null || o.structure.go == null || !o.structure.NeedsMaintenance))
+                    Debug.LogError($"WOM audit: Maintenance order references destroyed/invalid structure ({o.structure?.structType?.name})");
 
             int total = orders.Sum(t => t.Count);
             Debug.Log($"WOM audit complete. {total} orders.");

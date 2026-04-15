@@ -2,7 +2,6 @@
   "permissions": {
     "allow": [
       "mcp__unity__*",
-      "mcp__mcp-for-unity__*",
       "Bash(curl * http://127.0.0.1:*)",
       "Bash(claude mcp *)",
       "Bash(ls:*)",
@@ -14,7 +13,10 @@
       "Bash(node -e:*)",
       "WebSearch",
       "WebFetch",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Read(//c/Users/anita/.claude/projects/c--Users-anita-projects-shonei/memory/**)",
+      "Read(//c/Users/anita/projects/shonei/**)",
+      "Read(//c/Users/anita/projects/shonei-server/**)"
     ],
     "additionalDirectories": [
       "C:\\Users\\anita\\projects",

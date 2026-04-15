@@ -4,11 +4,9 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// Sub-view for InfoPanel that displays info for a single Structure or Blueprint.
-/// Handles buildings, plants, and blueprints with appropriate controls for each.
-/// Controls: enable/disable toggle, blueprint priority +/-, worker slots +/-, harvest flag toggle (plants).
-/// </summary>
+// Sub-view for InfoPanel that displays info for a single Structure or Blueprint.
+// Handles buildings, plants, and blueprints with appropriate controls for each.
+// Controls: enable/disable toggle, blueprint priority +/-, worker slots +/-, harvest flag toggle (plants).
 public class StructureInfoView : MonoBehaviour {
     [SerializeField] TextMeshProUGUI text;
 
@@ -64,7 +62,7 @@ public class StructureInfoView : MonoBehaviour {
             cancelButton.onClick.AddListener(OnClickCancel);
     }
 
-    /// <summary>Show info for a completed structure (building, plant, or base structure).</summary>
+    // Show info for a completed structure (building, plant, or base structure).
     public void ShowStructure(Structure s) {
         structure = s;
         blueprint = null;
@@ -72,7 +70,7 @@ public class StructureInfoView : MonoBehaviour {
         Refresh();
     }
 
-    /// <summary>Show info for a blueprint (construction in progress).</summary>
+    // Show info for a blueprint (construction in progress).
     public void ShowBlueprint(Blueprint bp) {
         structure = null;
         blueprint = bp;
@@ -99,6 +97,16 @@ public class StructureInfoView : MonoBehaviour {
     void RefreshStructure() {
         var sb = new System.Text.StringBuilder();
         sb.Append(structure.structType.name);
+
+        // Condition display for maintained structures. BROKEN prominently below 50%,
+        // plain percentage otherwise.
+        if (structure.NeedsMaintenance) {
+            int pct = Mathf.RoundToInt(structure.condition * 100f);
+            if (structure.IsBroken)
+                sb.Append($"\n <color=#d04040><b>BROKEN</b></color> condition: {pct}%");
+            else
+                sb.Append($"\n condition: {pct}%");
+        }
 
         if (structure is Plant plant) {
             sb.Append("\n growth: " + plant.growthStage);
@@ -292,7 +300,7 @@ public class StructureInfoView : MonoBehaviour {
 
     // ── Work order display helpers (moved from InfoPanel) ──
 
-    /// <summary>Appends work orders keyed by tile (harvest, research).</summary>
+    // Appends work orders keyed by tile (harvest, research).
     static void AppendTileOrders(System.Text.StringBuilder sb, Tile tile) {
         if (WorkOrderManager.instance == null) return;
         var found = new List<string>();
@@ -302,10 +310,8 @@ public class StructureInfoView : MonoBehaviour {
             sb.Append("\n wo: " + string.Join(", ", found));
     }
 
-    /// <summary>
-    /// Appends work orders keyed by building (craft).
-    /// When effectiveCapacity &lt; capacity, shows three-part "reserved/effective/max".
-    /// </summary>
+    // Appends work orders keyed by building (craft).
+    // When effectiveCapacity < capacity, shows three-part "reserved/effective/max".
     static void AppendBuildingOrders(System.Text.StringBuilder sb, Building building) {
         if (WorkOrderManager.instance == null) return;
         var found = new List<string>();
@@ -320,7 +326,7 @@ public class StructureInfoView : MonoBehaviour {
             sb.Append("\n wo: " + string.Join(", ", found));
     }
 
-    /// <summary>Appends work orders keyed by inventory (market hauls).</summary>
+    // Appends work orders keyed by inventory (market hauls).
     static void AppendInvOrders(System.Text.StringBuilder sb, Inventory inv) {
         if (WorkOrderManager.instance == null) return;
         var found = new List<string>();

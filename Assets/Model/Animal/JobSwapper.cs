@@ -1,17 +1,18 @@
 // Automatic job swapping: when an idle animal has skills that better match
-// another animal's job (and vice versa), they swap jobs.
+// another idle animal's job (and vice versa), they swap jobs.
 //
 // Scoring: for each (animal, job) pair, compute sum(skillWeight[skill] * skillLevel[skill]).
 // A swap is beneficial when the combined score improves for both animals.
+//
+// Only idle animals are considered as swap partners — SetJob interrupts the current
+// task via Refresh(), so swapping with a busy mouse would throw away in-progress work.
 
 using UnityEngine;
 using System.Collections.Generic;
 
 public static class JobSwapper {
-    /// <summary>
-    /// How well an animal's skill levels match a job's skill weight profile.
-    /// Returns sum of (weight * level) across all weighted skills. 0 if job has no weights.
-    /// </summary>
+    // How well an animal's skill levels match a job's skill weight profile.
+    // Returns sum of (weight * level) across all weighted skills. 0 if job has no weights.
     public static float WeightedScore(SkillSet skills, Job job) {
         if (job.resolvedSkillWeights == null) return 0f;
         float score = 0f;
@@ -20,10 +21,8 @@ public static class JobSwapper {
         return score;
     }
 
-    /// <summary>
-    /// Finds the best beneficial job swap for an idle animal and executes it.
-    /// Returns true if a swap was performed.
-    /// </summary>
+    // Finds the best beneficial job swap for an idle animal and executes it.
+    // Returns true if a swap was performed.
     public static bool TrySwap(Animal idle) {
         AnimalController ac = AnimalController.instance;
         if (ac == null) return false;
@@ -37,8 +36,9 @@ public static class JobSwapper {
             if (other == idle) continue;
             if (other.job == null) continue;
             if (other.job.id == idle.job.id) continue; // same job, no benefit
-            if (other.state == Animal.AnimalState.Falling) continue;
-            if (other.state == Animal.AnimalState.Eeping) continue;
+            // Only swap with other idle animals — avoid interrupting productive work.
+            if (other.state != Animal.AnimalState.Idle) continue;
+            if (other.task != null) continue; // defensive: idle should imply no task
 
             float currentScore = WeightedScore(idle.skills, idle.job)
                                + WeightedScore(other.skills, other.job);

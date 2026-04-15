@@ -68,14 +68,13 @@ public class TradingPanel : MonoBehaviour {
     }
 
     void Update() {
-        // Tab while typing qty → jump to price field
+        // Tab while typing qty → jump to price field.
+        // (Input polling is inherently per-frame — no event form available.)
         if (orderQty != null && orderPrice != null
                 && orderQty.isFocused && Input.GetKeyDown(KeyCode.Tab)) {
             orderPrice.ActivateInputField();
             orderPrice.MoveTextEnd(false);
         }
-        // Refresh market tree quantities each frame while open
-        if (currentMarket != null) UpdateMarketTree();
     }
 
     void OnDestroy() {
@@ -159,6 +158,8 @@ public class TradingPanel : MonoBehaviour {
     }
 
     // Refreshes quantities and targets on existing ItemDisplay rows.
+    // Called from InventoryController.TickUpdate (every 0.2s) while the panel is open —
+    // same cadence as StoragePanel.UpdateDisplay. Do NOT call from Update().
     public void UpdateMarketTree() {
         if (currentMarket == null) return;
         foreach (var kvp in marketDisplayGos) {

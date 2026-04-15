@@ -14,6 +14,41 @@ Plain C# classes — **no `[Serializable]`** (not needed by Newtonsoft.Json; add
 
 Current call sites: `Inventory.Destroy` (reserved/resSpace stacks), `Building.Destroy` (non-empty storage, reservoir drop-to-floor). Add a similar guard to any new destroy-path diagnostic that would otherwise fire during a world reset.
 
+### Load phase ordering
+
+`ApplySaveData` (load path) follows a fixed nine-phase order. New saveable state
+belongs in whichever phase fits — not appended at the end. The headers are
+mirrored as `// ── Phase N: <name> ──` comments in `ApplySaveData` itself so the
+structure is visible at the call site.
+
+`WorldController.GenerateDefault` (worldgen path) loosely follows the same
+phases but with freedom — it constructs initial state rather than restoring it,
+so e.g. background walls fill happens *after* placing the market (still Phase 1
+content, just generated rather than read from a save). The two converge at
+Phase 4 (`graph.Initialize`) and run identically through Phases 5–9.
+
+| # | Phase | Contents |
+|---|----|----|
+| 1 | World skeleton | tiles, walls, water, world timer |
+| 2 | Structures | blueprints, then buildings (constructors create containers + defaults), then a RefreshColor pass over deconstruct blueprints so they can tint their now-existing target structure |
+| 3 | Contents | floor/tile inventories (storage contents are filled inside Phase 2) |
+| 4 | Spatial indexes | `SkyExposure`, `BackgroundTile`, `graph.Initialize` (final standability + lighting caches) |
+| 5 | Configuration | targets, allow-filters, disabled recipes, research, weather — overrides on top of Phase 2 defaults |
+| 6 | Observers | `WorkOrderManager.Reconcile` — registers WOM orders against final config. Then `MaintenanceSystem.RebuildFromWorld()` rebuilds its registered/broken sets from the restored `condition` values, followed by a `RefreshTint()` pass over every structure. |
+| 7 | Agents | animals (frame 1 spawn; `Animal.Start` consumes `pendingSaveData` on frame 2) |
+| 8 | Validation | `ValidateGlobalInventory`, optional `AuditOrders` (must run after Phase 7 since animal inventories count) |
+| 9 | View | camera, UI panel state |
+
+**Three nested invariants**, ordered from concrete to abstract:
+
+1. **Containers before contents** — inventories must exist before items flow into them. (Why structures come before tile inventories; why `Building` constructors create their own storage in Phase 2.)
+2. **Geometry before graph before queries** — tile types and structures set, then `graph.Initialize`, then anything that reads standability or pathing.
+3. **All restorable state before any cross-system observer** — config (targets, recipe filters, research, weather) restored before `Reconcile` or `Validate*`. *This is the rule the `marketTargets` ordering bug violated.*
+
+**Single objects can span phases**: e.g. the market `Building` is constructed in Phase 2 with default zero-targets, then its `targets` dict is overwritten in Phase 5. Don't try to do everything for one object in one place.
+
+**Phase 7 is split across two frames.** `LoadAnimal` stages save state on `Animal.pendingSaveData` in frame 1; `Animal.Start` consumes it in frame 2. `PostLoadInit` runs after that and finalises colony-wide state. Anything that needs animals fully ready (cross-animal aggregates, colony stats) belongs in `PostLoadInit` — not directly in `ApplySaveData`.
+
 ### Startup ordering (frame by frame)
 
 All three paths (Initial / Reset / Load) follow the same two-frame handoff:

@@ -7,8 +7,8 @@ using UnityEngine.EventSystems;
 
 public class MenuPanel : MonoBehaviour {
     public static MenuPanel instance { get; protected set; }
-    public GameObject[] panels = null;
-    public GameObject activePanel;
+    [SerializeField] GameObject[] panels = null;
+    [SerializeField] GameObject activePanel;
 
     public void Start(){
         if (instance != null) {

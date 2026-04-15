@@ -74,7 +74,7 @@ public class Nav {
         preventFall = prevNode.isWaypoint || nextNode.isWaypoint
                    || Mathf.Abs(nextNode.wy - prevNode.wy) > 0.1f;
         var (edgeCost, edgeLen) = Graph.instance.GetRawEdgeInfo(prevNode, nextNode);
-        float speed = ModifierSystem.instance.GetTravelSpeedMultiplier(a);
+        float speed = ModifierSystem.GetTravelSpeedMultiplier(a);
         Vector2 newPos = Vector2.MoveTowards(
             new Vector2(a.x, a.y), new Vector2(nextNode.wx, nextNode.wy),
             speed * edgeLen / edgeCost * deltaTime);
@@ -266,7 +266,7 @@ public class Nav {
         return null;
     }
     public Path FindPathToBuilding(StructType structType, int r = Task.MediumFindRadius) {
-        return FindPathToStruct(structType, s => s.res.Available(), r);
+        return FindPathToStruct(structType, s => s.res.Available() && !s.IsBroken, r);
     }
     public Path FindMarketPath() {
         // Any standable tile on the x=0 column acts as the portal to the off-screen market.

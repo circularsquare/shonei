@@ -8,6 +8,7 @@
         ],
         "depth": 1,
         "solidTop": true,
+        "noMaintenance": true,
         "category": "structures"
     },{
         "id": 2,
@@ -17,6 +18,7 @@
             { "name": "wood", "quantity": 5 }
         ],
         "depth": 2,
+        "noMaintenance": true,
         "category": "structures"
     },{
         "id": 3,
@@ -26,6 +28,7 @@
             { "name": "wood", "quantity": 5 }
         ],
         "depth": 2,
+        "noMaintenance": true,
         "category": "structures"
     },{
         "id": 4,
@@ -122,7 +125,7 @@
         "fuelCapacity": 5,
         "fuelBurnRate": 1.0,
         "isLightSource": true,
-        "sortingOrder": 64,
+        "sortingOrder": 40,
         "category": "structures"
     },{
         "id": 41,
@@ -174,7 +177,7 @@
         "fuelBurnRate": 4.0,
         "isLightSource": true,
         "lightIntensity": 0.85,
-        "sortingOrder": 64,
+        "sortingOrder": 40,
         "socialWhenShared": true,
         "activeStartHour": 16,
         "activeEndHour": 6,
