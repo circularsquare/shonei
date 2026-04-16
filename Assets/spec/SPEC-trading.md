@@ -125,7 +125,7 @@ Singleton. Subscribes to TradingClient events in `Start()`, unsubscribes in
 
 `itemInput` and `chatInput` also trigger on Enter key (wired in `Start()`).
 
-**Chat/fill display:** capped at 20 entries; fills shown in green.
+**Chat/fill display:** the chat list is a *view* over `EventFeed` — TradingPanel subscribes to `EventFeed.OnEntry` in `Awake` and renders every entry as a chat row (capped at 20 visible rows). Market errors, `/give` feedback, server chat, and trade fills all flow through `EventFeed.Post(...)` rather than writing to the chat list directly. Inline `<color=...>` tags on the posted text still drive per-message coloring (green for fills and `/give` success, red for errors). See SPEC-eventfeed for the dispatcher contract.
 
 **Indicator sprites:** loaded from `Resources/Sprites/Misc/indicator/green` and
 `Resources/Sprites/Misc/indicator/red`.

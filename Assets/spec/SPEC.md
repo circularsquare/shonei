@@ -87,6 +87,7 @@ Depth-0 buildings with custom behaviour subclass `Building` (e.g. `PumpBuilding`
 | [SPEC-trading.md](SPEC-trading.md) | WebSocket protocol, matching engine, TradingClient, TradingPanel, in-game market logistics |
 | [SPEC-research.md](SPEC-research.md) | Research points mechanic, node structure, key classes, save data |
 | [SPEC-ui.md](SPEC-ui.md) | Inventory UI panels — global panel, StoragePanel, ItemDisplay DisplayMode, selection routing |
+| [SPEC-eventfeed.md](SPEC-eventfeed.md) | EventFeed singleton — in-game alert dispatcher, categories, bindings, renderer contract |
 | [SPEC-sound.md](SPEC-sound.md) | Sound system — SoundManager singleton, SFX one-shots, ambient loops |
 | [SPEC-worldgen.md](SPEC-worldgen.md) | World generation pipeline — terrain, caves, worm tunnels, water |
 

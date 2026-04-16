@@ -241,7 +241,7 @@ Multiple orthogonal mechanisms can cause a Building / Blueprint / Plant to skip 
 | `Building.reservoir.HasFuel()` | `Building` (when `reservoir != null`) | Building skipped by animal AI work-finding, water routing, and light emission | Not a WOM gate — these are direct checks at use sites (`Animal.cs`, `WaterController.cs`, `LightSource.cs`). |
 | `LightSource.IsInActiveWindow()` | `LightSource` | Fuel burn + light emission outside `activeStartHour..activeEndHour` | StructType-driven schedule, e.g. torches lit only at night. |
 | `uses >= depleteAt` | `Workstation` (`uses`) + `StructType` (`depleteAt`) | Triggers building destruction at craft completion | Not technically a "skip" — the building gets removed. Checked in `AnimalStateManager` after each craft round. |
-| `Structure.IsBroken` | `Structure` (`condition < 0.5`) | Craft / research / fuel supply orders; decoration happiness; leisure seats; house sleep; road speed bonus; light burn + emission | Driven by the Maintenance System (see below). Gating sites mirror `disabled` — WOM `isActive` lambdas, plus direct checks in `Animal.cs`, `Navigation.cs`, `ModifierSystem.cs`, `LightSource.cs`. |
+| `Structure.IsBroken` | `Structure` (`condition < 0.5`) | Craft / research / fuel supply orders; decoration happiness; fountain decorative water; clock hand rotation; leisure seats; house sleep; road speed bonus; light burn + emission | Driven by the Maintenance System (see below). Gating sites mirror `disabled` — WOM `isActive` lambdas, plus direct checks in `Animal.cs`, `Navigation.cs`, `ModifierSystem.cs`, `LightSource.cs`, `WaterController.cs`, `ClockHand.cs`. |
 
 ### Disabled-enforcement asymmetry
 
@@ -270,7 +270,7 @@ Every `Structure` carries a `condition` float in `[0, 1]` (1 = pristine, 0 = ful
 | `RepairCostFraction` | `0.25` | A full 0→1 repair costs ¼ × `StructType.ncosts`. A single visit scales by `repairAmount` (e.g. 40 % repair = 10 % of build cost for each cost item). |
 | `DaysToBreak` | `30` | In-game days from 1.0 down to `BreakThreshold` (0.5). Full 1.0 → 0.0 takes ~60 days. Decay per tick = `(1 - BreakThreshold) / (DaysToBreak × World.ticksInDay)`. |
 
-**Opt-out**: `StructType.noMaintenance = true` (JSON flag) exempts a type entirely. Plants and zero-cost structures are also auto-exempt (`NeedsMaintenance` is false). The three nav types — platform, stairs, ladder — carry the flag in `buildingsDb.json`.
+**Opt-out**: `StructType.noMaintenance = true` (JSON flag) exempts a type entirely. Plants and zero-cost structures are also auto-exempt (`NeedsMaintenance` is false). The three nav types (platform, stairs, ladder) and market carry the flag in `buildingsDb.json`.
 
 **Predicates on Structure**:
 - `NeedsMaintenance` — opt-in gate: non-plant, has build cost, not `noMaintenance`.
@@ -310,7 +310,27 @@ The Maintenance WOM order is **not removed** when condition climbs back into the
 
 ### Visual
 
-`Structure.RefreshTint()` applies `Color(0.75, 0.75, 0.75)` when broken, otherwise `Color.white`. Called on threshold crossings (`OnBroken` / `OnRepaired`) and on every structure at load (`SaveSystem` Phase 6). Deconstruct-blueprint tints (applied by `Blueprint`) run through a separate path and override this on the same renderer.
+`Structure.RefreshTint()` swaps `sr.sharedMaterial` between two materials:
+- **Healthy** — the renderer's original material (captured on first `RefreshTint` call into `Structure.defaultMat`). This is URP 2D's Sprite-Lit-Default, which carries the `LightMode = Universal2D` tag that the `NormalsCapturePass` filter matches on. We capture and restore by reference rather than `Shader.Find("Sprites/Default")` because the latter is the *legacy* CG sprite shader and would silently drop the renderer out of the lighting pipeline (no ambient, no sun).
+- **Broken** — `Resources/Materials/CrackedSprite.mat`, which drives `Assets/Resources/Shaders/CrackedSprite.shader`. The shader has both `Universal2D` and `UniversalForward` passes so broken buildings continue to participate in NormalsCapture and LightComposite. It composites a tileable world-space crack texture on top of the base sprite's RGB, alpha-masked by the base sprite's own alpha (cracks never appear in transparent gaps). Full-structure lighting (sun, torches, fireplaces, ambient) continues to apply on top via the normal composite path.
+
+Called on threshold crossings (`OnBroken` / `OnRepaired`) and on every structure at load (`SaveSystem` Phase 6). Deconstruct tints run via `sr.color` and compose multiplicatively with either material — broken + deconstructing renders correctly.
+
+### Per-building broken effects
+
+Beyond the universal cracked-material tint, specific building types have additional visual/functional responses to `IsBroken`. All are implemented as polling checks (not edge callbacks) at the site that already controls the behaviour:
+
+| Building | Broken effect | Poll site |
+|----------|---------------|-----------|
+| Workstations | Craft orders halt | WOM `isActive` lambda |
+| Laboratory | Research orders halt | WOM `isActive` lambda |
+| Torch / fireplace | Light + fuel burn stop | `LightSource.UpdateLitState()` |
+| Fountain | Decorative water overlay hidden; decoration happiness lost | `WaterController.UpdateSurfaceMask()`, `Animal.ScanForNearbyDecorations()` |
+| Clock | Hand freezes; catches up on repair (rotation derived from current time, not accumulated) | `ClockHand.Update()` |
+| House | Animals abandon and find new homes | `Animal.FindHome()` |
+| Road | Speed bonus drops to 0 | `Structure.EffectivePathCostReduction` |
+
+**Exempt from decay** (`noMaintenance: true`): platform, stairs, ladder, market.
 
 ### Save/load
 

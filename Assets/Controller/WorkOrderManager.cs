@@ -368,7 +368,7 @@ public class WorkOrderManager : MonoBehaviour {
             priority = 4,
             factory = a => {
                 var task = new ResearchTask(a, lab);
-                task.maintenanceTargetId = ResearchSystem.instance?.ClaimMaintenanceTarget(a) ?? -1;
+                task.studyTargetId = ResearchSystem.instance?.PickStudyTarget() ?? -1;
                 return task;
             },
             tile = lab.tile,

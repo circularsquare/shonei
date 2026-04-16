@@ -1,5 +1,5 @@
 {
-  "timer": 3512.86157,
+  "timer": 3546.71655,
   "tiles": [
     {
       "x": 0,
@@ -3586,8 +3586,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 2150,
-            "decayCounter": 568753
+            "quantity": 2120,
+            "decayCounter": 282485
           }
         ]
       },
@@ -3902,8 +3902,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 2271,
-            "decayCounter": 115637
+            "quantity": 2240,
+            "decayCounter": 507873
           }
         ]
       },
@@ -4508,22 +4508,6 @@
       "y": 0,
       "tileType": "stone",
       "hasBackgroundWall": true
-    },
-    {
-      "x": 15,
-      "y": 50,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "apple",
-            "quantity": 385,
-            "decayCounter": 343409
-          }
-        ]
-      },
-      "hasBackgroundWall": false
     },
     {
       "x": 15,
@@ -6652,8 +6636,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 2487,
-            "decayCounter": 363815
+            "quantity": 2453,
+            "decayCounter": 737967
           }
         ]
       },
@@ -8768,8 +8752,8 @@
         "stacks": [
           {
             "itemName": "pine planks",
-            "quantity": 1194,
-            "decayCounter": 542559
+            "quantity": 1461,
+            "decayCounter": 370649
           }
         ]
       },
@@ -9084,8 +9068,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 163,
-            "decayCounter": 304794
+            "quantity": 846,
+            "decayCounter": 955221
           }
         ]
       },
@@ -9400,8 +9384,8 @@
         "stacks": [
           {
             "itemName": "wheat",
-            "quantity": 437,
-            "decayCounter": 286874
+            "quantity": 621,
+            "decayCounter": 21208
           }
         ]
       },
@@ -30091,76 +30075,83 @@
         ]
       },
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 25,
       "y": 50,
       "typeName": "appletree",
-      "plantAge": 38,
-      "plantGrowthStage": 3,
-      "plantHarvestable": true,
+      "plantAge": 27,
+      "plantGrowthStage": 2,
+      "plantHarvestable": false,
       "plantHarvestFlagged": true,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 28,
       "y": 50,
       "typeName": "tree",
-      "plantAge": 336,
+      "plantAge": 370,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 35,
       "y": 50,
       "typeName": "wheat",
-      "plantAge": 3,
-      "plantGrowthStage": 0,
+      "plantAge": 37,
+      "plantGrowthStage": 2,
       "plantHarvestable": false,
       "plantHarvestFlagged": true,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 36,
       "y": 50,
       "typeName": "wheat",
-      "plantAge": 44,
-      "plantGrowthStage": 3,
-      "plantHarvestable": true,
+      "plantAge": 27,
+      "plantGrowthStage": 2,
+      "plantHarvestable": false,
       "plantHarvestFlagged": true,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 24,
       "y": 50,
       "typeName": "soybean",
-      "plantAge": 79,
+      "plantAge": 113,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 9,
       "y": 49,
       "typeName": "tree",
-      "plantAge": 929,
+      "plantAge": 963,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 30,
@@ -30175,8 +30166,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 9994,
-            "decayCounter": 519217
+            "quantity": 9989,
+            "decayCounter": 279387
           }
         ],
         "allowedItemIds": [
@@ -30187,7 +30178,8 @@
         ]
       },
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 0.9291657
     },
     {
       "x": 31,
@@ -30202,8 +30194,8 @@
         "stacks": [
           {
             "itemName": "wheat",
-            "quantity": 9996,
-            "decayCounter": 140776
+            "quantity": 9976,
+            "decayCounter": 355795
           }
         ],
         "allowedItemIds": [
@@ -30211,7 +30203,8 @@
         ]
       },
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 0.9291657
     },
     {
       "x": 30,
@@ -30222,7 +30215,8 @@
       "plantHarvestable": false,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 31,
@@ -30233,7 +30227,8 @@
       "plantHarvestable": false,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 0.9291657
     },
     {
       "x": 26,
@@ -30245,7 +30240,8 @@
       "uses": 0,
       "workOrderEffectiveCapacity": 2,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 0.9291657
     },
     {
       "x": 27,
@@ -30260,23 +30256,23 @@
         "stacks": [
           {
             "itemName": "acorn",
-            "quantity": 1834,
-            "decayCounter": 304368
+            "quantity": 1804,
+            "decayCounter": 618377
           },
           {
             "itemName": "sawdust",
-            "quantity": 1999,
-            "decayCounter": 925980
+            "quantity": 1994,
+            "decayCounter": 703326
           },
           {
             "itemName": "acorn",
             "quantity": 383,
-            "decayCounter": 464142
+            "decayCounter": 794114
           },
           {
             "itemName": "sawdust",
             "quantity": 1358,
-            "decayCounter": 948768
+            "decayCounter": 838540
           }
         ],
         "allowedItemIds": [
@@ -30286,7 +30282,8 @@
         ]
       },
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 0.9291657
     },
     {
       "x": 28,
@@ -30297,7 +30294,8 @@
       "plantHarvestable": false,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 30,
@@ -30312,13 +30310,14 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 377,
+            "quantity": 369,
             "decayCounter": 0
           }
         ]
       },
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 0.9291657
     },
     {
       "x": 26,
@@ -30329,7 +30328,8 @@
       "plantHarvestable": false,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 0.9291657
     },
     {
       "x": 28,
@@ -30340,7 +30340,8 @@
       "plantHarvestable": false,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 29,
@@ -30355,8 +30356,8 @@
         "stacks": [
           {
             "itemName": "pine planks",
-            "quantity": 9997,
-            "decayCounter": 456141
+            "quantity": 9995,
+            "decayCounter": 324116
           }
         ],
         "allowedItemIds": [
@@ -30367,7 +30368,8 @@
         ]
       },
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 0.9291657
     },
     {
       "x": 27,
@@ -30379,7 +30381,8 @@
       "uses": 0,
       "workOrderEffectiveCapacity": 1,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 0.9291657
     },
     {
       "x": 31,
@@ -30390,7 +30393,8 @@
       "plantHarvestable": false,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 31,
@@ -30401,7 +30405,8 @@
       "plantHarvestable": false,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 0.9291657
     },
     {
       "x": 22,
@@ -30416,8 +30421,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 9999,
-            "decayCounter": 825033
+            "quantity": 9985,
+            "decayCounter": 637517
           }
         ],
         "allowedItemIds": [
@@ -30428,7 +30433,8 @@
         ]
       },
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 0.9291657
     },
     {
       "x": 28,
@@ -30443,23 +30449,23 @@
         "stacks": [
           {
             "itemName": "soybeans",
-            "quantity": 1874,
-            "decayCounter": 365893
+            "quantity": 1861,
+            "decayCounter": 361657
           },
           {
             "itemName": "soybeans",
-            "quantity": 1874,
-            "decayCounter": 204574
+            "quantity": 1861,
+            "decayCounter": 201504
           },
           {
             "itemName": "soybeans",
-            "quantity": 1875,
-            "decayCounter": 922753
+            "quantity": 1862,
+            "decayCounter": 921601
           },
           {
             "itemName": "tools",
             "quantity": 600,
-            "decayCounter": 23789143
+            "decayCounter": 65539143
           }
         ],
         "allowedItemIds": [
@@ -30468,7 +30474,8 @@
         ]
       },
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 0.9291657
     },
     {
       "x": 31,
@@ -30479,7 +30486,8 @@
       "plantHarvestable": false,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 29,
@@ -30490,7 +30498,8 @@
       "plantHarvestable": false,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 28,
@@ -30501,7 +30510,8 @@
       "plantHarvestable": false,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 32,
@@ -30512,7 +30522,8 @@
       "plantHarvestable": false,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 27,
@@ -30523,7 +30534,8 @@
       "plantHarvestable": false,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 30,
@@ -30534,7 +30546,8 @@
       "plantHarvestable": false,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 25,
@@ -30545,7 +30558,8 @@
       "plantHarvestable": false,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 26,
@@ -30556,19 +30570,21 @@
       "plantHarvestable": false,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 37,
       "y": 50,
       "typeName": "wheat",
-      "plantAge": 20,
-      "plantGrowthStage": 1,
-      "plantHarvestable": false,
+      "plantAge": 54,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 29,
@@ -30579,19 +30595,21 @@
       "plantHarvestable": false,
       "uses": 0,
       "mirrored": true,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 38,
       "y": 50,
       "typeName": "wheat",
-      "plantAge": 9,
-      "plantGrowthStage": 0,
-      "plantHarvestable": false,
+      "plantAge": 43,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 26,
@@ -30602,55 +30620,60 @@
       "plantHarvestable": false,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 0.9291657
     },
     {
       "x": 39,
       "y": 50,
       "typeName": "wheat",
-      "plantAge": 32,
-      "plantGrowthStage": 2,
+      "plantAge": 13,
+      "plantGrowthStage": 0,
       "plantHarvestable": false,
       "plantHarvestFlagged": true,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 16,
       "y": 50,
       "typeName": "appletree",
-      "plantAge": 25,
-      "plantGrowthStage": 2,
-      "plantHarvestable": false,
+      "plantAge": 59,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 15,
       "y": 50,
       "typeName": "appletree",
-      "plantAge": 22,
-      "plantGrowthStage": 2,
-      "plantHarvestable": false,
+      "plantAge": 56,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 17,
       "y": 51,
       "typeName": "tree",
-      "plantAge": 27,
-      "plantGrowthStage": 1,
+      "plantAge": 61,
+      "plantGrowthStage": 2,
       "plantHarvestable": false,
       "plantHarvestFlagged": true,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 10,
@@ -30661,7 +30684,8 @@
       "plantHarvestable": false,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 6,
@@ -30672,7 +30696,8 @@
       "plantHarvestable": false,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 9,
@@ -30683,7 +30708,8 @@
       "plantHarvestable": false,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 5,
@@ -30694,7 +30720,8 @@
       "plantHarvestable": false,
       "uses": 0,
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 28,
@@ -30719,7 +30746,8 @@
         ]
       },
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 0.9291657
     },
     {
       "x": 21,
@@ -30734,8 +30762,8 @@
         "stacks": [
           {
             "itemName": "soybeans",
-            "quantity": 2982,
-            "decayCounter": 852401
+            "quantity": 2961,
+            "decayCounter": 528041
           }
         ],
         "allowedItemIds": [
@@ -30743,7 +30771,8 @@
         ]
       },
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 0.9291657
     },
     {
       "x": 20,
@@ -30754,7 +30783,8 @@
       "plantHarvestable": false,
       "uses": 0,
       "mirrored": true,
-      "disabled": false
+      "disabled": false,
+      "condition": 1.0
     },
     {
       "x": 20,
@@ -30775,7 +30805,8 @@
         ]
       },
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 0.9291657
     },
     {
       "x": 32,
@@ -30790,33 +30821,34 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 917,
+            "quantity": 882,
             "decayCounter": 0
           }
         ]
       },
       "mirrored": false,
-      "disabled": false
+      "disabled": false,
+      "condition": 0.9291657
     }
   ],
   "blueprints": [],
   "animals": [
     {
       "aName": "Tangyuan",
-      "x": 31.0,
+      "x": 30.0,
       "y": 50.0,
       "jobName": "farmer",
-      "energy": 0.83716464,
-      "food": 57.5460968,
-      "eep": 84.9052353,
+      "energy": 0.501963139,
+      "food": 63.5460434,
+      "eep": 81.50529,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 2.78980112,
-        "fruit": 0.97743696,
+        "wheat": 3.169469,
+        "fruit": 0.7998565,
         "fountain": 0.0,
         "fireplace": 0.0,
-        "social": 1.33257437
+        "social": 1.89047289
       },
       "warmth": 0.0,
       "inv": {
@@ -30853,9 +30885,9 @@
         "invType": "Equip",
         "stacks": [
           {
-            "itemName": "wheat",
-            "quantity": 98,
-            "decayCounter": 378061
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 551250
           }
         ]
       },
@@ -30865,7 +30897,7 @@
           {
             "itemName": "tools",
             "quantity": 100,
-            "decayCounter": 7874874
+            "decayCounter": 6958222
           }
         ]
       },
@@ -30880,7 +30912,7 @@
         ]
       },
       "skillXp": [
-        29.9091053,
+        30.6206017,
         0.0,
         0.937652051,
         0.0,
@@ -30901,22 +30933,22 @@
     },
     {
       "aName": "Gossamer",
-      "x": 12.2255945,
+      "x": 31.0,
       "y": 50.0,
       "jobName": "hauler",
-      "energy": 0.0695005655,
-      "food": 69.1960144,
-      "eep": 85.205246,
+      "energy": 0.429365158,
+      "food": 55.5959625,
+      "eep": 81.8053,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 3.77111435,
-        "fruit": 0.583860159,
+        "wheat": 3.08597946,
+        "fruit": 0.477784634,
         "fountain": 0.0,
-        "fireplace": 2.087402,
-        "social": 2.5559063
+        "fireplace": 1.7081635,
+        "social": 3.09155035
       },
-      "warmth": 1.792887,
+      "warmth": 1.3997947,
       "inv": {
         "invType": "Animal",
         "stacks": [
@@ -30953,7 +30985,7 @@
           {
             "itemName": "",
             "quantity": 0,
-            "decayCounter": 143926
+            "decayCounter": 0
           }
         ]
       },
@@ -30963,7 +30995,7 @@
           {
             "itemName": "tools",
             "quantity": 100,
-            "decayCounter": 7874874
+            "decayCounter": 6958222
           }
         ]
       },
@@ -30999,20 +31031,216 @@
     },
     {
       "aName": "Yuyu",
-      "x": 31.0,
+      "x": 33.0,
       "y": 50.0,
       "jobName": "farmer",
-      "energy": 0.250745773,
-      "food": 50.09475,
-      "eep": 85.50526,
+      "energy": 0.186716318,
+      "food": 51.344696,
+      "eep": 82.10531,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 2.003459,
-        "fruit": 1.1908443,
+        "wheat": 1.639471,
+        "fruit": 1.582095,
+        "fountain": 0.0,
+        "fireplace": 3.80922127,
+        "social": 2.86457562
+      },
+      "warmth": 3.7672,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "tools",
+            "quantity": 100,
+            "decayCounter": 6958222
+          }
+        ]
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "skillXp": [
+        33.5846939,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "skillLevel": [
+        2,
+        0,
+        0,
+        0,
+        0
+      ],
+      "isTraveling": false,
+      "travelProgress": 0.0,
+      "travelDuration": 0,
+      "travelItemQty": 0,
+      "travelReturnLeg": false
+    },
+    {
+      "aName": "Ming",
+      "x": 29.0,
+      "y": 50.0,
+      "jobName": "sawyer",
+      "energy": 0.408691525,
+      "food": 59.9989929,
+      "eep": 82.9047,
+      "satisfactions": {
+        "soymilk": 0.0,
+        "dairy": 0.0,
+        "wheat": 3.22134256,
+        "fruit": 0.4077034,
+        "fountain": 0.0,
+        "fireplace": 1.7081635,
+        "social": 2.414503
+      },
+      "warmth": 1.3997947,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 290976
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "tools",
+            "quantity": 100,
+            "decayCounter": 6958222
+          }
+        ]
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "skillXp": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        24.673645
+      ],
+      "skillLevel": [
+        0,
+        0,
+        0,
+        0,
+        2
+      ],
+      "isTraveling": false,
+      "travelProgress": 0.0,
+      "travelDuration": 0,
+      "travelItemQty": 0,
+      "travelReturnLeg": false
+    },
+    {
+      "aName": "Rong",
+      "x": 26.0,
+      "y": 52.0,
+      "jobName": "scientist",
+      "energy": 0.869582057,
+      "food": 61.1452942,
+      "eep": 83.90472,
+      "satisfactions": {
+        "soymilk": 0.0,
+        "dairy": 0.0,
+        "wheat": 1.87481153,
+        "fruit": 1.7563746,
         "fountain": 0.0,
         "fireplace": 0.0,
-        "social": 2.05803442
+        "social": 0.903044
       },
       "warmth": 0.0,
       "inv": {
@@ -31051,7 +31279,7 @@
           {
             "itemName": "apple",
             "quantity": 99,
-            "decayCounter": 185610
+            "decayCounter": 719897
           }
         ]
       },
@@ -31061,105 +31289,7 @@
           {
             "itemName": "tools",
             "quantity": 100,
-            "decayCounter": 7874874
-          }
-        ]
-      },
-      "clothingSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "skillXp": [
-        33.3429375,
-        0.0,
-        0.0,
-        0.0,
-        0.0
-      ],
-      "skillLevel": [
-        2,
-        0,
-        0,
-        0,
-        0
-      ],
-      "isTraveling": false,
-      "travelProgress": 0.0,
-      "travelDuration": 0,
-      "travelItemQty": 0,
-      "travelReturnLeg": false
-    },
-    {
-      "aName": "Ming",
-      "x": 30.0,
-      "y": 50.0,
-      "jobName": "sawyer",
-      "energy": 0.0287587643,
-      "food": 54.1990433,
-      "eep": 86.30465,
-      "satisfactions": {
-        "soymilk": 0.0,
-        "dairy": 0.0,
-        "wheat": 2.86424565,
-        "fruit": 0.498219818,
-        "fountain": 0.0,
-        "fireplace": 2.087402,
-        "social": 1.72854435
-      },
-      "warmth": 1.792887,
-      "inv": {
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "foodSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "wheat",
-            "quantity": 97,
-            "decayCounter": 156050
-          }
-        ]
-      },
-      "toolSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "tools",
-            "quantity": 100,
-            "decayCounter": 7874874
+            "decayCounter": 6958222
           }
         ]
       },
@@ -31177,105 +31307,7 @@
         0.0,
         0.0,
         0.0,
-        0.0,
-        23.9303665
-      ],
-      "skillLevel": [
-        0,
-        0,
-        0,
-        0,
-        2
-      ],
-      "isTraveling": false,
-      "travelProgress": 0.0,
-      "travelDuration": 0,
-      "travelItemQty": 0,
-      "travelReturnLeg": false
-    },
-    {
-      "aName": "Rong",
-      "x": 16.2519016,
-      "y": 50.4529381,
-      "jobName": "scientist",
-      "energy": 0.346943974,
-      "food": 44.7453461,
-      "eep": 87.3046646,
-      "satisfactions": {
-        "soymilk": 0.0,
-        "dairy": 0.0,
-        "wheat": 2.29104829,
-        "fruit": 0.486061275,
-        "fountain": 0.0,
-        "fireplace": 0.0,
-        "social": 1.10353363
-      },
-      "warmth": 0.0,
-      "inv": {
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "foodSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "toolSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "tools",
-            "quantity": 100,
-            "decayCounter": 7874874
-          }
-        ]
-      },
-      "clothingSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "skillXp": [
-        0.0,
-        0.0,
-        0.0,
-        45.7728043,
+        47.1215324,
         0.0
       ],
       "skillLevel": [
@@ -31293,22 +31325,22 @@
     },
     {
       "aName": "Rou",
-      "x": 21.0,
+      "x": 34.0,
       "y": 50.0,
       "jobName": "hauler",
-      "energy": 0.103989363,
-      "food": 50.8975449,
-      "eep": 84.4024658,
+      "energy": 0.02173984,
+      "food": 52.297493,
+      "eep": 81.00252,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 2.0937264,
-        "fruit": 0.658479,
+        "wheat": 1.71333885,
+        "fruit": 1.25217938,
         "fountain": 0.0,
-        "fireplace": 0.0,
-        "social": 1.9159112
+        "fireplace": 1.90222037,
+        "social": 3.568205
       },
-      "warmth": 0.0,
+      "warmth": 1.88,
       "inv": {
         "invType": "Animal",
         "stacks": [
@@ -31343,9 +31375,9 @@
         "invType": "Equip",
         "stacks": [
           {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
+            "itemName": "apple",
+            "quantity": 98,
+            "decayCounter": 582000
           }
         ]
       },
@@ -31355,7 +31387,7 @@
           {
             "itemName": "tools",
             "quantity": 100,
-            "decayCounter": 7874874
+            "decayCounter": 6958222
           }
         ]
       },
@@ -31391,20 +31423,314 @@
     },
     {
       "aName": "Ling",
-      "x": 31.0,
-      "y": 52.0,
+      "x": 24.3890934,
+      "y": 50.0,
       "jobName": "hauler",
-      "energy": 0.755597353,
-      "food": 59.6475754,
-      "eep": 85.30245,
+      "energy": 0.473042,
+      "food": 66.04752,
+      "eep": 82.0025,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 2.21855354,
-        "fruit": 1.05904067,
+        "wheat": 2.7954874,
+        "fruit": 0.866634548,
         "fountain": 0.0,
         "fireplace": 0.0,
-        "social": 2.082804
+        "social": 1.7044009
+      },
+      "warmth": 0.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "apple",
+            "quantity": 82,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 747250
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "tools",
+            "quantity": 100,
+            "decayCounter": 6958222
+          }
+        ]
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "skillXp": [
+        0.0,
+        0.0,
+        1.42285836,
+        0.0,
+        0.0
+      ],
+      "skillLevel": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "isTraveling": false,
+      "travelProgress": 0.0,
+      "travelDuration": 0,
+      "travelItemQty": 0,
+      "travelReturnLeg": false
+    },
+    {
+      "aName": "Lu",
+      "x": 28.0,
+      "y": 50.0,
+      "jobName": "logger",
+      "energy": 0.6630194,
+      "food": 48.84986,
+      "eep": 57.902504,
+      "satisfactions": {
+        "soymilk": 0.0,
+        "dairy": 0.0,
+        "wheat": 2.421628,
+        "fruit": 0.794192,
+        "fountain": 0.0,
+        "fireplace": 0.0,
+        "social": 3.853698
+      },
+      "warmth": 0.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "tools",
+            "quantity": 100,
+            "decayCounter": 6958222
+          }
+        ]
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "skillXp": [
+        7.289596,
+        0.0,
+        0.249598354,
+        0.0,
+        0.0
+      ],
+      "skillLevel": [
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "isTraveling": false,
+      "travelProgress": 0.0,
+      "travelDuration": 0,
+      "travelItemQty": 0,
+      "travelReturnLeg": false
+    },
+    {
+      "aName": "Zephyr",
+      "x": 32.0,
+      "y": 50.0,
+      "jobName": "merchant",
+      "energy": 0.261263251,
+      "food": 53.4975128,
+      "eep": 58.4024963,
+      "satisfactions": {
+        "soymilk": 0.0,
+        "dairy": 0.0,
+        "wheat": 2.53701544,
+        "fruit": 0.452070326,
+        "fountain": 0.0,
+        "fireplace": 2.0,
+        "social": 3.08236814
+      },
+      "warmth": 2.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "tools",
+            "quantity": 100,
+            "decayCounter": 6958222
+          }
+        ]
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ]
+      },
+      "skillXp": [
+        8.301101,
+        0.0,
+        0.25,
+        0.0,
+        0.0
+      ],
+      "skillLevel": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "isTraveling": false,
+      "travelProgress": 0.0,
+      "travelDuration": 0,
+      "travelItemQty": 0,
+      "travelReturnLeg": false
+    },
+    {
+      "aName": "Thimble",
+      "x": 32.0,
+      "y": 50.0,
+      "jobName": "scientist",
+      "energy": 0.112413049,
+      "food": 61.8975449,
+      "eep": 81.802475,
+      "satisfactions": {
+        "soymilk": 0.0,
+        "dairy": 0.0,
+        "wheat": 2.81010485,
+        "fruit": 0.5696761,
+        "fountain": 0.0,
+        "fireplace": 0.0,
+        "social": 2.650786
       },
       "warmth": 0.0,
       "inv": {
@@ -31442,8 +31768,8 @@
         "stacks": [
           {
             "itemName": "wheat",
-            "quantity": 98,
-            "decayCounter": 551263
+            "quantity": 200,
+            "decayCounter": 331250
           }
         ]
       },
@@ -31453,301 +31779,7 @@
           {
             "itemName": "tools",
             "quantity": 100,
-            "decayCounter": 7874874
-          }
-        ]
-      },
-      "clothingSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "skillXp": [
-        0.0,
-        0.0,
-        1.42285836,
-        0.0,
-        0.0
-      ],
-      "skillLevel": [
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      "isTraveling": false,
-      "travelProgress": 0.0,
-      "travelDuration": 0,
-      "travelItemQty": 0,
-      "travelReturnLeg": false
-    },
-    {
-      "aName": "Lu",
-      "x": 24.3731651,
-      "y": 50.0,
-      "jobName": "logger",
-      "energy": 0.06653643,
-      "food": 62.449913,
-      "eep": 61.3024521,
-      "satisfactions": {
-        "soymilk": 0.0,
-        "dairy": 0.0,
-        "wheat": 3.11138129,
-        "fruit": 1.02040219,
-        "fountain": 0.0,
-        "fireplace": 0.0,
-        "social": 1.71440017
-      },
-      "warmth": 0.0,
-      "inv": {
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 1000,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "pine",
-            "quantity": 23,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "foodSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 593750
-          }
-        ]
-      },
-      "toolSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "tools",
-            "quantity": 100,
-            "decayCounter": 7874874
-          }
-        ]
-      },
-      "clothingSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "skillXp": [
-        7.289596,
-        0.0,
-        0.249598354,
-        0.0,
-        0.0
-      ],
-      "skillLevel": [
-        1,
-        0,
-        0,
-        0,
-        0
-      ],
-      "isTraveling": false,
-      "travelProgress": 0.0,
-      "travelDuration": 0,
-      "travelItemQty": 0,
-      "travelReturnLeg": false
-    },
-    {
-      "aName": "Zephyr",
-      "x": 29.0,
-      "y": 51.0,
-      "jobName": "merchant",
-      "energy": 0.5903094,
-      "food": 67.0975647,
-      "eep": 61.8024445,
-      "satisfactions": {
-        "soymilk": 0.0,
-        "dairy": 0.0,
-        "wheat": 3.259635,
-        "fruit": 0.580833733,
-        "fountain": 0.0,
-        "fireplace": 0.0,
-        "social": 3.96032071
-      },
-      "warmth": 0.0,
-      "inv": {
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "foodSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 977546
-          }
-        ]
-      },
-      "toolSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "tools",
-            "quantity": 100,
-            "decayCounter": 7874874
-          }
-        ]
-      },
-      "clothingSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "skillXp": [
-        8.301101,
-        0.0,
-        0.25,
-        0.0,
-        0.0
-      ],
-      "skillLevel": [
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      "isTraveling": false,
-      "travelProgress": 0.0,
-      "travelDuration": 0,
-      "travelItemQty": 0,
-      "travelReturnLeg": false
-    },
-    {
-      "aName": "Thimble",
-      "x": 30.0,
-      "y": 51.0,
-      "jobName": "scientist",
-      "energy": 0.14496541,
-      "food": 55.4975967,
-      "eep": 85.20242,
-      "satisfactions": {
-        "soymilk": 0.0,
-        "dairy": 0.0,
-        "wheat": 2.38849282,
-        "fruit": 0.7319373,
-        "fountain": 0.0,
-        "fireplace": 0.0,
-        "social": 2.37794614
-      },
-      "warmth": 0.0,
-      "inv": {
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ]
-      },
-      "foodSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 96992
-          }
-        ]
-      },
-      "toolSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "tools",
-            "quantity": 100,
-            "decayCounter": 7874874
+            "decayCounter": 6958222
           }
         ]
       },
@@ -31765,7 +31797,7 @@
         0.0,
         0.0,
         0.0,
-        19.1851139,
+        21.0558262,
         0.0
       ],
       "skillLevel": [
@@ -31784,13 +31816,13 @@
   ],
   "research": {
     "progress": {
-      "1": 9.75999451,
+      "1": 9.879997,
       "2": 0.0,
-      "4": 5.41835451,
-      "5": 4.968639,
+      "4": 4.738355,
+      "5": 5.39417076,
       "6": 0.0,
       "7": 0.0,
-      "8": 5.55284739,
+      "8": 5.377862,
       "9": 0.0,
       "10": 0.0,
       "3": 0.0
@@ -31810,8 +31842,8 @@
     ]
   },
   "isRaining": false,
-  "cameraX": 28.7500286,
-  "cameraY": 52.41206,
+  "cameraX": 31.8125362,
+  "cameraY": 52.55789,
   "cameraPPU": 24,
   "marketTargets": {
     "silver": 512,

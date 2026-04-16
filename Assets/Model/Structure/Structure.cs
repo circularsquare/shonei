@@ -51,15 +51,42 @@ public class Structure {
     // so neglected roads stop giving a path-cost discount / movement bonus.
     public float EffectivePathCostReduction => IsBroken ? 0f : structType.pathCostReduction;
 
-    // Re-applies the sprite color based on broken state. Called from MaintenanceSystem on
-    // threshold crossings. Deconstruct blueprints override this via their own tint pass
-    // (Blueprint.CreateDeconstructBlueprint applies red/orange after the structure is
-    // replaced), so the deconstruct tint wins automatically.
+    // The project-default material this SpriteRenderer was created with (URP 2D's
+    // Sprite-Lit-Default, which carries the `LightMode = Universal2D` tag needed for
+    // the NormalsCapture render-layer filter). Captured once in RefreshTint before
+    // we ever swap to the cracked material, so we can restore it verbatim on repair
+    // without hardcoding a shader name. Restoring via `Shader.Find("Sprites/Default")`
+    // would silently substitute the *legacy* sprite shader and drop the structure out
+    // of the lighting pipeline (no ambient, no sun). See SPEC-rendering.md §Lighting.
+    Material defaultMat;
+
+    // Re-applies the sprite material based on broken state. Called from
+    // MaintenanceSystem on threshold crossings. Broken structures swap to the shared
+    // CrackedSprite material which composites a tileable crack texture on top of the
+    // base sprite, alpha-masked by the sprite so cracks only appear on visible pixels.
+    // That shader is URP 2D-tagged so the NormalsCapture pipeline still picks up the
+    // renderer (preserving ambient/sun/torch lighting on broken buildings).
+    // Deconstruct blueprints override tint via sr.color in Blueprint.cs — independent
+    // of the material swap, so broken + deconstructing composites correctly.
     public virtual void RefreshTint() {
         if (sr == null) return;
-        sr.color = IsBroken ? brokenTint : Color.white;
+        if (defaultMat == null) defaultMat = sr.sharedMaterial;
+        sr.sharedMaterial = IsBroken ? (GetCrackedMaterial() ?? defaultMat) : defaultMat;
     }
-    static readonly Color brokenTint = new Color(0.75f, 0.75f, 0.75f, 1f);
+
+    // Loaded once per process: the material that drives the cracked look. See
+    // Assets/Resources/Materials/CrackedSprite.mat. Null if the asset is missing —
+    // callers fall back to the captured default material rather than crashing.
+    static Material _crackedMaterialCache;
+    static bool     _crackedMaterialProbed;
+    static Material GetCrackedMaterial() {
+        if (_crackedMaterialProbed) return _crackedMaterialCache;
+        _crackedMaterialProbed = true;
+        _crackedMaterialCache = Resources.Load<Material>("Materials/CrackedSprite");
+        if (_crackedMaterialCache == null)
+            Debug.LogWarning("CrackedSprite material not found at Resources/Materials/CrackedSprite — broken structures will render untinted.");
+        return _crackedMaterialCache;
+    }
     public Tile tile => World.instance.GetTileAt(x, y);
     public Tile workTile => World.instance.GetTileAt(
         x + (mirrored ? (structType.nx - 1 - structType.workTileX) : structType.workTileX),
@@ -85,8 +112,16 @@ public class Structure {
             y + wt.dy);
     }
 
-    // Local pixel offsets (bottom-left origin, unmirrored) of WaterMarkerColor pixels in this
-    // sprite. Null when none found. Registered with WaterController by StructController.Place().
+    // Fire art child GO — a separate SpriteRenderer showing the fire/flame portion of
+    // the building sprite. Loaded from `{name}_f.png` companion. LightSource toggles
+    // visibility based on isLit so fire disappears when the light is off.
+    // Null for buildings without a fire art companion.
+    public GameObject fireGO;
+    public SpriteRenderer fireSR;
+
+    // Local pixel offsets (bottom-left origin, unmirrored) of the structure's water zone —
+    // the opaque pixels of its `{name}_w.png` companion mask. Null when no companion exists.
+    // Registered with WaterController by StructController.Place().
     public List<Vector2Int> waterPixelOffsets { get; private set; }
 
     // "World conditions allow this structure to be worked on" gate for Structure subclasses.
@@ -139,7 +174,8 @@ public class Structure {
         }
 
         if (structType.name == "clock") {
-            go.AddComponent<ClockHand>();
+            var ch = go.AddComponent<ClockHand>();
+            ch.structure = this;
         }
 
         // Register on tiles at the appropriate depth layer.
@@ -158,6 +194,28 @@ public class Structure {
         else if (depth == 2) sr.sortingOrder = 40;
         else if (depth == 3) sr.sortingOrder = 1;
         LightReceiverUtil.SetSortBucket(sr);
+
+        // Fire art companion — toggleable child GO for flame/fire visuals.
+        // LightSource.Update toggles this based on isLit + emission intensity.
+        Sprite fireSprite = Resources.Load<Sprite>("Sprites/Buildings/" + st.name.Replace(" ", "") + "_f");
+        if (fireSprite != null) {
+            fireGO = new GameObject("fire");
+            fireGO.transform.SetParent(go.transform, false);
+            fireSR = fireGO.AddComponent<SpriteRenderer>();
+            fireSR.sprite = fireSprite;
+            fireSR.sortingOrder = sr.sortingOrder;
+            fireSR.flipX = mirrored;
+            LightReceiverUtil.SetSortBucket(fireSR);
+            // Bind fire texture as _EmissionMap via MPB — secondary textures from
+            // the sprite importer may not survive DrawRenderers with an override
+            // material (EmissionWriter). Explicit MPB binding ensures it's always
+            // available as a per-renderer property.
+            var mpb = new MaterialPropertyBlock();
+            fireSR.GetPropertyBlock(mpb);
+            mpb.SetTexture(Shader.PropertyToID("_EmissionMap"), fireSprite.texture);
+            fireSR.SetPropertyBlock(mpb);
+            fireGO.SetActive(false);
+        }
 
         // Scan sprite for water-marker pixels. Registration happens in StructController.Place().
         waterPixelOffsets = WaterController.ScanWaterPixels(sprite);

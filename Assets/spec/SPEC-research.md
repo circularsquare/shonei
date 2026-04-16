@@ -8,7 +8,7 @@ The individual unlockable things are called **technologies** (player- and user-f
 
 ## Progress & decay
 
-Each technology has a progress value (0 to 2x cost). Every tick, all nodes with progress > 0 lose `DecayRate` (0.02) progress. Scientists add `workEfficiency * ScientistRate (0.1)` per tick.
+Each technology has a progress value (0 to 2x cost). Every tick, all nodes with progress > 0 lose `DecayRate` (0.01) progress. Scientists add `workEfficiency * ScientistRate (0.05)` per tick.
 
 Passive progress sources (maintain-only — caps at 2x cost and cannot unlock a locked tech from scratch):
 - **Crafting**: recipes with a `research` field grant `researchPoints` to the named tech on each completed cycle. Hooked in `AnimalStateManager.ExecuteCraftTask`. Intended use: recipe-unlock techs gain from the recipe they unlock.
@@ -16,21 +16,21 @@ Passive progress sources (maintain-only — caps at 2x cost and cannot unlock a 
 - **Maintenance**: completing a `MaintenanceTask` grants `ConstructionGain × repairAmount` to the same tech. Calibrated so a full 0→1 repair matches a fresh build (e.g. a 40 % repair = 0.4 progress), implemented via the `scale` parameter on `AddConstructionProgress`.
 
 - **Unlock**: progress >= cost AND all prerequisites currently unlocked.
-- **Forget**: progress < 0.8 x cost (hysteresis prevents flickering).
-- **Reinforcement**: progress can exceed cost up to 2x cost (shown in blue bar), providing a buffer against decay.
+- **Forget**: progress < 0.75 x cost (hysteresis prevents flickering). Fires `OnTechForgotten` event + `Debug.Log`. Surfaced to the player via `EventFeed` (see SPEC-eventfeed).
+- **Reinforcement**: progress can exceed cost up to 2x cost, providing a buffer against decay.
 
-## Maintain system
+## Study system
 
-Each technology has a per-player **maintain** toggle (`ResearchSystem.maintainIds`). When enabled, scientists prioritise keeping that technology above the unlock threshold before working on new research.
+Each technology has a per-player **study** toggle (`ResearchSystem.studiedIds`). When enabled, scientists will research and maintain that technology.
 
-**Scientist priority when picking up a ResearchTask:**
-1. If the **active research** is maintained AND below cost: work on it (no exclusive claim — multiple scientists can help).
-2. Otherwise, find any non-active maintained node below cost that isn't already claimed by another scientist. Claim it exclusively.
-3. If nothing needs maintenance: work on the active research as normal.
+**Scientist priority when picking up a ResearchTask** (via `PickStudyTarget()`):
+1. Any studied tech below cost with prereqs met → pick the one with the **oldest unlock timestamp** (LIFO forgetting — early techs are presumed more load-bearing). Techs that have never been unlocked are treated as newest (lowest priority).
+2. If no studied tech is below cost: pick the studied tech with the **lowest progress %** relative to 2×cost (spreads reinforcement evenly).
+3. If nothing to do: return -1 (scientist idles through the work loop).
 
-Claims are stored in `maintenanceClaims` (nodeId -> Animal). Released on task Cleanup (complete, fail, or animal death). The maintenance target is decided at task creation time in the WOM factory and stored as `ResearchTask.maintenanceTargetId`.
+Unlock timestamps are recorded in `unlockTimestamps` (monotonic counter, incremented on each unlock). If a tech is forgotten and re-unlocked, its timestamp is updated — it becomes lower priority than continuously-held techs.
 
-Setting a research as active auto-enables maintain for it.
+There is no "active research" concept — study is the only control. Multiple scientists can work on the same tech simultaneously (no exclusive claims).
 
 ## Technologies (`researchDb.json`)
 
@@ -57,13 +57,29 @@ On unlock: `AnimalController.UnlockJob(name)` adds the jobs-panel row (idempoten
 
 | Class | Role |
 |---|---|
-| `ResearchSystem` | Singleton model. Holds progress, maintainIds, claims, unlockedIds. Ticked from `World.Update`. |
-| `ResearchSystem.ClaimMaintenanceTarget(animal)` | Returns nodeId to maintain, or -1. Called from WOM factory. |
-| `ResearchSystem.AddScientistProgress(workEff, targetId)` | Adds progress to targetId (or activeResearchId if -1). |
-| `ResearchPanel` | Full-screen UI. Icon grid. Cards show sprite + cost + maintain toggle. Closes on world click. |
-| `ResearchDisplay` | Prefab component. Progress bars, set-active button, maintain toggle button. |
-| `ResearchTask` | Task with `maintenanceTargetId`. Navigates to lab, works in 10-tick loops. Releases claim on Cleanup. |
+| `ResearchSystem` | Singleton model. Holds progress, studiedIds, unlockTimestamps, unlockedIds. Ticked from `World.Update`. |
+| `ResearchSystem.PickStudyTarget()` | Returns nodeId for scientist to work on, or -1. Called from WOM factory. |
+| `ResearchSystem.AddScientistProgress(workEff, targetId)` | Adds progress to targetId. |
+| `ResearchSystem.OnTechForgotten` | Static event fired when a tech is forgotten. |
+| `ResearchPanel` | Full-screen UI. Icon grid. Cards show icon + name + progress bar. Card click toggles study. |
+| `ResearchDisplay` | Prefab component. Progress bars (green + blue as one continuous bar), threshold marker. |
+
+## Card visual states
+
+Card background tint (`ResearchDisplay.RefreshProgress`) — 2×2 grid of (unlocked × studied):
+- **Green** — unlocked AND studied (maintained).
+- **Yellow** — unlocked AND not studied (warning — will decay).
+- **Teal** — not unlocked AND studied (working towards unlock).
+- **Transparent** — not unlocked AND not studied (no engagement).
+
+Cost text colour:
+- **Green** — a scientist is currently running a `ResearchTask` targeting this tech (see `ResearchSystem.IsActivelyResearched`). Not just "studied" — only while real progress is being added.
+- **Black** — prereqs met, not being actively worked.
+- **Grey** — prereqs not met.
+| `ResearchTask` | Task with `studyTargetId`. Navigates to lab, works in 10-tick loops. |
 
 ## Save data
 
-`ResearchSaveData`: `Dictionary<int,float> progress`, `int activeResearchId`, `int[] unlockedIds`, `int[] maintainIds`.
+`ResearchSaveData`: `Dictionary<int,float> progress`, `int[] unlockedIds`, `int[] studiedIds`, `Dictionary<int,int> unlockTimestamps`, `int unlockCounter`.
+
+Legacy migration: old saves with `maintainIds` / `activeResearchId` are merged into `studiedIds`. Missing `unlockTimestamps` are derived from `unlockedIds` array order.

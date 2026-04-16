@@ -102,6 +102,11 @@
         "decayRate": 0.04,
         "children": null
     },{
+        "id": 112,
+        "name": "paper",
+        "decayRate": 0.06,
+        "children": null
+    },{
         "id": 150,
         "name": "food",
         "decayRate": 0.3,
@@ -133,6 +138,7 @@
                 "foodValue": 15,
                 "happinessNeed": "soymilk",
                 "isLiquid": true,
+                "liquidColorHex": "#e6e9be",
                 "children": null
             },{
                 "id": 241,

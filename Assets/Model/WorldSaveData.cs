@@ -26,9 +26,14 @@ public class WorldSaveData {
 
 public class ResearchSaveData {
     public System.Collections.Generic.Dictionary<int, float> progress;
-    public int   activeResearchId;
     public int[] unlockedIds;
-    public int[] maintainIds;  // null on old saves → empty set
+    public int[] studiedIds;   // was maintainIds; null on old saves → empty set
+    public System.Collections.Generic.Dictionary<int, int> unlockTimestamps; // null on old saves → derive from unlockedIds order
+    public int   unlockCounter;
+
+    // Legacy fields — read for migration, never written.
+    public int   activeResearchId;   // old saves only; migrated into studiedIds
+    public int[] maintainIds;        // old saves only; migrated into studiedIds
 }
 
 public class TileSaveData {

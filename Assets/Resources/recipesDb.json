@@ -1,7 +1,7 @@
 [
     {
         "id": 0,
-        "job": "sawyer",
+        "job": "woodworker",
         "tile": "sawmill",
         "description": "cut pine into pine planks",
         "workload": 2.0,
@@ -14,7 +14,7 @@
         ]
     },{
         "id": 16,
-        "job": "sawyer",
+        "job": "woodworker",
         "tile": "sawmill",
         "description": "cut oak into oak planks",
         "workload": 2.0,
@@ -27,7 +27,7 @@
         ]
     },{
         "id": 17,
-        "job": "sawyer",
+        "job": "woodworker",
         "tile": "sawmill",
         "description": "cut maple into maple planks",
         "workload": 2.0,
@@ -40,7 +40,7 @@
         ]
     },{
         "id": 1,
-        "job": "sawyer",
+        "job": "woodworker",
         "tile": "workshop",
         "description": "make planks into tools",
         "workload": 5.0,
@@ -160,6 +160,21 @@
         ],
         "noutputs": [
             { "name": "ramie shirt", "quantity": 1 }
+        ]
+    },{
+        "id": 22,
+        "job": "woodworker",
+        "tile": "paper mill",
+        "description": "process wood and water into paper",
+        "workload": 3.0,
+        "research": "Papermaking",
+        "researchPoints": 0.025,
+        "ninputs": [
+            { "name": "wood", "quantity": 1 },
+            { "name": "water", "quantity": 0.5 }
+        ],
+        "noutputs": [
+            { "name": "paper", "quantity": 1 }
         ]
     }
 ]

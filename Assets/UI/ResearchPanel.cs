@@ -82,7 +82,7 @@ public class ResearchPanel : MonoBehaviour {
     void SpawnCard(ResearchNodeData node, ResearchSystem rs) {
         var card = Instantiate(cardPrefab, nodeListContent, false);
         card.name = "Card_" + node.id;
-        card.Setup(node, rs, OnClickSetActive, OnClickToggleMaintain);
+        card.Setup(node, rs, OnClickToggleStudy);
         spawnedCards.Add(card);
     }
 
@@ -91,13 +91,8 @@ public class ResearchPanel : MonoBehaviour {
         Refresh();
     }
 
-    void OnClickSetActive(ResearchNodeData node) {
-        ResearchSystem.instance?.SetActiveResearch(node.id);
-        Refresh();
-    }
-
-    void OnClickToggleMaintain(ResearchNodeData node) {
-        ResearchSystem.instance?.ToggleMaintain(node.id);
+    void OnClickToggleStudy(ResearchNodeData node) {
+        ResearchSystem.instance?.ToggleStudy(node.id);
         Refresh();
     }
 
@@ -119,17 +114,19 @@ public class ResearchPanel : MonoBehaviour {
         }
 
         float p = rs.GetProgress(node.id);
-        if (rs.IsMaintained(node.id))
-            sb.AppendLine("Maintained.");
+        bool studied = rs.IsStudied(node.id);
 
         if (rs.IsUnlocked(node.id))
             sb.Append($"Known. ({p:0.0} / {node.cost:0})");
         else if (!rs.PrereqsMet(node))
             sb.Append("Prerequisites not met.");
-        else if (rs.activeResearchId == node.id)
-            sb.Append("Active technology. Click to deselect.");
         else
-            sb.Append("Click to set as active technology.");
+            sb.Append($"Progress: {p:0.0} / {node.cost:0}");
+
+        if (studied)
+            sb.Append(" [studying]");
+        else if (rs.CanStudy(node))
+            sb.Append("\nClick to study.");
 
         return sb.ToString().TrimEnd();
     }

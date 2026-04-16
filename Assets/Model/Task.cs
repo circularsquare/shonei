@@ -1068,8 +1068,9 @@ public class ResumeTravelTask : Task {
 }
 public class ResearchTask : Task {
     private readonly Building _lab;
-    // Which research this scientist is maintaining, or -1 to work on activeResearchId.
-    public int maintenanceTargetId = -1;
+    // Which tech this scientist is working on, chosen by PickStudyTarget at task creation.
+    // -1 means nothing to do (scientist will idle through the work loop with no effect).
+    public int studyTargetId = -1;
     public ResearchTask(Animal animal, Building lab) : base(animal) { _lab = lab; }
     public override bool Initialize() {
         if (_lab == null) return false;
@@ -1078,11 +1079,6 @@ public class ResearchTask : Task {
         objectives.AddLast(new GoObjective(this, p.tile));
         objectives.AddLast(new ResearchObjective(this));
         return true;
-    }
-    public override void Cleanup() {
-        if (maintenanceTargetId >= 0)
-            ResearchSystem.instance?.ReleaseMaintenanceClaim(maintenanceTargetId);
-        base.Cleanup();
     }
 }
 

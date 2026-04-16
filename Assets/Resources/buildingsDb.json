@@ -108,6 +108,7 @@
         "isStorage": true,
         "nStacks": 50,
         "storageStackSize": 10000,
+        "noMaintenance": true,
         "category": "storage",
         "defaultLocked": true
     },{
@@ -293,6 +294,21 @@
             { "dx": 1, "mustBeEmpty": true },
             { "dx": 1, "dy": -1, "mustHaveWater": true }
         ],
+        "defaultLocked": true
+    },{
+        "id": 106,
+        "name": "paper mill",
+        "description": "process wood and water into paper",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 5 },
+            { "name": "planks", "quantity": 3 }
+        ],
+        "njob": "hauler",
+        "capacity": 1,
+        "isWorkstation": true,
+        "solidTop": true,
+        "category": "production",
         "defaultLocked": true
     },{
         "id": 110,

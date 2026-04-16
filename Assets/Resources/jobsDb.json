@@ -40,7 +40,7 @@
         "defaultLocked": true
     },{
         "id": 11,
-        "name": "sawyer",
+        "name": "woodworker",
         "jobType": "crafter",
         "defaultSkill": "woodworking",
         "skillWeights": { "woodworking": 0.8 }

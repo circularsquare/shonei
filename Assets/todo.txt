@@ -5,7 +5,6 @@ CONTENT
 - magic / qi
 - farming buildings
 - grooming?
-- building maintenance
 - clothing
     - silkworm building? -> silk cocoons -> cloth -> clothing 
 - clean up all reservation systems
@@ -14,12 +13,12 @@ CONTENT
 - plant
     - flesh out plant growth, moisture and temperature
     - make plants grow from sunlight?
+    - bamboo 
+        - grows multtiple tiles 
+        - also make trees grow multiple tiles tall
 - research
-    - queue research projects? priorities?
     - additional levels display?
-        - lvl 1, 57/100 to lvl 2 
-        - maybe rework 2x bar fill system 
-    - building unlock techs should passive gain from construction and maintenance
+
 - books
     - books for gaining skills 
     - manuals for learning technologies
@@ -38,6 +37,7 @@ VISUALS
 - lighting 
     - improve undergroundwall sprite 
     - procedurally generate rocks with normalmaps?
+- make fireplace light disappear when off (maybe just make the fire its own object?)
 
 MOUSE AI
 - ponder inventory management
@@ -52,4 +52,7 @@ MOUSE AI
 BUGS
 
 TODAY GOALS
-- many refactor
+- research panel rework
+    - add thresholds 
+    - alert in chat when tech forgotten
+- add writing by scribes

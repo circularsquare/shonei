@@ -87,5 +87,15 @@
             { "type": "building", "target": "tailor" },
             { "type": "recipe",   "target": "21" }
         ]
+    },{
+        "id": 11,
+        "name": "Papermaking",
+        "description": "Process wood pulp and water into paper.",
+        "prereqs": [5],
+        "cost": 5,
+        "unlocks": [
+            { "type": "building", "target": "paper mill" },
+            { "type": "recipe",   "target": "22" }
+        ]
     }
 ]

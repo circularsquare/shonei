@@ -27,20 +27,21 @@ public class UnlockEntry {
 // ResearchSystem tracks per-node research progress.
 //
 // Each research node has a progress value (0 → 2×cost).
-// Scientists contribute to the settlement's active research project.
-// Progress decays over time — keeping scientists working is required to maintain unlocks.
+// Players toggle "study" on techs they want scientists to work on.
+// Scientists prioritise studied techs below cost (oldest-unlocked first via LIFO),
+// then reinforce above-cost techs (lowest % first). Progress decays over time —
+// keeping scientists working is required to maintain unlocks.
 //
 // Unlock:  progress >= cost (and all prereqs are currently unlocked)
-// Forget:  progress < 0.8 × cost (locks the research again)
+// Forget:  progress < 0.75 × cost (locks the research again, fires OnTechForgotten)
 public class ResearchSystem : MonoBehaviour {
     public static ResearchSystem instance { get; protected set; }
 
-    const float DecayRate        = 0.02f;  // progress lost per tick (all nodes with any progress)
-    const float ScientistRate    = 0.1f;   // progress gained per workefficiency of a scientist each tick
+    const float DecayRate        = 0.01f;  // progress lost per tick (all nodes with any progress)
+    const float ScientistRate    = 0.05f;  // progress gained per workefficiency of a scientist each tick
     const float ConstructionGain = 1f;     // flat progress granted when a gated building is constructed
 
-    public Dictionary<int, float> progress       = new Dictionary<int, float>();
-    public int                    activeResearchId = -1;
+    public Dictionary<int, float> progress = new Dictionary<int, float>();
 
     public List<ResearchNodeData>            nodes       = new List<ResearchNodeData>();
     public Dictionary<int, ResearchNodeData> nodeById    = new Dictionary<int, ResearchNodeData>();
@@ -61,12 +62,19 @@ public class ResearchSystem : MonoBehaviour {
     // the right tech each time a gated building is constructed.
     Dictionary<string, int>                  buildingToTechNode = new Dictionary<string, int>();
 
-    // Maintain system: nodes the player wants scientists to keep above the unlock threshold.
-    // Scientists prioritise maintained nodes that have fallen below cost before working on activeResearchId.
-    public HashSet<int>            maintainIds       = new HashSet<int>();
-    // Exclusive claims: non-active maintained nodes currently being worked on (nodeId → scientist).
-    // The active research is never exclusively claimed — multiple scientists may maintain it.
-    Dictionary<int, Animal>        maintenanceClaims = new Dictionary<int, Animal>();
+    // Study system: techs the player wants scientists to research and maintain.
+    // Scientists prioritise studied techs below cost (oldest-unlocked first), then
+    // reinforce above-cost techs (lowest % first).
+    public HashSet<int>            studiedIds        = new HashSet<int>();
+
+    // Monotonic counter recording when each tech was last unlocked. Lower = older = higher
+    // maintenance priority. Techs that have never been unlocked have no entry (treated as
+    // int.MaxValue — lowest priority). Updated in CheckTransitions on unlock; re-stamped
+    // if a forgotten tech is re-unlocked.
+    public Dictionary<int, int>    unlockTimestamps  = new Dictionary<int, int>();
+    public int                     unlockCounter;
+
+    public static event Action<ResearchNodeData> OnTechForgotten;
 
     void Awake() {
         if (instance != null) { Debug.LogError("two ResearchSystems!"); }
@@ -162,10 +170,13 @@ public class ResearchSystem : MonoBehaviour {
             bool unlocked = IsUnlocked(node.id);
             if (!unlocked && p >= node.cost && PrereqsMet(node)) {
                 unlockedIds.Add(node.id);
+                unlockTimestamps[node.id] = ++unlockCounter;
                 ApplyEffect(node);
-            } else if (unlocked && p < node.cost * 0.8f) {
+            } else if (unlocked && p < node.cost * 0.75f) {
                 unlockedIds.Remove(node.id);
                 RevertEffect(node);
+                Debug.Log($"Technology forgotten: {node.name}");
+                OnTechForgotten?.Invoke(node);
             }
         }
     }
@@ -185,76 +196,85 @@ public class ResearchSystem : MonoBehaviour {
         return true;
     }
 
-    // Returns true if this research can be set as the active project.
-    // Prereqs must be unlocked; no restriction on whether the node itself is unlocked
-    // (already-known research can still be reinforced to prevent forgetting).
-    public bool CanSetActive(ResearchNodeData node) => PrereqsMet(node);
+    // Returns true if this tech can be studied (prereqs must be met).
+    public bool CanStudy(ResearchNodeData node) => PrereqsMet(node);
 
-    public void SetActiveResearch(int id) {
-        bool turningOn = activeResearchId != id;
-        activeResearchId = turningOn ? id : -1;
-        if (turningOn) SetMaintain(id, true);
+    // ── Study API ─────────────────────────────────────────────────────
+
+    public void ToggleStudy(int id) {
+        if (studiedIds.Contains(id)) studiedIds.Remove(id);
+        else studiedIds.Add(id);
     }
 
-    // ── Maintain API ──────────────────────────────────────────────────
-
-    public void ToggleMaintain(int id) {
-        if (maintainIds.Contains(id)) maintainIds.Remove(id);
-        else maintainIds.Add(id);
+    public void SetStudy(int id, bool state) {
+        if (state) studiedIds.Add(id);
+        else studiedIds.Remove(id);
     }
 
-    public void SetMaintain(int id, bool state) {
-        if (state) maintainIds.Add(id);
-        else maintainIds.Remove(id);
-    }
+    public bool IsStudied(int id) => studiedIds.Contains(id);
 
-    public bool IsMaintained(int id) => maintainIds.Contains(id);
+    // True if any animal is currently running a ResearchTask targeting this tech.
+    // Used by ResearchPanel to show the cost text in green only while a scientist is
+    // actively contributing — studied-but-no-scientist should not look the same as
+    // studied-and-being-worked.
+    public bool IsActivelyResearched(int id) {
+        var ac = AnimalController.instance;
+        if (ac == null || ac.animals == null) return false;
+        foreach (var a in ac.animals) {
+            if (a?.task is ResearchTask rt && rt.studyTargetId == id) return true;
+        }
+        return false;
+    }
 
     // Called when a scientist picks up a ResearchTask.
-    // Returns the node ID the scientist should work on, or -1 for normal active research.
+    // Returns the node ID the scientist should work on, or -1 if nothing to do.
     //
-    // Priority: (1) active research if it is maintained and below cost — no exclusive claim,
-    //               multiple scientists may maintain it.
-    //           (2) first non-active maintained node below cost that isn't already claimed.
-    //           (3) -1 → fall through to activeResearchId in the caller.
-    public int ClaimMaintenanceTarget(Animal scientist) {
-        // (1) Active research maintenance — highest priority, no exclusive claim.
-        if (activeResearchId >= 0
-                && maintainIds.Contains(activeResearchId)
-                && nodeById.TryGetValue(activeResearchId, out var activeNode)
-                && GetProgress(activeResearchId) < activeNode.cost
-                && PrereqsMet(activeNode)) {
-            return activeResearchId;
-        }
+    // Priority: (1) Studied techs below cost (need maintenance/research) — oldest-unlocked first.
+    //               Never-unlocked techs are treated as newest (lowest priority).
+    //           (2) Studied techs above cost but below 2×cost — lowest progress % first
+    //               (spread reinforcement evenly).
+    public int PickStudyTarget() {
+        int bestBelow = -1;
+        int bestBelowStamp = int.MaxValue;
 
-        // (2) Other maintained nodes — one scientist per node.
-        foreach (int id in maintainIds) {
-            if (id == activeResearchId) continue;
+        int bestAbove = -1;
+        float bestAboveRatio = float.MaxValue;
+
+        foreach (int id in studiedIds) {
             if (!nodeById.TryGetValue(id, out var node)) continue;
-            if (GetProgress(id) >= node.cost) continue;
             if (!PrereqsMet(node)) continue;
-            if (maintenanceClaims.ContainsKey(id)) continue;
-            maintenanceClaims[id] = scientist;
-            return id;
+            float p   = GetProgress(id);
+            float cap = GetCap(node);
+
+            if (p < node.cost) {
+                // Below unlock threshold — prioritise oldest-unlocked.
+                int stamp = unlockTimestamps.TryGetValue(id, out int s) ? s : int.MaxValue;
+                if (stamp < bestBelowStamp) {
+                    bestBelow = id;
+                    bestBelowStamp = stamp;
+                }
+            } else if (p < cap) {
+                // Above cost, below 2×cost — reinforce lowest % first.
+                float ratio = p / cap;
+                if (ratio < bestAboveRatio) {
+                    bestAbove = id;
+                    bestAboveRatio = ratio;
+                }
+            }
         }
 
-        return -1;
-    }
-
-    public void ReleaseMaintenanceClaim(int nodeId) {
-        maintenanceClaims.Remove(nodeId);
+        return bestBelow >= 0 ? bestBelow : bestAbove;
     }
 
     // ── Scientist progress ──────────────────────────────────────────
 
     // Called from AnimalStateManager each research tick with the scientist's work efficiency.
-    // targetId comes from ResearchTask.maintenanceTargetId; -1 means use activeResearchId.
+    // targetId comes from ResearchTask.studyTargetId; -1 means nothing to do.
     public void AddScientistProgress(float workEfficiency, int targetId) {
-        int id = targetId >= 0 ? targetId : activeResearchId;
-        if (id < 0) return;
-        if (!nodeById.TryGetValue(id, out var node)) return;
+        if (targetId < 0) return;
+        if (!nodeById.TryGetValue(targetId, out var node)) return;
         float gained = workEfficiency * ScientistRate;
-        progress[id] = Mathf.Min(GetProgress(id) + gained, GetCap(node));
+        progress[targetId] = Mathf.Min(GetProgress(targetId) + gained, GetCap(node));
         CheckTransitions();
     }
 
@@ -348,6 +368,7 @@ public class ResearchSystem : MonoBehaviour {
             progress[node.id] = GetCap(node);
             if (!IsUnlocked(node.id)) {
                 unlockedIds.Add(node.id);
+                unlockTimestamps[node.id] = ++unlockCounter;
                 ApplyEffect(node);
             }
         }
@@ -368,9 +389,9 @@ public class ResearchSystem : MonoBehaviour {
                 RevertEffect(node);
         unlockedIds.Clear();
         foreach (var key in new List<int>(progress.Keys)) progress[key] = 0f;
-        activeResearchId = -1;
-        maintainIds.Clear();
-        maintenanceClaims.Clear();
+        studiedIds.Clear();
+        unlockTimestamps.Clear();
+        unlockCounter = 0;
         CheckTransitions();
     }
 }

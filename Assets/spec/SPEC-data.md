@@ -14,7 +14,7 @@ ID ranges (keep entries ordered and thematically grouped):
 | 20–39 | storage | house, drawer, crate, tank, market |
 | 40–79 | decoration / ambience / leisure | torch, fountain, clock, fireplace |
 | 80–99 | placeable tiles | empty (dig), dirt, stone |
-| 101–109 | production — basic workstations | sawmill, workshop, furnace, press, pump |
+| 101–109 | production — basic workstations | sawmill, workshop, furnace, press, pump, paper mill |
 | 110–119 | production — extraction | dirt pit, quarry |
 | 120–129 | production — research | laboratory |
 | 130–139 | production — clothing | weaver, tailor |
@@ -67,7 +67,7 @@ ID ranges:
 | 20–29 | dirt |
 | 30–39 | ores (iron ore, coal) |
 | 40–49 | metals (iron) |
-| 100–119 | processed wood group + leaves (planks=100, oak planks=101, maple planks=102, pine planks=103, sawdust=110) |
+| 100–119 | processed wood group + leaves (planks=100, oak planks=101, maple planks=102, pine planks=103, sawdust=110, paper=112) |
 | 150–199 | food and seeds |
 | 200–209 | tools and equipment |
 | 210–239 | liquids and processed food (water, soymilk, tofu) |
@@ -88,6 +88,7 @@ Fields:
 | `happinessNeed` | string? | which happiness satisfaction eating this food grants (e.g. "wheat", "fruit", "soymilk"); null = none |
 | `discrete` | bool? | stored/moved in whole-liang (100 fen) units only (e.g. tools, clothing); inherited by children |
 | `isLiquid` | bool? | liquid item (water, soymilk); only fits in liquid-storage containers; inherited by children |
+| `liquidColorHex` | string? | `#RRGGBB` tint used when this liquid is rendered in a decorative water zone (tank/fountain); absent → shader falls back to its default water blue |
 | `children` | array? | leaf sub-types; see group item note above |
 
 ## `recipesDb.json` — Recipes
@@ -117,7 +118,7 @@ ID ranges:
 | 1–2 | `"none"` | hauler, merchant |
 | 3–9 | `"gatherer"` | logger, miner, farmer |
 | 10 | `"gatherer"` | digger |
-| 11–19 | `"crafter"` / `"researcher"` | sawyer, scientist, smith, cook, clothier |
+| 11–19 | `"crafter"` / `"researcher"` | woodworker, scientist, smith, cook, clothier |
 
 Fields:
 

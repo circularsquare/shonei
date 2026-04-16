@@ -64,6 +64,7 @@ public class TradingPanel : MonoBehaviour {
             client.OnFill           += DisplayFill;
             client.OnChat           += DisplayChat;
         }
+        if (EventFeed.instance != null) EventFeed.instance.OnEntry += HandleFeedEntry;
         gameObject.SetActive(false);
     }
 
@@ -85,6 +86,7 @@ public class TradingPanel : MonoBehaviour {
             client.OnFill           -= DisplayFill;
             client.OnChat           -= DisplayChat;
         }
+        if (EventFeed.instance != null) EventFeed.instance.OnEntry -= HandleFeedEntry;
     }
 
     // toggle panel active — attempts reconnection in background if offline,
@@ -291,7 +293,7 @@ public class TradingPanel : MonoBehaviour {
 
         var client = TradingClient.instance;
         if (client == null || !client.isOnline) {
-            AddChat("<color=#cc3333>not connected to server 3:</color>");
+            EventFeed.instance?.Post("<color=#cc3333>not connected to server 3:</color>", EventFeed.Category.Alert);
             return;
         }
         client.SendChat(text);
@@ -309,7 +311,7 @@ public class TradingPanel : MonoBehaviour {
         switch (cmd) {
             case "/give": CmdGive(parts); break;
             default:
-                AddChat($"<color=#cc3333>Unknown command: {cmd}</color>");
+                EventFeed.instance?.Post($"<color=#cc3333>Unknown command: {cmd}</color>", EventFeed.Category.Alert);
                 break;
         }
     }
@@ -318,7 +320,7 @@ public class TradingPanel : MonoBehaviour {
     // Produces the item directly into the market inventory.
     void CmdGive(string[] parts) {
         if (parts.Length < 3) {
-            AddChat("<color=#cc3333>Usage: /give [item] [quantity]</color>");
+            EventFeed.instance?.Post("<color=#cc3333>Usage: /give [item] [quantity]</color>", EventFeed.Category.Alert);
             return;
         }
 
@@ -329,20 +331,20 @@ public class TradingPanel : MonoBehaviour {
 
         if (!float.TryParse(qtyStr, System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out float qtyLiang) || qtyLiang <= 0f) {
-            AddChat("<color=#cc3333>Quantity must be a positive number (in liang).</color>");
+            EventFeed.instance?.Post("<color=#cc3333>Quantity must be a positive number (in liang).</color>", EventFeed.Category.Alert);
             return;
         }
         int qtyFen = Mathf.RoundToInt(qtyLiang * 100f);
 
         if (!Db.itemByName.ContainsKey(itemName)) {
-            AddChat($"<color=#cc3333>Unknown item: {itemName}</color>");
+            EventFeed.instance?.Post($"<color=#cc3333>Unknown item: {itemName}</color>", EventFeed.Category.Alert);
             return;
         }
         Item item = Db.itemByName[itemName];
 
         Inventory market = TradingClient.FindMarketInventory();
         if (market == null) {
-            AddChat("<color=#cc3333>No market building found.</color>");
+            EventFeed.instance?.Post("<color=#cc3333>No market building found.</color>", EventFeed.Category.Alert);
             return;
         }
 
@@ -350,19 +352,26 @@ public class TradingPanel : MonoBehaviour {
         int produced = qtyFen - leftover;
         bool discrete = item.discrete;
         if (produced > 0)
-            AddChat($"<color=#aaffaa>Gave {ItemStack.FormatQ(produced, discrete)} {itemName} to market.</color>");
+            EventFeed.instance?.Post($"<color=#aaffaa>Gave {ItemStack.FormatQ(produced, discrete)} {itemName} to market.</color>", EventFeed.Category.Info);
         if (leftover > 0)
-            AddChat($"<color=#cc3333>Could not fit {ItemStack.FormatQ(leftover, discrete)} {itemName} — market full.</color>");
+            EventFeed.instance?.Post($"<color=#cc3333>Could not fit {ItemStack.FormatQ(leftover, discrete)} {itemName} — market full.</color>", EventFeed.Category.Alert);
     }
 
     void DisplayChat(ChatMsg msg) {
-        AddChat($"{msg.from}: {msg.text}");
+        EventFeed.instance?.Post($"{msg.from}: {msg.text}", EventFeed.Category.Chat);
     }
 
     void DisplayFill(Fill fill) {
         bool discrete = Db.itemByName.TryGetValue(fill.item, out Item item) && item.discrete;
-        AddChat($"<color=#55aa55>[fill] {fill.buyer} bought {ItemStack.FormatQ(fill.quantity, discrete)} {fill.item} from {fill.seller} @ {fill.price / 100f:0.##}</color>");
+        EventFeed.instance?.Post(
+            $"<color=#55aa55>[fill] {fill.buyer} bought {ItemStack.FormatQ(fill.quantity, discrete)} {fill.item} from {fill.seller} @ {fill.price / 100f:0.##}</color>",
+            EventFeed.Category.Fill);
         UpdateMarketTree();
+    }
+
+    // Renders an entry posted to the EventFeed as a chat row.
+    void HandleFeedEntry(EventFeed.Entry e) {
+        AddChat(e.text);
     }
 
     // -------------------------------------------------------------------------

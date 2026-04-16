@@ -57,11 +57,38 @@ public class LightSource : MonoBehaviour {
     // Fractional-fen accumulator so sub-fen burn rates work correctly across frames.
     private float _fuelAccumulator = 0f;
 
+    // Per-renderer MPB plumbing for emission gating. When intensity drops to 0
+    // (daytime, out of fuel, disabled, outside active hours), we write
+    // _EmissionScale = 0 onto the receiver SpriteRenderer so EmissionWriter
+    // suppresses the per-pixel glow. Smooth — tracks `intensity / baseIntensity`,
+    // so torches fade in/out across twilight rather than popping.
+    private SpriteRenderer _emissionReceiver;
+    private float _lastEmissionScale = -1f; // sentinel, forces first write
+    private static MaterialPropertyBlock _scratchMpb;
+    private static readonly int EmissionScaleId = Shader.PropertyToID("_EmissionScale");
+
     void OnEnable() {
         all.Add(this);
         ResolveSortOrder();
+        // If the building has a fire child, _EmissionMap lives on its SpriteRenderer.
+        // Otherwise fall back to the parent SR (legacy path for non-fire emissive buildings).
+        _emissionReceiver = building?.fireSR ?? GetComponentInParent<SpriteRenderer>();
+        UpdateEmissionMpb();
     }
-    void OnDisable() => all.Remove(this);
+    void Start() {
+        // Re-resolve: building is null during the OnEnable triggered by
+        // AddComponent — the caller assigns ls.building = this afterward.
+        // By Start(), all fields are set, so we can target fireSR correctly.
+        _emissionReceiver = building?.fireSR ?? GetComponentInParent<SpriteRenderer>();
+        UpdateEmissionMpb();
+    }
+    void OnDisable() {
+        all.Remove(this);
+        // Restore default emission on disable so the sprite doesn't stay dark
+        // if the LightSource is removed but the structure persists.
+        if (_emissionReceiver != null) WriteEmissionMpb(1f);
+        if (building?.fireGO != null) building.fireGO.SetActive(false);
+    }
 
     private void ResolveSortOrder() {
         if (sortOrderOverride >= 0) {
@@ -82,6 +109,15 @@ public class LightSource : MonoBehaviour {
     }
 
     void Update() {
+        UpdateLitState();
+        UpdateEmissionMpb();
+        // Fire child visibility tracks emission scale — fire appears/disappears
+        // in sync with the emission glow, including smooth twilight fade.
+        if (building?.fireGO != null)
+            building.fireGO.SetActive(_lastEmissionScale > 0.05f);
+    }
+
+    private void UpdateLitState() {
         if (reservoir == null) return; // no fuel needed — always lit
 
         // Disabled or broken buildings: don't consume fuel, don't emit light.
@@ -99,4 +135,29 @@ public class LightSource : MonoBehaviour {
     }
 
     private bool IsInActiveWindow() => SunController.IsHourInRange(activeStartHour, activeEndHour);
+
+    // ── Emission MPB ─────────────────────────────────────────────────────────
+    // Mirrors the source's current visible intensity (set by SunController) onto
+    // the receiver SpriteRenderer's _EmissionScale MPB. The shader multiplies
+    // emission by this value, so emission tracks the actual light output:
+    //   night, lit, fueled  → intensity = baseIntensity → scale ≈ 1
+    //   daytime / unlit     → intensity = 0             → scale = 0
+    //   twilight ramp       → intensity in between      → smooth fade
+    private void UpdateEmissionMpb() {
+        if (_emissionReceiver == null) return;
+        float scale = baseIntensity > 0.001f
+            ? Mathf.Clamp01(intensity / baseIntensity)
+            : 1f;
+        // Tolerate sub-1/255 jitter — that's below visual resolution anyway.
+        if (Mathf.Abs(scale - _lastEmissionScale) < 0.004f) return;
+        WriteEmissionMpb(scale);
+    }
+
+    private void WriteEmissionMpb(float scale) {
+        _scratchMpb ??= new MaterialPropertyBlock();
+        _emissionReceiver.GetPropertyBlock(_scratchMpb);
+        _scratchMpb.SetFloat(EmissionScaleId, scale);
+        _emissionReceiver.SetPropertyBlock(_scratchMpb);
+        _lastEmissionScale = scale;
+    }
 }

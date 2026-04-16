@@ -261,6 +261,49 @@ public class Animal : MonoBehaviour{
 
     private static bool IsHourInRange(float startHour, float endHour) => SunController.IsHourInRange(startHour, endHour);
 
+    // Estimates what fraction of a 24-hour day an animal spends on productive work,
+    // accounting for sleep and leisure/idle time. Returns 0–1.
+    // Defaults match current game constants; override for what-if analysis.
+    // Animals sleep until maxEep (not just nightSleepThreshold), then work the rest of the night.
+    public static float EstimateDailyWorkFraction(
+        float nightStartHour = 21f,
+        float nightEndHour = 6f,
+        float leisureStartHour = 17f,
+        float workChanceDuringWork = 0.80f,
+        float workChanceDuringLeisure = 0.20f,
+        float tireRate = 0.1f,    // Eeping.tireRate
+        float eepRate = 2f,       // Eeping.eepRate (at home)
+        float maxEep = 100f,      // Eeping.maxEep
+        float sleepThreshold = 0.85f // Eeping.nightSleepThreshold
+    ) {
+        float ticksPerHour = World.ticksInDay / 24f;
+
+        // How long the animal is awake before night (6AM → nightStart)
+        float wakingBeforeNight = nightStartHour - nightEndHour; // 15h
+        float eepAtBedtime = sleepThreshold * maxEep - tireRate * wakingBeforeNight * ticksPerHour;
+        eepAtBedtime = Mathf.Max(0f, eepAtBedtime); // can't go below 0
+
+        // Sleep until maxEep, recovery = eepRate per tick
+        float sleepTicks = (maxEep - eepAtBedtime) / eepRate;
+        float sleepHours = sleepTicks / ticksPerHour;
+
+        // If sleep exceeds the night window it spills into daytime
+        float nightHours = (24f - nightStartHour) + nightEndHour;
+        float leisureHours = nightStartHour - leisureStartHour;
+        float awakeNightHours = Mathf.Max(0f, nightHours - sleepHours);
+
+        // Work-window hours: daytime minus leisure, plus any awake nighttime
+        float workHours = (24f - nightHours - leisureHours) + awakeNightHours;
+        float sleepSpill = Mathf.Max(0f, sleepHours - nightHours);
+        workHours -= sleepSpill;
+        if (workHours < 0f) {
+            leisureHours = Mathf.Max(0f, leisureHours + workHours);
+            workHours = 0f;
+        }
+
+        return (workHours * workChanceDuringWork + leisureHours * workChanceDuringLeisure) / 24f;
+    }
+
     public void SlowUpdate() { // called every 10 or so seconds
         FindHome();
         eating.SlowUpdate();

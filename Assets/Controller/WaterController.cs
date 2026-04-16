@@ -34,21 +34,33 @@ public class WaterController : MonoBehaviour {
     private byte[]    _surfaceBytes;  // reused buffer — no per-tick allocation
     private int       _texW, _texH;
 
+    // Per-tile tint: RGBA32, one texel per world tile (nx × ny). Decorative zones stamp
+    // their stored liquid's liquidColor here each tick; Point-filtered so adjacent tiles
+    // with different tints don't bleed across tile borders. Alpha=0 → shader falls back
+    // to its global _WaterColorDark/Light (natural water, fountains, any untinted tile).
+    private Texture2D _tintTex;
+    private byte[]    _tintBytes;
+
     // Per-tile caches rebuilt at the start of each UpdateSurfaceMask.
     private int[]  _waterPixelHeights; // game pixel rows filled per tile (0–PixelsPerTile)
     private bool[] _tileIsSolid;       // true if tile.type.solid
 
     private Material _waterMat;
 
-    // The exact RGBA color used in building sprite textures to mark pixels that should render
-    // as water. Paint this color in a sprite (with Read/Write Enabled in Import Settings) and
-    // those pixels will receive the water shader overlay, gated by the building's reservoir.
-    public static readonly Color32 WaterMarkerColor = new Color32(0, 0, 255, 2);
-
-    // Structures whose sprites contain WaterMarkerColor pixels register their world-pixel
-    // coordinates here. Overlaid into _surfaceBytes each UpdateSurfaceMask tick.
-    private readonly Dictionary<Structure, List<Vector2Int>> _decorativeZones
-        = new Dictionary<Structure, List<Vector2Int>>();
+    // Structures with a `{stem}_w.png` companion sprite register their water zone here,
+    // keyed by Structure. Overlaid into _surfaceBytes each UpdateSurfaceMask tick.
+    // Two render modes are supported per zone:
+    //   - Binary (fountains etc.): reservoir.HasFuel() gates all-or-nothing.
+    //   - Fill-level (tanks, structType.liquidStorage): only the bottom portion renders,
+    //     scaled to the fraction of water currently in storage. localYs + localMinY/Max
+    //     enable the per-pixel height test without re-scanning the sprite every tick.
+    private struct DecorativeZone {
+        public List<Vector2Int> worldPixels; // already mirrored + world-shifted
+        public List<int>        localYs;     // parallel to worldPixels — local Y in sprite coords
+        public int              localMinY, localMaxY;
+    }
+    private readonly Dictionary<Structure, DecorativeZone> _decorativeZones
+        = new Dictionary<Structure, DecorativeZone>();
 
     // Internal fixed-point scale: 10 internal units = 1 display unit (tile fully filled at 160).
     // Scaling up from 16 eliminates the integer-truncation dead zone in the spread formula
@@ -83,6 +95,12 @@ public class WaterController : MonoBehaviour {
         _surfaceTex.filterMode = FilterMode.Point;
         _surfaceBytes = new byte[_texW * _texH];
 
+        // RGBA32 per-tile tint: 20 KB for a 100×50 world. Point filter is critical —
+        // bilinear would bleed colors across tile borders.
+        _tintTex = new Texture2D(world.nx, world.ny, TextureFormat.RGBA32, false);
+        _tintTex.filterMode = FilterMode.Point;
+        _tintBytes = new byte[world.nx * world.ny * 4];
+
         // Create material and push colours.
         _waterMat = new Material(Shader.Find("Water/WaterSurface"));
         if (_waterMat == null) {
@@ -94,6 +112,7 @@ public class WaterController : MonoBehaviour {
         _waterMat.SetColor("_SurfaceColor",    surfaceColor);
         _waterMat.SetVector("_WorldPixelSize", new Vector4(_texW, _texH, 0, 0));
         _waterMat.SetTexture("_SurfaceTex", _surfaceTex);
+        _waterMat.SetTexture("_TintTex",    _tintTex);
 
         // World-spanning sprite: 1×1 white pixel at PPU=1, scaled to (nx, ny) Unity units.
         // UV spans 0–1 across the world, which the shader maps to game-pixel coordinates.
@@ -263,6 +282,9 @@ public class WaterController : MonoBehaviour {
 
         // Wipe everything to transparent — tiles with no water stay 0 automatically.
         System.Array.Clear(_surfaceBytes, 0, _surfaceBytes.Length);
+        // Clear per-tile tint — any tile a decorative zone doesn't stamp stays alpha=0
+        // and falls through to the shader's default water color.
+        System.Array.Clear(_tintBytes, 0, _tintBytes.Length);
 
         // Unsigned comparison folds the < 0 check into one branch.
         bool IsAir(int px, int py) {
@@ -295,20 +317,89 @@ public class WaterController : MonoBehaviour {
             }
         }
 
-        // Overlay decorative water zones (e.g. fountain basin).
-        // All marker pixels render as interior water (127) — no surface highlight for thin zones.
-        // Gated by reservoir: if the building has a water reservoir and it's empty, skip.
+        // Overlay decorative water zones. Two gating modes:
+        //   - Fountains (Building with a reservoir): binary — all pixels render if HasFuel().
+        //   - Tanks (structType.liquidStorage): fill-level — only the bottom fraction of
+        //     pixels render, scaled to the stored liquid's quantity vs total capacity.
+        //     The top row of rendered pixels is flagged surface (255) so it shimmers white
+        //     like a pond surface; everything below is interior water (127).
+        // Tanks also stamp their liquid's liquidColor into _tintBytes so the shader
+        // can tint the fill (e.g. soymilk renders beige, water stays default blue).
         foreach (var kvp in _decorativeZones) {
             Structure s = kvp.Key;
-            if (s is Building b && b.reservoir != null && !b.reservoir.HasFuel()) continue;
-            foreach (Vector2Int px in kvp.Value) {
-                if ((uint)px.x < (uint)_texW && (uint)px.y < (uint)_texH)
-                    _surfaceBytes[px.y * _texW + px.x] = 127;
+            DecorativeZone z = kvp.Value;
+
+            int fillThreshold    = int.MaxValue; // exclusive upper bound for local Y
+            int surfaceThreshold = int.MinValue; // local Y that becomes surface pixels
+            Color32 tintColor    = default;      // alpha=0 → don't stamp (fallback path)
+            bool skip = false;
+
+            if (s is Building b) {
+                if (b.reservoir != null) {
+                    if (!b.reservoir.HasFuel() || b.IsBroken) skip = true;
+                } else if (b.structType.liquidStorage && b.storage != null) {
+                    // Tanks hold one liquid at a time — find the first non-empty liquid stack
+                    // so we can drive both the fill level and the tint from the same source.
+                    Item liquid = null;
+                    int  liquidFen = 0;
+                    foreach (ItemStack st in b.storage.itemStacks) {
+                        if (st?.item != null && st.item.isLiquid && st.quantity > 0) {
+                            liquid = st.item;
+                            liquidFen = st.quantity;
+                            break;
+                        }
+                    }
+                    if (liquid == null) { skip = true; }
+                    else {
+                        int capacityFen = b.storage.stackSize * b.storage.nStacks;
+                        int rows        = z.localMaxY - z.localMinY + 1;
+                        int fillRows    = capacityFen > 0
+                            ? Mathf.RoundToInt(liquidFen / (float)capacityFen * rows)
+                            : 0;
+                        if (fillRows <= 0) skip = true;
+                        else {
+                            fillThreshold    = z.localMinY + fillRows; // exclusive
+                            surfaceThreshold = fillThreshold - 1;
+                            tintColor        = liquid.liquidColor; // alpha=0 when liquid has no hex
+                        }
+                    }
+                }
+            }
+            if (skip) continue;
+
+            var worldPixels = z.worldPixels;
+            var localYs     = z.localYs;
+            for (int i = 0; i < worldPixels.Count; i++) {
+                int ly = localYs[i];
+                if (ly >= fillThreshold) continue;
+                Vector2Int px = worldPixels[i];
+                if ((uint)px.x >= (uint)_texW || (uint)px.y >= (uint)_texH) continue;
+                _surfaceBytes[px.y * _texW + px.x] = (ly == surfaceThreshold) ? (byte)255 : (byte)127;
+            }
+
+            // Stamp per-tile tint once per tile covered by this zone. Tanks are 1×1 so
+            // this is usually one texel, but iterating the structure's footprint keeps
+            // the code robust to multi-tile liquid-holding structures.
+            if (tintColor.a > 0) {
+                int tx0 = s.x, tx1 = s.x + s.structType.nx - 1;
+                int ty0 = s.y, ty1 = s.y + s.structType.ny - 1;
+                for (int ty = ty0; ty <= ty1; ty++) {
+                    for (int tx = tx0; tx <= tx1; tx++) {
+                        if ((uint)tx >= (uint)world.nx || (uint)ty >= (uint)world.ny) continue;
+                        int idx = (ty * world.nx + tx) * 4;
+                        _tintBytes[idx + 0] = tintColor.r;
+                        _tintBytes[idx + 1] = tintColor.g;
+                        _tintBytes[idx + 2] = tintColor.b;
+                        _tintBytes[idx + 3] = 255;
+                    }
+                }
             }
         }
 
         _surfaceTex.LoadRawTextureData(_surfaceBytes);
         _surfaceTex.Apply(false); // false = skip mipmap update
+        _tintTex.LoadRawTextureData(_tintBytes);
+        _tintTex.Apply(false);
 
         // Expose to NormalsCaptureWater so the lighting pipeline can correctly
         // discard transparent water pixels when writing to the normals RT.
@@ -353,25 +444,36 @@ public class WaterController : MonoBehaviour {
         }
     }
 
-    // Scans a sprite for WaterMarkerColor pixels and returns their local offsets
-    // (bottom-left origin, unmirrored). Returns null if none found.
-    // The sprite's texture must have Read/Write Enabled in its Unity Import Settings.
+    // Looks for a `{stem}_w.png` companion beside the main sprite (e.g. `tank_w.png`
+    // next to `tank.png`) and returns the local offsets of its opaque pixels.
+    // Opaque = alpha >= 128; everything else is ignored. Returns null if no companion
+    // exists (this building doesn't render water). Analogous to the `_f.png` fire-mask
+    // pattern used by SpriteNormalMapGenerator — the companion keeps the art workflow
+    // clean by separating "where water goes" from the main sprite's visible pixels.
+    //
+    // The companion must match the sprite's textureRect dimensions exactly. Bottom-left
+    // origin, unmirrored — the mirror flip is applied later in RegisterDecorativeWater.
     public static List<Vector2Int> ScanWaterPixels(Sprite sprite) {
         if (sprite == null || sprite.texture == null) return null;
-        Texture2D tex = sprite.texture;
-        if (!tex.isReadable) return null; // Read/Write not enabled — skip silently
-        var rect  = sprite.textureRect;
-        int sprW  = (int)rect.width;
-        int sprH  = (int)rect.height;
-        int texW  = tex.width;
-        Color32[] pixels = tex.GetPixels32();
-
+        string stem = sprite.texture.name;
+        if (string.IsNullOrEmpty(stem)) return null;
+        Texture2D mask = Resources.Load<Texture2D>($"Sprites/Buildings/{stem}_w");
+        if (mask == null) return null; // no companion — this building doesn't render water
+        if (!mask.isReadable) {
+            Debug.LogError($"ScanWaterPixels: {stem}_w.png is not Read/Write enabled — BuildingSpritePostprocessor should handle this automatically");
+            return null;
+        }
+        int sprW = (int)sprite.textureRect.width;
+        int sprH = (int)sprite.textureRect.height;
+        if (mask.width != sprW || mask.height != sprH) {
+            Debug.LogError($"ScanWaterPixels: {stem}_w.png size {mask.width}×{mask.height} does not match sprite {sprW}×{sprH}");
+            return null;
+        }
+        Color32[] pixels = mask.GetPixels32();
         List<Vector2Int> offsets = null;
         for (int ly = 0; ly < sprH; ly++) {
             for (int lx = 0; lx < sprW; lx++) {
-                Color32 col = pixels[((int)rect.y + ly) * texW + (int)rect.x + lx];
-                if (col.r == WaterMarkerColor.r && col.g == WaterMarkerColor.g &&
-                    col.b == WaterMarkerColor.b && col.a == WaterMarkerColor.a) {
+                if (pixels[ly * mask.width + lx].a >= 128) {
                     if (offsets == null) offsets = new List<Vector2Int>();
                     offsets.Add(new Vector2Int(lx, ly));
                 }
@@ -382,16 +484,29 @@ public class WaterController : MonoBehaviour {
 
     // Registers a structure's water-marker pixels for overlay each tick.
     // Converts local sprite offsets to world-pixel coordinates, accounting for mirroring.
+    // Also caches per-pixel local Y and the local Y range, so UpdateSurfaceMask can
+    // do fill-level rendering for liquidStorage buildings without re-scanning the sprite.
     // Called by StructController.Place() for any structure with waterPixelOffsets.
     public void RegisterDecorativeWater(Structure s) {
         if (s.waterPixelOffsets == null || s.waterPixelOffsets.Count == 0) return;
         int sprW = (int)s.sprite.textureRect.width;
-        var worldPixels = new List<Vector2Int>(s.waterPixelOffsets.Count);
+        int count = s.waterPixelOffsets.Count;
+        var worldPixels = new List<Vector2Int>(count);
+        var localYs     = new List<int>(count);
+        int minY = int.MaxValue, maxY = int.MinValue;
         foreach (Vector2Int local in s.waterPixelOffsets) {
             int lx = s.mirrored ? (sprW - 1 - local.x) : local.x;
             worldPixels.Add(new Vector2Int(s.x * PixelsPerTile + lx, s.y * PixelsPerTile + local.y));
+            localYs.Add(local.y);
+            if (local.y < minY) minY = local.y;
+            if (local.y > maxY) maxY = local.y;
         }
-        _decorativeZones[s] = worldPixels;
+        _decorativeZones[s] = new DecorativeZone {
+            worldPixels = worldPixels,
+            localYs     = localYs,
+            localMinY   = minY,
+            localMaxY   = maxY,
+        };
     }
 
     // Removes a structure's water-marker pixels. Called from Structure.Destroy().
@@ -412,5 +527,10 @@ public class WaterController : MonoBehaviour {
         System.Array.Clear(_surfaceBytes, 0, _surfaceBytes.Length);
         _surfaceTex.LoadRawTextureData(_surfaceBytes);
         _surfaceTex.Apply(false);
+        if (_tintTex != null) {
+            System.Array.Clear(_tintBytes, 0, _tintBytes.Length);
+            _tintTex.LoadRawTextureData(_tintBytes);
+            _tintTex.Apply(false);
+        }
     }
 }

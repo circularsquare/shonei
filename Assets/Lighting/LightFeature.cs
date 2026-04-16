@@ -13,7 +13,10 @@ using UnityEngine.Rendering.Universal;
 //   3. Draw point LightSources (torches) as circle quads — NdotL × radial falloff.
 //   4. Draw directional LightSources (sun) fullscreen — NdotL from _CapturedNormalsRT.
 //      (Shadow ray march disabled for performance — see LightSun.shader.)
-//   5. Multiply-blit light RT onto scene: final = scene × lightmap.
+//   5. Draw emission contributions (sprites with _EmissionMap secondary tex)
+//      additively into the light RT — flame pixels saturate to white so the
+//      composite multiply preserves their painted color regardless of time of day.
+//   6. Multiply-blit light RT onto scene: final = scene × lightmap.
 public class LightFeature : ScriptableRendererFeature {
     [Tooltip("Minimum NdotL floor applied to all lights — prevents back-faces from going fully black.")]
     [Range(0f, 1f)] public float ambientNormal = 0.15f; // ! set this in inspector
@@ -32,6 +35,13 @@ public class LightFeature : ScriptableRendererFeature {
     [Header("Composite")]
     [Tooltip("How much the sun tints empty sky/background pixels (0 = no tint, 1 = full lightmap applied).")]
     [Range(0f, 1f)] public float skyLightBlend = 1f;
+
+    [Header("Emission")]
+    [Tooltip("Global multiplier on per-pixel emission written into the lightmap by EmissionWriter.shader. " +
+             "0 = no emissive glow, 1 = mask alpha drives the lightmap directly, >1 = boost. " +
+             "Stacks multiplicatively with the per-LightSource MPB scale (which gates emission off when " +
+             "the source isn't actually emitting light — daytime, out of fuel, disabled).")]
+    [Range(0f, 2f)] public float emissionStrength = 1f;
 
     [Header("Sort-aware effective light height")]
     [Tooltip("Sort-bucket delta (in normalized units, 1.0 = 255 sortingOrder units) over " +
@@ -87,7 +97,7 @@ public class LightFeature : ScriptableRendererFeature {
         if ((cullingMask & (litLayers | directionalOnlyLayers | waterLayer | backgroundLayer)) == 0) return;
         capturePass.Setup(litLayers, shadowCasterLayers, directionalOnlyLayers, waterLayer, backgroundLayer);
         renderer.EnqueuePass(capturePass);
-        lightPass.Setup(renderer.cameraColorTarget, ambientNormal, deepAmbientColor, skyLightBlend, sortRampRange, behindFarHeightFactor);
+        lightPass.Setup(renderer.cameraColorTarget, ambientNormal, deepAmbientColor, skyLightBlend, sortRampRange, behindFarHeightFactor, litLayers, emissionStrength);
         renderer.EnqueuePass(lightPass);
     }
 
@@ -229,12 +239,15 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
     float skyLightBlend;
     float sortRampRange;
     float behindFarHeightFactor;
+    float emissionStrength = 1f;
+    int   litMask = ~0;
     Color deepAmbientColor;
     RenderTargetIdentifier colorBuffer;
     readonly Material circleMat;
     readonly Material sunMat;
     readonly Material compositeMat;
     readonly Material ambientFillMat;
+    readonly Material emissionMat;
     readonly Mesh     quad;
     readonly MaterialPropertyBlock mpb = new();
 
@@ -246,6 +259,7 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         sunMat          = CoreUtils.CreateEngineMaterial("Hidden/LightSun");
         compositeMat    = CoreUtils.CreateEngineMaterial("Hidden/LightComposite");
         ambientFillMat  = CoreUtils.CreateEngineMaterial("Hidden/LightAmbientFill");
+        emissionMat     = CoreUtils.CreateEngineMaterial("Hidden/EmissionWriter");
         quad            = CreateQuad();
     }
 
@@ -254,16 +268,19 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         CoreUtils.Destroy(sunMat);
         CoreUtils.Destroy(compositeMat);
         CoreUtils.Destroy(ambientFillMat);
+        CoreUtils.Destroy(emissionMat);
         CoreUtils.Destroy(quad);
     }
 
-    public void Setup(RenderTargetIdentifier colorBuffer, float ambientNormal, Color deepAmbientColor, float skyLightBlend, float sortRampRange, float behindFarHeightFactor) {
+    public void Setup(RenderTargetIdentifier colorBuffer, float ambientNormal, Color deepAmbientColor, float skyLightBlend, float sortRampRange, float behindFarHeightFactor, int litMask, float emissionStrength) {
         this.colorBuffer           = colorBuffer;
         this.ambientNormal         = ambientNormal;
         this.deepAmbientColor      = deepAmbientColor;
         this.skyLightBlend         = skyLightBlend;
         this.sortRampRange         = sortRampRange;
         this.behindFarHeightFactor = behindFarHeightFactor;
+        this.litMask               = litMask;
+        this.emissionStrength      = emissionStrength;
     }
 
     public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData rd) {
@@ -363,7 +380,30 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
             sunSkyContrib += src.lightColor * (src.intensity * ndotlFlat);
         }
 
-        // ── 5. Composite — multiply-blit light RT onto the scene ─────────────
+        // ── 5. Emission contribution to lightmap ─────────────────────────────
+        // Sprites with an `_EmissionMap` secondary texture (wired by
+        // SpriteNormalMapGenerator from a `{stem}_f.png` companion) write
+        // white-by-mask additively into the lightmap. After composite, those
+        // pixels keep their painted color verbatim — torches/fireplaces glow
+        // regardless of time-of-day or distance from a real LightSource.
+        // Sprites without the secondary texture get the "black" fallback so
+        // this pass is a free no-op for them.
+        if (emissionMat != null && litMask != 0 && emissionStrength > 0f) {
+            cmd.SetGlobalFloat("_EmissionStrength", emissionStrength);
+            cmd.SetRenderTarget(LightRTId);
+            context.ExecuteCommandBuffer(cmd);
+            cmd.Clear();
+
+            var ds = CreateDrawingSettings(
+                new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
+            ds.overrideMaterial          = emissionMat;
+            ds.overrideMaterialPassIndex = 0;
+
+            var fs = new FilteringSettings(RenderQueueRange.all, litMask);
+            context.DrawRenderers(rd.cullResults, ref ds, ref fs);
+        }
+
+        // ── 6. Composite — multiply-blit light RT onto the scene ─────────────
         // Sky pixels bypass the lightmap entirely and use this precomputed color:
         // time-of-day ambient + sun (no sky-exposure modulation, no point lights).
         Color skyLightColor = SunController.GetAmbientColor() + sunSkyContrib;

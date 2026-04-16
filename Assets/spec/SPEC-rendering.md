@@ -132,6 +132,7 @@ All lighting C# scripts and shaders live in `Assets/Lighting/`.
 | `SunController.cs` | Orbiting sun, sky color, `GetAmbientColor()`, `GetSunDirection()`. Sun child has a `LightSource (isDirectional=true)`. Inspector tunables: orbit, twilight timing, sky/sun/ambient color gradients, `sunIntensityNoon`, `ambientBrightnessMin`/`ambientBrightnessRange`. |
 | `NormalsCapture.shader` | Tangent→world normal transform for flat 2D sprites: `(x, y, z) → (x, y, −z)`. Clips on `_MainTex` alpha (tiles have pre-baked borders, non-tiles use sprite alpha). |
 | `TileSprite.shader` | Simple tile sprite shader: samples `_MainTex` (pre-baked 20×20 from `TileSpriteCache`), clips transparent pixels. Assigned to tile SpriteRenderers by WorldController. |
+| `CrackedSprite.shader` (`Assets/Resources/Shaders/`) | Broken-structure overlay — composites a tileable world-space crack texture on top of `_MainTex`, alpha-masked by base sprite. URP 2D-tagged (both `Universal2D` and `UniversalForward` passes) so broken renderers stay in the NormalsCapture filter. Swapped in via `Structure.RefreshTint()`. See SPEC-systems.md §Maintenance System / Visual. |
 | `TileSpriteCache.cs` | Bakes 20×20 tile sprites **and matching normal maps** at load time from 32×32 border atlases. 16 cardinal-mask sprites per artist texture. A tile type may ship multiple variant textures named `<tileName>`, `<tileName>2`, `<tileName>3`, … (either atlases in `Sheets/` or flat sprites in `Tiles/`); each world tile picks one deterministically from its (x, y), stable across re-renders and loads. PPU=16 → sprites natively span 1.25 units. Normal maps are derived from each baked variant's own alpha — RGB is outward-facing at every alpha boundary, A is a distance-transform edge-depth used by `LightComposite` for underground darkening. Exposes `FlatNormalMap` for non-solid tiles. |
 | `LightCircle.shader` | Point light pass: radial falloff × NdotL. |
 | `LightSun.shader` | Directional sun pass: fullscreen NdotL × sky exposure. Shadow ray march disabled (commented out for performance). |
@@ -218,13 +219,24 @@ See `SPEC-systems.md` for the simulation. The renderer is a separate GPU shader 
 
 ### Decorative water zones
 
-Building sprites can have pixels that render as water shimmer without participating in the fluid simulation. This is used for e.g. the fountain basin.
+Buildings can have pixel regions that render as water shimmer without participating in the fluid simulation. Used for two distinct cases:
+- **Fountain basins** (binary): all zone pixels render when a `Reservoir` has fuel.
+- **Tanks / liquid storage** (fill-level): only the bottom fraction of zone pixels renders, scaled continuously to the stored liquid's quantity vs total capacity. The tank branch scans `storage.itemStacks` for the first non-empty `isLiquid` stack, so any liquid — water, soymilk, future liquids — renders the same way. The top row of rendered pixels gets the surface highlight (`255`) so the water shimmers white at the surface, just like a pond.
 
-**Marker color**: `R=0 G=0 B=255 A=2` (exact RGBA match). Paint pixels this color in a building sprite to mark them as water. Alpha=2 makes them nearly invisible so the water shader colour shows through cleanly.
+**Companion mask sprite (`{name}_w.png`)**: the zone is defined by a companion mask texture beside the main building sprite — e.g. `Sprites/Buildings/tank.png` + `Sprites/Buildings/tank_w.png`. The mask must match the main sprite's dimensions exactly. Any pixel with alpha ≥ 128 is part of the water zone; the pixel's colour is irrelevant. Analogous to the `_f.png` emission/fire mask pattern used by [SpriteNormalMapGenerator](../Editor/SpriteNormalMapGenerator.cs) — separates "where water goes" from the visible art.
 
-**Requirements**: the building sprite's texture must have **Read/Write Enabled** in its Unity Import Settings. `Assets/Editor/BuildingSpritePostprocessor.cs` auto-enables this for all textures under `Resources/Sprites/Buildings/` on import — reimport the folder once after adding the postprocessor.
+**Requirements**: both the main sprite and its `_w.png` companion must have **Read/Write Enabled** in their Unity Import Settings. [BuildingSpritePostprocessor.cs](../Editor/BuildingSpritePostprocessor.cs) auto-enables this for all textures under `Resources/Sprites/Buildings/` on import.
 
-**How it works**: `WaterController.ScanWaterPixels()` scans the sprite at structure construction time and stores matching local pixel offsets on the `Structure`. `StructController.Place()` registers them with `WaterController.RegisterDecorativeWater()`, which converts offsets to world-pixel coordinates (accounting for `mirrored` flipX). Each `UpdateSurfaceMask()` tick, registered zones are overlaid into `_surfaceBytes` as `127` (interior shimmer). If the structure has a `Reservoir`, the zone is only shown when `reservoir.HasFuel()` — dry fountain = no water pixels.
+**How it works**: `WaterController.ScanWaterPixels()` is called from the `Structure` constructor — it loads `Resources/Sprites/Buildings/{stem}_w` (where `stem` is the main sprite's texture name) and collects opaque pixel offsets. If no companion exists, returns null and the building has no water zone. `StructController.Place()` then calls `WaterController.RegisterDecorativeWater()`, which converts offsets to world-pixel coordinates (applying `mirrored` flipX) and caches the local Y range. Each `UpdateSurfaceMask()` tick, registered zones are overlaid into `_surfaceBytes`.
+
+Per-zone gating (in order — first match wins):
+1. `Building.reservoir != null` — fountain-style: render all pixels as `127` iff `reservoir.HasFuel()`.
+2. `structType.liquidStorage && storage != null` — tank-style: find the first non-empty `isLiquid` stack, compute `fillRows = round(liquidFen / capacityFen × totalRows)`, render only pixels with `localY < localMinY + fillRows`. The pixel at `localY == localMinY + fillRows − 1` is written as `255` (surface); below is `127`.
+3. No gating — render all pixels as `127`.
+
+**Per-liquid tint**: tanks additionally stamp their stored liquid's `liquidColor` (parsed from `liquidColorHex` in `itemsDb.json`) into a tile-resolution `_TintTex` (RGBA32, `nx × ny`, Point-filtered). In the shader, when `tint.a > 0.5` the interior shimmer uses `tint.rgb` as the light color and `tint.rgb × 0.85` (15% darker) as the dark color — otherwise it falls back to the global `_WaterColorDark/Light`. Natural simulated water tiles, fountains, and liquids without a `liquidColorHex` all take the fallback path. The surface highlight stays global white regardless. Point filtering is required so adjacent tiles with different tints don't bleed across tile borders.
+
+**Interaction with generic storage sprite**: `Inventory.UpdateSprite()` skips rendering the usual `slow/smid/shigh` storage sprite when `isLiquidStorage` is true — the water shader is the sole visual for liquid fill. This is what makes tank water look like a continuous column rather than three snap levels.
 
 ---
 
@@ -275,7 +287,30 @@ Same Sheets/Split pattern as items. Source sheets live in `Assets/Resources/Spri
 
 **Tile border atlases** (source format): 32×32 artist-authored textures in `Assets/Resources/Sprites/Tiles/Sheets/{name}.png`. Layout: main 16×16 at (8,8), top/bottom 16×4 borders at (8,0)/(8,28), left/right 4×16 borders at (0,8)/(28,8), four 4×4 corner pieces at (0,0)/(28,0)/(0,28)/(28,28). Columns 1,6 and rows 1,6 are empty separators. **Not sampled at runtime** — `TileSpriteCache` reads pixel data at load time to bake 16 cardinal-mask variants per tile type as 20×20 Sprites (PPU=16 → 1.25 units). Textures must have Read/Write enabled (`TileSpritePostprocessor` handles this automatically).
 
-**Sprite normal maps** (`SpriteNormalMapGenerator.cs`): editor tool (**Tools → Generate All Sprite Normal Maps**) batch-processes `Assets/Resources/Sprites/`. For each texture:
-1. Generates `_n.png` — edge pixels get outward normals, interior gets flat forward normal.
+**Sprite normal maps** (`SpriteNormalMapGenerator.cs`): editor tool (**Tools → Generate All Sprite Normal Maps**) batch-processes `Assets/Resources/Sprites/`. For each source texture (skipping `_n.png`, `_f.png`, and `_e.png` companions):
+1. Generates `{stem}_n.png` — edge pixels get outward normals, interior gets flat forward normal.
 2. Imports as `Default` / `Uncompressed` RGBA32 (not NormalMap type — must stay plain packed 0–1).
 3. Auto-assigns as `_NormalMap` secondary texture on the source sprite importer.
+4. If `{stem}_e.png` exists, auto-assigns it as `_EmissionMap` secondary texture on the source sprite.
+
+Post-pass for fire sprites: each `_f.png` is wired as its own `_EmissionMap` (self-reference — all visible fire pixels emit). If a `{stem}_e.png` companion exists alongside the `_f.png`, that takes precedence.
+
+**Companion file conventions** (inside `Assets/Resources/Sprites/Buildings/`):
+
+| Suffix   | Purpose                          | Normal maps? | Emission wiring                                   |
+|----------|----------------------------------|--------------|----------------------------------------------------|
+| `_n.png` | Generated normal map             | N/A          | —                                                  |
+| `_e.png` | Emission mask                    | Skipped      | Assigned as `_EmissionMap` on base sprite           |
+| `_f.png` | Fire art (separate child sprite) | Skipped      | Self-reference `_EmissionMap` (all pixels emit)     |
+
+---
+
+### Fire sprites
+
+Fire art (torch flame, fireplace fire) lives in a **separate child GameObject**, not baked into the base building sprite. This lets fire disappear entirely when the light is off.
+
+**Setup** (`Structure.cs` constructor): if `Resources/Sprites/Buildings/{name}_f` exists, a child `"fire"` GO is created with its own `SpriteRenderer` at the same `sortingOrder` as the parent. Starts inactive.
+
+**Toggle** (`LightSource.cs` Update): `building.fireGO.SetActive(_lastEmissionScale > 0.05f)`. Fire visibility tracks the emission scale — appears/disappears in sync with the twilight emission fade rather than popping on/off abruptly. Hidden when: daytime, out of fuel, building disabled or broken.
+
+**Emission**: `LightSource` retargets `_EmissionScale` MPB writes to `building.fireSR` when present (falls back to parent SR for non-fire emissive buildings). Combined with the `_EmissionMap` self-reference from the generator, fire pixels stay full brightness through `LightComposite`'s multiply.

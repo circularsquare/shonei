@@ -17,6 +17,9 @@ MonoBehaviour:
   lightPenetrationDepth: 1
   deepAmbientColor: {r: 0.3018868, g: 0.3018868, b: 0.3018868, a: 1}
   skyLightBlend: 0.682
+  emissionStrength: 0.55
+  sortRampRange: 0.08
+  behindFarHeightFactor: 2
   litLayers:
     serializedVersion: 2
     m_Bits: 75

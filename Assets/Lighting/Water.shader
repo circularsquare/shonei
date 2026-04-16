@@ -7,6 +7,13 @@ Shader "Water/WaterSurface" {
         // Updated by WaterController every simulation tick (every 0.2 s).
         _SurfaceTex      ("Surface Mask", 2D) = "black" {}
 
+        // Per-tile tint (RGBA32, one texel per world tile). When alpha > 0.5, the tile
+        // uses tint.rgb as the shimmer "light" color and tint.rgb * 0.85 as the "dark"
+        // color — overriding _WaterColorDark/Light. Used by decorative zones (tanks)
+        // to show liquid-specific colors (e.g. soymilk = beige). Point-filtered.
+        // Default "black" (alpha=0) means unbound/empty tiles hit the fallback path.
+        _TintTex         ("Tint (per-tile)", 2D) = "black" {}
+
         _WaterColorDark  ("Water Dark",   Color) = (0.08, 0.35, 0.85, 0.55)
         _WaterColorLight ("Water Light",  Color) = (0.18, 0.50, 0.95, 0.50)
         _SurfaceColor    ("Surface",      Color) = (1.00, 1.00, 1.00, 0.75)
@@ -41,6 +48,8 @@ Shader "Water/WaterSurface" {
 
             TEXTURE2D(_SurfaceTex);
             SAMPLER(sampler_SurfaceTex);
+            TEXTURE2D(_TintTex);
+            SAMPLER(sampler_TintTex);
 
             CBUFFER_START(UnityPerMaterial)
                 float4 _WaterColorDark;
@@ -79,12 +88,26 @@ Shader "Water/WaterSurface" {
                 if (mask < 0.25) return half4(0, 0, 0, 0);  // transparent
                 if (mask > 0.75) return _SurfaceColor;       // surface highlight
 
+                // Per-tile tint: decorative zones stamp a liquid's color (alpha=255) into
+                // _TintTex; everything else is alpha=0 and falls through to the shader's
+                // default water blue. Dark shimmer = light × 0.85 (15% darker).
+                half4 tint = SAMPLE_TEXTURE2D(_TintTex, sampler_TintTex, IN.uv);
+                half4 lightCol;
+                half4 darkCol;
+                if (tint.a > 0.5) {
+                    lightCol = half4(tint.rgb,         _WaterColorLight.a);
+                    darkCol  = half4(tint.rgb * 0.85,  _WaterColorDark.a);
+                } else {
+                    lightCol = _WaterColorLight;
+                    darkCol  = _WaterColorDark;
+                }
+
                 // Interior water: per-pixel shimmer using game-pixel coordinates.
                 // _Time.y == Time.time, so the animation stays frame-rate driven on GPU.
                 float px = floor(IN.uv.x * _WorldPixelSize.x);
                 float py = floor(IN.uv.y * _WorldPixelSize.y);
                 float s = (sin(_Time.y * 1.8 + px * 0.3 + py * 0.5) * 0.5 + 0.5) * 0.4;
-                half4 waterCol = lerp(_WaterColorDark, _WaterColorLight, s);
+                half4 waterCol = lerp(darkCol, lightCol, s);
 
                 // --- Sparkles: small bright regions that fade in and out ---
                 // Divide into cells (~10×1 pixels). Thin horizontal rows.

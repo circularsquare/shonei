@@ -10,9 +10,16 @@ using UnityEngine;
 // Rotation is snapped to `steps` discrete positions per full rotation so that
 // pixel art stays on clean pixel-grid boundaries (no sub-pixel blurriness).
 // 24 steps = one position per in-game hour.
+//
+// When the owning structure is broken (IsBroken), the hand freezes in place.
+// On repair it snaps to the correct current time — no catch-up animation needed
+// because rotation is derived from GetDayPhase(), not accumulated incrementally.
 public class ClockHand : MonoBehaviour {
     [Tooltip("Discrete rotation positions per full day. 24 = one step per in-game hour.")]
     [SerializeField] int steps = 12;
+
+    // Owning structure — set by Structure constructor. Gates rotation on IsBroken.
+    [HideInInspector] public Structure structure;
 
     Transform handTransform;
 
@@ -44,6 +51,7 @@ public class ClockHand : MonoBehaviour {
     }
 
     void Update() {
+        if (structure != null && structure.IsBroken) return;
         UpdateRotation();
     }
 

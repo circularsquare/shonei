@@ -108,6 +108,7 @@ public class WorldController : MonoBehaviour {
     public void ClearWorld() {
         if (defaultSetupCoroutine != null) { StopCoroutine(defaultSetupCoroutine); defaultSetupCoroutine = null; }
         WorkOrderManager.instance?.ClearAllOrders();
+        EventFeed.instance?.Clear();
         isClearing = true;
         // Null all tile.inv refs before destroying structures — prevents Structure.Destroy()
         // → FallIfUnstandable() from spawning stale fall animations during the clear.

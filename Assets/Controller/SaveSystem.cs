@@ -33,7 +33,7 @@ using Newtonsoft.Json;
 //   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored, disabled)
 //   [x] Animals (position, job, energy, food, happiness, decoration happiness, socialization, fireplace warmth, inv, foodSlotInv, toolSlotInv, clothingSlotInv)
 //   [x] Mid-transit merchant task descriptor (travelTaskType + iq + storage tile + leg)
-//   [x] Research (progress, activeResearchId, unlockedIds)
+//   [x] Research (progress, unlockedIds, studiedIds, unlockTimestamps, unlockCounter)
 //   [x] Disabled recipe ids
 //   [x] Water levels
 //   [x] Is raining
@@ -122,13 +122,14 @@ public class SaveSystem : MonoBehaviour {
         if (rs != null) {
             var ids = new int[rs.unlockedIds.Count];
             rs.unlockedIds.CopyTo(ids);
-            var mids = new int[rs.maintainIds.Count];
-            rs.maintainIds.CopyTo(mids);
+            var sids = new int[rs.studiedIds.Count];
+            rs.studiedIds.CopyTo(sids);
             data.research = new ResearchSaveData {
                 progress         = new System.Collections.Generic.Dictionary<int, float>(rs.progress),
-                activeResearchId = rs.activeResearchId,
                 unlockedIds      = ids,
-                maintainIds      = mids
+                studiedIds       = sids,
+                unlockTimestamps = new System.Collections.Generic.Dictionary<int, int>(rs.unlockTimestamps),
+                unlockCounter    = rs.unlockCounter
             };
         }
 
@@ -487,21 +488,45 @@ public class SaveSystem : MonoBehaviour {
     // Phase 5 helper — restores research progress and re-applies effects (building/job
     // unlocks). Lives inside ApplySaveData so any future effect that touches building
     // state is in place before Reconcile registers orders against it.
+    //
+    // Handles old-save migration: missing studiedIds falls back to maintainIds,
+    // old activeResearchId is merged into studiedIds, and missing unlockTimestamps
+    // are derived from unlockedIds order (earlier entries = older = higher priority).
     void RestoreResearch(ResearchSaveData rsd) {
         if (rsd == null || ResearchSystem.instance == null) return;
         var rs = ResearchSystem.instance;
         if (rsd.progress != null)
             foreach (var kv in rsd.progress)
                 rs.progress[kv.Key] = kv.Value;
-        rs.activeResearchId = rsd.activeResearchId;
+
         rs.unlockedIds.Clear();
         if (rsd.unlockedIds != null)
             foreach (int id in rsd.unlockedIds)
                 rs.unlockedIds.Add(id);
-        rs.maintainIds.Clear();
-        if (rsd.maintainIds != null)
-            foreach (int id in rsd.maintainIds)
-                rs.maintainIds.Add(id);
+
+        // Study set: prefer new field, fall back to legacy maintainIds.
+        rs.studiedIds.Clear();
+        int[] srcStudied = rsd.studiedIds ?? rsd.maintainIds;
+        if (srcStudied != null)
+            foreach (int id in srcStudied)
+                rs.studiedIds.Add(id);
+        // Legacy: old activeResearchId → ensure it's studied.
+        if (rsd.studiedIds == null && rsd.activeResearchId >= 0)
+            rs.studiedIds.Add(rsd.activeResearchId);
+
+        // Unlock timestamps: use saved data or derive from unlockedIds order.
+        rs.unlockTimestamps.Clear();
+        if (rsd.unlockTimestamps != null) {
+            foreach (var kv in rsd.unlockTimestamps)
+                rs.unlockTimestamps[kv.Key] = kv.Value;
+            rs.unlockCounter = rsd.unlockCounter;
+        } else if (rsd.unlockedIds != null) {
+            // Old save — assign incrementing counters so array order = priority order.
+            for (int i = 0; i < rsd.unlockedIds.Length; i++)
+                rs.unlockTimestamps[rsd.unlockedIds[i]] = i + 1;
+            rs.unlockCounter = rsd.unlockedIds.Length;
+        }
+
         rs.CheckTransitions();
         rs.ReapplyAllEffects();
     }

@@ -21,7 +21,9 @@ public class Inventory{
     }
     public InvType invType;
     // True for tank-type buildings (StructType.liquidStorage == true). Enforces liquid-only constraint
-    // and auto-allows all isLiquid items on init. Set at construction time; not saved (derived from StructType).
+    // (see ItemTypeCompatible). The per-item allowed[] filter starts all-false like regular storage —
+    // the player opts in to each liquid via the filter UI. Set at construction time; not saved
+    // (derived from StructType).
     public bool isLiquidStorage { get; private set; }
     public int x, y;
     public Dictionary<int, bool> allowed;
@@ -75,9 +77,8 @@ public class Inventory{
             itemStacks[i] = new ItemStack(this, null, 0, stackSize);
         }
 
-        if      (invType == InvType.Storage && !isLiquidStorage) allowed = Db.itemsFlat.ToDictionary(i => i.id, i => false);       // all disallowed by default; user enables per-item
-        else if (invType == InvType.Storage && isLiquidStorage)  allowed = Db.itemsFlat.ToDictionary(i => i.id, i => i.isLiquid); // liquid items allowed, solids disallowed (evicted if somehow placed)
-        else                                                      allowed = Db.itemsFlat.ToDictionary(i => i.id, i => true);
+        if (invType == InvType.Storage) allowed = Db.itemsFlat.ToDictionary(i => i.id, i => false); // all disallowed by default for both dry & liquid storage; user enables per-item via the filter UI
+        else                             allowed = Db.itemsFlat.ToDictionary(i => i.id, i => true);
         
 
         if (invType == InvType.Storage && nStacks > 1){
@@ -705,6 +706,14 @@ public class Inventory{
         if (invType == InvType.Floor) {
             sprite = Resources.Load<Sprite>($"Sprites/Items/split/{iName}/floor");
         } else if (invType == InvType.Storage) {
+            // Liquid storage (tanks): the water shader renders the fill via WaterController's
+            // decorative-zone pipeline, scaled continuously to stored quantity. Don't draw
+            // the generic slow/smid/shigh sprite on top — it would occlude the shader.
+            if (isLiquidStorage) {
+                go.GetComponent<SpriteRenderer>().sprite = null;
+                go.name = "inventory_liquid";
+                return;
+            }
             string sVariant = fill >= 0.75f ? "shigh" : fill < 0.2f ? "slow" : "smid";
             sprite  = Resources.Load<Sprite>($"Sprites/Items/split/{iName}/{sVariant}");
             sprite ??= Resources.Load<Sprite>($"Sprites/Items/split/{iName}/smid");

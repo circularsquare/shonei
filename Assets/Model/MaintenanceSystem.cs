@@ -20,6 +20,23 @@ using UnityEngine;
 //   registered  — structures currently holding a WOM Maintenance order (stops double-registers)
 //   broken      — structures currently below BreakThreshold (so we fire OnBroken/OnRepaired edges only)
 // Structure destruction clears both via ForgetStructure().
+//
+// ── Broken-state gating pattern ──────────────────────────────────────
+// Two tiers:
+//   1. Edge callbacks (OnBroken / OnUnbroken): fire once on threshold crossing.
+//      Used only for visual tint swap (RefreshTint). Keep minimal.
+//   2. Polling (Structure.IsBroken at use sites): each system checks at its own
+//      natural cadence. No central dispatch needed — the property is cheap (two
+//      comparisons). Current poll sites:
+//        - LightSource.UpdateLitState()           — suppresses fuel burn + emission
+//        - WaterController.UpdateSurfaceMask()     — hides fountain decorative water
+//        - ClockHand.Update()                      — freezes clock hand rotation
+//        - Animal.ScanForNearbyDecorations()       — skips decoration happiness
+//        - Animal.FindHome() / TryPickLeisure()    — skips houses / leisure seats
+//        - WOM isActive lambdas (craft/research/fuel) — suppresses work orders
+//        - Structure.EffectivePathCostReduction    — zeroes road speed bonus
+// When adding a new broken-state effect, prefer polling IsBroken at the site
+// that already decides the behaviour, rather than adding to OnBroken/OnUnbroken.
 public class MaintenanceSystem {
     public static MaintenanceSystem instance { get; private set; }
 

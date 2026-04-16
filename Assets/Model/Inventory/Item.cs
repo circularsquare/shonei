@@ -19,6 +19,11 @@ public class Item {
     public string happinessNeed {get; set;} // which happiness satisfaction eating this food grants (e.g. "wheat", "fruit"); null = none
     public bool discrete {get; set;}    // true = stored/moved in whole-liang (100 fen) multiples only
     public bool isLiquid {get; set;}    // true = liquid (water, soymilk, etc.); used to restrict which inventory types can hold it
+    // Optional per-liquid tint (#RRGGBB) used by WaterController when this liquid is rendered in a
+    // decorative zone (tank/fountain). Absent/invalid → shader falls back to its default water blue.
+    public string liquidColorHex {get; set;}
+    [Newtonsoft.Json.JsonIgnore]
+    public Color32 liquidColor;         // parsed from liquidColorHex; alpha=0 when unset, alpha=255 flags "tint active" in the tint texture
     public Item parent;
     // Loaded at startup by Db. Falls back to Sprites/Items/split/default/icon if no item-specific icon exists.
     public Sprite icon;
@@ -32,6 +37,18 @@ public class Item {
             return InventoryController.instance.discoveredItems[id];
         }
         return false;
+    }
+
+    [OnDeserialized]
+    internal void OnDeserialized(StreamingContext context){
+        if (!string.IsNullOrEmpty(liquidColorHex)) {
+            if (ColorUtility.TryParseHtmlString(liquidColorHex, out Color c)) {
+                liquidColor = c;
+                liquidColor.a = 255; // alpha flags "tint active" in the tint texture
+            } else {
+                Debug.LogError($"Item '{name}': invalid liquidColorHex '{liquidColorHex}'");
+            }
+        }
     }
     // inventories are the ones with gameobjects and sprites, not items.
 }

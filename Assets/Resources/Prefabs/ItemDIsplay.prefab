@@ -75,8 +75,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4281479730
-  m_fontColor: {r: 0.19607843, g: 0.19607843, b: 0.19607843, a: 1}
+    rgba: 4278190080
+  m_fontColor: {r: 0, g: 0, b: 0, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -1705,9 +1705,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: de6f5324f5f6284449e5352eca068ed6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  itemIcon: {fileID: 9177821065579568827}
   itemText: {fileID: 2160740765261752811}
   quantityText: {fileID: 5711619074807854434}
+  itemIcon: {fileID: 9177821065579568827}
   targetInput: {fileID: 872538498189991262}
   toggleGo: {fileID: 5690971432674883556}
   spriteAllowed: {fileID: 21300000, guid: f36f189330f1af94789846034b1f57cf, type: 3}

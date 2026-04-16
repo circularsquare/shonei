@@ -245,7 +245,7 @@ public class AnimalStateManager {
         } else if (animal.task is ResearchTask rt) {
             animal.workProgress += workEfficiency;
             animal.skills.GainXp(Skill.Science, baseWorkEff * 0.1f);
-            ResearchSystem.instance?.AddScientistProgress(workEfficiency, rt.maintenanceTargetId);
+            ResearchSystem.instance?.AddScientistProgress(workEfficiency, rt.studyTargetId);
             if (animal.workProgress < 10f) return;
             animal.workProgress = 0f;
             animal.task.Complete();

@@ -1,8 +1,13 @@
 meoww!!
 
+4/16
+- simplified research system: just one binary flag 
+- alert system, alert when reserach forgotten
 4/15
 - lots of misc refactors / cleanups
 - building deterioration / maintenance
+- improved fire rendering (emission mask)
+- improved liquid rendering (tanks)
 4/14
 - sorting order aware light receivers
 - haul to market improvements 
