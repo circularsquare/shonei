@@ -5,6 +5,10 @@ using System;
 using System.Linq;
 using System.Runtime.Serialization;
 
+// Plant structure — grows through stages over time, becomes harvestable, and yields
+// items via WOM Harvest orders. PlantType (loaded from plantsDb.json) defines growth
+// timing, products, and eligibility rules. Registered as a Structure so it lives on
+// the tile grid, but lifecycle (grow/harvest/destroy) is plant-specific.
 public class Plant : Structure {
     public PlantType plantType;
 
@@ -107,7 +111,8 @@ public class Plant : Structure {
 
     public void Grow(int t){
         age += t;
-        // hardcoded 4 growth stages
+        // All plants have 4 growth stages (0..3). If a plant ever needs more or fewer stages,
+        // promote the `3`s below to PlantType and load from JSON.
         growthStage = Math.Min(age * 3 / plantType.growthTime, 3);
         if (growthStage >= 3 && !harvestable){
             harvestable = true;

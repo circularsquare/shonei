@@ -2,16 +2,23 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 
+// Per-animal navigation facade: owns the active path, drives per-frame movement along
+// it, and exposes Find*/FindPathTo* helpers for tasks to locate targets/paths. Graph
+// infrastructure (node data, A*) lives in Navigation.cs — this class only consumes it.
 public class Nav {
     public Animal a;
     public World world;
 
-    public Path path;
+    public Path path { get; private set; }
     private int pathIndex = 0;
     private Node prevNode = null;
     private Node nextNode = null;
-    public bool preventFall = false; // true while traversing a vertical or stair edge
-    public float fallVelocity = 0f;  // accumulated downward speed during Falling state
+    // true while traversing a vertical or stair edge — suppresses Falling state dispatch.
+    // Set internally as path progresses; AnimalStateManager reads it during fall gating.
+    public bool preventFall { get; private set; } = false;
+    // Accumulated downward speed during Falling state. Mutated externally by
+    // AnimalStateManager.UpdateMovement, which owns the fall physics integration.
+    public float fallVelocity = 0f;
 
 
     public Nav (Animal a){

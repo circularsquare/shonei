@@ -5,7 +5,10 @@ using UnityEngine.EventSystems;
 using System;
 using System.Linq;
 
-
+// One mouse. Owns all per-animal state (position, inventory slots, needs, skills, job)
+// and the picker that chooses the next Task each tick. Per-tick state transitions live
+// in AnimalStateManager; pathfinding/movement in Nav. Task dispatch goes through
+// WorkOrderManager — Animal never scans the world directly for work.
 public class Animal : MonoBehaviour{
     public string aName;
     public int id;
@@ -465,7 +468,7 @@ public class Animal : MonoBehaviour{
             : foodSlotInv.stackSize;
         if (room <= 0) return false; // slot already full
 
-        int amountToPickUp = Math.Max(room, 100);
+        int amountToPickUp = Math.Min(room, 100);
 
         foreach (Item food in Db.edibleItems) {
             if (!happiness.WouldHelp(food)) continue;

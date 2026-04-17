@@ -254,7 +254,6 @@ public class Db : MonoBehaviour {
             for (int i = 0; i < newChildren.Count; i++) combined[existing.Length + i] = newChildren[i];
             bookGroup.children = combined;
         }
-        Debug.Log($"Db: generated {bookItemIdByTechId.Count} tech books under 'book' group (ids 302..{nextId - 1})");
     }
 
     // Runtime-generates one scribe recipe per tech that has a book item (from GenerateBookItems).
@@ -314,7 +313,6 @@ public class Db : MonoBehaviour {
             bookRecipeIdByTechId[tech.id] = nextId;
             nextId++;
         }
-        Debug.Log($"Db: generated {bookRecipeIdByTechId.Count} scribe book recipes");
     }
 
     // Validates that no group/parent items appear as recipe outputs, plant products, or tile drops.
@@ -350,7 +348,7 @@ public class Db : MonoBehaviour {
         string jsonTileTypes = File.ReadAllText(Application.dataPath + "/Resources/tilesDb.json");
         TileType[] tileTypesUnplaced = JsonConvert.DeserializeObject<TileType[]>(jsonTileTypes);
         foreach (TileType tileType in tileTypesUnplaced){
-            if (tileTypes[tileType.id] != null){Debug.LogError("error!! multiple tile types with same id");}
+            if (tileTypes[tileType.id] != null){Debug.LogError($"multiple tile types with id={tileType.id}: '{tileTypes[tileType.id].name}' and '{tileType.name}'");}
             tileTypes[tileType.id] = tileType;
             tileTypeByName.Add(tileType.name, tileType);
         }
@@ -359,7 +357,7 @@ public class Db : MonoBehaviour {
         string jsonTextJobs = File.ReadAllText(Application.dataPath + "/Resources/jobsDb.json");
         Job[] jobsUnplaced = JsonConvert.DeserializeObject<Job[]>(jsonTextJobs);
         foreach (Job job in jobsUnplaced){
-            if (jobs[job.id] != null){Debug.LogError("error!! multiple jobs with same id");}
+            if (jobs[job.id] != null){Debug.LogError($"multiple jobs with id={job.id}: '{jobs[job.id].name}' and '{job.name}'");}
             jobs[job.id] = job;
             if (job.name != null){
                 jobByName.Add(job.name, job);
@@ -382,7 +380,7 @@ public class Db : MonoBehaviour {
         string jsonStructTypes = File.ReadAllText(Application.dataPath + "/Resources/buildingsDb.json");
         StructType[] structTypesUnplaced = JsonConvert.DeserializeObject<StructType[]>(jsonStructTypes);
         foreach (StructType structType in structTypesUnplaced){
-            if (structTypes[structType.id] != null){Debug.LogError("error!! multiple struct types with same id");}
+            if (structTypes[structType.id] != null){Debug.LogError($"multiple struct types with id={structType.id}: '{structTypes[structType.id].name}' and '{structType.name}'");}
             structType.isPlant = false;
             structTypes[structType.id] = structType;
             structTypeByName.Add(structType.name, structType);
@@ -391,11 +389,11 @@ public class Db : MonoBehaviour {
         string jsonPlantTypes = File.ReadAllText(Application.dataPath + "/Resources/plantsDb.json");
         PlantType[] plantTypesUnplaced = JsonConvert.DeserializeObject<PlantType[]>(jsonPlantTypes);
         foreach (PlantType plantType in plantTypesUnplaced){
-            if (plantTypes[plantType.id] != null){Debug.LogError("error!! multiple plant types with same id");}
+            if (plantTypes[plantType.id] != null){Debug.LogError($"multiple plant types with id={plantType.id}: '{plantTypes[plantType.id].name}' and '{plantType.name}'");}
             plantTypes[plantType.id] = plantType;
             plantTypeByName.Add(plantType.name, plantType);
             // also add each plant as a building so you can build it
-            if (structTypes[plantType.id] != null){Debug.LogError("error!! multiple struct types with same id");}
+            if (structTypes[plantType.id] != null){Debug.LogError($"plant '{plantType.name}' id={plantType.id} collides with existing struct type '{structTypes[plantType.id].name}'");}
             structTypes[plantType.id] = plantType;
             plantType.isPlant = true;
             structTypeByName.Add(plantType.name, plantType);
@@ -406,7 +404,7 @@ public class Db : MonoBehaviour {
         string jsonTextRecipes = File.ReadAllText(Application.dataPath + "/Resources/recipesDb.json");
         Recipe[] recipesUnplaced = JsonConvert.DeserializeObject<Recipe[]>(jsonTextRecipes);
         foreach (Recipe recipe in recipesUnplaced){
-            if (recipes[recipe.id] != null){Debug.LogError("error!! multiple recipes with same id");}
+            if (recipes[recipe.id] != null){Debug.LogError($"multiple recipes with id={recipe.id}: '{recipes[recipe.id].description}' and '{recipe.description}'");}
             recipes[recipe.id] = recipe;
             if (jobByName.ContainsKey(recipe.job)){ // add recipe to job's array of recipes
                 Job job = jobByName[recipe.job];
@@ -429,8 +427,8 @@ public class Db : MonoBehaviour {
     }
 
     void AddItemToDb(Item item) {
-        if (items[item.id] != null)        Debug.LogError("error!! multiple items with same id");
-        if (itemByName.ContainsKey(item.name)) Debug.LogError("error!! multiple items with same name");
+        if (items[item.id] != null)        Debug.LogError($"multiple items with id={item.id}: '{items[item.id].name}' and '{item.name}'");
+        if (itemByName.ContainsKey(item.name)) Debug.LogError($"multiple items with name='{item.name}' (existing id={itemByName[item.name].id}, new id={item.id})");
         items[item.id] = item;
         if (item.name != null) {
             itemByName.Add(item.name, item);

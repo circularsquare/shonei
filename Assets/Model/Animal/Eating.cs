@@ -1,3 +1,5 @@
+// Per-animal hunger state. Tracks current food, rate of depletion, and the
+// work-efficiency penalty when hungry. Eat() restores food; Update() depletes it.
 public class Eating {
     public float maxFood = 100f;
     public float food = 90f;

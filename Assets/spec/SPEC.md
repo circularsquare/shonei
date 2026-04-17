@@ -100,8 +100,8 @@ When adding new content, read these files first and match their pattern:
 
 | Adding... | Model after | Key file(s) |
 |-----------|-------------|-------------|
-| New Task type | `HaulTask` (simple) or `CraftTask` (complex) | `Task.cs` — also see 11-step checklist in SPEC-ai.md |
-| New Objective | `FetchObjective` (retry) or `WorkObjective` (simple) | `Task.cs` |
+| New Task type | `HaulTask` (simple) or `CraftTask` (complex) | `Assets/Model/Tasks/` (base in `Task.cs`) — also see 11-step checklist in SPEC-ai.md |
+| New Objective | `FetchObjective` (retry) or `WorkObjective` (simple) | `Assets/Model/Objectives/` (base in `Objective.cs`) |
 | New WOM order type | `RegisterConstructOrder` / `RegisterWorkstation` | `WorkOrderManager.cs` + SPEC-ai.md checklist |
 | New Building subclass | `PumpBuilding` | `Assets/Components/PumpBuilding.cs` + `Structure.Create` in `Structure.cs` |
 | New UI panel (exclusive) | `ResearchPanel` | `Assets/UI/ResearchPanel.cs` |

@@ -4,6 +4,10 @@ using UnityEngine;
 using System;
 using System.Linq;
 
+// A bag of ItemStacks. One inventory per floor tile / storage building / animal slot /
+// blueprint / market / reservoir; type drives decay rate, allow-list behavior, and
+// rendering. Public API is Produce (adds + updates GlobalInventory) and MoveItemTo
+// (transfers, no double-count); AddItem is private — never call it externally.
 public class Inventory{
     public int nStacks;
     public int stackSize; 

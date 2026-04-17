@@ -6,6 +6,10 @@ using System;
 using System.Linq;
 using System.Runtime.Serialization;
 
+// One cell of the world grid. Owns its tile type, depth-indexed structure/blueprint
+// slots, optional floor inventory, water level, and pathfinding Node. Fires callbacks
+// on change so controllers can re-render without polling. Static grid coordinates
+// (x, y) are immutable after construction.
 public class Tile {
     Action<Tile> cbTileTypeChanged;
     Action<Tile> cbBackgroundChanged;

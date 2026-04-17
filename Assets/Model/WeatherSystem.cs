@@ -6,8 +6,8 @@ using UnityEngine;
 // SunController queries GetSunMultiplier() / GetAmbientMultiplier() every frame.
 //
 // Rain probabilities (per in-game hour):
-//   Clear → Rain:  10%
-//   Rain  → Clear: 25%
+//   Clear → Rain:  4%
+//   Rain  → Clear: 12%
 //
 // Light multipliers at full rain (rainAmount = 1):
 //   Sun intensity: 0.25 

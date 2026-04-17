@@ -1,3 +1,6 @@
+// Per-animal sleep state. Tracks current tiredness ("eep") and the work-efficiency
+// penalty when exhausted. Eep() restores it (faster at home, slower outside);
+// Update() depletes it each tick.
 public class Eeping {
     public float maxEep = 100f;
     public float eep = 90f;

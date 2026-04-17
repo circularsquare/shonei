@@ -2,8 +2,11 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
-//using System.Diagnostics;
 
+// The world grid plus the per-frame tick that drives everything on it. Owns the Tile
+// array and the pathfinding Graph; hosts periodic dispatch to WeatherSystem,
+// MaintenanceSystem, ResearchSystem, inventory decay, graph reconcile, etc. Falling
+// items queued via FallItems land on the nearest standable tile below.
 public class World : MonoBehaviour {
     Tile[,] tiles;
     public Graph graph;

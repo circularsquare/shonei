@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using System;
-using TMPro;
 
+// World-total item counter. Updated by Inventory.Produce on every physical item
+// mutation; queried by UI/targets logic and by task layers that score by global
+// availability (e.g. recipe picking). Group items sum their leaf descendants.
 public class GlobalInventory {
     public static GlobalInventory instance {get; protected set;}
     public Dictionary<int, int> itemAmounts {get; protected set;}
@@ -64,17 +66,10 @@ public class GlobalInventory {
     }
 
     public bool SufficientResources(ItemQuantity[] iqs){
-        bool sufficient = true;
         foreach (ItemQuantity iq in iqs){
-            if (Quantity(iq.item) < iq.quantity){
-                sufficient = false;
-            }
+            if (Quantity(iq.item) < iq.quantity) return false;
         }
-        return sufficient;
-    }
-
-    public void CalculateCapacities(){
-        // need to allocate capacities for inventories.
+        return true;
     }
 
     public void RegisterCbInventoryChanged(Action<GlobalInventory> callback){

@@ -16,23 +16,23 @@ public class WorldSaveData {
     public bool isRaining;          // false = clear (safe default for old saves)
     // Global item targets set by the player via ItemDisplay UI (item name → target qty in fen).
     // Only non-default entries (≠ 10000) are stored; absent entries load as default (10000).
-    public System.Collections.Generic.Dictionary<string, int> globalItemTargets;
+    public Dictionary<string, int> globalItemTargets;
     public float? cameraX;  // null on old saves → camera not repositioned on load
     public float? cameraY;
     public int?   cameraPPU; // null on old saves → zoom not changed on load
     // Market targets set by the player (item name → quantity in fen). null = no market or all zero.
-    public System.Collections.Generic.Dictionary<string, int> marketTargets;
+    public Dictionary<string, int> marketTargets;
     // Inventory tree open/collapsed state for the always-visible global panel.
     // Only deltas vs item.defaultOpen are stored (group item name → current open state), so the
     // dict stays small and new items automatically pick up their JSON default. Null on old saves.
-    public System.Collections.Generic.Dictionary<string, bool> inventoryTreeOpen;
+    public Dictionary<string, bool> inventoryTreeOpen;
 }
 
 public class ResearchSaveData {
-    public System.Collections.Generic.Dictionary<int, float> progress;
+    public Dictionary<int, float> progress;
     public int[] unlockedIds;
     public int[] studiedIds;   // was maintainIds; null on old saves → empty set
-    public System.Collections.Generic.Dictionary<int, int> unlockTimestamps; // null on old saves → derive from unlockedIds order
+    public Dictionary<int, int> unlockTimestamps; // null on old saves → derive from unlockedIds order
     public int   unlockCounter;
 
     // Legacy fields — read for migration, never written.
@@ -93,7 +93,7 @@ public class InventorySaveData {
     public ItemStackSaveData[] stacks;
     public int[] allowedItemIds; // item IDs explicitly allowed; only saved for Storage/Liquid types (others default to all-allowed)
     // Market inventories only: item name → target quantity in fen. null on all other inventory types.
-    public System.Collections.Generic.Dictionary<string, int> marketTargets;
+    public Dictionary<string, int> marketTargets;
 }
 
 public class ItemStackSaveData {

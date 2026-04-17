@@ -296,12 +296,12 @@ The Maintenance WOM order is **not removed** when condition climbs back into the
 
 ### MaintenanceTask flow
 
-`MaintenanceTask` lives in `Task.cs` and follows the same Initialize/Objective pattern as other supply-then-work tasks. At start it snapshots `startCondition` and `repairAmount = min(MaxRepairPerTask, 1 - condition)`.
+`MaintenanceTask` lives in `Assets/Model/Tasks/MaintenanceTask.cs` and follows the same Initialize/Objective pattern as other supply-then-work tasks. At start it snapshots `startCondition` and `repairAmount = min(MaxRepairPerTask, 1 - condition)`.
 
 1. **Job gate**: `animal.job.name == "mender"`. 
 2. **Cost computation**: for each `ItemQuantity` in `structType.costs`, `needed = ceil(cost.quantity × RepairCostFraction × repairAmount)`.
 3. **Pathfind**: `Nav.FindPathTo(target.workTile)`; aborts if unreachable.
-4. **Leaf resolution**: `PickMaintenanceSupplyLeaf(group)` picks the highest-stock leaf per group cost item (single-leaf commit; no mixed-leaf delivery like blueprints).
+4. **Leaf resolution**: `Task.PickSupplyLeaf(group)` picks the highest-stock leaf per group cost item (single-leaf commit; no mixed-leaf delivery like blueprints). Shared with `SupplyBlueprintTask`.
 5. **Fetch chain**: one `FetchObjective` per cost item with reservations held by the task.
 6. **GoObjective** → **MaintenanceObjective** — ticks condition up by `RepairWorkPerTick × workEfficiency` per tick, grants Construction XP, stops at `startCondition + repairAmount` or `1.0`.
 7. **Completion**: consume fetched materials from mender inventory; call `MaintenanceSystem.OnRepaired(target)` + `target.RefreshTint()`.

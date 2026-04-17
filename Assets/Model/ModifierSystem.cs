@@ -50,11 +50,11 @@ public static class ModifierSystem {
         if (roadReduction > 0f)
             speed /= Mathf.Max(0.1f, 1.0f - roadReduction * 2f);
 
-        // Floor items on tile: 25% slowdown (storage inventories don't count)
+        // Floor items on tile: 20% slowdown (storage inventories don't count)
         if (tile.inv != null && tile.inv.invType == Inventory.InvType.Floor && !tile.inv.IsEmpty())
             speed *= FloorItemSpeedPenalty;
 
-        // Crowding: any other mice on this tile = 25% slowdown
+        // Crowding: any other mice on this tile = 20% slowdown
         if (AnimalController.instance.HasMultipleAnimalsOnTile(tile))
             speed *= CrowdingSpeedPenalty;
 

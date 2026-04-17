@@ -3,11 +3,15 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 
+// A single slot in an Inventory — one item type, a fen quantity, and dual reservation
+// counters: resAmount tracks "items claimed for pickup" (source-side); resSpace tracks
+// "space claimed for incoming items" (destination-side). Tasks reserve via
+// Task.ReserveStack / Task.ReserveSpace and release in Cleanup(). FormatQ() converts
+// fen→liang for display.
 public class ItemStack {
     public bool isComposite{get; set;}
     public Item item { get; set; }
-    public int quantity { get; set; } //if i want some things to be floats... have a display multiplier?
-                                        // so some things can then be like 0.001 but in reality are just small? 
+    public int quantity { get; set; }
     public int decayCounter; // increments from 0 to maxdecaycount, when reaches it, it decays 1 item.
     public static int maxDecayCount = 1000000;  
     public int stackSize = 100;

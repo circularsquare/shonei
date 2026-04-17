@@ -7,6 +7,9 @@ using System.Linq;
 
 using AnimalState = Animal.AnimalState;
 
+// Per-tick state machine dispatcher for Animal. Routes UpdateState/UpdateMovement
+// to the right handler (Idle/Working/Traveling/Leisuring/Eeping/Falling/...) and
+// owns the state-specific side effects (needs decay, task progress, fall physics).
 public class AnimalStateManager {
     private Animal animal;
 
@@ -92,7 +95,7 @@ public class AnimalStateManager {
 
     // Walks a group item's leaf tree and returns the first leaf with at least `needed` on
     // the animal. Used by the MaintenanceTask completion path when a cost is a group item
-    // (e.g. "wood") — PickMaintenanceSupplyLeaf committed to a single leaf at fetch time,
+    // (e.g. "wood") — Task.PickSupplyLeaf committed to a single leaf at fetch time,
     // so one will be present. Returns null if none found (genuine bug — log at call site).
     private static Item FindLeafInInventory(Animal animal, Item groupItem, int needed) {
         if (groupItem.children == null || groupItem.children.Length == 0)
@@ -220,7 +223,7 @@ public class AnimalStateManager {
                     if (needed <= 0) continue;
                     // Consume from whichever leaf the mender fetched. For leaf costs, that's cost.item
                     // directly; for group costs, we need to find the leaf in inventory (there will be
-                    // exactly one thanks to PickMaintenanceSupplyLeaf committing to a single leaf per task).
+                    // exactly one thanks to Task.PickSupplyLeaf committing to a single leaf per task).
                     Item consume = cost.item.IsGroup
                         ? FindLeafInInventory(animal, cost.item, needed)
                         : cost.item;
