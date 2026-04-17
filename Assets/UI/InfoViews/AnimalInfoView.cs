@@ -82,6 +82,7 @@ public class AnimalInfoView : MonoBehaviour {
             "\n [food] " + FormatSlot(ani.foodSlotInv) +
             "\n [tool] " + FormatSlot(ani.toolSlotInv) +
             "\n [top]  " + FormatSlot(ani.clothingSlotInv) +
+            "\n [book] " + FormatSlot(ani.bookSlotInv) +
             "\n inv: " + ani.inv.ToString();
         t += "\n task: " + (ani.task?.ToString() ?? "none");
         t += "\n obj: " + (ani.task?.currentObjective?.ToString() ?? "none");

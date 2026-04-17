@@ -29,8 +29,9 @@ Fields:
 | `nx`, `ny` | int | footprint in tiles |
 | `storageTileX` | int? | X offset of storage tile within multi-tile buildings |
 | `ncosts` | `[{name, quantity}]` | build cost in liang |
-| `njob` | string? | job assigned on placement (e.g. `"hauler"`) |
+| `njob` | string? | **logistics** job for this structure: who supplies its blueprint, constructs it, and deconstructs it. Defaults to `"hauler"` if omitted. NOT the operator job for workstations — that's determined per-recipe via `recipe.job`. (For plants `njob` is overloaded to mean the harvest job — see plantsDb schema.) |
 | `isStorage` | bool? | has a storage inventory |
+| `storageClass` | enum? | `"default"` / `"liquid"` / `"book"` — restricts which items this storage accepts (matched against `Item.itemClass`). Tanks = liquid, bookshelves = book. Defaults to `"default"`. |
 | `nStacks` | int? | inventory slot count (requires `isStorage`) |
 | `storageStackSize` | int? | max stack per slot in liang (requires `isStorage`) |
 | `capacity` | int? | max simultaneous workers |
@@ -87,8 +88,11 @@ Fields:
 | `foodValue` | int? | hunger restored when eaten |
 | `happinessNeed` | string? | which happiness satisfaction eating this food grants (e.g. "wheat", "fruit", "soymilk"); null = none |
 | `discrete` | bool? | stored/moved in whole-liang (100 fen) units only (e.g. tools, clothing); inherited by children |
-| `isLiquid` | bool? | liquid item (water, soymilk); only fits in liquid-storage containers; inherited by children |
+| `itemClass` | enum? | `"default"` (solid), `"liquid"` (water, soymilk), `"book"` (tech/fiction books). Storage inventories match class exactly — liquids only fit in tanks, books only in bookshelves. Inherited by children. Defaults to `"default"`. |
+
+Note: IDs 300+ are reserved for books. The `book` group (id 300) is authored in this file with `fiction_book` (id 301) as its only static child. **One tech book per research tech is generated at runtime** by `Db.GenerateBookItems()` and appended as additional children of the `book` group, with sequential IDs starting at 302. The tech-id → book-item-id map lives in `Db.bookItemIdByTechId`. All books share one sprite (`Sprites/Items/split/books/icon`).
 | `liquidColorHex` | string? | `#RRGGBB` tint used when this liquid is rendered in a decorative water zone (tank/fountain); absent → shader falls back to its default water blue |
+| `defaultOpen` | bool? | group items only: start expanded in the inventory tree by default (e.g. `"food"`). Groups without this flag start collapsed. Runtime collapse state overrides on click. |
 | `children` | array? | leaf sub-types; see group item note above |
 
 ## `recipesDb.json` — Recipes
@@ -105,6 +109,7 @@ Fields:
 | `research` | string? | technology node that receives passive progress on each completed cycle (maintain-only) |
 | `researchPoints` | float? | passive research progress granted per cycle, paired with `research` |
 | `skill` | string? | skill domain for XP (e.g. `"mining"`); defaults to `job.defaultSkill` if omitted |
+| `maxRoundsPerTask` | int? | cap on rounds in one CraftTask trip (0/omit = unlimited). Set to 1 for "one item per trip" recipes (e.g. book writing) where each cycle should be a deliberate, discrete action rather than a batch. |
 | `ninputs` | `[{name, quantity}]` | consumed items in liang |
 | `noutputs` | `[{name, quantity, chance?}]` | produced items; `chance` (0–1) = probability of output |
 

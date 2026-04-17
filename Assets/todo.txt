@@ -7,8 +7,6 @@ CONTENT
 - grooming?
 - clothing
     - silkworm building? -> silk cocoons -> cloth -> clothing 
-- clean up all reservation systems
-    - workorder res, structure res, structure.seatres (claude thoughts are in memory)
 - trading 
 - plant
     - flesh out plant growth, moisture and temperature
@@ -18,26 +16,13 @@ CONTENT
         - also make trees grow multiple tiles tall
 - research
     - additional levels display?
-
-- books
-    - books for gaining skills 
-    - manuals for learning technologies
-    - scriptoriums
-        - bookshelves
-        - scribes can write book for a tech once we have unlocked it 
-            - need to manually assign write book job?
-    - scientists will read book if available instead of manual research 
-    - mice randomly read book as leisure 
-
 VISUALS
 - make item icons more coherent / similar
 - tab styling, add building icons?
-- market panel show mice on route
 - lighting, make light height vary depending on sorting order? at least for background.
 - lighting 
     - improve undergroundwall sprite 
     - procedurally generate rocks with normalmaps?
-- make fireplace light disappear when off (maybe just make the fire its own object?)
 
 MOUSE AI
 - ponder inventory management
@@ -47,12 +32,18 @@ MOUSE AI
     - work station priority
     - inventory priority? or inventory pull orders
 - dynamic mouse task objectives
+- general way of estimating what needs will become an issue before starting a long task 
 
 
 BUGS
 
 TODAY GOALS
-- research panel rework
-    - add thresholds 
-    - alert in chat when tech forgotten
-- add writing by scribes
+- books
+    - books for gaining skills 
+    - manuals for learning technologies
+    - scriptoriums
+        - bookshelves
+        - scribes can write book for a tech once we have unlocked it 
+            - need to manually assign write book job?
+    - scientists will read book if available instead of manual research 
+    - mice randomly read book as leisure 

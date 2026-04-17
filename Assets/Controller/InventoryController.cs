@@ -26,6 +26,10 @@ public class InventoryController : MonoBehaviour {
     public Dictionary<int, bool> discoveredItems;
     public Dictionary<int, GameObject> itemDisplayGos;
     public Dictionary<int, int> targets; // per-item production targets in fen
+    // Staged by SaveSystem on load; consumed by ItemDisplay.Start to override the JSON-default
+    // open state with the player's last saved collapse state. Keyed by item name (stable across
+    // id renumbering) and only holds deltas — groups matching their defaultOpen are absent.
+    public Dictionary<string, bool> pendingGroupOpenOverrides;
 
     public TextMeshProUGUI inventoryTitle;
     [SerializeField] private StoragePanel storagePanel;
@@ -159,6 +163,38 @@ public class InventoryController : MonoBehaviour {
         }
     }
     public void UpdateItemsDisplay(){ foreach (Item item in Db.itemsFlat){ UpdateItemDisplay(item); } }
+
+    // Reveals an item in the inventory tree without requiring that it has ever been produced.
+    // Walks the parent chain so ancestor group nodes are revealed too — otherwise an activated
+    // leaf display would be hidden by an inactive parent GO. Safe to call before the display GOs
+    // have been lazily created in TickUpdate: AddItemDisplay reads discoveredItems at creation time.
+    // Called by ResearchSystem when a tech unlocks recipes, so newly-unlockable outputs appear in
+    // the tree even if none have been crafted yet.
+    public void DiscoverItem(Item item){
+        if (item == null) return;
+        if (discoveredItems == null || !discoveredItems.ContainsKey(item.id)){
+            Debug.LogError($"DiscoverItem: unknown item '{item?.name}' (id {item?.id})");
+            return;
+        }
+        bool anyChanged = false;
+        for (Item it = item; it != null; it = it.parent){
+            if (discoveredItems[it.id]) break;
+            discoveredItems[it.id] = true;
+            anyChanged = true;
+            if (itemDisplayGos != null && itemDisplayGos.TryGetValue(it.id, out var go) && go != null)
+                go.SetActive(IsVisibleInTree(it));
+        }
+        if (!anyChanged) return;
+        // Refresh parent dropdown sprite so the newly-revealed child makes the parent look openable.
+        if (item.parent != null && itemDisplayGos != null &&
+            itemDisplayGos.TryGetValue(item.parent.id, out var parentGo) && parentGo != null)
+            parentGo.GetComponent<ItemDisplay>()?.RefreshDropdownSprite();
+        if (inventoryPanel != null){
+            Canvas.ForceUpdateCanvases();
+            LayoutRebuilder.ForceRebuildLayoutImmediate(inventoryPanel.GetComponent<RectTransform>());
+        }
+    }
+
     public void ValidateGlobalInventory() {
         var summed = new Dictionary<int, int>();
         foreach (Inventory inv in inventories) {
@@ -256,6 +292,7 @@ public class InventoryController : MonoBehaviour {
             targets[key] = 10000;
         foreach (var key in discoveredItems.Keys.ToList())
             discoveredItems[key] = false;
+        pendingGroupOpenOverrides = null;
         foreach (var kv in itemDisplayGos)
             kv.Value?.SetActive(false);
         Canvas.ForceUpdateCanvases();

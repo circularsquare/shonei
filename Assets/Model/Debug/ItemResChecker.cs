@@ -6,19 +6,19 @@ using UnityEngine;
 //
 // Invariant (one-directional): for every ItemStack,
 //   stack.resAmount  ≤  Σ Task.ReservedStacks amounts pointing at this stack
-//   stack.resSpace   ≤  Σ Task.ReservedSpaces amounts for (inv, item) on this stack
+//   stack.resSpace   ≤  Σ Task.ReservedSpaces amounts pointing at this stack
 //
 // We only flag actual > expected — that's the leak direction (stack claims more reservation
 // than any live task tracks). The other direction (actual < expected) is *normal*: ItemStack
 // auto-clamps resAmount/resSpace inside AddItem when quantity changes (items get taken,
-// stack fills up, etc.), without notifying the holding Task. Task.reservedStacks is "what I
-// originally asked for", stack.resAmount is "what's actually still reserved" — they can drift
-// downward and Cleanup handles it via Math.Min.
+// stack fills up, etc.), without notifying the holding Task. Task.reservedStacks/reservedSpaces
+// is "what I originally asked for", stack.resAmount/resSpace is "what's actually still
+// reserved" — they can drift downward and Cleanup handles it via Math.Min.
 //
 // Real leak signatures this catches:
-//   - Cleanup forgot to call base.Cleanup() → reservedStacks not released → stack stays high.
+//   - Cleanup forgot to call base.Cleanup() → reservations not released → stack stays high.
 //   - An animal/task destroyed without Fail() → same.
-//   - Code outside Task.ReserveStack calling stack.Reserve() directly.
+//   - Code outside Task.ReserveStack/ReserveSpace calling stack.Reserve()/ReserveSpace() directly.
 //
 // Cost: O(animals + Σ stacks). Hooked from World.Update() on a 30-second cadence.
 // See SPEC-systems.md § Reservation Systems for the full mechanism landscape.
@@ -30,9 +30,9 @@ public static class ItemResChecker {
         var ic = InventoryController.instance;
         if (ac == null || ic == null) return; // pre-init — nothing to check yet
 
-        // ── Build expected totals from live tasks ─────────────────────
+        // ── Build expected totals from live tasks (both keyed by ItemStack identity) ──
         var expectedRes   = new Dictionary<ItemStack, int>();
-        var expectedSpace = new Dictionary<(Inventory, Item), int>();
+        var expectedSpace = new Dictionary<ItemStack, int>();
 
         for (int i = 0; i < ac.na; i++) {
             Animal a = ac.animals[i];
@@ -42,10 +42,9 @@ public static class ItemResChecker {
                 expectedRes.TryGetValue(stack, out int prev);
                 expectedRes[stack] = prev + amount;
             }
-            foreach (var (inv, item, amount) in t.ReservedSpaces) {
-                var key = (inv, item);
-                expectedSpace.TryGetValue(key, out int prev);
-                expectedSpace[key] = prev + amount;
+            foreach (var (stack, amount) in t.ReservedSpaces) {
+                expectedSpace.TryGetValue(stack, out int prev);
+                expectedSpace[stack] = prev + amount;
             }
         }
 
@@ -63,26 +62,16 @@ public static class ItemResChecker {
             }
         }
 
-        // ── Destination-side leak: aggregated resSpace per (inv,item) > Σ live-task claims ──
-        // Aggregate across all stacks in each inventory so a partial-fill spread across
-        // multiple stacks reads as a single (inv, item) total.
-        var actualSpace = new Dictionary<(Inventory, Item), int>();
+        // ── Destination-side leak: stack.resSpace > Σ live-task claims for that stack ──
         foreach (Inventory inv in ic.inventories) {
             if (inv == null || inv.itemStacks == null) continue;
             foreach (ItemStack s in inv.itemStacks) {
                 if (s == null || s.resSpace <= 0) continue;
-                Item item = s.item ?? s.resSpaceItem;
-                if (item == null) continue;
-                var key = (inv, item);
-                actualSpace.TryGetValue(key, out int prev);
-                actualSpace[key] = prev + s.resSpace;
-            }
-        }
-        foreach (var kv in actualSpace) {
-            expectedSpace.TryGetValue(kv.Key, out int expected);
-            if (kv.Value > expected) {
-                Inventory inv = kv.Key.Item1;
-                Debug.LogError($"ItemResChecker[resSpace LEAK]: {inv.invType}({inv.x},{inv.y}) item={kv.Key.Item2.name} reserved={kv.Value} claimed={expected} leaked={kv.Value - expected}");
+                expectedSpace.TryGetValue(s, out int expected);
+                if (s.resSpace > expected) {
+                    string itemName = s.item?.name ?? s.resSpaceItem?.name ?? "null";
+                    Debug.LogError($"ItemResChecker[resSpace LEAK]: {inv.invType}({inv.x},{inv.y}) item={itemName} reserved={s.resSpace} claimed={expected} leaked={s.resSpace - expected}");
+                }
             }
         }
     }

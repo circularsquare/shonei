@@ -83,7 +83,7 @@ JSON fields on StructType:
 - `allowed` dict filters what item types a storage accepts (all allowed by default for other types)
 - `Reservable` (capacity-based) prevents multiple animals targeting same resource. Has two fields: `capacity` (hard max from JSON) and `effectiveCapacity` (player-adjustable; defaults to `capacity`); `Available()` gates on `effectiveCapacity`. **Not** created for workstation buildings — WOM Craft orders own their reservation directly.
 - `Produce()` adds to inventory and global inventory simultaneously; `MoveItemTo()` moves between inventories without touching global inventory
-- `AddItem()` is private — always use `Produce`, `MoveItemTo`, or `TakeItem` externally
+- `AddItem()` is private — always use `Produce` or `MoveItemTo` externally
 - **Group-item wildcard**: `Quantity`, `ContainsAvailableItem`, `GetItemStack`, `AvailableQuantity`, and `MoveItemTo` all expand group items to their leaf descendants (`MatchesItem` helper). Passing `"wood"` to any of these matches oak/maple/pine transparently. `AddItem` and `GlobalInventory.AddItem` reject group items with a `LogError` — only leaf items may physically exist in inventories. `MatchesItem(candidate, query)` is `public static` — use it externally when matching a leaf iq.item against a group cost.item (e.g. in `DeliverToBlueprintObjective`). `MoveItemTo` uses the private `GetLeafStack` (not `GetItemStack`) for group resolution: `GetLeafStack` does not require `Available()` (the caller already holds the reservation) and picks the leaf type with the highest combined quantity, then the smallest individual stack of that type.
 - **`InventoryController.byType`**: `Dictionary<InvType, List<Inventory>>` maintained alongside the flat `inventories` list. Use for type-filtered lookups (e.g. iterate only Storage invs) instead of tile scans. All add/remove/type-change paths go through `AddInventory`, `RemoveInventory`, `MoveInventoryType`.
 - **`ValidateGlobalInventory()`**: sums all registered inventory stacks and compares against `GlobalInventory.itemAmounts`; called at end of save load. `LogError`s any mismatch.
@@ -108,6 +108,7 @@ Each animal has three `InvType.Equip` inventory instances (1 stack each, registe
 | Food | `foodSlotInv` | 500 fen (5 liang) | Carries food for eating |
 | Tool | `toolSlotInv` | 1000 fen | Equipped tool (work speed bonus) |
 | Clothing | `clothingSlotInv` | 200 fen | Equipped clothing (temperature comfort bonus) |
+| Book | `bookSlotInv` | 100 fen (1 liang) | Carries a book during research / leisure reading. Class-restricted: only accepts `ItemClass.Book`. See SPEC-books.md for the borrow/return flow. |
 
 **Clothing system**: `Db.clothingItems` lists all items whose parent chain includes `"clothing"`. `FindClothing()` in `ChooseTask()` equips one clothing item into `clothingSlotInv` when idle (after tool equip, before work orders). `Happiness.UpdateComfortRange()` adjusts `comfortTempLow`/`comfortTempHigh` by ±3°C when any clothing is equipped, and additionally widens `comfortTempLow` by up to 5°C from the fireplace warmth buff. Clothing items are discrete (like tools) and decay at normal rate in equip slots.
 
@@ -119,7 +120,6 @@ Each animal has three `InvType.Equip` inventory instances (1 stack each, registe
 3. `HandleNeeds()` eats from `foodSlotInv`: full meals (≥100 fen) restore `foodValue` and grant full satisfaction; partial meals (remaining fen) scale both nutrition and satisfaction proportionally
 
 **Key methods on `Animal`:**
-- `TakeItem(iq, targetInv = null)` — picks up from floor tile; pass `foodSlotInv` to equip directly
 - `Unequip(slotInv)` — moves slot contents back to main inventory (leftover stays in slot if inv full)
 
 **`ObtainTask` / `FetchObjective`** both accept an optional `Inventory targetInv` to route pickup into an equip slot instead of main inventory.

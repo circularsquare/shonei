@@ -12,7 +12,7 @@ Each technology has a progress value (0 to 2x cost). Every tick, all nodes with 
 
 Passive progress sources (maintain-only — caps at 2x cost and cannot unlock a locked tech from scratch):
 - **Crafting**: recipes with a `research` field grant `researchPoints` to the named tech on each completed cycle. Hooked in `AnimalStateManager.ExecuteCraftTask`. Intended use: recipe-unlock techs gain from the recipe they unlock.
-- **Construction**: each time a tech-gated building finishes construction via `Blueprint.Complete`, the gating tech gets a flat `ConstructionGain` (1) progress. Routed through the `buildingToTechNode` reverse index built in `LoadNodes`. Only fires on the gameplay path — world load / worldgen go through `Structure.Create` directly and do not grant research.
+- **Construction**: each time a tech-gated building finishes construction via `Blueprint.Complete`, the gating tech gets a flat `ConstructionGain` (1) progress. Routed through the `buildingToTechNode` reverse index built in `Start()` (see "Startup ordering" below). Only fires on the gameplay path — world load / worldgen go through `Structure.Create` directly and do not grant research.
 - **Maintenance**: completing a `MaintenanceTask` grants `ConstructionGain × repairAmount` to the same tech. Calibrated so a full 0→1 repair matches a fresh build (e.g. a 40 % repair = 0.4 progress), implemented via the `scale` parameter on `AddConstructionProgress`.
 
 - **Unlock**: progress >= cost AND all prerequisites currently unlocked.
@@ -24,7 +24,7 @@ Passive progress sources (maintain-only — caps at 2x cost and cannot unlock a 
 Each technology has a per-player **study** toggle (`ResearchSystem.studiedIds`). When enabled, scientists will research and maintain that technology.
 
 **Scientist priority when picking up a ResearchTask** (via `PickStudyTarget()`):
-1. Any studied tech below cost with prereqs met → pick the one with the **oldest unlock timestamp** (LIFO forgetting — early techs are presumed more load-bearing). Techs that have never been unlocked are treated as newest (lowest priority).
+1. Any studied tech below cost with prereqs met → pick the one with the **oldest unlock timestamp** (LIFO forgetting — early techs are presumed more load-bearing). Never-unlocked techs have no timestamp and tie at the bottom of this bucket — they're still picked when no older candidate exists, and work cycles through them as each one unlocks.
 2. If no studied tech is below cost: pick the studied tech with the **lowest progress %** relative to 2×cost (spreads reinforcement evenly).
 3. If nothing to do: return -1 (scientist idles through the work loop).
 
@@ -43,13 +43,21 @@ Each technology can grant multiple unlocks of mixed types. See SPEC-data.md for 
 
 Unlock entry `type` is one of `"building"`, `"recipe"`, or `"job"`. For recipes, `target` is the recipe id as a string.
 
+## Recipe discovery
+
+When a tech with a recipe unlock is applied (fresh unlock or save-load reapply), every output item of each unlocked recipe is marked discovered via `InventoryController.DiscoverItem`. This reveals the item in the global inventory tree before any has been crafted, so the player can see what's newly reachable. Discovery walks up the parent chain to reveal ancestor group nodes. Nothing is undone on forget — discovery is permanent, matching the existing first-production behavior.
+
 ## Recipe gating
 
-Gated recipes are filtered out at every pick site (`Animal.PickRecipe*`, `AnimalStateManager` mid-craft check that fails the task on forget, `RecipePanel.Rebuild`). Use `ResearchSystem.IsRecipeUnlocked(recipeId)` at any new pick site. Reverse index `recipeToTechNode` is built in `LoadNodes`.
+Every animal-side recipe pick site routes through `Recipe.IsEligibleForPicking()` (defined in `Db.cs`), which combines the `RecipePanel.IsAllowed` player toggle and the `ResearchSystem.IsRecipeUnlocked` tech gate. Current call sites: `Animal.PickRecipe`, `Animal.PickRecipeRandom`, `Animal.PickRecipeForBuilding`, `Animal.ChooseCraftTask`, and the mid-craft check in `AnimalStateManager` (fails the task on forget). **Any new recipe-pick site must call `IsEligibleForPicking()` — don't inline the two checks.** `RecipePanel.Rebuild` still calls `IsRecipeUnlocked` directly since it's a UI-only filter, not a pick site. Reverse index `recipeToTechNode` is built in `Start()`.
 
 ## Job gating
 
-Jobs flagged `defaultLocked: true` in `jobsDb.json` are hidden until a tech with `{"type":"job","target":"<name>"}` is unlocked. `IsJobUnlocked(name)` returns true when ungated or gating tech is currently unlocked. Reverse index `jobToTechNode` built in `LoadNodes`.
+Jobs flagged `defaultLocked: true` in `jobsDb.json` are hidden until a tech with `{"type":"job","target":"<name>"}` is unlocked. `IsJobUnlocked(name)` returns true when ungated or gating tech is currently unlocked. Reverse index `jobToTechNode` built in `Start()`.
+
+## Startup ordering
+
+`Awake()` only parses `researchDb.json` into `nodes` / `nodeById` / `progress`. All reverse-index building (`InjectBookRecipeUnlocks`, `BuildRecipeLockIndex`, `BuildJobLockIndex`, `BuildBuildingLockIndex`) and `ValidateJobUnlocks` happen in `Start()` because they read `Db.bookRecipeIdByTechId` and `Db.jobByName`, which are populated in `Db.Awake`. See SPEC-lifecycle.md "Cross-singleton Awake rule" for the general principle.
 
 On unlock: `AnimalController.UnlockJob(name)` adds the jobs-panel row (idempotent). On forget: `LockJob(name)` reassigns any worker of that job back to `"none"` and removes the row.
 
@@ -73,7 +81,7 @@ Card background tint (`ResearchDisplay.RefreshProgress`) — 2×2 grid of (unloc
 - **Transparent** — not unlocked AND not studied (no engagement).
 
 Cost text colour:
-- **Green** — a scientist is currently running a `ResearchTask` targeting this tech (see `ResearchSystem.IsActivelyResearched`). Not just "studied" — only while real progress is being added.
+- **Green** — a scientist is currently at the bench adding progress to this tech (ResearchTask's `currentObjective` is a `ResearchObjective` — see `ResearchSystem.IsActivelyResearched`). Excludes the travel leg, so the text doesn't turn green until points are actually rising.
 - **Black** — prereqs met, not being actively worked.
 - **Grey** — prereqs not met.
 | `ResearchTask` | Task with `studyTargetId`. Navigates to lab, works in 10-tick loops. |

@@ -110,6 +110,7 @@
         "id": 150,
         "name": "food",
         "decayRate": 0.3,
+        "defaultOpen": true,
         "children": [
             {
                 "id": 151,
@@ -137,7 +138,7 @@
                 "decayRate": 2.0,
                 "foodValue": 15,
                 "happinessNeed": "soymilk",
-                "isLiquid": true,
+                "itemClass": "liquid",
                 "liquidColorHex": "#e6e9be",
                 "children": null
             },{
@@ -172,7 +173,7 @@
         "id": 210,
         "name": "water",
         "decayRate": 0,
-        "isLiquid": true,
+        "itemClass": "liquid",
         "children": null
     },{
         "id": 250,
@@ -205,6 +206,19 @@
             {
                 "id": 271,
                 "name": "ramie shirt",
+                "children": null
+            }
+        ]
+    },{
+        "id": 300,
+        "name": "book",
+        "decayRate": 2.0,
+        "discrete": true,
+        "itemClass": "book",
+        "children": [
+            {
+                "id": 301,
+                "name": "fiction_book",
                 "children": null
             }
         ]

@@ -72,5 +72,9 @@
         "jobType": "crafter",
         "defaultSkill": "construction",
         "skillWeights": { "construction": 1.0 }
+    },{
+        "id": 17,
+        "name": "scribe",
+        "jobType": "crafter"
     }
 ]

@@ -6,10 +6,13 @@ public class Eating {
 
 public Eating(){ }
 
-    public const float hungryThreshold = 0.5f; // below this fullness, efficiency starts to drop
+    public const float hungryThreshold   = 0.5f; // below this fullness, work efficiency starts to drop
+    public const float seekFoodThreshold = 0.6f; // below this fullness, mice actively seek food
+                                                 // (decoupled from hungryThreshold so we can have mice
+                                                 // top up before they actually start losing efficiency)
 
     public float Fullness(){ return food / maxFood; }
-    public bool Hungry(){ return Fullness() < hungryThreshold; }
+    public bool Hungry(){ return Fullness() < seekFoodThreshold; }
     public bool AteRecently(){ return timeSinceLastAte < 300f; } // within 5 min
 
     public float Efficiency(){

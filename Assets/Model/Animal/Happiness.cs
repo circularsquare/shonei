@@ -12,6 +12,7 @@ public class Happiness {
     public const float decayPerTick = 0.005f; // proportion of current amount that decays per tick
     public const float activityGrant = 2.0f;
     public const float socialTickGrant = 0.2f; // social satisfaction per tick while chatting
+    public const float readingTickGrant = 0.2f; // reading satisfaction per tick while reading a book
 
     // Precomputed decay factor for 10 ticks (one SlowUpdate): pow(0.99, 10) ~ 0.9044
     private static readonly float decayFactor10 = Mathf.Pow(1f - decayPerTick, 10f);
@@ -66,6 +67,12 @@ public class Happiness {
 
     public void NoteSocialized(float amount) {
         Grant("social", amount);
+    }
+
+    // Per-tick grant for ReadBookTask while a mouse is in the reading phase. Mirrors NoteSocialized's
+    // gradual-tick pattern (vs NoteLeisure's lump grant for fireplace etc.).
+    public void NoteRead(float amount) {
+        Grant("reading", amount);
     }
 
     // Granted when a mouse finishes leisuring at a fireplace (or other leisure building).

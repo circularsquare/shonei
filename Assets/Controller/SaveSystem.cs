@@ -31,7 +31,7 @@ using Newtonsoft.Json;
 //   [x] Tile types, floor inventories, and background wall
 //   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, mirrored, disabled, plantHarvestFlagged)
 //   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored, disabled)
-//   [x] Animals (position, job, energy, food, happiness, decoration happiness, socialization, fireplace warmth, inv, foodSlotInv, toolSlotInv, clothingSlotInv)
+//   [x] Animals (position, job, energy, food, happiness, decoration happiness, socialization, fireplace warmth, inv, foodSlotInv, toolSlotInv, clothingSlotInv, bookSlotInv)
 //   [x] Mid-transit merchant task descriptor (travelTaskType + iq + storage tile + leg)
 //   [x] Research (progress, unlockedIds, studiedIds, unlockTimestamps, unlockCounter)
 //   [x] Disabled recipe ids
@@ -40,6 +40,7 @@ using Newtonsoft.Json;
 //   [x] Global item targets
 //   [x] Market targets (via MarketBuilding.instance)
 //   [x] Camera position and zoom (PPU)
+//   [x] Global inventory panel tree collapse state (deltas vs item.defaultOpen)
 // -----------------------------------------------------------------------
 
 public class SaveSystem : MonoBehaviour {
@@ -153,6 +154,21 @@ public class SaveSystem : MonoBehaviour {
             if (savedTargets.Count > 0) data.globalItemTargets = savedTargets;
         }
 
+        // Global inventory panel collapse state — store only groups whose current open state
+        // differs from their JSON defaultOpen, so new items pick up their authored default.
+        if (ic?.itemDisplayGos != null) {
+            var openDeltas = new Dictionary<string, bool>();
+            foreach (var kv in ic.itemDisplayGos) {
+                GameObject go = kv.Value;
+                if (go == null) continue;
+                ItemDisplay disp = go.GetComponent<ItemDisplay>();
+                if (disp == null || disp.item == null || !disp.item.IsGroup) continue;
+                bool def = ItemDisplay.DefaultOpenForGroup(disp.item);
+                if (disp.open != def) openDeltas[disp.item.name] = disp.open;
+            }
+            if (openDeltas.Count > 0) data.inventoryTreeOpen = openDeltas;
+        }
+
         if (MarketBuilding.instance?.storage?.targets != null) {
             var mt = new Dictionary<string, int>();
             foreach (var kv in MarketBuilding.instance.storage.targets)
@@ -263,6 +279,7 @@ public class SaveSystem : MonoBehaviour {
             foodSlotInv        = GatherInventory(a.foodSlotInv),
             toolSlotInv        = GatherInventory(a.toolSlotInv),
             clothingSlotInv    = GatherInventory(a.clothingSlotInv),
+            bookSlotInv        = GatherInventory(a.bookSlotInv),
             skillXp            = a.skills.SerializeXp(),
             skillLevel         = a.skills.SerializeLevel(),
             isTraveling        = a.state == Animal.AnimalState.Traveling,
@@ -425,6 +442,11 @@ public class SaveSystem : MonoBehaviour {
                 if (Db.itemByName.TryGetValue(kv.Key, out Item item))
                     InventoryController.instance.targets[item.id] = kv.Value;
         }
+
+        // Stage tree-collapse overrides before the first TickUpdate creates ItemDisplays.
+        // ItemDisplay.Start reads pendingGroupOpenOverrides and falls back to defaultOpen when absent.
+        if (InventoryController.instance != null)
+            InventoryController.instance.pendingGroupOpenOverrides = save.inventoryTreeOpen;
 
         if (save.marketTargets != null && MarketBuilding.instance?.storage?.targets != null) {
             foreach (var kv in save.marketTargets)
@@ -653,7 +675,10 @@ public class SaveSystem : MonoBehaviour {
     }
 
     // Restores items from save data into an existing inventory instance (used by AnimalController).
+    // Null-safe for backward compat: pre-bookSlotInv saves have no entry for that slot, and any
+    // future newly-added slot inventories will likewise be missing from old files.
     public static void LoadInventory(Inventory inv, InventorySaveData data) {
+        if (data == null || data.stacks == null) return;
         foreach (ItemStackSaveData ssd in data.stacks) {
             if (!string.IsNullOrEmpty(ssd.itemName) && Db.itemByName.ContainsKey(ssd.itemName) && ssd.quantity > 0)
                 inv.Produce(Db.itemByName[ssd.itemName], ssd.quantity);

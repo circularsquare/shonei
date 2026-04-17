@@ -93,11 +93,27 @@
             { "name": "planks", "quantity": 3 }
         ],
         "isStorage": true,
-        "liquidStorage": true,
+        "storageClass": "liquid",
         "nStacks": 1,
         "storageStackSize": 100,
         "category": "storage",
         "defaultLocked": true
+    },{
+        "id": 25,
+        "name": "bookshelf",
+        "description": "stores up to 10 books",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 5 },
+            { "name": "planks", "quantity": 5 }
+        ],
+        "njob": "hauler",
+        "isStorage": true,
+        "storageClass": "book",
+        "nStacks": 10,
+        "storageStackSize": 1,
+        "solidTop": true,
+        "category": "storage"
     },{
         "id": 24,
         "name": "market",
@@ -310,6 +326,20 @@
         "solidTop": true,
         "category": "production",
         "defaultLocked": true
+    },{
+        "id": 107,
+        "name": "scriptorium",
+        "description": "scribes write books here",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 5 },
+            { "name": "planks", "quantity": 3 }
+        ],
+        "njob": "hauler",
+        "capacity": 1,
+        "isWorkstation": true,
+        "solidTop": true,
+        "category": "production"
     },{
         "id": 110,
         "name": "dirt pit",

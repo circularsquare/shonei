@@ -176,5 +176,18 @@
         "noutputs": [
             { "name": "paper", "quantity": 1 }
         ]
+    },{
+        "id": 30,
+        "job": "scribe",
+        "tile": "scriptorium",
+        "description": "write a fiction book",
+        "workload": 20.0,
+        "maxRoundsPerTask": 1,
+        "ninputs": [
+            { "name": "paper", "quantity": 1 }
+        ],
+        "noutputs": [
+            { "name": "fiction_book", "quantity": 1 }
+        ]
     }
 ]

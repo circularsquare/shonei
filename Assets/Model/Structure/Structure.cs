@@ -292,12 +292,22 @@ public class StructType {
     // Used for e.g. torches/fireplaces that need to sort above plants (60) and animals (48-57) so
     // LightSource's auto-detected sort bucket front-lights those receivers. Also changes draw order.
     public int sortingOrder {get; set;} = -1;
+    // ── Logistics job (NOT the operator job!) ─────────────────────────
+    // `njob` (JSON) → `job` (resolved Job ref): the job responsible for the structure's
+    // BUILD/SUPPLY/DECONSTRUCT lifecycle work — not who operates it once built. Specifically:
+    //   - SupplyBlueprintTask / ConstructTask / DeconstructTask all gate canDo on `a.job == structType.job`
+    //   - Defaults to "hauler" if unspecified (see OnDeserialized below)
+    //   - Plants overload this to mean the HARVEST job (logger/farmer) — see WorkOrderManager.RegisterDeconstruct comment
+    // For workstation OPERATOR eligibility (who crafts at this building), use Recipe.job:
+    //   `Array.Exists(animal.job.recipes, r => r != null && r.tile == buildingName)`
+    // (See CLAUDE.md "Craft order job check" anti-pattern.)
     public string njob {get; set;}
     public Job job;
     public int capacity {get; set;} // number of animals that can reserve this struct at once
     public string requiredTileName {get; set;} // tile that this struct must be built on
     public bool isStorage {get; set;} // true for storage buildings (drawers, crates, etc.)
-    public bool liquidStorage {get; set;} // true = sets Inventory.isLiquidStorage, enforcing liquid-only constraint (use on tank-type buildings)
+    public ItemClass storageClass {get; set;} = ItemClass.Default; // category of items this storage accepts; matched against Item.itemClass in Inventory.ItemTypeCompatible. Liquid = tanks; Book = bookshelves; Default = normal dry storage.
+    public bool isLiquidStorage => storageClass == ItemClass.Liquid; // convenience — for existing tank-specific rendering code
     public int nStacks {get; set;} // number of item stacks in storage
     public int storageStackSize {get; set;} // max items per stack in storage
     public string category {get; set;} // build menu category: "structures", "plants", "production", "storage"

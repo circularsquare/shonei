@@ -44,16 +44,26 @@ public class ItemDisplay : MonoBehaviour {
     [System.NonSerialized] public System.Func<int, GameObject> getDisplayGo;   // tree lookup; null = use itemDisplayGos
 
     public void Start(){
-        item = Db.itemByName[gameObject.name.Split('_')[1]];
+        // gameObject.name is "ItemDisplay_<item.name>" (set by InventoryController/StoragePanel/TradingPanel).
+        // Split with count=2 so item names containing '_' (e.g. "fiction_book", "book_soymilk") survive intact —
+        // a naive Split('_')[1] would drop everything after the second underscore.
+        item = Db.itemByName[gameObject.name.Split(new[]{'_'}, 2)[1]];
         if (itemIcon != null) itemIcon.SetItem(item);
         Transform btn = transform.Find("HorizontalLayout/ButtonDropdown");
         if (btn != null) dropdownImage = btn.GetComponent<Image>();
         // Market mode keeps every group expanded — no sense in hiding tradeable leaves behind collapses.
-        // Other modes apply the default: groups with ≤1 discovered child start collapsed.
+        // Other modes start from defaultOpen, then the Global panel applies any saved override.
         if (displayMode == DisplayMode.Market) {
             open = true;
         } else {
             open = DefaultOpenForGroup(item);
+            // Global panel only: restore per-group collapse state persisted by SaveSystem.
+            // Storage mode's allow tree is rebuilt on every panel open, so its state is transient.
+            if (displayMode == DisplayMode.Global) {
+                var overrides = InventoryController.instance?.pendingGroupOpenOverrides;
+                if (overrides != null && overrides.TryGetValue(item.name, out bool savedOpen))
+                    open = savedOpen;
+            }
             if (!open && item.children != null) {
                 foreach (Item child in item.children) {
                     if (child.IsDiscovered()) {
@@ -101,16 +111,12 @@ public class ItemDisplay : MonoBehaviour {
         item != null && item.children != null && System.Array.Exists(item.children, c => c.IsDiscovered());
 
     // Returns whether a group item should default to open.
-    // Groups with 0–1 discovered children start collapsed to reduce visual noise.
+    // Groups start collapsed unless flagged `defaultOpen` in itemsDb.json (e.g. "food").
+    // Leaf items return true — irrelevant, they have no dropdown.
     // Shared by both the global panel (InventoryController) and the StoragePanel allow tree.
     public static bool DefaultOpenForGroup(Item item) {
-        if (item == null || item.children == null) return true; // leaf items: doesn't matter
-        int discovered = 0;
-        foreach (Item child in item.children) {
-            if (child.IsDiscovered()) discovered++;
-            if (discovered > 1) return true;
-        }
-        return false; // 0 or 1 discovered child → collapsed
+        if (item == null || item.children == null) return true;
+        return item.defaultOpen;
     }
 
     public void RefreshDropdownSprite(){

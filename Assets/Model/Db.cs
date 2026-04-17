@@ -39,7 +39,7 @@ public class Db : MonoBehaviour {
         "wheat", "fruit", "soymilk", "dairy",  // food
         "fountain",                    // decoration
         "social",                      // social
-        "fireplace",                   // leisure
+        "fireplace", "reading",        // leisure
     };
 
     // Largest decorRadius across all structTypes. Computed at startup; used by Animal.ScanForNearbyDecorations.
@@ -53,6 +53,20 @@ public class Db : MonoBehaviour {
     // Mouse name pools loaded from Resources/Misc/names.csv.
     public static List<string> chineseNames = new List<string>();
     public static List<string> inventedNames = new List<string>();
+
+    // Runtime-generated mapping: research tech id → item id of the book that aids that tech.
+    // Populated in GenerateBookItems() during Awake. Used by the scientist study task (M5) to
+    // look up which book to fetch for a given tech.
+    public static Dictionary<int, int> bookItemIdByTechId = new Dictionary<int, int>();
+
+    // Runtime-generated mapping: research tech id → recipe id of the scribe recipe for that
+    // tech's book. Populated in GenerateBookRecipes(). Used by ResearchSystem to inject the
+    // recipe-unlock entry onto the matching tech so the recipe is gated by its own tech.
+    public static Dictionary<int, int> bookRecipeIdByTechId = new Dictionary<int, int>();
+
+    // Cached tech list from the first researchDb.json parse in GenerateBookItems, reused by
+    // GenerateBookRecipes so we only parse the file once. Null if the parse failed.
+    private static ResearchNodeData[] _cachedTechs;
 
     // Sprite sorting orders: see SPEC-rendering.md § "Sorting orders" for the authoritative list.
 
@@ -71,6 +85,8 @@ public class Db : MonoBehaviour {
 
     void Awake(){ // this runs before Start() like in world
         ReadJson();
+        GenerateBookItems();
+        GenerateBookRecipes();
         itemsFlat = itemsFlat.Take(itemsCount).ToArray();
         edibleItems = itemsFlat.Where(i => i.foodValue > 0).OrderByDescending(i => i.foodValue).ToList();
         equipmentItems = itemsFlat.Where(i => { Item cur = i; while (cur != null) { if (cur.name == "tools") return true; cur = cur.parent; } return false; }).ToList();
@@ -94,7 +110,8 @@ public class Db : MonoBehaviour {
             if (!string.IsNullOrEmpty(st.decorationNeed)) happinessNeeds.Add(st.decorationNeed);
             if (!string.IsNullOrEmpty(st.leisureNeed))    happinessNeeds.Add(st.leisureNeed);
         }
-        happinessNeeds.Add("social"); // ChatTask — not data-driven
+        happinessNeeds.Add("social");  // ChatTask — not data-driven
+        happinessNeeds.Add("reading"); // ReadBookTask — not data-driven (no leisure building backs it)
 
         // Build sorted list using manual display order; unknown future needs fall through alphabetically.
         happinessNeedsSorted = new List<string>();
@@ -152,9 +169,17 @@ public class Db : MonoBehaviour {
     void LoadItemIcons() {
         Sprite fallback = Resources.Load<Sprite>("Sprites/Items/split/default/icon");
         if (fallback == null) Debug.LogError("Db: missing default item icon at Sprites/Items/split/default/icon");
+        // All Book-class items share one sprite — no per-book artwork. Load once.
+        Sprite booksSprite = Resources.Load<Sprite>("Sprites/Items/split/books/icon");
+        if (booksSprite == null) Debug.LogWarning("Db: missing books sprite at Sprites/Items/split/books/icon — books will use default icon");
         foreach (Item item in itemsFlat) {
-            string iName = item.name.Trim().Replace(" ", "");
-            Sprite loaded = Resources.Load<Sprite>($"Sprites/Items/split/{iName}/icon");
+            Sprite loaded;
+            if (item.itemClass == ItemClass.Book) {
+                loaded = booksSprite;
+            } else {
+                string iName = item.name.Trim().Replace(" ", "");
+                loaded = Resources.Load<Sprite>($"Sprites/Items/split/{iName}/icon");
+            }
             if (loaded != null) {
                 item.icon = loaded;
             } else if (item.children == null) {
@@ -164,6 +189,132 @@ public class Db : MonoBehaviour {
             // Group items with no dedicated sprite stay null — ItemIcon resolves
             // them dynamically to the most-owned child leaf at display time.
         }
+    }
+
+    // Runtime-generates one book item per research tech, starting at ID 301.
+    // Called from Awake() after ReadJson (so Item loading is complete) but before
+    // itemsFlat is trimmed (line 74) — AddItemToDb relies on the untrimmed array.
+    // The fiction book (id 300) is hand-authored in itemsDb.json; tech books get
+    // sequential IDs so this scales automatically as new techs are added.
+    // Mapping tech.id → book item.id is stored in bookItemIdByTechId for the
+    // scientist study task (M5) to look up which book aids a given tech.
+    // Re-parses researchDb.json here because ResearchSystem.Awake hasn't run yet;
+    // the duplicated parse is tiny (small file, startup-only).
+    void GenerateBookItems() {
+        // Static fields persist across scene reloads even though the Db instance is recreated;
+        // clear so we don't accumulate stale mappings on a second Awake.
+        bookItemIdByTechId.Clear();
+        _cachedTechs = null;
+        if (!itemByName.TryGetValue("book", out Item bookGroup)) {
+            Debug.LogError("Db: 'book' group missing from itemsDb.json — skipping tech-book generation");
+            return;
+        }
+        string path = Application.dataPath + "/Resources/researchDb.json";
+        if (!File.Exists(path)) {
+            Debug.LogError("Db: researchDb.json not found — skipping tech-book generation");
+            return;
+        }
+        try {
+            _cachedTechs = JsonConvert.DeserializeObject<ResearchNodeData[]>(File.ReadAllText(path));
+        } catch (Exception e) {
+            Debug.LogError($"Db: failed to parse researchDb.json for book generation: {e.Message}");
+            return;
+        }
+        // Tech book IDs start at 302: 300=book group, 301=fiction_book child (in JSON).
+        var newChildren = new List<Item>();
+        int nextId = 302;
+        foreach (ResearchNodeData tech in _cachedTechs) {
+            if (tech == null || string.IsNullOrEmpty(tech.name)) continue;
+            var book = new Item {
+                id       = nextId,
+                name     = $"book_{tech.name.ToLower().Replace(' ', '_')}",
+                decayRate = 0f,
+                discrete = true,
+                itemClass = ItemClass.Book,
+                children = null,
+                parent   = bookGroup,
+            };
+            AddItemToDb(book);
+            // AddItemToDb only runs the parent→child inheritance loop when traversing children
+            // declared in JSON. Since these are runtime-attached children, replicate the same
+            // field-inheritance the JSON-load path would have applied.
+            if (book.decayRate == 0f) book.decayRate = bookGroup.decayRate;
+            if (!book.discrete) book.discrete = bookGroup.discrete;
+            if (book.itemClass == ItemClass.Default) book.itemClass = bookGroup.itemClass;
+            newChildren.Add(book);
+            bookItemIdByTechId[tech.id] = nextId;
+            nextId++;
+        }
+        // Append the new tech books to the book group's children array so the inventory tree
+        // (StoragePanel, global panel, etc.) renders them under "book" alongside fiction_book.
+        if (newChildren.Count > 0) {
+            Item[] existing = bookGroup.children ?? Array.Empty<Item>();
+            var combined = new Item[existing.Length + newChildren.Count];
+            existing.CopyTo(combined, 0);
+            for (int i = 0; i < newChildren.Count; i++) combined[existing.Length + i] = newChildren[i];
+            bookGroup.children = combined;
+        }
+        Debug.Log($"Db: generated {bookItemIdByTechId.Count} tech books under 'book' group (ids 302..{nextId - 1})");
+    }
+
+    // Runtime-generates one scribe recipe per tech that has a book item (from GenerateBookItems).
+    // Each recipe: 1 paper in, 1 tech-book out, crafted at the scriptorium by a scribe. The
+    // recipe is wired to be gated by its own tech via ResearchSystem.InjectBookRecipeUnlocks
+    // (which reads bookRecipeIdByTechId after Db.Awake completes).
+    // Must run after ReadJson (so recipes[] and jobs[] exist) and after GenerateBookItems
+    // (so book Item objects are registered and looked up by id).
+    void GenerateBookRecipes() {
+        bookRecipeIdByTechId.Clear();
+        if (_cachedTechs == null) {
+            Debug.LogError("Db: no cached techs from GenerateBookItems — skipping book recipe generation");
+            return;
+        }
+        if (!jobByName.TryGetValue("scribe", out Job scribe)) {
+            Debug.LogError("Db: 'scribe' job missing from jobsDb.json — skipping book recipe generation");
+            return;
+        }
+        if (!itemByName.ContainsKey("paper")) {
+            Debug.LogError("Db: 'paper' item missing from itemsDb.json — skipping book recipe generation");
+            return;
+        }
+        Item paper = itemByName["paper"];
+        int nextId = 200;
+        foreach (ResearchNodeData tech in _cachedTechs) {
+            if (tech == null) continue;
+            if (!bookItemIdByTechId.TryGetValue(tech.id, out int bookItemId)) continue;
+            // Skip recipe id conflicts with any hand-authored recipe.
+            while (nextId < recipes.Length && recipes[nextId] != null) nextId++;
+            if (nextId >= recipes.Length) {
+                Debug.LogError($"Db: ran out of recipe ids for book recipes (started at 200, hit {nextId})");
+                return;
+            }
+            Item bookItem = items[bookItemId];
+            var recipe = new Recipe {
+                id               = nextId,
+                job              = "scribe",
+                tile             = "scriptorium",
+                description      = $"write the {tech.name} book",
+                workload         = 20f,
+                maxRoundsPerTask = 1, // one book per trip — see Recipe.maxRoundsPerTask
+                inputs           = new[] { new ItemQuantity(paper,    ItemStack.LiangToFen(1f)) },
+                outputs          = new[] { new ItemQuantity(bookItem, ItemStack.LiangToFen(1f)) },
+                // ninputs/noutputs aren't consumed at runtime (those are the JSON staging fields;
+                // inputs/outputs are what the task layer uses), but keep them non-null so any
+                // code that enumerates them — e.g. a future recipe-panel introspection — doesn't NRE.
+                ninputs  = new ItemNameQuantity[0],
+                noutputs = new ItemNameQuantity[0],
+            };
+            recipes[nextId] = recipe;
+            if (scribe.nRecipes >= Job.maxRecipes) {
+                Debug.LogError($"Db: scribe job at max recipe capacity ({Job.maxRecipes}) — dropping {recipe.description}");
+                recipes[nextId] = null;
+                return;
+            }
+            scribe.recipes[scribe.nRecipes++] = recipe;
+            bookRecipeIdByTechId[tech.id] = nextId;
+            nextId++;
+        }
+        Debug.Log($"Db: generated {bookRecipeIdByTechId.Count} scribe book recipes");
     }
 
     // Validates that no group/parent items appear as recipe outputs, plant products, or tile drops.
@@ -292,12 +443,23 @@ public class Db : MonoBehaviour {
                 child.parent = item;
                 if (child.decayRate == 0f) child.decayRate = item.decayRate;
                 if (!child.discrete) child.discrete = item.discrete;
-                if (!child.isLiquid) child.isLiquid = item.isLiquid;
+                if (child.itemClass == ItemClass.Default) child.itemClass = item.itemClass;
             }
         }
     }
 }
 
+// A Job is the work specialization an Animal is assigned to (hauler, cook, scribe, etc.).
+// Two distinct usages of the Job type, both indexed via Db.jobByName:
+//   1. Animal.job — the animal's currently-assigned specialization. Determines what tasks
+//      they can take: WOM canDo predicates compare `animal.job` to either the recipe's job
+//      (for craft orders, via job.recipes[]) or to a structure's logistics job
+//      (for SupplyBlueprint/Construct/Deconstruct — see StructType.job).
+//   2. StructType.job (resolved from `njob`) — the LOGISTICS job for that structure,
+//      i.e. who builds/supplies/deconstructs it. NOT who operates it. See Structure.cs for
+//      detailed comment on njob/job and the operator-vs-logistics distinction.
+// `recipes[]` is populated at recipe-load time: every recipe with `recipe.job == this.name`
+// is appended here, so a job carries the list of recipes its animals can perform.
 public class Job {
     public int id {get; set;} // set must be public for JSON deserialization
     public string name {get; set;}
@@ -323,6 +485,10 @@ public class Recipe {
     public string research   { get; set; }   // optional: research name to advance per cycle
     public float  researchPoints { get; set; }  // progress added to that research per cycle
     public string skill      { get; set; }   // optional: overrides job.defaultSkill for this recipe (e.g. "mining")
+    // Caps how many rounds a single CraftTask may queue up for this recipe. 0 (default) = no cap;
+    // CalculateWorkPossible's normal estimate is used. Set to 1 for "one item per trip" recipes
+    // like book-writing where each cycle should be a deliberate, discrete action — not a batch.
+    public int    maxRoundsPerTask { get; set; }
     public TileType tileType;
     public ItemNameQuantity[] ninputs {get; set;}
     public ItemNameQuantity[] noutputs {get; set;}
@@ -354,6 +520,19 @@ public class Recipe {
             score /= ((float)GlobalInventory.instance.Quantity(iq.item) / target);
         }
         return score;
+    }
+
+    // Centralised gate for "can an animal currently pick / continue this recipe?":
+    // player has it enabled in RecipePanel AND its tech is currently unlocked.
+    // Every recipe-selection site (Animal.PickRecipe*, Animal.ChooseCraftTask) and the
+    // mid-craft check in AnimalStateManager must go through this — keeping the gates
+    // in one place prevents drift (past bug: ChooseCraftTask missed IsRecipeUnlocked
+    // and mice walked to locked presses before failing on arrival).
+    // Null-safe against early-startup / tests where the singletons aren't up yet.
+    public bool IsEligibleForPicking() {
+        if (RecipePanel.instance != null && !RecipePanel.instance.IsAllowed(id)) return false;
+        if (ResearchSystem.instance != null && !ResearchSystem.instance.IsRecipeUnlocked(id)) return false;
+        return true;
     }
 
     // Returns true if every tracked output is already at or above its target,

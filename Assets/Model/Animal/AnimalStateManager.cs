@@ -161,11 +161,7 @@ public class AnimalStateManager {
             return;
         } else if (animal.task is CraftTask craftTask) {
             Recipe recipe = craftTask.recipe;
-            if (RecipePanel.instance != null && !RecipePanel.instance.IsAllowed(recipe.id)) {
-                craftTask.Fail();
-                return;
-            }
-            if (ResearchSystem.instance != null && !ResearchSystem.instance.IsRecipeUnlocked(recipe.id)) {
+            if (!recipe.IsEligibleForPicking()) {
                 craftTask.Fail();
                 return;
             }
@@ -245,7 +241,17 @@ public class AnimalStateManager {
         } else if (animal.task is ResearchTask rt) {
             animal.workProgress += workEfficiency;
             animal.skills.GainXp(Skill.Science, baseWorkEff * 0.1f);
-            ResearchSystem.instance?.AddScientistProgress(workEfficiency, rt.studyTargetId);
+            // 3× research progress bonus when the matching tech book is equipped.
+            // Multiplies the research-progress contribution only — workProgress (the study-cycle
+            // counter) is unchanged so cycle length stays consistent regardless of book presence.
+            const float BookProgressMultiplier = 3f;
+            float researchMult = 1f;
+            if (Db.bookItemIdByTechId.TryGetValue(rt.studyTargetId, out int bookItemId)
+                && animal.bookSlotInv != null
+                && animal.bookSlotInv.Quantity(Db.items[bookItemId]) > 0) {
+                researchMult = BookProgressMultiplier;
+            }
+            ResearchSystem.instance?.AddScientistProgress(workEfficiency * researchMult, rt.studyTargetId);
             if (animal.workProgress < 10f) return;
             animal.workProgress = 0f;
             animal.task.Complete();
@@ -335,6 +341,12 @@ public class AnimalStateManager {
                     break;
                 }
             }
+        }
+
+        // Per-tick reading happiness during ReadBookTask's read phase. Mirrors the per-tick
+        // social grant for chatting — no lump grant in ReadBookTask.Complete.
+        if (animal.task is ReadBookTask) {
+            animal.happiness.NoteRead(Happiness.readingTickGrant);
         }
 
         animal.workProgress += 1f;

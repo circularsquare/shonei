@@ -29,11 +29,15 @@ public abstract class Task {
     protected static readonly int MarketTransitTicks = World.ticksInDay / 12;
     public Objective currentObjective;
     private readonly List<(ItemStack stack, int amount)> reservedStacks = new();
-    private readonly List<(Inventory inv, Item item, int amount)> reservedSpaces = new();
+    private readonly List<(ItemStack stack, int amount)> reservedSpaces = new();
+    // Number of entries the most recent Task.ReserveSpace call appended to reservedSpaces.
+    // A single call may touch multiple stacks (e.g. distributing a large reserve across a
+    // multi-slot storage), so UndoLastSpaceReservation needs to know how many to pop.
+    private int lastReserveSpaceEntryCount = 0;
 #if UNITY_EDITOR
     // Editor-only read access for ReservationInvariant.Check — debug only, zero runtime surface.
     public IReadOnlyList<(ItemStack stack, int amount)> ReservedStacks => reservedStacks;
-    public IReadOnlyList<(Inventory inv, Item item, int amount)> ReservedSpaces => reservedSpaces;
+    public IReadOnlyList<(ItemStack stack, int amount)> ReservedSpaces => reservedSpaces;
 #endif
     // Set by WorkOrderManager.ChooseOrder when this task fulfills a work order.
     // Null for non-WOM tasks (Craft, Eep, Obtain, etc.). Released in Cleanup().
@@ -72,11 +76,28 @@ public abstract class Task {
         if (reserved > 0) reservedStacks.Add((stack, reserved));
     }
 
-    // Reserves destination space in an inventory and tracks for cleanup. Returns amount reserved.
+    // Sum of source reservations against a specific inventory — for diagnostics when a
+    // reserved source is torn down. Matches by inv only; stack.item may have been nulled.
+    public int ReservedAmountFromInv(Inventory inv){
+        int total = 0;
+        foreach (var (stack, amount) in reservedStacks)
+            if (stack.inv == inv) total += amount;
+        return total;
+    }
+
+    // Reserves destination space in an inventory and tracks for cleanup. Returns total amount reserved.
+    // The per-stack breakdown is recorded in reservedSpaces so Cleanup can release each stack
+    // directly (no inventory-wide lookup, no item-key matching — works correctly even when the
+    // reservation key is a group item but the stack later materializes a leaf).
     public int ReserveSpace(Inventory inv, Item item, int amount){
-        int reserved = inv.ReserveSpace(item, amount, this);
-        if (reserved > 0) reservedSpaces.Add((inv, item, reserved));
-        return reserved;
+        var entries = inv.ReserveSpace(item, amount, this);
+        int total = 0;
+        foreach (var entry in entries){
+            reservedSpaces.Add(entry);
+            total += entry.amount;
+        }
+        lastReserveSpaceEntryCount = entries.Count;
+        return total;
     }
 
     // Enqueues a FetchObjective and reserves items on the stack, tracking for cleanup.
@@ -217,19 +238,26 @@ public abstract class Task {
             stack.Unreserve(Math.Min(amount, stack.resAmount));
         }
         reservedStacks.Clear();
-        foreach (var (inv, item, amount) in reservedSpaces){
-            inv.UnreserveSpace(item, Math.Min(amount, inv.ReservedSpaceFor(item)));
+        foreach (var (stack, amount) in reservedSpaces){
+            // Clamp against current resSpace: AddItem may have auto-cleared/reduced it
+            // when the stack filled (see ItemStack.AddItem), without notifying us.
+            stack.UnreserveSpace(Math.Min(amount, stack.resSpace));
         }
         reservedSpaces.Clear();
+        lastReserveSpaceEntryCount = 0;
         objectives.Clear();
     }
-    // Undoes the most recently added space reservation. Use when Initialize needs to
-    // back out a single reservation without clearing all task state (vs full Cleanup).
+    // Undoes the most recent Task.ReserveSpace call. Use when Initialize needs to back out
+    // a single just-made reservation without clearing all task state (vs full Cleanup).
+    // Pops every entry that call appended (one call may touch multiple stacks).
     protected void UndoLastSpaceReservation() {
-        if (reservedSpaces.Count == 0) return;
-        var (inv, item, amount) = reservedSpaces[^1];
-        inv.UnreserveSpace(item, amount);
-        reservedSpaces.RemoveAt(reservedSpaces.Count - 1);
+        for (int i = 0; i < lastReserveSpaceEntryCount; i++){
+            if (reservedSpaces.Count == 0) break;
+            var (stack, amount) = reservedSpaces[^1];
+            stack.UnreserveSpace(amount);
+            reservedSpaces.RemoveAt(reservedSpaces.Count - 1);
+        }
+        lastReserveSpaceEntryCount = 0;
     }
 
     public void EnqueueFront(Objective obj) { objectives.AddFirst(obj); }
@@ -279,6 +307,8 @@ public class CraftTask : Task {
         workplace = _building.workTile;
 
         roundsRemaining = animal.CalculateWorkPossible(recipe);
+        if (recipe.maxRoundsPerTask > 0 && roundsRemaining > recipe.maxRoundsPerTask)
+            roundsRemaining = recipe.maxRoundsPerTask;
         if (roundsRemaining == 0) { return false; }
 
         // Build the fetch list in forward order (skipping what's already in animal inv)
@@ -441,15 +471,10 @@ public class HaulTask : Task {
         return true;
     }
     public override void Complete() {
-        // When the last objective completes successfully, flag tiny hauls so task-churn patterns
-        // are visible. At Initialize the gate only permits sub-MinHaulQuantity when fully draining
-        // the source stack; anything else getting here means case 1 (decay / reservation drain)
-        // shrank the payload mid-task.
-        if (objectives.Count == 0 && _iq != null && _iq.quantity < MinHaulQuantity) {
-            string note = _iq.quantity < _intendedQuantity
-                ? $" (intended {_intendedQuantity} — shrunk mid-task)"
-                : " (intended this small — stack-clearing cleanup)";
-            Debug.Log($"{animal.aName} ({animal.job.name}) tiny Haul: delivered {_iq.quantity} fen of {_iq.item.name}{note}");
+        // Flag only hauls that shrank mid-task (decay / reservation drain) — intentional
+        // stack-clearing cleanups below MinHaulQuantity are expected and don't log.
+        if (objectives.Count == 0 && _iq != null && _iq.quantity < MinHaulQuantity && _iq.quantity < _intendedQuantity) {
+            Debug.Log($"{animal.aName} ({animal.job.name}) tiny Haul: delivered {_iq.quantity} fen of {_iq.item.name} (intended {_intendedQuantity} — shrunk mid-task)");
         }
         base.Complete();
     }
@@ -480,11 +505,8 @@ public class ConsolidateTask : Task {
         return true;
     }
     public override void Complete() {
-        if (objectives.Count == 0 && _iq != null && _iq.quantity < MinHaulQuantity) {
-            string note = _iq.quantity < _intendedQuantity
-                ? $" (intended {_intendedQuantity} — shrunk mid-task)"
-                : " (intended this small — stack-clearing cleanup)";
-            Debug.Log($"{animal.aName} ({animal.job.name}) tiny Consolidate: moved {_iq.quantity} fen of {_iq.item.name}{note}");
+        if (objectives.Count == 0 && _iq != null && _iq.quantity < MinHaulQuantity && _iq.quantity < _intendedQuantity) {
+            Debug.Log($"{animal.aName} ({animal.job.name}) tiny Consolidate: moved {_iq.quantity} fen of {_iq.item.name} (intended {_intendedQuantity} — shrunk mid-task)");
         }
         base.Complete();
     }
@@ -1076,9 +1098,51 @@ public class ResearchTask : Task {
         if (_lab == null) return false;
         Path p = animal.nav.PathToOrAdjacent(_lab.tile);
         if (!animal.nav.WithinRadius(p, MediumFindRadius)) return false;
+
+        // Optional book borrow: if a matching book exists somewhere reachable, queue a
+        // fetch into bookSlotInv before the research, and a return (unequip + drop to
+        // shelf) after. The 3× progress multiplier is applied later in HandleWorking
+        // based on bookSlotInv contents — this method just sets up the fetch/return tail.
+        // softFetch on the FetchObjective: if the book becomes unavailable between this
+        // check and execution (e.g. another scientist grabs it), the scientist proceeds
+        // to research without the multiplier instead of failing the whole task.
+        Item book = null;
+        if (Db.bookItemIdByTechId.TryGetValue(studyTargetId, out int bookItemId)) {
+            Item candidate = Db.items[bookItemId];
+            (Path bookPath, ItemStack bookStack) = animal.nav.FindPathItemStack(candidate);
+            if (bookPath != null) {
+                book = candidate;
+                ReserveStack(bookStack, 100);
+                objectives.AddLast(new FetchObjective(this, new ItemQuantity(book, 100), bookPath.tile, animal.bookSlotInv, softFetch: true, sourceInv: bookStack.inv));
+            }
+        }
+
         objectives.AddLast(new GoObjective(this, p.tile));
         objectives.AddLast(new ResearchObjective(this));
+
+        if (book != null) {
+            // After research: move book from slot to main inv, then deliver to a shelf
+            // (DropObjective finds an accepting storage inv — books only fit in bookshelves).
+            // If shelves are full, DropObjective falls back to the floor; haulers will then
+            // move it to a shelf when one frees up.
+            objectives.AddLast(new UnequipObjective(this, animal.bookSlotInv));
+            objectives.AddLast(new DropObjective(this, book));
+        }
         return true;
+    }
+
+    // If the task ends with a book still equipped (Fail mid-flight before the return objectives
+    // ran), dump it from the slot to the animal's tile so it's not orphaned in the equip slot.
+    // Floor drop creates a haul order; haulers will move it to a shelf eventually.
+    public override void Cleanup() {
+        if (animal.bookSlotInv != null && !animal.bookSlotInv.IsEmpty()) {
+            var stack = animal.bookSlotInv.itemStacks[0];
+            Item book = stack.item;
+            int qty = stack.quantity;
+            animal.Unequip(animal.bookSlotInv);
+            animal.DropItem(book, qty);
+        }
+        base.Cleanup();
     }
 }
 
@@ -1256,6 +1320,82 @@ public class LeisureTask : Task {
     }
 }
 
+// Animal grabs a fiction book from a shelf, walks to a nearby unoccupied tile, reads it for
+// ReadDuration ticks gaining "reading" leisure happiness, then returns the book to a shelf.
+// Spawned by Animal.TryPickLeisure when a fiction book exists in the world. Unlike LeisureTask
+// this isn't tied to a building — any standable tile near the animal that no other mouse is on
+// works. Mirrors ResearchTask's borrow/return pattern (M5) for consistency.
+public class ReadBookTask : Task {
+    private const int ReadDuration = 10; // ticks of reading (matches ChatObjective duration)
+    private const int SpotSearchRadius = 5; // tile radius around the animal to look for a free spot
+
+    public ReadBookTask(Animal animal) : base(animal) {}
+
+    public override bool Initialize() {
+        if (!Db.itemByName.TryGetValue("fiction_book", out Item fiction)) return false;
+
+        (Path bookPath, ItemStack bookStack) = animal.nav.FindPathItemStack(fiction);
+        if (bookPath == null) return false;
+
+        Tile readTile = FindNearbyReadingTile();
+        if (readTile == null) return false;
+
+        ReserveStack(bookStack, 100);
+        objectives.AddLast(new FetchObjective(this, new ItemQuantity(fiction, 100), bookPath.tile, animal.bookSlotInv, sourceInv: bookStack.inv));
+        objectives.AddLast(new GoObjective(this, readTile));
+        objectives.AddLast(new LeisureObjective(this, ReadDuration));
+        objectives.AddLast(new UnequipObjective(this, animal.bookSlotInv));
+        objectives.AddLast(new DropObjective(this, fiction));
+        return true;
+    }
+
+    // No Complete override needed: reading happiness accrues per-tick in
+    // AnimalStateManager.HandleLeisure (mirrors ChatTask's per-tick social grant).
+
+    public override void Cleanup() {
+        // Mirror ResearchTask: if Fail tears the task down with the book still equipped,
+        // dump it to the floor at the animal's tile so a hauler re-shelves it.
+        if (animal.bookSlotInv != null && !animal.bookSlotInv.IsEmpty()) {
+            var stack = animal.bookSlotInv.itemStacks[0];
+            Item book = stack.item;
+            int qty = stack.quantity;
+            animal.Unequip(animal.bookSlotInv);
+            animal.DropItem(book, qty);
+        }
+        base.Cleanup();
+    }
+
+    // Finds any standable tile within SpotSearchRadius of the animal that no other mouse is
+    // currently on, and that the animal can path to within MediumFindRadius. No reservation —
+    // if two mice race for the same spot we just accept that one ends up sharing or re-picks
+    // on next tick; reading itself is harmless even with overlap.
+    private Tile FindNearbyReadingTile() {
+        Tile here = animal.TileHere();
+        if (here == null) return null;
+        World w = animal.world;
+        AnimalController ac = AnimalController.instance;
+        for (int dx = -SpotSearchRadius; dx <= SpotSearchRadius; dx++) {
+            for (int dy = -SpotSearchRadius; dy <= SpotSearchRadius; dy++) {
+                Tile t = w.GetTileAt(here.x + dx, here.y + dy);
+                if (t == null || t.node == null || !t.node.standable) continue;
+                if (TileHasAnimal(t, ac)) continue;
+                Path p = animal.nav.PathTo(t);
+                if (animal.nav.WithinRadius(p, MediumFindRadius)) return t;
+            }
+        }
+        return null;
+    }
+
+    private static bool TileHasAnimal(Tile t, AnimalController ac) {
+        for (int i = 0; i < ac.na; i++) {
+            Animal a = ac.animals[i];
+            if (a == null) continue;
+            if ((int)a.x == t.x && (int)a.y == t.y) return true;
+        }
+        return false;
+    }
+}
+
 // ── Objectives ──────────────────────────────────────────────────────
 public abstract class Objective {
     protected Task task;
@@ -1337,6 +1477,15 @@ public class FetchObjective : Objective {
         if (src == null) {
             if (softFetch) { Complete(); return; }
             Fail(); Debug.Log($"{animal.aName} FetchObjective: no source inv at ({(int)animal.x},{(int)animal.y})"); return;
+        }
+        // Source torn down between Initialize and arrival — usually decay silently drained the
+        // reserved stack (ItemStack.AddItem zeros resAmount when the stack empties). Log what
+        // we reserved, not the raw request, so "expected vs gone" is visible.
+        if (src.destroyed) {
+            int expected = task.ReservedAmountFromInv(src);
+            Debug.LogWarning($"{animal.aName} FetchObjective: source {src.invType} '{src.displayName}' at ({src.x},{src.y}) destroyed before arrival — expected {expected} fen of {iq.item.name} (iq.quantity={iq.quantity}, needed={needed})");
+            if (softFetch) { Complete(); return; }
+            Fail(); return;
         }
         int amountTaken = src.MoveItemTo(Dest, iq.item, needed);
         // Clean up empty floor inventories (replicates TakeItem behavior)
@@ -1516,6 +1665,19 @@ public class DropObjective : Objective {
         } else {
             animal.DropItem(item);
         }
+        Complete();
+    }
+}
+
+// Moves the contents of an equip slot back to the animal's main inventory and completes.
+// Used as a step before returning a borrowed item (e.g. a book) to its storage location:
+// callers typically queue this immediately before a DropObjective for the same item.
+// No-op if the slot is empty.
+public class UnequipObjective : Objective {
+    private Inventory slot;
+    public UnequipObjective(Task task, Inventory slot) : base(task) { this.slot = slot; }
+    public override void Start() {
+        animal.Unequip(slot);
         Complete();
     }
 }

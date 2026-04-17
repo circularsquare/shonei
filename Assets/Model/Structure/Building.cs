@@ -112,7 +112,7 @@ public class Building : Structure {
                 x + (mirrored ? (st.nx - 1 - st.storageTileX) : st.storageTileX),
                 y + st.storageTileY);
             var invType = structType.name == "market" ? Inventory.InvType.Market : Inventory.InvType.Storage;
-            storage = new Inventory(structType.nStacks, structType.storageStackSize, invType, sTile.x, sTile.y, isLiquidStorage: structType.liquidStorage);
+            storage = new Inventory(structType.nStacks, structType.storageStackSize, invType, sTile.x, sTile.y, storageClass: structType.storageClass);
             storage.displayName = structType.name;
             // Floor items stay on the floor — storage is separate (building.storage).
         }

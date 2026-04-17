@@ -1,5 +1,7 @@
 meoww!!
 
+4/17
+- books! scribes, bookshelves, research bonuses, leisure reading
 4/16
 - simplified research system: just one binary flag 
 - alert system, alert when reserach forgotten

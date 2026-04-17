@@ -29,6 +29,7 @@ public class Animal : MonoBehaviour{
     public Inventory foodSlotInv; // equip slot: food only, 1 stack, 5 liang capacity
     public Inventory toolSlotInv; // equip slot: tool, 1 stack
     public Inventory clothingSlotInv; // equip slot: clothing (top), 1 stack
+    public Inventory bookSlotInv;     // equip slot: book only (storageClass=Book), 1 stack of size 1
     public GlobalInventory ginv;
 
     public float energy;     // every time you get 1 energy you can do 1 work
@@ -98,6 +99,9 @@ public class Animal : MonoBehaviour{
         this.foodSlotInv = new Inventory(1, 300, Inventory.InvType.Equip);
         this.toolSlotInv = new Inventory(1, 200, Inventory.InvType.Equip);
         this.clothingSlotInv = new Inventory(1, 200, Inventory.InvType.Equip);
+        // Restricted to Book-class items via storageClass — see Inventory.ItemTypeCompatible.
+        // Used by ResearchTask (M5) and ReadBookTask (M6) to carry a book during the activity.
+        this.bookSlotInv = new Inventory(1, 100, Inventory.InvType.Equip, storageClass: ItemClass.Book);
         this.nav = new Nav(this);
         ginv = GlobalInventory.instance;
         random = new System.Random();
@@ -128,6 +132,7 @@ public class Animal : MonoBehaviour{
             SaveSystem.LoadInventory(foodSlotInv, pendingSaveData.foodSlotInv);
             SaveSystem.LoadInventory(toolSlotInv, pendingSaveData.toolSlotInv);
             SaveSystem.LoadInventory(clothingSlotInv, pendingSaveData.clothingSlotInv);
+            SaveSystem.LoadInventory(bookSlotInv, pendingSaveData.bookSlotInv);
             skills.Deserialize(pendingSaveData.skillXp, pendingSaveData.skillLevel);
             // Resume mid-journey travel if the animal was saved while traveling.
             // New saves carry a travelTaskType descriptor so we can rebuild the full
@@ -410,7 +415,7 @@ public class Animal : MonoBehaviour{
         var scored = new List<(Recipe recipe, float score)>();
         foreach (var r in job.recipes) {
             if (r == null) continue;
-            if (RecipePanel.instance != null && !RecipePanel.instance.IsAllowed(r.id)) continue;
+            if (!r.IsEligibleForPicking()) continue;
             if (!ginv.SufficientResources(r.inputs)) continue;
             if (r.AllOutputsSatisfied(targets)) continue;
             scored.Add((r, r.Score(targets)));
@@ -487,6 +492,15 @@ public class Animal : MonoBehaviour{
         if (socialSat < 2.0f && AnimalController.instance.FindIdleAnimalNear(this, 6) != null)
             candidates.Add((socialSat, FindChatPartner));
 
+        // Reading option (reading need) — eligible whenever a fiction book exists somewhere in the
+        // world. Reachability is verified properly inside ReadBookTask.Initialize; this cheap
+        // global-quantity check just avoids enqueuing a candidate when there's literally no book.
+        if (Db.itemByName.TryGetValue("fiction_book", out Item fiction)
+            && GlobalInventory.instance.Quantity(fiction) > 0) {
+            float readingSat = happiness.GetLeisureSatisfaction("reading");
+            candidates.Add((readingSat, TryStartReading));
+        }
+
         // Building options: find nearest available building per leisure need
         var sc = StructController.instance;
         if (sc != null) {
@@ -542,6 +556,13 @@ public class Animal : MonoBehaviour{
         return false;
     }
 
+    private bool TryStartReading() {
+        task = new ReadBookTask(this);
+        if (task.Start()) return true;
+        task = null;
+        return false;
+    }
+
     // this uses the task/objective system!
     public void OnArrival(){
         task?.OnArrival();
@@ -559,22 +580,6 @@ public class Animal : MonoBehaviour{
     }
 
     // ── Item movement (maybe these should be moved into Inventory class??) ───
-    // Picks up item at current location, returns amount *not* taken.
-    // Pass targetInv to deposit into an equip slot instead of main inventory.
-    public int TakeItem(Item item, int quantity, Inventory targetInv = null){
-        Tile tileHere = TileHere();
-        if (tileHere != null && tileHere.inv != null) {
-            Inventory dest = targetInv ?? inv;
-            int leftover = tileHere.inv.MoveItemTo(dest, item, quantity);
-            if (tileHere.inv.IsEmpty() && tileHere.inv.invType == Inventory.InvType.Floor){
-                tileHere.inv.Destroy();
-                tileHere.inv = null; // delete an empty floor inv.
-            }
-            return leftover;
-        }
-        return quantity;
-    }
-    public int TakeItem(ItemQuantity iq, Inventory targetInv = null){ return(TakeItem(iq.item, iq.quantity, targetInv)); }
     // Moves item from equip slot back to main inventory. Leftover stays in slot if inv is full.
     public void Unequip(Inventory slotInv) {
         Item item = slotInv.itemStacks[0].item;
@@ -646,8 +651,7 @@ public class Animal : MonoBehaviour{
         List<Recipe> eligibleRecipes = new List<Recipe>();
         foreach (Recipe recipe in job.recipes){
             if (recipe == null) continue;
-            if (RecipePanel.instance != null && !RecipePanel.instance.IsAllowed(recipe.id)) continue;
-            if (ResearchSystem.instance != null && !ResearchSystem.instance.IsRecipeUnlocked(recipe.id)) continue;
+            if (!recipe.IsEligibleForPicking()) continue;
             if (ginv.SufficientResources(recipe.inputs)){
                 if (!Db.structTypeByName.ContainsKey(recipe.tile) ||
                     !nav.CanReachBuilding(Db.structTypeByName[recipe.tile])) continue;
@@ -658,15 +662,38 @@ public class Animal : MonoBehaviour{
         int index = UnityEngine.Random.Range(0, eligibleRecipes.Count);
         return eligibleRecipes[index];
     }
+    // True if every class-restricted output (Liquid, Book) has at least one matching storage
+    // inventory with space. Default-class outputs are exempt — they can land on the floor and be
+    // hauled later. Used to skip recipes whose output literally has nowhere to go (e.g. a scribe
+    // book recipe when every bookshelf is full), preventing items from piling up on floors.
+    private static bool OutputsHaveClassStorage(Recipe recipe) {
+        if (recipe.outputs == null) return true;
+        var ic = InventoryController.instance;
+        if (ic == null) return true;
+        foreach (var iq in recipe.outputs) {
+            if (iq.item.itemClass == ItemClass.Default) continue;
+            if (!ic.byType.TryGetValue(Inventory.InvType.Storage, out var list)) return false;
+            bool found = false;
+            foreach (Inventory inv in list) {
+                if (inv.GetStorageForItem(iq.item) > 0) { found = true; break; }
+            }
+            if (!found) return false;
+        }
+        return true;
+    }
+
     public Recipe PickRecipe(){ // score based selection
         if (job.recipes.Length == 0) { return null; }
         var targets = InventoryController.instance.targets;
         float maxScore = 0;
         Recipe bestRecipe = null;
+        // Reservoir sampling for k=1 across recipes tied at maxScore — see PickRecipeForBuilding
+        // for the rationale (avoids deterministic id-order bias when multiple recipes tie).
+        int tiedCount = 0;
         foreach (Recipe recipe in job.recipes){
             if (recipe == null) continue;
-            if (RecipePanel.instance != null && !RecipePanel.instance.IsAllowed(recipe.id)) continue;
-            if (ResearchSystem.instance != null && !ResearchSystem.instance.IsRecipeUnlocked(recipe.id)) continue;
+            if (!recipe.IsEligibleForPicking()) continue;
+            if (!OutputsHaveClassStorage(recipe)) continue;
             if (ginv.SufficientResources(recipe.inputs)){
                 if (!Db.structTypeByName.ContainsKey(recipe.tile) ||
                     !nav.CanReachBuilding(Db.structTypeByName[recipe.tile])) continue;
@@ -674,6 +701,10 @@ public class Animal : MonoBehaviour{
                 if (score > maxScore){
                     maxScore = score;
                     bestRecipe = recipe;
+                    tiedCount = 1;
+                } else if (score == maxScore) {
+                    tiedCount++;
+                    if (UnityEngine.Random.value < 1f / tiedCount) bestRecipe = recipe;
                 }
             }
         }
@@ -687,17 +718,27 @@ public class Animal : MonoBehaviour{
         var targets = InventoryController.instance.targets;
         float maxScore = 0;
         Recipe bestRecipe = null;
+        // Reservoir sampling for k=1 among recipes tied at maxScore: each tied recipe is equally
+        // likely to be picked, instead of deterministic iteration (recipe id) order winning.
+        // Especially visible for newly-unlocked book recipes — all start with output qty 0, so
+        // their scores all blow up to +Infinity (Score divides by qty/target = 0). Without this
+        // tiebreak, scribes would always write the lowest-id book first.
+        int tiedCount = 0;
         foreach (Recipe recipe in job.recipes){
             if (recipe == null) continue;
             if (recipe.tile != building.structType.name) continue;
-            if (RecipePanel.instance != null && !RecipePanel.instance.IsAllowed(recipe.id)) continue;
-            if (ResearchSystem.instance != null && !ResearchSystem.instance.IsRecipeUnlocked(recipe.id)) continue;
+            if (!recipe.IsEligibleForPicking()) continue;
             if (!ginv.SufficientResources(recipe.inputs)) continue;
             if (recipe.AllOutputsSatisfied(targets)) continue;
+            if (!OutputsHaveClassStorage(recipe)) continue;
             float score = recipe.Score(targets);
             if (score > maxScore){
                 maxScore = score;
                 bestRecipe = recipe;
+                tiedCount = 1;
+            } else if (score == maxScore) {
+                tiedCount++;
+                if (UnityEngine.Random.value < 1f / tiedCount) bestRecipe = recipe;
             }
         }
         return bestRecipe;

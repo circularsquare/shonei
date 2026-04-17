@@ -114,17 +114,18 @@ Tasks reserve both **source items** (`ItemStack.resAmount`) and **destination sp
 | `HaulFromMarketTask` | WOM p3 | merchant | Haul excess items from market back to storage |
 | `ConstructTask` | WOM p2/p4 | building's `njob` | Build or deconstruct a blueprint |
 | `SupplyBlueprintTask` | WOM p2 | building's `njob` | Deliver materials to an incomplete blueprint |
-| `ResearchTask` | WOM p4 | scientist | Navigate to a specific lab, work in loops |
+| `ResearchTask` | WOM p4 | scientist | Navigate to a specific lab, work in loops. Optionally borrows the matching tech book (via `bookSlotInv`) before research and returns it after — book grants 3× research progress per tick while equipped (see SPEC-books.md). |
 | `ObtainTask` | survival | any | Fetch a specific item (food/equip) |
 | `EepTask` | survival | any | Navigate home and sleep |
 | `DropTask` | survival | any | Drop excess main inventory — prefers nearby storage/tank (10-tile bonus) over floor. On no-reachable-target, logs a warning and sets `animal.dropCooldownUntil = timer + 3f` so `ChooseTask` falls through to other branches instead of respawning `DropTask` every tick |
 | `GoTask` | survival | any | Navigate to a tile |
 | `ChatTask` | leisure | any | Walk to idle partner, both leisure 20 ticks, grants socialization happiness |
 | `LeisureTask` | leisure | any | Walk to an `isLeisure` building seat (picks from `nworkTiles`), reserves via `Structure.res`, leisure 20 ticks, faces center, grants benefit via `Happiness.NoteLeisure(structType.leisureNeed)` |
+| `ReadBookTask` | leisure | any | Fetch fiction book → walk to nearby unoccupied tile → read 10 ticks (per-tick `NoteRead` grant) → return book to shelf. No building dependency. See SPEC-books.md. |
 | `MaintenanceTask` | WOM p2 | mender | Fetch repair materials (¼ × build cost, scaled by repair amount) → walk to work tile → `MaintenanceObjective` ticks up `condition` by 0.05 × efficiency per tick, capped at +40 % per visit. Grants Construction XP. See SPEC-systems.md §Maintenance System. |
 
 **Objectives (atomic steps):**
-`GoObjective`, `FetchObjective`, `DeliverObjective`, `DeliverToBlueprintObjective`, `DeliverToInventoryObjective`, `ReceiveFromInventoryObjective`, `WorkObjective`, `HarvestObjective`, `ConstructObjective`, `EepObjective`, `DropObjective`, `ResearchObjective`, `LeisureObjective`, `MaintenanceObjective`
+`GoObjective`, `FetchObjective`, `DeliverObjective`, `DeliverToBlueprintObjective`, `DeliverToInventoryObjective`, `ReceiveFromInventoryObjective`, `WorkObjective`, `HarvestObjective`, `ConstructObjective`, `EepObjective`, `DropObjective`, `ResearchObjective`, `LeisureObjective`, `MaintenanceObjective`, `UnequipObjective`
 
 **`FetchObjective` behaviour:**
 - Navigates to a source tile and picks up `iq.quantity` of an item into the animal's inventory (or an equip slot if `targetInv` is set).

@@ -12,19 +12,20 @@ public class Inventory{
 
     // Returns true if this item type is physically compatible with this inventory.
     // This is a hard constraint checked before the per-item allowed[] dict.
-    // isLiquidStorage governs whether this storage accepts liquids or solids exclusively.
-    // Expand here as new item/inventory categories are added (e.g. gas, cold storage).
+    // Storage inventories always enforce class match (Default↔Default solid goods, Liquid↔Liquid
+    // tanks, Book↔Book bookshelves). Non-storage inventories normally accept anything, but can
+    // opt in to a class restriction by being constructed with a non-Default storageClass —
+    // e.g. an Animal's bookSlotInv (Equip type, storageClass=Book) accepts only books.
     public bool ItemTypeCompatible(Item item) {
-        if (invType == InvType.Storage && !isLiquidStorage && item.isLiquid)  return false; // dry storage can't hold liquids
-        if (invType == InvType.Storage && isLiquidStorage  && !item.isLiquid) return false; // liquid storage can't hold solids
-        return true;
+        if (invType != InvType.Storage && storageClass == ItemClass.Default) return true;
+        return item.itemClass == storageClass;
     }
     public InvType invType;
-    // True for tank-type buildings (StructType.liquidStorage == true). Enforces liquid-only constraint
-    // (see ItemTypeCompatible). The per-item allowed[] filter starts all-false like regular storage —
-    // the player opts in to each liquid via the filter UI. Set at construction time; not saved
-    // (derived from StructType).
-    public bool isLiquidStorage { get; private set; }
+    // Item class this storage accepts (derived from StructType.storageClass at construction).
+    // Per-item allowed[] filter starts all-false for Storage — the player opts in via the filter UI.
+    // Not saved; rebuilt from StructType on load.
+    public ItemClass storageClass { get; private set; }
+    public bool isLiquidStorage => storageClass == ItemClass.Liquid; // convenience for tank-specific rendering code
     public int x, y;
     public Dictionary<int, bool> allowed;
     public bool locked = false; // when true, no items accepted and all existing items are treated as needing haul-out
@@ -64,25 +65,40 @@ public class Inventory{
         return space;
     }
 
-    public Inventory(int n = 1, int stackSize = 2500, InvType invType = InvType.Floor, int x = 0, int y = 0, bool isLiquidStorage = false) {
+    public Inventory(int n = 1, int stackSize = 2500, InvType invType = InvType.Floor, int x = 0, int y = 0, ItemClass storageClass = ItemClass.Default) {
         nStacks = n;
         this.stackSize = stackSize;
         this.invType = invType;
         this.x = x;
         this.y = y;
-        this.isLiquidStorage = isLiquidStorage;
+        this.storageClass = storageClass;
         displayName = invType.ToString().ToLower();
         itemStacks = new ItemStack[nStacks];
         for (int i = 0; i < nStacks; i++){
             itemStacks[i] = new ItemStack(this, null, 0, stackSize);
         }
 
-        if (invType == InvType.Storage) allowed = Db.itemsFlat.ToDictionary(i => i.id, i => false); // all disallowed by default for both dry & liquid storage; user enables per-item via the filter UI
-        else                             allowed = Db.itemsFlat.ToDictionary(i => i.id, i => true);
+        if (invType == InvType.Storage) {
+            allowed = Db.itemsFlat.ToDictionary(i => i.id, i => false); // all disallowed by default for dry storage & tanks; user enables per-item via the filter UI
+            // Bookshelves auto-allow every book — players rarely care which book goes where, and the
+            // shelf is class-locked anyway so nothing else can land in it. Tanks deliberately do NOT
+            // auto-allow liquids: a tank is usually dedicated to one liquid (e.g. all water, no
+            // soymilk), so the manual opt-in is a feature there.
+            if (storageClass == ItemClass.Book) {
+                foreach (Item it in Db.itemsFlat)
+                    if (it.itemClass == ItemClass.Book) allowed[it.id] = true;
+            }
+        } else {
+            allowed = Db.itemsFlat.ToDictionary(i => i.id, i => true);
+        }
         
 
-        if (invType == InvType.Storage && nStacks > 1){
-            // Multi-stack storage (drawer/tank): one sprite per stack slot in a 2x2 grid
+        // Bookshelves (storageClass=Book) use single-sprite rendering regardless of nStacks:
+        // the whole shelf shows one of three fill-level sprites (slow/smid/shigh). Exclude from
+        // the per-slot multi-stack path below.
+        bool useMultiStackRendering = invType == InvType.Storage && nStacks > 1 && storageClass != ItemClass.Book;
+        if (useMultiStackRendering){
+            // Multi-stack storage (drawer): one sprite per stack slot in a 2x2 grid
             stackGos = new GameObject[nStacks];
             for (int i = 0; i < nStacks && i < quarterOffsets.Length; i++){
                 stackGos[i] = new GameObject("InventoryStack_" + i);
@@ -100,8 +116,11 @@ public class Inventory{
             if (invType == InvType.Floor) {sr.sortingOrder = 70;}
             else {sr.sortingOrder = 30;}
             LightReceiverUtil.SetSortBucket(sr);
-            string spriteName = (invType == InvType.Storage && isLiquidStorage) ? "Liquid" : invType.ToString();
-            sr.sprite = Resources.Load<Sprite>("Sprites/Inventory/" + spriteName);
+            // Bookshelves render their own fill sprite via UpdateSprite — skip the generic Storage placeholder.
+            if (storageClass != ItemClass.Book) {
+                string spriteName = (invType == InvType.Storage && isLiquidStorage) ? "Liquid" : invType.ToString();
+                sr.sprite = Resources.Load<Sprite>("Sprites/Inventory/" + spriteName);
+            }
         }
 
         if (invType == InvType.Market) {
@@ -111,6 +130,27 @@ public class Inventory{
         InventoryController.instance.AddInventory(this);
         ginv = GlobalInventory.instance;
     }
+
+    // Compacts top N frames of System.Environment.StackTrace into "Class.Method (File.cs:Line)"
+    // joined by " <- ", starting after the frame containing `anchor`. Falls back to the raw
+    // line if the Mono format doesn't match (e.g. IL2CPP).
+    private static readonly System.Text.RegularExpressions.Regex _stackFrameRx =
+        new(@"^\s*at\s+(.+?)\s+\([^)]*\)\s+\[[^\]]+\]\s+in\s+.*[/\\]([^/\\]+):(\d+)\s*$");
+    private static string FormatCallerTrace(string anchor, int frames = 4){
+        string[] lines = System.Environment.StackTrace.Split('\n');
+        int startIdx = Array.FindIndex(lines, l => l.Contains(anchor));
+        int from = startIdx >= 0 ? startIdx + 1 : 0;
+        int to = Math.Min(from + frames, lines.Length);
+        var parts = new List<string>(frames);
+        for (int i = from; i < to; i++){
+            string line = lines[i].Replace("\r", "").Trim();
+            if (string.IsNullOrEmpty(line)) continue;
+            var m = _stackFrameRx.Match(line);
+            parts.Add(m.Success ? $"{m.Groups[1].Value} ({m.Groups[2].Value}:{m.Groups[3].Value})" : line);
+        }
+        return string.Join(" <- ", parts);
+    }
+
     public void Destroy(){
         destroyed = true;
         // Eagerly remove haul orders for floor and storage stacks, then zero quantities as a safety net
@@ -138,12 +178,7 @@ public class Inventory{
             // When a reserved inv is torn down, dump the immediate caller stack so we can identify
             // which code path destroyed it (e.g. FallIfUnstandable vs FetchObjective vs something else).
             if (anyRes) {
-                string[] lines = System.Environment.StackTrace.Split('\n');
-                int startIdx = System.Array.FindIndex(lines, l => l.Contains("Inventory.Destroy"));
-                int from = startIdx >= 0 ? startIdx + 1 : 0;
-                int to = System.Math.Min(from + 4, lines.Length);
-                string trace = string.Join(" <- ", lines[from..to]).Replace("\r", "").Trim();
-                Debug.LogWarning($"  destroyer: {trace}");
+                Debug.LogWarning($"  destroyer: {FormatCallerTrace("Inventory.Destroy")}");
             }
         }
         foreach (ItemStack stack in itemStacks) { stack.quantity = 0; stack.resAmount = 0; stack.resSpace = 0; stack.resSpaceItem = null; }
@@ -252,13 +287,7 @@ public class Inventory{
             Inventory dead = destroyed ? this : otherInv;
             string role = destroyed ? "source" : "destination";
             Debug.LogWarning($"Inventory.MoveItemTo called with destroyed {role} ({dead?.invType} '{dead?.displayName}' at ({dead?.x},{dead?.y})) — stale reference (item={item?.name}, qty={quantity}). Returning 0.");
-            // Dump immediate caller so we can identify which objective hit the stale ref.
-            string[] lines = System.Environment.StackTrace.Split('\n');
-            int startIdx = System.Array.FindIndex(lines, l => l.Contains("Inventory.MoveItemTo"));
-            int from = startIdx >= 0 ? startIdx + 1 : 0;
-            int to = System.Math.Min(from + 4, lines.Length);
-            string trace = string.Join(" <- ", lines[from..to]).Replace("\r", "").Trim();
-            Debug.LogWarning($"  caller: {trace}");
+            Debug.LogWarning($"  caller: {FormatCallerTrace("Inventory.MoveItemTo")}");
             return 0;
         }
         // Group items (e.g. "wood") can't exist as physical stacks — resolve to the leaf via GetLeafStack.
@@ -429,9 +458,13 @@ public class Inventory{
     }
     // ── Destination space reservations ──────────────────────────
     // Distributes a space reservation across stacks: matching partial first (fullest first),
-    // then empty stacks. Returns total amount actually reserved.
-    public int ReserveSpace(Item item, int quantity, Task by = null) {
-        if (quantity <= 0) return 0;
+    // then empty stacks. Returns the per-stack breakdown of what was actually reserved
+    // (only stacks where >0 was reserved appear). Caller is responsible for releasing
+    // each entry by calling stack.UnreserveSpace(amount) — typically via Task.Cleanup,
+    // which records these tuples in Task.reservedSpaces.
+    public List<(ItemStack stack, int amount)> ReserveSpace(Item item, int quantity, Task by = null) {
+        var entries = new List<(ItemStack, int)>();
+        if (quantity <= 0) return entries;
         // Build iteration order matching AddItem: matching stacks fullest-first, then empty
         var matchingIndices = new List<(int idx, int qty)>();
         var emptyIndices = new List<int>();
@@ -446,49 +479,17 @@ public class Inventory{
         int remaining = quantity;
         foreach (var (idx, _) in matchingIndices) {
             if (remaining <= 0) break;
-            remaining -= itemStacks[idx].ReserveSpace(item, remaining, by);
+            int got = itemStacks[idx].ReserveSpace(item, remaining, by);
+            if (got > 0) entries.Add((itemStacks[idx], got));
+            remaining -= got;
         }
         foreach (int idx in emptyIndices) {
             if (remaining <= 0) break;
-            remaining -= itemStacks[idx].ReserveSpace(item, remaining, by);
+            int got = itemStacks[idx].ReserveSpace(item, remaining, by);
+            if (got > 0) entries.Add((itemStacks[idx], got));
+            remaining -= got;
         }
-        return quantity - remaining;
-    }
-    // Releases a space reservation. Distributes across stacks with matching resSpaceItem,
-    // emptiest first (to free up empty stacks sooner for other items).
-    public void UnreserveSpace(Item item, int quantity) {
-        if (quantity <= 0) return;
-        // Collect stacks that hold reservations for this item, sorted emptiest-first
-        var candidates = new List<(int idx, int qty)>();
-        for (int i = 0; i < nStacks; i++) {
-            ItemStack s = itemStacks[i];
-            if (s.resSpace <= 0) continue;
-            // Match: stack holds this item, or empty stack reserved for this item
-            if ((s.item == item) || (s.item == null && s.resSpaceItem == item))
-                candidates.Add((i, s.quantity));
-        }
-        candidates.Sort((a, b) => a.qty.CompareTo(b.qty)); // emptiest first
-
-        int remaining = quantity;
-        foreach (var (idx, _) in candidates) {
-            if (remaining <= 0) break;
-            int toRelease = Math.Min(remaining, itemStacks[idx].resSpace);
-            itemStacks[idx].UnreserveSpace(toRelease);
-            remaining -= toRelease;
-        }
-        if (remaining > 0)
-            Debug.LogError($"Inventory.UnreserveSpace: could not release {remaining} of {quantity} for {item.name} at ({x},{y})");
-    }
-
-    // Total resSpace currently held for a given item across all stacks.
-    public int ReservedSpaceFor(Item item) {
-        int total = 0;
-        foreach (ItemStack stack in itemStacks) {
-            if (stack.resSpace <= 0) continue;
-            if (stack.item == item || (stack.item == null && stack.resSpaceItem == item))
-                total += stack.resSpace;
-        }
-        return total;
+        return entries;
     }
 
     public int GetSpace(){ // only coutns empty stacks
@@ -690,6 +691,24 @@ public class Inventory{
         if (IsEmpty()) {
             go.name = "inventory_empty";
             go.GetComponent<SpriteRenderer>().sprite = null;
+            return;
+        }
+        // Bookshelves: all slots treated as one visual stack. Total fill across every slot
+        // picks one of three shared sprites (slow/smid/shigh). Books aren't rendered as
+        // individual item icons — the shelf itself is the visual.
+        if (invType == InvType.Storage && storageClass == ItemClass.Book) {
+            int totalFen = 0;
+            int totalCap = 0;
+            foreach (ItemStack stack in itemStacks) {
+                totalFen += stack.quantity;
+                totalCap += stack.stackSize;
+            }
+            float fillRatio = totalCap > 0 ? totalFen / (float)totalCap : 0f;
+            string sVariant = fillRatio >= 0.75f ? "shigh" : fillRatio < 0.2f ? "slow" : "smid";
+            Sprite bookSprite = Resources.Load<Sprite>($"Sprites/Items/split/books/{sVariant}");
+            bookSprite ??= Resources.Load<Sprite>("Sprites/Items/split/books/icon"); // fallback if fill-level art missing
+            go.name = "inventory_books_" + sVariant;
+            go.GetComponent<SpriteRenderer>().sprite = bookSprite;
             return;
         }
         Item mostItem = null;

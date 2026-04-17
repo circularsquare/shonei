@@ -88,7 +88,7 @@ Managed by `InventoryController` (`Assets/Controller/InventoryController.cs`).
 - ItemDisplay instances are created once in `AddItemDisplay()` during first `TickUpdate`, one per item in `Db.items`.
 - Tree structure: root items parent to `inventoryPanel.transform`, children parent to their parent ItemDisplay's transform.
 - **Discovery**: items are hidden until `globalInventory.Quantity > 0` (checked recursively via `HaveAnyOfChildren`). Once discovered, stays visible even if quantity drops to 0.
-- **Tree collapse**: `IsVisibleInTree` walks ancestors — if any parent ItemDisplay has `open == false`, the item is hidden.
+- **Tree collapse**: `IsVisibleInTree` walks ancestors — if any parent ItemDisplay has `open == false`, the item is hidden. Groups start collapsed by default; flag `defaultOpen: true` in itemsDb.json to start a group expanded (e.g. `"food"`). Market mode always expands every group regardless of the flag. Per-group collapse state is persisted across saves for the global panel only (StoragePanel's allow tree is rebuilt on every panel open). SaveSystem stores only deltas vs `defaultOpen` in `WorldSaveData.inventoryTreeOpen`; on load the dict is staged on `InventoryController.pendingGroupOpenOverrides` and consumed by `ItemDisplay.Start`.
 - **Targets**: stored in `InventoryController.targets[itemId]` (default 10000 fen = 100 liang). Adjusted via +/- buttons (doubles/halves). Used by `Recipe.Score()` for work order prioritization.
 - **Market display**: handled by TradingPanel's own ItemDisplay tree (see TradingPanel section). The global panel always shows global quantities.
 

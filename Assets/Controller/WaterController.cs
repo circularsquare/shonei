@@ -51,7 +51,7 @@ public class WaterController : MonoBehaviour {
     // keyed by Structure. Overlaid into _surfaceBytes each UpdateSurfaceMask tick.
     // Two render modes are supported per zone:
     //   - Binary (fountains etc.): reservoir.HasFuel() gates all-or-nothing.
-    //   - Fill-level (tanks, structType.liquidStorage): only the bottom portion renders,
+    //   - Fill-level (tanks, structType.isLiquidStorage): only the bottom portion renders,
     //     scaled to the fraction of water currently in storage. localYs + localMinY/Max
     //     enable the per-pixel height test without re-scanning the sprite every tick.
     private struct DecorativeZone {
@@ -319,7 +319,7 @@ public class WaterController : MonoBehaviour {
 
         // Overlay decorative water zones. Two gating modes:
         //   - Fountains (Building with a reservoir): binary — all pixels render if HasFuel().
-        //   - Tanks (structType.liquidStorage): fill-level — only the bottom fraction of
+        //   - Tanks (structType.isLiquidStorage): fill-level — only the bottom fraction of
         //     pixels render, scaled to the stored liquid's quantity vs total capacity.
         //     The top row of rendered pixels is flagged surface (255) so it shimmers white
         //     like a pond surface; everything below is interior water (127).
@@ -337,7 +337,7 @@ public class WaterController : MonoBehaviour {
             if (s is Building b) {
                 if (b.reservoir != null) {
                     if (!b.reservoir.HasFuel() || b.IsBroken) skip = true;
-                } else if (b.structType.liquidStorage && b.storage != null) {
+                } else if (b.structType.isLiquidStorage && b.storage != null) {
                     // Tanks hold one liquid at a time — find the first non-empty liquid stack
                     // so we can drive both the fill level and the tint from the same source.
                     Item liquid = null;
@@ -436,7 +436,7 @@ public class WaterController : MonoBehaviour {
         World world = World.instance;
         foreach (Structure s in StructController.instance.GetStructures()) {
             if (s is not Building b) continue;
-            if (!b.structType.liquidStorage) continue;
+            if (!b.structType.isLiquidStorage) continue;
             if (b.storage == null) continue;
             if (!b.storage.allowed.TryGetValue(water.id, out bool ok) || !ok) continue;
             if (!world.IsExposedAbove(b.x, b.y)) continue;
@@ -485,7 +485,7 @@ public class WaterController : MonoBehaviour {
     // Registers a structure's water-marker pixels for overlay each tick.
     // Converts local sprite offsets to world-pixel coordinates, accounting for mirroring.
     // Also caches per-pixel local Y and the local Y range, so UpdateSurfaceMask can
-    // do fill-level rendering for liquidStorage buildings without re-scanning the sprite.
+    // do fill-level rendering for liquid-storage buildings without re-scanning the sprite.
     // Called by StructController.Place() for any structure with waterPixelOffsets.
     public void RegisterDecorativeWater(Structure s) {
         if (s.waterPixelOffsets == null || s.waterPixelOffsets.Count == 0) return;

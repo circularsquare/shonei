@@ -76,9 +76,18 @@ public class ItemStack {
             int amountToDecay = decayCounter / maxDecayCount;
             if (item.discrete) amountToDecay = (amountToDecay / 100) * 100; // only decay whole items
             if (amountToDecay > 0){
-                // Debug.Log("decayed! " + item.name + " x " + amountToDecay);
+                // Capture pre-decay state so we can flag the rare case where decay empties a stack —
+                // decay slows with quantity, so full zero-out means a small remnant sat around. Notable
+                // especially if reserved — the reservation is silently dropped when the stack empties.
+                Item before = item;
+                int hadRes = resAmount;
+                Animal animal = resTask?.animal;
                 inv.Produce(item, -amountToDecay);
                 decayCounter -= amountToDecay * maxDecayCount;
+                if (this.item == null && inv?.invType == Inventory.InvType.Floor) {
+                    string resNote = hadRes > 0 ? $" — silently dropped {hadRes} fen reservation (animal={animal?.aName})" : "";
+                    Debug.LogWarning($"Decay emptied stack: {before.name} in {inv?.invType} at ({inv?.x},{inv?.y}){resNote}");
+                }
             }
         }
     }

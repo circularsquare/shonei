@@ -90,6 +90,7 @@ Depth-0 buildings with custom behaviour subclass `Building` (e.g. `PumpBuilding`
 | [SPEC-eventfeed.md](SPEC-eventfeed.md) | EventFeed singleton — in-game alert dispatcher, categories, bindings, renderer contract |
 | [SPEC-sound.md](SPEC-sound.md) | Sound system — SoundManager singleton, SFX one-shots, ambient loops |
 | [SPEC-worldgen.md](SPEC-worldgen.md) | World generation pipeline — terrain, caves, worm tunnels, water |
+| [SPEC-books.md](SPEC-books.md) | Books feature — `ItemClass` enum, runtime tech-book generation, scribe + scriptorium + bookshelf, scientist book-borrow flow, reading leisure |
 
 ---
 

@@ -22,6 +22,10 @@ public class WorldSaveData {
     public int?   cameraPPU; // null on old saves → zoom not changed on load
     // Market targets set by the player (item name → quantity in fen). null = no market or all zero.
     public System.Collections.Generic.Dictionary<string, int> marketTargets;
+    // Inventory tree open/collapsed state for the always-visible global panel.
+    // Only deltas vs item.defaultOpen are stored (group item name → current open state), so the
+    // dict stays small and new items automatically pick up their JSON default. Null on old saves.
+    public System.Collections.Generic.Dictionary<string, bool> inventoryTreeOpen;
 }
 
 public class ResearchSaveData {
@@ -111,6 +115,7 @@ public class AnimalSaveData {
     public InventorySaveData foodSlotInv;
     public InventorySaveData toolSlotInv;
     public InventorySaveData clothingSlotInv;
+    public InventorySaveData bookSlotInv;
     public float[] skillXp;
     public int[]   skillLevel;
     public bool  isTraveling;     // was animal mid-journey (hidden) at save time?

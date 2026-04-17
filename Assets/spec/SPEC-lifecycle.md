@@ -60,14 +60,18 @@ Load:    ClearWorld() + SaveSystem.ApplySaveData()  →  PostLoadInit (next fram
 ```
 
 **Frame 0** — all `Awake()`s run (order undefined, but before any `Start`):
-- `Db.Awake()` — JSON data loaded; all lookups ready
+- `Db.Awake()` — JSON data loaded; all lookups ready (including runtime-generated tech books / scribe recipes)
 - `World.Awake()` — tiles and `graph.nodes` allocated; `node.standable = false` until `graph.Initialize()`
 - `AnimalController.Awake()` — instance set, arrays allocated
+- `ResearchSystem.Awake()` — parses `researchDb.json` into `nodes` / `nodeById` / `progress`. Reverse-index building is deferred to `Start()` because it reads `Db.bookRecipeIdByTechId`.
 
 **Frame 0** — all `Start()`s run: (cross object initialization)
 - `WorldController.Start()` runs up to `yield return null` and **pauses**
 - `AnimalController.Start()` — populates `jobCounts` (Db is ready; must finish before frame 1)
+- `ResearchSystem.Start()` — injects scribe-recipe unlock entries, builds `recipeToTechNode` / `jobToTechNode` / `buildingToTechNode`, validates job unlocks against Db.
 - All UI/other controllers initialize
+
+**Cross-singleton Awake rule**: if a MonoBehaviour's setup reads state published by another MonoBehaviour's `Awake` (not just scene references), do that reading in `Start` instead. Awake order between MonoBehaviours is undefined, but every Awake runs before any Start. Past bug: `ResearchSystem.Awake` ran before `Db.Awake`, so `Db.bookRecipeIdByTechId` was empty when `InjectBookRecipeUnlocks` read it — scribe book recipes silently slipped the tech gate. Prefer deferring to Start over forcing Script Execution Order, which hides the dependency in project settings.
 
 **Frame 1** — `WorldController.Start()` resumes, calls `GenerateDefault()` (or load path):
 - Tile types set, structures placed

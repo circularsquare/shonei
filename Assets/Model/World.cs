@@ -169,7 +169,7 @@ public class World : MonoBehaviour {
     public void FallItems(Tile tile) {
         if (tile.inv == null || tile.inv.IsEmpty()) return;
         // Log reserved stacks up front — if a reservation holder later hits a stale reference,
-        // this entry tells us FallItems (not Animal.TakeItem / FetchObjective cleanup) was the cause.
+        // this entry tells us FallItems (not FetchObjective cleanup) was the cause.
         foreach (ItemStack s in tile.inv.itemStacks) {
             if (s != null && s.resAmount > 0)
                 Debug.Log($"FallItems: tile ({tile.x},{tile.y}) has reserved stack {s.item?.name} qty={s.quantity} resAmount={s.resAmount} resTask={s.resTask} animal={s.resTask?.animal?.aName}");

@@ -82,8 +82,17 @@ public class ResearchSystem : MonoBehaviour {
         LoadNodes();
     }
 
-    // Validation that depends on Db (jobs, etc.) runs in Start so Awake ordering doesn't matter.
+    // Index building is deferred to Start() because it depends on Db.Awake having populated
+    // bookRecipeIdByTechId (runtime-generated scribe recipes). Awake() ordering between
+    // MonoBehaviours is indeterminate, but every Awake runs before any Start — so by the time
+    // we reach here, Db is guaranteed to be ready. Past bug: when ResearchSystem.Awake won the
+    // race, InjectBookRecipeUnlocks saw an empty map and scribe recipes ended up ungated, letting
+    // scribes write books for locked techs.
     void Start() {
+        InjectBookRecipeUnlocks();
+        BuildRecipeLockIndex();
+        BuildJobLockIndex();
+        BuildBuildingLockIndex();
         ValidateJobUnlocks();
     }
 
@@ -99,9 +108,21 @@ public class ResearchSystem : MonoBehaviour {
             nodeById[node.id] = node;
             progress[node.id] = 0f;
         }
-        BuildRecipeLockIndex();
-        BuildJobLockIndex();
-        BuildBuildingLockIndex();
+    }
+
+    // Db.GenerateBookRecipes runs during Db.Awake (before this method) and populates
+    // bookRecipeIdByTechId with one scribe recipe per tech. Gate each of those recipes
+    // behind its own tech by appending a recipe-type UnlockEntry to the tech's unlocks
+    // array here — before BuildRecipeLockIndex reads them.
+    void InjectBookRecipeUnlocks() {
+        foreach (var node in nodes) {
+            if (!Db.bookRecipeIdByTechId.TryGetValue(node.id, out int recipeId)) continue;
+            var newEntry = new UnlockEntry { type = "recipe", target = recipeId.ToString() };
+            var expanded = new UnlockEntry[node.unlocks.Length + 1];
+            node.unlocks.CopyTo(expanded, 0);
+            expanded[node.unlocks.Length] = newEntry;
+            node.unlocks = expanded;
+        }
     }
 
     // Walks all node unlocks and records entries matching unlockType into the reverse index.
@@ -213,15 +234,17 @@ public class ResearchSystem : MonoBehaviour {
 
     public bool IsStudied(int id) => studiedIds.Contains(id);
 
-    // True if any animal is currently running a ResearchTask targeting this tech.
-    // Used by ResearchPanel to show the cost text in green only while a scientist is
-    // actively contributing — studied-but-no-scientist should not look the same as
-    // studied-and-being-worked.
+    // True if any animal is currently adding progress to this tech — i.e. running a
+    // ResearchTask whose current objective is the ResearchObjective (actively working at
+    // the bench). Excludes the travel leg so the cost text only turns green once points
+    // are actually rising.
     public bool IsActivelyResearched(int id) {
         var ac = AnimalController.instance;
         if (ac == null || ac.animals == null) return false;
         foreach (var a in ac.animals) {
-            if (a?.task is ResearchTask rt && rt.studyTargetId == id) return true;
+            if (a?.task is ResearchTask rt
+                && rt.studyTargetId == id
+                && rt.currentObjective is ResearchObjective) return true;
         }
         return false;
     }
@@ -230,7 +253,8 @@ public class ResearchSystem : MonoBehaviour {
     // Returns the node ID the scientist should work on, or -1 if nothing to do.
     //
     // Priority: (1) Studied techs below cost (need maintenance/research) — oldest-unlocked first.
-    //               Never-unlocked techs are treated as newest (lowest priority).
+    //               Never-unlocked techs tie at int.MaxValue — still picked if no older
+    //               candidate exists, so the queue actually progresses through new techs.
     //           (2) Studied techs above cost but below 2×cost — lowest progress % first
     //               (spread reinforcement evenly).
     public int PickStudyTarget() {
@@ -248,8 +272,10 @@ public class ResearchSystem : MonoBehaviour {
 
             if (p < node.cost) {
                 // Below unlock threshold — prioritise oldest-unlocked.
+                // bestBelow < 0 seeds the first candidate so MaxValue-tied never-unlocked
+                // techs still win over the fallback reinforcement branch.
                 int stamp = unlockTimestamps.TryGetValue(id, out int s) ? s : int.MaxValue;
-                if (stamp < bestBelowStamp) {
+                if (bestBelow < 0 || stamp < bestBelowStamp) {
                     bestBelow = id;
                     bestBelowStamp = stamp;
                 }
@@ -319,8 +345,9 @@ public class ResearchSystem : MonoBehaviour {
     }
 
     // Applies the gameplay effect of a technology (called on unlock).
-    // Recipe unlocks need no action here — animal recipe filters query IsRecipeUnlocked
-    // live, and RecipePanel rebuilds on open so newly-unlocked recipes appear automatically.
+    // Animal recipe filters query IsRecipeUnlocked live and RecipePanel rebuilds on open, so
+    // recipe gating itself needs no action here. We still discover the recipe's output items
+    // so newly-reachable products appear in the inventory tree before any have been crafted.
     public void ApplyEffect(ResearchNodeData node) {
         if (node.unlocks == null) return;
         foreach (var e in node.unlocks) {
@@ -333,12 +360,30 @@ public class ResearchSystem : MonoBehaviour {
                     AnimalController.instance?.UnlockJob(e.target);
                     break;
                 case "recipe":
+                    DiscoverRecipeOutputs(node, e.target);
                     break;
                 default:
                     Debug.LogError($"Tech '{node.name}' has unknown unlock type '{e.type}'");
                     break;
             }
         }
+    }
+
+    // Reveals every output item of the recipe in the inventory tree.
+    // Runs on both fresh unlock (CheckTransitions → ApplyEffect) and save load (ReapplyAllEffects),
+    // so loading a save with unlocked techs also populates discovered items for their recipes.
+    void DiscoverRecipeOutputs(ResearchNodeData node, string target) {
+        if (!int.TryParse(target, out int rid)) {
+            Debug.LogError($"Tech '{node.name}' recipe unlock has non-integer target '{target}'");
+            return;
+        }
+        if (rid < 0 || rid >= Db.recipes.Length) return;
+        Recipe recipe = Db.recipes[rid];
+        if (recipe == null || recipe.outputs == null) return;
+        var ic = InventoryController.instance;
+        if (ic == null) return; // startup/test — discovery re-derives from inventory on first TickUpdate
+        foreach (var iq in recipe.outputs)
+            ic.DiscoverItem(iq.item);
     }
 
     // Reverts the gameplay effect of a technology (called on forget).
