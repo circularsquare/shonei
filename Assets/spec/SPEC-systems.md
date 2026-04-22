@@ -10,7 +10,7 @@
 - **Floor item slowdown**: tiles with floor items reduce movement speed by 25% (×0.75).
 - **Crowding slowdown**: tiles with multiple mice reduce movement speed by 25% (×0.75, flat regardless of count). All speed modifiers are multiplicative.
 - **Tile occupancy tracking**: `AnimalController` maintains a `Dictionary<Tile, int>` for O(1) crowding queries. Animals register/unregister via `UpdateCurrentTile()` after position changes.
-- **Helper queries**: `FindPathToBuilding`, `FindPathToItem`, `FindPathToStorage`, `FindPathAdjacentToBlueprint`, `FindPathToHarvestable`
+- **Helper queries**: `FindPathToBuilding`, `FindPathItemStack`, `FindPathToStorage`, `FindPathToLeisureSeat`, `FindPathToDropTarget`
 
 ### Connected-components reachability cache
 
@@ -18,7 +18,6 @@
 
 - **Rebuild triggers**: `StructController.Construct()` (end of method, after all `UpdateNeighbors` calls) and `Graph.AddNeighborsInitial()` (startup/load). Cost ≈ 0.1–0.2 ms for a 100×50 map.
 - **Usage as pre-filter**: `Graph.Navigate()` itself checks `SameComponent` before running A*, so all pathfinding automatically rejects unreachable targets in O(1). Individual search loops no longer need their own `SameComponent` calls.
-- **`Nav.CanReach(Tile t)`**: O(1) reachability check from the animal's current position. Used as an early-out in task Initialize methods (e.g. `HaulTask`) before running heavier searches.
 - **`Nav.CanReachBuilding(StructType, r)`**: checks whether any building of a given type is in the same component — used by `PickRecipe`/`PickRecipeRandom` instead of a full A* scan.
 
 ### Waypoint system (stairs and cliff climbs)
@@ -163,6 +162,48 @@ Volume is conserved exactly (integer math, explicit transfers).
 **Save/load**: `WorldSaveData.waterLevels` — flat `byte[]`, index `y * nx + x`. Omitted (null) if all-dry. Restored in `SaveSystem.ApplySaveData()` before tile types are applied.
 
 **ClearWorld**: `WaterController.ClearWater()` zeros all `tile.water`, clears the surface mask texture, and calls `UpdateSurfaceMask()`.
+
+## Soil Moisture (added 2026-04-22)
+
+Distinct from liquid `tile.water` — moisture represents damp **soil**. Lives on `Tile.moisture` as a `byte` (0–100 percent) and is only meaningful on **solid** tiles (dirt/stone). Air tiles keep their moisture at 0 by convention; all moisture sweeps skip non-solid tiles. Drives plant growth gating; see SPEC-data.md `plantsDb.json` for the per-plant comfort-range fields.
+
+**Per in-game second** (1 s real-time, dispatched from the 1 s block in `World.Update` — both run before `PlantController.TickUpdate` so plants' `Grow()` sees freshly-updated soil):
+- **Rain uptake** (`MoistureSystem.RainUptakePerSecond()`, soil whose immediate tile-above isn't a ceiling): gains `round(rainAmount × MoistureRainGainPerHour / TicksPerInGameHour)` (currently 10 at full rain — i.e. 100/h spread over 10 one-second slices). "Ceiling" = tile directly above is solid ground OR carries any `solidTop` structure; see `MoistureSystem.CapsSoilFromAbove`. This is *not* a full sky-trace — a detached overhang higher up doesn't block rain, only the tile immediately at y+1 matters. Simpler + avoids the asymmetry where a single ceiling layer would slip through a sky-trace (its tile type is non-solid; its `solidTop` struct flag would be missed).
+- **Water-neighbour seep** (`MoistureSystem.SeepPerSecond()`): each solid tile with moisture headroom picks its wettest 4-orthogonal water neighbour and converts `MoistureSeepWaterPerSec` water units (currently 1) into `MoistureSeepGainPerWater` moisture each (currently 10). Water is actually drained from the source tile — unlike rain, seep is conservative. A dry soil tile next to a full water tile saturates in ~10 s real-time; a 1-tile pond feeding 4 solid neighbours drains to empty in ~40 s under load. Partial-fill soil (near saturation) still pays the same water-per-moisture rate via ceil-divide — no free moisture. Pump-irrigated farms stay wet only while the pump keeps refilling water.
+
+**Per in-game hour** (10 s real-time, via `MoistureSystem.HourlyUpdate()`, called from `WeatherSystem.OnHourElapsed()`). Single snapshot-and-sweep so no step biases by sweep direction, followed by a plant-iteration pass:
+- **Soil-to-soil diffusion** (all solid tiles): pull `round(diff × MoistureDiffusionPerHour)` toward the wettest solid neighbour's snapshot value, where `diff = maxNeighbour − cur`. One-way (never lowers). Currently `MoistureDiffusionPerHour = 0.05` (5%/h). Approximates capillary spread — a water-adjacent stone wall's moisture slowly propagates inward, a rained-on surface row slowly wets the column below.
+- **Evaporation** (same "not capped" gate as rain): `−MoistureEvaporationPerHour` (currently 2). Not temperature-scaled. Clamped ≥ 0. Capped soil (under buildings / stone / platforms) holds baseline without drying, so cave farms / deep nurseries / covered growhouses stay viable without irrigation.
+- **Plant passive draw**: each live plant pulls `round(plantType.moistureDrawPerHour)` from the soil tile directly below (clamped ≥ 0; no penalty when undersupplied — only the advancement cost gates growth). Default 4; overridable per `plantsDb.json` entry via the `moistureDrawPerHour` field.
+
+**Worldgen seed**: `WorldGen.SeedMoisture` sets every solid tile to `StartingMoisture = 50` at world generation so plants can grow from turn 1. Surface soil then drifts from this baseline under rain/decay; underground holds unless a water neighbour bumps it higher.
+
+## Plant Growth
+
+Plants advance through discrete growth stages, stored as `growthStage` on `Plant`. Ticked once per in-game second by `PlantController.TickUpdate → Plant.Grow(1)`.
+
+**Gates on every tick**:
+1. **Comfort**: `plantType.IsComfortableAt(soilTile, weather)` — ambient temp AND the moisture of the tile directly below the plant must fall within the JSON-authored `[tempMin, tempMax]` / `[moistureMin, moistureMax]` ranges. Out-of-range returns early, freezing both age and stage.
+2. **Stage advancement** (only when the tick would push `growthStage` higher): costs `2 × plantType.moistureDrawPerHour` from the soil tile below. Can't afford → freeze.
+3. **Height extension** (only when advancement lands in a new height band): every new tile above must be non-solid with `structs[0] == null`. Any blocker → freeze.
+
+**Height mechanic** (multi-tile plants with `maxHeight > 1`):
+- Max stage = `4 × maxHeight − 1`. One height tile per 4 growth stages.
+- `height = 1 + growthStage / 4`. Derived, not persisted — rebuilt on load by `Plant.RebuildExtensionTiles()`.
+- When a stage crossing triggers height increase, Plant claims the tile at `y + h` via `tile.structs[0] = this` and spawns a child `GameObject` + `SpriteRenderer` for rendering. Placement code (`StructPlacement.CanPlaceHere`, `StructController.Construct`) sees this and blocks new structures there.
+- Rendering: the topmost occupied tile shows `g{stage % 4}`, every tile below shows `g4` (stalk continuation). Bamboo requires `g0..g4` in `Sprites/Plants/Split/bamboo/`.
+- Harvest yield scales linearly with `height` at harvest time. Harvest releases all extension tiles and resets `age = 0`, `growthStage = 0`.
+- `Plant.Destroy()` releases all extension tiles.
+
+**`Mature()` shortcut** (worldgen): sets age + stage directly to max, calls `RebuildExtensionTiles()` which claims as many upper tiles as the geometry allows. Skips the moisture advancement cost (fresh soil isn't guaranteed wet yet) and silently tops-out below `maxHeight` if the world above the anchor is blocked.
+
+**Plant growth gate**: a plant occupies an air tile; `Plant.Grow()` reads moisture from the **solid tile directly below** and calls `plantType.IsComfortableAt(soilTile, weather)`. Returns early (skips the age increment) if `WeatherSystem.temperature` or `soilTile.moisture` is outside the plant's authored `[tempMin,tempMax]` / `[moistureMin,moistureMax]`. Null bounds = "no limit" on that side, so a plant with no ranges grows unconditionally (back-compat for content authored before this system). If there is no tile below (world bottom edge), the moisture check is skipped — not failed.
+
+**Save/load**: `WorldSaveData.moistureLevels` — flat `byte[]`, index `y * nx + x`. Omitted (null) when every tile is 0, mirroring `waterLevels`. Restored in Phase 1 of `ApplySaveData` alongside water.
+
+**ClearWorld**: `MoistureSystem.Clear()` zeros `tile.moisture` on every tile. Called from `WorldController.ClearWorld()` right after `WaterController.ClearWater()`.
+
+**InfoPanel display**: `TileInfoView` shows `moisture: N/100` on any solid tile. `StructureInfoView` (for a Plant) shows `temp: now°C  comfort: lo–hi°C` and `moisture: now/100  comfort: lo–hi`, with the current moisture read from the soil tile below — same source the growth gate uses. Null comfort bounds render as `—`.
 
 ## Weather & Temperature
 

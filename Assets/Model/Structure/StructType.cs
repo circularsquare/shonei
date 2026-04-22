@@ -95,6 +95,13 @@ public class StructType {
     // leisureNeed identifies which happiness satisfaction this building targets (e.g. "fireplace").
     public bool isLeisure {get; set;}
     public string leisureNeed {get; set;}
+    // Per-session leisure satisfaction multiplier (applied to Happiness.activityGrant when NoteLeisure fires).
+    // Default 1.0. Lower values (e.g. 0.5 on benches) reflect buildings that are cheaper / always-on /
+    // require less investment than premium leisure like fireplaces.
+    public float leisureGrant {get; set;} = 1f;
+    // Body pose an animal strikes while seated/working at this building (e.g. "sit" on a bench).
+    // Mapped to an Animator int by AnimationController.PoseToInt. null = default state-driven animation.
+    public string leisurePose {get; set;}
     public bool socialWhenShared {get; set;} // true = grant half social happiness to both mice when one finishes and another is still seated
     // When activeStartHour >= 0, this building is only active during [activeStartHour, activeEndHour).
     // Hours 0–24; end < start wraps midnight (e.g. 16→6 = 4pm–6am). -1 = always active.

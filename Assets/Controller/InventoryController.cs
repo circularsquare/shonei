@@ -44,7 +44,9 @@ public class InventoryController : MonoBehaviour {
         globalInventory = new GlobalInventory();
         discoveredItems = Db.itemsFlat.ToDictionary(i => i.id, i => false);
         itemDisplayGos = Db.itemsFlat.ToDictionary(i => i.id, i => default(GameObject));
-        targets = Db.itemsFlat.ToDictionary(i => i.id, i => 10000); // 100 liang in fen
+        // Books default to 1 (100 fen) — one copy of each book is plenty; scribes will skip
+        // a book recipe once any exists in the world. Everything else defaults to 100 liang.
+        targets = Db.itemsFlat.ToDictionary(i => i.id, i => i.itemClass == ItemClass.Book ? 100 : 10000);
     }
 
     public void AddInventory(Inventory inv) {
@@ -289,7 +291,7 @@ public class InventoryController : MonoBehaviour {
         selectedInventories.Clear();
         RefreshHighlights();
         foreach (var key in targets.Keys.ToList())
-            targets[key] = 10000;
+            targets[key] = Db.items[key].itemClass == ItemClass.Book ? 100 : 10000;
         foreach (var key in discoveredItems.Keys.ToList())
             discoveredItems[key] = false;
         pendingGroupOpenOverrides = null;

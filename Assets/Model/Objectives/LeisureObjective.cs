@@ -22,4 +22,13 @@ public class LeisureObjective : Objective {
         }
         // AnimalStateManager.HandleLeisure ticks workProgress and calls Complete() when done.
     }
+    // Pose comes from the seated building's StructType (JSON-authored). A ReadBookTask on its
+    // floor-fallback tile has no seatBuilding → null → no pose override.
+    public override string PoseOverride {
+        get {
+            if (task is LeisureTask lt) return lt.building?.structType.leisurePose;
+            if (task is ReadBookTask rb) return rb.seatBuilding?.structType.leisurePose;
+            return null;
+        }
+    }
 }

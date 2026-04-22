@@ -3,7 +3,7 @@ using UnityEngine;
 using System;
 
 // Per-animal navigation facade: owns the active path, drives per-frame movement along
-// it, and exposes Find*/FindPathTo* helpers for tasks to locate targets/paths. Graph
+// it, and exposes FindPath*/Path* helpers for tasks to locate targets/paths. Graph
 // infrastructure (node data, A*) lives in Navigation.cs — this class only consumes it.
 public class Nav {
     public Animal a;
@@ -27,20 +27,18 @@ public class Nav {
         path = null;
     }
 
-    // sets target tile and sets path, starting navigation.
-    public bool NavigateTo(Tile t, Path iPath = null){  // this should be the only way you set target!
-        if (t == null && iPath == null){Debug.LogError("navigating without destination or path!"); return false;}
-        if (iPath != null){path = iPath; t = iPath.tile;} // if fed a path, just use it.
-        else {path = world.graph.Navigate(a.TileHere().node, t.node);} // otherwise find a path
-        if (path == null){ return false; } // if still no path exists, leave
-
-        pathIndex = 0; prevNode = path.nodes[0];        // set prevNode, pathindex
-        if (path.length != 0) {nextNode = path.nodes[1];} else{nextNode = prevNode;} // set nextNode
-        a.target = t;   // set target, starting navigation
+    // Commits the animal to walking this path. The only entry point for starting
+    // navigation — all task/objective code routes through here.
+    public bool Navigate(Path p){
+        if (p == null){Debug.LogError("Navigate called with null path"); return false;}
+        path = p;
+        pathIndex = 0;
+        prevNode = path.nodes[0];
+        nextNode = path.length != 0 ? path.nodes[1] : prevNode;
+        a.target = path.tile;
         return true;
     }
-    public bool Navigate(Path p){return NavigateTo(p.tile, p);}
-    public void EndNavigation(){ path = null; pathIndex = 0; prevNode = null; nextNode = null; preventFall = false; }
+    private void EndNavigation(){ path = null; pathIndex = 0; prevNode = null; nextNode = null; preventFall = false; }
     public void Fall(){
         if (a.task != null) {
             Debug.Log(a.aName + " falling! interrupting task " + a.task.ToString());
@@ -73,11 +71,7 @@ public class Nav {
                 nextNode = path.nodes[pathIndex + 1];
             }
         }
-        // Suppress falling while deliberately on a non-standable path segment:
-        //   - Waypoint edges: cliff/stair traversal through fractional world positions.
-        //   - Vertical edges: ladder climbing/descending.
-        // The old "!prevNode.standable" case (horizontal cliff-exit from intermediate tile)
-        // is gone — cliff traversal now uses waypoints which are already covered above.
+        // Suppress falling on waypoint edges (cliff/stair) and vertical edges (ladders).
         preventFall = prevNode.isWaypoint || nextNode.isWaypoint
                    || Mathf.Abs(nextNode.wy - prevNode.wy) > 0.1f;
         var (edgeCost, edgeLen) = Graph.instance.GetRawEdgeInfo(prevNode, nextNode);
@@ -96,81 +90,84 @@ public class Nav {
     }
 
 
-    // ── Naming convention ────────────────────────────────────────────────────
-    //    Find(...)                -> returns Tile. No pathfinding. Can find unreachable tiles.
-    //    FindPathTo(...)          -> returns Path. Animal goes TO the matching tile.
-    //    FindPathAdjacentTo(...)  -> returns (Tile, Path). Animal stands NEXT TO matching tile.
-    //
-    // Every FindPath* method gates candidates by path cost: paths whose cost exceeds
-    // r × Task.FindRadiusTolerance are ignored, so the returned path is always a
-    // "reasonable journey" for the caller's search radius.
-    public Tile Find(Func <Tile, bool> condition, int r = Task.MediumFindRadius){
-        Tile closestTile = null;
-        float closestDistance = float.MaxValue;
-        for (int x = -r; x <= r; x++) {
-            for (int y = -r; y <= r; y++) {
-                Tile tile = world.GetTileAt(a.x + x, a.y + y);
-                if (tile != null && condition(tile)) {
-                    float distance = SquareDistance((float)tile.x, a.x, (float)tile.y, a.y);
-                    if (distance < closestDistance) {
-                        closestDistance = distance;
-                        closestTile = tile;
-                    }
-                }
-            }
-        }
-        return closestTile;
-    }
-
-    public Path FindPathTo(Func<Tile, bool> condition, int r = Task.MediumFindRadius){
-        // Sort matching tiles by Chebyshev (crow-flies), then pathfind in order and return the
-        // FIRST candidate whose path fits within budget. Not guaranteed minimum-cost across all
-        // candidates — but in practice the nearest crow-flies candidate is almost always also
-        // the shortest walk, and we avoid pathfinding the rest of the box.
-        float maxCost = r * Task.FindRadiusTolerance;
-        Node myNode = a.TileHere().node;
+    // ── Tile-box scan primitive ──────────────────────────────────────────────
+    // Returns tiles in the (2r+1)² box centered at (cx,cy), sorted ascending by
+    // Chebyshev distance from the center. Off-map (null) tiles are skipped.
+    // Use this for "scan outward, first match wins" logic — e.g. FindPathTo, or
+    // any task-local spatial search around an anchor (ReadBookTask anchors on a
+    // shelf tile, not the animal). Static + takes World explicitly so non-animal
+    // callers can use it without a Nav instance.
+    public static List<Tile> TilesAroundByDistance(World world, int cx, int cy, int r){
         var candidates = new List<(int cheb, Tile tile)>();
-        for (int x = -r; x <= r; x++) {
-            for (int y = -r; y <= r; y++) {
-                Tile tile = world.GetTileAt(a.x + x, a.y + y);
-                if (tile != null && condition(tile)) {
-                    candidates.Add((Mathf.Max(Mathf.Abs(x), Mathf.Abs(y)), tile));
-                }
+        for (int dx = -r; dx <= r; dx++) {
+            for (int dy = -r; dy <= r; dy++) {
+                Tile tile = world.GetTileAt(cx + dx, cy + dy);
+                if (tile == null) continue;
+                candidates.Add((Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy)), tile));
             }
         }
         candidates.Sort((p, q) => p.cheb.CompareTo(q.cheb));
-        foreach (var (_, tile) in candidates) {
+        var result = new List<Tile>(candidates.Count);
+        foreach (var (_, tile) in candidates) result.Add(tile);
+        return result;
+    }
+
+    // ── Candidate-list first-fit primitive ───────────────────────────────────
+    // Counterpart to TilesAroundByDistance for callers whose candidates come from a
+    // pre-built list (inventories, structures) rather than a spatial box. Collects
+    // candidates within Chebyshev r of the animal, applies the filter, sorts ascending
+    // by Chebyshev, then pathfinds in order and returns the FIRST whose path fits
+    // within r × FindRadiusTolerance. Callers provide position accessors and a nodeFn
+    // (nullable — if it returns null, that candidate is skipped: lets callers short-
+    // circuit unpathable structures without extra plumbing). Used by FindPathToInv,
+    // FindPathToStruct, FindPathToHarvestable.
+    private (Path path, T candidate) FindPathToCandidate<T>(
+        IEnumerable<T> candidates,
+        Func<T, int> xFn, Func<T, int> yFn,
+        Func<T, Node> nodeFn,
+        Func<T, bool> filter,
+        int r) {
+        float maxCost = r * Task.FindRadiusTolerance;
+        Node myNode = a.TileHere().node;
+        var scored = new List<(int cheb, T item)>();
+        foreach (T c in candidates) {
+            int cheb = Mathf.Max(Mathf.Abs(xFn(c) - (int)a.x), Mathf.Abs(yFn(c) - (int)a.y));
+            if (cheb > r) continue;
+            if (filter != null && !filter(c)) continue;
+            scored.Add((cheb, c));
+        }
+        scored.Sort((x, y) => x.cheb.CompareTo(y.cheb));
+        foreach (var (_, item) in scored) {
+            Node target = nodeFn(item);
+            if (target == null) continue;
+            Path p = world.graph.Navigate(myNode, target);
+            if (p != null && p.cost <= maxCost) return (p, item);
+        }
+        return (null, default);
+    }
+
+    // ── Generic path finder ──────────────────────────────────────────────────
+    // FindPathTo(condition, r) returns a Path to the nearest tile matching `condition`,
+    // or null. Candidates iterate by Chebyshev order (crow-flies lower bound on walk
+    // cost) and the first whose A* cost fits within r × FindRadiusTolerance wins.
+    // Not guaranteed minimum-cost across all candidates — but the nearest crow-flies
+    // match is almost always the shortest walk, and we avoid pathfinding the rest of
+    // the box.
+    //
+    // Every FindPath* method below gates candidates the same way, so any returned path
+    // is a "reasonable journey" relative to the caller's search radius.
+    public Path FindPathTo(Func<Tile, bool> condition, int r = Task.MediumFindRadius){
+        float maxCost = r * Task.FindRadiusTolerance;
+        Node myNode = a.TileHere().node;
+        foreach (Tile tile in TilesAroundByDistance(world, (int)a.x, (int)a.y, r)) {
+            if (!condition(tile)) continue;
             Path p = world.graph.Navigate(myNode, tile.node);
             if (p != null && p.cost <= maxCost) return p;
         }
         return null;
     }
 
-    // Returns (matchingTile, pathToStandingPosition).
-    // Use when the target tile might not be standable (e.g. blueprints for walls/stairs).
-    public (Tile, Path) FindPathAdjacentTo(Func<Tile, bool> condition, int r = Task.MediumFindRadius){
-        // First-fit by Chebyshev order. See FindPathTo for rationale.
-        float maxCost = r * Task.FindRadiusTolerance;
-        var candidates = new List<(int cheb, Tile tile)>();
-        for (int x = -r; x <= r; x++) {
-            for (int y = -r; y <= r; y++) {
-                Tile tile = world.GetTileAt(a.x + x, a.y + y);
-                if (tile != null && condition(tile)) {
-                    candidates.Add((Mathf.Max(Mathf.Abs(x), Mathf.Abs(y)), tile));
-                }
-            }
-        }
-        candidates.Sort((p, q) => p.cheb.CompareTo(q.cheb));
-        foreach (var (_, tile) in candidates) {
-            Path cPath = PathToOrAdjacent(tile);
-            if (cPath != null && cPath.cost <= maxCost) return (tile, cPath);
-        }
-        return (null, null);
-    }
-
     // ── Specific path finders ────────────────────────────────────────────────
-    //    FindPathToX           = animal walks to the tile
-    //    FindPathAdjacentToX   = animal walks next to the tile
 
     // minSpace: minimum free capacity (fen) the storage must offer for `item`.
     // Default 1 matches legacy "any space counts" behaviour. Callers that plan to deliver
@@ -232,75 +229,63 @@ public class Nav {
     }
     private (Path path, Inventory inv) FindPathToInv(Inventory.InvType[] types, Func<Inventory, bool> filter, int r) {
         var ic = InventoryController.instance;
-        float maxCost = r * Task.FindRadiusTolerance;
-        Node myNode = a.TileHere().node;
-        var candidates = new List<(int cheb, Inventory inv, Tile tile)>();
+        return FindPathToCandidate(
+            EnumerateInvs(ic, types),
+            inv => inv.x, inv => inv.y,
+            inv => world.GetTileAt(inv.x, inv.y)?.node,
+            filter, r);
+    }
+
+    private static IEnumerable<Inventory> EnumerateInvs(InventoryController ic, Inventory.InvType[] types) {
         foreach (var type in types) {
             if (!ic.byType.TryGetValue(type, out var list)) continue;
-            foreach (Inventory inv in list) {
-                int cheb = Mathf.Max(Mathf.Abs(inv.x - (int)a.x), Mathf.Abs(inv.y - (int)a.y));
-                if (cheb > r) continue;
-                if (!filter(inv)) continue;
-                Tile t = world.GetTileAt(inv.x, inv.y);
-                if (t == null) continue;
-                candidates.Add((cheb, inv, t));
-            }
+            foreach (Inventory inv in list) yield return inv;
         }
-        candidates.Sort((x, y) => x.cheb.CompareTo(y.cheb));
-        foreach (var (_, inv, t) in candidates) {
-            Path p = world.graph.Navigate(myNode, t.node);
-            if (p != null && p.cost <= maxCost) return (p, inv);
-        }
-        return (null, null);
     }
     private Path FindPathToStruct(StructType st, Func<Structure, bool> filter = null, int r = Task.MediumFindRadius) {
         var list = StructController.instance.GetByType(st);
         if (list == null) return null;
-        float maxCost = r * Task.FindRadiusTolerance;
-        Node myNode = a.TileHere().node;
-        var candidates = new List<(int cheb, Structure s)>();
-        foreach (Structure s in list) {
-            int cheb = Mathf.Max(Mathf.Abs(s.x - (int)a.x), Mathf.Abs(s.y - (int)a.y));
-            if (cheb > r) continue;
-            if (filter != null && !filter(s)) continue;
-            candidates.Add((cheb, s));
-        }
-        candidates.Sort((x, y) => x.cheb.CompareTo(y.cheb));
-        foreach (var (_, s) in candidates) {
-            Path p = world.graph.Navigate(myNode, s.workTile.node);
-            if (p != null && p.cost <= maxCost) return p;
-        }
-        return null;
+        var (p, _) = FindPathToCandidate<Structure>(
+            list,
+            s => s.x, s => s.y,
+            s => s.workTile?.node,
+            filter, r);
+        return p;
     }
     public Path FindPathToBuilding(StructType structType, int r = Task.MediumFindRadius) {
         return FindPathToStruct(structType, s => s.res.Available() && !s.IsBroken, r);
+    }
+
+    // Finds the nearest reachable available seat on any leisure building matching `buildingFilter`
+    // (typically a leisureNeed check + Building.CanHostLeisureNow). Uses the same Chebyshev-sort +
+    // first-fit discipline as FindPathToStruct — not guaranteed minimum A* cost, but avoids
+    // pathfinding every seat of every building. Returns (null, null, -1) on no match.
+    // The caller reserves seatRes[seatIndex] on the returned Building.
+    public (Path path, Building building, int seatIndex) FindPathToLeisureSeat(
+        Func<Building, bool> buildingFilter, int r = Task.MediumFindRadius) {
+        var (p, seat) = FindPathToCandidate<(Building b, int i)>(
+            EnumerateAvailableLeisureSeats(buildingFilter),
+            s => s.b.WorkTileAt(s.i)?.x ?? 0,
+            s => s.b.WorkTileAt(s.i)?.y ?? 0,
+            s => s.b.WorkTileAt(s.i)?.node,
+            null, r);
+        return (p, seat.b, seat.b != null ? seat.i : -1);
+    }
+
+    private static IEnumerable<(Building b, int i)> EnumerateAvailableLeisureSeats(Func<Building, bool> filter) {
+        var sc = StructController.instance;
+        if (sc == null) yield break;
+        foreach (Building b in sc.GetLeisureBuildings()) {
+            if (!filter(b)) continue;
+            if (b.seatRes == null) continue;
+            for (int i = 0; i < b.seatRes.Length; i++)
+                if (b.seatRes[i].Available()) yield return (b, i);
+        }
     }
     public Path FindMarketPath() {
         // Any standable tile on the x=0 column acts as the portal to the off-screen market.
         // Searching the whole column means a wall at the market's exact tile won't block merchants.
         return FindPathTo(t => t.x == 0 && t.node.standable, r: Task.MarketFindRadius);
-    }
-    public Path FindPathToHarvestable(Job job, int r = Task.MediumFindRadius) {
-        float maxCost = r * Task.FindRadiusTolerance;
-        Node myNode = a.TileHere().node;
-        var candidates = new List<(int cheb, Structure s)>();
-        foreach (var st in Db.structTypeByName.Values) {
-            if (!st.isPlant || st.job != job) continue;
-            var list = StructController.instance.GetByType(st);
-            if (list == null) continue;
-            foreach (Structure s in list) {
-                int cheb = Mathf.Max(Mathf.Abs(s.x - (int)a.x), Mathf.Abs(s.y - (int)a.y));
-                if (cheb > r) continue;
-                if (!(s is Plant p) || !p.harvestable || !s.res.Available()) continue;
-                candidates.Add((cheb, s));
-            }
-        }
-        candidates.Sort((x, y) => x.cheb.CompareTo(y.cheb));
-        foreach (var (_, s) in candidates) {
-            Path pa = world.graph.Navigate(myNode, s.workTile.node);
-            if (pa != null && pa.cost <= maxCost) return pa;
-        }
-        return null;
     }
     public (Path, ItemStack) FindPathItemStack(Item item, int r = Task.MediumFindRadius){
         var (path, foundInv) = FindPathToInv(
@@ -379,13 +364,7 @@ public class Nav {
 
 
     // ── Utils ────────────────────────────────────────────────────────────────
-    public float SquareDistance(float x1, float x2, float y1, float y2){return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);}
-    public bool CanReach(Tile t) {
-        if (t?.node == null) return false;
-        Node myNode = a.TileHere()?.node;
-        if (myNode == null) return false;
-        return world.graph.SameComponent(myNode, t.node);
-    }
+    private static float SquareDistance(float x1, float x2, float y1, float y2){return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);}
 
     // Pure component check — no A*. Returns true if any building of this type is in the same
     // connected component as the animal. Use this instead of FindPathToBuilding() != null

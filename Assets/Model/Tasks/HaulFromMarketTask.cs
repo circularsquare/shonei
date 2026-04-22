@@ -33,6 +33,20 @@ public class HaulFromMarketTask : Task {
         this.resumeReturnLeg = returnLeg;
     }
 
+    // Called when an at-market objective (Receive) aborts. The merchant's sprite is physically at
+    // the town portal, but conceptually off-screen at the market — a plain Fail would snap them
+    // idle at x=0 as if they never travelled. Instead, drop any pending work and walk back.
+    // iq/storageTile are nulled so a mid-return save emits no task descriptor (we have nothing
+    // to deliver); the loader falls through to ResumeTravelTask and finishes the remaining travel.
+    public override void FailAtMarket() {
+        Debug.Log($"{animal.aName} ({animal.job.name}) HaulFromMarket aborting at market — walking home");
+        iq = null;
+        storageTile = null;
+        objectives.Clear();
+        objectives.AddLast(new TravelingObjective(this, MarketTransitTicks));
+        StartNextObjective();
+    }
+
     public override bool Initialize() {
         if (isResume) return InitializeResume();
 

@@ -54,6 +54,10 @@ public class WeatherSystem {
             if (Random.value < 0.12f) SetRain(false);
             ReplenishRainwater();
         }
+
+        // Soil diffusion, evaporation, and plant passive draw run once per in-game hour.
+        // Rain uptake runs on a separate per-second cadence in World.Update.
+        MoistureSystem.instance?.HourlyUpdate();
     }
 
     void ReplenishRainwater() {

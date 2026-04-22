@@ -27,6 +27,11 @@ public class SoundManager : MonoBehaviour {
     // Currently assigned ambient clip name (to avoid re-assigning every frame).
     string currentAmbientClip;
 
+    // True while the rain loop is paused because the game is paused. Tracked so we
+    // only call AudioSource.Pause/UnPause on the pause↔resume transitions, not every
+    // frame, and so we can resume mid-clip instead of re-attacking the sample.
+    bool ambientPausedByGame;
+
     void Awake() {
         if (instance != null && instance != this) {
             Destroy(gameObject);
@@ -61,6 +66,21 @@ public class SoundManager : MonoBehaviour {
     // --- Ambient (rain) ---
 
     void UpdateRainAmbient() {
+        // While the game is paused, silence the rain loop but keep the clip's
+        // playhead via AudioSource.Pause() — resuming continues mid-loop instead
+        // of re-triggering the sample's attack on every space-tap.
+        if (Time.timeScale == 0f) {
+            if (!ambientPausedByGame && ambientSource.isPlaying) {
+                ambientSource.Pause();
+                ambientPausedByGame = true;
+            }
+            return;
+        }
+        if (ambientPausedByGame) {
+            ambientSource.UnPause();
+            ambientPausedByGame = false;
+        }
+
         float rain = WeatherSystem.instance?.rainAmount ?? 0f;
 
         // Quadratic curve so volume drops off faster than the linear particle

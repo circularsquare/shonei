@@ -42,6 +42,7 @@ public class Tile {
     public Plant plant => structs[0] as Plant;           // alias for depth-0 Plant
     public Inventory inv; // this encapsulates all inventory types
     public ushort water; // 0–160 internal fixed-point (10 units = 1 display unit); 160 = fully filled tile
+    public byte moisture; // 0–100 soil wetness percent. Only meaningful on SOLID tiles (dirt/stone) — air tiles stay 0. Plants above read moisture from the soil tile directly below them.
     public Node node;
 
     

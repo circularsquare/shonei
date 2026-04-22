@@ -77,8 +77,11 @@ public class Happiness {
 
     // Granted when a mouse finishes leisuring at a fireplace (or other leisure building).
     // Special side-effects (warmth) are handled here; the satisfaction grant is generic.
-    public void NoteLeisure(string need) {
-        Grant(need, activityGrant);
+    // `multiplier` scales the satisfaction grant (from StructType.leisureGrant) — lets cheap
+    // always-on buildings like benches grant less than premium buildings like fireplaces.
+    // Warmth (fireplace-only) is NOT scaled: the warmth buff is a separate thermal mechanic.
+    public void NoteLeisure(string need, float multiplier = 1f) {
+        Grant(need, activityGrant * multiplier);
         if (need == "fireplace") {
             warmth = Mathf.Min(satisfactionCap, warmth + activityGrant);
         }

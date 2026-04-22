@@ -203,6 +203,25 @@
         ],
         "category": "structures"
     },{
+        "id": 44,
+        "name": "bench",
+        "description": "a simple wooden bench. mice sit here to relax or read.",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 5 }
+        ],
+        "depth": 0,
+        "isBuilding": true,
+        "isLeisure": true,
+        "leisureNeed": "bench",
+        "leisureGrant": 0.5,
+        "leisurePose": "sit",
+        "capacity": 1,
+        "nworkTiles": [{"dx": 0, "dy": 0}],
+        "activeStartHour": 0,
+        "activeEndHour": 24,
+        "category": "structures"
+    },{
         "id": 80,
         "name": "empty",
         "description": "dig",

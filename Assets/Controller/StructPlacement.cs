@@ -16,6 +16,10 @@ public static class StructPlacement {
                 for (int i = 0; i < st.nx; i++) {
                     Tile t = world.GetTileAt(tile.x + i, tile.y);
                     if (t == null) return false;
+                    // Plants own their tile exclusively at every depth — a tall bamboo would
+                    // otherwise let platforms / roads / foreground decorations slip in through
+                    // tiles whose structs[st.depth] happens to be null.
+                    if (t.structs[0] is Plant) return false;
                     if (t.structs[st.depth] != null || t.GetBlueprintAt(st.depth) != null) return false;
                 }
             }

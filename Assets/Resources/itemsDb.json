@@ -210,6 +210,11 @@
             }
         ]
     },{
+        "id": 280,
+        "name": "bamboo",
+        "decayRate": 0.05,
+        "children": null
+    },{
         "id": 300,
         "name": "book",
         "decayRate": 2.0,

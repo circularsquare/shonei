@@ -49,6 +49,8 @@ Fields:
 | `decorRadius` | int? | Chebyshev radius for decoration effect |
 | `isLeisure` | bool? | mice actively visit during leisure time (e.g. fireplace) |
 | `leisureNeed` | string? | which happiness satisfaction this building targets (e.g. "fireplace"); required when `isLeisure` is true |
+| `leisureGrant` | float? | multiplier on `Happiness.activityGrant` when `NoteLeisure` fires (default `1.0`). Lower values for cheap/always-on buildings (e.g. bench = `0.5`) so they don't fully substitute for premium leisure. Warmth buff on fireplace is NOT scaled. |
+| `leisurePose` | string? | body pose an animal strikes while seated at this building (e.g. `"sit"`). Read by `LeisureObjective.PoseOverride` and mapped to an Animator int by `AnimationController.PoseToInt`. null/missing = default state-driven animation. See SPEC-rendering.md §Animation states & pose overrides. |
 | `hasFuelInv` | bool? | building has an internal fuel reservoir |
 | `fuelItemName` | string? | item consumed by reservoir (group or leaf) |
 | `fuelCapacity` | float? | max fuel in liang |
@@ -149,6 +151,16 @@ Fields:
 | `growthTime` | int | ticks to mature |
 | `harvestTime` | float | ticks to harvest |
 | `njob` | string | job that can harvest this plant |
+| `tempMin` | float? | °C lower bound for growth — `null` = no lower bound |
+| `tempMax` | float? | °C upper bound for growth |
+| `moistureMin` | int? | 0–100 soil-moisture lower bound (reads `Tile.moisture`) |
+| `moistureMax` | int? | 0–100 soil-moisture upper bound |
+| `moistureDrawPerHour` | float? | passive draw from the soil tile below each in-game hour (default 4). Crossing into a new growth stage additionally costs `2 × this` from the same tile — see gating below |
+| `maxHeight` | int? | max tile-height this plant can reach (default 1). Multi-tile plants extend upward as growth stage crosses 4-stage thresholds (stage 4 → 2 tall, stage 8 → 3 tall); max stage = `4 × maxHeight − 1`. Yield at harvest scales linearly with the plant's current height. See SPEC-systems.md "Plant Growth". |
+
+**Comfort range gating**: `Plant.Grow()` skips its age increment when either the global ambient temperature OR the tile's `moisture` is outside the authored range. Out-of-range simply freezes growth — no withering, no stress. Null bounds mean "no limit" on that side, letting plants with unspecified ranges grow unconditionally. The helper `PlantType.IsComfortableAt(Tile, WeatherSystem)` encapsulates the range tests.
+
+**Moisture consumption**: every in-game hour, each plant drains `moistureDrawPerHour` from the soil tile below (clamped ≥ 0; undersupplied plants simply take what's available). Additionally, whenever `Plant.Grow()` would cross into the next growth stage, it must first pay `2 × moistureDrawPerHour` from that same tile — if the soil doesn't carry that cost, the plant holds at its current stage (age also holds, keeping `stage = age*3/growthTime` coherent). This advancement cost is where moisture shortage actually gates growth; the passive draw just drains the soil over time.
 
 ## `tilesDb.json` — TileTypes
 

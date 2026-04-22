@@ -9,13 +9,13 @@ CONTENT
     - silkworm building? -> silk cocoons -> cloth -> clothing 
 - trading 
 - plant
-    - flesh out plant growth, moisture and temperature
-    - make plants grow from sunlight?
-    - bamboo 
-        - grows multtiple tiles 
-        - also make trees grow multiple tiles tall
+    - plants die if temp / moisture are bad?
+    - irrigation?
 - research
     - additional levels display?
+- books 
+    - cleanup?
+
 VISUALS
 - make item icons more coherent / similar
 - tab styling, add building icons?
@@ -34,16 +34,10 @@ MOUSE AI
 - dynamic mouse task objectives
 - general way of estimating what needs will become an issue before starting a long task 
 
+CODE CLEANUP 
+- nav is long?
+
 
 BUGS
 
 TODAY GOALS
-- books
-    - books for gaining skills 
-    - manuals for learning technologies
-    - scriptoriums
-        - bookshelves
-        - scribes can write book for a tech once we have unlocked it 
-            - need to manually assign write book job?
-    - scientists will read book if available instead of manual research 
-    - mice randomly read book as leisure 

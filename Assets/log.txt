@@ -1,5 +1,10 @@
 meoww!!
 
+4/22
+- tile moisture! replenished by rain and nearby water, spreads through dirt, feeds plants.
+- plant details! plant temperature and moisture needs.
+- bamboo! multi tile vertical growth.
+- benches! sitting. new pose system. 
 4/17
 - books! scribes, bookshelves, research bonuses, leisure reading
 4/16

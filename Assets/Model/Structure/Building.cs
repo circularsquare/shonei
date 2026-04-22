@@ -95,6 +95,17 @@ public class Building : Structure {
     // Player intent vs. world state — both must be satisfied for the building to accept orders.
     public bool disabled = false;
 
+    // True when a mouse could meaningfully use this leisure building right now: not disabled,
+    // not broken, fueled (if it has a reservoir), and within its active-hour window. Used by
+    // LeisureTask / ReadBookTask seat scans so every leisure-type task applies the same
+    // suitability rules — prevents drift like "benches ignore activeStartHour" by accident.
+    public bool CanHostLeisureNow() {
+        if (disabled || IsBroken) return false;
+        if (reservoir != null && !reservoir.HasFuel()) return false;
+        if (!SunController.IsHourInRange(structType.activeStartHour, structType.activeEndHour)) return false;
+        return true;
+    }
+
     // Non-null only for workstation buildings. Owns the player-adjustable worker slot limit.
     public Workstation workstation { get; private set; }
     public Inventory storage { get; private set; }

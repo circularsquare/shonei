@@ -39,8 +39,25 @@ public class AnimationController : MonoBehaviour {
         else if (animal.IsMoving()){ animator.SetInteger("state", 1); }
         else { animator.SetInteger("state", 0); }
 
+        // Pose override layer: current Objective can request a body pose (e.g. "sit") that
+        // wins over the state-driven animation. Pose is data-driven — see StructType.leisurePose
+        // and Objective.PoseOverride. Self-clears on objective transition (no explicit reset).
+        animator.SetInteger("pose", PoseToInt(animal.task?.currentObjective?.PoseOverride));
+
         UpdateClothingOverlay();
         UpdateChatBubble();
+    }
+
+    // Maps a pose name (from JSON / Objective.PoseOverride) to the `pose` Animator int.
+    // Add a case here when wiring a new pose clip in AnimControllerMouse.controller.
+    private static int PoseToInt(string pose) {
+        if (string.IsNullOrEmpty(pose)) return 0;
+        switch (pose) {
+            case "sit": return 1;
+            default:
+                Debug.LogError($"AnimationController.PoseToInt: unknown pose '{pose}' — add a case here.");
+                return 0;
+        }
     }
 
     // LateUpdate runs after Animal.Update() sets the root localScale for facing direction,

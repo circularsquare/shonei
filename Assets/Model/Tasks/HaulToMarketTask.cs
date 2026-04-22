@@ -222,6 +222,24 @@ public class HaulToMarketTask : Task {
         base.Cleanup();
     }
 
+    // Called when an at-market objective (the piggyback Receive, or a hypothetical Deliver-to-market
+    // failure) aborts. See HaulFromMarketTask.FailAtMarket for rationale — same idea: walk home rather
+    // than teleporting idle to the portal. Nulling iq and pickup state means a mid-return save will
+    // emit no task descriptor; on load the merchant finishes travel as a bare ResumeTravelTask.
+    // Any goods still in the animal's inventory (outbound goods that never delivered) will be dropped
+    // by normal idle behaviour once the animal reappears at x=0.
+    public override void FailAtMarket() {
+        Debug.Log($"{animal.aName} ({animal.job.name}) HaulToMarket aborting at market — walking home");
+        iq = null;
+        pickupIq = null;
+        pickupStorageTile = null;
+        pickupOrder?.res.Unreserve();
+        pickupOrder = null;
+        objectives.Clear();
+        objectives.AddLast(new TravelingObjective(this, MarketTransitTicks));
+        StartNextObjective();
+    }
+
     // Rebuilds the tail of the task for a merchant loaded mid-transit. Two shapes:
     //   outbound: [Travel(remaining) → DeliverToInventory → Travel(return)]
     //   return:   [Travel(remaining)]                  (items already delivered)

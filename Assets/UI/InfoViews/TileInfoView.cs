@@ -34,6 +34,10 @@ public class TileInfoView : MonoBehaviour {
         if (tile.water > 0)
             sb.Append($"\nwater: {tile.water}/{WaterController.WaterMax}");
 
+        // Moisture is only meaningful on solid soil tiles — air tiles stay 0 by convention.
+        if (tile.type.solid)
+            sb.Append($"\nmoisture: {tile.moisture}/{MoistureSystem.MoistureMax}");
+
         // Floor inventory
         if (tile.inv != null) {
             sb.Append("\ninv:");

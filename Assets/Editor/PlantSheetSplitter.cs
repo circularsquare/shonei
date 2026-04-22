@@ -7,13 +7,11 @@ using SysDir  = System.IO.Directory;
 
 // Splits plant sprite sheets into individual growth-stage files.
 //
-// Sheet format: 4 columns × 1 row, each cell is CellSize × CellSize pixels.
-// The sheet is 64 wide × 16 high. Cells are read left-to-right.
+// Sheet format: 1 row of CellSize × CellSize cells, read left-to-right.
+// Number of cells is derived from sheet width ÷ CellSize — e.g. a 64×16 sheet
+// splits into 4 stages (g0..g3), an 80×16 sheet into 5 (g0..g4, for multi-tile
+// plants like bamboo that need a stalk-continuation sprite).
 // Transparent cells are skipped (no file written).
-//
-// Sheet layout:
-//   col 0    col 1    col 2    col 3
-//   g0       g1       g2       g3        ← growth stages
 //
 // Source:  Assets/Resources/Sprites/Plants/Sheets/{plantName}.png
 // Output:  Assets/Resources/Sprites/Plants/Split/{plantName}/g0.png  etc.
@@ -26,13 +24,6 @@ public static class PlantSheetSplitter {
     const int CellSize     = 16;
     const string SheetsFolder = "Assets/Resources/Sprites/Plants/Sheets";
     const string SplitFolder  = "Assets/Resources/Sprites/Plants/Split";
-
-    static readonly (int row, int col, string name)[] Slots = {
-        (0, 0, "g0"),
-        (0, 1, "g1"),
-        (0, 2, "g2"),
-        (0, 3, "g3"),
-    };
 
     // ── batch: all sheets in Sheets/ ─────────────────────────────────────────
     [MenuItem("Tools/Split All Plant Sheets")]
@@ -122,11 +113,18 @@ public static class PlantSheetSplitter {
         string outDir = SysPath.Combine(SplitFolder, plantName).Replace('\\', '/');
         SysDir.CreateDirectory(outDir);
 
-        foreach (var (row, col, slotName) in Slots) {
+        // Column count derived from sheet width. Only the top row is read —
+        // multi-row sheets aren't supported yet (no plant needs them).
+        int numCols = sheet.width / CellSize;
+        if (numCols <= 0) {
+            Debug.LogWarning($"[PlantSheetSplitter] {sheetPath} is narrower than one cell ({CellSize}px) — skipping");
+        }
+        for (int col = 0; col < numCols; col++) {
+            string slotName = "g" + col;
             int px = col * CellSize;
-            int py = sheet.height - (row + 1) * CellSize;
+            int py = sheet.height - CellSize;
 
-            if (px + CellSize > sheet.width || py < 0) continue;
+            if (py < 0) continue;
 
             Color[] pixels = sheet.GetPixels(px, py, CellSize, CellSize);
 

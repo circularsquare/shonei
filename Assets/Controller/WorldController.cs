@@ -148,8 +148,9 @@ public class WorldController : MonoBehaviour {
             GlobalInventory.instance.itemAmounts[key] = 0;
         }
 
-        // 6. Reset all tiles: reset tile types (fires sprite callbacks) and water
+        // 6. Reset all tiles: reset tile types (fires sprite callbacks), water, and moisture
         WaterController.instance?.ClearWater();
+        MoistureSystem.instance?.Clear();
         for (int x = 0; x < world.nx; x++) {
             for (int y = 0; y < world.ny; y++) {
                 Tile tile = world.GetTileAt(x, y);

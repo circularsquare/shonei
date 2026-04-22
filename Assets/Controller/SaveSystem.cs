@@ -36,6 +36,7 @@ using Newtonsoft.Json;
 //   [x] Research (progress, unlockedIds, studiedIds, unlockTimestamps, unlockCounter)
 //   [x] Disabled recipe ids
 //   [x] Water levels
+//   [x] Moisture levels
 //   [x] Is raining
 //   [x] Global item targets
 //   [x] Market targets (via MarketBuilding.instance)
@@ -101,6 +102,18 @@ public class SaveSystem : MonoBehaviour {
             }
         }
         if (anyWater) data.waterLevels = wl;
+
+        // Moisture levels — omitted (null) when every tile is dry soil, matching waterLevels' pattern.
+        bool anyMoisture = false;
+        byte[] ml = new byte[world.nx * world.ny];
+        for (int x = 0; x < world.nx; x++) {
+            for (int y = 0; y < world.ny; y++) {
+                byte m = world.GetTileAt(x, y).moisture;
+                ml[y * world.nx + x] = m;
+                if (m > 0) anyMoisture = true;
+            }
+        }
+        if (anyMoisture) data.moistureLevels = ml;
 
         var structures = new List<StructureSaveData>();
         foreach (Structure s in StructController.instance.GetStructures())
@@ -375,6 +388,19 @@ public class SaveSystem : MonoBehaviour {
             }
         }
 
+        // Moisture levels — restore here unconditionally (byte→byte copy, doesn't need tile
+        // types yet). Back-compat seeding for null / pre-moisture saves happens AFTER the
+        // tile types loop below, where tile.type.solid is trustworthy.
+        if (save.moistureLevels != null) {
+            for (int x = 0; x < world.nx; x++) {
+                for (int y = 0; y < world.ny; y++) {
+                    int idx = y * world.nx + x;
+                    if (idx < save.moistureLevels.Length)
+                        world.GetTileAt(x, y).moisture = save.moistureLevels[idx];
+                }
+            }
+        }
+
         if (save.tiles != null) {
             bool anyWall = false;
             foreach (TileSaveData tsd in save.tiles) {
@@ -392,6 +418,18 @@ public class SaveSystem : MonoBehaviour {
                     for (int y = 0; y <= 43 && y < world.ny; y++)
                         world.GetTileAt(x, y).hasBackground = true;
             }
+        }
+
+        // Back-compat: saves predating soil moisture come in with moistureLevels=null.
+        // Seed solid tiles to the worldgen default so sheltered soil isn't uniformly 0
+        // (which would starve cave plants). Runs AFTER the tile types loop so .solid
+        // reflects the save's terrain, not the default.
+        if (save.moistureLevels == null) {
+            for (int x = 0; x < world.nx; x++)
+                for (int y = 0; y < world.ny; y++) {
+                    Tile tile = world.GetTileAt(x, y);
+                    if (tile.type.solid) tile.moisture = 50;
+                }
         }
 
         // ── Phase 2: Structures ────────────────────────────────────────────────────────
@@ -578,7 +616,9 @@ public class SaveSystem : MonoBehaviour {
             plant.growthStage  = ssd.plantGrowthStage;
             plant.harvestable  = ssd.plantHarvestable;
             plant.SetHarvestFlagged(ssd.plantHarvestFlagged ?? false);
-            plant.UpdateSprite();
+            // Multi-tile plants re-claim their upper tiles + rebuild sprite children.
+            // Single-tile plants just redraw the anchor via the internal UpdateSprite call.
+            plant.RebuildExtensionTiles();
         }
         if (structure is Building b) {
             if (b.workstation != null) b.workstation.uses = ssd.uses;

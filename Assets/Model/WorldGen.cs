@@ -75,7 +75,21 @@ public static class WorldGen {
 
         FillDepressions(world, surfaceY);
 
+        SeedMoisture(world);
+
         return surfaceY;
+    }
+
+    // Baseline soil dampness so virgin worlds support plant growth from turn 1,
+    // and sheltered soil (caves, deep stone) has something for seep/plants to read.
+    // Surface soil dries from here via MoistureSystem.HourlyUpdate; underground holds.
+    const byte StartingMoisture = 50;
+    static void SeedMoisture(World world) {
+        for (int x = 0; x < world.nx; x++)
+            for (int y = 0; y < world.ny; y++) {
+                Tile t = world.GetTileAt(x, y);
+                if (t.type.solid) t.moisture = StartingMoisture;
+            }
     }
 
     // ── Surface terrain ──────────────────────────────────────────────────
@@ -538,9 +552,10 @@ public static class WorldGen {
 
     static string PickPlantType(System.Random rng) {
         double roll = rng.NextDouble();
-        if (roll < 0.50) return "tree";       // pine
-        if (roll < 0.75) return "appletree";
-        return "ramie";
+        if (roll < 0.40) return "tree";       // pine
+        if (roll < 0.60) return "appletree";
+        if (roll < 0.80) return "ramie";
+        return "bamboo";
     }
 
     // ── Noise utilities ──────────────────────────────────────────────────

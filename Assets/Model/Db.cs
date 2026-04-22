@@ -39,7 +39,7 @@ public class Db : MonoBehaviour {
         "wheat", "fruit", "soymilk", "dairy",  // food
         "fountain",                    // decoration
         "social",                      // social
-        "fireplace", "reading",        // leisure
+        "fireplace", "bench", "reading", // leisure
     };
 
     // Largest decorRadius across all structTypes. Computed at startup; used by Animal.ScanForNearbyDecorations.

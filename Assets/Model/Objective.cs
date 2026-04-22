@@ -26,5 +26,9 @@ public abstract class Objective {
     public virtual string GetObjectiveName() {
         return this.GetType().Name.Replace("Objective", "");
     }
+    // Body pose the animal should strike while this objective is current, or null for the
+    // default state-driven animation (idle/walk/eep). Read by AnimationController each frame
+    // and mapped to an Animator int. Self-clears on objective transition — no explicit reset.
+    public virtual string PoseOverride => null;
     public override string ToString() {return GetObjectiveName();}
 }

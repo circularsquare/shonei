@@ -278,6 +278,8 @@ Fetch (food) → Go (portal) → Travel (outbound)
 
 Rough edge: if the game is saved during the brief non-Traveling window at the market (between `DeliverToInventoryObjective` and `ReceiveFromInventoryObjective`), `SaveSystem` skips the descriptor (it's only emitted for `AnimalState.Traveling`) and the task is dropped on load. The merchant wakes idle at the market tile; the next WOM pass dispatches a fresh `HaulFromMarket` if excess remains, otherwise the merchant walks home.
 
+**Graceful at-market fail (`Task.FailAtMarket`).** The merchant's sprite is parked at the town portal for the entire market phase — on a plain `Fail()` they would snap idle at x=0 as if they never travelled. Instead, at-market objectives (currently `ReceiveFromInventoryObjective`) call `task.FailAtMarket()` on any abort path. `HaulFromMarketTask` and `HaulToMarketTask` override it to clear the remaining queue, enqueue a single return `TravelingObjective(MarketTransitTicks)`, and `StartNextObjective()`. The task stays alive so reservations unwind in the normal `Cleanup` once travel completes. `iq` / `storageTile` / `pickupIq` are nulled in the override so a mid-return save emits no task descriptor — the loader falls through to `ResumeTravelTask` and finishes the tail rather than trying to deliver items the merchant never picked up.
+
 ### Order placement flow
 
 Before calling `TradingClient.SendOrder`, `TradingPanel` validates against the

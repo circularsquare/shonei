@@ -251,6 +251,11 @@ public abstract class Task {
         animal.task = null;
         animal.state = Animal.AnimalState.Idle;
     }
+    // Softer fail path for objectives that run while the animal is conceptually off-screen
+    // at the market. Default = plain Fail(). Market tasks override to enqueue a return
+    // TravelingObjective so the merchant walks home before going idle, rather than
+    // snapping back to the town portal with no apparent travel.
+    public virtual void FailAtMarket(){ Fail(); }
     public virtual void Cleanup(){
         workOrder?.res.Unreserve();
         workOrder = null;

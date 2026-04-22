@@ -109,9 +109,11 @@ public class StructureInfoView : MonoBehaviour {
         }
 
         if (structure is Plant plant) {
-            sb.Append("\n growth: " + plant.growthStage);
-            if (structure.res != null)
-                sb.Append("\n res: " + structure.res.reserved + "/" + structure.res.capacity);
+            int maxStage = 4 * plant.plantType.maxHeight - 1;
+            sb.Append($"\n stage: {plant.growthStage}/{maxStage}");
+            if (plant.plantType.maxHeight > 1)
+                sb.Append($"  height: {plant.height}/{plant.plantType.maxHeight}");
+            AppendPlantComfort(sb, plant);
             AppendTileOrders(sb, plant.tile);
         } else if (structure is Building bldg) {
             if (bldg.structType.depleteAt > 0 && bldg.workstation != null)
@@ -120,16 +122,15 @@ public class StructureInfoView : MonoBehaviour {
                 int fuelQty = bldg.reservoir.Quantity();
                 sb.Append($"\n fuel: {ItemStack.FormatQ(fuelQty)}/{ItemStack.FormatQ(bldg.reservoir.capacity)} {bldg.reservoir.fuelItem.name}");
             }
-            if (structure.res != null)
-                sb.Append("\n res: " + structure.res.reserved + "/" + structure.res.capacity);
+            // Only houses surface their Structure.res — it's the home-assignment count.
+            // Other building types either don't have res (workstations, leisure, capacity==0)
+            // or have it but never reserve into it.
+            if (bldg.structType.name == "house" && bldg.res != null)
+                sb.Append("\n occupants: " + bldg.res.reserved + "/" + bldg.res.capacity);
             AppendTileOrders(sb, bldg.tile);
             AppendBuildingOrders(sb, bldg);
             if (bldg.storage != null)
                 AppendInvOrders(sb, bldg.storage);
-        } else {
-            // Base structure (platform, ladder, road, etc.)
-            if (structure.res != null)
-                sb.Append("\n res: " + structure.res.reserved + "/" + structure.res.capacity);
         }
 
         text.text = sb.ToString();
@@ -299,6 +300,28 @@ public class StructureInfoView : MonoBehaviour {
     }
 
     // ── Work order display helpers (moved from InfoPanel) ──
+
+    // Appends "temp: nowC  comfort: lo-hi C" and the equivalent moisture line for a plant.
+    // Moisture is read from the soil tile directly below the plant (matches growth logic).
+    // Null comfort bounds render as "?" so authors see at a glance that that side is unbounded.
+    // ASCII-only: the m5x7 font doesn't cover °, en/em-dash.
+    static void AppendPlantComfort(System.Text.StringBuilder sb, Plant plant) {
+        PlantType pt = plant.plantType;
+        float? nowT = WeatherSystem.instance?.temperature;
+        string nowTempStr = nowT.HasValue ? $"{nowT.Value:F1}C" : "?";
+        sb.Append($"\n temp: {nowTempStr}  comfort: {FormatBound(pt.tempMin, 0, "C")}-{FormatBound(pt.tempMax, 0, "C")}");
+
+        Tile soil = World.instance.GetTileAt(plant.tile.x, plant.tile.y - 1);
+        string nowMoistStr = soil != null ? $"{soil.moisture}/{MoistureSystem.MoistureMax}" : "?";
+        sb.Append($"\n moisture: {nowMoistStr}  comfort: {FormatBound(pt.moistureMin, 0, "")}-{FormatBound(pt.moistureMax, 0, "")}");
+    }
+
+    static string FormatBound(float? v, int decimals, string suffix) {
+        return v.HasValue ? v.Value.ToString("F" + decimals) + suffix : "?";
+    }
+    static string FormatBound(int? v, int decimals, string suffix) {
+        return v.HasValue ? v.Value.ToString() + suffix : "?";
+    }
 
     // Appends work orders keyed by tile (harvest, research).
     static void AppendTileOrders(System.Text.StringBuilder sb, Tile tile) {

@@ -723,7 +723,12 @@ public class Inventory{
                 mostAmount = stack.quantity;
             }
         }
-        String iName = mostItem.name.Trim().Replace(" ", "");
+        // Book-class items all share one sprite folder ("books") — there's no per-book art,
+        // so floor drops / non-bookshelf displays of individual books route through that
+        // shared folder rather than the per-item name path (which has no matching files).
+        String iName = mostItem.itemClass == ItemClass.Book
+            ? "books"
+            : mostItem.name.Trim().Replace(" ", "");
         float fill = mostAmount / (float)stackSize;
         Sprite sprite;
         if (invType == InvType.Floor) {

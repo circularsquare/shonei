@@ -17,6 +17,11 @@ public class AnimalController : MonoBehaviour{
     private World world;
     public Dictionary<Job, int> jobCounts;
     private Dictionary<Tile, int> tileOccupancy;
+    // Remembers the last mouse shown for each job name so clicking a row in
+    // the jobs panel cycles through its mice instead of always landing on the
+    // first one. Stale entries (mouse dead or changed job) are harmless —
+    // they fall out of the matches list and we reset to the start.
+    private Dictionary<string, Animal> lastShownForJob = new Dictionary<string, Animal>();
     private TMPro.TextMeshProUGUI happinessDisplay;
     private int colonyTickCounter = 0;
     private float tickAccumulator = 0f;
@@ -326,6 +331,33 @@ public class AnimalController : MonoBehaviour{
     public void ResetJobCounts() {
         foreach (Job key in new List<Job>(jobCounts.Keys)) { jobCounts[key] = 0; }
         foreach (Job key in jobCounts.Keys) { UpdateJobCount(key); }
+    }
+
+    // Called from JobDisplay when the player clicks the label of a job row.
+    // Finds all mice with that job and shows one in InfoPanel; successive
+    // clicks cycle through the roster. No-op if no mice have this job.
+    public void SelectAnimalWithJob(string jobName){
+        List<Animal> matches = new List<Animal>();
+        for (int a = 0; a < na; a++){
+            Animal ani = animals[a];
+            if (ani != null && ani.job != null && ani.job.name == jobName)
+                matches.Add(ani);
+        }
+        if (matches.Count == 0) return;
+
+        int nextIdx = 0;
+        if (lastShownForJob.TryGetValue(jobName, out Animal last) && last != null){
+            int prev = matches.IndexOf(last);
+            if (prev >= 0) nextIdx = (prev + 1) % matches.Count;
+        }
+        Animal chosen = matches[nextIdx];
+        lastShownForJob[jobName] = chosen;
+
+        if (InfoPanel.instance == null){
+            Debug.LogError("SelectAnimalWithJob: InfoPanel.instance is null");
+            return;
+        }
+        InfoPanel.instance.ShowInfo(new List<Animal>{ chosen });
     }
 
     public void OnClickJobAssignment(string jobstr, string buttontype){

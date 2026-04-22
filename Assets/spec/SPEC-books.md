@@ -96,7 +96,13 @@ The multiplier applies only to research progress — `workProgress` (the study-c
 
 ### `ReadBookTask` (M6)
 
-Spawned by `Animal.TryPickLeisure` when a fiction book exists in the world. Picks an unoccupied standable tile within 5 of the animal (`FindNearbyReadingTile`), reads for 10 ticks. No building / seating dependency.
+Spawned by `Animal.TryPickLeisure` when a fiction book exists in the world. Reads for 10 ticks.
+
+**Reading-spot selection** (in order):
+1. `TryReserveBenchSeat()` — delegates to `Nav.FindPathToLeisureSeat(b => b.structType.leisureNeed == "bench" && b.CanHostLeisureNow())`, the same helper `LeisureTask.Initialize` uses. Matches on `leisureNeed` (not `structType.name`) so any future building that targets the `"bench"` satisfaction — e.g. a reading nook — participates without code changes. Reserves the seat via `Building.seatRes[i]`; released in `Cleanup()`.
+2. `FindReadingTileNearShelf(shelfTile)` — fallback: iterates tiles around the **shelf** (not the animal) via `Nav.TilesAroundByDistance`, returning the first standable, unoccupied, reachable tile within `SpotSearchRadius = 5`. Anchoring on the shelf keeps the return trip short, so `DropObjective`'s 10-tile storage bonus reliably picks the shelf over a floor drop.
+
+If seated at a bench, `Complete()` additionally grants the building's `leisureNeed` (`"bench"`) via `NoteLeisure` — so a mouse reading on a bench advances both the `"reading"` need (per-tick in `HandleLeisure`) and the `"bench"` need (on complete).
 
 Per-tick happiness grant in `AnimalStateManager.HandleLeisure`:
 

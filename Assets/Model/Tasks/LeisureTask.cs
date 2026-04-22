@@ -6,72 +6,41 @@ using System;
 using System.Linq;
 
 // Generic "go to a leisure building and spend time there" task.
-// The building dispatches its benefit on completion (fireplace → warmth, etc.).
-// Adding a new leisure building: add a case in Complete() for the building name.
+// Takes a leisure need (e.g. "fireplace", "bench") and delegates seat selection to
+// Nav.FindPathToLeisureSeat — same Chebyshev-sort + first-fit-within-radius pattern as
+// FindPathToStruct / FindPathToInv. Filter = leisureNeed match + Building.CanHostLeisureNow().
+// Benefit dispatch happens via Happiness.NoteLeisure(need, building.structType.leisureGrant).
 public class LeisureTask : Task {
-    public Building building;
-    public Tile seatTile; // the specific work tile this animal is heading to
+    public string leisureNeed; // authoritative field — building is resolved from it in Initialize
+    public Building building;  // set on successful Initialize; read by HandleLeisure (socialWhenShared co-presence)
+    public Tile seatTile;      // the specific work tile this animal is heading to
     private int seatIndex = -1; // index into building.seatRes[] for per-seat reservation
 
-    public LeisureTask(Animal animal, Building building) : base(animal) {
-        this.building = building;
+    public LeisureTask(Animal animal, string leisureNeed) : base(animal) {
+        this.leisureNeed = leisureNeed;
     }
 
     public override bool Initialize() {
-        if (building == null || building.disabled || building.IsBroken) return false;
-        Path bestPath = null;
+        if (string.IsNullOrEmpty(leisureNeed)) return false;
+        var (path, b, idx) = animal.nav.FindPathToLeisureSeat(
+            b => b.structType.leisureNeed == leisureNeed && b.CanHostLeisureNow());
+        if (path == null) return false;
 
-        if (building.seatRes != null) {
-            // Per-seat reservation: find the first seat that is available AND reachable within radius
-            for (int i = 0; i < building.seatRes.Length; i++) {
-                if (!building.seatRes[i].Available()) continue;
-                Tile seat = building.WorkTileAt(i);
-                if (seat == null) continue;
-                Path p = animal.nav.PathTo(seat);
-                if (animal.nav.WithinRadius(p, MediumFindRadius)) {
-                    building.seatRes[i].Reserve(animal.aName);
-                    seatIndex = i;
-                    bestPath = p;
-                    seatTile = seat;
-                    break;
-                }
-            }
-        } else {
-            // Legacy single-res path for non-leisure buildings (shouldn't normally hit)
-            if (building.res != null) {
-                if (!building.res.Available()) return false;
-                building.res.Reserve(animal.aName);
-            }
-            for (int i = 0; i < building.structType.nworkTiles.Length; i++) {
-                Tile seat = building.WorkTileAt(i);
-                if (seat == null) continue;
-                Path p = animal.nav.PathTo(seat);
-                if (animal.nav.WithinRadius(p, MediumFindRadius)) { bestPath = p; seatTile = seat; break; }
-            }
-        }
+        b.seatRes[idx].Reserve(animal.aName);
+        building = b;
+        seatIndex = idx;
+        seatTile = path.tile;
 
-        // Fall back to adjacent if no direct path to any seat
-        if (bestPath == null) {
-            Path adj = animal.nav.PathToOrAdjacent(building.workTile);
-            if (animal.nav.WithinRadius(adj, MediumFindRadius)) {
-                bestPath = adj;
-                seatTile = adj.tile;
-            }
-        }
-        if (bestPath == null) {
-            return false; // Start() calls Cleanup() which unreserves via seatIndex/building.res
-        }
-
-        objectives.AddLast(new GoObjective(this, bestPath.tile));
+        objectives.AddLast(new GoObjective(this, path.tile));
         objectives.AddLast(new LeisureObjective(this, 15));
         return true;
     }
 
     public override void Complete() {
-        // Grant the happiness benefit for this building's leisure need
+        // Grant the happiness benefit for this building's leisure need, scaled by leisureGrant.
         string need = building.structType.leisureNeed;
         if (!string.IsNullOrEmpty(need)) {
-            animal.happiness.NoteLeisure(need);
+            animal.happiness.NoteLeisure(need, building.structType.leisureGrant);
         } else {
             Debug.LogError($"LeisureTask.Complete: building '{building.structType.name}' has no leisureNeed");
         }
@@ -81,10 +50,8 @@ public class LeisureTask : Task {
     }
 
     public override void Cleanup() {
-        if (seatIndex >= 0 && building.seatRes != null)
+        if (seatIndex >= 0 && building != null && building.seatRes != null)
             building.seatRes[seatIndex].Unreserve();
-        else if (building.res != null)
-            building.res.Unreserve();
         base.Cleanup();
     }
 }

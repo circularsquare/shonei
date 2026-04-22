@@ -267,8 +267,6 @@ public class Animal : MonoBehaviour{
         return phase >= 17f / 24f && phase < 21f / 24f;
     }
 
-    private static bool IsHourInRange(float startHour, float endHour) => SunController.IsHourInRange(startHour, endHour);
-
     // Estimates what fraction of a 24-hour day an animal spends on productive work,
     // accounting for sleep and leisure/idle time. Returns 0–1.
     // Defaults match current game constants; override for what-if analysis.
@@ -504,32 +502,23 @@ public class Animal : MonoBehaviour{
             candidates.Add((readingSat, TryStartReading));
         }
 
-        // Building options: find nearest available building per leisure need
+        // Building options: one candidate per unique leisureNeed. Actual building selection
+        // (filter suitability, pathfind, pick nearest-by-path, reserve seat) lives in
+        // LeisureTask.Initialize — so if the candidate gets tried, it commits to the best
+        // reachable building rather than a crow-flies pre-pick that may not be pathable.
         var sc = StructController.instance;
         if (sc != null) {
-            // Group by leisureNeed, pick nearest available building per need
-            var bestPerNeed = new Dictionary<string, (Building b, float dist)>();
+            var needsSeen = new HashSet<string>();
             foreach (Building b in sc.GetLeisureBuildings()) {
-                if (b.disabled) continue;
-                if (b.IsBroken) continue;
-                if (b.reservoir != null && !b.reservoir.HasFuel()) continue;
-                if (!IsHourInRange(b.structType.activeStartHour, b.structType.activeEndHour)) continue;
-                if (b.seatRes != null) { if (!b.AnySeatAvailable()) continue; }
-                else if (b.res != null && !b.res.Available()) continue;
                 string need = b.structType.leisureNeed;
                 if (string.IsNullOrEmpty(need)) {
                     Debug.LogError($"Leisure building '{b.structType.name}' has no leisureNeed set");
                     continue;
                 }
-                float dist = Mathf.Abs(b.x - x) + Mathf.Abs(b.y - y);
-                if (!bestPerNeed.ContainsKey(need) || dist < bestPerNeed[need].dist)
-                    bestPerNeed[need] = (b, dist);
-            }
-            foreach (var kvp in bestPerNeed) {
-                string need = kvp.Key;
-                Building building = kvp.Value.b;
+                if (!needsSeen.Add(need)) continue;
                 float sat = happiness.GetLeisureSatisfaction(need);
-                candidates.Add((sat, () => TryStartLeisureAt(building)));
+                string captured = need; // don't capture loop var
+                candidates.Add((sat, () => TryStartLeisureFor(captured)));
             }
         }
 
@@ -552,8 +541,8 @@ public class Animal : MonoBehaviour{
         return false;
     }
 
-    private bool TryStartLeisureAt(Building building) {
-        task = new LeisureTask(this, building);
+    private bool TryStartLeisureFor(string leisureNeed) {
+        task = new LeisureTask(this, leisureNeed);
         if (task.Start()) return true;
         task = null;
         return false;

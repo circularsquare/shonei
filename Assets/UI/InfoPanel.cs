@@ -18,6 +18,9 @@ public class InfoPanel : MonoBehaviour {
     [SerializeField] Transform tabContent;            // HorizontalLayoutGroup parent for tab buttons
     [SerializeField] GameObject tabButtonPrefab;      // prefab: Button + TMP label child
 
+    [Header("Body")]
+    [SerializeField] ScrollRect contentScrollRect;    // vertical scroll wrapping the active sub-view; reset to top on tab switch
+
     [Header("Sub-Views")]
     [SerializeField] TileInfoView tileInfoView;
     [SerializeField] StructureInfoView structureInfoView;
@@ -183,6 +186,12 @@ public class InfoPanel : MonoBehaviour {
         if (index < 0 || index >= tabs.Count) return;
         activeTabIndex = index;
         HideAllViews();
+        // Reset body scroll on tab switch. StopMovement() first kills any in-flight
+        // velocity so the new content doesn't bounce past the top.
+        if (contentScrollRect != null) {
+            contentScrollRect.StopMovement();
+            contentScrollRect.verticalNormalizedPosition = 1f;
+        }
 
         var tab = tabs[index];
         switch (tab.type) {

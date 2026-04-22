@@ -66,7 +66,7 @@ Social satisfaction is granted **gradually** at `Happiness.socialTickGrant` (0.2
 2. **Time-of-day behavior roll** — before work orders, a random roll determines whether the animal tries leisure, idles, or falls through to work. The weights depend on the time window:
    - **Leisure window (5–9 pm)**: 40% try leisure, 40% idle, 20% work.
    - **Work time (rest of day)**: 5% try leisure, 15% idle, 80% work.
-   Leisure pick is need-based: `TryPickLeisure()` gathers all options (chat = "social", each available leisure building grouped by `structType.leisureNeed`), sorts by the animal's current satisfaction for that need (ascending), and tries each in order — so the mouse targets its least-satisfied need first. Falls back to idle if nothing is available.
+   Leisure pick is need-based: `TryPickLeisure()` enqueues one candidate per unique `structType.leisureNeed` across placed leisure buildings (plus chat = "social" and reading when a fiction book exists), sorts by the animal's current satisfaction for that need (ascending), and tries each in order — so the mouse targets its least-satisfied need first. Each candidate's `LeisureTask.Initialize` then scans all suitable buildings for that need and picks the nearest-by-path available seat. Falls back to idle if nothing is available.
 3. **Work orders:**
    - `wom.PruneStale()` — call once before the tier sequence
    - `wom.ChooseOrder(this, 1)` — hauls unblocking a deconstruct
@@ -120,8 +120,8 @@ Tasks reserve both **source items** (`ItemStack.resAmount`) and **destination sp
 | `DropTask` | survival | any | Drop excess main inventory — prefers nearby storage/tank (10-tile bonus) over floor. On no-reachable-target, logs a warning and sets `animal.dropCooldownUntil = timer + 3f` so `ChooseTask` falls through to other branches instead of respawning `DropTask` every tick |
 | `GoTask` | survival | any | Navigate to a tile |
 | `ChatTask` | leisure | any | Walk to idle partner, both leisure 20 ticks, grants socialization happiness |
-| `LeisureTask` | leisure | any | Walk to an `isLeisure` building seat (picks from `nworkTiles`), reserves via `Structure.res`, leisure 20 ticks, faces center, grants benefit via `Happiness.NoteLeisure(structType.leisureNeed)` |
-| `ReadBookTask` | leisure | any | Fetch fiction book → walk to nearby unoccupied tile → read 10 ticks (per-tick `NoteRead` grant) → return book to shelf. No building dependency. See SPEC-books.md. |
+| `LeisureTask` | leisure | any | Constructed with a `leisureNeed` string. `Initialize` delegates to `Nav.FindPathToLeisureSeat(filter)` — filter combines `leisureNeed` match + `Building.CanHostLeisureNow()` (disabled/broken/fuel/active-hour). Uses the standard Chebyshev-sort + first-fit-within-radius pattern (see §Path-cost radius gate), so it's consistent with `FindPathToStruct` etc. rather than a bespoke scan. Reserves the returned `seatRes[i]`. Leisure 15 ticks. On Complete grants `Happiness.NoteLeisure(need, structType.leisureGrant)` — `leisureGrant` lets cheap/always-on buildings (bench = 0.5) grant less than premium ones (fireplace = 1.0). |
+| `ReadBookTask` | leisure | any | Fetch fiction book → walk to reading spot (prefers a reserved `bench` seat; falls back to any nearby unoccupied tile) → read 10 ticks (per-tick `NoteRead` grant) → return book to shelf. When seated at a bench, also grants the `"bench"` leisure need on Complete. See SPEC-books.md. |
 | `MaintenanceTask` | WOM p2 | mender | Fetch repair materials (¼ × build cost, scaled by repair amount) → walk to work tile → `MaintenanceObjective` ticks up `condition` by 0.05 × efficiency per tick, capped at +40 % per visit. Grants Construction XP. See SPEC-systems.md §Maintenance System. |
 
 **Objectives (atomic steps):**
@@ -156,13 +156,20 @@ A candidate is rejected when `path.cost > r × FindRadiusTolerance`.
 
 **Applied in `Initialize()`** of: `CraftTask`, `HarvestTask`, `HaulTask`, `ConstructTask`, `SupplyBlueprintTask`, `SupplyFuelTask`, `ResearchTask`, `EepTask` (conditional — falls back to sleeping in place if home is too far), `ChatTask`, `LeisureTask`. `GoTask` is the sole unconditional exception — explicit player/system intent has no radius concept.
 
-**Built into `Nav.Find*` methods** — `FindPathTo`, `FindPathAdjacentTo`, `FindPathToInv`, `FindPathToStruct`, `FindPathToHarvestable` all use a **sort-by-Chebyshev + first-fit** pattern:
+**Built into `Nav.Find*` methods** — `FindPathTo`, `FindPathToInv`, `FindPathToStruct` all use a **sort-by-Chebyshev + first-fit** pattern:
 
 1. Collect candidate tiles matching the filter within the `r` bounding box.
 2. Sort by Chebyshev distance (crow-flies lower bound on path cost).
 3. Pathfind candidates in order; return the **first** whose `path.cost ≤ r × tolerance`.
 
 This is not guaranteed minimum-cost across all candidates, but in practice the nearest crow-flies candidate is almost always also the shortest walk, and it avoids pathfinding the rest of the box — typical Find* call now runs ~1 A\* invocation instead of N.
+
+**Two shared primitives back these methods** (both in `Nav.cs`):
+
+- `Nav.TilesAroundByDistance(world, cx, cy, r)` — *static*. Returns all tiles in the `(2r+1)²` box around `(cx,cy)` sorted by ascending Chebyshev distance. Used by `FindPathTo` and any task-local spatial search around an arbitrary anchor (e.g. `ReadBookTask.FindReadingTileNearShelf` anchors on the shelf tile, not the animal).
+- `Nav.FindPathToCandidate<T>(candidates, xFn, yFn, nodeFn, filter, r)` — *instance*. Counterpart for callers whose candidates come from a pre-built object list (inventories, structures). Applies the same cheb-sort + first-fit pathfind. Used by `FindPathToInv` and `FindPathToStruct`.
+
+`FindPathToStorageMostSpace` is deliberately not unified — it sorts by **descending free space** (best-fit), not Chebyshev, so it's a different algorithm despite the similar shape.
 
 Market tasks pass `r = Task.MarketFindRadius` via `FindMarketPath`. Drop searches (`FindPathToDrop`) use a tight `r = 10` without the tolerance multiplier. The legacy `persistent` expansion mechanism (retry with doubling radius) has been removed — the single widened search is simpler and the gate makes it sufficient.
 

@@ -60,11 +60,15 @@ public class World : MonoBehaviour {
         waterController = WaterController.instance;
         WeatherSystem.Create();
         MaintenanceSystem.Create();
+        MoistureSystem.Create();
     }
 
     public void Update(){
         if (Math.Floor(timer + Time.deltaTime) - Math.Floor(timer) > 0){ // every 1 sec
             // AnimalController self-drives staggered ticks from its own Update()
+            // Moisture gains (rain + water seep) before plants so Grow() reads current soil.
+            MoistureSystem.instance?.RainUptakePerSecond();
+            MoistureSystem.instance?.SeepPerSecond();
             plantController.TickUpdate();
             if (ResearchSystem.instance != null) ResearchSystem.instance.TickUpdate();
             MaintenanceSystem.instance?.Tick();

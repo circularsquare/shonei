@@ -194,6 +194,32 @@ Flip is done via `transform.localScale.x = -1` on the root, which mirrors all ch
 ### Sprite assets
 Part sprites in `Assets/Resources/Sprites/Animals/`: `mouse_body.png`, `mouse_tail.png`, `mouse_foot.png`, `mouse_arm.png` (+ `_n.png` normal maps). Pivots set in Sprite Editor per part (feet: top, arm: top, tail: base, body: center).
 
+### Animation states & pose overrides
+
+The Animator (`AnimControllerMouse.controller`) is driven by two int parameters set each frame in `AnimationController.UpdateState()`:
+
+| Parameter | Source | Values |
+|-----------|--------|--------|
+| `state` | `animal.state` (high-level activity) | 0 = Idle, 1 = Moving, 2 = Eeping |
+| `pose` | `animal.task?.currentObjective?.PoseOverride` → `PoseToInt` | 0 = none (state drives), 1 = sit |
+
+Each state/pose corresponds to a single `.anim` clip. Stationary poses are fine as 2-frame static clips (see `mouseEep.anim` as the reference — just holds per-part transforms). Pose wins over state: whenever `pose != 0` the animal is in that pose regardless of walking/idle/eep.
+
+**Animator wiring** for a new pose state:
+- Add state `mouse<Pose>` with the pose's `.anim` as Motion.
+- Transition **Any State → mouse<Pose>**: `pose Equals <N>`, Has Exit Time off, Transition Duration 0, **Can Transition To Self unchecked** (otherwise it re-enters every frame and freezes at frame 0).
+- Transition **mouse<Pose> → mouseIdle**: `pose Equals 0`, Has Exit Time off, Transition Duration 0. From `mouseIdle` the existing `state`-based transitions take over.
+
+**How a pose gets triggered.** Pose is data-driven: `StructType.leisurePose` in JSON names the pose, `LeisureObjective.PoseOverride` reads it off the seated building (for `LeisureTask.building` and `ReadBookTask.seatBuilding`). Since the override is a pure getter derived from the current objective, it self-clears on objective transition — no explicit set/reset plumbing.
+
+**Adding a new pose**:
+1. Author `.anim` clip in Unity (copy `mouseEep.anim` as a starting point for a stationary pose).
+2. Add an Animator state + transitions per the wiring above, using the next free `pose` int.
+3. Add a case to `AnimationController.PoseToInt` — e.g. `case "read": return 2;`. Unknown strings LogError and fall through to 0.
+4. Pick where the pose name originates:
+   - **Leisure-tied** (cushion, reading nook): `"leisurePose": "<name>"` in `buildingsDb.json`. No code changes.
+   - **Task-tied** (crafting, studying): override `PoseOverride` on the relevant Objective subclass, or add a parallel field (`workPose`) and a matching getter on the Objective that runs that activity.
+
 ---
 
 ## Water Rendering
