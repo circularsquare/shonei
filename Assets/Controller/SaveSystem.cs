@@ -29,7 +29,7 @@ using Newtonsoft.Json;
 // Current saveable state checklist:
 //   [x] World timer
 //   [x] Tile types, floor inventories, and background wall
-//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, mirrored, disabled, plantHarvestFlagged)
+//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, mirrored, disabled, plantHarvestFlagged, quarry capturedTileType)
 //   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored, disabled)
 //   [x] Animals (position, job, energy, food, happiness, decoration happiness, socialization, fireplace warmth, inv, foodSlotInv, toolSlotInv, clothingSlotInv, bookSlotInv)
 //   [x] Mid-transit merchant task descriptor (travelTaskType + iq + storage tile + leg)
@@ -234,6 +234,8 @@ public class SaveSystem : MonoBehaviour {
                 ssd.storageInvData = GatherInventory(b.storage);
             if (b.disabled) ssd.disabled = true;
         }
+        if (s is Quarry q && q.capturedTile != null)
+            ssd.capturedTileType = q.capturedTile.name;
         return ssd;
     }
 
@@ -406,8 +408,11 @@ public class SaveSystem : MonoBehaviour {
             foreach (TileSaveData tsd in save.tiles) {
                 Tile tile = world.GetTileAt(tsd.x, tsd.y);
                 if (tile == null) continue;
-                if (!string.IsNullOrEmpty(tsd.tileType) && Db.tileTypeByName.ContainsKey(tsd.tileType))
-                    tile.type = Db.tileTypeByName[tsd.tileType];
+                // TEMPORARY: pre-split saves referenced a single "stone" tile type; map it to limestone.
+                // Remove once old saves are no longer in circulation.
+                string typeName = tsd.tileType == "stone" ? "limestone" : tsd.tileType;
+                if (!string.IsNullOrEmpty(typeName) && Db.tileTypeByName.ContainsKey(typeName))
+                    tile.type = Db.tileTypeByName[typeName];
                 tile.hasBackground = tsd.hasBackgroundWall;
                 anyWall |= tsd.hasBackgroundWall;
             }
@@ -623,6 +628,12 @@ public class SaveSystem : MonoBehaviour {
         if (structure is Building b) {
             if (b.workstation != null) b.workstation.uses = ssd.uses;
             b.disabled = ssd.disabled;
+        }
+        if (structure is Quarry qr && !string.IsNullOrEmpty(ssd.capturedTileType)) {
+            if (Db.tileTypeByName.TryGetValue(ssd.capturedTileType, out TileType tt))
+                qr.capturedTile = tt;
+            else
+                Debug.LogError($"RestoreStructure: unknown capturedTileType '{ssd.capturedTileType}' for quarry at ({ssd.x},{ssd.y})");
         }
 
         StructController.instance.Place(structure);

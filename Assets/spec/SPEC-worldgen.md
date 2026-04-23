@@ -5,14 +5,15 @@ All world gen lives in `WorldGen.cs` (pure static class, no MonoBehaviour). Call
 ## Pipeline
 
 1. **Surface heightmap** — FBM Perlin noise, clamped to `[SurfaceMin, SurfaceMax]`. Spawn zone forced flat with smoothstep blend at edges. Single-column nubs smoothed out.
-2. **Fill terrain** — Dirt layer on top (`DirtDepth` tiles), stone below.
-3. **Cave noise field** — 2D FBM (2 octaves, persistence 0.5, lacunarity 2) stored as continuous floats, normalized to ~[0,1]. Spawn zone = 1.0 (solid), exclusion zone near surface = 0.4 (blocks natural caves but worms can push through), normal underground = FBM sample.
-4. **Worm tunnel blending** — Worm walks from surface downward with a persistent horizontal direction (small chance to reverse per step). `SoftCarve` lowers noise values with smoothstep falloff along the path, merging naturally with surrounding Perlin caves.
-5. **Threshold** — Continuous field → boolean mask. Depth-varying threshold (stricter near surface, looser deep). Covers full underground including exclusion zone.
-6. **CA smoothing** — 1 round of cellular automata (>4 solid neighbors → solid). Kept minimal so FBM detail survives into the final mask; bump up if caves feel too noisy. Then a pass to remove 1-wide horizontal outcroppings.
-7. **Small cave removal** — BFS flood-fill removes cave regions smaller than `MinCaveSize`.
-8. **Apply caves** — Boolean mask → set tiles to empty.
-9. **Depression filling** — "Trapping rain water" algorithm finds surface basins. Eligible basins (volume ≥ `MinPoolVolume`, below `WaterLine`, not draining into caves) are collected; the top `MaxPools` by volume are filled. Large basins are capped at `MaxPoolVolume` by binary-searching for a uniform water level.
+2. **Fill terrain** — Dirt layer on top (`DirtDepth` tiles), limestone below (default stone variant).
+3. **Stone veins** — `ApplyVeins` runs two passes (granite, slate). Each samples its own FBM field and converts limestone tiles to the vein tile where `noise < threshold × depthBias`. `depthBias` is 1.0 at the vein's `DepthCenter` (0=surface, 1=bedrock), tapering linearly to 0 at ±`DepthWidth`. Only limestone tiles are touched, so veins don't overlap (first pass wins). Granite is mid-depth biased; slate is deep. Seeds are offset per-pass for reproducibility without correlation between vein types.
+4. **Cave noise field** — 2D FBM (2 octaves, persistence 0.5, lacunarity 2) stored as continuous floats, normalized to ~[0,1]. Spawn zone = 1.0 (solid), exclusion zone near surface = 0.4 (blocks natural caves but worms can push through), normal underground = FBM sample.
+5. **Worm tunnel blending** — Worm walks from surface downward with a persistent horizontal direction (small chance to reverse per step). `SoftCarve` lowers noise values with smoothstep falloff along the path, merging naturally with surrounding Perlin caves.
+6. **Threshold** — Continuous field → boolean mask. Depth-varying threshold (stricter near surface, looser deep). Covers full underground including exclusion zone.
+7. **CA smoothing** — 1 round of cellular automata (>4 solid neighbors → solid). Kept minimal so FBM detail survives into the final mask; bump up if caves feel too noisy. Then a pass to remove 1-wide horizontal outcroppings.
+8. **Small cave removal** — BFS flood-fill removes cave regions smaller than `MinCaveSize`.
+9. **Apply caves** — Boolean mask → set tiles to empty. Caves carve through whichever stone variant is there (veins don't get special treatment).
+10. **Depression filling** — "Trapping rain water" algorithm finds surface basins. Eligible basins (volume ≥ `MinPoolVolume`, below `WaterLine`, not draining into caves) are collected; the top `MaxPools` by volume are filled. Large basins are capped at `MaxPoolVolume` by binary-searching for a uniform water level.
 
 ## Key design choices
 
@@ -24,4 +25,6 @@ All world gen lives in `WorldGen.cs` (pure static class, no MonoBehaviour). Call
 
 ## Tuning
 
-All constants are grouped at the top of `WorldGen.cs` by category: terrain shape, spawn zone, caves, worm carvers, water. Adjust there.
+All constants are grouped at the top of `WorldGen.cs` by category: terrain shape, spawn zone, stone veins, caves, worm carvers, water. Adjust there.
+
+For vein passes in particular: `{Stone}Threshold` gates per-tile conversion (higher = more vein tiles at peak), `{Stone}DepthCenter` and `{Stone}DepthWidth` set the depth band where the vein appears, and `{Stone}Freq` controls vein shape (higher = smaller/tighter veins). To add a new stone type, add a matching block of constants and append another `ApplyVeinPass` call to `ApplyVeins`.

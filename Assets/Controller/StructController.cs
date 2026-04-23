@@ -72,7 +72,11 @@ public class StructController : MonoBehaviour {
             structure = Structure.Create(st, tile.x, tile.y, mirrored);
             if (structure == null) return false;
         }
-        
+
+
+        // Capture the original tile type BEFORE it's replaced below — the quarry
+        // needs this to pick its extraction distribution per cycle.
+        if (structure is Quarry q) q.CaptureOriginalTile(tile.type);
 
         if (st.requiredTileName != null){ // if building inside a tile (like for quarry), remove the tile
             tile.type = Db.tileTypeByName["empty"];

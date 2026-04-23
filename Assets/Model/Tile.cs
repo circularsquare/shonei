@@ -110,8 +110,15 @@ public class TileType {
     public int id {get; set;}
     public string name {get; set;}
     public bool solid {get; set;}
-    public ItemNameQuantity[] nproducts {get; set;}
-    public ItemQuantity[] products;
+    // Optional logical family ("stone" for limestone/granite/slate, etc.) — used by
+    // StructPlacement so that a building's `requiredTileName` can match by group.
+    public string group {get; set;}
+    public ItemNameQuantity[] nproducts {get; set;}         // tile-break drops (authored in liang)
+    public ItemQuantity[] products;                         // fen, populated on deserialize
+    // Quarry / extraction-building yields, distinct from tile-break drops.
+    // Tile breaking = "clear the area"; extraction = "deliberate resource harvesting".
+    public ItemNameQuantity[] nExtractionProducts {get; set;}
+    public ItemQuantity[] extractionProducts;
 
 
     [OnDeserialized]
@@ -120,6 +127,15 @@ public class TileType {
             products = new ItemQuantity[nproducts.Length];
             for (int i = 0; i < nproducts.Length; i++){
                 products[i] = new ItemQuantity(nproducts[i].name, ItemStack.LiangToFen(nproducts[i].quantity));
+            }
+        }
+        if (nExtractionProducts != null){
+            extractionProducts = new ItemQuantity[nExtractionProducts.Length];
+            for (int i = 0; i < nExtractionProducts.Length; i++){
+                var src = nExtractionProducts[i];
+                var iq = new ItemQuantity(src.name, ItemStack.LiangToFen(src.quantity));
+                iq.chance = src.chance;
+                extractionProducts[i] = iq;
             }
         }
     }

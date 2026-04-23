@@ -70,6 +70,7 @@ ID ranges:
 | 20–29 | dirt |
 | 30–39 | ores (iron ore, coal) |
 | 40–49 | metals (iron) |
+| 60–69 | gems (gem=60, jade=61) |
 | 100–119 | processed wood group + leaves (planks=100, oak planks=101, maple planks=102, pine planks=103, sawdust=110, paper=112) |
 | 150–199 | food and seeds |
 | 200–209 | tools and equipment |
@@ -168,10 +169,12 @@ Fields:
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `id` | int | unique (0=empty, 1=structure, 2=dirt, 3=stone) |
+| `id` | int | unique (0=empty, 1=structure, 2=dirt, 3=limestone, 4=granite, 6=slate) |
 | `name` | string | lookup key |
 | `solid` | int | 0=passable, 1=solid (blocks movement) |
-| `nproducts` | `[{name, quantity}]`? | items dropped when mined |
+| `group` | string? | logical family (e.g. `"stone"` for limestone/granite/slate). `StructPlacement` treats `requiredTileName` as a match on either the tile's name or its group, so quarry's `requiredTileName: "stone"` accepts any stone variant. |
+| `nproducts` | `[{name, quantity}]`? | items dropped on tile break (semantically: "clear the area"). Simple flat drops, no chance. |
+| `nExtractionProducts` | `[{name, quantity, chance?}]`? | items produced each cycle by an extraction building (e.g. quarry) placed on this tile. Distinct from `nproducts` because extraction is deliberate harvesting, not mining clearance. Consumed via `Quarry.GetExtractionOutputs` → `AnimalStateManager` craft loop. |
 
 ## `researchDb.json` — Technologies
 

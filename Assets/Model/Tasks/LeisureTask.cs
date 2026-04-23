@@ -26,7 +26,7 @@ public class LeisureTask : Task {
             b => b.structType.leisureNeed == leisureNeed && b.CanHostLeisureNow());
         if (path == null) return false;
 
-        b.seatRes[idx].Reserve(animal.aName);
+        b.seatRes[idx].Reserve(this);
         building = b;
         seatIndex = idx;
         seatTile = path.tile;

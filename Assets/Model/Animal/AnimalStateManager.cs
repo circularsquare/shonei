@@ -173,9 +173,16 @@ public class AnimalStateManager {
             while (animal.workProgress >= recipe.workload) {
                 animal.workProgress -= recipe.workload;
                 if (animal.CanProduce(recipe)) {
-                    // Consume inputs and produce outputs, rolling chance for each output
+                    // Consume inputs and produce outputs, rolling chance for each output.
+                    // Quarry routes outputs through its captured-tile's extractionProducts
+                    // instead of the recipe's (empty) outputs — see Quarry.cs.
                     foreach (ItemQuantity iq in recipe.inputs) animal.Consume(iq.item, iq.quantity);
-                    foreach (ItemQuantity output in recipe.outputs) {
+                    ItemQuantity[] outputs = recipe.outputs;
+                    if (craftTask.workplace?.building is Quarry quarry) {
+                        var extra = quarry.GetExtractionOutputs();
+                        if (extra != null) outputs = extra;
+                    }
+                    foreach (ItemQuantity output in outputs) {
                         if (output.chance >= 1f || UnityEngine.Random.value < output.chance)
                             animal.Produce(output.item, output.quantity);
                     }

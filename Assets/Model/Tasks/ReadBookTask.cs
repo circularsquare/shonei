@@ -88,7 +88,7 @@ public class ReadBookTask : Task {
         var (path, b, idx) = animal.nav.FindPathToLeisureSeat(
             b => b.structType.leisureNeed == "bench" && b.CanHostLeisureNow());
         if (path == null) return null;
-        b.seatRes[idx].Reserve(animal.aName);
+        b.seatRes[idx].Reserve(this);
         seatBuilding = b;
         seatIndex = idx;
         return path.tile;

@@ -76,6 +76,9 @@ public class StructureSaveData {
     // saves (field absent) deserialize as 0 which the restore path treats as "missing → default
     // to 1.0" so pre-maintenance saves don't load every structure as broken.
     public float condition;
+    // Quarry only: name of the stone tile the quarry was placed on. Drives the
+    // per-stone extraction distribution. null on non-quarry / old saves.
+    public string capturedTileType;
 }
 
 public class BlueprintSaveData {

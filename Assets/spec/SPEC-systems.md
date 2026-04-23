@@ -229,7 +229,7 @@ Plants advance through discrete growth stages, stored as `growthStage` on `Plant
 
 ## Reservation Systems
 
-`Reservable` (`Reservable.cs`) is the shared primitive — a capacity counter with `Reserve()`/`Unreserve()`/`Available()`. It appears in three conceptually different roles:
+`Reservable` (`Reservable.cs`) is the shared primitive — a capacity counter with `Reserve()`/`Unreserve()`/`Available()`. `Reserve` has two overloads: `Reserve(string by)` for callers without a task context (home, WOM orders) and `Reserve(Task by)` which additionally stores a task reference so `ExpireIfStale` can suppress expiry while the owning task is still the animal's active task (see "Staleness expiry" below). It appears in three conceptually different roles:
 
 ### Structure-level capacity ("can I go here?")
 
@@ -249,8 +249,14 @@ Workstations don't use `Structure.res` — the WOM Craft order's `res` is the so
 
 | Mechanism | Where | What it gates |
 |-----------|-------|---------------|
-| `ItemStack.resAmount` | Per-stack int counter (source) | Prevents two tasks from fetching the same items. Reserved via `Task.ReserveStack()` / `FetchAndReserve()`. Stale reservations expire after 60s via `Inventory.TickUpdate()`. |
-| `ItemStack.resSpace` | Per-stack int counter (destination) | Prevents two tasks from delivering to the same space. Reserved via `Task.ReserveSpace(inv, item, amount)`. `FreeSpace(item)` returns `stackSize - quantity - resSpace`. All space-checking methods (`GetStorageForItem`, `GetMergeSpace`, `HasSpaceForItem`) account for it. Empty stacks track `resSpaceItem` to prevent conflicting item claims. Stale reservations expire after 60s. |
+| `ItemStack.resAmount` | Per-stack int counter (source) | Prevents two tasks from fetching the same items. Reserved via `Task.ReserveStack()` / `FetchAndReserve()`. Stale reservations expire via `Inventory.TickUpdate()` — see "Staleness expiry" below. |
+| `ItemStack.resSpace` | Per-stack int counter (destination) | Prevents two tasks from delivering to the same space. Reserved via `Task.ReserveSpace(inv, item, amount)`. `FreeSpace(item)` returns `stackSize - quantity - resSpace`. All space-checking methods (`GetStorageForItem`, `GetMergeSpace`, `HasSpaceForItem`) account for it. Empty stacks track `resSpaceItem` to prevent conflicting item claims. Stale reservations expire via `Inventory.TickUpdate()` — see "Staleness expiry" below. |
+
+### Staleness expiry
+
+Both `Reservable` and `ItemStack` have a safety-net `ExpireIfStale(maxAge)` that clears reservations held longer than `maxAge` in-game seconds (timestamps use `World.instance.timer`, so they scale with `timeScale` and don't advance while paused). The guard is **AND-gated** on the owning task being inactive: a reservation whose `reservedByTask` (on Reservable) or `resTask`/`resSpaceTask` (on ItemStack) is still the animal's `task` is never expired, regardless of age. This prevents false-positive expiry on legitimately long-running tasks (e.g. `ReadBookTask` with fetch + walk + read + return). If the owning task was registered via a string-only `Reserve` overload (home assignment), or no task context exists, the guard falls through and the time-only path fires.
+
+Called from `StructController.TickUpdate` (every 120 × 0.2s = 24s, threshold 60s) for leisure seats, and from `Inventory.TickUpdate` (per-tick, threshold 60s) for item stacks.
 
 ### Save/load invariant
 

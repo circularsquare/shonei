@@ -5,6 +5,7 @@ meoww!!
 - plant details! plant temperature and moisture needs.
 - bamboo! multi tile vertical growth.
 - benches! sitting. new pose system. 
+- nav refactor
 4/17
 - books! scribes, bookshelves, research bonuses, leisure reading
 4/16

@@ -17,11 +17,11 @@ public class ItemStack {
     public int stackSize = 100;
     public Inventory inv;
     public int resAmount = 0;    // how much of this stack is reserved by pending tasks (source reservation)
-    public float resTime = 0f;   // Time.time when last Reserve() was called (for staleness)
+    public float resTime = 0f;   // World.instance.timer value when last Reserve() was called (for staleness)
     public Task resTask;         // task that made the source reservation (for validity checking + logging)
     public int resSpace = 0;     // space reserved for incoming deliveries (destination reservation)
     public Item resSpaceItem;    // which item the space reservation is for (needed for empty stacks)
-    public float resSpaceTime = 0f; // Time.time when last ReserveSpace() was called (for staleness)
+    public float resSpaceTime = 0f; // World.instance.timer value when last ReserveSpace() was called (for staleness)
     public Task resSpaceTask;    // task that made the space reservation (for validity checking + logging)
 
     // Formats a fen quantity as a liang string (e.g. 250 → "2.5", 200 → "2", 5 → "0.05")
@@ -143,14 +143,14 @@ public class ItemStack {
         int amount = Math.Min(n, quantity - resAmount);
         if (amount <= 0) return 0;
         resAmount += amount;
-        resTime = Time.time;
+        resTime = World.instance.timer;
         resTask = by;
         return amount;
     }
     public bool Reserve(Task by = null) {
         if (!Available()) return false;
         resAmount++;
-        resTime = Time.time;
+        resTime = World.instance.timer;
         resTask = by;
         return true;
     }
@@ -179,7 +179,7 @@ public class ItemStack {
         int amount = Math.Min(n, free);
         if (amount <= 0) return 0;
         resSpace += amount;
-        resSpaceTime = Time.time;
+        resSpaceTime = World.instance.timer;
         resSpaceTask = by;
         if (item == null && quantity == 0) resSpaceItem = forItem;
         return amount;
@@ -199,18 +199,18 @@ public class ItemStack {
 
     public bool ExpireIfStale(float maxAge) {
         bool expired = false;
-        if (resAmount > 0 && Time.time - resTime > maxAge && !TaskStillActive(resTask)) {
+        if (resAmount > 0 && World.instance.timer - resTime > maxAge && !TaskStillActive(resTask)) {
             string itemName = item?.name ?? "null";
             string by = resTask != null ? $" by {resTask.animal.aName}" : "";
-            Debug.LogWarning($"Cleared stale ItemStack source reservation{by}: item={itemName} resAmount={FormatQ(resAmount)} qty={FormatQ(quantity)} inv={inv.invType} ({inv.x},{inv.y}) held={Time.time - resTime:F0}s");
+            Debug.LogWarning($"Cleared stale ItemStack source reservation{by}: item={itemName} resAmount={FormatQ(resAmount)} qty={FormatQ(quantity)} inv={inv.invType} ({inv.x},{inv.y}) held={World.instance.timer - resTime:F0}s");
             resAmount = 0;
             resTask = null;
             expired = true;
         }
-        if (resSpace > 0 && Time.time - resSpaceTime > maxAge && !TaskStillActive(resSpaceTask)) {
+        if (resSpace > 0 && World.instance.timer - resSpaceTime > maxAge && !TaskStillActive(resSpaceTask)) {
             string itemName = resSpaceItem?.name ?? item?.name ?? "null";
             string by = resSpaceTask != null ? $" by {resSpaceTask.animal.aName}" : "";
-            Debug.LogWarning($"Cleared stale ItemStack space reservation{by}: item={itemName} resSpace={FormatQ(resSpace)} qty={FormatQ(quantity)} inv={inv.invType} ({inv.x},{inv.y}) held={Time.time - resSpaceTime:F0}s");
+            Debug.LogWarning($"Cleared stale ItemStack space reservation{by}: item={itemName} resSpace={FormatQ(resSpace)} qty={FormatQ(quantity)} inv={inv.invType} ({inv.x},{inv.y}) held={World.instance.timer - resSpaceTime:F0}s");
             resSpace = 0;
             resSpaceItem = null;
             resSpaceTask = null;

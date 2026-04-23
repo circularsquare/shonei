@@ -230,6 +230,7 @@ public class Structure {
         if (st.depth == 0 || st.isBuilding) {
             if (st.name == "pump")   return new PumpBuilding(st, x, y, mirrored);
             if (st.name == "market") return new MarketBuilding(st, x, y, mirrored);
+            if (st.name == "quarry") return new Quarry(st, x, y, mirrored);
             return new Building(st, x, y, mirrored);
         }
         return new Structure(st, x, y, mirrored); // platforms, ladders, stairs, foreground, roads

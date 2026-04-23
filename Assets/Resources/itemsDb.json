@@ -78,6 +78,17 @@
         "decayRate": 0.0,
         "children": null
     },{
+        "id": 60,
+        "name": "gem",
+        "decayRate": 0.0,
+        "children": [
+            {
+                "id": 61,
+                "name": "jade",
+                "children": null
+            }
+        ]
+    },{
         "id": 100,
         "name": "planks",
         "decayRate": 0.06,

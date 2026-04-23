@@ -9,18 +9,38 @@ public static class WorldGen {
 
     // ── Terrain shape ─────────────────────────────────────────────────
     public const int BaseHeight = 50;       // nominal surface y in the 100x80 grid
-    public const int SurfaceMin = 45;       // surface height never below this
-    public const int SurfaceMax = 60;       // surface height never above this
+    public const int SurfaceMin = 43;       // surface height never below this
+    public const int SurfaceMax = 62;       // surface height never above this
     public const int DirtDepth = 3;         // dirt tiles above stone
     public const int BedrockY = 0;          // lowest row is always solid
     const float SurfaceFreq = 0.06f;        // noise frequency (lower = broader hills)
-    const float SurfaceAmp = 4f;            // noise amplitude (height variation)
+    const float SurfaceAmp = 6.4f;          // noise amplitude (height variation)
     const int SurfaceOctaves = 3;           // noise detail layers
 
     // ── Spawn zone ────────────────────────────────────────────────────
     public const int SpawnMinX = 25;        // flat starting zone x-range (inclusive)
     public const int SpawnMaxX = 37;        // >=12 tiles wide
     public const int SpawnBlend = 4;        // tiles over which terrain blends to flat
+
+    // ── Stone veins ───────────────────────────────────────────────────
+    // Per-stone vein pass tuning. Each pass samples FBM at its own frequency /
+    // seed offset and converts limestone tiles to the vein tile where the noise
+    // drops below `Threshold × depthBias`. depthBias is 1.0 at `DepthCenter`
+    // (0=surface, 1=bedrock), tapering linearly to 0 at ±DepthWidth.
+    // Thresholds are tuned for "veins" rather than "layers": FBM noise mean is
+    // ~0.5, so threshold ~0.4 at peak bias converts roughly 30-40% of tiles at
+    // the depth center. Bump up for more abundant veins, down for rarer ones.
+    const float GraniteFreq        = 0.08f;
+    const float GraniteThreshold   = 0.48f;
+    const float GraniteDepthCenter = 0.4f;   // (0=surface, 1=bedrock)
+    const float GraniteDepthWidth  = 0.3f;
+    const int   GraniteSeedOffset  = 1111;
+
+    const float SlateFreq        = 0.09f;
+    const float SlateThreshold   = 0.50f;
+    const float SlateDepthCenter = 0.7f;
+    const float SlateDepthWidth  = 0.25f;
+    const int   SlateSeedOffset  = 2222;
 
     // ── Caves ────────────────────────────────────────────────────────
     const float CaveFreqX = 0.06f;          // lower = wider caves horizontally
@@ -62,6 +82,7 @@ public static class WorldGen {
 
         int[] surfaceY = GenerateSurfaceHeights(nx, seed);
         FillTerrain(world, surfaceY);
+        ApplyVeins(world, surfaceY, seed);
 
         // Cave generation: build a continuous noise field, blend in worm tunnels,
         // then threshold + CA smooth into the final boolean mask.
@@ -134,9 +155,11 @@ public static class WorldGen {
     }
 
     // Fills the grid with dirt and stone based on surface heights.
+    // All underground solid is seeded as limestone; vein passes (ApplyVeins) then
+    // convert bands of it into granite / slate to create mining variety.
     static void FillTerrain(World world, int[] surfaceY) {
         TileType dirt = Db.tileTypeByName["dirt"];
-        TileType stone = Db.tileTypeByName["stone"];
+        TileType limestone = Db.tileTypeByName["limestone"];
 
         for (int x = 0; x < world.nx; x++) {
             int surface = surfaceY[x];
@@ -144,9 +167,51 @@ public static class WorldGen {
                 if (y >= surface - DirtDepth)
                     world.GetTileAt(x, y).type = dirt;
                 else
-                    world.GetTileAt(x, y).type = stone;
+                    world.GetTileAt(x, y).type = limestone;
             }
             // y >= surface stays empty (default TileType)
+        }
+    }
+
+    // ── Stone vein generation ────────────────────────────────────────────
+    // Runs after FillTerrain, before caves. Each pass samples its own FBM and
+    // converts limestone tiles to the target stone where the noise drops below
+    // the (depth-biased) threshold. Later passes can overwrite earlier ones
+    // only if they also start from limestone — since granite/slate pass checks
+    // the current tile against limestone, veins don't overlap (first pass wins
+    // per tile). Ordering: granite first, then slate.
+    static void ApplyVeins(World world, int[] surfaceY, int seed) {
+        ApplyVeinPass(world, surfaceY, "granite", GraniteFreq, GraniteThreshold,
+                      GraniteDepthCenter, GraniteDepthWidth, seed + GraniteSeedOffset);
+        ApplyVeinPass(world, surfaceY, "slate",   SlateFreq,   SlateThreshold,
+                      SlateDepthCenter,   SlateDepthWidth,   seed + SlateSeedOffset);
+    }
+
+    static void ApplyVeinPass(World world, int[] surfaceY, string tileName,
+                              float freq, float threshold,
+                              float depthCenter, float depthWidth, int seedOffset) {
+        if (!Db.tileTypeByName.TryGetValue(tileName, out TileType veinTile)) {
+            Debug.LogError($"ApplyVeinPass: tileType '{tileName}' not found in tilesDb");
+            return;
+        }
+        TileType limestone = Db.tileTypeByName["limestone"];
+        float seedOffX = seedOffset * 0.7f;
+        float seedOffY = seedOffset * 1.3f;
+        for (int x = 0; x < world.nx; x++) {
+            int surface = surfaceY[x];
+            // depthSpan protects against divide-by-zero on degenerate columns.
+            int depthSpan = Math.Max(1, surface - BedrockY);
+            for (int y = BedrockY + 1; y < surface; y++) {
+                Tile t = world.GetTileAt(x, y);
+                // Only convert base limestone — leaves dirt, already-carved veins, and empties alone.
+                if (t.type != limestone) continue;
+                float depth = 1f - (float)(y - BedrockY) / depthSpan;
+                float bias = Mathf.Clamp01(1f - Mathf.Abs(depth - depthCenter) / depthWidth);
+                float noise = FBM2D((x + seedOffX) * freq, (y + seedOffY) * freq, 2, 0.5f, 2f);
+                // Lower noise + stronger depth bias → vein tile. When bias=0 (far from center)
+                // the threshold goes to 0 and no tiles convert, naturally gating by depth.
+                if (noise < threshold * bias) t.type = veinTile;
+            }
         }
     }
 
@@ -409,74 +474,105 @@ public static class WorldGen {
     // Capping at MaxPools (rather than filling every basin) keeps water presence
     // consistent across seeds — otherwise lumpy heightmaps produce swampy maps
     // and smooth ones produce dry maps.
+    //
+    // Guarantee: the largest eligible (non-draining) basin is always filled, even
+    // if its volume is below MinPoolVolume. This ensures every world gets at least
+    // one visible water source — being stranded on a dry map is worse than having
+    // a tiny puddle. Additional pools (up to MaxPools) still require MinPoolVolume.
     static void FillDepressions(World world, int[] surfaceY) {
         int nx = world.nx;
         ushort waterMax = WaterController.WaterMax;
+
+        // Use the EFFECTIVE surface (top of actual solid terrain, post-carve) rather
+        // than the original heightmap surfaceY — otherwise worm tunnels and cave
+        // exits that break through to the surface create visible pits that this
+        // algorithm can't see (since surfaceY still claims the column is solid up
+        // to the original height).
+        int[] effSurfaceY = ComputeEffectiveSurface(world, surfaceY);
 
         // Compute water level per column: min(maxLeft, maxRight)
         int[] waterLevel = new int[nx];
         int[] maxLeft = new int[nx];
         int[] maxRight = new int[nx];
 
-        maxLeft[0] = surfaceY[0];
+        maxLeft[0] = effSurfaceY[0];
         for (int x = 1; x < nx; x++)
-            maxLeft[x] = Math.Max(maxLeft[x - 1], surfaceY[x]);
+            maxLeft[x] = Math.Max(maxLeft[x - 1], effSurfaceY[x]);
 
-        maxRight[nx - 1] = surfaceY[nx - 1];
+        maxRight[nx - 1] = effSurfaceY[nx - 1];
         for (int x = nx - 2; x >= 0; x--)
-            maxRight[x] = Math.Max(maxRight[x + 1], surfaceY[x]);
+            maxRight[x] = Math.Max(maxRight[x + 1], effSurfaceY[x]);
 
         for (int x = 0; x < nx; x++)
             waterLevel[x] = Math.Min(maxLeft[x], maxRight[x]);
 
         // Pass 1: collect all eligible basins (contiguous runs where
-        // waterLevel > surfaceY, not draining into caves, big enough).
+        // waterLevel > effSurfaceY, not draining into caves, big enough).
         List<(int x0, int x1, int volume, int waterLevel)> basins = new();
         int cursor = 0;
         while (cursor < nx) {
-            if (waterLevel[cursor] <= surfaceY[cursor]) { cursor++; continue; }
+            if (waterLevel[cursor] <= effSurfaceY[cursor]) { cursor++; continue; }
 
             int x0 = cursor, x1 = cursor;
             int volume = 0;
-            while (x1 < nx && waterLevel[x1] > surfaceY[x1]) {
+            while (x1 < nx && waterLevel[x1] > effSurfaceY[x1]) {
                 int cappedLevel = Math.Min(waterLevel[x1], WaterLine);
-                volume += Math.Max(0, cappedLevel - surfaceY[x1]);
+                volume += Math.Max(0, cappedLevel - effSurfaceY[x1]);
                 x1++;
             }
 
             // Skip basins that would drain into caves — any column with an
-            // empty tile just below the surface lets water out.
+            // empty tile just below the actual (effective) floor lets water out.
             bool drains = false;
             for (int x = x0; x < x1 && !drains; x++) {
-                for (int y = surfaceY[x] - 1; y >= Math.Max(0, surfaceY[x] - 3); y--) {
+                for (int y = effSurfaceY[x] - 1; y >= Math.Max(0, effSurfaceY[x] - 3); y--) {
                     if (!world.GetTileAt(x, y).type.solid) { drains = true; break; }
                 }
             }
 
-            if (!drains && volume >= MinPoolVolume)
+            // Collect any non-draining basin with volume ≥ 1. MinPoolVolume gating
+            // now happens in Pass 2 so the largest basin can bypass it (guarantee).
+            if (!drains && volume >= 1)
                 basins.Add((x0, x1, volume, Math.Min(waterLevel[x0], WaterLine)));
 
             cursor = x1;
         }
 
-        // Pass 2: sort by volume descending, fill the top MaxPools.
+        // Pass 2: sort by volume descending, fill up to MaxPools.
+        // The largest basin is always filled (even if below MinPoolVolume) so every
+        // world has at least one water source. Subsequent pools still require
+        // MinPoolVolume so tiny puddles don't proliferate.
         basins.Sort((a, b) => b.volume.CompareTo(a.volume));
+        if (basins.Count == 0) {
+            // Fallback: the WaterLine cap zeros out volume for basins whose floor
+            // sits above it, so on maps with mostly-high terrain the primary scan
+            // finds nothing. Re-collect using the natural water level (uncapped).
+            // Drain check is preserved — we still don't want water falling into caves.
+            basins = CollectBasinsUncapped(world, effSurfaceY, waterLevel, nx);
+            basins.Sort((a, b) => b.volume.CompareTo(a.volume));
+            if (basins.Count == 0) {
+                Debug.LogWarning("FillDepressions: no eligible basins on this map even with fallback — no surface water will spawn.");
+                return;
+            }
+        }
         int toFill = Math.Min(MaxPools, basins.Count);
         for (int i = 0; i < toFill; i++) {
+            // Only the first pool bypasses MinPoolVolume; others must meet it.
+            if (i > 0 && basins[i].volume < MinPoolVolume) break;
             var b = basins[i];
             int fillLevel = b.waterLevel;
 
             // Large basins: binary-search the highest uniform level that keeps
             // total volume ≤ MaxPoolVolume, so oversized depressions don't flood.
             if (b.volume > MaxPoolVolume) {
-                int lo = surfaceY[b.x0], hi = fillLevel;
+                int lo = effSurfaceY[b.x0], hi = fillLevel;
                 for (int x = b.x0; x < b.x1; x++)
-                    lo = Math.Min(lo, surfaceY[x]);
+                    lo = Math.Min(lo, effSurfaceY[x]);
                 while (lo < hi) {
                     int mid = (lo + hi + 1) / 2;
                     int vol = 0;
                     for (int x = b.x0; x < b.x1; x++)
-                        vol += Math.Max(0, mid - surfaceY[x]);
+                        vol += Math.Max(0, mid - effSurfaceY[x]);
                     if (vol <= MaxPoolVolume) lo = mid;
                     else hi = mid - 1;
                 }
@@ -484,13 +580,65 @@ public static class WorldGen {
             }
 
             for (int x = b.x0; x < b.x1; x++) {
-                for (int y = surfaceY[x]; y < fillLevel; y++) {
+                for (int y = effSurfaceY[x]; y < fillLevel; y++) {
                     Tile t = world.GetTileAt(x, y);
                     if (!t.type.solid)
                         t.water = waterMax;
                 }
             }
         }
+    }
+
+    // Actual topmost-solid-tile y per column, scanning down from the sky. Differs
+    // from the heightmap surfaceY whenever caves/worms carve away the original top,
+    // creating pits or cliffs FillDepressions would otherwise miss. Returned values
+    // are the y-coordinate of the first EMPTY tile above the highest remaining solid
+    // (matching surfaceY semantics: the "surface" is the air-tile just above ground).
+    static int[] ComputeEffectiveSurface(World world, int[] surfaceY) {
+        int nx = world.nx, ny = world.ny;
+        int[] eff = new int[nx];
+        for (int x = 0; x < nx; x++) {
+            // Start one above the original heightmap top — if anything got carved,
+            // we'll walk down past the empties until we find solid ground.
+            int y = Math.Min(ny - 1, surfaceY[x]);
+            while (y > 0 && !world.GetTileAt(x, y - 1).type.solid) y--;
+            eff[x] = y;
+        }
+        return eff;
+    }
+
+    // Fallback basin collector: same geometry as the main scan in FillDepressions,
+    // but the volume uses the natural waterLevel (no WaterLine cap) so high-altitude
+    // basins count too. Drain-into-cave check is preserved — water on cave ceilings
+    // would fall through. Used only when the primary below-WaterLine scan is empty.
+    // Caller passes the effective (post-carve) surface so carved pits are visible.
+    static List<(int x0, int x1, int volume, int waterLevel)> CollectBasinsUncapped(
+        World world, int[] effSurfaceY, int[] waterLevel, int nx) {
+        var basins = new List<(int x0, int x1, int volume, int waterLevel)>();
+        int cursor = 0;
+        while (cursor < nx) {
+            if (waterLevel[cursor] <= effSurfaceY[cursor]) { cursor++; continue; }
+
+            int x0 = cursor, x1 = cursor;
+            int volume = 0;
+            while (x1 < nx && waterLevel[x1] > effSurfaceY[x1]) {
+                volume += waterLevel[x1] - effSurfaceY[x1]; // no WaterLine cap
+                x1++;
+            }
+
+            bool drains = false;
+            for (int x = x0; x < x1 && !drains; x++) {
+                for (int y = effSurfaceY[x] - 1; y >= Math.Max(0, effSurfaceY[x] - 3); y--) {
+                    if (!world.GetTileAt(x, y).type.solid) { drains = true; break; }
+                }
+            }
+
+            if (!drains && volume >= 1)
+                basins.Add((x0, x1, volume, waterLevel[x0]));
+
+            cursor = x1;
+        }
+        return basins;
     }
 
     // ── Plant scattering ──────────────────────────────────────────────────

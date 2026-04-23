@@ -1,5 +1,4 @@
 CONTENT
-- elevators, trains
 - foot traffic view
 - bunnies
 - magic / qi
@@ -8,6 +7,8 @@ CONTENT
 - clothing
     - silkworm building? -> silk cocoons -> cloth -> clothing 
 - trading 
+- elevators, trains
+    - how are these powered?
 - plant
     - plants die if temp / moisture are bad?
     - irrigation?
@@ -24,6 +25,8 @@ VISUALS
     - improve undergroundwall sprite 
     - procedurally generate rocks with normalmaps?
 
+- improve inventory display placement...
+
 MOUSE AI
 - ponder inventory management
     - global can have consume above amount?
@@ -35,9 +38,8 @@ MOUSE AI
 - general way of estimating what needs will become an issue before starting a long task 
 
 CODE CLEANUP 
-- nav is long?
-
 
 BUGS
 
 TODAY GOALS
+- test new stone mining yield distribution

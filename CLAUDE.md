@@ -1,36 +1,38 @@
 # Shonei — Claude Instructions
 
-## Project spec
+## Project
 
 meow!
 
-This is a big project. A Dream Project. Lets be ambitious and try to make scaleable solutions that will be clean to work with years down the line, as I have a lot of time to spend on this and you are very capable. 
+This is a big project — a Dream Project. Let's be ambitious and build scalable solutions that will still be clean to work with years down the line. I have a lot of time to spend on this, and you're very capable.
 
-Please feel free to explain your thought process in your responses.
+## Working style
 
-I like to use plan mode! If you're going to make a code change that has opportunities to going wrong, and we're not in plan mode, asusme I just forgot to set plan mode and please enter it.
+I like to use plan mode! If you're about to make a code change that has real chances of going wrong and we're not in plan mode, assume I just forgot to set it and enter plan mode yourself.
 
-Avoid failing silently. Instead, LogError. Or if an unexpected case occurs, at least Log.
-
-Prioritize documentation and code clarity, in a way that future claude's would find easy to understand.
-
-Make stuff private if you think it should be private. 
-
-If you notice anything that could be reorganized to improve clarity or efficiency, please mention a suggestion to me.
+Please feel free to explain your thought process.
 
 If you think my query is based on incorrect assumptions or doesn't make sense to you, feel free to ask for clarification.
 
-**Before modifying any code**, read `Assets/spec/SPEC.md` to orient yourself, then read the relevant sub-document for the system you're touching. Do not skip this step even for small changes — most pattern violations come from not reading the spec first.
+Feel free to spawn subagents to work on tasks or to double-check your own work — a fresh perspective catches mistakes your own context has normalized. This is especially valuable for (a) tasks with lots of moving or abstract parts, where there's more surface area for misunderstanding, and (b) any task that calls for an *estimate* (how hard something will be, how much compute alternatives might take, how long a refactor will run) — independent estimates reduce anchoring on your first guess.
 
-You can also reference log.txt and todo.txt for my thoughts on what has happened recently and what we should work on in the future. But don't edit these.
+If you notice anything that could be reorganized to improve clarity or efficiency, please mention it.
 
-Design plans for non-trivial in-progress features live in `C:\Users\anita\.claude\projects\c--Users-anita-projects-shonei\plans\` (alongside memory). Check there when picking up unfinished work or when the user references a plan by name. Save new plans there when scoping out a multi-session feature.
+For Unity GameObjects, lean towards telling me what to do in the editor rather than creating them and setting properties in code.
 
-For unity gameobjects, please lean towards telling me what to do in editor rather than creating them and setting properties in code.
+## Code practices
 
-For style, have open brace on first line of function declaration.
+Avoid failing silently. Instead, LogError. Or if an unexpected case occurs, at least Log.
 
-## Comment style
+Make stuff private if you think it should be private.
+
+## Code style
+
+Prioritize documentation and code clarity, in a way that future Claudes would find easy to understand.
+
+For braces: open brace on first line of function declaration.
+
+Comments:
 
 - **Class-level**: `//` line-block comments. No `/// <summary>` XML anywhere.
 - **Section dividers**: `// ── Section name ──────────────────` (em-dash, ~70 chars total).
@@ -38,6 +40,13 @@ For style, have open brace on first line of function declaration.
 - **Field comments**: trailing `//` for one-liners; above `//` block for multi-line.
 - **TODOs**: `// TODO:` (uppercase T, colon).
 
+## Resources
+
+**Before modifying any code**, read `Assets/spec/SPEC.md` to orient yourself, then read the relevant sub-document for the system you're touching. Do not skip this step even for small changes — most pattern violations come from not reading the spec first.
+
+You can also reference log.txt and todo.txt for my thoughts on what has happened recently and what we should work on in the future. But don't edit these.
+
+Design plans for non-trivial in-progress features live in `C:\Users\anita\.claude\projects\c--Users-anita-projects-shonei\plans\` (alongside memory). Check there when picking up unfinished work or when the user references a plan by name. Save new plans there when scoping out a multi-session feature.
 
 ## Folder conventions
 
@@ -99,4 +108,3 @@ When the user says anything like "let's wrap up", "running low on context", "let
 1. **Update specs**: Review all changes made this session. Update the relevant `Assets/spec/SPEC-*.md` files so they reflect what was built or changed.
 2. **Flag future work**: Call out anything worth revisiting — messy code, incomplete features, things that work but could be cleaner, potential refactors that would make the system easier to build on.
 3. **Suggest reorgs**: If you noticed anything during the session that could be reorganized for clarity or extensibility, mention it even if it wasn't part of the task.
-

@@ -8,7 +8,11 @@ public static class StructPlacement {
         if (tile.GetBlueprintAt(st.depth) != null) return false;
 
         if (tile.type.id != 0 && st.name != "empty" && st.requiredTileName == null) return false;
-        if (st.requiredTileName != null && tile.type.name != st.requiredTileName) return false;
+        // requiredTileName matches either a specific tile name or the tile's group
+        // (e.g. quarry's "stone" requirement accepts limestone/granite/slate).
+        if (st.requiredTileName != null
+            && tile.type.name  != st.requiredTileName
+            && tile.type.group != st.requiredTileName) return false;
 
         if (!st.isTile) {
             if (st.isPlant && tile.structs[0] != null) return false;
@@ -43,7 +47,9 @@ public static class StructPlacement {
                 if (req.mustHaveWater && t.water == 0) return false;
                 if (req.mustBeEmpty && t.structs[0] != null) return false;
                 if (req.mustBeSolidTile && !t.type.solid) return false;
-                if (req.requiredTileName != null && t.type.name != req.requiredTileName) return false;
+                if (req.requiredTileName != null
+                    && t.type.name  != req.requiredTileName
+                    && t.type.group != req.requiredTileName) return false;
             }
         }
 
