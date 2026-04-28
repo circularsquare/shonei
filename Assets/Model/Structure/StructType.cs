@@ -20,7 +20,20 @@ public class TileRequirement {
     public bool mustHaveWater {get; set;}    // tile.water > 0
     public bool mustBeEmpty {get; set;}      // structs[0] (building layer) must be null
     public bool mustBeSolidTile {get; set;}  // tile.type.solid must be true (ground tiles only, not solidTop buildings)
+    public bool mustBeOpenSkyAbove {get; set;}  // World.IsExposedAbove(tx, ty) — used by windmill on each top-row tile
     public string requiredTileName {get; set;}
+}
+
+// Shape variant: an alternate footprint a StructType can take. When a StructType
+// declares a `shapes` array, the player cycles between them with Q/E during build
+// placement and the chosen shape's nx/ny override the StructType's base nx/ny on
+// the placed structure & blueprint. Cost scales linearly with tile count vs shape[0]
+// (the "authored" baseline). v1 only handles vertical extension (nx=1, ny>=1) for
+// the variable-height platform; future buildings can add wider shapes as needed.
+public class Shape {
+    public int nx {get; set;}
+    public int ny {get; set;}
+    public int TileCount => Mathf.Max(1, nx) * Mathf.Max(1, ny);
 }
 
 public class StructType {
@@ -69,6 +82,20 @@ public class StructType {
     public int workTileX {get; set;} // tile offset to the interaction/nav tile (default 0,0 = anchor)
     public int workTileY {get; set;}
     public WorkTileOffset[] nworkTiles {get; set;} // multiple work positions (e.g. fireplace seats); populated from legacy workTileX/Y if absent
+
+    // Optional off-grid worker pose. When both are set, Structure registers a Graph waypoint
+    // at anchor + (mirrored)workSpotX, workSpotY and edges it to the nearest standable bottom-row
+    // tile-node. Workers walk to and stand at the waypoint instead of the integer workTile center
+    // — used by the mouse-wheel runner to stand centred between the 2x2 footprint columns,
+    // slightly above ground. Null = use workTile center (today's behaviour).
+    public float? workSpotX {get; set;}
+    public float? workSpotY {get; set;}
+
+    // Body pose the worker strikes while crafting at this building (mirrors leisurePose).
+    // Read by WorkObjective.PoseOverride. AnimationController routes the special value
+    // "walk" through the state Animator int (reusing the existing walk clip — no extra
+    // Animator state needed). Other names map via PoseToInt. Null = default Working state.
+    public string workPose {get; set;}
     public int storageTileX {get; set;} // tile offset to the storage inventory tile (default 0,0 = anchor)
     public int storageTileY {get; set;}
     public TileRequirement[] tileRequirements {get; set;} // extra per-tile constraints checked at placement
@@ -113,14 +140,53 @@ public class StructType {
     public bool isLightSource {get; set;}
     public float lightIntensity {get; set;}
 
+    // ── Mechanical power ──────────────────────────────────────────────
+    // powerBoost > 1.0 turns this StructType into a power consumer at runtime: when the
+    // built instance has its (single) port connected to a powered network, the operator's
+    // craft work-tick rate multiplies by this value. Default 1.0 means "not power-aware".
+    // Implementation: AnimalStateManager.HandleWorking gates on PowerSystem.IsBuildingPowered.
+    // The consumer registration is auto-wired from Building.OnPlaced. See SPEC-power.md.
+    public float powerBoost {get; set;} = 1f;
+
+    // When true, the player can press R during placement to cycle through 4 rotation states
+    // (0/90/180/270 clockwise). The rotation persists on the placed structure / blueprint.
+    // For v1, intended for 1×1 buildings only — rotating a multi-tile sprite would break
+    // tile-occupancy and placement math (footprint stays nx×ny). Rotation is purely visual
+    // for most types; PowerShaft additionally derives its connectivity axis from rotation.
+    public bool rotatable {get; set;}
+
+    // Variable-shape variants. When non-null, the player cycles them with Q/E during
+    // placement. shapes[0] is the "authored" baseline — `costs` are sized for it, and
+    // larger shapes scale linearly with tile count. Null = single fixed shape (nx,ny).
+    // See Shape comment above. Sprite composition for vertical shapes uses
+    // `{name}_b` (anchor), `{name}_m` (middles), `{name}_t` (top) — falling back
+    // to the base sprite if any are missing.
+    public Shape[] shapes {get; set;}
+    public bool HasShapes => shapes != null && shapes.Length > 0;
+    // Returns the chosen shape, clamped to a valid index. Falls back to a Shape mirroring
+    // the StructType's base nx/ny when `shapes` is unset, so callers don't need to branch.
+    public Shape GetShape(int index) {
+        if (!HasShapes) return new Shape { nx = nx, ny = ny };
+        if (index < 0) index = 0;
+        if (index >= shapes.Length) index = shapes.Length - 1;
+        return shapes[index];
+    }
+
     public virtual Sprite LoadSprite() {
         if (isTile) {
             if (name == "empty") return null;
             Sprite s = Resources.Load<Sprite>("Sprites/Tiles/" + name.Replace(" ", ""));
             return s != null && s.texture != null ? s : null;
         }
-        Sprite s2 = Resources.Load<Sprite>("Sprites/Buildings/" + name.Replace(" ", ""));
-        return s2 != null && s2.texture != null ? s2 : null;
+        string path = "Sprites/Buildings/" + name.Replace(" ", "");
+        Sprite s2 = Resources.Load<Sprite>(path);
+        if (s2 != null && s2.texture != null) return s2;
+        // Multi-sliced sprite-sheet fallback: Resources.Load<Sprite> returns null on a
+        // sheet imported in "Multiple" mode (it can't pick a single sub-sprite). Fall
+        // back to the first sliced frame so animated buildings still have a static
+        // default before FrameAnimator takes over at Update time.
+        Sprite[] all = Resources.LoadAll<Sprite>(path);
+        return (all != null && all.Length > 0 && all[0].texture != null) ? all[0] : null;
     }
 
     [OnDeserialized]

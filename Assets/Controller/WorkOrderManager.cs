@@ -402,7 +402,10 @@ public class WorkOrderManager : MonoBehaviour {
             res = res,
             isActive = () => !building.disabled && !building.IsBroken && building.ConditionsMet(),
             canDo = a => Array.Exists(a.job.recipes, r => r != null && r.tile == buildingName),
-            getDistance = a => Mathf.Abs(building.workTile.x - a.x) + Mathf.Abs(building.workTile.y - a.y)
+            // Distance heuristic uses workNode.wx/wy — float-safe (animal.x/y are also float)
+            // and respects workSpot for buildings that declare one (e.g. wheel sorts by hub
+            // position, not anchor corner).
+            getDistance = a => Mathf.Abs(building.workNode.wx - a.x) + Mathf.Abs(building.workNode.wy - a.y)
         });
         return true;
     }

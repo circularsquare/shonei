@@ -9,7 +9,12 @@
         "depth": 1,
         "solidTop": true,
         "noMaintenance": true,
-        "category": "structures"
+        "category": "structures",
+        "shapes": [
+            { "nx": 1, "ny": 1 },
+            { "nx": 1, "ny": 2 },
+            { "nx": 1, "ny": 3 }
+        ]
     },{
         "id": 2,
         "name": "stairs",
@@ -299,7 +304,7 @@
     },{
         "id": 104,
         "name": "press",
-        "description": "press soybeans and water into soymilk",
+        "description": "press soybeans and water into soymilk; 3x faster when powered",
         "nx": 1, "ny": 1,
         "ncosts": [
             { "name": "wood", "quantity": 4 },
@@ -309,11 +314,12 @@
         "isWorkstation": true,
         "capacity": 1,
         "category": "production",
+        "powerBoost": 3.0,
         "defaultLocked": true
     },{
         "id": 105,
         "name": "pump",
-        "description": "pumps water from an adjacent water tile",
+        "description": "pumps water from an adjacent water tile; 3x faster when powered",
         "nx": 2, "ny": 1,
         "ncosts": [
             { "name": "wood", "quantity": 3 },
@@ -323,6 +329,7 @@
         "isWorkstation": true,
         "capacity": 2,
         "category": "production",
+        "powerBoost": 3.0,
         "workTileX": 0,
         "tileRequirements": [
             { "dx": 0, "mustBeStandable": true },
@@ -432,5 +439,83 @@
         "solidTop": true,
         "category": "production",
         "defaultLocked": true
+    },{
+        "id": 140,
+        "name": "wheel",
+        "description": "a runner mouse generates mechanical power while running on this wheel",
+        "nx": 2, "ny": 2,
+        "ncosts": [
+            { "name": "wood", "quantity": 4 },
+            { "name": "planks", "quantity": 2 }
+        ],
+        "njob": "hauler",
+        "isWorkstation": true,
+        "capacity": 1,
+        "workTileX": 0,
+        "workSpotX": 0.5,
+        "workSpotY": 0.25,
+        "workPose": "walk",
+        "category": "production"
+    },{
+        "id": 141,
+        "name": "windmill",
+        "description": "harvests wind into mechanical power; needs open sky above",
+        "nx": 2, "ny": 4,
+        "ncosts": [
+            { "name": "wood", "quantity": 8 },
+            { "name": "planks", "quantity": 4 }
+        ],
+        "njob": "hauler",
+        "category": "production",
+        "tileRequirements": [
+            { "dx": 0, "dy": 3, "mustBeOpenSkyAbove": true },
+            { "dx": 1, "dy": 3, "mustBeOpenSkyAbove": true }
+        ]
+    },{
+        "id": 145,
+        "name": "flywheel",
+        "description": "stores mechanical power. charges from a network's surplus and discharges to fill any deficit. slowly bleeds energy over time.",
+        "nx": 2, "ny": 2,
+        "ncosts": [
+            { "name": "stone", "quantity": 6 },
+            { "name": "planks", "quantity": 4 }
+        ],
+        "njob": "hauler",
+        "category": "production"
+    },{
+        "id": 142,
+        "name": "power shaft",
+        "description": "mechanical power shaft. press R to rotate between horizontal and vertical.",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "planks", "quantity": 1 }
+        ],
+        "njob": "hauler",
+        "depth": 2,
+        "category": "structures",
+        "rotatable": true
+    },{
+        "id": 144,
+        "name": "power shaft turn",
+        "description": "turning shaft. press R to rotate the corner; F to flip.",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "planks", "quantity": 1 }
+        ],
+        "njob": "hauler",
+        "depth": 2,
+        "category": "structures",
+        "rotatable": true
+    },{
+        "id": 143,
+        "name": "power shaft 4",
+        "description": "4-way mechanical power junction. branches one network into multiple directions.",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "planks", "quantity": 2 }
+        ],
+        "njob": "hauler",
+        "depth": 2,
+        "category": "structures"
     }
 ]

@@ -317,12 +317,20 @@ public class Graph {
         Tile tileHere = world.GetTileAt(x, y);
         Tile tileBelow = world.GetTileAt(x, y-1);
         if (tileBelow == null) {return false;} // need tile below to exist
-        else if (tileHere.type.solid) {return false;} // need tilehere to not be solid
-        else if (tileBelow.type.solid) {return true;} // tile below is solid
-        else if (tileBelow.building != null && tileBelow.building.structType.solidTop) {return true;} // tile below is solid-top building
-        else if (tileBelow.structs[1] != null && tileBelow.structs[1].structType.solidTop) {return true;} // tile below is solid-top mStruct
-        else if (tileHere.HasLadder() || tileBelow.HasLadder()) {return true;}
-        else {return false;}
+        if (tileHere.type.solid) {return false;} // need tilehere to not be solid
+        // Multi-tile structure body: if the SAME structure occupies both tileHere and
+        // tileBelow, this tile is inside the structure's column — not standable. Top of
+        // the column (where structs[depth] is null) and adjacent stacked-but-separate
+        // structures (different instance refs) keep their existing standability.
+        if (tileHere.structs[0] != null && tileHere.structs[0] == tileBelow.structs[0]
+            && tileHere.structs[0].structType.solidTop) return false;
+        if (tileHere.structs[1] != null && tileHere.structs[1] == tileBelow.structs[1]
+            && tileHere.structs[1].structType.solidTop) return false;
+        if (tileBelow.type.solid) {return true;} // tile below is solid
+        if (tileBelow.building != null && tileBelow.building.structType.solidTop) {return true;} // tile below is solid-top building
+        if (tileBelow.structs[1] != null && tileBelow.structs[1].structType.solidTop) {return true;} // tile below is solid-top mStruct
+        if (tileHere.HasLadder() || tileBelow.HasLadder()) {return true;}
+        return false;
     }
     public void UpdateStandability(int x, int y){ nodes[x,y].standable = GetStandability(x, y); }
 }

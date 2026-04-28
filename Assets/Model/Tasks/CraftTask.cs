@@ -22,7 +22,10 @@ public class CraftTask : Task {
     public override bool Initialize(){
         recipe = _preChosenRecipe ?? animal.PickRecipeForBuilding(_building);
         if (recipe == null) { return false; }
-        Path p = animal.nav.PathTo(_building.workTile);
+        // Path to workNode — equals workTile.node for normal buildings, but for buildings
+        // with a workSpot (e.g. wheel) it's an off-grid waypoint at the worker's pose
+        // position. workplace stays as the integer workTile for power/occupancy semantics.
+        Path p = animal.nav.PathTo(_building.workNode);
         if (!animal.nav.WithinRadius(p, MediumFindRadius)) { return false; }
         workplace = _building.workTile;
 
@@ -39,8 +42,9 @@ public class CraftTask : Task {
         }
         _fetchInputIndex = 0;
 
-        // Queue tail: Go → Work → Drops
-        objectives.AddLast(new GoObjective(this, workplace));
+        // Queue tail: Go → Work → Drops. GoObjective targets workNode (waypoint or tile-node)
+        // so the runner ends up at the workSpot position, not just on the workTile center.
+        objectives.AddLast(new GoObjective(this, _building.workNode));
         objectives.AddLast(new WorkObjective(this, recipe));
         foreach (ItemQuantity output in recipe.outputs)
             objectives.AddLast(new DropObjective(this, output.item));

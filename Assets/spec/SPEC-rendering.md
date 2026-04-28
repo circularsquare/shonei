@@ -210,7 +210,9 @@ Each state/pose corresponds to a single `.anim` clip. Stationary poses are fine 
 - Transition **Any State → mouse<Pose>**: `pose Equals <N>`, Has Exit Time off, Transition Duration 0, **Can Transition To Self unchecked** (otherwise it re-enters every frame and freezes at frame 0).
 - Transition **mouse<Pose> → mouseIdle**: `pose Equals 0`, Has Exit Time off, Transition Duration 0. From `mouseIdle` the existing `state`-based transitions take over.
 
-**How a pose gets triggered.** Pose is data-driven: `StructType.leisurePose` in JSON names the pose, `LeisureObjective.PoseOverride` reads it off the seated building (for `LeisureTask.building` and `ReadBookTask.seatBuilding`). Since the override is a pure getter derived from the current objective, it self-clears on objective transition — no explicit set/reset plumbing.
+**How a pose gets triggered.** Pose is data-driven: `StructType.leisurePose` in JSON names the pose, `LeisureObjective.PoseOverride` reads it off the seated building (for `LeisureTask.building` and `ReadBookTask.seatBuilding`). `WorkObjective.PoseOverride` reads `StructType.workPose` off the CraftTask's workplace building (mirrors leisurePose). Since the override is a pure getter derived from the current objective, it self-clears on objective transition — no explicit set/reset plumbing.
+
+**Special case `"walk"`**: `AnimationController.UpdateState` routes a pose of `"walk"` to `state = 1` (Moving) and `pose = 0`, reusing the existing walk clip instead of needing a duplicate animator state. Used by the wheel runner so the mouse cycles its legs while producing power. Authoring a new walk-derived pose isn't needed — just JSON `"workPose": "walk"`.
 
 **Adding a new pose**:
 1. Author `.anim` clip in Unity (copy `mouseEep.anim` as a starting point for a stationary pose).

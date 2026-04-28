@@ -108,7 +108,7 @@ Tasks reserve both **source items** (`ItemStack.resAmount`) and **destination sp
 | Task | Source | Job | Description |
 |------|--------|-----|-------------|
 | `CraftTask` | WOM p3 | recipe's job | Navigate to station, fetch inputs, work, drop outputs |
-| `HarvestTask` | WOM p2 | plant's `njob` | Navigate to plant, harvest when ready, drop products. Harvest orders only exist while `plant.harvestFlagged` is true (set by the player via the Harvest tool in the build bar). `Plant.SetHarvestFlagged` registers / unregisters the order; `isActive = () => plant.harvestable` gates dormancy across grow cycles. |
+| `HarvestTask` | WOM p2 | plant's `njob` | Navigate to plant, harvest when ready, drop products. Harvest orders only exist while `plant.harvestFlagged` is true. The flag is set by the player via the Harvest tool in the build bar, and also auto-set in `Plant.OnPlaced` so any plant the player blueprinted comes out flagged on completion (worldgen / save-load skip OnPlaced and keep their authored flag). `Plant.SetHarvestFlagged` registers / unregisters the order; `isActive = () => plant.harvestable` gates dormancy across grow cycles. |
 | `HaulTask` | WOM p1/p3 | hauler | Fetch floor stack → Go to storage tile → DeliverToInventoryObjective into `building.storage` |
 | `HaulToMarketTask` | WOM p3 | merchant | Haul items from storage to the market building to meet targets |
 | `HaulFromMarketTask` | WOM p3 | merchant | Haul excess items from market back to storage |

@@ -26,7 +26,7 @@ public class MoistureSystem {
     public const byte  MoistureMax                = 100;
     public const int   TicksPerInGameHour         = 10;     // 1 s ticks per in-game hour (from ticksInDay=240 / 24)
     private const int  MoistureRainGainPerHour    = 100;    // at rainAmount=1; subdivided into per-second slices
-    private const int  MoistureEvaporationPerHour = 2;      // non-capped soil only
+    private const int  MoistureEvaporationPerHour = 1;      // non-capped soil only
     private const float MoistureDiffusionPerHour  = 0.05f;  // fraction of neighbour gap pulled per in-game hour (5%)
 
     // Per-second seep budget: at most N water units drain from the wettest water neighbour

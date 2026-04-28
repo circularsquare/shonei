@@ -175,18 +175,17 @@ public class WorldController : MonoBehaviour {
         Building market = new(Db.structTypeByName["market"], 0, surfaceY[0]);
         StructController.instance.Place(market);
 
-        // Starter plants near spawn
-        void PlantAt(string plantName, int x, bool mature = false) {
+        // Starter plants near spawn — always mature so a fresh colony has usable plants.
+        void PlantAt(string plantName, int x) {
             Plant p = new Plant(Db.plantTypeByName[plantName], x, surfaceY[x]);
-            if (mature) p.Mature();
+            p.Mature();
             StructController.instance.Place(p);
         }
-        PlantAt("tree", 32, mature: true);
+        PlantAt("tree", 29);
         PlantAt("appletree", 25);
         PlantAt("tree", 28);
         PlantAt("wheat", 35);
         PlantAt("wheat", 36);
-        PlantAt("soybean", 24);
 
         WorldGen.ScatterPlants(world, surfaceY, seed);
 
@@ -226,6 +225,13 @@ public class WorldController : MonoBehaviour {
         AnimalController.instance.AddJob("hauler", 1);
         AnimalController.instance.AddJob("farmer", 1);
         world.ProduceAtTile("silver", 50, world.GetTileAt(31, surfaceY));
+        world.ProduceAtTile("wheat", 2000, world.GetTileAt(31, surfaceY));
+
+        // Mice start with social half-satisfied so a fresh colony isn't immediately wanting company.
+        foreach (Animal a in AnimalController.instance.animals) {
+            if (a != null && a.happiness != null)
+                a.happiness.satisfactions["social"] = 2.5f;
+        }
     }
 
     // Re-fires OnTileTypeChanged for every tile so sprites reflect final terrain.

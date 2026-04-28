@@ -198,7 +198,7 @@ The build bar (`BuildCategoryBar` in Main.unity) holds both category buttons (St
 | `Select` | Default; Escape returns here | LMB = click/drag-select inventories; shows InfoPanel |
 | `Build` | Category → structure button | LMB = place blueprint of current `BuildPanel.structType` |
 | `Remove` | "Remove" button | LMB = cancel blueprint / mark structure for deconstruct |
-| `Harvest` | "Harvest" button | LMB click or drag calls `Plant.SetHarvestFlagged(true)` on all plants under the cursor/rect, which registers a harvest WOM order for each. By default plants are unflagged and carry no order at all. Paint-only in V1 — unflagging (which would call `SetHarvestFlagged(false)` → `WOM.UnregisterHarvest`) requires a dedicated tool (follow-up). |
+| `Harvest` | "Harvest" button | LMB click or drag calls `Plant.SetHarvestFlagged(true)` on all plants under the cursor/rect, which registers a harvest WOM order for each. Worldgen plants start unflagged; plants finished from a player-placed blueprint come out flagged automatically (via `Plant.OnPlaced`). Paint-only in V1 — unflagging (which would call `SetHarvestFlagged(false)` → `WOM.UnregisterHarvest`) requires a dedicated tool (follow-up). |
 
 Harvest and Select both use the shared `_dragStartScreenPos` / `_isDragging` / `DragThresholdPixels` drag-rect machinery (tracked via a single nullable `_dragStartedInMode` so a mode change mid-drag can't commit into the wrong handler). Screen→world rect math is shared via `GetDragWorldBounds`. The visual indicator for a flagged plant is a child GameObject under `Plant.go` with its own `SpriteRenderer` (sprite at `Resources/Sprites/Misc/harvestselect`), toggled visible by `Plant.SetHarvestFlagged`.
 

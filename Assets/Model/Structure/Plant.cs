@@ -106,6 +106,14 @@ public class Plant : Structure {
         overlayGo.SetActive(false);
     }
 
+    // Player just finished planting via a blueprint → auto-flag for harvest so the crop
+    // gets reaped when ripe without a separate click. Only fires on the gameplay path —
+    // worldgen (PlantAt / ScatterPlants) goes through Place() not Construct(), and save
+    // load restores the persisted flag — so starter and saved plants are unaffected.
+    public override void OnPlaced() {
+        SetHarvestFlagged(true);
+    }
+
     // Plants only carry a harvest order while flagged — flipping the flag registers or
     // removes the order so dispatch never has to inspect gated-off orders.
     public void SetHarvestFlagged(bool v) {
@@ -332,7 +340,7 @@ public class PlantType : StructType {
     // pays 2× this amount from soil to cross into each new growth stage (see Plant.Grow)
     // — the advancement cost is where moisture shortage actually gates growth; the
     // passive draw just drains the soil over time. Default 4; overridable per plant.
-    public float moistureDrawPerHour {get; set;} = 4f;
+    public float moistureDrawPerHour {get; set;} = 2f;
 
     // Returns true when the current ambient temperature AND the soil moisture are both
     // within this plant's authored comfort range. `soilTile` is the solid tile directly

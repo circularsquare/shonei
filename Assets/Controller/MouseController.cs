@@ -13,6 +13,9 @@ public class MouseController : MonoBehaviour {
     public GameObject buildPreview;
     SpriteRenderer buildPreviewSr;
     Sprite buildPreviewDefaultSprite;
+    // Per-tile child SRs spawned for shape-aware vertical previews (`_m` middles, `_t` top).
+    // Pooled across builds — never released, just SetActive(false) when not needed.
+    List<SpriteRenderer> previewExtensionSrs = new List<SpriteRenderer>();
     Vector3 prevPosition;
 
     public World world;
@@ -53,6 +56,14 @@ public class MouseController : MonoBehaviour {
             SetModeSelect();
         if (Input.GetKeyDown(KeyCode.F) && mouseMode == MouseMode.Build)
             BuildPanel.instance?.ToggleMirror();
+        if (Input.GetKeyDown(KeyCode.R) && mouseMode == MouseMode.Build)
+            BuildPanel.instance?.ToggleRotate();
+        // Shape variant cycling — Q shrinks (delta -1), E grows (delta +1). Gated on the
+        // current StructType declaring shapes, so it's a no-op for non-shape buildings.
+        if (Input.GetKeyDown(KeyCode.E) && mouseMode == MouseMode.Build)
+            BuildPanel.instance?.CycleShape(+1);
+        if (Input.GetKeyDown(KeyCode.Q) && mouseMode == MouseMode.Build)
+            BuildPanel.instance?.CycleShape(-1);
         if (Input.GetKeyDown(KeyCode.D) && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))) {
             WorkOrderManager.instance?.AuditOrders();
             InventoryController.instance?.ValidateGlobalInventory();
@@ -133,19 +144,33 @@ public class MouseController : MonoBehaviour {
         else if ((mouseMode == MouseMode.Build) || (mouseMode == MouseMode.Remove) || (mouseMode == MouseMode.Harvest)){
             buildPreview.SetActive(true);
             if (mouseMode == MouseMode.Build && st != null && anchorTile != null) {
-                Sprite buildSprite = st.LoadSprite();
-                buildPreviewSr.sprite = buildSprite != null ? buildSprite : buildPreviewDefaultSprite;
+                int shapeIndex = BuildPanel.instance != null ? BuildPanel.instance.shapeIndex : 0;
+                bool shapeAware = st.HasShapes;
+                Shape shape = st.GetShape(shapeIndex);
+                Sprite anchorSprite = shapeAware
+                    ? StructureVisuals.LoadShapeSprite(st, shape, 0)
+                    : st.LoadSprite();
+                buildPreviewSr.sprite = anchorSprite != null ? anchorSprite : buildPreviewDefaultSprite;
                 buildPreviewSr.flipX = BuildPanel.instance != null && BuildPanel.instance.mirrored;
-                buildPreviewSr.color = buildSprite != null ? new Color(1f, 1f, 1f, 0.3f) : Color.white;
-                if (buildSprite == null) {
+                buildPreviewSr.color = anchorSprite != null ? new Color(1f, 1f, 1f, 0.3f) : Color.white;
+                if (anchorSprite == null) {
                     buildPreviewSr.drawMode = SpriteDrawMode.Sliced;
                     buildPreviewSr.size = new Vector2(st.nx, Mathf.Max(1, st.ny));
                 } else {
                     buildPreviewSr.drawMode = SpriteDrawMode.Simple;
                 }
                 buildPreview.transform.localScale = Vector3.one;
-                float visualX = anchorTile.x + (st.nx - 1) / 2.0f;
-                buildPreview.transform.position = new Vector3(visualX, anchorTile.y, -1);
+                // Shape-aware previews anchor at the bottom-left tile so per-tile child SRs
+                // line up. Legacy multi-tile uses centred positioning.
+                buildPreview.transform.position = shapeAware
+                    ? new Vector3(anchorTile.x, anchorTile.y + (st.depth == 3 ? -1f/8f : 0f), -1f)
+                    : StructureVisuals.PositionFor(st, anchorTile.x, anchorTile.y, z: -1);
+                // Rotation preview — only meaningful when the type is rotatable; BuildPanel.rotation
+                // is reset on SetStructType so we won't carry stale rotation across builds.
+                int rot = (BuildPanel.instance != null) ? BuildPanel.instance.rotation : 0;
+                buildPreview.transform.rotation = StructureVisuals.RotationFor(rot);
+                // Compose the shape-aware preview from per-tile sprites for vertical extension.
+                SyncPreviewExtensions(st, shape, shapeAware);
             } else {
                 buildPreview.transform.position = new Vector3(tileAt.x, tileAt.y, -1);
                 buildPreviewSr.sprite = buildPreviewDefaultSprite;
@@ -153,6 +178,9 @@ public class MouseController : MonoBehaviour {
                 buildPreviewSr.color = Color.white;
                 buildPreviewSr.drawMode = SpriteDrawMode.Simple;
                 buildPreview.transform.localScale = Vector3.one;
+                buildPreview.transform.rotation = Quaternion.identity;
+                // Hide all extension preview SRs when not in shape-aware build mode.
+                SyncPreviewExtensions(null, null, false);
             }
         }
         if (mouseMode == MouseMode.Select){
@@ -222,6 +250,44 @@ public class MouseController : MonoBehaviour {
 
     private void FlagHarvestAt(Tile t) {
         if (t?.plant != null) t.plant.SetHarvestFlagged(true);
+    }
+
+    // Mirrors Structure / Blueprint's per-tile sprite stack onto the build-mode preview
+    // ghost so the cursor-following visual matches what will actually be placed (e.g. a
+    // height-3 platform appears as `_b` + `_m` + `_t`, not a single sliced sprite).
+    // Pools child SRs across calls — never destroys, just SetActive toggles. Pass
+    // shapeAware=false / null args to deactivate all extension SRs.
+    private void SyncPreviewExtensions(StructType st, Shape shape, bool shapeAware) {
+        // Determine how many extension tiles we need this frame.
+        int needed = 0;
+        if (shapeAware && st != null && shape != null && shape.nx == 1 && shape.ny > 1)
+            needed = shape.ny - 1;
+
+        // Grow the pool to cover `needed`.
+        while (previewExtensionSrs.Count < needed) {
+            int dy = previewExtensionSrs.Count + 1;
+            GameObject extGo = new GameObject($"buildPreviewExt{dy}");
+            extGo.transform.SetParent(buildPreview.transform, false);
+            SpriteRenderer extSr = extGo.AddComponent<SpriteRenderer>();
+            extSr.sortingOrder = buildPreviewSr.sortingOrder;
+            LightReceiverUtil.SetSortBucket(extSr);
+            previewExtensionSrs.Add(extSr);
+        }
+
+        // Activate/configure the first `needed`, deactivate the rest.
+        for (int i = 0; i < previewExtensionSrs.Count; i++) {
+            SpriteRenderer extSr = previewExtensionSrs[i];
+            if (i < needed) {
+                int dy = i + 1;
+                extSr.gameObject.SetActive(true);
+                extSr.transform.localPosition = new Vector3(0f, dy, 0f);
+                extSr.sprite = StructureVisuals.LoadShapeSprite(st, shape, dy);
+                extSr.color = buildPreviewSr.color;
+                extSr.flipX = buildPreviewSr.flipX;
+            } else if (extSr.gameObject.activeSelf) {
+                extSr.gameObject.SetActive(false);
+            }
+        }
     }
 
     private void CommitHarvestDrag(Vector3 startScreen, Vector3 endScreen) {

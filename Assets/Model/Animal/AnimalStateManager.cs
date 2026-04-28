@@ -152,6 +152,15 @@ public class AnimalStateManager {
                 if (blueprint.StorageNeedsEmptying()) {
                     constructTask.Fail(); return;
                 }
+                // Safety net: support beneath the blueprint may have vanished mid-construction
+                // (e.g. one of two platforms holding up a 2-wide windmill got deconstructed).
+                // The order's isActive=ConditionsMet check filters dispatch but can't stop a task
+                // that's already running — block completion so a structure doesn't materialise
+                // unsupported. The blueprint sits idle until support returns; a fresh
+                // ConstructTask will then re-dispatch and finish the remaining work.
+                if (!constructTask.deconstructing && blueprint.IsSuspended()) {
+                    constructTask.Fail(); return;
+                }
             }
             animal.skills.GainXp(Skill.Construction, baseWorkEff * 0.1f);
             if (blueprint.ReceiveConstruction(progressAmount)){
@@ -167,6 +176,16 @@ public class AnimalStateManager {
             if (!recipe.IsEligibleForPicking()) {
                 craftTask.Fail();
                 return;
+            }
+            // Power boost: workstations whose StructType declares powerBoost > 1 multiply
+            // the work-tick rate when their PowerSystem network is currently allocating
+            // them full demand. Scoped to CraftTask only — other task types ignore power.
+            // See SPEC-power.md.
+            Building wsBuilding = craftTask.workplace?.building;
+            if (wsBuilding != null && wsBuilding.structType.powerBoost > 1f
+                    && PowerSystem.instance != null
+                    && PowerSystem.instance.IsBuildingPowered(wsBuilding)) {
+                workEfficiency *= wsBuilding.structType.powerBoost;
             }
             animal.workProgress += workEfficiency;
             if (taskSkill.HasValue) animal.skills.GainXp(taskSkill.Value, baseWorkEff * 0.1f);
@@ -287,12 +306,14 @@ public class AnimalStateManager {
                 int totalFood = 0;
                 GlobalInventory ginv = GlobalInventory.instance;
                 foreach (Item food in Db.edibleItems) totalFood += ginv.Quantity(food);
-                if (totalFood <= ac.na * 400) return; // 4 liang per mouse (400 fen)
-                float p = ac.na;
-                float pmax = ac.populationCapacity;
-                float birthChance = MaxBirthChancePerSleepTick * (pmax - p) / pmax;
-                if ((float)animal.random.NextDouble() < birthChance) {
-                    ac.AddAnimal(animal.x, animal.y);
+                // Guard the birth roll only — must not early-return, the wake-up check below runs every tick.
+                if (totalFood > ac.na * 400) { // 4 liang per mouse (400 fen)
+                    float p = ac.na;
+                    float pmax = ac.populationCapacity;
+                    float birthChance = MaxBirthChancePerSleepTick * (pmax - p) / pmax;
+                    if ((float)animal.random.NextDouble() < birthChance) {
+                        ac.AddAnimal(animal.x, animal.y);
+                    }
                 }
             }
         }
@@ -439,9 +460,11 @@ public class AnimalStateManager {
             else {
                 bool done = animal.nav.Move(deltaTime);
                 if (done) {
-                    // Arrived at destination
-                    animal.x = animal.target.x;
-                    animal.y = animal.target.y;
+                    // Arrived at destination. target is a Node — read float wx/wy so off-grid
+                    // workspot waypoints (e.g. wheel runner) snap to the waypoint's actual
+                    // position, not a rounded integer tile.
+                    animal.x = animal.target.wx;
+                    animal.y = animal.target.wy;
                     animal.go.transform.position = new Vector3(animal.x, animal.y, animal.z);
 
                     HandleArrival();

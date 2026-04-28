@@ -51,8 +51,14 @@ public class StructController : MonoBehaviour {
             WaterController.instance?.RegisterDecorativeWater(structure);
     }
 
-    public bool Construct(StructType st, Tile tile, bool mirrored = false){
+    public bool Construct(StructType st, Tile tile, bool mirrored = false, int rotation = 0, int shapeIndex = 0){
         Structure structure = null;
+        // Shape footprint for non-tile, non-plant structures. Legacy multi-tile (windmill etc.)
+        // keeps its single-row claim — only shape-aware structures use the full nx×ny footprint.
+        Shape shape = st.GetShape(shapeIndex);
+        bool shapeAware = st.HasShapes;
+        int fnx = shapeAware ? shape.nx : st.nx;
+        int fny = shapeAware ? shape.ny : 1;
         if (st.isTile){ // tiles are not real structures, should just turn into tile
             if (st.name == "empty"){
                 // Mining output is captured by Blueprint.Complete() into pendingOutput before this is called.
@@ -61,15 +67,17 @@ public class StructController : MonoBehaviour {
             tile.type = Db.tileTypeByName[st.name];}
         else if (st.isPlant){
             if (tile.structs[0] != null){Debug.LogError("already a building or plant here!"); return false;}
-            structure = Structure.Create(st, tile.x, tile.y, mirrored);}
+            structure = Structure.Create(st, tile.x, tile.y, mirrored, rotation, shapeIndex);}
         else {
-            // Generic multi-tile collision check for all depths
-            for (int i = 0; i < st.nx; i++) {
-                Tile t = World.instance.GetTileAt(tile.x + i, tile.y);
-                if (t == null) { Debug.LogError("tile out of bounds at " + (tile.x+i) + "," + tile.y); return false; }
-                if (t.structs[st.depth] != null) { Debug.LogError("depth " + st.depth + " occupied at " + (tile.x+i) + "," + tile.y); return false; }
+            // Generic multi-tile collision check across the full footprint.
+            for (int dy = 0; dy < fny; dy++) {
+                for (int dx = 0; dx < fnx; dx++) {
+                    Tile t = World.instance.GetTileAt(tile.x + dx, tile.y + dy);
+                    if (t == null) { Debug.LogError("tile out of bounds at " + (tile.x+dx) + "," + (tile.y+dy)); return false; }
+                    if (t.structs[st.depth] != null) { Debug.LogError("depth " + st.depth + " occupied at " + (tile.x+dx) + "," + (tile.y+dy)); return false; }
+                }
             }
-            structure = Structure.Create(st, tile.x, tile.y, mirrored);
+            structure = Structure.Create(st, tile.x, tile.y, mirrored, rotation, shapeIndex);
             if (structure == null) return false;
         }
 
@@ -86,8 +94,14 @@ public class StructController : MonoBehaviour {
             structure.OnPlaced();
         }
         if (world == null) {world = World.instance;}
-        world.graph.UpdateNeighbors(tile.x, tile.y);
-        world.graph.UpdateNeighbors(tile.x, tile.y + 1);
+        // Refresh standability across the footprint and the row directly above the top —
+        // every footprint tile may have changed standability via the same-structure-body
+        // rule, and the row above may have become standable on the new solidTop surface.
+        for (int dx = 0; dx < fnx; dx++) {
+            for (int dy = 0; dy < fny; dy++)
+                world.graph.UpdateNeighbors(tile.x + dx, tile.y + dy);
+            world.graph.UpdateNeighbors(tile.x + dx, tile.y + fny);
+        }
         if (st.name == "stairs") {
             int nx = world.nx, ny = world.ny;
             if (tile.x - 1 >= 0)              world.graph.UpdateNeighbors(tile.x - 1, tile.y);
@@ -107,13 +121,15 @@ public class StructController : MonoBehaviour {
                 }
             }
         }
-        // After any tile/building change, check if items on the tile above are now floating.
-        world.FallIfUnstandable(tile.x, tile.y + 1);
+        // After any tile/building change, check if items on the tile above the top are now floating.
+        for (int dx = 0; dx < fnx; dx++)
+            world.FallIfUnstandable(tile.x + dx, tile.y + fny);
         world.graph.RebuildComponents();
-        // Refresh any blueprints stacked directly above — they may have just become unsuspended,
-        // in which case they need both a tint update and (re)registration of their WOM orders.
-        for (int i = 0; i < st.nx; i++) {
-            Tile above = world.GetTileAt(tile.x + i, tile.y + 1);
+        // Refresh any blueprints stacked directly above the top of the footprint — they may
+        // have just become unsuspended, in which case they need both a tint update and
+        // (re)registration of their WOM orders.
+        for (int dx = 0; dx < fnx; dx++) {
+            Tile above = world.GetTileAt(tile.x + dx, tile.y + fny);
             if (above == null) continue;
             for (int d = 0; d < 4; d++) {
                 Blueprint bp = above.GetBlueprintAt(d);

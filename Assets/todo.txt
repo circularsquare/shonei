@@ -10,6 +10,8 @@ CONTENT
 - elevators, trains
     - how are these powered?
 - plant
+    - farmers can water plants 
+        - make tanks not require pumps
     - plants die if temp / moisture are bad?
     - irrigation?
 - research
@@ -41,5 +43,25 @@ CODE CLEANUP
 
 BUGS
 
-TODAY GOALS
+SHORT TERM
 - test new stone mining yield distribution
+- power 
+    - waypoint for working in middle? 
+    - windmill
+    - flywheel (storage)
+    - animate windmill, wheel, shafts, flywheel (when they are actually running or transmitting power)
+    - variable port connection, with visual feedback
+    - put shafts in a background layer?
+    - new buildings category "power"?
+    - put all the specific building.cs files into a new folder?
+
+- elevators!
+    - should use a general "transit" object that has distinct stops, and is included in mice navigation.
+    - generally, transit can be capacity constrained (like elevators will just carry one moues at a time) so we should periodically estimate how long the wait will be, taking into account historical wait times, for the purpose of informing the cost of the navigation edge of the elevator
+    - also for elevators, we will need to make variable length buildings...
+        - ui wise we can have the player press like "e" to grow the building (in this case, heightwise) and "q" to shrink the building when placing the blueprint
+        - spritewise the elevator can have a bottom sprite and a top sprite and a repeating middle sprite   
+            - also, the platform that carries the mouse up and down i think needs to be a different game object (and the counter weight should show up visibly behind)
+    
+
+

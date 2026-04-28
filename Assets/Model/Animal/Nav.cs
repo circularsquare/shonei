@@ -35,7 +35,9 @@ public class Nav {
         pathIndex = 0;
         prevNode = path.nodes[0];
         nextNode = path.length != 0 ? path.nodes[1] : prevNode;
-        a.target = path.tile;
+        // Endpoint may be a tile-backed Node or an off-grid waypoint (e.g. wheel workspot).
+        // AnimalStateManager.UpdateMovement reads target.wx/wy on arrival, which works for both.
+        a.target = path.end;
         return true;
     }
     private void EndNavigation(){ path = null; pathIndex = 0; prevNode = null; nextNode = null; preventFall = false; }
@@ -248,7 +250,7 @@ public class Nav {
         var (p, _) = FindPathToCandidate<Structure>(
             list,
             s => s.x, s => s.y,
-            s => s.workTile?.node,
+            s => s.workNode,    // off-grid waypoint when StructType declares workSpot, else workTile.node
             filter, r);
         return p;
     }
@@ -324,6 +326,12 @@ public class Nav {
         if (tile == null || a.TileHere() == null){Debug.LogError("path to or from null tile?");}
         return world.graph.Navigate(a.TileHere().node, tile.node);
     }
+    // Node overload — used when the path target is a workspot waypoint (off-grid) rather
+    // than an integer tile. Same A* under the hood; the Node may be tile-backed or a waypoint.
+    public Path PathTo(Node node){
+        if (node == null || a.TileHere() == null){Debug.LogError("path to or from null node?");}
+        return world.graph.Navigate(a.TileHere().node, node);
+    }
     public Path PathToOrAdjacent(Tile target) {
         Path directPath = PathTo(target);
         if (directPath != null) { return directPath; }
@@ -361,6 +369,61 @@ public class Nav {
         return shortestPath;
     }
 
+    // Like PathToOrAdjacent, but accepts ANY footprint tile of a multi-tile blueprint as the
+    // construction interaction point — not just the centerTile. A hauler standing next to the
+    // top of a 2-tall platform can still supply/construct it, even when the bottom tile is
+    // unreachable (cliff too tall to descend, water moat below, etc.).
+    //
+    // Order of preference:
+    //   1. PathTo(centerTile)                — stand on the platform's primary interaction tile
+    //   2. orthogonal neighbours of any footprint tile
+    //   3. diagonal neighbours of any footprint tile
+    // Footprint tiles themselves are excluded from the neighbour candidate sets (they're either
+    // the centerTile already tried, or non-standable structure interior).
+    public Path PathToOrAdjacentBlueprint(Blueprint bp) {
+        Path direct = PathTo(bp.centerTile);
+        if (direct != null) return direct;
+
+        Shape shape = bp.Shape;
+        bool shapeAware = bp.structType.HasShapes;
+        int fnx = shapeAware ? shape.nx : bp.structType.nx;
+        int fny = shapeAware ? shape.ny : 1;
+
+        var footprint = new HashSet<Tile>();
+        for (int dy = 0; dy < fny; dy++)
+            for (int dx = 0; dx < fnx; dx++) {
+                Tile t = world.GetTileAt(bp.x + dx, bp.y + dy);
+                if (t != null) footprint.Add(t);
+            }
+
+        var orthCandidates = new HashSet<Tile>();
+        var diagCandidates = new HashSet<Tile>();
+        foreach (Tile ft in footprint) {
+            Tile[] adjs = ft.GetAdjacents();
+            for (int i = 0; i < 4; i++) if (adjs[i] != null) orthCandidates.Add(adjs[i]);
+            for (int i = 4; i < 8; i++) if (adjs[i] != null) diagCandidates.Add(adjs[i]);
+        }
+        // A tile that's orthogonal of one footprint tile and diagonal of another is treated
+        // as orthogonal (the better category wins).
+        orthCandidates.ExceptWith(footprint);
+        diagCandidates.ExceptWith(footprint);
+        diagCandidates.ExceptWith(orthCandidates);
+
+        Path best = ShortestStandablePath(orthCandidates);
+        return best ?? ShortestStandablePath(diagCandidates);
+    }
+
+    private Path ShortestStandablePath(HashSet<Tile> candidates) {
+        Path best = null;
+        float bestCost = float.MaxValue;
+        foreach (Tile c in candidates) {
+            if (!c.node.standable) continue;
+            Path p = PathTo(c);
+            if (p != null && p.cost < bestCost) { best = p; bestCost = p.cost; }
+        }
+        return best;
+    }
+
 
 
     // ── Utils ────────────────────────────────────────────────────────────────
@@ -377,7 +440,8 @@ public class Nav {
         foreach (Structure s in list) {
             if (Mathf.Max(Mathf.Abs(s.x - (int)a.x), Mathf.Abs(s.y - (int)a.y)) > r) continue;
             if (!s.res.Available()) continue;
-            if (world.graph.SameComponent(myNode, s.workTile.node)) return true;
+            if (s.workNode == null) continue;
+            if (world.graph.SameComponent(myNode, s.workNode)) return true;
         }
         return false;
     }

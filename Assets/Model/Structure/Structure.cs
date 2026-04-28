@@ -91,6 +91,16 @@ public class Structure {
     public Tile workTile => World.instance.GetTileAt(
         x + (mirrored ? (structType.nx - 1 - structType.workTileX) : structType.workTileX),
         y + structType.workTileY);
+
+    // Path target for tasks that walk to this structure to work (CraftTask, FindPathToStruct,
+    // CanReachBuilding). For most structures this equals workTile.node — the worker stands on
+    // the integer tile. For structures whose StructType declares workSpotX/Y, a float-coord
+    // waypoint Node is created in the Graph at construction time and edged to the nearest
+    // standable bottom-row tile-node; workNode points at that waypoint so paths end off-grid.
+    // Set in Structure ctor; cleaned up in Destroy(). Mirroring uses the same nx-1-x formula
+    // as workTile, which works identically for floats.
+    public Node workNode { get; private set; }
+
     public Reservable res;
     // Per-seat reservables for leisure buildings. Each work tile gets its own Reservable(1)
     // so two mice won't path to the same seat. Null for non-leisure buildings.
@@ -135,29 +145,82 @@ public class Structure {
     // Not called during load or world generation — Reconcile() handles order registration on both paths.
     public virtual void OnPlaced() { }
 
+    // Called once from the Structure constructor (after the SpriteRenderer is set up)
+    // for both gameplay and load paths. Override to attach FrameAnimator(s) or any other
+    // visual-only behaviour. Default is no-op. Use AttachFrameAnimator() for the standard
+    // sliced-sheet pattern.
+    public virtual void AttachAnimations() { }
+
+    // Helper for the common "load a sliced sheet, attach a FrameAnimator" pattern. Returns
+    // null (and adds nothing) when the sheet has only a single sprite — animation is opt-in
+    // per asset, so an unsliced PNG just keeps rendering as the static sprite assigned in
+    // the constructor.
+    protected FrameAnimator AttachFrameAnimator(string spriteName, Func<bool> isActive,
+                                                float baseFps = 8f, Func<float> speedMul = null) {
+        Sprite[] frames = Resources.LoadAll<Sprite>("Sprites/Buildings/" + spriteName);
+        if (frames == null || frames.Length <= 1) return null;
+        FrameAnimator anim = go.AddComponent<FrameAnimator>();
+        anim.frames = frames;
+        anim.baseFps = baseFps;
+        anim.isActive = isActive;
+        anim.speedMultiplier = speedMul;
+        return anim;
+    }
+
     // Whether this structure is horizontally mirrored (flipped left-right).
     // Affects sprite flipX, workTile/storageTile offsets, tileRequirement offsets, and stair pathfinding.
     public bool mirrored = false;
 
-    public Structure(StructType st, int x, int y, bool mirrored = false){
+    // Rotation in 90° clockwise steps (0..3). Set during placement when StructType.rotatable
+    // is true; persisted via StructureSaveData. Currently only PowerShaft uses this beyond
+    // pure visual rotation — it derives its connectivity axis from (name, rotation).
+    public int rotation = 0;
+
+    // Variable-shape index. Selects which entry of `structType.shapes` this instance uses.
+    // 0 (default) means "first authored shape" or, when shapes is null, the StructType's
+    // base nx/ny. Set during placement (Q/E in build mode) and persisted in save data.
+    // Drives the multi-tile footprint claim and per-tile sprite composition for shape-aware
+    // structures — see Shape POCO in StructType.cs.
+    public int shapeIndex = 0;
+    public Shape Shape => structType.GetShape(shapeIndex);
+
+    // Per-tile child SRs spawned for shape-aware multi-tile structures (v1: vertical only,
+    // shape.nx==1, shape.ny>1). Index 0 is the tile directly above the anchor; the topmost
+    // is at index ny-2. The anchor tile renders through `sr` itself. Released by Destroy().
+    private GameObject[]     extensionGos;
+    private SpriteRenderer[] extensionSrs;
+
+    public Structure(StructType st, int x, int y, bool mirrored = false, int rotation = 0, int shapeIndex = 0){
         this.structType = st;
         this.x = x;
         this.y = y;
         this.mirrored = mirrored;
+        this.rotation = rotation;
+        this.shapeIndex = shapeIndex;
+
+        Shape shape = Shape;
+        bool shapeAware = st.HasShapes;
 
         go = new GameObject();
-        float visualX = st.nx > 1 ? x + (st.nx - 1) / 2.0f : x;
-        go.transform.position = st.depth == 3
-            ? new Vector3(visualX, y - 1f/8f, 0)
-            : new Vector3(visualX, y, 0);
+        // Shape-aware structures anchor at (x, y) so per-tile child SRs at local (0, dy)
+        // line up with their tile's centre. Legacy multi-tile (windmill etc.) renders one
+        // big sprite with a centred pivot — keep the centred-position helper for those.
+        go.transform.position = shapeAware
+            ? new Vector3(x, y + (st.depth == 3 ? -1f/8f : 0f), 0f)
+            : StructureVisuals.PositionFor(st, x, y);
         go.transform.SetParent(StructController.instance.transform, true);
         go.name = "structure_" + structType.name;
 
-        Sprite loadedSprite = structType.LoadSprite();
+        // Anchor sprite: shape-aware uses the per-tile sprite for dy=0 (which collapses
+        // to the base `{name}` sprite for 1-tall shapes). Legacy uses the base sprite.
+        Sprite loadedSprite = shapeAware
+            ? StructureVisuals.LoadShapeSprite(st, shape, 0)
+            : structType.LoadSprite();
         sprite = loadedSprite ?? Resources.Load<Sprite>("Sprites/Buildings/default");
         sr = go.AddComponent<SpriteRenderer>();
         sr.sprite = sprite;
         sr.flipX = mirrored;
+        go.transform.rotation = StructureVisuals.RotationFor(rotation);
         if (loadedSprite == null) {
             sr.drawMode = SpriteDrawMode.Sliced;
             sr.size = new Vector2(structType.nx, Mathf.Max(1, structType.ny));
@@ -177,14 +240,26 @@ public class Structure {
             var ch = go.AddComponent<ClockHand>();
             ch.structure = this;
         }
+        // Subclass hook for frame-by-frame sprite animations (power buildings, etc.).
+        // Constructor-time call is safe because FrameAnimator's isActive callbacks are
+        // invoked lazily at Update() — by then OnPlaced has run and any registries
+        // (PowerSystem, WOM) have the structure recorded.
+        AttachAnimations();
 
-        // Register on tiles at the appropriate depth layer.
+        // Register on tiles at the appropriate depth layer. Shape-aware structures claim
+        // every tile in the chosen footprint (so e.g. a height-3 platform fills 3 cells in
+        // structs[1]); legacy multi-tile buildings keep their single-row claim.
         int depth = st.depth;
-        for (int i = 0; i < st.nx; i++) {
-            Tile t = World.instance.GetTileAt(x + i, y);
-            if (t.structs[depth] != null)
-                Debug.LogError($"Already a depth-{depth} structure at {x+i},{y}!");
-            t.structs[depth] = this;
+        int claimNx = shapeAware ? shape.nx : st.nx;
+        int claimNy = shapeAware ? shape.ny : 1;
+        for (int dy = 0; dy < claimNy; dy++) {
+            for (int dx = 0; dx < claimNx; dx++) {
+                Tile t = World.instance.GetTileAt(x + dx, y + dy);
+                if (t == null) continue;
+                if (t.structs[depth] != null)
+                    Debug.LogError($"Already a depth-{depth} structure at {x+dx},{y+dy}!");
+                t.structs[depth] = this;
+            }
         }
         // Sort order by depth: 0=building(10), 1=platform(11), 2=foreground(40), 3=road(1).
         // StructType.sortingOrder overrides this when >= 0 (e.g. light-source buildings at 64).
@@ -194,6 +269,27 @@ public class Structure {
         else if (depth == 2) sr.sortingOrder = 40;
         else if (depth == 3) sr.sortingOrder = 1;
         LightReceiverUtil.SetSortBucket(sr);
+
+        // Per-tile child SRs for shape-aware vertical extension (`_m` middles, `_t` top).
+        // Allocated lazily — null when shape is single-tile or non-vertical.
+        if (shapeAware && shape.nx == 1 && shape.ny > 1) {
+            int extCount = shape.ny - 1;
+            extensionGos = new GameObject[extCount];
+            extensionSrs = new SpriteRenderer[extCount];
+            for (int i = 0; i < extCount; i++) {
+                int dy = i + 1;
+                GameObject extGo = new GameObject($"struct_{st.name}_ext{dy}");
+                extGo.transform.SetParent(go.transform, false);
+                extGo.transform.localPosition = new Vector3(0f, dy, 0f);
+                SpriteRenderer extSr = extGo.AddComponent<SpriteRenderer>();
+                extSr.sprite = StructureVisuals.LoadShapeSprite(st, shape, dy);
+                extSr.sortingOrder = sr.sortingOrder;
+                extSr.flipX = mirrored;
+                LightReceiverUtil.SetSortBucket(extSr);
+                extensionGos[i] = extGo;
+                extensionSrs[i] = extSr;
+            }
+        }
 
         // Fire art companion — toggleable child GO for flame/fire visuals.
         // LightSource.Update toggles this based on isLit + emission intensity.
@@ -219,21 +315,71 @@ public class Structure {
 
         // Scan sprite for water-marker pixels. Registration happens in StructController.Place().
         waterPixelOffsets = WaterController.ScanWaterPixels(sprite);
+
+        // Workspot waypoint: optional off-grid path target. When the StructType declares
+        // workSpotX/workSpotY, register a Graph waypoint at that fractional position and
+        // edge it bidirectionally to the nearest standable tile-node in the footprint's
+        // bottom row. Mice walking to "this structure" end up standing at the waypoint's
+        // wx/wy instead of the integer workTile centre — used for the wheel's centred-and-
+        // elevated runner pose. Falls back to workTile.node when no spot is declared.
+        //
+        // Critical: this MUST run from the constructor (not OnPlaced) because OnPlaced is
+        // skipped on the load path — Structure.Create() runs the constructor on both the
+        // gameplay and load paths, and Graph.AddNeighborsInitial's RebuildComponents at
+        // load picks up the waypoint via its neighbour edges automatically.
+        if (st.workSpotX.HasValue && st.workSpotY.HasValue) {
+            float spotX = mirrored ? (st.nx - 1 - st.workSpotX.Value) : st.workSpotX.Value;
+            float spotY = st.workSpotY.Value;
+            workNode = new Node(x + spotX, y + spotY);
+            // Edge to the bottom-row tile-node closest to the workspot's x (tie → lower x).
+            // Standability isn't checked here: at load time, Structure constructors run in
+            // SaveSystem Phase 2 BEFORE graph.Initialize (Phase 4) sets node.standable, so a
+            // standability-gated pick would always fail on load. The chosen tile is implicitly
+            // standable post-placement — buildings can only be placed on standable ground —
+            // and Phase 4's RebuildComponents picks up the waypoint via its neighbour edge.
+            var graph = World.instance.graph;
+            int nearestDx = -1;
+            float nearestDist = float.MaxValue;
+            for (int dx = 0; dx < st.nx; dx++) {
+                int nxIdx = x + dx;
+                if (nxIdx < 0 || nxIdx >= World.instance.nx) continue;
+                float dist = Mathf.Abs(spotX - dx);
+                if (dist < nearestDist) { nearestDist = dist; nearestDx = dx; }
+            }
+            if (nearestDx >= 0) {
+                workNode.AddNeighbor(graph.nodes[x + nearestDx, y], reciprocal: true);
+            } else {
+                Debug.LogError($"{st.name} at ({x},{y}): workSpot declared but no in-bounds bottom-row tile to edge to");
+            }
+        } else {
+            // No workspot — path target is the integer workTile's node (today's behaviour).
+            // workTile getter may return null (out-of-bounds), in which case workNode stays null.
+            workNode = workTile?.node;
+        }
     }
 
     // Shared factory: dispatches to the correct subclass based on StructType properties.
     // Used by both StructController.Construct (gameplay) and SaveSystem.RestoreStructure (load).
     // When adding a new Structure subclass, add its case here — no other dispatch site needed.
-    public static Structure Create(StructType st, int x, int y, bool mirrored = false) {
+    // Subclasses without their own ctor signature ignore shapeIndex (only base Structure
+    // currently supports shape variants — Plant has its own multi-tile system).
+    public static Structure Create(StructType st, int x, int y, bool mirrored = false, int rotation = 0, int shapeIndex = 0) {
         if (st.isPlant)
             return new Plant(st as PlantType, x, y);
+        // Power shafts are foreground (depth 2). One subclass for straight, turning, and
+        // 4-way junction; axis is derived from (name, rotation) inside PowerShaft.
+        if (st.name == "power shaft" || st.name == "power shaft turn" || st.name == "power shaft 4")
+            return new PowerShaft(st, x, y, mirrored, rotation);
         if (st.depth == 0 || st.isBuilding) {
-            if (st.name == "pump")   return new PumpBuilding(st, x, y, mirrored);
-            if (st.name == "market") return new MarketBuilding(st, x, y, mirrored);
-            if (st.name == "quarry") return new Quarry(st, x, y, mirrored);
+            if (st.name == "pump")     return new PumpBuilding(st, x, y, mirrored);
+            if (st.name == "market")   return new MarketBuilding(st, x, y, mirrored);
+            if (st.name == "quarry")   return new Quarry(st, x, y, mirrored);
+            if (st.name == "wheel")    return new MouseWheel(st, x, y, mirrored);
+            if (st.name == "windmill") return new Windmill(st, x, y, mirrored);
+            if (st.name == "flywheel") return new Flywheel(st, x, y, mirrored);
             return new Building(st, x, y, mirrored);
         }
-        return new Structure(st, x, y, mirrored); // platforms, ladders, stairs, foreground, roads
+        return new Structure(st, x, y, mirrored, rotation, shapeIndex); // platforms, ladders, stairs, foreground, roads
     }
 
     public virtual void Destroy(){
@@ -241,20 +387,41 @@ public class Structure {
             WaterController.instance?.UnregisterDecorativeWater(this);
         WorkOrderManager.instance?.RemoveMaintenanceOrders(this);
         MaintenanceSystem.instance?.ForgetStructure(this);
+        // Clear workspot waypoint edges so neighbour tile-nodes don't carry a dangling
+        // reference to this structure's now-defunct Node. Tile-backed workNodes are owned
+        // by the Graph itself (don't touch them); only waypoints created by this structure
+        // need teardown here.
+        if (workNode != null && workNode.isWaypoint) {
+            foreach (Node n in workNode.neighbors) n.RemoveNeighbor(workNode);
+            workNode.neighbors.Clear();
+            workNode = null;
+        }
+        // Defense-in-depth: PowerShaft/MouseWheel/Windmill clean themselves up in their
+        // own Destroy overrides, but a future subclass that forgets won't leak stale
+        // references through this central call. Cheap on non-power structures.
+        PowerSystem.instance?.ForgetStructure(this);
         StructController.instance.Remove(this);
         int depth = structType.depth;
-        for (int i = 0; i < structType.nx; i++) {
-            Tile t = World.instance.GetTileAt(x + i, y);
-            if (t == null) continue;
-            t.structs[depth] = null;
+        bool shapeAware = structType.HasShapes;
+        Shape shape = Shape;
+        int claimNx = shapeAware ? shape.nx : structType.nx;
+        int claimNy = shapeAware ? shape.ny : 1;
+        World world = World.instance;
+        for (int dy = 0; dy < claimNy; dy++) {
+            for (int dx = 0; dx < claimNx; dx++) {
+                Tile t = world.GetTileAt(x + dx, y + dy);
+                if (t == null) continue;
+                if (t.structs[depth] == this) t.structs[depth] = null;
+            }
         }
         GameObject.Destroy(go);
-        World world = World.instance;
-        int tileCount = structType.nx > 1 ? structType.nx : 1;
-        for (int i = 0; i < tileCount; i++) {
-            world.graph.UpdateNeighbors(x + i, y);
-            world.graph.UpdateNeighbors(x + i, y + 1);
-            world.FallIfUnstandable(x + i, y + 1);
+        // Refresh standability for every footprint tile and the row above the top —
+        // the column was blocking those tiles via the same-structure-body rule.
+        for (int dx = 0; dx < claimNx; dx++) {
+            for (int dy = 0; dy < claimNy; dy++)
+                world.graph.UpdateNeighbors(x + dx, y + dy);
+            world.graph.UpdateNeighbors(x + dx, y + claimNy);
+            world.FallIfUnstandable(x + dx, y + claimNy);
         }
     }
 

@@ -17,6 +17,14 @@ public class BuildPanel : MonoBehaviour {
     // Whether the next placed blueprint will be horizontally mirrored.
     // Toggled by the F key during Build mode. Resets when a new building type is selected.
     public bool mirrored = false;
+    // 90° clockwise steps (0..3) the next placed blueprint will be rotated by.
+    // Cycled by the R key during Build mode, gated on structType.rotatable.
+    // Resets when a new building type is selected.
+    public int rotation = 0;
+    // Shape variant index for the next placed blueprint (e.g. height for tall platforms).
+    // Cycled by Q (-1) and E (+1) during Build mode, gated on structType.HasShapes.
+    // Resets when a new building type is selected. See StructType.shapes / Shape.
+    public int shapeIndex = 0;
 
     static readonly string[] CategoryNames = { "structures", "plants", "production", "storage", "tiles" };
 
@@ -148,20 +156,38 @@ public class BuildPanel : MonoBehaviour {
     public void SetStructType(StructType st) {
         structType = st;
         mirrored = false;
+        rotation = 0;
+        shapeIndex = 0;
         MouseController.instance.SetModeBuild();
     }
 
     public void ToggleMirror() { mirrored = !mirrored; }
 
+    // Cycle 0→1→2→3→0. No-op if the current StructType isn't rotatable, so the key handler
+    // can call this unconditionally without redundant gating.
+    public void ToggleRotate() {
+        if (structType == null || !structType.rotatable) return;
+        rotation = (rotation + 1) % 4;
+    }
+
+    // Cycle through shape variants by `delta` (+1 = E, -1 = Q). Clamped within
+    // [0, structType.shapes.Length-1]; no wrap so the player can hold E without surprise
+    // shrinkage. No-op when the current StructType doesn't declare shapes.
+    public void CycleShape(int delta) {
+        if (structType == null || !structType.HasShapes) return;
+        int n = structType.shapes.Length;
+        shapeIndex = Mathf.Clamp(shapeIndex + delta, 0, n - 1);
+    }
+
     public bool CanPlaceHere(StructType st, Tile tile) {
-        return StructPlacement.CanPlaceHere(st, tile, mirrored);
+        return StructPlacement.CanPlaceHere(st, tile, mirrored, shapeIndex);
     }
 
     public bool PlaceBlueprint(Tile tile) {
         if (structType == null) return false;
         if (!CanPlaceHere(structType, tile)) return false;
 
-        Blueprint blueprint = new Blueprint(structType, tile.x, tile.y, mirrored);
+        Blueprint blueprint = new Blueprint(structType, tile.x, tile.y, mirrored, rotation: rotation, shapeIndex: shapeIndex);
         SoundManager.instance?.PlaySFX("click");
         return true;
     }

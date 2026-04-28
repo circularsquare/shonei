@@ -1,5 +1,13 @@
 meoww!!
 
+4/28
+- power! 
+    - power shafts, wheels, windmills
+    - rotating buildings 
+    - power ports
+- variable height platforms
+4/23
+- new stone types!
 4/22
 - tile moisture! replenished by rain and nearby water, spreads through dirt, feeds plants.
 - plant details! plant temperature and moisture needs.

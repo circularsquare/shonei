@@ -33,16 +33,31 @@ public class AnimationController : MonoBehaviour {
 
     public void UpdateState() {
         if (animator == null) return; // AnimationController.Start() not yet called
-        if (animal.state == Animal.AnimalState.Idle){ animator.SetInteger("state", 0); }
-        else if (animal.state == Animal.AnimalState.Moving){ animator.SetInteger("state", 1); }
-        else if (animal.state == Animal.AnimalState.Eeping){ animator.SetInteger("state", 2); }
-        else if (animal.IsMoving()){ animator.SetInteger("state", 1); }
-        else { animator.SetInteger("state", 0); }
+
+        int stateInt;
+        if (animal.state == Animal.AnimalState.Idle){ stateInt = 0; }
+        else if (animal.state == Animal.AnimalState.Moving){ stateInt = 1; }
+        else if (animal.state == Animal.AnimalState.Eeping){ stateInt = 2; }
+        else if (animal.IsMoving()){ stateInt = 1; }
+        else { stateInt = 0; }
 
         // Pose override layer: current Objective can request a body pose (e.g. "sit") that
-        // wins over the state-driven animation. Pose is data-driven — see StructType.leisurePose
-        // and Objective.PoseOverride. Self-clears on objective transition (no explicit reset).
-        animator.SetInteger("pose", PoseToInt(animal.task?.currentObjective?.PoseOverride));
+        // wins over the state-driven animation. Pose is data-driven — see StructType.leisurePose,
+        // StructType.workPose, and Objective.PoseOverride. Self-clears on objective transition.
+        //
+        // Special case: "walk" reuses the existing walk clip (state=1) instead of needing a
+        // new pose layer in the Animator. Used by the mouse-wheel runner so the mouse's legs
+        // cycle while producing power, without authoring a duplicate "walk-while-working" clip.
+        string poseOverride = animal.task?.currentObjective?.PoseOverride;
+        int poseInt;
+        if (poseOverride == "walk") {
+            stateInt = 1;
+            poseInt = 0;
+        } else {
+            poseInt = PoseToInt(poseOverride);
+        }
+        animator.SetInteger("state", stateInt);
+        animator.SetInteger("pose", poseInt);
 
         UpdateClothingOverlay();
         UpdateChatBubble();
@@ -50,6 +65,7 @@ public class AnimationController : MonoBehaviour {
 
     // Maps a pose name (from JSON / Objective.PoseOverride) to the `pose` Animator int.
     // Add a case here when wiring a new pose clip in AnimControllerMouse.controller.
+    // "walk" is handled in UpdateState (routed to state=1, not a real pose layer).
     private static int PoseToInt(string pose) {
         if (string.IsNullOrEmpty(pose)) return 0;
         switch (pose) {

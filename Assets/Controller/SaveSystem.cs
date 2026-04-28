@@ -29,8 +29,8 @@ using Newtonsoft.Json;
 // Current saveable state checklist:
 //   [x] World timer
 //   [x] Tile types, floor inventories, and background wall
-//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, mirrored, disabled, plantHarvestFlagged, quarry capturedTileType)
-//   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored, disabled)
+//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, mirrored, rotation, shapeIndex, disabled, plantHarvestFlagged, quarry capturedTileType, flywheel charge)
+//   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored, rotation, shapeIndex, disabled)
 //   [x] Animals (position, job, energy, food, happiness, decoration happiness, socialization, fireplace warmth, inv, foodSlotInv, toolSlotInv, clothingSlotInv, bookSlotInv)
 //   [x] Mid-transit merchant task descriptor (travelTaskType + iq + storage tile + leg)
 //   [x] Research (progress, unlockedIds, studiedIds, unlockTimestamps, unlockCounter)
@@ -217,7 +217,7 @@ public class SaveSystem : MonoBehaviour {
     }
 
     StructureSaveData GatherStructure(Structure s) {
-        var ssd = new StructureSaveData { x = s.x, y = s.y, typeName = s.structType.name, mirrored = s.mirrored, condition = s.condition };
+        var ssd = new StructureSaveData { x = s.x, y = s.y, typeName = s.structType.name, mirrored = s.mirrored, rotation = s.rotation, shapeIndex = s.shapeIndex, condition = s.condition };
         if (s is Plant plant) {
             ssd.plantAge         = plant.age;
             ssd.plantGrowthStage = plant.growthStage;
@@ -236,6 +236,8 @@ public class SaveSystem : MonoBehaviour {
         }
         if (s is Quarry q && q.capturedTile != null)
             ssd.capturedTileType = q.capturedTile.name;
+        if (s is Flywheel fw)
+            ssd.flywheelCharge = fw.charge;
         return ssd;
     }
 
@@ -249,6 +251,8 @@ public class SaveSystem : MonoBehaviour {
             inv                  = bp.costs.Length > 0 ? GatherInventory(bp.inv) : null,
             priority             = bp.priority,
             mirrored             = bp.mirrored,
+            rotation             = bp.rotation,
+            shapeIndex           = bp.shapeIndex,
             disabled             = bp.disabled
         };
     }
@@ -521,6 +525,12 @@ public class SaveSystem : MonoBehaviour {
         foreach (Structure s in StructController.instance.GetStructures())
             if (s != null) s.RefreshTint();
 
+        // Rebuild PowerSystem registries from world state. Power topology is fully derived
+        // from placed shafts/producers/consumers, so no per-structure save data — same
+        // pattern as the maintenance rebuild above. The first PowerSystem.Tick after load
+        // (next 1-second cadence) recomputes networks and allocations.
+        PowerSystem.instance?.RebuildFromWorld();
+
         // ── Phase 7: Agents ────────────────────────────────────────────────────────────
         // LoadAnimal stages save data on Animal.pendingSaveData. Animal.Start() consumes
         // it on frame 2 — see PostLoadInit and SPEC-lifecycle.md.
@@ -605,7 +615,7 @@ public class SaveSystem : MonoBehaviour {
         if (tile == null) { Debug.LogError("Null tile on load for struct: " + ssd.typeName); return; }
         Structure structure = null;
 
-        structure = Structure.Create(st, ssd.x, ssd.y, ssd.mirrored);
+        structure = Structure.Create(st, ssd.x, ssd.y, ssd.mirrored, ssd.rotation, ssd.shapeIndex);
         if (structure == null) {
             Debug.LogError("Structure.Create returned null on load: " + ssd.typeName); return;
         }
@@ -635,6 +645,8 @@ public class SaveSystem : MonoBehaviour {
             else
                 Debug.LogError($"RestoreStructure: unknown capturedTileType '{ssd.capturedTileType}' for quarry at ({ssd.x},{ssd.y})");
         }
+        if (structure is Flywheel fw)
+            fw.charge = Mathf.Clamp(ssd.flywheelCharge, 0f, Flywheel.Capacity);
 
         StructController.instance.Place(structure);
         World.instance.graph.UpdateNeighbors(ssd.x, ssd.y);
@@ -679,7 +691,7 @@ public class SaveSystem : MonoBehaviour {
             Debug.LogError("Unknown blueprint struct type on load: " + bsd.typeName); return;
         }
         StructType st = Db.structTypeByName[bsd.typeName];
-        Blueprint bp = new Blueprint(st, bsd.x, bsd.y, mirrored: bsd.mirrored, autoRegister: false);
+        Blueprint bp = new Blueprint(st, bsd.x, bsd.y, mirrored: bsd.mirrored, autoRegister: false, rotation: bsd.rotation, shapeIndex: bsd.shapeIndex);
         bp.state                = (Blueprint.BlueprintState)bsd.state;
         bp.constructionProgress = bsd.constructionProgress;
         bp.priority             = bsd.priority;

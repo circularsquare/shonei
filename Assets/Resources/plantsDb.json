@@ -6,7 +6,7 @@
             { "name": "acorn", "quantity": 1 }
         ],
         "nproducts": [
-            { "name": "pine", "quantity": 12 },
+            { "name": "pine", "quantity": 15 },
             { "name": "acorn", "quantity": 1 }
         ],
         "growthTime": 80,
@@ -22,14 +22,14 @@
             { "name": "wheat", "quantity": 1 }
         ],
         "nproducts": [
-            { "name": "wheat", "quantity": 3 }
+            { "name": "wheat", "quantity": 4 }
         ],
         "growthTime": 40,
         "harvestTime": 3.0,
         "njob": "farmer",
         "capacity": 1,
         "tempMin": 5,  "tempMax": 30,
-        "moistureMin": 20, "moistureMax": 80
+        "moistureMin": 20, "moistureMax": 100
     },{
         "id": 560,
         "name": "soybean",
@@ -44,7 +44,7 @@
         "njob": "farmer",
         "capacity": 1,
         "tempMin": 10, "tempMax": 30,
-        "moistureMin": 30, "moistureMax": 90
+        "moistureMin": 30, "moistureMax": 100
     },{
         "id": 550,
         "name": "appletree",
@@ -74,7 +74,7 @@
         "njob": "farmer",
         "capacity": 1,
         "tempMin": 10, "tempMax": 30,
-        "moistureMin": 20, "moistureMax": 90
+        "moistureMin": 20, "moistureMax": 100
     },{
         "id": 580,
         "name": "bamboo",

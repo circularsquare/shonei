@@ -76,5 +76,9 @@
         "id": 17,
         "name": "scribe",
         "jobType": "crafter"
+    },{
+        "id": 18,
+        "name": "runner",
+        "jobType": "none"
     }
 ]

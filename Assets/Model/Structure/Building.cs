@@ -111,6 +111,11 @@ public class Building : Structure {
     public Inventory storage { get; private set; }
     // Non-null only for buildings with a consumable resource reservoir (torch, furnace, fountain, etc.).
     public Reservoir reservoir { get; private set; }
+    // Non-null only for buildings whose StructType declares powerBoost > 1. Created in
+    // OnPlaced so registration order (after WOM orders) is deterministic. Subclasses that
+    // implement PowerSystem.IPowerConsumer directly (custom port layouts) should leave
+    // structType.powerBoost = 1 so this wrapper isn't created in addition to themselves.
+    public BuildingPowerConsumer powerConsumer { get; private set; }
 
     public Building(StructType st, int x, int y, bool mirrored = false) : base(st, x, y, mirrored){
         go.name = "building_" + structType.name;
@@ -147,9 +152,29 @@ public class Building : Structure {
 
     public override void OnPlaced() {
         WorkOrderManager.instance?.RegisterOrdersFor(this);
+        // Power-consumer auto-registration on the gameplay path (StructController.Construct).
+        // The load path (SaveSystem) skips OnPlaced — see EnsurePowerConsumer below, called
+        // from PowerSystem.RebuildFromWorld in Phase 6.
+        if (EnsurePowerConsumer())
+            PowerSystem.instance?.RegisterConsumer(powerConsumer);
+    }
+
+    // Idempotent wrapper-creation. Returns true if `powerConsumer` is non-null after
+    // the call (i.e. the caller should/may register). Skipped for subclasses that
+    // implement IPowerConsumer directly — those use their own custom port layout.
+    public bool EnsurePowerConsumer() {
+        if (powerConsumer != null) return true;
+        if (structType.powerBoost <= 1f) return false;
+        if (this is PowerSystem.IPowerConsumer) return false;
+        powerConsumer = new BuildingPowerConsumer(this);
+        return true;
     }
 
     public override void Destroy() {
+        if (powerConsumer != null) {
+            PowerSystem.instance?.UnregisterConsumer(powerConsumer);
+            powerConsumer = null;
+        }
         if (workstation != null)
             WorkOrderManager.instance?.RemoveWorkstationOrders(this);
         if (structType.isStorage && storage != null) {

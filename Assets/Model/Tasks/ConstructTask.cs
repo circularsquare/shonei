@@ -17,6 +17,10 @@ public class ConstructTask : Task {
         // State guard (was previously implicit in FindPathsAdjacentToBlueprints filter)
         var expectedState = deconstructing ? Blueprint.BlueprintState.Deconstructing : Blueprint.BlueprintState.Constructing;
         if (blueprint.state != expectedState) return false;
+        // Defensive: don't initialize on a suspended blueprint even if a stale order somehow
+        // dispatched here (e.g. support vanished between order registration and pickup).
+        // Order.isActive=ConditionsMet should already filter these out — this is belt-and-suspenders.
+        if (!deconstructing && blueprint.IsSuspended()) return false;
         if (blueprint.WouldCauseItemsFall()) {
             if (deconstructing) WorkOrderManager.instance?.PromoteHaulsFor(blueprint);
             return false;
@@ -27,7 +31,7 @@ public class ConstructTask : Task {
         }
         Path standPath = blueprint.structType.isTile
             ? animal.nav.PathStrictlyAdjacent(blueprint.tile)
-            : animal.nav.PathToOrAdjacent(blueprint.centerTile);
+            : animal.nav.PathToOrAdjacentBlueprint(blueprint);
         if (!animal.nav.WithinRadius(standPath, MediumFindRadius)) return false;
         objectives.AddLast(new GoObjective(this, standPath.tile));
         objectives.AddLast(new ConstructObjective(this, blueprint));

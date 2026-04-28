@@ -51,11 +51,15 @@ Fields:
 | `leisureNeed` | string? | which happiness satisfaction this building targets (e.g. "fireplace"); required when `isLeisure` is true |
 | `leisureGrant` | float? | multiplier on `Happiness.activityGrant` when `NoteLeisure` fires (default `1.0`). Lower values for cheap/always-on buildings (e.g. bench = `0.5`) so they don't fully substitute for premium leisure. Warmth buff on fireplace is NOT scaled. |
 | `leisurePose` | string? | body pose an animal strikes while seated at this building (e.g. `"sit"`). Read by `LeisureObjective.PoseOverride` and mapped to an Animator int by `AnimationController.PoseToInt`. null/missing = default state-driven animation. See SPEC-rendering.md §Animation states & pose overrides. |
+| `workSpotX` | float? | optional fractional x-offset (anchor-relative, in tile units) for an off-grid worker pose. When both `workSpotX` and `workSpotY` are set, `Structure` registers a Graph waypoint Node at that position and edges it to the nearest bottom-row tile-node; `Structure.workNode` then targets the waypoint instead of `workTile.node`. Used by the wheel runner to stand centred between the 2×2 footprint columns (`0.5`, `0.25`). null = use integer `workTile` (today's behaviour). Mirror formula `nx-1-x` is reused — works identically for floats. See SPEC-systems.md §Workspot waypoints. |
+| `workSpotY` | float? | companion to `workSpotX`. Both must be set for the workspot waypoint to be created. |
+| `workPose` | string? | body pose the worker strikes while crafting at this building (mirrors `leisurePose`). Read by `WorkObjective.PoseOverride`. The special value `"walk"` reuses the existing walk animator state instead of needing a new pose layer — used by the wheel runner so the mouse cycles its legs while producing power. Other names map via `AnimationController.PoseToInt`. null = default Working state. |
 | `hasFuelInv` | bool? | building has an internal fuel reservoir |
 | `fuelItemName` | string? | item consumed by reservoir (group or leaf) |
 | `fuelCapacity` | float? | max fuel in liang |
 | `fuelBurnRate` | float? | consumption rate in liang/day |
 | `noMaintenance` | bool? | opts this StructType out of the maintenance / condition decay system. Set to `true` on nav-critical types (platform, stairs, ladder) so a neglected world doesn't cut mice off from parts of the map. Plants and cost-free structures are already auto-exempt — see SPEC-systems.md §Maintenance System. |
+| `shapes` | `[{nx, ny}]?` | optional list of variable-shape footprint variants. When present, the player cycles between them with Q/E during build placement; the chosen shape's `nx`/`ny` override the StructType's base footprint on the placed structure & blueprint. `shapes[0]` is the "authored" baseline — `ncosts` are sized for it, and other shapes scale linearly with tile count. v1 supports vertical extension only (`nx=1, ny>=1`); see SPEC-systems.md §Variable-shape structures. |
 
 ## `itemsDb.json` — Item types
 
@@ -156,7 +160,7 @@ Fields:
 | `tempMax` | float? | °C upper bound for growth |
 | `moistureMin` | int? | 0–100 soil-moisture lower bound (reads `Tile.moisture`) |
 | `moistureMax` | int? | 0–100 soil-moisture upper bound |
-| `moistureDrawPerHour` | float? | passive draw from the soil tile below each in-game hour (default 4). Crossing into a new growth stage additionally costs `2 × this` from the same tile — see gating below |
+| `moistureDrawPerHour` | float? | passive draw from the soil tile below each in-game hour (default 2). Crossing into a new growth stage additionally costs `2 × this` from the same tile — see gating below |
 | `maxHeight` | int? | max tile-height this plant can reach (default 1). Multi-tile plants extend upward as growth stage crosses 4-stage thresholds (stage 4 → 2 tall, stage 8 → 3 tall); max stage = `4 × maxHeight − 1`. Yield at harvest scales linearly with the plant's current height. See SPEC-systems.md "Plant Growth". |
 
 **Comfort range gating**: `Plant.Grow()` skips its age increment when either the global ambient temperature OR the tile's `moisture` is outside the authored range. Out-of-range simply freezes growth — no withering, no stress. Null bounds mean "no limit" on that side, letting plants with unspecified ranges grow unconditionally. The helper `PlantType.IsComfortableAt(Tile, WeatherSystem)` encapsulates the range tests.

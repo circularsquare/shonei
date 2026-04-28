@@ -70,6 +70,11 @@ public class StructureSaveData {
     // null = no storage, or storage was empty with default config.
     public InventorySaveData storageInvData;
     public bool mirrored;
+    // 90° clockwise rotation steps (0..3). Default 0 covers old saves.
+    public int rotation;
+    // Variable-shape index. Default 0 covers old saves and StructTypes without `shapes`
+    // — both resolve to "first authored shape" / base nx,ny via StructType.GetShape.
+    public int shapeIndex;
     // Building-only: player-set disabled state. false on old saves (default).
     public bool disabled;
     // Structure maintenance condition, 0..1. Set to 1.0 by GatherStructure when saving; old
@@ -79,6 +84,10 @@ public class StructureSaveData {
     // Quarry only: name of the stone tile the quarry was placed on. Drives the
     // per-stone extraction distribution. null on non-quarry / old saves.
     public string capturedTileType;
+    // Flywheel only: stored mechanical-power energy. 0 on non-flywheels / old saves.
+    // Without this, flywheels would reset to empty on every load and surrender any
+    // energy buffered during the play session.
+    public float flywheelCharge;
 }
 
 public class BlueprintSaveData {
@@ -89,6 +98,9 @@ public class BlueprintSaveData {
     public InventorySaveData inv;
     public int priority = 0;
     public bool mirrored;
+    public int rotation;
+    // Variable-shape index. Default 0 covers old saves and StructTypes without `shapes`.
+    public int shapeIndex;
     public bool disabled;
 }
 

@@ -133,6 +133,10 @@ public class StructureInfoView : MonoBehaviour {
                 AppendInvOrders(sb, bldg.storage);
         }
 
+        // Power info — applies to shafts (Structure but not Building/Plant), producers,
+        // and consumers. No-op for everything else.
+        AppendPowerInfo(sb, structure);
+
         text.text = sb.ToString();
 
         // Show/hide controls.
@@ -347,6 +351,51 @@ public class StructureInfoView : MonoBehaviour {
         }
         if (found.Count > 0)
             sb.Append("\n wo: " + string.Join(", ", found));
+    }
+
+    // Renders mechanical-power state for any structure that participates in PowerSystem.
+    // Layout (compose-by-role; multiple roles can apply, e.g. flywheel = storage):
+    //   - "power: net N"                          for any participant
+    //   - "  out: X.X"                             producers (current output)
+    //   - "  status: powered/unpowered"            consumers
+    //   - "  charge: X.X / Y.Y"                    storage (current / capacity)
+    //   - "  (supply X.X)"                         trailing — disambiguates "net N" from "0 power"
+    //   - "power: disconnected"                    if no port reaches a shaft
+    // Silent for non-participants.
+    static void AppendPowerInfo(System.Text.StringBuilder sb, Structure s) {
+        var ps = PowerSystem.instance;
+        if (ps == null || s == null) return;
+        bool isProducer = s is PowerSystem.IPowerProducer;
+        bool isConsumer = s is PowerSystem.IPowerConsumer;
+        bool isStorage  = s is PowerSystem.IPowerStorage;
+        bool isShaft    = s is PowerShaft;
+        // Wrapped consumers — pump/press — own a BuildingPowerConsumer, not the Building itself.
+        BuildingPowerConsumer wrapper = (s as Building)?.powerConsumer;
+        if (!isProducer && !isConsumer && !isStorage && !isShaft && wrapper == null) return;
+
+        int? netId = ps.GetNetworkId(s);
+        if (netId == null) {
+            sb.Append("\n power: disconnected");
+            return;
+        }
+        sb.Append($"\n power: net {netId.Value}");
+
+        if (isProducer && s is PowerSystem.IPowerProducer p)
+            sb.Append($"  out: {p.CurrentOutput:F1}");
+
+        if (isConsumer || wrapper != null) {
+            Building b = wrapper != null ? wrapper.building : (s as Building);
+            bool powered = b != null && ps.IsBuildingPowered(b);
+            sb.Append(powered ? "  status: <color=#40d040>powered</color>" : "  status: unpowered");
+        }
+
+        if (s is Flywheel fw)
+            sb.Append($"  charge: {fw.charge:F1}/{Flywheel.Capacity:F0}");
+
+        // Network supply — the disambiguator. Without this, "net 0" looks like "0 power".
+        var net = ps.GetNetwork(netId.Value);
+        if (net != null)
+            sb.Append($"  (supply {net.supply:F1})");
     }
 
     // Appends work orders keyed by inventory (market hauls).

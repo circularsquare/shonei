@@ -11,7 +11,8 @@ public class Blueprint {
     public Sprite sprite;
     public Tile tile; // anchor tile (bottom-left of footprint)
     // Center tile of the footprint — used as the pathfinding target for delivery/construction.
-    public Tile centerTile => World.instance.GetTileAt(x + (structType.nx - 1) / 2, y);
+    // Uses the chosen shape's nx so tall/wide variants pathfind to the right place.
+    public Tile centerTile => World.instance.GetTileAt(x + (Shape.nx - 1) / 2, y);
 
     public Inventory inv;  // holds delivered materials; InvType.Blueprint keeps it out of haul/consolidate searches
     public ItemQuantity[] costs;
@@ -24,6 +25,14 @@ public class Blueprint {
     public int priority = 0;
     // Whether this blueprint (and the structure it builds) is horizontally mirrored.
     public bool mirrored = false;
+    // Rotation in 90° clockwise steps (0..3). Set by BuildPanel during placement when
+    // structType.rotatable is true. Carried through Complete() into the constructed Structure.
+    public int rotation = 0;
+    // Shape variant index. Set by BuildPanel (Q/E during placement) when structType.HasShapes;
+    // carried through Complete() into the constructed Structure so the built thing matches the
+    // ghost preview. Defaults to 0 (first authored shape, or base nx/ny when shapes is null).
+    public int shapeIndex = 0;
+    public Shape Shape => structType.GetShape(shapeIndex);
     // Items to give to the completing animal after construction/deconstruction finishes.
     // Set by StructController.Construct (mining output) or Deconstruct (refunded materials).
     public List<ItemQuantity> pendingOutput;
@@ -77,14 +86,24 @@ public class Blueprint {
         return _unlitLayer;
     }
 
-    public Blueprint(StructType structType, int x, int y, bool mirrored = false, bool autoRegister = true){
+    public Blueprint(StructType structType, int x, int y, bool mirrored = false, bool autoRegister = true, int rotation = 0, int shapeIndex = 0){
         this.structType = structType;
         this.x = x;
         this.y = y;
         this.mirrored = mirrored;
+        this.rotation = rotation;
+        this.shapeIndex = shapeIndex;
         this.tile = World.instance.GetTileAt(x, y);
-        for (int i = 0; i < structType.nx; i++)
-            World.instance.GetTileAt(x + i, y).SetBlueprintAt(structType.depth, this);
+
+        Shape shape = Shape;
+        bool shapeAware = structType.HasShapes;
+        int claimNx = shapeAware ? shape.nx : structType.nx;
+        int claimNy = shapeAware ? shape.ny : 1;
+        // Multi-tile blueprint claim: every tile in the shape footprint at this depth
+        // points at the same blueprint instance. Legacy single-row claim for non-shape types.
+        for (int dy = 0; dy < claimNy; dy++)
+            for (int dx = 0; dx < claimNx; dx++)
+                World.instance.GetTileAt(x + dx, y + dy).SetBlueprintAt(structType.depth, this);
 
         if (structType.constructionCost == 0f){
             constructionCost = 2f; // default
@@ -93,34 +112,64 @@ public class Blueprint {
         }
 
         go = new GameObject();
-        float visualX = structType.nx > 1 ? x + (structType.nx - 1) / 2.0f : x;
-        go.transform.position = structType.depth == 3
-            ? new Vector3(x, y - 1f/8f, 0)
-            : new Vector3(visualX, y, 0);
+        // Shape-aware blueprints anchor at (x, y) so per-tile child SRs at local (0, dy)
+        // line up with their tile's centre — same convention as Structure.cs uses.
+        go.transform.position = shapeAware
+            ? new Vector3(x, y + (structType.depth == 3 ? -1f/8f : 0f), 0f)
+            : StructureVisuals.PositionFor(structType, x, y);
         go.transform.SetParent(StructController.instance.transform, true);
         go.name = "blueprint_" + structType.name;
 
-        Sprite loadedSprite = structType.LoadSprite();
+        // Anchor sprite — variant `_b` for shape-aware tall, base sprite for 1-tall / legacy.
+        Sprite loadedSprite = shapeAware
+            ? StructureVisuals.LoadShapeSprite(structType, shape, 0)
+            : structType.LoadSprite();
         sprite = loadedSprite ?? Resources.Load<Sprite>("Sprites/Buildings/default");
         SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
         sr.sortingOrder = 100;
         LightReceiverUtil.SetSortBucket(sr);
         sr.sprite = sprite;
         sr.flipX = mirrored;
+        go.transform.rotation = StructureVisuals.RotationFor(rotation);
         sr.color = new Color(0.8f, 0.9f, 1f, 0.5f); // blueprint half alpha
         if (loadedSprite == null) {
             sr.drawMode = SpriteDrawMode.Sliced;
             sr.size = new Vector2(structType.nx, Mathf.Max(1, structType.ny));
         }
 
+        // Per-tile child SRs for shape-aware vertical extension (`_m` middles, `_t` top).
+        // Mirrors the Structure ctor pattern. Same blueprint tint applied so the ghost reads
+        // as one consistent translucent column.
+        if (shapeAware && shape.nx == 1 && shape.ny > 1) {
+            for (int dy = 1; dy < shape.ny; dy++) {
+                GameObject extGo = new GameObject($"blueprint_{structType.name}_ext{dy}");
+                extGo.transform.SetParent(go.transform, false);
+                extGo.transform.localPosition = new Vector3(0f, dy, 0f);
+                SpriteRenderer extSr = extGo.AddComponent<SpriteRenderer>();
+                extSr.sprite = StructureVisuals.LoadShapeSprite(structType, shape, dy);
+                extSr.sortingOrder = sr.sortingOrder;
+                extSr.flipX = mirrored;
+                extSr.color = sr.color;
+                LightReceiverUtil.SetSortBucket(extSr);
+            }
+        }
+
         CreateFrameOverlay();
 
         // Deep-copy costs so LockGroupCostsAfterDelivery only affects this blueprint,
-        // not every blueprint sharing the same StructType.
+        // not every blueprint sharing the same StructType. Cost scales linearly with
+        // shape footprint relative to shapes[0] (the authored baseline) — for the
+        // platform's [1×1, 1×2, 1×3] this gives 1×, 2×, 3× the wood per height step.
+        int costMul = 1, costDiv = 1;
+        if (shapeAware && structType.shapes.Length > 0) {
+            costMul = shape.TileCount;
+            costDiv = structType.shapes[0].TileCount;
+        }
         costs = new ItemQuantity[structType.costs.Length];
         for (int i = 0; i < costs.Length; i++) {
             var src = structType.costs[i];
-            costs[i] = new ItemQuantity(src.item, src.quantity);
+            int scaled = (int)Math.Round((double)src.quantity * costMul / costDiv);
+            costs[i] = new ItemQuantity(src.item, scaled);
         }
         // One stack per cost item, capacity capped to exactly that item's cost quantity.
         inv = new Inventory(Math.Max(1, costs.Length), 0, Inventory.InvType.Blueprint, x, y);
@@ -160,11 +209,14 @@ public class Blueprint {
         GameObject frameGo = new GameObject("frame");
         frameGo.transform.SetParent(go.transform, false);
         // Centre the frame on the footprint, independent of the main blueprint GO's pivot
-        // (which for multi-tile buildings is the visual centre, and for depth-3 floor tiles
-        // is offset by -1/8 y). The anchor tile is (x, y); footprint centre is offset by
-        // ((nx-1)/2, (ny-1)/2) in world space from the anchor.
-        float fx = (structType.nx - 1) / 2f;
-        float fy = Mathf.Max(0, structType.ny - 1) / 2f;
+        // (which for legacy multi-tile buildings is the visual centre, and for depth-3 floor
+        // tiles is offset by -1/8 y, and for shape-aware structures is the anchor tile).
+        // The anchor tile is (x, y); the footprint extends by the chosen shape's nx,ny.
+        Shape shape = Shape;
+        int fnx = structType.HasShapes ? shape.nx : structType.nx;
+        int fny = structType.HasShapes ? shape.ny : structType.ny;
+        float fx = (fnx - 1) / 2f;
+        float fy = Mathf.Max(0, fny - 1) / 2f;
         frameGo.transform.position = new Vector3(x + fx, y + fy, 0);
 
         int unlitLayer = GetUnlitLayer();
@@ -176,7 +228,7 @@ public class Blueprint {
         // RefreshColor swaps to the deconstruct sprite when appropriate.
         frameSr.sprite = GetConstructFrameSprite();
         frameSr.drawMode = SpriteDrawMode.Sliced;
-        frameSr.size = new Vector2(structType.nx, Mathf.Max(1, structType.ny));
+        frameSr.size = new Vector2(fnx, Mathf.Max(1, fny));
         frameSr.sortingOrder = 101; // above the blueprint sprite (100)
     }
 
@@ -262,11 +314,14 @@ public class Blueprint {
     // True when this blueprint is waiting for world conditions to be met before it can be worked on.
     // Suspended blueprints are placed validly but mice should not supply or construct them yet.
     //
-    // If the StructType has tileRequirements, those drive the suspension check (only dynamic
-    // world-state flags are tested: mustBeStandable and mustHaveWater). This lets buildings like
-    // the pump declare their own preconditions rather than relying on standability as a proxy.
-    //
-    // Otherwise: suspended when any tile in the building footprint lacks solid ground below it.
+    // Two layers, both of which must pass:
+    //   1. Authored `tileRequirements` (dynamic world-state flags: mustBeStandable, mustHaveWater,
+    //      mustBeSolidTile). Lets buildings like the pump add domain-specific preconditions —
+    //      "water below me", etc.
+    //   2. Bottom-row support: every tile in the base of the footprint must be standable
+    //      (solid ground or a built solidTop structure beneath it). A blueprint below doesn't
+    //      count — pure blueprints don't bear weight, so a windmill on platform blueprints
+    //      stays suspended until those platforms are actually built.
     public bool IsSuspended() {
         if (structType.isTile || structType.name == "empty" || structType.requiredTileName != null)
             return false;
@@ -280,10 +335,13 @@ public class Blueprint {
                 if (req.mustHaveWater && t.water == 0) return true;
                 if (req.mustBeSolidTile && !t.type.solid) return true;
             }
-            return false;
+            // fall through to the bottom-row support check — tileRequirements is additive, not a replacement
         }
 
-        for (int i = 0; i < structType.nx; i++) {
+        // Support is checked along the bottom row of the footprint — only the base of the
+        // column needs to rest on something solid; the rest stacks above.
+        int bottomNx = structType.HasShapes ? Shape.nx : structType.nx;
+        for (int i = 0; i < bottomNx; i++) {
             Node node = World.instance.graph.nodes[tile.x + i, tile.y];
             if (node != null && !node.standable) return true;
         }
@@ -293,7 +351,7 @@ public class Blueprint {
     public static Blueprint CreateDeconstructBlueprint(Tile tile) {
         Structure structure = tile.structs[0] ?? tile.structs[1] ?? tile.structs[2] ?? tile.structs[3];
         if (structure == null) return null;
-        Blueprint bp = new Blueprint(structure.structType, tile.x, tile.y, structure.mirrored, autoRegister: false);
+        Blueprint bp = new Blueprint(structure.structType, tile.x, tile.y, structure.mirrored, autoRegister: false, rotation: structure.rotation, shapeIndex: structure.shapeIndex);
         bp.state = BlueprintState.Deconstructing;
         // RefreshColor hides the blueprint's duplicate sprite and applies a red multiplicative tint
         // to the underlying structure's SR — so growth stages and other live sprite changes keep
@@ -363,7 +421,7 @@ public class Blueprint {
         // Capture tile products before Construct() changes the tile type
         if (structType.isTile && structType.name == "empty" && tile.type.products != null)
             pendingOutput = new List<ItemQuantity>(tile.type.products);
-        StructController.instance.Construct(structType, tile, mirrored);
+        StructController.instance.Construct(structType, tile, mirrored, rotation, shapeIndex);
         // Passive research gain from constructing a tech-gated building.
         // No-op for ungated structures (floors, walls, etc.).
         ResearchSystem.instance?.AddConstructionProgress(structType.name);
@@ -412,8 +470,13 @@ public class Blueprint {
     // standability and fall. Uses the same logic as Navigation.GetStandability().
     public bool WouldCauseItemsFall() {
         World world = World.instance;
-        for (int i = 0; i < structType.nx; i++) {
-            int bx = tile.x + i, by = tile.y;
+        // Items only sit on the very top of a structure — for shape-aware multi-tile, that's
+        // tile.y + (ny-1) + 1; for legacy / non-shape, tile.y + 1 (the row above).
+        int fnx = structType.HasShapes ? Shape.nx : structType.nx;
+        int fny = structType.HasShapes ? Shape.ny : 1;
+        int topY = tile.y + (fny - 1);
+        for (int i = 0; i < fnx; i++) {
+            int bx = tile.x + i, by = topY;
             Tile above = world.GetTileAt(bx, by + 1);
             if (above == null || above.inv == null || above.inv.IsEmpty()) continue;
             if (!world.graph.nodes[bx, by + 1].standable) continue;
@@ -459,8 +522,12 @@ public class Blueprint {
     }
 
     private void ClearBlueprintFromTiles() {
-        for (int i = 0; i < structType.nx; i++)
-            World.instance.GetTileAt(x + i, y)?.SetBlueprintAt(structType.depth, null);
+        Shape shape = Shape;
+        int fnx = structType.HasShapes ? shape.nx : structType.nx;
+        int fny = structType.HasShapes ? shape.ny : 1;
+        for (int dy = 0; dy < fny; dy++)
+            for (int dx = 0; dx < fnx; dx++)
+                World.instance.GetTileAt(x + dx, y + dy)?.SetBlueprintAt(structType.depth, null);
     }
 
     public string GetProgress(){ // for display string

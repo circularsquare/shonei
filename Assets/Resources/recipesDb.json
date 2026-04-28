@@ -184,5 +184,13 @@
         "noutputs": [
             { "name": "fiction_book", "quantity": 1 }
         ]
+    },{
+        "id": 50,
+        "job": "runner",
+        "tile": "wheel",
+        "description": "run on the wheel to generate mechanical power",
+        "workload": 5.0,
+        "ninputs": [],
+        "noutputs": []
     }
 ]

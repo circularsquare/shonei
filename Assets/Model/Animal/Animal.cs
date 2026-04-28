@@ -19,7 +19,7 @@ public class Animal : MonoBehaviour{
     public bool facingRight = true;
     public bool pendingRefresh = false; // deferred Refresh() when SetJob fires mid-waypoint
 
-    public Tile target;         // where you are currently going
+    public Node target;         // path endpoint (tile-node or off-grid waypoint) — where you are currently going
     public Tile homeTile;
     private Tile _currentTile;  // cached for O(1) tile-occupancy tracking
 

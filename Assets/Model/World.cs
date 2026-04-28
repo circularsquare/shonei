@@ -61,6 +61,7 @@ public class World : MonoBehaviour {
         WeatherSystem.Create();
         MaintenanceSystem.Create();
         MoistureSystem.Create();
+        PowerSystem.Create();
     }
 
     public void Update(){
@@ -72,6 +73,7 @@ public class World : MonoBehaviour {
             plantController.TickUpdate();
             if (ResearchSystem.instance != null) ResearchSystem.instance.TickUpdate();
             MaintenanceSystem.instance?.Tick();
+            PowerSystem.instance?.Tick();
         }
         float reconcilePeriod = 10f;
         if (Math.Floor((timer + Time.deltaTime) / reconcilePeriod) - Math.Floor(timer / reconcilePeriod) > 0)

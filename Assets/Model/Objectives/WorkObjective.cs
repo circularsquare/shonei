@@ -20,5 +20,17 @@ public class WorkObjective : Objective {
         animal.recipe = recipe;
         animal.state = Animal.AnimalState.Working;
     }
+    // Body pose override — mirrors LeisureObjective. Only CraftTask carries a workplace
+    // building; other Tasks that use WorkObjective (Construct/Maintenance/Research/Harvest
+    // are NOT this objective — they have their own) leave pose null.
+    // The wheel uses this with "walk" so the runner sprite cycles its legs while producing
+    // power, instead of standing idle. AnimationController routes "walk" to the existing
+    // walk animator state — no new pose layer needed.
+    public override string PoseOverride {
+        get {
+            if (task is CraftTask ct) return ct.workplace?.building?.structType.workPose;
+            return null;
+        }
+    }
     // animalstatemanager.HandleWorking will call task.Complete() when it's done!
 }

@@ -2,7 +2,7 @@
 // Extracted from BuildPanel so that the rule is testable and reusable outside the UI.
 // All placement logic should live here; BuildPanel.CanPlaceHere delegates to this.
 public static class StructPlacement {
-    public static bool CanPlaceHere(StructType st, Tile tile, bool mirrored = false) {
+    public static bool CanPlaceHere(StructType st, Tile tile, bool mirrored = false, int shapeIndex = 0) {
         World world = World.instance;
 
         if (tile.GetBlueprintAt(st.depth) != null) return false;
@@ -14,24 +14,33 @@ public static class StructPlacement {
             && tile.type.name  != st.requiredTileName
             && tile.type.group != st.requiredTileName) return false;
 
+        // Footprint dimensions for collision: shape-aware structures use their full nx×ny;
+        // legacy multi-tile (windmill etc.) keeps its single-row collision check.
+        Shape shape = st.GetShape(shapeIndex);
+        bool shapeAware = st.HasShapes;
+        int fnx = shapeAware ? shape.nx : st.nx;
+        int fny = shapeAware ? shape.ny : 1;
+
         if (!st.isTile) {
             if (st.isPlant && tile.structs[0] != null) return false;
             if (!st.isPlant) {
-                for (int i = 0; i < st.nx; i++) {
-                    Tile t = world.GetTileAt(tile.x + i, tile.y);
-                    if (t == null) return false;
-                    // Plants own their tile exclusively at every depth — a tall bamboo would
-                    // otherwise let platforms / roads / foreground decorations slip in through
-                    // tiles whose structs[st.depth] happens to be null.
-                    if (t.structs[0] is Plant) return false;
-                    if (t.structs[st.depth] != null || t.GetBlueprintAt(st.depth) != null) return false;
+                for (int dy = 0; dy < fny; dy++) {
+                    for (int dx = 0; dx < fnx; dx++) {
+                        Tile t = world.GetTileAt(tile.x + dx, tile.y + dy);
+                        if (t == null) return false;
+                        // Plants own their tile exclusively at every depth — a tall bamboo would
+                        // otherwise let platforms / roads / foreground decorations slip in through
+                        // tiles whose structs[st.depth] happens to be null.
+                        if (t.structs[0] is Plant) return false;
+                        if (t.structs[st.depth] != null || t.GetBlueprintAt(st.depth) != null) return false;
+                    }
                 }
             }
         }
 
         // When mirrored, the "body" side of the building is at (nx-1) rather than 0, so
         // standability must be checked there instead of the anchor.
-        int bodyDx = mirrored ? st.nx - 1 : 0;
+        int bodyDx = mirrored ? fnx - 1 : 0;
         if (st.name != "empty" && st.requiredTileName == null
             && !world.graph.nodes[tile.x + bodyDx, tile.y].standable
             && !SupportedByBlueprintBelow(tile.x + bodyDx, tile.y)) return false;
@@ -47,6 +56,7 @@ public static class StructPlacement {
                 if (req.mustHaveWater && t.water == 0) return false;
                 if (req.mustBeEmpty && t.structs[0] != null) return false;
                 if (req.mustBeSolidTile && !t.type.solid) return false;
+                if (req.mustBeOpenSkyAbove && !world.IsExposedAbove(t.x, t.y)) return false;
                 if (req.requiredTileName != null
                     && t.type.name  != req.requiredTileName
                     && t.type.group != req.requiredTileName) return false;
