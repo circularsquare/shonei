@@ -272,10 +272,14 @@ public class Graph {
             if (Math.Abs(to.wx - from.wx) < 0.1f) return (3.0f, 1.0f); // cliff vertical (slow both ways)
             return (1.8f, 1.4142f); // stair diagonal
         }
-        // Cliff/stair approach or exit — always horizontal, compute actual distance so
-        // 0.25-tile cliff approach and 0.75-tile cliff exit both run at normal speed.
+        // Cliff/stair approach/exit and workspot waypoints — Euclidean so any X+Y offset
+        // (e.g. wheel workspot at 0.5x, 0.25y) gets the correct distance. Stair and cliff
+        // tile↔waypoint edges are horizontal (same y on both endpoints), so this matches
+        // the prior horizontal-only formula for those cases — only workspot edges differ.
         if (from.isWaypoint || to.isWaypoint) {
-            float dist = Math.Abs(to.wx - from.wx);
+            float dx = to.wx - from.wx;
+            float dy = to.wy - from.wy;
+            float dist = Mathf.Sqrt(dx * dx + dy * dy);
             return (dist, dist);
         }
         // Vertical movement — only ladders produce direct vertical edges now;
@@ -302,7 +306,9 @@ public class Graph {
             return (1.8f, 1.4142f);
         }
         if (from.isWaypoint || to.isWaypoint) {
-            float dist = Math.Abs(to.wx - from.wx);
+            float dx = to.wx - from.wx;
+            float dy = to.wy - from.wy;
+            float dist = Mathf.Sqrt(dx * dx + dy * dy);
             return (dist, dist);
         }
         if (Math.Abs(to.wy - from.wy) > 0.1f) return (2.0f, 1.0f);

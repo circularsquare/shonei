@@ -20,7 +20,14 @@ public class DeliverToBlueprintObjective : Objective { // always queued after Go
             // that hasn't been locked yet, as well as the exact match once it is locked.
             foreach (var cost in blueprint.costs)
                 if (Inventory.MatchesItem(iq.item, cost.item)) { needed = cost.quantity - blueprint.inv.Quantity(cost.item); break; }
-            animal.inv.MoveItemTo(blueprint.inv, iq.item, Math.Min(animal.inv.Quantity(iq.item), needed));
+            int requested = Math.Min(animal.inv.Quantity(iq.item), needed);
+            int moved = animal.inv.MoveItemTo(blueprint.inv, iq.item, requested);
+            // Canary for slot-routing bugs: if needed > 0 the matching cost slot should have had
+            // capacity, and slotConstraints should have routed the item there. A 0 move means
+            // either the slot is the wrong size for its cost or the constraint filter rejected
+            // the item — both indicate the blueprint's inventory layout is broken.
+            if (requested > 0 && moved == 0)
+                Debug.LogWarning($"DeliverToBlueprintObjective: {animal.aName} delivered 0 of {iq.item.name} to '{blueprint.structType.name}' blueprint at ({blueprint.x},{blueprint.y}) despite needed={needed} and carrying={animal.inv.Quantity(iq.item)} — slot routing may be broken.");
             blueprint.LockGroupCostsAfterDelivery();
             if (blueprint.IsFullyDelivered()) {
                 blueprint.state = Blueprint.BlueprintState.Constructing;

@@ -32,6 +32,16 @@ public class Inventory{
     public bool isLiquidStorage => storageClass == ItemClass.Liquid; // convenience for tank-specific rendering code
     public int x, y;
     public Dictionary<int, bool> allowed;
+
+    // Per-stack item filter, parallel to itemStacks. When non-null, AddItem refuses to put an
+    // item into stack[i] unless MatchesItem(item, slotConstraints[i]) — used by Blueprint to
+    // bind each cost slot (sized for that cost's quantity) to the item it expects, so that
+    // delivery order can't trap a small-quantity item in a stack sized for a different cost.
+    // Constraints accept group items (e.g. "stone"), matching any leaf descendant (limestone,
+    // granite, slate, gypsum). Null on inventories that don't need slot routing.
+    // Negative-quantity AddItem (subtraction) ignores this — items already in a slot can
+    // always be removed regardless of the slot's intended item.
+    public Item[] slotConstraints;
     public bool locked = false; // when true, no items accepted and all existing items are treated as needing haul-out
     public string displayName;
     // Set true at the top of Destroy(). Any mutation/render op on a destroyed inv is a stale-reference
@@ -117,7 +127,7 @@ public class Inventory{
             go.transform.position = new Vector3(x, y, 0);
             go.transform.SetParent(InventoryController.instance.transform, true);
             SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
-            if (invType == InvType.Floor) {sr.sortingOrder = 70;}
+            if (invType == InvType.Floor) { sr.sortingOrder = ComputeFloorSortingOrder(); }
             else {sr.sortingOrder = 30;}
             LightReceiverUtil.SetSortBucket(sr);
             // Bookshelves render their own fill sprite via UpdateSprite — skip the generic Storage placeholder.
@@ -249,9 +259,14 @@ public class Inventory{
         // 1. Existing stacks holding this item, fullest first (top off rather than spreading to a new slot)
         // 2. Empty stacks in original order (overflow into fresh slots as needed)
         // Stacks occupied by a different item are skipped — ItemStack.AddItem returns null for them anyway.
+        // When slotConstraints is set and we're adding (quantity > 0), skip stacks whose intended
+        // item doesn't match — this is what binds blueprint stacks to their cost slots so a smaller
+        // cost can't squat in a slot sized for a larger one. Subtraction ignores constraints.
+        bool checkSlotConstraints = slotConstraints != null && quantity > 0 && !force;
         var matchingIndices = new List<(int idx, int qty)>();
         var emptyIndices = new List<int>();
         for (int i = 0; i < nStacks; i++) {
+            if (checkSlotConstraints && slotConstraints[i] != null && !MatchesItem(item, slotConstraints[i])) continue;
             if (itemStacks[i].item == item) matchingIndices.Add((i, itemStacks[i].quantity));
             else if (itemStacks[i].item == null) emptyIndices.Add(i);
         }
@@ -662,6 +677,39 @@ public class Inventory{
     }
 
     public enum ItemSpriteType { Icon, Floor, Storage }
+
+    // ── Floor-item sort order ──────────────────────────────────────────
+    // Items resting on a tile pick their sortingOrder based on what's directly
+    // below: a building's solid top → 11, a platform's solid top → 16, anything
+    // else → 70 (dirt or fallback). Platforms render above buildings at the
+    // same tile, so platform takes priority when both are present below.
+    // See SPEC-rendering.md sorting-order table.
+    private int ComputeFloorSortingOrder(){
+        Tile below = World.instance?.GetTileAt(x, y - 1);
+        if (below == null) return 70;
+        if (below.structs[1] != null && below.structs[1].structType.solidTop) return 16;
+        if (below.building   != null && below.building.structType.solidTop)   return 11;
+        return 70;
+    }
+
+    // Re-evaluate the floor inventory's sortingOrder. Called when the surface
+    // beneath this tile changes (structure built/destroyed, tile type changed).
+    public void RefreshFloorSortingOrder(){
+        if (invType != InvType.Floor || destroyed || go == null) return;
+        SpriteRenderer sr = go.GetComponent<SpriteRenderer>();
+        if (sr == null) return;
+        sr.sortingOrder = ComputeFloorSortingOrder();
+        LightReceiverUtil.SetSortBucket(sr);
+    }
+
+    // Refresh the floor inv at (x, y), if any. No-op if the tile has no inv or
+    // a non-Floor inv. Convenience for code that mutates surfaces and needs to
+    // re-sort the pile sitting on top.
+    public static void RefreshFloorAt(int x, int y){
+        Tile t = World.instance?.GetTileAt(x, y);
+        if (t?.inv == null || t.inv.invType != InvType.Floor) return;
+        t.inv.RefreshFloorSortingOrder();
+    }
 
     public void UpdateSprite(){
         if (destroyed) {

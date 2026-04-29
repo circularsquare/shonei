@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -100,6 +101,16 @@ public class PowerSystem {
     readonly Dictionary<IPowerConsumer, int> consumerNet  = new();
     readonly Dictionary<IPowerStorage, int>  storageNet   = new();
     readonly Dictionary<int, PowerNetwork>   networks     = new();
+
+    // Tile→shaft lookup, kept in sync with `shaftNet`. Used by the BFS in RebuildTopology
+    // and by external HasCompatibleShaftAt queries (port-stub visuals, etc).
+    readonly Dictionary<(int, int), Structure> byTile = new();
+
+    // Fired at the end of RebuildTopology(). Subscribers refresh any visualization
+    // derived from connectivity (port stubs today; debug overlays in future). The
+    // topology dirty flag is already cleared when this fires, so handlers calling
+    // HasCompatibleShaftAt won't trigger a recursive rebuild.
+    public event Action onTopologyRebuilt;
 
     // True when a powered consumer received its full demand on the most recent allocation.
     // Reset at the start of every tick. IsBuildingPowered() reads this.
@@ -240,6 +251,21 @@ public class PowerSystem {
     public PowerNetwork GetNetwork(int id) =>
         networks.TryGetValue(id, out PowerNetwork n) ? n : null;
 
+    // True iff a registered shaft exists at (tx, ty) and its axis is compatible with
+    // `required`. "Both" on either side is a free pass. Used by port-stub visuals to
+    // decide whether a building's port is currently connected to anything.
+    //
+    // Lazily rebuilds topology if dirty so callers see up-to-date state without having
+    // to wait for the next Tick. The rebuild itself fires onTopologyRebuilt, which
+    // refreshes any other subscribers in the same call — keeping all visualization
+    // consistent with a single shaft placement event.
+    public bool HasCompatibleShaftAt(int tx, int ty, Axis required) {
+        if (topologyDirty) RebuildTopology();
+        if (!byTile.TryGetValue((tx, ty), out Structure shaft)) return false;
+        Axis sa = AxisOf(shaft);
+        return required == Axis.Both || sa == Axis.Both || sa == required;
+    }
+
     // ── Topology rebuild ──────────────────────────────────────────────────
     // BFS over shaft tiles to compute connected components, then attach producers
     // and consumers via their ports. After this runs:
@@ -254,12 +280,13 @@ public class PowerSystem {
         consumerNet.Clear();
         storageNet.Clear();
         networks.Clear();
+        byTile.Clear();
 
         // Build a tile→shaft index for O(1) neighbour lookup during BFS, then a second
         // pass attaches producers/consumers. Stale shaft references (e.g. structure
-        // already destroyed) are pruned from `shafts` here.
-        var byTile = new Dictionary<(int, int), Structure>();
-        var stale  = new List<Structure>();
+        // already destroyed) are pruned from `shafts` here. byTile persists as a field
+        // so external queries (HasCompatibleShaftAt) work outside the BFS scope.
+        var stale = new List<Structure>();
         foreach (Structure s in shafts) {
             if (s == null || s.go == null) { stale.Add(s); continue; }
             // Shafts are 1×1 in v1. If we add multi-tile shafts later, register every covered tile.
@@ -316,6 +343,11 @@ public class PowerSystem {
             storageNet[st] = id.Value;
             networks[id.Value].storage.Add(st);
         }
+
+        // Notify visual subscribers that connectivity may have changed. Fired AFTER
+        // topologyDirty is cleared (above) so handlers calling HasCompatibleShaftAt
+        // see the freshly-rebuilt state without triggering another rebuild.
+        onTopologyRebuilt?.Invoke();
     }
 
     void TryEnqueueNeighbour(int nx, int ny, Axis required,
@@ -434,6 +466,7 @@ public class PowerSystem {
         consumerNet.Clear();
         storageNet.Clear();
         networks.Clear();
+        byTile.Clear();
         powered.Clear();
 
         List<Structure> structures = StructController.instance?.GetStructures();

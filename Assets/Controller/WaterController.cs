@@ -136,9 +136,10 @@ public class WaterController : MonoBehaviour {
         SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
         sr.sprite      = waterSprite;
         sr.material    = _waterMat;
-        // Render above buildings (10) and platforms (11) so decorative water zones
-        // (e.g. fountain basin) are visible on top of the building sprite.
-        sr.sortingOrder = 12;
+        // Render above buildings (10), platforms (15), and items resting on
+        // either (11/16) so decorative water zones (e.g. fountain basin) are
+        // visible on top of the building sprite and any items piled there.
+        sr.sortingOrder = 20;
         LightReceiverUtil.SetSortBucket(sr);
 
         // Sync with any water already present (e.g. from world gen or save load).

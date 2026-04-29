@@ -32,9 +32,9 @@ Assets/
 ├── Controller/    Game-system MonoBehaviours (rendering, world lifecycle, input, WOM, save)
 ├── Model/         Pure C# game logic (no MonoBehaviours)
 │   ├── Animal/        Animal + state machine + Nav + needs (Eating, Eeping, Happiness, Skills)
-│   ├── Structure/     Structure, Building (+ Workstation, Reservoir), Blueprint, Plant
+│   ├── Structure/     Structure base + Building/Plant subclasses (Windmill, Quarry, PumpBuilding, Flywheel, MouseWheel, MarketBuilding, PowerShaft, …) + Blueprint + StructType + StructureVisuals
 │   └── Inventory/     Inventory, GlobalInventory, ItemStack, Item
-├── Components/    Small single-purpose subclasses and MonoBehaviours (PumpBuilding, ClockHand, FillBar, …)
+├── Components/    Single-purpose MonoBehaviours: UI widgets (FillBar, ItemIcon) and building-attached visuals (ClockHand, RotatingPart, PortStubVisuals)
 ├── UI/            Panels, displays, tooltip system, InfoViews/ for the tabbed InfoPanel
 ├── Lighting/      Custom ScriptableRendererFeature lighting pipeline (shaders + SkyExposure + BackgroundTile)
 ├── Editor/        Editor-only tools (sheet splitters, sprite normal map generator)
@@ -104,7 +104,7 @@ When adding new content, read these files first and match their pattern:
 | New Task type | `HaulTask` (simple) or `CraftTask` (complex) | `Assets/Model/Tasks/` (base in `Task.cs`) — also see 11-step checklist in SPEC-ai.md |
 | New Objective | `FetchObjective` (retry) or `WorkObjective` (simple) | `Assets/Model/Objectives/` (base in `Objective.cs`) |
 | New WOM order type | `RegisterConstructOrder` / `RegisterWorkstation` | `WorkOrderManager.cs` + SPEC-ai.md checklist |
-| New Building subclass | `PumpBuilding` | `Assets/Components/PumpBuilding.cs` + `Structure.Create` in `Structure.cs` |
+| New Building subclass | `PumpBuilding` | `Assets/Model/Structure/PumpBuilding.cs` + `Structure.Create` in `Structure.cs` |
 | New UI panel (exclusive) | `ResearchPanel` | `Assets/UI/ResearchPanel.cs` |
 | New UI panel (detail) | `StoragePanel` | `Assets/UI/StoragePanel.cs` |
 | New item/building/recipe | Existing JSON entries | `Assets/Resources/*.json` — see SPEC-data.md |

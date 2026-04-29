@@ -48,7 +48,6 @@ Mechanism:
 Out of scope (v1):
 - Per-seat workSpots (multi-tile leisure buildings still use integer seats).
 - Standability-change refresh: if the connecting tile becomes non-standable, the waypoint stays edged to it. For the wheel this can't happen without destroying the wheel itself (in which case `Destroy()` cleans up).
-- A* edge-cost precision: `GetEdgeInfo` for waypoint edges uses `Math.Abs(to.wx - from.wx)`, ignoring the small vertical offset (e.g. 0.25). Visually invisible.
 
 ---
 
@@ -144,9 +143,13 @@ Each animal has three `InvType.Equip` inventory instances (1 stack each, registe
 
 ### Blueprint inventory
 
-`Blueprint` has its own `Inventory inv` (Animal type, not registered with InventoryController — no decay, no tick overhead). Materials are delivered into it via `MoveItemTo` from the animal's inventory. On `Complete()`, `inv.Produce(item, -qty)` is called for each cost item to decrement GlobalInventory (the items were already counted in GlobalInventory when originally harvested). On cancel (`BuildPanel.Remove`), materials are returned to the floor via `MoveItemTo`.
+`Blueprint` has its own `Inventory inv` (`InvType.Blueprint`, not registered with InventoryController — no decay, no tick overhead). Materials are delivered into it via `MoveItemTo` from the animal's inventory. On `Complete()`, `inv.Produce(item, -qty)` is called for each cost item to decrement GlobalInventory (the items were already counted in GlobalInventory when originally harvested). On cancel (`BuildPanel.Remove`), materials are returned to the floor via `MoveItemTo`.
 
 One slot per cost item (`stackSize = cost.quantity`). Because a slot can only hold one leaf type, `LockGroupCostsAfterDelivery()` is called after the first delivery of each group cost: it updates `blueprint.costs[i].item` from the group (e.g. "wood") to the specific leaf delivered (e.g. "pine"). Subsequent `SupplyBlueprintTask` initializations read the locked type and fetch only that leaf, avoiding slot conflicts.
+
+Stacks are bound to their cost slot via `Inventory.slotConstraints[i] = costs[i].item` (set in the `Blueprint` ctor). `Inventory.AddItem` consults this when adding (positive quantity, non-`force`) and skips any stack whose constraint doesn't match the incoming item via `MatchesItem` — so a small-quantity cost item delivered first can't squat in a slot sized for a different, larger cost. The constraint stays as the original (often group) item even after `LockGroupCostsAfterDelivery` swaps `costs[i].item` to a leaf — the locked leaf still matches the group constraint, so no update is needed. Subtraction (`quantity < 0`) and `force: true` paths bypass the filter so misrouted items can still be removed and overflow returns can land anywhere.
+
+`SaveSystem.RestoreBlueprint` routes each saved stack to the matching cost slot (by `Inventory.MatchesItem(item, bp.costs[j].item)`) rather than trusting the saved stack index. This heals saves written before slot-constraint routing existed, where order-dependent delivery could leave items in the wrong stack.
 
 `SupplyBlueprintTask.Initialize()` commits to a specific leaf *before* pathfinding via `PickSupplyLeaf`: it walks the group's leaf tree and picks the leaf with the highest `GlobalInventory` quantity. This prevents collecting a mix of leaf types that would lock the blueprint to whichever happened to be delivered first — potentially a scarce one (e.g. 2 oak when 20 pine is available). `DeliverToBlueprintObjective` uses `Inventory.MatchesItem(iq.item, cost.item)` for the cost-slot lookup so a leaf `iq.item` correctly matches an unlocked group `cost.item`.
 
@@ -170,7 +173,7 @@ Volume is conserved exactly (integer math, explicit transfers).
 - Surface mask texture (`TextureFormat.R8`, 1600×800 for 100×50 world): rebuilt on the CPU every 0.2 s (sim tick only). Encodes: `0`=no water, `127`=interior water, `255`=surface pixel (any of 8 orthogonal+diagonal neighbours is open air — non-solid, non-water). Water touching solid walls is NOT highlighted.
 - World-spanning `WaterSprite` GameObject: 1×1 white pixel sprite at PPU=1, scaled to `(nx, ny)` Unity units, placed at `(−0.5, −0.5)`. sortingOrder=2. Must be on the **`Water`** Unity layer, excluded from `LightFeature` litLayers and SkyCamera culling mask.
 
-**Pump draining**: `PumpBuilding` (`Assets/Components/PumpBuilding.cs`) is a depth-0 Building subclass for the pump (id 140, nx=2). It overrides `ConditionsMet()` to suppress the WOM Craft order when the source tile has no water. After each completed craft round, `AnimalStateManager` calls `pump.DrainForCraft()`, which subtracts `WaterDrainPerRound` units from the tile at `(x+1, y-1)` (directly below the pump head). Drain only happens when a mouse is actively pumping — not on a passive timer. `WaterDrainPerRound` is a private const; see the file for the current value.
+**Pump draining**: `PumpBuilding` (`Assets/Model/Structure/PumpBuilding.cs`) is a depth-0 Building subclass for the pump (id 140, nx=2). It overrides `ConditionsMet()` to suppress the WOM Craft order when the source tile has no water. After each completed craft round, `AnimalStateManager` calls `pump.DrainForCraft()`, which subtracts `WaterDrainPerRound` units from the tile at `(x+1, y-1)` (directly below the pump head). Drain only happens when a mouse is actively pumping — not on a passive timer. `WaterDrainPerRound` is a private const; see the file for the current value.
 
 **Mouse speed**: Water on either endpoint of a horizontal nav edge doubles the A* edge cost (→ 0.5× speed). Applied in `Graph.GetEdgeInfo()`.
 

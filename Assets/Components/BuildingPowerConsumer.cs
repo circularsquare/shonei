@@ -22,11 +22,13 @@ public class BuildingPowerConsumer : PowerSystem.IPowerConsumer {
 
     public Structure Structure => building;
 
-    // Building's powerBoost only matters while it's actually crafting; outside of that
-    // we still report demand so the network shows the building as "wanting power" in
-    // the InfoPanel even when idle. PowerSystem allocation isn't expensive enough to
-    // gate per craft cycle.
-    public float CurrentDemand => building != null && !building.disabled && !building.IsBroken ? Demand : 0f;
+    // Demand is gated on a mouse actually being in WorkObjective at the building.
+    // Without this, an unmanned pump permanently sucks power from its network — wasting
+    // wheel output and draining flywheels for nothing. With it, demand exactly matches
+    // the cycles the operator is running, so power expenditure tracks work done.
+    public float CurrentDemand =>
+        building != null && !building.disabled && !building.IsBroken
+        && building.HasActiveCrafter() ? Demand : 0f;
 
     public IEnumerable<PowerSystem.PowerPort> Ports {
         get {

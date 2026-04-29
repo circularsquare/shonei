@@ -40,8 +40,9 @@ public class ClockHand : MonoBehaviour {
 
         SpriteRenderer sr = handGO.AddComponent<SpriteRenderer>();
         sr.sprite = handSprite;
-        // One sorting order above the clock body (Building sets sortingOrder = 10).
-        sr.sortingOrder = 11;
+        // Sits above the clock body (depth-0 building, sortingOrder 10) and on
+        // par with platforms (15). See SPEC-rendering.md sorting-order table.
+        sr.sortingOrder = 15;
         LightReceiverUtil.SetSortBucket(sr);
 
         handTransform = handGO.transform;

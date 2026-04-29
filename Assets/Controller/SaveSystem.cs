@@ -698,14 +698,31 @@ public class SaveSystem : MonoBehaviour {
         bp.disabled             = bsd.disabled;
 
         if (bsd.inv != null) {
-            for (int i = 0; i < bsd.inv.stacks.Length && i < bp.inv.itemStacks.Length; i++) {
+            // Route saved stacks to their cost slot (the stack whose slotConstraint matches
+            // the item), not by saved index. Heals saves from before slot-constraint routing
+            // existed, where a smaller cost delivered first could squat in a slot sized for
+            // a larger cost. Without this, those saves would load back into the same broken
+            // arrangement and stay stuck.
+            for (int i = 0; i < bsd.inv.stacks.Length; i++) {
                 var ssd = bsd.inv.stacks[i];
-                if (!string.IsNullOrEmpty(ssd.itemName) && Db.itemByName.ContainsKey(ssd.itemName) && ssd.quantity > 0) {
-                    bp.inv.itemStacks[i].item         = Db.itemByName[ssd.itemName];
-                    bp.inv.itemStacks[i].quantity      = ssd.quantity;
-                    bp.inv.itemStacks[i].resAmount = 0;
-                    GlobalInventory.instance.AddItem(Db.itemByName[ssd.itemName], ssd.quantity);
+                if (string.IsNullOrEmpty(ssd.itemName) || !Db.itemByName.ContainsKey(ssd.itemName) || ssd.quantity <= 0) continue;
+                Item item = Db.itemByName[ssd.itemName];
+                int slot = -1;
+                for (int j = 0; j < bp.costs.Length; j++) {
+                    if (Inventory.MatchesItem(item, bp.costs[j].item)) { slot = j; break; }
                 }
+                if (slot < 0 || slot >= bp.inv.itemStacks.Length) {
+                    Debug.LogWarning($"RestoreBlueprint: saved item '{item.name}' on blueprint '{bsd.typeName}' at ({bsd.x},{bsd.y}) matches no cost slot — discarded.");
+                    continue;
+                }
+                if (bp.inv.itemStacks[slot].item != null && bp.inv.itemStacks[slot].item != item) {
+                    Debug.LogWarning($"RestoreBlueprint: cost slot {slot} on '{bsd.typeName}' at ({bsd.x},{bsd.y}) already holds '{bp.inv.itemStacks[slot].item.name}'; can't also accept '{item.name}' — discarded.");
+                    continue;
+                }
+                bp.inv.itemStacks[slot].item     = item;
+                bp.inv.itemStacks[slot].quantity = bp.inv.itemStacks[slot].quantity + ssd.quantity;
+                bp.inv.itemStacks[slot].resAmount = 0;
+                GlobalInventory.instance.AddItem(item, ssd.quantity);
             }
         }
         // Heal race condition: if the game was saved after all materials were delivered but before

@@ -46,13 +46,8 @@ BUGS
 SHORT TERM
 - test new stone mining yield distribution
 - power 
-    - waypoint for working in middle? 
-    - windmill
-    - flywheel (storage)
-    - animate windmill, wheel, shafts, flywheel (when they are actually running or transmitting power)
-    - variable port connection, with visual feedback
+    - flywheel test
     - put shafts in a background layer?
-    - new buildings category "power"?
     - put all the specific building.cs files into a new folder?
 
 - elevators!

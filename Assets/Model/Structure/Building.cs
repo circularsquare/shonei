@@ -159,6 +159,24 @@ public class Building : Structure {
             PowerSystem.instance?.RegisterConsumer(powerConsumer);
     }
 
+    // True iff some mouse is currently in WorkObjective at this building — i.e.
+    // a runner has actually arrived and is cycling a recipe, not just been dispatched.
+    // Used by power participants (MouseWheel, BuildingPowerConsumer) to gate output
+    // and demand on real activity instead of WOM reservation state, which fires at
+    // dispatch (before the walk). Cheap — scanned at most once per second per power
+    // participant from PowerSystem.Tick. Animal.state is Working only during
+    // WorkObjective; GoObjective and DropObjective set it to Moving.
+    public bool HasActiveCrafter() {
+        AnimalController ac = AnimalController.instance;
+        if (ac == null) return false;
+        for (int i = 0; i < ac.na; i++) {
+            Animal a = ac.animals[i];
+            if (a.state != Animal.AnimalState.Working) continue;
+            if (a.task is CraftTask ct && ct.workplace?.building == this) return true;
+        }
+        return false;
+    }
+
     // Idempotent wrapper-creation. Returns true if `powerConsumer` is non-null after
     // the call (i.e. the caller should/may register). Skipped for subclasses that
     // implement IPowerConsumer directly — those use their own custom port layout.

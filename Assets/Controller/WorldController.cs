@@ -271,6 +271,11 @@ public class WorldController : MonoBehaviour {
 
         world.graph.UpdateNeighbors(tile.x, tile.y); // i think this is redundant. should laready be called
         // in structcontroller whenever a tile type changes?
+
+        // Floor-item sort follows the surface below: a dirt → air change (or
+        // reverse) flips the pile sitting on top of this tile between the
+        // dirt-fallback (70) and whatever else is below it.
+        Inventory.RefreshFloorAt(tile.x, tile.y + 1);
     }
 
     static readonly int NormalMapID = Shader.PropertyToID("_NormalMap");

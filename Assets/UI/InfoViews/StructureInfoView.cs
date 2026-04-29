@@ -357,7 +357,9 @@ public class StructureInfoView : MonoBehaviour {
     // Layout (compose-by-role; multiple roles can apply, e.g. flywheel = storage):
     //   - "power: net N"                          for any participant
     //   - "  out: X.X"                             producers (current output)
-    //   - "  status: powered/unpowered"            consumers
+    //   - "  status: powered (consuming X.X)"      consumers — X.X is current demand;
+    //                                              0.0 means powered network but no active crafter
+    //   - "  status: unpowered"                    consumers (network short on supply)
     //   - "  charge: X.X / Y.Y"                    storage (current / capacity)
     //   - "  (supply X.X)"                         trailing — disambiguates "net N" from "0 power"
     //   - "power: disconnected"                    if no port reaches a shaft
@@ -385,8 +387,27 @@ public class StructureInfoView : MonoBehaviour {
 
         if (isConsumer || wrapper != null) {
             Building b = wrapper != null ? wrapper.building : (s as Building);
+            PowerSystem.IPowerConsumer consumer = wrapper ?? (s as PowerSystem.IPowerConsumer);
+            // "powered" for display purposes: either the allocator satisfied us this tick,
+            // or we're idle (CurrentDemand == 0) on a network that *would* satisfy our
+            // nominal demand if a crafter showed up. The latter avoids the InfoPanel
+            // flickering between "powered (1.0)" while crafting and "unpowered" the moment
+            // the operator finishes a round and walks off — semantically the network is
+            // still fine.
             bool powered = b != null && ps.IsBuildingPowered(b);
-            sb.Append(powered ? "  status: <color=#40d040>powered</color>" : "  status: unpowered");
+            if (!powered && consumer.CurrentDemand <= 0f) {
+                PowerSystem.PowerNetwork idleNet = ps.GetNetwork(netId.Value);
+                if (idleNet != null) {
+                    float available = idleNet.supply;
+                    foreach (PowerSystem.IPowerStorage st in idleNet.storage)
+                        available += Mathf.Max(0f, st.MaxDischarge);
+                    if (available + 1e-4f >= BuildingPowerConsumer.Demand) powered = true;
+                }
+            }
+            if (powered)
+                sb.Append($"  status: <color=#40d040>powered</color> (consuming {consumer.CurrentDemand:F1})");
+            else
+                sb.Append("  status: unpowered");
         }
 
         if (s is Flywheel fw)

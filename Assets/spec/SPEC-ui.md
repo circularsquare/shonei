@@ -191,7 +191,7 @@ Prefab has a HorizontalLayoutGroup with four children: `NeedName` TMP, `Count` T
 
 ## Build Bar & Mouse Modes
 
-The build bar (`BuildCategoryBar` in Main.unity) holds both category buttons (Structures / Plants / Production / Storage / Tiles) and standalone mode buttons. Each standalone button calls a `SetMode*()` method on `MouseController`, which sets `MouseController.mouseMode` (enum `MouseMode { Select, Build, Remove, Harvest }`) and clears `BuildPanel.structType`.
+The build bar (`BuildCategoryBar` in Main.unity) holds both category buttons (Structures / Plants / Production / Power / Storage / Tiles) and standalone mode buttons. Each standalone button calls a `SetMode*()` method on `MouseController`, which sets `MouseController.mouseMode` (enum `MouseMode { Select, Build, Remove, Harvest }`) and clears `BuildPanel.structType`.
 
 | Mode | Trigger | Behavior |
 |------|---------|----------|

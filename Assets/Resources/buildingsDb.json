@@ -455,7 +455,7 @@
         "workSpotX": 0.5,
         "workSpotY": 0.25,
         "workPose": "walk",
-        "category": "production"
+        "category": "power"
     },{
         "id": 141,
         "name": "windmill",
@@ -466,7 +466,7 @@
             { "name": "planks", "quantity": 4 }
         ],
         "njob": "hauler",
-        "category": "production",
+        "category": "power",
         "tileRequirements": [
             { "dx": 0, "dy": 3, "mustBeOpenSkyAbove": true },
             { "dx": 1, "dy": 3, "mustBeOpenSkyAbove": true }
@@ -481,7 +481,7 @@
             { "name": "planks", "quantity": 4 }
         ],
         "njob": "hauler",
-        "category": "production"
+        "category": "power"
     },{
         "id": 142,
         "name": "power shaft",
@@ -492,7 +492,7 @@
         ],
         "njob": "hauler",
         "depth": 2,
-        "category": "structures",
+        "category": "power",
         "rotatable": true
     },{
         "id": 144,
@@ -504,7 +504,7 @@
         ],
         "njob": "hauler",
         "depth": 2,
-        "category": "structures",
+        "category": "power",
         "rotatable": true
     },{
         "id": 143,
@@ -516,6 +516,6 @@
         ],
         "njob": "hauler",
         "depth": 2,
-        "category": "structures"
+        "category": "power"
     }
 ]

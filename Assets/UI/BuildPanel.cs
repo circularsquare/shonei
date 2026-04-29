@@ -10,6 +10,7 @@ public class BuildPanel : MonoBehaviour {
     [SerializeField] Button btnStructures;
     [SerializeField] Button btnPlants;
     [SerializeField] Button btnProduction;
+    [SerializeField] Button btnPower;
     [SerializeField] Button btnStorage;
     [SerializeField] Button btnTiles;
     public static BuildPanel instance { get; protected set; }
@@ -26,7 +27,7 @@ public class BuildPanel : MonoBehaviour {
     // Resets when a new building type is selected. See StructType.shapes / Shape.
     public int shapeIndex = 0;
 
-    static readonly string[] CategoryNames = { "structures", "plants", "production", "storage", "tiles" };
+    static readonly string[] CategoryNames = { "structures", "plants", "production", "power", "storage", "tiles" };
 
     readonly Dictionary<string, GameObject> subPanels = new Dictionary<string, GameObject>();
     readonly Dictionary<string, Button> catButtons = new Dictionary<string, Button>();
@@ -76,17 +77,24 @@ public class BuildPanel : MonoBehaviour {
             subPanels[cat] = sp;
         }
 
-        // hook up the manually-placed category buttons
+        // hook up the manually-placed category buttons. Tooltips are attached here
+        // (rather than in the editor) so the category-name text stays driven by
+        // CategoryNames — no risk of editor labels drifting from code.
         catButtons["structures"] = btnStructures;
         catButtons["plants"]     = btnPlants;
         catButtons["production"] = btnProduction;
+        catButtons["power"]      = btnPower;
         catButtons["storage"]    = btnStorage;
-        catButtons["tiles"]    = btnTiles;
-        btnStructures?.onClick.AddListener(() => ToggleCategory("structures"));
-        btnPlants?.onClick.AddListener(     () => ToggleCategory("plants"));
-        btnProduction?.onClick.AddListener( () => ToggleCategory("production"));
-        btnStorage?.onClick.AddListener(    () => ToggleCategory("storage"));
-        btnTiles?.onClick.AddListener(    () => ToggleCategory("tiles"));
+        catButtons["tiles"]      = btnTiles;
+        foreach (var kv in catButtons) {
+            Button btn = kv.Value;
+            if (btn == null) continue;
+            string cat = kv.Key;
+            btn.onClick.AddListener(() => ToggleCategory(cat));
+            Tooltippable tip = btn.GetComponent<Tooltippable>() ?? btn.gameObject.AddComponent<Tooltippable>();
+            tip.title = cat;
+            tip.body  = "";
+        }
     }
 
     void AddBuildDisplay(Transform parent, StructType st) {

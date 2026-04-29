@@ -16,8 +16,12 @@ using UnityEngine;
 // Transitions lerp over lerpDuration seconds (default 5s).
 //
 // Wind: Ornstein-Uhlenbeck random walk, updated each hour.
-//   step = -0.02 * wind  +  Uniform(-0.05, 0.05)
+//   step = -0.02 * wind  +  Uniform(-0.15, 0.15)
 //   The -0.02*wind term pulls back toward zero (at wind=0.5, mean step = -0.01).
+//   Stationary std ≈ 0.43, so |wind| typically lives in [0, 0.9] with occasional
+//   excursions past ±1. Both readers (Windmill output / blades, RainParticles
+//   horizontal velocity) handle the full range — Windmill clamps the magnitude
+//   for output via Mathf.Min(1, w), so excursions saturate at MaxOutput.
 //   Positive = blowing right. Used by RainParticles for sideways drop velocity.
 public class WeatherSystem {
     public static WeatherSystem instance { get; private set; }
@@ -46,7 +50,7 @@ public class WeatherSystem {
 
     // Called by World.Update() once per in-game hour.
     public void OnHourElapsed() {
-        wind += -0.02f * wind + Random.Range(-0.05f, 0.05f);
+        wind += -0.02f * wind + Random.Range(-0.15f, 0.15f);
 
         if (!isRaining) {
             if (Random.value < 0.04f) SetRain(true);

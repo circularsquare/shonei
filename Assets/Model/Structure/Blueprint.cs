@@ -172,9 +172,18 @@ public class Blueprint {
             costs[i] = new ItemQuantity(src.item, scaled);
         }
         // One stack per cost item, capacity capped to exactly that item's cost quantity.
+        // slotConstraints binds each stack to its cost item (group or leaf) so AddItem
+        // routes deliveries to the right slot regardless of arrival order — without this,
+        // a small-quantity item delivered first could squat in a slot sized for a
+        // larger-quantity cost, capping the larger cost at the smaller stack's size.
         inv = new Inventory(Math.Max(1, costs.Length), 0, Inventory.InvType.Blueprint, x, y);
-        for (int i = 0; i < costs.Length; i++)
-            inv.itemStacks[i].stackSize = costs[i].quantity;
+        if (costs.Length > 0) {
+            inv.slotConstraints = new Item[costs.Length];
+            for (int i = 0; i < costs.Length; i++) {
+                inv.itemStacks[i].stackSize = costs[i].quantity;
+                inv.slotConstraints[i] = costs[i].item;
+            }
+        }
 
         StructController.instance.AddBlueprint(this);
         if (autoRegister) {

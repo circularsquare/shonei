@@ -9,9 +9,13 @@
 | -10 | Background tile (`BackgroundTile`) |
 | 0 | Tiles |
 | 1 | Roads (depth-3 structures) |
+| parent − 1 | Power port stubs (`PortStubVisuals` child SR, one below the parent building). Also: flywheel wheel — rendered behind the housing so the spokes peek through. |
 | 10 | Buildings (depth-0 structures) |
-| 11 | Platforms (depth-1 structures); also clock hand (one above its body) |
-| 12 | Water overlay sprite (`WaterController`) |
+| parent + 1 | Rotating wheel children sorted in front of the base (`RotatingPart` child SR — windmill blades). Per-building: the building decides whether its wheel sorts in front or behind by setting `wsr.sortingOrder` relative to its own `sr.sortingOrder` (windmill = +1, flywheel = −1). |
+| 11 | Floor items resting on a building's solid top (computed by `Inventory.ComputeFloorSortingOrder`) |
+| 15 | Platforms (depth-1 structures); also clock hand |
+| 16 | Floor items resting on a platform's solid top (computed) |
+| 20 | Water overlay sprite (`WaterController`) |
 | 30 | Items in storage/inventory display |
 | 40 | Foreground structures (depth-2: stairs, ladders) |
 | 48 | Animal tail (paper-doll part) |
@@ -23,10 +27,12 @@
 | 60 | Plants |
 | 64 | Light-source buildings (torch, fireplace) — per-type override via `StructType.sortingOrder`, sits above animals/plants so `LightSource` (auto-detect) front-lights them |
 | 65 | Falling items (mid-air animation) |
-| 70 | Items on floor |
+| 70 | Floor items resting on solid dirt (or fallback when no surface is detected below) |
 | 100 | Blueprints |
 | 101 | Blueprint frame overlay (unlit, sliced) |
 | 200 | Build preview (mouse cursor ghost) |
+
+**Floor-item sort is surface-aware.** `Inventory` (Floor type) picks its sortingOrder based on the tile directly below at (x, y−1): platform-with-`solidTop` → 16, building-with-`solidTop` → 11, anything else → 70. The pile re-sorts whenever a structure is placed/destroyed under it (via `Structure` constructor + `Destroy`) or the supporting tile's type changes (`WorldController.OnTileTypeChanged`). Helpers: `Inventory.ComputeFloorSortingOrder()`, `Inventory.RefreshFloorSortingOrder()`, and the static `Inventory.RefreshFloorAt(x, y)`.
 
 ### Structure depth layers
 
@@ -35,7 +41,7 @@ Structures render in four depth layers per tile. Each tile holds `Structure[] st
 | Depth | `structs[d]` | Contents | Sprite position | sortingOrder |
 |-------|-------------|----------|----------------|-------------|
 | 0 | building layer | Buildings, plants (`Building`/`Plant`) | `(x, y)` | 10 |
-| 1 | platform layer | Platforms | `(x, y)` | 11 |
+| 1 | platform layer | Platforms | `(x, y)` | 15 |
 | 2 | foreground layer | Stairs, ladders, torches | `(x, y)` | 40 |
 | 3 | road layer | Roads | `(x, y−1/8)` — sits on tile surface | 1 |
 
@@ -243,7 +249,7 @@ See `SPEC-systems.md` for the simulation. The renderer is a separate GPU shader 
 
 **Lighting**: water is lit via a dedicated path. `LightFeature` has a `waterLayer` field (set to `Water` in the Inspector) which triggers a separate `DrawRenderers` call in `NormalsCapturePass` using `Hidden/NormalsCaptureWater` (pass 1, lit-only, alpha=0.5). That shader samples the global `_WaterSurfaceTex` (set each tick by `WaterController.UpdateSurfaceMask()`) for transparency, discarding pixels with no water. Outputs flat forward normals. This means water darkens at night and receives ambient light, but torch NdotL is minimal (flat normal faces away from scene).
 
-**sortingOrder**: `12` — above buildings (10) and platforms (11) so decorative water zones render on top of building sprites.
+**sortingOrder**: `20` — above buildings (10), platforms (15), and floor items resting on either (11/16) so decorative water zones render on top of building sprites and any items piled there.
 
 ### Decorative water zones
 

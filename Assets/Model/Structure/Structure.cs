@@ -167,6 +167,17 @@ public class Structure {
         return anim;
     }
 
+    // Helper for power producers/consumers/storage to spawn conditional shaft-stub
+    // child SpriteRenderers at each port offset. Stubs render behind the building and
+    // toggle visibility based on whether a compatible shaft is wired up at the port —
+    // see PortStubVisuals for the full contract. Subclasses call this from
+    // AttachAnimations(), passing their own Ports collection.
+    protected void AttachPortStubs(IEnumerable<PowerSystem.PowerPort> ports) {
+        if (ports == null) return;
+        var stubs = go.AddComponent<PortStubVisuals>();
+        stubs.Init(this, ports);
+    }
+
     // Whether this structure is horizontally mirrored (flipped left-right).
     // Affects sprite flipX, workTile/storageTile offsets, tileRequirement offsets, and stair pathfinding.
     public bool mirrored = false;
@@ -240,11 +251,6 @@ public class Structure {
             var ch = go.AddComponent<ClockHand>();
             ch.structure = this;
         }
-        // Subclass hook for frame-by-frame sprite animations (power buildings, etc.).
-        // Constructor-time call is safe because FrameAnimator's isActive callbacks are
-        // invoked lazily at Update() — by then OnPlaced has run and any registries
-        // (PowerSystem, WOM) have the structure recorded.
-        AttachAnimations();
 
         // Register on tiles at the appropriate depth layer. Shape-aware structures claim
         // every tile in the chosen footprint (so e.g. a height-3 platform fills 3 cells in
@@ -261,14 +267,26 @@ public class Structure {
                 t.structs[depth] = this;
             }
         }
-        // Sort order by depth: 0=building(10), 1=platform(11), 2=foreground(40), 3=road(1).
+        // Sort order by depth: 0=building(10), 1=platform(15), 2=foreground(40), 3=road(1).
         // StructType.sortingOrder overrides this when >= 0 (e.g. light-source buildings at 64).
         if (st.sortingOrder >= 0) sr.sortingOrder = st.sortingOrder;
         else if (depth == 0) sr.sortingOrder = 10;
-        else if (depth == 1) sr.sortingOrder = 11;
+        else if (depth == 1) sr.sortingOrder = 15;
         else if (depth == 2) sr.sortingOrder = 40;
         else if (depth == 3) sr.sortingOrder = 1;
         LightReceiverUtil.SetSortBucket(sr);
+
+        // Subclass hook for visuals that need the parent's final sortingOrder — rotating
+        // wheels, frame-animated overlays, port stubs, etc. Constructor-time call is safe
+        // because Update-driven callbacks (FrameAnimator.isActive, RotatingPart.speedSource,
+        // PowerSystem.HasCompatibleShaftAt) are invoked lazily — by then OnPlaced has run
+        // and any registries (PowerSystem, WOM) have the structure recorded.
+        AttachAnimations();
+
+        // Refresh floor-item sort for tiles directly above this structure's footprint —
+        // any pile resting there now sees a new surface (building/platform) below it.
+        for (int dx = 0; dx < claimNx; dx++)
+            Inventory.RefreshFloorAt(x + dx, y + claimNy);
 
         // Per-tile child SRs for shape-aware vertical extension (`_m` middles, `_t` top).
         // Allocated lazily — null when shape is single-tile or non-vertical.
@@ -422,6 +440,9 @@ public class Structure {
                 world.graph.UpdateNeighbors(x + dx, y + dy);
             world.graph.UpdateNeighbors(x + dx, y + claimNy);
             world.FallIfUnstandable(x + dx, y + claimNy);
+            // Floor-item sort follows the surface below; any pile that didn't fall
+            // (e.g. because of a ladder or alternate support) needs to re-sort.
+            Inventory.RefreshFloorAt(x + dx, y + claimNy);
         }
     }
 

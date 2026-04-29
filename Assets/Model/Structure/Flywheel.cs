@@ -21,8 +21,10 @@ public class Flywheel : Building, PowerSystem.IPowerStorage {
 
     // Per-tick cap on charge or discharge magnitude. Limits how fast a flywheel can
     // smooth out bursts — a tiny windmill can't fully charge it in one tick, and a
-    // powered consumer can't drain it instantly when supply collapses.
-    public const float MaxRate = 2f;
+    // powered consumer can't drain it instantly when supply collapses. Sized so a
+    // single flywheel can cover up to 3 simultaneous nominal-demand consumers (1.0
+    // each) during a wind stall.
+    public const float MaxRate = 3f;
 
     // Exponential decay applied each tick. 0.97 ≈ 23-tick half-life ≈ ~2.3 in-game hours
     // (240 ticks/day, 10 ticks/hour). Tuned so a flywheel charged from windmill gusts can
@@ -65,11 +67,46 @@ public class Flywheel : Building, PowerSystem.IPowerStorage {
     // so a flywheel visibly winds down as it bleeds energy.
     public bool IsCurrentlyActive => charge > 0.01f;
 
+    // Rotation pivot for the wheel child GameObject — edge-aligned tile-local from the
+    // anchor's bottom-left CORNER. Centred on a 2×2 footprint, so (1.0, 1.0) sits exactly
+    // at the centre of the building.
+    public const float WheelHubX = 1.0f;
+    public const float WheelHubY = 1.0f;
+
+    // Degrees per second the wheel sweeps when fully charged. Linear interpolation:
+    // actual speed = (charge / Capacity) × WheelDegPerSecAtMaxCharge.
+    public const float WheelDegPerSecAtMaxCharge = 360f;
+
     public override void AttachAnimations() {
-        AttachFrameAnimator("flywheel",
-            () => IsCurrentlyActive,
-            baseFps: 10f,
-            speedMul: () => charge / Capacity);
+        Sprite wheelSprite = Resources.Load<Sprite>("Sprites/Buildings/flywheel_wheel");
+        if (wheelSprite != null) {
+            GameObject wheelGO = new GameObject("wheel");
+            wheelGO.transform.SetParent(go.transform, true);
+            // Edge-aligned hub; tiles centred at integer coords means anchor's bottom-left
+            // CORNER sits at world (x-0.5, y-0.5).
+            float hubX = mirrored ? (structType.nx - WheelHubX) : WheelHubX;
+            wheelGO.transform.position = new Vector3(x - 0.5f + hubX, y - 0.5f + WheelHubY, 0f);
+
+            SpriteRenderer wsr = wheelGO.AddComponent<SpriteRenderer>();
+            wsr.sprite = wheelSprite;
+            wsr.flipX = mirrored;
+            // Render BEHIND the housing — the flywheel sprite is a frame around the wheel,
+            // and the spokes peek through the open centre of the frame.
+            wsr.sortingOrder = (sr != null ? sr.sortingOrder : 10) - 1;
+            LightReceiverUtil.SetSortBucket(wsr);
+
+            RotatingPart rot = wheelGO.AddComponent<RotatingPart>();
+            // Charge fraction is unsigned [0, 1]; the flywheel always spins one direction.
+            rot.speedSource         = () => charge / Capacity;
+            rot.isActive            = () => IsCurrentlyActive;
+            rot.degPerSecAtMaxSpeed = WheelDegPerSecAtMaxCharge;
+            rot.stallThreshold      = 0f; // IsCurrentlyActive already gates on charge > 0.01
+            rot.directionSign       = -1f; // negative deg = clockwise in Unity 2D
+        } else {
+            Debug.LogWarning("flywheel_wheel sprite missing at Resources/Sprites/Buildings/flywheel_wheel — flywheel wheel will not render.");
+        }
+
+        AttachPortStubs(Ports);
     }
 
     public IEnumerable<PowerSystem.PowerPort> Ports {
