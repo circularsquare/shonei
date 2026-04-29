@@ -19,6 +19,26 @@ public class Nav {
     // Accumulated downward speed during Falling state. Mutated externally by
     // AnimalStateManager.UpdateMovement, which owns the fall physics integration.
     public float fallVelocity = 0f;
+    // Non-null while the animal is loaded onto an elevator's platform. Move() returns false
+    // (no lerp, position driven by elevator); preventFall stays true; OnTransitComplete clears
+    // it when the elevator arrives at the destination stop. AbortRide does the same on cancel.
+    public Elevator ridingElevator;
+
+    // Elevators we've placed a tentative (plan-time) reservation on for the current path.
+    // Populated in Navigate by scanning the path for transit edges; drained in EndNavigation.
+    // Each entry corresponds to one AddTentativeReservation call; cleanup must call
+    // RemoveTentativeReservation symmetrically. Holds stale refs harmlessly if the elevator
+    // is destroyed mid-path — RemoveTentativeReservation on a dead instance is a no-op.
+    private readonly List<Elevator> pendingElevators = new List<Elevator>();
+
+    // True iff Move() is currently translating the animal's position via lerp. False when:
+    //   - path is null / fully consumed
+    //   - parked at an elevator boarding tile waiting for a ride (transit edge ahead)
+    //   - loaded onto the elevator platform (ridingElevator != null)
+    // AnimalState stays "Moving" through all of those — the task is still in progress —
+    // but the animal isn't actually walking, so AnimationController uses this to pick the
+    // idle animation instead of the walk cycle in those cases.
+    public bool IsLocomoting { get; private set; } = false;
 
 
     public Nav (Animal a){
@@ -31,6 +51,9 @@ public class Nav {
     // navigation — all task/objective code routes through here.
     public bool Navigate(Path p){
         if (p == null){Debug.LogError("Navigate called with null path"); return false;}
+        // Drain any tentative reservations from a previous path so we don't double-count
+        // ourselves on elevators we're abandoning.
+        EndNavigation();
         path = p;
         pathIndex = 0;
         prevNode = path.nodes[0];
@@ -38,9 +61,50 @@ public class Nav {
         // Endpoint may be a tile-backed Node or an off-grid waypoint (e.g. wheel workspot).
         // AnimalStateManager.UpdateMovement reads target.wx/wy on arrival, which works for both.
         a.target = path.end;
+        // Tentative reservations: scan the path for transit edges and tell each elevator
+        // we're inbound. EstimatedTransitCost picks these up immediately so simultaneous
+        // planners see realistic queue depth.
+        for (int i = 0; i < path.length; i++) {
+            Node n0 = path.nodes[i];
+            Node n1 = path.nodes[i + 1];
+            if (n0.payload != null && ReferenceEquals(n0.payload, n1.payload) && n0.payload is Elevator e) {
+                e.AddTentativeReservation(a);
+                pendingElevators.Add(e);
+            }
+        }
+        RefreshLocomotion();
         return true;
     }
-    private void EndNavigation(){ path = null; pathIndex = 0; prevNode = null; nextNode = null; preventFall = false; }
+    private void EndNavigation(){
+        // Symmetric cleanup of tentative reservations. Idempotent: AddTentativeReservation
+        // is no-op if the animal already graduated to `reserved`, and RemoveTentativeReservation
+        // is a HashSet.Remove that no-ops on missing entries.
+        foreach (Elevator e in pendingElevators) e?.RemoveTentativeReservation(a);
+        pendingElevators.Clear();
+        path = null; pathIndex = 0; prevNode = null; nextNode = null; preventFall = false;
+        RefreshLocomotion();
+    }
+
+    // Recomputes IsLocomoting from current state and notifies the animator on changes so
+    // the walk/idle anim swaps when the mouse parks at an elevator stop or boards. Called
+    // at the end of every Move() and at navigation lifecycle boundaries (Navigate, EndNav,
+    // OnTransitComplete, AbortRide). Idempotent — only fires UpdateState on actual flips.
+    void RefreshLocomotion() {
+        bool now = ComputeLocomoting();
+        if (now == IsLocomoting) return;
+        IsLocomoting = now;
+        a.animationController?.UpdateState();
+    }
+    bool ComputeLocomoting() {
+        if (path == null || pathIndex >= path.length) return false;
+        if (ridingElevator != null) return false;
+        // Parked at a transit-edge boarding tile, waiting for a ride.
+        if (prevNode != null && nextNode != null
+                && prevNode.payload != null
+                && ReferenceEquals(prevNode.payload, nextNode.payload)
+                && prevNode.payload is Elevator) return false;
+        return true;
+    }
     public void Fall(){
         if (a.task != null) {
             Debug.Log(a.aName + " falling! interrupting task " + a.task.ToString());
@@ -53,7 +117,22 @@ public class Nav {
     }
 
     public bool Move(float deltaTime){ // called by animal every frame!! returns whether you're done
+        // Wrap the real logic so we can refresh IsLocomoting and notify the animator on
+        // every transition (path commit, transit-edge entry, riding handoff, completion).
+        bool result = MoveCore(deltaTime);
+        RefreshLocomotion();
+        return result;
+    }
+
+    bool MoveCore(float deltaTime){
         if (path == null || pathIndex >= path.length){return true;}  // no path... return true, give up
+        // Loaded onto an elevator: position is driven by Elevator.Tick. Hold here until
+        // OnTransitComplete clears ridingElevator (elevator delivers us to the dest stop)
+        // or AbortRide bails on a power loss / wait timeout.
+        if (ridingElevator != null) {
+            preventFall = true;
+            return false;
+        }
         // If the next tile became solid mid-path (e.g. building placed), abort early.
         // Skip waypoints — they're virtual intermediate points and are never standable.
         if (!nextNode.isWaypoint && !nextNode.standable) {
@@ -73,6 +152,15 @@ public class Nav {
                 nextNode = path.nodes[pathIndex + 1];
             }
         }
+        // Transit edge: prev and next are both stop tile-nodes of the same elevator. Don't
+        // lerp through the air — request a ride and wait at the boarding tile. The elevator
+        // will load us when our turn comes; ridingElevator gates the early return above.
+        if (prevNode.payload != null && ReferenceEquals(prevNode.payload, nextNode.payload)
+                && prevNode.payload is Elevator ev) {
+            if (!ev.HasReservation(a)) ev.RequestRide(a, prevNode, nextNode);
+            preventFall = true;
+            return false;
+        }
         // Suppress falling on waypoint edges (cliff/stair) and vertical edges (ladders).
         preventFall = prevNode.isWaypoint || nextNode.isWaypoint
                    || Mathf.Abs(nextNode.wy - prevNode.wy) > 0.1f;
@@ -89,6 +177,31 @@ public class Nav {
         float facingDx = nextNode.wx - prevNode.wx;
         if (Mathf.Abs(facingDx) > 0.01f) a.facingRight = facingDx > 0;
         return false;
+    }
+
+    // Called by Elevator.Tick when the platform finishes the trip and unloads. Snaps the
+    // animal to the destination stop's coordinates so the next Move() distance check fires
+    // and pathIndex advances past the transit edge naturally.
+    public void OnTransitComplete(Node arrivalStop) {
+        if (ridingElevator == null) return;
+        ridingElevator = null;
+        if (arrivalStop != null) {
+            a.x = arrivalStop.wx;
+            a.y = arrivalStop.wy;
+            if (a.go != null)
+                a.go.transform.position = new Vector3(a.x, a.y, a.z);
+        }
+        preventFall = false;
+        RefreshLocomotion();
+    }
+
+    // Called when a ride is cancelled mid-loop (elevator destroyed, future: power lost,
+    // wait timeout). Clears riding state without snapping position; the caller is expected
+    // to also fail the animal's task so the path doesn't dangle.
+    public void AbortRide() {
+        ridingElevator = null;
+        preventFall = false;
+        RefreshLocomotion();
     }
 
 
@@ -387,7 +500,7 @@ public class Nav {
         Shape shape = bp.Shape;
         bool shapeAware = bp.structType.HasShapes;
         int fnx = shapeAware ? shape.nx : bp.structType.nx;
-        int fny = shapeAware ? shape.ny : 1;
+        int fny = shapeAware ? shape.ny : Mathf.Max(1, bp.structType.ny);
 
         var footprint = new HashSet<Tile>();
         for (int dy = 0; dy < fny; dy++)

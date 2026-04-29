@@ -74,6 +74,7 @@ public class World : MonoBehaviour {
             if (ResearchSystem.instance != null) ResearchSystem.instance.TickUpdate();
             MaintenanceSystem.instance?.Tick();
             PowerSystem.instance?.Tick();
+            Elevator.TickAll();
         }
         float reconcilePeriod = 10f;
         if (Math.Floor((timer + Time.deltaTime) / reconcilePeriod) - Math.Floor(timer / reconcilePeriod) > 0)

@@ -10,9 +10,10 @@
 //                        branch point rather than a corner).
 //
 // Inherits Structure (not Building) — shafts have no workstation, no storage, no fuel.
-// Depth 2 (foreground), so they share the depth slot with stairs/ladders/torches and
-// cannot coexist with those on a single tile. Power runs need their own dedicated
-// channel — that's intended as a layout constraint.
+// Depth 4 — shafts have their own slot in tile.structs[], so they can coexist with
+// buildings, platforms, foreground decorations, and roads on the same tile. Visually
+// they render at sortingOrder 5 (between roads and buildings — see Structure.cs), so
+// shafts appear *behind* most things, like wall-mounted plumbing.
 public class PowerShaft : Structure {
     public PowerSystem.Axis axis { get; private set; }
 

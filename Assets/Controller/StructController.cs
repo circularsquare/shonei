@@ -53,12 +53,14 @@ public class StructController : MonoBehaviour {
 
     public bool Construct(StructType st, Tile tile, bool mirrored = false, int rotation = 0, int shapeIndex = 0){
         Structure structure = null;
-        // Shape footprint for non-tile, non-plant structures. Legacy multi-tile (windmill etc.)
-        // keeps its single-row claim — only shape-aware structures use the full nx×ny footprint.
+        // Visual footprint for non-tile, non-plant structures. Matches the full-footprint
+        // claim in Structure / Blueprint, so the defense-in-depth collision check below
+        // covers every tile a multi-tile structure will occupy (e.g. all 8 tiles of a 2×4
+        // windmill, not just the bottom row).
         Shape shape = st.GetShape(shapeIndex);
         bool shapeAware = st.HasShapes;
         int fnx = shapeAware ? shape.nx : st.nx;
-        int fny = shapeAware ? shape.ny : 1;
+        int fny = shapeAware ? shape.ny : Mathf.Max(1, st.ny);
         if (st.isTile){ // tiles are not real structures, should just turn into tile
             if (st.name == "empty"){
                 // Mining output is captured by Blueprint.Complete() into pendingOutput before this is called.
@@ -131,7 +133,7 @@ public class StructController : MonoBehaviour {
         for (int dx = 0; dx < fnx; dx++) {
             Tile above = world.GetTileAt(tile.x + dx, tile.y + fny);
             if (above == null) continue;
-            for (int d = 0; d < 4; d++) {
+            for (int d = 0; d < Tile.NumDepths; d++) {
                 Blueprint bp = above.GetBlueprintAt(d);
                 if (bp == null) continue;
                 bp.RefreshColor();

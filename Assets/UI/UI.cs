@@ -51,6 +51,31 @@ public class UI : MonoBehaviour {
             foreach (var p in exclusivePanels)
                 if (p.activeSelf) { p.SetActive(false); break; }
         }
+
+        // Esc dismisses one layer of UI per press, in priority order. Centralised here
+        // (rather than each panel handling its own Esc) so a single press never triggers
+        // two layers in the same frame — e.g. closing a build subpanel AND leaving Build
+        // mode would feel like Esc "skipped" a step.
+        if (Input.GetKeyDown(KeyCode.Escape)) {
+            // 1. save menu (most modal — full-screen overlay)
+            if (SaveMenuPanel.instance != null && SaveMenuPanel.instance.gameObject.activeSelf) {
+                SaveMenuPanel.instance.gameObject.SetActive(false);
+                return;
+            }
+            // 2. open build category subpanel
+            if (BuildPanel.instance != null && BuildPanel.instance.IsSubPanelOpen) {
+                BuildPanel.instance.CloseSubPanel();
+                return;
+            }
+            // 3. any open exclusive panel (TradingPanel / RecipePanel / ResearchPanel / GlobalHappinessPanel)
+            foreach (var p in exclusivePanels) {
+                if (p.activeSelf) { p.SetActive(false); return; }
+            }
+            // 4. fall back to leaving non-Select mouse mode
+            var mc = MouseController.instance;
+            if (mc != null && mc.mouseMode != MouseController.MouseMode.Select)
+                mc.SetModeSelect();
+        }
     }
 
 

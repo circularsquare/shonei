@@ -32,6 +32,7 @@ public class BuildPanel : MonoBehaviour {
     readonly Dictionary<string, GameObject> subPanels = new Dictionary<string, GameObject>();
     readonly Dictionary<string, Button> catButtons = new Dictionary<string, Button>();
     string openCategory = null;
+    public bool IsSubPanelOpen => openCategory != null;
 
     void Start() {
         if (instance != null) { Debug.LogError("there should only be one build panel: " + gameObject.name); return; }

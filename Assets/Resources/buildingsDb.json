@@ -483,6 +483,29 @@
         "njob": "hauler",
         "category": "power"
     },{
+        "id": 146,
+        "name": "elevator",
+        "description": "carries one mouse at a time between the bottom and top of its chassis. press E/Q while placing to grow/shrink. needs mechanical power.",
+        "nx": 1, "ny": 3,
+        "ncosts": [
+            { "name": "planks", "quantity": 3 },
+            { "name": "stone", "quantity": 1 }
+        ],
+        "njob": "hauler",
+        "depth": 0,
+        "solidTop": false,
+        "category": "power",
+        "shapes": [
+            { "nx": 1, "ny": 3 },
+            { "nx": 1, "ny": 4 },
+            { "nx": 1, "ny": 5 },
+            { "nx": 1, "ny": 6 },
+            { "nx": 1, "ny": 7 },
+            { "nx": 1, "ny": 8 },
+            { "nx": 1, "ny": 9 },
+            { "nx": 1, "ny": 10 }
+        ]
+    },{
         "id": 142,
         "name": "power shaft",
         "description": "mechanical power shaft. press R to rotate between horizontal and vertical.",
@@ -491,7 +514,7 @@
             { "name": "planks", "quantity": 1 }
         ],
         "njob": "hauler",
-        "depth": 2,
+        "depth": 4,
         "category": "power",
         "rotatable": true
     },{
@@ -503,7 +526,7 @@
             { "name": "planks", "quantity": 1 }
         ],
         "njob": "hauler",
-        "depth": 2,
+        "depth": 4,
         "category": "power",
         "rotatable": true
     },{
@@ -515,7 +538,7 @@
             { "name": "planks", "quantity": 2 }
         ],
         "njob": "hauler",
-        "depth": 2,
+        "depth": 4,
         "category": "power"
     }
 ]

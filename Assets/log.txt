@@ -2,6 +2,11 @@ meoww!!
 
 4/29
 - dynamic power port visuals
+- power balancing, general power cleanups
+- building shape refinements, customizable internal floors
+- elevators! 
+    - transit edge, connection with power network
+- better food pathfinding
 4/28
 - power! 
     - power shafts, wheels, windmills

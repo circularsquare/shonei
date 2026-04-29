@@ -457,7 +457,10 @@ public class Animal : MonoBehaviour{
         return false;
     }
 
-    // Prioritizes foods from unhappy categories; falls back to any available food.
+    // Scores each reachable edible by foodValue * cravingMult * discount, where
+    // discount = 1 / (1 + pathCost * urgency) and urgency = (1 - fullness) / starvingHalfDistance.
+    // Distance therefore bites harder the hungrier the mouse is — a starving mouse with wheat at
+    // her feet won't trudge across the map for a craved tofu meal, but a topped-up mouse will.
     // Food goes directly into foodSlotInv (equip slot), not the main inventory.
     private bool FindFood() {
         Item slotItem = foodSlotInv.itemStacks[0].item; // null if empty
@@ -467,15 +470,23 @@ public class Animal : MonoBehaviour{
         if (room <= 0) return false; // slot already full
 
         int amountToPickUp = Math.Min(room, 100);
+        float urgency = (1f - eating.Fullness()) / Eating.starvingHalfDistance;
 
+        // Peek nearest reachable source per food (no reservation — FindPathItemStack is read-only),
+        // score it, then try ObtainTask in descending score order so a stolen stack falls through to
+        // the next-best candidate rather than aborting the whole pick.
+        var candidates = new List<(float score, Item food)>();
         foreach (Item food in Db.edibleItems) {
-            if (!happiness.WouldHelp(food)) continue;
-            if (slotItem != null && slotItem != food) continue; // slot has different food
-            task = new ObtainTask(this, food, amountToPickUp, foodSlotInv);
-            if (task.Start()) return true;
+            if (slotItem != null && slotItem != food) continue; // slot has a different food
+            var (path, _) = nav.FindPathItemStack(food);
+            if (path == null) continue;
+            float cravingMult = happiness.WouldHelp(food) ? Eating.cravingMultiplier : 1f;
+            float discount = 1f / (1f + path.cost * urgency);
+            candidates.Add((food.foodValue * cravingMult * discount, food));
         }
-        foreach (Item food in Db.edibleItems) {
-            if (slotItem != null && slotItem != food) continue;
+
+        candidates.Sort((a, b) => b.score.CompareTo(a.score));
+        foreach (var (_, food) in candidates) {
             task = new ObtainTask(this, food, amountToPickUp, foodSlotInv);
             if (task.Start()) return true;
         }

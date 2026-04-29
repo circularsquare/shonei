@@ -10,6 +10,11 @@ public class Node {
     public bool standable;
     public int componentId = -1;  // set by Graph.RebuildComponents(); -1 = impassable/unvisited
     public Tile tile;
+    // Optional structure-specific reference. Used by the transit edge system: an Elevator
+    // tags its bottom & top stop tile-nodes with itself, so Graph.GetEdgeInfo can return
+    // the elevator's published cost for the edge between them and Graph.IsNeighbor knows
+    // to keep that edge alive across UpdateNeighbors filtering. Null on regular nodes.
+    public object payload;
 
     public Node(Tile tile, int x, int y){
         this.tile = tile; this.x = x; this.y = y;
@@ -190,6 +195,9 @@ public class Graph {
 
     public bool IsNeighbor(Node node, Node neighbor){
         if (node.isWaypoint || neighbor.isWaypoint) return true; // waypoints manage their own connections
+        // Transit edges (Elevator stops): both nodes share the same payload reference. Survive
+        // UpdateNeighbors filtering even though they're not geometrically adjacent.
+        if (node.payload != null && ReferenceEquals(node.payload, neighbor.payload)) return true;
         int xDiff = neighbor.x - node.x; int yDiff = neighbor.y - node.y;
         return (
         ((xDiff == 1 || xDiff == -1) && yDiff == 0 && (node.standable && neighbor.standable))
@@ -267,6 +275,14 @@ public class Graph {
     // Returns (cost, physicalLength). Cost is used by A*; locomotion uses both
     // so that speed = maxSpeed * length / cost (correct traversal time regardless of edge length).
     public (float cost, float length) GetEdgeInfo(Node from, Node to) {
+        // Transit edge (Elevator): both endpoints carry the same Elevator payload. Cost is
+        // sourced from the elevator (travel time + future wait estimate). Length matches the
+        // vertical span so locomotion math doesn't blow up — though the lerp is bypassed at
+        // runtime by Nav.Move's riding handoff, the elevator drives position directly.
+        if (from.payload != null && ReferenceEquals(from.payload, to.payload)
+                && from.payload is Elevator e1) {
+            return (e1.EstimatedTransitCost(from, to), Mathf.Abs(to.wy - from.wy));
+        }
         // Waypoint-to-waypoint: distinguish cliff vertical leg from stair diagonal by x-distance
         if (from.isWaypoint && to.isWaypoint) {
             if (Math.Abs(to.wx - from.wx) < 0.1f) return (3.0f, 1.0f); // cliff vertical (slow both ways)
@@ -301,6 +317,12 @@ public class Graph {
     // Road bonus is instead applied per-tile via ModifierSystem.GetTravelSpeedMultiplier().
     // Waypoint, vertical, and water modifiers are kept (they affect traversal physics, not tile bonuses).
     public (float cost, float length) GetRawEdgeInfo(Node from, Node to) {
+        // Transit edge — same as GetEdgeInfo. Move() bypasses the lerp during riding so this
+        // is rarely queried for transit, but parity keeps the math safe if it ever is.
+        if (from.payload != null && ReferenceEquals(from.payload, to.payload)
+                && from.payload is Elevator e1) {
+            return (e1.EstimatedTransitCost(from, to), Mathf.Abs(to.wy - from.wy));
+        }
         if (from.isWaypoint && to.isWaypoint) {
             if (Math.Abs(to.wx - from.wx) < 0.1f) return (3.0f, 1.0f);
             return (1.8f, 1.4142f);
@@ -324,6 +346,15 @@ public class Graph {
         Tile tileBelow = world.GetTileAt(x, y-1);
         if (tileBelow == null) {return false;} // need tile below to exist
         if (tileHere.type.solid) {return false;} // need tilehere to not be solid
+        // Per-tile internal-floor override: a structure can declare specific tiles
+        // inside its footprint as walkable (Elevator's top stop, future partial-top
+        // multi-tile buildings, etc.). Wins over the multi-tile-body NOT-standable
+        // rule below. Coordinates are local to the structure's anchor.
+        for (int d = 0; d < tileHere.structs.Length; d++) {
+            Structure s = tileHere.structs[d];
+            if (s == null) continue;
+            if (s.HasInternalFloorAt(x - s.x, y - s.y)) return true;
+        }
         // Multi-tile structure body: if the SAME structure occupies both tileHere and
         // tileBelow, this tile is inside the structure's column — not standable. Top of
         // the column (where structs[depth] is null) and adjacent stacked-but-separate

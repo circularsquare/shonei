@@ -10,22 +10,28 @@ and for direct workstation acceleration.
 - **Topology**: a `PowerNetwork` is a connected component of shaft tiles plus the
   producers / consumers that attach via ports.
 - **Allocation**: per-tick (1 in-game second), each network sums producer outputs
-  and walks consumers in registration order, granting full demand or none. No
-  fractional fulfilment in v1. Storage units (flywheels) are queried for discharge
-  headroom up-front; consumers that exceed raw supply pull from storage if available.
-  Any leftover after consumers charges storage in registration order. Storage decays
-  each tick before allocation runs.
+  and walks consumers in **rotated** registration order (start index advances by 1
+  each tick globally), granting full demand or none. The rotation prevents
+  first-placed consumers from always winning on a starved network — over N ticks
+  every consumer takes a turn at the front of the queue. No fractional fulfilment
+  in v1. Storage units (flywheels) are queried for discharge headroom up-front;
+  consumers that exceed raw supply pull from storage if available. Any leftover
+  after consumers charges storage, prioritizing the *emptiest* unit first;
+  discharges similarly drain from the *fullest*. Both use `ChargeFraction`
+  (charge / capacity) as the sort key, so storage units of mixed sizes equalize
+  fairly. Storage decays each tick before allocation runs.
 
 ## Building types
 
 | Building            | Role     | Footprint | Notes |
 |---------------------|----------|-----------|-------|
-| `power shaft`       | transmission | 1×1   | depth 2; rotatable (R) — rotation 0/2 = horizontal, 1/3 = vertical |
-| `power shaft turn`  | transmission | 1×1   | depth 2; turning shaft, axis always Both. Rotatable (R) for which corner; flippable (F) |
-| `power shaft 4`     | transmission | 1×1   | depth 2; 4-way junction, axis always Both. Connectivity-identical to `turn` — the difference is purely visual (sprite shows shaft stubs on all four sides). |
+| `power shaft`       | transmission | 1×1   | depth 4 (own slot, renders behind buildings); rotatable (R) — rotation 0/2 = horizontal, 1/3 = vertical |
+| `power shaft turn`  | transmission | 1×1   | depth 4; turning shaft, axis always Both. Rotatable (R) for which corner; flippable (F) |
+| `power shaft 4`     | transmission | 1×1   | depth 4; 4-way junction, axis always Both. Connectivity-identical to `turn` — the difference is purely visual (sprite shows shaft stubs on all four sides). |
 | `wheel`             | producer     | 2×2   | workstation, "runner" job; 1.0 power while a runner is *in WorkObjective at the wheel* (not just dispatched — the wheel stays still and silent during the walk-in). Declares `workSpotX: 0.5, workSpotY: 0.25, workPose: "walk"` so the runner stands centred between the bottom tiles slightly above ground and plays the walk animation while producing — see SPEC-systems.md §Workspot waypoints. |
 | `windmill`          | producer     | 2×4   | passive; output = `Mathf.Abs(WeatherSystem.wind) × MaxOutput`; needs open sky above the top row, re-checked each tick |
 | `flywheel`          | storage      | 2×2   | charges from network surplus, discharges into deficits, exponential decay each tick |
+| `elevator`          | consumer     | 1×N (3..10 via shapes) | variable-height transit. Implements `IPowerConsumer` directly; ports `(-1, 0, H)` and `(nx, 0, H)` at base. Demand `1.0` *only during the actual lift* (Riding state); idle / fetch-empty-cabin / unload all report `0`. All gates (cost branch in `Graph.GetEdgeInfo`, Idle→Trip start, Riding advance) use the inclusive `IsPowerAvailable` check — "would the network supply nominal demand if asked?" — rather than the strict `IsBuildingPowered` to avoid mid-trip freezes during normal allocator-rotation gaps. See SPEC-systems.md §Transit for the navigation side. |
 
 Existing pump and press declare `powerBoost: 3.0` in JSON, opting them in as
 consumers — operator's work-tick rate triples while the building is on a powered
@@ -73,7 +79,8 @@ State:
 - `shafts: HashSet<Structure>` — registered transmission tiles
 - `producers: HashSet<IPowerProducer>` — registered producers
 - `consumers: List<IPowerConsumer>` — registered consumers (List, not Set, so
-  registration order is stable for deterministic allocation)
+  registration order is stable; allocation walks this list with a per-tick
+  rotated start index for fairness, see `allocationCounter` below)
 - `networks: Dictionary<int, PowerNetwork>` — rebuilt on `topologyDirty`
 - `powered: HashSet<IPowerConsumer>` — recomputed each `Allocate()`; read by
   `IsBuildingPowered(Building)`
@@ -120,12 +127,17 @@ Each tick, in `Allocate()`:
 
 1. Sum non-storage producer outputs into `supply`.
 2. Compute aggregate `MaxDischarge` across the network's storage units.
-3. Walk consumers in registration order. Each draws from raw supply first;
-   if short, pulls from the storage discharge pool. Allocation stays binary
-   (full demand or none).
-4. Apply discharge proportionally across storage units that contributed.
-5. Surplus after consumers charges storage in registration order, each
-   capped at `MaxIntake`.
+3. Walk consumers in **rotated** registration order — start index =
+   `allocationCounter % consumers.Count`, advancing by 1 each tick globally.
+   Each consumer draws from raw supply first; if short, pulls from the storage
+   discharge pool. Allocation stays binary (full demand or none). The rotation
+   ensures fairness on starved networks (no permanent winners by placement order).
+4. Apply discharge greedily, drawing from storages sorted by `ChargeFraction`
+   *descending* — fullest first, capped per-unit at `MaxDischarge`. Equalizes
+   fill levels across the network's storages over time.
+5. Surplus after consumers charges storage greedily, sorted by `ChargeFraction`
+   *ascending* — emptiest first, capped per-unit at `MaxIntake`. Same equalization
+   logic in reverse.
 
 Decay runs in `Tick()` *before* allocation via `IPowerStorage.StorageTick()`.
 Each unit owns its decay rule; the flywheel applies an exponential
@@ -175,10 +187,11 @@ recomputes networks and allocations.
 
 ## Placement constraints
 
-- **Shafts** are depth 2 (foreground). They mutually exclude with stairs /
-  ladders / torches per the existing `t.structs[depth]` check in
-  `StructPlacement` and the `Structure` constructor. Power runs need their own
-  dedicated tile channel — that's an intentional layout constraint.
+- **Shafts** live in their own depth-4 slot (added to coexist with buildings,
+  ladders, foreground decor, etc.). Visually they render at sortingOrder 5 —
+  behind buildings/platforms/foreground but in front of roads — so they read as
+  wall-mounted plumbing. Multiple shafts on a single tile are still rejected by
+  the per-depth `t.structs[depth]` check in `StructPlacement`.
 - **Windmill** declares `mustBeOpenSkyAbove: true` per top-row tile in its
   `tileRequirements` JSON. Each requirement runs `World.IsExposedAbove(t.x, t.y)`
   (no solid ground or solidTop structures above the requirement tile). The check
@@ -277,9 +290,6 @@ which refreshes all stubs.
   internal charge state. Allocation order needs adjustment so flywheels charge
   from surplus and discharge into deficits — straightforward extension to
   `Allocate()`.
-- **Elevator + transit**: per todo.txt, "general transit object with stops,
-  capacity-constrained, wait-time-based nav cost". Will use `IPowerConsumer`
-  with a non-default port layout. Likely also needs queue/wait state on Animal.
 - **Fractional satisfaction**: replace binary "full demand or none" with
   proportional allocation when supply < demand.
 - **Power-network overlay**: toggleable debug viz colouring shafts by network id.
@@ -304,8 +314,10 @@ which refreshes all stubs.
 - **Don't gate the WOM Craft order on power.** Pump/press fall back to 1×
   efficiency when unpowered — they should still craft, just slower. Power is a
   multiplier, not a precondition.
-- **Don't put a shaft on the same tile as a stairs / ladder / torch.** Both
-  occupy depth 2; the placer rejects. Route around or use a turning shaft.
+- **Don't try to stack two shafts on a single tile.** Shafts have their own
+  depth slot (4), so they coexist freely with buildings/ladders/torches/roads,
+  but only one shaft per tile. Use a turning or 4-way shaft if you need to
+  branch.
 - **Don't add `powerBoost > 1` to a building that already implements
   `IPowerConsumer` directly.** `Building.OnPlaced` skips auto-registration in
   that case, but it's still confusing — pick one path per building type.

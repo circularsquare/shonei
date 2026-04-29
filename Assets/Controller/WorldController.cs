@@ -123,7 +123,7 @@ public class WorldController : MonoBehaviour {
         for (int x = 0; x < world.nx; x++) {
             for (int y = 0; y < world.ny; y++) {
                 Tile tile = world.GetTileAt(x, y);
-                for (int i = 0; i < 4; i++) tile.blueprints[i]?.Destroy();
+                for (int i = 0; i < Tile.NumDepths; i++) tile.blueprints[i]?.Destroy();
             }
         }
 

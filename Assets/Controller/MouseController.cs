@@ -52,8 +52,8 @@ public class MouseController : MonoBehaviour {
     }
 
     void Update() {
-        if (Input.GetKeyDown(KeyCode.Escape) && mouseMode != MouseMode.Select)
-            SetModeSelect();
+        // Esc handling lives in UI.Update — see the priority chain there. Build subpanel
+        // and exclusive panels get first dibs before we fall through to leaving the mode.
         if (Input.GetKeyDown(KeyCode.F) && mouseMode == MouseMode.Build)
             BuildPanel.instance?.ToggleMirror();
         if (Input.GetKeyDown(KeyCode.R) && mouseMode == MouseMode.Build)

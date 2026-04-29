@@ -9,6 +9,7 @@
 | -10 | Background tile (`BackgroundTile`) |
 | 0 | Tiles |
 | 1 | Roads (depth-3 structures) |
+| 5 | Power shafts (depth-4 structures) — render behind buildings so shafts read as wall-mounted plumbing |
 | parent − 1 | Power port stubs (`PortStubVisuals` child SR, one below the parent building). Also: flywheel wheel — rendered behind the housing so the spokes peek through. |
 | 10 | Buildings (depth-0 structures) |
 | parent + 1 | Rotating wheel children sorted in front of the base (`RotatingPart` child SR — windmill blades). Per-building: the building decides whether its wheel sorts in front or behind by setting `wsr.sortingOrder` relative to its own `sr.sortingOrder` (windmill = +1, flywheel = −1). |
@@ -36,7 +37,7 @@
 
 ### Structure depth layers
 
-Structures render in four depth layers per tile. Each tile holds `Structure[] structs` and `Blueprint[] blueprints`, both indexed by depth int:
+Structures render in five depth layers per tile. Each tile holds `Structure[] structs` and `Blueprint[] blueprints`, both indexed by depth int (size = `Tile.NumDepths`):
 
 | Depth | `structs[d]` | Contents | Sprite position | sortingOrder |
 |-------|-------------|----------|----------------|-------------|
@@ -44,6 +45,9 @@ Structures render in four depth layers per tile. Each tile holds `Structure[] st
 | 1 | platform layer | Platforms | `(x, y)` | 15 |
 | 2 | foreground layer | Stairs, ladders, torches | `(x, y)` | 40 |
 | 3 | road layer | Roads | `(x, y−1/8)` — sits on tile surface | 1 |
+| 4 | shaft layer | Power shafts | `(x, y)` | 5 |
+
+Slot index ≠ visual layering. Power shafts live in slot 4 (the highest array index) but render at sortingOrder 5 — *behind* buildings/platforms/foreground but in front of roads. The dedicated slot lets shafts coexist on the same tile as a building, ladder, road, etc.
 
 Depth-based sortingOrder is the default; individual `StructType`s can override via the JSON `sortingOrder` field (e.g. torch=64, fireplace=64). Plant overrides to 60 in its constructor.
 

@@ -214,12 +214,16 @@ public class WorkOrderManager : MonoBehaviour {
                 PromoteOrCreateHaul(s, bp);
             }
         }
-        // Items still in storage that would be deconstructed
-        Inventory storage = bp.tile.building?.storage;
-        if (storage != null && !storage.IsEmpty()) {
-            foreach (ItemStack s in storage.itemStacks) {
-                if (s.item == null || s.quantity == 0) continue;
-                PromoteOrCreateHaul(s, bp);
+        // Items still in storage that would be deconstructed. Only relevant when the bp
+        // targets the building itself (slot 0). A deconstruct bp on a co-located road or
+        // foreground decoration must not drain the building's storage.
+        if (bp.structType.depth == 0) {
+            Inventory storage = bp.tile.building?.storage;
+            if (storage != null && !storage.IsEmpty()) {
+                foreach (ItemStack s in storage.itemStacks) {
+                    if (s.item == null || s.quantity == 0) continue;
+                    PromoteOrCreateHaul(s, bp);
+                }
             }
         }
     }

@@ -98,9 +98,10 @@ public class Blueprint {
         Shape shape = Shape;
         bool shapeAware = structType.HasShapes;
         int claimNx = shapeAware ? shape.nx : structType.nx;
-        int claimNy = shapeAware ? shape.ny : 1;
-        // Multi-tile blueprint claim: every tile in the shape footprint at this depth
-        // points at the same blueprint instance. Legacy single-row claim for non-shape types.
+        int claimNy = shapeAware ? shape.ny : Mathf.Max(1, structType.ny);
+        // Multi-tile blueprint claim: every tile in the visual footprint at this depth
+        // points at the same blueprint instance. Mirrors Structure's full-footprint claim
+        // so blueprint and structure tile-lookup are symmetric.
         for (int dy = 0; dy < claimNy; dy++)
             for (int dx = 0; dx < claimNx; dx++)
                 World.instance.GetTileAt(x + dx, y + dy).SetBlueprintAt(structType.depth, this);
@@ -121,10 +122,8 @@ public class Blueprint {
         go.name = "blueprint_" + structType.name;
 
         // Anchor sprite — variant `_b` for shape-aware tall, base sprite for 1-tall / legacy.
-        Sprite loadedSprite = shapeAware
-            ? StructureVisuals.LoadShapeSprite(structType, shape, 0)
-            : structType.LoadSprite();
-        sprite = loadedSprite ?? Resources.Load<Sprite>("Sprites/Buildings/default");
+        // Falls back to the shared default when the StructType's sprite is missing.
+        sprite = StructureVisuals.ResolveAnchorSprite(structType, shape, out bool spriteWasFallback);
         SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
         sr.sortingOrder = 100;
         LightReceiverUtil.SetSortBucket(sr);
@@ -132,7 +131,7 @@ public class Blueprint {
         sr.flipX = mirrored;
         go.transform.rotation = StructureVisuals.RotationFor(rotation);
         sr.color = new Color(0.8f, 0.9f, 1f, 0.5f); // blueprint half alpha
-        if (loadedSprite == null) {
+        if (spriteWasFallback) {
             sr.drawMode = SpriteDrawMode.Sliced;
             sr.size = new Vector2(structType.nx, Mathf.Max(1, structType.ny));
         }
@@ -247,11 +246,11 @@ public class Blueprint {
     private static readonly Color DeconstructStructureTint = new Color(1f, 0.5f, 0.5f);
 
     // Returns the structure that a deconstruct blueprint targets, or null if none is present.
+    // structType.depth maps 1:1 to the slot index in tile.structs[], so we always return
+    // the structure that this bp was created against — even on multi-structure tiles.
     // (The construct paths can't call this meaningfully — there's no target structure yet.)
     private Structure GetDeconstructTarget() {
-        for (int i = 0; i < 4; i++)
-            if (tile.structs[i] != null) return tile.structs[i];
-        return null;
+        return tile.structs[structType.depth];
     }
 
     // Pure visual refresh — updates the sprite tint, frame colour, and underlying structure
@@ -286,9 +285,11 @@ public class Blueprint {
 
         // Tint the underlying structure red for deconstruct blueprints. Applied every RefreshColor
         // so it's idempotent and works on the load path too. Restored in Destroy() on cancel.
+        // SetTint walks anchor + extension SRs so shape-aware multi-tile structures (e.g. a
+        // 1×3 platform) tint across all their tiles, not just the bottom row.
         if (state == BlueprintState.Deconstructing) {
             Structure target = GetDeconstructTarget();
-            if (target?.sr != null) target.sr.color = DeconstructStructureTint;
+            target?.SetTint(DeconstructStructureTint);
         }
     }
 
@@ -357,8 +358,16 @@ public class Blueprint {
         return false;
     }
 
-    public static Blueprint CreateDeconstructBlueprint(Tile tile) {
-        Structure structure = tile.structs[0] ?? tile.structs[1] ?? tile.structs[2] ?? tile.structs[3];
+    // target: which structure on the tile to deconstruct. When null (right-click in
+    // BuildPanel), pick the first non-null slot — building beats road, etc. When
+    // provided (InfoPanel deconstruct on a specific tab), target that structure
+    // directly so multi-structure tiles deconstruct the slot the player selected.
+    public static Blueprint CreateDeconstructBlueprint(Tile tile, Structure target = null) {
+        Structure structure = target;
+        if (structure == null) {
+            for (int d = 0; d < Tile.NumDepths; d++)
+                if (tile.structs[d] != null) { structure = tile.structs[d]; break; }
+        }
         if (structure == null) return null;
         Blueprint bp = new Blueprint(structure.structType, tile.x, tile.y, structure.mirrored, autoRegister: false, rotation: structure.rotation, shapeIndex: structure.shapeIndex);
         bp.state = BlueprintState.Deconstructing;
@@ -367,8 +376,11 @@ public class Blueprint {
         // rendering through the tint. No per-deconstruct sprite copy needed.
         bp.RefreshColor();
         WorkOrderManager.instance?.RegisterDeconstruct(bp);
-        if (tile.building?.storage != null)
-            tile.building.storage.locked = true;
+        // Storage-lock only applies when the deconstruct targets the building itself.
+        // Deconstructing a road/foreground on the same tile must not touch the
+        // co-located building's storage.
+        if (structure is Building b && b.storage != null)
+            b.storage.locked = true;
         // If the player is looking at this tile, switch them to the new deconstruct bp tab
         // rather than leaving the structure tab active (it's about to go away anyway).
         if (InfoPanel.instance?.obj == tile)
@@ -459,8 +471,10 @@ public class Blueprint {
             }
             pendingOutput.Add(new ItemQuantity(item, amount));
         }
-        // destroy the building
-        for (int i = 0; i < 4; i++) { if (tile.structs[i] != null) { tile.structs[i].Destroy(); break; } }
+        // Destroy the structure at the slot this bp targets. structType.depth maps 1:1
+        // to tile.structs[] index, so we always remove the structure that matches the
+        // bp — even on multi-structure tiles where slot 0 is occupied by something else.
+        tile.structs[structType.depth]?.Destroy();
         // remove blueprint
         ClearBlueprintFromTiles();
         GameObject.Destroy(go);
@@ -469,8 +483,11 @@ public class Blueprint {
 
     // Returns true if this is a deconstruct blueprint on a storage building and the storage still has items.
     // Deconstruction must wait until the storage is emptied by haulers.
+    // Only relevant when this bp targets slot 0 — deconstructing a co-located road or
+    // foreground decoration must not block on the building's storage.
     public bool StorageNeedsEmptying() {
         return state == BlueprintState.Deconstructing
+            && structType.depth == 0
             && tile.building?.storage != null
             && !tile.building.storage.IsEmpty();
     }
@@ -479,10 +496,12 @@ public class Blueprint {
     // standability and fall. Uses the same logic as Navigation.GetStandability().
     public bool WouldCauseItemsFall() {
         World world = World.instance;
-        // Items only sit on the very top of a structure — for shape-aware multi-tile, that's
-        // tile.y + (ny-1) + 1; for legacy / non-shape, tile.y + 1 (the row above).
+        // Items rest one tile above the visual top of the structure — `tile.y + ny`. Uses the
+        // same full-footprint convention as the tile-claim, so a future solidTop multi-height
+        // building (e.g. a 2×4 windmill marked solidTop) checks above its actual top, not above
+        // its anchor row.
         int fnx = structType.HasShapes ? Shape.nx : structType.nx;
-        int fny = structType.HasShapes ? Shape.ny : 1;
+        int fny = structType.HasShapes ? Shape.ny : Mathf.Max(1, structType.ny);
         int topY = tile.y + (fny - 1);
         for (int i = 0; i < fnx; i++) {
             int bx = tile.x + i, by = topY;
@@ -497,7 +516,7 @@ public class Blueprint {
                 : tileBelow.type.solid;
 
             bool anySolidTopAfter = false;
-            for (int d = 0; d < 4; d++) {
+            for (int d = 0; d < Tile.NumDepths; d++) {
                 bool solidTop = structType.depth == d
                     ? (state == BlueprintState.Constructing && structType.solidTop)
                     : (tileBelow.structs[d] != null && tileBelow.structs[d].structType.solidTop);
@@ -516,14 +535,17 @@ public class Blueprint {
         StructController.instance.RemoveBlueprint(this);
         WorkOrderManager.instance?.RemoveForBlueprint(this);
         cancelled = true;
-        if (state == BlueprintState.Deconstructing && tile.building?.storage != null)
+        // Mirror the slot-0 gate from CreateDeconstructBlueprint: only unlock the
+        // building's storage if this bp was the one that locked it (i.e. it targeted
+        // the building, not a co-located road/foreground).
+        if (state == BlueprintState.Deconstructing && structType.depth == 0 && tile.building?.storage != null)
             tile.building.storage.locked = false;
         // Restore the underlying structure's sprite tint if we were colouring it red. Safe
         // to call unconditionally: structures default to white and we're the only writer.
         // Skipped on world clear since Destroy() below tears the structure GO down anyway.
         if (state == BlueprintState.Deconstructing && !WorldController.isClearing) {
             Structure target = GetDeconstructTarget();
-            if (target?.sr != null) target.sr.color = Color.white;
+            target?.SetTint(Color.white);
         }
         ClearBlueprintFromTiles();
         GameObject.Destroy(go);
@@ -533,7 +555,7 @@ public class Blueprint {
     private void ClearBlueprintFromTiles() {
         Shape shape = Shape;
         int fnx = structType.HasShapes ? shape.nx : structType.nx;
-        int fny = structType.HasShapes ? shape.ny : 1;
+        int fny = structType.HasShapes ? shape.ny : Mathf.Max(1, structType.ny);
         for (int dy = 0; dy < fny; dy++)
             for (int dx = 0; dx < fnx; dx++)
                 World.instance.GetTileAt(x + dx, y + dy)?.SetBlueprintAt(structType.depth, null);

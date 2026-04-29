@@ -29,7 +29,7 @@ using Newtonsoft.Json;
 // Current saveable state checklist:
 //   [x] World timer
 //   [x] Tile types, floor inventories, and background wall
-//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, mirrored, rotation, shapeIndex, disabled, plantHarvestFlagged, quarry capturedTileType, flywheel charge)
+//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, mirrored, rotation, shapeIndex, disabled, plantHarvestFlagged, quarry capturedTileType, flywheel charge, elevator currentY + history buffers)
 //   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored, rotation, shapeIndex, disabled)
 //   [x] Animals (position, job, energy, food, happiness, decoration happiness, socialization, fireplace warmth, inv, foodSlotInv, toolSlotInv, clothingSlotInv, bookSlotInv)
 //   [x] Mid-transit merchant task descriptor (travelTaskType + iq + storage tile + leg)
@@ -238,6 +238,11 @@ public class SaveSystem : MonoBehaviour {
             ssd.capturedTileType = q.capturedTile.name;
         if (s is Flywheel fw)
             ssd.flywheelCharge = fw.charge;
+        if (s is Elevator el) {
+            ssd.elevatorCurrentY            = el.currentY;
+            ssd.elevatorRecentTripTicks     = el.recentTripTicks.ToArray();
+            ssd.elevatorRecentEndToEndTicks = el.recentEndToEndTicks.ToArray();
+        }
         return ssd;
     }
 
@@ -647,6 +652,15 @@ public class SaveSystem : MonoBehaviour {
         }
         if (structure is Flywheel fw)
             fw.charge = Mathf.Clamp(ssd.flywheelCharge, 0f, Flywheel.Capacity);
+        if (structure is Elevator el) {
+            // Clamp to legal platform range — defends against corrupted saves or shape
+            // changes between versions. Dispatch state, queue, and passenger are NOT
+            // persisted; they reset to Idle/empty on load by virtue of being defaults
+            // on the freshly-constructed Elevator.
+            el.currentY = Mathf.Clamp(ssd.elevatorCurrentY, 0f, el.Shape.ny - 1f);
+            el.recentTripTicks.LoadFrom(ssd.elevatorRecentTripTicks);
+            el.recentEndToEndTicks.LoadFrom(ssd.elevatorRecentEndToEndTicks);
+        }
 
         StructController.instance.Place(structure);
         World.instance.graph.UpdateNeighbors(ssd.x, ssd.y);
@@ -731,7 +745,10 @@ public class SaveSystem : MonoBehaviour {
         if (bp.state == Blueprint.BlueprintState.Receiving && bp.IsFullyDelivered())
             bp.state = Blueprint.BlueprintState.Constructing;
         bp.RefreshColor();
-        if (bp.state == Blueprint.BlueprintState.Deconstructing && bp.tile.building?.storage != null)
+        // Re-lock storage only when the deconstruct targets slot 0 (the building itself).
+        // A deconstruct bp on a road/foreground co-located with a building must not lock that
+        // building's storage on load.
+        if (bp.state == Blueprint.BlueprintState.Deconstructing && bp.structType.depth == 0 && bp.tile.building?.storage != null)
             bp.tile.building.storage.locked = true;
         // WOM orders are registered by Reconcile(silent:true) at the end of ApplySaveData(), once the graph is fully built.
     }

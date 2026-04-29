@@ -137,6 +137,10 @@ public class StructureInfoView : MonoBehaviour {
         // and consumers. No-op for everything else.
         AppendPowerInfo(sb, structure);
 
+        // Elevator transit info — current state, queue depth, rolling-avg trip time.
+        // No-op for non-elevators.
+        AppendElevatorInfo(sb, structure);
+
         text.text = sb.ToString();
 
         // Show/hide controls.
@@ -161,11 +165,12 @@ public class StructureInfoView : MonoBehaviour {
             harvestFlagLabel.text = p.harvestFlagged ? "unflag harvest" : "flag for harvest";
         }
         SetPriorityVisible(false);
-        // Hide deconstruct if this tile already has a pending deconstruct blueprint —
-        // clicking it would now cancel the deconstruct (BuildPanel.Remove is unified),
-        // which is confusing for a button labelled "deconstruct".
-        bool alreadyDeconstructing = structure.tile?.GetMatchingBlueprint(
-            bp => bp.state == Blueprint.BlueprintState.Deconstructing) != null;
+        // Hide deconstruct if *this specific structure* already has a pending deconstruct
+        // bp at its slot. Other slots' deconstructs on the same tile shouldn't gray out
+        // this one (a deconstruct bp on the road doesn't preclude deconstructing the
+        // building above it).
+        Blueprint slotBp = structure.tile?.GetBlueprintAt(structure.structType.depth);
+        bool alreadyDeconstructing = slotBp != null && slotBp.state == Blueprint.BlueprintState.Deconstructing;
         SetDeconstructVisible(!alreadyDeconstructing);
         SetCancelVisible(false);
         bool showWorkerSlots = b != null && b.structType.isWorkstation && b.structType.capacity > 1;
@@ -243,16 +248,15 @@ public class StructureInfoView : MonoBehaviour {
         }
     }
 
-    // Spawns a deconstruct blueprint for the selected structure by delegating to
-    // BuildPanel.Remove — same path as right-click in the Build panel. The InfoPanel
-    // auto-rebuilds (and switches to the new bp tab) inside CreateDeconstructBlueprint.
+    // Spawns a deconstruct blueprint for the *specific* structure shown in the active
+    // tab. We bypass BuildPanel.Remove deliberately: that path operates on the tile and
+    // would (a) cancel any unrelated pending construction bp on the same tile, and
+    // (b) pick the first non-null slot, ignoring which structure tab the player chose.
+    // The InfoPanel auto-rebuilds (and switches to the new bp tab) inside
+    // CreateDeconstructBlueprint.
     void OnClickDeconstruct() {
         if (structure == null) return;
-        if (BuildPanel.instance == null) {
-            Debug.LogError("StructureInfoView.OnClickDeconstruct: BuildPanel.instance is null");
-            return;
-        }
-        BuildPanel.instance.Remove(structure.tile);
+        Blueprint.CreateDeconstructBlueprint(structure.tile, structure);
     }
 
     // Cancels a blueprint (regular → refund + destroy, deconstruct → just destroy).
@@ -417,6 +421,16 @@ public class StructureInfoView : MonoBehaviour {
         var net = ps.GetNetwork(netId.Value);
         if (net != null)
             sb.Append($"  (supply {net.supply:F1})");
+    }
+
+    // Per-elevator status: dispatch state, queue depth (real + tentative), recent
+    // mouse-perceived end-to-end transit time. Diagnostic snapshot for the player to
+    // see whether the elevator is busy, idle, or contended.
+    static void AppendElevatorInfo(System.Text.StringBuilder sb, Structure s) {
+        if (!(s is Elevator e)) return;
+        sb.Append($"\n elevator: {e.dispatchState}  queue: {e.QueueCountForInfo}  pending: {e.PendingCountForInfo}");
+        float avg = e.recentEndToEndTicks.Average(fallback: -1f);
+        if (avg > 0f) sb.Append($"  avg ride: {avg:F1}s");
     }
 
     // Appends work orders keyed by inventory (market hauls).

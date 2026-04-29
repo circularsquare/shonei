@@ -13,6 +13,13 @@ public Eating(){ }
                                                  // (decoupled from hungryThreshold so we can have mice
                                                  // top up before they actually start losing efficiency)
 
+    // Food-selection tuning (see Animal.FindFood). Score = foodValue * cravingMult * 1/(1 + dist*urgency),
+    // urgency = (1 - fullness) / starvingHalfDistance.
+    public const float starvingHalfDistance = 3.0f; // tiles of travel cost that halve food's appeal at fullness=0.
+                                                    // Smaller = a starving mouse less willing to walk for distant food.
+    public const float cravingMultiplier    = 2.0f; // appeal bonus for foods that satisfy an unhappy food category.
+                                                    // ~"willing to walk 2x farther for craved food at equal hunger".
+
     public float Fullness(){ return food / maxFood; }
     public bool Hungry(){ return Fullness() < seekFoodThreshold; }
     public bool AteRecently(){ return timeSinceLastAte < 300f; } // within 5 min

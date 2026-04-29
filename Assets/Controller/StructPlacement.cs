@@ -1,3 +1,5 @@
+using UnityEngine;
+
 // Static helper that decides whether a StructType can be placed on a given tile.
 // Extracted from BuildPanel so that the rule is testable and reusable outside the UI.
 // All placement logic should live here; BuildPanel.CanPlaceHere delegates to this.
@@ -14,12 +16,13 @@ public static class StructPlacement {
             && tile.type.name  != st.requiredTileName
             && tile.type.group != st.requiredTileName) return false;
 
-        // Footprint dimensions for collision: shape-aware structures use their full nx×ny;
-        // legacy multi-tile (windmill etc.) keeps its single-row collision check.
+        // Footprint dimensions for collision: every tile in the visual footprint must be
+        // empty, so a 2×4 windmill's collision check covers all 8 tiles. Matches the claim
+        // footprint that Structure / Blueprint write into tile.structs[depth].
         Shape shape = st.GetShape(shapeIndex);
         bool shapeAware = st.HasShapes;
         int fnx = shapeAware ? shape.nx : st.nx;
-        int fny = shapeAware ? shape.ny : 1;
+        int fny = shapeAware ? shape.ny : Mathf.Max(1, st.ny);
 
         if (!st.isTile) {
             if (st.isPlant && tile.structs[0] != null) return false;
@@ -28,10 +31,10 @@ public static class StructPlacement {
                     for (int dx = 0; dx < fnx; dx++) {
                         Tile t = world.GetTileAt(tile.x + dx, tile.y + dy);
                         if (t == null) return false;
-                        // Plants own their tile exclusively at every depth — a tall bamboo would
-                        // otherwise let platforms / roads / foreground decorations slip in through
-                        // tiles whose structs[st.depth] happens to be null.
-                        if (t.structs[0] is Plant) return false;
+                        // Per-depth collision only. Plants occupy slot 0 across their full vertical
+                        // footprint, so plants still block other depth-0 placements via this same
+                        // check. Other depths (shafts behind a bamboo, road under a sapling, etc.)
+                        // are allowed to coexist — visual clipping inside tall plants is accepted.
                         if (t.structs[st.depth] != null || t.GetBlueprintAt(st.depth) != null) return false;
                     }
                 }
@@ -71,7 +74,7 @@ public static class StructPlacement {
     private static bool SupportedByBlueprintBelow(int x, int y) {
         Tile below = World.instance.GetTileAt(x, y - 1);
         if (below == null) return false;
-        for (int d = 0; d < 4; d++) {
+        for (int d = 0; d < Tile.NumDepths; d++) {
             Blueprint bp = below.GetBlueprintAt(d);
             if (bp != null && !bp.cancelled && bp.structType.solidTop) return true;
         }

@@ -36,7 +36,13 @@ public class AnimationController : MonoBehaviour {
 
         int stateInt;
         if (animal.state == Animal.AnimalState.Idle){ stateInt = 0; }
-        else if (animal.state == Animal.AnimalState.Moving){ stateInt = 1; }
+        else if (animal.state == Animal.AnimalState.Moving){
+            // state=Moving doesn't mean the animal is actually walking — they could be
+            // parked at an elevator boarding tile waiting for a ride, or riding the
+            // platform. Nav.IsLocomoting tracks "actually translating via locomotion"
+            // and we use the idle animation otherwise.
+            stateInt = (animal.nav != null && animal.nav.IsLocomoting) ? 1 : 0;
+        }
         else if (animal.state == Animal.AnimalState.Eeping){ stateInt = 2; }
         else if (animal.IsMoving()){ stateInt = 1; }
         else { stateInt = 0; }

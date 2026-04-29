@@ -76,6 +76,12 @@ public class PowerSystem {
         // Maximum power this unit can absorb this tick (limited by remaining capacity AND
         // a per-tick intake rate cap).
         float MaxIntake { get; }
+        // Current charge as a fraction of capacity in [0, 1]. Used by Allocate to equalize
+        // fill levels across storages on the same network — surplus charges the *emptiest*
+        // storage first, deficits drain from the *fullest*. Same denominator (fraction, not
+        // absolute charge) so a 50-unit flywheel and a hypothetical 200-unit battery bank
+        // are compared fairly.
+        float ChargeFraction { get; }
         // Apply the net change PowerSystem decided this tick. Positive = charged, negative
         // = discharged. Caller has already clamped to [-MaxDischarge, +MaxIntake].
         void ApplyDelta(float delta);
@@ -115,6 +121,16 @@ public class PowerSystem {
     // True when a powered consumer received its full demand on the most recent allocation.
     // Reset at the start of every tick. IsBuildingPowered() reads this.
     readonly HashSet<IPowerConsumer> powered = new();
+
+    // Monotonic per-Allocate counter used to rotate which consumer is served first on
+    // each network. Without rotation, registration order would mean the first-placed
+    // pump always wins on a starved network and later pumps never run — placement order
+    // shouldn't determine fairness. Walking starts at `allocationCounter % consumers.Count`
+    // and wraps, so over N ticks every consumer takes a turn at the front of the queue.
+    // The counter is global rather than per-network because PowerNetwork instances are
+    // rebuilt on every topology change; a global counter survives rebuilds with no state
+    // bookkeeping.
+    int allocationCounter;
 
     bool topologyDirty = true;
 
@@ -388,6 +404,14 @@ public class PowerSystem {
         return (shaft as PowerShaft)?.axis ?? Axis.Both;
     }
 
+    // Sort comparators for storage equalization. Fullest-first (descending) for discharge,
+    // emptiest-first (ascending) for charge — both work to drive ChargeFraction toward equal
+    // across the network's storage units.
+    static readonly Comparison<IPowerStorage> StorageByChargeDesc =
+        (a, b) => b.ChargeFraction.CompareTo(a.ChargeFraction);
+    static readonly Comparison<IPowerStorage> StorageByChargeAsc =
+        (a, b) => a.ChargeFraction.CompareTo(b.ChargeFraction);
+
     // ── Allocation ────────────────────────────────────────────────────────
     // Order of operations per network per tick:
     //   1. Sum producer outputs (raw supply, excludes storage).
@@ -414,7 +438,14 @@ public class PowerSystem {
 
             float supplyRemaining = supply;
             float storageDrawn    = 0f;
-            foreach (IPowerConsumer c in net.consumers) {
+            // Rotate the starting index per-tick so first-placed consumers don't always win
+            // on a starved network. Order within the walk still determines who runs and who
+            // doesn't (binary fulfillment), but the *starting point* shifts each tick, so
+            // every consumer takes a turn at the front of the queue.
+            int n = net.consumers.Count;
+            int startIdx = n > 0 ? ((allocationCounter % n) + n) % n : 0;
+            for (int k = 0; k < n; k++) {
+                IPowerConsumer c = net.consumers[(startIdx + k) % n];
                 float need = Mathf.Max(0f, c.CurrentDemand);
                 if (need <= 0f) continue;
                 if (supplyRemaining + 1e-4f >= need) {
@@ -429,18 +460,29 @@ public class PowerSystem {
                 }
             }
 
-            // Apply storage changes — discharge proportional to each unit's MaxDischarge.
-            if (storageDrawn > 1e-6f && storageAvailable > 1e-6f) {
+            // Apply storage discharge. Greedy from the fullest storage first, capped by each
+            // unit's MaxDischarge — equalizes charge fractions across the network's storages
+            // over time. Cheap: storage counts per network are tiny, so the per-tick sort is
+            // negligible and beats maintaining a sorted structure incrementally.
+            if (storageDrawn > 1e-6f && net.storage.Count > 0) {
+                net.storage.Sort(StorageByChargeDesc);
+                float remaining = storageDrawn;
                 foreach (IPowerStorage st in net.storage) {
-                    float share = Mathf.Max(0f, st.MaxDischarge) / storageAvailable;
-                    st.ApplyDelta(-storageDrawn * share);
+                    if (remaining <= 1e-6f) break;
+                    float take = Mathf.Min(remaining, Mathf.Max(0f, st.MaxDischarge));
+                    if (take <= 0f) continue;
+                    st.ApplyDelta(-take);
+                    remaining -= take;
                 }
             }
 
-            // Surplus (after non-storage allocation) charges storage in registration order.
-            if (supplyRemaining > 1e-6f) {
+            // Surplus (after non-storage allocation) charges storage. Greedy to the *emptiest*
+            // first — same equalization logic in reverse. An emptier flywheel pulls from the
+            // network until it matches the next-emptiest level, then they fill together.
+            if (supplyRemaining > 1e-6f && net.storage.Count > 0) {
+                net.storage.Sort(StorageByChargeAsc);
                 foreach (IPowerStorage st in net.storage) {
-                    if (supplyRemaining <= 0f) break;
+                    if (supplyRemaining <= 1e-6f) break;
                     float intake = Mathf.Min(supplyRemaining, Mathf.Max(0f, st.MaxIntake));
                     if (intake <= 0f) continue;
                     st.ApplyDelta(intake);
@@ -451,6 +493,11 @@ public class PowerSystem {
 
             net.leftover = supplyRemaining;
         }
+        // Advance the rotation cursor so next tick's allocation starts one position later.
+        // Bumped after the per-network walk so every network sees the same `allocationCounter`
+        // value within a tick (each network mods by its own consumer count, so they're free
+        // to disagree on the absolute start index).
+        allocationCounter++;
     }
 
     // ── Save/load ─────────────────────────────────────────────────────────

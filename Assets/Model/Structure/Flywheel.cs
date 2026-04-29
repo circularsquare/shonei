@@ -49,8 +49,9 @@ public class Flywheel : Building, PowerSystem.IPowerStorage {
     // ── IPowerStorage ────────────────────────────────────────────────
     public Structure Structure => this;
 
-    public float MaxDischarge => IsBroken ? 0f : Mathf.Min(charge, MaxRate);
-    public float MaxIntake    => IsBroken ? 0f : Mathf.Min(Capacity - charge, MaxRate);
+    public float MaxDischarge   => IsBroken ? 0f : Mathf.Min(charge, MaxRate);
+    public float MaxIntake      => IsBroken ? 0f : Mathf.Min(Capacity - charge, MaxRate);
+    public float ChargeFraction => Capacity > 0f ? charge / Capacity : 0f;
 
     public void ApplyDelta(float delta) {
         charge = Mathf.Clamp(charge + delta, 0f, Capacity);

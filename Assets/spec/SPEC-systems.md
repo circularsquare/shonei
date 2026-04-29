@@ -4,7 +4,7 @@
 
 - **Algorithm**: A* with Euclidean heuristic. Edge costs vary by traversal type (see below).
 - **Locomotion**: `speed = GetTravelSpeedMultiplier(animal) * edgeLength / edgeCost`. Edge info comes from `Graph.GetRawEdgeInfo()` (excludes road cost — road bonus is tile-based via `ModifierSystem`). A* pathfinding still uses `GetEdgeInfo()` with road-reduced costs so paths prefer roads.
-- **Standability**: tile is standable if tile below is solid, has a platform/building, or has a ladder. Exception: a tile that itself contains a `solidTop` structure also occupying the tile below (i.e. the SAME structure body extends through both) is non-standable — see §Variable-shape structures.
+- **Standability**: tile is standable if tile below is solid, has a platform/building, or has a ladder. Exception: a tile that itself contains a `solidTop` structure also occupying the tile below (i.e. the SAME structure body extends through both) is non-standable — see §Variable-shape structures. Per-tile override: a structure can declare specific local tiles as standable internal floors via `Structure.HasInternalFloorAt(localDx, localDy)`. Default is `false` (no change). Used by `Elevator` to make its bottom and top stops walkable surfaces inside the chassis even though the multi-tile body would otherwise block them. Future improvement: data-driven per-tile / per-shape config replacing the binary `solidTop`.
 - **Vertical movement**: ladders produce direct node-to-node vertical edges (cost 2.0). Cliff climbing and stairs use **waypoint chains** (see below).
 - **Road speed boost**: road bonus is per-tile — only the tile the mouse is currently standing on contributes its `pathCostReduction` (doubled to match old two-endpoint feel). No bonus from adjacent road tiles.
 - **Floor item slowdown**: tiles with floor items reduce movement speed by 25% (×0.75).
@@ -48,6 +48,29 @@ Mechanism:
 Out of scope (v1):
 - Per-seat workSpots (multi-tile leisure buildings still use integer seats).
 - Standability-change refresh: if the connecting tile becomes non-standable, the waypoint stays edged to it. For the wheel this can't happen without destroying the wheel itself (in which case `Destroy()` cleans up).
+
+### Transit (elevators)
+
+Capacity-1 vertical lifts that A* sees as a single graph edge. The two stop tiles (anchor and `y+ny-1`) are the elevator's footprint endpoints, both made standable via the new `Structure.HasInternalFloorAt` per-tile override. Middle column tiles stay non-standable, so the chassis is an obstacle except via the stops.
+
+Mechanism:
+- `Elevator` constructor tags both stop tile-nodes' `Node.payload = this` and adds a direct neighbour edge between them — the "transit edge". `RebuildComponents` picks it up automatically. `Graph.IsNeighbor` recognises the shared payload and preserves the edge across `UpdateNeighbors` filtering even though the two nodes aren't geometrically adjacent.
+- `Graph.GetEdgeInfo` short-circuits at the top: when both endpoints carry the same `Elevator` payload, it returns the elevator's published cost (`EstimatedTransitCost`). Cost is `travelTicks + queueDepth × avgTrip`, with `avgTrip` from a rolling 20-sample buffer (`recentTripTicks`) and an optimistic cold-start fallback. Returns `+∞` when the elevator's network can't supply nominal demand → A* drops it from the candidate set.
+- Riding handoff in `Nav.Move`: when the next path step is a transit edge, the animal calls `Elevator.RequestRide` and parks at the boarding tile (`preventFall = true`, `Move` returns false). The elevator's per-tick state machine (Idle → MovingToBoardingFloor → Riding → Unloading → Idle) eventually loads the passenger and drives their `(x, y)` from the platform's position. On arrival it calls `Nav.OnTransitComplete`, the rider snaps to the destination stop, and normal navigation resumes.
+- Cascading Tick: a `do-while` loop processes instant transitions (Idle → trip start, Unloading → Idle → next trip) in the same tick, while movement-bearing cases (MovingToBoardingFloor, Riding) always return after a single `AdvanceTowards` so the platform never advances more than `PlatformSpeed` tiles per tick. Net effect: a mouse arriving at a parked platform boards AND gets the first riding step in one tick, vs. the ~2-tick delay we'd otherwise see from sequential state transitions.
+- Power gating is inclusive everywhere: cost gate, Idle→Trip start, and Riding advance all use `IsPowerAvailable` (network's raw supply + storage discharge ≥ 1). The strict "actually allocated this tick" check (`PowerSystem.IsBuildingPowered`) is intentionally NOT used for the per-tick advance gate — it caused mid-trip platform freezes during normal allocator-rotation gaps. Trade-off: in pathological tight-network setups the platform may "advance without strict allocation" for one tick before catching up, which we accept.
+- Demand semantics: `CurrentDemand` is `1.0` only during `Riding` — empty-cabin descent, idle waiting, and unloading all draw 0. So an elevator's InfoPanel reads "consuming 1.0" only during the actual lift.
+- Tentative reservations: `Nav.Navigate` scans the new path for transit edges and bumps each elevator's `pendingAnimals` set; `EndNavigation` drains them. Counted into `EstimatedTransitCost`'s queue depth so simultaneous planners see realistic wait, not all `queue=0`.
+- Mid-flight abort: each `RideRequest` carries an `abortAtTick = currentTick + max(30, 3 × queueDepth × avgTrip)`. `AbortStaleQueueEntries` (top of `Tick`) bails any non-actively-served mouse whose patience expired. Covers both unpowered-elevator and otherwise-stuck cases.
+- Animation: `Nav.IsLocomoting` is true only when `Move()` is actively translating the animal — false while parked at a transit edge or loaded on the platform. `AnimationController.UpdateState` reads it for the `Moving` state and picks the idle clip in those cases (state stays `Moving` because the task is still in progress, but the mouse isn't actually walking). Refresh fires at all navigation lifecycle boundaries.
+- Visuals: `ElevatorPlatform` and `ElevatorCounterweight` MonoBehaviours (in `Components/`) lerp child GameObjects' `localPosition.y` per frame at `PlatformSpeed` tiles/sec. Platform drags the loaded passenger so the rider moves smoothly between ticks; counterweight tracks `ny - 1 - currentY`. The platform sprite sits one tile *below* the rider (it's the floor they're standing on, not the floor they're standing in). Sprites: `elevator_platform.png`, `elevator_counterweight.png`.
+- Save/load: `currentY` and the two history buffers (`recentTripTicks`, `recentEndToEndTicks`) persist via `StructureSaveData.elevatorCurrentY` / `elevatorRecentTripTicks` / `elevatorRecentEndToEndTicks`. Dispatch state, queue, and pending reservations are NOT persisted — they reset to Idle/empty on load (animals lose their tasks across save boundaries anyway).
+
+Out of scope (v1):
+- Multi-stop elevators (intermediate floors).
+- Capacity > 1 (cabin elevators).
+- Horizontal transit (trains).
+- Component-connectivity teardown when unpowered: the transit edge stays in the neighbour list regardless of power, so `Graph.SameComponent` reports both stops as connected even when the cost is `+∞`. `WithinRadius`-gated callers reject the doomed path; `PathTo` callers without a cost gate accept it. Acceptable for now; revisit if a use case actually breaks.
 
 ---
 
@@ -210,7 +233,7 @@ Plants advance through discrete growth stages, stored as `growthStage` on `Plant
 **Height mechanic** (multi-tile plants with `maxHeight > 1`):
 - Max stage = `4 × maxHeight − 1`. One height tile per 4 growth stages.
 - `height = 1 + growthStage / 4`. Derived, not persisted — rebuilt on load by `Plant.RebuildExtensionTiles()`.
-- When a stage crossing triggers height increase, Plant claims the tile at `y + h` via `tile.structs[0] = this` and spawns a child `GameObject` + `SpriteRenderer` for rendering. Placement code (`StructPlacement.CanPlaceHere`, `StructController.Construct`) sees this and blocks new structures there.
+- When a stage crossing triggers height increase, Plant claims the tile at `y + h` via `tile.structs[0] = this` and spawns a child `GameObject` + `SpriteRenderer` for rendering. Placement code (`StructPlacement.CanPlaceHere`, `StructController.Construct`) sees this and blocks new *depth-0* placements there. Other depths (shafts, roads, foreground decorations) are allowed to coexist with the plant — visual clipping inside the trunk is accepted as a trade-off for the freedom.
 - Rendering: the topmost occupied tile shows `g{stage % 4}`, every tile below shows `g4` (stalk continuation). Bamboo requires `g0..g4` in `Sprites/Plants/Split/bamboo/`.
 - Harvest yield scales linearly with `height` at harvest time. Harvest releases all extension tiles and resets `age = 0`, `growthStage = 0`.
 - `Plant.Destroy()` releases all extension tiles.
@@ -260,7 +283,7 @@ Some StructTypes can be placed in multiple footprint variants — e.g. the platf
 
 **Cost scaling**: Blueprint ctor multiplies each `cost.quantity` by `shape.TileCount / shapes[0].TileCount` (rounded). Platform shapes `[1×1, 1×2, 1×3]` → 1×, 2×, 3× the wood per height step.
 
-**Multi-tile claim**: when `HasShapes`, both `Structure` and `Blueprint` claim every tile in the chosen `nx × ny` footprint at their depth — not just the bottom row. Legacy multi-tile buildings (windmill 2×4, wheel 2×2) keep their existing single-row claim because they don't declare `shapes`.
+**Multi-tile claim**: every tile in the visual footprint claims the structure / blueprint at its depth — `shape.nx × shape.ny` for shape-aware types, `structType.nx × structType.ny` for legacy multi-tile (windmill 2×4, wheel 2×2, flywheel 2×2). This keeps tile→structure lookup (selection, collision, `tile.building`) symmetric with what's rendered: clicking any tile of a 2×4 windmill resolves to the windmill, and `StructPlacement.CanPlaceHere` correctly rejects new structures stacked into a windmill's upper rows. `Mathf.Max(1, st.ny)` guards against StructTypes that omit `ny` (default 0).
 
 **Sprite composition** (vertical extension only, `nx=1, ny>1`): `StructureVisuals.LoadShapeSprite` resolves per-tile sprites — `_b` (anchor), `_m` (middle), `_t` (top). 1-tall shapes use the base `{name}.png` sprite directly so the existing 1×1 platform render is unchanged. Anchor SR renders the bottom tile; child SRs are spawned at local `(0, dy)` for `dy=1..ny-1` (mirrors `Plant.ClaimExtensionTile`). Missing variant sprites log once and fall back to the base sprite. Center-pivot sprites are assumed (matches the existing platform.png convention) — child SRs at integer dy align correctly.
 
@@ -268,7 +291,7 @@ Some StructTypes can be placed in multiple footprint variants — e.g. the platf
 
 **Build preview**: `MouseController` composes the cursor-following ghost from per-tile preview SRs (pooled across builds) so a height-3 platform appears as `_b` + `_m` + `_t` before placement, matching what will be built.
 
-**Placement**: `StructPlacement.CanPlaceHere` iterates the full `nx × ny` shape footprint when checking for blocking structs / blueprints / plants at the chosen depth. Standability/support is anchored to the bottom row only — only the base of the column needs to rest on something solid.
+**Placement**: `StructPlacement.CanPlaceHere` iterates the full visual footprint (matching the multi-tile claim above) when checking for blocking structs / blueprints / plants at the chosen depth. Standability/support is anchored to the bottom row only — only the base of the column needs to rest on something solid.
 
 **Save/load**: `shapeIndex` is persisted on both `StructureSaveData` and `BlueprintSaveData`; defaults to 0 for old saves and non-shape types.
 

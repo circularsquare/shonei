@@ -88,6 +88,15 @@ public class StructureSaveData {
     // Without this, flywheels would reset to empty on every load and surrender any
     // energy buffered during the play session.
     public float flywheelCharge;
+    // Elevator only: platform's last continuous Y position in tile units (0 = bottom of
+    // chassis, ny-1 = top). 0 on non-elevators / old saves — which lands the platform at
+    // the bottom on load, fine since dispatch state is reset to Idle anyway.
+    public float elevatorCurrentY;
+    // Elevator only: rolling history buffers for the cost estimator and InfoPanel display.
+    // recentTripTicks feeds avgTrip in EstimatedTransitCost; recentEndToEndTicks is purely
+    // diagnostic. null on non-elevators / old saves; restore path treats null as empty.
+    public int[] elevatorRecentTripTicks;
+    public int[] elevatorRecentEndToEndTicks;
 }
 
 public class BlueprintSaveData {

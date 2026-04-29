@@ -36,8 +36,12 @@ public class Tile {
             cbBackgroundChanged?.Invoke(this);
         }
     }
-    public Structure[] structs = new Structure[4];   // indexed by depth: 0=building, 1=platform, 2=foreground, 3=road
-    public Blueprint[] blueprints = new Blueprint[4]; // indexed by depth
+    // Depth slots — slot index is independent of visual sortingOrder.
+    // 0=building, 1=platform, 2=foreground, 3=road, 4=power shaft.
+    // Slot 4 (shafts) renders behind buildings via a low sortingOrder; see Structure.cs.
+    public const int NumDepths = 5;
+    public Structure[] structs = new Structure[NumDepths];
+    public Blueprint[] blueprints = new Blueprint[NumDepths];
     public Building building => structs[0] as Building; // alias for depth-0 Building (does NOT match Plant)
     public Plant plant => structs[0] as Plant;           // alias for depth-0 Plant
     public Inventory inv; // this encapsulates all inventory types

@@ -117,7 +117,7 @@ public class Building : Structure {
     // structType.powerBoost = 1 so this wrapper isn't created in addition to themselves.
     public BuildingPowerConsumer powerConsumer { get; private set; }
 
-    public Building(StructType st, int x, int y, bool mirrored = false) : base(st, x, y, mirrored){
+    public Building(StructType st, int x, int y, bool mirrored = false, int shapeIndex = 0) : base(st, x, y, mirrored, shapeIndex: shapeIndex){
         go.name = "building_" + structType.name;
 
         if (st.isWorkstation)

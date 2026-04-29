@@ -213,6 +213,17 @@ Each panel's `Toggle()` calls `UI.OpenExclusive(gameObject)` when opening, and `
 
 **To add a new exclusive panel**: call `UI.RegisterExclusive(gameObject)` in `Awake`/`Start`, and replace any `SetActive(true)` in the toggle path with `UI.OpenExclusive(gameObject)`.
 
+## Esc key chain
+
+All Esc handling lives in `UI.Update()` — centralised so a single press never collapses two layers in the same frame. Priority (first match wins, rest of the chain is ignored for that press):
+
+1. `SaveMenuPanel` active → `SetActive(false)` (most modal — full-screen overlay)
+2. `BuildPanel.IsSubPanelOpen` → `CloseSubPanel()`
+3. Any registered exclusive panel currently active → `SetActive(false)` on the first one found
+4. `MouseController.mouseMode != Select` → `SetModeSelect()`
+
+`MouseController` no longer reads `KeyCode.Escape` directly.
+
 ## Key Files
 
 | File | Role |

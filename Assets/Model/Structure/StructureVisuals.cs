@@ -29,6 +29,17 @@ public static class StructureVisuals {
         return rotation != 0 ? Quaternion.Euler(0, 0, -90f * rotation) : Quaternion.identity;
     }
 
+    // Resolves the anchor sprite for a structure or blueprint, with the shape-aware vs.
+    // legacy lookup baked in. Returns the loaded sprite or a default-fallback sprite;
+    // `wasFallback` lets the caller apply sliced-mode sizing for the missing-sprite case
+    // without re-checking nullness. Centralises the fallback path so Blueprint and Structure
+    // can't drift on the missing-sprite handling.
+    public static Sprite ResolveAnchorSprite(StructType st, Shape shape, out bool wasFallback) {
+        Sprite s = st.HasShapes ? LoadShapeSprite(st, shape, 0) : st.LoadSprite();
+        wasFallback = s == null;
+        return s ?? Resources.Load<Sprite>("Sprites/Buildings/default");
+    }
+
     // Resolves the per-tile sprite for a shape-aware structure at a given dy offset.
     // Conventions:
     //   - shape.ny == 1: returns the base `{name}` sprite (1-tall shapes look like the

@@ -18,6 +18,8 @@ CONTENT
     - additional levels display?
 - books 
     - cleanup?
+- power 
+    - small internal power storage for power consumers? (hidden if contain 0 power)
 
 VISUALS
 - make item icons more coherent / similar
@@ -44,19 +46,17 @@ CODE CLEANUP
 BUGS
 
 SHORT TERM
-- test new stone mining yield distribution
-- power 
-    - flywheel test
-    - put shafts in a background layer?
-    - put all the specific building.cs files into a new folder?
+- test new stone mining yield distributions
 
 - elevators!
     - should use a general "transit" object that has distinct stops, and is included in mice navigation.
     - generally, transit can be capacity constrained (like elevators will just carry one moues at a time) so we should periodically estimate how long the wait will be, taking into account historical wait times, for the purpose of informing the cost of the navigation edge of the elevator
     - also for elevators, we will need to make variable length buildings...
-        - ui wise we can have the player press like "e" to grow the building (in this case, heightwise) and "q" to shrink the building when placing the blueprint
         - spritewise the elevator can have a bottom sprite and a top sprite and a repeating middle sprite   
             - also, the platform that carries the mouse up and down i think needs to be a different game object (and the counter weight should show up visibly behind)
-    
+    - elevator internal power storage
 
+
+Sustained-stall abort for the active head — if the platform is mid-ride on a frozen network for >N ticks, currently the rider waits forever (the abortAtTick check skips the active head). Adding "abort head if frozen too long" would prevent infinite stuck-mouse scenarios. Easy to add: track lastAdvanceTick and bail head if currentTick - lastAdvanceTick > threshold.
+JSON-driven per-tile standability — HasInternalFloorAt is the foothold; a standableOffsets[] field on Shape would let non-subclassed multi-tile buildings declare partial-top patterns without forcing a subclass. Worth doing the next time a multi-tile building wants this.
 

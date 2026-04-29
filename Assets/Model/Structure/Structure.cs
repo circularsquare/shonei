@@ -60,13 +60,26 @@ public class Structure {
     // of the lighting pipeline (no ambient, no sun). See SPEC-rendering.md §Lighting.
     Material defaultMat;
 
+    // Applies a multiplicative tint colour to the anchor SR and every extension SR.
+    // Used by Blueprint.RefreshColor for the deconstruct overlay so all tiles of a
+    // shape-aware multi-tile structure (e.g. a 1×3 platform) glow red — not just the
+    // anchor. Safe to call with Color.white to clear. Independent of RefreshTint's
+    // material swap, so broken + deconstructing composites correctly.
+    public void SetTint(Color c) {
+        if (sr != null) sr.color = c;
+        if (extensionSrs != null) {
+            foreach (var ext in extensionSrs)
+                if (ext != null) ext.color = c;
+        }
+    }
+
     // Re-applies the sprite material based on broken state. Called from
     // MaintenanceSystem on threshold crossings. Broken structures swap to the shared
     // CrackedSprite material which composites a tileable crack texture on top of the
     // base sprite, alpha-masked by the sprite so cracks only appear on visible pixels.
     // That shader is URP 2D-tagged so the NormalsCapture pipeline still picks up the
     // renderer (preserving ambient/sun/torch lighting on broken buildings).
-    // Deconstruct blueprints override tint via sr.color in Blueprint.cs — independent
+    // Deconstruct blueprints override tint via SetTint in Blueprint.cs — independent
     // of the material swap, so broken + deconstructing composites correctly.
     public virtual void RefreshTint() {
         if (sr == null) return;
@@ -151,6 +164,17 @@ public class Structure {
     // sliced-sheet pattern.
     public virtual void AttachAnimations() { }
 
+    // Per-tile standability override for structures that have walkable surfaces inside
+    // their footprint that the default solidTop rule can't express. localDx/localDy are
+    // unmirrored offsets from the structure's anchor (this.x, this.y). Default false —
+    // standability falls through to the normal solidTop / support-from-below rules in
+    // Navigation.GetStandability. Used by Elevator to declare its top stop (y+ny-1) as
+    // a standable disembark surface even though it's inside the column.
+    //
+    // Future: a JSON-driven per-tile/per-shape config would let non-subclassed structures
+    // declare partial-top patterns without forcing a subclass for every variant.
+    public virtual bool HasInternalFloorAt(int localDx, int localDy) => false;
+
     // Helper for the common "load a sliced sheet, attach a FrameAnimator" pattern. Returns
     // null (and adds nothing) when the sheet has only a single sprite — animation is opt-in
     // per asset, so an unsliced PNG just keeps rendering as the static sprite assigned in
@@ -224,15 +248,13 @@ public class Structure {
 
         // Anchor sprite: shape-aware uses the per-tile sprite for dy=0 (which collapses
         // to the base `{name}` sprite for 1-tall shapes). Legacy uses the base sprite.
-        Sprite loadedSprite = shapeAware
-            ? StructureVisuals.LoadShapeSprite(st, shape, 0)
-            : structType.LoadSprite();
-        sprite = loadedSprite ?? Resources.Load<Sprite>("Sprites/Buildings/default");
+        // Falls back to the shared default when the StructType's sprite is missing.
+        sprite = StructureVisuals.ResolveAnchorSprite(st, shape, out bool spriteWasFallback);
         sr = go.AddComponent<SpriteRenderer>();
         sr.sprite = sprite;
         sr.flipX = mirrored;
         go.transform.rotation = StructureVisuals.RotationFor(rotation);
-        if (loadedSprite == null) {
+        if (spriteWasFallback) {
             sr.drawMode = SpriteDrawMode.Sliced;
             sr.size = new Vector2(structType.nx, Mathf.Max(1, structType.ny));
         }
@@ -252,12 +274,14 @@ public class Structure {
             ch.structure = this;
         }
 
-        // Register on tiles at the appropriate depth layer. Shape-aware structures claim
-        // every tile in the chosen footprint (so e.g. a height-3 platform fills 3 cells in
-        // structs[1]); legacy multi-tile buildings keep their single-row claim.
+        // Register on tiles at the appropriate depth layer. Every tile in the visual
+        // footprint claims the structure — so a 2×4 windmill writes itself to all 8 tiles
+        // and a 1×3 platform writes to all 3 tiles. This keeps tile→structure lookup
+        // (selection, collision, tile.building) symmetric with the rendered footprint.
+        // Mathf.Max(1, st.ny) guards against StructTypes that omit ny (default 0).
         int depth = st.depth;
         int claimNx = shapeAware ? shape.nx : st.nx;
-        int claimNy = shapeAware ? shape.ny : 1;
+        int claimNy = shapeAware ? shape.ny : Mathf.Max(1, st.ny);
         for (int dy = 0; dy < claimNy; dy++) {
             for (int dx = 0; dx < claimNx; dx++) {
                 Tile t = World.instance.GetTileAt(x + dx, y + dy);
@@ -267,13 +291,16 @@ public class Structure {
                 t.structs[depth] = this;
             }
         }
-        // Sort order by depth: 0=building(10), 1=platform(15), 2=foreground(40), 3=road(1).
+        // Sort order by depth: 0=building(10), 1=platform(15), 2=foreground(40), 3=road(1), 4=shaft(5).
+        // Slot index ≠ visual layering — shafts are slot 4 but render behind buildings via
+        // sortingOrder 5 (between roads at 1 and buildings at 10).
         // StructType.sortingOrder overrides this when >= 0 (e.g. light-source buildings at 64).
         if (st.sortingOrder >= 0) sr.sortingOrder = st.sortingOrder;
         else if (depth == 0) sr.sortingOrder = 10;
         else if (depth == 1) sr.sortingOrder = 15;
         else if (depth == 2) sr.sortingOrder = 40;
         else if (depth == 3) sr.sortingOrder = 1;
+        else if (depth == 4) sr.sortingOrder = 5;
         LightReceiverUtil.SetSortBucket(sr);
 
         // Subclass hook for visuals that need the parent's final sortingOrder — rotating
@@ -395,6 +422,7 @@ public class Structure {
             if (st.name == "wheel")    return new MouseWheel(st, x, y, mirrored);
             if (st.name == "windmill") return new Windmill(st, x, y, mirrored);
             if (st.name == "flywheel") return new Flywheel(st, x, y, mirrored);
+            if (st.name == "elevator") return new Elevator(st, x, y, mirrored, shapeIndex);
             return new Building(st, x, y, mirrored);
         }
         return new Structure(st, x, y, mirrored, rotation, shapeIndex); // platforms, ladders, stairs, foreground, roads
@@ -423,7 +451,7 @@ public class Structure {
         bool shapeAware = structType.HasShapes;
         Shape shape = Shape;
         int claimNx = shapeAware ? shape.nx : structType.nx;
-        int claimNy = shapeAware ? shape.ny : 1;
+        int claimNy = shapeAware ? shape.ny : Mathf.Max(1, structType.ny);
         World world = World.instance;
         for (int dy = 0; dy < claimNy; dy++) {
             for (int dx = 0; dx < claimNx; dx++) {
