@@ -244,7 +244,7 @@ public class Elevator : Building, PowerSystem.IPowerConsumer {
         // they're standing on, not the floor they're standing in. ElevatorPlatform.Update
         // applies the same -1 offset to its lerp target.
         platformGO.transform.localPosition = new Vector3(0f, currentY - 1f, 0f);
-        var psr = platformGO.AddComponent<SpriteRenderer>();
+        var psr = SpriteMaterialUtil.AddSpriteRenderer(platformGO);
         psr.sprite = Resources.Load<Sprite>("Sprites/Buildings/" + structType.name + "_platform");
         psr.sortingOrder = sr.sortingOrder + 1;   // in front of the chassis frame
         LightReceiverUtil.SetSortBucket(psr);
@@ -258,7 +258,7 @@ public class Elevator : Building, PowerSystem.IPowerConsumer {
         counterweightGO.transform.SetParent(go.transform, false);
         int ny = Shape.ny;
         counterweightGO.transform.localPosition = new Vector3(0f, ny - 1 - currentY, 0f);
-        var csr = counterweightGO.AddComponent<SpriteRenderer>();
+        var csr = SpriteMaterialUtil.AddSpriteRenderer(counterweightGO);
         csr.sprite = Resources.Load<Sprite>("Sprites/Buildings/" + structType.name + "_counterweight");
         csr.sortingOrder = sr.sortingOrder - 1;   // behind the chassis frame
         LightReceiverUtil.SetSortBucket(csr);

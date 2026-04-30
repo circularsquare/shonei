@@ -65,6 +65,30 @@ Deconstruct blueprints **hide their own main sprite** and instead apply a multip
 
 Custom `ScriptableRendererFeature` pipeline — no URP Light2Ds used. Final result is Multiply-blitted onto the scene.
 
+### URP setup
+
+The project uses URP's **Universal (forward) Renderer**, *not* the 2D Renderer. The 2D Renderer ran a built-in normals-capture + 2D-lights pass (~190 draws per frame on the Main camera) that did nothing for us — we have our own `LightFeature` doing all lighting via a custom multiply blit. Switching renderers eliminated that overhead.
+
+Two conventions flow from this choice:
+
+**1. Dual-pass sprite shaders.** Every custom sprite shader has both `LightMode=Universal2D` AND `LightMode=UniversalForward` passes (with identical bodies), plus `Fallback "Sprites/Default"`:
+- The **Universal2D** pass exists so `NormalsCapturePass.Execute` (which filters via `ShaderTagId("Universal2D")`) can find these sprites and capture their normals into `_CapturedNormalsRT`.
+- The **UniversalForward** pass is what URP's Universal Renderer's transparent queue actually invokes to draw the sprite to screen.
+
+Affected files: [TileSprite.shader](../Lighting/TileSprite.shader), [BackgroundTile.shader](../Lighting/BackgroundTile.shader), [Water.shader](../Lighting/Water.shader), [Sprite.shader](../Lighting/Sprite.shader), [CrackedSprite.shader](../Resources/Shaders/CrackedSprite.shader). When adding any new lit sprite shader, follow this pattern and wrap material props in `CBUFFER_START(UnityPerMaterial) ... CBUFFER_END` so SRP Batcher can batch consecutive draws.
+
+**2. Sprite material default.** URP's Universal Renderer has no per-renderer "default sprite material" slot, and the legacy `Sprites/Default` shader has no `Universal2D` pass — sprites using it would render but be invisible to NormalsCapture (rendering at constant deep-ambient with no torch/sun lighting). To avoid that, every runtime-created lit `SpriteRenderer` is routed through:
+
+```csharp
+SpriteRenderer sr = SpriteMaterialUtil.AddSpriteRenderer(go);
+```
+
+(in [LightReceiver.cs](../Lighting/LightReceiver.cs)) — assigns `Resources/Materials/Sprite.mat` (the dual-pass `Custom/Sprite` shader). When adding a new `AddComponent<SpriteRenderer>()` site for a lit sprite, use this helper. **Exception**: explicitly *unlit* overlays (blueprint frames, plant harvest overlays, tile highlights) keep their explicit `Sprite-Unlit-Default` assignment — they should NOT participate in NormalsCapture.
+
+**3. Camera stacking.** Universal Renderer requires explicit camera stacking — multiple Base cameras with depth-based "Don't Clear" stacking (which the 2D Renderer tolerated) does not work; each Base camera does its own FinalBlit and the latest one overwrites. See the stack layout below.
+
+**4. Transparency sort axis.** `WorldController.Start` sets `GraphicsSettings.transparencySortMode = CustomAxis` with axis `(0, 1, 0)`. The 2D Renderer set this on its own asset; the Universal Renderer asset has no equivalent field, and URP hides the project-level Graphics setting from the Inspector when an SRP is active — so we set it from code at startup. Almost every sprite has an explicit `sortingOrder` so this is mostly belt-and-braces, but it prevents undefined draw order between sprites sharing a sortingOrder.
+
 ### Render pipeline (per frame)
 
 1. **NormalsCapturePass** (`BeforeRenderingTransparents`) — draws sprites with `Hidden/NormalsCapture` override into `_CapturedNormalsRT` (format: **ARGB32** — must have alpha; camera's default HDR format has none). **Channel packing:**
@@ -98,15 +122,15 @@ Custom `ScriptableRendererFeature` pipeline — no URP Light2Ds used. Final resu
 
 ### Sky / background
 
-Three cameras render in depth order:
+Three cameras render as a URP **Camera Stack**: SkyCamera is the Base, Main and UnlitOverlay are stacked Overlays in that order. Stack ordering replaces the Camera component's `Depth` field — Depth values are ignored on stacked cameras.
 
-| Camera | Depth | Clear Flags | Culling Mask | Notes |
-|--------|-------|-------------|--------------|-------|
-| `SkyCamera` | 0 | Solid Color | Sky layer | `backgroundColor` set to `baseSkyColor × GetAmbientColor()` each frame — sky darkens at night |
-| Main Camera | 1 | Don't Clear | Everything except Unlit | PixelPerfectCamera; lighting composite applied here |
-| `UnlitOverlayCamera` | 2 | Don't Clear | Unlit only | Renders after composite — sprites on the **Unlit** layer appear at full brightness, unaffected by lighting. Has `MatchCameraZoom` component to sync `assetsPPU` from Main Camera. LightFeature pipeline is skipped for this camera entirely. |
+| Camera | Render Type | Clear Flags | Culling Mask | Notes |
+|--------|-------------|-------------|--------------|-------|
+| `SkyCamera` | **Base** (stack: [Main, UnlitOverlay]) | Solid Color | Sky layer | `backgroundColor` set to `baseSkyColor × GetAmbientColor()` each frame — sky darkens at night |
+| Main Camera | **Overlay** | n/a (Overlay shares Base RT) | Everything except Unlit | PixelPerfectCamera; lighting composite applied here |
+| `UnlitOverlayCamera` | **Overlay** | n/a | Unlit only | Renders after composite — sprites on the **Unlit** layer appear at full brightness, unaffected by lighting. Has `MatchCameraZoom` component to sync `assetsPPU` from Main Camera. LightFeature pipeline is skipped for this camera entirely. |
 
-**Unlit layer pattern**: any sprite that should always appear at full brightness (tile highlights, selection overlays, debug markers) goes on the `Unlit` layer. Keep it excluded from `litLayers`, `shadowCasterLayers`, and `directionalOnlyLayers` in the LightFeature Inspector. **Also assign a sprite-unlit material** (`Sprite-Unlit-Default`) — the Unity default sprite material is lit, and a lit shader on the UnlitOverlayCamera pass samples no lights → renders black. For runtime-created overlays, either instantiate a prefab that carries the material (preferred — see `Plant.CreateHarvestOverlay` / `BuildIndicator`) or cache a material via `Shader.Find("Universal Render Pipeline/2D/Sprite-Unlit-Default")`.
+**Unlit layer pattern**: any sprite that should always appear at full brightness (tile highlights, selection overlays, debug markers) goes on the `Unlit` layer. Keep it excluded from `litLayers`, `shadowCasterLayers`, and `directionalOnlyLayers` in the LightFeature Inspector. **Also assign `Sprite-Unlit-Default`** as the material — the project's default lit material (`Custom/Sprite`, see URP setup above) participates in NormalsCapture and is wrong for the Unlit layer. For runtime-created overlays, either instantiate a prefab that carries the material (preferred — see `Plant.CreateHarvestOverlay` / `BuildIndicator`) or cache a material via `Shader.Find("Universal Render Pipeline/2D/Sprite-Unlit-Default")`. Do NOT route Unlit-layer sprites through `SpriteMaterialUtil.AddSpriteRenderer` — that helper assigns the lit dual-pass material.
 
 ### Sky exposure (`SkyExposure.cs`)
 
@@ -128,7 +152,7 @@ Three cameras render in depth order:
 
 **Per-tile background**: each `Tile` has a `hasBackground` bool (with `cbBackgroundChanged` callback). During world generation, tiles at y ≤ 43 are given a background. The flag is saved/loaded in `TileSaveData` (as `hasBackgroundWall` for backward compat).
 
-**Background sprite**: a world-spanning sprite on the **Background layer** at **sorting order −10** (behind tiles at 0). Uses `BackgroundTile.shader` (tagged `Universal2D` for normals capture), masked by a low-res RGBA32 texture (nx × ny, 1 pixel per tile). The mask encodes two things: **alpha** = background present (opaque/transparent), **green** = top-row flag (G=255 if the tile above has no background, G=0 otherwise). The shader samples one of two tileable 16×16 textures based on the green channel: `_WallTex` (`undergroundwall`) for interior tiles, `_WallTopTex` (`undergroundwalltop`) for top-row tiles. Both tile at 1 repetition per world unit via world-space UVs. Participates in normal lighting (sun, torches, sky light) via dedicated `NormalsCaptureBackground` override in `NormalsCapturePass` — clips transparent top pixels so they read as sky in the normals RT. Wall textures are set as globals (`_BackgroundTex`, `_BackgroundTopTex`) by `BackgroundTile.cs` for the override shader to access. Rebuilt on background or tile type change via dirty flag.
+**Background sprite**: a world-spanning sprite on the **Background layer** at **sorting order −10** (behind tiles at 0). Uses `BackgroundTile.shader` (dual-pass `Universal2D` + `UniversalForward` per the URP setup convention), masked by a low-res RGBA32 texture (nx × ny, 1 pixel per tile). The mask encodes two things: **alpha** = background present (opaque/transparent), **green** = top-row flag (G=255 if the tile above has no background, G=0 otherwise). The shader samples one of two tileable 16×16 textures based on the green channel: `_WallTex` (`undergroundwall`) for interior tiles, `_WallTopTex` (`undergroundwalltop`) for top-row tiles. Both tile at 1 repetition per world unit via world-space UVs. Participates in normal lighting (sun, torches, sky light) via dedicated `NormalsCaptureBackground` override in `NormalsCapturePass` — clips transparent top pixels so they read as sky in the normals RT. Wall textures are set as globals (`_BackgroundTex`, `_BackgroundTopTex`) by `BackgroundTile.cs` for the override shader to access. Rebuilt on background or tile type change via dirty flag.
 
 ### Key files
 
@@ -138,18 +162,19 @@ All lighting C# scripts and shaders live in `Assets/Lighting/`.
 |------|------|
 | `LightFeature.cs` | `ScriptableRendererFeature` containing `NormalsCapturePass` + `LightPass`. Inspector tunables: `ambientNormal`, `lightPenetrationDepth`, `deepAmbientColor`, `skyLightBlend`, `sortRampRange`, `behindFarHeightFactor`, layer masks. |
 | `LightSource.cs` | Component: `lightColor`, `intensity`, `outerRadius`, `innerRadius`, `lightHeight`, `isDirectional`, `sortOrderOverride`. Registers itself in a static list read by `LightPass`. `sunModulated` (default false): when true, `SunController` overrides intensity by time of day (torches/fireplaces). Non-modulated lights keep their set intensity always. `sortOrderOverride = -1` (default) auto-reads from a SpriteRenderer on the GameObject or its parents — this value becomes `_LightSortBucket` in the shader for the sort-aware effective-height ramp. |
-| `LightReceiver.cs` | `LightReceiverUtil.SetSortBucket(SpriteRenderer)` writes `_SortBucket = sortingOrder/255` onto the renderer's `MaterialPropertyBlock`. Called at every code site that sets `sortingOrder` on a lit sprite. The `LightReceiver` MonoBehaviour variant is for prefabs with editor-authored sortingOrder (e.g. animal paper-doll parts) — attach one component to a root and it walks all child SpriteRenderers in `Start()`. |
+| `LightReceiver.cs` | Two static utilities + a MonoBehaviour: `LightReceiverUtil.SetSortBucket(SpriteRenderer)` writes `_SortBucket = sortingOrder/255` onto the renderer's `MaterialPropertyBlock` (called at every site that sets `sortingOrder` on a lit sprite); `SpriteMaterialUtil.AddSpriteRenderer(go)` adds a SR with `Custom/Sprite` (the dual-pass lit default) assigned (used everywhere a lit SR is created at runtime). The `LightReceiver` MonoBehaviour variant is for prefabs with editor-authored sortingOrder (e.g. animal paper-doll parts) — attach one component to a root and it walks all child SpriteRenderers in `Start()`. |
 | `SunController.cs` | Orbiting sun, sky color, `GetAmbientColor()`, `GetSunDirection()`. Sun child has a `LightSource (isDirectional=true)`. Inspector tunables: orbit, twilight timing, sky/sun/ambient color gradients, `sunIntensityNoon`, `ambientBrightnessMin`/`ambientBrightnessRange`. |
 | `NormalsCapture.shader` | Tangent→world normal transform for 2D sprites. Vertex shader sends per-renderer world-space tangent/bitangent (sprite's local +X/+Y in world, derived from the transform); fragment forms `wn = tn.x·worldT + tn.y·worldB + tn.z·(0,0,−1)`. Reduces to `(x, y, −z)` for unrotated sprites; rotating sprites (flywheel wheel, windmill blades) get correctly rotated normals so the lit side stays in world space rather than spinning with the texture. Clips on `_MainTex` alpha. |
-| `TileSprite.shader` | Simple tile sprite shader: samples `_MainTex` (pre-baked 20×20 from `TileSpriteCache`), clips transparent pixels. Assigned to tile SpriteRenderers by WorldController. |
-| `CrackedSprite.shader` (`Assets/Resources/Shaders/`) | Broken-structure overlay — composites a tileable world-space crack texture on top of `_MainTex`, alpha-masked by base sprite. URP 2D-tagged (both `Universal2D` and `UniversalForward` passes) so broken renderers stay in the NormalsCapture filter. Swapped in via `Structure.RefreshTint()`. See SPEC-systems.md §Maintenance System / Visual. |
+| `TileSprite.shader` | Simple tile sprite shader: samples `_MainTex` (pre-baked 20×20 from `TileSpriteCache`), clips transparent pixels. Dual-pass per URP setup convention. Assigned to tile SpriteRenderers by WorldController. |
+| `Sprite.shader` | Project-wide replacement for Unity's `Sprite-Lit-Default`. Plain unlit sprite (texture × vertex color × renderer color) with both `Universal2D` and `UniversalForward` passes so it works under URP Universal Renderer AND participates in NormalsCapture. Material at `Resources/Materials/Sprite.mat` (loaded by `SpriteMaterialUtil`). |
+| `CrackedSprite.shader` (`Assets/Resources/Shaders/`) | Broken-structure overlay — composites a tileable world-space crack texture on top of `_MainTex`, alpha-masked by base sprite. Dual-pass (`Universal2D` + `UniversalForward`). Swapped in via `Structure.RefreshTint()`. See SPEC-systems.md §Maintenance System / Visual. |
 | `TileSpriteCache.cs` | Bakes 20×20 tile sprites **and matching normal maps** at load time from 32×32 border atlases. 16 cardinal-mask sprites per artist texture. A tile type may ship multiple variant textures named `<tileName>`, `<tileName>2`, `<tileName>3`, … (either atlases in `Sheets/` or flat sprites in `Tiles/`); each world tile picks one deterministically from its (x, y), stable across re-renders and loads. PPU=16 → sprites natively span 1.25 units. Normal maps are derived from each baked variant's own alpha — RGB is outward-facing at every alpha boundary, A is a distance-transform edge-depth used by `LightComposite` for underground darkening. Exposes `FlatNormalMap` for non-solid tiles. |
 | `LightCircle.shader` | Point light pass: radial falloff × NdotL. |
 | `LightSun.shader` | Directional sun pass: fullscreen NdotL × sky exposure. Shadow ray march disabled (commented out for performance). |
 | `LightAmbientFill.shader` | Fullscreen pass: writes `skyLight × exposure` per pixel. Max blend onto deep-ambient-cleared RT. |
 | `LightComposite.shader` | Multiply blit onto scene + edge-depth blending toward deepAmbient for deep tile interiors. |
 | `SkyExposure.hlsl` | Shared HLSL include: declares `_CamWorldBounds`, `_GridSize`, `_SkyExposureTex` and provides `SampleSkyExposure(screenUV)`. Used by LightAmbientFill and LightSun. |
-| `BackgroundTile.shader` | Tiles `_WallTex` or `_WallTopTex` (selected by mask green channel) at world-space UVs, masked by `_MainTex`. Tagged `Universal2D` for normals capture. |
+| `BackgroundTile.shader` | Tiles `_WallTex` or `_WallTopTex` (selected by mask green channel) at world-space UVs, masked by `_MainTex`. Dual-pass per URP setup convention. |
 | `NormalsCaptureBgTile.shader` | Normals capture override for background (shader name is `Hidden/NormalsCaptureBackground` — what `LightFeature.cs` loads by). Samples `_BackgroundTex`/`_BackgroundTopTex` (globals set by `BackgroundTile.cs`) and clips transparent pixels — fixes jagged top-edge lighting. |
 | `SkyExposure.cs` | Sky exposure texture (R8, per-tile, BFS distance falloff from sky-exposed tiles). Scene singleton (under Lighting). |
 

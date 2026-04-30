@@ -89,7 +89,7 @@ public class Windmill : Building, PowerSystem.IPowerProducer {
             float hubX = mirrored ? (structType.nx - WheelHubX) : WheelHubX;
             wheelGO.transform.position = new Vector3(x - 0.5f + hubX, y - 0.5f + WheelHubY, 0f);
 
-            SpriteRenderer wsr = wheelGO.AddComponent<SpriteRenderer>();
+            SpriteRenderer wsr = SpriteMaterialUtil.AddSpriteRenderer(wheelGO);
             wsr.sprite = wheelSprite;
             wsr.flipX = mirrored;
             wsr.sortingOrder = (sr != null ? sr.sortingOrder : 10) + 1;

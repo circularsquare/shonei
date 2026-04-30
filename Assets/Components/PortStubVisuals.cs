@@ -168,7 +168,7 @@ public class PortStubVisuals : MonoBehaviour {
         stubGO.transform.SetParent(transform, true);
         stubGO.transform.position = new Vector3(anchor.x + stub.stubDx, anchor.y + stub.stubDy, 0f);
 
-        SpriteRenderer ssr = stubGO.AddComponent<SpriteRenderer>();
+        SpriteRenderer ssr = SpriteMaterialUtil.AddSpriteRenderer(stubGO);
         ssr.sprite = stub.sprite;
         ssr.flipX = stub.flipX;
         ssr.flipY = stub.flipY;

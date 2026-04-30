@@ -88,7 +88,7 @@ public class Flywheel : Building, PowerSystem.IPowerStorage {
             float hubX = mirrored ? (structType.nx - WheelHubX) : WheelHubX;
             wheelGO.transform.position = new Vector3(x - 0.5f + hubX, y - 0.5f + WheelHubY, 0f);
 
-            SpriteRenderer wsr = wheelGO.AddComponent<SpriteRenderer>();
+            SpriteRenderer wsr = SpriteMaterialUtil.AddSpriteRenderer(wheelGO);
             wsr.sprite = wheelSprite;
             wsr.flipX = mirrored;
             // Render BEHIND the housing — the flywheel sprite is a frame around the wheel,

@@ -250,7 +250,7 @@ public class Plant : Structure {
         GameObject extGo = new GameObject($"plant_{plantType.name}_ext{h}");
         extGo.transform.SetParent(go.transform, false);
         extGo.transform.localPosition = new Vector3(0, h, 0);
-        SpriteRenderer extSr = extGo.AddComponent<SpriteRenderer>();
+        SpriteRenderer extSr = SpriteMaterialUtil.AddSpriteRenderer(extGo);
         extSr.sortingOrder = sr.sortingOrder;
         LightReceiverUtil.SetSortBucket(extSr);
         extensionGos.Add(extGo);

@@ -134,5 +134,93 @@ Shader "Water/WaterSurface" {
 
             ENDHLSL
         }
+
+        // UniversalForward fallback — same body. Needed so water still renders
+        // under URP's Universal renderer (its transparent queue invokes
+        // UniversalForward / SRPDefaultUnlit, not Universal2D).
+        Pass {
+            Name "WaterSurfaceForward"
+            Tags { "LightMode" = "UniversalForward" }
+
+            HLSLPROGRAM
+            #pragma vertex   vert
+            #pragma fragment frag
+
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+
+            TEXTURE2D(_SurfaceTex);
+            SAMPLER(sampler_SurfaceTex);
+            TEXTURE2D(_TintTex);
+            SAMPLER(sampler_TintTex);
+
+            CBUFFER_START(UnityPerMaterial)
+                float4 _WaterColorDark;
+                float4 _WaterColorLight;
+                float4 _SurfaceColor;
+                float4 _WorldPixelSize;
+                float  _SparkleWidth;
+            CBUFFER_END
+
+            struct Attributes {
+                float4 positionOS : POSITION;
+                float2 uv         : TEXCOORD0;
+            };
+
+            struct Varyings {
+                float4 positionHCS : SV_POSITION;
+                float2 uv          : TEXCOORD0;
+            };
+
+            Varyings vert(Attributes IN) {
+                Varyings OUT;
+                OUT.positionHCS = TransformObjectToHClip(IN.positionOS.xyz);
+                OUT.uv = IN.uv;
+                return OUT;
+            }
+
+            float hash(float2 p) {
+                return frac(sin(dot(p, float2(127.1, 311.7))) * 43758.5453);
+            }
+
+            half4 frag(Varyings IN) : SV_Target {
+                float mask = SAMPLE_TEXTURE2D(_SurfaceTex, sampler_SurfaceTex, IN.uv).r;
+                if (mask < 0.25) return half4(0, 0, 0, 0);
+                if (mask > 0.75) return _SurfaceColor;
+
+                half4 tint = SAMPLE_TEXTURE2D(_TintTex, sampler_TintTex, IN.uv);
+                half4 lightCol;
+                half4 darkCol;
+                if (tint.a > 0.5) {
+                    lightCol = half4(tint.rgb,         _WaterColorLight.a);
+                    darkCol  = half4(tint.rgb * 0.85,  _WaterColorDark.a);
+                } else {
+                    lightCol = _WaterColorLight;
+                    darkCol  = _WaterColorDark;
+                }
+
+                float px = floor(IN.uv.x * _WorldPixelSize.x);
+                float py = floor(IN.uv.y * _WorldPixelSize.y);
+                float s = (sin(_Time.y * 1.8 + px * 0.3 + py * 0.5) * 0.5 + 0.5) * 0.4;
+                half4 waterCol = lerp(darkCol, lightCol, s);
+
+                float2 cell = floor(float2(px / 10.0, py));
+                float cellRand = hash(cell);
+                float sparkleWave = sin(_Time.y * 0.6 + cellRand * 40.0);
+                float sparkleActive = smoothstep(0.82, 1.0, sparkleWave);
+
+                float localX = px - cell.x * 10.0;
+                float centerX = hash(cell + 0.5) * 6.0 + 2.0;
+                float inCluster = 1.0 - saturate(abs(localX - centerX) / _SparkleWidth);
+
+                float pixelPhase = hash(float2(px, py));
+                float flicker = sin(_Time.y * 2.5 + pixelPhase * 20.0) * 0.5 + 0.5;
+
+                float sparkle = sparkleActive * inCluster * flicker;
+                return lerp(waterCol, half4(1, 1, 1, waterCol.a), sparkle * 0.7);
+            }
+
+            ENDHLSL
+        }
     }
+    Fallback "Sprites/Default"
 }

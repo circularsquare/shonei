@@ -1,10 +1,17 @@
-// Custom tile sprite shader. Tiles use pre-baked 20×20 sprites (from TileSpriteCache)
-// that already contain the correct border art for their adjacency state.
-// This shader just samples _MainTex and clips transparent pixels.
-Shader "Custom/TileSprite" {
+// Project-wide replacement for Unity's Sprite-Lit-Default. Identical visible
+// output to a plain unlit sprite (texture × vertex color × renderer color),
+// but with both Universal2D and UniversalForward passes so it works under both
+// URP renderer types AND participates in our LightFeature's NormalsCapture
+// filter (which keys on the Universal2D LightMode tag).
+//
+// Why we don't use Sprite-Lit-Default: it has only a Universal2D pass, so it
+// disappears under URP's Universal renderer. We don't need its 2D-Lights
+// sampling either — our custom LightFeature does all lighting via a separate
+// multiply blit, and there are no Light2D components in the scene.
+Shader "Custom/Sprite" {
     Properties {
-        _MainTex ("Sprite Texture", 2D) = "white" {}
-        [HideInInspector] _Color ("Tint", Color) = (1,1,1,1)
+        [PerRendererData] _MainTex ("Sprite Texture", 2D) = "white" {}
+        [HideInInspector] _Color         ("Tint", Color) = (1,1,1,1)
         [HideInInspector] _RendererColor ("RendererColor", Color) = (1,1,1,1)
     }
     SubShader {
@@ -12,6 +19,7 @@ Shader "Custom/TileSprite" {
             "Queue" = "Transparent"
             "RenderType" = "Transparent"
             "RenderPipeline" = "UniversalPipeline"
+            "IgnoreProjector" = "True"
         }
         Blend SrcAlpha OneMinusSrcAlpha
         Cull Off
@@ -52,14 +60,13 @@ Shader "Custom/TileSprite" {
             }
 
             half4 frag(Varyings i) : SV_Target {
-                float4 c = i.color * SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv);
-                clip(c.a - 0.1);
+                half4 c = i.color * SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv);
+                clip(c.a - 0.01);
                 return c;
             }
             ENDHLSL
         }
 
-        // UniversalForward fallback — same logic.
         Pass {
             Tags { "LightMode" = "UniversalForward" }
             HLSLPROGRAM
@@ -95,8 +102,8 @@ Shader "Custom/TileSprite" {
             }
 
             half4 frag(Varyings i) : SV_Target {
-                float4 c = i.color * SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv);
-                clip(c.a - 0.1);
+                half4 c = i.color * SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv);
+                clip(c.a - 0.01);
                 return c;
             }
             ENDHLSL

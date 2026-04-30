@@ -1,0 +1,24 @@
+# default_world_10s — snapshot summary
+# Auto-generated alongside the golden. Eyeball this in PRs for high-level diffs.
+
+timer:      82.0021
+worldSeed:  95644
+isRaining:  False
+
+tiles:      4909
+structures: 13
+blueprints: 0
+animals:    4
+
+structures by type:
+     5 × tree
+     3 × appletree
+     2 × bamboo
+     2 × wheat
+     1 × market
+
+animals (name, job):
+  Acorn        none
+  Clover       logger
+  Fennel       farmer
+  Xue          hauler

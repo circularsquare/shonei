@@ -272,7 +272,7 @@ public class MouseController : MonoBehaviour {
             int dy = previewExtensionSrs.Count + 1;
             GameObject extGo = new GameObject($"buildPreviewExt{dy}");
             extGo.transform.SetParent(buildPreview.transform, false);
-            SpriteRenderer extSr = extGo.AddComponent<SpriteRenderer>();
+            SpriteRenderer extSr = SpriteMaterialUtil.AddSpriteRenderer(extGo);
             extSr.sortingOrder = buildPreviewSr.sortingOrder;
             LightReceiverUtil.SetSortBucket(extSr);
             previewExtensionSrs.Add(extSr);

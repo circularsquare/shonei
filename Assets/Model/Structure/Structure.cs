@@ -264,7 +264,7 @@ public class Structure {
         // to the base `{name}` sprite for 1-tall shapes). Legacy uses the base sprite.
         // Falls back to the shared default when the StructType's sprite is missing.
         sprite = StructureVisuals.ResolveAnchorSprite(st, shape, out bool spriteWasFallback);
-        sr = go.AddComponent<SpriteRenderer>();
+        sr = SpriteMaterialUtil.AddSpriteRenderer(go);
         sr.sprite = sprite;
         sr.flipX = mirrored;
         go.transform.rotation = StructureVisuals.RotationFor(rotation);
@@ -340,7 +340,7 @@ public class Structure {
                 GameObject extGo = new GameObject($"struct_{st.name}_ext{dy}");
                 extGo.transform.SetParent(go.transform, false);
                 extGo.transform.localPosition = new Vector3(0f, dy, 0f);
-                SpriteRenderer extSr = extGo.AddComponent<SpriteRenderer>();
+                SpriteRenderer extSr = SpriteMaterialUtil.AddSpriteRenderer(extGo);
                 extSr.sprite = StructureVisuals.LoadShapeSprite(st, shape, dy);
                 extSr.sortingOrder = sr.sortingOrder;
                 extSr.flipX = mirrored;
@@ -356,7 +356,7 @@ public class Structure {
         if (fireSprite != null) {
             fireGO = new GameObject("fire");
             fireGO.transform.SetParent(go.transform, false);
-            fireSR = fireGO.AddComponent<SpriteRenderer>();
+            fireSR = SpriteMaterialUtil.AddSpriteRenderer(fireGO);
             fireSR.sprite = fireSprite;
             fireSR.sortingOrder = sr.sortingOrder;
             fireSR.flipX = mirrored;

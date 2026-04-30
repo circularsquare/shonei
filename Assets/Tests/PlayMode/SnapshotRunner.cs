@@ -1,6 +1,9 @@
 using System.Collections;
 using System.IO;
+using System.Linq;
 using System.Reflection;
+using System.Text;
+using Newtonsoft.Json;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -101,14 +104,16 @@ public static class SnapshotRunner {
 
     static void AssertMatchesGolden(string actual, string name) {
         if (!Directory.Exists(ScenariosDir)) Directory.CreateDirectory(ScenariosDir);
-        string goldenPath = System.IO.Path.Combine(ScenariosDir, name + ".golden.json");
-        string actualPath = System.IO.Path.Combine(Application.temporaryCachePath, name + ".actual.json");
+        string goldenPath  = System.IO.Path.Combine(ScenariosDir, name + ".golden.json");
+        string summaryPath = System.IO.Path.Combine(ScenariosDir, name + ".summary.txt");
+        string actualPath  = System.IO.Path.Combine(Application.temporaryCachePath, name + ".actual.json");
 
         if (!File.Exists(goldenPath)) {
             File.WriteAllText(goldenPath, actual);
+            File.WriteAllText(summaryPath, BuildSummary(actual, name));
             Assert.Inconclusive(
-                $"Initial golden written to {goldenPath}. Review the contents, then re-run; " +
-                "subsequent runs will diff against it."
+                $"Initial golden written to {goldenPath}. Review the summary at {summaryPath}, " +
+                "then re-run; subsequent runs will diff against it."
             );
             return;
         }
@@ -116,15 +121,63 @@ public static class SnapshotRunner {
         string golden = File.ReadAllText(goldenPath);
         if (actual == golden) {
             if (File.Exists(actualPath)) File.Delete(actualPath);
+            // Re-write the summary on every pass so it stays in sync if the golden was
+            // edited by hand. Cheap; idempotent when the golden is stable.
+            File.WriteAllText(summaryPath, BuildSummary(actual, name));
             return;
         }
 
         File.WriteAllText(actualPath, actual);
         Assert.Fail(
             $"Snapshot diverged for '{name}'.\n" +
-            $"  golden: {goldenPath}\n" +
-            $"  actual: {actualPath}\n" +
-            "Use a diff tool to compare. If the new state is intended, delete the golden and re-run to re-baseline."
+            $"  golden:  {goldenPath}\n" +
+            $"  summary: {summaryPath}  (current committed state)\n" +
+            $"  actual:  {actualPath}    (what this run produced)\n" +
+            "Diff the goldens for full state, or compare summary→actual for a high-level view. " +
+            "If the new state is intended, delete the golden and re-run to re-baseline."
         );
+    }
+
+    // Builds a short human-readable digest of a snapshot for PR review. The full golden
+    // is too large to eyeball; this is the part people actually look at to confirm
+    // "did the change do what I expected?" Stays in sync with the golden via the
+    // AssertMatchesGolden write path.
+    static string BuildSummary(string json, string name) {
+        WorldSaveData data = JsonConvert.DeserializeObject<WorldSaveData>(json);
+        StringBuilder sb = new StringBuilder();
+        sb.AppendLine($"# {name} — snapshot summary");
+        sb.AppendLine($"# Auto-generated alongside the golden. Eyeball this in PRs for high-level diffs.");
+        sb.AppendLine();
+        sb.AppendLine($"timer:      {data.timer:F4}");
+        sb.AppendLine($"worldSeed:  {data.worldSeed}");
+        sb.AppendLine($"isRaining:  {data.isRaining}");
+        sb.AppendLine();
+        sb.AppendLine($"tiles:      {data.tiles?.Length ?? 0}");
+        sb.AppendLine($"structures: {data.structures?.Length ?? 0}");
+        sb.AppendLine($"blueprints: {data.blueprints?.Length ?? 0}");
+        sb.AppendLine($"animals:    {data.animals?.Length ?? 0}");
+
+        if (data.structures != null && data.structures.Length > 0) {
+            sb.AppendLine();
+            sb.AppendLine("structures by type:");
+            var byType = data.structures.GroupBy(s => s.typeName)
+                                        .OrderByDescending(g => g.Count())
+                                        .ThenBy(g => g.Key);
+            foreach (var g in byType) sb.AppendLine($"  {g.Count(),4} × {g.Key}");
+        }
+
+        if (data.animals != null && data.animals.Length > 0) {
+            sb.AppendLine();
+            sb.AppendLine("animals (name, job):");
+            foreach (var a in data.animals.OrderBy(a => a.aName))
+                sb.AppendLine($"  {a.aName,-12} {a.jobName}");
+        }
+
+        if (data.research != null && data.research.unlockedIds != null && data.research.unlockedIds.Length > 0) {
+            sb.AppendLine();
+            sb.AppendLine($"research: {data.research.unlockedIds.Length} unlocked");
+        }
+
+        return sb.ToString();
     }
 }

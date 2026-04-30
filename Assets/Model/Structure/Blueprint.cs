@@ -124,7 +124,7 @@ public class Blueprint {
         // Anchor sprite — variant `_b` for shape-aware tall, base sprite for 1-tall / legacy.
         // Falls back to the shared default when the StructType's sprite is missing.
         sprite = StructureVisuals.ResolveAnchorSprite(structType, shape, out bool spriteWasFallback);
-        SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+        SpriteRenderer sr = SpriteMaterialUtil.AddSpriteRenderer(go);
         sr.sortingOrder = 100;
         LightReceiverUtil.SetSortBucket(sr);
         sr.sprite = sprite;
@@ -144,7 +144,7 @@ public class Blueprint {
                 GameObject extGo = new GameObject($"blueprint_{structType.name}_ext{dy}");
                 extGo.transform.SetParent(go.transform, false);
                 extGo.transform.localPosition = new Vector3(0f, dy, 0f);
-                SpriteRenderer extSr = extGo.AddComponent<SpriteRenderer>();
+                SpriteRenderer extSr = SpriteMaterialUtil.AddSpriteRenderer(extGo);
                 extSr.sprite = StructureVisuals.LoadShapeSprite(structType, shape, dy);
                 extSr.sortingOrder = sr.sortingOrder;
                 extSr.flipX = mirrored;

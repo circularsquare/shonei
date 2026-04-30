@@ -51,13 +51,16 @@ Shader "Custom/CrackedSprite" {
 
             TEXTURE2D(_MainTex);  SAMPLER(sampler_MainTex);
             TEXTURE2D(_CrackTex); SAMPLER(sampler_CrackTex);
-            float4 _CrackTex_ST;
-            float4 _CrackColor;
-            float  _CrackStrength;
-            float  _CrackScale;
-            float4 _BrokenTint;
-            float4 _Color;
-            half4  _RendererColor;
+
+            CBUFFER_START(UnityPerMaterial)
+                float4 _CrackTex_ST;
+                float4 _CrackColor;
+                float  _CrackStrength;
+                float  _CrackScale;
+                float4 _BrokenTint;
+                float4 _Color;
+                half4  _RendererColor;
+            CBUFFER_END
 
             struct Attributes {
                 float3 positionOS : POSITION;
@@ -107,13 +110,16 @@ Shader "Custom/CrackedSprite" {
 
             TEXTURE2D(_MainTex);  SAMPLER(sampler_MainTex);
             TEXTURE2D(_CrackTex); SAMPLER(sampler_CrackTex);
-            float4 _CrackTex_ST;
-            float4 _CrackColor;
-            float  _CrackStrength;
-            float  _CrackScale;
-            float4 _BrokenTint;
-            float4 _Color;
-            half4  _RendererColor;
+
+            CBUFFER_START(UnityPerMaterial)
+                float4 _CrackTex_ST;
+                float4 _CrackColor;
+                float  _CrackStrength;
+                float  _CrackScale;
+                float4 _BrokenTint;
+                float4 _Color;
+                half4  _RendererColor;
+            CBUFFER_END
 
             struct Attributes {
                 float3 positionOS : POSITION;

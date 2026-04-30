@@ -38,7 +38,7 @@ public class ClockHand : MonoBehaviour {
         // Also set this in the sprite's importer settings so it persists in builds.
         handSprite.texture.filterMode = FilterMode.Point;
 
-        SpriteRenderer sr = handGO.AddComponent<SpriteRenderer>();
+        SpriteRenderer sr = SpriteMaterialUtil.AddSpriteRenderer(handGO);
         sr.sprite = handSprite;
         // Sits above the clock body (depth-0 building, sortingOrder 10) and on
         // par with platforms (15). See SPEC-rendering.md sorting-order table.

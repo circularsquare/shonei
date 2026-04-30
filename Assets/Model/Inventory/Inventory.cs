@@ -118,7 +118,7 @@ public class Inventory{
                 stackGos[i] = new GameObject("InventoryStack_" + i);
                 stackGos[i].transform.position = new Vector3(x + quarterOffsets[i].x, y + quarterOffsets[i].y, 0);
                 stackGos[i].transform.SetParent(InventoryController.instance.transform, true);
-                SpriteRenderer sr = stackGos[i].AddComponent<SpriteRenderer>();
+                SpriteRenderer sr = SpriteMaterialUtil.AddSpriteRenderer(stackGos[i]);
                 sr.sortingOrder = 30;
                 LightReceiverUtil.SetSortBucket(sr);
             }
@@ -126,7 +126,7 @@ public class Inventory{
             go = new GameObject();
             go.transform.position = new Vector3(x, y, 0);
             go.transform.SetParent(InventoryController.instance.transform, true);
-            SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+            SpriteRenderer sr = SpriteMaterialUtil.AddSpriteRenderer(go);
             if (invType == InvType.Floor) { sr.sortingOrder = ComputeFloorSortingOrder(); }
             else {sr.sortingOrder = 30;}
             LightReceiverUtil.SetSortBucket(sr);

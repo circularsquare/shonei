@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 using System;
 
 // this class handles tile sprites, and also places initial objects into world.
@@ -25,6 +26,17 @@ public class WorldController : MonoBehaviour {
         instance = this;
 
         Application.runInBackground = true;
+
+        // Replicate the 2D Renderer's Y-axis sprite sorting under URP Universal
+        // Renderer. UniversalRendererData has no transparency-sort field, and
+        // URP hides the project-level Graphics setting from the Inspector when
+        // an SRP is active. Without this, two sprites sharing a sortingOrder
+        // (e.g. two animals at the same world position) could swap draw order
+        // between frames. Almost every sprite in this project sets an explicit
+        // sortingOrder per SPEC-rendering.md, so this is mostly belt-and-braces.
+        GraphicsSettings.transparencySortMode = TransparencySortMode.CustomAxis;
+        GraphicsSettings.transparencySortAxis = new Vector3(0f, 1f, 0f);
+
         world = this.gameObject.AddComponent<World>(); // add world
 
         tileGameObjectMap = new Dictionary<Tile, GameObject>();
@@ -82,7 +94,7 @@ public class WorldController : MonoBehaviour {
 
         GameObject go = new GameObject("FallAnim_" + iName);
         go.transform.SetParent(transform, true);
-        SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+        SpriteRenderer sr = SpriteMaterialUtil.AddSpriteRenderer(go);
         sr.sprite = sprite;
         sr.sortingOrder = 65; // below floor items (sortingOrder 70)
         LightReceiverUtil.SetSortBucket(sr);
