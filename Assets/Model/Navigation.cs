@@ -10,11 +10,14 @@ public class Node {
     public bool standable;
     public int componentId = -1;  // set by Graph.RebuildComponents(); -1 = impassable/unvisited
     public Tile tile;
-    // Optional structure-specific reference. Used by the transit edge system: an Elevator
-    // tags its bottom & top stop tile-nodes with itself, so Graph.GetEdgeInfo can return
-    // the elevator's published cost for the edge between them and Graph.IsNeighbor knows
-    // to keep that edge alive across UpdateNeighbors filtering. Null on regular nodes.
-    public object payload;
+    // Optional per-edge dispatch policy carried on this node. When two nodes share the
+    // same EdgePolicy reference (e.g. both elevator stops point to one ElevatorEdgePolicy),
+    // Graph.ResolveEdgePolicy returns it for the edge between them — driving cost lookup,
+    // OnApproach hooks, etc. IsNeighbor uses the same shared-policy check to preserve the
+    // edge across UpdateNeighbors filtering even when the nodes aren't geometrically adjacent.
+    // Null on regular nodes; static (constant) policies aren't stored here — they're chosen
+    // by ResolveEdgePolicy from node geometry (waypoint flags, dy threshold).
+    public EdgePolicy edgePolicy;
 
     public Node(Tile tile, int x, int y){
         this.tile = tile; this.x = x; this.y = y;
@@ -195,9 +198,11 @@ public class Graph {
 
     public bool IsNeighbor(Node node, Node neighbor){
         if (node.isWaypoint || neighbor.isWaypoint) return true; // waypoints manage their own connections
-        // Transit edges (Elevator stops): both nodes share the same payload reference. Survive
-        // UpdateNeighbors filtering even though they're not geometrically adjacent.
-        if (node.payload != null && ReferenceEquals(node.payload, neighbor.payload)) return true;
+        // Transit edges (e.g. Elevator stops): both nodes share the same EdgePolicy reference.
+        // The != null guard is load-bearing — without it, every plain pair would short-circuit
+        // on null == null = true and falsely preserve every dead edge across UpdateNeighbors
+        // filtering.
+        if (node.edgePolicy != null && node.edgePolicy == neighbor.edgePolicy) return true;
         int xDiff = neighbor.x - node.x; int yDiff = neighbor.y - node.y;
         return (
         ((xDiff == 1 || xDiff == -1) && yDiff == 0 && (node.standable && neighbor.standable))
@@ -274,71 +279,57 @@ public class Graph {
 
     // Returns (cost, physicalLength). Cost is used by A*; locomotion uses both
     // so that speed = maxSpeed * length / cost (correct traversal time regardless of edge length).
-    public (float cost, float length) GetEdgeInfo(Node from, Node to) {
-        // Transit edge (Elevator): both endpoints carry the same Elevator payload. Cost is
-        // sourced from the elevator (travel time + future wait estimate). Length matches the
-        // vertical span so locomotion math doesn't blow up — though the lerp is bypassed at
-        // runtime by Nav.Move's riding handoff, the elevator drives position directly.
-        if (from.payload != null && ReferenceEquals(from.payload, to.payload)
-                && from.payload is Elevator e1) {
-            return (e1.EstimatedTransitCost(from, to), Mathf.Abs(to.wy - from.wy));
-        }
-        // Waypoint-to-waypoint: distinguish cliff vertical leg from stair diagonal by x-distance
-        if (from.isWaypoint && to.isWaypoint) {
-            if (Math.Abs(to.wx - from.wx) < 0.1f) return (3.0f, 1.0f); // cliff vertical (slow both ways)
-            return (1.8f, 1.4142f); // stair diagonal
-        }
-        // Cliff/stair approach/exit and workspot waypoints — Euclidean so any X+Y offset
-        // (e.g. wheel workspot at 0.5x, 0.25y) gets the correct distance. Stair and cliff
-        // tile↔waypoint edges are horizontal (same y on both endpoints), so this matches
-        // the prior horizontal-only formula for those cases — only workspot edges differ.
-        if (from.isWaypoint || to.isWaypoint) {
-            float dx = to.wx - from.wx;
-            float dy = to.wy - from.wy;
-            float dist = Mathf.Sqrt(dx * dx + dy * dy);
-            return (dist, dist);
-        }
-        // Vertical movement — only ladders produce direct vertical edges now;
-        // cliff climbing goes through waypoints and is handled above.
-        if (Math.Abs(to.wy - from.wy) > 0.1f) return (2.0f, 1.0f);
-        // Horizontal — road tiles reduce cost from both sides (length always 1).
-        // Broken roads lose their bonus (EffectivePathCostReduction returns 0 when IsBroken).
-        float fromR = from.tile?.structs[3]?.EffectivePathCostReduction ?? 0f;
-        float toR   = to.tile?.structs[3]?.EffectivePathCostReduction   ?? 0f;
-        float baseCost = Mathf.Max(0.1f, 1.0f - fromR - toR);
-        // Water on either endpoint tile halves traversal speed (doubles cost).
-        bool inWater = (from.tile != null && from.tile.water > 0)
-                    || (to.tile   != null && to.tile.water   > 0);
-        return (inWater ? baseCost * 2f : baseCost, 1.0f);
-    }
+    // Road bonus included — A* prefers paths over roads.
+    public (float cost, float length) GetEdgeInfo(Node from, Node to)
+        => ComputeEdge(from, to, useRoadBonus: true);
+
     public float GetEdgeCost(Node from, Node to) => GetEdgeInfo(from, to).cost;
 
     // Edge info without road cost reduction — used by Nav.Move() for runtime movement speed.
     // Road bonus is instead applied per-tile via ModifierSystem.GetTravelSpeedMultiplier().
     // Waypoint, vertical, and water modifiers are kept (they affect traversal physics, not tile bonuses).
-    public (float cost, float length) GetRawEdgeInfo(Node from, Node to) {
-        // Transit edge — same as GetEdgeInfo. Move() bypasses the lerp during riding so this
-        // is rarely queried for transit, but parity keeps the math safe if it ever is.
-        if (from.payload != null && ReferenceEquals(from.payload, to.payload)
-                && from.payload is Elevator e1) {
-            return (e1.EstimatedTransitCost(from, to), Mathf.Abs(to.wy - from.wy));
-        }
-        if (from.isWaypoint && to.isWaypoint) {
-            if (Math.Abs(to.wx - from.wx) < 0.1f) return (3.0f, 1.0f);
-            return (1.8f, 1.4142f);
-        }
-        if (from.isWaypoint || to.isWaypoint) {
-            float dx = to.wx - from.wx;
-            float dy = to.wy - from.wy;
-            float dist = Mathf.Sqrt(dx * dx + dy * dy);
-            return (dist, dist);
-        }
-        if (Math.Abs(to.wy - from.wy) > 0.1f) return (2.0f, 1.0f);
-        // Horizontal — no road reduction; water still applies
+    public (float cost, float length) GetRawEdgeInfo(Node from, Node to)
+        => ComputeEdge(from, to, useRoadBonus: false);
+
+    // Single source of truth for edge cost. Special edges resolve to an EdgePolicy (transit,
+    // ladder, cliff/stair waypoint legs, waypoint approach); plain horizontal edges fall
+    // through to the default branch below where road bonus and water modifiers apply.
+    private (float cost, float length) ComputeEdge(Node from, Node to, bool useRoadBonus) {
+        EdgePolicy policy = ResolveEdgePolicy(from, to);
+        if (policy != null) return policy.GetEdgeInfo(from, to);
+        // Plain horizontal — water always applies, road bonus only when requested.
+        // Broken roads lose their bonus (EffectivePathCostReduction returns 0 when IsBroken).
         float baseCost = 1.0f;
+        if (useRoadBonus) {
+            float fromR = from.tile?.structs[3]?.EffectivePathCostReduction ?? 0f;
+            float toR   = to.tile?.structs[3]?.EffectivePathCostReduction   ?? 0f;
+            baseCost = Mathf.Max(0.1f, 1.0f - fromR - toR);
+        }
         bool inWater = (from.tile != null && from.tile.water > 0)
                     || (to.tile   != null && to.tile.water   > 0);
         return (inWater ? baseCost * 2f : baseCost, 1.0f);
+    }
+
+    // Returns the EdgePolicy governing the edge from→to, or null for plain horizontal.
+    // Two dispatch sources:
+    //   1. Per-instance: both endpoints carry the same EdgePolicy reference (transit edge).
+    //   2. Geometric: waypoint flags + dx/dy classification map to constant singletons
+    //      (cliff vertical / stair diagonal / approach / ladder).
+    // Note: assumes nodes carrying a per-instance policy are NOT also waypoints. Today only
+    // tile-backed nodes (Elevator stops) carry a policy reference, so this holds. If a future
+    // case needs a per-instance policy on a waypoint node, the precedence here makes the
+    // per-instance policy win — which is probably what you'd want, but worth verifying.
+    public static EdgePolicy ResolveEdgePolicy(Node from, Node to) {
+        // The != null guard is load-bearing — null == null would short-circuit otherwise.
+        if (from.edgePolicy != null && from.edgePolicy == to.edgePolicy) return from.edgePolicy;
+        if (from.isWaypoint && to.isWaypoint) {
+            return Math.Abs(to.wx - from.wx) < 0.1f
+                ? (EdgePolicy)CliffPolicy.Instance
+                : StairPolicy.Instance;
+        }
+        if (from.isWaypoint || to.isWaypoint) return WaypointApproachPolicy.Instance;
+        if (Math.Abs(to.wy - from.wy) > 0.1f) return LadderPolicy.Instance;
+        return null;  // plain horizontal — handled by ComputeEdge default branch
     }
 
     public bool GetStandability(int x, int y){

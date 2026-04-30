@@ -264,5 +264,26 @@ public class InfoPanel : MonoBehaviour {
         var animal = animalInfoView != null ? animalInfoView.SelectedAnimal : null;
         if (animal != null && animalHighlight != null && animalHighlight.activeSelf)
             animalHighlight.transform.position = animal.go.transform.position + new Vector3(0, 0.6f, -1);
+
+        HandleDebugKeys();
+    }
+
+    // Ctrl+Shift+D on a Structure tab → instant deconstruct (skips the worker
+    // step entirely). Reuses the canonical CreateDeconstructBlueprint →
+    // Deconstruct path so WOM cleanup, tile fall checks, and InfoPanel rebuild
+    // all run as normal. Bypasses material refunds and the storage-empty gate
+    // by design — this is a dev/test shortcut, not a player tool.
+    void HandleDebugKeys() {
+        if (!Input.GetKeyDown(KeyCode.D)) return;
+        bool ctrl  = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+        bool shift = Input.GetKey(KeyCode.LeftShift)   || Input.GetKey(KeyCode.RightShift);
+        if (!ctrl || !shift) return;
+        if (activeTabIndex < 0 || activeTabIndex >= tabs.Count) return;
+        TabEntry tab = tabs[activeTabIndex];
+        if (tab.type != TabType.Structure) return;
+        Structure s = (Structure)tab.data;
+        Debug.Log($"[debug] instant-deconstruct {s.structType.name} at ({s.x}, {s.y})");
+        Blueprint bp = Blueprint.CreateDeconstructBlueprint(s.tile, s);
+        bp?.Deconstruct();
     }
 }

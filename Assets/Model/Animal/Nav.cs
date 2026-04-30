@@ -24,12 +24,13 @@ public class Nav {
     // it when the elevator arrives at the destination stop. AbortRide does the same on cancel.
     public Elevator ridingElevator;
 
-    // Elevators we've placed a tentative (plan-time) reservation on for the current path.
-    // Populated in Navigate by scanning the path for transit edges; drained in EndNavigation.
-    // Each entry corresponds to one AddTentativeReservation call; cleanup must call
-    // RemoveTentativeReservation symmetrically. Holds stale refs harmlessly if the elevator
-    // is destroyed mid-path — RemoveTentativeReservation on a dead instance is a no-op.
-    private readonly List<Elevator> pendingElevators = new List<Elevator>();
+    // Edge policies we've placed a tentative (plan-time) commit on for the current path.
+    // Populated in Navigate by resolving each path edge; drained in EndNavigation. Constant
+    // policies (cliff/stair/ladder/approach) default OnPathCommit/OnPathRelease to no-ops,
+    // so only dynamic policies (e.g. ElevatorEdgePolicy) actually do work — but we register
+    // them all uniformly. Holds stale refs harmlessly if the underlying structure is
+    // destroyed mid-path — OnPathRelease on a dead policy is a no-op (Elevator's HashSet.Remove).
+    private readonly List<EdgePolicy> pendingPolicies = new List<EdgePolicy>();
 
     // True iff Move() is currently translating the animal's position via lerp. False when:
     //   - path is null / fully consumed
@@ -61,26 +62,24 @@ public class Nav {
         // Endpoint may be a tile-backed Node or an off-grid waypoint (e.g. wheel workspot).
         // AnimalStateManager.UpdateMovement reads target.wx/wy on arrival, which works for both.
         a.target = path.end;
-        // Tentative reservations: scan the path for transit edges and tell each elevator
-        // we're inbound. EstimatedTransitCost picks these up immediately so simultaneous
-        // planners see realistic queue depth.
+        // Path commit hook: resolve each edge's policy and notify it. ElevatorEdgePolicy
+        // uses this to register tentative reservations so simultaneous planners see
+        // realistic queue depth in EstimatedTransitCost. Constant policies are no-ops.
         for (int i = 0; i < path.length; i++) {
-            Node n0 = path.nodes[i];
-            Node n1 = path.nodes[i + 1];
-            if (n0.payload != null && ReferenceEquals(n0.payload, n1.payload) && n0.payload is Elevator e) {
-                e.AddTentativeReservation(a);
-                pendingElevators.Add(e);
+            EdgePolicy ep = Graph.ResolveEdgePolicy(path.nodes[i], path.nodes[i + 1]);
+            if (ep != null) {
+                ep.OnPathCommit(a);
+                pendingPolicies.Add(ep);
             }
         }
         RefreshLocomotion();
         return true;
     }
     private void EndNavigation(){
-        // Symmetric cleanup of tentative reservations. Idempotent: AddTentativeReservation
-        // is no-op if the animal already graduated to `reserved`, and RemoveTentativeReservation
-        // is a HashSet.Remove that no-ops on missing entries.
-        foreach (Elevator e in pendingElevators) e?.RemoveTentativeReservation(a);
-        pendingElevators.Clear();
+        // Symmetric release of every OnPathCommit. Idempotent — constant policies are no-ops,
+        // and dynamic policies (ElevatorEdgePolicy → HashSet.Remove) tolerate missing entries.
+        foreach (EdgePolicy ep in pendingPolicies) ep?.OnPathRelease(a);
+        pendingPolicies.Clear();
         path = null; pathIndex = 0; prevNode = null; nextNode = null; preventFall = false;
         RefreshLocomotion();
     }
@@ -98,11 +97,12 @@ public class Nav {
     bool ComputeLocomoting() {
         if (path == null || pathIndex >= path.length) return false;
         if (ridingElevator != null) return false;
-        // Parked at a transit-edge boarding tile, waiting for a ride.
-        if (prevNode != null && nextNode != null
-                && prevNode.payload != null
-                && ReferenceEquals(prevNode.payload, nextNode.payload)
-                && prevNode.payload is Elevator) return false;
+        // Parked before a lerp-suspending edge (e.g. boarding tile waiting for a ride).
+        // Symmetric with the SuspendsLerp consumer in MoveCore.
+        if (prevNode != null && nextNode != null) {
+            EdgePolicy ep = Graph.ResolveEdgePolicy(prevNode, nextNode);
+            if (ep != null && ep.SuspendsLerp) return false;
+        }
         return true;
     }
     public void Fall(){
@@ -152,25 +152,32 @@ public class Nav {
                 nextNode = path.nodes[pathIndex + 1];
             }
         }
-        // Transit edge: prev and next are both stop tile-nodes of the same elevator. Don't
-        // lerp through the air — request a ride and wait at the boarding tile. The elevator
-        // will load us when our turn comes; ridingElevator gates the early return above.
-        if (prevNode.payload != null && ReferenceEquals(prevNode.payload, nextNode.payload)
-                && prevNode.payload is Elevator ev) {
-            if (!ev.HasReservation(a)) ev.RequestRide(a, prevNode, nextNode);
-            preventFall = true;
-            return false;
+        // Per-edge dispatch: resolve the policy governing the edge ahead and apply its
+        // PreventFall + OnApproach + SuspendsLerp contract. Plain horizontal edges have no
+        // policy → preventFall = false, lerp continues normally below.
+        //
+        // The boarding-tile preventFall (via ElevatorEdgePolicy.PreventFall = true) is
+        // load-bearing across the boarding seam: there's a one-frame gap between Elevator.Tick
+        // setting ridingElevator = this and our next Nav.Move re-asserting preventFall via
+        // the riding branch above. ElevatorPlatform.Update runs per-frame and may drag the
+        // passenger off the standable boarding tile into the (non-standable) chassis interior
+        // before Animal.Update runs for this mouse. Without preventFall = true here,
+        // AnimalStateManager.UpdateMovement would read stale-false and trigger Fall on that
+        // first riding frame.
+        EdgePolicy policy = Graph.ResolveEdgePolicy(prevNode, nextNode);
+        if (policy != null) {
+            policy.OnApproach(a, prevNode, nextNode);
+            preventFall = policy.PreventFall;
+            if (policy.SuspendsLerp) return false;
+        } else {
+            preventFall = false;
         }
-        // Suppress falling on waypoint edges (cliff/stair) and vertical edges (ladders).
-        preventFall = prevNode.isWaypoint || nextNode.isWaypoint
-                   || Mathf.Abs(nextNode.wy - prevNode.wy) > 0.1f;
         var (edgeCost, edgeLen) = Graph.instance.GetRawEdgeInfo(prevNode, nextNode);
         float speed = ModifierSystem.GetTravelSpeedMultiplier(a);
         Vector2 newPos = Vector2.MoveTowards(
             new Vector2(a.x, a.y), new Vector2(nextNode.wx, nextNode.wy),
             speed * edgeLen / edgeCost * deltaTime);
-        a.x = newPos.x; a.y = newPos.y;
-        a.go.transform.position = new Vector3(a.x, a.y, a.z);
+        a.SnapTo(newPos.x, newPos.y);
 
         // Use the edge direction rather than the live position delta, so we don't
         // flicker facing when the animal lands exactly on a waypoint mid-frame.
@@ -185,12 +192,7 @@ public class Nav {
     public void OnTransitComplete(Node arrivalStop) {
         if (ridingElevator == null) return;
         ridingElevator = null;
-        if (arrivalStop != null) {
-            a.x = arrivalStop.wx;
-            a.y = arrivalStop.wy;
-            if (a.go != null)
-                a.go.transform.position = new Vector3(a.x, a.y, a.z);
-        }
+        if (arrivalStop != null) a.SnapTo(arrivalStop.wx, arrivalStop.wy);
         preventFall = false;
         RefreshLocomotion();
     }

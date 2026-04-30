@@ -60,6 +60,25 @@ public class Elevator : Building, PowerSystem.IPowerConsumer {
     // which beats stairs (≥1.8 cost per diagonal step) when the queue is empty.
     public const float PlatformSpeed = 1.2f;
 
+    // Power consumed per tile of platform travel. Total power for a trip is exactly
+    // `PowerPerTile * tilesTravelled`, independent of tick count — see CurrentDemand for
+    // how this proportionality is achieved despite per-tick allocation.
+    public const float PowerPerTile = 0.5f;
+
+    // Worst-case single-tick demand — full-speed travel tick. Used as the threshold by
+    // IsPowerAvailable ("could the network handle a max-effort tick if we asked?") and by
+    // the InfoPanel fallback when displaying the idle elevator's powered state.
+    public const float MaxTickDemand = PowerPerTile * PlatformSpeed;
+
+    // Stall-abort threshold. If the active head has been committed to a trip
+    // (MovingToBoardingFloor or Riding) for this many ticks without the platform
+    // physically advancing, we bail the rider and reset to Idle. Catches indefinite
+    // stuck-mouse scenarios that the per-rider abortAtTick patience can't see, since
+    // AbortStaleQueueEntries deliberately skips the active head. 60 ticks ≈ 60s of
+    // game time — comfortably above any normal trip on currently-shippable shaft heights
+    // (a 20-tile shaft takes ~16 ticks at full speed plus boarding/unloading overhead).
+    public const int StallAbortTicks = 60;
+
     // ── Static registry ──────────────────────────────────────────────
     static readonly List<Elevator> _all = new();
 
@@ -69,8 +88,9 @@ public class Elevator : Building, PowerSystem.IPowerConsumer {
     // history (which IS persisted in Phase 5) survives.
     static int currentTick = 0;
 
-    // Called from World.Update on the 1-second cadence (alongside PowerSystem.Tick).
-    // Snapshot in case a Tick triggers a Destroy that mutates _all.
+    // Called from World.Update on the 1-second cadence, BEFORE PowerSystem.Tick — so
+    // demand changes from cascading state transitions (Idle→Riding) are visible to the
+    // same tick's allocator. Snapshot in case a Tick triggers a Destroy that mutates _all.
     public static void TickAll() {
         currentTick++;
         if (_all.Count == 0) return;
@@ -82,11 +102,18 @@ public class Elevator : Building, PowerSystem.IPowerConsumer {
     public Node bottomStop;
     public Node topStop;
 
+    // Single per-elevator policy instance shared between both stop nodes' edgePolicy refs.
+    // Allows Graph.ResolveEdgePolicy to recognise the transit edge via reference equality
+    // (from.edgePolicy == to.edgePolicy) and routes cost / OnApproach / OnPathCommit calls
+    // back into us via the wrapper. Created in constructor, cleared in Destroy.
+    ElevatorEdgePolicy edgePolicy;
+
     // ── Dispatch state ──────────────────────────────────────────────
-    // No explicit Loading state — boarding is instant once the platform reaches the
-    // boarding floor (StartTrip and MovingToBoardingFloor call BoardPassenger directly).
-    // Unloading is the only deliberate 1-tick pause, so a successful trip visibly settles
-    // before the platform commits to the next request.
+    // No explicit Loading state — boarding is instant in StartTrip's parked-already path,
+    // and in MovingToBoardingFloor it waits implicitly for the platform's visual lerp to
+    // catch up to its parked offset (see IsPlatformVisuallySettled). Unloading is the only
+    // deliberate 1-tick pause, so a successful trip visibly settles before the platform
+    // commits to the next request.
     public enum DispatchState { Idle, MovingToBoardingFloor, Riding, Unloading }
     public DispatchState dispatchState { get; private set; } = DispatchState.Idle;
 
@@ -99,6 +126,14 @@ public class Elevator : Building, PowerSystem.IPowerConsumer {
 
     public Animal passenger { get; private set; }
     int currentTripStartTick = 0;   // currentTick when the active trip's loading completed
+
+    // Last tick on which we made *progress* — the platform physically moved, OR we just
+    // entered a moving state (so a freshly-started trip doesn't trip the stall check on
+    // a stale value left over from a previous trip). Used by AbortStalledActiveHead to
+    // detect "committed to a trip but the platform hasn't budged in N ticks" — typically
+    // a network that's been frozen for the whole window. Not persisted (in-flight trips
+    // don't survive saves anyway).
+    int lastAdvanceTick = 0;
 
     // Rolling history. recentTripTicks measures the server-side trip duration (loading →
     // unloading), used by EstimatedTransitCost as the per-queue-slot cost multiplier.
@@ -140,10 +175,14 @@ public class Elevator : Building, PowerSystem.IPowerConsumer {
         int ny = Shape.ny;
         bottomStop = graph.nodes[x, y];
         topStop = graph.nodes[x, y + ny - 1];
-        // Tag both stops with this elevator so Graph.GetEdgeInfo can route through us
-        // and IsNeighbor preserves the transit edge across UpdateNeighbors filtering.
-        bottomStop.payload = this;
-        topStop.payload = this;
+        // Tag both stops with the same policy instance so Graph.ResolveEdgePolicy
+        // recognises the transit edge (from.edgePolicy == to.edgePolicy) and routes
+        // cost queries / boarding hooks back to us via the wrapper. IsNeighbor uses
+        // the same shared-policy check to preserve the edge across UpdateNeighbors
+        // filtering even though the two stops aren't geometrically adjacent.
+        edgePolicy = new ElevatorEdgePolicy(this);
+        bottomStop.edgePolicy = edgePolicy;
+        topStop.edgePolicy = edgePolicy;
         // Transit edge — direct neighbor connection between the two stop tile-nodes.
         // RebuildComponents will pick this up automatically (BFS via neighbor lists).
         bottomStop.AddNeighbor(topStop, reciprocal: true);
@@ -172,16 +211,17 @@ public class Elevator : Building, PowerSystem.IPowerConsumer {
         pendingAnimals.Clear();
         passenger = null;
 
-        // Tear down the transit edge & payload markers before the structure-claim cleanup
+        // Tear down the transit edge & policy markers before the structure-claim cleanup
         // in base.Destroy(). RebuildComponents at the end re-merges the graph correctly.
         if (bottomStop != null && topStop != null) {
             bottomStop.RemoveNeighbor(topStop);
             topStop.RemoveNeighbor(bottomStop);
         }
-        if (bottomStop != null) bottomStop.payload = null;
-        if (topStop != null)    topStop.payload = null;
+        if (bottomStop != null) bottomStop.edgePolicy = null;
+        if (topStop != null)    topStop.edgePolicy = null;
         bottomStop = null;
         topStop = null;
+        edgePolicy = null;
 
         _all.Remove(this);
         PowerSystem.instance?.UnregisterConsumer(this);
@@ -242,18 +282,33 @@ public class Elevator : Building, PowerSystem.IPowerConsumer {
     // ── IPowerConsumer ───────────────────────────────────────────────
     public Structure Structure => this;
 
-    // Demand only kicks in while we're actively lifting a mouse. The empty-cabin fetch
-    // (MovingToBoardingFloor) is "free" — counterweight balances the empty platform — and
-    // load/unload are momentary state transitions with no movement. So an elevator sitting
-    // idle, or one fetching a passenger, draws 0 from the network. Display-wise this means
-    // the InfoPanel reads "consuming 0.0" almost all the time and "consuming 1.0" only
-    // during the actual lift.
-    public float CurrentDemand => dispatchState == DispatchState.Riding ? 1f : 0f;
+    // Demand is proportional to *this tick's intended platform motion*: every tile of
+    // travel costs `PowerPerTile` (= 0.5) power, regardless of how many ticks the trip
+    // takes. Both MovingToBoardingFloor (empty-cabin fetch) and Riding (carrying the
+    // passenger) draw — fetching is no longer "free". Idle and Unloading draw 0.
+    //
+    // Reading `targetY - currentY` BEFORE AdvanceTowards moves the platform means the
+    // allocator gets the right value on the same tick the elevator moves. The value is
+    // capped at PlatformSpeed (so mid-trip ticks all bill `PowerPerTile * PlatformSpeed`),
+    // and the partial last tick bills only the remaining distance — which is exactly what
+    // makes total trip cost = `PowerPerTile * verticalSpan` to the float.
+    //
+    // InfoPanel will display fractional values like "consuming 0.6" / "consuming 0.3"
+    // (partial-last-tick) — honest reflection of what the elevator is actually drawing.
+    public float CurrentDemand {
+        get {
+            bool moving = dispatchState == DispatchState.MovingToBoardingFloor
+                       || dispatchState == DispatchState.Riding;
+            if (!moving) return 0f;
+            float dy = Mathf.Min(PlatformSpeed, Mathf.Abs(targetY - currentY));
+            return PowerPerTile * dy;
+        }
+    }
 
     // "Could the network supply us if we asked right now?" Inclusive — returns true if
     // either we're currently allocated (rare for an idle elevator since Allocate skips
     // zero-demand consumers) OR the network's raw supply + storage discharge headroom
-    // could cover nominal demand. Used by:
+    // could cover a worst-case full-speed travel tick (`MaxTickDemand`). Used by:
     //   - EstimatedTransitCost (so A* picks idle-but-connected elevators).
     //   - Idle→Trip gate (don't start trips we can't finish).
     //   - Riding advance gate. We could use a strict "actually allocated this tick" check
@@ -275,7 +330,7 @@ public class Elevator : Building, PowerSystem.IPowerConsumer {
         if (net == null) return false;
         float available = net.supply;
         foreach (var st in net.storage) available += Mathf.Max(0f, st.MaxDischarge);
-        return available + 1e-4f >= 1f;
+        return available + 1e-4f >= MaxTickDemand;
     }
 
     public IEnumerable<PowerSystem.PowerPort> Ports {
@@ -348,6 +403,7 @@ public class Elevator : Building, PowerSystem.IPowerConsumer {
     // mouse arriving at a parked platform can board AND get the first riding step in
     // the same tick — eliminating the old ~2-tick delay.
     public void Tick() {
+        AbortStalledActiveHead();
         AbortStaleQueueEntries();
         while (true) {
             switch (dispatchState) {
@@ -363,11 +419,15 @@ public class Elevator : Building, PowerSystem.IPowerConsumer {
                 case DispatchState.MovingToBoardingFloor:
                     // No power gate — empty cabin / counterweight, demand=0. Move freely.
                     AdvanceTowards(targetY);
-                    if (Mathf.Approximately(currentY, targetY)) {
-                        // Skip the old "Loading" tick — board the passenger as part of the
-                        // arrival. The first Riding advance waits until next tick (we've
-                        // already used this tick's movement step on the descent's last leg),
-                        // giving a brief visible pause for boarding.
+                    // Two-part gate: discrete arrival (currentY hit boarding floor) AND the
+                    // platform's per-frame visual lerp has caught up to its parked offset.
+                    // Without the visual gate, the rider — who becomes platform-driven the
+                    // moment passenger is set — would be dragged from their parked y up to
+                    // the still-descending visual platform and visibly jolt back down as the
+                    // lerp catches up. After discrete arrival, AdvanceTowards is a no-op and
+                    // we just wait one or two ticks for the lerp (1.2 tiles/sec catching up
+                    // to a ~1.2-tile lag at 1× game speed) before boarding.
+                    if (Mathf.Approximately(currentY, targetY) && IsPlatformVisuallySettled()) {
                         BoardPassenger();
                     }
                     return;
@@ -392,10 +452,34 @@ public class Elevator : Building, PowerSystem.IPowerConsumer {
         }
     }
 
+    // Sustained-stall abort. The active head's normal abortAtTick patience is skipped by
+    // AbortStaleQueueEntries (we don't want to bail a mouse mid-trip just because a busy
+    // queue ate their patience budget before they boarded), so without this check a rider
+    // committed to a trip on a permanently-frozen network would wait forever. We instead
+    // measure stall directly: if we're in a moving state (MovingToBoardingFloor / Riding)
+    // and the platform hasn't physically advanced in StallAbortTicks ticks, bail the head.
+    //
+    // Bail semantics: dequeue the head, AbortRide on the rider (if any), Fail their task,
+    // clear passenger, revert to Idle. The platform stays where it stalled. lastAdvanceTick
+    // is reset so the next ride request starts with a fresh stall window.
+    void AbortStalledActiveHead() {
+        if (queue.Count == 0) return;
+        bool isMoving = dispatchState == DispatchState.MovingToBoardingFloor
+                     || dispatchState == DispatchState.Riding;
+        if (!isMoving) return;
+        if (currentTick - lastAdvanceTick <= StallAbortTicks) return;
+        var head = queue.Dequeue();
+        BailRequest(head);
+        passenger = null;   // BailRequest already called AbortRide on the animal
+        dispatchState = DispatchState.Idle;
+        lastAdvanceTick = currentTick;
+    }
+
     // Patience timeout — bail mice whose abortAtTick has passed. Skips the head when it's
     // actively being served (state ≠ Idle), since at that point the platform is committed
-    // to that trip. Mice queued behind a stale head can still abort. Called at the top of
-    // each Tick(); rebuilds the queue in O(N) which is fine for small queues (~5 entries).
+    // to that trip — sustained-stall is handled separately by AbortStalledActiveHead above.
+    // Mice queued behind a stale head can still abort. Called at the top of each Tick();
+    // rebuilds the queue in O(N) which is fine for small queues (~5 entries).
     void AbortStaleQueueEntries() {
         if (queue.Count == 0) return;
         var snapshot = queue.ToArray();
@@ -430,6 +514,7 @@ public class Elevator : Building, PowerSystem.IPowerConsumer {
             BoardPassenger();
         } else {
             dispatchState = DispatchState.MovingToBoardingFloor;
+            lastAdvanceTick = currentTick;     // freshly committed; reset stall window
         }
     }
 
@@ -441,6 +526,7 @@ public class Elevator : Building, PowerSystem.IPowerConsumer {
         currentTripStartTick = currentTick;
         targetY = next.toStop.wy - y;
         dispatchState = DispatchState.Riding;
+        lastAdvanceTick = currentTick;          // freshly committed; reset stall window
     }
 
     void CompleteTrip() {
@@ -461,8 +547,26 @@ public class Elevator : Building, PowerSystem.IPowerConsumer {
         dispatchState = DispatchState.Idle;
     }
 
+    // True when the per-frame platform lerp has caught up to its parked-floor offset
+    // (currentY - 1) within a one-frame slack. Used by the boarding gate so the rider
+    // doesn't take over from the platform's drag while the visual is still mid-lerp.
+    // Returns true if the platformGO isn't attached yet (headless paths / pre-
+    // AttachAnimations) so non-rendered code paths still advance.
+    bool IsPlatformVisuallySettled() {
+        if (platformGO == null) return true;
+        float expected = currentY - 1f;
+        return Mathf.Abs(platformGO.transform.localPosition.y - expected) < 0.05f;
+    }
+
     void AdvanceTowards(float t) {
+        float prev = currentY;
         currentY = Mathf.MoveTowards(currentY, t, PlatformSpeed);
+        // Only count a real position change as "progress" — a no-op MoveTowards (already
+        // at target) shouldn't refresh the stall window. The state machine reaches
+        // AdvanceTowards on Riding ticks with currentY == targetY only in the partial-tick
+        // edge where Mathf.Approximately fires — a vanishingly rare fall-through, but cheap
+        // to guard.
+        if (currentY != prev) lastAdvanceTick = currentTick;
     }
 
     // Initial sync at boarding: snap passenger to the platform's current world position
@@ -471,9 +575,30 @@ public class Elevator : Building, PowerSystem.IPowerConsumer {
     // CompleteTrip clears the riding state.
     void SnapPassengerToPlatform() {
         if (passenger == null) return;
-        passenger.x = x;
-        passenger.y = y + currentY;
-        if (passenger.go != null)
-            passenger.go.transform.position = new Vector3(passenger.x, passenger.y, passenger.z);
+        passenger.SnapTo(x, y + currentY);
     }
+}
+
+// EdgePolicy wrapper for an Elevator's transit edge. One instance per elevator, shared
+// between both stop nodes' edgePolicy refs (so Graph.ResolveEdgePolicy recognises the
+// transit edge via reference equality). Composition rather than `Elevator : EdgePolicy`
+// because Elevator already inherits from Building : Structure and C# disallows multi-
+// class inheritance. When future transit types (trains, trams) are added, each gets its
+// own parallel wrapper class — they may eventually share an ITransitVehicle interface
+// but that's earned after a second concrete case exists.
+public sealed class ElevatorEdgePolicy : EdgePolicy {
+    public readonly Elevator elevator;
+    public ElevatorEdgePolicy(Elevator e) { elevator = e; }
+
+    public override (float cost, float length) GetEdgeInfo(Node from, Node to)
+        => (elevator.EstimatedTransitCost(from, to), Mathf.Abs(to.wy - from.wy));
+
+    public override bool SuspendsLerp => true;
+
+    public override void OnApproach(Animal a, Node from, Node to) {
+        if (!elevator.HasReservation(a)) elevator.RequestRide(a, from, to);
+    }
+
+    public override void OnPathCommit(Animal a)  => elevator.AddTentativeReservation(a);
+    public override void OnPathRelease(Animal a) => elevator.RemoveTentativeReservation(a);
 }

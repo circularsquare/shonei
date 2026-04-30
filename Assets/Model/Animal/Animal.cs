@@ -829,6 +829,16 @@ public class Animal : MonoBehaviour{
 
     public Tile TileHere() { return world.GetTileAt(x, y); }
 
+    // Single point of truth for "set the animal's position." Mirrors (x, y) into the
+    // GameObject transform so the model and view stay in sync — every other site that
+    // mutates (x, y) (per-frame lerp, fall integration, elevator boarding/unloading,
+    // arrival snap) routes through here. Assumes go is set; Start() guarantees that.
+    public void SnapTo(float newX, float newY) {
+        x = newX;
+        y = newY;
+        go.transform.position = new Vector3(x, y, z);
+    }
+
     // Call after any position change to keep tile-occupancy tracking up to date.
     public void UpdateCurrentTile() {
         Tile newTile = TileHere();

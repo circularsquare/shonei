@@ -435,17 +435,14 @@ public class AnimalStateManager {
                 animal.state = AnimalState.Idle;
             } else if (nextTile.type.solid) {
                 // Would enter a solid tile — snap to its top surface
-                animal.y = nextTile.y + 1;
-                animal.go.transform.position = new Vector3(animal.x, animal.y, animal.z);
+                animal.SnapTo(animal.x, nextTile.y + 1);
                 animal.nav.fallVelocity = 0f;
                 animal.state = AnimalState.Idle;
             } else {
                 // Safe to move — apply and check for standable landing
-                animal.y = nextY;
-                animal.go.transform.position = new Vector3(animal.x, animal.y, animal.z);
+                animal.SnapTo(animal.x, nextY);
                 if (nextTile.node.standable && animal.y <= nextTile.y) {
-                    animal.y = nextTile.y;
-                    animal.go.transform.position = new Vector3(animal.x, animal.y, animal.z);
+                    animal.SnapTo(animal.x, nextTile.y);
                     animal.nav.fallVelocity = 0f;
                     animal.state = AnimalState.Idle;
                 }
@@ -463,10 +460,7 @@ public class AnimalStateManager {
                     // Arrived at destination. target is a Node — read float wx/wy so off-grid
                     // workspot waypoints (e.g. wheel runner) snap to the waypoint's actual
                     // position, not a rounded integer tile.
-                    animal.x = animal.target.wx;
-                    animal.y = animal.target.wy;
-                    animal.go.transform.position = new Vector3(animal.x, animal.y, animal.z);
-
+                    animal.SnapTo(animal.target.wx, animal.target.wy);
                     HandleArrival();
                 }
                 animal.go.transform.localScale = new Vector3(animal.facingRight ? 1 : -1, 1, 1);

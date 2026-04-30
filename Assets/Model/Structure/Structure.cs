@@ -166,14 +166,28 @@ public class Structure {
 
     // Per-tile standability override for structures that have walkable surfaces inside
     // their footprint that the default solidTop rule can't express. localDx/localDy are
-    // unmirrored offsets from the structure's anchor (this.x, this.y). Default false —
-    // standability falls through to the normal solidTop / support-from-below rules in
-    // Navigation.GetStandability. Used by Elevator to declare its top stop (y+ny-1) as
-    // a standable disembark surface even though it's inside the column.
+    // world-relative offsets from the structure's anchor (this.x, this.y) — i.e. what
+    // Navigation.GetStandability passes in (`x - s.x, y - s.y`). The base impl looks up
+    // the current Shape.standableOffsets[] (JSON-driven, un-mirrored coordinates) and
+    // applies mirroring to the input before comparing — see StandableOffset's comment.
+    // Default null offsets → false; standability falls through to the normal solidTop /
+    // support-from-below rules in Navigation.GetStandability.
     //
-    // Future: a JSON-driven per-tile/per-shape config would let non-subclassed structures
-    // declare partial-top patterns without forcing a subclass for every variant.
-    public virtual bool HasInternalFloorAt(int localDx, int localDy) => false;
+    // Subclasses that override this typically have a fixed structural rule (e.g. Elevator
+    // exposes top + bottom of a 1-wide column) and don't need to call base. JSON-driven
+    // patterns are for non-subclassed structures.
+    public virtual bool HasInternalFloorAt(int localDx, int localDy) {
+        var offs = Shape.standableOffsets;
+        if (offs == null || offs.Length == 0) return false;
+        // Author offsets are un-mirrored. For a mirrored placement, flip the input dx
+        // back to the authored frame before comparing. Mirroring of dy is a no-op (we
+        // only flip horizontally — see Structure.mirrored).
+        int authoredDx = mirrored ? (Shape.nx - 1 - localDx) : localDx;
+        for (int i = 0; i < offs.Length; i++) {
+            if (offs[i].dx == authoredDx && offs[i].dy == localDy) return true;
+        }
+        return false;
+    }
 
     // Helper for the common "load a sliced sheet, attach a FrameAnimator" pattern. Returns
     // null (and adds nothing) when the sheet has only a single sprite — animation is opt-in

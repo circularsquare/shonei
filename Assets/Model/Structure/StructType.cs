@@ -13,6 +13,17 @@ public class WorkTileOffset {
     public int dy {get; set;}
 }
 
+// Per-shape standable tile offset: declares that this specific (dx, dy) tile inside the
+// footprint is a walkable surface, beyond what the default solidTop / multi-tile-body
+// rules in Navigation.GetStandability would conclude. Used by Shape.standableOffsets[]
+// to give non-subclassed multi-tile buildings partial-top patterns from JSON. Mirroring
+// is applied at runtime by Structure.HasInternalFloorAt() — author offsets against the
+// un-flipped shape (the way the sprite reads at mirrored=false).
+public class StandableOffset {
+    public int dx {get; set;}
+    public int dy {get; set;}
+}
+
 public class TileRequirement {
     public int dx {get; set;}
     public int dy {get; set;}
@@ -34,6 +45,14 @@ public class Shape {
     public int nx {get; set;}
     public int ny {get; set;}
     public int TileCount => Mathf.Max(1, nx) * Mathf.Max(1, ny);
+
+    // Optional partial-top / internal-floor pattern for this shape variant. When set, the
+    // base Structure.HasInternalFloorAt iterates these and reports any matching tile as
+    // standable, letting non-subclassed multi-tile buildings declare walkable surfaces
+    // inside their footprint without writing a Structure subclass. Each offset is in
+    // un-mirrored shape-local coordinates (0 ≤ dx < nx, 0 ≤ dy < ny); mirroring is applied
+    // at lookup time. Null = no internal floor (the default).
+    public StandableOffset[] standableOffsets {get; set;}
 }
 
 public class StructType {

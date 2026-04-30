@@ -1,6 +1,13 @@
 // Renders all sprites into a world-space normals RT owned by LightFeature.
 // Each sprite's _NormalMap (tangent-space, RGBA32) is decoded and transformed
-// to world-space for a flat 2D sprite: tangent (x,y,z) → world (x, y, -z).
+// to world space using the sprite's actual transform — so a rotating sprite's
+// lit side stays fixed in world space rather than spinning with the texture.
+//
+// Per-vertex we send worldT (= sprite's local +X in world) and worldB (= local
+// +Y in world). The fragment then forms the world normal as
+// tn.x*worldT + tn.y*worldB + tn.z*(0,0,-1). For an unrotated, unit-scale
+// sprite this reduces to (tn.x, tn.y, -tn.z) — identical to the previous
+// behaviour, so static sprites are unaffected.
 //
 // Output packing (ARGB32):
 //   R, G = world-space normal.x, normal.y packed 0–1 (z reconstructed in
@@ -50,12 +57,18 @@ Shader "Hidden/NormalsCapture" {
         struct Varyings {
             float4 positionCS : SV_POSITION;
             float2 uv         : TEXCOORD0;
+            // Sprite's local +X / +Y axes expressed in world space. Carries the
+            // object's rotation (and uniform scale, harmlessly — we normalize).
+            float3 worldT     : TEXCOORD1;
+            float3 worldB     : TEXCOORD2;
         };
 
         Varyings vert(Attributes IN) {
             Varyings OUT;
             OUT.positionCS = TransformWorldToHClip(TransformObjectToWorld(IN.positionOS));
             OUT.uv         = IN.uv;
+            OUT.worldT     = TransformObjectToWorldDir(float3(1, 0, 0));
+            OUT.worldB     = TransformObjectToWorldDir(float3(0, 1, 0));
             return OUT;
         }
 
@@ -72,11 +85,13 @@ Shader "Hidden/NormalsCapture" {
 
             // SpriteRenderer.flipX negates mesh vertex X, reversing winding → back face.
             // Negate tangent X to keep the world-space normal pointing the right way.
+            // (worldT/worldB come from the GameObject's transform, which flipX doesn't
+            // touch — flipX is a mesh-vertex flip — so this still composes correctly.)
             if (!isFrontFace) tn.x = -tn.x;
 
-            // For flat 2D sprites facing the camera:
-            // tangent X → world +X, tangent Y → world +Y, tangent Z → world -Z.
-            float3 wn = normalize(float3(tn.x, tn.y, -tn.z));
+            // Tangent → world: rotate (and reflect) the sampled normal by the sprite's
+            // own basis. Sprite's local +Z (out of the texture) → world -Z (toward camera).
+            float3 wn = normalize(tn.x * IN.worldT + tn.y * IN.worldB + tn.z * float3(0, 0, -1));
 
             // For shadow casters (pass 0), encode edge depth in alpha.
             // _NormalMap.a carries edge-distance falloff baked by TileSpriteCache:

@@ -18,9 +18,12 @@ public class ElevatorPlatform : MonoBehaviour {
         // The lerp target is therefore (currentY − 1); the passenger drag below adds the
         // tile back so the rider lands at elevator.y + currentY.
         float target = elevator.currentY - 1f;
-        // PlatformSpeed is tiles/tick and one tick = one in-game second, so this lerp
-        // catches up to the discrete target by the next tick at 1× game speed. If the
-        // game ever introduces a speed multiplier, this will lag — fix it then.
+        // PlatformSpeed is tiles/tick and one tick = one in-game second; both the discrete
+        // tick cadence and Time.deltaTime here are timeScale-scaled, so this lerp covers
+        // exactly PlatformSpeed tiles per game-second at any speed. The visual stays ~1
+        // game-tick behind the discrete currentY (compressed in real time at faster speeds,
+        // not stretched). Would only fall behind if Time.deltaTime got clamped at
+        // Time.maximumDeltaTime (default 0.333s) — i.e. timeScale > ~20 at 60fps.
         float speed = Elevator.PlatformSpeed;
         Vector3 p = transform.localPosition;
         p.y = Mathf.MoveTowards(p.y, target, speed * Time.deltaTime);

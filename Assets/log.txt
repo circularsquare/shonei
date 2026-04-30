@@ -1,5 +1,7 @@
 meoww!!
 
+4/30
+- gpu optimizations
 4/29
 - dynamic power port visuals
 - power balancing, general power cleanups

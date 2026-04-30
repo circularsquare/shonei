@@ -54,6 +54,12 @@ public class LightSource : MonoBehaviour {
 
     public static readonly List<LightSource> all = new();
 
+    // Renderers with a real _EmissionMap (torch fire children, fireplace bodies, etc.).
+    // LightFeature § 5 iterates this instead of DrawRenderers(litMask) so the emission
+    // pass only touches sprites that actually contribute, not every visible lit sprite.
+    // Keep in lockstep with _emissionReceiver via SetEmissionReceiver().
+    public static readonly List<Renderer> emissiveReceivers = new();
+
     // Fractional-fen accumulator so sub-fen burn rates work correctly across frames.
     private float _fuelAccumulator = 0f;
 
@@ -72,14 +78,14 @@ public class LightSource : MonoBehaviour {
         ResolveSortOrder();
         // If the building has a fire child, _EmissionMap lives on its SpriteRenderer.
         // Otherwise fall back to the parent SR (legacy path for non-fire emissive buildings).
-        _emissionReceiver = building?.fireSR ?? GetComponentInParent<SpriteRenderer>();
+        SetEmissionReceiver(building?.fireSR ?? GetComponentInParent<SpriteRenderer>());
         UpdateEmissionMpb();
     }
     void Start() {
         // Re-resolve: building is null during the OnEnable triggered by
         // AddComponent — the caller assigns ls.building = this afterward.
         // By Start(), all fields are set, so we can target fireSR correctly.
-        _emissionReceiver = building?.fireSR ?? GetComponentInParent<SpriteRenderer>();
+        SetEmissionReceiver(building?.fireSR ?? GetComponentInParent<SpriteRenderer>());
         UpdateEmissionMpb();
     }
     void OnDisable() {
@@ -87,7 +93,17 @@ public class LightSource : MonoBehaviour {
         // Restore default emission on disable so the sprite doesn't stay dark
         // if the LightSource is removed but the structure persists.
         if (_emissionReceiver != null) WriteEmissionMpb(1f);
+        SetEmissionReceiver(null);
         if (building?.fireGO != null) building.fireGO.SetActive(false);
+    }
+
+    // Keeps _emissionReceiver and the emissiveReceivers registry in lockstep.
+    // Skips registering directional lights (sun) — they have no _EmissionMap and
+    // would just add a wasted draw call to LightFeature § 5.
+    private void SetEmissionReceiver(SpriteRenderer next) {
+        if (_emissionReceiver != null) emissiveReceivers.Remove(_emissionReceiver);
+        _emissionReceiver = next;
+        if (next != null && !isDirectional) emissiveReceivers.Add(next);
     }
 
     private void ResolveSortOrder() {

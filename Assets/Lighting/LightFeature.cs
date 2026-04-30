@@ -97,7 +97,7 @@ public class LightFeature : ScriptableRendererFeature {
         if ((cullingMask & (litLayers | directionalOnlyLayers | waterLayer | backgroundLayer)) == 0) return;
         capturePass.Setup(litLayers, shadowCasterLayers, directionalOnlyLayers, waterLayer, backgroundLayer);
         renderer.EnqueuePass(capturePass);
-        lightPass.Setup(renderer.cameraColorTarget, ambientNormal, deepAmbientColor, skyLightBlend, sortRampRange, behindFarHeightFactor, litLayers, emissionStrength);
+        lightPass.Setup(renderer.cameraColorTarget, ambientNormal, deepAmbientColor, skyLightBlend, sortRampRange, behindFarHeightFactor, emissionStrength);
         renderer.EnqueuePass(lightPass);
     }
 
@@ -240,7 +240,6 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
     float sortRampRange;
     float behindFarHeightFactor;
     float emissionStrength = 1f;
-    int   litMask = ~0;
     Color deepAmbientColor;
     RenderTargetIdentifier colorBuffer;
     readonly Material circleMat;
@@ -272,14 +271,13 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         CoreUtils.Destroy(quad);
     }
 
-    public void Setup(RenderTargetIdentifier colorBuffer, float ambientNormal, Color deepAmbientColor, float skyLightBlend, float sortRampRange, float behindFarHeightFactor, int litMask, float emissionStrength) {
+    public void Setup(RenderTargetIdentifier colorBuffer, float ambientNormal, Color deepAmbientColor, float skyLightBlend, float sortRampRange, float behindFarHeightFactor, float emissionStrength) {
         this.colorBuffer           = colorBuffer;
         this.ambientNormal         = ambientNormal;
         this.deepAmbientColor      = deepAmbientColor;
         this.skyLightBlend         = skyLightBlend;
         this.sortRampRange         = sortRampRange;
         this.behindFarHeightFactor = behindFarHeightFactor;
-        this.litMask               = litMask;
         this.emissionStrength      = emissionStrength;
     }
 
@@ -340,23 +338,36 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         }
 
         // ── 3. Point lights (torches, lanterns, etc.) ────────────────────────
-        foreach (var src in LightSource.all) {
-            if (src == null || src.isDirectional) continue;
-            mpb.SetColor("_LightColor",    src.lightColor);
-            mpb.SetFloat("_Intensity",     src.intensity);
-            mpb.SetFloat("_InnerFraction",
-                src.outerRadius > 0f ? src.innerRadius / src.outerRadius : 0f);
-            mpb.SetVector("_LightWorldPos", (Vector4)src.transform.position);
-            mpb.SetFloat("_LightHeight",    src.lightHeight);
-            mpb.SetFloat("_LightSortBucket", src.sortBucket);
+        // Skipped for SkyCamera (no torches in the sky), and culled per-light
+        // against the camera AABB so off-screen torches don't issue draw calls.
+        // The cull uses outerRadius as the buffer — a light just off-screen still
+        // illuminates on-screen pixels as long as its reach extends into view.
+        if (!isSkyCam) {
+            float camMaxX = camMinX + orthoW;
+            float camMaxY = camMinY + orthoH;
+            foreach (var src in LightSource.all) {
+                if (src == null || src.isDirectional) continue;
+                Vector3 lp = src.transform.position;
+                float r = src.outerRadius;
+                if (lp.x + r < camMinX || lp.x - r > camMaxX
+                 || lp.y + r < camMinY || lp.y - r > camMaxY) continue;
 
-            float d = src.outerRadius * 2f;
-            var matrix = Matrix4x4.TRS(
-                new Vector3(src.transform.position.x, src.transform.position.y, 0f),
-                Quaternion.identity,
-                new Vector3(d, d, 1f));
+                mpb.SetColor("_LightColor",    src.lightColor);
+                mpb.SetFloat("_Intensity",     src.intensity);
+                mpb.SetFloat("_InnerFraction",
+                    src.outerRadius > 0f ? src.innerRadius / src.outerRadius : 0f);
+                mpb.SetVector("_LightWorldPos", (Vector4)lp);
+                mpb.SetFloat("_LightHeight",    src.lightHeight);
+                mpb.SetFloat("_LightSortBucket", src.sortBucket);
 
-            cmd.DrawMesh(quad, matrix, circleMat, 0, 0, mpb);
+                float d = r * 2f;
+                var matrix = Matrix4x4.TRS(
+                    new Vector3(lp.x, lp.y, 0f),
+                    Quaternion.identity,
+                    new Vector3(d, d, 1f));
+
+                cmd.DrawMesh(quad, matrix, circleMat, 0, 0, mpb);
+            }
         }
 
         // ── 4. Directional lights (sun) — NdotL × shadow march ──────────────
@@ -386,21 +397,18 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         // white-by-mask additively into the lightmap. After composite, those
         // pixels keep their painted color verbatim — torches/fireplaces glow
         // regardless of time-of-day or distance from a real LightSource.
-        // Sprites without the secondary texture get the "black" fallback so
-        // this pass is a free no-op for them.
-        if (emissionMat != null && litMask != 0 && emissionStrength > 0f) {
+        //
+        // Iterates the explicit emissive registry (LightSource.emissiveReceivers)
+        // instead of DrawRenderers over the entire litMask — only ~N draws per
+        // frame where N = active emitters, vs. one shader invocation per visible
+        // lit sprite. Skipped for SkyCamera (clouds carry no emission).
+        if (!isSkyCam && emissionMat != null && emissionStrength > 0f) {
             cmd.SetGlobalFloat("_EmissionStrength", emissionStrength);
             cmd.SetRenderTarget(LightRTId);
-            context.ExecuteCommandBuffer(cmd);
-            cmd.Clear();
-
-            var ds = CreateDrawingSettings(
-                new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
-            ds.overrideMaterial          = emissionMat;
-            ds.overrideMaterialPassIndex = 0;
-
-            var fs = new FilteringSettings(RenderQueueRange.all, litMask);
-            context.DrawRenderers(rd.cullResults, ref ds, ref fs);
+            foreach (var r in LightSource.emissiveReceivers) {
+                if (r == null || !r.enabled || !r.gameObject.activeInHierarchy) continue;
+                cmd.DrawRenderer(r, emissionMat, 0, 0);
+            }
         }
 
         // ── 6. Composite — multiply-blit light RT onto the scene ─────────────

@@ -64,7 +64,11 @@ public class MouseController : MonoBehaviour {
             BuildPanel.instance?.CycleShape(+1);
         if (Input.GetKeyDown(KeyCode.Q) && mouseMode == MouseMode.Build)
             BuildPanel.instance?.CycleShape(-1);
-        if (Input.GetKeyDown(KeyCode.D) && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))) {
+        // Ctrl+D = audit dump. Excludes Shift so it doesn't double-fire with
+        // InfoPanel's Ctrl+Shift+D instant-deconstruct shortcut.
+        if (Input.GetKeyDown(KeyCode.D)
+                && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+                && !(Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))) {
             WorkOrderManager.instance?.AuditOrders();
             InventoryController.instance?.ValidateGlobalInventory();
             var ws = WeatherSystem.instance;

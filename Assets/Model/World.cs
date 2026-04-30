@@ -39,7 +39,6 @@ public class World : MonoBehaviour {
         if (instance != null){
             Debug.LogError("there should only be one world?");}
         instance = this;
-        Application.targetFrameRate = 100;
 
         graph = new Graph(this);
 
@@ -73,8 +72,13 @@ public class World : MonoBehaviour {
             plantController.TickUpdate();
             if (ResearchSystem.instance != null) ResearchSystem.instance.TickUpdate();
             MaintenanceSystem.instance?.Tick();
-            PowerSystem.instance?.Tick();
+            // Elevator ticks BEFORE PowerSystem so demand changes (Idle→Riding cascade)
+            // are visible to this tick's allocator. Without this, the first riding tick
+            // displays "unpowered" because demand was still 0 when Allocate ran. The
+            // elevator's IsPowerAvailable check reads last-tick allocation/supply, which
+            // is essentially identical to this-tick supply for the inclusive-fallback path.
             Elevator.TickAll();
+            PowerSystem.instance?.Tick();
         }
         float reconcilePeriod = 10f;
         if (Math.Floor((timer + Time.deltaTime) / reconcilePeriod) - Math.Floor(timer / reconcilePeriod) > 0)
