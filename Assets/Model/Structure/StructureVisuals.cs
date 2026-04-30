@@ -45,8 +45,14 @@ public static class StructureVisuals {
     //   - shape.ny == 1: returns the base `{name}` sprite (1-tall shapes look like the
     //     existing single-tile structure — no _b/_t suffix needed).
     //   - shape.ny  > 1: dy=0 → `_b` (anchor), dy=ny-1 → `_t` (top), else `_m` (middle).
-    //   - Falls back to the base `{name}` sprite if a variant PNG is missing, with a
-    //     one-time error log so the missing asset is loud during development.
+    //   - Lookup order for the suffixed sprite (first match wins):
+    //       1. Slice named `{stem}_<suffix>` inside `{name}_s.png` (sheet variant —
+    //          required when a 1×1 `{name}.png` already exists, e.g. platform).
+    //       2. Slice named `{stem}_<suffix>` inside `{name}.png` (sheet variant for
+    //          structures with no 1-tile form, e.g. elevator).
+    //       3. Standalone file `{name}_<suffix>.png` (legacy per-file convention).
+    //   - Falls back to the base `{name}` sprite if all three miss, with a one-time
+    //     error log so the missing asset is loud during development.
     // (Horizontal-only and grid shapes — nx>1 — are not handled in v1; we log an error
     // if such a shape is requested.)
     public static Sprite LoadShapeSprite(StructType st, Shape shape, int dy) {
@@ -57,13 +63,35 @@ public static class StructureVisuals {
         }
         if (shape.ny == 1) return Resources.Load<Sprite>(baseName);
 
-        string suffix = dy == 0 ? "_b"
-                      : dy == shape.ny - 1 ? "_t"
-                      : "_m";
-        Sprite s = Resources.Load<Sprite>(baseName + suffix);
+        string suffix    = dy == 0 ? "_b" : dy == shape.ny - 1 ? "_t" : "_m";
+        string stem      = baseName.Substring(baseName.LastIndexOf('/') + 1);
+        string sliceName = stem + suffix;
+
+        Sprite s = FindSlice(LoadSheet(baseName + "_s"), sliceName);
+        if (s == null) s = FindSlice(LoadSheet(baseName), sliceName);
+        if (s != null) return s;
+
+        s = Resources.Load<Sprite>(baseName + suffix);
         if (s != null && s.texture != null) return s;
         LogShapeMissOnce(st.name + suffix, $"Shape sprite missing: {baseName}{suffix} — falling back to {st.name}");
         return Resources.Load<Sprite>(baseName);
+    }
+
+    // Cached LoadAll<Sprite> — Unity's path-based lookup is reasonably fast but we
+    // avoid hammering it from per-tile extension SR setup. Empty array means
+    // "tried, found nothing" (so we don't retry); the cache lives for the lifetime
+    // of the play session, which is fine since Resources/ is read-only at runtime.
+    private static readonly Dictionary<string, Sprite[]> _sheetCache = new Dictionary<string, Sprite[]>();
+    private static Sprite[] LoadSheet(string path) {
+        if (_sheetCache.TryGetValue(path, out var arr)) return arr;
+        arr = Resources.LoadAll<Sprite>(path) ?? new Sprite[0];
+        _sheetCache[path] = arr;
+        return arr;
+    }
+    private static Sprite FindSlice(Sprite[] sheet, string sliceName) {
+        if (sheet == null) return null;
+        foreach (Sprite s in sheet) if (s != null && s.name == sliceName) return s;
+        return null;
     }
 
     private static readonly HashSet<string> _shapeSpriteMissLog = new HashSet<string>();

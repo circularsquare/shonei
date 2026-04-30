@@ -27,8 +27,12 @@ public class GlobalInventory {
         AddItem(item.id, quantity);
     }
     public void AddItem(int iid, int quantity){
+        // itemAmounts is seeded from Db.itemsFlat at construction — any id not present
+        // is an unknown / out-of-range id, not a missing leaf. Reject rather than create
+        // a phantom entry (used to silently accept e.g. AddItem(999, 7)).
         if (!itemAmounts.ContainsKey(iid)){
-            itemAmounts.Add(iid, 0);
+            Debug.LogError($"GlobalInventory.AddItem: unknown item id {iid} (quantity={quantity}); rejecting.");
+            return;
         }
         itemAmounts[iid] += quantity;
         if (cbInventoryChanged != null){
@@ -46,19 +50,30 @@ public class GlobalInventory {
         }
     }
 
+    // Group-aware: routes through Quantity(Item) so callers using a name get the same
+    // group-summing behaviour as the Item overload. Logs and returns 0 if the name is unknown.
     public int Quantity(string name){
-        return Quantity(Db.iidByName[name]);
+        if (!Db.iidByName.TryGetValue(name, out int iid)){
+            Debug.LogError($"GlobalInventory.Quantity: unknown item name '{name}'.");
+            return 0;
+        }
+        return Quantity(iid);
     }
-    // Exact lookup by id — always returns 0 for group items since they never physically exist.
-    // Prefer Quantity(Item) for any call that may involve group items.
+    // Group-aware: routes through Quantity(Item) so group ids sum their leaf descendants
+    // instead of returning 0. Logs and returns 0 if the id doesn't resolve to an item.
     public int Quantity(int iid){
-        if (itemAmounts.ContainsKey(iid)){
-            return itemAmounts[iid];
-        } else {return 0;}
+        if (iid < 0 || iid >= Db.items.Length || Db.items[iid] == null){
+            Debug.LogError($"GlobalInventory.Quantity: unknown item id {iid}.");
+            return 0;
+        }
+        return Quantity(Db.items[iid]);
     }
-    // Group-aware: sums leaf descendants if item has children, otherwise exact.
+    // Group-aware: sums leaf descendants if item has children, otherwise exact lookup
+    // against itemAmounts. The other overloads delegate here.
     public int Quantity(Item item){
-        if (item.children == null) return Quantity(item.id);
+        if (item.children == null){
+            return itemAmounts.TryGetValue(item.id, out int amt) ? amt : 0;
+        }
         int total = 0;
         foreach (Item child in item.children)
             total += Quantity(child);

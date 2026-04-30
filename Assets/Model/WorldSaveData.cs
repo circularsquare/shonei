@@ -6,6 +6,9 @@ using System.Collections.Generic;
 
 public class WorldSaveData {
     public float timer;
+    // RNG seed used to drive Rng (gameplay randomness). 0 on old saves → reproducibility
+    // for those starts from 0 on load, which is fine — they had no reproducibility before.
+    public int worldSeed;
     public TileSaveData[] tiles;             // tile types and floor inventories only
     public StructureSaveData[] structures;   // all structures (buildings, plants, platforms, ladders, roads)
     public BlueprintSaveData[] blueprints;   // all blueprints
@@ -130,6 +133,9 @@ public class ItemStackSaveData {
 public class AnimalSaveData {
     public string aName;
     public float x, y;
+    // Per-animal RNG seed. 0 on old saves → Animal.Start re-seeds via Rng.NextInt
+    // and persists from then on. Stable across save/load so animal AI is reproducible.
+    public int rngSeed;
     public string jobName;
     public float energy;
     public float food;

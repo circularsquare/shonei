@@ -50,12 +50,12 @@ public class WeatherSystem {
 
     // Called by World.Update() once per in-game hour.
     public void OnHourElapsed() {
-        wind += -0.02f * wind + Random.Range(-0.15f, 0.15f);
+        wind += -0.02f * wind + Rng.Range(-0.15f, 0.15f);
 
         if (!isRaining) {
-            if (Random.value < 0.04f) SetRain(true);
+            if (Rng.value < 0.04f) SetRain(true);
         } else {
-            if (Random.value < 0.12f) SetRain(false);
+            if (Rng.value < 0.12f) SetRain(false);
             ReplenishRainwater();
         }
 

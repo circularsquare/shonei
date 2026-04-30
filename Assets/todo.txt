@@ -50,5 +50,5 @@ SHORT TERM
 
 - elevators!
     - elevator internal power storage
-
+- "mine tile and put ladder"?
 

@@ -6,6 +6,11 @@ using System;
 // this class handles tile sprites, and also places initial objects into world.
 public class WorldController : MonoBehaviour {
     public static WorldController instance {get; protected set;}
+
+    // Test hook: when true, Start() skips auto-loading the most recent save and
+    // generates a fresh world instead. Snapshot tests set this so they get a
+    // deterministic, save-independent starting state. Default false (production).
+    public static bool skipAutoLoad = false;
     public World world {get; protected set;}
     public Transform tilesTransform;
     Dictionary<Tile, GameObject> tileGameObjectMap;
@@ -51,7 +56,7 @@ public class WorldController : MonoBehaviour {
         }
 
         yield return null; // wait one frame so all other Start()s finish before we generate the world
-        string mostRecent = SaveSystem.instance.GetMostRecentSlot();
+        string mostRecent = skipAutoLoad ? null : SaveSystem.instance.GetMostRecentSlot();
         if (mostRecent != null) {
             SaveSystem.instance.Load(mostRecent);
         } else {
@@ -166,7 +171,13 @@ public class WorldController : MonoBehaviour {
     // Called synchronously in frame 1 (from Start, Reset, or Load path).
     // graph.Initialize() here is what makes node.standable valid — must happen before DefaultJobSetup.
     public void GenerateDefault() {
-        int seed = UnityEngine.Random.Range(0, 100000);
+        // The world seed seeds Rng (all gameplay randomness) AND WorldGen. Generated once
+        // here for new worlds; on the load path SaveSystem.ApplySaveData calls Rng.Init from
+        // the persisted seed instead, so this only runs on Initial / Reset.
+        // Range stays modest because WorldGen does `seed + offset` arithmetic — full int range
+        // could overflow, and the resulting world variety from 100k seeds is plenty.
+        int seed = UnityEngine.Random.Range(1, 100000);
+        Rng.Init(seed);
         int[] surfaceY = WorldGen.Generate(world, seed);
         int sy = surfaceY[WorldGen.SpawnMinX]; // surface height at spawn zone (flat)
 
@@ -310,6 +321,7 @@ public class WorldController : MonoBehaviour {
     }
 
     static void SetNormalMap(SpriteRenderer sr, Texture2D tex) {
+        if (tex == null) return; // tile type has no normal map; leave the existing one untouched
         sr.GetPropertyBlock(normalMpb);
         normalMpb.SetTexture(NormalMapID, tex);
         sr.SetPropertyBlock(normalMpb);

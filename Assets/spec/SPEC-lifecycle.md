@@ -101,7 +101,7 @@ Load:    ClearWorld() + SaveSystem.ApplySaveData()  →  PostLoadInit (next fram
 
 ## Time System
 
-The main game clock lives in `World.Update()` (World.cs). Each frame it accumulates `timer += Time.deltaTime` and fires tick events at fixed intervals:
+The main game clock lives in `World.Tick(float dt)` (World.cs). `World.Update()` is a thin wrapper that calls `Tick(Time.deltaTime)`. Each call accumulates `timer += dt` and fires tick events at fixed intervals:
 
 | Interval | What fires |
 |----------|-----------|
@@ -111,9 +111,21 @@ The main game clock lives in `World.Update()` (World.cs). Each frame it accumula
 
 All game logic is intended to be tick-driven. Movement and fall physics are the only things that run per-frame (in `Animal.Update()` → `AnimalStateManager.UpdateMovement(deltaTime)`), because smooth sub-tile animation requires it.
 
+`AnimalController` follows the same pattern: `AnimalController.Update()` wraps `AnimalController.Tick(float dt)`, so per-animal staggered ticks are also testable from a fixed-step driver.
+
+**Why Tick(float dt) is public**: tests and the (planned) snapshot harness can call `World.Tick(1/60f)` repeatedly to advance the simulation deterministically without depending on Unity's frame loop. Production keeps using `Time.deltaTime`, so timeScale and pause continue to work without special handling.
+
 ### Time scale
 
-`TimeController.cs` wraps `Time.timeScale`. Setting it to `0` pauses all ticks and movement; `2` doubles everything. Because all code uses `Time.deltaTime`, scaling is automatic — no special handling needed in tick consumers. `TradingClient.ReconnectLoop` uses `WaitForSecondsRealtime` so network reconnection is unaffected by time scale.
+`TimeController.cs` wraps `Time.timeScale`. Setting it to `0` pauses all ticks and movement; `2` doubles everything. Because `World.Update()` and `AnimalController.Update()` pass `Time.deltaTime` into their respective `Tick(dt)` methods, scaling is automatic — no special handling needed in tick consumers. `TradingClient.ReconnectLoop` uses `WaitForSecondsRealtime` so network reconnection is unaffected by time scale.
+
+### RNG and reproducibility
+
+All gameplay-affecting randomness — recipe picking, animal AI, weather rolls, mouse names, scribe choice — flows through `Rng` (Assets/Model/Rng.cs), a static facade over a single seedable `System.Random`. The world's seed is generated in `WorldController.GenerateDefault` (new world) or restored by `SaveSystem.ApplySaveData` (load), and persisted in `WorldSaveData.worldSeed`. Reload reproduces the original stream.
+
+Each `Animal` carries its own `random` (System.Random) seeded at creation from `Rng.NextInt()`; that seed is persisted as `AnimalSaveData.rngSeed` so animal-level decisions reproduce on save/load. Cosmetic-only randomness (UnityEngine.Random) does not need to go through Rng.
+
+Old saves with `worldSeed = 0` and `rngSeed = 0` deserialize cleanly — they simply gain reproducibility from that point forward.
 
 ### Key time constants
 

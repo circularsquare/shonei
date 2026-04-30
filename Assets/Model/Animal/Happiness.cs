@@ -14,7 +14,7 @@ public class Happiness {
     public const float socialTickGrant = 0.2f; // social satisfaction per tick while chatting
     public const float readingTickGrant = 0.2f; // reading satisfaction per tick while reading a book
 
-    // Precomputed decay factor for 10 ticks (one SlowUpdate): pow(0.99, 10) ~ 0.9044
+    // Precomputed decay factor for 10 ticks (one SlowUpdate). Slow exponential decay.
     private static readonly float decayFactor10 = Mathf.Pow(1f - decayPerTick, 10f);
 
     // All satisfaction values keyed by need name (e.g. "wheat", "fruit", "fountain", "social").
@@ -112,7 +112,7 @@ public class Happiness {
     }
 
     public void SlowUpdate(Animal a) {
-        // Exponential decay: each SlowUpdate (10 ticks) multiplies by ~0.9044.
+        // Exponential decay: each SlowUpdate (10 ticks) multiplies satisfactions by decayFactor10.
         // Iterates Db.happinessNeedsSorted (pre-allocated) rather than allocating a key copy each call.
         foreach (string key in Db.happinessNeedsSorted)
             satisfactions[key] *= decayFactor10;

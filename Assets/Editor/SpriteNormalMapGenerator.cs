@@ -11,6 +11,18 @@ using SysFile = System.IO.File;
 // sprite so URP's Sprite Lit shader picks it up with no runtime code needed.
 // This works correctly for sprite sheets / animated sprites too.
 //
+// Slice awareness:
+//   - Multi-sliced textures (spriteImportMode == Multiple) are processed PER SLICE
+//     by default. Each slice is treated as if it were a standalone sprite — pixels
+//     just outside the slice rect are seen as transparent, so frame boundaries get
+//     proper edge bevels. This is what animation strips (powershaft, powershaftturn,
+//     powershaft4) want.
+//   - Spatial sheets (e.g. elevator/platform stacks) want the OPPOSITE: slices abut
+//     in the world, so their shared boundaries should be interior. Set the merged
+//     flag via `Assets → Toggle Merged Normals` (writes `normals=merged` into the
+//     importer's userData). Merged sheets are processed as one big sprite; each
+//     slice samples its own sub-region of the resulting normal map at runtime.
+//
 // Companion conventions:
 //   `{stem}_e.png` — emission mask. Wired as `_EmissionMap` secondary texture
 //       on `{stem}.png`. EmissionWriter.shader samples alpha at lighting time
@@ -174,30 +186,59 @@ public static class SpriteNormalMapGenerator {
         int w = tex.width, h = tex.height;
         Color32[] dst = new Color32[w * h];
 
-        for (int y = 0; y < h; y++) {
-            for (int x = 0; x < w; x++) {
-                int i = y * w + x;
-                if (src[i].a < 128) { dst[i] = new Color32(128, 128, 255, 0); continue; }
+        // Default-fill: transparent fallback. Pixels outside any processed rect
+        // (e.g. dead-zones in non-tiling sliced atlases) read as "no sprite" in
+        // the lighting pipeline.
+        for (int i = 0; i < w * h; i++) dst[i] = new Color32(128, 128, 255, 0);
 
-                bool eL = x == 0   || src[y * w + (x - 1)].a < 128;
-                bool eR = x == w-1 || src[y * w + (x + 1)].a < 128;
-                bool eD = y == 0   || src[(y - 1) * w + x].a < 128;
-                bool eU = y == h-1 || src[(y + 1) * w + x].a < 128;
+        // Decide which rect(s) to process. Multi-sliced textures get per-slice
+        // edge detection by default — frame boundaries are real edges. Set the
+        // merged flag (`Assets → Toggle Merged Normals`) when slices represent
+        // spatial neighbours that abut in the world (elevator/platform stacks).
+        var rects = new List<RectInt>();
+        bool merged = HasUserDataFlag(imp, "normals", "merged");
+        if (imp.spriteImportMode == SpriteImportMode.Multiple && !merged && imp.spritesheet.Length > 0) {
+            foreach (SpriteMetaData md in imp.spritesheet) {
+                rects.Add(new RectInt(
+                    Mathf.RoundToInt(md.rect.x),
+                    Mathf.RoundToInt(md.rect.y),
+                    Mathf.RoundToInt(md.rect.width),
+                    Mathf.RoundToInt(md.rect.height)));
+            }
+        } else {
+            rects.Add(new RectInt(0, 0, w, h));
+        }
 
-                float nx = (eR ? 1f : 0f) - (eL ? 1f : 0f);
-                float ny = (eU ? 1f : 0f) - (eD ? 1f : 0f);
-                float nz = BevelZ;
+        foreach (RectInt r in rects) {
+            int xMin = r.xMin, xMax = r.xMax, yMin = r.yMin, yMax = r.yMax;
+            for (int y = yMin; y < yMax; y++) {
+                for (int x = xMin; x < xMax; x++) {
+                    int i = y * w + x;
+                    if (src[i].a < 128) { dst[i] = new Color32(128, 128, 255, 0); continue; }
 
-                float len = Mathf.Sqrt(nx * nx + ny * ny + nz * nz);
-                if (len > 0f) { nx /= len; ny /= len; nz /= len; }
-                else          { nx = 0f; ny = 0f; nz = 1f; }
+                    // Edges are: rect boundary OR a transparent neighbour. Off-rect
+                    // pixels are treated as transparent regardless of their actual
+                    // alpha, which is what isolates per-slice processing.
+                    bool eL = x == xMin       || src[y * w + (x - 1)].a < 128;
+                    bool eR = x == xMax - 1   || src[y * w + (x + 1)].a < 128;
+                    bool eD = y == yMin       || src[(y - 1) * w + x].a < 128;
+                    bool eU = y == yMax - 1   || src[(y + 1) * w + x].a < 128;
 
-                dst[i] = new Color32(
-                    (byte)(nx * 127.5f + 128f),
-                    (byte)(ny * 127.5f + 128f),
-                    (byte)(nz * 127.5f + 128f),
-                    255
-                );
+                    float nx = (eR ? 1f : 0f) - (eL ? 1f : 0f);
+                    float ny = (eU ? 1f : 0f) - (eD ? 1f : 0f);
+                    float nz = BevelZ;
+
+                    float len = Mathf.Sqrt(nx * nx + ny * ny + nz * nz);
+                    if (len > 0f) { nx /= len; ny /= len; nz /= len; }
+                    else          { nx = 0f; ny = 0f; nz = 1f; }
+
+                    dst[i] = new Color32(
+                        (byte)(nx * 127.5f + 128f),
+                        (byte)(ny * 127.5f + 128f),
+                        (byte)(nz * 127.5f + 128f),
+                        255
+                    );
+                }
             }
         }
 
@@ -272,5 +313,132 @@ public static class SpriteNormalMapGenerator {
 
         so.ApplyModifiedPropertiesWithoutUndo();
         imp.SaveAndReimport();
+    }
+
+    // ── userData flags ───────────────────────────────────────────────────────
+    // Importer userData carries semicolon-separated key=value pairs. Used here
+    // for the "merged" flag that tells the generator to treat a multi-sliced
+    // texture as one big sprite (spatial-tile sheets, not animation strips).
+    static bool HasUserDataFlag(TextureImporter imp, string key, string value) {
+        if (imp == null || string.IsNullOrEmpty(imp.userData)) return false;
+        foreach (string pair in imp.userData.Split(';')) {
+            int eq = pair.IndexOf('=');
+            if (eq < 0) continue;
+            if (pair.Substring(0, eq).Trim() == key && pair.Substring(eq + 1).Trim() == value)
+                return true;
+        }
+        return false;
+    }
+
+    static void SetUserDataFlag(TextureImporter imp, string key, string value) {
+        var pairs = new List<string>();
+        bool replaced = false;
+        if (!string.IsNullOrEmpty(imp.userData)) {
+            foreach (string pair in imp.userData.Split(';')) {
+                int eq = pair.IndexOf('=');
+                if (eq < 0) { if (!string.IsNullOrWhiteSpace(pair)) pairs.Add(pair); continue; }
+                string k = pair.Substring(0, eq).Trim();
+                if (k == key) { pairs.Add($"{key}={value}"); replaced = true; }
+                else          { pairs.Add(pair); }
+            }
+        }
+        if (!replaced) pairs.Add($"{key}={value}");
+        imp.userData = string.Join(";", pairs);
+    }
+
+    static void ClearUserDataFlag(TextureImporter imp, string key) {
+        if (string.IsNullOrEmpty(imp.userData)) return;
+        var pairs = new List<string>();
+        foreach (string pair in imp.userData.Split(';')) {
+            int eq = pair.IndexOf('=');
+            string k = eq >= 0 ? pair.Substring(0, eq).Trim() : pair.Trim();
+            if (k != key && !string.IsNullOrWhiteSpace(pair)) pairs.Add(pair);
+        }
+        imp.userData = string.Join(";", pairs);
+    }
+
+    // ── menu: toggle merged-normals flag ─────────────────────────────────────
+    // Spatial sheets (elevator, platform stacks) want the generator to process
+    // the whole texture as one sprite so inter-tile boundaries stay interior.
+    // Toggle the flag, regenerate.
+    [MenuItem("Assets/Toggle Merged Normals", validate = true)]
+    static bool ValidateToggleMerged() {
+        foreach (Object o in Selection.objects)
+            if (o is Texture2D) return true;
+        return false;
+    }
+
+    [MenuItem("Assets/Toggle Merged Normals")]
+    static void ToggleMerged() {
+        foreach (Object obj in Selection.objects) {
+            if (!(obj is Texture2D tex)) continue;
+            string path = AssetDatabase.GetAssetPath(tex);
+            TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
+            if (imp == null) continue;
+            bool was = HasUserDataFlag(imp, "normals", "merged");
+            if (was) ClearUserDataFlag(imp, "normals");
+            else     SetUserDataFlag(imp, "normals", "merged");
+            imp.SaveAndReimport();
+            Debug.Log($"[NormalMapGen] Merged normals {(was ? "OFF" : "ON")} for {path}. Re-run normal map generation.");
+        }
+    }
+
+    // ── menu: slice a vertical building sheet into _b/_m/_t ──────────────────
+    // For 16×N textures (N ∈ {32, 48}), sets up the importer's spritesheet with
+    // bottom→top slices named `{stem}_b`, optional `{stem}_m`, `{stem}_t`, each
+    // 16×16 with centred pivot (matches existing single-file convention used
+    // by StructureVisuals.PositionFor / shape-aware extension SRs). Also turns
+    // on the merged-normals flag — spatial stacks always want it.
+    [MenuItem("Assets/Slice Vertical Building Sheet", validate = true)]
+    static bool ValidateSliceVertical() {
+        foreach (Object o in Selection.objects) {
+            if (!(o is Texture2D tex)) continue;
+            if (tex.width == 16 && (tex.height == 32 || tex.height == 48)) return true;
+        }
+        return false;
+    }
+
+    [MenuItem("Assets/Slice Vertical Building Sheet")]
+    static void SliceVertical() {
+        foreach (Object obj in Selection.objects) {
+            if (!(obj is Texture2D tex)) continue;
+            string path = AssetDatabase.GetAssetPath(tex);
+            TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
+            if (imp == null) continue;
+            if (tex.width != 16 || (tex.height != 32 && tex.height != 48)) {
+                Debug.LogError($"[NormalMapGen] {path}: vertical slicer expects 16×32 or 16×48 (got {tex.width}×{tex.height}).");
+                continue;
+            }
+
+            // Slice names follow the existing suffix convention so
+            // StructureVisuals.LoadShapeSprite can find them. Strip a trailing
+            // `_s` from the file stem to get the canonical building name —
+            // `platform_s.png` slices into `platform_b/_m/_t`, NOT
+            // `platform_s_b/_m/_t`. The `_s` suffix is purely a filename
+            // disambiguator (so the sheet can coexist with a 1×1 `{name}.png`).
+            // For 16×48: bottom (y=0) → _b, middle (y=16) → _m, top (y=32) → _t.
+            // For 16×32: bottom (y=0) → _b, top (y=16) → _t (no middle).
+            string stem = SysPath.GetFileNameWithoutExtension(path);
+            string buildingName = stem.EndsWith("_s") ? stem.Substring(0, stem.Length - 2) : stem;
+            int rows = tex.height / 16;
+            var sheet = new List<SpriteMetaData>(rows);
+            for (int row = 0; row < rows; row++) {
+                string suffix = row == 0 ? "_b"
+                              : row == rows - 1 ? "_t"
+                              : "_m";
+                sheet.Add(new SpriteMetaData {
+                    name      = buildingName + suffix,
+                    rect      = new Rect(0, row * 16, 16, 16),
+                    alignment = (int)SpriteAlignment.Center,
+                    pivot     = new Vector2(0.5f, 0.5f),
+                });
+            }
+            imp.spriteImportMode = SpriteImportMode.Multiple;
+            imp.spritesheet      = sheet.ToArray();
+            imp.spritePixelsPerUnit = 16;
+            SetUserDataFlag(imp, "normals", "merged");
+            imp.SaveAndReimport();
+            Debug.Log($"[NormalMapGen] Sliced {path} into {rows} rows (merged normals ON). Re-run normal map generation.");
+        }
     }
 }

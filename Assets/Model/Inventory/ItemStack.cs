@@ -32,7 +32,6 @@ public class ItemStack {
         float val = fen / 100f;
         return Math.Abs(val) switch{
             >= 99.5f => val.ToString("0"),
-            >= 9.6f => val.ToString("0.#"),
             >= 0.96f => val.ToString("0.#"),
             _ => val.ToString("0.##")
         };
@@ -96,7 +95,7 @@ public class ItemStack {
         }
     }
     public int? AddItem(Item item, int quantity){
-        if (this.item == null || this.quantity == 0){ // add to empty stack
+        if (this.item == null){ // adopt the incoming item only when stack is genuinely untagged
             this.item = item; }
         if (item != this.item){ // item slot occupied by different item. go next
             return null; }

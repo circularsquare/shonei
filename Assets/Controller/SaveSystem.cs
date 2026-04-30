@@ -28,6 +28,8 @@ using Newtonsoft.Json;
 // -----------------------------------------------------------------------
 // Current saveable state checklist:
 //   [x] World timer
+//   [x] World RNG seed (drives Rng — gameplay randomness reproduces on reload)
+//   [x] Per-animal RNG seed (drives Animal.random — animal AI reproduces on reload)
 //   [x] Tile types, floor inventories, and background wall
 //   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, mirrored, rotation, shapeIndex, disabled, plantHarvestFlagged, quarry capturedTileType, flywheel charge, elevator currentY + history buffers)
 //   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored, rotation, shapeIndex, disabled)
@@ -69,18 +71,25 @@ public class SaveSystem : MonoBehaviour {
     // ── Save ─────────────────────────────────────────────────────────────────
 
     public void Save(string slotName) {
-        WorldSaveData data = GatherSaveData();
-        string json = JsonConvert.SerializeObject(data, Formatting.Indented,
-            new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
+        string json = SerializeToJson();
         System.IO.File.WriteAllText(SlotPath(slotName), json);
         currentSlot = slotName;
         Debug.Log("Saved world to slot: " + slotName);
+    }
+
+    // Serialize the current world state to JSON without touching the filesystem.
+    // Snapshot tests use this to capture state for golden-file comparison.
+    public string SerializeToJson() {
+        WorldSaveData data = GatherSaveData();
+        return JsonConvert.SerializeObject(data, Formatting.Indented,
+            new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
     }
 
     WorldSaveData GatherSaveData() {
         World world = World.instance;
         WorldSaveData data = new WorldSaveData();
         data.timer = world.timer;
+        data.worldSeed = Rng.worldSeed;
 
         var tiles = new List<TileSaveData>();
         for (int x = 0; x < world.nx; x++) {
@@ -293,6 +302,7 @@ public class SaveSystem : MonoBehaviour {
             aName              = a.aName,
             x                  = a.x,
             y                  = a.y,
+            rngSeed            = a.rngSeed,
             jobName            = a.job.name,
             energy             = a.energy,
             food               = a.eating.food,
@@ -370,8 +380,16 @@ public class SaveSystem : MonoBehaviour {
         string path = SlotPath(slotName);
         if (!System.IO.File.Exists(path)) { Debug.LogError("Save slot not found: " + slotName); return; }
         string json = System.IO.File.ReadAllText(path);
-        WorldSaveData data = JsonConvert.DeserializeObject<WorldSaveData>(json);
         currentSlot = slotName;
+        LoadFromJson(json);
+    }
+
+    // Load world state from a JSON string instead of a file. Snapshot tests use this
+    // so scenarios can live anywhere on disk and be loaded without a SaveDir round-trip.
+    // Caller is responsible for waiting one frame after this call before reading
+    // animal-aggregate state — PostLoadInit runs as a coroutine on next frame.
+    public void LoadFromJson(string json) {
+        WorldSaveData data = JsonConvert.DeserializeObject<WorldSaveData>(json);
         WorldController.instance.ClearWorld();
         ResetSystemState();
         ApplySaveData(data);
@@ -388,6 +406,10 @@ public class SaveSystem : MonoBehaviour {
         // Tile types, water, walls, world timer. Pure data on the world grid; nothing
         // downstream queries observe these directly yet.
         world.timer = save.timer;
+        // Reseed Rng from the persisted world seed before any phase that consumes Rng
+        // (animal AI, weather rolls, recipe scoring, name draws). save.worldSeed = 0 on
+        // pre-seed saves; Rng.Init(0) gives those a deterministic-from-zero stream from now on.
+        Rng.Init(save.worldSeed);
 
         if (save.waterLevels != null) {
             for (int x = 0; x < world.nx; x++) {

@@ -331,6 +331,12 @@ Same Sheets/Split pattern as items. Source sheets live in `Assets/Resources/Spri
 3. Auto-assigns as `_NormalMap` secondary texture on the source sprite importer.
 4. If `{stem}_e.png` exists, auto-assigns it as `_EmissionMap` secondary texture on the source sprite.
 
+**Slice awareness.** Multi-sliced textures (`spriteImportMode == Multiple`) are processed **per slice by default** — pixels just outside each slice rect are treated as transparent, so frame boundaries get proper edge bevels. This is what animation strips want (e.g. `powershaft.png`, 80×16 sliced into 5 frames).
+
+For *spatial* sheets — slices that abut each other in the world (elevator/platform stacks) — set the **merged-normals flag** via `Assets → Toggle Merged Normals` on the texture. The flag is stored as `normals=merged` in `TextureImporter.userData`; merged sheets are processed as one big sprite so inter-slice pixel boundaries remain interior. Each slice samples its own sub-region of the resulting normal map at runtime (secondary textures are shared across all slices in a sheet).
+
+`Assets → Slice Vertical Building Sheet` is the companion authoring tool: given a 16×32 or 16×48 texture, it sets up bottom→top slices named `{stem}_b` / `{stem}_m` / `{stem}_t` (centred pivot, PPU=16) and turns on the merged-normals flag. Used to consolidate `{name}_b.png`/`_m.png`/`_t.png` into a single `{name}.png` (or `{name}_s.png` if a 1×1 `{name}.png` already exists). After slicing, run normal map generation; existing standalone `{name}_b/_m/_t.png` files become unused and can be deleted.
+
 Post-pass for fire sprites: each `_f.png` is wired as its own `_EmissionMap` (self-reference — all visible fire pixels emit). If a `{stem}_e.png` companion exists alongside the `_f.png`, that takes precedence.
 
 **Companion file conventions** (inside `Assets/Resources/Sprites/Buildings/`):

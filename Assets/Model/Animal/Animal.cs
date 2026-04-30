@@ -69,6 +69,7 @@ public class Animal : MonoBehaviour{
     }
 
     public System.Random random;
+    public int rngSeed;         // seed for `random` — saved/loaded so animal AI is reproducible
     public float tickOffset;    // [0,1) — stagger phase for per-frame tick dispatch
     public int tickCounter = 0;
 
@@ -107,11 +108,21 @@ public class Animal : MonoBehaviour{
         this.bookSlotInv = new Inventory(1, 100, Inventory.InvType.Equip, storageClass: ItemClass.Book);
         this.nav = new Nav(this);
         ginv = GlobalInventory.instance;
-        random = new System.Random();
+        // Seed per-animal RNG deterministically. New animals draw a seed from the central
+        // Rng (so the world seed propagates); load path replaces this with the saved seed
+        // a few lines below. Result: animal-level decisions reproduce on save/load.
+        rngSeed = Rng.NextInt();
+        random = new System.Random(rngSeed);
 
         if (pendingSaveData != null) {
             this.aName = string.IsNullOrEmpty(pendingSaveData.aName) ? Db.DrawName(AnimalController.instance.UsedNames()) : pendingSaveData.aName;
             this.go.name = "animal_" + aName;
+            // Restore the saved seed if present. 0 means "old save, no seed persisted" —
+            // we keep the fresh seed assigned above, which then gets saved next time.
+            if (pendingSaveData.rngSeed != 0) {
+                rngSeed = pendingSaveData.rngSeed;
+                random = new System.Random(rngSeed);
+            }
             this.energy = pendingSaveData.energy;
             this.eating = new Eating();
             this.eating.food = pendingSaveData.food;
@@ -662,7 +673,7 @@ public class Animal : MonoBehaviour{
             }
         }
         if (eligibleRecipes.Count == 0) { return null; }
-        int index = UnityEngine.Random.Range(0, eligibleRecipes.Count);
+        int index = random.Next(0, eligibleRecipes.Count);
         return eligibleRecipes[index];
     }
     // True if every class-restricted output (Liquid, Book) has at least one matching storage
@@ -707,7 +718,7 @@ public class Animal : MonoBehaviour{
                     tiedCount = 1;
                 } else if (score == maxScore) {
                     tiedCount++;
-                    if (UnityEngine.Random.value < 1f / tiedCount) bestRecipe = recipe;
+                    if (random.NextDouble() < 1.0 / tiedCount) bestRecipe = recipe;
                 }
             }
         }
@@ -741,7 +752,7 @@ public class Animal : MonoBehaviour{
                 tiedCount = 1;
             } else if (score == maxScore) {
                 tiedCount++;
-                if (UnityEngine.Random.value < 1f / tiedCount) bestRecipe = recipe;
+                if (random.NextDouble() < 1.0 / tiedCount) bestRecipe = recipe;
             }
         }
         return bestRecipe;

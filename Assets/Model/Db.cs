@@ -74,13 +74,32 @@ public class Db : MonoBehaviour {
         if (instance != null){
             Debug.LogError("tried to create two instances of database"); }
         instance = this;
-        
+
+        // Reset every static collection — without this, a scene reload (e.g. PlayMode
+        // snapshot tests, or a future "new game" feature) finds the previous Db's
+        // entries still populated and AddItemToDb fires duplicate-id errors.
         iidByName = new Dictionary<string, int>();
         itemByName = new Dictionary<string, Item>();
         jobByName = new Dictionary<string, Job>();
         structTypeByName = new Dictionary<string, StructType>();
         tileTypeByName = new Dictionary<string, TileType>();
         plantTypeByName = new Dictionary<string, PlantType>();
+
+        items      = new Item[500];
+        itemsFlat  = new Item[500];
+        itemsCount = 0;
+        jobs       = new Job[100];
+        recipes    = new Recipe[500];
+        structTypes = new StructType[600];
+        plantTypes  = new PlantType[600];
+        tileTypes   = new TileType[100];
+        bookRecipeIdByTechId = new Dictionary<int, int>();
+        bookItemIdByTechId   = new Dictionary<int, int>();
+        // ReadJson Add()s into chineseNames/inventedNames — reset so reloads don't
+        // double the pool (which would shift Rng-based name selection deterministically
+        // wrong, breaking snapshot reproducibility).
+        chineseNames.Clear();
+        inventedNames.Clear();
     } 
 
     void Awake(){ // this runs before Start() like in world
@@ -150,20 +169,20 @@ public class Db : MonoBehaviour {
         int total = chineseNames.Count + inventedNames.Count;
         if (total == 0) { Debug.LogError("Db: name pool is empty, falling back to 'mouse'"); return "mouse"; }
         if (usedNames == null || usedNames.Count == 0) {
-            int i = UnityEngine.Random.Range(0, total);
+            int i = Rng.Range(0, total);
             return i < chineseNames.Count ? chineseNames[i] : inventedNames[i - chineseNames.Count];
         }
         // Build list of available names
         List<string> available = new List<string>();
         foreach (string n in chineseNames) if (!usedNames.Contains(n)) available.Add(n);
         foreach (string n in inventedNames) if (!usedNames.Contains(n)) available.Add(n);
-        if (available.Count > 0) return available[UnityEngine.Random.Range(0, available.Count)];
+        if (available.Count > 0) return available[Rng.Range(0, available.Count)];
         // All pool names taken — generate numbered fallback
         for (int k = 0; k < 10000; k++) {
             string fallback = "mouse" + k;
             if (!usedNames.Contains(fallback)) return fallback;
         }
-        return "mouse" + UnityEngine.Random.Range(10000, 99999);
+        return "mouse" + Rng.Range(10000, 99999);
     }
 
     void LoadItemIcons() {
@@ -508,12 +527,12 @@ public class Recipe {
         if (targets == null) return 1;
         float score = 1;
         foreach (ItemQuantity iq in inputs){
-            int target = targets[iq.item.id];
+            if (!targets.TryGetValue(iq.item.id, out int target)) continue; // untracked id — skip (matches AllOutputsSatisfied)
             if (target == 0) continue; // no target set — treat as neutral
             score *= ((float)GlobalInventory.instance.Quantity(iq.item) / target);
         }
         foreach (ItemQuantity iq in outputs){
-            int target = targets[iq.item.id];
+            if (!targets.TryGetValue(iq.item.id, out int target)) continue; // untracked id — skip (matches AllOutputsSatisfied)
             if (target == 0) continue; // no target set — treat as neutral
             score /= ((float)GlobalInventory.instance.Quantity(iq.item) / target);
         }

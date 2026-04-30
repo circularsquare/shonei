@@ -56,7 +56,7 @@ public class AnimalStateManager {
             // Skips the random walk below — that's for non-stacked idle behaviour.
             Tile here = animal.TileHere();
             if (here != null && AnimalController.instance.AnyOtherAnimalOnTile(here, animal)) {
-                if (UnityEngine.Random.value < 0.70f) {
+                if (animal.random.NextDouble() < 0.70) {
                     Tile dest = PickRandomNavNeighbour(here);
                     if (dest != null) {
                         animal.task = new GoTask(animal, dest);
@@ -67,7 +67,7 @@ public class AnimalStateManager {
             }
             // Random walking when nothing else to do — prefer tiles without mice,
             // only consider direct nav-graph neighbours (no detours via ladders etc.)
-            if (here != null && UnityEngine.Random.Range(0, 5) == 0) {
+            if (here != null && animal.random.Next(0, 5) == 0) {
                 Tile dest = PickRandomNavNeighbour(here);
                 if (dest != null) {
                     animal.task = new GoTask(animal, dest);
@@ -89,7 +89,7 @@ public class AnimalStateManager {
             candidates.Add(n.tile);
         }
         if (candidates != null && candidates.Count > 0)
-            return candidates[UnityEngine.Random.Range(0, candidates.Count)];
+            return candidates[animal.random.Next(0, candidates.Count)];
         return null; // don't wander if all neighbours have mice
     }
 
@@ -202,7 +202,7 @@ public class AnimalStateManager {
                         if (extra != null) outputs = extra;
                     }
                     foreach (ItemQuantity output in outputs) {
-                        if (output.chance >= 1f || UnityEngine.Random.value < output.chance)
+                        if (output.chance >= 1f || animal.random.NextDouble() < output.chance)
                             animal.Produce(output.item, output.quantity);
                     }
                     // Pump buildings drain water from their source tile on each completed round

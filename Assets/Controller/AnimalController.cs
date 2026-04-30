@@ -54,6 +54,12 @@ public class AnimalController : MonoBehaviour{
     // Staggered tick dispatch: each animal ticks exactly once per game-second,
     // but at a different point within that second based on its tickOffset.
     void Update() {
+        Tick(Time.deltaTime);
+    }
+
+    // Advances animal ticks by `dt` seconds. Production calls Tick(Time.deltaTime).
+    // Tests / snapshot harness call with a fixed dt for deterministic stepping.
+    public void Tick(float dt) {
         if (na == 0) return;
         // Lazy init: job counts UI needs world to exist (frame 1+)
         if (!jobCountsInitialized && WorldController.instance?.world != null) {
@@ -62,7 +68,7 @@ public class AnimalController : MonoBehaviour{
             jobCountsInitialized = true;
         }
         prevTickAccumulator = tickAccumulator;
-        tickAccumulator += Time.deltaTime;
+        tickAccumulator += dt;
         for (int a = 0; a < na; a++) {
             float off = animals[a].tickOffset;
             // Boundary crossing: has floor(t - offset) increased?

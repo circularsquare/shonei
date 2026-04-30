@@ -64,7 +64,18 @@ public class World : MonoBehaviour {
     }
 
     public void Update(){
-        if (Math.Floor(timer + Time.deltaTime) - Math.Floor(timer) > 0){ // every 1 sec
+        Tick(Time.deltaTime);
+    }
+
+    // Advances the simulation by `dt` seconds. Production drives this from Update with
+    // Time.deltaTime (so timeScale just works). Tests / future snapshot harness drive it
+    // with a fixed dt to get deterministic stepping decoupled from frame rate.
+    //
+    // Integer-period dispatch (1s / 0.2s / 10s / hour / 30s) uses floor-of-old-vs-new
+    // crossings — so tickers fire exactly once per period regardless of dt size, even
+    // for dts that span multiple periods.
+    public void Tick(float dt){
+        if (Math.Floor(timer + dt) - Math.Floor(timer) > 0){ // every 1 sec
             // AnimalController self-drives staggered ticks from its own Update()
             // Moisture gains (rain + water seep) before plants so Grow() reads current soil.
             MoistureSystem.instance?.RainUptakePerSecond();
@@ -81,27 +92,27 @@ public class World : MonoBehaviour {
             PowerSystem.instance?.Tick();
         }
         float reconcilePeriod = 10f;
-        if (Math.Floor((timer + Time.deltaTime) / reconcilePeriod) - Math.Floor(timer / reconcilePeriod) > 0)
-            WorkOrderManager.instance?.Reconcile();        
+        if (Math.Floor((timer + dt) / reconcilePeriod) - Math.Floor(timer / reconcilePeriod) > 0)
+            WorkOrderManager.instance?.Reconcile();
         float period = 0.2f;
-        if (Math.Floor((timer + Time.deltaTime) / period) - Math.Floor(timer / period) > 0){  // every 0.2 sec
+        if (Math.Floor((timer + dt) / period) - Math.Floor(timer / period) > 0){  // every 0.2 sec
             invController.TickUpdate(); // update itemdisplay, add controller instances
             waterController?.TickUpdate();
             StructController.instance?.TickUpdate();
             InfoPanel.instance.UpdateInfo();
         }
         float hourPeriod = ticksInDay / 24f; // 10 seconds = 1 in-game hour
-        if (Math.Floor((timer + Time.deltaTime) / hourPeriod) - Math.Floor(timer / hourPeriod) > 0)
+        if (Math.Floor((timer + dt) / hourPeriod) - Math.Floor(timer / hourPeriod) > 0)
             WeatherSystem.instance?.OnHourElapsed();
-        WeatherSystem.instance?.Tick(Time.deltaTime);
+        WeatherSystem.instance?.Tick(dt);
 #if UNITY_EDITOR
         // Editor-only leak canary: every 30s, flag any ItemStack whose resAmount/resSpace
         // exceeds what live tasks claim. Silent on clean runs. See ItemResChecker.cs.
         const float invariantPeriod = 30f;
-        if (Math.Floor((timer + Time.deltaTime) / invariantPeriod) - Math.Floor(timer / invariantPeriod) > 0)
+        if (Math.Floor((timer + dt) / invariantPeriod) - Math.Floor(timer / invariantPeriod) > 0)
             ItemResChecker.Check();
 #endif
-        timer += Time.deltaTime;
+        timer += dt;
     }
         
 

@@ -39,6 +39,7 @@ Comments:
 - **Method comments**: plain `//` above. Comment the "why", not the "what". Skip obvious ones.
 - **Field comments**: trailing `//` for one-liners; above `//` block for multi-line.
 - **TODOs**: `// TODO:` (uppercase T, colon).
+- **Avoid value-specific comments.** Don't write comments whose truth depends on specific parameter values (`pow(0.99, 10) ~ 0.9044`) — they go stale silently when the parameter changes. General order-of-magnitude framing ("decays slowly", "roughly 5% per tick") is fine.
 
 ## Resources
 
@@ -51,7 +52,8 @@ Design plans for non-trivial in-progress features live in `C:\Users\anita\.claud
 ## Folder conventions
 
 - `Assets/Model/` — pure C# game logic. Large standalone systems get their own file (Animal, World, Structure, etc.).
-- `Assets/Components/` — small, tightly-scoped subclasses and single-purpose MonoBehaviours (e.g. PumpBuilding, ClockHand). If a class is fewer than ~30 lines and exists purely to override one method or add one behaviour, put it here rather than cluttering Model or Controller.
+- `Assets/Model/Structure/` — the `Structure` base class plus all its subclasses (`Building`, `Plant`, `Windmill`, `Quarry`, `PumpBuilding`, `Flywheel`, `MouseWheel`, `MarketBuilding`, `PowerShaft`, …) and tightly-coupled support types (`Blueprint`, `StructType`, `StructureVisuals`). New Building/Structure subclasses go here, NOT in Components.
+- `Assets/Components/` — single-purpose MonoBehaviours only: UI widgets (`FillBar`, `ItemIcon`, `StorageSlotDisplay`, …) and building-attached visuals (`ClockHand`, `RotatingPart`, `PortStubVisuals`, …). If your class is a `Structure`/`Building` subclass it belongs in `Model/Structure/` instead, even if it's small.
 
 ## C# / Unity IDE warnings
 The VSCode C# extension (OmniSharp/Roslyn) sometimes reports errors like "missing using directive" or "type not found" for types that are defined in other Unity-compiled assemblies (e.g. UnityEngine types, or classes in other .cs files without explicit namespaces). These are **false positives** — Unity's own compiler resolves them correctly when it builds. Do not add spurious `using` statements or restructure code to silence these IDE-only warnings.
@@ -94,12 +96,53 @@ When adding new saveable state, update the checklist comment at the top of `Save
 ### Exclusive panels
 `TradingPanel`, `RecipePanel`, `ResearchPanel`, and `GlobalHappinessPanel` are mutually exclusive via `UI.RegisterExclusive()` / `UI.OpenExclusive()`. New exclusive panels must follow this pattern.
 
+## Assembly structure
+
+Source code is split across four asmdefs:
+
+- `Assets/Shonei.Runtime.asmdef` — all gameplay code (Model, Controller, Components, UI, Lighting). Auto-referenced. Pulls in TextMeshPro, URP Universal+Core, NativeWebSocket.
+- `Assets/Editor/Shonei.Editor.asmdef` — editor-only utilities (sheet splitters, sprite postprocessors). References `Shonei.Runtime`.
+- `Assets/Tests/Editor/Shonei.EditMode.Tests.asmdef` — EditMode tests. References `Shonei.Runtime` + `Shonei.Editor`.
+- `Assets/Tests/PlayMode/Shonei.PlayMode.Tests.asmdef` — PlayMode tests. References `Shonei.Runtime`.
+
+Adding a new top-level Assets folder for source? It'll fall into `Shonei.Runtime` automatically (the asmdef sits at Assets root). Adding a new editor utility? Goes under `Assets/Editor/` and into `Shonei.Editor` automatically. New first-party engine module dependency (e.g. URP feature)? Add it to `Shonei.Runtime`'s `references` array — and check `read_console` for missing-type errors after recompile.
+
+## Testing
+
+**EditMode tests** (`Assets/Tests/Editor/`) — one file per system (e.g. `ItemStackTests.cs`). Fast (ms each). Use for pure-logic invariants — fen/liang math, recipe scoring, inventory bookkeeping. Cannot use Unity lifecycle (`Start` doesn't fire); singletons must be wired via reflection helpers.
+
+**PlayMode tests** (`Assets/Tests/PlayMode/`) — load `Main.unity`, run actual game lifecycle. Slower (seconds each). Use for integration / snapshot tests where Animal AI, scene-loaded controllers, or the real save/load path matter. `TickSmokeTest.cs` is the canonical example: load Main → wait 3 frames → drive `World.Tick(1/60f)` × N → assert state.
+
+**Snapshot tests** (`Assets/Tests/PlayMode/SnapshotTests.cs` + `SnapshotRunner.cs`) — capture full world state as JSON, diff against a checked-in golden file. Catches regressions in *any* system that affects serialized state (worldgen, animal AI, tick dispatch, save format) without writing per-system assertions. Goldens live in `Assets/Tests/PlayMode/Scenarios/<name>.golden.json`. On mismatch, the actual is written to `Application.temporaryCachePath` for diffing.
+
+To add a new snapshot scenario:
+1. Add a `[UnityTest]` method to `SnapshotTests.cs` that calls `SnapshotRunner.RunDefaultWorld(unitySeed: <fixed>, ticks: <N>, name: <unique>)`.
+2. Run it once — golden is written and the test reports Inconclusive. Review the golden file, commit if good.
+3. Subsequent runs diff against the golden. To accept new state after intentional behavior changes, delete the golden and re-run.
+
+The runner pauses `Time.timeScale`, sets `WorldController.skipAutoLoad` so the user's most-recent save isn't picked up, and nulls singleton statics to keep state clean across consecutive runs in the same Unity session. If you add a new singleton that surfaces a "two instances of X" error during snapshot tests, add its type to `NullStaticInstances` in `SnapshotRunner.cs`.
+
+**Workflows via Unity MCP** (`mcp__unity__*`):
+- `read_console` — check warnings/errors after script edits. Run this after non-trivial code changes before claiming done.
+- `run_tests` returns a job_id; poll with `get_test_job` (use `wait_timeout: 60` and `include_failed_tests: true`). Specify `mode: "EditMode"` or `mode: "PlayMode"`.
+- Tests can't run while Unity is already in Play Mode — wait, or ask the user to exit.
+
+**Adding tests**:
+- One test class per system, named `SystemNameTests.cs`. Use existing files as the style reference.
+- **Keep them lean.** A bug fix gets ONE test that would have caught it. A new feature gets a small handful covering the contract — not an exhaustive matrix. Tests are read-mostly: pad them and you pay the cost forever.
+- Cover the *invariant* or *contract*, not every getter or trivial branch. Heavy `[TestCase]` parameterization beats many copy-paste `[Test]` methods.
+- For protected-set static singletons (`Db.itemByName`, `RecipePanel.instance`, etc.), use the `SetSingletonInstance` / `SetStaticProp` reflection helpers in existing files — copy the pattern, don't reinvent.
+- EditMode tests for methods that touch `World.instance.timer` or require a live `Animal`/`Inventory`: skip with a clearly-marked `// Deferred` comment block, OR write them as PlayMode tests. Don't fight the dependency in unit-test setup.
+
+**When a test fails**: diagnose the regression and fix the code. Don't change assertions to make them pass unless the test itself was wrong (rare; verify carefully).
+
 ## Anti-patterns (known past mistakes)
 
 - **MCP scene/prefab writes**: Do NOT write `.unity`/`.prefab` files via MCP when user may have unsaved editor work — MCP reads stale on-disk state, not Unity's in-memory state. Describe manual steps instead.
 - **`[Serializable]` on save data classes**: Don't add it — Newtonsoft.Json doesn't need it, and Unity's serializer will materialize default instances instead of null.
 - **Craft order job check**: Do NOT use `structType.job` for craft eligibility — that's the *construction* job (e.g. "hauler" for a sawmill). Use `Array.Exists(a.job.recipes, r => r != null && r.tile == buildingName)`.
 - **Stale WOM orders after world clear**: `WorkOrderManager.ClearAllOrders()` must be called at the start of `ClearWorld()`, before destroying any objects — otherwise `WorkOrder` references survive into the new session pointing at pre-load `ItemStack`/`Blueprint` objects.
+- **Static collections that accumulate across scene reloads**: when adding a new `static List<>` / `static HashSet<>` / `static Dictionary<>` in a singleton (especially `Db.cs`), reset it in the singleton's constructor — not just declare it once. Otherwise scene reloads (PlayMode tests, future "new game" feature) double-populate, breaking determinism. See the reset block in `Db.cs:72-100` for the pattern.
 
 ## Session wrap-up checklist
 
