@@ -14,7 +14,11 @@ using UnityEngine;
 public class SoundManager : MonoBehaviour {
     public static SoundManager instance { get; private set; }
 
-    [Header("Volume")]
+    // Designer baselines — relative loudness between buses, tuned in editor.
+    // The runtime multiplies these by the user's SettingsManager sliders
+    // (master × per-bus) at point-of-use. So "max user volume" plays a clip at
+    // exactly this baseline; raining at max plays at exactly this ambient baseline.
+    [Header("Volume baselines")]
     [SerializeField, Range(0f, 1f)] float sfxVolume     = 1f;
     [SerializeField, Range(0f, 1f)] float ambientVolume  = 0.4f;
 
@@ -60,8 +64,14 @@ public class SoundManager : MonoBehaviour {
             Debug.LogError($"[SoundManager] SFX clip not found: Audio/SFX/{clipName}");
             return;
         }
-        sfxSource.PlayOneShot(clip, sfxVolume);
+        sfxSource.PlayOneShot(clip, sfxVolume * UserMaster() * UserSfx());
     }
+
+    // ── User-volume helpers ──
+    // Read SettingsManager live; tolerate missing instance (returns 1 = no scaling).
+    static float UserMaster() => SettingsManager.instance != null ? SettingsManager.instance.masterVolume  : 1f;
+    static float UserSfx()    => SettingsManager.instance != null ? SettingsManager.instance.sfxVolume     : 1f;
+    static float UserAmbient()=> SettingsManager.instance != null ? SettingsManager.instance.ambientVolume : 1f;
 
     // --- Ambient (rain) ---
 
@@ -85,7 +95,7 @@ public class SoundManager : MonoBehaviour {
 
         // Quadratic curve so volume drops off faster than the linear particle
         // alpha/emission — keeps sound and visuals feeling in sync.
-        float vol = rain * rain * ambientVolume;
+        float vol = rain * rain * ambientVolume * UserMaster() * UserAmbient();
 
         if (vol > 0.005f) {
             SetAmbientClip("rain");

@@ -45,6 +45,8 @@ Comments:
 
 **Before modifying any code**, read `Assets/spec/SPEC.md` to orient yourself, then read the relevant sub-document for the system you're touching. Do not skip this step even for small changes — most pattern violations come from not reading the spec first.
 
+**Before any MCP / Unity Editor work** (scene mutations, UI building, `execute_code`, etc.), read `Assets/spec/SPEC-mcp.md`. It covers what's safe vs risky (live API mutations are fine; direct YAML writes aren't), UI style conventions (font sizes 12/14/16, black text, wood frame, sprite reuse map), and common gotchas (Play mode reverts, codedom C# 6 limits, inactive lookups).
+
 You can also reference log.txt and todo.txt for my thoughts on what has happened recently and what we should work on in the future. But don't edit these.
 
 Design plans for non-trivial in-progress features live in `C:\Users\anita\.claude\projects\c--Users-anita-projects-shonei\plans\` (alongside memory). Check there when picking up unfinished work or when the user references a plan by name. Save new plans there when scoping out a multi-session feature.
@@ -125,7 +127,9 @@ The runner pauses `Time.timeScale`, sets `WorldController.skipAutoLoad` so the u
 **Workflows via Unity MCP** (`mcp__unity__*`):
 - `read_console` — check warnings/errors after script edits. Run this after non-trivial code changes before claiming done.
 - `run_tests` returns a job_id; poll with `get_test_job` (use `wait_timeout: 60` and `include_failed_tests: true`). Specify `mode: "EditMode"` or `mode: "PlayMode"`.
-- Tests can't run while Unity is already in Play Mode — wait, or ask the user to exit.
+- **Never auto-invoke `run_tests`.** It triggers a Unity recompile / domain reload and can interrupt in-flight editor work. Suggest it ("this touched save code — want me to run the EditMode tests?") and wait for explicit user confirmation. Tests can't run while Unity is already in Play Mode — wait, or ask the user to exit.
+
+**Headless CLI**: `Tools/run-tests.bat [EditMode|PlayMode|all]` runs tests without opening the editor. Useful for ad-hoc runs and future CI. Requires Unity to be closed (it locks `Library/`). Output: `TestResults/<platform>.xml` (gitignored). Override Unity path with `UNITY_PATH` env var.
 
 **Adding tests**:
 - One test class per system, named `SystemNameTests.cs`. Use existing files as the style reference.
@@ -151,3 +155,4 @@ When the user says anything like "let's wrap up", "running low on context", "let
 1. **Update specs**: Review all changes made this session. Update the relevant `Assets/spec/SPEC-*.md` files so they reflect what was built or changed.
 2. **Flag future work**: Call out anything worth revisiting — messy code, incomplete features, things that work but could be cleaner, potential refactors that would make the system easier to build on.
 3. **Suggest reorgs**: If you noticed anything during the session that could be reorganized for clarity or extensibility, mention it even if it wasn't part of the task.
+4. **Surface test coverage**: if changes touched non-trivial logic (model, AI, save, power, recipe scoring, etc.), point it out and *suggest* running `mcp__unity__run_tests` — but do not invoke it. Tests run only on explicit user request. If Unity needs to stay open, mention `Tools/run-tests.bat` as the headless alternative.

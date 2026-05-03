@@ -41,6 +41,8 @@ MOUSE AI
 - dynamic mouse task objectives
 - general way of estimating what needs will become an issue before starting a long task 
 
+
+
 CODE CLEANUP 
 
 BUGS
@@ -51,4 +53,6 @@ SHORT TERM
 - elevators!
     - elevator internal power storage
 - "mine tile and put ladder"?
+
+- options panel
 

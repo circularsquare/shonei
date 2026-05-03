@@ -20,4 +20,14 @@ public class SnapshotTests {
     public IEnumerator DefaultWorld_TenSeconds_Stable() {
         yield return SnapshotRunner.RunDefaultWorld(unitySeed: 12345, ticks: 600, name: "default_world_10s");
     }
+
+    // Same world, ~6x longer run. The 10s scenario covers startup determinism;
+    // this one probes drift over time -- accumulation bugs in inventory bookkeeping,
+    // decay rounding, or RNG state divergence that only show up after many ticks.
+    // Same seed as the 10s test on purpose: any divergence here that doesn't show
+    // up at 10s is by definition a slow-drift regression, not a worldgen one.
+    [UnityTest]
+    public IEnumerator DefaultWorld_SixtySeconds_Stable() {
+        yield return SnapshotRunner.RunDefaultWorld(unitySeed: 12345, ticks: 3600, name: "default_world_60s");
+    }
 }

@@ -89,6 +89,10 @@ public class LightFeature : ScriptableRendererFeature {
 
     public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData) {
         if (!Application.isPlaying) return;
+        // User-toggled lighting off → skip both passes. Sprites then render at
+        // their raw URP color (no normals capture, no shadow modulation, no
+        // composite multiply). Tolerate missing SettingsManager (defaults to on).
+        if (SettingsManager.instance != null && !SettingsManager.instance.lightingEnabled) return;
         // Skip cameras that see no sprites participating in the normals RT pipeline
         // (lit, directional-only, or water). The Unlit overlay camera hits this check
         // because its culling mask only contains layers excluded from all three masks.
