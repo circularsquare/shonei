@@ -221,7 +221,7 @@ public class SaveSystem : MonoBehaviour {
             y        = tile.y,
             tileType = tile.type.name,
             inv      = tile.inv != null ? GatherInventory(tile.inv) : null,
-            hasBackgroundWall = tile.hasBackground,
+            backgroundWallType = (int)tile.backgroundType,
         };
     }
 
@@ -444,15 +444,19 @@ public class SaveSystem : MonoBehaviour {
                 string typeName = tsd.tileType == "stone" ? "limestone" : tsd.tileType;
                 if (!string.IsNullOrEmpty(typeName) && Db.tileTypeByName.ContainsKey(typeName))
                     tile.type = Db.tileTypeByName[typeName];
-                tile.hasBackground = tsd.hasBackgroundWall;
-                anyWall |= tsd.hasBackgroundWall;
+                BackgroundType bt = (BackgroundType)tsd.backgroundWallType;
+                // Legacy migration: pre-typed saves stored only hasBackgroundWall.
+                // Type info is lost; default to Stone.
+                if (bt == BackgroundType.None && tsd.hasBackgroundWall) bt = BackgroundType.Stone;
+                tile.backgroundType = bt;
+                if (bt != BackgroundType.None) anyWall = true;
             }
 
-            // Old saves predate hasBackground — apply default y <= 43 threshold.
+            // Ancient saves predate any wall data — apply the old y <= 43 Stone default.
             if (!anyWall) {
                 for (int x = 0; x < world.nx; x++)
                     for (int y = 0; y <= 43 && y < world.ny; y++)
-                        world.GetTileAt(x, y).hasBackground = true;
+                        world.GetTileAt(x, y).backgroundType = BackgroundType.Stone;
             }
         }
 

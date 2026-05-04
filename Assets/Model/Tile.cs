@@ -27,15 +27,20 @@ public class Tile {
             }
         }
     }
-    private bool _hasBackground;
-    public bool hasBackground {
-        get { return _hasBackground; }
+    // Background wall behind the tile (rendered by BackgroundTile.cs).
+    // Type is fixed at world-gen and never changes after mining: top DirtDepth
+    // rows below surface get Dirt walls, deeper get Stone. `hasBackground` is
+    // a derived getter for callers that just want presence (SkyExposure etc.).
+    private BackgroundType _backgroundType;
+    public BackgroundType backgroundType {
+        get { return _backgroundType; }
         set {
-            if (_hasBackground == value) return;
-            _hasBackground = value;
+            if (_backgroundType == value) return;
+            _backgroundType = value;
             cbBackgroundChanged?.Invoke(this);
         }
     }
+    public bool hasBackground => _backgroundType != BackgroundType.None;
     // Depth slots — slot index is independent of visual sortingOrder.
     // 0=building, 1=platform, 2=foreground, 3=road, 4=power shaft.
     // Slot 4 (shafts) renders behind buildings via a low sortingOrder; see Structure.cs.
@@ -107,6 +112,16 @@ public class Tile {
         if (inv == null) { inv = new Inventory(n: 1, x: x, y: y); }
         return inv;
     }
+}
+
+
+// Wall type behind a tile. Saved per-tile and authoritative for which
+// background texture renders at that grid cell. Decided at world-gen by
+// position (top DirtDepth rows = Dirt, deeper = Stone) and never changes.
+public enum BackgroundType {
+    None  = 0,
+    Stone = 1,
+    Dirt  = 2,
 }
 
 

@@ -1,5 +1,10 @@
 meoww!!
 
+5/4
+- background wall follows terrain 
+- mineshafts
+5/3
+- options panel
 4/30
 - gpu optimizations
 - test suite!

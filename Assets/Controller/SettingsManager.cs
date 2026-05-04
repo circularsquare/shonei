@@ -16,7 +16,7 @@ using UnityEngine;
 //   2. Add a Set*() method that writes PlayerPrefs and invokes OnChanged.
 //   3. Load it in Load() with the matching default.
 //   No edits to consumers needed unless they want to react immediately.
-public class SettingsManager : MonoBehaviour {
+public class SettingsManager : MonoBehaviour { 
     public static SettingsManager instance { get; private set; }
 
     // ── Keys ─────────────────────────────────────────────────────────────────

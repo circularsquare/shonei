@@ -376,15 +376,27 @@ public class MouseController : MonoBehaviour {
     }
 
     // Positions the drag-rect UI image between the two screen-space corners.
+    //
+    // Convert screen pixels → parent's local UI units before assigning. The parent canvas
+    // uses CanvasScaler "Scale With Screen Size", so sizeDelta is in reference units, not
+    // screen pixels — feeding it raw mouse deltas inflates the rect by the canvas scale and
+    // makes the corners walk away from the start point as the drag grows. anchoredPosition
+    // and sizeDelta share the same local units, so the rect renders correctly at any res.
     private void UpdateDragRect(Vector3 startScreen, Vector3 currentScreen) {
         if (dragRectTransform == null) return;
-        // Screen Space Overlay: RectTransform.position is in screen pixels, same origin as Input.mousePosition
-        dragRectTransform.position = new Vector3(
-            (startScreen.x + currentScreen.x) / 2f,
-            (startScreen.y + currentScreen.y) / 2f, 0f);
+        RectTransform parentRT = dragRectTransform.parent as RectTransform;
+        if (parentRT == null) return;
+        Canvas canvas = dragRectTransform.GetComponentInParent<Canvas>();
+        // Camera arg must be null for ScreenSpaceOverlay; for Camera/World canvases we pass
+        // the canvas's worldCamera so the conversion accounts for the projected canvas plane.
+        Camera cam = (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay) ? canvas.worldCamera : null;
+        Vector2 startLocal, endLocal;
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(parentRT, startScreen, cam, out startLocal);
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(parentRT, currentScreen, cam, out endLocal);
+        dragRectTransform.anchoredPosition = (startLocal + endLocal) * 0.5f;
         dragRectTransform.sizeDelta = new Vector2(
-            Mathf.Abs(currentScreen.x - startScreen.x),
-            Mathf.Abs(currentScreen.y - startScreen.y));
+            Mathf.Abs(endLocal.x - startLocal.x),
+            Mathf.Abs(endLocal.y - startLocal.y));
     }
 
     public void SetModeBuild() {

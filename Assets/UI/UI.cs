@@ -16,6 +16,14 @@ public class UI : MonoBehaviour {
     // Call RegisterExclusive() in Awake/Start; call OpenExclusive() instead of SetActive(true).
     static readonly List<GameObject> exclusivePanels = new List<GameObject>();
 
+    // Fires on every Play Mode entry, including when Domain Reload is disabled.
+    // Without this, a second Play press would accumulate destroyed GameObjects in the
+    // list, and OpenExclusive's p.activeSelf check would throw MissingReferenceException.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStaticsForPlayMode() {
+        exclusivePanels.Clear();
+    }
+
     public static void RegisterExclusive(GameObject panel) {
         if (!exclusivePanels.Contains(panel))
             exclusivePanels.Add(panel);

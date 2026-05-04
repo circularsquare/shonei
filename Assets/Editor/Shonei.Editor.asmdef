@@ -2,7 +2,8 @@
     "name": "Shonei.Editor",
     "rootNamespace": "",
     "references": [
-        "Shonei.Runtime"
+        "Shonei.Runtime",
+        "Unity.TextMeshPro"
     ],
     "includePlatforms": [
         "Editor"

@@ -9,7 +9,14 @@ public static class StructPlacement {
 
         if (tile.GetBlueprintAt(st.depth) != null) return false;
 
-        if (tile.type.id != 0 && st.name != "empty" && st.requiredTileName == null) return false;
+        // A mustBeSolidTile requirement on the placement tile itself (cached as
+        // `requiresSolidTilePlacement` in OnDeserialized) is the author's explicit signal that this
+        // StructType is meant to occupy a solid tile (e.g. mineshaft → mines stone and leaves a ladder).
+        // Skips the default "non-empty tile" and standability rejections below — the requirement loop
+        // further down still enforces the solid-tile check itself.
+        bool placementTileMustBeSolid = st.requiresSolidTilePlacement;
+
+        if (tile.type.id != 0 && st.name != "empty" && st.requiredTileName == null && !placementTileMustBeSolid) return false;
         // requiredTileName matches either a specific tile name or the tile's group
         // (e.g. quarry's "stone" requirement accepts limestone/granite/slate).
         if (st.requiredTileName != null
@@ -44,7 +51,7 @@ public static class StructPlacement {
         // When mirrored, the "body" side of the building is at (nx-1) rather than 0, so
         // standability must be checked there instead of the anchor.
         int bodyDx = mirrored ? fnx - 1 : 0;
-        if (st.name != "empty" && st.requiredTileName == null
+        if (st.name != "empty" && st.requiredTileName == null && !placementTileMustBeSolid
             && !world.graph.nodes[tile.x + bodyDx, tile.y].standable
             && !SupportedByBlueprintBelow(tile.x + bodyDx, tile.y)) return false;
 

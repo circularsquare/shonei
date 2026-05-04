@@ -26,6 +26,10 @@ public class WaterController : MonoBehaviour {
     [SerializeField] Color waterColorLight = new Color(0.18f, 0.50f, 0.95f, 0.50f);
     [SerializeField] Color surfaceColor    = new Color(1.00f, 1.00f, 1.00f, 0.75f);
 
+    // Inspector-assigned so the shader is force-included in builds (see LightFeature
+    // for rationale — Shader.Find() works in editor but doesn't survive build stripping).
+    [SerializeField] Shader waterShader;
+
     // Asset pixels per tile edge. 16 PPU assets → 16 game pixels per tile edge.
     private const int PixelsPerTile = 16;
 
@@ -102,11 +106,11 @@ public class WaterController : MonoBehaviour {
         _tintBytes = new byte[world.nx * world.ny * 4];
 
         // Create material and push colours.
-        _waterMat = new Material(Shader.Find("Water/WaterSurface"));
-        if (_waterMat == null) {
-            Debug.LogError("WaterController: could not find shader 'Water/WaterSurface'");
+        if (waterShader == null) {
+            Debug.LogError("WaterController: waterShader unassigned in Inspector — assign Water/WaterSurface (Assets/Lighting/Water.shader)");
             yield break;
         }
+        _waterMat = new Material(waterShader);
         _waterMat.SetColor("_WaterColorDark",  waterColorDark);
         _waterMat.SetColor("_WaterColorLight", waterColorLight);
         _waterMat.SetColor("_SurfaceColor",    surfaceColor);

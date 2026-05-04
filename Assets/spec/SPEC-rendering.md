@@ -13,11 +13,11 @@
 | parent − 1 | Power port stubs (`PortStubVisuals` child SR, one below the parent building). Also: flywheel wheel — rendered behind the housing so the spokes peek through. |
 | 10 | Buildings (depth-0 structures) |
 | parent + 1 | Rotating wheel children sorted in front of the base (`RotatingPart` child SR — windmill blades). Per-building: the building decides whether its wheel sorts in front or behind by setting `wsr.sortingOrder` relative to its own `sr.sortingOrder` (windmill = +1, flywheel = −1). |
-| 11 | Floor items resting on a building's solid top (computed by `Inventory.ComputeFloorSortingOrder`) |
+| 12 | Floor items resting on a building's solid top (computed by `Inventory.ComputeFloorSortingOrder` — building +2 so wheel/blade overlays at parent+1 sit between the building and the pile) |
 | 15 | Platforms (depth-1 structures); also clock hand |
-| 16 | Floor items resting on a platform's solid top (computed) |
+| 17 | Floor items resting on a platform's solid top (computed — platform +2) |
 | 20 | Water overlay sprite (`WaterController`) |
-| 30 | Items in storage/inventory display |
+| parent + 1 | Items in storage display (drawer stacks, crate placeholder, tank fill, bookshelf fill) — `Inventory` ctor takes `parentSortingOrder` from the owning `Building` (e.g. drawer at 10 → stacks at 11). Falls back to 30 when no parent is supplied (test fixtures only). |
 | 40 | Foreground structures (depth-2: stairs, ladders) |
 | 48 | Animal tail (paper-doll part) |
 | 49 | Animal back foot (paper-doll part) |
@@ -33,7 +33,7 @@
 | 101 | Blueprint frame overlay (unlit, sliced) |
 | 200 | Build preview (mouse cursor ghost) |
 
-**Floor-item sort is surface-aware.** `Inventory` (Floor type) picks its sortingOrder based on the tile directly below at (x, y−1): platform-with-`solidTop` → 16, building-with-`solidTop` → 11, anything else → 70. The pile re-sorts whenever a structure is placed/destroyed under it (via `Structure` constructor + `Destroy`) or the supporting tile's type changes (`WorldController.OnTileTypeChanged`). Helpers: `Inventory.ComputeFloorSortingOrder()`, `Inventory.RefreshFloorSortingOrder()`, and the static `Inventory.RefreshFloorAt(x, y)`.
+**Floor-item sort is surface-aware.** `Inventory` (Floor type) picks its sortingOrder based on the tile directly below at (x, y−1): platform-with-`solidTop` → 17, building-with-`solidTop` → 12, anything else → 70 (surface +2, so rotating-wheel overlays at parent+1 don't collide with the pile). The pile re-sorts whenever a structure is placed/destroyed under it (via `Structure` constructor + `Destroy`) or the supporting tile's type changes (`WorldController.OnTileTypeChanged`). Helpers: `Inventory.ComputeFloorSortingOrder()`, `Inventory.RefreshFloorSortingOrder()`, and the static `Inventory.RefreshFloorAt(x, y)`.
 
 ### Structure depth layers
 
@@ -150,9 +150,9 @@ Three cameras render as a URP **Camera Stack**: SkyCamera is the Base, Main and 
 
 `Assets/Controller/BackgroundTile.cs` — scene singleton (under Lighting), initialized by `WorldController.GenerateDefault()` and `SaveSystem.Load()`.
 
-**Per-tile background**: each `Tile` has a `hasBackground` bool (with `cbBackgroundChanged` callback). During world generation, tiles at y ≤ 43 are given a background. The flag is saved/loaded in `TileSaveData` (as `hasBackgroundWall` for backward compat).
+**Per-tile background**: each `Tile` carries a `BackgroundType backgroundType` field (`None` / `Stone` / `Dirt`) with `cbBackgroundChanged` callback; `hasBackground` is a derived getter (`backgroundType != None`) for callers that just want presence (e.g. `SkyExposure`). Wall placement is **contour-based**: `WorldGen.SetBackgrounds` (called from `WorldController.GenerateDefault` after caves are carved) puts a wall behind every tile below the natural surface heightmap. Three refinements: (1) **near-surface skylight rule** — a non-solid tile within 2 of the surface stays `None`, so shallow caves visibly punch through to sky; (2) **1-tile sky/cave erosion** — a second pass clears any wall whose cardinal neighbour is `None`, so the topmost solid row and cave edges don't read darker than the air around them (the wall participates in lighting, and sitting one directly behind the surface dims it visibly); (3) **wall type is positional** — top `WorldGen.DirtDepth` rows below surface get `Dirt`, deeper get `Stone` (matches what each tile was at fill time, since stone-vein passes only convert limestone). The type is fixed at world-gen and never changes when the tile is mined or replaced. Saved per-tile in `TileSaveData.backgroundWallType` (int enum); the legacy `hasBackgroundWall` bool is read for migration of pre-typed saves (treated as Stone) but no longer written. **`WorldController.ClearWorld` resets `backgroundType` to `None` alongside `tile.type = empty`** — without this, walls from a previous world's higher surface survive into the next load (saves only persist tiles with content).
 
-**Background sprite**: a world-spanning sprite on the **Background layer** at **sorting order −10** (behind tiles at 0). Uses `BackgroundTile.shader` (dual-pass `Universal2D` + `UniversalForward` per the URP setup convention), masked by a low-res RGBA32 texture (nx × ny, 1 pixel per tile). The mask encodes two things: **alpha** = background present (opaque/transparent), **green** = top-row flag (G=255 if the tile above has no background, G=0 otherwise). The shader samples one of two tileable 16×16 textures based on the green channel: `_WallTex` (`undergroundwall`) for interior tiles, `_WallTopTex` (`undergroundwalltop`) for top-row tiles. Both tile at 1 repetition per world unit via world-space UVs. Participates in normal lighting (sun, torches, sky light) via dedicated `NormalsCaptureBackground` override in `NormalsCapturePass` — clips transparent top pixels so they read as sky in the normals RT. Wall textures are set as globals (`_BackgroundTex`, `_BackgroundTopTex`) by `BackgroundTile.cs` for the override shader to access. Rebuilt on background or tile type change via dirty flag.
+**Background sprite**: a world-spanning sprite on the **Background layer** at **sorting order −10** (behind tiles at 0). Uses `BackgroundTile.shader` (dual-pass `Universal2D` + `UniversalForward` per the URP setup convention), masked by a low-res RGBA32 texture (nx × ny, 1 pixel per tile). Mask channel encoding: **R** = wall type (0=Stone, 255=Dirt), **G** = top-row flag (255 if the tile above has no background), **A** = opaque where a wall exists. The shader samples four tileable 16×16 textures (`_WallTex`/`_WallTopTex` for stone, `_DirtWallTex`/`_DirtWallTopTex` for dirt) and selects per-pixel: top-row vs interior on G, then stone vs dirt on R. All four tile at 1 repetition per world unit via world-space UVs. Participates in normal lighting (sun, torches, sky light) via dedicated `NormalsCaptureBackground` override in `NormalsCapturePass` — clips transparent pixels of the *selected* wall texture so jagged top edges (both stone and dirt variants) read as sky in the normals RT. Wall textures are set as globals (`_BackgroundTex`, `_BackgroundTopTex`, `_BackgroundDirtTex`, `_BackgroundDirtTopTex`) by `BackgroundTile.cs` for the override shader to access. Rebuilt on background or tile type change via dirty flag.
 
 ### Key files
 
@@ -175,7 +175,7 @@ All lighting C# scripts and shaders live in `Assets/Lighting/`.
 | `LightComposite.shader` | Multiply blit onto scene + edge-depth blending toward deepAmbient for deep tile interiors. |
 | `SkyExposure.hlsl` | Shared HLSL include: declares `_CamWorldBounds`, `_GridSize`, `_SkyExposureTex` and provides `SampleSkyExposure(screenUV)`. Used by LightAmbientFill and LightSun. |
 | `BackgroundTile.shader` | Tiles `_WallTex` or `_WallTopTex` (selected by mask green channel) at world-space UVs, masked by `_MainTex`. Dual-pass per URP setup convention. |
-| `NormalsCaptureBgTile.shader` | Normals capture override for background (shader name is `Hidden/NormalsCaptureBackground` — what `LightFeature.cs` loads by). Samples `_BackgroundTex`/`_BackgroundTopTex` (globals set by `BackgroundTile.cs`) and clips transparent pixels — fixes jagged top-edge lighting. |
+| `NormalsCaptureBgTile.shader` | Normals capture override for background (shader name is `Hidden/NormalsCaptureBackground` — what `LightFeature.cs` loads by). Samples the four wall globals (`_BackgroundTex`/`_BackgroundTopTex` for stone, `_BackgroundDirtTex`/`_BackgroundDirtTopTex` for dirt) set by `BackgroundTile.cs`, branches on the mask R/G channels, and clips transparent pixels of the chosen variant — fixes jagged top-edge lighting on both stone and dirt walls. |
 | `SkyExposure.cs` | Sky exposure texture (R8, per-tile, BFS distance falloff from sky-exposed tiles). Scene singleton (under Lighting). |
 
 `Assets/Editor/SpriteNormalMapGenerator.cs` — sprite normal map batch tool (must stay in `Editor/`).
@@ -200,6 +200,8 @@ All globals are set via `cmd.SetGlobal*()` in C#. **Rule**: per-camera globals g
 | `_WaterSurfaceTex` | Texture2D | WaterController.cs | Every 0.2s | NormalsCaptureWater |
 | `_BackgroundTex` | Texture2D | BackgroundTile.cs | Once (init) | NormalsCaptureBackground |
 | `_BackgroundTopTex` | Texture2D | BackgroundTile.cs | Once (init) | NormalsCaptureBackground |
+| `_BackgroundDirtTex` | Texture2D | BackgroundTile.cs | Once (init) | NormalsCaptureBackground |
+| `_BackgroundDirtTopTex` | Texture2D | BackgroundTile.cs | Once (init) | NormalsCaptureBackground |
 
 **§1–§5** refer to the numbered sections inside `LightPass.Execute()`. "On dirty" means the property is only re-set when the underlying data changes (e.g. a background tile is placed/removed), not every frame.
 

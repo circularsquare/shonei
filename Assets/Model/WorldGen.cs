@@ -101,6 +101,59 @@ public static class WorldGen {
         return surfaceY;
     }
 
+    // ── Background walls ─────────────────────────────────────────────────
+    // Place a wall behind every tile below the natural surface heightmap, with
+    // a near-surface skylight relaxation: a non-solid tile within 2 of the
+    // surface stays open so shallow caves visibly punch through to sky.
+    // Wall type is positional (top DirtDepth rows = Dirt, deeper = Stone) and
+    // saved per-tile — never changes after mining. Since FillTerrain seeds the
+    // top DirtDepth rows as dirt and stone-vein passes only convert limestone,
+    // the positional decision matches what each tile was at fill time.
+    public static void SetBackgrounds(World world, int[] surfaceY) {
+        int nx = world.nx;
+        int ny = world.ny;
+
+        // Pass 1: place walls following the surface contour, with the near-surface
+        // skylight relaxation for shallow caves.
+        for (int x = 0; x < nx; x++) {
+            int sy = surfaceY[x];
+            int yMax = Mathf.Min(sy, ny);
+            for (int y = 0; y < yMax; y++) {
+                Tile t = world.GetTileAt(x, y);
+                if (!t.type.solid && y >= sy - 2) continue;
+                t.backgroundType = (y >= sy - DirtDepth)
+                    ? BackgroundType.Dirt
+                    : BackgroundType.Stone;
+            }
+        }
+
+        // Pass 2: 1-tile erosion at every sky/cave boundary. A wall tile that
+        // is cardinally adjacent to a no-wall tile is cleared. The wall
+        // participates in lighting (NormalsCaptureBackground), so a wall sat
+        // directly behind the topmost solid row visibly dims the surface;
+        // pulling the wall back one tile keeps surface and cave-edge tiles
+        // reading at full sky/ambient brightness. Snapshot first, then clear,
+        // so the erosion is a single 1-tile peel rather than a cascade.
+        var toClear = new List<Tile>();
+        for (int x = 0; x < nx; x++) {
+            for (int y = 0; y < ny; y++) {
+                Tile t = world.GetTileAt(x, y);
+                if (t.backgroundType == BackgroundType.None) continue;
+                if (HasNoneCardinalNeighbor(world, x, y, nx, ny))
+                    toClear.Add(t);
+            }
+        }
+        foreach (Tile t in toClear) t.backgroundType = BackgroundType.None;
+    }
+
+    static bool HasNoneCardinalNeighbor(World world, int x, int y, int nx, int ny) {
+        if (x > 0      && world.GetTileAt(x - 1, y).backgroundType == BackgroundType.None) return true;
+        if (x < nx - 1 && world.GetTileAt(x + 1, y).backgroundType == BackgroundType.None) return true;
+        if (y > 0      && world.GetTileAt(x, y - 1).backgroundType == BackgroundType.None) return true;
+        if (y < ny - 1 && world.GetTileAt(x, y + 1).backgroundType == BackgroundType.None) return true;
+        return false;
+    }
+
     // Baseline soil dampness so virgin worlds support plant growth from turn 1,
     // and sheltered soil (caves, deep stone) has something for seep/plants to read.
     // Surface soil dries from here via MoistureSystem.HourlyUpdate; underground holds.

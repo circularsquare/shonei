@@ -47,8 +47,9 @@ public class ResearchSaveData {
 public class TileSaveData {
     public int x, y;
     public string tileType;
-    public InventorySaveData inv; // floor inventory only; storage building inventories are filled after structures are restored
-    public bool hasBackgroundWall;
+    public InventorySaveData inv;     // floor inventory only; storage building inventories are filled after structures are restored
+    public int backgroundWallType;    // BackgroundType enum (0=None, 1=Stone, 2=Dirt) — authoritative
+    public bool hasBackgroundWall;    // legacy: read for migration of pre-typed saves; no longer written
 }
 
 public class StructureSaveData {

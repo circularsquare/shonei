@@ -83,10 +83,19 @@ public class Elevator : Building, PowerSystem.IPowerConsumer {
     static readonly List<Elevator> _all = new();
 
     // Monotonic tick counter shared by all elevators. Incremented once per TickAll(), so
-    // wait / trip durations measured against it are stable in-game seconds.    Not persisted —
-    // resets on load; in-flight trips lose their duration measurement but the rolling
-    // history (which IS persisted in Phase 5) survives.
+    // wait / trip durations measured against it are stable in-game seconds. Not persisted —
+    // in-flight trips lose their duration measurement on load, but the rolling history
+    // (which IS persisted) survives.
     static int currentTick = 0;
+
+    // Fires on every Play Mode entry, including when Domain Reload is disabled.
+    // Required so repeated Play presses don't carry stale tick values or orphaned
+    // Elevator refs from the previous run into the new session.
+    [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStaticsForPlayMode() {
+        _all.Clear();
+        currentTick = 0;
+    }
 
     // Called from World.Update on the 1-second cadence, BEFORE PowerSystem.Tick — so
     // demand changes from cascading state transitions (Idle→Riding) are visible to the

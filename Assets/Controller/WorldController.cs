@@ -17,6 +17,10 @@ public class WorldController : MonoBehaviour {
     Dictionary<Tile, GameObject> tileGameObjectMap;
     Coroutine defaultSetupCoroutine;
     Material tileMaterial; // Custom/TileSprite shader for tiles
+    // Inspector-assigned so the shader is part of the scene's serialized graph
+    // and force-included in builds. Shader.Find() works in the editor but the
+    // build pipeline strips shaders that aren't reachable from a Material asset.
+    [SerializeField] Shader tileShader;
 
     // FRAME 0: runs up to the first yield, pausing to let all other Start()s finish.
     // FRAME 1: resumes and calls GenerateDefault() (or waits for save/reset to do so).
@@ -43,9 +47,8 @@ public class WorldController : MonoBehaviour {
         tilesTransform = transform.Find("Tiles");
 
         // Create material with Custom/TileSprite shader.
-        var tileShader = Shader.Find("Custom/TileSprite");
         if (tileShader != null) tileMaterial = new Material(tileShader);
-        else Debug.LogError("WorldController: Custom/TileSprite shader not found");
+        else Debug.LogError("WorldController: tileShader unassigned in Inspector — assign Custom/TileSprite (Assets/Lighting/TileSprite.shader)");
 
         // Create tile GameObjects and register callbacks (persists across resets)
         for (int x = 0; x < world.nx; x++){
@@ -165,13 +168,18 @@ public class WorldController : MonoBehaviour {
             GlobalInventory.instance.itemAmounts[key] = 0;
         }
 
-        // 6. Reset all tiles: reset tile types (fires sprite callbacks), water, and moisture
+        // 6. Reset all tiles: reset tile types (fires sprite callbacks), background
+        //    walls, water, and moisture. Background walls in particular must be
+        //    cleared — saves only persist tiles that have content, so stale walls
+        //    from a previous world would otherwise survive into the next load and
+        //    appear as ghost walls in sky columns.
         WaterController.instance?.ClearWater();
         MoistureSystem.instance?.Clear();
         for (int x = 0; x < world.nx; x++) {
             for (int y = 0; y < world.ny; y++) {
                 Tile tile = world.GetTileAt(x, y);
                 tile.type = Db.tileTypeByName["empty"];
+                tile.backgroundType = BackgroundType.None;
             }
         }
 
@@ -218,11 +226,10 @@ public class WorldController : MonoBehaviour {
         // ensures every tile's sprite reflects its final surroundings.
         RefreshAllTileSprites();
 
-        // Set background walls for underground tiles. Tiles at y <= 43 get a
-        // background (underground backdrop); above that is open sky.
-        for (int x = 0; x < world.nx; x++)
-            for (int y = 0; y <= 43 && y < world.ny; y++)
-                world.GetTileAt(x, y).hasBackground = true;
+        // Background walls follow the natural surface contour — tiles below
+        // surfaceY[x] get a wall (Dirt for the top DirtDepth rows, Stone deeper),
+        // with shallow caves left open as skylights. See WorldGen.SetBackgrounds.
+        WorldGen.SetBackgrounds(world, surfaceY);
 
         SkyExposure.InitializeWorld(world);
         BackgroundTile.InitializeWorld(world);

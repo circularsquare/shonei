@@ -91,11 +91,22 @@
         "id": 11,
         "name": "Papermaking",
         "description": "Process wood pulp and water into paper.",
-        "prereqs": [5],
+        "prereqs": [],
         "cost": 5,
         "unlocks": [
             { "type": "building", "target": "paper mill" },
             { "type": "recipe",   "target": "22" }
+        ]
+    },{
+        "id": 12,
+        "name": "Writing",
+        "description": "Record knowledge in books.",
+        "prereqs": [11],
+        "cost": 5,
+        "unlocks": [
+            { "type": "building", "target": "scriptorium" },
+            { "type": "building", "target": "bookshelf" },
+            { "type": "job",      "target": "scribe" }
         ]
     }
 ]

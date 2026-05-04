@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using System.IO;
 using System;
 using System.Linq;
 using Newtonsoft.Json;
@@ -228,13 +227,10 @@ public class Db : MonoBehaviour {
             Debug.LogError("Db: 'book' group missing from itemsDb.json — skipping tech-book generation");
             return;
         }
-        string path = Application.dataPath + "/Resources/researchDb.json";
-        if (!File.Exists(path)) {
-            Debug.LogError("Db: researchDb.json not found — skipping tech-book generation");
-            return;
-        }
+        string researchJson = LoadJsonText("researchDb");
+        if (researchJson == null) return; // already logged
         try {
-            _cachedTechs = JsonConvert.DeserializeObject<ResearchNodeData[]>(File.ReadAllText(path));
+            _cachedTechs = JsonConvert.DeserializeObject<ResearchNodeData[]>(researchJson);
         } catch (Exception e) {
             Debug.LogError($"Db: failed to parse researchDb.json for book generation: {e.Message}");
             return;
@@ -357,14 +353,30 @@ public class Db : MonoBehaviour {
         }
     }
 
+    // Loads a JSON file from Assets/Resources/. Use this instead of
+    // File.ReadAllText(Application.dataPath + "/Resources/X.json") — that pattern
+    // works in the Editor but breaks in built players, where Resources/ is baked
+    // into a binary blob (not a real folder on disk). Returns null and logs on
+    // miss; callers should bail rather than try to recover.
+    static string LoadJsonText(string resourceName) {
+        TextAsset ta = Resources.Load<TextAsset>(resourceName);
+        if (ta == null) {
+            Debug.LogError($"Db: Resources/{resourceName}.json not found");
+            return null;
+        }
+        return ta.text;
+    }
+
     void ReadJson(){
         // read Items
-        string jsonTextItems = File.ReadAllText(Application.dataPath + "/Resources/itemsDb.json");
+        string jsonTextItems = LoadJsonText("itemsDb");
+        if (jsonTextItems == null) return;
         foreach (Item item in JsonConvert.DeserializeObject<Item[]>(jsonTextItems))
             AddItemToDb(item);
 
         // read Tiles
-        string jsonTileTypes = File.ReadAllText(Application.dataPath + "/Resources/tilesDb.json");
+        string jsonTileTypes = LoadJsonText("tilesDb");
+        if (jsonTileTypes == null) return;
         TileType[] tileTypesUnplaced = JsonConvert.DeserializeObject<TileType[]>(jsonTileTypes);
         foreach (TileType tileType in tileTypesUnplaced){
             if (tileTypes[tileType.id] != null){Debug.LogError($"multiple tile types with id={tileType.id}: '{tileTypes[tileType.id].name}' and '{tileType.name}'");}
@@ -373,7 +385,8 @@ public class Db : MonoBehaviour {
         }
 
         // read Jobs
-        string jsonTextJobs = File.ReadAllText(Application.dataPath + "/Resources/jobsDb.json");
+        string jsonTextJobs = LoadJsonText("jobsDb");
+        if (jsonTextJobs == null) return;
         Job[] jobsUnplaced = JsonConvert.DeserializeObject<Job[]>(jsonTextJobs);
         foreach (Job job in jobsUnplaced){
             if (jobs[job.id] != null){Debug.LogError($"multiple jobs with id={job.id}: '{jobs[job.id].name}' and '{job.name}'");}
@@ -396,7 +409,8 @@ public class Db : MonoBehaviour {
         }
 
         // read Structures
-        string jsonStructTypes = File.ReadAllText(Application.dataPath + "/Resources/buildingsDb.json");
+        string jsonStructTypes = LoadJsonText("buildingsDb");
+        if (jsonStructTypes == null) return;
         StructType[] structTypesUnplaced = JsonConvert.DeserializeObject<StructType[]>(jsonStructTypes);
         foreach (StructType structType in structTypesUnplaced){
             if (structTypes[structType.id] != null){Debug.LogError($"multiple struct types with id={structType.id}: '{structTypes[structType.id].name}' and '{structType.name}'");}
@@ -405,7 +419,8 @@ public class Db : MonoBehaviour {
             structTypeByName.Add(structType.name, structType);
         } 
 
-        string jsonPlantTypes = File.ReadAllText(Application.dataPath + "/Resources/plantsDb.json");
+        string jsonPlantTypes = LoadJsonText("plantsDb");
+        if (jsonPlantTypes == null) return;
         PlantType[] plantTypesUnplaced = JsonConvert.DeserializeObject<PlantType[]>(jsonPlantTypes);
         foreach (PlantType plantType in plantTypesUnplaced){
             if (plantTypes[plantType.id] != null){Debug.LogError($"multiple plant types with id={plantType.id}: '{plantTypes[plantType.id].name}' and '{plantType.name}'");}
@@ -420,7 +435,8 @@ public class Db : MonoBehaviour {
 
 
         // read Recipes
-        string jsonTextRecipes = File.ReadAllText(Application.dataPath + "/Resources/recipesDb.json");
+        string jsonTextRecipes = LoadJsonText("recipesDb");
+        if (jsonTextRecipes == null) return;
         Recipe[] recipesUnplaced = JsonConvert.DeserializeObject<Recipe[]>(jsonTextRecipes);
         foreach (Recipe recipe in recipesUnplaced){
             if (recipes[recipe.id] != null){Debug.LogError($"multiple recipes with id={recipe.id}: '{recipes[recipe.id].description}' and '{recipe.description}'");}

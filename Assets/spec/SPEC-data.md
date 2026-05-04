@@ -38,9 +38,11 @@ Fields:
 | `depth` | int? | render/occupancy layer: `0` building, `1` platform, `2` foreground (stairs/ladder/torch), `3` road. Defaults to 0. |
 | `solidTop` | bool? | mice can stand on top |
 | `isTile` | bool? | placeable tile type rather than a building |
+| `placesStructureOnComplete` | string? | name of an additional Structure to place on the same tile after construction (resolved via `Db.structTypeByName`). Used by structures that bundle a follow-up structure with their placement — currently `mineshaft` → `ladder`. Placed before the post-construct standability sweep so the new structure's nav edges enter the graph in the same call. Works for both isTile and non-isTile types. |
 | `category` | string | UI build menu group: `"storage"`, `"structures"`, `"tiles"`, `"production"` |
 | `defaultLocked` | bool? | hidden from build menu until researched |
 | `requiredTileName` | string? | tile type this building must be placed on |
+| `tileRequirements` | `[{dx, dy, mustBeStandable?, mustHaveWater?, mustBeEmpty?, mustBeSolidTile?, mustBeOpenSkyAbove?, requiredTileName?}]?` | per-tile placement constraints checked at footprint offsets, evaluated by `StructPlacement.CanPlaceHere`. **Special case**: a `mustBeSolidTile: true` requirement on the placement tile itself (`dx: 0, dy: 0`) signals that this StructType is *meant* to occupy a solid tile — `StructPlacement` skips its default "reject placement on non-empty tiles" + standability rejections, AND `StructController.Construct()` mines the tile to empty after placement (mirroring the existing `requiredTileName` mining trigger). Used by `mineshaft`. |
 | `depleteAt` | int? | production count at which this building depletes |
 | `pathCostReduction` | float? | reduces A* edge cost (roads) |
 | `isWorkstation` | bool? | registers a WOM Craft order when placed |

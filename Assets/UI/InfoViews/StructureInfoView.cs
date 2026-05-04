@@ -192,6 +192,21 @@ public class StructureInfoView : MonoBehaviour {
         var sb = new System.Text.StringBuilder();
         sb.Append("blueprint: " + blueprint.structType.name);
         sb.Append("\n progress: " + blueprint.GetProgress());
+        // Surface the silent failure paths in ConstructTask.Initialize for deconstructs:
+        // both predicates make Initialize return false (with a haul re-promotion side effect),
+        // leaving the order at 0/1 forever with no other in-game cue.
+        if (blueprint.state == Blueprint.BlueprintState.Deconstructing) {
+            if (blueprint.WouldCauseItemsFall())
+                sb.Append("\n <color=#d04040>blocked: items above would fall</color>");
+            if (blueprint.StorageNeedsEmptying())
+                sb.Append("\n <color=#d04040>blocked: storage not empty</color>");
+        }
+        // Construction blueprints can be suspended (waiting for tileRequirements like water /
+        // standability / mustBeSolidTile, or for bottom-row support). Suspended bps register no
+        // work orders, so without this line the player sees "progress: 0/N" with nothing
+        // happening and no in-game cue. The half-alpha tint from RefreshColor is the visual hint.
+        else if (blueprint.IsSuspended())
+            sb.Append("\n <color=#d04040>suspended: conditions not met</color>");
         var bpOrder = WorkOrderManager.instance?.FindOrderForBlueprint(blueprint);
         if (bpOrder != null)
             sb.Append("\n wo: " + bpOrder.type + " " + bpOrder.res.reserved + "/" + bpOrder.res.capacity);

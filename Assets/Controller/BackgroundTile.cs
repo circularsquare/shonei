@@ -12,6 +12,9 @@ public class BackgroundTile : MonoBehaviour {
 
     [SerializeField] GameObject spriteGo;    // BackgroundTileSprite child — set in Inspector
     [SerializeField] SpriteRenderer spriteSR; // SpriteRenderer on spriteGo — set in Inspector
+    // Inspector-assigned so the shader is force-included in builds (see LightFeature
+    // for the rationale — Shader.Find() lookups by name don't survive build stripping).
+    [SerializeField] Shader wallShader;
 
     World world;
     Texture2D maskTex; // RGBA32, nx x ny — mask (opaque where background, transparent where sky)
@@ -76,8 +79,12 @@ public class BackgroundTile : MonoBehaviour {
     }
 
     // ── Background mask texture ─────────────────────────────────────────────
-    // hasBackground tiles → opaque white. Everything else → transparent.
-    // The BackgroundTile shader uses this as a mask; actual appearance comes from _WallTex.
+    // Per-tile mask consumed by BackgroundTile.shader / NormalsCaptureBgTile.shader.
+    // Channel encoding (RGBA32, point-filtered):
+    //   R — wall type: 0 = Stone, 255 = Dirt
+    //   G — top-row flag: 255 if the tile above has no wall (uses *Top texture)
+    //   B — unused (kept 0)
+    //   A — 255 where a wall exists, 0 where transparent (sky)
     void RebuildMaskTexture() {
         if (world == null) return;
         int nx = world.nx;
@@ -88,13 +95,14 @@ public class BackgroundTile : MonoBehaviour {
         for (int y = 0; y < ny; y++) {
             for (int x = 0; x < nx; x++) {
                 Tile t = world.GetTileAt(x, y);
-                if (!t.hasBackground) {
+                if (t.backgroundType == BackgroundType.None) {
                     pixels[y * nx + x] = clear;
                     continue;
                 }
-                // Green channel: 255 = top tile (tile above has no background)
                 bool isTop = (y + 1 >= ny) || !world.GetTileAt(x, y + 1).hasBackground;
-                pixels[y * nx + x] = new Color32(255, (byte)(isTop ? 255 : 0), 255, 255);
+                byte r = t.backgroundType == BackgroundType.Dirt ? (byte)255 : (byte)0;
+                byte g = (byte)(isTop ? 255 : 0);
+                pixels[y * nx + x] = new Color32(r, g, 0, 255);
             }
         }
 
@@ -115,9 +123,8 @@ public class BackgroundTile : MonoBehaviour {
         int ny = world.ny;
         maskSprite = Sprite.Create(maskTex, new Rect(0, 0, nx, ny), Vector2.zero, 1f);
 
-        Shader wallShader = Shader.Find("Custom/BackgroundTile");
         if (wallShader == null) {
-            Debug.LogError("BackgroundTile: Custom/BackgroundTile shader not found");
+            Debug.LogError("BackgroundTile: wallShader unassigned in Inspector — assign Custom/BackgroundTile (Assets/Lighting/BackgroundTile.shader)");
             return;
         }
         wallMat = new Material(wallShader);
@@ -134,10 +141,24 @@ public class BackgroundTile : MonoBehaviour {
         else
             wallMat.SetTexture("_WallTopTex", wallTopTex);
 
+        Texture2D dirtWallTex = Resources.Load<Texture2D>("Sprites/Tiles/dirtwall");
+        if (dirtWallTex == null)
+            Debug.LogError("BackgroundTile: dirt wall texture not found at Resources/Sprites/Tiles/dirtwall");
+        else
+            wallMat.SetTexture("_DirtWallTex", dirtWallTex);
+
+        Texture2D dirtWallTopTex = Resources.Load<Texture2D>("Sprites/Tiles/dirtwalltop");
+        if (dirtWallTopTex == null)
+            Debug.LogError("BackgroundTile: dirt wall top texture not found at Resources/Sprites/Tiles/dirtwalltop");
+        else
+            wallMat.SetTexture("_DirtWallTopTex", dirtWallTopTex);
+
         // Set wall textures as globals so NormalsCaptureBackground.shader can read them
         // (override materials don't inherit per-material properties).
         if (wallTex != null) Shader.SetGlobalTexture("_BackgroundTex", wallTex);
         if (wallTopTex != null) Shader.SetGlobalTexture("_BackgroundTopTex", wallTopTex);
+        if (dirtWallTex != null) Shader.SetGlobalTexture("_BackgroundDirtTex", dirtWallTex);
+        if (dirtWallTopTex != null) Shader.SetGlobalTexture("_BackgroundDirtTopTex", dirtWallTopTex);
 
         spriteSR.sprite = maskSprite;
         spriteSR.material = wallMat;

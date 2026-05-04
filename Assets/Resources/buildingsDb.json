@@ -118,7 +118,8 @@
         "nStacks": 10,
         "storageStackSize": 1,
         "solidTop": true,
-        "category": "storage"
+        "category": "storage",
+        "defaultLocked": true
     },{
         "id": 24,
         "name": "market",
@@ -259,6 +260,22 @@
         "njob": "hauler",
         "category": "tiles"
     },{
+        "id": 83,
+        "name": "mineshaft",
+        "description": "wall supports for a mined-out tile. ladder bundled.",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 10 }
+        ],
+        "depth": 1,
+        "njob": "digger",
+        "noMaintenance": true,
+        "placesStructureOnComplete": "ladder",
+        "tileRequirements": [
+            { "dx": 0, "dy": 0, "mustBeSolidTile": true }
+        ],
+        "category": "structures"
+    },{
         "id": 101,
         "name": "sawmill",
         "description": "wood processing",
@@ -365,7 +382,8 @@
         "capacity": 1,
         "isWorkstation": true,
         "solidTop": true,
-        "category": "production"
+        "category": "production",
+        "defaultLocked": true
     },{
         "id": 110,
         "name": "dirt pit",

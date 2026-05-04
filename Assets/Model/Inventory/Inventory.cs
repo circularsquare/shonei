@@ -79,7 +79,12 @@ public class Inventory{
         return space;
     }
 
-    public Inventory(int n = 1, int stackSize = 2500, InvType invType = InvType.Floor, int x = 0, int y = 0, ItemClass storageClass = ItemClass.Default) {
+    // parentSortingOrder: for Storage inventories, the sortingOrder of the owning building's
+    // sprite. Storage stack/placeholder sprites render at parentSortingOrder + 1 so they sit
+    // just above the building they belong to (e.g. drawer at 10 → stacks at 11). Pass -1
+    // (the default) to fall back to the legacy hardcoded 30 — used by tests that don't
+    // construct a real building.
+    public Inventory(int n = 1, int stackSize = 2500, InvType invType = InvType.Floor, int x = 0, int y = 0, ItemClass storageClass = ItemClass.Default, int parentSortingOrder = -1) {
         nStacks = n;
         this.stackSize = stackSize;
         this.invType = invType;
@@ -91,6 +96,10 @@ public class Inventory{
         for (int i = 0; i < nStacks; i++){
             itemStacks[i] = new ItemStack(this, null, 0, stackSize);
         }
+
+        // Storage sprites sit one sortingOrder above their parent building so they read
+        // as "stuff on the building" rather than ambiguous mid-air items.
+        int storageOrder = parentSortingOrder >= 0 ? parentSortingOrder + 1 : 30;
 
         if (invType == InvType.Storage) {
             allowed = Db.itemsFlat.ToDictionary(i => i.id, i => false); // all disallowed by default for dry storage & tanks; user enables per-item via the filter UI
@@ -119,7 +128,7 @@ public class Inventory{
                 stackGos[i].transform.position = new Vector3(x + quarterOffsets[i].x, y + quarterOffsets[i].y, 0);
                 stackGos[i].transform.SetParent(InventoryController.instance.transform, true);
                 SpriteRenderer sr = SpriteMaterialUtil.AddSpriteRenderer(stackGos[i]);
-                sr.sortingOrder = 30;
+                sr.sortingOrder = storageOrder;
                 LightReceiverUtil.SetSortBucket(sr);
             }
         } else if (invType == InvType.Floor || invType == InvType.Storage){
@@ -128,7 +137,7 @@ public class Inventory{
             go.transform.SetParent(InventoryController.instance.transform, true);
             SpriteRenderer sr = SpriteMaterialUtil.AddSpriteRenderer(go);
             if (invType == InvType.Floor) { sr.sortingOrder = ComputeFloorSortingOrder(); }
-            else {sr.sortingOrder = 30;}
+            else { sr.sortingOrder = storageOrder; }
             LightReceiverUtil.SetSortBucket(sr);
             // Bookshelves render their own fill sprite via UpdateSprite — skip the generic Storage placeholder.
             if (storageClass != ItemClass.Book) {
@@ -680,15 +689,17 @@ public class Inventory{
 
     // ── Floor-item sort order ──────────────────────────────────────────
     // Items resting on a tile pick their sortingOrder based on what's directly
-    // below: a building's solid top → 11, a platform's solid top → 16, anything
+    // below: a building's solid top → 12, a platform's solid top → 17, anything
     // else → 70 (dirt or fallback). Platforms render above buildings at the
     // same tile, so platform takes priority when both are present below.
+    // We bump by +2 (not +1) so that wheel/blade overlays at parent+1 don't
+    // collide with the floor pile sitting on the same surface.
     // See SPEC-rendering.md sorting-order table.
     private int ComputeFloorSortingOrder(){
         Tile below = World.instance?.GetTileAt(x, y - 1);
         if (below == null) return 70;
-        if (below.structs[1] != null && below.structs[1].structType.solidTop) return 16;
-        if (below.building   != null && below.building.structType.solidTop)   return 11;
+        if (below.structs[1] != null && below.structs[1].structType.solidTop) return 17;
+        if (below.building   != null && below.building.structType.solidTop)   return 12;
         return 70;
     }
 

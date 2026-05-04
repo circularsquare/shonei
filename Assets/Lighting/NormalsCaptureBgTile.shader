@@ -1,8 +1,8 @@
 // Renders the background sprite into the normals RT.
 // Unlike NormalsCapture.shader, this samples the actual wall textures (set as
 // globals by BackgroundTile.cs) and clips pixels where the texture is
-// transparent — so the jagged top edge of undergroundwalltop correctly reads as
-// sky (black/no-sprite) in the normals RT rather than opaque background.
+// transparent — so the jagged top edge of *walltop correctly reads as sky
+// (black/no-sprite) in the normals RT rather than opaque background.
 // Outputs flat forward normals since the background is a flat plane.
 //
 // Pass 0 — shadow casters (alpha = 1.0)  — unused; included for completeness
@@ -20,16 +20,17 @@ Shader "Hidden/NormalsCaptureBackground" {
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
         // _MainTex = low-res mask (nx x ny, 1 px per tile) from SpriteRenderer.
-        // Alpha: opaque where background, transparent where sky.
-        // Green: 255 = top row (tile above has no background), 0 = interior.
+        //   R: 0 = Stone, 255 = Dirt
+        //   G: 255 = top-row (use *Top texture)
+        //   A: opaque where a wall exists, transparent where sky
         TEXTURE2D(_MainTex);
         SAMPLER(sampler_MainTex);
 
         // Set globally by BackgroundTile.cs.
-        TEXTURE2D(_BackgroundTex);
-        SAMPLER(sampler_BackgroundTex);
-        TEXTURE2D(_BackgroundTopTex);
-        SAMPLER(sampler_BackgroundTopTex);
+        TEXTURE2D(_BackgroundTex);        SAMPLER(sampler_BackgroundTex);
+        TEXTURE2D(_BackgroundTopTex);     SAMPLER(sampler_BackgroundTopTex);
+        TEXTURE2D(_BackgroundDirtTex);    SAMPLER(sampler_BackgroundDirtTex);
+        TEXTURE2D(_BackgroundDirtTopTex); SAMPLER(sampler_BackgroundDirtTopTex);
 
         // Per-renderer MPB, written by LightReceiverUtil.SetSortBucket.
         float _SortBucket;
@@ -62,14 +63,21 @@ Shader "Hidden/NormalsCaptureBackground" {
             // Tile the wall texture at 1 rep per world unit, same as BackgroundTile.shader.
             float2 wallUV = IN.worldPos + 0.5;
 
-            // Select interior or top-row texture based on mask green channel.
-            float4 wall    = SAMPLE_TEXTURE2D(_BackgroundTex, sampler_BackgroundTex, wallUV);
-            float4 wallTop = SAMPLE_TEXTURE2D(_BackgroundTopTex, sampler_BackgroundTopTex, wallUV);
-            float4 color   = lerp(wall, wallTop, step(0.5, mask.g));
+            // Branch on wall type (R) then on top-row (G).
+            float4 stone    = SAMPLE_TEXTURE2D(_BackgroundTex,        sampler_BackgroundTex,        wallUV);
+            float4 stoneTop = SAMPLE_TEXTURE2D(_BackgroundTopTex,     sampler_BackgroundTopTex,     wallUV);
+            float4 dirt     = SAMPLE_TEXTURE2D(_BackgroundDirtTex,    sampler_BackgroundDirtTex,    wallUV);
+            float4 dirtTop  = SAMPLE_TEXTURE2D(_BackgroundDirtTopTex, sampler_BackgroundDirtTopTex, wallUV);
 
-            // Clip transparent pixels in the selected wall texture — this is the
-            // key fix: undergroundwalltop's transparent sky pixels are discarded,
-            // leaving the normals RT black (sky/no-sprite) at those pixels.
+            float topT  = step(0.5, mask.g);
+            float dirtT = step(0.5, mask.r);
+            float4 stoneFinal = lerp(stone, stoneTop, topT);
+            float4 dirtFinal  = lerp(dirt,  dirtTop,  topT);
+            float4 color      = lerp(stoneFinal, dirtFinal, dirtT);
+
+            // Clip transparent pixels in the selected wall texture — so e.g.
+            // the *walltop sky pixels read as sky in the normals RT instead of
+            // opaque background.
             clip(color.a - 0.5);
 
             // Flat camera-facing normal: world (0, 0, -1) → packed xy = (0.5, 0.5).

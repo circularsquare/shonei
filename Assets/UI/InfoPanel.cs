@@ -49,6 +49,18 @@ public class InfoPanel : MonoBehaviour {
             Debug.LogError("there should only be one " + this.GetType().ToString()); }
         instance = this;
 
+        // tileHighlight is a world-space SpriteRenderer; if the scene authors it under any
+        // Canvas (the project's main UI canvas uses CanvasScaler "Scale With Screen Size",
+        // whose resolution-driven localScale propagates to all descendants), the highlight
+        // grows/shrinks with the window. Detach with worldPositionStays=false to preserve
+        // the prefab's identity localScale, then force-clear localScale defensively. Position
+        // is rewritten every frame in UpdateHighlights, so dropping the canvas-relative
+        // localPosition is fine. No-op once the scene is fixed to parent it outside any canvas.
+        if (tileHighlight != null && tileHighlight.GetComponentInParent<Canvas>() != null) {
+            tileHighlight.transform.SetParent(null, false);
+            tileHighlight.transform.localScale = Vector3.one;
+        }
+
         Deselect();
     }
 

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using UnityEngine;
 using Newtonsoft.Json;
 
@@ -97,10 +96,11 @@ public class ResearchSystem : MonoBehaviour {
     }
 
     void LoadNodes() {
-        string path = Application.dataPath + "/Resources/researchDb.json";
-        if (!File.Exists(path)) { Debug.LogWarning("researchDb.json not found"); return; }
-        string json = File.ReadAllText(path);
-        var loaded = JsonConvert.DeserializeObject<ResearchNodeData[]>(json);
+        // Resources.Load works in both Editor and built player; the old
+        // Application.dataPath + "/Resources/..." path silently breaks in builds.
+        TextAsset ta = Resources.Load<TextAsset>("researchDb");
+        if (ta == null) { Debug.LogError("researchDb.json not found in Resources/"); return; }
+        var loaded = JsonConvert.DeserializeObject<ResearchNodeData[]>(ta.text);
         foreach (var node in loaded) {
             if (node.prereqs == null) node.prereqs = new int[0];
             if (node.unlocks == null) node.unlocks = new UnlockEntry[0];

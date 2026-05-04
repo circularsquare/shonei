@@ -333,7 +333,12 @@ public class Blueprint {
     //      count — pure blueprints don't bear weight, so a windmill on platform blueprints
     //      stays suspended until those platforms are actually built.
     public bool IsSuspended() {
-        if (structType.isTile || structType.name == "empty" || structType.requiredTileName != null)
+        // Structures placed *inside* a solid tile (mine-tile, quarry/dirt pit via requiredTileName,
+        // mineshaft via requiresSolidTilePlacement) are exempt from the standard support check —
+        // their placement tile is non-standable by design, but they're authored to occupy it.
+        if (structType.isTile || structType.name == "empty"
+            || structType.requiredTileName != null
+            || structType.requiresSolidTilePlacement)
             return false;
 
         if (structType.tileRequirements != null) {
@@ -439,8 +444,11 @@ public class Blueprint {
         foreach (var stack in inv.itemStacks)
             if (stack.item != null && stack.quantity > 0)
                 inv.Produce(stack.item, -stack.quantity);
-        // Capture tile products before Construct() changes the tile type
-        if (structType.isTile && structType.name == "empty" && tile.type.products != null)
+        // Capture tile products before Construct() changes the tile type. Triggered when this
+        // blueprint will mine its tile — either the legacy isTile mine-tile (`empty`) or any
+        // structure placed inside a solid tile (mineshaft, future variants).
+        bool minesTile = (structType.isTile && structType.name == "empty") || structType.requiresSolidTilePlacement;
+        if (minesTile && tile.type.products != null)
             pendingOutput = new List<ItemQuantity>(tile.type.products);
         StructController.instance.Construct(structType, tile, mirrored, rotation, shapeIndex);
         // Passive research gain from constructing a tech-gated building.
@@ -511,9 +519,15 @@ public class Blueprint {
 
             Tile tileBelow = world.GetTileAt(bx, by);
 
+            // Predict the tile's post-construction solidity. Three cases:
+            //   - isTile blueprint: tile becomes whatever StructType.name resolves to (e.g. "empty").
+            //   - non-isTile that mines its tile (mineshaft): tile becomes empty (non-solid).
+            //   - regular non-isTile: tile is unchanged.
             bool solidTileAfter = structType.isTile
                 ? Db.tileTypeByName[structType.name].solid
-                : tileBelow.type.solid;
+                : structType.requiresSolidTilePlacement
+                    ? false
+                    : tileBelow.type.solid;
 
             bool anySolidTopAfter = false;
             for (int d = 0; d < Tile.NumDepths; d++) {
@@ -563,10 +577,12 @@ public class Blueprint {
 
     public string GetProgress(){ // for display string
         string progress = "";
-        for (int i = 0; i < costs.Length; i++) {
-            progress += costs[i].item.name + " " + ItemStack.FormatQ(inv.Quantity(costs[i].item), costs[i].item.discrete) + "/" + ItemStack.FormatQ(costs[i]);
+        if (state != BlueprintState.Deconstructing) {
+            for (int i = 0; i < costs.Length; i++) {
+                progress += costs[i].item.name + " " + ItemStack.FormatQ(inv.Quantity(costs[i].item), costs[i].item.discrete) + "/" + ItemStack.FormatQ(costs[i]);
+            }
         }
-        if (state == BlueprintState.Constructing){
+        if (state == BlueprintState.Constructing || state == BlueprintState.Deconstructing){
             progress += " (" + constructionProgress.ToString() + "/" + constructionCost.ToString() + ")";
         }
         return progress;

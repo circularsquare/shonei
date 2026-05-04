@@ -98,4 +98,11 @@ public static class StructureVisuals {
     private static void LogShapeMissOnce(string key, string msg) {
         if (_shapeSpriteMissLog.Add(key)) Debug.LogError(msg);
     }
+
+    // Fires on every Play Mode entry so missing-sprite errors aren't silently
+    // suppressed on second-and-later plays when Domain Reload is disabled.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStaticsForPlayMode() {
+        _shapeSpriteMissLog.Clear();
+    }
 }

@@ -89,3 +89,11 @@ MonoBehaviour:
   backgroundLayer:
     serializedVersion: 2
     m_Bits: 256
+  normalsCaptureShader: {fileID: 4800000, guid: a703ad12e33eac74f874afeb7afdbc89, type: 3}
+  normalsCaptureWaterShader: {fileID: 4800000, guid: 1122f56d97c699247a23963352203731, type: 3}
+  normalsCaptureBackgroundShader: {fileID: 4800000, guid: 062e68a8ed14e8a44ad5959a95502c0e, type: 3}
+  lightCircleShader: {fileID: 4800000, guid: 945060703addc864d81ea4cc65ee8f8e, type: 3}
+  lightSunShader: {fileID: 4800000, guid: e7b8c8866375cd64e841230ff8ce5fb3, type: 3}
+  lightCompositeShader: {fileID: 4800000, guid: 12d36a424df37754c89218e071de67db, type: 3}
+  lightAmbientFillShader: {fileID: 4800000, guid: 3a2a506a3154ebf48a849b6272ec7ac9, type: 3}
+  emissionWriterShader: {fileID: 4800000, guid: 338dbd4180aa469499f173ac6505b6ca, type: 3}

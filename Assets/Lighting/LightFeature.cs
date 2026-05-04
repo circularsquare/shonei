@@ -74,15 +74,32 @@ public class LightFeature : ScriptableRendererFeature {
              "which clips transparent top pixels so they read as sky. Lit-only (no shadow cast).")]
     public LayerMask backgroundLayer = 0; // set to the 'Background' layer in the inspector
 
+    // Inspector-assigned shader references. These exist so the lighting shaders
+    // are part of the renderer asset's serialized graph — Unity then force-includes
+    // them in builds. The earlier code looked them up by string via
+    // CoreUtils.CreateEngineMaterial("Hidden/X"), which works in the editor but
+    // gets stripped in builds (no Material asset references → build pipeline can't
+    // see them used → they're dropped → CreateEngineMaterial returns a material
+    // with a missing shader → silent black output / pink fallback).
+    [Header("Shaders (assign in inspector — required for builds)")]
+    [SerializeField] Shader normalsCaptureShader;
+    [SerializeField] Shader normalsCaptureWaterShader;
+    [SerializeField] Shader normalsCaptureBackgroundShader;
+    [SerializeField] Shader lightCircleShader;
+    [SerializeField] Shader lightSunShader;
+    [SerializeField] Shader lightCompositeShader;
+    [SerializeField] Shader lightAmbientFillShader;
+    [SerializeField] Shader emissionWriterShader;
+
     NormalsCapturePass capturePass;
     LightPass          lightPass;
 
     public override void Create() {
         penetrationDepth = lightPenetrationDepth;
-        capturePass = new NormalsCapturePass {
+        capturePass = new NormalsCapturePass(normalsCaptureShader, normalsCaptureWaterShader, normalsCaptureBackgroundShader) {
             renderPassEvent = RenderPassEvent.BeforeRenderingTransparents
         };
-        lightPass = new LightPass {
+        lightPass = new LightPass(lightCircleShader, lightSunShader, lightCompositeShader, lightAmbientFillShader, emissionWriterShader) {
             renderPassEvent = RenderPassEvent.AfterRenderingTransparents
         };
     }
@@ -126,10 +143,14 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
     int waterMask   = 0;
     int backgroundMask  = 0;
 
-    public NormalsCapturePass() {
-        mat      = CoreUtils.CreateEngineMaterial("Hidden/NormalsCapture");
-        waterMat  = CoreUtils.CreateEngineMaterial("Hidden/NormalsCaptureWater");
-        backgroundMat = CoreUtils.CreateEngineMaterial("Hidden/NormalsCaptureBackground");
+    public NormalsCapturePass(Shader normalsCapture, Shader normalsCaptureWater, Shader normalsCaptureBackground) {
+        if (normalsCapture == null || normalsCaptureWater == null || normalsCaptureBackground == null) {
+            Debug.LogError("LightFeature: NormalsCapture shader fields are unassigned — assign them in the URP Universal Renderer asset's LightFeature inspector. Lighting will be disabled.");
+            return;
+        }
+        mat           = CoreUtils.CreateEngineMaterial(normalsCapture);
+        waterMat      = CoreUtils.CreateEngineMaterial(normalsCaptureWater);
+        backgroundMat = CoreUtils.CreateEngineMaterial(normalsCaptureBackground);
     }
 
     public void Setup(int litMask, int shadowMask, int dirOnlyMask, int waterMask, int backgroundMask) {
@@ -257,12 +278,17 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
     // Cache sky camera check per camera to avoid GetComponent every frame.
     readonly Dictionary<Camera, bool> skyCamCache = new();
 
-    public LightPass() {
-        circleMat       = CoreUtils.CreateEngineMaterial("Hidden/LightCircle");
-        sunMat          = CoreUtils.CreateEngineMaterial("Hidden/LightSun");
-        compositeMat    = CoreUtils.CreateEngineMaterial("Hidden/LightComposite");
-        ambientFillMat  = CoreUtils.CreateEngineMaterial("Hidden/LightAmbientFill");
-        emissionMat     = CoreUtils.CreateEngineMaterial("Hidden/EmissionWriter");
+    public LightPass(Shader lightCircle, Shader lightSun, Shader lightComposite, Shader lightAmbientFill, Shader emissionWriter) {
+        if (lightCircle == null || lightSun == null || lightComposite == null || lightAmbientFill == null || emissionWriter == null) {
+            Debug.LogError("LightFeature: Light* shader fields are unassigned — assign them in the URP Universal Renderer asset's LightFeature inspector. Lighting will be disabled.");
+            quad = CreateQuad();
+            return;
+        }
+        circleMat       = CoreUtils.CreateEngineMaterial(lightCircle);
+        sunMat          = CoreUtils.CreateEngineMaterial(lightSun);
+        compositeMat    = CoreUtils.CreateEngineMaterial(lightComposite);
+        ambientFillMat  = CoreUtils.CreateEngineMaterial(lightAmbientFill);
+        emissionMat     = CoreUtils.CreateEngineMaterial(emissionWriter);
         quad            = CreateQuad();
     }
 

@@ -128,6 +128,6 @@ For books this means scribes idle when all bookshelves are full (vs piling books
 
 - **Book durability UI**: could split decay into a visible "durability" bar (1.0 → 0.0) so the player can see book wear and prioritise replacements. Currently uses the standard fen-decay system shared with food/tools.
 - **Book-only haul priority**: if a hauler has a choice between hauling a book to a partially-full shelf vs filling a crate, no preference logic exists — could matter once books exist in larger quantities.
-- **Tech gating for the books loop**: `bookshelf` and `scriptorium` are both `defaultLocked: false`. A "literacy" / "scribing" tech could gate the whole loop behind one unlock for game-flow reasons.
+- **Tech gating for the books loop**: `bookshelf`, `scriptorium`, and the `scribe` job are all gated behind the **Writing** tech (id 12), which requires Papermaking (id 11). Papermaking requires no pump tech — water comes from rain.
 - **Animal-skill books**: out of scope; would require a third book "kind" (skill book) that takes effect via the equip path during work.
 - **Multi-stack `nStacks > 4` drawer rendering**: existing rendering caps at 4 visible item sprites (`quarterOffsets.Length == 4`). Bookshelves dodge this by using single-sprite fill rendering, but actual drawers with `nStacks > 4` still hit the cap. Pre-existing — not introduced by books.

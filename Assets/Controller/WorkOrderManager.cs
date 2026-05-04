@@ -9,12 +9,15 @@ using UnityEngine;
     Animals call ChooseOrder(animal, priority) to get the best task at exactly that priority tier.
 
     Priority:  1 = highest (hauls unblocking a pending deconstruct)
-               2 = construct, supply blueprint, harvest
+               2 = construct, supply blueprint, deconstruct, harvest, maintenance
                3 = haul, consolidate, haul to market, craft
-               4 = deconstruct, research, haul from market
+               4 = research, haul from market
                    (HaulFromMarket sits below HaulToMarket so merchants deliver first
                     and opportunistically piggyback a pickup on the return leg; a pure
                     pickup trip only fires when there's nothing to deliver.)
+                   Deconstruct lives at p2 alongside Construct so teardown isn't gated
+                   behind every floor haul; within p2 the tier is distance-sorted, so a
+                   nearby decon can outrank a far construct.
 
     In Animal.ChooseTask the tiers are:
         ChooseOrder(1) → ChooseOrder(2) → ChooseOrder(3) → ChooseOrder(4)
@@ -166,7 +169,7 @@ public class WorkOrderManager : MonoBehaviour {
         // deconstruct order indefinitely. Haulers can always pitch in on plant removal.
         Add(new WorkOrder {
             type = OrderType.Deconstruct,
-            priority = 4,
+            priority = 2,
             factory = a => new ConstructTask(a, bp, deconstructing: true),
             blueprint = bp,
             canDo = a => a.job == bp.structType.job

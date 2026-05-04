@@ -75,7 +75,8 @@
     },{
         "id": 17,
         "name": "scribe",
-        "jobType": "crafter"
+        "jobType": "crafter",
+        "defaultLocked": true
     },{
         "id": 18,
         "name": "runner",

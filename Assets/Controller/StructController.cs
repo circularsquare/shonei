@@ -88,12 +88,28 @@ public class StructController : MonoBehaviour {
         // needs this to pick its extraction distribution per cycle.
         if (structure is Quarry q) q.CaptureOriginalTile(tile.type);
 
-        if (st.requiredTileName != null){ // if building inside a tile (like for quarry), remove the tile
+        // Mining trigger. Two paths converge here:
+        //   - `requiredTileName != null` (quarry / dirt pit): the structure replaces a specific tile group.
+        //   - `requiresSolidTilePlacement` (mineshaft): the structure occupies any solid tile, mining it.
+        if (st.requiredTileName != null || st.requiresSolidTilePlacement){
             tile.type = Db.tileTypeByName["empty"];
         }
         if (!st.isTile){
             Place(structure);
             structure.OnPlaced();
+        }
+        // Optional follow-up structure placed on the same tile (mineshaft → ladder). Lifted out of
+        // the isTile branch so it fires for any StructType. Done before the standability/neighbor
+        // sweep below so the new structure's edges enter the nav graph in the same call. Defaults for
+        // mirror/rotation/shape — current consumers (ladder) don't have variants; revisit if a future
+        // placesStructureOnComplete needs them.
+        if (st.placesStructureOnComplete != null){
+            StructType extraType = Db.structTypeByName[st.placesStructureOnComplete];
+            Structure extra = Structure.Create(extraType, tile.x, tile.y);
+            if (extra != null){
+                Place(extra);
+                extra.OnPlaced();
+            }
         }
         if (world == null) {world = World.instance;}
         // Refresh standability across the footprint and the row directly above the top —
@@ -111,7 +127,11 @@ public class StructController : MonoBehaviour {
             if (tile.x - 1 >= 0 && tile.y + 1 < ny) world.graph.UpdateNeighbors(tile.x - 1, tile.y + 1);
             if (tile.x + 1 < nx && tile.y + 1 < ny) world.graph.UpdateNeighbors(tile.x + 1, tile.y + 1);
         }
-        if (st.isTile) {
+        // 8-neighbor sweep around any tile that *changes type* during construction. Covers both
+        // isTile blueprints (tile.type swap) and structures that mine their placement tile
+        // (mineshaft via requiresSolidTilePlacement). Diagonal neighbours can have cliff/stair
+        // edges that depend on this tile's solidity.
+        if (st.isTile || st.requiresSolidTilePlacement) {
             int nx = world.nx, ny = world.ny;
             for (int dx = -1; dx <= 1; dx++) {
                 for (int dy = -1; dy <= 1; dy++) {

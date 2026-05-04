@@ -70,10 +70,10 @@ Social satisfaction is granted **gradually** at `Happiness.socialTickGrant` (0.2
 3. **Work orders:**
    - `wom.PruneStale()` — call once before the tier sequence
    - `wom.ChooseOrder(this, 1)` — hauls unblocking a deconstruct
-   - `wom.ChooseOrder(this, 2)` — construct / supply / harvest
+   - `wom.ChooseOrder(this, 2)` — construct / supply / deconstruct / harvest / maintenance (distance-sorted within tier)
    - `wom.ChooseOrder(this, 3, exclude: Craft)` — haul / market (distance-sorted)
    - `ChooseCraftTask()` — craft (recipe-score sorted; see below)
-   - `wom.ChooseOrder(this, 4)` — deconstruct, research
+   - `wom.ChooseOrder(this, 4)` — research, haul-from-market
 
 `ChooseOrder(animal, priority, exclude?)` only considers the single requested tier, optionally filters out a specific `OrderType`, filters to `res.Available()` orders, additionally skips haul orders where `stack.Available()` is false (stack fully reserved by in-flight tasks), distance-sorts remaining candidates, and on success calls `order.res.Reserve()` and assigns `task.workOrder = order`. Orders are **never removed when claimed** — they stay in the queue so they can be re-claimed after the task ends. WOM tasks are job-filtered via the `canDo` predicate on each `WorkOrder`.
 
@@ -112,7 +112,7 @@ Tasks reserve both **source items** (`ItemStack.resAmount`) and **destination sp
 | `HaulTask` | WOM p1/p3 | hauler | Fetch floor stack → Go to storage tile → DeliverToInventoryObjective into `building.storage` |
 | `HaulToMarketTask` | WOM p3 | merchant | Haul items from storage to the market building to meet targets |
 | `HaulFromMarketTask` | WOM p3 | merchant | Haul excess items from market back to storage |
-| `ConstructTask` | WOM p2/p4 | building's `njob` | Build or deconstruct a blueprint |
+| `ConstructTask` | WOM p2 | building's `njob` | Build or deconstruct a blueprint (both order types live at p2) |
 | `SupplyBlueprintTask` | WOM p2 | building's `njob` | Deliver materials to an incomplete blueprint |
 | `ResearchTask` | WOM p4 | scientist | Navigate to a specific lab, work in loops. Optionally borrows the matching tech book (via `bookSlotInv`) before research and returns it after — book grants 3× research progress per tick while equipped (see SPEC-books.md). |
 | `ObtainTask` | survival | any | Fetch a specific item (food/equip) |
@@ -233,9 +233,9 @@ Player-adjustable workstation slot count flows: `Building.workstation.workerLimi
 | Priority | Order types |
 |----------|-------------|
 | 1 | Haul unblocking a pending deconstruct |
-| 2 | Construct, SupplyBlueprint, Harvest, Maintenance |
+| 2 | Construct, SupplyBlueprint, Deconstruct, Harvest, Maintenance |
 | 3 | Haul (floor items + storage evictions), HaulToMarket, Craft |
-| 4 | Deconstruct, Research, HaulFromMarket |
+| 4 | Research, HaulFromMarket |
 
 ### Registration rules
 

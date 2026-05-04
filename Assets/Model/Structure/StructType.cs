@@ -118,6 +118,16 @@ public class StructType {
     public int storageTileX {get; set;} // tile offset to the storage inventory tile (default 0,0 = anchor)
     public int storageTileY {get; set;}
     public TileRequirement[] tileRequirements {get; set;} // extra per-tile constraints checked at placement
+    // Cached: true if `tileRequirements` declares `mustBeSolidTile` on the placement tile (dx=0, dy=0).
+    // Populated in OnDeserialized so callers don't rescan the array. This flag is the single signal that
+    // (a) StructPlacement bypasses its default "reject placement on non-empty tiles" rule, and
+    // (b) StructController.Construct() mines the tile to empty after placement (alongside the
+    // existing `requiredTileName` mining trigger). Used by mineshaft.
+    public bool requiresSolidTilePlacement;
+    // Optional name of an additional Structure to place on the tile after Construct() completes.
+    // Resolved via Db.structTypeByName at construction time. Used by structures that bundle a
+    // follow-up structure with their placement (mineshaft → ladder). Null = no extra placement.
+    public string placesStructureOnComplete {get; set;}
     // isBuilding: true = use Building class regardless of depth (default false = depth 0 uses Building; others don't).
     // Allows foreground/other-depth structures to have full Building features (fuelInv, uses, storage, etc.).
     public bool isBuilding {get; set;}
@@ -232,6 +242,13 @@ public class StructType {
                 fuelItem = Db.itemByName[fuelItemName];
             else
                 Debug.LogError($"StructType '{name}': hasFuelInv=true but fuelItemName '{fuelItemName}' not found in Db");
+        }
+        // Cache placement-tile solid requirement so StructPlacement / StructController don't rescan.
+        if (tileRequirements != null) {
+            for (int i = 0; i < tileRequirements.Length; i++) {
+                TileRequirement r = tileRequirements[i];
+                if (r.dx == 0 && r.dy == 0 && r.mustBeSolidTile) { requiresSolidTilePlacement = true; break; }
+            }
         }
     }
 }

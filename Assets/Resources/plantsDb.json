@@ -22,7 +22,7 @@
             { "name": "wheat", "quantity": 1 }
         ],
         "nproducts": [
-            { "name": "wheat", "quantity": 4 }
+            { "name": "wheat", "quantity": 5 }
         ],
         "growthTime": 40,
         "harvestTime": 3.0,
