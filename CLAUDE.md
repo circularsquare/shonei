@@ -18,7 +18,7 @@ Feel free to spawn subagents to work on tasks or to double-check your own work �
 
 If you notice anything that could be reorganized to improve clarity or efficiency, please mention it.
 
-For Unity GameObjects, lean towards telling me what to do in the editor rather than creating them and setting properties in code.
+**Don't use MCP scene-mutating tools without explicit per-task permission.** Read-only MCP (find_gameobjects, get_hierarchy, read_console, scene/component resources) is fine for inspection. But actual mutations — `execute_code` that modifies state, `manage_gameobject create/modify`, `manage_components add/set_property`, etc. — only when I specifically say "use MCP" or similar. Default to no, and when in doubt describe the manual editor steps. MCP work has been consistently producing followup cleanup; until that pattern changes, the default is hands-off.
 
 ## Code practices
 

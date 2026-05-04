@@ -1,5 +1,12 @@
 # SPEC — Unity Editor work via MCP
 
+> **Permission gate.** MCP scene-mutating tools require explicit per-task
+> permission from the user — see CLAUDE.md. Read-only inspection is fine
+> any time, but actual mutations (`execute_code` edits, `manage_gameobject`
+> create/modify, `manage_components` add/set_property, etc.) need a green
+> light. **Default is no.** This spec covers *how* to do MCP work cleanly
+> once permission is granted; it does not authorize MCP use.
+
 This is the playbook for editor-side work — scene mutations, UI building, runtime
 inspection — done through the `mcp__unity__*` tools. **Read this before doing
 any MCP work.** Most of the "Unity work" on this project is UI testing, scene
@@ -52,11 +59,25 @@ Practical workflow:
 ## Common MCP gotchas
 
 - **Roslyn unavailable** → `execute_code` falls back to **CodeDom (C# 6)**.
-  No local functions; use `Func<>` / `Action<>` lambdas (recursive lambdas
-  via the `Action foo = null; foo = (x) => …foo(…)…;` pattern).
+  No local functions (`string Foo() { … }` inside another method body is a
+  parse error) — use `Func<>` / `Action<>` lambdas (recursive lambdas via
+  the `Action foo = null; foo = (x) => …foo(…)…;` pattern). CodeDom also
+  doesn't auto-import namespaces: fully qualify UI types
+  (`UnityEngine.UI.Image`, `UnityEngine.UI.Slider`,
+  `UnityEngine.UI.Image.Type.Sliced`) or compile fails.
 - **`GameObject.Find` skips inactive objects.** Most exclusive panels are
   inactive by default. Search via the UI canvas:
   `foreach (var tr in ui.GetComponentsInChildren<Transform>(true)) if (tr.name == nm) …`
+- **Duplicate GameObjects with the same name.** When scenes accumulate
+  iterations (e.g. rebuilding a panel without deleting the old one),
+  multiple GameObjects can share a name. The naive
+  `foreach { if (name == X) break; }` pattern grabs the *first* match —
+  which may be an inactive orphan. Always: (a) collect *all* matches,
+  (b) prefer the one with `activeSelf == true` if applying user-visible
+  changes, (c) flag duplicates back to the user. Strong scene-side signal:
+  a `Debug.LogError("two Xs!")` in the panel's `Awake()` (the project's
+  exclusive-panel pattern logs this) — check the console history if a
+  visual change you applied seems to have no effect.
 - **Play mode reverts scene changes.** Always `manage_editor stop` first if
   you're about to mutate scene state. `MarkSceneDirty` also throws in Play
   mode.
@@ -71,6 +92,42 @@ Practical workflow:
   target.
 - **Multi-Unity instances**: if MCP errors with "multiple connected, no
   active instance set", call `set_active_instance` once with `Name@hash`.
+- **Slider handle defaults are wrong twice.** `DefaultControls.CreateSlider`
+  produces a handle that (a) stretches vertically and (b) overshoots the
+  ends of the slider when at min/max. Both need fixing for any custom
+  slider sprite to look right.
+
+  **Vertical stretch:** Handle's perpendicular-axis anchor is set to
+  `(0,0)`/`(0,1)` — "stretch to fill." Slider drives *only* the slide-axis
+  anchor at runtime, so the stretch sticks. Collapse the perpendicular
+  anchor to a single point (0.5 for horizontal sliders) and snap to
+  native sprite size.
+
+  **Edge overshoot:** Handle Slide Area is stretched flush to the
+  slider's edges, so at max value the handle's *center* sits at the edge
+  and half the handle overflows. Inset the slide area by `handleWidth/2`
+  on each end of the slide axis.
+
+  Combined fix for a horizontal slider:
+  ```csharp
+  var hRt = slider.handleRect;
+  // (a) stop vertical stretch + use native sprite size
+  hRt.anchorMin = new Vector2(hRt.anchorMin.x, 0.5f);
+  hRt.anchorMax = new Vector2(hRt.anchorMax.x, 0.5f);
+  hRt.GetComponent<UnityEngine.UI.Image>().SetNativeSize();
+  // (b) inset slide area so handle stops at the edge, not past it
+  // ONLY touch the X axis — wholesale `slideArea.anchorMin = Vector2.zero;
+  // anchorMax = Vector2.one;` would also reset the Y axis and undo any
+  // manual height customization on the slide area.
+  var slideArea = hRt.parent as RectTransform;
+  float half = hRt.sizeDelta.x * 0.5f;
+  var aMin = slideArea.anchorMin; aMin.x = 0; slideArea.anchorMin = aMin;
+  var aMax = slideArea.anchorMax; aMax.x = 1; slideArea.anchorMax = aMax;
+  var oMin = slideArea.offsetMin; oMin.x =  half; slideArea.offsetMin = oMin;
+  var oMax = slideArea.offsetMax; oMax.x = -half; slideArea.offsetMax = oMax;
+  ```
+  For vertical sliders: swap axes (collapse X anchor to 0.5, inset on
+  `offsetMin/Max.y`, preserve X axis on the slide area).
 
 ## UI style conventions
 
@@ -89,31 +146,41 @@ should look at home next to ResearchPanel / TradingPanel / RecipePanel.
 ### Font
 
 - **Default font asset: `m5x7 SDF`** (TextMeshPro/Resources/Fonts &
-  Materials/m5x7 SDF.asset). Pixel font; renders crisply only at the sizes
-  it was designed for.
-- **Use these font sizes only, in this order of preference:**
-  - **16** — section headers / titles
-  - **14** — body / labels
-  - **12** — small / annotations
-- Don't use 18, 20, 22 — they don't snap to the bitmap grid and render
-  fuzzy. If you need bigger, jump to 24 or 32.
-- Default text color: **`Color.black` (0,0,0,1)**. Existing panels are ~95%
-  black; white-on-light-bg is a common bug from forgetting to set the
-  color. If you create a new TMP component, set the color explicitly the
-  same line you set the text.
+  Materials/m5x7 SDF.asset). Pixel font; only renders crisply at specific
+  sizes.
+- **`fontSize = 16`. Period.** Anything smaller (12, 14) is illegible at
+  this project's canvas scale. **Don't introduce visual hierarchy via bold
+  or uppercase** — they don't render well in `m5x7`. Default to flat
+  sizing across a panel (titles, headers, row labels all at 16). If you
+  really need contrast, use color (the secondary-text gray) — not weight
+  or case. If you genuinely need bigger (rare — splash titles, etc.), use
+  a multiple of 16: 32 or 48.
+- Default text color: **`Color.black` (0,0,0,1)**. White-on-light-bg is a
+  common bug from forgetting to set the color when creating a TMP
+  component. Set the color the same line you set the text.
 - Unity's TMP default-color knob doesn't safely exist project-wide
   (multiplying with the font asset's face color breaks intentional colored
   text). Just always set it.
 
 ### Spacing / layout
 
+**Be compact by default.** Pad to the smallest dimension that actually fits
+the rendered content. A row with `fontSize=16` text needs ~16 px of height,
+not 24. A label saying "Ambient" needs ~80 px of width, not 110.
+Over-reservation makes panels feel sparse, pushes the panel size larger than
+it needs to be, and at 960×540 reference resolution any extra padding
+dominates the screen quickly. **Default direction: smaller. Only relax if
+something is actually clipped or cramped.**
+
 | Setting | Value |
 |---------|-------|
 | VerticalLayoutGroup `spacing` | **2** (rows) or **4** (sections) |
 | HorizontalLayoutGroup `spacing` | **8** |
 | Panel full-screen margin | **20 px** |
-| Standard row height | **16** (tight) or **24** (comfortable) |
+| Single-line TMP text — `LayoutElement.preferredHeight` | **14** |
+| Row height (label + control) | **16** |
 | Section gap (spacer) | **6–8** |
+| Label `minWidth` in a row | Fit longest actual label, not a round number. For typical 1-word labels at fontSize 16, **~80** is plenty. |
 
 For nested layout groups, set **`childControlWidth = childControlHeight = true`**
 and **`childForceExpandHeight = false`**, with explicit `LayoutElement`
@@ -139,6 +206,24 @@ project already has these primitives — **copy them, don't replace them**:
 both still using Unity's default gray skin), build with placeholders **and
 flag it explicitly** to the user as "needs custom asset." Don't silently
 ship default-skinned widgets pretending they're done.
+
+**Respect native sprite size for `Image.Type = Simple` widgets.** Simple-mode
+Images stretch to fill their RectTransform — pixel art looks awful when
+stretched (handles become pills, icons go blurry, dropdown arrows skew).
+For Simple sprites: read `sprite.rect.size` and set `RectTransform.sizeDelta`
+to match (handles, dropdown arrows, checkmarks, item icons). For `Sliced`
+sprites only the borders are protected; the middle stretches — fine for
+backgrounds, but the rect's *minor axis* should still be ≥ 2× the border
+(otherwise borders eat the whole sprite and there's nothing to stretch).
+Watch out for parent stretching: a Slider's Handle defaults to vertically-
+stretched anchors (`anchorMin.y=0, anchorMax.y=1`), and **`Slider.UpdateVisuals`
+resets these every frame** — it rebuilds anchors from `Vector2.zero` /
+`Vector2.one` and only overwrites the parallel (value) axis, so trying to
+pin the handle to centre-V via anchors **won't survive runtime**. To get a
+fixed-height handle: set the **parent** Handle Slide Area to the target
+height (`sizeDelta.y = N` with centre-V anchors) and set the Handle's
+`sizeDelta.y = 0` so it stretches to match its 8-tall parent. Width is
+safe — Slider only drives the parallel-axis anchors based on value.
 
 ### Color palette (text + state)
 
@@ -171,29 +256,168 @@ ship default-skinned widgets pretending they're done.
    template — Edit/Write, not MCP.
 2. `read_console` to confirm clean compile.
 3. `manage_editor stop` if Play mode is active.
-4. `execute_code` (codedom) that:
-   - Finds the `UI` canvas
-   - Builds the panel hierarchy with `DefaultControls` / `TMP_DefaultControls`
-     plus your own `Image` + `LayoutElement` configuration
-   - Adds the script via `gameObject.AddComponent(scriptType)` (look up
-     `scriptType` by iterating `AppDomain.CurrentDomain.GetAssemblies()`)
-   - Wires `[SerializeField]` refs via `UnityEditor.SerializedObject`
-     and `FindProperty(...).objectReferenceValue = …`
-   - Calls `MarkSceneDirty`
+4. `execute_code` (codedom) that builds the panel and wires it (see skeleton
+   below).
 5. Add a top-bar toggle button — same canvas, woodframe sprite, TMP label,
-   `onClick` wired via `UnityEventTools.AddPersistentListener`.
+   `onClick` wired via `UnityEventTools.AddPersistentListener` (also in the
+   skeleton).
 6. Tell the user the panel exists and is inactive; they can Play-mode-test
    and save.
+
+**Reference skeleton — the actual `execute_code` pattern.** Copy and adapt; the
+APIs are not obvious from name alone. Compile mode: codedom (C# 6), so use
+`Func<>` / `Action<>` lambdas instead of local functions.
+
+```csharp
+// 1. Find the UI canvas (top-level scene GameObject named "UI", parent of
+//    every existing exclusive panel and toggle).
+var canvasGo = GameObject.Find("UI");
+if (canvasGo == null) return new { ok = false, error = "UI canvas not found" };
+var canvas = canvasGo.transform;
+
+// 2. Sprite resources for DefaultControls / TMP_DefaultControls. These are
+//    the built-in Unity skins; you'll override them per-widget with project
+//    sprites (woodframe, check, x) where you can.
+var res = new UnityEngine.UI.DefaultControls.Resources {
+    standard   = UnityEditor.AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd"),
+    background = UnityEditor.AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Background.psd"),
+    inputField = UnityEditor.AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/InputFieldBackground.psd"),
+    knob       = UnityEditor.AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd"),
+    checkmark  = UnityEditor.AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Checkmark.psd"),
+    dropdown   = UnityEditor.AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/DropdownArrow.psd"),
+    mask       = UnityEditor.AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UIMask.psd")
+};
+
+// 3. Panel root with woodframe background, full-screen with 20px margin.
+var panel = new GameObject("MyPanel", typeof(RectTransform));
+panel.layer = 5;                                     // UI layer
+panel.transform.SetParent(canvas, false);
+var pRt = panel.GetComponent<RectTransform>();
+pRt.anchorMin = Vector2.zero;   pRt.anchorMax = Vector2.one;
+pRt.offsetMin = new Vector2(20, 20);
+pRt.offsetMax = new Vector2(-20, -20);
+var pBg = panel.AddComponent<UnityEngine.UI.Image>();
+pBg.sprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(
+    "Assets/Resources/Sprites/Misc/woodframe.png");
+pBg.type = UnityEngine.UI.Image.Type.Sliced;
+
+// 4. Build content using DefaultControls.CreateButton/Slider/Toggle and
+//    TMPro.TMP_DefaultControls.CreateDropdown for sub-widgets. Add
+//    LayoutElement + nested Vertical/HorizontalLayoutGroup for layout.
+//    (See OptionsPanel build session in execute_code history for a full
+//    example.)
+
+// 5. Look up the panel script's Type by name across loaded assemblies.
+//    Project assemblies (Shonei.Runtime) load with no fixed AssemblyName so
+//    AppDomain iteration is the reliable path.
+System.Type scriptType = null;
+foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies()) {
+    scriptType = asm.GetType("MyPanel");
+    if (scriptType != null) break;
+}
+if (scriptType == null) return new { ok = false, error = "MyPanel type not found" };
+var panelScript = panel.AddComponent(scriptType) as MonoBehaviour;
+
+// 6. Wire [SerializeField] refs by exact field name from the script.
+//    Misspelled names fail silently (FindProperty returns null) — done-check
+//    catches this by reading the component back.
+var so = new UnityEditor.SerializedObject(panelScript);
+so.FindProperty("someChild").objectReferenceValue = someChildComponent;
+so.ApplyModifiedPropertiesWithoutUndo();
+
+// 7. MCP code is responsible for the initial inactive state. The panel
+//    script's Awake() registers exclusive but does NOT SetActive(false) —
+//    look at ResearchPanel.cs / OptionsPanel.cs, neither does. Set it here.
+panel.SetActive(false);
+
+// 8. Wire the toggle button's onClick to the new panel's Toggle() method as
+//    a persistent listener (survives play/stop, written to scene data).
+var toggleBtn = /* the top-bar Button component you just created */;
+var toggleAction = (UnityEngine.Events.UnityAction)System.Delegate.CreateDelegate(
+    typeof(UnityEngine.Events.UnityAction),
+    panelScript,
+    scriptType.GetMethod("Toggle"));
+UnityEditor.Events.UnityEventTools.AddPersistentListener(toggleBtn.onClick, toggleAction);
+
+// 9. Mark the scene dirty so Unity prompts the user to save (and so unsaved
+//    state is honored). Throws in Play mode — manage_editor stop first.
+UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(
+    UnityEngine.SceneManagement.SceneManager.GetActiveScene());
+```
 
 **Iterate on UI sizing/spacing** without rebuilding:
 - Find the panel root, then iterate `GetComponentsInChildren<LayoutElement>(true)`
   and adjust by name. Call `LayoutRebuilder.ForceRebuildLayoutImmediate(rt)`
   so the next screenshot reflects the change.
 
+**"Copy from X to Y" means the whole subtree.** When the user asks to copy
+formatting/config from one UI element to another, default interpretation is
+every descendant — sprites, RectTransform anchors/offsets/sizeDelta, Image
+colors, LayoutElement, etc. Visual styling lives inside the tree, not at
+the top. Copying only the outer container's LayoutElement matches sizes
+but leaves visual defaults untouched, producing siblings that share
+dimensions but look completely different (caught after a slider-copy task
+left Sfx/Ambient sliders visually divergent from Master). Cleanest pattern:
+`UnityEngine.Object.Instantiate(source.gameObject)` then re-parent and
+rewire references — guarantees byte-identical visuals. If iterating
+manually, recurse the subtree, don't stop at direct children.
+
 **Test a panel without entering Play mode**:
 - Editor mode doesn't run Awake/Start, so `UI.RegisterExclusive` won't have
   fired and `Toggle()` is unavailable. Use `gameObject.SetActive(true)` /
   `false` directly in the inspector or via `execute_code`.
+
+**Build size strategy.** Default: build the panel in one `execute_code` call,
+then iterate on user feedback. That works fine for typical-sized panels
+(<10 elements, 1-2 levels of nesting) and matches the user's preferred
+working style. **For substantially larger panels** (deeply nested layout
+groups, dozens of elements), consider splitting: build root + 2-3 elements,
+ask for a screenshot, then add the rest. Layout bugs in nested
+LayoutGroups compound fast and are much easier to diagnose in small batches.
+
+## Done-check — before saying "complete"
+
+Run through this before telling the user a scene/UI change is done. Don't skip
+items just because they "should" pass — the whole point is catching the ones
+that quietly didn't.
+
+### Compile + console
+- After script edits: `read_console` returns no errors.
+- Editor isn't mid-compile (`refresh_unity wait_for_ready=true` returned
+  cleanly).
+
+### For new panels — wiring
+- Panel is a child of the `UI` Canvas.
+- Panel script registers exclusive in `Awake()`
+  (`UI.RegisterExclusive(gameObject)`).
+- Panel defaults to inactive (`SetActive(false)` after creation).
+- All `[SerializeField]` refs on the script are wired. Verify by reading
+  `mcpforunity://scene/gameobject/{id}/component/{ScriptName}` and
+  confirming every property shows a non-null `name` + `instanceID`.
+- Top-bar toggle button has at least one persistent `onClick` listener
+  pointing at `<PanelName>.Toggle` on the panel's GameObject. Verify via
+  `GetPersistentEventCount` / `GetPersistentTarget` /
+  `GetPersistentMethodName`.
+
+### For style
+- All TMP text uses `Color.black`.
+- All TMP `fontSize == 16` (or 32/48 for the rare big title).
+- Backgrounds use a project sprite (`woodframe.png` etc.), not a flat
+  Image color.
+- Reused widgets pull from existing project sprites where possible
+  (`check.png` for toggle checkmarks, `x.png` for close glyphs, etc.).
+  Anything still on Unity defaults is **flagged** to the user as
+  "needs custom asset" — not silently shipped.
+
+### Saving
+- **Don't** call `manage_scene save`. Ever, unless the user explicitly
+  asks. The user saves when they're satisfied with the result.
+
+### Visual review
+- For cosmetic / layout changes, **ask the user for a screenshot** before
+  declaring done. Structural assertions catch wiring bugs; only a
+  screenshot catches rendering issues — fuzzy text, overlapping rows,
+  off-by-pixel alignment, wrong colors against the panel background.
 
 ## Known limitations
 
