@@ -106,21 +106,6 @@ public class InventoryController : MonoBehaviour {
 
         UpdateItemDisplay(item);
     }
-    // Returns true if this item or any descendant has quantity > 0.
-    // Used to decide whether to show/highlight a parent group node in the inventory tree.
-    bool HaveAnyOfChildren(Item item){
-        if (globalInventory.Quantity(item.id) != 0){
-            return true;
-        }
-        if (item.children != null){
-            foreach (Item child in item.children){
-                if (HaveAnyOfChildren(child)){
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
     // Returns false if any ancestor ItemDisplay is collapsed, meaning this item should be hidden.
     bool IsVisibleInTree(Item item){
         if (item.parent == null) return true;
@@ -132,19 +117,10 @@ public class InventoryController : MonoBehaviour {
     void UpdateItemDisplay(Item item){
         if (item == null) return;
 
-        bool hasItem = HaveAnyOfChildren(item);
-
-        // Handle first-time discovery
-        if (hasItem && discoveredItems[item.id] == false){
-            discoveredItems[item.id] = true;
-            itemDisplayGos[item.id].SetActive(IsVisibleInTree(item));
-            Canvas.ForceUpdateCanvases();
-            LayoutRebuilder.ForceRebuildLayoutImmediate(inventoryPanel.GetComponent<RectTransform>());
-            // Refresh parent's dropdown sprite now that it has a discovered child
-            if (item.parent != null && itemDisplayGos[item.parent.id] != null)
-                itemDisplayGos[item.parent.id].GetComponent<ItemDisplay>()?.RefreshDropdownSprite();
-        }
-
+        // Discovery on first-time positive quantity is enforced at the source in
+        // GlobalInventory.AddItem — by the time we get here, anything with >0 is
+        // already discovered.
+        //
         // Update text if discovered (even if quantity is now 0, e.g. after Reset).
         // Respect tree collapse state — don't re-activate items whose parent is collapsed.
         if (discoveredItems[item.id]){

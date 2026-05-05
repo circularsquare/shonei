@@ -60,17 +60,18 @@ public class Structure {
     // of the lighting pipeline (no ambient, no sun). See SPEC-rendering.md §Lighting.
     Material defaultMat;
 
-    // Applies a multiplicative tint colour to the anchor SR and every extension SR.
-    // Used by Blueprint.RefreshColor for the deconstruct overlay so all tiles of a
-    // shape-aware multi-tile structure (e.g. a 1×3 platform) glow red — not just the
-    // anchor. Safe to call with Color.white to clear. Independent of RefreshTint's
-    // material swap, so broken + deconstructing composites correctly.
+    // Applies a multiplicative tint colour to every spawned SR — anchor,
+    // shape-aware extensions, AND custom-visual children (tarp's cloth + posts).
+    // Used by Blueprint.RefreshColor for the deconstruct overlay so the whole
+    // structure glows red, not just the anchor. The flat `tintableSrs` list is
+    // populated by StructureVisualBuilder.Build so this method doesn't need to
+    // know about subclass-specific child arrangements. Safe to call with
+    // Color.white to clear. Independent of RefreshTint's material swap, so
+    // broken + deconstructing composites correctly.
     public void SetTint(Color c) {
-        if (sr != null) sr.color = c;
-        if (extensionSrs != null) {
-            foreach (var ext in extensionSrs)
-                if (ext != null) ext.color = c;
-        }
+        if (tintableSrs == null) return;
+        for (int i = 0; i < tintableSrs.Length; i++)
+            if (tintableSrs[i] != null) tintableSrs[i].color = c;
     }
 
     // Re-applies the sprite material based on broken state. Called from
@@ -235,9 +236,15 @@ public class Structure {
 
     // Per-tile child SRs spawned for shape-aware multi-tile structures (v1: vertical only,
     // shape.nx==1, shape.ny>1). Index 0 is the tile directly above the anchor; the topmost
-    // is at index ny-2. The anchor tile renders through `sr` itself. Released by Destroy().
-    private GameObject[]     extensionGos;
+    // is at index ny-2. The anchor tile renders through `sr` itself. Released by Destroy()
+    // via cascading GameObject teardown when `go` is destroyed.
     private SpriteRenderer[] extensionSrs;
+
+    // Flattened union of every spawned SR (main + extensions + custom-visual children).
+    // Walked by SetTint so the deconstruct overlay reaches all renderers without needing
+    // per-subclass knowledge of where the children live. Populated by
+    // StructureVisualBuilder.Build during construction.
+    private SpriteRenderer[] tintableSrs;
 
     public Structure(StructType st, int x, int y, bool mirrored = false, int rotation = 0, int shapeIndex = 0){
         this.structType = st;
@@ -260,18 +267,23 @@ public class Structure {
         go.transform.SetParent(StructController.instance.transform, true);
         go.name = "structure_" + structType.name;
 
-        // Anchor sprite: shape-aware uses the per-tile sprite for dy=0 (which collapses
-        // to the base `{name}` sprite for 1-tall shapes). Legacy uses the base sprite.
-        // Falls back to the shared default when the StructType's sprite is missing.
-        sprite = StructureVisuals.ResolveAnchorSprite(st, shape, out bool spriteWasFallback);
-        sr = SpriteMaterialUtil.AddSpriteRenderer(go);
-        sr.sprite = sprite;
-        sr.flipX = mirrored;
-        go.transform.rotation = StructureVisuals.RotationFor(rotation);
-        if (spriteWasFallback) {
-            sr.drawMode = SpriteDrawMode.Sliced;
-            sr.size = new Vector2(structType.nx, Mathf.Max(1, structType.ny));
-        }
+        // Sort order by depth: 0=building(10), 1=platform(15), 2=foreground(40), 3=road(1), 4=shaft(5).
+        // Slot index ≠ visual layering — shafts are slot 4 but render behind buildings via
+        // sortingOrder 5 (between roads at 1 and buildings at 10).
+        // StructType.sortingOrder overrides this when >= 0 (e.g. light-source buildings at 64).
+        int baseSortingOrder = ResolveBaseSortingOrder(st);
+
+        // Spawn the primary visual via the shared builder. Standard path resolves the
+        // anchor sprite + optional vertical extensions; custom-visual types (tarp) take
+        // a per-name branch in Build that spawns cloth/posts/etc. instead. Caller stores
+        // back the references it cares about — sr (anchor SR), extensionSrs (for shape-
+        // aware vertical Plant subclasses to extend), and tintableSrs (walked by SetTint).
+        var refs = StructureVisualBuilder.Build(go, st, shape, mirrored, rotation, baseSortingOrder, Color.white);
+        sr = refs.mainSr;
+        sprite = sr.sprite;            // null for custom-visual types — fine; WaterController.ScanWaterPixels handles null
+        extensionSrs = refs.extensionSrs;
+        tintableSrs = refs.tintableSrs;
+
         // Workstations don't use Structure.res — their WOM Craft order owns the reservation.
         // Leisure buildings use per-seat seatRes[] instead of a single res.
         if (structType.isLeisure && structType.capacity > 0) {
@@ -303,20 +315,10 @@ public class Structure {
                 if (t.structs[depth] != null)
                     Debug.LogError($"Already a depth-{depth} structure at {x+dx},{y+dy}!");
                 t.structs[depth] = this;
+                // Roads (depth 3) suppress tile overlays — see WorldController.OnTileOverlayChanged.
+                if (depth == 3) t.NotifyOverlayDirty();
             }
         }
-        // Sort order by depth: 0=building(10), 1=platform(15), 2=foreground(40), 3=road(1), 4=shaft(5).
-        // Slot index ≠ visual layering — shafts are slot 4 but render behind buildings via
-        // sortingOrder 5 (between roads at 1 and buildings at 10).
-        // StructType.sortingOrder overrides this when >= 0 (e.g. light-source buildings at 64).
-        if (st.sortingOrder >= 0) sr.sortingOrder = st.sortingOrder;
-        else if (depth == 0) sr.sortingOrder = 10;
-        else if (depth == 1) sr.sortingOrder = 15;
-        else if (depth == 2) sr.sortingOrder = 40;
-        else if (depth == 3) sr.sortingOrder = 1;
-        else if (depth == 4) sr.sortingOrder = 5;
-        LightReceiverUtil.SetSortBucket(sr);
-
         // Subclass hook for visuals that need the parent's final sortingOrder — rotating
         // wheels, frame-animated overlays, port stubs, etc. Constructor-time call is safe
         // because Update-driven callbacks (FrameAnimator.isActive, RotatingPart.speedSource,
@@ -328,27 +330,6 @@ public class Structure {
         // any pile resting there now sees a new surface (building/platform) below it.
         for (int dx = 0; dx < claimNx; dx++)
             Inventory.RefreshFloorAt(x + dx, y + claimNy);
-
-        // Per-tile child SRs for shape-aware vertical extension (`_m` middles, `_t` top).
-        // Allocated lazily — null when shape is single-tile or non-vertical.
-        if (shapeAware && shape.nx == 1 && shape.ny > 1) {
-            int extCount = shape.ny - 1;
-            extensionGos = new GameObject[extCount];
-            extensionSrs = new SpriteRenderer[extCount];
-            for (int i = 0; i < extCount; i++) {
-                int dy = i + 1;
-                GameObject extGo = new GameObject($"struct_{st.name}_ext{dy}");
-                extGo.transform.SetParent(go.transform, false);
-                extGo.transform.localPosition = new Vector3(0f, dy, 0f);
-                SpriteRenderer extSr = SpriteMaterialUtil.AddSpriteRenderer(extGo);
-                extSr.sprite = StructureVisuals.LoadShapeSprite(st, shape, dy);
-                extSr.sortingOrder = sr.sortingOrder;
-                extSr.flipX = mirrored;
-                LightReceiverUtil.SetSortBucket(extSr);
-                extensionGos[i] = extGo;
-                extensionSrs[i] = extSr;
-            }
-        }
 
         // Fire art companion — toggleable child GO for flame/fire visuals.
         // LightSource.Update toggles this based on isLit + emission intensity.
@@ -422,6 +403,26 @@ public class Structure {
     // When adding a new Structure subclass, add its case here — no other dispatch site needed.
     // Subclasses without their own ctor signature ignore shapeIndex (only base Structure
     // currently supports shape variants — Plant has its own multi-tile system).
+    // Resolves the depth-based sortingOrder for a structure's anchor SR.
+    // Sort order by depth: 0=building(10), 1=platform(15), 2=foreground(40), 3=road(1), 4=shaft(5).
+    // Slot index ≠ visual layering — shafts are slot 4 but render behind buildings via
+    // sortingOrder 5 (between roads at 1 and buildings at 10).
+    // StructType.sortingOrder overrides this when >= 0 (e.g. light-source buildings at 64).
+    // Used by the Structure ctor to compute the baseSortingOrder it passes into
+    // StructureVisualBuilder.Build. Not used by Blueprint (always 100) or build preview
+    // (always 200) — those are layer-fixed regardless of depth.
+    public static int ResolveBaseSortingOrder(StructType st) {
+        if (st.sortingOrder >= 0) return st.sortingOrder;
+        switch (st.depth) {
+            case 0: return 10;
+            case 1: return 15;
+            case 2: return 40;
+            case 3: return 1;
+            case 4: return 5;
+            default: return 10;
+        }
+    }
+
     public static Structure Create(StructType st, int x, int y, bool mirrored = false, int rotation = 0, int shapeIndex = 0) {
         if (st.isPlant)
             return new Plant(st as PlantType, x, y);
@@ -437,6 +438,7 @@ public class Structure {
             if (st.name == "windmill") return new Windmill(st, x, y, mirrored);
             if (st.name == "flywheel") return new Flywheel(st, x, y, mirrored);
             if (st.name == "elevator") return new Elevator(st, x, y, mirrored, shapeIndex);
+            if (st.name == "tarp")     return new Tarp(st, x, y, mirrored, shapeIndex);
             return new Building(st, x, y, mirrored);
         }
         return new Structure(st, x, y, mirrored, rotation, shapeIndex); // platforms, ladders, stairs, foreground, roads
@@ -471,7 +473,11 @@ public class Structure {
             for (int dx = 0; dx < claimNx; dx++) {
                 Tile t = world.GetTileAt(x + dx, y + dy);
                 if (t == null) continue;
-                if (t.structs[depth] == this) t.structs[depth] = null;
+                if (t.structs[depth] == this) {
+                    t.structs[depth] = null;
+                    // Removing a road un-suppresses any overlay on this tile.
+                    if (depth == 3) t.NotifyOverlayDirty();
+                }
             }
         }
         GameObject.Destroy(go);

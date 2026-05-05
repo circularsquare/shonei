@@ -31,7 +31,7 @@ public class World : MonoBehaviour {
     public const float fallGravity = 2f / (fallSecondsPerTile * fallSecondsPerTile); // 12.5 tiles/s²
 
     public static int ticksInDay = 240;
-    public static int daysInYear = 20; // year is 6000s = 100 min
+    public static int daysInYear = 24; // year is 7200s = 120 min
 
     // FRAME 0 — runs before any Start(). Allocates tiles and graph.nodes.
     // node.standable stays false until graph.Initialize() runs in GenerateDefault() (frame 1).
@@ -60,6 +60,8 @@ public class World : MonoBehaviour {
         WeatherSystem.Create();
         MaintenanceSystem.Create();
         MoistureSystem.Create();
+        OverlayGrowthSystem.Create();
+        SnowAccumulationSystem.Create();
         PowerSystem.Create();
     }
 
@@ -80,6 +82,14 @@ public class World : MonoBehaviour {
             // Moisture gains (rain + water seep) before plants so Grow() reads current soil.
             MoistureSystem.instance?.RainUptakePerSecond();
             MoistureSystem.instance?.SeepPerSecond();
+            // Live growth of tile overlays (grass on dirt). Reads tile.moisture
+            // (just refreshed above) and WeatherSystem.temperature; writes
+            // overlayMask via the property setter so the renderer redraws.
+            OverlayGrowthSystem.instance?.Tick();
+            // Snow accumulation/melt — runs after OverlayGrowth so a freshly-
+            // grown grass blade can be killed by snow on the same tick if temps
+            // crashed; reads WeatherSystem.snowAmount + temperature.
+            SnowAccumulationSystem.instance?.Tick();
             plantController.TickUpdate();
             if (ResearchSystem.instance != null) ResearchSystem.instance.TickUpdate();
             MaintenanceSystem.instance?.Tick();
@@ -131,9 +141,9 @@ public class World : MonoBehaviour {
     }
 
     // True if nothing blocks a line of rain (or sun) from reaching (x, y) from the sky.
-    // Blockers: solid ground tiles, or any structure layer with solidTop=true
-    // (buildings, platforms, foreground, road) on a tile above this one.
-    // Blueprints are ignored — unbuilt doesn't block.
+    // Blockers: solid ground tiles, or any structure layer with solidTop=true OR
+    // blocksRain=true (buildings, platforms, foreground, road, tarps) on a tile above
+    // this one. Blueprints are ignored — unbuilt doesn't block.
     // Shared primitive for rain-catching tanks and future plant sun/rain systems.
     public bool IsExposedAbove(int x, int y){
         if (x < 0 || x >= nx) return false;
@@ -142,7 +152,7 @@ public class World : MonoBehaviour {
             if (t.type.solid) return false;
             for (int d = 0; d < t.structs.Length; d++){
                 Structure s = t.structs[d];
-                if (s != null && s.structType.solidTop) return false;
+                if (s != null && (s.structType.solidTop || s.structType.blocksRain)) return false;
             }
         }
         return true;
@@ -193,12 +203,6 @@ public class World : MonoBehaviour {
 
     public void FallItems(Tile tile) {
         if (tile.inv == null || tile.inv.IsEmpty()) return;
-        // Log reserved stacks up front — if a reservation holder later hits a stale reference,
-        // this entry tells us FallItems (not FetchObjective cleanup) was the cause.
-        foreach (ItemStack s in tile.inv.itemStacks) {
-            if (s != null && s.resAmount > 0)
-                Debug.Log($"FallItems: tile ({tile.x},{tile.y}) has reserved stack {s.item?.name} qty={s.quantity} resAmount={s.resAmount} resTask={s.resTask} animal={s.resTask?.animal?.aName}");
-        }
         Tile landing = null;
         for (int ty = tile.y - 1; ty >= 0; ty--) {
             Node n = graph.nodes[tile.x, ty];
@@ -210,7 +214,7 @@ public class World : MonoBehaviour {
                 Debug.LogError($"FallItems: {stack.quantity} {stack.item.name} at ({tile.x},{tile.y}) lost — no standable tile below");
                 GlobalInventory.instance.AddItem(stack.item, -stack.quantity);
             }
-            tile.inv.Destroy(); tile.inv = null; return;
+            tile.inv.Destroy(reason: "items lost — no standable tile below"); tile.inv = null; return;
         }
         landing.inv ??= new Inventory(n: 1, x: landing.x, y: landing.y);
         foreach (ItemStack stack in tile.inv.itemStacks) {
@@ -224,7 +228,7 @@ public class World : MonoBehaviour {
             Debug.LogError($"FallItems: {stack.quantity} {stack.item.name} lost at ({tile.x},{tile.y}) — landing ({landing.x},{landing.y}) full");
             GlobalInventory.instance.AddItem(stack.item, -stack.quantity);
         }
-        tile.inv.Destroy();
+        tile.inv.Destroy(reason: $"items fell to ({landing.x},{landing.y})");
         tile.inv = null;
     }
 

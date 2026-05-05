@@ -7,9 +7,12 @@ using UnityEngine.EventSystems;
 // The tooltip shows the item name; the icon falls back to the default if the item
 // has no dedicated sprite.
 [RequireComponent(typeof(Image))]
-public class ItemIcon : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler {
+public class ItemIcon : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler {
     Image image;
     Item item;
+
+    // Optional click callback. If null, clicks are inert (existing call sites stay quiet).
+    public System.Action<Item> onClick;
 
     void Awake() {
         image = GetComponent<Image>();
@@ -54,6 +57,10 @@ public class ItemIcon : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 
     public void OnPointerExit(PointerEventData eventData) {
         TooltipSystem.Hide();
+    }
+
+    public void OnPointerClick(PointerEventData eventData) {
+        if (onClick != null && item != null) onClick(item);
     }
 
     void OnDisable() {

@@ -13,9 +13,20 @@ public class MouseController : MonoBehaviour {
     public GameObject buildPreview;
     SpriteRenderer buildPreviewSr;
     Sprite buildPreviewDefaultSprite;
-    // Per-tile child SRs spawned for shape-aware vertical previews (`_m` middles, `_t` top).
-    // Pooled across builds — never released, just SetActive(false) when not needed.
-    List<SpriteRenderer> previewExtensionSrs = new List<SpriteRenderer>();
+    // Build-mode preview state.
+    //
+    // The inspector-attached `buildPreviewSr` on `buildPreview` is the cursor sprite
+    // for Remove/Harvest modes (and the no-StructType fallback in Build mode). When
+    // the player picks a structType in Build mode, we disable the cursor SR and let
+    // StructureVisualBuilder spawn the actual primary visual under `previewVisualRoot`
+    // — same code path as Structure ctor and Blueprint ctor, just with sortingOrder 200
+    // and a translucent tint. Spawned visuals are pooled across the same StructType /
+    // shape / mirror / rotation tuple — only respawned when something material changes.
+    GameObject previewVisualRoot;
+    StructType cachedPreviewSt;
+    int        cachedPreviewShapeIndex;
+    bool       cachedPreviewMirrored;
+    int        cachedPreviewRotation;
     Vector3 prevPosition;
 
     public World world;
@@ -45,6 +56,11 @@ public class MouseController : MonoBehaviour {
         buildPreviewSr.sortingOrder = 200;
         LightReceiverUtil.SetSortBucket(buildPreviewSr);
         buildPreviewDefaultSprite = buildPreviewSr.sprite;
+        // Child container that holds the StructureVisualBuilder-spawned preview SRs.
+        // Toggled active/inactive as a unit when entering/leaving Build mode.
+        previewVisualRoot = new GameObject("buildPreviewVisualRoot");
+        previewVisualRoot.transform.SetParent(buildPreview.transform, false);
+        previewVisualRoot.SetActive(false);
         foreach (var c in Camera.main.GetComponents<Component>()) {
             var prop = c.GetType().GetProperty("assetsPPU");
             if (prop != null) { ppcComponent = c; ppcAssetsPPU = prop; break; }
@@ -73,7 +89,7 @@ public class MouseController : MonoBehaviour {
             InventoryController.instance?.ValidateGlobalInventory();
             var ws = WeatherSystem.instance;
             if (ws != null)
-                Debug.Log($"Temperature: {ws.temperature:F1}°C, Season: {ws.GetSeason()} (day {ws.GetDayOfYear():F1})");
+                Debug.Log($"Temperature: {ws.temperature:F1}°C, Season: {ws.GetSeason()} (day {ws.GetDayOfYear():F1}/{World.daysInYear})");
         }
 
         // Debug cursor light toggle
@@ -149,42 +165,56 @@ public class MouseController : MonoBehaviour {
             buildPreview.SetActive(true);
             if (mouseMode == MouseMode.Build && st != null && anchorTile != null) {
                 int shapeIndex = BuildPanel.instance != null ? BuildPanel.instance.shapeIndex : 0;
+                bool mirrored  = BuildPanel.instance != null && BuildPanel.instance.mirrored;
+                int rotation   = (BuildPanel.instance != null) ? BuildPanel.instance.rotation : 0;
+                Shape shape    = st.GetShape(shapeIndex);
                 bool shapeAware = st.HasShapes;
-                Shape shape = st.GetShape(shapeIndex);
-                Sprite anchorSprite = shapeAware
-                    ? StructureVisuals.LoadShapeSprite(st, shape, 0)
-                    : st.LoadSprite();
-                buildPreviewSr.sprite = anchorSprite != null ? anchorSprite : buildPreviewDefaultSprite;
-                buildPreviewSr.flipX = BuildPanel.instance != null && BuildPanel.instance.mirrored;
-                buildPreviewSr.color = anchorSprite != null ? new Color(1f, 1f, 1f, 0.3f) : Color.white;
-                if (anchorSprite == null) {
-                    buildPreviewSr.drawMode = SpriteDrawMode.Sliced;
-                    buildPreviewSr.size = new Vector2(st.nx, Mathf.Max(1, st.ny));
-                } else {
-                    buildPreviewSr.drawMode = SpriteDrawMode.Simple;
+
+                // Respawn the preview visual whenever the choice of structType / shape /
+                // mirror / rotation changes. Cheap — these change on user input (build menu
+                // click, Q/E, F, R), not per frame. The transform.position update below
+                // happens every frame regardless and never reallocates.
+                if (cachedPreviewSt        != st
+                    || cachedPreviewShapeIndex != shapeIndex
+                    || cachedPreviewMirrored   != mirrored
+                    || cachedPreviewRotation   != rotation) {
+                    RebuildPreviewVisual(st, shape, mirrored, rotation);
+                    cachedPreviewSt        = st;
+                    cachedPreviewShapeIndex = shapeIndex;
+                    cachedPreviewMirrored   = mirrored;
+                    cachedPreviewRotation   = rotation;
                 }
-                buildPreview.transform.localScale = Vector3.one;
-                // Shape-aware previews anchor at the bottom-left tile so per-tile child SRs
-                // line up. Legacy multi-tile uses centred positioning.
+
+                // Inspector cursor SR off; spawned root on. Same toggle every frame is fine
+                // — Unity short-circuits no-op enable changes.
+                buildPreviewSr.enabled = false;
+                previewVisualRoot.SetActive(true);
+
+                // Position the parent each frame to follow the cursor. Shape-aware previews
+                // anchor at the bottom-left tile centre (matching Structure / Blueprint ctor's
+                // shape-aware origin); legacy multi-tile uses the centred-footprint helper.
                 buildPreview.transform.position = shapeAware
                     ? new Vector3(anchorTile.x, anchorTile.y + (st.depth == 3 ? -1f/8f : 0f), -1f)
                     : StructureVisuals.PositionFor(st, anchorTile.x, anchorTile.y, z: -1);
-                // Rotation preview — only meaningful when the type is rotatable; BuildPanel.rotation
-                // is reset on SetStructType so we won't carry stale rotation across builds.
-                int rot = (BuildPanel.instance != null) ? BuildPanel.instance.rotation : 0;
-                buildPreview.transform.rotation = StructureVisuals.RotationFor(rot);
-                // Compose the shape-aware preview from per-tile sprites for vertical extension.
-                SyncPreviewExtensions(st, shape, shapeAware);
+                buildPreview.transform.localScale = Vector3.one;
+                // Rotation lives on previewVisualRoot (Build sets it there) so the parent
+                // stays at identity for clean position math.
+                buildPreview.transform.rotation = Quaternion.identity;
             } else {
+                // Non-Build (Remove/Harvest): hide the spawned visual root and restore the
+                // inspector cursor SR with its default sprite. Reset the cache so re-entering
+                // Build forces a fresh spawn (handles both StructType-changed and StructType-
+                // null-then-non-null transitions).
                 buildPreview.transform.position = new Vector3(tileAt.x, tileAt.y, -1);
-                buildPreviewSr.sprite = buildPreviewDefaultSprite;
-                buildPreviewSr.flipX = false;
-                buildPreviewSr.color = Color.white;
+                buildPreviewSr.enabled  = true;
+                buildPreviewSr.sprite   = buildPreviewDefaultSprite;
+                buildPreviewSr.flipX    = false;
+                buildPreviewSr.color    = Color.white;
                 buildPreviewSr.drawMode = SpriteDrawMode.Simple;
                 buildPreview.transform.localScale = Vector3.one;
                 buildPreview.transform.rotation = Quaternion.identity;
-                // Hide all extension preview SRs when not in shape-aware build mode.
-                SyncPreviewExtensions(null, null, false);
+                previewVisualRoot.SetActive(false);
+                cachedPreviewSt = null;
             }
         }
         if (mouseMode == MouseMode.Select){
@@ -256,42 +286,25 @@ public class MouseController : MonoBehaviour {
         if (t?.plant != null) t.plant.SetHarvestFlagged(true);
     }
 
-    // Mirrors Structure / Blueprint's per-tile sprite stack onto the build-mode preview
-    // ghost so the cursor-following visual matches what will actually be placed (e.g. a
-    // height-3 platform appears as `_b` + `_m` + `_t`, not a single sliced sprite).
-    // Pools child SRs across calls — never destroys, just SetActive toggles. Pass
-    // shapeAware=false / null args to deactivate all extension SRs.
-    private void SyncPreviewExtensions(StructType st, Shape shape, bool shapeAware) {
-        // Determine how many extension tiles we need this frame.
-        int needed = 0;
-        if (shapeAware && st != null && shape != null && shape.nx == 1 && shape.ny > 1)
-            needed = shape.ny - 1;
-
-        // Grow the pool to cover `needed`.
-        while (previewExtensionSrs.Count < needed) {
-            int dy = previewExtensionSrs.Count + 1;
-            GameObject extGo = new GameObject($"buildPreviewExt{dy}");
-            extGo.transform.SetParent(buildPreview.transform, false);
-            SpriteRenderer extSr = SpriteMaterialUtil.AddSpriteRenderer(extGo);
-            extSr.sortingOrder = buildPreviewSr.sortingOrder;
-            LightReceiverUtil.SetSortBucket(extSr);
-            previewExtensionSrs.Add(extSr);
+    // Tears down the previous preview root and creates a fresh one for the given
+    // (st, shape, mirrored, rotation) tuple. We destroy + recreate the root rather
+    // than reusing it because StructureVisualBuilder.Build attaches the main SR
+    // directly to its parent GameObject — Unity disallows adding a second SR to a
+    // GameObject that already has one, and `Destroy` is deferred to end-of-frame so
+    // we can't strip + re-add the component within a single frame. Hiding the old
+    // root before destroying suppresses any flicker from the queued teardown.
+    //
+    // Called only when one of (st, shape, mirrored, rotation) changes — not per
+    // frame — so the GC cost of recreating GOs is bounded by user input rate.
+    private void RebuildPreviewVisual(StructType st, Shape shape, bool mirrored, int rotation) {
+        if (previewVisualRoot != null) {
+            previewVisualRoot.SetActive(false);
+            Destroy(previewVisualRoot);
         }
-
-        // Activate/configure the first `needed`, deactivate the rest.
-        for (int i = 0; i < previewExtensionSrs.Count; i++) {
-            SpriteRenderer extSr = previewExtensionSrs[i];
-            if (i < needed) {
-                int dy = i + 1;
-                extSr.gameObject.SetActive(true);
-                extSr.transform.localPosition = new Vector3(0f, dy, 0f);
-                extSr.sprite = StructureVisuals.LoadShapeSprite(st, shape, dy);
-                extSr.color = buildPreviewSr.color;
-                extSr.flipX = buildPreviewSr.flipX;
-            } else if (extSr.gameObject.activeSelf) {
-                extSr.gameObject.SetActive(false);
-            }
-        }
+        previewVisualRoot = new GameObject("buildPreviewVisualRoot");
+        previewVisualRoot.transform.SetParent(buildPreview.transform, false);
+        StructureVisualBuilder.Build(previewVisualRoot, st, shape, mirrored, rotation, 200,
+                                     new Color(1f, 1f, 1f, 0.3f));
     }
 
     private void CommitHarvestDrag(Vector3 startScreen, Vector3 endScreen) {

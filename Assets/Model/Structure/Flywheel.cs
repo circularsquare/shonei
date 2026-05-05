@@ -76,7 +76,7 @@ public class Flywheel : Building, PowerSystem.IPowerStorage {
 
     // Degrees per second the wheel sweeps when fully charged. Linear interpolation:
     // actual speed = (charge / Capacity) × WheelDegPerSecAtMaxCharge.
-    public const float WheelDegPerSecAtMaxCharge = 360f;
+    public const float WheelDegPerSecAtMaxCharge = 180f;
 
     public override void AttachAnimations() {
         Sprite wheelSprite = Resources.Load<Sprite>("Sprites/Buildings/flywheel_wheel");

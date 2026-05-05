@@ -11,6 +11,7 @@
         "id": 2,
         "name": "dirt",
         "solid": 1,
+        "overlay": "grass",
         "nproducts": [
             { "name": "dirt", "quantity": 10 }
         ]

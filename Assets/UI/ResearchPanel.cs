@@ -28,6 +28,9 @@ public class ResearchPanel : MonoBehaviour {
     public Transform       nodeListContent;
     public ResearchDisplay cardPrefab;
 
+    [Header("Misc")]
+    public Button closeButton; // optional X in the corner
+
     [Header("Debug")]
     public Button debugUnlockAllButton;
 
@@ -39,6 +42,7 @@ public class ResearchPanel : MonoBehaviour {
         if (instance != null) { Debug.LogError("two ResearchPanels!"); }
         instance = this;
         UI.RegisterExclusive(gameObject);
+        if (closeButton != null) closeButton.onClick.AddListener(() => gameObject.SetActive(false));
     }
 
     void Start() {
@@ -98,7 +102,6 @@ public class ResearchPanel : MonoBehaviour {
 
     public static string BuildTooltipBody(ResearchNodeData node, ResearchSystem rs) {
         var sb = new StringBuilder();
-        sb.AppendLine($"threshold: {node.cost:0} pts");
         if (!string.IsNullOrEmpty(node.description))
             sb.AppendLine(node.description);
         if (node.prereqs != null && node.prereqs.Length > 0) {
@@ -109,8 +112,20 @@ public class ResearchPanel : MonoBehaviour {
             })));
         }
         if (node.unlocks != null && node.unlocks.Length > 0) {
-            sb.Append("Unlocks: ");
-            sb.AppendLine(string.Join(", ", System.Array.ConvertAll(node.unlocks, FormatUnlock)));
+            // Hide the auto-generated "write the X book" recipe — every tech has one,
+            // so listing it adds no information.
+            Db.bookRecipeIdByTechId.TryGetValue(node.id, out int bookRecipeId);
+            var visible = new System.Collections.Generic.List<string>(node.unlocks.Length);
+            foreach (var e in node.unlocks) {
+                if (e != null && e.type == "recipe"
+                        && int.TryParse(e.target, out int rid) && rid == bookRecipeId)
+                    continue;
+                visible.Add(FormatUnlock(e));
+            }
+            if (visible.Count > 0) {
+                sb.Append("Unlocks: ");
+                sb.AppendLine(string.Join(", ", visible));
+            }
         }
 
         float p = rs.GetProgress(node.id);
@@ -125,8 +140,6 @@ public class ResearchPanel : MonoBehaviour {
 
         if (studied)
             sb.Append(" [studying]");
-        else if (rs.CanStudy(node))
-            sb.Append("\nClick to study.");
 
         return sb.ToString().TrimEnd();
     }

@@ -204,14 +204,15 @@ public class MoistureSystem {
     }
 
     // True when the tile directly above a soil tile prevents rain from reaching it:
-    // it is either solid ground or carries any structure with solidTop=true
-    // (buildings, platforms, roads). Off-world (null) treated as capped.
+    // it is either solid ground or carries any structure with solidTop=true OR
+    // blocksRain=true (buildings, platforms, roads, tarps). Off-world (null) treated
+    // as capped.
     private static bool CapsSoilFromAbove(Tile t) {
         if (t == null) return true;
         if (t.type.solid) return true;
         for (int d = 0; d < t.structs.Length; d++) {
             Structure s = t.structs[d];
-            if (s != null && s.structType.solidTop) return true;
+            if (s != null && (s.structType.solidTop || s.structType.blocksRain)) return true;
         }
         return false;
     }

@@ -12,13 +12,15 @@ public class FetchObjective : Objective {
     private Inventory sourceInv; // which inventory to take from (storage or floor); set by Start() or caller
     private Inventory targetInv; // null = animal's main inventory; non-null = equip into that slot
     private bool softFetch; // if true: Complete (not Fail) when no path found or nothing taken; no cross-tile retry
+    private int sourceLimit; // amount reserved from the current source; 0 means legacy/unbounded
     private Inventory Dest => targetInv ?? animal.inv;
-    public FetchObjective(Task task, ItemQuantity iq, Tile sourceTile = null, Inventory targetInv = null, bool softFetch = false, Inventory sourceInv = null) : base(task) {
+    public FetchObjective(Task task, ItemQuantity iq, Tile sourceTile = null, Inventory targetInv = null, bool softFetch = false, Inventory sourceInv = null, int sourceLimit = 0) : base(task) {
         this.iq = iq;
         this.sourceTile = sourceTile;
         this.sourceInv = sourceInv;
         this.targetInv = targetInv;
         this.softFetch = softFetch;
+        this.sourceLimit = sourceLimit;
     }
     public override string GetObjectiveName() { return $"Fetch({iq.item.name})"; }
     public override void Start(){
@@ -32,7 +34,7 @@ public class FetchObjective : Objective {
             ItemStack stack;
             (itemPath, stack) = animal.nav.FindPathItemStack(iq.item);
             if (itemPath != null) {
-                task.ReserveStack(stack, iq.quantity);
+                sourceLimit = task.ReserveStack(stack, iq.quantity);
                 sourceTile = itemPath.tile;
                 sourceInv = stack.inv;
             }
@@ -65,20 +67,28 @@ public class FetchObjective : Objective {
             if (softFetch) { Complete(); return; }
             Fail(); Debug.Log($"{animal.aName} FetchObjective: no source inv at ({(int)animal.x},{(int)animal.y})"); return;
         }
-        // Source torn down between Initialize and arrival — usually decay silently drained the
-        // reserved stack (ItemStack.AddItem zeros resAmount when the stack empties). Log what
-        // we reserved, not the raw request, so "expected vs gone" is visible.
+        // Source torn down between Initialize and arrival. Inventory.Destroy normally
+        // proactively fails reservation-holding tasks before they reach this code path,
+        // so hitting this is a real bug — the notify pass missed us. LogError so it
+        // surfaces clearly rather than getting written off as decay collateral.
         if (src.destroyed) {
             int expected = task.ReservedAmountFromInv(src);
-            Debug.LogWarning($"{animal.aName} FetchObjective: source {src.invType} '{src.displayName}' at ({src.x},{src.y}) destroyed before arrival — expected {expected} fen of {iq.item.name} (iq.quantity={iq.quantity}, needed={needed})");
+            Debug.LogError($"{animal.aName} FetchObjective: source {src.invType} '{src.displayName}' at ({src.x},{src.y}) destroyed before arrival — expected {expected} fen of {iq.item.name} (iq.quantity={iq.quantity}, needed={needed})");
             if (softFetch) { Complete(); return; }
             Fail(); return;
         }
-        int amountTaken = src.MoveItemTo(Dest, iq.item, needed);
-        // Clean up empty floor inventories (replicates TakeItem behavior)
+        int sourceNeed = sourceLimit > 0 ? Math.Min(needed, sourceLimit) : needed;
+        int amountTaken = src.MoveItemTo(Dest, iq.item, sourceNeed);
+        // Clean up empty floor inventories (replicates TakeItem behavior). Pass `task` as the
+        // originator so Inventory.Destroy doesn't fail us — we just successfully fetched and
+        // are mid-completion; failing here would clobber any chained objectives (Craft, Drop, …).
         if (src.invType == Inventory.InvType.Floor && src.IsEmpty()) {
             Tile t = World.instance.GetTileAt(src.x, src.y);
-            if (t != null) { src.Destroy(); t.inv = null; }
+            if (t != null) {
+                string reason = $"{animal.aName} fetched {amountTaken}/{iq.quantity} {iq.item.name}";
+                src.Destroy(except: task, reason: reason);
+                t.inv = null;
+            }
         }
         if (amountTaken == 0) {
             if (softFetch) { Complete(); return; }
@@ -91,6 +101,7 @@ public class FetchObjective : Objective {
         } else {
             sourceTile = null; // source tile may be exhausted; search for another
             sourceInv = null;
+            sourceLimit = 0;
             Start();
         }
     }

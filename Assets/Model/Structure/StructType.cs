@@ -97,6 +97,18 @@ public class StructType {
     public bool noMaintenance {get; set;}
     public float pathCostReduction {get; set;} // subtracted from edge cost for horizontal moves (roads: 0.1)
     public bool solidTop {get; set;} // can animals stand on top of this structure?
+    // Decoupled rain-shelter flag. solidTop also blocks rain (a roofed-over tile is by
+    // definition sheltered), but some structures want to block rain WITHOUT being walkable
+    // on top — e.g. tarps. Authors set blocksRain=true on those. World.IsExposedAbove and
+    // MoistureSystem.CapsSoilFromAbove honour either flag.
+    public bool blocksRain {get; set;}
+    // "Edge-supported" footprint: only the leftmost and rightmost columns of the bottom
+    // row need standable support beneath them — the middle can hang in mid-air. Used by
+    // tarps (cloth strung between two posts) where the middle is unsupported by design.
+    // Affects placement validation (StructPlacement.CanPlaceHere requires both ends to
+    // be standable, instead of just one body tile) AND blueprint suspension
+    // (Blueprint.IsSuspended only checks the two ends, not every bottom tile).
+    public bool edgeSupported {get; set;}
     public bool isWorkstation {get; set;} // true = registers a WOM Craft order when placed; use ConditionsMet() to gate it
     public int workTileX {get; set;} // tile offset to the interaction/nav tile (default 0,0 = anchor)
     public int workTileY {get; set;}

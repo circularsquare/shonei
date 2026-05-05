@@ -30,7 +30,7 @@ using Newtonsoft.Json;
 //   [x] World timer
 //   [x] World RNG seed (drives Rng — gameplay randomness reproduces on reload)
 //   [x] Per-animal RNG seed (drives Animal.random — animal AI reproduces on reload)
-//   [x] Tile types, floor inventories, and background wall
+//   [x] Tile types, floor inventories, background wall, overlay masks (grass on dirt), overlay health state (live/dying/dead), and snow cover
 //   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, mirrored, rotation, shapeIndex, disabled, plantHarvestFlagged, quarry capturedTileType, flywheel charge, elevator currentY + history buffers)
 //   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored, rotation, shapeIndex, disabled)
 //   [x] Animals (position, job, energy, food, happiness, decoration happiness, socialization, fireplace warmth, inv, foodSlotInv, toolSlotInv, clothingSlotInv, bookSlotInv)
@@ -213,7 +213,9 @@ public class SaveSystem : MonoBehaviour {
         bool hasContent =
             tile.type.name != "empty" ||
             (tile.inv != null && !tile.inv.IsEmpty()) ||
-            tile.hasBackground;
+            tile.hasBackground ||
+            tile.overlayMask != 0 ||
+            tile.snow;
         if (!hasContent) return null;
 
         return new TileSaveData {
@@ -222,6 +224,13 @@ public class SaveSystem : MonoBehaviour {
             tileType = tile.type.name,
             inv      = tile.inv != null ? GatherInventory(tile.inv) : null,
             backgroundWallType = (int)tile.backgroundType,
+            // Nullable: emit only when nonzero so on-disk JSON stays small and
+            // existing snapshot-test goldens diff minimally.
+            overlayMask  = tile.overlayMask != 0 ? tile.overlayMask : (byte?)null,
+            // overlayState only meaningful when a mask exists; skip the field on bare or Live tiles.
+            overlayState = (tile.overlayMask != 0 && tile.overlayState != OverlayState.Live)
+                ? (byte?)(byte)tile.overlayState : null,
+            snow = tile.snow ? (bool?)true : null,
         };
     }
 
@@ -450,6 +459,23 @@ public class SaveSystem : MonoBehaviour {
                 if (bt == BackgroundType.None && tsd.hasBackgroundWall) bt = BackgroundType.Stone;
                 tile.backgroundType = bt;
                 if (bt != BackgroundType.None) anyWall = true;
+
+                // Restore the overlay mask AFTER tile.type is set above — the type
+                // setter may zero overlayMask if the saved type doesn't carry an
+                // overlay, which is the correct behaviour for migration. Belt-and-
+                // braces: also gate on tile.type.overlay here so a save with stale
+                // bits on a non-overlay type doesn't sneak them through.
+                byte mask = tsd.overlayMask ?? 0;
+                tile.overlayMask = (mask != 0 && tile.type.overlay != null) ? mask : (byte)0;
+                // overlayState only matters when grass actually exists on the tile.
+                // Old saves (field absent) load as Live (default).
+                if (tile.overlayMask != 0 && tsd.overlayState.HasValue)
+                    tile.overlayState = (OverlayState)tsd.overlayState.Value;
+                // Snow only meaningful on solid tiles; the type setter would have
+                // cleared a stale flag during migration if the saved type were
+                // non-solid, but gate here too for old saves that wrote `snow:true`
+                // alongside an empty type.
+                if (tsd.snow == true && tile.type.solid) tile.snow = true;
             }
 
             // Ancient saves predate any wall data — apply the old y <= 43 Stone default.

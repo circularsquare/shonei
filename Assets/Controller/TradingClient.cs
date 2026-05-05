@@ -13,7 +13,7 @@ public class TradingClient : MonoBehaviour {
     bool hasLoggedConnectError = false;
     bool hasLoggedDisconnect = false;
     public const string playerName = "anita";
-    const string WsUrl = "ws://127.0.0.1:8082/ws?name=" + playerName;
+    const string WsUrl = "ws://127.0.0.1:8083/ws?name=" + playerName;
     const float ReconnectInterval = 20f;
 
     public event Action<bool>       OnConnectionChanged;

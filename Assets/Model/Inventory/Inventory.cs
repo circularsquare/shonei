@@ -174,34 +174,38 @@ public class Inventory{
         return string.Join(" <- ", parts);
     }
 
-    public void Destroy(){
+    // `except` is the task whose own action triggered this destroy (e.g. a FetchObjective
+    // that just emptied a floor and is calling Destroy as a cleanup step). That task is mid-
+    // success and handles its own follow-up — failing it here would clobber a chained task
+    // (Fetch → Craft → Drop) right after Fetch succeeded. Pass null for "no originator".
+    // `reason` describes the cause for the abort log (e.g. "Vesper fetched 80/100 apple",
+    // "items fell to (3,4)", "building deconstructed"). Surfaces in the per-task log so we
+    // can tell at a glance whether reservations are getting clobbered by the expected source
+    // (a fetch finishing the stack) or something less obvious (decay, fall, structural change).
+    public void Destroy(Task except = null, string reason = null){
         destroyed = true;
         // Eagerly remove haul orders for floor and storage stacks, then zero quantities as a safety net
         // for PruneStaleHauls (covers other inv types and any orders that slip through).
         if (invType == InvType.Floor || invType == InvType.Storage)
             foreach (ItemStack stack in itemStacks)
                 WorkOrderManager.instance?.RemoveHaulForStack(stack);
-        // Warn on reserved stacks being destroyed — the reservation holder is about to hit a stale reference.
-        // Identifies which task/animal was mid-fetch and what tore the inv out from under it.
+        // Notify reservers: any task with a live source/space reservation on this inv aborts now,
+        // so the animal re-plans immediately instead of walking to a now-dead source. Without this,
+        // the FetchObjective wouldn't notice the destruction until it arrived (see "destroyed before
+        // arrival" in FetchObjective.OnArrival), wasting a full walk.
         // Skipped during ClearWorld: bulk teardown tears everything down together, so dangling
         // reservations are expected and not a bug.
-        if (!WorldController.isClearing) {
-            bool anyRes = false;
-            foreach (ItemStack stack in itemStacks) {
-                if (stack == null) continue;
-                if (stack.resAmount > 0) {
-                    Debug.LogWarning($"Inventory.Destroy: {invType} '{displayName}' at ({x},{y}) destroyed while stack reserved — item={stack.item?.name} qty={stack.quantity} resAmount={stack.resAmount} resTask={stack.resTask} animal={stack.resTask?.animal?.aName}");
-                    anyRes = true;
-                }
-                if (stack.resSpace > 0) {
-                    Debug.LogWarning($"Inventory.Destroy: {invType} '{displayName}' at ({x},{y}) destroyed while stack space reserved — resSpaceItem={stack.resSpaceItem?.name} resSpace={stack.resSpace} resSpaceTask={stack.resSpaceTask} animal={stack.resSpaceTask?.animal?.aName}");
-                    anyRes = true;
-                }
-            }
-            // When a reserved inv is torn down, dump the immediate caller stack so we can identify
-            // which code path destroyed it (e.g. FallIfUnstandable vs FetchObjective vs something else).
-            if (anyRes) {
-                Debug.LogWarning($"  destroyer: {FormatCallerTrace("Inventory.Destroy")}");
+        if (!WorldController.isClearing && AnimalController.instance != null) {
+            var ac = AnimalController.instance;
+            string causeStr = string.IsNullOrEmpty(reason) ? "" : $" — {reason}";
+            for (int i = 0; i < ac.na; i++) {
+                Animal a = ac.animals[i];
+                Task t = a?.task;
+                if (t == null || t == except) continue;
+                if (!t.HasReservationOn(this)) continue;
+                // TODO: temporary log while we observe how often this fires in practice.
+                Debug.Log($"Inventory.Destroy: {invType} '{displayName}' at ({x},{y}){causeStr} — aborting {a.aName}'s {t} task.");
+                t.Fail(silent: true); // we just logged a more specific message
             }
         }
         foreach (ItemStack stack in itemStacks) { stack.quantity = 0; stack.resAmount = 0; stack.resSpace = 0; stack.resSpaceItem = null; }

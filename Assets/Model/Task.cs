@@ -91,9 +91,10 @@ public abstract class Task {
     }
 
     // Reserves items on a stack and tracks for cleanup. Single entry point for all source reservations.
-    public void ReserveStack(ItemStack stack, int amount){
+    public int ReserveStack(ItemStack stack, int amount){
         int reserved = stack.Reserve(amount, this);
         if (reserved > 0) reservedStacks.Add((stack, reserved));
+        return reserved;
     }
 
     // Sum of source reservations against a specific inventory — for diagnostics when a
@@ -103,6 +104,17 @@ public abstract class Task {
         foreach (var (stack, amount) in reservedStacks)
             if (stack.inv == inv) total += amount;
         return total;
+    }
+
+    // True if this task has any source or destination reservation against `inv`.
+    // Inventory.Destroy uses this to find tasks that need to abort early so the
+    // animal re-plans instead of walking to a dead source.
+    public bool HasReservationOn(Inventory inv){
+        foreach (var (stack, _) in reservedStacks)
+            if (stack.inv == inv) return true;
+        foreach (var (stack, _) in reservedSpaces)
+            if (stack.inv == inv) return true;
+        return false;
     }
 
     // Reserves destination space in an inventory and tracks for cleanup. Returns total amount reserved.
@@ -122,16 +134,16 @@ public abstract class Task {
 
     // Enqueues a FetchObjective and reserves items on the stack, tracking for cleanup.
     protected void FetchAndReserve(ItemQuantity iq, Tile tile, ItemStack stack, int amount){
-        objectives.AddLast(new FetchObjective(this, iq, tile, sourceInv: stack.inv));
-        ReserveStack(stack, amount);
+        int reserved = ReserveStack(stack, amount);
+        objectives.AddLast(new FetchObjective(this, iq, tile, sourceInv: stack.inv, sourceLimit: reserved));
     }
     protected void FetchAndReserve(ItemQuantity iq, Tile tile, ItemStack stack){
         FetchAndReserve(iq, tile, stack, iq.quantity);
     }
     // Overload that routes pickup into an equip slot instead of the animal's main inventory.
     protected void FetchAndReserve(ItemQuantity iq, Tile tile, ItemStack stack, Inventory targetInv){
-        objectives.AddLast(new FetchObjective(this, iq, tile, targetInv, sourceInv: stack.inv));
-        ReserveStack(stack, iq.quantity);
+        int reserved = ReserveStack(stack, iq.quantity);
+        objectives.AddLast(new FetchObjective(this, iq, tile, targetInv, sourceInv: stack.inv, sourceLimit: reserved));
     }
 
     // Estimated walk time from anywhere on-map to the market portal at x=0.
@@ -198,8 +210,8 @@ public abstract class Task {
         float fetchedPoints = (qty / 100f) * bestFood.foodValue;
         if (foodHave + fetchedPoints < foodNeeded) return false;
         ItemQuantity foodIq = new(bestFood, qty);
-        objectives.AddFirst(new FetchObjective(this, foodIq, bestPath.tile, animal.foodSlotInv, softFetch: false, sourceInv: bestStack.inv));
-        ReserveStack(bestStack, qty);
+        int reserved = ReserveStack(bestStack, qty);
+        objectives.AddFirst(new FetchObjective(this, foodIq, bestPath.tile, animal.foodSlotInv, softFetch: false, sourceInv: bestStack.inv, sourceLimit: reserved));
         return true;
     }
 
@@ -223,8 +235,8 @@ public abstract class Task {
         ItemQuantity foodIq = new(bestFood, qty);
         // AddFirst so food is fetched before any other objectives run.
         // softFetch=true: if food is gone on arrival, objective completes rather than fails.
-        objectives.AddFirst(new FetchObjective(this, foodIq, bestPath.tile, animal.foodSlotInv, softFetch: true, sourceInv: bestStack.inv));
-        ReserveStack(bestStack, qty);
+        int reserved = ReserveStack(bestStack, qty);
+        objectives.AddFirst(new FetchObjective(this, foodIq, bestPath.tile, animal.foodSlotInv, softFetch: true, sourceInv: bestStack.inv, sourceLimit: reserved));
     }
 
     public bool Start(){ // calls some task specific Initialize
@@ -241,11 +253,20 @@ public abstract class Task {
             animal.state = Animal.AnimalState.Idle;
         }
     }
-    public void Fail(){ // end task, go idle
-        if (currentObjective == null){
-            Debug.Log($"{animal.aName} ({animal.job.name}) failed {ToString()} task, null objective");
-        } else {
-            Debug.Log($"{animal.aName} ({animal.job.name}) failed {ToString()} task at {currentObjective}");
+    // silent=true skips the "failed X task at Y" log. Use when the caller has already logged
+    // a more specific message about why the task is being aborted (e.g. Inventory.Destroy
+    // proactive notify, which logs the destroyer + reason just before calling Fail).
+    public void Fail(bool silent = false){ // end task, go idle
+        // Idempotent — Inventory.Destroy proactively fails reserving tasks, after which
+        // the same task's own code path (e.g. FetchObjective.OnArrival) may fall through
+        // to its own Fail(). Skip if we no longer own the animal.
+        if (animal.task != this) return;
+        if (!silent && !WorldController.isClearing) {
+            if (currentObjective == null){
+                Debug.Log($"{animal.aName} ({animal.job.name}) failed {ToString()} task, null objective");
+            } else {
+                Debug.Log($"{animal.aName} ({animal.job.name}) failed {ToString()} task at {currentObjective}");
+            }
         }
         Cleanup();
         animal.task = null;

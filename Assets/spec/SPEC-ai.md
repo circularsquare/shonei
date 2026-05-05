@@ -97,9 +97,9 @@ Tasks decompose into an ordered queue of Objectives. Each task:
 
 `Task.Start()` only calls `StartNextObjective()` if `Initialize()` returned `true`. This prevents half-built objective queues from executing when a late reservation check fails.
 
-### Reservation system (source + destination)
+### Reservation system
 
-Tasks reserve both **source items** (`ItemStack.resAmount`) and **destination space** (`ItemStack.resSpace`) during `Initialize()` via `Task.ReserveStack` / `Task.ReserveSpace`. Both are auto-released by `base.Cleanup()`. For the full mechanism (FreeSpace logic, empty-stack tracking, staleness sweep) see SPEC-systems.md §Reservation Systems.
+Tasks reserve sources and destinations during `Initialize()` via `Task.ReserveStack` / `Task.ReserveSpace`; both auto-released by `base.Cleanup()`. See SPEC-systems.md §Reservation Systems for the full mechanism.
 
 **Tasks using destination reservation:** `HaulTask`, `ConsolidateTask`, `HaulToMarketTask`, `HaulFromMarketTask`, `SupplyFuelTask`, `DropObjective` (best-effort).
 

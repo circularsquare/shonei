@@ -9,9 +9,15 @@ using UnityEngine;
 //   Clear → Rain:  4%
 //   Rain  → Clear: 12%
 //
-// Light multipliers at full rain (rainAmount = 1):
-//   Sun intensity: 0.25 
-//   Ambient:       0.90 
+// Precipitation type splits on temperature: when isRaining is true, the active
+// channel is rainAmount if temperature ≥ snowThresholdC, else snowAmount. Both
+// channels lerp smoothly via the same MoveTowards step, so transitions across
+// the threshold (which only shift slowly via the daily/yearly sine waves) cross-
+// fade rather than snap. Hard-switch design — no smoothing band today.
+//
+// Light multipliers at full intensity (max(rainAmount, snowAmount) = 1):
+//   Sun intensity: 0.25
+//   Ambient:       0.90
 //
 // Transitions lerp over lerpDuration seconds (default 5s).
 //
@@ -28,8 +34,17 @@ public class WeatherSystem {
 
     public bool isRaining { get; private set; }
 
-    // 0 = fully clear, 1 = fully raining. Lerps smoothly on weather change.
+    // 0 = fully clear, 1 = fully raining (above snowThresholdC). Lerps smoothly.
     public float rainAmount { get; private set; }
+
+    // 0 = no snow, 1 = full snow (raining at temperature < snowThresholdC).
+    // Same lerp cadence as rainAmount; only one of the two ramps up at a time.
+    public float snowAmount { get; private set; }
+
+    // Below this temperature, "raining" produces snow instead of rain. Snow does
+    // not water plants (MoistureSystem reads rainAmount only) and does not fill
+    // tanks/puddles (RainReplenish gates on temperature too).
+    public const float snowThresholdC = 2f;
 
     // Positive = wind blowing right. Updated each hour via random walk.
     public float wind { get; private set; }
@@ -43,9 +58,12 @@ public class WeatherSystem {
 
     // Called by World.Update() every frame.
     public void Tick(float dt) {
-        float target = isRaining ? 1f : 0f;
-        rainAmount = Mathf.MoveTowards(rainAmount, target, dt / lerpDuration);
         UpdateTemperature();
+        bool snowing  = isRaining && temperature <  snowThresholdC;
+        bool rainingT = isRaining && temperature >= snowThresholdC;
+        float step    = dt / lerpDuration;
+        rainAmount = Mathf.MoveTowards(rainAmount, rainingT ? 1f : 0f, step);
+        snowAmount = Mathf.MoveTowards(snowAmount, snowing  ? 1f : 0f, step);
     }
 
     // Called by World.Update() once per in-game hour.
@@ -56,7 +74,9 @@ public class WeatherSystem {
             if (Rng.value < 0.04f) SetRain(true);
         } else {
             if (Rng.value < 0.12f) SetRain(false);
-            ReplenishRainwater();
+            // Snow doesn't fill tanks or top up puddles immediately — accumulation
+            // and melt are a future feature; for now snowing skips this entirely.
+            if (temperature >= snowThresholdC) ReplenishRainwater();
         }
 
         // Soil diffusion, evaporation, and plant passive draw run once per in-game hour.
@@ -71,17 +91,24 @@ public class WeatherSystem {
     }
 
     // Called by SaveSystem when loading a save file — snaps immediately, no lerp.
+    // Picks the rain or snow channel based on the temperature reconstructed from
+    // the world timer, so a save loaded mid-winter resumes as snow not rain.
     public void RestoreState(bool rain) {
-        isRaining   = rain;
-        rainAmount  = rain ? 1f : 0f;
+        isRaining = rain;
         UpdateTemperature();
+        bool asSnow = rain && temperature < snowThresholdC;
+        rainAmount  = (rain && !asSnow) ? 1f : 0f;
+        snowAmount  = asSnow            ? 1f : 0f;
     }
 
+    // Combined precipitation intensity — overcast is overcast regardless of type.
+    static float Overcast() => Mathf.Max(instance?.rainAmount ?? 0f, instance?.snowAmount ?? 0f);
+
     // Multiplier applied to sunSource.intensity by SunController.
-    public static float GetSunMultiplier()     => Mathf.Lerp(1.0f, 0.25f, instance?.rainAmount ?? 0f);
+    public static float GetSunMultiplier()     => Mathf.Lerp(1.0f, 0.25f, Overcast());
 
     // Multiplier applied to the ambient color returned by SunController.GetAmbientColor().
-    public static float GetAmbientMultiplier() => Mathf.Lerp(1.0f, 0.90f, instance?.rainAmount ?? 0f);
+    public static float GetAmbientMultiplier() => Mathf.Lerp(1.0f, 0.90f, Overcast());
 
     public static WeatherSystem Create() {
         instance = new WeatherSystem();
@@ -123,5 +150,11 @@ public class WeatherSystem {
 
     void SetRain(bool rain) {
         isRaining = rain;
+    }
+
+    // Debug-toggle entry point. Flips the raining state; Tick() handles the
+    // visual fade. The next OnHourElapsed roll may revert it as usual.
+    public void ToggleRain() {
+        SetRain(!isRaining);
     }
 }

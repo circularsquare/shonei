@@ -15,6 +15,10 @@ public class WorldController : MonoBehaviour {
     public World world {get; protected set;}
     public Transform tilesTransform;
     Dictionary<Tile, GameObject> tileGameObjectMap;
+    // Per-tile overlay SpriteRenderer (grass on dirt; future moss on stone, etc.).
+    // One per tile; sprite is null when the tile has no overlayMask, no overlay
+    // sheet, or is covered by a road. See OnTileOverlayChanged.
+    Dictionary<Tile, SpriteRenderer> tileOverlaySrMap;
     Coroutine defaultSetupCoroutine;
     Material tileMaterial; // Custom/TileSprite shader for tiles
     // Inspector-assigned so the shader is part of the scene's serialized graph
@@ -44,6 +48,7 @@ public class WorldController : MonoBehaviour {
         world = this.gameObject.AddComponent<World>(); // add world
 
         tileGameObjectMap = new Dictionary<Tile, GameObject>();
+        tileOverlaySrMap = new Dictionary<Tile, SpriteRenderer>();
         tilesTransform = transform.Find("Tiles");
 
         // Create material with Custom/TileSprite shader.
@@ -67,6 +72,19 @@ public class WorldController : MonoBehaviour {
                 LightReceiverUtil.SetSortBucket(tile_sr);
                 if (tileMaterial != null) tile_sr.material = tileMaterial;
                 tile.RegisterCbTileTypeChanged(OnTileTypeChanged);
+
+                // Overlay child for per-side decoration (grass on dirt). Lives at
+                // sortingOrder=1 alongside roads — they're mutually exclusive on a
+                // tile (overlay is suppressed when a road is present), so no fight
+                // for draw order. Sprite is set on demand in OnTileOverlayChanged.
+                GameObject overlay_go = new GameObject("Overlay");
+                overlay_go.transform.SetParent(tile_go.transform, false);
+                SpriteRenderer overlay_sr = overlay_go.AddComponent<SpriteRenderer>();
+                overlay_sr.sortingOrder = 1;
+                LightReceiverUtil.SetSortBucket(overlay_sr);
+                if (tileMaterial != null) overlay_sr.material = tileMaterial;
+                tileOverlaySrMap.Add(tile, overlay_sr);
+                tile.RegisterCbOverlayChanged(OnTileOverlayChanged);
             }
         }
 
@@ -180,6 +198,7 @@ public class WorldController : MonoBehaviour {
                 Tile tile = world.GetTileAt(x, y);
                 tile.type = Db.tileTypeByName["empty"];
                 tile.backgroundType = BackgroundType.None;
+                tile.overlayMask = 0; // belt-and-braces; the type setter also clears it on dirt→empty
             }
         }
 
@@ -266,10 +285,17 @@ public class WorldController : MonoBehaviour {
 
     // Re-fires OnTileTypeChanged for every tile so sprites reflect final terrain.
     // Called once after world generation to fix grass/dirt on cave boundaries.
+    // Also refreshes overlays — defensive: PopulateOverlays already triggers the
+    // overlayMask setter callback, but this guarantees every tile is re-evaluated
+    // (e.g. tiles whose mask happens to be 0 still need their overlay sprite
+    // explicitly set to null, which the setter skips since the value didn't change).
     void RefreshAllTileSprites() {
         for (int x = 0; x < world.nx; x++)
-            for (int y = 0; y < world.ny; y++)
-                OnTileTypeChanged(world.GetTileAt(x, y));
+            for (int y = 0; y < world.ny; y++) {
+                Tile t = world.GetTileAt(x, y);
+                OnTileTypeChanged(t);
+                OnTileOverlayChanged(t);
+            }
     }
 
     // Updates the gameobject sprite and shadow caster when the tile data is changed
@@ -287,17 +313,22 @@ public class WorldController : MonoBehaviour {
         // Sprite for solid tiles is set in ApplyTileNormalMap (depends on adjacency).
         // Scale stays at 1 — baked 20×20 sprites are natively 1.25 units at PPU=16.
 
-        // Update normal map + sprite for this tile and all 8 neighbours
-        // (a neighbour's exposed edges and corner depths change when this tile changes).
-        ApplyTileNormalMap(tile);
-        ApplyTileNormalMap(world.GetTileAt(tile.x - 1, tile.y));
-        ApplyTileNormalMap(world.GetTileAt(tile.x + 1, tile.y));
-        ApplyTileNormalMap(world.GetTileAt(tile.x, tile.y - 1));
-        ApplyTileNormalMap(world.GetTileAt(tile.x, tile.y + 1));
-        ApplyTileNormalMap(world.GetTileAt(tile.x - 1, tile.y - 1));
-        ApplyTileNormalMap(world.GetTileAt(tile.x + 1, tile.y - 1));
-        ApplyTileNormalMap(world.GetTileAt(tile.x - 1, tile.y + 1));
-        ApplyTileNormalMap(world.GetTileAt(tile.x + 1, tile.y + 1));
+        // Refresh body+overlay for this tile and all 8 neighbours.
+        // OnTileOverlayChanged calls ApplyTileNormalMap internally — the body's
+        // bodyCardinals depends on overlayMask, and body+overlay share the
+        // normal map (overlay points its _NormalMap at the dirt body's normal),
+        // so they refresh as a unit. Cardinal neighbours' cMasks change when
+        // this tile's solidity flips; diagonal neighbours' nMasks change too
+        // (corner bevels), so all 8 need a refresh.
+        OnTileOverlayChanged(tile);
+        OnTileOverlayChanged(world.GetTileAt(tile.x - 1, tile.y));
+        OnTileOverlayChanged(world.GetTileAt(tile.x + 1, tile.y));
+        OnTileOverlayChanged(world.GetTileAt(tile.x, tile.y - 1));
+        OnTileOverlayChanged(world.GetTileAt(tile.x, tile.y + 1));
+        OnTileOverlayChanged(world.GetTileAt(tile.x - 1, tile.y - 1));
+        OnTileOverlayChanged(world.GetTileAt(tile.x + 1, tile.y - 1));
+        OnTileOverlayChanged(world.GetTileAt(tile.x - 1, tile.y + 1));
+        OnTileOverlayChanged(world.GetTileAt(tile.x + 1, tile.y + 1));
 
         world.graph.UpdateNeighbors(tile.x, tile.y); // i think this is redundant. should laready be called
         // in structcontroller whenever a tile type changes?
@@ -306,6 +337,80 @@ public class WorldController : MonoBehaviour {
         // reverse) flips the pile sitting on top of this tile between the
         // dirt-fallback (70) and whatever else is below it.
         Inventory.RefreshFloorAt(tile.x, tile.y + 1);
+    }
+
+    // Updates the overlay sprite (and its normal map) for a tile. Overlay is
+    // displayed only on sides where (a) the overlayMask bit is set AND (b) the
+    // neighbour is not solid (otherwise the side is buried). The whole overlay
+    // is suppressed when a road occupies depth 3 — roads visually replace the
+    // ground surface, so grass tufts shouldn't poke through.
+    //
+    // Reuses TileSpriteCache via an inverted-mask trick: feed `~effective & 0xF`
+    // as cMask, so the baker's "Main interior on bit-set sides" rule with a
+    // transparent-Main grass atlas produces edge art exactly on the desired sides.
+    //
+    // Always refreshes the body too (via ApplyTileNormalMap), because the body
+    // hides its own edge piece on grass sides — see ApplyTileNormalMap's
+    // bodyCardinals comment. So overlayMask changes / road place-or-destroy
+    // both have to redraw the body, not just the overlay.
+    void OnTileOverlayChanged(Tile tile) {
+        if (tile == null) return;
+
+        // Refresh body first — bodyCardinals depends on tile.overlayMask and
+        // structs[3] (road suppression), so a change here flips which pieces of
+        // the dirt sprite are visible.
+        ApplyTileNormalMap(tile);
+
+        if (!tileOverlaySrMap.TryGetValue(tile, out var sr)) return;
+
+        string overlayName = tile.type.overlay;
+        // Depth 3 is the road slot (see Tile.cs: 0=building 1=platform 2=foreground
+        // 3=road 4=shaft). Roads visually replace the ground surface, so grass
+        // tufts shouldn't poke through them.
+        bool roadCovered = tile.structs[3] != null;
+        if (overlayName == null || tile.overlayMask == 0 || roadCovered) {
+            sr.sprite = null;
+            return;
+        }
+
+        // Health-state atlas swap: "<base>_dying" / "<base>_dead" for non-Live tiles.
+        // Live keeps the bare overlay name. Atlas geometry (edges, corners) is identical
+        // across the three variants — only the colours differ — so per-side bit semantics
+        // and the inverted-cardinal trick still apply unchanged.
+        if (tile.overlayState == OverlayState.Dying) overlayName += "_dying";
+        else if (tile.overlayState == OverlayState.Dead) overlayName += "_dead";
+
+        // cMask = bit set when neighbour is solid (matches ApplyTileNormalMap).
+        int cMask = 0;
+        if (IsSolidAt(tile.x - 1, tile.y))     cMask |= 1;
+        if (IsSolidAt(tile.x + 1, tile.y))     cMask |= 2;
+        if (IsSolidAt(tile.x,     tile.y - 1)) cMask |= 4;
+        if (IsSolidAt(tile.x,     tile.y + 1)) cMask |= 8;
+
+        int effective = tile.overlayMask & ~cMask & 0xF;
+        if (effective == 0) {
+            sr.sprite = null;
+            return;
+        }
+
+        int nMask = cMask;
+        if (IsSolidAt(tile.x - 1, tile.y - 1)) nMask |= 16;   // BL
+        if (IsSolidAt(tile.x + 1, tile.y - 1)) nMask |= 32;   // BR
+        if (IsSolidAt(tile.x - 1, tile.y + 1)) nMask |= 64;   // TL
+        if (IsSolidAt(tile.x + 1, tile.y + 1)) nMask |= 128;  // TR
+
+        int invertedCardinals = (~effective) & 0xF;
+
+        // Sprite: grass atlas, keyed by inverted cardinals so edge art appears
+        // on the decorated sides. NormalMap: the BODY's REAL nMask normal map
+        // (dirt's bevel data, NOT grass.png's). NormalsCapture has Blend Off,
+        // so whichever SR draws last at a pixel wins; pointing both body and
+        // overlay at the same dirt-derived normal texture means whoever wins,
+        // we get the same directional edge bevel — and not the flat-blade-
+        // interior bevel that would otherwise come from sampling grass.png's
+        // thin grass-blade silhouette through BakeNormalMap's Sobel kernel.
+        sr.sprite = TileSpriteCache.GetOverlay(overlayName, invertedCardinals, tile.x, tile.y);
+        SetNormalMap(sr, TileSpriteCache.GetNormalMap(tile.type.name, nMask, tile.x, tile.y));
     }
 
     static readonly int NormalMapID = Shader.PropertyToID("_NormalMap");
@@ -335,7 +440,29 @@ public class WorldController : MonoBehaviour {
         if (IsSolidAt(tile.x - 1, tile.y + 1)) nMask |= 64;   // TL
         if (IsSolidAt(tile.x + 1, tile.y + 1)) nMask |= 128;  // TR
 
-        sr.sprite = TileSpriteCache.Get(tile.type.name, cMask, tile.x, tile.y);
+        // The overlay (e.g. grass) replaces — not stacks on top of — the body's
+        // edge piece on sides where it carries decoration. So pretend the body's
+        // neighbour on those sides is "solid" for sprite-piece selection: the
+        // body uses its Main interior piece there, and the overlay's edge art
+        // covers it. The normal map stays on the REAL nMask so the body's Main
+        // pixels still capture true edge bevels — and OnTileOverlayChanged
+        // points the overlay's _NormalMap at this same texture so grass blades
+        // inherit the dirt body's directional bevel instead of the flat
+        // bevel-of-thin-blades that grass.png pixels would produce on their own.
+        // Suppressed when a road occupies the tile (overlay isn't drawn → body
+        // shows its real edges).
+        bool roadSuppressed = tile.structs[3] != null;
+        int overlayBits = roadSuppressed ? 0 : (tile.overlayMask & 0xF);
+        int bodyCardinals = cMask | overlayBits;
+        // Trim sides where the overlay replaces an exposed dirt edge (overlay
+        // bit set AND real neighbour empty). Clears the inner 2 pixels of Main
+        // on those sides so the body's Main extension doesn't poke through
+        // transparent gaps in the overlay's edge art. Sides that are buried by
+        // a real solid neighbour stay un-trimmed — that Main extension blends
+        // seamlessly into the neighbour and the overlay isn't covering anything.
+        int trimMask = overlayBits & ~cMask & 0xF;
+
+        sr.sprite = TileSpriteCache.Get(tile.type.name, bodyCardinals, trimMask, tile.x, tile.y);
         SetNormalMap(sr, TileSpriteCache.GetNormalMap(tile.type.name, nMask, tile.x, tile.y));
     }
 

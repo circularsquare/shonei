@@ -8,6 +8,7 @@ using TMPro;
 // Unity setup:
 //   1. Panel "SaveMenuPanel" — attach this script, inactive by default.
 //   2. Top bar buttons:
+//      - "SaveButton"     → onClick: OnClickSave()       (assign to saveButton field — drives greyed-out state)
 //      - "NewSaveButton"  → onClick: OnClickNewSave()
 //      - "ResetButton"    → onClick: OnClickReset()
 //   3. ScrollRect containing a VerticalLayoutGroup child — assign that child to slotList.
@@ -19,6 +20,7 @@ public class SaveMenuPanel : MonoBehaviour {
     [Header("Inspector Refs")]
     public Transform  slotList;        // VerticalLayoutGroup content transform inside ScrollRect
     public GameObject slotEntryPrefab; // prefab with SaveSlotEntry component
+    public Button     saveButton;      // optional — interactable only when a slot is currently loaded
 
     void Start() {
         if (instance != null) { Debug.LogError("there should only be one SaveMenuPanel"); }
@@ -34,6 +36,16 @@ public class SaveMenuPanel : MonoBehaviour {
     // -----------------------------------------------------------------------
     // Button handlers (wired in Inspector)
     // -----------------------------------------------------------------------
+
+    // Overwrites the currently-loaded slot. Greyed-out (via saveButton.interactable)
+    // when there is no current slot — fresh world, post-reset, or pre-first-save.
+    public void OnClickSave() {
+        if (SaveSystem.instance == null) { Debug.LogError("SaveMenuPanel: SaveSystem.instance is null"); return; }
+        string slot = SaveSystem.instance.currentSlot;
+        if (string.IsNullOrEmpty(slot)) { Debug.LogError("SaveMenuPanel: OnClickSave called with no current slot"); return; }
+        SaveSystem.instance.Save(slot);
+        RefreshSlotList();
+    }
 
     public void OnClickNewSave() {
         if (SaveSystem.instance == null) { Debug.LogError("SaveMenuPanel: SaveSystem.instance is null"); return; }
@@ -72,6 +84,11 @@ public class SaveMenuPanel : MonoBehaviour {
             SaveSlotEntry entry = go.GetComponent<SaveSlotEntry>();
             if (entry == null) { Debug.LogError("SaveMenuPanel: slotEntryPrefab missing SaveSlotEntry component"); continue; }
             entry.Init(slot, miceCount, startRenaming: slot == startRenamingSlot);
+        }
+
+        if (saveButton != null) {
+            string slot = SaveSystem.instance.currentSlot;
+            saveButton.interactable = !string.IsNullOrEmpty(slot) && SaveSystem.instance.SlotExists(slot);
         }
     }
 

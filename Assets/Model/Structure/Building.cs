@@ -85,7 +85,7 @@ public class Reservoir {
     }
 
     public void Destroy() {
-        inv.Destroy();
+        inv.Destroy(reason: "reservoir destroyed");
     }
 }
 
@@ -198,7 +198,7 @@ public class Building : Structure {
         if (structType.isStorage && storage != null) {
             if (!storage.IsEmpty() && !WorldController.isClearing)
                 Debug.LogError($"Destroying building storage with items in it at ({x},{y})!");
-            storage.Destroy();
+            storage.Destroy(reason: $"{structType.name} deconstructed");
         }
         if (reservoir != null) {
             WorkOrderManager.instance?.RemoveFuelSupplyOrders(this);

@@ -12,6 +12,15 @@ using TMPro;
 //   SellButton     -> SetBuy(false)
 //   PlaceOrder     -> OnClickPlaceOrder()
 //   ChatSend       -> OnClickSendChat()
+//
+// Item icon grid (for click-to-query):
+//   itemIconGrid    — Transform of a GridLayoutGroup container (scene-wired).
+//                     Recommended: ScrollView Content with GridLayoutGroup
+//                     (e.g. Cell Size 20×20, Spacing 4×4, Constraint=FixedColumnCount)
+//                     and a ContentSizeFitter (Vertical Fit = Preferred Size).
+//   itemIconPrefab  — Resources/Prefabs/ItemIcon.prefab.
+//   Populated once in Start() with all leaf items in Db.itemsFlat.
+//   Click handler fills itemInput and triggers OnClickQuery().
 
 public class TradingPanel : MonoBehaviour {
     public static TradingPanel instance { get; protected set; }
@@ -35,6 +44,11 @@ public class TradingPanel : MonoBehaviour {
     private Dictionary<int, GameObject> marketDisplayGos = new Dictionary<int, GameObject>();
     private Inventory     currentMarket;
 
+    [Header("Item Icon Grid")]
+    public Transform      itemIconGrid;     // GridLayoutGroup container
+    public GameObject     itemIconPrefab;   // ItemIcon prefab
+    private Dictionary<int, GameObject> iconHighlights = new Dictionary<int, GameObject>(); // per-item selection backdrop
+
     [Header("Chat")]
     public Transform      chatList;
     public TMP_InputField chatInput;
@@ -54,7 +68,10 @@ public class TradingPanel : MonoBehaviour {
         if (buyButton  != null) buyButton.image.color  = ColorInactive;
         if (sellButton != null) sellButton.image.color = ColorInactive;
 
-        if (itemInput != null) itemInput.onSubmit.AddListener(_ => OnClickQuery());
+        if (itemInput != null) {
+            itemInput.onSubmit.AddListener(_ => OnClickQuery());
+            itemInput.onValueChanged.AddListener(_ => RefreshIconSelection());
+        }
         if (chatInput != null) chatInput.onSubmit.AddListener(_ => OnClickSendChat());
         if (orderQty != null) orderQty.contentType = TMP_InputField.ContentType.IntegerNumber;
 
@@ -65,6 +82,9 @@ public class TradingPanel : MonoBehaviour {
             client.OnChat           += DisplayChat;
         }
         if (EventFeed.instance != null) EventFeed.instance.OnEntry += HandleFeedEntry;
+
+        PopulateItemIconGrid();
+
         gameObject.SetActive(false);
     }
 
@@ -164,11 +184,32 @@ public class TradingPanel : MonoBehaviour {
     // same cadence as StoragePanel.UpdateDisplay. Do NOT call from Update().
     public void UpdateMarketTree() {
         if (currentMarket == null) return;
+        var discoveredItems = InventoryController.instance?.discoveredItems;
         foreach (var kvp in marketDisplayGos) {
             ItemDisplay display = kvp.Value.GetComponent<ItemDisplay>();
             if (display == null || display.item == null) continue;
+            // Re-apply visibility = discovered ∧ no-ancestor-collapsed — items
+            // discovered since the tree was built (e.g. via /give) stay hidden
+            // otherwise until panel reopen, and we mustn't fight a user's
+            // dropdown collapse by re-activating their hidden children.
+            bool discovered = discoveredItems != null
+                && discoveredItems.TryGetValue(kvp.Key, out bool d) && d;
+            bool shouldBeActive = discovered && IsVisibleInMarketTree(display.item);
+            if (kvp.Value.activeSelf != shouldBeActive) {
+                kvp.Value.SetActive(shouldBeActive);
+            }
             UpdateMarketItemDisplay(display, display.item);
         }
+    }
+
+    // True if every ancestor of `item` in the market tree is `open`.
+    // Mirrors InventoryController.IsVisibleInTree but reads marketDisplayGos.
+    bool IsVisibleInMarketTree(Item item) {
+        if (item.parent == null) return true;
+        if (!marketDisplayGos.TryGetValue(item.parent.id, out GameObject parentGo) || parentGo == null) return true;
+        ItemDisplay parentDisplay = parentGo.GetComponent<ItemDisplay>();
+        if (parentDisplay == null) return true;
+        return parentDisplay.open && IsVisibleInMarketTree(item.parent);
     }
 
     void UpdateMarketItemDisplay(ItemDisplay display, Item item) {
@@ -181,6 +222,73 @@ public class TradingPanel : MonoBehaviour {
         int target = currentMarket.targets != null && currentMarket.targets.ContainsKey(item)
             ? currentMarket.targets[item] : 0;
         display.SetTargetDisplay(target);
+    }
+
+    // ── Item icon grid ─────────────────────────────────────────────
+
+    // Selection-highlight tint applied behind the icon when itemInput resolves to it.
+    static readonly Color IconSelectedTint = new Color(1f, 0.95f, 0.4f, 0.55f);
+
+    // Builds the click-to-query grid: one ItemIcon per leaf item in Db.itemsFlat,
+    // each wrapped in a slot with a hidden Highlight Image drawn behind it.
+    // Group items are skipped — they aren't tradable (see SPEC-trading.md
+    // "Market targets are leaf-only"). Built once at startup; item set is static.
+    void PopulateItemIconGrid() {
+        if (itemIconGrid == null || itemIconPrefab == null) return;
+        foreach (Transform child in itemIconGrid) Destroy(child.gameObject);
+        iconHighlights.Clear();
+
+        foreach (Item item in Db.itemsFlat) {
+            if (item == null || item.IsGroup) continue;
+            // Skip "none" (placeholder, not a real item) and "silver" (the trade currency,
+            // never the traded item — appears on every order automatically).
+            if (item.name == "none" || item.name == "silver") continue;
+
+            // Slot wrapper sits in the GridLayoutGroup cell. Children render in order,
+            // so Highlight (added first) draws behind Icon (added second).
+            GameObject slot = new GameObject("IconSlot_" + item.name, typeof(RectTransform));
+            slot.transform.SetParent(itemIconGrid, false);
+
+            GameObject hl = new GameObject("Highlight", typeof(RectTransform), typeof(Image));
+            hl.transform.SetParent(slot.transform, false);
+            var hlRt = hl.GetComponent<RectTransform>();
+            hlRt.anchorMin = Vector2.zero;
+            hlRt.anchorMax = Vector2.one;
+            hlRt.offsetMin = Vector2.zero;
+            hlRt.offsetMax = Vector2.zero;
+            var hlImg = hl.GetComponent<Image>();
+            hlImg.color = IconSelectedTint;
+            hlImg.raycastTarget = false;
+            hl.SetActive(false);
+            iconHighlights[item.id] = hl;
+
+            GameObject go = Instantiate(itemIconPrefab, slot.transform, false);
+            go.name = "ItemIcon_" + item.name;
+            ItemIcon icon = go.GetComponent<ItemIcon>();
+            if (icon == null) { Debug.LogError($"TradingPanel: itemIconPrefab missing ItemIcon component"); continue; }
+            icon.SetItem(item);
+            icon.onClick = OnItemIconClicked;
+        }
+
+        RefreshIconSelection();
+    }
+
+    void OnItemIconClicked(Item item) {
+        if (item == null) return;
+        if (itemInput != null) itemInput.text = item.name;
+        OnClickQuery();
+    }
+
+    // Toggles each icon's highlight backdrop based on whether itemInput resolves to that item.
+    // Driven by itemInput.onValueChanged so typing and click-to-fill both update in real time.
+    void RefreshIconSelection() {
+        string sel = itemInput != null ? itemInput.text.Trim() : "";
+        Item selected = null;
+        if (sel.Length > 0) Db.itemByName.TryGetValue(sel, out selected);
+        int selId = selected != null ? selected.id : -1;
+        foreach (var kvp in iconHighlights) {
+            if (kvp.Value != null) kvp.Value.SetActive(kvp.Key == selId);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -310,10 +418,53 @@ public class TradingPanel : MonoBehaviour {
 
         switch (cmd) {
             case "/give": CmdGive(parts); break;
+            case "/rain": CmdRain();      break;
+            case "/day":  CmdDay(parts);  break;
             default:
                 EventFeed.instance?.Post($"<color=#cc3333>Unknown command: {cmd}</color>", EventFeed.Category.Alert);
                 break;
         }
+    }
+
+    // /rain — toggle weather between rain and clear.
+    void CmdRain() {
+        if (WeatherSystem.instance == null) {
+            EventFeed.instance?.Post("<color=#cc3333>WeatherSystem not initialised.</color>", EventFeed.Category.Alert);
+            return;
+        }
+        WeatherSystem.instance.ToggleRain();
+        bool now = WeatherSystem.instance.isRaining;
+        EventFeed.instance?.Post(
+            now ? "<color=#aaccff>Rain started.</color>" : "<color=#aaffaa>Rain stopped.</color>",
+            EventFeed.Category.Info);
+    }
+
+    // /day [number] — jump the world clock to that day-of-year (fractional ok).
+    // Preserves the current year count, so /day 5 lands at day 5 of the current
+    // year — going backward if needed. Debug-only; rewinding the timer is fine
+    // here even though most systems assume monotonic time.
+    void CmdDay(string[] parts) {
+        if (parts.Length != 2) {
+            EventFeed.instance?.Post("<color=#cc3333>Usage: /day [number]</color>", EventFeed.Category.Alert);
+            return;
+        }
+        if (!float.TryParse(parts[1], System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out float day)) {
+            EventFeed.instance?.Post("<color=#cc3333>Day must be a number.</color>", EventFeed.Category.Alert);
+            return;
+        }
+        if (World.instance == null) {
+            EventFeed.instance?.Post("<color=#cc3333>World not initialised.</color>", EventFeed.Category.Alert);
+            return;
+        }
+        // Wrap into [0, daysInYear) so e.g. /day 30 in a 24-day year lands at day 6.
+        day = ((day % World.daysInYear) + World.daysInYear) % World.daysInYear;
+        float yearLen = World.ticksInDay * World.daysInYear;
+        float yearStart = Mathf.Floor(World.instance.timer / yearLen) * yearLen;
+        World.instance.timer = yearStart + day * World.ticksInDay;
+        EventFeed.instance?.Post(
+            $"<color=#aaffaa>Jumped to day {day:F2}/{World.daysInYear}.</color>",
+            EventFeed.Category.Info);
     }
 
     // /give [itemname] [quantity in liang]

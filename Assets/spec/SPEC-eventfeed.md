@@ -47,10 +47,3 @@ Call sites that post directly (not via a binding):
 ## Renderer — TradingPanel chat list
 
 TradingPanel subscribes to `OnEntry` in `Awake`, unsubscribes in `OnDestroy`. Entries are rendered by the existing private `AddChat(text)` helper, which caps the visible list at 20 rows. No category-based styling — the rich-text tags in `entry.text` carry the color. The chatList rows persist for the lifetime of the panel (it only `SetActive(false)`s on close), so no history backfill is needed on re-open.
-
-## Future
-
-- Floating transient toast UI that subscribes to `OnEntry` alongside TradingPanel (for alerts visible when trading is closed).
-- Additional bindings: maintenance breakdowns (`Structure.OnBroken`), item-loss warnings (`World.FallItems`, `World.ProduceAtTile` failures currently LogError only).
-- Category-based color/icon theming if inline color tags start feeling inconsistent.
-- Dedupe / throttle policy if any high-frequency source ever posts (currently none do).

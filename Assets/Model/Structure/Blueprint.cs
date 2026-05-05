@@ -121,37 +121,12 @@ public class Blueprint {
         go.transform.SetParent(StructController.instance.transform, true);
         go.name = "blueprint_" + structType.name;
 
-        // Anchor sprite — variant `_b` for shape-aware tall, base sprite for 1-tall / legacy.
-        // Falls back to the shared default when the StructType's sprite is missing.
-        sprite = StructureVisuals.ResolveAnchorSprite(structType, shape, out bool spriteWasFallback);
-        SpriteRenderer sr = SpriteMaterialUtil.AddSpriteRenderer(go);
-        sr.sortingOrder = 100;
-        LightReceiverUtil.SetSortBucket(sr);
-        sr.sprite = sprite;
-        sr.flipX = mirrored;
-        go.transform.rotation = StructureVisuals.RotationFor(rotation);
-        sr.color = new Color(0.8f, 0.9f, 1f, 0.5f); // blueprint half alpha
-        if (spriteWasFallback) {
-            sr.drawMode = SpriteDrawMode.Sliced;
-            sr.size = new Vector2(structType.nx, Mathf.Max(1, structType.ny));
-        }
-
-        // Per-tile child SRs for shape-aware vertical extension (`_m` middles, `_t` top).
-        // Mirrors the Structure ctor pattern. Same blueprint tint applied so the ghost reads
-        // as one consistent translucent column.
-        if (shapeAware && shape.nx == 1 && shape.ny > 1) {
-            for (int dy = 1; dy < shape.ny; dy++) {
-                GameObject extGo = new GameObject($"blueprint_{structType.name}_ext{dy}");
-                extGo.transform.SetParent(go.transform, false);
-                extGo.transform.localPosition = new Vector3(0f, dy, 0f);
-                SpriteRenderer extSr = SpriteMaterialUtil.AddSpriteRenderer(extGo);
-                extSr.sprite = StructureVisuals.LoadShapeSprite(structType, shape, dy);
-                extSr.sortingOrder = sr.sortingOrder;
-                extSr.flipX = mirrored;
-                extSr.color = sr.color;
-                LightReceiverUtil.SetSortBucket(extSr);
-            }
-        }
+        // Spawn the blueprint's primary visual via the shared builder. Standard path
+        // resolves the anchor sprite + optional vertical extensions; custom-visual types
+        // (tarp) take their own branch in Build that spawns cloth/posts/etc. instead.
+        // The translucent blueprint tint is applied uniformly to every spawned SR.
+        var refs = StructureVisualBuilder.Build(go, structType, shape, mirrored, rotation, 100, new Color(0.8f, 0.9f, 1f, 0.5f));
+        sprite = refs.mainSr.sprite;  // null for custom-visual types — fine; nothing external reads this
 
         CreateFrameOverlay();
 
@@ -355,10 +330,19 @@ public class Blueprint {
 
         // Support is checked along the bottom row of the footprint — only the base of the
         // column needs to rest on something solid; the rest stacks above.
+        // edgeSupported types check only the leftmost and rightmost end tiles — the middle
+        // is allowed to hang (matches the placement rule in StructPlacement.CanPlaceHere).
         int bottomNx = structType.HasShapes ? Shape.nx : structType.nx;
-        for (int i = 0; i < bottomNx; i++) {
-            Node node = World.instance.graph.nodes[tile.x + i, tile.y];
-            if (node != null && !node.standable) return true;
+        if (structType.edgeSupported) {
+            Node leftNode  = World.instance.graph.nodes[tile.x, tile.y];
+            Node rightNode = World.instance.graph.nodes[tile.x + bottomNx - 1, tile.y];
+            if (leftNode  != null && !leftNode.standable)  return true;
+            if (rightNode != null && !rightNode.standable) return true;
+        } else {
+            for (int i = 0; i < bottomNx; i++) {
+                Node node = World.instance.graph.nodes[tile.x + i, tile.y];
+                if (node != null && !node.standable) return true;
+            }
         }
         return false;
     }

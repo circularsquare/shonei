@@ -51,10 +51,24 @@ using UnityEngine;
 // A single flat normal map (FlatNormalMap) is exposed for non-solid tiles.
 //
 // Usage:
-//   TileSpriteCache.Get(name, cardinalMask, x, y)     → Sprite
-//   TileSpriteCache.GetNormalMap(name, mask8, x, y)   → Texture2D
-//   TileSpriteCache.FlatNormalMap                     → Texture2D
+//   TileSpriteCache.Get(name, cardinalMask, x, y)         → Sprite (tile body)
+//   TileSpriteCache.Get(name, cMask, trimMask, x, y)      → Sprite (body, inner-pixel trim variant)
+//   TileSpriteCache.GetOverlay(name, cardinalMask, x, y)  → Sprite (overlay atlas, e.g. grass)
+//   TileSpriteCache.GetNormalMap(name, mask8, x, y)       → Texture2D
+//   TileSpriteCache.FlatNormalMap                         → Texture2D
 // Mask bits: 0=L 1=R 2=D 3=U 4=BL 5=BR 6=TL 7=TR
+//
+// ── Overlay atlases ──────────────────────────────────────────────────────
+// Overlays (grass, future moss/snow/…) reuse the same 9-piece atlas layout
+// but their Main interior is conceptually "no decoration here" — bits set in
+// the inverted-cardinal mask should resolve to transparent, so the tile body
+// underneath shows through unmodified. We *force* this by zeroing Main during
+// the overlay bake regardless of what the artist authored: a stray opaque
+// Main pixel would otherwise overwrite the body's bevelled edge piece on
+// non-decorated sides (e.g. a flat dirt-brown band along the underside of a
+// tile that only has side grass). Overlays also skip the 256-entry normal-
+// map bake — overlay sprites point their `_NormalMap` at the body's normal
+// map, never their own (see WorldController.OnTileOverlayChanged).
 public static class TileSpriteCache {
     const int TILE = 16;                // main interior size in pixels
     const int BORDER = 2;               // overhang pixels per side
@@ -79,6 +93,17 @@ public static class TileSpriteCache {
 
     // Outer array = variant index (0 = base, 1 = *2 sheet, …). Inner = mask.
     static Dictionary<string, Variant[]> cache = new();
+    // Edge-trimmed sprite cache, keyed by (tileName, 4-bit trimMask). The sprite
+    // is identical to the standard cache's entry except the inner 2 pixels of
+    // each trim side (cols 2-3 / 16-17 for L/R, rows 2-3 / 16-17 for D/U) are
+    // cleared to alpha 0. Used to "shave off" the body's Main extension on
+    // sides where an overlay (e.g. grass) replaces the dirt edge — see
+    // WorldController.ApplyTileNormalMap. trimMask=0 falls through to `cache`.
+    static Dictionary<(string, int), Variant[]> trimCache = new();
+    // Overlay sprite cache. Same atlas format and mask scheme as `cache`, but
+    // baked with the Main 16×16 region forced transparent — see the §Overlay
+    // atlases comment at the top of the file.
+    static Dictionary<string, Variant[]> overlayCache = new();
     static Texture2D flatNormalMap;
 
     public static Texture2D FlatNormalMap {
@@ -90,6 +115,30 @@ public static class TileSpriteCache {
 
     public static Sprite Get(string tileName, int cardinalMask, int x, int y) {
         var variants = EnsureVariants(tileName);
+        int v = PickVariant(x, y, variants.Length);
+        return variants[v].sprites[cardinalMask & 0xF];
+    }
+
+    // Variant of Get whose 16×16 Main interior has its inner 2 pixels cleared
+    // on each side flagged in trimMask (LRDU bit layout, same as cardinalMask).
+    // Used by the tile body when an overlay (grass on dirt) replaces an edge
+    // piece — without this, the body's Main extension to col 17 / row 17 leaves
+    // a straight silhouette poking out through transparent gaps in the grass.
+    // trimMask=0 falls through to standard Get().
+    public static Sprite Get(string tileName, int cardinalMask, int trimMask, int x, int y) {
+        if ((trimMask & 0xF) == 0) return Get(tileName, cardinalMask, x, y);
+        var variants = EnsureTrimmedVariants(tileName, trimMask & 0xF);
+        int v = PickVariant(x, y, variants.Length);
+        return variants[v].sprites[cardinalMask & 0xF];
+    }
+
+    // Overlay variant of Get. Bakes from the same atlas format as the body,
+    // but with the Main 16×16 region forced transparent — so any cardinal bit
+    // set in the inverted-cardinal mask resolves to transparent rather than
+    // sampling whatever the artist left in Main. See §Overlay atlases at the
+    // top of the file.
+    public static Sprite GetOverlay(string overlayName, int cardinalMask, int x, int y) {
+        var variants = EnsureOverlayVariants(overlayName);
         int v = PickVariant(x, y, variants.Length);
         return variants[v].sprites[cardinalMask & 0xF];
     }
@@ -107,6 +156,21 @@ public static class TileSpriteCache {
         return variants;
     }
 
+    static Variant[] EnsureTrimmedVariants(string tileName, int trimMask) {
+        var key = (tileName, trimMask);
+        if (trimCache.TryGetValue(key, out var variants)) return variants;
+        variants = BuildVariants(tileName, trimMask);
+        trimCache[key] = variants;
+        return variants;
+    }
+
+    static Variant[] EnsureOverlayVariants(string overlayName) {
+        if (overlayCache.TryGetValue(overlayName, out var variants)) return variants;
+        variants = BuildVariants(overlayName, trimMask: 0, isOverlay: true);
+        overlayCache[overlayName] = variants;
+        return variants;
+    }
+
     // Deterministic (x,y) → variant index. Using a cheap integer hash so the
     // same tile always picks the same variant regardless of when it's baked,
     // how many neighbours have changed, or whether the world was just loaded.
@@ -120,7 +184,12 @@ public static class TileSpriteCache {
     // Try atlases first (Sheets/<name>, Sheets/<name>2, …). If none exist
     // for this tile type, fall back to flat sprites (Tiles/<name>, Tiles/<name>2, …).
     // If neither path has anything, fall back to a magenta error sprite.
-    static Variant[] BuildVariants(string tileName) {
+    // trimMask>0 produces the same 16 sprites with the inner 2 pixels of each
+    // trim side cleared. Normals are NOT re-baked for trim variants — overlay-
+    // replaced sides use the body's untrimmed normal map (see EnsureVariants vs.
+    // EnsureTrimmedVariants), and at trimmed pixels the sprite is alpha-clipped
+    // anyway so NormalsCapture skips them.
+    static Variant[] BuildVariants(string tileName, int trimMask = 0, bool isOverlay = false) {
         var atlasVariants = new List<Variant>();
         for (int i = 1; ; i++) {
             string suffix = i == 1 ? "" : i.ToString();
@@ -130,7 +199,7 @@ public static class TileSpriteCache {
                 Debug.LogError($"TileSpriteCache: atlas '{tileName}{suffix}' is not readable. Enable Read/Write in import settings.");
                 continue;
             }
-            atlasVariants.Add(BakeAtlas(atlas));
+            atlasVariants.Add(BakeAtlas(atlas, trimMask, isOverlay));
         }
         if (atlasVariants.Count > 0) return atlasVariants.ToArray();
 
@@ -152,14 +221,21 @@ public static class TileSpriteCache {
     }
 
     // ── Atlas bake (one variant = 16 sprites + 256 normals) ───────────
-    static Variant BakeAtlas(Texture2D atlas) {
+    // isOverlay=true: zero out Main and skip the 256-entry normal-map bake.
+    // Overlay sprites must read transparent on any "buried" side (so the body
+    // shows through unmodified), and overlay SRs always sample the body's
+    // normal map at runtime — their own normals would never be queried.
+    static Variant BakeAtlas(Texture2D atlas, int trimMask = 0, bool isOverlay = false) {
         var atlasPixels = atlas.GetPixels32();
 
         // Main 16×16 — used where a border is hidden by an adjacent solid tile.
+        // Forced transparent for overlays; default `Color32` is (0,0,0,0).
         var mainPixels = new Color32[TILE * TILE];
-        for (int y = 0; y < TILE; y++)
-            for (int x = 0; x < TILE; x++)
-                mainPixels[y * TILE + x] = atlasPixels[(y + 8) * ATLAS + (x + 8)];
+        if (!isOverlay) {
+            for (int y = 0; y < TILE; y++)
+                for (int x = 0; x < TILE; x++)
+                    mainPixels[y * TILE + x] = atlasPixels[(y + 8) * ATLAS + (x + 8)];
+        }
 
         var v = new Variant {
             sprites = new Sprite[16],
@@ -169,9 +245,11 @@ public static class TileSpriteCache {
         // reuse them when baking each of the 16 diagonal sub-variants.
         var spritePixels = new Color32[16][];
         for (int cMask = 0; cMask < 16; cMask++)
-            (v.sprites[cMask], spritePixels[cMask]) = BakeSpriteVariant(atlasPixels, mainPixels, cMask);
-        for (int mask = 0; mask < 256; mask++)
-            v.normals[mask] = BakeNormalMap(spritePixels[mask & 0xF], mask);
+            (v.sprites[cMask], spritePixels[cMask]) = BakeSpriteVariant(atlasPixels, mainPixels, cMask, trimMask);
+        if (!isOverlay) {
+            for (int mask = 0; mask < 256; mask++)
+                v.normals[mask] = BakeNormalMap(spritePixels[mask & 0xF], mask);
+        }
         return v;
     }
 
@@ -183,7 +261,14 @@ public static class TileSpriteCache {
     //   top/bot/main x ∈ [2,17] → atlas x = sprite x + 6
     //   right strip x ∈ [16,19] → atlas x = sprite x + 12
     // (same pattern on y)
-    static (Sprite, Color32[]) BakeSpriteVariant(Color32[] atlas, Color32[] mainPixels, int cardinalMask) {
+    //
+    // trimMask (LRDU bit layout) clears the inner 2 pixels on each flagged
+    // side AFTER the standard bake — i.e. cols 2-3 (L) / 16-17 (R), rows 2-3
+    // (D) / 16-17 (U) become alpha 0. Used so the body's Main extension stops
+    // short of the tile boundary on sides where an overlay (grass) replaces
+    // the dirt edge — without it, Main would peek through transparent grass
+    // gaps as a straight square silhouette.
+    static (Sprite, Color32[]) BakeSpriteVariant(Color32[] atlas, Color32[] mainPixels, int cardinalMask, int trimMask = 0) {
         bool hasL = (cardinalMask & 1) != 0;
         bool hasR = (cardinalMask & 2) != 0;
         bool hasD = (cardinalMask & 4) != 0;
@@ -262,6 +347,27 @@ public static class TileSpriteCache {
                 }
 
                 pixels[y * SIZE + x] = c;
+            }
+        }
+
+        // Trim post-pass: clear the inner 2 pixels of each side flagged in
+        // trimMask. Mirrors what an edge piece would have done (the edge piece
+        // replaces those pixels with jagged art); here we replace them with
+        // alpha 0 so the overlay's edge sprite gets sole say at the boundary.
+        if ((trimMask & 0xF) != 0) {
+            bool trimL = (trimMask & 1) != 0;
+            bool trimR = (trimMask & 2) != 0;
+            bool trimD = (trimMask & 4) != 0;
+            bool trimU = (trimMask & 8) != 0;
+            for (int y = 0; y < SIZE; y++) {
+                for (int x = 0; x < SIZE; x++) {
+                    bool inLeftInner  = trimL && x >= BORDER       && x < BORDER + BORDER;     // cols 2-3
+                    bool inRightInner = trimR && x >= TILE         && x < TILE + BORDER;       // cols 16-17
+                    bool inBotInner   = trimD && y >= BORDER       && y < BORDER + BORDER;     // rows 2-3
+                    bool inTopInner   = trimU && y >= TILE         && y < TILE + BORDER;       // rows 16-17
+                    if (inLeftInner || inRightInner || inBotInner || inTopInner)
+                        pixels[y * SIZE + x] = clear;
+                }
             }
         }
 

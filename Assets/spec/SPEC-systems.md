@@ -57,34 +57,21 @@ Mechanism:
 
 **Critical load invariant**: waypoint registration runs in the `Structure` constructor — *not* `OnPlaced()`, which is gameplay-only. `Structure.Create()` runs the constructor on both gameplay and load paths. Standability isn't checked when picking the connecting tile because at load time the constructor runs in `SaveSystem` Phase 2 *before* `graph.Initialize()` (Phase 4) sets `node.standable`. The picked tile is implicitly standable post-placement (placement validates it), and Phase 4's `RebuildComponents` BFS picks up the workspot via its neighbour edge.
 
-Out of scope (v1):
-- Per-seat workSpots (multi-tile leisure buildings still use integer seats).
-- Standability-change refresh: if the connecting tile becomes non-standable, the waypoint stays edged to it. For the wheel this can't happen without destroying the wheel itself (in which case `Destroy()` cleans up).
-
 ### Transit (elevators)
 
-Capacity-1 vertical lifts that A* sees as a single graph edge. The two stop tiles (anchor and `y+ny-1`) are the elevator's footprint endpoints, both made standable via the new `Structure.HasInternalFloorAt` per-tile override. Middle column tiles stay non-standable, so the chassis is an obstacle except via the stops.
+Capacity-1 vertical lifts that A* sees as a single graph edge. Implementation lives in [Elevator.cs](../Model/Structure/Elevator.cs) + [ElevatorEdgePolicy.cs](../Model/ElevatorEdgePolicy.cs); only the load-bearing contracts are documented here.
 
-Mechanism:
-- `Elevator` constructor instantiates one `ElevatorEdgePolicy(this)` (a sister class wrapping the elevator), assigns it to both stop tile-nodes' `Node.edgePolicy`, and adds a direct neighbour edge between them — the "transit edge". `RebuildComponents` picks it up automatically. `Graph.IsNeighbor` recognises the shared policy reference and preserves the edge across `UpdateNeighbors` filtering even though the two nodes aren't geometrically adjacent.
-- Edge cost flows through the `EdgePolicy` dispatch (see §Edge dispatch above): `Graph.ResolveEdgePolicy` returns the `ElevatorEdgePolicy`, whose `GetEdgeInfo` calls back into `Elevator.EstimatedTransitCost`. Cost is `travelTicks + queueDepth × avgTrip`, with `avgTrip` from a rolling 20-sample buffer (`recentTripTicks`) and an optimistic cold-start fallback. Returns `+∞` when the elevator's network can't supply nominal demand → A* drops it from the candidate set.
-- Riding handoff in `Nav.Move`: when the next path step is a transit edge, the resolver returns the elevator's policy; `Nav.MoveCore` calls `policy.OnApproach` (which calls `Elevator.RequestRide` if not already reserved), sets `preventFall = policy.PreventFall` (= true), and bails the lerp because `policy.SuspendsLerp` is true. The elevator's per-tick state machine (Idle → MovingToBoardingFloor → Riding → Unloading → Idle) eventually loads the passenger and drives their `(x, y)` from the platform's position. On arrival it calls `Nav.OnTransitComplete`, the rider snaps to the destination stop, and normal navigation resumes. **The boarding-tile `preventFall = true` is load-bearing** even though the boarding tile is itself standable: there's a one-frame seam between `Elevator.Tick` setting `ridingElevator = this` and the next `Nav.Move` re-asserting preventFall via the riding branch. `ElevatorPlatform.Update` runs per-frame and may drag the passenger into the non-standable chassis interior before `Animal.Update` runs for that mouse, so `UpdateMovement`'s fall check would read stale-false on the first riding frame without it.
-- Cascading Tick: a `do-while` loop processes instant transitions (Idle → trip start, Unloading → Idle → next trip) in the same tick, while movement-bearing cases (MovingToBoardingFloor, Riding) always return after a single `AdvanceTowards` so the platform never advances more than `PlatformSpeed` tiles per tick. Net effect: a mouse arriving at a parked platform boards AND gets the first riding step in one tick, vs. the ~2-tick delay we'd otherwise see from sequential state transitions.
-- Boarding gate (visual settlement): `MovingToBoardingFloor` only fires `BoardPassenger` when *both* discrete arrival (`currentY ≈ targetY`) and visual settlement (`IsPlatformVisuallySettled`: platform child's `transform.localPosition.y` within ~0.05 of `currentY − 1`) are true. The per-frame visual lerp lags discrete `currentY` by up to ~1 tile, so without the visual gate the rider — driven by the lagged platform position the moment `passenger` is set — would jolt up to the still-descending visual and visibly fall back to the parked tile as the lerp catches up. Adds ~1 extra discrete tick of post-arrival wait at 1× game speed; the platform finishes descending normally, then the mouse is loaded with no visual jolt. The parked-already path through `StartTrip` skips the gate (the visual is already settled).
-- Power gating is inclusive everywhere: cost gate, Idle→Trip start, and Riding advance all use `IsPowerAvailable` (network's raw supply + storage discharge ≥ `MaxTickDemand`). The strict "actually allocated this tick" check (`PowerSystem.IsBuildingPowered`) is intentionally NOT used for the per-tick advance gate — it caused mid-trip platform freezes during normal allocator-rotation gaps. Trade-off: in pathological tight-network setups the platform may "advance without strict allocation" for one tick before catching up, which we accept.
-- Demand semantics: `CurrentDemand` is proportional to *this tick's intended motion* — `PowerPerTile (= 0.5) × min(PlatformSpeed, |targetY − currentY|)`. Both `MovingToBoardingFloor` (empty-cabin fetch) and `Riding` draw; `Idle` and `Unloading` draw 0. Total power for a trip = `0.5 × tilesTravelled` exactly (the partial-last-tick is naturally proportional). InfoPanel may show fractional values like `consuming 0.6` mid-trip and `consuming 0.3` on the partial last tick.
-- Tentative reservations: `Nav.Navigate` resolves each path edge's policy and calls `OnPathCommit(animal)` on it; `EndNavigation` drains by calling `OnPathRelease(animal)` on each. `ElevatorEdgePolicy` routes both to `AddTentativeReservation` / `RemoveTentativeReservation` on the elevator's `pendingAnimals` set, counted into `EstimatedTransitCost`'s queue depth so simultaneous planners see realistic wait. Constant policies (cliff/stair/ladder/approach) default to no-ops.
-- Mid-flight abort: each `RideRequest` carries an `abortAtTick = currentTick + max(30, 3 × queueDepth × avgTrip)`. `AbortStaleQueueEntries` (top of `Tick`) bails any non-actively-served mouse whose patience expired. Covers queued mice on unpowered or stuck elevators.
-- Sustained-stall abort: the active head is deliberately *not* bailed by `abortAtTick` — once we've committed to that trip, we don't want to drop a mouse mid-ride just because the patience budget ran out before they boarded. Instead `AbortStalledActiveHead` (also top of `Tick`) tracks `lastAdvanceTick` (updated on real platform motion in `AdvanceTowards` and on entry to `MovingToBoardingFloor` / `Riding`) and bails the head if `currentTick − lastAdvanceTick > StallAbortTicks` (60) while in a moving state. Catches indefinite stuck-rider scenarios on a permanently-frozen network.
-- Animation: `Nav.IsLocomoting` is true only when `Move()` is actively translating the animal — false while parked at a transit edge or loaded on the platform. `AnimationController.UpdateState` reads it for the `Moving` state and picks the idle clip in those cases (state stays `Moving` because the task is still in progress, but the mouse isn't actually walking). Refresh fires at all navigation lifecycle boundaries.
-- Visuals: `ElevatorPlatform` and `ElevatorCounterweight` MonoBehaviours (in `Components/`) lerp child GameObjects' `localPosition.y` per frame at `PlatformSpeed` tiles/sec. Platform drags the loaded passenger so the rider moves smoothly between ticks; counterweight tracks `ny - 1 - currentY`. The platform sprite sits one tile *below* the rider (it's the floor they're standing on, not the floor they're standing in). Sprites: `elevator_platform.png`, `elevator_counterweight.png`.
-- Save/load: `currentY` and the two history buffers (`recentTripTicks`, `recentEndToEndTicks`) persist via `StructureSaveData.elevatorCurrentY` / `elevatorRecentTripTicks` / `elevatorRecentEndToEndTicks`. Dispatch state, queue, and pending reservations are NOT persisted — they reset to Idle/empty on load (animals lose their tasks across save boundaries anyway).
+**Topology.** The two stop tiles (anchor and `y+ny-1`) are the footprint endpoints, made standable via `Structure.HasInternalFloorAt`. Middle column tiles stay non-standable. The constructor edges the two stops together with a shared `ElevatorEdgePolicy` reference — the "transit edge" — and `Graph.IsNeighbor` preserves it across `UpdateNeighbors` filtering despite non-adjacency.
 
-Out of scope (v1):
-- Multi-stop elevators (intermediate floors).
-- Capacity > 1 (cabin elevators).
-- Horizontal transit (trains, trams) — the `EdgePolicy` abstraction is ready to host these via parallel wrapper classes (`TrainEdgePolicy` etc.); a shared `ITransitVehicle` interface might emerge once a second concrete transit type exists.
-- Component-connectivity teardown when unpowered: the transit edge stays in the neighbour list regardless of power, so `Graph.SameComponent` reports both stops as connected even when the cost is `+∞`. `WithinRadius`-gated callers reject the doomed path; `PathTo` callers without a cost gate accept it. Acceptable for now; revisit if a use case actually breaks.
+**Edge cost.** `EstimatedTransitCost = travelTicks + queueDepth × avgTrip` (rolling 20-sample buffer, optimistic cold-start). Returns `+∞` when the network can't supply `MaxTickDemand` — A* drops it from the candidate set. `EdgePolicy.OnPathCommit` / `OnPathRelease` book queue-depth reservations on `pendingAnimals` so simultaneous planners see realistic wait.
+
+**Power semantics.**
+- Demand is **proportional to this tick's motion**: `CurrentDemand = PowerPerTile × min(PlatformSpeed, |targetY − currentY|)`. Both empty-cabin fetch and riding draw; Idle / Unloading draw 0. Total power for a trip = `0.5 × tilesTravelled` exactly.
+- All gates (cost branch, Idle→Trip start, per-tick advance) use the **inclusive** `IsPowerAvailable` (raw supply + storage discharge ≥ `MaxTickDemand`), NOT the strict `IsBuildingPowered`. The strict check caused mid-trip platform freezes during normal allocator-rotation gaps; the inclusive check accepts a one-tick "advance without strict allocation" in pathological setups as a trade-off.
+
+**Boarding-tile `preventFall = true` is load-bearing** even though the boarding tile is itself standable. There's a one-frame seam between `Elevator.Tick` setting `ridingElevator` and `Nav.Move` re-asserting preventFall via the riding branch; `ElevatorPlatform.Update` may drag the passenger into the non-standable chassis interior before `Animal.Update` runs for that mouse, and `UpdateMovement`'s fall check would read stale-false on the first riding frame without the policy's preventFall.
+
+**Save/load.** `currentY` and the two history buffers (`recentTripTicks`, `recentEndToEndTicks`) persist via `StructureSaveData`. Dispatch state, queue, and pending reservations do NOT — they reset to Idle/empty on load (animals lose their tasks across save boundaries anyway).
 
 ---
 
@@ -227,6 +214,15 @@ Distinct from liquid `tile.water` — moisture represents damp **soil**. Lives o
 **Per in-game second** (1 s real-time, dispatched from the 1 s block in `World.Update` — both run before `PlantController.TickUpdate` so plants' `Grow()` sees freshly-updated soil):
 - **Rain uptake** (`MoistureSystem.RainUptakePerSecond()`, soil whose immediate tile-above isn't a ceiling): gains `round(rainAmount × MoistureRainGainPerHour / TicksPerInGameHour)` (currently 10 at full rain — i.e. 100/h spread over 10 one-second slices). "Ceiling" = tile directly above is solid ground OR carries any `solidTop` structure; see `MoistureSystem.CapsSoilFromAbove`. This is *not* a full sky-trace — a detached overhang higher up doesn't block rain, only the tile immediately at y+1 matters. Simpler + avoids the asymmetry where a single ceiling layer would slip through a sky-trace (its tile type is non-solid; its `solidTop` struct flag would be missed).
 - **Water-neighbour seep** (`MoistureSystem.SeepPerSecond()`): each solid tile with moisture headroom picks its wettest 4-orthogonal water neighbour and converts `MoistureSeepWaterPerSec` water units (currently 1) into `MoistureSeepGainPerWater` moisture each (currently 10). Water is actually drained from the source tile — unlike rain, seep is conservative. A dry soil tile next to a full water tile saturates in ~10 s real-time; a 1-tile pond feeding 4 solid neighbours drains to empty in ~40 s under load. Partial-fill soil (near saturation) still pays the same water-per-moisture rate via ceil-divide — no free moisture. Pump-irrigated farms stay wet only while the pump keeps refilling water.
+- **Overlay growth + health state** (`OverlayGrowthSystem.Tick()`): ticks live decoration on overlay-bearing tiles (today: grass on dirt). Walks every overlay-bearing tile (no global cold early-exit — the death paths must fire below the growth gate). Two stages per tile:
+  1. **Health-state transition** (skipped on bare tiles, since there's no decoration to wilt). One Rng roll per tick — death rolls at `DeathChancePerSecond` (≈ 10 s steady-state expected); recovery rolls at the slower `GrowChancePerSecondPerSide` (~1 in-game day):
+     - `temp < -1°C` → Dead (roll, from Live OR Dying; overrides Dying gate)
+     - `temp < 2°C` OR `moisture == 0` → Dying (roll, only from Live — Dead doesn't downgrade to Dying)
+     - Dying or Dead, `temp > 5°C` AND `moisture > 70` → Live (roll, scales with fresh-grass growth so a Dead patch takes about as long to revive as bare dirt takes to sprout)
+     - Sudden deep freeze rolls Live → Dead direct; gradual cooling can walk Live → Dying → Dead.
+  2. **Per-side growth** (Live tiles only, gated on `moisture > 70` AND `temp > 5°C`): for each non-grassy side that's exposed and non-flooded, rolls `GrowChancePerSecondPerSide ≈ 1/240` (~1 in-game day expected wait per side). Only L/R/U sides — never D (no underside grass).
+
+  Writes `tile.overlayMask` and `tile.overlayState` via property setters so `WorldController.OnTileOverlayChanged` redraws automatically. The renderer appends `_dying` / `_dead` to the atlas name based on state (`grass` → `grass_dying` → `grass_dead`); atlas geometry is identical across variants. Reproducible via `Rng` (deterministic gameplay RNG). See SPEC-rendering "Tile overlays" for the data side.
 
 **Per in-game hour** (10 s real-time, via `MoistureSystem.HourlyUpdate()`, called from `WeatherSystem.OnHourElapsed()`). Single snapshot-and-sweep so no step biases by sweep direction, followed by a plant-iteration pass:
 - **Soil-to-soil diffusion** (all solid tiles): pull `round(diff × MoistureDiffusionPerHour)` toward the wettest solid neighbour's snapshot value, where `diff = maxNeighbour − cur`. One-way (never lowers). Currently `MoistureDiffusionPerHour = 0.05` (5%/h). Approximates capillary spread — a water-adjacent stone wall's moisture slowly propagates inward, a rained-on surface row slowly wets the column below.
@@ -262,29 +258,13 @@ Plants advance through discrete growth stages, stored as `growthStage` on `Plant
 
 **InfoPanel display**: `TileInfoView` shows `moisture: N/100` on any solid tile. `StructureInfoView` (for a Plant) shows `temp: now°C  comfort: lo–hi°C` and `moisture: now/100  comfort: lo–hi`, with the current moisture read from the soil tile below — same source the growth gate uses. Null comfort bounds render as `—`.
 
-### Plant slowdown estimation (vs. an unmoisturized baseline)
+### Plant slowdown estimation
 
-Use this whenever you're balancing a plant against the moisture gate and want a quick "how much slower than `growthTime` ticks?" number for an isolated outdoor plant under average rain. Plug in current parameters — the *shape* of the calculation stays valid even if specific constants change.
+When balancing a plant's `[moistureMin, moistureMax]` comfort window against `growthTime`, model soil moisture as a four-phase cycle (dry drain → dry floor → rain ramp → rain cap) driven by the rain Markov chain in `WeatherSystem`. Compute `happyFraction` = hours-inside-comfort-window per cycle / total cycle hours; effective grow time ≈ `growthTime / happyFraction`.
 
-**Inputs from elsewhere** (look up at time of derivation):
-- Rain Markov per hour: `pClearToRain`, `pRainToClear` (currently 0.04 / 0.12) → steady-state `pRain = pClearToRain / (pClearToRain + pRainToClear)` (currently 0.25). Mean rain bout `1/pRainToClear` (8.3 h); mean dry stretch `1/pClearToRain` (25 h).
-- Hourly inflow at full rain `R` = `MoistureRainGainPerHour` (100). Outflow per planted tile `D` = `MoistureEvaporationPerHour + plantType.moistureDrawPerHour` (currently 1 + 2 = 3).
-- Plant comfort window `[mLo, mHi]` from `plantsDb.json`.
+**Key takeaway**: an `mHi < 100` cap forfeits the entire "rain cap" phase as unhappy, which dominates the slowdown. As of 2026-04-28 every default plant sets `moistureMax = 100` for this reason; only `moistureMin` is varied to differentiate species. Trees `[10, 100]` come out ~0.7× speed; a `[20, 80]` plant ~0.32× speed.
 
-**Trajectory model.** During a dry stretch, soil drains from cap (100) at `D`/h, hitting 0 after `100 / D` hours, then sits at 0. During a rain bout, soil gains at `R − D`/h from 0, hitting cap after `100 / (R − D)` hours, then sits at 100. So one full cycle of length `T = 1/pClearToRain + 1/pRainToClear` hours decomposes into four phases with known durations:
-
-| Phase | Duration (h) | Soil range |
-|---|---|---|
-| Dry drain | `100 / D` | 100 → 0 |
-| Dry floor | `1/pClearToRain − 100/D` (clamp ≥ 0) | 0 |
-| Rain ramp | `100 / (R − D)` | 0 → 100 |
-| Rain cap  | `1/pRainToClear − 100/(R − D)` (clamp ≥ 0) | 100 |
-
-**Happy time per cycle.** Within each phase, soil is moving linearly (or constant), so time spent inside `[mLo, mHi]` is just the fraction of the moisture span that overlaps the comfort window, scaled by the phase's duration. For `mHi = 100` the cap and the upper part of the ramp/drain are entirely happy; for `mLo = 0` the floor and lower tail are happy too. Sum the happy time across all four phases.
-
-**Slowdown.** `happyFraction = happyHoursPerCycle / T`. Effective grow time ≈ `growthTime / happyFraction` ticks. Trees (`[10, 100]`) currently come out around 0.7× speed (~1.4× slower); a `[20, 80]` plant comes out around 0.32× speed (~3× slower) — most of the loss is the `mHi < 100` cap forcing the entire "rain cap" phase to be unhappy. As of 2026-04-28, all default plants set `moistureMax = 100` for this reason; only `moistureMin` is varied to differentiate species.
-
-**Caveats.** Steady-state only — the **first** cycle on a fresh world is worse because `StartingMoisture = 50` and weather starts clear. Diffusion (5%/h of neighbour gap) softens troughs slightly. Temperature gate is independent and multiplies on top. Stage-crossing cost (`2 × moistureDrawPerHour`, currently 4) is essentially free vs. the comfort gate as long as `mLo ≥ 2 × moistureDrawPerHour`.
+Caveats: steady-state only (first cycle on a fresh world is worse — `StartingMoisture = 50` and weather starts clear); temperature gate is independent and multiplies on top; the stage-crossing cost (`2 × moistureDrawPerHour`) is effectively free vs. the comfort gate as long as `mLo ≥ 2 × moistureDrawPerHour`.
 
 ## Variable-shape structures
 
@@ -318,12 +298,12 @@ Lookup order for the suffixed sprite (first match wins): (1) slice named `{stem}
 `Assets/Model/WeatherSystem.cs` — singleton, created by `World.Awake()`. Ticked every frame by `World.Update()`.
 
 **Temperature** is a global ambient value in Celsius, driven by two additive sine waves:
-- **Yearly**: peaks midsummer (day 7.5/20), troughs midwinter. Amplitude ±12.5°C around 13.5°C mean.
+- **Yearly**: peaks midsummer (day 9/24), troughs midwinter. Amplitude ±12.5°C around 13.5°C mean.
 - **Daily**: peaks at 2pm, amplitude ±4°C.
 - Formula: `T = 13.5 + 12.5·sin(yearly) + 4·sin(daily)`
 - Range: ~−3°C (midwinter night) to ~30°C (midsummer afternoon).
 
-**Seasons** (time 0 = first day of spring, `daysInYear = 20`): Spring 0–4, Summer 5–9, Fall 10–14, Winter 15–19. `GetSeason()` returns the name, `GetDayOfYear()` returns the fractional day.
+**Seasons** (time 0 = first day of spring, `daysInYear = 24`): Spring 0–5, Summer 6–11, Fall 12–17, Winter 18–23. `GetSeason()` returns the name, `GetDayOfYear()` returns the fractional day.
 
 **Temperature comfort** (on `Happiness`): each animal has `comfortTempLow` (default 10°C) and `comfortTempHigh` (25°C).
 - In range → +2 happiness, 100% efficiency.
@@ -331,7 +311,16 @@ Lookup order for the suffixed sprite (first match wins): (1) slice named `{stem}
 - Clothing expands the comfort range: `UpdateComfortRange()` shifts both bounds by ±3°C when any clothing item is equipped (7–28°C with a ramie shirt).
 - Fireplace warmth buff: leisuring at a fireplace grants a `warmth` value (0–5) that widens `comfortTempLow` by up to 5°C. Decays slowly over ~2 days (`×0.94` per SlowUpdate).
 
-**Rain/wind**: see header comment in `WeatherSystem.cs`. Rain also affects sun/ambient light multipliers and replenishes water via `WaterController.RainReplenish()`.
+**Rain/wind**: `WeatherSystem` advances rain state per in-game hour from `World.Update`. Rain probabilities: Clear → Rain 4%, Rain → Clear 12%. Lighting hooks (sun/ambient multipliers) are polled by `SunController` each frame. While raining, `OnHourElapsed` runs:
+
+| Effect | Amount | Target |
+|--------|--------|--------|
+| Puddle top-up (`WaterController.RainReplenish`) | +2 fixed-point water units | every partially-filled, non-full, non-solid tile |
+| Tank rain-catch (`RainFillTanks`) | +100 fen (1 liang) water | every sky-exposed liquid-storage building whose filter allows water |
+
+**Sky exposure**: `World.IsExposedAbove(x, y)` is the shared primitive. Returns true if no solid tile and no `solidTop`-or-`blocksRain` structure layer exists on any tile above `(x, y)`. Reused by rain-catch, windmills, and the moisture rain-uptake gate.
+
+**`blocksRain` vs. `solidTop`**: two separate flags on `StructType`. `solidTop` means "walkable on top" and *also* blocks rain (a roofed-over tile is by definition sheltered). `blocksRain` is the rain-shelter half on its own — for structures like tarps that should shadow the tiles below from rain *without* being walkable. Either flag is sufficient to make `IsExposedAbove` and `MoistureSystem.CapsSoilFromAbove` report a tile as sheltered.
 
 ---
 

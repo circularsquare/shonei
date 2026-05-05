@@ -2,7 +2,7 @@
     {
         "id": 1,
         "name": "Excavation",
-        "description": "Learn to dig efficient dirt pits.",
+        "description": "Learn to dig dirt pits.",
         "prereqs": [],
         "cost": 5,
         "unlocks": [
@@ -11,7 +11,7 @@
         ]
     },{
         "id": 2,
-        "name": "Quarry",
+        "name": "Mining",
         "description": "Establish stone quarries to extract raw stone.",
         "prereqs": [1],
         "cost": 5,

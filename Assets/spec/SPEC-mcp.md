@@ -53,8 +53,13 @@ Practical workflow:
    in Play mode (Play-mode changes revert; `MarkSceneDirty` also fails).
 3. Don't `manage_scene save` without an explicit ask. Let the user save when
    they like the result.
-4. After every non-trivial Edit/Write to a `.cs` file, `read_console` before
-   moving on — compile errors lock the MCP bridge.
+4. After **non-trivial** Edit/Write to a `.cs` file, `read_console` before
+   moving on — compile errors lock the MCP bridge. **Skip for tiny low-risk
+   edits** (one-line filters, string-literal tweaks, magic-number changes, line
+   deletions): `refresh_unity` + `read_console` round-trips cost real time and
+   add little value when there's no plausible compile risk. Run them when the
+   edit could reasonably break compile — new method, signature change,
+   reflection/framework API, new `using`, etc.
 
 ## Common MCP gotchas
 
@@ -264,86 +269,14 @@ safe — Slider only drives the parallel-axis anchors based on value.
 6. Tell the user the panel exists and is inactive; they can Play-mode-test
    and save.
 
-**Reference skeleton — the actual `execute_code` pattern.** Copy and adapt; the
-APIs are not obvious from name alone. Compile mode: codedom (C# 6), so use
-`Func<>` / `Action<>` lambdas instead of local functions.
+**Non-obvious bits the codedom (C# 6) `execute_code` flow needs.** Use `ResearchPanel.cs` / `OptionsPanel.cs` as the script template and read existing panels for the standard Canvas/Image/RectTransform setup. The points below are the ones that aren't discoverable from looking at a finished panel:
 
-```csharp
-// 1. Find the UI canvas (top-level scene GameObject named "UI", parent of
-//    every existing exclusive panel and toggle).
-var canvasGo = GameObject.Find("UI");
-if (canvasGo == null) return new { ok = false, error = "UI canvas not found" };
-var canvas = canvasGo.transform;
-
-// 2. Sprite resources for DefaultControls / TMP_DefaultControls. These are
-//    the built-in Unity skins; you'll override them per-widget with project
-//    sprites (woodframe, check, x) where you can.
-var res = new UnityEngine.UI.DefaultControls.Resources {
-    standard   = UnityEditor.AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd"),
-    background = UnityEditor.AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Background.psd"),
-    inputField = UnityEditor.AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/InputFieldBackground.psd"),
-    knob       = UnityEditor.AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd"),
-    checkmark  = UnityEditor.AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Checkmark.psd"),
-    dropdown   = UnityEditor.AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/DropdownArrow.psd"),
-    mask       = UnityEditor.AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UIMask.psd")
-};
-
-// 3. Panel root with woodframe background, full-screen with 20px margin.
-var panel = new GameObject("MyPanel", typeof(RectTransform));
-panel.layer = 5;                                     // UI layer
-panel.transform.SetParent(canvas, false);
-var pRt = panel.GetComponent<RectTransform>();
-pRt.anchorMin = Vector2.zero;   pRt.anchorMax = Vector2.one;
-pRt.offsetMin = new Vector2(20, 20);
-pRt.offsetMax = new Vector2(-20, -20);
-var pBg = panel.AddComponent<UnityEngine.UI.Image>();
-pBg.sprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(
-    "Assets/Resources/Sprites/Misc/woodframe.png");
-pBg.type = UnityEngine.UI.Image.Type.Sliced;
-
-// 4. Build content using DefaultControls.CreateButton/Slider/Toggle and
-//    TMPro.TMP_DefaultControls.CreateDropdown for sub-widgets. Add
-//    LayoutElement + nested Vertical/HorizontalLayoutGroup for layout.
-//    (See OptionsPanel build session in execute_code history for a full
-//    example.)
-
-// 5. Look up the panel script's Type by name across loaded assemblies.
-//    Project assemblies (Shonei.Runtime) load with no fixed AssemblyName so
-//    AppDomain iteration is the reliable path.
-System.Type scriptType = null;
-foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies()) {
-    scriptType = asm.GetType("MyPanel");
-    if (scriptType != null) break;
-}
-if (scriptType == null) return new { ok = false, error = "MyPanel type not found" };
-var panelScript = panel.AddComponent(scriptType) as MonoBehaviour;
-
-// 6. Wire [SerializeField] refs by exact field name from the script.
-//    Misspelled names fail silently (FindProperty returns null) — done-check
-//    catches this by reading the component back.
-var so = new UnityEditor.SerializedObject(panelScript);
-so.FindProperty("someChild").objectReferenceValue = someChildComponent;
-so.ApplyModifiedPropertiesWithoutUndo();
-
-// 7. MCP code is responsible for the initial inactive state. The panel
-//    script's Awake() registers exclusive but does NOT SetActive(false) —
-//    look at ResearchPanel.cs / OptionsPanel.cs, neither does. Set it here.
-panel.SetActive(false);
-
-// 8. Wire the toggle button's onClick to the new panel's Toggle() method as
-//    a persistent listener (survives play/stop, written to scene data).
-var toggleBtn = /* the top-bar Button component you just created */;
-var toggleAction = (UnityEngine.Events.UnityAction)System.Delegate.CreateDelegate(
-    typeof(UnityEngine.Events.UnityAction),
-    panelScript,
-    scriptType.GetMethod("Toggle"));
-UnityEditor.Events.UnityEventTools.AddPersistentListener(toggleBtn.onClick, toggleAction);
-
-// 9. Mark the scene dirty so Unity prompts the user to save (and so unsaved
-//    state is honored). Throws in Play mode — manage_editor stop first.
-UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(
-    UnityEngine.SceneManagement.SceneManager.GetActiveScene());
-```
+- **Sprite resources for DefaultControls.** `DefaultControls.CreateButton/Slider/Toggle` and `TMP_DefaultControls.CreateDropdown` need a populated `DefaultControls.Resources` struct with built-in skin sprites loaded via `UnityEditor.AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd")` and friends (Background, InputFieldBackground, Knob, Checkmark, DropdownArrow, UIMask). Override per-widget with project sprites (woodframe, check, x) where possible.
+- **Type lookup**. Project assemblies load with no fixed `AssemblyName`, so `Type.GetType("MyPanel")` returns null. Iterate `System.AppDomain.CurrentDomain.GetAssemblies()` and call `asm.GetType("MyPanel")`.
+- **SerializeField wiring**. `var so = new UnityEditor.SerializedObject(panelScript); so.FindProperty("fieldName").objectReferenceValue = ...; so.ApplyModifiedPropertiesWithoutUndo();`. Misspelled field names return null silently — verify by reading the component back.
+- **Initial inactive state.** Panel scripts' `Awake()` registers exclusive but doesn't `SetActive(false)` (look at the existing panels). MCP code must set it after creation.
+- **onClick wiring.** Use `UnityEditor.Events.UnityEventTools.AddPersistentListener(btn.onClick, action)` with `Delegate.CreateDelegate(typeof(UnityAction), panelScript, scriptType.GetMethod("Toggle"))`. Persistent listeners survive play/stop and are written to scene data; runtime `AddListener` does not.
+- **Dirty the scene.** `EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene())` so Unity prompts the user to save. Throws in Play mode — `manage_editor stop` first.
 
 **Iterate on UI sizing/spacing** without rebuilding:
 - Find the panel root, then iterate `GetComponentsInChildren<LayoutElement>(true)`
@@ -382,9 +315,11 @@ items just because they "should" pass — the whole point is catching the ones
 that quietly didn't.
 
 ### Compile + console
-- After script edits: `read_console` returns no errors.
-- Editor isn't mid-compile (`refresh_unity wait_for_ready=true` returned
-  cleanly).
+- After **non-trivial** script edits: `read_console` returns no errors and
+  editor isn't mid-compile (`refresh_unity wait_for_ready=true` returned
+  cleanly). For tiny low-risk edits (single-line filters, literal tweaks,
+  number changes), skip the round-trip — see "Safety: what's actually risky"
+  above.
 
 ### For new panels — wiring
 - Panel is a child of the `UI` Canvas.

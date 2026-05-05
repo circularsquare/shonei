@@ -284,16 +284,6 @@ state. `PowerSystem.RebuildFromWorld` (Phase 6) marks topology dirty; the next
 `HasCompatibleShaftAt` call (or Tick) rebuilds and fires `onTopologyRebuilt`,
 which refreshes all stubs.
 
-## Extension points (deferred work)
-
-- **Flywheel** (storage): implements `IPowerProducer + IPowerConsumer` with an
-  internal charge state. Allocation order needs adjustment so flywheels charge
-  from surplus and discharge into deficits — straightforward extension to
-  `Allocate()`.
-- **Fractional satisfaction**: replace binary "full demand or none" with
-  proportional allocation when supply < demand.
-- **Power-network overlay**: toggleable debug viz colouring shafts by network id.
-
 ## Tunables
 
 | Constant | Value | Where |

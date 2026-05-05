@@ -209,6 +209,30 @@
         ],
         "category": "structures"
     },{
+        "id": 45,
+        "name": "tarp",
+        "description": "decorative cloth strung between two posts. shelters the tile below from rain.",
+        "nx": 3, "ny": 1,
+        "ncosts": [
+            { "name": "cloth", "quantity": 3 }
+        ],
+        "depth": 1,
+        "isBuilding": true,
+        "blocksRain": true,
+        "edgeSupported": true,
+        "noMaintenance": true,
+        "shapes": [
+            { "nx": 3, "ny": 1 },
+            { "nx": 4, "ny": 1 },
+            { "nx": 5, "ny": 1 },
+            { "nx": 6, "ny": 1 },
+            { "nx": 3, "ny": 2 },
+            { "nx": 4, "ny": 2 },
+            { "nx": 5, "ny": 2 },
+            { "nx": 6, "ny": 2 }
+        ],
+        "category": "structures"
+    },{
         "id": 44,
         "name": "bench",
         "description": "a simple wooden bench. mice sit here to relax or read.",

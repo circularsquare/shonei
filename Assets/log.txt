@@ -1,5 +1,11 @@
 meoww!!
 
+5/5
+- grass! as edge overlay texture
+    - dies and grows back with seasons
+- market ui tweaks
+- rain tweaks
+    - snow!
 5/4
 - background wall follows terrain 
 - mineshafts

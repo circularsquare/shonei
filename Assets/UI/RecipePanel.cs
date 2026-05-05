@@ -23,6 +23,7 @@ public class RecipePanel : MonoBehaviour {
     public Transform      recipeListContent;
     public RecipeDisplay  recipeDisplayPrefab;
     public ScrollRect     scrollRect;
+    public Button         closeButton; // optional X in the corner
 
     readonly List<RecipeDisplay> spawnedCards   = new List<RecipeDisplay>();
     readonly HashSet<int>        disabledRecipes = new HashSet<int>();
@@ -34,6 +35,7 @@ public class RecipePanel : MonoBehaviour {
         if (instance != null) { Debug.LogError("two RecipePanels!"); }
         instance = this;
         UI.RegisterExclusive(gameObject);
+        if (closeButton != null) closeButton.onClick.AddListener(() => gameObject.SetActive(false));
     }
 
     void OnEnable() {

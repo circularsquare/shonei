@@ -8,7 +8,7 @@
 |---|---|
 | -10 | Background tile (`BackgroundTile`) |
 | 0 | Tiles |
-| 1 | Roads (depth-3 structures) |
+| 1 | Roads (depth-3 structures); also tile overlays (grass on dirt, future moss on stone). Mutually exclusive on a tile — overlay rendering is suppressed when a road is present. |
 | 5 | Power shafts (depth-4 structures) — render behind buildings so shafts read as wall-mounted plumbing |
 | parent − 1 | Power port stubs (`PortStubVisuals` child SR, one below the parent building). Also: flywheel wheel — rendered behind the housing so the spokes peek through. |
 | 10 | Buildings (depth-0 structures) |
@@ -53,6 +53,22 @@ Depth-based sortingOrder is the default; individual `StructType`s can override v
 
 `tile.building` is a convenience property: `structs[0] as Building` (Plant extends Building, so both are accessible through it). Multiple layers can coexist on the same tile. `GetBlueprintAt(int depth)` / `SetBlueprintAt(int depth, Blueprint bp)` directly index into `blueprints[]`.
 
+### Tile overlays (grass, moss, …)
+
+Every tile owns an optional **overlay** child SpriteRenderer that renders per-side decoration on top of the tile body. Today this is grass on dirt; the system generalises to moss on stone, snow, etc.
+
+- **Atlas selection**: each `TileType` declares an optional `overlay` string (e.g. dirt → `"grass"`). The atlas lives at `Resources/Sprites/Tiles/Sheets/<overlay>.png` and uses the standard 32×32 9-piece layout. Edge/corner pieces hold the decoration art; the **Main 16×16 region is ignored** — `TileSpriteCache.GetOverlay` zeros it at bake time so any "buried" side reads as transparent regardless of what the artist authored there. (Without this, stray opaque Main pixels overwrite the body's bevelled edge piece on non-decorated sides — e.g. a flat dirt-brown band along the underside of a tile that only has side grass.)
+- **Per-tile state**: `Tile.overlayMask` is a 4-bit bitmask, layout `0=L 1=R 2=D 3=U` (matches the cMask convention used by the tile-sprite baker). Bit set = "this side is decorated."
+- **Effective mask**: `OnTileOverlayChanged` (in `WorldController`) AND-masks `overlayMask` with `~cMask` so a side only shows decoration while its neighbour is non-solid. Sides that get visually buried hide their grass without touching data.
+- **Inverted-mask trick**: the renderer feeds `~effective & 0xF` into `TileSpriteCache.GetOverlay(overlayName, mask, x, y)`. Because the baker reads "bit set ⇒ neighbour solid ⇒ use Main interior" and overlay bakes force Main transparent, that produces edge art exactly on the desired sides. `GetOverlay` shares the atlas-pixel-bake path with `Get` — only the Main fill and the 256-entry normal-map bake are skipped (overlay SRs sample the body's normal map at runtime, never their own).
+- **Replace, don't stack**: the body's sprite uses an *augmented* cMask `bodyCardinals = realCMask | overlayBits`, so sides with grass are treated as "buried" — the body draws Main interior there, no jagged dirt edge underneath the overlay. Without this, `NormalsCapturePass`'s `Blend Off` would let grass-blade pixels overwrite the body's directional edge bevel with the flat-blade-interior bevel that `BakeNormalMap`'s Sobel kernel inevitably produces from thin grass-blade silhouettes (visible in the frame debugger as a "straight break with no slope" along the grassed edge). When a road occupies the tile, `overlayBits = 0` so the body restores its real edges.
+- **Trim outer 2 inner-pixels of Main on overlay-replaced sides**: the body's Main interior extends through cols 2-17 / rows 2-17, so on a side where Main has replaced an edge piece, the silhouette would be a straight square at col 17 / row 17 — visible through transparent gaps in the overlay's edge art. `TileSpriteCache.Get(name, cMask, trimMask, x, y)` (overload, lazy-bakes per-trim-mask variants) clears the inner 2 pixels on each trim side. The renderer feeds `trimMask = overlayBits & ~realCMask` — only sides where the overlay covers a *naturally exposed* edge get trimmed; sides buried by a real solid neighbour keep Main extended for inter-tile continuity.
+- **Normal map (shared)**: both body and overlay point `_NormalMap` at the **same** texture: `TileSpriteCache.GetNormalMap(tile.type.name, realNMask, ...)` — the dirt's own real-cMask normal map. Whether the body's Main pixel or the overlay's grass-blade pixel wins NormalsCapture at a given location, the captured normal is the same dirt-derived directional bevel. Grass blades inherit the directional edge lighting a bare dirt edge would have had.
+- **Worldgen seeding**: `WorldGen.PopulateOverlays` runs after `FillDepressions` and seeds bits on every cardinal edge whose neighbour is non-solid AND non-flooded.
+- **Mining never auto-sets bits**: freshly exposed sides stay bare. The `Tile.type` setter clears `overlayMask` when transitioning to a type with no overlay (e.g. dirt → empty), so mined tiles don't carry stale data.
+- **Road suppression**: when `tile.structs[3] != null`, the overlay sprite is null. `Structure` ctor/`Destroy` call `Tile.NotifyOverlayDirty()` to refresh.
+- **Live growth + health state** (`OverlayGrowthSystem`): once per real-time second, dirt tiles with `moisture > 70` (when `temperature > 5°C`) roll a small chance to sprout grass on each non-grassy, exposed, non-flooded L/R/U side (~1 in-game day expected wait per side). Bottom never grows. The same Tick also evolves a per-tile `Tile.overlayState` (Live / Dying / Dead) — death is a per-tick roll while conditions warrant it (cold/dryout → Dying, deep freeze → Dead, ~10 s steady-state average), recovery to Live is the slower fresh-grass roll. The renderer appends `_dying` / `_dead` to the atlas name (`grass` → `grass_dying` → `grass_dead`); atlas geometry is identical across variants so per-side bit semantics are unchanged. See SPEC-systems "Soil Moisture" for the dispatch slot and full state-machine table.
+
 ### Blueprint visuals
 
 Each `Blueprint` renders a main sprite (order 100, lit, half-alpha ghost) plus a child **frame overlay** GameObject (order 101, **Unlit** layer, sliced to the footprint). The frame sprite swaps between `Sprites/Misc/blueprintframe` (blue — construct/supply) and `Sprites/Misc/bpdeconstructframe` (red — deconstruct). Frame alpha drops to `0.5` when `disabled || IsSuspended()`. The unlit layer keeps frames visible at night without participating in the lighting pipeline (same pattern as Plant's harvest overlay).
@@ -91,34 +107,62 @@ SpriteRenderer sr = SpriteMaterialUtil.AddSpriteRenderer(go);
 
 ### Render pipeline (per frame)
 
-1. **NormalsCapturePass** (`BeforeRenderingTransparents`) — draws sprites with `Hidden/NormalsCapture` override into `_CapturedNormalsRT` (format: **ARGB32** — must have alpha; camera's default HDR format has none). **Channel packing:**
-   - `R, G` — world-space normal.x, normal.y packed 0–1. Normal.z is **not stored**; it's reconstructed in light shaders as `z = −sqrt(1 − x² − y²)` (assumes camera-facing sprite normals, which all project sprites satisfy).
-   - `B` — **receiver sort bucket** (`sortingOrder / 255`), smuggled in per-sprite via `MaterialPropertyBlock` by `LightReceiverUtil.SetSortBucket`. `LightCircle.shader` samples this per-pixel and branches on the sign of `sortDelta = receiverBucket − lightBucket`. **In-front** receivers (`sortDelta > 0`) use `effectiveHeight = −lightHeight` and zero ambient floor, so forward-facing interior normals go dark (their z-dot with toLight flips sign) while edge normals pointing sideways toward the light's XY still get lit — giving a clean silhouette block without killing rim lighting. **Behind** receivers (`sortDelta ≤ 0`) ramp `effectiveHeight` from `+lightHeight` (at delta=0) toward `+lightHeight × behindFarHeightFactor` as the receiver sorts further behind (`smoothstep` over `sortRampRange`), keeping the full `ambientNormal` floor. Default `behindFarHeightFactor = 1.0` → identity (matches pre-sort-aware lighting exactly). The RT uses `FilterMode.Point`, so the in-front/behind boundary is always sprite-aligned — the effective-height sign flip never appears inside a single sprite.
-   - `A` — lighting tier + edge depth:
-     - `0.80–1.0` — solid tile. The range encodes **edge depth** for underground darkening: `1.0` = at exposed tile surface (fully lit), `0.80` = deep interior (darkened to `deepFloor`). Extracted as `saturate((alpha - 0.80) / 0.20)` in `LightComposite`. (Previously also used for shadow casting — ray march is commented out in `LightSun.shader`.)
-     - `0.5` — lit-only (full light)
-     - `0.3` — directional-only (sun + ambient only; `LightCircle` skips torch for these pixels)
-     - `0.0` — no sprite (flat-normal fallback in light shaders)
+Three passes: **NormalsCapturePass** captures sprite normals + lighting tier into a temp RT; **LightPass** writes the light map (ambient + point lights + sun); **Composite** multiplies the light map onto the scene.
 
-   **Tile border clipping**: Tiles use pre-baked 20×20 sprites (from `TileSpriteCache`) whose alpha already encodes the border shape. NormalsCapture clips on `_MainTex` alpha for both tiles and non-tiles — no per-pixel atlas lookup needed.
+**LightFeature skips cameras** where `cullingMask == 0` or where `(cullingMask & (litLayers | directionalOnlyLayers | waterLayer | backgroundLayer)) == 0` — cameras that see no sprites participating in the normals RT. The `UnlitOverlayCamera` (see §Sky / background) hits this check because the Unlit layer is excluded from all four masks.
 
-   Draw calls in order (later overwrites earlier where they overlap, `Blend Off`):
-   - Background (`backgroundLayer`): `NormalsCaptureBackground` override, pass 1 (alpha = 0.5, lit-only). Clips transparent top pixels so they read as sky. Drawn earliest so tiles/sprites overwrite.
-   - Pass 2 (`directionalOnlyLayers`): alpha = 0.3 — drawn next so shadow-caster pass can't overwrite
-   - Pass 1 (`litLayers & ~shadowCasterLayers & ~directionalOnlyLayers`): alpha = 0.5
-   - Pass 0 (`litLayers & shadowCasterLayers & ~directionalOnlyLayers`): alpha = `lerp(0.80, 1.0, _NormalMap.a)` where `_NormalMap.a` carries edge-distance falloff baked by `TileSpriteCache`
+#### NormalsCapturePass (BeforeRenderingTransparents)
 
-2. **LightPass** (`AfterRenderingTransparents`) — `ConfigureTarget(LightRTId)` in `OnCameraSetup` binds the temp RT (required for the clear and for `cmd.Blit` to target it correctly across all cameras). Ambient light is split into two parts:
-   - **Deep ambient** (constant): `LightFeature.deepAmbientColor` — clears the light RT. Present everywhere, even deep underground. Not affected by time of day. Tunable on `LightFeature` inspector.
-   - **Sky light** (time-varying, distance falloff): `SunController.GetAmbientColor()` — blitted via `LightAmbientFill.shader` which samples `_SkyExposureTex` (set by `SkyExposure`). Falls off with distance from sky-exposed tiles. Changes with day/night cycle.
-   
-   Then draws:
-   - Point lights (torches, etc.): `cmd.DrawMesh` per-light quad scaled to `outerRadius×2`, screen blend (`BlendOp Add, Blend One OneMinusSrcColor`), radial falloff × NdotL. **Skips pixels where normals RT alpha is 0–0.4** (directional-only tier).
-   - Sun (directional): `cmd.Blit(null, LightRTId, sunMat)`, additive blend (`BlendOp Add, Blend One One`), NdotL with `_SunDir`. Shadow ray march is **disabled** (commented out in `LightSun.shader` for performance). **Must use `cmd.Blit`, not `cmd.DrawMesh`** — DrawMesh silently fails to write to the temp RT for cameras without PixelPerfectCamera (e.g. SkyCamera). Blit handles its own fullscreen geometry and RT binding internally, bypassing the issue.
+Draws sprites with `Hidden/NormalsCapture` override into `_CapturedNormalsRT` (format **ARGB32** — must have alpha; camera's default HDR format has none).
 
-3. **Composite** — `cmd.Blit(lightRT, scene, LightComposite)` multiplies scene by light map (`Blend DstColor Zero`). Empty sky/background pixels (normals RT alpha < 0.25) use a precomputed `_SkyLightColor` (sun + time-of-day ambient, no sky-exposure modulation, no point lights), blended via `skyLightBlend` (tunable on `LightFeature` inspector, default 1.0). Those pixels' base color comes from `SkyCamera.backgroundColor`. **Underground darkening**: solid-tile pixels (alpha > 0.75) are additionally scaled by `lerp(deepFloor, 1.0, edgeDepth)` — deep tile interiors get dimmed to `deepFloor` brightness (tunable on `LightFeature` inspector, default 0.2). After deepFloor dimming, a `max(light, deepAmbient)` clamp ensures tile interiors never go below the universal deep ambient.
+**Channel packing:**
 
-**LightFeature skips cameras** where `cullingMask == 0` or where `(cullingMask & (litLayers | directionalOnlyLayers | waterLayer | backgroundLayer)) == 0` — i.e. cameras that see no sprites participating in the normals RT. The `UnlitOverlayCamera` (see Sky/background below) hits this check because the Unlit layer is excluded from all four masks.
+| Channel | Encodes | Notes |
+|---|---|---|
+| R, G | World-space `normal.x`, `normal.y` packed 0–1 | `normal.z` reconstructed in light shaders as `z = −sqrt(1 − x² − y²)`. Assumes camera-facing sprite normals (all project sprites satisfy). |
+| B | Receiver sort bucket (`sortingOrder / 255`) | Smuggled per-sprite via MPB by `LightReceiverUtil.SetSortBucket`. Drives sort-aware lighting (see below). |
+| A | Lighting tier + edge depth | See alpha-tier table. |
+
+**Alpha tiers:**
+
+| Range | Meaning |
+|---|---|
+| 0.80–1.0 | Solid tile. Range encodes edge depth for underground darkening — 1.0 = at exposed surface (fully lit), 0.80 = deep interior (darkened to `deepFloor`). Extracted in `LightComposite` as `saturate((alpha − 0.80) / 0.20)`. |
+| 0.5 | Lit-only (full light). |
+| 0.3 | Directional-only (sun + ambient only; `LightCircle` skips torch for these pixels). |
+| 0.0 | No sprite (flat-normal fallback). |
+
+**Tile border clipping**: tiles use pre-baked 20×20 sprites whose alpha already encodes the border shape. NormalsCapture clips on `_MainTex` alpha for both tiles and non-tiles — no per-pixel atlas lookup needed.
+
+**Draw calls** (in order; later overwrites earlier where they overlap, `Blend Off`):
+
+1. Background (`backgroundLayer`) — `NormalsCaptureBackground` override, alpha = 0.5 (lit-only). Drawn earliest so tiles/sprites overwrite.
+2. `directionalOnlyLayers` — alpha = 0.3.
+3. `litLayers & ~shadowCasterLayers & ~directionalOnlyLayers` — alpha = 0.5.
+4. `litLayers & shadowCasterLayers & ~directionalOnlyLayers` — alpha = `lerp(0.80, 1.0, _NormalMap.a)` where `_NormalMap.a` carries edge-distance falloff baked by `TileSpriteCache`.
+
+**Sort-aware lighting** (B-channel branching in `LightCircle.shader`): per-pixel `sortDelta = receiverBucket − lightBucket` decides:
+- **In-front** (`sortDelta > 0`): `effectiveHeight = −lightHeight`, zero ambient floor — forward-facing interior normals go dark (z-dot with toLight flips sign) while edge normals pointing sideways toward the light's XY still get lit. Clean silhouette block without killing rim lighting.
+- **Behind** (`sortDelta ≤ 0`): `effectiveHeight` ramps from `+lightHeight` (delta = 0) toward `+lightHeight × behindFarHeightFactor` as the receiver sorts further behind (smoothstep over `sortRampRange`); full `ambientNormal` floor preserved. Default `behindFarHeightFactor = 1.0` → identity (matches pre-sort-aware lighting exactly).
+
+The RT uses `FilterMode.Point`, so the in-front/behind boundary is always sprite-aligned — the effective-height sign flip never appears inside a single sprite.
+
+#### LightPass (AfterRenderingTransparents)
+
+`ConfigureTarget(LightRTId)` in `OnCameraSetup` binds the temp RT (required for the clear and for `cmd.Blit` to target it correctly across all cameras).
+
+**Ambient fill.** Two-part model: clear to `LightFeature.deepAmbientColor`, then blit `SunController.GetAmbientColor()` modulated by `_SkyExposureTex` via `LightAmbientFill.shader`. See §Sky exposure for the full model.
+
+**Point lights** (torches, etc.): `cmd.DrawMesh` per-light quad scaled to `outerRadius × 2`, screen blend (`BlendOp Add, Blend One OneMinusSrcColor`), radial falloff × NdotL. Skips pixels where normals RT alpha is 0–0.4 (directional-only tier).
+
+**Sun** (directional): `cmd.Blit(null, LightRTId, sunMat)`, additive blend (`BlendOp Add, Blend One One`), NdotL with `_SunDir`. Shadow ray march is **disabled** (commented out in `LightSun.shader` for performance). **Must use `cmd.Blit`, not `cmd.DrawMesh`** — DrawMesh silently fails to write to the temp RT for cameras without PixelPerfectCamera (e.g. SkyCamera); Blit handles its own fullscreen geometry and RT binding internally, bypassing the issue.
+
+#### Composite
+
+`cmd.Blit(lightRT, scene, LightComposite)` multiplies scene by light map (`Blend DstColor Zero`).
+
+- **Empty sky/background pixels** (normals RT alpha < 0.25) use a precomputed `_SkyLightColor` (sun + time-of-day ambient, no sky-exposure modulation, no point lights), blended via `skyLightBlend` (default 1.0). Base color comes from `SkyCamera.backgroundColor`.
+- **Underground darkening**: solid-tile pixels (alpha > 0.75) are scaled by `lerp(deepFloor, 1.0, edgeDepth)` — deep tile interiors dimmed to `deepFloor` (default 0.2). After dimming, a `max(light, deepAmbient)` clamp ensures tile interiors never go below the universal deep ambient.
 
 ### Sky / background
 
@@ -132,6 +176,8 @@ Three cameras render as a URP **Camera Stack**: SkyCamera is the Base, Main and 
 
 **Unlit layer pattern**: any sprite that should always appear at full brightness (tile highlights, selection overlays, debug markers) goes on the `Unlit` layer. Keep it excluded from `litLayers`, `shadowCasterLayers`, and `directionalOnlyLayers` in the LightFeature Inspector. **Also assign `Sprite-Unlit-Default`** as the material — the project's default lit material (`Custom/Sprite`, see URP setup above) participates in NormalsCapture and is wrong for the Unlit layer. For runtime-created overlays, either instantiate a prefab that carries the material (preferred — see `Plant.CreateHarvestOverlay` / `BuildIndicator`) or cache a material via `Shader.Find("Universal Render Pipeline/2D/Sprite-Unlit-Default")`. Do NOT route Unlit-layer sprites through `SpriteMaterialUtil.AddSpriteRenderer` — that helper assigns the lit dual-pass material.
 
+**Sky camera ambient**: `LightPass` detects `SkyCamera` and clears the light RT to **full ambient** (skipping the `LightAmbientFill` blit). This prevents sky light spatial falloff from affecting clouds on the Sky layer. Clouds still receive sun via the directional light pass.
+
 ### Sky exposure (`SkyExposure.cs`)
 
 `Assets/Lighting/SkyExposure.cs` — scene singleton (under Lighting), initialized by `WorldController.GenerateDefault()` and `SaveSystem.Load()`.
@@ -144,15 +190,31 @@ Three cameras render as a URP **Camera Stack**: SkyCamera is the Base, Main and 
 
 **Edge-depth blending** (`LightComposite`): shadow-caster pixels blend toward `deepAmbientColor` based on edge depth: `lerp(deepAmbient, light, edgeDepth)`. Deep tile interiors are exactly `deepAmbientColor` everywhere regardless of sky/sun contribution.
 
-**Sky camera ambient**: `LightPass` detects `SkyCamera` and clears the light RT to **full ambient** (skipping the `LightAmbientFill` blit). This prevents sky light spatial falloff from affecting clouds on the Sky layer. Clouds still receive sun via the directional light pass.
-
 ### Background tile (`BackgroundTile.cs`)
 
 `Assets/Controller/BackgroundTile.cs` — scene singleton (under Lighting), initialized by `WorldController.GenerateDefault()` and `SaveSystem.Load()`.
 
-**Per-tile background**: each `Tile` carries a `BackgroundType backgroundType` field (`None` / `Stone` / `Dirt`) with `cbBackgroundChanged` callback; `hasBackground` is a derived getter (`backgroundType != None`) for callers that just want presence (e.g. `SkyExposure`). Wall placement is **contour-based**: `WorldGen.SetBackgrounds` (called from `WorldController.GenerateDefault` after caves are carved) puts a wall behind every tile below the natural surface heightmap. Three refinements: (1) **near-surface skylight rule** — a non-solid tile within 2 of the surface stays `None`, so shallow caves visibly punch through to sky; (2) **1-tile sky/cave erosion** — a second pass clears any wall whose cardinal neighbour is `None`, so the topmost solid row and cave edges don't read darker than the air around them (the wall participates in lighting, and sitting one directly behind the surface dims it visibly); (3) **wall type is positional** — top `WorldGen.DirtDepth` rows below surface get `Dirt`, deeper get `Stone` (matches what each tile was at fill time, since stone-vein passes only convert limestone). The type is fixed at world-gen and never changes when the tile is mined or replaced. Saved per-tile in `TileSaveData.backgroundWallType` (int enum); the legacy `hasBackgroundWall` bool is read for migration of pre-typed saves (treated as Stone) but no longer written. **`WorldController.ClearWorld` resets `backgroundType` to `None` alongside `tile.type = empty`** — without this, walls from a previous world's higher surface survive into the next load (saves only persist tiles with content).
+#### Wall placement
 
-**Background sprite**: a world-spanning sprite on the **Background layer** at **sorting order −10** (behind tiles at 0). Uses `BackgroundTile.shader` (dual-pass `Universal2D` + `UniversalForward` per the URP setup convention), masked by a low-res RGBA32 texture (nx × ny, 1 pixel per tile). Mask channel encoding: **R** = wall type (0=Stone, 255=Dirt), **G** = top-row flag (255 if the tile above has no background), **A** = opaque where a wall exists. The shader samples four tileable 16×16 textures (`_WallTex`/`_WallTopTex` for stone, `_DirtWallTex`/`_DirtWallTopTex` for dirt) and selects per-pixel: top-row vs interior on G, then stone vs dirt on R. All four tile at 1 repetition per world unit via world-space UVs. Participates in normal lighting (sun, torches, sky light) via dedicated `NormalsCaptureBackground` override in `NormalsCapturePass` — clips transparent pixels of the *selected* wall texture so jagged top edges (both stone and dirt variants) read as sky in the normals RT. Wall textures are set as globals (`_BackgroundTex`, `_BackgroundTopTex`, `_BackgroundDirtTex`, `_BackgroundDirtTopTex`) by `BackgroundTile.cs` for the override shader to access. Rebuilt on background or tile type change via dirty flag.
+Each `Tile` carries a `BackgroundType backgroundType` field (`None` / `Stone` / `Dirt`) with `cbBackgroundChanged` callback; `hasBackground` is a derived getter (`backgroundType != None`) for callers that just want presence (e.g. `SkyExposure`).
+
+Placement is contour-based: `WorldGen.SetBackgrounds` (called from `WorldController.GenerateDefault` after caves are carved) puts a wall behind every tile below the natural surface heightmap, with three refinements:
+
+1. **Near-surface skylight rule**: a non-solid tile within 2 of the surface stays `None`, so shallow caves visibly punch through to sky.
+2. **1-tile sky/cave erosion**: a second pass clears any wall whose cardinal neighbour is `None`, so the topmost solid row and cave edges don't read darker than the air around them (a wall sitting one tile behind the surface dims the surface visibly).
+3. **Wall type is positional**: top `WorldGen.DirtDepth` rows below surface get `Dirt`, deeper get `Stone` (matches what each tile was at fill time — stone-vein passes only convert limestone). The type is fixed at world-gen and never changes when the tile is mined or replaced.
+
+Saved per-tile in `TileSaveData.backgroundWallType` (int enum); the legacy `hasBackgroundWall` bool is read for migration of pre-typed saves (treated as Stone) but no longer written. **`WorldController.ClearWorld` resets `backgroundType` to `None` alongside `tile.type = empty`** — without this, walls from a previous world's higher surface survive into the next load (saves only persist tiles with content).
+
+#### Sprite & shader
+
+A world-spanning sprite on the **Background layer** at sorting order −10 (behind tiles at 0). Uses `BackgroundTile.shader` (dual-pass `Universal2D` + `UniversalForward`), masked by a low-res RGBA32 texture (nx × ny, 1 pixel per tile).
+
+**Mask channel encoding:** **R** = wall type (0 = Stone, 255 = Dirt); **G** = top-row flag (255 if the tile above has no background); **A** = opaque where a wall exists.
+
+The shader samples four tileable 16×16 textures (`_WallTex`/`_WallTopTex` for stone, `_DirtWallTex`/`_DirtWallTopTex` for dirt) and selects per-pixel: top-row vs interior on G, then stone vs dirt on R. All four tile at 1 repetition per world unit via world-space UVs.
+
+Participates in normal lighting (sun, torches, sky light) via a dedicated `NormalsCaptureBackground` override in `NormalsCapturePass` — clips transparent pixels of the *selected* wall texture so jagged top edges read as sky in the normals RT. Wall textures are set as globals (`_BackgroundTex`, `_BackgroundTopTex`, `_BackgroundDirtTex`, `_BackgroundDirtTopTex`) by `BackgroundTile.cs` for the override shader to access. Mask + sprite rebuilt on background or tile type change via dirty flag.
 
 ### Key files
 
@@ -160,23 +222,23 @@ All lighting C# scripts and shaders live in `Assets/Lighting/`.
 
 | File | Role |
 |------|------|
-| `LightFeature.cs` | `ScriptableRendererFeature` containing `NormalsCapturePass` + `LightPass`. Inspector tunables: `ambientNormal`, `lightPenetrationDepth`, `deepAmbientColor`, `skyLightBlend`, `sortRampRange`, `behindFarHeightFactor`, layer masks. |
-| `LightSource.cs` | Component: `lightColor`, `intensity`, `outerRadius`, `innerRadius`, `lightHeight`, `isDirectional`, `sortOrderOverride`. Registers itself in a static list read by `LightPass`. `sunModulated` (default false): when true, `SunController` overrides intensity by time of day (torches/fireplaces). Non-modulated lights keep their set intensity always. `sortOrderOverride = -1` (default) auto-reads from a SpriteRenderer on the GameObject or its parents — this value becomes `_LightSortBucket` in the shader for the sort-aware effective-height ramp. |
-| `LightReceiver.cs` | Two static utilities + a MonoBehaviour: `LightReceiverUtil.SetSortBucket(SpriteRenderer)` writes `_SortBucket = sortingOrder/255` onto the renderer's `MaterialPropertyBlock` (called at every site that sets `sortingOrder` on a lit sprite); `SpriteMaterialUtil.AddSpriteRenderer(go)` adds a SR with `Custom/Sprite` (the dual-pass lit default) assigned (used everywhere a lit SR is created at runtime). The `LightReceiver` MonoBehaviour variant is for prefabs with editor-authored sortingOrder (e.g. animal paper-doll parts) — attach one component to a root and it walks all child SpriteRenderers in `Start()`. |
-| `SunController.cs` | Orbiting sun, sky color, `GetAmbientColor()`, `GetSunDirection()`. Sun child has a `LightSource (isDirectional=true)`. Inspector tunables: orbit, twilight timing, sky/sun/ambient color gradients, `sunIntensityNoon`, `ambientBrightnessMin`/`ambientBrightnessRange`. |
-| `NormalsCapture.shader` | Tangent→world normal transform for 2D sprites. Vertex shader sends per-renderer world-space tangent/bitangent (sprite's local +X/+Y in world, derived from the transform); fragment forms `wn = tn.x·worldT + tn.y·worldB + tn.z·(0,0,−1)`. Reduces to `(x, y, −z)` for unrotated sprites; rotating sprites (flywheel wheel, windmill blades) get correctly rotated normals so the lit side stays in world space rather than spinning with the texture. Clips on `_MainTex` alpha. |
-| `TileSprite.shader` | Simple tile sprite shader: samples `_MainTex` (pre-baked 20×20 from `TileSpriteCache`), clips transparent pixels. Dual-pass per URP setup convention. Assigned to tile SpriteRenderers by WorldController. |
-| `Sprite.shader` | Project-wide replacement for Unity's `Sprite-Lit-Default`. Plain unlit sprite (texture × vertex color × renderer color) with both `Universal2D` and `UniversalForward` passes so it works under URP Universal Renderer AND participates in NormalsCapture. Material at `Resources/Materials/Sprite.mat` (loaded by `SpriteMaterialUtil`). |
-| `CrackedSprite.shader` (`Assets/Resources/Shaders/`) | Broken-structure overlay — composites a tileable world-space crack texture on top of `_MainTex`, alpha-masked by base sprite. Dual-pass (`Universal2D` + `UniversalForward`). Swapped in via `Structure.RefreshTint()`. See SPEC-systems.md §Maintenance System / Visual. |
-| `TileSpriteCache.cs` | Bakes 20×20 tile sprites **and matching normal maps** at load time from 32×32 border atlases. 16 cardinal-mask sprites per artist texture. A tile type may ship multiple variant textures named `<tileName>`, `<tileName>2`, `<tileName>3`, … (either atlases in `Sheets/` or flat sprites in `Tiles/`); each world tile picks one deterministically from its (x, y), stable across re-renders and loads. PPU=16 → sprites natively span 1.25 units. Normal maps are derived from each baked variant's own alpha — RGB is outward-facing at every alpha boundary, A is a distance-transform edge-depth used by `LightComposite` for underground darkening. Exposes `FlatNormalMap` for non-solid tiles. |
+| `LightFeature.cs` | Top-level `ScriptableRendererFeature` containing `NormalsCapturePass` + `LightPass`. All inspector tunables (layer masks, ambient/penetration/skyBlend params) live here. |
+| `LightSource.cs` | Per-light component (`lightColor`, `intensity`, `outerRadius`, `lightHeight`, `isDirectional`, `sunModulated`, `sortOrderOverride`); registers in a static list read by `LightPass`. `sunModulated = true` lets `SunController` modulate intensity by time of day; `sortOrderOverride = -1` (default) auto-reads sortingOrder from a parent SR. |
+| `LightReceiver.cs` | Two static utilities — `LightReceiverUtil.SetSortBucket(SR)` for B-channel MPB writes; `SpriteMaterialUtil.AddSpriteRenderer(go)` for runtime-created lit SRs. Plus a `LightReceiver` MonoBehaviour for prefabs with editor-authored sortingOrder (walks child SRs in `Start()`). |
+| `SunController.cs` | Orbiting sun, sky color, `GetAmbientColor()`, `GetSunDirection()`. Sun child has a `LightSource (isDirectional=true)`. Inspector tunables for orbit, twilight timing, color gradients. |
+| `NormalsCapture.shader` | Tangent→world normal transform for 2D sprites. Per-renderer world-space tangent/bitangent so rotating sprites (flywheel wheel, windmill blades) get correctly rotated normals. Clips on `_MainTex` alpha. |
+| `TileSprite.shader` | Tile sprite shader: samples pre-baked 20×20 `_MainTex`, clips transparent pixels. Dual-pass. |
+| `Sprite.shader` | Project-wide dual-pass replacement for `Sprite-Lit-Default` so runtime sprites participate in NormalsCapture under URP Universal Renderer. Material at `Resources/Materials/Sprite.mat`. |
+| `CrackedSprite.shader` (`Assets/Resources/Shaders/`) | Broken-structure overlay — composites a tileable world-space crack texture on top of `_MainTex`, alpha-masked by base sprite. Swapped in via `Structure.RefreshTint()`. See SPEC-systems.md §Maintenance System. |
+| `TileSpriteCache.cs` | Bakes 20×20 tile sprites + normal maps at load time from 32×32 border atlases. Multi-variant per tile type, deterministic per (x, y). Exposes `FlatNormalMap` for non-solid tiles. See §Normal maps for the bake details. |
 | `LightCircle.shader` | Point light pass: radial falloff × NdotL. |
-| `LightSun.shader` | Directional sun pass: fullscreen NdotL × sky exposure. Shadow ray march disabled (commented out for performance). |
+| `LightSun.shader` | Directional sun pass: fullscreen NdotL × sky exposure. Shadow ray march disabled. |
 | `LightAmbientFill.shader` | Fullscreen pass: writes `skyLight × exposure` per pixel. Max blend onto deep-ambient-cleared RT. |
 | `LightComposite.shader` | Multiply blit onto scene + edge-depth blending toward deepAmbient for deep tile interiors. |
-| `SkyExposure.hlsl` | Shared HLSL include: declares `_CamWorldBounds`, `_GridSize`, `_SkyExposureTex` and provides `SampleSkyExposure(screenUV)`. Used by LightAmbientFill and LightSun. |
-| `BackgroundTile.shader` | Tiles `_WallTex` or `_WallTopTex` (selected by mask green channel) at world-space UVs, masked by `_MainTex`. Dual-pass per URP setup convention. |
-| `NormalsCaptureBgTile.shader` | Normals capture override for background (shader name is `Hidden/NormalsCaptureBackground` — what `LightFeature.cs` loads by). Samples the four wall globals (`_BackgroundTex`/`_BackgroundTopTex` for stone, `_BackgroundDirtTex`/`_BackgroundDirtTopTex` for dirt) set by `BackgroundTile.cs`, branches on the mask R/G channels, and clips transparent pixels of the chosen variant — fixes jagged top-edge lighting on both stone and dirt walls. |
-| `SkyExposure.cs` | Sky exposure texture (R8, per-tile, BFS distance falloff from sky-exposed tiles). Scene singleton (under Lighting). |
+| `SkyExposure.hlsl` | Shared HLSL include: `_CamWorldBounds`, `_GridSize`, `_SkyExposureTex` + `SampleSkyExposure(screenUV)`. Used by LightAmbientFill and LightSun. |
+| `BackgroundTile.shader` | Tiles `_WallTex` / `_WallTopTex` (selected by mask green channel) at world-space UVs, masked by `_MainTex`. |
+| `NormalsCaptureBgTile.shader` | Normals capture override for the background (shader name `Hidden/NormalsCaptureBackground`). Samples the four wall globals, branches on mask R/G, clips transparent pixels. |
+| `SkyExposure.cs` | Sky exposure texture (R8, per-tile, BFS distance falloff). See §Sky exposure. |
 
 `Assets/Editor/SpriteNormalMapGenerator.cs` — sprite normal map batch tool (must stay in `Editor/`).
 
@@ -348,7 +410,19 @@ Same Sheets/Split pattern as items. Source sheets live in `Assets/Resources/Spri
 
 **Encoding**: tangent space (sprite-local), packed 0–1. Out-of-texture = local +Z. Flat camera-facing pixel = tangent `(0, 0, +1)` → packed `(0.5, 0.5, 1.0)` (= `(128, 128, 255)` byte). `NormalsCapture.shader` transforms this to world space using the renderer's own basis (`worldT`, `worldB` derived from `TransformObjectToWorldDir`), so rotating sprites get correctly rotated normals. For an unrotated, axis-aligned sprite the transform reduces to `(x, y, −z)` in world space. Black = no sprite, shader uses flat fallback. No Y-flip on screen UV (DrawRenderers and the light pass projection both use OpenGL convention, V=0 at bottom).
 
-**Tile normal maps** (`TileSpriteCache.BakeNormalMap`): baked per-variant alongside each 20×20 sprite and driven by the sprite's own alpha + an 8-bit adjacency mask (4 cardinals + 4 diagonals). Sprites are keyed by the 4-bit cardinal mask (16 entries per variant); normal maps are keyed by the full 8-bit mask (256 entries) because diagonal openings change both the RGB bevel and the edge-depth alpha at inside corners. For each pixel position we compute an **effective opacity**: interior pixels use their sprite alpha; the four 2×2 overhang corners (e.g. (0–1, 0–1) = BL) are treated as opaque when the matching diagonal neighbour is solid (it spatially owns that corner) and fall back to sprite alpha otherwise; non-corner overhang pixels (strictly one side of the interior) are opaque when the matching cardinal neighbour is solid and fall back to sprite alpha otherwise; positions outside the 20×20 are treated as transparent (empty air). RGB is a Sobel-combined outward bevel normal: cardinal transparent neighbours contribute a full ±1 outward unit, and the four diagonal transparent neighbours each contribute `±BevelDiagWeight` (default 0.5) to both axes. This widens the 1-pixel bevel into a ~1.5px-wide soft bevel — the directly-adjacent ring keeps its full outward tilt, and the next ring in picks up a gentle diagonal tilt so e.g. inside-corner interior pixels (solid L + solid D + empty BL diagonal) catch grazing light. A dithered grass surface correctly lights the row just below any punched-through top pixel via the cardinal term. Alpha is a Euclidean distance-transform to the nearest effectively-transparent pixel, mapped through a smoothstep over `LightFeature.penetrationDepth * TILE` (16 px at default); it drives `LightComposite`'s fade toward `deepAmbient` for underground darkening. The transparent BL 2×2 overhang at an inside corner also lets the distance transform reach into the interior, adding edge-depth brightening on top of the diagonal bevel. Applied via `MaterialPropertyBlock` on tile `SpriteRenderer`s; non-solid tiles use `TileSpriteCache.FlatNormalMap`.
+**Tile normal maps** (`TileSpriteCache.BakeNormalMap`): baked per-variant alongside each 20×20 sprite, driven by the sprite's own alpha + an 8-bit adjacency mask (4 cardinals + 4 diagonals). Applied via `MaterialPropertyBlock` on tile `SpriteRenderer`s; non-solid tiles use `TileSpriteCache.FlatNormalMap`.
+
+*Keying scheme.* Sprites are keyed by the 4-bit cardinal mask (16 entries per variant); normal maps need the full 8-bit mask (256 entries) because diagonal openings change both the RGB bevel and the edge-depth alpha at inside corners.
+
+*Effective opacity per pixel.* Computed before encoding RGB and alpha:
+- Interior pixels → sprite alpha.
+- Four 2×2 overhang corners (e.g. (0–1, 0–1) = BL) → opaque when the matching diagonal neighbour is solid (it spatially owns that corner); else sprite alpha.
+- Non-corner overhang pixels (strictly one side of the interior) → opaque when the matching cardinal neighbour is solid; else sprite alpha.
+- Positions outside the 20×20 → transparent (empty air).
+
+*RGB (bevel direction).* Sobel-combined outward bevel normal — cardinal transparent neighbours contribute ±1 outward unit; each of the four diagonal transparent neighbours contributes `±BevelDiagWeight` (default 0.5) on both axes. This widens the 1-pixel bevel into a ~1.5px soft bevel: the directly-adjacent ring keeps full outward tilt, the next ring in picks up gentle diagonal tilt — so an inside-corner interior pixel (solid L + solid D + empty BL diagonal) still catches grazing light, and a dithered grass surface lights the row just below any punched-through top pixel via the cardinal term.
+
+*Alpha (edge depth).* Euclidean distance-transform to the nearest effectively-transparent pixel, mapped through a smoothstep over `LightFeature.penetrationDepth × TILE` (16 px at default). Drives `LightComposite`'s fade toward `deepAmbient` for underground darkening. The transparent BL 2×2 overhang at an inside corner also lets the distance transform reach into the interior, adding edge-depth brightening on top of the diagonal bevel.
 
 **Tile border atlases** (source format): 32×32 artist-authored textures in `Assets/Resources/Sprites/Tiles/Sheets/{name}.png`. Layout: main 16×16 at (8,8), top/bottom 16×4 borders at (8,0)/(8,28), left/right 4×16 borders at (0,8)/(28,8), four 4×4 corner pieces at (0,0)/(28,0)/(0,28)/(28,28). Columns 1,6 and rows 1,6 are empty separators. **Not sampled at runtime** — `TileSpriteCache` reads pixel data at load time to bake 16 cardinal-mask variants per tile type as 20×20 Sprites (PPU=16 → 1.25 units). Textures must have Read/Write enabled (`TileSpritePostprocessor` handles this automatically).
 
@@ -385,3 +459,32 @@ Fire art (torch flame, fireplace fire) lives in a **separate child GameObject**,
 **Toggle** (`LightSource.cs` Update): `building.fireGO.SetActive(_lastEmissionScale > 0.05f)`. Fire visibility tracks the emission scale — appears/disappears in sync with the twilight emission fade rather than popping on/off abruptly. Hidden when: daytime, out of fuel, building disabled or broken.
 
 **Emission**: `LightSource` retargets `_EmissionScale` MPB writes to `building.fireSR` when present (falls back to parent SR for non-fire emissive buildings). Combined with the `_EmissionMap` self-reference from the generator, fire pixels stay full brightness through `LightComposite`'s multiply.
+
+---
+
+## Primary visual spawn — `StructureVisualBuilder`
+
+A structure's "primary visual" — the sprite renderers that depict the building itself — is spawned in three places: the live `Structure` ctor (full opacity), the `Blueprint` ctor (translucent ghost during construction), and `MouseController` (the cursor-following placement preview in build mode). [StructureVisualBuilder.cs](../Model/Structure/StructureVisualBuilder.cs) is the single source of truth — all three sites call `Build(parent, st, shape, mirrored, rotation, baseSortingOrder, tint)`.
+
+**Returned `Refs`**: `mainSr` (anchor SR; disabled for custom-visual types but kept non-null so downstream code reading `sr.sortingOrder` works), `extensionSrs[]` (`_b/_m/_t` vertical-shape children), `customSrs[]` (per-StructType extras like tarp's cloth + posts), and `tintableSrs[]` (flattened union — walked by `Structure.SetTint` so the deconstruct red overlay reaches every spawned SR without per-subclass code).
+
+**Two paths**:
+- **Standard** (default): resolves the anchor sprite via `StructureVisuals.ResolveAnchorSprite`, applies sliced fallback if missing, spawns vertical extension SRs for shape-aware `nx==1, ny>1` shapes (`_b/_m/_t` slice convention).
+- **Custom-visual** (per-name dispatch in `Build`): handles structures whose visual doesn't fit the standard sprite-and-extensions model. Currently: `tarp` → `BuildTarp`. To add a new custom visual (tassels, banners, etc.): add one branch in `Build`, write a small static helper that spawns the children. No edits to Structure.cs / Blueprint.cs / MouseController.cs needed.
+
+**Caller responsibilities**: each caller positions its own `parent` GO (depth-aware for built structures, same convention for blueprints, cursor-following for previews) and chooses `baseSortingOrder` for its layer (depth-derived built / 100 blueprint / 200 preview). `Build` applies rotation, sortingOrder, sort bucket, and tint uniformly; callers don't replicate that logic.
+
+**MouseController state cache**: the preview respawns visuals only when `(structType, shapeIndex, mirrored, rotation)` changes — per-frame work is just a `transform.position` update on the parent GO, no GC. Spawned visuals live under a `previewVisualRoot` child of `buildPreview` so toggling them as a unit on Build/Remove mode transitions is one `SetActive` call.
+
+## Tarps — stretched-sprite decoration
+
+`Tarp` is a horizontal-only shape-aware building (`shapes` array of widths 3–6, `depth: 1`) — a thin `Building` subclass in [Tarp.cs](../Model/Structure/Tarp.cs) that exists mainly so `Structure.Create` has a hook to dispatch to. The actual visual lives in the `TarpVisuals` static helper in the same file (`Spawn` / `Layout` / `Tint` / `SetActive`), invoked by `StructureVisualBuilder.BuildTarp`.
+
+`BuildTarp` creates a *disabled* main SR (kept so `Structure.sr` stays non-null for downstream reads — sortingOrder, deconstruct overlay) plus three custom child SRs:
+- **Cloth** — `Sprites/Buildings/tarp_cloth.png`, anchored at the midpoint between posts, `drawMode = Sliced` with `size = (nx-1, 1)` so it stretches horizontally between the two post centres. Configure 9-slice borders on the asset's importer to control which pixels stay constant vs. stretch. `sortingOrder = base + 1`.
+- **Left post** — `Sprites/Buildings/tarp_post.png` at the leftmost tile centre (localX=0), no flip.
+- **Right post** — same sprite at the rightmost tile centre (localX=nx-1), `flipX = true` so the art reads as its own reflection.
+
+Missing assets log a warning and that piece is skipped — the rest still renders.
+
+`StructType.blocksRain = true` (without `solidTop`) makes tiles directly under the tarp report `IsExposedAbove == false` — see SPEC-systems §Rain/wind. Items don't rest on the cloth (no solidTop, no item-falling stop), and mice can't stand on it.

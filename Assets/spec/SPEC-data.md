@@ -163,11 +163,9 @@ Fields:
 | `moistureMin` | int? | 0–100 soil-moisture lower bound (reads `Tile.moisture`) |
 | `moistureMax` | int? | 0–100 soil-moisture upper bound |
 | `moistureDrawPerHour` | float? | passive draw from the soil tile below each in-game hour (default 2). Crossing into a new growth stage additionally costs `2 × this` from the same tile — see gating below |
-| `maxHeight` | int? | max tile-height this plant can reach (default 1). Multi-tile plants extend upward as growth stage crosses 4-stage thresholds (stage 4 → 2 tall, stage 8 → 3 tall); max stage = `4 × maxHeight − 1`. Yield at harvest scales linearly with the plant's current height. See SPEC-systems.md "Plant Growth". |
+| `maxHeight` | int? | max tile-height this plant can reach (default 1). Multi-tile plants extend upward as growth stage crosses 4-stage thresholds (stage 4 → 2 tall, stage 8 → 3 tall); max stage = `4 × maxHeight − 1`. Yield at harvest scales linearly with the plant's current height. |
 
-**Comfort range gating**: `Plant.Grow()` skips its age increment when either the global ambient temperature OR the tile's `moisture` is outside the authored range. Out-of-range simply freezes growth — no withering, no stress. Null bounds mean "no limit" on that side, letting plants with unspecified ranges grow unconditionally. The helper `PlantType.IsComfortableAt(Tile, WeatherSystem)` encapsulates the range tests.
-
-**Moisture consumption**: every in-game hour, each plant drains `moistureDrawPerHour` from the soil tile below (clamped ≥ 0; undersupplied plants simply take what's available). Additionally, whenever `Plant.Grow()` would cross into the next growth stage, it must first pay `2 × moistureDrawPerHour` from that same tile — if the soil doesn't carry that cost, the plant holds at its current stage (age also holds, keeping `stage = age*3/growthTime` coherent). This advancement cost is where moisture shortage actually gates growth; the passive draw just drains the soil over time.
+For the gameplay mechanics behind these fields (comfort gating, per-hour moisture draw, stage-advance cost, height extension), see SPEC-systems.md §Plant Growth.
 
 ## `tilesDb.json` — TileTypes
 
@@ -179,6 +177,7 @@ Fields:
 | `name` | string | lookup key |
 | `solid` | int | 0=passable, 1=solid (blocks movement) |
 | `group` | string? | logical family (e.g. `"stone"` for limestone/granite/slate). `StructPlacement` treats `requiredTileName` as a match on either the tile's name or its group, so quarry's `requiredTileName: "stone"` accepts any stone variant. |
+| `overlay` | string? | name of an overlay sprite sheet that tiles of this type can carry per-side decoration from. `dirt → "grass"` today; future moss-on-stone would set this on stone variants. Loads from `Resources/Sprites/Tiles/Sheets/<overlay>.png` (32×32 atlas, transparent Main interior). See SPEC-rendering "Tile overlays" for the rendering trick. |
 | `nproducts` | `[{name, quantity}]`? | items dropped on tile break (semantically: "clear the area"). Simple flat drops, no chance. |
 | `nExtractionProducts` | `[{name, quantity, chance?}]`? | items produced each cycle by an extraction building (e.g. quarry) placed on this tile. Distinct from `nproducts` because extraction is deliberate harvesting, not mining clearance. Consumed via `Quarry.GetExtractionOutputs` → `AnimalStateManager` craft loop. |
 

@@ -35,7 +35,7 @@ public class Windmill : Building, PowerSystem.IPowerProducer {
     // Degrees per second the wheel sweeps at full wind magnitude (|wind| = 1). Linear
     // interpolation: actual speed = wind × WheelDegPerSecAtMaxWind, signed so positive wind
     // spins one way and negative wind the other.
-    public const float WheelDegPerSecAtMaxWind = 180f;
+    public const float WheelDegPerSecAtMaxWind = 126f;
 
     public Windmill(StructType st, int x, int y, bool mirrored = false) : base(st, x, y, mirrored) { }
 

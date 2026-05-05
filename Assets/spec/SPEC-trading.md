@@ -8,7 +8,7 @@ and chat with other settlements.
 
 ```
 Unity Client (TradingClient.cs)
-        │  WebSocket  ws://127.0.0.1:8080/ws?name=<PlayerName>
+        │  WebSocket  ws://127.0.0.1:8083/ws?name=<PlayerName>
         ▼
   Go Server  (~/projects/shonei-server/main.go)
     └── Hub  (goroutine, central coordinator)
@@ -23,7 +23,7 @@ Unity Client (TradingClient.cs)
 - Player name passed as a query param on connect (`?name=Mouse1`); the server
   stamps it onto outgoing chat and order messages.
 - Unity client auto-reconnects every 20 s when disconnected.
-- Server binds to `127.0.0.1:8080` (localhost only for now).
+- Server binds to `127.0.0.1:8083` (localhost only for now). Port 8082 is reserved for the MCP for Unity bridge, which Unity launches automatically.
 
 ## Wire Protocol
 
@@ -111,6 +111,8 @@ Singleton. Subscribes to TradingClient events in `Start()`, unsubscribes in
 | `chatList` | Transform | VLG content for chat + fill messages |
 | `chatInput` | TMP_InputField | Chat message input |
 | `onlineIndicator` | GameObject | Image + TMP child showing online/offline |
+| `itemIconGrid` | Transform | GridLayoutGroup container; populated once in `Start()` with one `ItemIcon` per leaf item in `Db.itemsFlat`. Clicking an icon sets `itemInput.text` and triggers `OnClickQuery()`. Groups are skipped — trading is leaf-only. |
+| `itemIconPrefab` | GameObject | `Resources/Prefabs/ItemIcon.prefab`. |
 
 **Button wiring:**
 
@@ -135,7 +137,7 @@ Singleton. Subscribes to TradingClient events in `Start()`, unsubscribes in
 ```bash
 cd ~/projects/shonei-server
 go mod tidy      # first run only
-go run main.go   # listens on 127.0.0.1:8080
+go run main.go   # listens on 127.0.0.1:8083
 ```
 
 Test client: `go run client/main.go -name=Mouse1`
@@ -356,17 +358,3 @@ share the same `name` for a nation that trades multiple items.
 **To add a new nation:** add an entry to `traders.json`.  
 **To add more items for a nation:** add another entry with the same `name`.  
 **Prices/quantities:** always in fen (100 fen = 1 liang).
-
-### Known gaps / TODO
-
-- **Concurrency**: `Exchange.placeOrder` is called from per-client goroutines
-  with no mutex on the Exchange — needs to be serialized through the Hub's
-  `run()` goroutine.
-- **Order cancellation**: not yet implemented on server; resting-order
-  reservations cannot be released until this is added.
-- **Persistence**: order book is in-memory only; lost on server restart.
-- **Player name**: hardcoded as `"anita"`; make configurable later.
-- **Authentication**: none; name is trusted from query param.
-- **LAN/internet play**: change server bind to `0.0.0.0` and update `WsUrl`.
-- **Redundant order broadcast**: the `order` broadcast after matching is noisy
-  since clients already receive `fill` messages; consider removing.

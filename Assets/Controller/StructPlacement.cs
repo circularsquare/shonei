@@ -48,12 +48,25 @@ public static class StructPlacement {
             }
         }
 
-        // When mirrored, the "body" side of the building is at (nx-1) rather than 0, so
-        // standability must be checked there instead of the anchor.
-        int bodyDx = mirrored ? fnx - 1 : 0;
-        if (st.name != "empty" && st.requiredTileName == null && !placementTileMustBeSolid
-            && !world.graph.nodes[tile.x + bodyDx, tile.y].standable
-            && !SupportedByBlueprintBelow(tile.x + bodyDx, tile.y)) return false;
+        // Standability check on the bottom row.
+        // Default: one "body" tile must be supported (left end if !mirrored, right end if mirrored).
+        // edgeSupported: BOTH ends of the footprint must be supported, with the middle free to
+        // hang in mid-air (e.g. tarps strung between two posts).
+        if (st.name != "empty" && st.requiredTileName == null && !placementTileMustBeSolid) {
+            if (st.edgeSupported) {
+                int leftX  = tile.x;
+                int rightX = tile.x + fnx - 1;
+                bool leftOk  = world.graph.nodes[leftX,  tile.y].standable
+                            || SupportedByBlueprintBelow(leftX,  tile.y);
+                bool rightOk = world.graph.nodes[rightX, tile.y].standable
+                            || SupportedByBlueprintBelow(rightX, tile.y);
+                if (!leftOk || !rightOk) return false;
+            } else {
+                int bodyDx = mirrored ? fnx - 1 : 0;
+                if (!world.graph.nodes[tile.x + bodyDx, tile.y].standable
+                    && !SupportedByBlueprintBelow(tile.x + bodyDx, tile.y)) return false;
+            }
+        }
 
         // Data-driven per-tile constraints from JSON.
         // When mirrored, X offsets are flipped: effectiveDx = (nx - 1 - dx).

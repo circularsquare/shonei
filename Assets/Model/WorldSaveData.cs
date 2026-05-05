@@ -50,6 +50,18 @@ public class TileSaveData {
     public InventorySaveData inv;     // floor inventory only; storage building inventories are filled after structures are restored
     public int backgroundWallType;    // BackgroundType enum (0=None, 1=Stone, 2=Dirt) — authoritative
     public bool hasBackgroundWall;    // legacy: read for migration of pre-typed saves; no longer written
+    // Per-side overlay-decoration bits (grass on dirt, future moss on stone). Bit
+    // layout: 0=L 1=R 2=D 3=U. Nullable so absent on (a) old saves, and (b) tiles
+    // with mask=0 — keeps the on-disk JSON small and golden-test diffs minimal.
+    public byte? overlayMask;
+    // Overlay decoration health state (OverlayState enum: 0=Live, 1=Dying, 2=Dead).
+    // Nullable: absent on old saves and on tiles in the default Live state. Only
+    // meaningful when overlayMask != 0; healthy/empty tiles stay null on disk.
+    public byte? overlayState;
+    // Weather-driven snow cover (binary today; future: depth byte). Nullable:
+    // absent on old saves and on snow-free tiles, keeping JSON small and
+    // golden-test diffs minimal — same convention as overlayMask/overlayState.
+    public bool? snow;
 }
 
 public class StructureSaveData {

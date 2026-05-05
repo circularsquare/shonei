@@ -34,6 +34,18 @@ using UnityEngine.TestTools;
 //   distribution loop is best tested alongside Task reservation tests.
 [TestFixture]
 public class InventoryTests {
+    sealed class TestTask : Task {
+        public bool completed;
+
+        public TestTask(Animal animal) : base(animal) {}
+
+        public override bool Initialize() => true;
+
+        public override void Complete() {
+            completed = true;
+            base.Complete();
+        }
+    }
 
     // ── Test items (rebuilt per-fixture, restored in OneTimeTearDown) ───
     Item apple;        // Default class, leaf
@@ -330,6 +342,46 @@ public class InventoryTests {
         // the only opt-in storage case, because tanks deliberately stay manual.
         Inventory shelf = MakeStorage(ItemClass.Book);
         Assert.That(shelf.allowed[book.id], Is.True);
+    }
+
+    [Test]
+    public void FetchObjective_OnArrival_OnlyTakesReservedAmountFromCurrentSource(){
+        Inventory source = MakeAnimal(stackSize: 100);
+        Inventory dest = MakeAnimal(stackSize: 100);
+        source.Produce(apple, 50);
+
+        GameObject animalGo = new GameObject("TestAnimal");
+        try {
+            Animal animal = animalGo.AddComponent<Animal>();
+            animal.aName = "Tester";
+            animal.inv = dest;
+
+            TestTask task = new TestTask(animal);
+            animal.task = task;
+
+            int reserved = task.ReserveStack(source.itemStacks[0], 17);
+            Assert.That(reserved, Is.EqualTo(17), "fixture sanity: reservation should succeed");
+
+            FetchObjective objective = new FetchObjective(
+                task,
+                new ItemQuantity(apple, 100),
+                softFetch: true,
+                sourceInv: source,
+                sourceLimit: reserved);
+
+            objective.OnArrival();
+
+            Assert.That(dest.Quantity(apple), Is.EqualTo(17),
+                "fetch visit should only move the amount reserved from this source");
+            Assert.That(source.Quantity(apple), Is.EqualTo(33),
+                "unreserved remainder should stay in the source inventory");
+            Assert.That(task.completed, Is.True);
+            Assert.That(animal.task, Is.Null, "successful completion should cleanly release the task");
+            Assert.That(source.itemStacks[0].resAmount, Is.EqualTo(0),
+                "task cleanup should release the source reservation after completion");
+        } finally {
+            Object.DestroyImmediate(animalGo);
+        }
     }
 
     // ── Helpers ────────────────────────────────────────────────────────

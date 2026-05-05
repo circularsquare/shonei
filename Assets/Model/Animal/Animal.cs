@@ -876,7 +876,7 @@ public class Animal : MonoBehaviour{
         task?.Fail();
         AnimalController.instance.UnregisterAnimalFromTile(_currentTile);
         _currentTile = null;
-        if (inv != null) { inv.Destroy(); inv = null; }
+        if (inv != null) { inv.Destroy(reason: $"{aName} died"); inv = null; }
         GameObject.Destroy(gameObject);
     }
 

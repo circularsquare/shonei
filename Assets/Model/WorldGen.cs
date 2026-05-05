@@ -96,9 +96,47 @@ public static class WorldGen {
 
         FillDepressions(world, surfaceY);
 
+        PopulateOverlays(world);
+
         SeedMoisture(world);
 
         return surfaceY;
+    }
+
+    // ── Tile overlays ────────────────────────────────────────────────────
+    // Seed overlayMask bits on every overlay-bearing tile (today: dirt → grass)
+    // so each cardinal edge that's currently exposed to non-solid, non-flooded air
+    // is decorated. Mining never auto-sets bits (handled by Tile.type setter and
+    // by the absence of any code path that *adds* bits at runtime), so freshly
+    // exposed dirt edges look like bare dirt, not insta-grass.
+    //
+    // Runs after FillDepressions so we can see which surface tiles are flooded —
+    // submerged dirt shouldn't sprout grass on the under-water side. Underground
+    // dirt exposed to caves is intentionally treated like the surface and gets
+    // grass on the cave-facing edges.
+    public static void PopulateOverlays(World world) {
+        for (int x = 0; x < world.nx; x++) {
+            for (int y = 0; y < world.ny; y++) {
+                Tile t = world.GetTileAt(x, y);
+                if (t.type.overlay == null) continue;
+
+                byte mask = 0;
+                // Bit layout matches cMask: 0=L, 1=R, 2=D, 3=U.
+                if (IsExposedAndDry(world, x - 1, y    )) mask |= 1;
+                if (IsExposedAndDry(world, x + 1, y    )) mask |= 2;
+                if (IsExposedAndDry(world, x,     y - 1)) mask |= 4;
+                if (IsExposedAndDry(world, x,     y + 1)) mask |= 8;
+                t.overlayMask = mask;
+            }
+        }
+    }
+
+    static bool IsExposedAndDry(World world, int x, int y) {
+        Tile n = world.GetTileAt(x, y);
+        if (n == null) return false;
+        if (n.type.solid) return false;
+        if (n.water > 0) return false;
+        return true;
     }
 
     // ── Background walls ─────────────────────────────────────────────────

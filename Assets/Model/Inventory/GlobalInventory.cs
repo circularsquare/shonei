@@ -37,6 +37,16 @@ public class GlobalInventory {
         itemAmounts[iid] += quantity;
         if (cbInventoryChanged != null){
             cbInventoryChanged(this); } // make sure to add this callback thing wherever inv is changed
+
+        // Invariant: an item we have any positive quantity of must be discovered.
+        // Enforced at the source so /give, save-load with stale discovery state, and
+        // any future code path that pushes items in get the same guarantee without
+        // having to remember to call DiscoverItem themselves.
+        var ic = InventoryController.instance;
+        if (itemAmounts[iid] > 0 && ic != null && ic.discoveredItems != null
+                && ic.discoveredItems.TryGetValue(iid, out bool isDiscovered) && !isDiscovered) {
+            ic.DiscoverItem(Db.items[iid]);
+        }
     }
     public void AddItems(ItemQuantity[] iqs, bool negate = false){
         if (negate){

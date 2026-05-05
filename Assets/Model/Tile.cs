@@ -10,9 +10,18 @@ using System.Runtime.Serialization;
 // slots, optional floor inventory, water level, and pathfinding Node. Fires callbacks
 // on change so controllers can re-render without polling. Static grid coordinates
 // (x, y) are immutable after construction.
+
+// Health state of the tile's overlay decoration. Drives an atlas-suffix swap in
+// WorldController.OnTileOverlayChanged: e.g. "grass" → "grass_dying" → "grass_dead".
+// Default Live so legacy saves and freshly-grown grass start healthy. Underlying
+// byte ordering matters (saved as int): inserting a new value would break old saves.
+public enum OverlayState : byte { Live = 0, Dying = 1, Dead = 2 }
+
 public class Tile {
     Action<Tile> cbTileTypeChanged;
     Action<Tile> cbBackgroundChanged;
+    Action<Tile> cbOverlayChanged;
+    Action<Tile> cbSnowChanged;
 
     World world;
     public int x, y;
@@ -21,10 +30,72 @@ public class Tile {
     public TileType type{
         get{return _type;}
         set{
+            // If we're moving to a tile type that doesn't carry an overlay (e.g. dirt → empty
+            // on mining), drop the mask so we don't keep stale bits on a non-overlay tile.
+            // The visual would already be hidden (the overlay renderer checks for a non-null
+            // overlay name), but persisting these bits would dirty saves and confuse a future
+            // re-promotion of the tile to a different overlay-bearing type.
+            TileType prev = _type;
             _type = value;
+            if (_overlayMask != 0 && (value == null || value.overlay == null)
+                && prev != null && prev.overlay != null) {
+                _overlayMask = 0;
+                _overlayState = OverlayState.Live;
+                cbOverlayChanged?.Invoke(this);
+            }
+            // Mining a snowy tile (or any transition to a non-solid type) clears
+            // the snow flag — there's no surface left for it to rest on.
+            if (_snow && (value == null || !value.solid)) {
+                _snow = false;
+                cbSnowChanged?.Invoke(this);
+            }
             if (cbTileTypeChanged != null){
                 cbTileTypeChanged(this);
             }
+        }
+    }
+    // Per-side decoration bits for overlay materials (grass on dirt, future moss on stone, …).
+    // Bit 0=L, 1=R, 2=D, 3=U (matches the cMask layout used by tile-sprite baking).
+    // The bit semantics are generic — "side is decorated" — and the *atlas* selecting how that
+    // looks is tile.type.overlay (e.g. "grass"). Worldgen seeds bits on every exposed cardinal
+    // edge of overlay-bearing tiles; mining never auto-sets bits, so freshly exposed sides
+    // stay bare. The renderer further AND-masks with neighbor-emptiness, so a side that becomes
+    // visually buried (e.g. a structure goes adjacent) hides its grass without touching data.
+    private byte _overlayMask;
+    public byte overlayMask {
+        get { return _overlayMask; }
+        set {
+            if (_overlayMask == value) return;
+            _overlayMask = value;
+            cbOverlayChanged?.Invoke(this);
+        }
+    }
+    // Health state of the overlay decoration (Live / Dying / Dead). Driven by
+    // OverlayGrowthSystem from temperature + moisture. Renderer appends a suffix
+    // to the atlas name based on this value. Reset to Live when the tile transitions
+    // to a non-overlay type (alongside overlayMask).
+    private OverlayState _overlayState;
+    public OverlayState overlayState {
+        get { return _overlayState; }
+        set {
+            if (_overlayState == value) return;
+            _overlayState = value;
+            cbOverlayChanged?.Invoke(this);
+        }
+    }
+    // Weather-driven snow cover. Orthogonal to the grass overlay system above —
+    // snow is ephemeral, can land on any solid tile (dirt, stone, …), and
+    // accumulating snow kills the underlying grass. Driven by SnowAccumulationSystem
+    // from temperature + WeatherSystem.snowAmount; renderer subscribes to the
+    // change callback for sprite swaps. Cleared when the tile becomes non-solid
+    // (mining) — same pattern as overlayMask.
+    private bool _snow;
+    public bool snow {
+        get { return _snow; }
+        set {
+            if (_snow == value) return;
+            _snow = value;
+            cbSnowChanged?.Invoke(this);
         }
     }
     // Background wall behind the tile (rendered by BackgroundTile.cs).
@@ -67,6 +138,14 @@ public class Tile {
     public void UnregisterCbTileTypeChanged(Action<Tile> callback){cbTileTypeChanged -= callback;}
     public void RegisterCbBackgroundChanged(Action<Tile> callback){cbBackgroundChanged += callback;}
     public void UnregisterCbBackgroundChanged(Action<Tile> callback){cbBackgroundChanged -= callback;}
+    public void RegisterCbOverlayChanged(Action<Tile> callback){cbOverlayChanged += callback;}
+    public void UnregisterCbOverlayChanged(Action<Tile> callback){cbOverlayChanged -= callback;}
+    public void RegisterCbSnowChanged(Action<Tile> callback){cbSnowChanged += callback;}
+    public void UnregisterCbSnowChanged(Action<Tile> callback){cbSnowChanged -= callback;}
+    // Fire the overlay callback without changing data — used when external state
+    // that the renderer reads (e.g. structs[3] for road suppression) flips, but
+    // the tile's own overlay fields haven't.
+    public void NotifyOverlayDirty(){ cbOverlayChanged?.Invoke(this); }
     public bool ContainsAvailableItem(Item item){return inv != null && inv.ContainsAvailableItem(item);}
     public ItemStack GetItemToHaul(){
         if (inv == null){return null;}
@@ -132,6 +211,10 @@ public class TileType {
     // Optional logical family ("stone" for limestone/granite/slate, etc.) — used by
     // StructPlacement so that a building's `requiredTileName` can match by group.
     public string group {get; set;}
+    // Optional name of an overlay sprite sheet (e.g. "grass" for dirt). When non-null,
+    // tiles of this type can have a per-side overlayMask whose bits are rendered as
+    // edge art from Sprites/Tiles/Sheets/<overlay>.png. See Tile.overlayMask.
+    public string overlay {get; set;}
     public ItemNameQuantity[] nproducts {get; set;}         // tile-break drops (authored in liang)
     public ItemQuantity[] products;                         // fen, populated on deserialize
     // Quarry / extraction-building yields, distinct from tile-break drops.

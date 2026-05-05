@@ -127,7 +127,6 @@ public class ItemDisplay : MonoBehaviour {
 
     public void OnClickDropdown(){
         if (item == null || item.children == null || item.children.Length == 0){ return; } // don't toggle if no children
-        if (displayMode == DisplayMode.Market){ return; } // market always keeps groups expanded
         open = !open;
         foreach (Item child in item.children){
             if (child.IsDiscovered()){ // don't toggle if undiscovered

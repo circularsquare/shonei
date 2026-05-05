@@ -7,7 +7,7 @@ CONTENT
 - clothing
     - silkworm building? -> silk cocoons -> cloth -> clothing 
 - trading 
-- trains
+- trains    
 - plant
     - farmers can water plants 
         - make tanks not require pumps
@@ -15,20 +15,19 @@ CONTENT
     - irrigation?
 - research
     - additional levels display?
-- books 
-    - cleanup?
+- books cleanup?
 - power 
     - small internal power storage for power consumers? (hidden if contain 0 power)
+- tarp
+    - for safety from rain?
+- thermometer/glass
 
 VISUALS
 - make item icons more coherent / similar
 - tab styling, add building icons?
-- lighting, make light height vary depending on sorting order? at least for background.
 - lighting 
     - improve undergroundwall sprite 
-    -vprocedurally generate rocks with normalmaps?
-
-- improve inventory display placement...
+    - procedurally generate rocks with normalmaps?
 
 MOUSE AI
 - ponder inventory management
@@ -47,7 +46,3 @@ CODE CLEANUP
 BUGS
 
 SHORT TERM
-- test new stone mining yield distributions
-
-- elevators!
-    - elevator internal power storage
