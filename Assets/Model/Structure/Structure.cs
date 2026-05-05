@@ -242,9 +242,11 @@ public class Structure {
 
     // Flattened union of every spawned SR (main + extensions + custom-visual children).
     // Walked by SetTint so the deconstruct overlay reaches all renderers without needing
-    // per-subclass knowledge of where the children live. Populated by
-    // StructureVisualBuilder.Build during construction.
-    private SpriteRenderer[] tintableSrs;
+    // per-subclass knowledge of where the children live. Initially populated by
+    // StructureVisualBuilder.Build during construction; subclasses with dynamic visual
+    // children (e.g. Plant's growth-stage extensions) keep it in sync as their visual
+    // changes — see Plant.RefreshTintableSrs().
+    protected SpriteRenderer[] tintableSrs;
 
     public Structure(StructType st, int x, int y, bool mirrored = false, int rotation = 0, int shapeIndex = 0){
         this.structType = st;

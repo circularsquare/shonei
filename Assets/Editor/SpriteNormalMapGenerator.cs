@@ -1,11 +1,13 @@
 using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
+using System.Text;
 using SysPath = System.IO.Path;
 using SysFile = System.IO.File;
 
 // Right-click any Texture2D → "Generate Sprite Normal Map"  (single)
 // Tools menu             → "Generate All Sprite Normal Maps" (batch, Assets/Sprites/)
+// Tools menu             → "Generate All Sprite Normal Maps (Force)" (ignores cache)
 //
 // Each _n.png is auto-assigned as a _NormalMap secondary texture on the source
 // sprite so URP's Sprite Lit shader picks it up with no runtime code needed.
@@ -34,6 +36,20 @@ using SysFile = System.IO.File;
 //       Structure.cs and LightSource.cs.
 //   `{stem}_n.png` — generated normal map output (skipped in batch).
 //
+// Performance:
+//   - Source pixels are read via `Texture2D.LoadImage(SysFile.ReadAllBytes(...))`
+//     instead of toggling the importer's `isReadable` flag. Avoids two full
+//     texture reimports per sprite.
+//   - Batch runs wrap their work in `AssetDatabase.StartAssetEditing()` so that
+//     ImportAsset / SaveAndReimport calls coalesce into one final import sweep
+//     at the end, instead of N synchronous reimports inside the loop.
+//   - Up-to-date check skips sprites whose source PNG, slice config, merged flag,
+//     and `_e.png` companion all match the state recorded in the importer's
+//     userData (`normalsCacheKey=<md5>`). Force variant ignores the cache.
+//   - Single-asset and folder menus default to force-regen — the user explicitly
+//     selected what to regenerate. Only the "All" variant honors the cache, with
+//     a separate "(Force)" entry for full regen.
+//
 // BevelZ: higher = shallower bevel (more frontal catch), 1 = 45° bevel.
 public static class SpriteNormalMapGenerator {
     const float BevelZ = 1f;
@@ -48,10 +64,15 @@ public static class SpriteNormalMapGenerator {
 
     [MenuItem("Assets/Generate Sprite Normal Map")]
     static void Generate() {
-        foreach (Object obj in Selection.objects)
-            if (obj is Texture2D tex)
-                ProcessTexture(tex);
-        AssetDatabase.Refresh();
+        try {
+            AssetDatabase.StartAssetEditing();
+            foreach (Object obj in Selection.objects)
+                if (obj is Texture2D tex)
+                    ProcessTexture(tex, force: true);
+        } finally {
+            AssetDatabase.StopAssetEditing();
+            AssetDatabase.Refresh();
+        }
     }
 
     // ── folder: right-click a folder to process all textures in it ──────────
@@ -71,9 +92,9 @@ public static class SpriteNormalMapGenerator {
             string path = AssetDatabase.GetAssetPath(o);
             if (AssetDatabase.IsValidFolder(path)) folders.Add(path);
         }
-        int count = ProcessFolders(folders.ToArray());
+        var (processed, skipped, cancelled) = ProcessFolders(folders.ToArray(), force: false);
         AssetDatabase.Refresh();
-        Debug.Log($"[NormalMapGen] Done — processed {count} texture(s) in {folders.Count} folder(s).");
+        Debug.Log($"[NormalMapGen] Folder done — processed {processed}, skipped {skipped} up-to-date, in {folders.Count} folder(s).{(cancelled ? " (cancelled)" : "")}");
     }
 
     // ── batch: all textures under Assets/Sprites that aren't already _n ──────
@@ -85,73 +106,111 @@ public static class SpriteNormalMapGenerator {
     };
 
     [MenuItem("Tools/Generate All Sprite Normal Maps")]
-    internal static void GenerateAll() {
-        int count = ProcessFolders(BatchFolders);
+    internal static void GenerateAll() => GenerateAllInternal(force: false);
+
+    [MenuItem("Tools/Generate All Sprite Normal Maps (Force)")]
+    internal static void GenerateAllForce() => GenerateAllInternal(force: true);
+
+    static void GenerateAllInternal(bool force) {
+        var (processed, skipped, cancelled) = ProcessFolders(BatchFolders, force);
         AssetDatabase.Refresh();
-        Debug.Log($"[NormalMapGen] Done — processed {count} texture(s).");
+        Debug.Log($"[NormalMapGen] Batch done — processed {processed}, skipped {skipped} up-to-date.{(force ? " (force)" : "")}{(cancelled ? " (cancelled)" : "")}");
     }
 
-    static int ProcessFolders(string[] folders) {
+    // Returns (processed, skipped, cancelled).
+    static (int processed, int skipped, bool cancelled) ProcessFolders(string[] folders, bool force) {
         string[] guids = AssetDatabase.FindAssets("t:Texture2D", folders);
-        int count = 0;
+        int processed = 0, skipped = 0;
+        bool cancelled = false;
+
+        // Partition: regular sprites first, fire sprites second (post-pass for emission wiring).
+        var regularPaths = new List<string>();
+        var firePaths    = new List<string>();
         foreach (string guid in guids) {
             string path = AssetDatabase.GUIDToAssetPath(guid);
             if (path.EndsWith("_n.png")) continue;       // skip generated normal maps
-            if (path.EndsWith("_f.png")) continue;       // fire sprites get flat normals in the post-pass below
             if (path.EndsWith("_e.png")) continue;       // skip emission mask companions
             if (path.Contains("/Sheets/")) continue;     // skip source sheets — normals generated for split sprites only
-            Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
-            if (tex != null) { ProcessTexture(tex); count++; }
+            if (path.EndsWith("_f.png")) firePaths.Add(path);
+            else                         regularPaths.Add(path);
+        }
+        int total = regularPaths.Count + firePaths.Count;
+
+        try {
+            AssetDatabase.StartAssetEditing();
+            int idx = 0;
+
+            foreach (string path in regularPaths) {
+                idx++;
+                if (EditorUtility.DisplayCancelableProgressBar(
+                        "Generating Normal Maps",
+                        $"({idx}/{total}) {SysPath.GetFileName(path)}",
+                        idx / (float)total)) {
+                    cancelled = true; break;
+                }
+                Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+                if (tex == null) continue;
+                if (ProcessTexture(tex, force)) processed++;
+                else                            skipped++;
+            }
+
+            // Post-pass: fire sprites get flat normal maps + self/_e emission wiring.
+            if (!cancelled) {
+                foreach (string path in firePaths) {
+                    idx++;
+                    if (EditorUtility.DisplayCancelableProgressBar(
+                            "Generating Normal Maps (fire)",
+                            $"({idx}/{total}) {SysPath.GetFileName(path)}",
+                            idx / (float)total)) {
+                        cancelled = true; break;
+                    }
+                    Texture2D fireTex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+                    if (fireTex == null) continue;
+                    if (ProcessFlatNormal(fireTex, force)) processed++;
+                    else                                   skipped++;
+                }
+            }
+        } finally {
+            AssetDatabase.StopAssetEditing();
+            EditorUtility.ClearProgressBar();
         }
 
-        // Post-pass: fire art sprites (_f.png) get flat normal maps (fire doesn't
-        // catch directional light) and self-referencing _EmissionMap (all pixels emit).
-        foreach (string guid in guids) {
-            string path = AssetDatabase.GUIDToAssetPath(guid);
-            if (!path.EndsWith("_f.png")) continue;
-            Texture2D fireTex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
-            if (fireTex != null) { ProcessFlatNormal(fireTex); count++; }
-            string dir  = SysPath.GetDirectoryName(path);
-            string stem = SysPath.GetFileNameWithoutExtension(path);
-            string ePath = SysPath.Combine(dir, stem + "_e.png").Replace('\\', '/');
-            string emissionPath = SysFile.Exists(ePath) ? ePath : path; // self-reference fallback
-            AssignSecondaryTexture(path, emissionPath, "_EmissionMap");
-        }
-
-        return count;
+        return (processed, skipped, cancelled);
     }
 
     // ── flat normals (fire sprites) ─────────────────────────────────────────
     // Fire doesn't catch directional light — all opaque pixels get (0,0,1)
     // so NdotL is uniform regardless of sun/torch angle.
-    static void ProcessFlatNormal(Texture2D source) {
+    // Returns true if processed, false if skipped (up-to-date).
+    static bool ProcessFlatNormal(Texture2D source, bool force = false) {
         string srcPath = AssetDatabase.GetAssetPath(source);
         TextureImporter imp = AssetImporter.GetAtPath(srcPath) as TextureImporter;
-        if (imp == null) return;
+        if (imp == null) return false;
 
-        bool wasReadable = imp.isReadable;
-        if (!wasReadable) { imp.isReadable = true; imp.SaveAndReimport(); }
+        if (!force && IsUpToDate(srcPath, imp)) return false;
 
-        Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(srcPath);
-        if (tex == null) { if (!wasReadable) { imp.isReadable = false; imp.SaveAndReimport(); } return; }
+        // Load source pixels via PNG decode — no importer reimport needed.
+        Texture2D tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+        if (!tex.LoadImage(SysFile.ReadAllBytes(srcPath))) {
+            Debug.LogError($"[NormalMapGen] Failed to decode {srcPath}");
+            Object.DestroyImmediate(tex);
+            return false;
+        }
         Color32[] src = tex.GetPixels32();
         int w = tex.width, h = tex.height;
-        Color32[] dst = new Color32[w * h];
+        Object.DestroyImmediate(tex);
 
+        Color32[] dst = new Color32[w * h];
         for (int i = 0; i < w * h; i++) {
             byte a = (byte)(src[i].a < 128 ? 0 : 255);
             dst[i] = new Color32(128, 128, 255, a);
         }
 
-        if (!wasReadable) { imp.isReadable = false; imp.SaveAndReimport(); }
-
+        // Write output PNG
         Texture2D normalTex = new Texture2D(w, h, TextureFormat.RGBA32, false);
         normalTex.SetPixels32(dst);
         normalTex.Apply();
-
-        string dir     = SysPath.GetDirectoryName(srcPath);
-        string stem    = SysPath.GetFileNameWithoutExtension(srcPath);
-        string outPath = SysPath.Combine(dir, stem + "_n.png").Replace('\\', '/');
+        string outPath = NormalPathFor(srcPath);
         SysFile.WriteAllBytes(outPath, normalTex.EncodeToPNG());
         Object.DestroyImmediate(normalTex);
 
@@ -166,24 +225,37 @@ public static class SpriteNormalMapGenerator {
         }
 
         AssignSecondaryTexture(srcPath, outPath, "_NormalMap");
+
+        // Stamp cache key — coalesces with surrounding SaveAndReimports under StartAssetEditing.
+        SetUserDataFlag(imp, "normalsCacheKey", ComputeCacheKey(srcPath, imp));
+        imp.SaveAndReimport();
+
         Debug.Log($"[NormalMapGen] Written (flat): {outPath}");
+        return true;
     }
 
     // ── core ─────────────────────────────────────────────────────────────────
-    static void ProcessTexture(Texture2D source) {
+    // Returns true if processed, false if skipped (up-to-date).
+    static bool ProcessTexture(Texture2D source, bool force = false) {
         string srcPath = AssetDatabase.GetAssetPath(source);
         TextureImporter imp = AssetImporter.GetAtPath(srcPath) as TextureImporter;
-        if (imp == null) return;
+        if (imp == null) return false;
 
-        // Temporarily enable CPU read access
-        bool wasReadable = imp.isReadable;
-        if (!wasReadable) { imp.isReadable = true; imp.SaveAndReimport(); }
+        if (!force && IsUpToDate(srcPath, imp)) return false;
 
-        // Reload after reimport — the old reference may be stale
-        Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(srcPath);
-        if (tex == null) { if (!wasReadable) { imp.isReadable = false; imp.SaveAndReimport(); } return; }
+        // Load source pixels via PNG decode — no importer reimport needed.
+        // (Previous approach toggled `imp.isReadable` true/false around GetPixels32,
+        //  which cost two full reimports per sprite.)
+        Texture2D tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+        if (!tex.LoadImage(SysFile.ReadAllBytes(srcPath))) {
+            Debug.LogError($"[NormalMapGen] Failed to decode {srcPath}");
+            Object.DestroyImmediate(tex);
+            return false;
+        }
         Color32[] src = tex.GetPixels32();
         int w = tex.width, h = tex.height;
+        Object.DestroyImmediate(tex);
+
         Color32[] dst = new Color32[w * h];
 
         // Default-fill: transparent fallback. Pixels outside any processed rect
@@ -242,16 +314,12 @@ public static class SpriteNormalMapGenerator {
             }
         }
 
-        if (!wasReadable) { imp.isReadable = false; imp.SaveAndReimport(); }
-
         // Write output PNG
         Texture2D normalTex = new Texture2D(w, h, TextureFormat.RGBA32, false);
         normalTex.SetPixels32(dst);
         normalTex.Apply();
 
-        string dir     = SysPath.GetDirectoryName(srcPath);
-        string stem    = SysPath.GetFileNameWithoutExtension(srcPath);
-        string outPath = SysPath.Combine(dir, stem + "_n.png").Replace('\\', '/');
+        string outPath = NormalPathFor(srcPath);
         SysFile.WriteAllBytes(outPath, normalTex.EncodeToPNG());
         Object.DestroyImmediate(normalTex);
 
@@ -271,18 +339,82 @@ public static class SpriteNormalMapGenerator {
         // Assign as _NormalMap secondary texture on the source sprite
         AssignSecondaryTexture(srcPath, outPath, "_NormalMap");
 
-        // If a `_e.png` emission mask companion exists, wire it as `_EmissionMap` so
-        // EmissionWriter.shader picks it up at lighting time.
-        string dir_e  = SysPath.GetDirectoryName(srcPath);
-        string stem_e = SysPath.GetFileNameWithoutExtension(srcPath);
-        string ePath  = SysPath.Combine(dir_e, stem_e + "_e.png").Replace('\\', '/');
-        if (SysFile.Exists(ePath)) {
-            AssignSecondaryTexture(srcPath, ePath, "_EmissionMap");
-        }
+        // Wire/unwire `_EmissionMap` based on companion existence. Removing the
+        // companion later should also remove the secondary entry — otherwise
+        // the importer keeps a dead reference.
+        string ePath = EmissionPathFor(srcPath);
+        if (SysFile.Exists(ePath)) AssignSecondaryTexture(srcPath, ePath, "_EmissionMap");
+        else                       RemoveSecondaryTexture(srcPath, "_EmissionMap");
+
+        // Stamp cache key. The importer is the same native object used by
+        // AssignSecondaryTexture above, so userData modifications propagate.
+        // The trailing SaveAndReimport coalesces with the prior writes under
+        // StartAssetEditing — net cost is one importer pass per sprite.
+        SetUserDataFlag(imp, "normalsCacheKey", ComputeCacheKey(srcPath, imp));
+        imp.SaveAndReimport();
 
         Debug.Log($"[NormalMapGen] Written: {outPath}");
+        return true;
     }
 
+    // ── path helpers ─────────────────────────────────────────────────────────
+    static string NormalPathFor(string srcPath) {
+        string dir  = SysPath.GetDirectoryName(srcPath);
+        string stem = SysPath.GetFileNameWithoutExtension(srcPath);
+        return SysPath.Combine(dir, stem + "_n.png").Replace('\\', '/');
+    }
+
+    static string EmissionPathFor(string srcPath) {
+        string dir  = SysPath.GetDirectoryName(srcPath);
+        string stem = SysPath.GetFileNameWithoutExtension(srcPath);
+        return SysPath.Combine(dir, stem + "_e.png").Replace('\\', '/');
+    }
+
+    // ── up-to-date check ─────────────────────────────────────────────────────
+    // Inputs that should invalidate a cached `_n.png`:
+    //   - source PNG content (mtime proxy)
+    //   - merged flag
+    //   - sprite import mode (Single ↔ Multiple)
+    //   - filter mode (propagates into _n.png importer settings)
+    //   - spritesheet rects + names (slice changes regenerate)
+    //   - companion `_e.png` existence + mtime (affects _EmissionMap wiring)
+    // Hashed and stored as `normalsCacheKey=<md5>` in the source's importer userData.
+    static bool IsUpToDate(string srcPath, TextureImporter imp) {
+        string outPath = NormalPathFor(srcPath);
+        if (!SysFile.Exists(outPath)) return false;
+        string stored = GetUserDataValue(imp, "normalsCacheKey");
+        if (string.IsNullOrEmpty(stored)) return false;
+        return stored == ComputeCacheKey(srcPath, imp);
+    }
+
+    static string ComputeCacheKey(string srcPath, TextureImporter imp) {
+        var sb = new StringBuilder();
+        sb.Append(SysFile.GetLastWriteTimeUtc(srcPath).Ticks);
+        sb.Append('|').Append(HasUserDataFlag(imp, "normals", "merged") ? "M" : "_");
+        sb.Append('|').Append(imp.spriteImportMode);
+        sb.Append('|').Append(imp.filterMode);
+        if (imp.spriteImportMode == SpriteImportMode.Multiple) {
+            foreach (SpriteMetaData md in imp.spritesheet) {
+                sb.Append('|').Append(md.name)
+                  .Append(':').Append(md.rect.x).Append(',').Append(md.rect.y)
+                  .Append(',').Append(md.rect.width).Append(',').Append(md.rect.height);
+            }
+        }
+        string ePath = EmissionPathFor(srcPath);
+        if (SysFile.Exists(ePath)) {
+            sb.Append("|E").Append(SysFile.GetLastWriteTimeUtc(ePath).Ticks);
+        }
+        return Md5(sb.ToString());
+    }
+
+    static string Md5(string s) {
+        using (var m = System.Security.Cryptography.MD5.Create()) {
+            byte[] b = m.ComputeHash(Encoding.UTF8.GetBytes(s));
+            return System.Convert.ToBase64String(b);
+        }
+    }
+
+    // ── secondary-texture wiring ─────────────────────────────────────────────
     // Generic secondary-texture assignment. URP's Sprite Lit shader and our
     // own NormalsCapture / EmissionWriter shaders pick these up automatically
     // by name (`_NormalMap`, `_EmissionMap`, etc.) — no runtime wiring needed.
@@ -315,10 +447,35 @@ public static class SpriteNormalMapGenerator {
         imp.SaveAndReimport();
     }
 
+    // Strip any secondary-texture entries with the given name. Used when an
+    // `_e.png` companion has been deleted — without this, the importer would
+    // keep a dead `_EmissionMap` reference.
+    static void RemoveSecondaryTexture(string srcPath, string propName) {
+        TextureImporter imp = AssetImporter.GetAtPath(srcPath) as TextureImporter;
+        if (imp == null) return;
+
+        var so  = new SerializedObject(imp);
+        var arr = so.FindProperty("m_SpriteSheet.m_SecondaryTextures");
+        if (arr == null) return;
+
+        bool changed = false;
+        for (int i = arr.arraySize - 1; i >= 0; i--) {
+            var entry = arr.GetArrayElementAtIndex(i);
+            if (entry.FindPropertyRelative("name").stringValue == propName) {
+                arr.DeleteArrayElementAtIndex(i);
+                changed = true;
+            }
+        }
+        if (changed) {
+            so.ApplyModifiedPropertiesWithoutUndo();
+            imp.SaveAndReimport();
+        }
+    }
+
     // ── userData flags ───────────────────────────────────────────────────────
     // Importer userData carries semicolon-separated key=value pairs. Used here
-    // for the "merged" flag that tells the generator to treat a multi-sliced
-    // texture as one big sprite (spatial-tile sheets, not animation strips).
+    // for the "merged" flag (multi-sliced spatial sheets) and for the cache
+    // key stamp `normalsCacheKey=<md5>`.
     static bool HasUserDataFlag(TextureImporter imp, string key, string value) {
         if (imp == null || string.IsNullOrEmpty(imp.userData)) return false;
         foreach (string pair in imp.userData.Split(';')) {
@@ -328,6 +485,16 @@ public static class SpriteNormalMapGenerator {
                 return true;
         }
         return false;
+    }
+
+    static string GetUserDataValue(TextureImporter imp, string key) {
+        if (imp == null || string.IsNullOrEmpty(imp.userData)) return null;
+        foreach (string pair in imp.userData.Split(';')) {
+            int eq = pair.IndexOf('=');
+            if (eq < 0) continue;
+            if (pair.Substring(0, eq).Trim() == key) return pair.Substring(eq + 1).Trim();
+        }
+        return null;
     }
 
     static void SetUserDataFlag(TextureImporter imp, string key, string value) {

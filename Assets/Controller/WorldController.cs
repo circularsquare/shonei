@@ -19,6 +19,9 @@ public class WorldController : MonoBehaviour {
     // One per tile; sprite is null when the tile has no overlayMask, no overlay
     // sheet, or is covered by a road. See OnTileOverlayChanged.
     Dictionary<Tile, SpriteRenderer> tileOverlaySrMap;
+    // Per-tile snow SpriteRenderer. Orthogonal to the grass overlay — snow lands
+    // on any solid tile and is driven by SnowAccumulationSystem. See OnTileSnowChanged.
+    Dictionary<Tile, SpriteRenderer> tileSnowSrMap;
     Coroutine defaultSetupCoroutine;
     Material tileMaterial; // Custom/TileSprite shader for tiles
     // Inspector-assigned so the shader is part of the scene's serialized graph
@@ -49,6 +52,7 @@ public class WorldController : MonoBehaviour {
 
         tileGameObjectMap = new Dictionary<Tile, GameObject>();
         tileOverlaySrMap = new Dictionary<Tile, SpriteRenderer>();
+        tileSnowSrMap = new Dictionary<Tile, SpriteRenderer>();
         tilesTransform = transform.Find("Tiles");
 
         // Create material with Custom/TileSprite shader.
@@ -85,6 +89,20 @@ public class WorldController : MonoBehaviour {
                 if (tileMaterial != null) overlay_sr.material = tileMaterial;
                 tileOverlaySrMap.Add(tile, overlay_sr);
                 tile.RegisterCbOverlayChanged(OnTileOverlayChanged);
+
+                // Snow child renders above the grass overlay (sortingOrder=2) so
+                // accumulating snow visually covers the tile body. The grass
+                // overlay is also cleared on accumulation, so they shouldn't
+                // both be visible simultaneously — but the layering reflects
+                // the conceptual stack regardless.
+                GameObject snow_go = new GameObject("Snow");
+                snow_go.transform.SetParent(tile_go.transform, false);
+                SpriteRenderer snow_sr = snow_go.AddComponent<SpriteRenderer>();
+                snow_sr.sortingOrder = 2;
+                LightReceiverUtil.SetSortBucket(snow_sr);
+                if (tileMaterial != null) snow_sr.material = tileMaterial;
+                tileSnowSrMap.Add(tile, snow_sr);
+                tile.RegisterCbSnowChanged(OnTileSnowChanged);
             }
         }
 
@@ -295,6 +313,7 @@ public class WorldController : MonoBehaviour {
                 Tile t = world.GetTileAt(x, y);
                 OnTileTypeChanged(t);
                 OnTileOverlayChanged(t);
+                OnTileSnowChanged(t);
             }
     }
 
@@ -329,6 +348,12 @@ public class WorldController : MonoBehaviour {
         OnTileOverlayChanged(world.GetTileAt(tile.x + 1, tile.y - 1));
         OnTileOverlayChanged(world.GetTileAt(tile.x - 1, tile.y + 1));
         OnTileOverlayChanged(world.GetTileAt(tile.x + 1, tile.y + 1));
+
+        // Snow on tile T-1 depends on whether T is solid (we hide snow if the
+        // tile above is solid). So a solidity flip on T must refresh T-1's snow.
+        // Other neighbours' snow visuals don't depend on T, so we don't refresh
+        // them — keeps the touched-tile set minimal.
+        OnTileSnowChanged(world.GetTileAt(tile.x, tile.y - 1));
 
         world.graph.UpdateNeighbors(tile.x, tile.y); // i think this is redundant. should laready be called
         // in structcontroller whenever a tile type changes?
@@ -410,6 +435,47 @@ public class WorldController : MonoBehaviour {
         // interior bevel that would otherwise come from sampling grass.png's
         // thin grass-blade silhouette through BakeNormalMap's Sobel kernel.
         sr.sprite = TileSpriteCache.GetOverlay(overlayName, invertedCardinals, tile.x, tile.y);
+        SetNormalMap(sr, TileSpriteCache.GetNormalMap(tile.type.name, nMask, tile.x, tile.y));
+    }
+
+    // Snow uses the cardinal-mask atlas pipeline (TileSpriteCache.GetOverlay)
+    // so edges and corners connect properly across neighbouring snowy tiles.
+    // Distinct from grass in one important way: we **don't** augment the body's
+    // bodyCardinals with snow bits, so the body keeps drawing its real edge
+    // pieces. The snow sprite stacks on top of the body's unmodified edges —
+    // not "replace, don't stack" like grass. The artist authors snow.png with
+    // transparency / vertical positioning so the body's bevel still reads
+    // through the snow layer.
+    //
+    // Hidden when (a) tile.snow is false, or (b) the tile directly above is
+    // solid — a buried tile can carry snow data (snow accumulated then a wall
+    // was built above) but shouldn't render it.
+    void OnTileSnowChanged(Tile tile) {
+        if (tile == null) return;
+        if (!tileSnowSrMap.TryGetValue(tile, out var sr)) return;
+
+        if (!tile.snow || IsSolidAt(tile.x, tile.y + 1)) {
+            sr.sprite = null;
+            return;
+        }
+
+        // U-bit only. Inverted-cardinal mask convention (passed to GetOverlay)
+        // is "which sides are NOT decorated", so 0b0111 means only U is.
+        const int InvertedCardinalsTopOnly = 0b0111;
+
+        // nMask matches the body's so the normal-map sample reflects the same
+        // bevels as the body — same trick used by the grass overlay.
+        int nMask = 0;
+        if (IsSolidAt(tile.x - 1, tile.y))     nMask |= 1;
+        if (IsSolidAt(tile.x + 1, tile.y))     nMask |= 2;
+        if (IsSolidAt(tile.x,     tile.y - 1)) nMask |= 4;
+        if (IsSolidAt(tile.x,     tile.y + 1)) nMask |= 8;
+        if (IsSolidAt(tile.x - 1, tile.y - 1)) nMask |= 16;
+        if (IsSolidAt(tile.x + 1, tile.y - 1)) nMask |= 32;
+        if (IsSolidAt(tile.x - 1, tile.y + 1)) nMask |= 64;
+        if (IsSolidAt(tile.x + 1, tile.y + 1)) nMask |= 128;
+
+        sr.sprite = TileSpriteCache.GetOverlay("snow", InvertedCardinalsTopOnly, tile.x, tile.y);
         SetNormalMap(sr, TileSpriteCache.GetNormalMap(tile.type.name, nMask, tile.x, tile.y));
     }
 

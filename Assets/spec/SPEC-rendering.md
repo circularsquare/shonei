@@ -9,6 +9,7 @@
 | -10 | Background tile (`BackgroundTile`) |
 | 0 | Tiles |
 | 1 | Roads (depth-3 structures); also tile overlays (grass on dirt, future moss on stone). Mutually exclusive on a tile — overlay rendering is suppressed when a road is present. |
+| 2 | Tile snow cover (`SnowAccumulationSystem`). Layered above the grass overlay so accumulated snow visually covers the underlying ground; on roaded tiles snow draws on top, reading as a snow-covered road. |
 | 5 | Power shafts (depth-4 structures) — render behind buildings so shafts read as wall-mounted plumbing |
 | parent − 1 | Power port stubs (`PortStubVisuals` child SR, one below the parent building). Also: flywheel wheel — rendered behind the housing so the spokes peek through. |
 | 10 | Buildings (depth-0 structures) |
@@ -67,7 +68,18 @@ Every tile owns an optional **overlay** child SpriteRenderer that renders per-si
 - **Worldgen seeding**: `WorldGen.PopulateOverlays` runs after `FillDepressions` and seeds bits on every cardinal edge whose neighbour is non-solid AND non-flooded.
 - **Mining never auto-sets bits**: freshly exposed sides stay bare. The `Tile.type` setter clears `overlayMask` when transitioning to a type with no overlay (e.g. dirt → empty), so mined tiles don't carry stale data.
 - **Road suppression**: when `tile.structs[3] != null`, the overlay sprite is null. `Structure` ctor/`Destroy` call `Tile.NotifyOverlayDirty()` to refresh.
-- **Live growth + health state** (`OverlayGrowthSystem`): once per real-time second, dirt tiles with `moisture > 70` (when `temperature > 5°C`) roll a small chance to sprout grass on each non-grassy, exposed, non-flooded L/R/U side (~1 in-game day expected wait per side). Bottom never grows. The same Tick also evolves a per-tile `Tile.overlayState` (Live / Dying / Dead) — death is a per-tick roll while conditions warrant it (cold/dryout → Dying, deep freeze → Dead, ~10 s steady-state average), recovery to Live is the slower fresh-grass roll. The renderer appends `_dying` / `_dead` to the atlas name (`grass` → `grass_dying` → `grass_dead`); atlas geometry is identical across variants so per-side bit semantics are unchanged. See SPEC-systems "Soil Moisture" for the dispatch slot and full state-machine table.
+- **Live growth + health state** (`OverlayGrowthSystem`): once per real-time second, dirt tiles with `moisture > 40` (when `temperature > 5°C`) roll a small chance to sprout grass on each non-grassy, exposed, non-flooded L/R/U side (~½ in-game day expected wait per side). Bottom never grows. The same Tick also evolves a per-tile `Tile.overlayState` (Live / Dying / Dead) — death is a per-tick roll while conditions warrant it (cold/dryout → Dying, deep freeze → Dead, ~10 s steady-state average), recovery to Live is the slower fresh-grass roll. The renderer appends `_dying` / `_dead` to the atlas name (`grass` → `grass_dying` → `grass_dead`); atlas geometry is identical across variants so per-side bit semantics are unchanged. See SPEC-systems "Soil Moisture" for the dispatch slot and full state-machine table.
+
+### Snow cover
+
+Snow is rendered through a **separate per-tile child SpriteRenderer** at sortingOrder 2 — orthogonal to the grass overlay rather than another `tile.type.overlay` value. Reasons: grass is intrinsic to a tile type (dirt has it, stone doesn't); snow lands on any solid tile and is weather-driven, not authored. Coexistence beats reuse here.
+
+- **Per-tile state**: a single `bool Tile.snow`. Driven by `SnowAccumulationSystem` (see SPEC-systems "Snow accumulation"). Cleared in the `Tile.type` setter when a snowy tile is mined — same pattern as `_overlayMask`.
+- **Visibility**: hidden if the tile directly above is solid (a wall built over a snowy tile carries the data but doesn't render). No road/building gating here — sortingOrder layering handles the visuals.
+- **Sprite**: same `TileSpriteCache.GetOverlay` cardinal-mask atlas pipeline as grass — `Resources/Sprites/Tiles/Sheets/snow.png` is a 32×32 atlas, and the renderer always asks for the U-only inverted-cardinal variant (`0b0111`), so the artist authors that one slot for "snow on top of tile". Atlas connectivity matters even with a single decorated side: corner/edge variants ensure snow reads continuously across neighbouring snowy tiles when authored that way.
+- **Stacks, doesn't replace**: critical departure from grass. The body's `bodyCardinals` is **not** augmented with the snow's U bit, so the body keeps drawing its real top-edge bevel piece. The snow sprite stacks on top at sortingOrder 2 — so the artist authors snow.png with transparency / vertical positioning that lets the body's bevel still read through (e.g. drawing snow in the upper region of the U-edge slot, or with semi-transparent flake pixels). This is a deliberate visual choice: unlike grass-on-dirt where the dirt edge has no business showing through, snow-on-anything wants to feel deposited on top of the tile, not built into it.
+- **Normal map**: matches the body's normal data (`TileSpriteCache.GetNormalMap(tile.type.name, nMask, ...)`), same trick as grass — overlay SRs sample the body's normals so edge bevels don't pick up the overlay sprite's silhouette gradients.
+- **Coexistence with grass**: accumulation kills underlying grass (`overlayMask = 0`, `overlayState = OverlayState.Dead`), so the body is left in its bare state with snow on top. After melt, regrowth follows OverlayGrowthSystem's normal recovery rules.
 
 ### Blueprint visuals
 

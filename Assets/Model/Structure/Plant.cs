@@ -255,6 +255,7 @@ public class Plant : Structure {
         LightReceiverUtil.SetSortBucket(extSr);
         extensionGos.Add(extGo);
         extensionSrs.Add(extSr);
+        RefreshTintableSrs();
     }
 
     private void ReleaseAllExtensionTiles() {
@@ -266,6 +267,18 @@ public class Plant : Structure {
         extensionGos.Clear();
         extensionSrs.Clear();
         height = 1;
+        RefreshTintableSrs();
+    }
+
+    // Keeps Structure.tintableSrs (walked by SetTint for the deconstruct red overlay)
+    // in sync with the plant's current growth-stage extension SRs. Called whenever
+    // extensions are added or removed. Without this, only the anchor SR would tint —
+    // tall plants would deconstruct with red anchor + un-tinted upper sections.
+    private void RefreshTintableSrs() {
+        var arr = new SpriteRenderer[1 + extensionSrs.Count];
+        arr[0] = sr;
+        for (int i = 0; i < extensionSrs.Count; i++) arr[1 + i] = extensionSrs[i];
+        tintableSrs = arr;
     }
 
     // Renders the anchor + every extension tile. The topmost tile uses the current

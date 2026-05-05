@@ -36,7 +36,9 @@ Fields:
 | `storageStackSize` | int? | max stack per slot in liang (requires `isStorage`) |
 | `capacity` | int? | max simultaneous workers |
 | `depth` | int? | render/occupancy layer: `0` building, `1` platform, `2` foreground (stairs/ladder/torch), `3` road. Defaults to 0. |
-| `solidTop` | bool? | mice can stand on top |
+| `solidTop` | bool? | mice can stand on top (also blocks rain — a roofed-over tile is by definition sheltered) |
+| `blocksRain` | bool? | shelters tiles below from rain *without* being walkable on top. Used by tarps. Honoured by `World.IsExposedAbove` and `MoistureSystem.CapsSoilFromAbove` alongside `solidTop`. |
+| `edgeSupported` | bool? | "edge-supported" footprint: only the leftmost and rightmost columns of the bottom row need standable support — the middle is free to hang in mid-air. Used by tarps (cloth strung between two posts). Affects both `StructPlacement.CanPlaceHere` (placement requires both ends supported) and `Blueprint.IsSuspended` (only the two ends gate suspension, not every bottom tile). |
 | `isTile` | bool? | placeable tile type rather than a building |
 | `placesStructureOnComplete` | string? | name of an additional Structure to place on the same tile after construction (resolved via `Db.structTypeByName`). Used by structures that bundle a follow-up structure with their placement — currently `mineshaft` → `ladder`. Placed before the post-construct standability sweep so the new structure's nav edges enter the graph in the same call. Works for both isTile and non-isTile types. |
 | `category` | string | UI build menu group: `"storage"`, `"structures"`, `"tiles"`, `"production"` |

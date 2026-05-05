@@ -20,6 +20,7 @@ CONTENT
     - small internal power storage for power consumers? (hidden if contain 0 power)
 - tarp
     - for safety from rain?
+    - wet items decay faster
 - thermometer/glass
 
 VISUALS
@@ -28,6 +29,7 @@ VISUALS
 - lighting 
     - improve undergroundwall sprite 
     - procedurally generate rocks with normalmaps?
+- wind sway on tarp?
 
 MOUSE AI
 - ponder inventory management

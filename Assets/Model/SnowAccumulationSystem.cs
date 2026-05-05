@@ -9,8 +9,11 @@ using UnityEngine;
 // Eligibility (a tile is exposed enough for snow to land or rest on):
 //   • tile.type.solid                   — air doesn't hold snow
 //   • World.IsExposedAbove(x, y)        — no solid / solidTop / blocksRain above
-//   • no road on this tile (structs[3]) — covered surfaces don't accumulate
-//   • no building anchor (structs[0])   — building's own footprint dominates
+//
+// Roads and buildings on the same tile aren't gated here — sortingOrder layering
+// in the renderer means a road's sprite is below snow (snow-covered road = nice
+// wintry look) and a building's sprite sits above snow on its anchor tile, so
+// snow simply hides under the building visual without us having to filter.
 //
 // Accumulation (only fires when conditions hold):
 //   • currently snowing (WeatherSystem.snowAmount > 0)
@@ -80,7 +83,6 @@ public class SnowAccumulationSystem {
 
                 if (!canAccum) continue;
                 if (!t.type.solid) continue;
-                if (t.structs[3] != null || t.structs[0] != null) continue;
                 if (!world.IsExposedAbove(x, y)) continue;
 
                 if (Rng.value < accumP) {

@@ -6,6 +6,7 @@ meoww!!
 - market ui tweaks
 - rain tweaks
     - snow!
+- tarp! protects from rain 
 5/4
 - background wall follows terrain 
 - mineshafts
