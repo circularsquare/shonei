@@ -62,6 +62,11 @@ public class TileSaveData {
     // absent on old saves and on snow-free tiles, keeping JSON small and
     // golden-test diffs minimal — same convention as overlayMask/overlayState.
     public bool? snow;
+    // Snapshot of the grass overlay at the moment snow accumulated; restored
+    // verbatim when snow melts. Nullable so they're absent unless meaningful
+    // (snow == true AND there was actual grass to preserve).
+    public byte? preSnowOverlayMask;
+    public byte? preSnowOverlayState;
 }
 
 public class StructureSaveData {
@@ -135,6 +140,9 @@ public class InventorySaveData {
     public int[] allowedItemIds; // item IDs explicitly allowed; only saved for Storage/Liquid types (others default to all-allowed)
     // Market inventories only: item name → target quantity in fen. null on all other inventory types.
     public Dictionary<string, int> marketTargets;
+    // Floor inventories only: World.timer threshold past which the inv is dry.
+    // 0 on old saves and on dry inventories; non-zero means the inv was wet at save time.
+    public float wetUntil;
 }
 
 public class ItemStackSaveData {

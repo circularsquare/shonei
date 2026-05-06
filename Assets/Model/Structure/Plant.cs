@@ -36,6 +36,12 @@ public class Plant : Structure {
     private readonly List<GameObject>     extensionGos = new List<GameObject>();
     private readonly List<SpriteRenderer> extensionSrs = new List<SpriteRenderer>();
 
+    // Per-instance wind-sway phase offset — derived from world coords once at
+    // ctor and reused for every SR (anchor + extensions) so all tiles of one
+    // plant oscillate in lockstep, but different plants are out of phase with
+    // each other. Not persisted; re-derived on load.
+    private float plantPhase;
+
     private GameObject     overlayGo;
     private SpriteRenderer overlaySr;
 
@@ -88,7 +94,62 @@ public class Plant : Structure {
         sr.sortingOrder = 60;
         LightReceiverUtil.SetSortBucket(sr);
 
+        // Anchor SR was spawned by StructureVisualBuilder with the standard lit
+        // material; swap to the plant-sway variant so wind-vertex displacement
+        // applies. Done here rather than via a flag in the shared builder
+        // because plants are the only structure type that needs this.
+        var plantMat = SpriteMaterialUtil.PlantSpriteMaterial;
+        if (plantMat != null) sr.sharedMaterial = plantMat;
+
+        plantPhase = ComputePlantPhase(x, y);
+        RefreshSwayMPB();
+
         CreateHarvestOverlay();
+    }
+
+    // Cheap deterministic per-plant phase, derived from world coords. Same
+    // expression on every load → save/restore is implicit (no need to persist).
+    private static float ComputePlantPhase(int x, int y) {
+        return (x * 17 + y * 31) * 0.13f;
+    }
+
+    // Walks the anchor + every extension SR and writes the current sway MPB
+    // values. Must be called any time the plant's tile-height changes (so
+    // lower tiles' _PlantHeight stays current) AND any time sprites swap
+    // (so each SR's mask-mode flag reflects whether its current sprite has
+    // a `_sway.png` companion). Cheap (one MPB read-modify-write per SR), so
+    // we don't bother diffing.
+    private void RefreshSwayMPB() {
+        int height = 1 + extensionSrs.Count;
+        string plantName = plantType.name.Replace(" ", "");
+        if (sr != null)
+            LightReceiverUtil.SetPlantSwayMPB(sr, tile.y, height, plantPhase, HasSwayMaskCompanion(plantName, sr.sprite));
+        for (int i = 0; i < extensionSrs.Count; i++) {
+            var ex = extensionSrs[i];
+            if (ex != null)
+                LightReceiverUtil.SetPlantSwayMPB(ex, tile.y, height, plantPhase, HasSwayMaskCompanion(plantName, ex.sprite));
+        }
+    }
+
+    // Returns true iff a `{texturename}_sway.png` companion exists for the
+    // sprite's source texture. The `_SwayMask` secondary texture itself is
+    // wired by SpriteNormalMapGenerator's editor-time post-pass and bound by
+    // Unity at render time. We can't query secondary textures at runtime in
+    // this Unity version, so we use companion-file presence as a proxy:
+    // user must run Tools → Generate All Sprite Normal Maps after authoring
+    // a `_sway.png` so the secondary binding is created (same workflow as
+    // `_n.png` / `_e.png`). Resources.Load caches results internally so the
+    // repeated lookups during growth ticks are cheap.
+    //
+    // Currently HARDCODED to false so all plants stay in vertex-mode (Phase
+    // 1/2 height-weighted bend). Mask-mode (Phase 3) shipped but the visual
+    // wasn't right for trees yet — re-enable by removing the early return
+    // and revisiting authoring. Shader/splitter/wiring infrastructure is
+    // all preserved.
+    private static bool HasSwayMaskCompanion(string plantName, Sprite s) {
+        return false;
+        // if (s == null || s.texture == null) return false;
+        // return Resources.Load<Sprite>("Sprites/Plants/Split/" + plantName + "/" + s.texture.name + "_sway") != null;
     }
 
     private void CreateHarvestOverlay() {
@@ -227,6 +288,7 @@ public class Plant : Structure {
         }
         height = 1 + extensionSrs.Count;
         UpdateSprite();
+        RefreshSwayMPB();
     }
 
     // True if every tile from y+height..y+targetHeight-1 is free of solid terrain
@@ -250,12 +312,14 @@ public class Plant : Structure {
         GameObject extGo = new GameObject($"plant_{plantType.name}_ext{h}");
         extGo.transform.SetParent(go.transform, false);
         extGo.transform.localPosition = new Vector3(0, h, 0);
-        SpriteRenderer extSr = SpriteMaterialUtil.AddSpriteRenderer(extGo);
+        SpriteRenderer extSr = SpriteMaterialUtil.AddPlantSpriteRenderer(extGo);
         extSr.sortingOrder = sr.sortingOrder;
         LightReceiverUtil.SetSortBucket(extSr);
         extensionGos.Add(extGo);
         extensionSrs.Add(extSr);
         RefreshTintableSrs();
+        // Plant just got taller — every existing SR's _PlantHeight is now stale.
+        RefreshSwayMPB();
     }
 
     private void ReleaseAllExtensionTiles() {
@@ -268,6 +332,9 @@ public class Plant : Structure {
         extensionSrs.Clear();
         height = 1;
         RefreshTintableSrs();
+        // Anchor's _PlantHeight needs to drop back to 1 — otherwise a harvested
+        // bamboo that just regrew its anchor would still sway as if 3 tiles tall.
+        RefreshSwayMPB();
     }
 
     // Keeps Structure.tintableSrs (walked by SetTint for the deconstruct red overlay)
@@ -282,19 +349,21 @@ public class Plant : Structure {
     }
 
     // Renders the anchor + every extension tile. The topmost tile uses the current
-    // growth stage's sprite (mod 4 so stages 4..7 re-cycle g0..g3 on the new upper
-    // tile). Tiles below the top use the `g4` stalk-continuation sprite. Single-tile
+    // growth stage's sprite (mod 4 so stages 4..7 re-cycle on the new upper tile).
+    // Tiles below the top use the index-4 stalk-continuation sprite. Single-tile
     // plants (maxHeight=1) keep the old behaviour exactly — g0..g3 on the anchor.
+    //
+    // Anchor sprites: if the plant ships b0..b4 files, the anchor pulls from those
+    // (lets trees have a flared base distinct from upper-trunk segments). Otherwise
+    // the anchor falls back to g0..g4 — so bamboo and single-tile crops are unchanged.
     public void UpdateSprite(){
         string n = plantType.name.Replace(" ", "");
         int topStageSpriteIdx = growthStage % 4;
 
-        // Anchor: if the plant has extensions, anchor is a lower tile → g4.
+        // Anchor: if the plant has extensions, anchor is a lower tile → index 4.
         // Otherwise it's the topmost and uses the live stage sprite directly.
-        Sprite anchorSprite = (extensionSrs.Count > 0)
-            ? LoadStageSprite(n, 4)
-            : LoadStageSprite(n, topStageSpriteIdx);
-        sr.sprite = anchorSprite;
+        int anchorIdx = (extensionSrs.Count > 0) ? 4 : topStageSpriteIdx;
+        sr.sprite = LoadAnchorSprite(n, anchorIdx);
 
         // Extension tiles: all but the last use g4; the last (topmost) uses the
         // current stage % 4.
@@ -302,6 +371,12 @@ public class Plant : Structure {
             bool isTop = (i == extensionSrs.Count - 1);
             extensionSrs[i].sprite = LoadStageSprite(n, isTop ? topStageSpriteIdx : 4);
         }
+        // Sprites just changed; the per-SR mask-mode flag may have flipped
+        // (different growth stages can have different `_sway.png` companions,
+        // and the bottom tiles using g4 may have a mask while the top tile
+        // doesn't, or vice versa). Re-write the sway MPB to reflect each SR's
+        // current secondary-texture state.
+        RefreshSwayMPB();
     }
 
     private static Sprite LoadStageSprite(string plantName, int stageIdx) {
@@ -311,6 +386,15 @@ public class Plant : Structure {
         if (s == null || s.texture == null)
             s = Resources.Load<Sprite>("Sprites/Plants/default");
         return s;
+    }
+
+    // Tries the b{i} variant first (anchor-row sprite — e.g. flared tree base);
+    // falls back to g{i} so plants without a dedicated anchor sheet (bamboo,
+    // single-tile crops) keep rendering exactly as before.
+    private static Sprite LoadAnchorSprite(string plantName, int stageIdx) {
+        Sprite s = Resources.Load<Sprite>("Sprites/Plants/Split/" + plantName + "/b" + stageIdx);
+        if (s != null && s.texture != null) return s;
+        return LoadStageSprite(plantName, stageIdx);
     }
 }
 

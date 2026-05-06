@@ -30,24 +30,28 @@ public class BuildingPowerConsumer : PowerSystem.IPowerConsumer {
         building != null && !building.disabled && !building.IsBroken
         && building.HasActiveCrafter() ? Demand : 0f;
 
-    public IEnumerable<PowerSystem.PowerPort> Ports {
-        get {
-            // Perimeter ports: one Axis.Both port for every tile around the building's
-            // footprint — top, bottom, left, right. Lets the player route a shaft to any
-            // adjacent tile and have it count, instead of forcing the shaft onto the
-            // building's own anchor tile (which usually overlaps the operator position).
-            // Mirroring is handled by PowerSystem.FindAttachedNetwork's standard mirror
-            // flip on X offsets, so the perimeter is correct in both orientations.
-            int nx = building.structType.nx;
-            int ny = Mathf.Max(1, building.structType.ny);
-            for (int i = 0; i < nx; i++) {
-                yield return new PowerSystem.PowerPort(i, -1, PowerSystem.Axis.Both); // bottom
-                yield return new PowerSystem.PowerPort(i, ny, PowerSystem.Axis.Both); // top
-            }
-            for (int j = 0; j < ny; j++) {
-                yield return new PowerSystem.PowerPort(-1, j, PowerSystem.Axis.Both); // left
-                yield return new PowerSystem.PowerPort(nx, j, PowerSystem.Axis.Both); // right
-            }
+    public IEnumerable<PowerSystem.PowerPort> Ports => GetPerimeterPorts(building);
+
+    // Perimeter ports: one Axis.Both port for every tile around the building's footprint
+    // — top, bottom, left, right. Lets the player route a shaft to any adjacent tile and
+    // have it count, instead of forcing the shaft onto the building's own anchor tile
+    // (which usually overlaps the operator position). Mirroring is handled by
+    // PowerSystem.FindAttachedNetwork's standard mirror flip on X offsets, so the
+    // perimeter is correct in both orientations.
+    //
+    // Exposed as a static helper so Building.AttachAnimations can spawn matching port
+    // stubs without needing the wrapper instance (the wrapper only exists post-OnPlaced,
+    // but AttachAnimations runs in the Structure constructor — earlier than OnPlaced).
+    public static IEnumerable<PowerSystem.PowerPort> GetPerimeterPorts(Building b) {
+        int nx = b.structType.nx;
+        int ny = Mathf.Max(1, b.structType.ny);
+        for (int i = 0; i < nx; i++) {
+            yield return new PowerSystem.PowerPort(i, -1, PowerSystem.Axis.Both); // bottom
+            yield return new PowerSystem.PowerPort(i, ny, PowerSystem.Axis.Both); // top
+        }
+        for (int j = 0; j < ny; j++) {
+            yield return new PowerSystem.PowerPort(-1, j, PowerSystem.Axis.Both); // left
+            yield return new PowerSystem.PowerPort(nx, j, PowerSystem.Axis.Both); // right
         }
     }
 }

@@ -25,6 +25,14 @@ public class Item {
     public string happinessNeed {get; set;} // which happiness satisfaction eating this food grants (e.g. "wheat", "fruit"); null = none
     public bool discrete {get; set;}    // true = stored/moved in whole-liang (100 fen) multiples only
     public ItemClass itemClass {get; set;} = ItemClass.Default; // Default = solid goods; Liquid = water/soymilk/etc.; Book = tech & fiction books. Storage inventories accept only items matching their storageClass.
+    // Initial value seeded into InventoryController.targets for this item's id, in liang.
+    // Lower for byproducts (acorn, sawdust) so the "outputs over target" gate can actually
+    // trigger on multi-product plants without forcing the player to manually retune. Books
+    // ignore this field — itemClass==Book overrides to 1 liang in DefaultTargetFen.
+    public int defaultTarget {get; set;} = 100;
+    // Resolved default target in fen — single source of truth shared by InventoryController.Start
+    // (initial seed) and SaveSystem.Gather (delta-vs-default skip on save).
+    public int DefaultTargetFen => itemClass == ItemClass.Book ? 100 : defaultTarget * 100;
     public bool isLiquid => itemClass == ItemClass.Liquid; // convenience — lets WaterController and similar liquid-specific code stay readable
     // Optional per-liquid tint (#RRGGBB) used by WaterController when this liquid is rendered in a
     // decorative zone (tank/fountain). Absent/invalid → shader falls back to its default water blue.

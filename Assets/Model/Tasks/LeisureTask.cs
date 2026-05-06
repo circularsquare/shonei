@@ -11,6 +11,7 @@ using System.Linq;
 // FindPathToStruct / FindPathToInv. Filter = leisureNeed match + Building.CanHostLeisureNow().
 // Benefit dispatch happens via Happiness.NoteLeisure(need, building.structType.leisureGrant).
 public class LeisureTask : Task {
+    public override bool IsWork => false;
     public string leisureNeed; // authoritative field — building is resolved from it in Initialize
     public Building building;  // set on successful Initialize; read by HandleLeisure (socialWhenShared co-presence)
     public Tile seatTile;      // the specific work tile this animal is heading to

@@ -30,7 +30,7 @@ using Newtonsoft.Json;
 //   [x] World timer
 //   [x] World RNG seed (drives Rng — gameplay randomness reproduces on reload)
 //   [x] Per-animal RNG seed (drives Animal.random — animal AI reproduces on reload)
-//   [x] Tile types, floor inventories, background wall, overlay masks (grass on dirt), overlay health state (live/dying/dead), and snow cover
+//   [x] Tile types, floor inventories (incl. wetUntil rain-soaked timer), background wall, overlay masks (grass on dirt), overlay health state (live/dying/dead), and snow cover
 //   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, mirrored, rotation, shapeIndex, disabled, plantHarvestFlagged, quarry capturedTileType, flywheel charge, elevator currentY + history buffers)
 //   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored, rotation, shapeIndex, disabled)
 //   [x] Animals (position, job, energy, food, happiness, decoration happiness, socialization, fireplace warmth, inv, foodSlotInv, toolSlotInv, clothingSlotInv, bookSlotInv)
@@ -169,9 +169,10 @@ public class SaveSystem : MonoBehaviour {
         if (ic?.targets != null) {
             var savedTargets = new Dictionary<string, int>();
             foreach (var kv in ic.targets) {
-                if (kv.Value == 10000) continue; // skip default — no need to save
                 Item item = kv.Key < Db.items.Length ? Db.items[kv.Key] : null;
-                if (item != null) savedTargets[item.name] = kv.Value;
+                if (item == null) continue;
+                if (kv.Value == item.DefaultTargetFen) continue; // skip per-item default — no need to save
+                savedTargets[item.name] = kv.Value;
             }
             if (savedTargets.Count > 0) data.globalItemTargets = savedTargets;
         }
@@ -231,6 +232,14 @@ public class SaveSystem : MonoBehaviour {
             overlayState = (tile.overlayMask != 0 && tile.overlayState != OverlayState.Live)
                 ? (byte?)(byte)tile.overlayState : null,
             snow = tile.snow ? (bool?)true : null,
+            // Pre-snow grass snapshot: only emit when actually buried under snow
+            // AND there was real grass to preserve (mask != 0). State is paired
+            // with mask — meaningless on its own.
+            preSnowOverlayMask  = (tile.snow && tile.preSnowOverlayMask != 0)
+                ? (byte?)tile.preSnowOverlayMask : null,
+            preSnowOverlayState = (tile.snow && tile.preSnowOverlayMask != 0
+                    && tile.preSnowOverlayState != OverlayState.Live)
+                ? (byte?)(byte)tile.preSnowOverlayState : null,
         };
     }
 
@@ -303,6 +312,7 @@ public class SaveSystem : MonoBehaviour {
             invType        = inv.invType.ToString(),
             stacks         = stacks,
             allowedItemIds = allowedIds,
+            wetUntil       = inv.wetUntil,
         };
     }
 
@@ -475,7 +485,17 @@ public class SaveSystem : MonoBehaviour {
                 // cleared a stale flag during migration if the saved type were
                 // non-solid, but gate here too for old saves that wrote `snow:true`
                 // alongside an empty type.
-                if (tsd.snow == true && tile.type.solid) tile.snow = true;
+                if (tsd.snow == true && tile.type.solid) {
+                    tile.snow = true;
+                    // Restore the under-snow grass snapshot. Old saves (pre-
+                    // preservation) wrote `snow:true` without these fields;
+                    // they load as null → defaults of (0, Live), which means
+                    // "nothing to restore on melt" — the right migration.
+                    if (tsd.preSnowOverlayMask.HasValue)
+                        tile.preSnowOverlayMask  = tsd.preSnowOverlayMask.Value;
+                    if (tsd.preSnowOverlayState.HasValue)
+                        tile.preSnowOverlayState = (OverlayState)tsd.preSnowOverlayState.Value;
+                }
             }
 
             // Ancient saves predate any wall data — apply the old y <= 43 Stone default.
@@ -820,6 +840,7 @@ public class SaveSystem : MonoBehaviour {
                 GlobalInventory.instance.AddItem(item, ssd.quantity);
             }
         }
+        inv.wetUntil = isd.wetUntil;
         inv.UpdateSprite();
     }
 

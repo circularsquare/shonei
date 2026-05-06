@@ -150,6 +150,18 @@ public class Building : Structure {
         }
     }
 
+    public override void AttachAnimations() {
+        base.AttachAnimations();
+        // Auto-wrapped power consumers (StructType.powerBoost > 1, no custom IPowerConsumer
+        // subclass) get the standard perimeter port stubs here so they show on every side
+        // a shaft is wired up. Producer/storage subclasses (wheel, windmill, flywheel)
+        // override AttachAnimations and call AttachPortStubs themselves with their own
+        // port specs; this base path doesn't fire for them because powerBoost stays 1.
+        if (structType.powerBoost > 1f && !(this is PowerSystem.IPowerConsumer)) {
+            AttachPortStubs(BuildingPowerConsumer.GetPerimeterPorts(this));
+        }
+    }
+
     public override void OnPlaced() {
         WorkOrderManager.instance?.RegisterOrdersFor(this);
         // Power-consumer auto-registration on the gameplay path (StructController.Construct).

@@ -21,14 +21,16 @@ using UnityEngine;
 //
 // Transitions lerp over lerpDuration seconds (default 5s).
 //
-// Wind: Ornstein-Uhlenbeck random walk, updated each hour.
-//   step = -0.02 * wind  +  Uniform(-0.15, 0.15)
-//   The -0.02*wind term pulls back toward zero (at wind=0.5, mean step = -0.01).
-//   Stationary std ≈ 0.43, so |wind| typically lives in [0, 0.9] with occasional
-//   excursions past ±1. Both readers (Windmill output / blades, RainParticles
-//   horizontal velocity) handle the full range — Windmill clamps the magnitude
-//   for output via Mathf.Min(1, w), so excursions saturate at MaxOutput.
-//   Positive = blowing right. Used by RainParticles for sideways drop velocity.
+// Wind: Ornstein-Uhlenbeck random walk targets a new value each in-game
+// hour; the public `wind` field exponentially eases toward that target each
+// frame so all readers (Windmill output / blades, RainParticles horizontal
+// velocity, plant sway shader) see continuous motion rather than hourly steps.
+//   target step = -0.02 * targetWind  +  Uniform(-0.15, 0.15)
+//   wind <- Lerp(wind, targetWind, 1 - exp(-dt * windSmoothingRate))
+//   The -0.02*targetWind term pulls back toward zero. Stationary std ≈ 0.43,
+//   so |wind| typically lives in [0, 0.9] with occasional excursions past ±1.
+//   Windmill clamps the magnitude for output via Mathf.Min(1, w), so excursions
+//   saturate at MaxOutput. Positive = blowing right.
 public class WeatherSystem {
     public static WeatherSystem instance { get; private set; }
 
@@ -46,8 +48,19 @@ public class WeatherSystem {
     // tanks/puddles (RainReplenish gates on temperature too).
     public const float snowThresholdC = 2f;
 
-    // Positive = wind blowing right. Updated each hour via random walk.
+    // Positive = wind blowing right. Eased toward `targetWind` continuously
+    // in Tick; targetWind itself takes a fresh OU step each in-game hour.
     public float wind { get; private set; }
+
+    // Hourly OU random-walk target; `wind` lerps toward it each frame.
+    // Not persisted — on load both reset to 0 and the walk warms back up.
+    float targetWind;
+
+    // Exponential smoothing rate (per real second). 0.15 → ~95% of the way
+    // to a new target after ~20 s of real time, comfortably faster than the
+    // hourly step interval (≈25 s for a 10-min IRL day) so wind isn't
+    // perpetually mid-transition, but slow enough to feel weather-y.
+    const float windSmoothingRate = 0.15f;
 
     // Ambient temperature in Celsius, driven by yearly + daily sine waves.
     // Yearly: peaks midsummer (day 7.5) at ~30°C high, troughs midwinter (day 17.5) at ~5°C high.
@@ -64,11 +77,14 @@ public class WeatherSystem {
         float step    = dt / lerpDuration;
         rainAmount = Mathf.MoveTowards(rainAmount, rainingT ? 1f : 0f, step);
         snowAmount = Mathf.MoveTowards(snowAmount, snowing  ? 1f : 0f, step);
+
+        // Frame-rate-independent exponential ease toward the hourly target.
+        wind = Mathf.Lerp(wind, targetWind, 1f - Mathf.Exp(-dt * windSmoothingRate));
     }
 
     // Called by World.Update() once per in-game hour.
     public void OnHourElapsed() {
-        wind += -0.02f * wind + Rng.Range(-0.15f, 0.15f);
+        targetWind += -0.02f * targetWind + Rng.Range(-0.15f, 0.15f);
 
         if (!isRaining) {
             if (Rng.value < 0.04f) SetRain(true);
@@ -76,12 +92,34 @@ public class WeatherSystem {
             if (Rng.value < 0.12f) SetRain(false);
             // Snow doesn't fill tanks or top up puddles immediately — accumulation
             // and melt are a future feature; for now snowing skips this entirely.
-            if (temperature >= snowThresholdC) ReplenishRainwater();
+            if (temperature >= snowThresholdC) {
+                ReplenishRainwater();
+                SoakExposedFloorInventories();
+            }
         }
 
         // Soil diffusion, evaporation, and plant passive draw run once per in-game hour.
         // Rain uptake runs on a separate per-second cadence in World.Update.
         MoistureSystem.instance?.HourlyUpdate();
+    }
+
+    // Refreshes the wet timer on every floor inventory exposed to the open sky while
+    // rain (not snow) is falling. Wet floor inventories decay at 2× the normal rate
+    // for the duration; sweep is hourly so a freshly-dropped pile waits at most one
+    // in-game hour before catching its first soak. Storage and animal inventories
+    // are never wet by construction (MarkWet gates on InvType.Floor).
+    void SoakExposedFloorInventories() {
+        World w = World.instance;
+        if (w == null) return;
+        float duration = World.ticksInDay / 4f;
+        for (int x = 0; x < w.nx; x++) {
+            for (int y = 0; y < w.ny; y++) {
+                Tile t = w.GetTileAt(x, y);
+                if (t?.inv == null || t.inv.invType != Inventory.InvType.Floor) continue;
+                if (!w.IsExposedAbove(x, y)) continue;
+                t.inv.MarkWet(duration);
+            }
+        }
     }
 
     void ReplenishRainwater() {
@@ -145,7 +183,7 @@ public class WeatherSystem {
         float yearly = Mathf.Sin(twoPi * yearFrac - Mathf.PI / 4f);   // peaks at day 7.5
         float daily  = Mathf.Sin(twoPi * dayFrac  - 2f * Mathf.PI / 3f); // peaks at hour 14
 
-        temperature = 13.5f + 12.5f * yearly + 4f * daily;
+        temperature = 13.5f + 12.5f * yearly + 3f * daily;
     }
 
     void SetRain(bool rain) {

@@ -16,6 +16,14 @@ using UnityEngine;
 //
 // twilightFraction: 1 = full day, 0 = full night.
 // Brightness: sin^3 of sun elevation, 0 at horizon/night, 1 at noon.
+//
+// ── Sky color stops ────────────────────────────────────────────────────────
+// Two parallel 5-stop gradients describe the sky as a vertical band:
+//   skyDay/Twilight1/2/3/Night     → the **zenith** (top) color of the sky.
+//   horizonDay/Twilight1/2/3/Night → the **horizon** (bottom) color.
+// SkyGradient.cs blends between them to fill the SkyCamera frustum. Author
+// horizon stops with warmer/lighter values at twilight so the offscreen sun
+// reads as a horizon glow.
 public class SunController : MonoBehaviour {
     public static SunController instance { get; private set; }
 
@@ -33,12 +41,19 @@ public class SunController : MonoBehaviour {
     [Tooltip("Duration of twilight centred on sunrise/sunset, in days  (1.2 h ≈ 0.05)")]
     [SerializeField] float twilightLength;
 
-    [Header("Sky Colors")]
+    [Header("Sky Colors (Zenith — top of sky)")]
     [SerializeField] Color skyDay;
     [SerializeField] Color skyTwilight1;
     [SerializeField] Color skyTwilight2;
     [SerializeField] Color skyTwilight3;
     [SerializeField] Color skyNight;
+
+    [Header("Horizon Sky Colors (bottom of sky)")]
+    [SerializeField] Color horizonDay;
+    [SerializeField] Color horizonTwilight1;
+    [SerializeField] Color horizonTwilight2;
+    [SerializeField] Color horizonTwilight3;
+    [SerializeField] Color horizonNight;
 
     [Header("Sun Light Colors")]
     [SerializeField] Color sunColorDay;
@@ -72,7 +87,8 @@ public class SunController : MonoBehaviour {
         twilightFraction = _twilightFraction = CalcTwilightFraction(phase);
         brightness       = _brightness       = Brightness(phase);
         UpdateSun();
-        skyColor = SkyColor();
+        skyColor     = SkyColor();
+        horizonColor = HorizonColor();
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
@@ -87,8 +103,11 @@ public class SunController : MonoBehaviour {
     // 0 at night, 1 during day; linear transition over twilightLength/2 around sunrise/sunset.
     public static float brightness { get; private set; }
 
-    // 5-stop sky gradient color for the current time of day.
+    // 5-stop sky gradient color for the current time of day — **zenith** (top of sky).
     public static Color skyColor { get; private set; }
+
+    // 5-stop sky gradient color for the current time of day — **horizon** (bottom of sky).
+    public static Color horizonColor { get; private set; }
 
     public static float GetDayPhase() {
         if (World.instance == null) return 0f;
@@ -212,12 +231,16 @@ public class SunController : MonoBehaviour {
                 ls.intensity = ls.isLit ? ls.baseIntensity * torchFactor : 0f;
     }
 
-    // 5-stop gradient: skyDay → skyTwilight1 → skyTwilight2 → skyTwilight3 → skyNight
-    // driven by twilightFraction (1=day, 0=night).
-    Color SkyColor() {
-        float t      = (1f - twilightFraction) * 4f;
-        Color[] stops = { skyDay, skyTwilight1, skyTwilight2, skyTwilight3, skyNight };
-        int   i = Mathf.Clamp(Mathf.FloorToInt(t), 0, stops.Length - 2);
+    // 5-stop gradient: day → twilight1 → twilight2 → twilight3 → night
+    // driven by twilightFraction (1=day, 0=night). Both sky (zenith) and horizon
+    // share the same time-of-day phase; SkyGradient blends between them vertically.
+    Color SkyColor()     => LerpStops(skyDay,     skyTwilight1,     skyTwilight2,     skyTwilight3,     skyNight);
+    Color HorizonColor() => LerpStops(horizonDay, horizonTwilight1, horizonTwilight2, horizonTwilight3, horizonNight);
+
+    Color LerpStops(Color s0, Color s1, Color s2, Color s3, Color s4) {
+        float t = (1f - twilightFraction) * 4f;
+        Color[] stops = { s0, s1, s2, s3, s4 };
+        int i = Mathf.Clamp(Mathf.FloorToInt(t), 0, stops.Length - 2);
         return Color.Lerp(stops[i], stops[i + 1], t - i);
     }
 }

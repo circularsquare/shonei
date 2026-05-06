@@ -18,6 +18,7 @@ using System.Linq;
 //
 // Mirrors ResearchTask's borrow/return pattern (M5) for the book-equip flow.
 public class ReadBookTask : Task {
+    public override bool IsWork => false;
     private const int ReadDuration = 10; // ticks of reading (matches ChatObjective duration)
     private const int SpotSearchRadius = 5; // tile radius around the shelf to look for a free spot
 

@@ -217,7 +217,10 @@ public abstract class PrecipitationParticles : MonoBehaviour {
     }
 
     // Reads live particles, calls OnParticleHit for any that have hit a solid
-    // tile or crossed a water surface, then kills them.
+    // tile, crossed a water surface, or entered a tile with a solidTop/blocksRain
+    // structure (building roof, platform, tarp), then kills them. The structure
+    // check mirrors World.IsExposedAbove's blocker set so the visuals agree with
+    // the moisture / snow / rain-catch model.
     void CheckCollisions() {
         if (World.instance == null) return;
 
@@ -236,6 +239,9 @@ public abstract class PrecipitationParticles : MonoBehaviour {
                 // Particle has crossed the water surface; impact at the surface height.
                 // tile.y is the tile centre, so the tile bottom is tile.y - 0.5.
                 impactY = tile.y - 0.5f + tile.water / (float)WaterController.WaterMax;
+            } else if (HasRainBlocker(tile)) {
+                // solidTop / blocksRain structure occupies this tile — splash on its top edge.
+                impactY = tile.y + 0.5f;
             } else {
                 continue;
             }
@@ -246,5 +252,13 @@ public abstract class PrecipitationParticles : MonoBehaviour {
         }
 
         if (anyKilled) ps.SetParticles(particles, count);
+    }
+
+    static bool HasRainBlocker(Tile tile) {
+        for (int d = 0; d < tile.structs.Length; d++) {
+            Structure s = tile.structs[d];
+            if (s != null && (s.structType.solidTop || s.structType.blocksRain)) return true;
+        }
+        return false;
     }
 }

@@ -347,10 +347,13 @@ public class WorkOrderManager : MonoBehaviour {
             factory = a => new HarvestTask(a, tile),
             tile = tile,
             res = new(plant.plantType.capacity > 0 ? plant.plantType.capacity : 1),
-            // Gated on ripeness only — harvest orders only exist while the plant is flagged,
-            // so no need to re-check harvestFlagged here. SetHarvestFlagged(false) removes
-            // the order; dormancy across grow cycles comes from `harvestable`.
-            isActive = () => plant.harvestable,
+            // Gated on ripeness AND target satisfaction. Harvest orders only exist while the
+            // plant is flagged (SetHarvestFlagged(false) removes the order), so flag state isn't
+            // re-checked here; dormancy across grow cycles comes from `harvestable`. The target
+            // gate mirrors recipe output gating — if every product type is already at/above its
+            // global target, leave the crop standing instead of bloating storage.
+            isActive = () => plant.harvestable
+                && !Recipe.AllItemsSatisfied(plant.plantType.products, InventoryController.instance?.targets),
             canDo = a => a.job == harvestJob,
             getDistance = a => Mathf.Abs(tile.x - a.x) + Mathf.Abs(tile.y - a.y)
         });

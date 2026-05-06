@@ -535,7 +535,7 @@
         ],
         "njob": "hauler",
         "depth": 0,
-        "solidTop": false,
+        "solidTop": true,
         "category": "power",
         "shapes": [
             { "nx": 1, "ny": 3 },

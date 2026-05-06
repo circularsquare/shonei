@@ -156,6 +156,7 @@ Sprites loaded from `Resources/Sprites/Skills/{skillname}` with `Sprites/Skills/
 - **Priority +/-** (blueprints only) — adjusts `Blueprint.priority`.
 - **Worker slots +/-** (multi-slot workstations only) — adjusts `Reservable.effectiveCapacity`. Priority and worker values render on dedicated TMP labels next to their buttons, not in the main text.
 - **Harvest flag toggle** (plants only) — calls `Plant.SetHarvestFlagged`, which registers or unregisters the harvest WOM order and toggles the overlay sprite. Label flips between "flag for harvest" / "unflag harvest".
+- **Target-gated dormancy alert** (plants only) — when a flagged plant is ripe but every product is at/above its global target, the panel shows red "will not harvest: outputs above target". Mirrors the WOM order's `isActive` gate; the order also surfaces with `[inactive]` next to its `wo: Harvest 0/1` row (via `AppendTileOrders`'s shared `[inactive]` suffix, same as `AppendBuildingOrders`).
 
 ### SelectionContext
 `Assets/Model/SelectionContext.cs` — plain C# class built by `MouseController.HandleSelectClick`. Contains `tile`, `List<Structure>`, `List<Blueprint>`, `List<Animal>`. Factory: `SelectionContext.FromTile(tile, animals)`.
@@ -223,6 +224,21 @@ All Esc handling lives in `UI.Update()` — centralised so a single press never 
 4. `MouseController.mouseMode != Select` → `SetModeSelect()`
 
 `MouseController` no longer reads `KeyCode.Escape` directly.
+
+## LMB-on-world chain
+
+Left-click on the world (LMB outside UI, i.e. `!IsPointerOverGameObject()`) mirrors Esc steps 1–3, with a narrowed step-4 living in `MouseController` instead. Two halves run in the same frame:
+
+**`UI.Update()`** — non-consuming Esc-mirror, first match wins:
+1. `SaveMenuPanel` active → close.
+2. `BuildPanel.IsSubPanelOpen` → `CloseSubPanel()`.
+3. Any active exclusive panel → close it.
+
+The block falls through (no `return`); `MouseController` still processes its own LMB handling for the same press. So a Select-mode click both closes a panel **and** selects the clicked tile.
+
+**`MouseController.Update()` Build branch** — narrowed step 4:
+- Build mode with `structType == null` ⇒ the click has no tool meaning. `SetModeSelect()`, then seed `_dragStartScreenPos` / `_dragStartedInMode = Select` so the same mouse-down can drag-select on release without lifting first.
+- Build mode with `structType` set, `Harvest`, and `Remove` modes are unchanged — clicks always run their tool action; if a panel is open it also closes via the `UI.Update` block above.
 
 ## Key Files
 

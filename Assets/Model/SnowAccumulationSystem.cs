@@ -15,6 +15,13 @@ using UnityEngine;
 // wintry look) and a building's sprite sits above snow on its anchor tile, so
 // snow simply hides under the building visual without us having to filter.
 //
+// Underlying grass is *preserved*, not destroyed: at accumulation we snapshot
+// the live overlayMask/state into tile.preSnowOverlayMask/State and clear the
+// live mask so the snow renders cleanly on top. OverlayGrowthSystem skips
+// snowed tiles entirely (so the snapshot doesn't drift). On melt we restore
+// the mask + state — the same grass that was there comes back unchanged, then
+// resumes normal growth/wilt under current conditions.
+//
 // Accumulation (only fires when conditions hold):
 //   • currently snowing (WeatherSystem.snowAmount > 0)
 //   • temperature < AccumThresholdC (0 °C)
@@ -29,8 +36,9 @@ using UnityEngine;
 // Melt (only fires when tile.snow is already true):
 //   • temperature > MeltStartC          → linear ramp
 //   • chance = clamp01((temp - MeltStartC) / (MeltFullC - MeltStartC))
-//   • at MeltFullC (5 °C) and above: 100% chance per second → ~1 second to clear
-//   • at 2.5 °C: 50% chance per second → ~1.5 second mean time-to-clear
+//   • at MeltFullC (20 °C) and above: 100% chance per second → ~1 second to clear
+//   • at 5 °C: 25% chance per second → ~3 second mean time-to-clear
+//   • at 10 °C: 50% chance per second → ~1.5 second mean time-to-clear
 //
 // ── Future extensions ─────────────────────────────────────────────────────
 // • Snow depth (byte) instead of binary, so visuals can show light dusting
@@ -43,7 +51,7 @@ public class SnowAccumulationSystem {
 
     const float AccumThresholdC      = 0f;        // strictly less than → can accumulate
     const float MeltStartC           = 0f;        // strictly greater than → starts melting (linearly ramped from here)
-    const float MeltFullC            = 5f;        // at and above → 100% melt chance per tick
+    const float MeltFullC            = 20f;       // at and above → 100% melt chance per tick
     const float AccumChancePerSecond = 1f / 10f;  // base chance at snowAmount=1; scaled by current intensity
 
     public static SnowAccumulationSystem Create() {
@@ -77,7 +85,17 @@ public class SnowAccumulationSystem {
                 if (t == null) continue;
 
                 if (t.snow) {
-                    if (meltChance > 0f && Rng.value < meltChance) t.snow = false;
+                    if (meltChance > 0f && Rng.value < meltChance) {
+                        // Restore the under-snow grass before flipping snow off
+                        // so the overlay renderer redraws with the correct
+                        // mask/state on the same callback wave.
+                        if (t.preSnowOverlayMask != 0)
+                            t.overlayMask = t.preSnowOverlayMask;
+                        t.overlayState        = t.preSnowOverlayState;
+                        t.preSnowOverlayMask  = 0;
+                        t.preSnowOverlayState = OverlayState.Live;
+                        t.snow = false;
+                    }
                     continue;
                 }
 
@@ -86,14 +104,16 @@ public class SnowAccumulationSystem {
                 if (!world.IsExposedAbove(x, y)) continue;
 
                 if (Rng.value < accumP) {
+                    // Snapshot under-snow grass so melt can restore it exactly.
+                    // overlayState is captured even when mask is 0 — it's free
+                    // and lets us round-trip Dying/Dead states cleanly. Clearing
+                    // the live mask is what actually hides grass under the snow;
+                    // OverlayGrowthSystem skips snowed tiles so neither the live
+                    // values nor the snapshot drift while snow sits on top.
+                    t.preSnowOverlayMask  = t.overlayMask;
+                    t.preSnowOverlayState = t.overlayState;
+                    if (t.overlayMask != 0) t.overlayMask = 0;
                     t.snow = true;
-                    // Snow on grass kills the grass. Clearing overlayMask hides it
-                    // immediately; setting Dead persists the "killed" state so it
-                    // doesn't auto-regrow on the next OverlayGrowthSystem tick.
-                    if (t.overlayMask != 0) {
-                        t.overlayMask  = 0;
-                        t.overlayState = OverlayState.Dead;
-                    }
                 }
             }
         }

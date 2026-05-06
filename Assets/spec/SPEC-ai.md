@@ -177,7 +177,9 @@ Market tasks pass `r = Task.MarketFindRadius` via `FindMarketPath`. Drop searche
 
 Each animal has one Job. Jobs filter which WOM orders and fallback tasks an animal can take. For crafting, `ChooseCraftTask` scores all of the animal's recipes globally against configurable inventory targets, then finds the nearest building for the top-scoring recipe — so economic need drives building selection rather than proximity.
 
-**Automatic job swapping** ([JobSwapper.cs](../Model/Animal/JobSwapper.cs)): when an idle animal has skills better suited to another *idle* animal's job (and vice versa), `JobSwapper.TrySwap` swaps them. Fires from `HandleIdle` every 2 ticks (stagger-phased by `tickCounter`). Score = `Σ (skillWeight × skillLevel)` using the job's `skillWeights` profile; swap commits when the combined score strictly improves. Only idle partners are considered — `SetJob` calls `Refresh()` which fails the current task, so swapping with a busy mouse would discard in-progress work.
+**Automatic job swapping** ([JobSwapper.cs](../Model/Animal/JobSwapper.cs)): when an idle animal has skills better suited to another *idle* animal's job (and vice versa), `JobSwapper.TrySwap` swaps them. Fires from `HandleIdle` every 2 ticks (stagger-phased by `tickCounter`). Score = `Σ (skillWeight × skillLevel)` using the job's `skillWeights` profile; swap commits when the combined score strictly improves. Only idle partners are considered — swapping with a busy mouse would discard in-progress work.
+
+**`SetJob` task-interruption rule**: when the player (or a swap) changes an animal's job, `Animal.SetJob` only calls `Refresh()` if the current task is job-tied (`task.IsWork == true`, the default). Personal-needs tasks override `IsWork => false` — `EepTask`, `LeisureTask`, `ChatTask`, `ReadBookTask`, `DropTask` — and continue uninterrupted across a job change. Mixed-use tasks (e.g. `ObtainTask`, used for both food and equipment) stay work by default; the wasted fetch on a job swap is rare and self-corrects. New personal tasks should override `IsWork => false`.
 
 ---
 
@@ -249,7 +251,7 @@ Orders are created once when the need first arises and removed only when the nee
 | `Haul` (p3 floor) | Items land on a floor inventory | Stack empties (eager); floor inv destroyed |
 | `Haul` (p3 eviction) | Item disallowed while stack non-empty (via `RegisterStorageEvictionHaul`; `HaulTask` only, no consolidation fallback) | Stack empties; item re-allowed; storage destroyed |
 | `Haul` (p1) | `PromoteHaulsFor(bp)` for items blocking a deconstruct | Parent blueprint resolved |
-| `Harvest` | Plant placed (`isActive` suppresses between grow cycles) | Plant destroyed |
+| `Harvest` | Plant placed (`isActive` suppresses between grow cycles AND when every product item is at/above its global target — same gate as recipe `AllOutputsSatisfied`, via shared `Recipe.AllItemsSatisfied` static helper) | Plant destroyed |
 | `HaulToMarket` | `UpdateMarketOrders` sees item below target | `UpdateMarketOrders` sees target met |
 | `HaulFromMarket` | `UpdateMarketOrders` sees item above target | `UpdateMarketOrders` sees excess cleared |
 | `Research` | Lab placed | Lab deconstructed |

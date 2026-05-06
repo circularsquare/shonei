@@ -40,9 +40,14 @@ Shader "Hidden/NormalsCapture" {
 
         HLSLINCLUDE
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+        #include "Sway.hlsl"
 
         TEXTURE2D(_MainTex);   SAMPLER(sampler_MainTex);
         TEXTURE2D(_NormalMap); SAMPLER(sampler_NormalMap);
+        // Per-renderer when bound (auto-bound by Unity from sprite secondary
+        // textures named "_SwayMask"); falls back to a global white texture
+        // set in WindShaderController for non-plant sprites.
+        TEXTURE2D(_SwayMask);  SAMPLER(sampler_SwayMask);
 
         // Per-renderer MPB, written by LightReceiverUtil.SetSortBucket.
         // Default 0 for sprites that never had SetSortBucket called — they
@@ -65,7 +70,18 @@ Shader "Hidden/NormalsCapture" {
 
         Varyings vert(Attributes IN) {
             Varyings OUT;
-            OUT.positionCS = TransformWorldToHClip(TransformObjectToWorld(IN.positionOS));
+            // Vertex-mode plants (no sway mask) apply cantilever sway here so
+            // captured normals follow the visible bend. Mask-mode plants leave
+            // geometry alone — the fragment stage shifts UVs instead. Non-plant
+            // sprites pass through unchanged because _PlantSway defaults to 0.
+            // worldT/worldB are unaffected: sway shifts vertex position but
+            // doesn't rotate the sprite's local axes, so the tangent → world
+            // basis used to decode the normal map stays correct.
+            float3 worldPos = TransformObjectToWorld(IN.positionOS);
+            if (_PlantSway > 0.5 && _UseMask < 0.5) {
+                worldPos.x += SwayOffsetForVertex(worldPos.y);
+            }
+            OUT.positionCS = TransformWorldToHClip(worldPos);
             OUT.uv         = IN.uv;
             OUT.worldT     = TransformObjectToWorldDir(float3(1, 0, 0));
             OUT.worldB     = TransformObjectToWorldDir(float3(0, 1, 0));
@@ -73,14 +89,24 @@ Shader "Hidden/NormalsCapture" {
         }
 
         float4 FragWithAlpha(Varyings IN, bool isFrontFace, float shadowAlpha) {
+            // Mask-mode plants: shift the sample UV per the per-pixel sway mask
+            // so captured normals follow the visible content (lit highlights
+            // track shifted leaves). Both _MainTex (for the alpha clip) and
+            // _NormalMap must use the same shifted UV.
+            float2 sampleUV = IN.uv;
+            if (_PlantSway > 0.5 && _UseMask > 0.5) {
+                float mask = SAMPLE_TEXTURE2D(_SwayMask, sampler_SwayMask, IN.uv).r;
+                sampleUV.x -= SwayAmplitude() * mask;
+            }
+
             // Discard transparent pixels — background stays black (flat fallback).
             // For tiles: the pre-baked 20×20 sprite alpha defines the border shape.
             // For non-tiles: standard sprite alpha transparency.
-            float spriteAlpha = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, IN.uv).a;
+            float spriteAlpha = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, sampleUV).a;
             clip(spriteAlpha - 0.1);
 
             // Tangent-space normal, RGBA32 packed 0–1.
-            float4 ns = SAMPLE_TEXTURE2D(_NormalMap, sampler_NormalMap, IN.uv);
+            float4 ns = SAMPLE_TEXTURE2D(_NormalMap, sampler_NormalMap, sampleUV);
             float3 tn = ns.rgb * 2.0 - 1.0;
 
             // SpriteRenderer.flipX negates mesh vertex X, reversing winding → back face.

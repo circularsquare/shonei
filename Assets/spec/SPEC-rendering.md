@@ -7,17 +7,18 @@
 | sortingOrder | What |
 |---|---|
 | -10 | Background tile (`BackgroundTile`) |
+| -5 | Water overlay sprite (`WaterController`) — sits behind tiles so the bleed-into-solid-neighbour pixels (see Water Rendering §) only show through the tile sprite's transparent bevel gaps. Above the background wall so cave water still reads against dirt. |
 | 0 | Tiles |
-| 1 | Roads (depth-3 structures); also tile overlays (grass on dirt, future moss on stone). Mutually exclusive on a tile — overlay rendering is suppressed when a road is present. |
-| 2 | Tile snow cover (`SnowAccumulationSystem`). Layered above the grass overlay so accumulated snow visually covers the underlying ground; on roaded tiles snow draws on top, reading as a snow-covered road. |
+| 1 | Roads (depth-3 structures) |
+| 2 | Tile snow cover (`SnowAccumulationSystem`). Sits above the tile body so accumulated snow covers the underlying ground; on roaded tiles snow draws on top, reading as a snow-covered road. Mutually exclusive at runtime with the grass overlay (snow accumulation snapshots and clears the overlay mask), so the ordering between snow (2) and overlay (11) doesn't visually matter. |
 | 5 | Power shafts (depth-4 structures) — render behind buildings so shafts read as wall-mounted plumbing |
 | parent − 1 | Power port stubs (`PortStubVisuals` child SR, one below the parent building). Also: flywheel wheel — rendered behind the housing so the spokes peek through. |
 | 10 | Buildings (depth-0 structures) |
+| 11 | Tile overlays (grass on dirt, future moss on stone). Sits one above buildings so grass tufts bevelling up out of a dirt tile read in front of building bottoms placed on or beside that tile. Roads still suppress overlay rendering on the same tile (sprite cleared in `OnTileOverlayChanged`), preserving the mutual-exclusion behaviour despite the layer difference. |
 | parent + 1 | Rotating wheel children sorted in front of the base (`RotatingPart` child SR — windmill blades). Per-building: the building decides whether its wheel sorts in front or behind by setting `wsr.sortingOrder` relative to its own `sr.sortingOrder` (windmill = +1, flywheel = −1). |
 | 12 | Floor items resting on a building's solid top (computed by `Inventory.ComputeFloorSortingOrder` — building +2 so wheel/blade overlays at parent+1 sit between the building and the pile) |
 | 15 | Platforms (depth-1 structures); also clock hand |
 | 17 | Floor items resting on a platform's solid top (computed — platform +2) |
-| 20 | Water overlay sprite (`WaterController`) |
 | parent + 1 | Items in storage display (drawer stacks, crate placeholder, tank fill, bookshelf fill) — `Inventory` ctor takes `parentSortingOrder` from the owning `Building` (e.g. drawer at 10 → stacks at 11). Falls back to 30 when no parent is supplied (test fixtures only). |
 | 40 | Foreground structures (depth-2: stairs, ladders) |
 | 48 | Animal tail (paper-doll part) |
@@ -56,7 +57,7 @@ Depth-based sortingOrder is the default; individual `StructType`s can override v
 
 ### Tile overlays (grass, moss, …)
 
-Every tile owns an optional **overlay** child SpriteRenderer that renders per-side decoration on top of the tile body. Today this is grass on dirt; the system generalises to moss on stone, snow, etc.
+Every tile owns an optional **overlay** child SpriteRenderer that renders per-side decoration on top of the tile body. Today this is grass on dirt; the system generalises to moss on stone, snow, etc. Sits at `sortingOrder = 11` — one above buildings so the U-side grass tufts read in front of building bodies placed on or beside the tile.
 
 - **Atlas selection**: each `TileType` declares an optional `overlay` string (e.g. dirt → `"grass"`). The atlas lives at `Resources/Sprites/Tiles/Sheets/<overlay>.png` and uses the standard 32×32 9-piece layout. Edge/corner pieces hold the decoration art; the **Main 16×16 region is ignored** — `TileSpriteCache.GetOverlay` zeros it at bake time so any "buried" side reads as transparent regardless of what the artist authored there. (Without this, stray opaque Main pixels overwrite the body's bevelled edge piece on non-decorated sides — e.g. a flat dirt-brown band along the underside of a tile that only has side grass.)
 - **Per-tile state**: `Tile.overlayMask` is a 4-bit bitmask, layout `0=L 1=R 2=D 3=U` (matches the cMask convention used by the tile-sprite baker). Bit set = "this side is decorated."
@@ -79,7 +80,7 @@ Snow is rendered through a **separate per-tile child SpriteRenderer** at sorting
 - **Sprite**: same `TileSpriteCache.GetOverlay` cardinal-mask atlas pipeline as grass — `Resources/Sprites/Tiles/Sheets/snow.png` is a 32×32 atlas, and the renderer always asks for the U-only inverted-cardinal variant (`0b0111`), so the artist authors that one slot for "snow on top of tile". Atlas connectivity matters even with a single decorated side: corner/edge variants ensure snow reads continuously across neighbouring snowy tiles when authored that way.
 - **Stacks, doesn't replace**: critical departure from grass. The body's `bodyCardinals` is **not** augmented with the snow's U bit, so the body keeps drawing its real top-edge bevel piece. The snow sprite stacks on top at sortingOrder 2 — so the artist authors snow.png with transparency / vertical positioning that lets the body's bevel still read through (e.g. drawing snow in the upper region of the U-edge slot, or with semi-transparent flake pixels). This is a deliberate visual choice: unlike grass-on-dirt where the dirt edge has no business showing through, snow-on-anything wants to feel deposited on top of the tile, not built into it.
 - **Normal map**: matches the body's normal data (`TileSpriteCache.GetNormalMap(tile.type.name, nMask, ...)`), same trick as grass — overlay SRs sample the body's normals so edge bevels don't pick up the overlay sprite's silhouette gradients.
-- **Coexistence with grass**: accumulation kills underlying grass (`overlayMask = 0`, `overlayState = OverlayState.Dead`), so the body is left in its bare state with snow on top. After melt, regrowth follows OverlayGrowthSystem's normal recovery rules.
+- **Coexistence with grass**: accumulation **snapshots** the live `overlayMask` and `overlayState` into `tile.preSnowOverlayMask`/`State` and clears the live mask so snow renders cleanly on top. `OverlayGrowthSystem` skips snowed tiles, so the snapshot doesn't drift while snow sits there. On melt, the snapshot is restored verbatim — same grass returns. (Earlier the system killed the grass outright; preservation feels closer to real-world snow insulation and saves the player from losing established grass cover every winter.)
 
 ### Blueprint visuals
 
@@ -182,13 +183,55 @@ Three cameras render as a URP **Camera Stack**: SkyCamera is the Base, Main and 
 
 | Camera | Render Type | Clear Flags | Culling Mask | Notes |
 |--------|-------------|-------------|--------------|-------|
-| `SkyCamera` | **Base** (stack: [Main, UnlitOverlay]) | Solid Color | Sky layer | `backgroundColor` set to `baseSkyColor × GetAmbientColor()` each frame — sky darkens at night |
+| `SkyCamera` | **Base** (stack: [Main, UnlitOverlay]) | Solid Color | Sky layer | `backgroundColor` set to raw `SunController.skyColor` each frame — fallback for any pixel `SkyGradient` doesn't cover. Lighting pipeline applies ambient × sun via the composite multiply, so we deliberately do NOT pre-multiply ambient. |
 | Main Camera | **Overlay** | n/a (Overlay shares Base RT) | Everything except Unlit | PixelPerfectCamera; lighting composite applied here |
 | `UnlitOverlayCamera` | **Overlay** | n/a | Unlit only | Renders after composite — sprites on the **Unlit** layer appear at full brightness, unaffected by lighting. Has `MatchCameraZoom` component to sync `assetsPPU` from Main Camera. LightFeature pipeline is skipped for this camera entirely. |
 
 **Unlit layer pattern**: any sprite that should always appear at full brightness (tile highlights, selection overlays, debug markers) goes on the `Unlit` layer. Keep it excluded from `litLayers`, `shadowCasterLayers`, and `directionalOnlyLayers` in the LightFeature Inspector. **Also assign `Sprite-Unlit-Default`** as the material — the project's default lit material (`Custom/Sprite`, see URP setup above) participates in NormalsCapture and is wrong for the Unlit layer. For runtime-created overlays, either instantiate a prefab that carries the material (preferred — see `Plant.CreateHarvestOverlay` / `BuildIndicator`) or cache a material via `Shader.Find("Universal Render Pipeline/2D/Sprite-Unlit-Default")`. Do NOT route Unlit-layer sprites through `SpriteMaterialUtil.AddSpriteRenderer` — that helper assigns the lit dual-pass material.
 
-**Sky camera ambient**: `LightPass` detects `SkyCamera` and clears the light RT to **full ambient** (skipping the `LightAmbientFill` blit). This prevents sky light spatial falloff from affecting clouds on the Sky layer. Clouds still receive sun via the directional light pass.
+**Sky camera ambient**: `LightPass` detects `SkyCamera` and clears the light RT to **full ambient** (skipping the `LightAmbientFill` blit). This prevents sky light spatial falloff from affecting Sky-layer sprites. Sky-layer sprites still receive sun via the directional light pass.
+
+**Raw-colors invariant for Sky-layer sprites**: every Sky-layer sprite (gradient, stars, clouds) sets `sr.color` to **raw zenith / horizon stops with NO `× GetAmbientColor()`**. The lighting pipeline applies ambient + sun via the composite multiply (`final = spriteColor × lightRT`, where `lightRT` is cleared to full ambient on SkyCamera and the sun pass adds sun NdotL). Pre-multiplying ambient on the CPU side double-darkens at night and is a bug. The `SkyCamera.backgroundColor` fallback also follows this rule.
+
+**Lightmap clamp in `LightComposite.shader`**: in the sprite branch (`normsAlpha ≥ 0.25`), `light.rgb` is `saturate`-clamped before the multiply. Without this, on SkyCamera at noon the cleared full-ambient + additive sun NdotL pushes channels above 1, and `skyDay × (1.2, 1.35, 1.5)` saturates per-channel at the framebuffer, crushing colored sky toward white. Clamping pre-multiply preserves hue. Project is LDR throughout, so this is a sane invariant (a "fully lit" sprite renders as its source color, no over-bright multiplier).
+
+**Sortinglayer for Sky-layer sprites**: every Sky-layer sprite *must* sit on sortingLayer **`Background`** (the cloud SRs' authored sortingLayer). Unity orders sortingLayers `Background → Default → Water → UI` (back to front) — sprites on `Default` draw *over* sprites on `Background`. SkyGradient and StarField default `sortingLayerName = "Background"` for this reason (caught when the gradient was hiding the clouds). Within `Background`: SkyGradient = -100 (back) → StarField = -50 → clouds = 0 (front).
+
+#### Sky color stops, gradient, and stars
+
+Two parallel 5-stop gradients on `SunController` describe the sky as a vertical band:
+- `skyDay/Twilight1/2/3/Night` — the **zenith** color (top of sky). Static getter: `SunController.skyColor`.
+- `horizonDay/Twilight1/2/3/Night` — the **horizon** color (bottom of sky). Static getter: `SunController.horizonColor`.
+
+Both arrays share the same `twilightFraction`-driven phase via the private `LerpStops` helper. Author horizon stops with warmer/lighter values at twilight so the offscreen sun reads as a horizon glow.
+
+[SkyGradient.cs](../Lighting/SkyGradient.cs) — child of `SkyCamera`, scene singleton (`SkyGradient.instance`). Owns its own child `SpriteRenderer` (`SkyGradientSR`) and a 1×64 RGBA32 `Texture2D` (bilinear). Each `LateUpdate`:
+1. Resizes the SR to the SkyCamera frustum: `localScale = (orthoSize × 2 × aspect, orthoSize × 2 / textureHeight, 1)`, `localPosition.z = 10`. The `/textureHeight` on Y is because the sprite is created with `PPU = 1` (native world size = `(1, textureHeight)` units). Reads `bgCam.orthographicSize` and `bgCam.aspect` directly — NOT `Camera.main` — because SkyCamera's zoom is dampened independently.
+2. Refills the 64 texture rows with `Color.Lerp(horizonColor, skyColor, smoothstep(0, horizonY01, v))`. `horizonY01` (default 0.4) is the viewport V at which the blend completes (above is full zenith).
+3. **Forces `alpha = 1`** on every gradient pixel and on the sample helper's return — authored color stops sometimes carry alpha=0 (Unity color picker quirk), which would otherwise make the gradient quad transparent.
+4. `tex.Apply(updateMipmaps: false)`.
+
+Public static API: `SkyGradient.SampleAtViewportY(float v01)` returns the same blend (alpha=1), used by `CloudLayer` for per-cloud tint. Falls back to `SunController.skyColor` (also alpha-corrected) if the singleton isn't initialized yet.
+
+`SkyGradient` uses `SpriteMaterialUtil.AddSpriteRenderer` so the gradient quad participates in NormalsCapture (alpha = 0.3 via `directionalOnlyLayers`) and gets ambient + sun multiplied at composite time. `sortingLayerName = "Background"`, `sortingOrder = -100`.
+
+**Sprite PPU pitfall**: `Sprite.Create(tex, rect, pivot, pixelsPerUnit)` with a 1-pixel-wide texture and `PPU = textureHeight` produces a native world size of `(1/textureHeight, 1)` — bilinear can't widen a 1-pixel column, so a `localScale.x = w` only stretches the result to `w / textureHeight` units (visible as a thin vertical strip down the centre of the frustum). Use `PPU = 1` so native size is `(1, textureHeight)` and divide `localScale.y` by `textureHeight` to land at exactly `(w, h)`.
+
+[StarField.cs](../Lighting/StarField.cs) — child of `SkyCamera`. Spawns N (default 60) child SR GameObjects at deterministic-random viewport positions inside `[bottomY01, topY01]` (default 0.45–0.98 — leaves the lower band empty for future ground silhouette). Each star reuses a single shared 1×1 white sprite. Stars are pinned to the camera frustum via per-frame `localPosition = (vp - 0.5) × halfFrustum × 2` in `LateUpdate`; they never move on screen as the player pans.
+
+Per-frame tint: `sr.color = (1, 1, 1, alpha)` where `alpha = nightFactor × twinkle`:
+- `nightFactor`: smoothstep ramp gated on `SunController.twilightFraction`. Tunable `nightThreshold` (default 0.1) and `rampWidth` (default 0.05) — `nightFactor = 0` for `twilightFraction ≥ threshold + ramp` (i.e. day / dusk), ramps to `1` as `twilightFraction` drops past `threshold` (deep night). Stars only appear in the deepest 15% of the day cycle by default. **Don't use `Mathf.SmoothStep(from, to, t)`** — its signature returns a value between `from` and `to`, NOT a 0–1 weight; build the smoothstep manually.
+- `twinkle`: `0.6 + 0.4 × sin(time × twinkleSpeed + phase)` per-star phase offset.
+
+Whole-field rotation: `rotationRad` accumulates `rotationSpeed × dt` (degrees/sec, default 1.5°/s ≈ 4 min per full rotation), and each star's local position is rotated around `(0, 0)` (screen centre) by hand each frame. Rotating the StarField transform directly would be cancelled by the next frame's `localPosition` re-assignment, so the rotation matrix is applied to the computed positions instead.
+
+`sortingLayerName = "Background"`, `sortingOrder = -50` (between gradient at -100 and clouds at 0 on the same sortinglayer).
+
+Visibility math: at full night, ambient ≈ dark blue. Star (white) × lightRT ≈ ambient (dim but ~10× brighter than the multiply-darkened sky). If they ever read too dim during play, escalate to a custom emissive shader or move stars to the Unlit layer.
+
+[CloudLayer.cs](../Controller/CloudLayer.cs) — at the end of `Update`, after parallax/wrap, each child cloud's SR.color is set to `Color.Lerp(Color.white, SkyGradient.SampleAtViewportY(viewportY), skyTintStrength)`. Sampling is done through the SkyCamera (not main) so the viewport coords align with the gradient's reference frame.
+
+**Why lerp toward white** (default `skyTintStrength = 0.4`): full sky-color tint makes the cloud render as `cloud_sprite × sky_color × lighting`, while the surrounding sky pixel renders as `sky_color × lighting` — same colour, cloud blends invisibly into the sky. Lerping toward white keeps the cloud noticeably brighter than the sky band it's in while still picking up its hue (warm at sunset, cool at zenith). Note `sr.color` is a multiplicative tint, not a sprite replacement — cloud silhouette and shading are preserved.
 
 ### Sky exposure (`SkyExposure.cs`)
 
@@ -343,6 +386,8 @@ See `SPEC-systems.md` for the simulation. The renderer is a separate GPU shader 
 
 **Surface mask** (`TextureFormat.R8`, nx×16 × ny×16 pixels): one byte per game pixel, rebuilt by `WaterController.UpdateSurfaceMask()` every 0.2 s (sim tick). Values: `0`=transparent, `127`=interior water, `255`=surface pixel. A pixel is "surface" if any of its 8 orthogonal+diagonal neighbours is open air (non-solid, no water). Water touching solid walls is NOT flagged as surface.
 
+**Edge bleed into solid neighbours**: the same mask-build pass also writes `127` (interior water) 2 px horizontally and 1 px downward into adjacent solid tiles' pixel space. Solid tile sprites are baked 20×20 with 2 px bevels whose corners can be transparent — without the bleed, those transparent corners read as background slits along water/wall boundaries. The bleed only fires into solid neighbours (gated on `_tileIsSolid`); empty/water neighbours are non-solid and skipped.
+
 **Shader** (`Water/WaterSurface`): one texture sample per fragment, three branches:
 - `mask < 0.25` → `discard` (transparent)
 - `mask > 0.75` → `_SurfaceColor` (white highlight)
@@ -354,7 +399,7 @@ See `SPEC-systems.md` for the simulation. The renderer is a separate GPU shader 
 
 **Lighting**: water is lit via a dedicated path. `LightFeature` has a `waterLayer` field (set to `Water` in the Inspector) which triggers a separate `DrawRenderers` call in `NormalsCapturePass` using `Hidden/NormalsCaptureWater` (pass 1, lit-only, alpha=0.5). That shader samples the global `_WaterSurfaceTex` (set each tick by `WaterController.UpdateSurfaceMask()`) for transparency, discarding pixels with no water. Outputs flat forward normals. This means water darkens at night and receives ambient light, but torch NdotL is minimal (flat normal faces away from scene).
 
-**sortingOrder**: `20` — above buildings (10), platforms (15), and floor items resting on either (11/16) so decorative water zones render on top of building sprites and any items piled there.
+**sortingOrder**: `-5` — behind tiles (0), above the background wall (-10). Sitting behind tiles is what makes the edge-bleed work cleanly: bleed pixels written into solid neighbours' pixel space are covered by the solid tile body except where its bevel is transparent, so the bleed only fills the gaps it's supposed to fill. Decorative water zones (fountain basins, tank fills) therefore depend on their main building sprite having the water region authored as transparent — the shimmer reads through that hole, not over the building.
 
 ### Decorative water zones
 

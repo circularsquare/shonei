@@ -44,9 +44,13 @@ public class Tile {
                 cbOverlayChanged?.Invoke(this);
             }
             // Mining a snowy tile (or any transition to a non-solid type) clears
-            // the snow flag — there's no surface left for it to rest on.
+            // the snow flag and the snapshotted under-snow grass — there's no
+            // surface left for it to rest on, and the grass it was preserving
+            // is gone with the tile.
             if (_snow && (value == null || !value.solid)) {
                 _snow = false;
+                preSnowOverlayMask  = 0;
+                preSnowOverlayState = OverlayState.Live;
                 cbSnowChanged?.Invoke(this);
             }
             if (cbTileTypeChanged != null){
@@ -84,10 +88,13 @@ public class Tile {
         }
     }
     // Weather-driven snow cover. Orthogonal to the grass overlay system above —
-    // snow is ephemeral, can land on any solid tile (dirt, stone, …), and
-    // accumulating snow kills the underlying grass. Driven by SnowAccumulationSystem
-    // from temperature + WeatherSystem.snowAmount; renderer subscribes to the
-    // change callback for sprite swaps. Cleared when the tile becomes non-solid
+    // snow is ephemeral, can land on any solid tile (dirt, stone, …) and
+    // *preserves* the underlying grass: at accumulation the live overlayMask
+    // and overlayState are snapshotted into preSnowOverlayMask/State and the
+    // live mask is cleared so the renderer hides grass while snow is on top;
+    // on melt the snapshot is restored. Driven by SnowAccumulationSystem from
+    // temperature + WeatherSystem.snowAmount; renderer subscribes to the change
+    // callback for sprite swaps. Cleared when the tile becomes non-solid
     // (mining) — same pattern as overlayMask.
     private bool _snow;
     public bool snow {
@@ -98,6 +105,14 @@ public class Tile {
             cbSnowChanged?.Invoke(this);
         }
     }
+    // Snapshot of the grass overlay at the moment snow accumulated, used to
+    // restore the underlying grass exactly when the snow melts. Plain fields
+    // (no callback) — they don't drive rendering directly; the actual
+    // overlayMask/overlayState properties do, and SnowAccumulationSystem
+    // copies between the snapshot and the live values. Meaningful only while
+    // snow == true; reset to (0, Live) on type change to non-solid.
+    public byte preSnowOverlayMask;
+    public OverlayState preSnowOverlayState;
     // Background wall behind the tile (rendered by BackgroundTile.cs).
     // Type is fixed at world-gen and never changes after mining: top DirtDepth
     // rows below surface get Dirt walls, deeper get Stone. `hasBackground` is

@@ -86,6 +86,13 @@ public abstract class Task {
     // check whether a task is possible. create objectives, make reservations
     public abstract bool Initialize();
 
+    // True if this task is tied to the animal's job (recipes, work orders, role-specific
+    // hauls etc.). When the player changes an animal's job, Animal.SetJob fails the current
+    // task only if IsWork — sleeping, eating, leisure, etc. should continue uninterrupted.
+    // Mixed-purpose tasks (e.g. ObtainTask, used for both equipment and food) stay work
+    // by default; the wasted fetch on a job swap is rare and self-corrects.
+    public virtual bool IsWork => true;
+
     public Task(Animal animal){
         this.animal = animal;
     }

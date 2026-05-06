@@ -44,9 +44,11 @@ public class InventoryController : MonoBehaviour {
         globalInventory = new GlobalInventory();
         discoveredItems = Db.itemsFlat.ToDictionary(i => i.id, i => false);
         itemDisplayGos = Db.itemsFlat.ToDictionary(i => i.id, i => default(GameObject));
-        // Books default to 1 (100 fen) — one copy of each book is plenty; scribes will skip
-        // a book recipe once any exists in the world. Everything else defaults to 100 liang.
-        targets = Db.itemsFlat.ToDictionary(i => i.id, i => i.itemClass == ItemClass.Book ? 100 : 10000);
+        // Per-item default target seeded from Item.DefaultTargetFen. Books default to 1 liang
+        // (one copy is plenty; scribes skip a book recipe once any exists). Byproducts like
+        // acorn/sawdust default to 10 liang so multi-product plant harvest gating can trigger.
+        // Everything else defaults to 100 liang. SaveSystem reapplies persisted overrides on load.
+        targets = Db.itemsFlat.ToDictionary(i => i.id, i => i.DefaultTargetFen);
     }
 
     public void AddInventory(Inventory inv) {

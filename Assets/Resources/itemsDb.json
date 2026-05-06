@@ -111,6 +111,7 @@
         "id": 110,
         "name": "sawdust",
         "decayRate": 0.04,
+        "defaultTarget": 10,
         "children": null
     },{
         "id": 112,
@@ -135,6 +136,14 @@
                 "name": "acorn",
                 "decayRate": 0.4,
                 "foodValue": 5,
+                "defaultTarget": 10,
+                "children": null
+            },{
+                "id": 153,
+                "name": "pinecone",
+                "decayRate": 0.4,
+                "foodValue": 5,
+                "defaultTarget": 10,
                 "children": null
             },{
                 "id": 160,

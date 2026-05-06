@@ -16,7 +16,12 @@ using UnityEngine;
 // sufficient; there is no per-frame cost. If a sprite's sortingOrder ever
 // changes at runtime, call Refresh() (or SetSortBucket again) explicitly.
 public static class LightReceiverUtil {
-    static readonly int SortBucketId = Shader.PropertyToID("_SortBucket");
+    static readonly int SortBucketId  = Shader.PropertyToID("_SortBucket");
+    static readonly int PlantBaseYId  = Shader.PropertyToID("_PlantBaseY");
+    static readonly int PlantHeightId = Shader.PropertyToID("_PlantHeight");
+    static readonly int PlantPhaseId  = Shader.PropertyToID("_PlantPhase");
+    static readonly int PlantSwayId   = Shader.PropertyToID("_PlantSway");
+    static readonly int UseMaskId     = Shader.PropertyToID("_UseMask");
     static MaterialPropertyBlock _scratch;
 
     // Writes _SortBucket = sortingOrder/255 onto the renderer's MPB. We read
@@ -27,6 +32,33 @@ public static class LightReceiverUtil {
         _scratch ??= new MaterialPropertyBlock();
         sr.GetPropertyBlock(_scratch);
         _scratch.SetFloat(SortBucketId, Mathf.Clamp01(sr.sortingOrder / 255f));
+        sr.SetPropertyBlock(_scratch);
+    }
+
+    // Writes the wind-sway MPB props onto a plant SR. Read-modify-write
+    // pattern same as SetSortBucket — composes with whatever the caller (or
+    // Unity) already set. _PlantSway is hardcoded to 1 here: the only callers
+    // are plant SR setup sites, and the flag exists to gate the matching code
+    // path in NormalsCapture.shader so non-plant sprites skip the sway math.
+    //
+    // `useMask = true` puts the SR in mask-mode (Phase 3): vertex stays put,
+    // fragment shifts the texture sample by amplitude × _SwayMask R channel.
+    // Used when the SR's sprite has a `_SwayMask` secondary texture authored
+    // (i.e. trees with rigid trunks). `useMask = false` keeps the renderer in
+    // vertex-mode (height-weighted whole-quad bend, Phase 1/2 behaviour).
+    //
+    // Called on plant ctor, on every extension claim, on RebuildExtensionTiles
+    // (load), on ReleaseAllExtensionTiles (harvest), AND on every UpdateSprite
+    // (the mask flag may flip with growth-stage sprite swaps).
+    public static void SetPlantSwayMPB(SpriteRenderer sr, float baseY, float plantHeight, float phase, bool useMask) {
+        if (sr == null) { Debug.LogError("LightReceiverUtil.SetPlantSwayMPB: null SpriteRenderer"); return; }
+        _scratch ??= new MaterialPropertyBlock();
+        sr.GetPropertyBlock(_scratch);
+        _scratch.SetFloat(PlantBaseYId,  baseY);
+        _scratch.SetFloat(PlantHeightId, Mathf.Max(1f, plantHeight));
+        _scratch.SetFloat(PlantPhaseId,  phase);
+        _scratch.SetFloat(PlantSwayId,   1f);
+        _scratch.SetFloat(UseMaskId,     useMask ? 1f : 0f);
         sr.SetPropertyBlock(_scratch);
     }
 }
@@ -49,19 +81,37 @@ public static class LightReceiverUtil {
 // of using this helper — they should NOT participate in NormalsCapture.
 public static class SpriteMaterialUtil {
     static Material _cachedLit;
-    static bool _probed;
+    static bool _probedLit;
+    static Material _cachedPlant;
+    static bool _probedPlant;
 
     // Loaded once from Resources/Materials/Sprite.mat. Null = asset missing;
     // callers fall through to whatever Unity's default is (with a warning).
     public static Material LitSpriteMaterial {
         get {
-            if (_probed) return _cachedLit;
+            if (_probedLit) return _cachedLit;
             _cachedLit = Resources.Load<Material>("Materials/Sprite");
-            _probed = true;
+            _probedLit = true;
             if (_cachedLit == null)
                 Debug.LogError("SpriteMaterialUtil: Resources/Materials/Sprite.mat not found. " +
                                "Sprites created via AddSpriteRenderer will use Unity's default and may render incorrectly under URP Universal renderer.");
             return _cachedLit;
+        }
+    }
+
+    // Plant-only variant — same lit pipeline as LitSpriteMaterial, plus
+    // wind-sway vertex displacement. See PlantSprite.shader. Falls through
+    // to LitSpriteMaterial on miss so plants still render (just without
+    // sway) if the asset goes missing.
+    public static Material PlantSpriteMaterial {
+        get {
+            if (_probedPlant) return _cachedPlant;
+            _cachedPlant = Resources.Load<Material>("Materials/PlantSprite");
+            _probedPlant = true;
+            if (_cachedPlant == null)
+                Debug.LogError("SpriteMaterialUtil: Resources/Materials/PlantSprite.mat not found. " +
+                               "Plants will render without wind sway.");
+            return _cachedPlant;
         }
     }
 
@@ -71,6 +121,19 @@ public static class SpriteMaterialUtil {
     public static SpriteRenderer AddSpriteRenderer(GameObject go) {
         SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
         var mat = LitSpriteMaterial;
+        if (mat != null) sr.sharedMaterial = mat;
+        return sr;
+    }
+
+    // Same as AddSpriteRenderer but assigns the plant sway material. Used by
+    // Plant.cs for extension SRs (anchor SR is created upstream by
+    // StructureVisualBuilder via AddSpriteRenderer, and Plant overrides its
+    // sharedMaterial to the plant variant after the fact — see Plant.cs).
+    // Falls through to the lit material if the plant asset is missing so
+    // plants still render correctly (just without sway).
+    public static SpriteRenderer AddPlantSpriteRenderer(GameObject go) {
+        SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+        var mat = PlantSpriteMaterial ?? LitSpriteMaterial;
         if (mat != null) sr.sharedMaterial = mat;
         return sr;
     }

@@ -12,7 +12,7 @@
     },{
         "id": 2,
         "name": "Mining",
-        "description": "Establish stone quarries to extract raw stone.",
+        "description": "Extract stone and ores.",
         "prereqs": [1],
         "cost": 5,
         "unlocks": [
@@ -31,12 +31,11 @@
     },{
         "id": 5,
         "name": "Pumps",
-        "description": "Draw water from underground sources and store it.",
+        "description": "Draw water from ponds.",
         "prereqs": [],
         "cost": 5,
         "unlocks": [
-            { "type": "building", "target": "pump" },
-            { "type": "building", "target": "tank" }
+            { "type": "building", "target": "pump" }
         ]
     },{
         "id": 6,

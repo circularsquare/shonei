@@ -70,6 +70,12 @@ public class Inventory{
     // NegativeInfinity = never updated, so the guard is always inactive at startup/load.
     public float lastTargetManualUpdateTimer = float.NegativeInfinity;
 
+    // World.timer threshold past which this inventory is dry. Set by MarkWet from
+    // WeatherSystem when rain is falling on an exposed floor inventory; while
+    // World.instance.timer < wetUntil, Decay() doubles the per-tick decay multiplier.
+    // Only meaningful for InvType.Floor — other types ignore it. Persisted in saves.
+    public float wetUntil = 0f;
+
     // Available space for an item in the market inventory (respects in-flight delivery reservations).
     // Separate from GetStorageForItem, which intentionally excludes market to prevent normal haulers routing here.
     public int GetMarketSpace(Item item) {
@@ -241,9 +247,26 @@ public class Inventory{
             _                  => 1f
         };
         if (invTypeMult == 0f) return;
+        if (IsWet()) invTypeMult *= 2f;
         for (int i = 0; i < nStacks; i++){
             itemStacks[i].Decay(invTypeMult * time);
         }
+    }
+
+    // True while this floor inventory is still within its rain-soaked window.
+    // Other inventory types are never wet (rain only reaches outdoor floor piles).
+    public bool IsWet() {
+        if (invType != InvType.Floor) return false;
+        float now = World.instance?.timer ?? 0f;
+        return wetUntil > now;
+    }
+
+    // Refresh the wet timer to (now + ticks), or no-op if a longer window is already set.
+    // Called by WeatherSystem when rain hits an exposed floor inventory.
+    public void MarkWet(float ticks) {
+        if (invType != InvType.Floor) return;
+        float newUntil = (World.instance?.timer ?? 0f) + ticks;
+        if (newUntil > wetUntil) wetUntil = newUntil;
     }
 
     // ── Moving items ─────────────────────────────────────────────────────────

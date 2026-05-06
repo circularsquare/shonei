@@ -78,23 +78,26 @@ public class WorldController : MonoBehaviour {
                 tile.RegisterCbTileTypeChanged(OnTileTypeChanged);
 
                 // Overlay child for per-side decoration (grass on dirt). Lives at
-                // sortingOrder=1 alongside roads — they're mutually exclusive on a
-                // tile (overlay is suppressed when a road is present), so no fight
-                // for draw order. Sprite is set on demand in OnTileOverlayChanged.
+                // sortingOrder=11, just above buildings (10), so grass tufts that
+                // bevel up out of a grassy dirt tile read in front of building
+                // bottoms placed on or beside the tile. Roads still suppress the
+                // overlay sprite (see OnTileOverlayChanged), preserving the
+                // road-vs-overlay mutual exclusion despite the layer difference.
+                // Sprite is set on demand in OnTileOverlayChanged.
                 GameObject overlay_go = new GameObject("Overlay");
                 overlay_go.transform.SetParent(tile_go.transform, false);
                 SpriteRenderer overlay_sr = overlay_go.AddComponent<SpriteRenderer>();
-                overlay_sr.sortingOrder = 1;
+                overlay_sr.sortingOrder = 11;
                 LightReceiverUtil.SetSortBucket(overlay_sr);
                 if (tileMaterial != null) overlay_sr.material = tileMaterial;
                 tileOverlaySrMap.Add(tile, overlay_sr);
                 tile.RegisterCbOverlayChanged(OnTileOverlayChanged);
 
-                // Snow child renders above the grass overlay (sortingOrder=2) so
-                // accumulating snow visually covers the tile body. The grass
-                // overlay is also cleared on accumulation, so they shouldn't
-                // both be visible simultaneously — but the layering reflects
-                // the conceptual stack regardless.
+                // Snow child at sortingOrder=2 — above the tile body so
+                // accumulating snow visually covers it. Snow and grass are
+                // mutually exclusive at runtime (snow accumulation snapshots
+                // and clears the overlay mask), so the relative ordering
+                // between snow (2) and the bumped grass overlay (11) is moot.
                 GameObject snow_go = new GameObject("Snow");
                 snow_go.transform.SetParent(tile_go.transform, false);
                 SpriteRenderer snow_sr = snow_go.AddComponent<SpriteRenderer>();
@@ -249,9 +252,9 @@ public class WorldController : MonoBehaviour {
             p.Mature();
             StructController.instance.Place(p);
         }
-        PlantAt("tree", 29);
+        PlantAt("pinetree", 29);
         PlantAt("appletree", 25);
-        PlantAt("tree", 28);
+        PlantAt("pinetree", 28);
         PlantAt("wheat", 35);
         PlantAt("wheat", 36);
 

@@ -126,14 +126,14 @@ TextureImporter:
     edges: []
     weights: []
     secondaryTextures:
+    - texture: {instanceID: 0}
+      name: _EmissionMap
     - texture: {fileID: 2800000, guid: 877d72a8438d01f44b8ef7330a507789, type: 3}
       name: _NormalMap
-    - texture: {fileID: 2800000, guid: 04a339d375cb03f49b3398f8fa0d021e, type: 3}
-      name: _EmissionMap
     nameFileIdTable: {}
   spritePackingTag: 
   pSDRemoveMatte: 0
   pSDShowRemoveMatteOption: 0
-  userData: 
+  userData: normalsCacheKey=V/HQS7gTJ7Q0SmB2hhPK1w==
   assetBundleName: 
   assetBundleVariant: 

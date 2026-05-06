@@ -237,10 +237,21 @@ public class MouseController : MonoBehaviour {
                 _isDragging = false;
                 _dragStartedInMode = mouseMode;
             } else if (mouseMode == MouseMode.Build) {
-                Tile placeTile = anchorTile ?? tileAt;
-                bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-                if (BuildPanel.instance.PlaceBlueprint(placeTile) && !shift)
-                    mouseMode = MouseMode.Select;
+                // No structType ⇒ click has no tool meaning; fall back to Select
+                // (Esc-step-4 equivalent for the click). Seed the drag-start state
+                // so the same press can drag-select on release without the user
+                // needing to lift the mouse first.
+                if (BuildPanel.instance == null || BuildPanel.instance.structType == null) {
+                    SetModeSelect();
+                    _dragStartScreenPos = Input.mousePosition;
+                    _isDragging = false;
+                    _dragStartedInMode = MouseMode.Select;
+                } else {
+                    Tile placeTile = anchorTile ?? tileAt;
+                    bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+                    if (BuildPanel.instance.PlaceBlueprint(placeTile) && !shift)
+                        mouseMode = MouseMode.Select;
+                }
             } else if (mouseMode == MouseMode.Remove) {
                 BuildPanel.instance.Remove(tileAt);
             }

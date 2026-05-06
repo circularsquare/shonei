@@ -60,6 +60,45 @@ Producers and consumers attach via `PowerPort(dx, dy, axis)` — a relative offs
 from the building anchor and the axis the shaft tile at that offset must carry.
 Mirroring flips X offsets the same way `Structure.workTile` does.
 
+### Multi-port bridging
+
+A power building with multiple ports is **transparent** to its network: every
+port that finds a compatible shaft contributes the building to the *same*
+network, and any disjoint shaft chains the ports touch get unioned through it.
+A wheel with shafts on its left AND its right is one network, not two — the
+wheel itself bridges them. Same for a flywheel with shafts on multiple
+perimeter tiles, a windmill with shafts at its base AND below its base, etc.
+
+This was not the case in earlier versions: `FindAttachedNetwork` returned the
+first port hit and stopped, so a power building registered to whichever side
+was placed first and the other side stayed isolated. The current rebuild
+collects every port hit per participant and unions the touched networks.
+
+### 0-gap adjacency
+
+Two power buildings with **touching footprints** (no tile between them) auto-
+connect when their ports face each other across the shared edge. Reason: the
+player can't drop a `power shaft` between buildings that have no space between
+them, so the rule fills in for that case. A wheel directly adjacent to a
+windmill — wheel's right H port targeting tile T1 inside the windmill,
+windmill's left H port targeting tile T2 inside the wheel, T1 and T2 adjacent
+along x — joins both buildings into one network.
+
+Detection: every port is indexed by row (H/Both) and column (V/Both). Pairs of
+ports from distinct anchors with axis-tile distance **exactly 1** are unioned.
+
+Distance 0 (same tile — i.e. a 1-tile gap between footprints, both ports
+targeting the gap tile) is intentionally NOT auto-connected. The player has
+space there and is expected to drop a `power shaft` to wire the gap manually.
+Auto-connecting that case would take agency away from the player, who might
+have intended for the buildings to remain on separate networks.
+
+Visual: each end of a 0-gap connection is recorded in
+`PowerSystem.connectedPortTiles` so `HasCompatibleShaftAt` returns true at
+those tiles. `PortStubVisuals` then renders the building's port stub at each
+end — building sprites don't fully cover their tiles, so the stub sprites
+show through the gaps and convey "axle running between the two buildings".
+
 | Building     | Port(s) (anchor-relative) |
 |--------------|---------------------------|
 | Wheel        | `(-1, 0, Horizontal)` and `(nx, 0, Horizontal)` — both bottom-row sides. Routing is symmetric so the F flip is purely cosmetic. |
@@ -81,16 +120,29 @@ State:
 - `consumers: List<IPowerConsumer>` — registered consumers (List, not Set, so
   registration order is stable; allocation walks this list with a per-tick
   rotated start index for fairness, see `allocationCounter` below)
-- `networks: Dictionary<int, PowerNetwork>` — rebuilt on `topologyDirty`
+- `networks: Dictionary<int, PowerNetwork>` — rebuilt on `topologyDirty`. Keys
+  are union-find roots (sparse, not contiguous) — fine, all lookups are by id.
 - `powered: HashSet<IPowerConsumer>` — recomputed each `Allocate()`; read by
   `IsBuildingPowered(Building)`
 
-Topology rebuild: BFS over shafts using axis-compatibility, then attach producers
-and consumers via their ports. O(power-relevant tiles + ports), much smaller
-than the world graph.
+Topology rebuild runs in **four phases**, glued together by union-find over a
+sparse network-id space:
 
-`RebuildFromWorld()` clears registries and re-walks `StructController.GetStructures()`,
-mirroring `MaintenanceSystem.RebuildFromWorld()`. Called from SaveSystem Phase 6.
+1. **BFS over real shafts** — each connected shaft component gets a raw id.
+2. **Attach participants + multi-port bridging** — for each producer / consumer
+   / storage, walk every port. Real-shaft hits get unioned (so a building with
+   shafts on multiple sides becomes one network). While iterating, every port
+   is also indexed by row (H/Both) and column (V/Both) for Phase 3.
+3. **0-gap adjacency rule** — sorted scan of each row/column index, unioning
+   pairs of ports from distinct anchors at distance == 1. Distance 0 (same
+   tile = 1-gap with port-coincidence) is skipped — left to the player.
+4. **Resolve raw ids to UF roots** — populate the canonical `networks` dict.
+
+Total cost is O(power-relevant tiles + Σ ports + P log P sort) — negligible.
+
+`RebuildFromWorld()` clears registries and re-walks
+`StructController.GetStructures()`, mirroring `MaintenanceSystem.RebuildFromWorld()`.
+Called from SaveSystem Phase 6.
 
 ### Building integration
 

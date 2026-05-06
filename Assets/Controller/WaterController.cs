@@ -140,10 +140,15 @@ public class WaterController : MonoBehaviour {
         SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
         sr.sprite      = waterSprite;
         sr.material    = _waterMat;
-        // Render above buildings (10), platforms (15), and items resting on
-        // either (11/16) so decorative water zones (e.g. fountain basin) are
-        // visible on top of the building sprite and any items piled there.
-        sr.sortingOrder = 20;
+        // Render behind tiles (0) but in front of the background wall (-10).
+        // Putting water at the back lets the solid tile body hide the bleed
+        // pixels we write into solid neighbours (see UpdateSurfaceMask) — the
+        // bleed only shows through the tile sprite's transparent bevel gaps,
+        // which is exactly the gap-fill effect we want. Decorative water
+        // zones (fountains, tanks) rely on their main building sprite having
+        // the water region authored as transparent so the shimmer reads
+        // through.
+        sr.sortingOrder = -5;
         LightReceiverUtil.SetSortBucket(sr);
 
         // Sync with any water already present (e.g. from world gen or save load).
@@ -317,6 +322,35 @@ public class WaterController : MonoBehaviour {
                             IsAir(px + 1, py + 1) || IsAir(px - 1, py + 1) ||
                             IsAir(px + 1, py - 1) || IsAir(px - 1, py - 1);
                         _surfaceBytes[py * _texW + px] = isSurface ? (byte)255 : (byte)127;
+                    }
+                }
+
+                // Bleed water 2 px horizontally / 1 px downward into adjacent SOLID
+                // neighbours. Solid tile sprites are baked 20×20 with 2 px bevels
+                // whose corners can be transparent — leaving thin slits along
+                // water/solid boundaries that read as dark background. Writing
+                // interior-water (127) into the solid neighbour's edge pixels
+                // covers those gaps. Empty and water neighbours are non-solid
+                // (water sits in non-solid tiles) and naturally skipped, matching
+                // the "only into solid tiles" requirement.
+                if (tx + 1 < world.nx && _tileIsSolid[ty * world.nx + tx + 1]) {
+                    for (int ly = 0; ly < waterHeight; ly++) {
+                        int py = pyBase + ly;
+                        _surfaceBytes[py * _texW + pxBase + PixelsPerTile    ] = 127;
+                        _surfaceBytes[py * _texW + pxBase + PixelsPerTile + 1] = 127;
+                    }
+                }
+                if (tx > 0 && _tileIsSolid[ty * world.nx + tx - 1]) {
+                    for (int ly = 0; ly < waterHeight; ly++) {
+                        int py = pyBase + ly;
+                        _surfaceBytes[py * _texW + pxBase - 1] = 127;
+                        _surfaceBytes[py * _texW + pxBase - 2] = 127;
+                    }
+                }
+                if (ty > 0 && _tileIsSolid[(ty - 1) * world.nx + tx]) {
+                    int row = (pyBase - 1) * _texW;
+                    for (int lx = 0; lx < PixelsPerTile; lx++) {
+                        _surfaceBytes[row + pxBase + lx] = 127;
                     }
                 }
             }

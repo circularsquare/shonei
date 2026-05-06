@@ -6,6 +6,7 @@ using System;
 using System.Linq;
 
 public class DropTask : Task {
+    public override bool IsWork => false;
     public DropTask(Animal animal) : base(animal){}
     public override bool Initialize(){
         List<Item> itemsToDrop = animal.inv.GetItemsList();

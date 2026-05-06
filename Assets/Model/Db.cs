@@ -572,15 +572,20 @@ public class Recipe {
     // meaning this recipe should not be chosen (production is unneeded).
     // target=0 means "produce none" — any quantity ≥ 0 satisfies it.
     // Items missing from the targets dict are skipped as a safe fallback.
-    public bool AllOutputsSatisfied(Dictionary<int, int> targets) {
-        if (targets == null) return false;
+    public bool AllOutputsSatisfied(Dictionary<int, int> targets) => AllItemsSatisfied(outputs, targets);
+
+    // Same satisfaction check, generalized over an arbitrary item list — used by Plant
+    // harvest gating (products array) and recipe output gating (outputs array). See
+    // AllOutputsSatisfied above for the semantics this preserves.
+    public static bool AllItemsSatisfied(ItemQuantity[] items, Dictionary<int, int> targets) {
+        if (targets == null || items == null) return false;
         bool anyTracked = false;
-        foreach (var iq in outputs) {
+        foreach (var iq in items) {
             if (!targets.TryGetValue(iq.item.id, out int target)) continue;
             anyTracked = true;
             if (GlobalInventory.instance.Quantity(iq.item) < target) return false;
         }
-        return anyTracked; // only suppress if at least one output was tracked
+        return anyTracked;
     }
 }
 

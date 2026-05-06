@@ -798,6 +798,12 @@ public class Animal : MonoBehaviour{
         if (cbAnimalChanged != null){
             cbAnimalChanged(this, oldJob);
         }
+        // Only interrupt the current task if it's actually job-tied. Sleeping, eating,
+        // socializing, leisure etc. should carry on across a job change. Task.IsWork
+        // marks the personal-needs tasks; everything else (haul, craft, harvest, …)
+        // defaults to work and gets refreshed.
+        if (task != null && !task.IsWork) return;
+
         // Defer Refresh until solid ground if we're mid-waypoint traversal.
         // preventFall==true means the animal is between waypoint nodes (cliff/stair);
         // calling Refresh now would leave them frozen on an unstandable tile.

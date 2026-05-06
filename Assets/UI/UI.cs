@@ -54,10 +54,25 @@ public class UI : MonoBehaviour {
         if (world == null){
             StartLate();
         }
-        // Close whichever exclusive panel is open when the user clicks outside UI
+        // LMB on world mirrors the Esc chain (steps 1–3): SaveMenu → BuildPanel
+        // sub-panel → exclusive panel, first match wins, so a single click never
+        // collapses two layers. The handler is non-consuming — control falls
+        // through to MouseController this frame, so a Select-mode click both
+        // closes a panel AND selects the clicked tile (matches Esc step 4 semantics
+        // for non-tool clicks). Esc-step-4-equivalent (exit non-Select mode) lives
+        // in MouseController's Build branch instead, so the no-structType case can
+        // also seed a Select drag-start on the same press.
         if (Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject()) {
-            foreach (var p in exclusivePanels)
-                if (p.activeSelf) { p.SetActive(false); break; }
+            if (SaveMenuPanel.instance != null && SaveMenuPanel.instance.gameObject.activeSelf) {
+                SaveMenuPanel.instance.gameObject.SetActive(false);
+            }
+            else if (BuildPanel.instance != null && BuildPanel.instance.IsSubPanelOpen) {
+                BuildPanel.instance.CloseSubPanel();
+            }
+            else {
+                foreach (var p in exclusivePanels)
+                    if (p.activeSelf) { p.SetActive(false); break; }
+            }
         }
 
         // Esc dismisses one layer of UI per press, in priority order. Centralised here

@@ -791,7 +791,7 @@ public static class WorldGen {
 
     static string PickPlantType(System.Random rng) {
         double roll = rng.NextDouble();
-        if (roll < 0.40) return "tree";       // pine
+        if (roll < 0.40) return "pinetree";   // pine + pinecone (replaces legacy "tree" — old saves still load their existing "tree" plants by typeName)
         if (roll < 0.60) return "appletree";
         if (roll < 0.80) return "ramie";
         return "bamboo";

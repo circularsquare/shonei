@@ -112,6 +112,14 @@ public class PowerSystem {
     // and by external HasCompatibleShaftAt queries (port-stub visuals, etc).
     readonly Dictionary<(int, int), Structure> byTile = new();
 
+    // World tiles where a 0-gap connection (Phase 3 of RebuildTopology) has fired,
+    // along with the axis the connection runs along. Read by HasCompatibleShaftAt so
+    // PortStubVisuals renders stubs at both ends of a 0-gap link — building sprites
+    // don't fully cover their tiles, so the stub sprites show through the gaps and
+    // visually convey "axle running between the two buildings". Cleared and rebuilt
+    // each topology pass.
+    readonly Dictionary<(int, int), Axis> connectedPortTiles = new();
+
     // Fired at the end of RebuildTopology(). Subscribers refresh any visualization
     // derived from connectivity (port stubs today; debug overlays in future). The
     // topology dirty flag is already cleared when this fires, so handlers calling
@@ -267,28 +275,48 @@ public class PowerSystem {
     public PowerNetwork GetNetwork(int id) =>
         networks.TryGetValue(id, out PowerNetwork n) ? n : null;
 
-    // True iff a registered shaft exists at (tx, ty) and its axis is compatible with
-    // `required`. "Both" on either side is a free pass. Used by port-stub visuals to
-    // decide whether a building's port is currently connected to anything.
+    // True iff (tx, ty) is a tile where a port stub should render — either:
+    //   1. A real shaft exists at the tile with axis compatible with `required`, OR
+    //   2. The tile is one end of a 0-gap connection (Phase 3 of topology rebuild)
+    //      with axis compatible with `required`.
     //
-    // Lazily rebuilds topology if dirty so callers see up-to-date state without having
-    // to wait for the next Tick. The rebuild itself fires onTopologyRebuilt, which
-    // refreshes any other subscribers in the same call — keeping all visualization
-    // consistent with a single shaft placement event.
+    // "Both" on either side is a free pass. Used by port-stub visuals to decide
+    // whether a building's port stub should show. Case 2 ensures stubs render on
+    // both ends of a 0-gap connection — building sprites don't fully cover their
+    // tiles, so the stubs show through the gaps to visually convey the axle.
+    //
+    // Lazily rebuilds topology if dirty so callers see up-to-date state without
+    // having to wait for the next Tick.
     public bool HasCompatibleShaftAt(int tx, int ty, Axis required) {
         if (topologyDirty) RebuildTopology();
-        if (!byTile.TryGetValue((tx, ty), out Structure shaft)) return false;
-        Axis sa = AxisOf(shaft);
-        return required == Axis.Both || sa == Axis.Both || sa == required;
+        if (byTile.TryGetValue((tx, ty), out Structure shaft)) {
+            Axis sa = AxisOf(shaft);
+            return required == Axis.Both || sa == Axis.Both || sa == required;
+        }
+        if (connectedPortTiles.TryGetValue((tx, ty), out Axis ca)) {
+            return required == Axis.Both || ca == Axis.Both || ca == required;
+        }
+        return false;
     }
 
     // ── Topology rebuild ──────────────────────────────────────────────────
-    // BFS over shaft tiles to compute connected components, then attach producers
-    // and consumers via their ports. After this runs:
-    //   shaftNet[s]    = id for every live shaft
-    //   producerNet[p] = id (or absent if the producer's port doesn't reach a shaft)
-    //   consumerNet[c] = id (or absent — consumer is "disconnected", treated as unpowered)
-    //   networks[id]   = populated PowerNetwork
+    // Three phases, glued together by union-find over a sparse network-id space:
+    //
+    //   1. BFS over real shafts → each shaft gets a raw network id.
+    //   2. Walk participants. For each, find every port that lands on a real shaft and
+    //      union those networks (multi-port bridging — a building with shafts on both
+    //      sides becomes one network, not two). While iterating, also index every port
+    //      by row (H/Both) and column (V/Both) for Phase 3.
+    //   3. 0-gap adjacency rule. When two power buildings have touching footprints and
+    //      their ports point at each other across the shared edge, they auto-connect —
+    //      the player can't drop a `power shaft` between buildings that have no space
+    //      between them, so the rule fills in for that case. Detected via the row/col
+    //      indexes: pairs of ports from distinct anchors with axis-tile distance == 1.
+    //      (Distance 0 = 1-tile gap with port-coincidence — explicitly NOT auto-connect;
+    //      the player has space there and is expected to wire it manually.)
+    //
+    // After all unioning, raw ids are resolved to UF roots and the canonical
+    // PowerNetwork dict is populated.
     void RebuildTopology() {
         topologyDirty = false;
         shaftNet.Clear();
@@ -297,11 +325,12 @@ public class PowerSystem {
         storageNet.Clear();
         networks.Clear();
         byTile.Clear();
+        connectedPortTiles.Clear();
 
-        // Build a tile→shaft index for O(1) neighbour lookup during BFS, then a second
-        // pass attaches producers/consumers. Stale shaft references (e.g. structure
-        // already destroyed) are pruned from `shafts` here. byTile persists as a field
-        // so external queries (HasCompatibleShaftAt) work outside the BFS scope.
+        // Build a tile→shaft index for O(1) neighbour lookup during BFS, then later
+        // passes attach participants. Stale shaft references (e.g. structure already
+        // destroyed) are pruned from `shafts` here. byTile persists as a field so
+        // external queries (HasCompatibleShaftAt) work outside the BFS scope.
         var stale = new List<Structure>();
         foreach (Structure s in shafts) {
             if (s == null || s.go == null) { stale.Add(s); continue; }
@@ -310,54 +339,243 @@ public class PowerSystem {
         }
         foreach (Structure s in stale) shafts.Remove(s);
 
+        // ── Union-find scratch (used by Phase 2 + 3) ──────────────────
+        // Maps raw network id → parent. Grows as fresh ids get minted in Phase 3.
+        var ufParent = new Dictionary<int, int>();
+        int Find(int x) {
+            if (!ufParent.TryGetValue(x, out int p)) { ufParent[x] = x; return x; }
+            int r = x;
+            while (ufParent[r] != r) r = ufParent[r];
+            // Path compression — collapse the chain on the way out.
+            while (ufParent[x] != r) { int next = ufParent[x]; ufParent[x] = r; x = next; }
+            return r;
+        }
+        void Union(int a, int b) { int ra = Find(a), rb = Find(b); if (ra != rb) ufParent[ra] = rb; }
+
+        // ── Phase 1: BFS over real shafts ─────────────────────────────
         int nextId = 0;
         foreach (Structure root in shafts) {
             if (shaftNet.ContainsKey(root)) continue;
             int id = nextId++;
-            var net = new PowerNetwork { id = id };
-            networks[id] = net;
+            ufParent[id] = id;
+            shaftNet[root] = id;
 
-            // BFS: walk shaft-to-shaft using axis-compatibility rules.
             var queue = new Queue<Structure>();
             queue.Enqueue(root);
-            shaftNet[root] = id;
-            net.shafts.Add(root);
             while (queue.Count > 0) {
                 Structure cur = queue.Dequeue();
                 Axis curAxis = AxisOf(cur);
-                // Horizontal neighbours — only if both ends carry H (or are turning).
                 if (curAxis == Axis.Horizontal || curAxis == Axis.Both) {
-                    TryEnqueueNeighbour(cur.x - 1, cur.y, Axis.Horizontal, byTile, queue, net, id);
-                    TryEnqueueNeighbour(cur.x + 1, cur.y, Axis.Horizontal, byTile, queue, net, id);
+                    TryEnqueueNeighbour(cur.x - 1, cur.y, Axis.Horizontal, queue, id);
+                    TryEnqueueNeighbour(cur.x + 1, cur.y, Axis.Horizontal, queue, id);
                 }
                 if (curAxis == Axis.Vertical || curAxis == Axis.Both) {
-                    TryEnqueueNeighbour(cur.x, cur.y - 1, Axis.Vertical, byTile, queue, net, id);
-                    TryEnqueueNeighbour(cur.x, cur.y + 1, Axis.Vertical, byTile, queue, net, id);
+                    TryEnqueueNeighbour(cur.x, cur.y - 1, Axis.Vertical, queue, id);
+                    TryEnqueueNeighbour(cur.x, cur.y + 1, Axis.Vertical, queue, id);
                 }
             }
         }
 
-        // Attach producers and consumers via their declared ports.
+        // ── Phase 2: attach participants + multi-port bridging ────────
+        // For each participant, walk ports. Real-shaft hits union into the multi-port
+        // bridge (so a building with shafts on multiple sides becomes one network).
+        // Every port — real-shaft hit or not — is also indexed by row (H/Both) and
+        // column (V/Both) for Phase 3's 0-gap rule.
+        var producerRaw = new Dictionary<IPowerProducer, int>();
+        var consumerRaw = new Dictionary<IPowerConsumer, int>();
+        var storageRaw  = new Dictionary<IPowerStorage, int>();
+        var anchorRaw   = new Dictionary<Structure, int>();
+        // Port records carry a direction sign so Phase 3 can require pairs to actually
+        // face each other. dir = -1 means the port-target tile is OUTSIDE the building
+        // on the LEFT (for row index) or BELOW (for col index); dir = +1 means RIGHT or
+        // ABOVE. Without this, two ports both pointing right (e.g. a pump's right port
+        // and a press's right port a tile further along) would spuriously pair as
+        // "distance 1, different anchors", even though they don't share an axle.
+        var portsByRow = new Dictionary<int, List<(int x, Structure anchor, Axis axis, int dir)>>();
+        var portsByCol = new Dictionary<int, List<(int y, Structure anchor, Axis axis, int dir)>>();
+
+        // Walk one participant's ports, union real-shaft hits, populate row/col indexes.
+        // Returns the participant's chosen raw id, or null if no port hit a real shaft.
+        int? Attach(Structure anchor, IEnumerable<PowerPort> ports) {
+            if (anchor == null || ports == null) return null;
+            bool mirrored = anchor.mirrored;
+            int nx = anchor.structType.nx;
+            int? pickedId = null;
+            foreach (PowerPort port in ports) {
+                // Mirroring flips X offsets the same way Structure.workTile does.
+                int dx = mirrored ? (nx - 1 - port.dx) : port.dx;
+                int tx = anchor.x + dx;
+                int ty = anchor.y + port.dy;
+
+                // Index for Phase 3 (0-gap rule). H/Both ports go in the row index; V/Both
+                // in the column index. A Both port shows up in both — it can pair via
+                // either axis. Direction signs are recorded per index: for the row index,
+                // dir is based on dx relative to the building's footprint (negative dx = LEFT,
+                // dx >= nx = RIGHT, otherwise inside-footprint = 0 and won't pair); for the
+                // column index, the same rule on dy / ny.
+                int ny = Mathf.Max(1, anchor.structType.ny);
+                if (port.axis == Axis.Horizontal || port.axis == Axis.Both) {
+                    if (!portsByRow.TryGetValue(ty, out var rl)) {
+                        rl = new List<(int, Structure, Axis, int)>();
+                        portsByRow[ty] = rl;
+                    }
+                    int hDir = (dx < 0) ? -1 : (dx >= nx ? +1 : 0);
+                    rl.Add((tx, anchor, port.axis, hDir));
+                }
+                if (port.axis == Axis.Vertical || port.axis == Axis.Both) {
+                    if (!portsByCol.TryGetValue(tx, out var cl)) {
+                        cl = new List<(int, Structure, Axis, int)>();
+                        portsByCol[tx] = cl;
+                    }
+                    int vDir = (port.dy < 0) ? -1 : (port.dy >= ny ? +1 : 0);
+                    cl.Add((ty, anchor, port.axis, vDir));
+                }
+
+                // Real-shaft attachment + multi-port bridging.
+                if (byTile.TryGetValue((tx, ty), out Structure shaft)) {
+                    Axis sa = AxisOf(shaft);
+                    if (port.axis == Axis.Both || sa == Axis.Both || sa == port.axis) {
+                        if (shaftNet.TryGetValue(shaft, out int id)) {
+                            if (pickedId == null) pickedId = id;
+                            else Union(pickedId.Value, id);  // multi-port bridge
+                        }
+                    }
+                }
+            }
+            return pickedId;
+        }
+
+        // Records a participant's raw id, unioning with any prior id assigned to the
+        // same anchor (rare — only happens for multi-role participants).
+        void RecordAnchor(Structure anchor, int id) {
+            if (anchorRaw.TryGetValue(anchor, out int existing)) Union(existing, id);
+            else anchorRaw[anchor] = id;
+        }
+
         foreach (IPowerProducer p in producers) {
-            if (p?.Structure == null) continue;
-            int? id = FindAttachedNetwork(p.Structure, p.Ports, byTile);
-            if (id == null) continue;
-            producerNet[p] = id.Value;
-            networks[id.Value].producers.Add(p);
+            int? id = Attach(p?.Structure, p?.Ports);
+            if (id != null) { producerRaw[p] = id.Value; RecordAnchor(p.Structure, id.Value); }
         }
         foreach (IPowerConsumer c in consumers) {
-            if (c?.Structure == null) continue;
-            int? id = FindAttachedNetwork(c.Structure, c.Ports, byTile);
-            if (id == null) continue;
-            consumerNet[c] = id.Value;
-            networks[id.Value].consumers.Add(c);
+            int? id = Attach(c?.Structure, c?.Ports);
+            if (id != null) { consumerRaw[c] = id.Value; RecordAnchor(c.Structure, id.Value); }
         }
         foreach (IPowerStorage st in storage) {
-            if (st?.Structure == null) continue;
-            int? id = FindAttachedNetwork(st.Structure, st.Ports, byTile);
-            if (id == null) continue;
-            storageNet[st] = id.Value;
-            networks[id.Value].storage.Add(st);
+            int? id = Attach(st?.Structure, st?.Ports);
+            if (id != null) { storageRaw[st] = id.Value; RecordAnchor(st.Structure, id.Value); }
+        }
+
+        // ── Phase 3: 0-gap adjacency rule ─────────────────────────────
+        // Two power buildings with touching footprints, with ports facing each other
+        // across the shared edge, auto-connect. Detected via port-target tiles being
+        // adjacent (distance EXACTLY 1) along the port's axis. Distance 0 (same tile,
+        // 1-gap with port-coincidence) is intentionally NOT auto-connected — the player
+        // has space there and is expected to wire it with a real shaft.
+        void EnsureAnchorId(Structure anc) {
+            if (anc == null || anchorRaw.ContainsKey(anc)) return;
+            int id = nextId++;
+            ufParent[id] = id;
+            anchorRaw[anc] = id;
+            foreach (IPowerProducer pp in producers)
+                if (pp?.Structure == anc && !producerRaw.ContainsKey(pp)) producerRaw[pp] = id;
+            foreach (IPowerConsumer cc in consumers)
+                if (cc?.Structure == anc && !consumerRaw.ContainsKey(cc)) consumerRaw[cc] = id;
+            foreach (IPowerStorage ss in storage)
+                if (ss?.Structure == anc && !storageRaw.ContainsKey(ss))  storageRaw[ss]  = id;
+        }
+
+        void ConnectAnchors(Structure a, Structure b) {
+            if (a == null || b == null || a == b) return;
+            EnsureAnchorId(a);
+            EnsureAnchorId(b);
+            Union(anchorRaw[a], anchorRaw[b]);
+        }
+
+        // Marks both ends of a 0-gap link as port-stub-renderable, with the connection
+        // axis. If a tile already has a marker on a different axis (rare — would mean
+        // the same tile is both ends of an H link and a V link), upgrade to Both so
+        // either-axis port stubs at that tile both render.
+        void MarkConnectedTile(int x, int y, Axis a) {
+            if (connectedPortTiles.TryGetValue((x, y), out Axis existing)) {
+                if (existing != a) connectedPortTiles[(x, y)] = Axis.Both;
+            } else {
+                connectedPortTiles[(x, y)] = a;
+            }
+        }
+
+        // Walk each row/col, sort by the axis coord, and union pairs at distance == 1
+        // whose direction signs are opposite (lower coord = LEFT/DOWN-pointing port from
+        // the building on the higher side; higher coord = RIGHT/UP-pointing port from the
+        // building on the lower side). Same-direction pairs (e.g. two right-pointing ports
+        // a tile apart) don't actually face each other and shouldn't union.
+        // O(P log P) over total port count P — negligible.
+        foreach (var kv in portsByRow) {
+            int rowY = kv.Key;
+            var list = kv.Value;
+            list.Sort((a, b) => a.x.CompareTo(b.x));
+            for (int i = 0; i < list.Count; i++) {
+                for (int j = i + 1; j < list.Count; j++) {
+                    int diff = list[j].x - list[i].x;
+                    if (diff > 1) break;
+                    if (diff == 0) continue;                            // 1-gap — leave to player
+                    if (list[i].anchor == list[j].anchor) continue;
+                    if (list[i].dir >= 0 || list[j].dir <= 0) continue; // not facing each other
+                    ConnectAnchors(list[i].anchor, list[j].anchor);
+                    MarkConnectedTile(list[i].x, rowY, Axis.Horizontal);
+                    MarkConnectedTile(list[j].x, rowY, Axis.Horizontal);
+                }
+            }
+        }
+        foreach (var kv in portsByCol) {
+            int colX = kv.Key;
+            var list = kv.Value;
+            list.Sort((a, b) => a.y.CompareTo(b.y));
+            for (int i = 0; i < list.Count; i++) {
+                for (int j = i + 1; j < list.Count; j++) {
+                    int diff = list[j].y - list[i].y;
+                    if (diff > 1) break;
+                    if (diff == 0) continue;                            // 1-gap — leave to player
+                    if (list[i].anchor == list[j].anchor) continue;
+                    if (list[i].dir >= 0 || list[j].dir <= 0) continue; // not facing each other
+                    ConnectAnchors(list[i].anchor, list[j].anchor);
+                    MarkConnectedTile(colX, list[i].y, Axis.Vertical);
+                    MarkConnectedTile(colX, list[j].y, Axis.Vertical);
+                }
+            }
+        }
+
+        // ── Phase 4: resolve raw ids to UF roots, populate networks dict ──
+        // After all unioning, sparse raw ids collapse to canonical roots. Iterate every
+        // raw map and bucket members into the canonical PowerNetwork they now belong to.
+        PowerNetwork GetNet(int rawId) {
+            int root = Find(rawId);
+            if (!networks.TryGetValue(root, out PowerNetwork net)) {
+                net = new PowerNetwork { id = root };
+                networks[root] = net;
+            }
+            return net;
+        }
+
+        var shaftEntries = new List<KeyValuePair<Structure, int>>(shaftNet);
+        foreach (var kv in shaftEntries) {
+            PowerNetwork net = GetNet(kv.Value);
+            shaftNet[kv.Key] = net.id;
+            net.shafts.Add(kv.Key);
+        }
+        foreach (var kv in producerRaw) {
+            PowerNetwork net = GetNet(kv.Value);
+            producerNet[kv.Key] = net.id;
+            net.producers.Add(kv.Key);
+        }
+        foreach (var kv in consumerRaw) {
+            PowerNetwork net = GetNet(kv.Value);
+            consumerNet[kv.Key] = net.id;
+            net.consumers.Add(kv.Key);
+        }
+        foreach (var kv in storageRaw) {
+            PowerNetwork net = GetNet(kv.Value);
+            storageNet[kv.Key] = net.id;
+            net.storage.Add(kv.Key);
         }
 
         // Notify visual subscribers that connectivity may have changed. Fired AFTER
@@ -366,36 +584,13 @@ public class PowerSystem {
         onTopologyRebuilt?.Invoke();
     }
 
-    void TryEnqueueNeighbour(int nx, int ny, Axis required,
-                             Dictionary<(int, int), Structure> byTile,
-                             Queue<Structure> queue, PowerNetwork net, int id) {
+    void TryEnqueueNeighbour(int nx, int ny, Axis required, Queue<Structure> queue, int id) {
         if (!byTile.TryGetValue((nx, ny), out Structure neighbour)) return;
         if (shaftNet.ContainsKey(neighbour)) return;
         Axis na = AxisOf(neighbour);
         if (na != required && na != Axis.Both) return;
         shaftNet[neighbour] = id;
-        net.shafts.Add(neighbour);
         queue.Enqueue(neighbour);
-    }
-
-    int? FindAttachedNetwork(Structure anchor, IEnumerable<PowerPort> ports,
-                             Dictionary<(int, int), Structure> byTile) {
-        if (ports == null) return null;
-        bool mirrored = anchor.mirrored;
-        int nx = anchor.structType.nx;
-        foreach (PowerPort port in ports) {
-            // Mirroring flips X offsets the same way Structure.workTile does.
-            int dx = mirrored ? (nx - 1 - port.dx) : port.dx;
-            int tx = anchor.x + dx;
-            int ty = anchor.y + port.dy;
-            if (!byTile.TryGetValue((tx, ty), out Structure shaft)) continue;
-            Axis sa = AxisOf(shaft);
-            // Port axis must match the shaft's axis. "Both" on either side is a free pass.
-            if (port.axis == Axis.Both || sa == Axis.Both || sa == port.axis) {
-                if (shaftNet.TryGetValue(shaft, out int id)) return id;
-            }
-        }
-        return null;
     }
 
     static Axis AxisOf(Structure shaft) {
@@ -514,6 +709,7 @@ public class PowerSystem {
         storageNet.Clear();
         networks.Clear();
         byTile.Clear();
+        connectedPortTiles.Clear();
         powered.Clear();
 
         List<Structure> structures = StructController.instance?.GetStructures();

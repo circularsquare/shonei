@@ -41,6 +41,7 @@ public class TileInfoView : MonoBehaviour {
         // Floor inventory
         if (tile.inv != null) {
             sb.Append("\ninv:");
+            if (tile.inv.IsWet()) sb.Append(" wet");
             foreach (var stack in tile.inv.itemStacks) {
                 if (stack.item != null) {
                     string resStr = stack.resAmount > 0 ? " (r" + ItemStack.FormatQ(stack.resAmount, stack.item.discrete) + ")" : "";

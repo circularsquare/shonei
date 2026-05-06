@@ -14,7 +14,25 @@
         "njob": "logger",
         "capacity": 1,
         "tempMin": 0,  "tempMax": 28,
-        "moistureMin": 10, "moistureMax": 100
+        "moistureMin": 10, "moistureMax": 100,
+        "maxHeight": 3
+    },{
+        "id": 503,
+        "name": "pinetree",
+        "ncosts": [
+            { "name": "pinecone", "quantity": 1 }
+        ],
+        "nproducts": [
+            { "name": "pine", "quantity": 15 },
+            { "name": "pinecone", "quantity": 1 }
+        ],
+        "growthTime": 80,
+        "harvestTime": 7.0,
+        "njob": "logger",
+        "capacity": 1,
+        "tempMin": 0,  "tempMax": 28,
+        "moistureMin": 10, "moistureMax": 100,
+        "maxHeight": 2
     },{
         "id": 502,
         "name": "wheat",
@@ -22,9 +40,9 @@
             { "name": "wheat", "quantity": 1 }
         ],
         "nproducts": [
-            { "name": "wheat", "quantity": 5 }
+            { "name": "wheat", "quantity": 4 }
         ],
-        "growthTime": 40,
+        "growthTime": 45,
         "harvestTime": 3.0,
         "njob": "farmer",
         "capacity": 1,
@@ -39,7 +57,7 @@
         "nproducts": [
             { "name": "soybeans", "quantity": 3 }
         ],
-        "growthTime": 35,
+        "growthTime": 40,
         "harvestTime": 3.0,
         "njob": "farmer",
         "capacity": 1,
@@ -54,7 +72,7 @@
         "nproducts": [
             { "name": "apple", "quantity": 2 }
         ],
-        "growthTime": 30,
+        "growthTime": 35,
         "harvestTime": 2.0,
         "njob": "farmer",
         "capacity": 1,
@@ -84,7 +102,7 @@
         "nproducts": [
             { "name": "bamboo", "quantity": 4 }
         ],
-        "growthTime": 50,
+        "growthTime": 40,
         "harvestTime": 4.0,
         "njob": "farmer",
         "capacity": 1,

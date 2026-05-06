@@ -114,6 +114,11 @@ public class StructureInfoView : MonoBehaviour {
             if (plant.plantType.maxHeight > 1)
                 sb.Append($"  height: {plant.height}/{plant.plantType.maxHeight}");
             AppendPlantComfort(sb, plant);
+            // Surface the target-gated dormancy from RegisterHarvest's isActive — without this
+            // the player sees a flagged, ripe crop sitting un-harvested with no in-game cue.
+            if (plant.harvestFlagged && plant.harvestable
+                && Recipe.AllItemsSatisfied(plant.plantType.products, InventoryController.instance?.targets))
+                sb.Append("\n <color=#d04040>will not harvest: outputs above target</color>");
             AppendTileOrders(sb, plant.tile);
         } else if (structure is Building bldg) {
             if (bldg.structType.depleteAt > 0 && bldg.workstation != null)
@@ -346,12 +351,15 @@ public class StructureInfoView : MonoBehaviour {
         return v.HasValue ? v.Value.ToString() + suffix : "?";
     }
 
-    // Appends work orders keyed by tile (harvest, research).
+    // Appends work orders keyed by tile (harvest, research). Mirrors AppendBuildingOrders'
+    // [inactive] suffix so a target-gated or unripe harvest order is visible as such.
     static void AppendTileOrders(System.Text.StringBuilder sb, Tile tile) {
         if (WorkOrderManager.instance == null) return;
         var found = new List<string>();
-        foreach (var o in WorkOrderManager.instance.FindOrdersForTile(tile))
-            found.Add($"{o.type} {o.res.reserved}/{o.res.capacity}");
+        foreach (var o in WorkOrderManager.instance.FindOrdersForTile(tile)) {
+            string active = o.isActive != null && !o.isActive() ? " [inactive]" : "";
+            found.Add($"{o.type} {o.res.reserved}/{o.res.capacity}{active}");
+        }
         if (found.Count > 0)
             sb.Append("\n wo: " + string.Join(", ", found));
     }

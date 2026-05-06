@@ -6,6 +6,7 @@ using System;
 using System.Linq;
 
 public class ChatTask : Task {
+    public override bool IsWork => false;
     public Animal partner;
     public Tile myTile; // tile this animal should stand on during chat
     public ChatTask(Animal animal, Animal partner) : base(animal) {

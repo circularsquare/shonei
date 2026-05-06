@@ -7,14 +7,34 @@ using SysDir  = System.IO.Directory;
 
 // Splits plant sprite sheets into individual growth-stage files.
 //
-// Sheet format: 1 row of CellSize × CellSize cells, read left-to-right.
-// Number of cells is derived from sheet width ÷ CellSize — e.g. a 64×16 sheet
-// splits into 4 stages (g0..g3), an 80×16 sheet into 5 (g0..g4, for multi-tile
-// plants like bamboo that need a stalk-continuation sprite).
-// Transparent cells are skipped (no file written).
+// Sheet format: CellSize × CellSize cells in a grid. Read left-to-right within
+// each row, top-to-bottom across rows.
+//   - 1 row  → row 0 emits g0..g{N-1}.   Single-tile plants and bamboo (which
+//              uses g4 as a stalk-continuation sprite for both anchor and
+//              non-top extensions).
+//   - 2 rows → row 0 (top in image)    emits b0..b{N-1}  — anchor (bottom-tile)
+//              row 1 (bottom in image) emits g0..g{N-1}  — upper-tile sprites
+//              Lets a plant give its anchor a distinct look (e.g. a flared
+//              tree base) while upper trunk segments use a different sprite.
+//              Plant.UpdateSprite tries b{i} first and falls back to g{i}.
+// Number of cells per row is derived from sheet width ÷ CellSize. Transparent
+// cells are skipped (no file written) — for `_sway` mask sheets that means
+// trunk-rigid cells must still be authored with alpha=1 (typically pure black,
+// since R-channel = 0 = rigid). Fully transparent cells are treated as "no
+// mask for this stage" and that stage falls back to vertex-mode at runtime.
 //
 // Source:  Assets/Resources/Sprites/Plants/Sheets/{plantName}.png
 // Output:  Assets/Resources/Sprites/Plants/Split/{plantName}/g0.png  etc.
+//          (and b0.png etc. for 2-row sheets)
+//
+// Sway mask sheets:
+//   Source: Assets/Resources/Sprites/Plants/Sheets/{plantName}_sway.png
+//   Output: Assets/Resources/Sprites/Plants/Split/{plantName}/g0_sway.png  etc.
+//   Same layout as the base sheet — same number of rows/columns, R-channel
+//   encodes the sway weight (0 = rigid, 1 = full sway). Output lands inside
+//   the base plant's folder with a `_sway` suffix on each cell so
+//   SpriteNormalMapGenerator can wire it as a `_SwayMask` secondary on the
+//   matching base sprite.
 //
 // Usage:
 //   Tools → Split All Plant Sheets          — processes every sheet in Sheets/
@@ -96,7 +116,12 @@ public static class PlantSheetSplitter {
     }
 
     // ── core ─────────────────────────────────────────────────────────────────
-    static void SplitSheet(string sheetPath, string plantName, List<string> written) {
+    // sheetName is the file's base name (e.g. "tree" or "tree_sway"). For
+    // `_sway` sheets we strip the suffix to find the plant folder and append
+    // the suffix to each cell name so output lands at
+    // `Split/{plant}/g{i}_sway.png` next to `g{i}.png` — that's where
+    // SpriteNormalMapGenerator looks when wiring the `_SwayMask` secondary.
+    static void SplitSheet(string sheetPath, string sheetName, List<string> written) {
         TextureImporter imp = AssetImporter.GetAtPath(sheetPath) as TextureImporter;
         if (imp == null) { Debug.LogWarning($"[PlantSheetSplitter] No importer for {sheetPath}"); return; }
 
@@ -110,39 +135,60 @@ public static class PlantSheetSplitter {
             return;
         }
 
-        string outDir = SysPath.Combine(SplitFolder, plantName).Replace('\\', '/');
+        string plantFolder = sheetName;
+        string cellSuffix  = "";
+        if (sheetName.EndsWith("_sway")) {
+            plantFolder = sheetName.Substring(0, sheetName.Length - "_sway".Length);
+            cellSuffix  = "_sway";
+        }
+
+        string outDir = SysPath.Combine(SplitFolder, plantFolder).Replace('\\', '/');
         SysDir.CreateDirectory(outDir);
 
-        // Column count derived from sheet width. Only the top row is read —
-        // multi-row sheets aren't supported yet (no plant needs them).
-        int numCols = sheet.width / CellSize;
-        if (numCols <= 0) {
-            Debug.LogWarning($"[PlantSheetSplitter] {sheetPath} is narrower than one cell ({CellSize}px) — skipping");
+        int numCols = sheet.width  / CellSize;
+        int numRows = sheet.height / CellSize;
+        if (numCols <= 0 || numRows <= 0) {
+            Debug.LogWarning($"[PlantSheetSplitter] {sheetPath} is smaller than one cell ({CellSize}px) — skipping");
+            if (!wasReadable) { imp.isReadable = false; imp.SaveAndReimport(); }
+            return;
         }
-        for (int col = 0; col < numCols; col++) {
-            string slotName = "g" + col;
-            int px = col * CellSize;
-            int py = sheet.height - CellSize;
+        if (numRows > 2) {
+            Debug.LogWarning($"[PlantSheetSplitter] {sheetPath} has {numRows} rows — only rows 0 (b*) and 1 (g*) will be split.");
+        }
 
+        // Row 0 in the image (top) is row 0 here. Pixel-space y is bottom-up,
+        // so row 0 lives at py = sheet.height - CellSize.
+        //   1-row sheet  → row 0 → "g"  (legacy behaviour)
+        //   2+-row sheet → row 0 → "b", row 1 → "g"
+        for (int row = 0; row < Mathf.Min(numRows, 2); row++) {
+            string prefix = (numRows == 1)
+                ? "g"
+                : (row == 0 ? "b" : "g");
+
+            int py = sheet.height - (row + 1) * CellSize;
             if (py < 0) continue;
 
-            Color[] pixels = sheet.GetPixels(px, py, CellSize, CellSize);
+            for (int col = 0; col < numCols; col++) {
+                string slotName = prefix + col + cellSuffix;
+                int px = col * CellSize;
 
-            // Skip fully-transparent cells
-            bool hasContent = false;
-            foreach (var p in pixels) { if (p.a > 0) { hasContent = true; break; } }
-            if (!hasContent) continue;
+                Color[] pixels = sheet.GetPixels(px, py, CellSize, CellSize);
 
-            Texture2D cell = new Texture2D(CellSize, CellSize, TextureFormat.RGBA32, false);
-            cell.SetPixels(pixels);
-            cell.Apply();
+                bool hasContent = false;
+                foreach (var p in pixels) { if (p.a > 0) { hasContent = true; break; } }
+                if (!hasContent) continue;
 
-            string outPath = SysPath.Combine(outDir, slotName + ".png").Replace('\\', '/');
-            SysFile.WriteAllBytes(outPath, cell.EncodeToPNG());
-            Object.DestroyImmediate(cell);
+                Texture2D cell = new Texture2D(CellSize, CellSize, TextureFormat.RGBA32, false);
+                cell.SetPixels(pixels);
+                cell.Apply();
 
-            written.Add(outPath);
-            Debug.Log($"[PlantSheetSplitter] Wrote: {outPath}");
+                string outPath = SysPath.Combine(outDir, slotName + ".png").Replace('\\', '/');
+                SysFile.WriteAllBytes(outPath, cell.EncodeToPNG());
+                Object.DestroyImmediate(cell);
+
+                written.Add(outPath);
+                Debug.Log($"[PlantSheetSplitter] Wrote: {outPath}");
+            }
         }
 
         if (!wasReadable) { imp.isReadable = false; imp.SaveAndReimport(); }

@@ -64,6 +64,16 @@ Shader "Hidden/LightComposite" {
 
                 float4 light = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, IN.uv);
 
+                // Clamp the lightmap to [0,1] before the multiply. The light RT
+                // is cleared to full ambient on SkyCamera with no exposure
+                // modulation, then the sun pass adds NdotL — so at noon the
+                // per-channel value can exceed 1. Multiplying that into a
+                // colored sprite (e.g. cyan skyDay × (1.2, 1.35, 1.5)) saturates
+                // each channel at a different rate and crushes the color toward
+                // white. Clamping pre-multiply preserves hue: a "fully lit"
+                // pixel just renders as its source color, not over-bright.
+                light.rgb = saturate(light.rgb);
+
                 // Edge-depth blending: shadow-caster pixels deep inside tiles
                 // blend toward deepAmbient based on distance from exposed surface.
                 // edgeDepth: 1.0 at surface (full light), 0.0 at penetration depth (deepAmbient).

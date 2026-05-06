@@ -6,6 +6,7 @@ using System;
 using System.Linq;
 
 public class EepTask : Task {
+    public override bool IsWork => false;
     public EepTask(Animal animal) : base(animal){}
     public override bool Initialize(){
         if (animal.homeTile == null){

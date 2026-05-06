@@ -79,6 +79,10 @@ public class OverlayGrowthSystem {
             for (int y = 0; y < ny; y++) {
                 Tile t = world.GetTileAt(x, y);
                 if (t.type.overlay == null) continue;
+                // Snow preserves the underlying grass intact — don't tick
+                // state or grow new sides while snow sits on top, otherwise
+                // the snapshot in tile.preSnowOverlay* drifts from reality.
+                if (t.snow) continue;
 
                 // Cardinal-solidity bitmask: bit set = neighbour is solid (side buried).
                 // Computed once at the top so we can short-circuit fully-buried tiles

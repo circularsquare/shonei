@@ -35,6 +35,11 @@ using SysFile = System.IO.File;
 //       runtime as a toggleable child GO on the parent structure — see
 //       Structure.cs and LightSource.cs.
 //   `{stem}_n.png` — generated normal map output (skipped in batch).
+//   `{stem}_sway.png` — plant wind-sway mask. Wired as `_SwayMask` secondary
+//       texture on `{stem}.png`. R-channel = per-pixel sway weight (0=rigid,
+//       1=full). Plant.cs detects the secondary's presence at runtime and
+//       flips the SR into mask-mode (fragment UV displacement instead of
+//       vertex bend). See PlantSprite.shader / NormalsCapture.shader.
 //
 // Performance:
 //   - Source pixels are read via `Texture2D.LoadImage(SysFile.ReadAllBytes(...))`
@@ -64,11 +69,25 @@ public static class SpriteNormalMapGenerator {
 
     [MenuItem("Assets/Generate Sprite Normal Map")]
     static void Generate() {
+        // Two-phase: see ProcessFolders for rationale. Phase 1 writes the _n.png
+        // and configures its importer; Phase 2 wires secondaries on the source.
+        // Splitting the phases is what lets `LoadAssetAtPath` see the new _n.png
+        // when wiring runs — single-phase under StartAssetEditing returns null.
+        var wired = new List<string>();
         try {
             AssetDatabase.StartAssetEditing();
             foreach (Object obj in Selection.objects)
-                if (obj is Texture2D tex)
-                    ProcessTexture(tex, force: true);
+                if (obj is Texture2D tex) {
+                    string srcPath = AssetDatabase.GetAssetPath(tex);
+                    if (ProcessTexture(tex, force: true)) wired.Add(srcPath);
+                }
+        } finally {
+            AssetDatabase.StopAssetEditing();
+        }
+
+        try {
+            AssetDatabase.StartAssetEditing();
+            foreach (string srcPath in wired) WireSecondariesAndStamp(srcPath, fire: false);
         } finally {
             AssetDatabase.StopAssetEditing();
             AssetDatabase.Refresh();
@@ -118,6 +137,17 @@ public static class SpriteNormalMapGenerator {
     }
 
     // Returns (processed, skipped, cancelled).
+    //
+    // Two-phase to work around a StartAssetEditing pitfall: ImportAsset calls
+    // for newly-created files are deferred until StopAssetEditing. If we tried
+    // to wire secondary textures inside the same batch, AssetDatabase.LoadAssetAtPath
+    // would return null for the just-written _n.png and AssignSecondaryTexture
+    // would silently bail, leaving sprites without _NormalMap wiring (lights flat).
+    //
+    //   Phase 1: write _n.png + configure its importer.  (StartAssetEditing #1)
+    //     ↓ StopAssetEditing flushes new asset records.
+    //   Phase 2: wire _NormalMap/_EmissionMap on each source sprite + stamp
+    //            cache key.                              (StartAssetEditing #2)
     static (int processed, int skipped, bool cancelled) ProcessFolders(string[] folders, bool force) {
         string[] guids = AssetDatabase.FindAssets("t:Texture2D", folders);
         int processed = 0, skipped = 0;
@@ -128,14 +158,21 @@ public static class SpriteNormalMapGenerator {
         var firePaths    = new List<string>();
         foreach (string guid in guids) {
             string path = AssetDatabase.GUIDToAssetPath(guid);
-            if (path.EndsWith("_n.png")) continue;       // skip generated normal maps
-            if (path.EndsWith("_e.png")) continue;       // skip emission mask companions
-            if (path.Contains("/Sheets/")) continue;     // skip source sheets — normals generated for split sprites only
+            if (path.EndsWith("_n.png"))    continue;    // skip generated normal maps
+            if (path.EndsWith("_e.png"))    continue;    // skip emission mask companions
+            if (path.EndsWith("_sway.png")) continue;    // skip plant wind-sway mask companions
+            if (path.Contains("/Sheets/"))  continue;    // skip source sheets — normals generated for split sprites only
             if (path.EndsWith("_f.png")) firePaths.Add(path);
             else                         regularPaths.Add(path);
         }
         int total = regularPaths.Count + firePaths.Count;
 
+        // Track sources that had their _n.png (re)generated — these need
+        // secondary-texture wiring in Phase 2.
+        var wiredRegular = new List<string>();
+        var wiredFire    = new List<string>();
+
+        // Phase 1: generation.
         try {
             AssetDatabase.StartAssetEditing();
             int idx = 0;
@@ -150,8 +187,8 @@ public static class SpriteNormalMapGenerator {
                 }
                 Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
                 if (tex == null) continue;
-                if (ProcessTexture(tex, force)) processed++;
-                else                            skipped++;
+                if (ProcessTexture(tex, force)) { processed++; wiredRegular.Add(path); }
+                else                            { skipped++; }
             }
 
             // Post-pass: fire sprites get flat normal maps + self/_e emission wiring.
@@ -166,10 +203,20 @@ public static class SpriteNormalMapGenerator {
                     }
                     Texture2D fireTex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
                     if (fireTex == null) continue;
-                    if (ProcessFlatNormal(fireTex, force)) processed++;
-                    else                                   skipped++;
+                    if (ProcessFlatNormal(fireTex, force)) { processed++; wiredFire.Add(path); }
+                    else                                   { skipped++; }
                 }
             }
+        } finally {
+            AssetDatabase.StopAssetEditing();
+        }
+
+        // Phase 2: wire secondaries + stamp cache keys. Coalesces N source-sprite
+        // reimports under a fresh StartAssetEditing batch.
+        try {
+            AssetDatabase.StartAssetEditing();
+            foreach (string srcPath in wiredRegular) WireSecondariesAndStamp(srcPath, fire: false);
+            foreach (string srcPath in wiredFire)    WireSecondariesAndStamp(srcPath, fire: true);
         } finally {
             AssetDatabase.StopAssetEditing();
             EditorUtility.ClearProgressBar();
@@ -181,6 +228,10 @@ public static class SpriteNormalMapGenerator {
     // ── flat normals (fire sprites) ─────────────────────────────────────────
     // Fire doesn't catch directional light — all opaque pixels get (0,0,1)
     // so NdotL is uniform regardless of sun/torch angle.
+    //
+    // Phase 1 only: writes _n.png + configures its importer. Caller runs
+    // WireSecondariesAndStamp in Phase 2 to wire `_NormalMap` on the source.
+    //
     // Returns true if processed, false if skipped (up-to-date).
     static bool ProcessFlatNormal(Texture2D source, bool force = false) {
         string srcPath = AssetDatabase.GetAssetPath(source);
@@ -224,17 +275,15 @@ public static class SpriteNormalMapGenerator {
             nImp.SaveAndReimport();
         }
 
-        AssignSecondaryTexture(srcPath, outPath, "_NormalMap");
-
-        // Stamp cache key — coalesces with surrounding SaveAndReimports under StartAssetEditing.
-        SetUserDataFlag(imp, "normalsCacheKey", ComputeCacheKey(srcPath, imp));
-        imp.SaveAndReimport();
-
         Debug.Log($"[NormalMapGen] Written (flat): {outPath}");
         return true;
     }
 
     // ── core ─────────────────────────────────────────────────────────────────
+    // Phase 1 only: writes _n.png + configures its importer. Caller runs
+    // WireSecondariesAndStamp in Phase 2 to wire `_NormalMap` (and optionally
+    // `_EmissionMap`) on the source sprite.
+    //
     // Returns true if processed, false if skipped (up-to-date).
     static bool ProcessTexture(Texture2D source, bool force = false) {
         string srcPath = AssetDatabase.GetAssetPath(source);
@@ -281,6 +330,11 @@ public static class SpriteNormalMapGenerator {
             rects.Add(new RectInt(0, 0, w, h));
         }
 
+        // Plant multi-tile sprites stack vertically at runtime — their interior
+        // boundaries shouldn't read as edges or the trunk lights as a series of
+        // beveled segments. See GetPlantInteriorEdges for the rule.
+        var (interiorBottom, interiorTop) = GetPlantInteriorEdges(srcPath);
+
         foreach (RectInt r in rects) {
             int xMin = r.xMin, xMax = r.xMax, yMin = r.yMin, yMax = r.yMax;
             for (int y = yMin; y < yMax; y++) {
@@ -291,10 +345,12 @@ public static class SpriteNormalMapGenerator {
                     // Edges are: rect boundary OR a transparent neighbour. Off-rect
                     // pixels are treated as transparent regardless of their actual
                     // alpha, which is what isolates per-slice processing.
+                    // interiorBottom/interiorTop suppress the rect-bottom / rect-top
+                    // case for sprites we know stack against another tile at runtime.
                     bool eL = x == xMin       || src[y * w + (x - 1)].a < 128;
                     bool eR = x == xMax - 1   || src[y * w + (x + 1)].a < 128;
-                    bool eD = y == yMin       || src[(y - 1) * w + x].a < 128;
-                    bool eU = y == yMax - 1   || src[(y + 1) * w + x].a < 128;
+                    bool eD = (y == yMin)     ? !interiorBottom : src[(y - 1) * w + x].a < 128;
+                    bool eU = (y == yMax - 1) ? !interiorTop    : src[(y + 1) * w + x].a < 128;
 
                     float nx = (eR ? 1f : 0f) - (eL ? 1f : 0f);
                     float ny = (eU ? 1f : 0f) - (eD ? 1f : 0f);
@@ -336,25 +392,82 @@ public static class SpriteNormalMapGenerator {
             nImp.SaveAndReimport();
         }
 
-        // Assign as _NormalMap secondary texture on the source sprite
-        AssignSecondaryTexture(srcPath, outPath, "_NormalMap");
-
-        // Wire/unwire `_EmissionMap` based on companion existence. Removing the
-        // companion later should also remove the secondary entry — otherwise
-        // the importer keeps a dead reference.
-        string ePath = EmissionPathFor(srcPath);
-        if (SysFile.Exists(ePath)) AssignSecondaryTexture(srcPath, ePath, "_EmissionMap");
-        else                       RemoveSecondaryTexture(srcPath, "_EmissionMap");
-
-        // Stamp cache key. The importer is the same native object used by
-        // AssignSecondaryTexture above, so userData modifications propagate.
-        // The trailing SaveAndReimport coalesces with the prior writes under
-        // StartAssetEditing — net cost is one importer pass per sprite.
-        SetUserDataFlag(imp, "normalsCacheKey", ComputeCacheKey(srcPath, imp));
-        imp.SaveAndReimport();
-
         Debug.Log($"[NormalMapGen] Written: {outPath}");
         return true;
+    }
+
+    // ── phase-2 wiring ───────────────────────────────────────────────────────
+    // Wires `_NormalMap` (always) and `_EmissionMap` (regular sprites only,
+    // based on `_e.png` companion existence) as secondary textures on the
+    // source sprite, then stamps the importer's `normalsCacheKey` userData so
+    // future runs can skip up-to-date sprites.
+    //
+    // Must run AFTER Phase 1's StopAssetEditing — see ProcessFolders for the
+    // full rationale. The short version: AssetDatabase.LoadAssetAtPath returns
+    // null for the freshly-written _n.png while it's still queued for import,
+    // and AssignSecondaryTexture LogErrors and bails in that case.
+    static void WireSecondariesAndStamp(string srcPath, bool fire) {
+        TextureImporter imp = AssetImporter.GetAtPath(srcPath) as TextureImporter;
+        if (imp == null) return;
+
+        AssignSecondaryTexture(srcPath, NormalPathFor(srcPath), "_NormalMap");
+
+        if (!fire) {
+            // Wire/unwire `_EmissionMap` based on companion existence. Removing
+            // the companion later should also remove the secondary entry —
+            // otherwise the importer keeps a dead reference.
+            string ePath = EmissionPathFor(srcPath);
+            if (SysFile.Exists(ePath)) AssignSecondaryTexture(srcPath, ePath, "_EmissionMap");
+            else                       RemoveSecondaryTexture(srcPath, "_EmissionMap");
+
+            // Same pattern for plant wind-sway masks. Plant.cs detects the
+            // `_SwayMask` secondary's presence at runtime to flip the renderer
+            // into mask-mode (per-pixel UV displacement instead of vertex bend).
+            string swayPath = SwayPathFor(srcPath);
+            if (SysFile.Exists(swayPath)) AssignSecondaryTexture(srcPath, swayPath, "_SwayMask");
+            else                          RemoveSecondaryTexture(srcPath, "_SwayMask");
+        }
+
+        // Stamp cache key. AssignSecondaryTexture's SaveAndReimport calls plus
+        // this trailing one all coalesce under the caller's StartAssetEditing —
+        // net cost is one importer pass per sprite.
+        SetUserDataFlag(imp, "normalsCacheKey", ComputeCacheKey(srcPath, imp));
+        imp.SaveAndReimport();
+    }
+
+    // ── plant multi-tile interior-edge rule ──────────────────────────────────
+    // Plant sprites under Plants/Split/<name>/ stack vertically at runtime
+    // (Plant.UpdateSprite). Some of their pixel-row boundaries always meet
+    // another tile, so default per-rect edge detection produces an unwanted
+    // up/down-facing bevel where the trunk is supposed to be continuous.
+    //
+    // Rules — derived from how Plant.UpdateSprite picks anchor/extension sprites:
+    //   g0..g3  → topmost extension at growth stages 4..N (always sits on a
+    //             tile below) → bottom is interior, top is real (canopy).
+    //   g4      → mid-trunk segment, sandwiched between tiles above and below
+    //             → both edges interior.
+    //   b4      → anchor when extensions exist (trunk base) → top is interior
+    //             (g above), bottom is at soil (real edge).
+    //   b0..b3  → anchor when single-tile (sapling) → no interior edges.
+    //   anything else → no special handling.
+    //
+    // Returns (bottomInterior, topInterior). Both default to false so most
+    // sprites retain the existing all-edges-real behaviour.
+    static (bool bottom, bool top) GetPlantInteriorEdges(string srcPath) {
+        if (string.IsNullOrEmpty(srcPath)) return (false, false);
+        if (srcPath.IndexOf("/Plants/Split/", System.StringComparison.Ordinal) < 0) return (false, false);
+
+        string stem = SysPath.GetFileNameWithoutExtension(srcPath);
+        if (stem.Length < 2) return (false, false);
+
+        char prefix = stem[0];
+        if (prefix != 'g' && prefix != 'b') return (false, false);
+        if (!int.TryParse(stem.Substring(1), out int idx)) return (false, false);
+
+        if (prefix == 'g' && idx >= 0 && idx <= 3) return (bottom: true,  top: false);
+        if (prefix == 'g' && idx == 4)             return (bottom: true,  top: true);
+        if (prefix == 'b' && idx == 4)             return (bottom: false, top: true);
+        return (false, false);
     }
 
     // ── path helpers ─────────────────────────────────────────────────────────
@@ -368,6 +481,12 @@ public static class SpriteNormalMapGenerator {
         string dir  = SysPath.GetDirectoryName(srcPath);
         string stem = SysPath.GetFileNameWithoutExtension(srcPath);
         return SysPath.Combine(dir, stem + "_e.png").Replace('\\', '/');
+    }
+
+    static string SwayPathFor(string srcPath) {
+        string dir  = SysPath.GetDirectoryName(srcPath);
+        string stem = SysPath.GetFileNameWithoutExtension(srcPath);
+        return SysPath.Combine(dir, stem + "_sway.png").Replace('\\', '/');
     }
 
     // ── up-to-date check ─────────────────────────────────────────────────────
@@ -404,6 +523,15 @@ public static class SpriteNormalMapGenerator {
         if (SysFile.Exists(ePath)) {
             sb.Append("|E").Append(SysFile.GetLastWriteTimeUtc(ePath).Ticks);
         }
+        string swayPath = SwayPathFor(srcPath);
+        if (SysFile.Exists(swayPath)) {
+            sb.Append("|S").Append(SysFile.GetLastWriteTimeUtc(swayPath).Ticks);
+        }
+        // Plant interior-edge rule: include the resolved flags so cached normal
+        // maps invalidate when a sprite enters/leaves the rule (e.g. a renamed
+        // file, or future rule edits — bump anything in GetPlantInteriorEdges).
+        var (intB, intT) = GetPlantInteriorEdges(srcPath);
+        if (intB || intT) sb.Append("|P").Append(intB ? "B" : "_").Append(intT ? "T" : "_");
         return Md5(sb.ToString());
     }
 
@@ -604,6 +732,19 @@ public static class SpriteNormalMapGenerator {
             imp.spritesheet      = sheet.ToArray();
             imp.spritePixelsPerUnit = 16;
             SetUserDataFlag(imp, "normals", "merged");
+
+            // Clear m_NameFileIdTable so Unity allocates fresh unique internalIDs
+            // for the new slice names. Without this, re-slicing leaves stale
+            // entries from prior names alongside new entries that all default to
+            // 0, producing "Identifier uniqueness violation" warnings and
+            // ambiguous asset references.
+            var so = new SerializedObject(imp);
+            var table = so.FindProperty("m_SpriteSheet.m_NameFileIdTable");
+            if (table != null && table.isArray) {
+                table.ClearArray();
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+
             imp.SaveAndReimport();
             Debug.Log($"[NormalMapGen] Sliced {path} into {rows} rows (merged normals ON). Re-run normal map generation.");
         }

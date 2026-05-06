@@ -10,7 +10,7 @@ CONTENT
 - trains    
 - plant
     - farmers can water plants 
-        - make tanks not require pumps
+    - buckets
     - plants die if temp / moisture are bad?
     - irrigation?
 - research
@@ -18,10 +18,10 @@ CONTENT
 - books cleanup?
 - power 
     - small internal power storage for power consumers? (hidden if contain 0 power)
-- tarp
-    - for safety from rain?
-    - wet items decay faster
-- thermometer/glass
+- thermometer/glass 
+    - sand
+- show controls in options panel 
+    - add shortcut to hide ui (f1?)
 
 VISUALS
 - make item icons more coherent / similar
@@ -30,6 +30,7 @@ VISUALS
     - improve undergroundwall sprite 
     - procedurally generate rocks with normalmaps?
 - wind sway on tarp?
+- change tree wind swaying?
 
 MOUSE AI
 - ponder inventory management
@@ -43,8 +44,13 @@ MOUSE AI
 
 
 
-CODE CLEANUP 
+CODE CLEANUP
+- ObtainTask is mixed-use (food/clothing/equipment) — currently treated as work for SetJob interruption purposes. If equipment-fetch interruption becomes annoying in practice, split via constructor flag or by checking targetInv == toolSlotInv.
 
 BUGS
 
 SHORT TERM
+test tarp
+finish tweaking lighting
+reorg sky into lighting instead of ksyamera?
+simplify lighting params?

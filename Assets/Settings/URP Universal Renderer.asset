@@ -70,7 +70,7 @@ MonoBehaviour:
   ambientNormal: 0.114
   lightPenetrationDepth: 1
   deepAmbientColor: {r: 0.3, g: 0.3, b: 0.3, a: 1}
-  skyLightBlend: 0.682
+  skyLightBlend: 0
   emissionStrength: 0.55
   sortRampRange: 0.08
   behindFarHeightFactor: 2

@@ -128,10 +128,12 @@ TextureImporter:
     secondaryTextures:
     - texture: {fileID: 2800000, guid: d26ff9fa0fb732e449b29a78ec947f1f, type: 3}
       name: _NormalMap
+    - texture: {fileID: 2800000, guid: f5ceba0c00fb8df4a81e04433f0cb3cd, type: 3}
+      name: _SwayMask
     nameFileIdTable: {}
   spritePackingTag: 
   pSDRemoveMatte: 0
   pSDShowRemoveMatteOption: 0
-  userData: 
+  userData: normalsCacheKey=sovy4oAb4BicdiXMo4Shrw==
   assetBundleName: 
   assetBundleVariant: 
