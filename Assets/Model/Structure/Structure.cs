@@ -93,6 +93,14 @@ public class Structure {
     // callers fall back to the captured default material rather than crashing.
     static Material _crackedMaterialCache;
     static bool     _crackedMaterialProbed;
+
+    // Reload-Domain-off support — see SpriteMaterialUtil.ResetStatics for the why.
+    [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetCrackedMaterialCache() {
+        _crackedMaterialCache = null;
+        _crackedMaterialProbed = false;
+    }
+
     static Material GetCrackedMaterial() {
         if (_crackedMaterialProbed) return _crackedMaterialCache;
         _crackedMaterialProbed = true;

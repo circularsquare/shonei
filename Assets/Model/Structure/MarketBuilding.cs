@@ -6,6 +6,10 @@ using UnityEngine;
 public class MarketBuilding : Building {
     public static MarketBuilding instance { get; private set; }
 
+    // Reload-Domain-off support — see MaintenanceSystem.ResetStatics for the why.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics() { instance = null; }
+
     public MarketBuilding(StructType st, int x, int y, bool mirrored = false)
         : base(st, x, y, mirrored) {
         if (instance != null)

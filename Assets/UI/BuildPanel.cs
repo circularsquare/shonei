@@ -32,7 +32,10 @@ public class BuildPanel : MonoBehaviour {
     readonly Dictionary<string, GameObject> subPanels = new Dictionary<string, GameObject>();
     readonly Dictionary<string, Button> catButtons = new Dictionary<string, Button>();
     string openCategory = null;
-    public bool IsSubPanelOpen => openCategory != null;
+    // Empty-string is treated as closed. Defends against stale UnityEvent listeners
+    // (which default string args to "") and against scene-reload races where some
+    // path sets openCategory before subPanels has its entries.
+    public bool IsSubPanelOpen => !string.IsNullOrEmpty(openCategory);
 
     void Start() {
         if (instance != null) { Debug.LogError("there should only be one build panel: " + gameObject.name); return; }
@@ -136,8 +139,16 @@ public class BuildPanel : MonoBehaviour {
     }
 
     public void CloseSubPanel() {
-        if (openCategory != null) {
-            subPanels[openCategory].SetActive(false);
+        // TryGetValue rather than [] so an unknown openCategory (stale state) doesn't
+        // throw — we always want this to reset cleanly. Log when it happens so we can
+        // chase the root cause if it recurs.
+        if (!string.IsNullOrEmpty(openCategory)) {
+            if (subPanels.TryGetValue(openCategory, out GameObject sp)) {
+                sp.SetActive(false);
+            } else {
+                Debug.LogWarning("[BuildPanel] CloseSubPanel: openCategory='" + openCategory
+                    + "' not in subPanels — clearing stale state.");
+            }
             openCategory = null;
         }
     }

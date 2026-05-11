@@ -62,6 +62,12 @@ public class PortStubVisuals : MonoBehaviour {
     static Sprite _vSprite;
     static bool _spritesLoaded;
 
+    // Reload-Domain-off support — see SpriteMaterialUtil.ResetStatics for the why.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics() {
+        _hSprite = null; _vSprite = null; _spritesLoaded = false;
+    }
+
     static void EnsureSpritesLoaded() {
         if (_spritesLoaded) return;
         _spritesLoaded = true;

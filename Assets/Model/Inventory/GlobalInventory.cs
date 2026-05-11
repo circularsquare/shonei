@@ -9,6 +9,11 @@ using System;
 // availability (e.g. recipe picking). Group items sum their leaf descendants.
 public class GlobalInventory {
     public static GlobalInventory instance {get; protected set;}
+
+    // Reload-Domain-off support — see MaintenanceSystem.ResetStatics for the why.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics() { instance = null; }
+
     public Dictionary<int, int> itemAmounts {get; protected set;}
     public Dictionary<int, int> itemCapacities {get; protected set;}
     Action<GlobalInventory> cbInventoryChanged;

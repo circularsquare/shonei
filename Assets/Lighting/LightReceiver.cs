@@ -85,6 +85,16 @@ public static class SpriteMaterialUtil {
     static Material _cachedPlant;
     static bool _probedPlant;
 
+    // Reload-Domain-off support: cached Material refs survive across play sessions
+    // but the underlying Unity objects don't. Without this, _probedLit stays true,
+    // _cachedLit is a dead ref, and every sprite renderer that calls the getter
+    // gets back a destroyed Material.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics() {
+        _cachedLit = null; _probedLit = false;
+        _cachedPlant = null; _probedPlant = false;
+    }
+
     // Loaded once from Resources/Materials/Sprite.mat. Null = asset missing;
     // callers fall through to whatever Unity's default is (with a warning).
     public static Material LitSpriteMaterial {

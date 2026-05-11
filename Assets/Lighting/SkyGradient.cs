@@ -5,8 +5,14 @@ using UnityEngine;
 // solid clear color on SkyCamera.
 //
 // Implementation: a child SpriteRenderer scaled to the SkyCamera's frustum
-// each LateUpdate, displaying a 1×N RGBA32 texture that's refilled with the
-// blend `lerp(horizonColor, skyColor, smoothstep(0, horizonY01, v))`.
+// each LateUpdate, displaying a 1×N RGBA32 texture that's refilled with a
+// per-frame `lerpOkLab(horizonColor, skyColor, smoothstep(0, horizonY01, v))`.
+//
+// **Interpolation is in OkLab**, not raw RGB. OkLab is a perceptually uniform
+// color space — lerping in it traces a hue-rotating arc through color space
+// (cyan → green → yellow → orange) instead of cutting through muddy RGB
+// midpoints (cyan → grey-brown → orange). Reference:
+// https://bottosson.github.io/posts/oklab/
 //
 // All Sky-layer sprites use raw colors with no CPU-side ambient multiply —
 // the LightFeature pipeline applies ambient × sun via the composite multiply.
@@ -14,14 +20,10 @@ using UnityEngine;
 //
 // Scene setup:
 //   1. Add a child GameObject under SkyCamera, attach this script.
-//   2. Add a child SpriteRenderer GameObject and wire it as `sr`.
-//   3. (Sortinglayer should match the cloud sortinglayer; sortingOrder is
+//   2. (Sortinglayer should match the cloud sortinglayer; sortingOrder is
 //       configured here at -100 so the gradient sits behind clouds.)
 public class SkyGradient : MonoBehaviour {
     public static SkyGradient instance { get; private set; }
-
-    [Tooltip("Viewport V at which the horizon→zenith blend completes. Below this is the transition zone, above is full zenith. 1.0 = gradient spans the entire viewport (no solid-zenith band).")]
-    [Range(0f, 1f)] public float horizonY01 = 0.4f;
 
     [Tooltip("Resolution of the gradient texture (vertical pixels). 64 is plenty for a smooth gradient.")]
     [SerializeField] int textureHeight = 64;
@@ -85,32 +87,92 @@ public class SkyGradient : MonoBehaviour {
         // transparent and we see through to the camera clear.
         Color zenith  = SunController.skyColor;     zenith.a  = 1f;
         Color horizon = SunController.horizonColor; horizon.a = 1f;
+
+        // Pre-convert the stops to OkLab once per frame, then per-pixel lerp
+        // in lab space and convert each result back to sRGB. cbrt × textureHeight
+        // is the per-frame cost — negligible at textureHeight=64.
+        var labZenith  = RgbToOklab(zenith.linear);
+        var labHorizon = RgbToOklab(horizon.linear);
+
+        float horizonY01 = SunController.horizonY01;
         for (int i = 0; i < textureHeight; i++) {
             float v = (i + 0.5f) / textureHeight;
             float t = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0f, horizonY01, v));
-            Color c = Color.Lerp(horizon, zenith, t);
-            c.a = 1f;
-            pixels[i] = c;
+            Color lin = OklabToRgb(
+                Mathf.Lerp(labHorizon.L, labZenith.L, t),
+                Mathf.Lerp(labHorizon.a, labZenith.a, t),
+                Mathf.Lerp(labHorizon.b, labZenith.b, t));
+            Color srgb = lin.gamma;
+            srgb.a = 1f;
+            pixels[i] = srgb;
         }
         gradTex.SetPixels(pixels);
         gradTex.Apply(updateMipmaps: false);
     }
 
     // Samples the same blend the gradient quad uses, at a given viewport-Y.
-    // Returns raw color (no ambient) — callers feed it to a Sky-layer sprite,
-    // which gets ambient × sun via the lighting composite. Falls back to
-    // SunController.skyColor before the gradient is initialized.
+    // Returns raw sRGB color (no ambient) — callers feed it to a Sky-layer
+    // sprite, which gets ambient × sun via the lighting composite. Falls back
+    // to SunController.skyColor before the gradient is initialized.
     public static Color SampleAtViewportY(float v01) {
         if (instance == null) { var fallback = SunController.skyColor; fallback.a = 1f; return fallback; }
-        float t = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0f, instance.horizonY01, v01));
+        float horizonY01 = SunController.horizonY01;
+        float t = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0f, horizonY01, v01));
         Color zenith  = SunController.skyColor;     zenith.a  = 1f;
         Color horizon = SunController.horizonColor; horizon.a = 1f;
-        Color c = Color.Lerp(horizon, zenith, t);
-        c.a = 1f;
-        return c;
+        var labZenith  = RgbToOklab(zenith.linear);
+        var labHorizon = RgbToOklab(horizon.linear);
+        Color lin = OklabToRgb(
+            Mathf.Lerp(labHorizon.L, labZenith.L, t),
+            Mathf.Lerp(labHorizon.a, labZenith.a, t),
+            Mathf.Lerp(labHorizon.b, labZenith.b, t));
+        Color srgb = lin.gamma;
+        srgb.a = 1f;
+        return srgb;
     }
 
     void OnDestroy() {
         if (gradTex != null) Destroy(gradTex);
+    }
+
+    // ── OkLab color-space conversions ──────────────────────────────────────
+    // Reference: https://bottosson.github.io/posts/oklab/
+    // Inputs/outputs are LINEAR sRGB. Use Color.linear / Color.gamma at the
+    // boundary to convert to/from the sRGB-encoded values Unity stores in Color.
+
+    static (float L, float a, float b) RgbToOklab(Color linRgb) {
+        float l = 0.4122214708f * linRgb.r + 0.5363325363f * linRgb.g + 0.0514459929f * linRgb.b;
+        float m = 0.2119034982f * linRgb.r + 0.6806995451f * linRgb.g + 0.1073969566f * linRgb.b;
+        float s = 0.0883024619f * linRgb.r + 0.2817188376f * linRgb.g + 0.6299787005f * linRgb.b;
+        float lc = Cbrt(l);
+        float mc = Cbrt(m);
+        float sc = Cbrt(s);
+        return (
+            0.2104542553f * lc + 0.7936177850f * mc - 0.0040720468f * sc,
+            1.9779984951f * lc - 2.4285922050f * mc + 0.4505937099f * sc,
+            0.0259040371f * lc + 0.7827717662f * mc - 0.8086757660f * sc
+        );
+    }
+
+    static Color OklabToRgb(float L, float a, float b) {
+        float lc = L + 0.3963377774f * a + 0.2158037573f * b;
+        float mc = L - 0.1055613458f * a - 0.0638541728f * b;
+        float sc = L - 0.0894841775f * a - 1.2914855480f * b;
+        float l = lc * lc * lc;
+        float m = mc * mc * mc;
+        float s = sc * sc * sc;
+        return new Color(
+            Mathf.Clamp01(+4.0767416621f * l - 3.3077115913f * m + 0.2309699292f * s),
+            Mathf.Clamp01(-1.2684380046f * l + 2.6097574011f * m - 0.3413193965f * s),
+            Mathf.Clamp01(-0.0041960863f * l - 0.7034186147f * m + 1.7076147010f * s),
+            1f
+        );
+    }
+
+    // Mathf.Pow can't take fractional exponents of negatives. The OkLab matrix
+    // coefficients are all positive so RGB→LMS values stay non-negative for
+    // any valid sRGB input, but guard for safety against extrapolated stops.
+    static float Cbrt(float x) {
+        return x < 0f ? -Mathf.Pow(-x, 1f / 3f) : Mathf.Pow(x, 1f / 3f);
     }
 }

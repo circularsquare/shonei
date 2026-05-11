@@ -55,6 +55,11 @@ public class Graph {
     public World world;
     public Node[,] nodes;
     public static Graph instance { get; protected set; }
+
+    // Reload-Domain-off support — see MaintenanceSystem.ResetStatics for the why.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics() { instance = null; }
+
     private Dictionary<(int,int),  (Node,Node)> stairWaypoints = new Dictionary<(int,int),  (Node,Node)>();
     private Dictionary<(int,int,int),(Node,Node)> cliffWaypoints = new Dictionary<(int,int,int),(Node,Node)>();
 

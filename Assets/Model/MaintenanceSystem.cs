@@ -40,6 +40,13 @@ using UnityEngine;
 public class MaintenanceSystem {
     public static MaintenanceSystem instance { get; private set; }
 
+    // Reload-Domain-off support: plain C# classes don't get their static `instance`
+    // nulled by Unity when entering play mode if domain reload is disabled. Without
+    // this, the second play press finds the previous session's instance still here
+    // and the ctor's duplicate-detection LogError fires.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics() { instance = null; }
+
     // Structures that currently have an active WOM Maintenance order registered.
     // We only register when condition first drops below RegisterThreshold, so this
     // prevents re-registering on every tick below the threshold.

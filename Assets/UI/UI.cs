@@ -12,6 +12,12 @@ public class UI : MonoBehaviour {
 
     [SerializeField] GameObject chatWindow;
 
+    // Cached root Canvas components for F1 hide-UI toggle. Populated lazily on first press.
+    // We toggle Canvas.enabled rather than GameObject.SetActive so panel hierarchies keep
+    // their internal state (selections, open/collapsed groups, etc.) untouched.
+    Canvas[] _allCanvases;
+    bool _uiHidden;
+
     // Exclusive panels — at most one may be visible at a time.
     // Call RegisterExclusive() in Awake/Start; call OpenExclusive() instead of SetActive(true).
     static readonly List<GameObject> exclusivePanels = new List<GameObject>();
@@ -54,6 +60,13 @@ public class UI : MonoBehaviour {
         if (world == null){
             StartLate();
         }
+        // F1 toggles all UI visibility (every root Canvas). Useful for screenshots / observing
+        // the world without HUD overlay. Disabling a Canvas also stops it from intercepting
+        // mouse input, so clicks pass through to MouseController normally.
+        if (Input.GetKeyDown(KeyCode.F1)) {
+            ToggleUIVisible();
+        }
+
         // LMB on world mirrors the Esc chain (steps 1–3): SaveMenu → BuildPanel
         // sub-panel → exclusive panel, first match wins, so a single click never
         // collapses two layers. The handler is non-consuming — control falls
@@ -101,5 +114,17 @@ public class UI : MonoBehaviour {
         }
     }
 
-
+    // Flips visibility of every Canvas in the scene. Re-scans on each press in case
+    // canvases have been added/removed at runtime (e.g. a future overlay canvas).
+    void ToggleUIVisible() {
+        _allCanvases = FindObjectsOfType<Canvas>(includeInactive: false);
+        _uiHidden = !_uiHidden;
+        foreach (var c in _allCanvases) {
+            if (c == null) continue;
+            // Only toggle root canvases — nested canvases inherit enabled state from
+            // their parent's render hierarchy, and flipping them independently would
+            // leave child canvases visible after the parent is hidden.
+            if (c.isRootCanvas) c.enabled = !_uiHidden;
+        }
+    }
 }

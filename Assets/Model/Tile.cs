@@ -25,7 +25,6 @@ public class Tile {
 
     World world;
     public int x, y;
-    public GameObject go;
     private TileType _type;
     public TileType type{
         get{return _type;}

@@ -78,6 +78,10 @@ public static class PlantSheetSplitter {
         foreach (string guid in guids) {
             string path = AssetDatabase.GUIDToAssetPath(guid);
             if (path.EndsWith("_n.png")) continue;
+            // Baker companions — not sprite sheets meant for in-game rendering.
+            // Splitting them would pollute Split/ with useless plant folders.
+            if (path.EndsWith("_blobs.png")) continue;
+            if (path.EndsWith("_trunk.png")) continue;
             string plantName = SysPath.GetFileNameWithoutExtension(path);
             SplitSheet(path, plantName, written);
             count++;
@@ -107,6 +111,10 @@ public static class PlantSheetSplitter {
             string path = AssetDatabase.GetAssetPath(o);
             if (!path.StartsWith(SheetsFolder)) continue;
             if (path.EndsWith("_n.png")) continue;
+            // Baker companions — not sprite sheets meant for in-game rendering.
+            // Splitting them would pollute Split/ with useless plant folders.
+            if (path.EndsWith("_blobs.png")) continue;
+            if (path.EndsWith("_trunk.png")) continue;
             string plantName = SysPath.GetFileNameWithoutExtension(path);
             SplitSheet(path, plantName, written);
         }

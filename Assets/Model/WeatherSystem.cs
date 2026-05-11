@@ -34,6 +34,10 @@ using UnityEngine;
 public class WeatherSystem {
     public static WeatherSystem instance { get; private set; }
 
+    // Reload-Domain-off support — see MaintenanceSystem.ResetStatics for the why.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics() { instance = null; }
+
     public bool isRaining { get; private set; }
 
     // 0 = fully clear, 1 = fully raining (above snowThresholdC). Lerps smoothly.

@@ -1,12 +1,15 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// Sparse twinkling stars on the Sky layer, fading in below twilightFraction.
+// Sparse twinkling stars on the Sky layer, fading in below twilightFraction
+// and slowly rotating around the screen centre.
 //
 // Stars are children of SkyCamera (parent inherits camera position each frame
-// — so stars stay at fixed viewport positions, "pinned to screen"). Each star
-// is a small SpriteRenderer driven by a per-instance phase so they twinkle
-// out-of-sync.
+// — so stars stay anchored to the camera frustum, "pinned to screen"). Each
+// star's position is stored as a (x, y) in a unit disk centred at origin,
+// then scaled to the frustum's half-diagonal radius each frame. A disk that
+// inscribes the screen rectangle's corners fully covers the screen at any
+// rotation angle, so rotation never reveals empty corners.
 //
 // Like the gradient and clouds, stars use raw colors with no CPU-side ambient
 // multiply — the lighting composite handles night dimming. A bright-white
@@ -17,14 +20,10 @@ using UnityEngine;
 //
 // Scene setup:
 //   1. Add a child GameObject under SkyCamera, attach this script.
-//   2. (Optional) tune starCount, viewport band, scale range.
+//   2. (Optional) tune starCount, twinkle/rotation speed, night threshold.
 public class StarField : MonoBehaviour {
-    [SerializeField] int   starCount   = 60;
+    [SerializeField] int   starCount   = 100;
     [SerializeField] int   seed        = 42;
-
-    [Tooltip("Stars only spawn between these viewport-Y values. Leaves the lower band empty for future ground silhouette.")]
-    [Range(0f, 1f)] [SerializeField] float bottomY01 = 0.45f;
-    [Range(0f, 1f)] [SerializeField] float topY01    = 0.98f;
 
     [SerializeField] float minScale = 0.04f;
     [SerializeField] float maxScale = 0.08f;
@@ -52,7 +51,7 @@ public class StarField : MonoBehaviour {
     struct Star {
         public Transform tr;
         public SpriteRenderer sr;
-        public Vector2 viewportPos; // (u, v) in [0,1]
+        public Vector2 unitDiskPos; // (x, y) in disk of radius 1, centred at origin
         public float phase;         // twinkle offset
     }
 
@@ -71,6 +70,15 @@ public class StarField : MonoBehaviour {
 
         var rng = new System.Random(seed);
         for (int i = 0; i < starCount; i++) {
+            // Rejection-sample a point in the unit disk: pick from [-1, 1]²,
+            // reject if outside. Uniform over the disk (unlike polar (r, θ)
+            // sampling which clusters near the centre).
+            float ux, uy;
+            do {
+                ux = (float)(rng.NextDouble() * 2.0 - 1.0);
+                uy = (float)(rng.NextDouble() * 2.0 - 1.0);
+            } while (ux * ux + uy * uy > 1f);
+
             var go = new GameObject($"Star{i}");
             go.transform.SetParent(transform, worldPositionStays: false);
             go.layer = gameObject.layer;
@@ -87,8 +95,7 @@ public class StarField : MonoBehaviour {
             stars.Add(new Star {
                 tr          = go.transform,
                 sr          = sr,
-                viewportPos = new Vector2((float)rng.NextDouble(),
-                                          Mathf.Lerp(bottomY01, topY01, (float)rng.NextDouble())),
+                unitDiskPos = new Vector2(ux, uy),
                 phase       = (float)(rng.NextDouble() * Mathf.PI * 2f),
             });
         }
@@ -97,10 +104,12 @@ public class StarField : MonoBehaviour {
     void LateUpdate() {
         if (stars.Count == 0) return;
 
-        // Position depends on bgCam's (zoom-dampened) ortho size + aspect.
-        // Recomputed each frame because both can drift with zoom.
+        // Disk radius = frustum half-diagonal so the rotated disk always fully
+        // covers the screen rectangle. Without this, rotating a screen-sized
+        // rectangle reveals empty triangles at the corners on every quarter-turn.
         float halfH = bgCam.orthographicSize;
         float halfW = halfH * bgCam.aspect;
+        float maxR  = Mathf.Sqrt(halfW * halfW + halfH * halfH);
 
         // Day → 0, deep night → 1, with a smooth ramp around `nightThreshold`.
         // (Don't use Mathf.SmoothStep — its signature returns a value between
@@ -112,7 +121,7 @@ public class StarField : MonoBehaviour {
         // Rotate the whole field around the screen centre. Apply the rotation
         // by hand (rather than spinning the StarField transform) because we
         // recompute every star's localPosition each frame from its fixed
-        // viewportPos — a transform rotation would be cancelled out by the
+        // unitDiskPos — a transform rotation would be cancelled out by the
         // unrotated re-assignment.
         rotationRad += rotationSpeed * Mathf.Deg2Rad * Time.deltaTime;
         float cosR = Mathf.Cos(rotationRad);
@@ -120,12 +129,12 @@ public class StarField : MonoBehaviour {
 
         for (int i = 0; i < stars.Count; i++) {
             var s = stars[i];
-            // Map viewport (0..1) → local (-halfW..halfW, -halfH..halfH).
-            float lx = (s.viewportPos.x - 0.5f) * (halfW * 2f);
-            float ly = (s.viewportPos.y - 0.5f) * (halfH * 2f);
+            // Scale unit-disk coords to the frustum half-diagonal radius.
+            float wx = s.unitDiskPos.x * maxR;
+            float wy = s.unitDiskPos.y * maxR;
             // Rotate around (0,0) — the screen centre.
-            float rx = lx * cosR - ly * sinR;
-            float ry = lx * sinR + ly * cosR;
+            float rx = wx * cosR - wy * sinR;
+            float ry = wx * sinR + wy * cosR;
             s.tr.localPosition = new Vector3(rx, ry, 5f);
 
             float twinkle = 0.6f + 0.4f * Mathf.Sin(t + s.phase);

@@ -85,12 +85,14 @@ public static class SnapshotRunner {
     // any we miss; this catches the obvious ones cleanly.
     static void NullStaticInstances() {
         System.Type[] types = {
-            typeof(World), typeof(Db), typeof(GlobalInventory),
+            typeof(World), typeof(Db), typeof(GlobalInventory), typeof(Graph),
             typeof(WorldController), typeof(AnimalController), typeof(StructController),
             typeof(InventoryController), typeof(PlantController), typeof(WaterController),
             typeof(WeatherSystem), typeof(MaintenanceSystem), typeof(MoistureSystem),
+            typeof(OverlayGrowthSystem), typeof(SnowAccumulationSystem),
             typeof(PowerSystem), typeof(ResearchSystem), typeof(WorkOrderManager),
             typeof(SaveSystem), typeof(RecipePanel), typeof(InfoPanel), typeof(UI),
+            typeof(MarketBuilding),
         };
         foreach (System.Type t in types) {
             PropertyInfo prop = t.GetProperty("instance",

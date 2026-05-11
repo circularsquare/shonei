@@ -99,10 +99,14 @@ public static class StructureVisuals {
         if (_shapeSpriteMissLog.Add(key)) Debug.LogError(msg);
     }
 
-    // Fires on every Play Mode entry so missing-sprite errors aren't silently
-    // suppressed on second-and-later plays when Domain Reload is disabled.
+    // Fires on every Play Mode entry. Required for Reload-Domain-off fast play:
+    // * _sheetCache holds Sprite[] from Resources.LoadAll — Unity destroys those
+    //   Sprite objects at play exit, so the cached arrays become dead refs.
+    // * _shapeSpriteMissLog suppresses repeated errors — clear so each session
+    //   surfaces real missing-sprite issues anew.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStaticsForPlayMode() {
+        _sheetCache.Clear();
         _shapeSpriteMissLog.Clear();
     }
 }

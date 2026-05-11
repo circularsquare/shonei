@@ -43,6 +43,10 @@ using UnityEngine;
 public class OverlayGrowthSystem {
     public static OverlayGrowthSystem instance { get; private set; }
 
+    // Reload-Domain-off support — see MaintenanceSystem.ResetStatics for the why.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics() { instance = null; }
+
     // Tuning constants. Adjust to taste — there's no save format involved.
     const byte  MoistureMin                = 40;        // strictly greater than this
     const float GrowableTempMin            = 5f;        // strictly greater than this (°C) — growth + recovery gate

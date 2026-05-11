@@ -15,13 +15,11 @@ CONTENT
     - irrigation?
 - research
     - additional levels display?
-- books cleanup?
 - power 
     - small internal power storage for power consumers? (hidden if contain 0 power)
 - thermometer/glass 
     - sand
 - show controls in options panel 
-    - add shortcut to hide ui (f1?)
 
 VISUALS
 - make item icons more coherent / similar
@@ -45,12 +43,10 @@ MOUSE AI
 
 
 CODE CLEANUP
-- ObtainTask is mixed-use (food/clothing/equipment) — currently treated as work for SetJob interruption purposes. If equipment-fetch interruption becomes annoying in practice, split via constructor flag or by checking targetInv == toolSlotInv.
 
 BUGS
 
 SHORT TERM
 test tarp
 finish tweaking lighting
-reorg sky into lighting instead of ksyamera?
 simplify lighting params?

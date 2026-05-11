@@ -55,6 +55,9 @@ public class SunController : MonoBehaviour {
     [SerializeField] Color horizonTwilight3;
     [SerializeField] Color horizonNight;
 
+    [Tooltip("Viewport V at which the horizon→zenith blend completes. Below this is the transition zone, above is full zenith. 1.0 = gradient spans the entire viewport (no solid-zenith band). Read by SkyGradient.")]
+    [Range(0f, 1f)] [SerializeField] float _horizonY01 = 0.4f;
+
     [Header("Sun Light Colors")]
     [SerializeField] Color sunColorDay;
     [SerializeField] Color sunColorEarlyDusk;
@@ -108,6 +111,10 @@ public class SunController : MonoBehaviour {
 
     // 5-stop sky gradient color for the current time of day — **horizon** (bottom of sky).
     public static Color horizonColor { get; private set; }
+
+    // Viewport V at which the horizon→zenith blend completes (authored once,
+    // not time-varying). Lives here so all sky-look knobs sit together.
+    public static float horizonY01 => instance != null ? instance._horizonY01 : 0.4f;
 
     public static float GetDayPhase() {
         if (World.instance == null) return 0f;

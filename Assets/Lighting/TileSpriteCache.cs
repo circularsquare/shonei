@@ -106,6 +106,18 @@ public static class TileSpriteCache {
     static Dictionary<string, Variant[]> overlayCache = new();
     static Texture2D flatNormalMap;
 
+    // Reload-Domain-off support: Sprites and Texture2Ds in these caches get destroyed
+    // by Unity when the previous play session ends, but the dictionary entries persist.
+    // On the next play press, EnsureVariants finds a cached entry and returns dead
+    // Unity Object refs, so tiles render blank with no error. Clear on entry.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics() {
+        cache.Clear();
+        trimCache.Clear();
+        overlayCache.Clear();
+        flatNormalMap = null;
+    }
+
     public static Texture2D FlatNormalMap {
         get {
             if (flatNormalMap == null) flatNormalMap = BuildFlatNormalMap();

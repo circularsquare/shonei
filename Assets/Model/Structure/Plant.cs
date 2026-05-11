@@ -42,6 +42,12 @@ public class Plant : Structure {
     // each other. Not persisted; re-derived on load.
     private float plantPhase;
 
+    // Non-null when this plant has a baked blob-frame set (PlantBlobFrameBaker
+    // output). When present, sprites for the anchor + every extension SR are
+    // driven by the animator instead of being set statically in UpdateSprite,
+    // and SR materials use the non-sway lit variant (the frame swap is the sway).
+    private PlantFrameAnimator animator;
+
     private GameObject     overlayGo;
     private SpriteRenderer overlaySr;
 
@@ -105,6 +111,33 @@ public class Plant : Structure {
         RefreshSwayMPB();
 
         CreateHarvestOverlay();
+
+        TryAttachAnimator();
+    }
+
+    // If the plant ships a baked blob-frame set, attach the cycler and swap
+    // the anchor SR to the non-sway lit material. Call UpdateSprite at the end
+    // so the animator gets populated with stage-0 frames immediately —
+    // otherwise the SR would sit on the ctor's fallback sprite until the first
+    // Grow tick. Plants without baked frames stay on the vertex-sway path.
+    private void TryAttachAnimator() {
+        string n = plantType.name.Replace(" ", "");
+        // Probe for either layout's first frame; cheap (Resources.Load caches).
+        bool hasFrames = Resources.Load<Sprite>("Sprites/Plants/Split/" + n + "/g0_f0") != null
+                     ||  Resources.Load<Sprite>("Sprites/Plants/Split/" + n + "/b0_f0") != null;
+        if (!hasFrames) return;
+
+        animator = go.AddComponent<PlantFrameAnimator>();
+        // Reuse plantPhase (radians-like world-coord hash) directly as a
+        // seconds-domain offset. Cycle length is 2 s; plantPhase covers many
+        // multiples of that for any reasonable map, so neighbours desync
+        // naturally.
+        animator.timePhase = plantPhase;
+
+        var lit = SpriteMaterialUtil.LitSpriteMaterial;
+        if (lit != null) sr.sharedMaterial = lit;
+
+        UpdateSprite();
     }
 
     // Cheap deterministic per-plant phase, derived from world coords. Same
@@ -313,6 +346,14 @@ public class Plant : Structure {
         extGo.transform.SetParent(go.transform, false);
         extGo.transform.localPosition = new Vector3(0, h, 0);
         SpriteRenderer extSr = SpriteMaterialUtil.AddPlantSpriteRenderer(extGo);
+        // Animated plants drive sway via frame swap, not vertex shader — every
+        // SR (anchor and extensions) must be on the non-sway lit material or
+        // the two systems fight each other (vertex shift on top of pixel shift
+        // → 2-px visible slide).
+        if (animator != null) {
+            var lit = SpriteMaterialUtil.LitSpriteMaterial;
+            if (lit != null) extSr.sharedMaterial = lit;
+        }
         extSr.sortingOrder = sr.sortingOrder;
         LightReceiverUtil.SetSortBucket(extSr);
         extensionGos.Add(extGo);
@@ -363,19 +404,38 @@ public class Plant : Structure {
         // Anchor: if the plant has extensions, anchor is a lower tile → index 4.
         // Otherwise it's the topmost and uses the live stage sprite directly.
         int anchorIdx = (extensionSrs.Count > 0) ? 4 : topStageSpriteIdx;
-        sr.sprite = LoadAnchorSprite(n, anchorIdx);
 
-        // Extension tiles: all but the last use g4; the last (topmost) uses the
-        // current stage % 4.
-        for (int i = 0; i < extensionSrs.Count; i++) {
-            bool isTop = (i == extensionSrs.Count - 1);
-            extensionSrs[i].sprite = LoadStageSprite(n, isTop ? topStageSpriteIdx : 4);
+        if (animator != null) {
+            // Animated path: hand the SR list off to the cycler, which writes
+            // sr.sprite each Unity frame. Static set+swap isn't needed (and
+            // would briefly stutter on the static sprite between assignments).
+            animator.Clear();
+            Sprite[] anchorFrames = LoadAnchorFrames(n, anchorIdx);
+            if (anchorFrames != null) animator.Add(sr, anchorFrames);
+            else                      sr.sprite = LoadAnchorSprite(n, anchorIdx);
+            for (int i = 0; i < extensionSrs.Count; i++) {
+                bool isTop = (i == extensionSrs.Count - 1);
+                int idx = isTop ? topStageSpriteIdx : 4;
+                Sprite[] frames = LoadStageFrames(n, idx);
+                if (frames != null) animator.Add(extensionSrs[i], frames);
+                else                extensionSrs[i].sprite = LoadStageSprite(n, idx);
+            }
+        } else {
+            sr.sprite = LoadAnchorSprite(n, anchorIdx);
+            // Extension tiles: all but the last use g4; the last (topmost) uses the
+            // current stage % 4.
+            for (int i = 0; i < extensionSrs.Count; i++) {
+                bool isTop = (i == extensionSrs.Count - 1);
+                extensionSrs[i].sprite = LoadStageSprite(n, isTop ? topStageSpriteIdx : 4);
+            }
         }
+
         // Sprites just changed; the per-SR mask-mode flag may have flipped
         // (different growth stages can have different `_sway.png` companions,
         // and the bottom tiles using g4 may have a mask while the top tile
         // doesn't, or vice versa). Re-write the sway MPB to reflect each SR's
-        // current secondary-texture state.
+        // current secondary-texture state. No-op for animated plants (lit
+        // material ignores sway globals) but cheap, so we always run it.
         RefreshSwayMPB();
     }
 
@@ -395,6 +455,30 @@ public class Plant : Structure {
         Sprite s = Resources.Load<Sprite>("Sprites/Plants/Split/" + plantName + "/b" + stageIdx);
         if (s != null && s.texture != null) return s;
         return LoadStageSprite(plantName, stageIdx);
+    }
+
+    // Animated-frame variants of the static sprite loaders. Mirror the same
+    // b-then-g fallback chain. Returns null (not a default-filled array) when
+    // no frames exist for this stage — caller falls back to the static path.
+    private static Sprite[] LoadStageFrames(string plantName, int stageIdx) {
+        var frames = new Sprite[PlantFrameAnimator.NumFrames];
+        bool any = false;
+        for (int f = 0; f < frames.Length; f++) {
+            frames[f] = Resources.Load<Sprite>("Sprites/Plants/Split/" + plantName + "/g" + stageIdx + "_f" + f);
+            if (frames[f] != null) any = true;
+        }
+        return any ? frames : null;
+    }
+
+    private static Sprite[] LoadAnchorFrames(string plantName, int stageIdx) {
+        var frames = new Sprite[PlantFrameAnimator.NumFrames];
+        bool any = false;
+        for (int f = 0; f < frames.Length; f++) {
+            frames[f] = Resources.Load<Sprite>("Sprites/Plants/Split/" + plantName + "/b" + stageIdx + "_f" + f);
+            if (frames[f] != null) any = true;
+        }
+        if (any) return frames;
+        return LoadStageFrames(plantName, stageIdx);
     }
 }
 

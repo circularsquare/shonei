@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-// Full-screen options panel — volume sliders + graphics toggles.
+// Full-screen options panel — volume sliders + graphics toggles + keyboard reference.
 //
 // Reads/writes via SettingsManager.instance — this script is just the UI shell.
 // Set up as an exclusive panel: at most one of {Trading, Recipe, Research,
@@ -22,6 +22,8 @@ using TMPro;
 //     vsyncToggle    — Toggle
 //     lightingToggle — Toggle
 //     closeButton    — Button (optional; an X in the corner)
+//     controlsText   — TMP_Text (optional); content is auto-filled at Awake.
+//                      Relies on m5x7's monospace metrics for column alignment.
 public class OptionsPanel : MonoBehaviour {
     public static OptionsPanel instance { get; protected set; }
 
@@ -38,6 +40,32 @@ public class OptionsPanel : MonoBehaviour {
     [Header("Misc")]
     [SerializeField] Button closeButton;
 
+    [Header("Controls")]
+    [SerializeField] TMP_Text controlsText;
+
+    // Keyboard / mouse reference shown in the panel. Grouped sections separated by a
+    // blank `(null, null)` row. Keep order ~stable: general → camera → build → selection.
+    // Excludes dev-only shortcuts (Ctrl+D audit, Ctrl+Shift+D instant-deconstruct,
+    // Ctrl+T cursor light) — those are debug aids, not player-facing controls.
+    static readonly (string keys, string action)[] ControlsRows = {
+        ("space",       "pause / resume"),
+        ("esc",         "close panel / cancel mode"),
+        ("f1",          "toggle ui"),
+        (null,          null),
+        ("scroll",      "zoom"),
+        ("right drag",  "pan camera"),
+        (null,          null),
+        ("f",           "mirror (build mode)"),
+        ("r",           "rotate (build mode)"),
+        ("q / e",       "cycle shape (build mode)"),
+        ("shift+lmb",   "place more after building (build mode)"),
+        (null,          null),
+        ("lmb drag",    "drag-select / paint harvest"),
+        ("ctrl+lmb",    "add to / remove from selection"),
+        ("shift+lmb",   "copy filter (on storage tile)"),
+        ("shift+rmb",   "paste filter (on storage tile)"),
+    };
+
     // Dropdown index → fps value. 0 = unlimited (no cap).
     static readonly int[] FpsOptions = { 30, 60, 120, 144, 0 };
 
@@ -50,6 +78,25 @@ public class OptionsPanel : MonoBehaviour {
         instance = this;
         UI.RegisterExclusive(gameObject);
         WireUp();
+        if (controlsText != null) controlsText.text = BuildControlsText();
+    }
+
+    // Builds a column-aligned reference block from ControlsRows. Pads the keys column
+    // to the widest key length so the action column lines up — works because the UI
+    // uses m5x7, a monospace font (variable-width fonts would still render OK, just
+    // with looser alignment).
+    static string BuildControlsText() {
+        int maxKey = 0;
+        foreach (var row in ControlsRows)
+            if (row.keys != null && row.keys.Length > maxKey)
+                maxKey = row.keys.Length;
+        var sb = new System.Text.StringBuilder(ControlsRows.Length * 32);
+        for (int i = 0; i < ControlsRows.Length; i++) {
+            var row = ControlsRows[i];
+            if (row.keys == null) sb.AppendLine();
+            else sb.Append(row.keys.PadRight(maxKey + 3)).AppendLine(row.action);
+        }
+        return sb.ToString().TrimEnd();
     }
 
     void OnEnable() {
