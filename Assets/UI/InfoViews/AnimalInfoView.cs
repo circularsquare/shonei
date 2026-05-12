@@ -66,6 +66,7 @@ public class AnimalInfoView : MonoBehaviour {
             sb.AppendLine($"  {need + ":",-11} {OX(sat)}  ({val:0.0}){extra}");
         }
         sb.AppendLine($"  {"housing:",-11} {OX(h.house)}");
+        sb.AppendLine($"  {"furnishing:",-11} +{h.furnishingScore:0.0}");
         sb.Append    ($"  {"temp:",-11} {tempPrefix}{h.temperatureScore:0.0}  (comfort {h.comfortTempLow:0}-{h.comfortTempHigh:0}C)");
         return sb.ToString();
     }

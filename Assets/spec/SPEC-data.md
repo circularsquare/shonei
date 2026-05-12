@@ -176,7 +176,7 @@ Fields:
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `id` | int | unique (0=empty, 1=structure, 2=dirt, 3=limestone, 4=granite, 6=slate) |
+| `id` | int | unique (0=empty, 1=structure, 2=dirt, 3=sand, 20=limestone, 21=granite, 22=slate). Solid-tile ids drive the soft-edge sort ranking — lower id draws on top at different-type boundaries (see SPEC-rendering "Tile body sort order"). |
 | `name` | string | lookup key |
 | `solid` | int | 0=passable, 1=solid (blocks movement) |
 | `group` | string? | logical family (e.g. `"stone"` for limestone/granite/slate). `StructPlacement` treats `requiredTileName` as a match on either the tile's name or its group, so quarry's `requiredTileName: "stone"` accepts any stone variant. |

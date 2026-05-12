@@ -18,9 +18,9 @@ using UnityEngine;
 // Brightness: sin^3 of sun elevation, 0 at horizon/night, 1 at noon.
 //
 // ── Sky color stops ────────────────────────────────────────────────────────
-// Two parallel 5-stop gradients describe the sky as a vertical band:
-//   skyDay/Twilight1/2/3/Night     → the **zenith** (top) color of the sky.
-//   horizonDay/Twilight1/2/3/Night → the **horizon** (bottom) color.
+// Two parallel 4-stop gradients describe the sky as a vertical band:
+//   skyDay/Twilight1/Twilight3/Night     → the **zenith** (top) color of the sky.
+//   horizonDay/Twilight1/Twilight3/Night → the **horizon** (bottom) color.
 // SkyGradient.cs blends between them to fill the SkyCamera frustum. Author
 // horizon stops with warmer/lighter values at twilight so the offscreen sun
 // reads as a horizon glow.
@@ -28,9 +28,13 @@ public class SunController : MonoBehaviour {
     public static SunController instance { get; private set; }
 
     [Header("References")]
-    [SerializeField] Transform      sunTransform;
-    [SerializeField] SpriteRenderer sunSR;
-    [SerializeField] LightSource    sunSource;
+    [SerializeField] LightSource sunSource;
+
+    // Cached from sunSource at Awake — the sun GO carries the orbiting
+    // transform and the (currently off-screen) sprite renderer. One
+    // inspector wire instead of three keeps them all in lockstep.
+    Transform      _sunTransform;
+    SpriteRenderer _sunSR;
 
     [Header("Orbit")]
     [SerializeField] float orbitCenterX;
@@ -44,14 +48,12 @@ public class SunController : MonoBehaviour {
     [Header("Sky Colors (Zenith — top of sky)")]
     [SerializeField] Color skyDay;
     [SerializeField] Color skyTwilight1;
-    [SerializeField] Color skyTwilight2;
     [SerializeField] Color skyTwilight3;
     [SerializeField] Color skyNight;
 
     [Header("Horizon Sky Colors (bottom of sky)")]
     [SerializeField] Color horizonDay;
     [SerializeField] Color horizonTwilight1;
-    [SerializeField] Color horizonTwilight2;
     [SerializeField] Color horizonTwilight3;
     [SerializeField] Color horizonNight;
 
@@ -64,16 +66,17 @@ public class SunController : MonoBehaviour {
     [SerializeField] Color sunColorDusk;
     [SerializeField] Color sunColorNight;
 
-    [Header("Sun Light Intensity")]
-    [SerializeField] float sunIntensityNoon;
+    // Note: sun-baseline-at-noon intensity lives on sunSource.baseIntensity
+    // (the LightSource on the Sun GO) — same field torches use, so the
+    // concept lines up across light kinds.
 
     [Header("Ambient Colors")]
     [SerializeField] Color ambientDay;
     [SerializeField] Color ambientNight;
-    [Tooltip("Minimum ambient brightness at night (0 = fully dark, 1 = full brightness).")]
+    [Tooltip("Ambient brightness at night (0 = fully dark, 1 = full brightness). The floor of the ambient ramp.")]
     [SerializeField] [Range(0f, 1f)] float ambientBrightnessMin = 0.6f;
-    [Tooltip("Additional brightness added on top of min, scaled by sun elevation.")]
-    [SerializeField] [Range(0f, 1f)] float ambientBrightnessRange = 0.4f;
+    [Tooltip("Ambient brightness at noon (the ceiling of the ramp). Should be ≥ Min.")]
+    [SerializeField] [Range(0f, 1f)] float ambientBrightnessMax = 1.0f;
 
     [Header("Debug (read-only in play mode)")]
     [SerializeField] float _twilightFraction;
@@ -82,6 +85,12 @@ public class SunController : MonoBehaviour {
     void Awake() {
         if (instance != null && instance != this) { Destroy(gameObject); return; }
         instance = this;
+        if (sunSource != null) {
+            _sunTransform = sunSource.transform;
+            _sunSR        = sunSource.GetComponent<SpriteRenderer>();
+        } else {
+            Debug.LogError("SunController: sunSource not assigned in inspector.");
+        }
     }
 
     void Update() {
@@ -106,10 +115,10 @@ public class SunController : MonoBehaviour {
     // 0 at night, 1 during day; linear transition over twilightLength/2 around sunrise/sunset.
     public static float brightness { get; private set; }
 
-    // 5-stop sky gradient color for the current time of day — **zenith** (top of sky).
+    // 4-stop sky gradient color for the current time of day — **zenith** (top of sky).
     public static Color skyColor { get; private set; }
 
-    // 5-stop sky gradient color for the current time of day — **horizon** (bottom of sky).
+    // 4-stop sky gradient color for the current time of day — **horizon** (bottom of sky).
     public static Color horizonColor { get; private set; }
 
     // Viewport V at which the horizon→zenith blend completes (authored once,
@@ -134,11 +143,12 @@ public class SunController : MonoBehaviour {
 
     // Ambient light color for the current time of day.
     // Color tint: lerp(ambientNight, ambientDay, twilightFraction).
-    // Brightness factor: brightness * 0.6 + 0.4  (never fully dark).
+    // Brightness: ramps from ambientBrightnessMin (night) to
+    // ambientBrightnessMax (noon) by sun elevation, then scaled by weather.
     public static Color GetAmbientColor() {
         if (instance == null) return Color.white;
         Color tint   = Color.Lerp(instance.ambientNight, instance.ambientDay, twilightFraction);
-        float bright = brightness * instance.ambientBrightnessRange + instance.ambientBrightnessMin;
+        float bright = Mathf.Lerp(instance.ambientBrightnessMin, instance.ambientBrightnessMax, brightness);
         return tint * bright * WeatherSystem.GetAmbientMultiplier();
     }
 
@@ -147,12 +157,19 @@ public class SunController : MonoBehaviour {
     // LightSource component controls the sun's apparent elevation in the shader.
     public static Vector3 GetSunDirection() {
         if (instance == null) return Vector3.up;
-        Vector3 toSun = instance.sunTransform.position - new Vector3(instance.orbitCenterX, instance.orbitCenterY, 0f);
+        Vector3 toSun = instance._sunTransform.position - new Vector3(instance.orbitCenterX, instance.orbitCenterY, 0f);
         toSun.z = 0f;
         return toSun == Vector3.zero ? Vector3.up : toSun.normalized;
     }
 
     // ── Internal ──────────────────────────────────────────────────────────────
+
+    // Clamped linear ramp: 0 at `start`, 1 at `end`. The three day-cycle
+    // ramp methods below all express their sunrise/sunset transitions as
+    // calls to this helper — same shape, different windows.
+    static float Ramp(float phase, float start, float end) {
+        return Mathf.Clamp01((phase - start) / (end - start));
+    }
 
     // Returns 1 = full day, 0 = full night, with smooth transitions over twilightLength.
     // Twilight is centred on sunrise (0.25) and sunset (0.75).
@@ -163,9 +180,8 @@ public class SunController : MonoBehaviour {
 
         if (phase >= srEnd   && phase <= ssStart) return 1f;  // full day
         if (phase >= ssEnd   || phase <  srStart) return 0f;  // full night
-        if (phase >= ssStart)
-            return 1f - Mathf.Clamp01((phase - ssStart) / twilightLength);  // sunset  1→0
-        return Mathf.Clamp01((phase - srStart) / twilightLength);            // sunrise 0→1
+        if (phase >= ssStart) return 1f - Ramp(phase, ssStart, ssEnd);  // sunset  1→0
+        return Ramp(phase, srStart, srEnd);                              // sunrise 0→1
     }
 
     // Linear 0→1 over first half of sunrise (srStart→0.25), full day, linear 1→0 over second half of sunset (0.75→ssEnd).
@@ -174,10 +190,10 @@ public class SunController : MonoBehaviour {
         float srStart = 0.25f - half;
         float ssEnd   = 0.75f + half;
 
-        if (phase >= 0.25f && phase <= 0.75f) return 1f;                             // full day
-        if (phase >= ssEnd || phase < srStart) return 0f;                             // full night
-        if (phase >= 0.75f) return 1f - Mathf.Clamp01((phase - 0.75f) / half);       // sunset  1→0
-        return Mathf.Clamp01((phase - srStart) / half);                               // sunrise 0→1
+        if (phase >= 0.25f && phase <= 0.75f)  return 1f;                  // full day
+        if (phase >= ssEnd || phase < srStart) return 0f;                  // full night
+        if (phase >= 0.75f) return 1f - Ramp(phase, 0.75f, ssEnd);         // sunset  1→0
+        return Ramp(phase, srStart, 0.25f);                                // sunrise 0→1
     }
 
     // Like Brightness but transitions over the first half of twilight only:
@@ -185,10 +201,10 @@ public class SunController : MonoBehaviour {
     // Torches use (1 - this) so they're fully lit by mid-sunset.
     float TorchBrightness(float phase) {
         float half = twilightLength * 0.5f;
-        if (phase >= 0.75f || phase < 0.25f) return 0f;                                  // night
-        if (phase >= 0.25f + half && phase <= 0.75f - half) return 1f;                    // full day
-        if (phase >= 0.75f - half) return 1f - Mathf.Clamp01((phase - (0.75f - half)) / half); // sunset 1→0
-        return Mathf.Clamp01((phase - 0.25f) / half);                                    // sunrise 0→1
+        if (phase >= 0.75f || phase < 0.25f)                return 0f;  // night
+        if (phase >= 0.25f + half && phase <= 0.75f - half) return 1f;  // full day
+        if (phase >= 0.75f - half) return 1f - Ramp(phase, 0.75f - half, 0.75f);  // sunset 1→0
+        return Ramp(phase, 0.25f, 0.25f + half);                                  // sunrise 0→1
     }
 
     // Sunset:  day → earlyDusk (0.75-half) → dusk (0.75) → night (0.75+half)
@@ -218,35 +234,34 @@ public class SunController : MonoBehaviour {
     void UpdateSun() {
         float phase = GetDayPhase();
         float angle = (phase - 0.25f) * Mathf.PI * 2f;
-        sunTransform.position = new Vector3(
+        _sunTransform.position = new Vector3(
             orbitCenterX + orbitRadius * Mathf.Cos(angle),
             orbitCenterY + orbitRadius * Mathf.Sin(angle),
             1);
 
         bool aboveHorizon = Mathf.Sin(angle) > 0f;
-        sunSR.enabled = aboveHorizon;
-        sunSR.color   = SunColor(phase);
+        _sunSR.enabled = aboveHorizon;
+        _sunSR.color   = SunColor(phase);
 
         sunSource.lightColor = SunColor(phase);
-        sunSource.intensity  = brightness * sunIntensityNoon * WeatherSystem.GetSunMultiplier();
+        sunSource.intensity  = brightness * sunSource.baseIntensity * WeatherSystem.GetSunMultiplier();
 
         // Torches ramp to full over the first half of sunset/sunrise,
         // ahead of the sun — so they're already bright by deep dusk.
+        // Each sun-modulated LightSource pulls this value in its own
+        // Update() to scale its intensity; we just publish it.
         torchFactor = 1f - TorchBrightness(GetDayPhase());
-        foreach (LightSource ls in LightSource.all)
-            if (!ls.isDirectional && ls.sunModulated)
-                ls.intensity = ls.isLit ? ls.baseIntensity * torchFactor : 0f;
     }
 
-    // 5-stop gradient: day → twilight1 → twilight2 → twilight3 → night
+    // 4-stop gradient: day → twilight1 → twilight3 → night
     // driven by twilightFraction (1=day, 0=night). Both sky (zenith) and horizon
     // share the same time-of-day phase; SkyGradient blends between them vertically.
-    Color SkyColor()     => LerpStops(skyDay,     skyTwilight1,     skyTwilight2,     skyTwilight3,     skyNight);
-    Color HorizonColor() => LerpStops(horizonDay, horizonTwilight1, horizonTwilight2, horizonTwilight3, horizonNight);
+    Color SkyColor()     => LerpStops(skyDay,     skyTwilight1,     skyTwilight3,     skyNight);
+    Color HorizonColor() => LerpStops(horizonDay, horizonTwilight1, horizonTwilight3, horizonNight);
 
-    Color LerpStops(Color s0, Color s1, Color s2, Color s3, Color s4) {
-        float t = (1f - twilightFraction) * 4f;
-        Color[] stops = { s0, s1, s2, s3, s4 };
+    Color LerpStops(Color s0, Color s1, Color s2, Color s3) {
+        float t = (1f - twilightFraction) * 3f;
+        Color[] stops = { s0, s1, s2, s3 };
         int i = Mathf.Clamp(Mathf.FloorToInt(t), 0, stops.Length - 2);
         return Color.Lerp(stops[i], stops[i + 1], t - i);
     }

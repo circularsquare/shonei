@@ -187,8 +187,12 @@ public class StructController : MonoBehaviour {
                     foreach (var seat in b.seatRes)
                         seat.ExpireIfStale(60f, $"{b.structType.name} seat");
         }
+        // Furnishing slot decay. Called every 0.2s from World.Tick; FurnishingSlots converts
+        // elapsed seconds → in-game days using World.ticksInDay. Empties slots whose lifetime
+        // crosses 0 and fires onSlotChanged so Happiness + visuals refresh.
         foreach (Structure structure in structures){
-            //
+            if (structure is Building b && b.furnishingSlots != null)
+                b.furnishingSlots.TickDecay(0.2f);
         }
     }
 

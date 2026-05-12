@@ -151,6 +151,13 @@ public class StructType {
     public int fuelCapacity {get; set;}    // max stack size in fen (JSON in liang, converted in OnDeserialized); supply triggers below half capacity
     public float fuelBurnRate {get; set;}  // liang/day consumed; LightSource converts to fen/s at runtime
 
+    // Furnishing slots: when set, Building creates a FurnishingSlots sub-component with one
+    // slot inventory per name in `furnishingSlotNames`. Mice auto-haul matching items into
+    // empty slots via WOM SupplyFurnishing orders; installed items grant happiness to residents.
+    // See SPEC-systems.md and FurnishingSlots.cs.
+    public bool hasFurnishingSlots {get; set;}
+    public string[] furnishingSlotNames {get; set;}
+
     // Decoration: nearby animals gain a happiness point when within decorRadius (Chebyshev) of this building.
     // A decoration with hasFuelInv=true only counts when its reservoir has fuel (e.g. fountain needs water).
     // decorationNeed identifies which happiness satisfaction this decoration targets (e.g. "fountain").

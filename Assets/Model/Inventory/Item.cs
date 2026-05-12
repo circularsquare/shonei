@@ -39,6 +39,22 @@ public class Item {
     public string liquidColorHex {get; set;}
     [Newtonsoft.Json.JsonIgnore]
     public Color32 liquidColor;         // parsed from liquidColorHex; alpha=0 when unset, alpha=255 flags "tint active" in the tint texture
+
+    // ── Furnishing fields ─────────────────────────────────────────────────────
+    // Optional: marks this item (or its descendants, via Db inheritance) as installable
+    // into a house's FurnishingSlots. The slot's `slotNames[i]` is matched against this
+    // string to decide which items fit. Null = not a furnishing.
+    public string furnishingSlot {get; set;}
+    // Flat happiness bonus granted to every resident of the house while this item is
+    // installed in a slot. Added directly to Happiness.score via furnishingScore.
+    public float furnishingHappiness {get; set;}
+    // Fixed lifetime in in-game days. Counts down on each tick while installed; on 0-cross
+    // the slot empties. Independent of decayRate (which governs food/cloth-as-clothing wear).
+    public float furnishingLifetimeDays {get; set;}
+    // Optional name of a sprite under Resources/Sprites/Buildings/ to overlay on the house
+    // tile while this item is installed. Null = no visual.
+    public string furnishingSprite {get; set;}
+
     public Item parent;
     // Loaded at startup by Db. Falls back to Sprites/Items/split/default/icon if no item-specific icon exists.
     public Sprite icon;

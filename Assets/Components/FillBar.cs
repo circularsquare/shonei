@@ -25,15 +25,37 @@ public class FillBar : MonoBehaviour {
     [SerializeField] RectMask2D fillMask;
     [SerializeField] Image fillImage;
 
+    // If SetFill is called before the layout system has assigned a width to the mask
+    // (typical on the first frame a panel is enabled), we can't compute the right padding.
+    // Prefer showing an empty bar over a wrong one — clip everything and remember the
+    // requested fraction so LateUpdate can apply it once the width is known.
+    float pendingFraction = -1f;
+
     public void SetFill(float fraction) {
         fraction = Mathf.Clamp01(fraction);
         if (fillMask != null) {
-            float width = ((RectTransform)fillMask.transform).rect.width;
-            if (width <= 0f) return; // layout not computed yet — skip, next refresh will catch it
-            float rightPad = width * (1f - fraction);
-            fillMask.padding = new Vector4(0f, 0f, rightPad, 0f);
+            if (!TryApplyMask(fraction)) {
+                pendingFraction = fraction;
+                fillMask.padding = new Vector4(0f, 0f, float.MaxValue, 0f); // hide until width is known
+            } else {
+                pendingFraction = -1f;
+            }
         } else if (fillImage != null) {
             fillImage.fillAmount = fraction;
         }
+    }
+
+    void LateUpdate() {
+        if (pendingFraction >= 0f && fillMask != null && TryApplyMask(pendingFraction)) {
+            pendingFraction = -1f;
+        }
+    }
+
+    bool TryApplyMask(float fraction) {
+        float width = ((RectTransform)fillMask.transform).rect.width;
+        if (width <= 0f) return false;
+        float rightPad = width * (1f - fraction);
+        fillMask.padding = new Vector4(0f, 0f, rightPad, 0f);
+        return true;
     }
 }

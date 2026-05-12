@@ -127,6 +127,14 @@ Singleton. Subscribes to TradingClient events in `Start()`, unsubscribes in
 
 `itemInput` and `chatInput` also trigger on Enter key (wired in `Start()`).
 
+**Global `/` shortcut:** pressing `/` anywhere outside a text field focuses `chatInput` and seeds it with `"/"`. The trading panel does NOT need to open — `chatInput` lives in the always-active `ChatPanel` (`UI/ChatPanel/ChatBar/ChatInput`) and is wired into `TradingPanel` via the inspector. The seed is set next frame (via a one-frame coroutine running on `chatInput`, not on `TradingPanel` since that MonoBehaviour is inactive when closed) so we overwrite whatever Unity's input system did with the same keystroke — result is always exactly one `/` regardless of selection-timing quirks. Wired in `UI.Update()` → `TradingPanel.OpenChatInput()`.
+
+**Console commands** (parsed locally in `TradingPanel.HandleCommand`, never sent to server):
+- `/give [item] [qty in liang]` — produce items into the market inventory.
+- `/rain` — toggle precipitation.
+- `/day [n]` — jump world clock to day `n` of the current year.
+- `/wind [v]` — snap wind to value `v` (positive = right). Both `wind` and `targetWind` are set so the OU walk doesn't immediately pull it back.
+
 **Chat/fill display:** the chat list is a *view* over `EventFeed` — TradingPanel subscribes to `EventFeed.OnEntry` in `Awake` and renders every entry as a chat row (capped at 20 visible rows). Market errors, `/give` feedback, server chat, and trade fills all flow through `EventFeed.Post(...)` rather than writing to the chat list directly. Inline `<color=...>` tags on the posted text still drive per-message coloring (green for fills and `/give` success, red for errors). See SPEC-eventfeed for the dispatcher contract.
 
 **Indicator sprites:** loaded from `Resources/Sprites/Misc/indicator/green` and

@@ -56,12 +56,29 @@
         "tile": "furnace",
         "description": "smelt iron ore into iron",
         "workload": 4.0,
+        "research": "Furnace",
+        "researchPoints": 0.025,
         "ninputs": [
             { "name": "coal", "quantity": 1 },
             { "name": "iron ore", "quantity": 2 }
         ],
         "noutputs": [
             { "name": "iron", "quantity": 2 }
+        ]
+    },{
+        "id": 3,
+        "job": "smith",
+        "tile": "furnace",
+        "description": "fuse sand into glass",
+        "workload": 4.0,
+        "research": "Glassmaking",
+        "researchPoints": 0.025,
+        "ninputs": [
+            { "name": "coal", "quantity": 1 },
+            { "name": "sand", "quantity": 2 }
+        ],
+        "noutputs": [
+            { "name": "glass", "quantity": 2 }
         ]
     },{
         "id": 10,

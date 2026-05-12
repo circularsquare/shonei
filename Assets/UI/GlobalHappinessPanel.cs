@@ -73,6 +73,15 @@ public class GlobalHappinessPanel : MonoBehaviour {
         housingRow.SetNeedName("housing");
         rows.Add(housingRow);
         rowKeys.Add("housing");
+        // Furnishing row — spawned only when there's at least one furnishing in the data,
+        // so colonies with no furnishings authored stay visually clean. Sits between housing
+        // and temperature since it's house-derived but open-ended.
+        if (Db.maxFurnishingPerMouse > 0f) {
+            var furnishingRow = Instantiate(needRowPrefab, needContainer);
+            furnishingRow.SetNeedName("furnishing");
+            rows.Add(furnishingRow);
+            rowKeys.Add("furnishing");
+        }
         // Temperature row
         var tempRow = Instantiate(needRowPrefab, needContainer);
         tempRow.SetNeedName("temperature");
@@ -102,6 +111,7 @@ public class GlobalHappinessPanel : MonoBehaviour {
         }
         int satHousing = 0;
         float sumTemp = 0f;
+        float sumFurnishing = 0f;
 
         for (int i = 0; i < n; i++) {
             var h = ac.animals[i].happiness;
@@ -113,6 +123,7 @@ public class GlobalHappinessPanel : MonoBehaviour {
             }
             if (h.house) satHousing++;
             sumTemp += h.temperatureScore;
+            sumFurnishing += h.furnishingScore;
         }
 
         if (headerText != null) {
@@ -121,22 +132,16 @@ public class GlobalHappinessPanel : MonoBehaviour {
                 $"pop capacity: {ac.populationCapacity}";
         }
 
-        // Update rows
-        int rowIdx = 0;
-        foreach (string need in Db.happinessNeedsSorted) {
-            if (rowIdx >= rows.Count) break;
-            rows[rowIdx].Refresh(satCounts[need], n, satSums[need] / n);
-            rowIdx++;
-        }
-        // Housing
-        if (rowIdx < rows.Count) {
-            rows[rowIdx].RefreshBool(satHousing, n);
-            rowIdx++;
-        }
-        // Temperature
-        if (rowIdx < rows.Count) {
-            rows[rowIdx].RefreshTemp(sumTemp / n);
-            rowIdx++;
+        // Update rows. Match by rowKeys (parallel to rows) so SpawnRows can omit the
+        // furnishing row when no furnishings exist in data without breaking index math.
+        for (int i = 0; i < rows.Count; i++) {
+            string key = rowKeys[i];
+            switch (key) {
+                case "housing":     rows[i].RefreshBool(satHousing, n); break;
+                case "temperature": rows[i].RefreshTemp(sumTemp / n); break;
+                case "furnishing":  rows[i].RefreshScore(sumFurnishing / n, Db.maxFurnishingPerMouse); break;
+                default:            rows[i].Refresh(satCounts[key], n, satSums[key] / n); break;
+            }
         }
     }
 }

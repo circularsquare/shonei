@@ -111,6 +111,10 @@ public class Building : Structure {
     public Inventory storage { get; private set; }
     // Non-null only for buildings with a consumable resource reservoir (torch, furnace, fountain, etc.).
     public Reservoir reservoir { get; private set; }
+    // Non-null only for buildings with furnishing slots (currently: house). Each named slot
+    // holds at most one furnishing item, decays on a fixed lifetime timer, and grants happiness
+    // to residents while installed. See FurnishingSlots.cs.
+    public FurnishingSlots furnishingSlots { get; private set; }
     // Non-null only for buildings whose StructType declares powerBoost > 1. Created in
     // OnPlaced so registration order (after WOM orders) is deterministic. Subclasses that
     // implement PowerSystem.IPowerConsumer directly (custom port layouts) should leave
@@ -148,6 +152,30 @@ public class Building : Structure {
                 ls.isLit = false;
             }
         }
+
+        if (st.hasFurnishingSlots) {
+            furnishingSlots = new FurnishingSlots(st.furnishingSlotNames, x, y, st.name);
+            furnishingSlots.onSlotChanged = OnFurnishingSlotChanged;
+        }
+    }
+
+    // Fires when a furnishing slot's contents change (install or decay-out). Recomputes
+    // happiness for every resident animal and notifies the optional visual component.
+    // Resident discovery: scan AnimalController for any animal whose homeTile.building == this.
+    // Reservable.reservedBy is a single string and can't enumerate residents, so the scan
+    // is the durable source of truth.
+    void OnFurnishingSlotChanged(int slotIndex) {
+        AnimalController ac = AnimalController.instance;
+        if (ac != null) {
+            for (int i = 0; i < ac.na; i++) {
+                Animal a = ac.animals[i];
+                if (a == null) continue;
+                if (a.homeTile?.building == this)
+                    a.happiness?.RecomputeFurnishingBonus(a);
+            }
+        }
+        FurnishingVisuals visuals = go != null ? go.GetComponent<FurnishingVisuals>() : null;
+        visuals?.Refresh(slotIndex);
     }
 
     public override void AttachAnimations() {
@@ -159,6 +187,12 @@ public class Building : Structure {
         // port specs; this base path doesn't fire for them because powerBoost stays 1.
         if (structType.powerBoost > 1f && !(this is PowerSystem.IPowerConsumer)) {
             AttachPortStubs(BuildingPowerConsumer.GetPerimeterPorts(this));
+        }
+        // Furnishing visuals: one SpriteRenderer per slot, layered above the base building
+        // sprite. Init reads furnishingSlots and subscribes to onSlotChanged via Building.
+        if (furnishingSlots != null) {
+            FurnishingVisuals fv = go.AddComponent<FurnishingVisuals>();
+            fv.Init(this);
         }
     }
 
@@ -217,6 +251,11 @@ public class Building : Structure {
             if (!WorldController.isClearing)
                 reservoir.DropToFloor(tile);
             reservoir.Destroy();
+        }
+        if (furnishingSlots != null) {
+            WorkOrderManager.instance?.RemoveFurnishingSupplyOrders(this);
+            furnishingSlots.Destroy();
+            furnishingSlots = null;
         }
         base.Destroy();
     }

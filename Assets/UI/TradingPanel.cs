@@ -121,6 +121,31 @@ public class TradingPanel : MonoBehaviour {
         }
     }
 
+    // Focuses the chat input and seeds it with "/". Entry point for the
+    // global "/" shortcut wired in UI.cs. The chatInput field is in the
+    // always-active ChatPanel (UI/ChatPanel/ChatBar/ChatInput), wired into
+    // TradingPanel via the inspector — so it can be focused without opening
+    // the trading panel. The seed is set next frame via a coroutine so we
+    // overwrite whatever Unity's input system did with the "/" keystroke
+    // this frame (the field may or may not consume Input.inputString
+    // depending on when it became selected). The one-frame normalisation
+    // guarantees exactly one "/" with the caret past it.
+    public void OpenChatInput() {
+        if (chatInput == null) return;
+        chatInput.ActivateInputField();
+        // Coroutine runs on chatInput's GameObject (always-active ChatPanel),
+        // not `this` — TradingPanel itself is inactive when closed, and
+        // StartCoroutine on an inactive MonoBehaviour silently no-ops.
+        chatInput.StartCoroutine(SeedChatSlashNextFrame());
+    }
+
+    System.Collections.IEnumerator SeedChatSlashNextFrame() {
+        yield return null;
+        if (chatInput == null) yield break;
+        chatInput.text = "/";
+        chatInput.caretPosition = 1;
+    }
+
     // ── Market inventory ItemDisplay tree ──────────────────────────
 
     // Builds the full collapsible ItemDisplay tree for the market inventory.
@@ -418,24 +443,41 @@ public class TradingPanel : MonoBehaviour {
 
         switch (cmd) {
             case "/give": CmdGive(parts); break;
-            case "/rain": CmdRain();      break;
+            case "/rain": CmdRain(parts); break;
             case "/day":  CmdDay(parts);  break;
+            case "/wind": CmdWind(parts); break;
             default:
                 EventFeed.instance?.Post($"<color=#cc3333>Unknown command: {cmd}</color>", EventFeed.Category.Alert);
                 break;
         }
     }
 
-    // /rain — toggle weather between rain and clear.
-    void CmdRain() {
+    // /rain                 — toggle weather between rain and clear.
+    // /rain [0..1]           — snap humidity to a fixed value. Rain triggers
+    //                          when humidity > WeatherSystem.rainThreshold (0.65).
+    void CmdRain(string[] parts) {
         if (WeatherSystem.instance == null) {
             EventFeed.instance?.Post("<color=#cc3333>WeatherSystem not initialised.</color>", EventFeed.Category.Alert);
             return;
         }
-        WeatherSystem.instance.ToggleRain();
-        bool now = WeatherSystem.instance.isRaining;
+
+        if (parts.Length == 1) {
+            WeatherSystem.instance.ToggleRain();
+            bool now = WeatherSystem.instance.isRaining;
+            EventFeed.instance?.Post(
+                now ? "<color=#aaccff>Rain started.</color>" : "<color=#aaffaa>Rain stopped.</color>",
+                EventFeed.Category.Info);
+            return;
+        }
+
+        if (parts.Length != 2 || !float.TryParse(parts[1], System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out float h)) {
+            EventFeed.instance?.Post("<color=#cc3333>Usage: /rain or /rain [0..1]</color>", EventFeed.Category.Alert);
+            return;
+        }
+        WeatherSystem.instance.SetHumidity(h);
         EventFeed.instance?.Post(
-            now ? "<color=#aaccff>Rain started.</color>" : "<color=#aaffaa>Rain stopped.</color>",
+            $"<color=#aaccff>Humidity set to {Mathf.Clamp01(h):F2} (rain triggers above {WeatherSystem.rainThreshold:F2}).</color>",
             EventFeed.Category.Info);
     }
 
@@ -465,6 +507,27 @@ public class TradingPanel : MonoBehaviour {
         EventFeed.instance?.Post(
             $"<color=#aaffaa>Jumped to day {day:F2}/{World.daysInYear}.</color>",
             EventFeed.Category.Info);
+    }
+
+    // /wind [value] — snap wind to a fixed value (e.g. 0, 0.5, -1).
+    // Positive blows right. Magnitudes >1 are valid but Windmill clamps output
+    // to 1; visuals like plant sway scale linearly so big values look extreme.
+    void CmdWind(string[] parts) {
+        if (parts.Length != 2) {
+            EventFeed.instance?.Post("<color=#cc3333>Usage: /wind [value]</color>", EventFeed.Category.Alert);
+            return;
+        }
+        if (!float.TryParse(parts[1], System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out float value)) {
+            EventFeed.instance?.Post("<color=#cc3333>Value must be a number.</color>", EventFeed.Category.Alert);
+            return;
+        }
+        if (WeatherSystem.instance == null) {
+            EventFeed.instance?.Post("<color=#cc3333>WeatherSystem not initialised.</color>", EventFeed.Category.Alert);
+            return;
+        }
+        WeatherSystem.instance.SetWind(value);
+        EventFeed.instance?.Post($"<color=#aaffaa>Wind set to {value:F2}.</color>", EventFeed.Category.Info);
     }
 
     // /give [itemname] [quantity in liang]

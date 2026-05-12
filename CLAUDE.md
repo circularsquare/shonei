@@ -125,7 +125,7 @@ To add a new snapshot scenario:
 The runner pauses `Time.timeScale`, sets `WorldController.skipAutoLoad` so the user's most-recent save isn't picked up, and nulls singleton statics to keep state clean across consecutive runs in the same Unity session. If you add a new singleton that surfaces a "two instances of X" error during snapshot tests, add its type to `NullStaticInstances` in `SnapshotRunner.cs`.
 
 **Workflows via Unity MCP** (`mcp__unity__*`):
-- `read_console` — check warnings/errors after script edits. Run this after non-trivial code changes before claiming done.
+- `read_console` — check warnings/errors after script edits. Run this after **non-trivial** code changes before claiming done. **Skip for tiny low-risk edits** (one-line filters, string-literal tweaks, magic-number changes, removing a line) — `refresh_unity` + `read_console` round-trips take real time and add little value when there's no plausible compile risk. Default to skipping unless the edit could reasonably break compile (new method, type signature change, reflection/framework API, etc.).
 - `run_tests` returns a job_id; poll with `get_test_job` (use `wait_timeout: 60` and `include_failed_tests: true`). Specify `mode: "EditMode"` or `mode: "PlayMode"`.
 - **Never auto-invoke `run_tests`.** It triggers a Unity recompile / domain reload and can interrupt in-flight editor work. Suggest it ("this touched save code — want me to run the EditMode tests?") and wait for explicit user confirmation. Tests can't run while Unity is already in Play Mode — wait, or ask the user to exit.
 

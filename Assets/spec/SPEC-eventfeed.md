@@ -40,7 +40,7 @@ Split into `EventFeedBindings.cs` once this table grows past ~5 rows or bindings
 Call sites that post directly (not via a binding):
 
 - `TradingPanel.OnClickSendChat` — connection-offline error
-- `TradingPanel.HandleCommand` / `CmdGive` — `/give` command feedback (usage error, unknown item, no market, success, market-full)
+- `TradingPanel.HandleCommand` / `CmdGive` / `CmdRain` / `CmdDay` / `CmdWind` — `/give`, `/rain`, `/day [n]`, `/wind [v]` command feedback (usage errors, unknown args, success messages). Unknown commands also post a red error.
 - `TradingPanel.DisplayChat` — server chat from other players (`Category.Chat`)
 - `TradingPanel.DisplayFill` — server trade fills (`Category.Fill`)
 

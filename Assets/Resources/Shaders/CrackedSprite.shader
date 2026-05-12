@@ -1,7 +1,7 @@
 // Sprite shader for broken / damaged structures. Composites a tileable crack
 // texture on top of the base sprite, masked by the base sprite's own alpha so
 // cracks only appear on the visible shape of the building (not in transparent
-// gaps). URP 2D-native — follows TileSprite.shader's structure so broken
+// gaps). URP 2D-native — dual-pass (Universal2D + UniversalForward) so broken
 // buildings continue to participate in the project's NormalsCapture +
 // LightComposite pipeline (the "LightMode" = "Universal2D" tag on the pass is
 // what makes the renderer show up in those filters).

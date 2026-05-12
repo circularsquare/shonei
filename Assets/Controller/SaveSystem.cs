@@ -31,7 +31,7 @@ using Newtonsoft.Json;
 //   [x] World RNG seed (drives Rng — gameplay randomness reproduces on reload)
 //   [x] Per-animal RNG seed (drives Animal.random — animal AI reproduces on reload)
 //   [x] Tile types, floor inventories (incl. wetUntil rain-soaked timer), background wall, overlay masks (grass on dirt), overlay health state (live/dying/dead), and snow cover
-//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, mirrored, rotation, shapeIndex, disabled, plantHarvestFlagged, quarry capturedTileType, flywheel charge, elevator currentY + history buffers)
+//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, furnishingInvData + furnishingRemainingDays, mirrored, rotation, shapeIndex, disabled, plantHarvestFlagged, quarry capturedTileType, flywheel charge, elevator currentY + history buffers)
 //   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored, rotation, shapeIndex, disabled)
 //   [x] Animals (position, job, energy, food, happiness, decoration happiness, socialization, fireplace warmth, inv, foodSlotInv, toolSlotInv, clothingSlotInv, bookSlotInv)
 //   [x] Mid-transit merchant task descriptor (travelTaskType + iq + storage tile + leg)
@@ -39,7 +39,7 @@ using Newtonsoft.Json;
 //   [x] Disabled recipe ids
 //   [x] Water levels
 //   [x] Moisture levels
-//   [x] Is raining
+//   [x] Is raining + atmospheric humidity (drives rain via threshold)
 //   [x] Global item targets
 //   [x] Market targets (via MarketBuilding.instance)
 //   [x] Camera position and zoom (PPU)
@@ -164,6 +164,7 @@ public class SaveSystem : MonoBehaviour {
         }
 
         data.isRaining = WeatherSystem.instance?.isRaining ?? false;
+        data.humidity  = WeatherSystem.instance?.humidity  ?? 0f;
 
         var ic = InventoryController.instance;
         if (ic?.targets != null) {
@@ -259,6 +260,19 @@ public class SaveSystem : MonoBehaviour {
                 ssd.fuelInvData = GatherInventory(b.reservoir.inv);
             if (b.storage != null)
                 ssd.storageInvData = GatherInventory(b.storage);
+            if (b.furnishingSlots != null) {
+                int n = b.furnishingSlots.SlotCount;
+                bool anyFilled = false;
+                for (int i = 0; i < n; i++) if (!b.furnishingSlots.IsEmpty(i)) { anyFilled = true; break; }
+                if (anyFilled) {
+                    ssd.furnishingInvData = new InventorySaveData[n];
+                    ssd.furnishingRemainingDays = new float[n];
+                    for (int i = 0; i < n; i++) {
+                        ssd.furnishingInvData[i] = GatherInventory(b.furnishingSlots.slotInvs[i]);
+                        ssd.furnishingRemainingDays[i] = b.furnishingSlots.slotRemainingDays[i];
+                    }
+                }
+            }
             if (b.disabled) ssd.disabled = true;
         }
         if (s is Quarry q && q.capturedTile != null)
@@ -390,7 +404,7 @@ public class SaveSystem : MonoBehaviour {
     // add Gather*/Restore* methods for the load path (see checklist above).
     void ResetSystemState() {
         InventoryController.instance?.ResetState();
-        WeatherSystem.instance?.RestoreState(false);
+        WeatherSystem.instance?.RestoreState(false, 0f);
         RecipePanel.instance?.ClearDisabled();
         ResearchSystem.instance?.ResetAll();
     }
@@ -585,7 +599,7 @@ public class SaveSystem : MonoBehaviour {
 
         RestoreResearch(save.research);
 
-        WeatherSystem.instance?.RestoreState(save.isRaining);
+        WeatherSystem.instance?.RestoreState(save.isRaining, save.humidity);
 
         // ── Phase 6: Observers ─────────────────────────────────────────────────────────
         // Register all WOM orders in one pass now that the world + configuration is final
@@ -749,6 +763,30 @@ public class SaveSystem : MonoBehaviour {
                     continue;
                 }
                 fb.reservoir.inv.Produce(leafItem, sd.quantity);
+            }
+        }
+        // Restore furnishing slots (items + per-slot remaining lifetime). No onSlotChanged
+        // fire here — Animals haven't loaded yet, so happiness recompute is deferred to
+        // PostLoadInit (which now does it for every animal-with-house). Visual refresh on
+        // load comes from FurnishingVisuals.Init iterating every slot once when the GO
+        // gets its components attached in AttachAnimations.
+        if (structure is Building fsBuilding && fsBuilding.furnishingSlots != null && ssd.furnishingInvData != null) {
+            var fs = fsBuilding.furnishingSlots;
+            int n = Mathf.Min(fs.SlotCount, ssd.furnishingInvData.Length);
+            for (int i = 0; i < n; i++) {
+                InventorySaveData isd = ssd.furnishingInvData[i];
+                if (isd?.stacks == null) continue;
+                foreach (ItemStackSaveData sd in isd.stacks) {
+                    if (string.IsNullOrEmpty(sd.itemName) || sd.quantity <= 0) continue;
+                    if (!Db.itemByName.TryGetValue(sd.itemName, out Item leaf)) {
+                        Debug.LogError($"RestoreStructure: unknown furnishing item '{sd.itemName}' on {st.name} at ({ssd.x},{ssd.y})");
+                        continue;
+                    }
+                    fs.slotInvs[i].Produce(leaf, sd.quantity);
+                    fs.slotItems[i] = leaf;
+                }
+                if (ssd.furnishingRemainingDays != null && i < ssd.furnishingRemainingDays.Length)
+                    fs.slotRemainingDays[i] = ssd.furnishingRemainingDays[i];
             }
         }
         // Restore storage inventory (items + allowed filter)

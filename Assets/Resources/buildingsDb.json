@@ -58,7 +58,9 @@
         "capacity": 5,
         "depth": 0,
         "solidTop": true,
-        "category": "storage"
+        "category": "storage",
+        "hasFurnishingSlots": true,
+        "furnishingSlotNames": ["cloth"]
     },{
         "id": 21,
         "name": "drawer",

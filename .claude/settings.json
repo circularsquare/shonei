@@ -16,7 +16,8 @@
       "Read(//tmp/**)",
       "Read(//c/Users/anita/.claude/projects/c--Users-anita-projects-shonei/memory/**)",
       "Read(//c/Users/anita/projects/shonei/**)",
-      "Read(//c/Users/anita/projects/shonei-server/**)"
+      "Read(//c/Users/anita/projects/shonei-server/**)",
+      "Bash(python -c 'from PIL import Image; img = Image.open\\(r'\\\\''c:\\\\Users\\\\anita\\\\projects\\\\shonei\\\\Assets\\\\Resources\\\\Sprites\\\\Tiles\\\\Sheets\\\\grass.png'\\\\''\\); print\\(f'\\\\''size={img.size} mode={img.mode}'\\\\''\\); pixels = img.load\\(\\); print\\('\\\\''Main interior region \\(8,8\\) to \\(23,23\\) — sampling alpha:'\\\\''\\); *)"
     ],
     "additionalDirectories": [
       "C:\\Users\\anita\\projects",

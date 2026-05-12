@@ -827,6 +827,11 @@ public class Animal : MonoBehaviour{
                 if (homeTile?.building?.structType.name == "house") homeTile.building.res.Unreserve();
                 homeTile = housePath.tile;
                 homeTile.building.res.Reserve(aName);
+                happiness?.RecomputeFurnishingBonus(this);
+            } else if (homeTile != null && happiness != null) {
+                // Home was lost (demolished / broken) but no replacement found — clear any
+                // stale furnishing bonus that was pinned to the old house.
+                happiness.RecomputeFurnishingBonus(this);
             }
         } else if (!homeTile.building.res.Available()) {
             // current house is full — look for another house with >= 2 free slots
@@ -840,6 +845,7 @@ public class Animal : MonoBehaviour{
                 homeTile.building.res.Unreserve();
                 homeTile = betterPath.tile;
                 homeTile.building.res.Reserve(aName);
+                happiness?.RecomputeFurnishingBonus(this);
             }
         }
     }

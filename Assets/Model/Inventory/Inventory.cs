@@ -12,7 +12,7 @@ public class Inventory{
     public int nStacks;
     public int stackSize; 
     public ItemStack[] itemStacks;
-    public enum InvType {Floor, Storage, Animal, Market, Equip, Blueprint, Reservoir};
+    public enum InvType {Floor, Storage, Animal, Market, Equip, Blueprint, Reservoir, Furnishing};
 
     // Returns true if this item type is physically compatible with this inventory.
     // This is a hard constraint checked before the per-item allowed[] dict.
@@ -243,7 +243,8 @@ public class Inventory{
             InvType.Animal     => 0f,
             InvType.Equip      => 1f,
             InvType.Blueprint  => 0f,
-            InvType.Reservoir       => 0f, // fuel items don't decay in building reserves
+            InvType.Reservoir  => 0f, // fuel items don't decay in building reserves
+            InvType.Furnishing => 0f, // furnishing slots track their own per-slot lifetime instead
             _                  => 1f
         };
         if (invTypeMult == 0f) return;
@@ -449,7 +450,7 @@ public class Inventory{
         return mostItem;
     }
     public ItemStack GetItemToHaul(){   // returns null if nothing, or item if something need to haul
-        if (invType == InvType.Market || invType == InvType.Blueprint || invType == InvType.Reservoir) return null;
+        if (invType == InvType.Market || invType == InvType.Blueprint || invType == InvType.Reservoir || invType == InvType.Furnishing) return null;
         foreach (ItemStack stack in itemStacks){
             if (!stack.Empty() && stack.Available() &&
                 (locked || allowed[stack.item.id] == false || invType == InvType.Floor)){
@@ -459,7 +460,7 @@ public class Inventory{
         return null;
     }
     public bool HasItemToHaul(Item item){ // if null, finds any item to haul
-        if (invType == InvType.Market || invType == InvType.Blueprint || invType == InvType.Reservoir) return false;
+        if (invType == InvType.Market || invType == InvType.Blueprint || invType == InvType.Reservoir || invType == InvType.Furnishing) return false;
         foreach (ItemStack stack in itemStacks){
             if ((item == null || stack.item == item) && stack.quantity > 0 && stack.Available() &&
                 (locked || allowed[stack.item.id] == false || invType == InvType.Floor)){
@@ -472,7 +473,7 @@ public class Inventory{
     // Counts both empty stacks (any item could fill them) and partially-filled stacks of the same item.
     // Accounts for resSpace (destination reservations) so in-flight deliveries don't double-book space.
     public int GetStorageForItem(Item item){
-        if (invType == InvType.Market || invType == InvType.Blueprint || invType == InvType.Reservoir) return 0;
+        if (invType == InvType.Market || invType == InvType.Blueprint || invType == InvType.Reservoir || invType == InvType.Furnishing) return 0;
         if (!ItemTypeCompatible(item)) return 0;
         if (locked || allowed[item.id] == false || invType == InvType.Floor){return 0;}
         int space = 0;
@@ -754,7 +755,7 @@ public class Inventory{
             Debug.LogError($"Inventory.UpdateSprite called on destroyed {invType} '{displayName}' at ({x},{y}) — stale reference. Skipping.");
             return;
         }
-        if (invType == InvType.Animal || invType == InvType.Market || invType == InvType.Equip || invType == InvType.Blueprint || invType == InvType.Reservoir) return;
+        if (invType == InvType.Animal || invType == InvType.Market || invType == InvType.Equip || invType == InvType.Blueprint || invType == InvType.Reservoir || invType == InvType.Furnishing) return;
         if (stackGos != null){
             // Multi-stack storage (drawer): update each slot independently
             for (int i = 0; i < nStacks && i < stackGos.Length; i++){

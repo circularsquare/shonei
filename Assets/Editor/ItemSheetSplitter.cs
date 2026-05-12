@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
+using System.Text;
 using SysPath = System.IO.Path;
 using SysFile = System.IO.File;
 using SysDir  = System.IO.Directory;
@@ -21,13 +22,24 @@ using SysDir  = System.IO.Directory;
 // Source:  Assets/Resources/Sheets/{itemName}.png
 // Output:  Assets/Resources/Sprites/Items/split/{itemName}/{slotName}.png
 //
+// Up-to-date check:
+//   Each sheet's importer userData carries `itemSplitCacheKey=<md5>` after a
+//   successful split. The key hashes source PNG mtime + the Slots config, so
+//   any sheet edit OR a code change to Slots invalidates cached sheets. The
+//   batch "All" menus honor this cache; "(Force)" ignores it. Single-asset
+//   menu always forces. If a user deletes individual split files but leaves
+//   the output folder intact, the cache won't notice — use single-asset force
+//   or wipe the folder. Mirrors SpriteNormalMapGenerator's caching shape.
+//
 // Usage:
-//   Tools → Split All Item Sheets       — processes every sheet in Sheets/
-//   Right-click sheet → Split Item Sheet — processes selected sheet(s)
+//   Tools → Split All Item Sheets         — processes every sheet (cache-aware)
+//   Tools → Split All Item Sheets (Force) — ignores cache
+//   Right-click sheet → Split Item Sheet  — processes selected sheet(s), force
 public static class ItemSheetSplitter {
     const int CellSize   = 16;
     const string SheetsFolder = "Assets/Resources/Sprites/Items/Sheets";
     const string ItemsFolder  = "Assets/Resources/Sprites/Items/split";
+    const string CacheKey     = "itemSplitCacheKey";
 
     // (row, col, outputFileName, cropSize)  cropSize <= CellSize; top-left of cell is used.
     // Quarter sprites (q*) use cropSize=6 so that when placed at ±0.25 Unity units (±4 px at PPU=16),
@@ -46,7 +58,12 @@ public static class ItemSheetSplitter {
     // ── batch: all sheets in Sheets/ ─────────────────────────────────────────
     [MenuItem("Tools/Split All Item Sheets")]
     internal static void SplitAll() {
-        SplitFolders(new[] { SheetsFolder });
+        SplitFolders(new[] { SheetsFolder }, force: false);
+    }
+
+    [MenuItem("Tools/Split All Item Sheets (Force)")]
+    internal static void SplitAllForce() {
+        SplitFolders(new[] { SheetsFolder }, force: true);
     }
 
     // ── folder: right-click a folder to split all sheets in it ───────────────
@@ -66,23 +83,23 @@ public static class ItemSheetSplitter {
             string path = AssetDatabase.GetAssetPath(o);
             if (AssetDatabase.IsValidFolder(path)) folders.Add(path);
         }
-        SplitFolders(folders.ToArray());
+        SplitFolders(folders.ToArray(), force: false);
     }
 
-    static void SplitFolders(string[] folders) {
+    static void SplitFolders(string[] folders, bool force) {
         string[] guids = AssetDatabase.FindAssets("t:Texture2D", folders);
-        int count = 0;
+        int processed = 0, skipped = 0;
         List<string> written = new List<string>();
         foreach (string guid in guids) {
             string path = AssetDatabase.GUIDToAssetPath(guid);
             if (path.EndsWith("_n.png")) continue;       // skip generated normal maps in Sheets/
             string itemName = SysPath.GetFileNameWithoutExtension(path);
-            SplitSheet(path, itemName, written);
-            count++;
+            if (SplitSheet(path, itemName, written, force)) processed++;
+            else                                            skipped++;
         }
         AssetDatabase.Refresh();
         ApplyImportSettings(written);
-        Debug.Log($"[SheetSplitter] Done — split {count} sheet(s), wrote {written.Count} sprite(s).");
+        Debug.Log($"[SheetSplitter] Done — processed {processed}, skipped {skipped} up-to-date, wrote {written.Count} sprite(s).{(force ? " (force)" : "")}");
     }
 
     // ── single: right-click a sheet texture ──────────────────────────────────
@@ -106,7 +123,7 @@ public static class ItemSheetSplitter {
             if (!path.StartsWith(SheetsFolder)) continue;
             if (path.EndsWith("_n.png")) continue;       // skip generated normal maps
             string itemName = SysPath.GetFileNameWithoutExtension(path);
-            SplitSheet(path, itemName, written);
+            SplitSheet(path, itemName, written, force: true);
         }
         AssetDatabase.Refresh();
         ApplyImportSettings(written);
@@ -114,9 +131,12 @@ public static class ItemSheetSplitter {
     }
 
     // ── core ─────────────────────────────────────────────────────────────────
-    static void SplitSheet(string sheetPath, string itemName, List<string> written) {
+    // Returns true if the sheet was processed, false if skipped (up-to-date).
+    static bool SplitSheet(string sheetPath, string itemName, List<string> written, bool force) {
         TextureImporter imp = AssetImporter.GetAtPath(sheetPath) as TextureImporter;
-        if (imp == null) { Debug.LogWarning($"[SheetSplitter] No importer for {sheetPath}"); return; }
+        if (imp == null) { Debug.LogWarning($"[SheetSplitter] No importer for {sheetPath}"); return false; }
+
+        if (!force && IsUpToDate(sheetPath, itemName, imp)) return false;
 
         // Temporarily enable CPU read
         bool wasReadable = imp.isReadable;
@@ -126,7 +146,7 @@ public static class ItemSheetSplitter {
         if (sheet == null) {
             if (!wasReadable) { imp.isReadable = false; imp.SaveAndReimport(); }
             Debug.LogWarning($"[SheetSplitter] Could not load {sheetPath}");
-            return;
+            return false;
         }
 
         string outDir = SysPath.Combine(ItemsFolder, itemName).Replace('\\', '/');
@@ -162,7 +182,39 @@ public static class ItemSheetSplitter {
             Debug.Log($"[SheetSplitter] Wrote: {outPath}");
         }
 
+        // Stamp cache key on success. Folds into the trailing reimport when
+        // wasReadable was false; otherwise costs one extra SaveAndReimport.
+        SetUserDataFlag(imp, CacheKey, ComputeCacheKey(sheetPath));
         if (!wasReadable) { imp.isReadable = false; imp.SaveAndReimport(); }
+        else              { imp.SaveAndReimport(); }
+        return true;
+    }
+
+    // ── up-to-date check ─────────────────────────────────────────────────────
+    // Inputs that should invalidate a cached split:
+    //   - source PNG content (mtime proxy)
+    //   - Slots config (so adding/removing slots in code re-splits everything)
+    //   - output folder existence (user may have deleted the whole folder)
+    // Individual missing output files are NOT detected — use the single-asset
+    // "Split Item Sheet" menu (force) or wipe the folder to recover.
+    static bool IsUpToDate(string sheetPath, string itemName, TextureImporter imp) {
+        string stored = GetUserDataValue(imp, CacheKey);
+        if (string.IsNullOrEmpty(stored)) return false;
+        if (stored != ComputeCacheKey(sheetPath)) return false;
+        string outDir = SysPath.Combine(ItemsFolder, itemName).Replace('\\', '/');
+        if (!SysDir.Exists(outDir)) return false;
+        return true;
+    }
+
+    static string ComputeCacheKey(string sheetPath) {
+        var sb = new StringBuilder();
+        sb.Append(SysFile.GetLastWriteTimeUtc(sheetPath).Ticks);
+        sb.Append('|').Append(CellSize);
+        foreach (var (row, col, name, cropSize) in Slots) {
+            sb.Append('|').Append(row).Append(',').Append(col)
+              .Append(',').Append(name).Append(',').Append(cropSize);
+        }
+        return Md5(sb.ToString());
     }
 
     // ── combo: split all sheets then generate normal maps for everything ────
@@ -185,6 +237,43 @@ public static class ItemSheetSplitter {
             imp.textureCompression = TextureImporterCompression.Uncompressed;
             imp.wrapMode           = TextureWrapMode.Clamp;
             imp.SaveAndReimport();
+        }
+    }
+
+    // ── userData helpers ─────────────────────────────────────────────────────
+    // Importer userData carries semicolon-separated key=value pairs. Same
+    // format SpriteNormalMapGenerator uses, so the splitter's `itemSplitCacheKey`
+    // can coexist with the generator's `normalsCacheKey` on the same sheet.
+    static string GetUserDataValue(TextureImporter imp, string key) {
+        if (imp == null || string.IsNullOrEmpty(imp.userData)) return null;
+        foreach (string pair in imp.userData.Split(';')) {
+            int eq = pair.IndexOf('=');
+            if (eq < 0) continue;
+            if (pair.Substring(0, eq).Trim() == key) return pair.Substring(eq + 1).Trim();
+        }
+        return null;
+    }
+
+    static void SetUserDataFlag(TextureImporter imp, string key, string value) {
+        var pairs = new List<string>();
+        bool replaced = false;
+        if (!string.IsNullOrEmpty(imp.userData)) {
+            foreach (string pair in imp.userData.Split(';')) {
+                int eq = pair.IndexOf('=');
+                if (eq < 0) { if (!string.IsNullOrWhiteSpace(pair)) pairs.Add(pair); continue; }
+                string k = pair.Substring(0, eq).Trim();
+                if (k == key) { pairs.Add($"{key}={value}"); replaced = true; }
+                else          { pairs.Add(pair); }
+            }
+        }
+        if (!replaced) pairs.Add($"{key}={value}");
+        imp.userData = string.Join(";", pairs);
+    }
+
+    static string Md5(string s) {
+        using (var m = System.Security.Cryptography.MD5.Create()) {
+            byte[] b = m.ComputeHash(Encoding.UTF8.GetBytes(s));
+            return System.Convert.ToBase64String(b);
         }
     }
 }

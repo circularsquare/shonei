@@ -2,6 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
+using TMPro;
 using System;
 using System.Linq;
 
@@ -67,6 +69,12 @@ public class UI : MonoBehaviour {
             ToggleUIVisible();
         }
 
+        // "/" anywhere outside an input field opens the trading panel chat,
+        // focuses the field, and seeds it with "/". See TradingPanel.OpenChatInput.
+        if (Input.GetKeyDown(KeyCode.Slash) && !IsTypingInField()) {
+            TradingPanel.instance?.OpenChatInput();
+        }
+
         // LMB on world mirrors the Esc chain (steps 1–3): SaveMenu → BuildPanel
         // sub-panel → exclusive panel, first match wins, so a single click never
         // collapses two layers. The handler is non-consuming — control falls
@@ -112,6 +120,15 @@ public class UI : MonoBehaviour {
             if (mc != null && mc.mouseMode != MouseController.MouseMode.Select)
                 mc.SetModeSelect();
         }
+    }
+
+    // True if the keyboard focus is currently on a text input field, so global
+    // shortcuts (Space pause, "/" chat) should not hijack the keystroke.
+    static bool IsTypingInField() {
+        var sel = EventSystem.current?.currentSelectedGameObject;
+        if (sel == null) return false;
+        return sel.GetComponent<InputField>() != null
+            || sel.GetComponent<TMP_InputField>() != null;
     }
 
     // Flips visibility of every Canvas in the scene. Re-scans on each press in case

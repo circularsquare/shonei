@@ -73,6 +73,10 @@ public class LightFeature : ScriptableRendererFeature {
     [Tooltip("Background layer — rendered into the normals RT using NormalsCaptureBackground, " +
              "which clips transparent top pixels so they read as sky. Lit-only (no shadow cast).")]
     public LayerMask backgroundLayer = 0; // set to the 'Background' layer in the inspector
+    [Tooltip("Chunked tile layer — drawn with ChunkedNormalsCapture, which samples Texture2DArray " +
+             "slices using per-vertex slice indices (see TileMeshController). Excluded from the " +
+             "standard shadow-caster pass so chunked meshes aren't double-drawn into the normals RT.")]
+    public LayerMask tileChunkLayer = 0; // set to the 'TileChunk' layer in the inspector
 
     // Inspector-assigned shader references. These exist so the lighting shaders
     // are part of the renderer asset's serialized graph — Unity then force-includes
@@ -85,6 +89,7 @@ public class LightFeature : ScriptableRendererFeature {
     [SerializeField] Shader normalsCaptureShader;
     [SerializeField] Shader normalsCaptureWaterShader;
     [SerializeField] Shader normalsCaptureBackgroundShader;
+    [SerializeField] Shader chunkedNormalsCaptureShader;
     [SerializeField] Shader lightCircleShader;
     [SerializeField] Shader lightSunShader;
     [SerializeField] Shader lightCompositeShader;
@@ -96,7 +101,7 @@ public class LightFeature : ScriptableRendererFeature {
 
     public override void Create() {
         penetrationDepth = lightPenetrationDepth;
-        capturePass = new NormalsCapturePass(normalsCaptureShader, normalsCaptureWaterShader, normalsCaptureBackgroundShader) {
+        capturePass = new NormalsCapturePass(normalsCaptureShader, normalsCaptureWaterShader, normalsCaptureBackgroundShader, chunkedNormalsCaptureShader) {
             renderPassEvent = RenderPassEvent.BeforeRenderingTransparents
         };
         lightPass = new LightPass(lightCircleShader, lightSunShader, lightCompositeShader, lightAmbientFillShader, emissionWriterShader) {
@@ -115,8 +120,8 @@ public class LightFeature : ScriptableRendererFeature {
         // because its culling mask only contains layers excluded from all three masks.
         var cullingMask = renderingData.cameraData.camera.cullingMask;
         if (cullingMask == 0) return;
-        if ((cullingMask & (litLayers | directionalOnlyLayers | waterLayer | backgroundLayer)) == 0) return;
-        capturePass.Setup(litLayers, shadowCasterLayers, directionalOnlyLayers, waterLayer, backgroundLayer);
+        if ((cullingMask & (litLayers | directionalOnlyLayers | waterLayer | backgroundLayer | tileChunkLayer)) == 0) return;
+        capturePass.Setup(litLayers, shadowCasterLayers, directionalOnlyLayers, waterLayer, backgroundLayer, tileChunkLayer);
         renderer.EnqueuePass(capturePass);
         lightPass.Setup(renderer.cameraColorTarget, ambientNormal, deepAmbientColor, skyLightBlend, sortRampRange, behindFarHeightFactor, emissionStrength);
         renderer.EnqueuePass(lightPass);
@@ -137,13 +142,15 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
     readonly Material mat;
     readonly Material waterMat;
     readonly Material backgroundMat;
-    int litMask     = ~0;
-    int shadowMask  = ~0;
-    int dirOnlyMask = 0;
-    int waterMask   = 0;
+    readonly Material chunkedMat;
+    int litMask         = ~0;
+    int shadowMask      = ~0;
+    int dirOnlyMask     = 0;
+    int waterMask       = 0;
     int backgroundMask  = 0;
+    int tileChunkMask   = 0;
 
-    public NormalsCapturePass(Shader normalsCapture, Shader normalsCaptureWater, Shader normalsCaptureBackground) {
+    public NormalsCapturePass(Shader normalsCapture, Shader normalsCaptureWater, Shader normalsCaptureBackground, Shader chunkedNormalsCapture) {
         if (normalsCapture == null || normalsCaptureWater == null || normalsCaptureBackground == null) {
             Debug.LogError("LightFeature: NormalsCapture shader fields are unassigned — assign them in the URP Universal Renderer asset's LightFeature inspector. Lighting will be disabled.");
             return;
@@ -151,20 +158,27 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
         mat           = CoreUtils.CreateEngineMaterial(normalsCapture);
         waterMat      = CoreUtils.CreateEngineMaterial(normalsCaptureWater);
         backgroundMat = CoreUtils.CreateEngineMaterial(normalsCaptureBackground);
+        // Chunked tile capture is optional — if the shader isn't assigned the
+        // pass simply skips chunked-tile drawing. Useful while migrating to
+        // the chunked renderer (renderer asset hasn't been wired yet).
+        if (chunkedNormalsCapture != null)
+            chunkedMat = CoreUtils.CreateEngineMaterial(chunkedNormalsCapture);
     }
 
-    public void Setup(int litMask, int shadowMask, int dirOnlyMask, int waterMask, int backgroundMask) {
-        this.litMask     = litMask;
-        this.shadowMask  = shadowMask;
-        this.dirOnlyMask = dirOnlyMask;
-        this.waterMask   = waterMask;
-        this.backgroundMask  = backgroundMask;
+    public void Setup(int litMask, int shadowMask, int dirOnlyMask, int waterMask, int backgroundMask, int tileChunkMask) {
+        this.litMask        = litMask;
+        this.shadowMask     = shadowMask;
+        this.dirOnlyMask    = dirOnlyMask;
+        this.waterMask      = waterMask;
+        this.backgroundMask = backgroundMask;
+        this.tileChunkMask  = tileChunkMask;
     }
 
     public void Dispose() {
         CoreUtils.Destroy(mat);
         CoreUtils.Destroy(waterMat);
         CoreUtils.Destroy(backgroundMat);
+        CoreUtils.Destroy(chunkedMat);
     }
 
     public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData rd) {
@@ -224,14 +238,32 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
             context.DrawRenderers(rd.cullResults, ref ds, ref fs);
         }
 
+        // Draw chunked tile meshes (own override material, samples Texture2DArray
+        // slices via per-vertex slice indices). Drawn before the standard shadow-
+        // caster pass so animal/structure sprites overlapping a tile overwrite
+        // the chunked-tile pixels (animal SR has higher sortingOrder than tile
+        // body — the standard pass running second wins on overlap).
+        if (tileChunkMask != 0 && chunkedMat != null) {
+            var ds = CreateDrawingSettings(
+                new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
+            ds.overrideMaterial          = chunkedMat;
+            ds.overrideMaterialPassIndex = 0; // chunked shader has a single pass — shadow caster
+
+            var fs = new FilteringSettings(RenderQueueRange.all, tileChunkMask);
+            context.DrawRenderers(rd.cullResults, ref ds, ref fs);
+        }
+
         // Draw shadow-casting sprites (pass 0, alpha=1.0).
+        // tileChunkMask is excluded — chunked tiles were drawn just above with
+        // their own override material, and re-drawing them with the standard
+        // mat would sample a non-existent _MainTex/_NormalMap MPB.
         {
             var ds = CreateDrawingSettings(
                 new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
             ds.overrideMaterial          = mat;
             ds.overrideMaterialPassIndex = 0; // alpha = 1.0 (casts shadow)
 
-            var fs = new FilteringSettings(RenderQueueRange.all, litMask & shadowMask & ~dirOnlyMask);
+            var fs = new FilteringSettings(RenderQueueRange.all, litMask & shadowMask & ~dirOnlyMask & ~tileChunkMask);
             context.DrawRenderers(rd.cullResults, ref ds, ref fs);
         }
 
@@ -406,17 +438,17 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         Color sunSkyContrib = Color.black;
         foreach (var src in LightSource.all) {
             if (src == null || !src.isDirectional || src.intensity <= 0f) continue;
+            Vector3 sunDir = SunController.GetSunDirection();
             cmd.SetGlobalColor("_SunColor",     src.lightColor);
             cmd.SetGlobalFloat("_SunIntensity", src.intensity);
-            cmd.SetGlobalVector("_SunDir",      SunController.GetSunDirection());
+            cmd.SetGlobalVector("_SunDir",      sunDir);
             cmd.SetGlobalFloat("_SunHeight",    src.lightHeight);
             // Blit instead of DrawMesh — DrawMesh silently fails to write to
             // the temp RT for some cameras (e.g. SkyCamera without PixelPerfectCamera).
             cmd.Blit(null, LightRTId, sunMat);
 
             // Replicate sun shader's flat-normal NdotL for sky pixels.
-            Vector3 sunDir2 = SunController.GetSunDirection();
-            Vector3 sunDir3 = new Vector3(sunDir2.x, sunDir2.y, -src.lightHeight).normalized;
+            Vector3 sunDir3 = new Vector3(sunDir.x, sunDir.y, -src.lightHeight).normalized;
             float ndotlFlat = Mathf.Max(ambientNormal, -sunDir3.z); // dot((0,0,-1), sunDir3)
             sunSkyContrib += src.lightColor * (src.intensity * ndotlFlat);
         }

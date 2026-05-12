@@ -96,6 +96,8 @@ public static class WorldGen {
 
         FillDepressions(world, surfaceY);
 
+        ApplyBeachSand(world, seed);
+
         PopulateOverlays(world);
 
         SeedMoisture(world);
@@ -137,6 +139,49 @@ public static class WorldGen {
         if (n.type.solid) return false;
         if (n.water > 0) return false;
         return true;
+    }
+
+    // ── Beach sand ───────────────────────────────────────────────────────
+    // Convert a clumpy fraction of dirt tiles touching water (orthogonal OR
+    // diagonal) into sand. A perlin mask shapes which eligible tiles flip so
+    // we get patchy beaches and dunes instead of a uniform sand ring around
+    // every pool. Frequency picks the clump size; threshold tunes coverage.
+    //
+    // Runs AFTER FillDepressions (so water placement is final) and BEFORE
+    // PopulateOverlays (so grass bits are seeded on dirt's final boundary,
+    // not on tiles we're about to make sand). The Tile.type setter clears
+    // overlayMask on a type change anyway — this ordering is just the simpler
+    // invariant to reason about.
+    const float SandFreq = 0.18f;       // ~6-tile clumps
+    const float SandThreshold = 0.52f;  // Mathf.PerlinNoise concentrates around 0.5; ~0.52 ≈ 40% pass
+    public static void ApplyBeachSand(World world, int seed) {
+        TileType sand = Db.tileTypeByName["sand"];
+        TileType dirt = Db.tileTypeByName["dirt"];
+        float seedOffX = seed * 0.7f;
+        float seedOffY = seed * 1.3f;
+
+        for (int x = 0; x < world.nx; x++) {
+            for (int y = 0; y < world.ny; y++) {
+                Tile t = world.GetTileAt(x, y);
+                if (t.type != dirt) continue;
+                if (!HasAdjacentWater(world, x, y)) continue;
+                float n = Mathf.PerlinNoise(
+                    (x + seedOffX) * SandFreq,
+                    (y + seedOffY) * SandFreq);
+                if (n > SandThreshold) t.type = sand;
+            }
+        }
+    }
+
+    static bool HasAdjacentWater(World world, int x, int y) {
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                if (dx == 0 && dy == 0) continue;
+                Tile n = world.GetTileAt(x + dx, y + dy);
+                if (n != null && n.water > 0) return true;
+            }
+        }
+        return false;
     }
 
     // ── Background walls ─────────────────────────────────────────────────

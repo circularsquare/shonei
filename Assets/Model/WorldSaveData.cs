@@ -18,6 +18,10 @@ public class WorldSaveData {
     public ushort[] waterLevels;    // flat array, index = y * nx + x; null if all-dry
     public byte[] moistureLevels;   // flat array, same layout as waterLevels; null if every tile is dry soil
     public bool isRaining;          // false = clear (safe default for old saves)
+    // Atmospheric humidity [0, 1] — drives rain (isRaining = humidity > threshold)
+    // and cloud cover. 0 on old saves; RestoreState synthesizes a plausible value
+    // from isRaining in that case so cloud cover doesn't disagree with rain state.
+    public float humidity;
     // Global item targets set by the player via ItemDisplay UI (item name → target qty in fen).
     // Only non-default entries (≠ 10000) are stored; absent entries load as default (10000).
     public Dictionary<string, int> globalItemTargets;
@@ -90,6 +94,11 @@ public class StructureSaveData {
     // Storage buildings only: the building's storage inventory data.
     // null = no storage, or storage was empty with default config.
     public InventorySaveData storageInvData;
+    // Furnishing buildings only: one InventorySaveData per slot (parallel to
+    // FurnishingSlots.slotInvs) plus the per-slot remaining lifetime in in-game days.
+    // null = no furnishing slots / all slots empty (treated as empty on load).
+    public InventorySaveData[] furnishingInvData;
+    public float[] furnishingRemainingDays;
     public bool mirrored;
     // 90° clockwise rotation steps (0..3). Default 0 covers old saves.
     public int rotation;

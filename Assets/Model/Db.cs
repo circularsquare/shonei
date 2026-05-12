@@ -24,12 +24,22 @@ public class Db : MonoBehaviour {
     public static List<Item> edibleItems;
     public static List<Item> equipmentItems;
     public static List<Item> clothingItems;
+    // Leaf items that fit into a named furnishing slot. Built at Db.LoadAll time by
+    // walking itemsFlat and bucketing by `Item.furnishingSlot` (which cascades from
+    // parent groups via AddItemToDb). Keys are slot names (e.g. "cloth"); a slot on a
+    // building accepts any leaf in the matching bucket. Empty bucket = nothing buildable.
+    public static Dictionary<string, List<Item>> itemsByFurnishingSlot;
 
     // All unique happiness satisfaction keys defined across items, buildings, and hardcoded sources.
     // Built at startup; used by Happiness.cs and both happiness panels to auto-discover needs.
     public static HashSet<string> happinessNeeds;
     public static List<string> happinessNeedsSorted; // stable ordering for panel display
-    public static int happinessMaxScore; // happinessNeeds.Count + 1 (housing) + 2 (temp max)
+    public static int happinessMaxScore; // happinessNeeds.Count + 1 (housing) + 2 (temp max) + ceil(maxFurnishingPerMouse)
+    // Max furnishing happiness an animal could get if they lived in the most generously
+    // furnished house type with the highest-happiness item in every slot. Computed from
+    // structTypes × itemsByFurnishingSlot at Db.LoadAll time. Drives the bar scale on the
+    // GlobalHappinessPanel's furnishing row and contributes to happinessMaxScore.
+    public static float maxFurnishingPerMouse;
 
     // Preferred display order for the happiness panel.
     // Food needs first, then decoration, then social, then leisure.
@@ -94,6 +104,7 @@ public class Db : MonoBehaviour {
         tileTypes   = new TileType[100];
         bookRecipeIdByTechId = new Dictionary<int, int>();
         bookItemIdByTechId   = new Dictionary<int, int>();
+        itemsByFurnishingSlot = new Dictionary<string, List<Item>>();
         // ReadJson Add()s into chineseNames/inventedNames — reset so reloads don't
         // double the pool (which would shift Rng-based name selection deterministically
         // wrong, breaking snapshot reproducibility).
@@ -102,6 +113,14 @@ public class Db : MonoBehaviour {
     } 
 
     void Awake(){ // this runs before Start() like in world
+        LoadAll();
+    }
+
+    // Public so editor tools (e.g. TileAtlasBaker) can populate statics in
+    // edit mode where Awake doesn't fire. Idempotent: calling twice replaces
+    // the populated state (the constructor has already reset the static
+    // collections by this point).
+    public void LoadAll() {
         ReadJson();
         GenerateBookItems();
         GenerateBookRecipes();
@@ -109,11 +128,28 @@ public class Db : MonoBehaviour {
         edibleItems = itemsFlat.Where(i => i.foodValue > 0).OrderByDescending(i => i.foodValue).ToList();
         equipmentItems = itemsFlat.Where(i => { Item cur = i; while (cur != null) { if (cur.name == "tools") return true; cur = cur.parent; } return false; }).ToList();
         clothingItems = itemsFlat.Where(i => { Item cur = i; while (cur != null) { if (cur.name == "clothing") return true; cur = cur.parent; } return false; }).ToList();
+        BuildFurnishingSlotRegistry();
         BuildHappinessNeedRegistry();
         ValidateNoGroupOutputs();
         LoadItemIcons();
         LoadNames();
         Debug.Log("db loaded");
+    }
+
+    // Buckets every leaf item by its `furnishingSlot` so WOM dispatch and FurnishingSlots
+    // can look up "what items fit a 'cloth' slot?" in O(1). Items inherit furnishingSlot
+    // from their group parent (see AddItemToDb), so authors only tag the group.
+    void BuildFurnishingSlotRegistry() {
+        itemsByFurnishingSlot = new Dictionary<string, List<Item>>();
+        foreach (Item item in itemsFlat) {
+            if (item == null || item.IsGroup) continue; // only leaves can be installed
+            if (string.IsNullOrEmpty(item.furnishingSlot)) continue;
+            if (!itemsByFurnishingSlot.TryGetValue(item.furnishingSlot, out var list)) {
+                list = new List<Item>();
+                itemsByFurnishingSlot[item.furnishingSlot] = list;
+            }
+            list.Add(item);
+        }
     }
 
     // Collects all unique happiness satisfaction keys from items (happinessNeed),
@@ -138,7 +174,23 @@ public class Db : MonoBehaviour {
         foreach (string need in happinessNeeds.OrderBy(n => n))
             if (!happinessNeedsSorted.Contains(need)) happinessNeedsSorted.Add(need);
 
-        happinessMaxScore = happinessNeeds.Count + 1 + 2; // +1 housing, +2 temp max
+        // Furnishing happiness ceiling: best-case per mouse if their house has every slot
+        // filled with the highest-happiness item. Scales the GlobalHappinessPanel bar and
+        // counts toward the overall score cap.
+        maxFurnishingPerMouse = 0f;
+        foreach (StructType st in structTypes) {
+            if (st?.furnishingSlotNames == null) continue;
+            float sum = 0f;
+            foreach (string slotName in st.furnishingSlotNames) {
+                float bestForSlot = 0f;
+                if (itemsByFurnishingSlot != null && itemsByFurnishingSlot.TryGetValue(slotName, out var items))
+                    foreach (Item it in items)
+                        if (it.furnishingHappiness > bestForSlot) bestForSlot = it.furnishingHappiness;
+                sum += bestForSlot;
+            }
+            if (sum > maxFurnishingPerMouse) maxFurnishingPerMouse = sum;
+        }
+        happinessMaxScore = happinessNeeds.Count + 1 + 2 + Mathf.CeilToInt(maxFurnishingPerMouse); // +1 housing, +2 temp max, + furnishing ceiling
 
         maxDecoScanRadius = 0;
         foreach (StructType st in structTypes)
@@ -477,6 +529,12 @@ public class Db : MonoBehaviour {
                 if (child.decayRate == 0f) child.decayRate = item.decayRate;
                 if (!child.discrete) child.discrete = item.discrete;
                 if (child.itemClass == ItemClass.Default) child.itemClass = item.itemClass;
+                // Furnishing fields cascade so authors can tag a single group (e.g. "cloth")
+                // and every leaf descendant becomes a valid furnishing without per-leaf JSON.
+                if (child.furnishingSlot == null)     child.furnishingSlot = item.furnishingSlot;
+                if (child.furnishingHappiness == 0f)  child.furnishingHappiness = item.furnishingHappiness;
+                if (child.furnishingLifetimeDays == 0f) child.furnishingLifetimeDays = item.furnishingLifetimeDays;
+                if (child.furnishingSprite == null)   child.furnishingSprite = item.furnishingSprite;
             }
         }
     }

@@ -1,7 +1,9 @@
 meoww!!
 
 5/11
-- 
+- tree leaf blob drifting
+- prebake chunks of tiles and edges, improved load time
+- cloud blobbing
 5/6
 - multitile trees
 5/5

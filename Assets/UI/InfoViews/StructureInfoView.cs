@@ -132,6 +132,8 @@ public class StructureInfoView : MonoBehaviour {
             // or have it but never reserve into it.
             if (bldg.structType.name == "house" && bldg.res != null)
                 sb.Append("\n occupants: " + bldg.res.reserved + "/" + bldg.res.capacity);
+            if (bldg.furnishingSlots != null)
+                AppendFurnishingSlots(sb, bldg.furnishingSlots);
             AppendTileOrders(sb, bldg.tile);
             AppendBuildingOrders(sb, bldg);
             if (bldg.storage != null)
@@ -454,6 +456,24 @@ public class StructureInfoView : MonoBehaviour {
         sb.Append($"\n elevator: {e.dispatchState}  queue: {e.QueueCountForInfo}  pending: {e.PendingCountForInfo}");
         float avg = e.recentEndToEndTicks.Average(fallback: -1f);
         if (avg > 0f) sb.Append($"  avg ride: {avg:F1}s");
+    }
+
+    // Per-house furnishing slot summary: one line per slot showing slot name, the installed
+    // item (or "empty"), and remaining lifetime in days for filled slots. The SupplyFurnishing
+    // WOM order shows separately via AppendBuildingOrders, so this focuses on slot state.
+    // ASCII-only (m5x7 font, no special glyphs).
+    static void AppendFurnishingSlots(System.Text.StringBuilder sb, FurnishingSlots fs) {
+        if (fs == null || fs.SlotCount == 0) return;
+        sb.Append("\n furnishings:");
+        for (int i = 0; i < fs.SlotCount; i++) {
+            Item item = fs.Get(i);
+            if (item == null) {
+                sb.Append($"\n  {fs.slotNames[i]}: empty");
+            } else {
+                float days = fs.slotRemainingDays[i];
+                sb.Append($"\n  {fs.slotNames[i]}: {item.name} ({days:F1}d left)");
+            }
+        }
     }
 
     // Appends work orders keyed by inventory (market hauls).

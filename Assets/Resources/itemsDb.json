@@ -58,6 +58,11 @@
         "decayRate": 0.01,
         "children": null
     },{
+        "id": 21,
+        "name": "sand",
+        "decayRate": 0.01,
+        "children": null
+    },{
         "id": 30,
         "name": "ore",
         "decayRate": 0.01,
@@ -75,6 +80,11 @@
     },{
         "id": 40,
         "name": "iron",
+        "decayRate": 0.0,
+        "children": null
+    },{
+        "id": 50,
+        "name": "glass",
         "decayRate": 0.0,
         "children": null
     },{
@@ -210,6 +220,10 @@
         "id": 260,
         "name": "cloth",
         "decayRate": 0.08,
+        "furnishingSlot": "cloth",
+        "furnishingHappiness": 1.0,
+        "furnishingLifetimeDays": 5.0,
+        "furnishingSprite": "furnishing_cloth",
         "children": [
             {
                 "id": 261,

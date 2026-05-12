@@ -107,5 +107,25 @@
             { "type": "building", "target": "bookshelf" },
             { "type": "job",      "target": "scribe" }
         ]
+    },{
+        "id": 13,
+        "name": "Furnace",
+        "description": "Smelt ores and refine metals.",
+        "prereqs": [2],
+        "cost": 5,
+        "unlocks": [
+            { "type": "building", "target": "furnace" },
+            { "type": "job",      "target": "smith" },
+            { "type": "recipe",   "target": "2" }
+        ]
+    },{
+        "id": 14,
+        "name": "Glassmaking",
+        "description": "Fuse sand into glass.",
+        "prereqs": [13],
+        "cost": 5,
+        "unlocks": [
+            { "type": "recipe", "target": "3" }
+        ]
     }
 ]

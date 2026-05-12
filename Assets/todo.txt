@@ -19,11 +19,16 @@ CONTENT
     - small internal power storage for power consumers? (hidden if contain 0 power)
 - thermometer/glass 
     - sand
-- show controls in options panel 
+- house furnishing
+    - empty frame house
+    - furniture system (house script?)
+        - cloth 
+        - wood furniture
+        - glass
+
 
 VISUALS
-- make item icons more coherent / similar
-- tab styling, add building icons?
+
 - lighting 
     - improve undergroundwall sprite 
     - procedurally generate rocks with normalmaps?
@@ -40,6 +45,11 @@ MOUSE AI
 - dynamic mouse task objectives
 - general way of estimating what needs will become an issue before starting a long task 
 
+UI
+- make item icons more coherent / similar
+- tab styling, add building icons?
+- recipe list / enabling disabling globally and locally for crafting buildings info panel
+
 
 
 CODE CLEANUP
@@ -48,5 +58,4 @@ BUGS
 
 SHORT TERM
 test tarp
-finish tweaking lighting
 simplify lighting params?

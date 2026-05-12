@@ -42,11 +42,37 @@ public class Plant : Structure {
     // each other. Not persisted; re-derived on load.
     private float plantPhase;
 
-    // Non-null when this plant has a baked blob-frame set (PlantBlobFrameBaker
-    // output). When present, sprites for the anchor + every extension SR are
-    // driven by the animator instead of being set statically in UpdateSprite,
-    // and SR materials use the non-sway lit variant (the frame swap is the sway).
-    private PlantFrameAnimator animator;
+    // True when this plant has a baked blob-sway set (PlantBlobBaker output).
+    // When enabled, each tile's main SR shows the static-layer sprite and we
+    // spawn one child SR per blob; PlantController.Update walks the per-blob
+    // list each frame and translates them by sin(t + φ) * amplitude * wind,
+    // pixel-snapped. Plants without a baked set stay on the existing shader-
+    // sway path entirely.
+    private bool hasBlobSway;
+
+    // Per-blob runtime state for swaying plants. One entry per child blob SR
+    // across every tile (anchor + extensions). Flat because PlantController's
+    // hot loop wants minimal indirection — tile membership is implicit in
+    // each blob's parent transform.
+    private class BlobRuntime {
+        public Transform      tx;
+        public SpriteRenderer sr;
+        public float          phase;
+        public bool           isStatic;
+    }
+    private readonly List<BlobRuntime> blobs       = new List<BlobRuntime>();
+    private readonly List<GameObject>  blobGos     = new List<GameObject>();
+
+    // ── sway tunables ────────────────────────────────────────────────────────
+    // Max amplitude in pixels — peak displacement at |wind| = 1. Displacement
+    // is continuous (no integer rounding), so motion can sit at any fractional
+    // pixel value; point-filtered sprites resolve sub-pixel transforms into
+    // pixel-snapped rendering automatically.
+    private const float SwayAmplitudePx = 1f;
+    // Radians per second — one cycle every ~4 seconds. Matches the feel of
+    // the previous baked-frame loop.
+    private const float SwaySpeed       = Mathf.PI / 2f;
+    private const float PixelSize       = 1f / 16f;       // matches Plant PPU
 
     private GameObject     overlayGo;
     private SpriteRenderer overlaySr;
@@ -112,31 +138,24 @@ public class Plant : Structure {
 
         CreateHarvestOverlay();
 
-        TryAttachAnimator();
+        TryEnableBlobSway();
     }
 
-    // If the plant ships a baked blob-frame set, attach the cycler and swap
-    // the anchor SR to the non-sway lit material. Call UpdateSprite at the end
-    // so the animator gets populated with stage-0 frames immediately —
-    // otherwise the SR would sit on the ctor's fallback sprite until the first
-    // Grow tick. Plants without baked frames stay on the vertex-sway path.
-    private void TryAttachAnimator() {
+    // If the plant ships a baked blob-sway set (sway_meta + per-blob sprites
+    // from PlantBlobBaker), flip the plant onto the blob-sway path: swap the
+    // anchor SR to the non-sway lit material, register with PlantController
+    // for the per-frame Update loop, and run UpdateSprite once so the static
+    // layer + child blob SRs are wired up immediately. Plants without baked
+    // sway stay on the existing shader-sway path entirely.
+    private void TryEnableBlobSway() {
         string n = plantType.name.Replace(" ", "");
-        // Probe for either layout's first frame; cheap (Resources.Load caches).
-        bool hasFrames = Resources.Load<Sprite>("Sprites/Plants/Split/" + n + "/g0_f0") != null
-                     ||  Resources.Load<Sprite>("Sprites/Plants/Split/" + n + "/b0_f0") != null;
-        if (!hasFrames) return;
-
-        animator = go.AddComponent<PlantFrameAnimator>();
-        // Reuse plantPhase (radians-like world-coord hash) directly as a
-        // seconds-domain offset. Cycle length is 2 s; plantPhase covers many
-        // multiples of that for any reasonable map, so neighbours desync
-        // naturally.
-        animator.timePhase = plantPhase;
+        if (PlantSwayMetaCache.Get(n) == null) return;
+        hasBlobSway = true;
 
         var lit = SpriteMaterialUtil.LitSpriteMaterial;
         if (lit != null) sr.sharedMaterial = lit;
 
+        PlantController.instance.RegisterSwaying(this);
         UpdateSprite();
     }
 
@@ -239,6 +258,7 @@ public class Plant : Structure {
         int maxStage       = 4 * plantType.maxHeight - 1;
         int candidateAge   = age + t;
         int candidateStage = Math.Min(candidateAge * 3 / plantType.growthTime, maxStage);
+        int prevStage      = growthStage;
         if (candidateStage > growthStage) {
             int cost = Mathf.RoundToInt(plantType.moistureDrawPerHour * 2f);
             if (cost > 0 && (soil == null || !soil.type.solid || soil.moisture < cost)) return;
@@ -261,7 +281,12 @@ public class Plant : Structure {
         if (growthStage >= 3 && !harvestable){
             harvestable = true;
         }
-        UpdateSprite();
+        // Only rebuild visuals when the growth stage actually changed. The
+        // blob-sway path destroys and respawns every child blob GO inside
+        // UpdateSprite — running it every tick would reset their localPosition
+        // to (0,0,0) for one frame each second, causing a visible synchronized
+        // "snap left then back" jitter on every blob in the scene.
+        if (growthStage != prevStage) UpdateSprite();
     }
     // Worldgen shortcut: set a plant fully grown without paying the soil moisture
     // advancement cost (fresh worlds don't guarantee a wet soil tile yet).
@@ -291,12 +316,6 @@ public class Plant : Structure {
         growthStage = 0;
         UpdateSprite();
         return yields;
-    }
-
-    public override void Destroy() {
-        ReleaseAllExtensionTiles();
-        PlantController.instance.Remove(this);
-        base.Destroy();
     }
 
     // Called by SaveSystem after restoring age/growthStage/harvestable so the plant's
@@ -346,11 +365,11 @@ public class Plant : Structure {
         extGo.transform.SetParent(go.transform, false);
         extGo.transform.localPosition = new Vector3(0, h, 0);
         SpriteRenderer extSr = SpriteMaterialUtil.AddPlantSpriteRenderer(extGo);
-        // Animated plants drive sway via frame swap, not vertex shader — every
-        // SR (anchor and extensions) must be on the non-sway lit material or
-        // the two systems fight each other (vertex shift on top of pixel shift
-        // → 2-px visible slide).
-        if (animator != null) {
+        // Blob-sway plants drive motion via transforms on child blob SRs, not
+        // the vertex shader. Every tile-level SR (anchor and extensions) must
+        // therefore be on the non-sway lit material or the two systems fight
+        // each other (vertex shift + transform shift = visible double-slide).
+        if (hasBlobSway) {
             var lit = SpriteMaterialUtil.LitSpriteMaterial;
             if (lit != null) extSr.sharedMaterial = lit;
         }
@@ -405,20 +424,29 @@ public class Plant : Structure {
         // Otherwise it's the topmost and uses the live stage sprite directly.
         int anchorIdx = (extensionSrs.Count > 0) ? 4 : topStageSpriteIdx;
 
-        if (animator != null) {
-            // Animated path: hand the SR list off to the cycler, which writes
-            // sr.sprite each Unity frame. Static set+swap isn't needed (and
-            // would briefly stutter on the static sprite between assignments).
-            animator.Clear();
-            Sprite[] anchorFrames = LoadAnchorFrames(n, anchorIdx);
-            if (anchorFrames != null) animator.Add(sr, anchorFrames);
-            else                      sr.sprite = LoadAnchorSprite(n, anchorIdx);
+        if (hasBlobSway) {
+            // Rebuild every blob from scratch. Growth-stage changes happen on
+            // the order of seconds (or less, mostly never), so the cost of
+            // destroying + re-spawning ~5-8 child SRs per tile is irrelevant
+            // next to the simplicity of "static layer + N fresh blob SRs".
+            ClearBlobSrs();
+
+            // Anchor tile — try b{idx}_static first, fall back to g{idx}_static.
+            string anchorCell;
+            Sprite anchorStatic = LoadStaticSprite(n, "b", anchorIdx, out anchorCell);
+            sr.sprite = anchorStatic ?? LoadAnchorSprite(n, anchorIdx);
+            SpawnBlobsForTile(n, anchorCell, go.transform, sr.sortingOrder);
+
+            // Extension tiles: all but the last use g4; the last (topmost) uses
+            // the current stage % 4. Extension tiles always live on the g
+            // row — they're upper-tile sprites by definition.
             for (int i = 0; i < extensionSrs.Count; i++) {
                 bool isTop = (i == extensionSrs.Count - 1);
                 int idx = isTop ? topStageSpriteIdx : 4;
-                Sprite[] frames = LoadStageFrames(n, idx);
-                if (frames != null) animator.Add(extensionSrs[i], frames);
-                else                extensionSrs[i].sprite = LoadStageSprite(n, idx);
+                string extCell;
+                Sprite extStatic = LoadStaticSprite(n, "g", idx, out extCell);
+                extensionSrs[i].sprite = extStatic ?? LoadStageSprite(n, idx);
+                SpawnBlobsForTile(n, extCell, extensionGos[i].transform, extensionSrs[i].sortingOrder);
             }
         } else {
             sr.sprite = LoadAnchorSprite(n, anchorIdx);
@@ -434,9 +462,76 @@ public class Plant : Structure {
         // (different growth stages can have different `_sway.png` companions,
         // and the bottom tiles using g4 may have a mask while the top tile
         // doesn't, or vice versa). Re-write the sway MPB to reflect each SR's
-        // current secondary-texture state. No-op for animated plants (lit
+        // current secondary-texture state. No-op for blob-sway plants (lit
         // material ignores sway globals) but cheap, so we always run it.
         RefreshSwayMPB();
+    }
+
+    // Spawns one child SR per blob for a single tile. The blob set is keyed
+    // by cellName ("g0", "b4", …) which matches the metadata file. Sorting
+    // order is one above the tile's static SR so blobs render on top of the
+    // trunk layer. PlantController.UpdateAllSway translates each blob's
+    // transform each frame.
+    private void SpawnBlobsForTile(string plantName, string cellName, Transform parent, int tileSortingOrder) {
+        var cellMeta = PlantSwayMetaCache.GetCell(plantName, cellName);
+        if (cellMeta == null || cellMeta.blobs == null) return;
+
+        for (int i = 0; i < cellMeta.blobs.Length; i++) {
+            Sprite blobSprite = Resources.Load<Sprite>(
+                "Sprites/Plants/Split/" + plantName + "/" + cellName + "_b" + i);
+            if (blobSprite == null) {
+                Debug.LogError($"Plant: missing blob sprite {plantName}/{cellName}_b{i} — sway_meta lists {cellMeta.blobs.Length} blob(s) but PNG is gone. Re-bake required.");
+                continue;
+            }
+
+            GameObject g = new GameObject($"{cellName}_b{i}");
+            g.transform.SetParent(parent, false);
+            g.transform.localPosition = Vector3.zero;
+
+            SpriteRenderer blobSr = SpriteMaterialUtil.AddSpriteRenderer(g);
+            blobSr.sprite       = blobSprite;
+            blobSr.sortingOrder = tileSortingOrder + 1;
+            LightReceiverUtil.SetSortBucket(blobSr);
+
+            blobGos.Add(g);
+            blobs.Add(new BlobRuntime {
+                tx       = g.transform,
+                sr       = blobSr,
+                phase    = cellMeta.blobs[i].phase,
+                isStatic = cellMeta.blobs[i].isStatic,
+            });
+        }
+    }
+
+    private void ClearBlobSrs() {
+        for (int i = 0; i < blobGos.Count; i++) {
+            if (blobGos[i] != null) UnityEngine.Object.Destroy(blobGos[i]);
+        }
+        blobGos.Clear();
+        blobs.Clear();
+    }
+
+    // Called every frame by PlantController for plants on the blob-sway path.
+    // `signedWind` carries direction (positive = blowing right, per
+    // WeatherSystem) and magnitude — already clamped to [-1, +1] by the
+    // controller. The swing factor stays in [0, 1] so each blob only leans
+    // WITH the wind, never against it; multiplying by signedWind picks the
+    // direction. The zero-wind short-circuit lives in PlantController; by
+    // the time we get here, there's something to write.
+    public void UpdateBlobSway(float t, float signedWind) {
+        if (!hasBlobSway || blobs.Count == 0) return;
+        float angleT  = (t + plantPhase) * SwaySpeed;
+        float ampWind = SwayAmplitudePx * signedWind;
+
+        for (int i = 0; i < blobs.Count; i++) {
+            BlobRuntime b = blobs[i];
+            if (b.sr == null || b.isStatic) continue;
+            float swing = (Mathf.Sin(angleT + b.phase) + 1f) * 0.5f;   // 0..1
+            float dxPx  = swing * ampWind;                              // signed pixels
+            var lp = b.tx.localPosition;
+            lp.x = dxPx * PixelSize;
+            b.tx.localPosition = lp;
+        }
     }
 
     private static Sprite LoadStageSprite(string plantName, int stageIdx) {
@@ -457,28 +552,32 @@ public class Plant : Structure {
         return LoadStageSprite(plantName, stageIdx);
     }
 
-    // Animated-frame variants of the static sprite loaders. Mirror the same
-    // b-then-g fallback chain. Returns null (not a default-filled array) when
-    // no frames exist for this stage — caller falls back to the static path.
-    private static Sprite[] LoadStageFrames(string plantName, int stageIdx) {
-        var frames = new Sprite[PlantFrameAnimator.NumFrames];
-        bool any = false;
-        for (int f = 0; f < frames.Length; f++) {
-            frames[f] = Resources.Load<Sprite>("Sprites/Plants/Split/" + plantName + "/g" + stageIdx + "_f" + f);
-            if (frames[f] != null) any = true;
+    // Loads the static-layer sprite for a tile in the blob-sway path. Mirrors
+    // LoadAnchorSprite's b-then-g fallback so a plant authored without
+    // separate anchor art still resolves a sensible cell. The chosen cellName
+    // (b{idx} or g{idx}) is reported via `out` so the caller can use it to
+    // look up the matching blob set in the metadata cache.
+    private static Sprite LoadStaticSprite(string plantName, string preferredPrefix, int stageIdx, out string cellName) {
+        cellName = preferredPrefix + stageIdx;
+        var s = Resources.Load<Sprite>("Sprites/Plants/Split/" + plantName + "/" + cellName + "_static");
+        if (s != null) return s;
+        if (preferredPrefix == "b") {
+            cellName = "g" + stageIdx;
+            s = Resources.Load<Sprite>("Sprites/Plants/Split/" + plantName + "/" + cellName + "_static");
         }
-        return any ? frames : null;
+        return s;
     }
 
-    private static Sprite[] LoadAnchorFrames(string plantName, int stageIdx) {
-        var frames = new Sprite[PlantFrameAnimator.NumFrames];
-        bool any = false;
-        for (int f = 0; f < frames.Length; f++) {
-            frames[f] = Resources.Load<Sprite>("Sprites/Plants/Split/" + plantName + "/b" + stageIdx + "_f" + f);
-            if (frames[f] != null) any = true;
+    // Unregister + destroy any blob children when the Plant goes away —
+    // PlantController would otherwise keep walking dangling references.
+    public override void Destroy() {
+        if (hasBlobSway) {
+            ClearBlobSrs();
+            if (PlantController.instance != null) PlantController.instance.UnregisterSwaying(this);
         }
-        if (any) return frames;
-        return LoadStageFrames(plantName, stageIdx);
+        ReleaseAllExtensionTiles();
+        PlantController.instance?.Remove(this);
+        base.Destroy();
     }
 }
 

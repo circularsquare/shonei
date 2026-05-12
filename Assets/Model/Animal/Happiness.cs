@@ -32,6 +32,13 @@ public class Happiness {
     public float comfortTempHigh = 25f;
     public float temperatureScore;  // cached for display
 
+    // Flat happiness bonus from items installed in the animal's house furnishing slots.
+    // Event-driven: recomputed via RecomputeFurnishingBonus() on home change (Animal.FindHome)
+    // and on slot install/decay-out (FurnishingSlots.onSlotChanged → Building handler).
+    // Summed into `score` in SlowUpdate. Not subject to satisfaction-decay — while the item
+    // sits in the slot, the bonus is on; once it decays out, it's off.
+    public float furnishingScore;
+
     public Happiness() {
         satisfactions = new Dictionary<string, float>();
         if (Db.happinessNeeds != null) {
@@ -131,10 +138,24 @@ public class Happiness {
             temperatureScore = 2f - deviation / 5f;
         }
 
-        // Score: +1 per satisfied need + housing + temperature
-        score = (house ? 1f : 0f) + temperatureScore;
+        // Score: +1 per satisfied need + housing + temperature + per-item furnishing bonus
+        score = (house ? 1f : 0f) + temperatureScore + furnishingScore;
         foreach (var kv in satisfactions) {
             if (kv.Value >= satisfiedThreshold) score += 1f;
+        }
+    }
+
+    // Recomputes furnishingScore for `a` by summing furnishingHappiness across all filled
+    // slots in the animal's home. Event-driven — call on home change and on slot install/
+    // decay-out, NOT every tick. 0 when the animal has no home or the home has no slots.
+    public void RecomputeFurnishingBonus(Animal a) {
+        furnishingScore = 0f;
+        if (a == null || !a.HasHouse) return;
+        FurnishingSlots fs = a.homeTile?.building?.furnishingSlots;
+        if (fs == null) return;
+        for (int i = 0; i < fs.SlotCount; i++) {
+            Item it = fs.Get(i);
+            if (it != null) furnishingScore += it.furnishingHappiness;
         }
     }
 
@@ -155,6 +176,7 @@ public class Happiness {
             sb.Append($"{need}: {(sat?1:0)} ({val:0.0}), ");
         }
         sb.Append($"housing: {(house?1:0)}/1, ");
+        sb.Append($"furnishing: {furnishingScore:0.0}, ");
         sb.Append($"warmth: {warmth:0.0}, ");
         sb.Append($"temp: {temperatureScore:0.0}/2  ({score:0.0})");
         return sb.ToString();

@@ -49,6 +49,16 @@ public class HappinessNeedRow : MonoBehaviour {
         satisfactionText.text = "";
     }
 
+    // For open-ended additive scores (furnishing). Bar scales to `maxScore` so its
+    // width reflects the ceiling for the current colony (e.g. 1 point per furnishing
+    // slot type × best item). maxScore of 0 yields an empty bar.
+    public void RefreshScore(float avgScore, float maxScore) {
+        avgHappinessText.text = avgScore.ToString("0.0");
+        float fill = maxScore > 0f ? Mathf.Clamp01(avgScore / maxScore) : 0f;
+        SetBar(fill, points: Mathf.Max(1f, maxScore));
+        satisfactionText.text = "";
+    }
+
     // Sets fill and resizes the bar proportional to the field's happiness point value.
     void SetBar(float fill, float points) {
         if (fillBarLayout != null) fillBarLayout.preferredWidth = BarWidthPerPoint * points;

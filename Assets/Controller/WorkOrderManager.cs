@@ -32,7 +32,7 @@ using UnityEngine;
 public class WorkOrderManager : MonoBehaviour {
     public static WorkOrderManager instance { get; private set; }
 
-    public enum OrderType { Haul, Harvest, Construct, SupplyBlueprint, Deconstruct, HaulToMarket, HaulFromMarket, Research, Craft, SupplyBuilding, Maintenance }
+    public enum OrderType { Haul, Harvest, Construct, SupplyBlueprint, Deconstruct, HaulToMarket, HaulFromMarket, Research, Craft, SupplyBuilding, Maintenance, SupplyFurnishing }
 
     public class WorkOrder {
         public OrderType type;
@@ -465,6 +465,34 @@ public class WorkOrderManager : MonoBehaviour {
         orders[2].RemoveAll(o => o.type == OrderType.SupplyBuilding && o.building == building);
     }
 
+    // Registers a standing SupplyFurnishing order for a building with FurnishingSlots.
+    // Active when the house has at least one resident AND at least one empty unreserved slot
+    // whose name has a matching item in GlobalInventory. Mirrors RegisterFuelSupply.
+    // Priority 4 — lower than Craft (3) and Fuel supply (3): furnishings are a polish layer,
+    // hauls for active production should always win.
+    public bool RegisterFurnishingSupply(Building building) {
+        if (building?.furnishingSlots == null) return false;
+        if (orders[3].Exists(o => o.type == OrderType.SupplyFurnishing && o.building == building)) return false;
+        var fs = building.furnishingSlots;
+        Add(new WorkOrder {
+            type        = OrderType.SupplyFurnishing,
+            priority    = 4,
+            factory     = a => new SupplyFurnishingTask(a, building),
+            building    = building,
+            isActive    = () => !building.disabled && !building.IsBroken
+                              && building.res.reserved > 0
+                              && fs.FindAnyHaulableSlotIndex() >= 0,
+            canDo       = a => a.job.name == "hauler",
+            getDistance = a => Mathf.Abs(building.x - a.x) + Mathf.Abs(building.y - a.y)
+        });
+        return true;
+    }
+
+    // Removes the furnishing supply order for a building (call when building is destroyed).
+    public void RemoveFurnishingSupplyOrders(Building building) {
+        orders[3].RemoveAll(o => o.type == OrderType.SupplyFurnishing && o.building == building);
+    }
+
     // Registers a standing Maintenance order for any structure below RegisterThreshold.
     // Called from MaintenanceSystem.Tick() on the downward threshold crossing, and from
     // Reconcile() at load. Mender is the only job that matches canDo. isActive suppresses
@@ -505,6 +533,8 @@ public class WorkOrderManager : MonoBehaviour {
             RegisterWorkstation(building);
         if (building.reservoir != null)
             RegisterFuelSupply(building);
+        if (building.furnishingSlots != null)
+            RegisterFurnishingSupply(building);
     }
 
     // ── REMOVAL ────────────────────────────────────────────────────────────────────
@@ -730,6 +760,20 @@ public class WorkOrderManager : MonoBehaviour {
             }
         }
 
+        // ── Furnishing supply ──
+        foreach (Structure s in StructController.instance.GetStructures()) {
+            if (s is not Building fsb || fsb.furnishingSlots == null) continue;
+            bool has = orders[3].Exists(o => o.type == OrderType.SupplyFurnishing && o.building == fsb);
+            if (!has) {
+                if (repair) {
+                    RegisterFurnishingSupply(fsb);
+                    if (!silent) Debug.LogWarning($"WOM reconcile: registered missing SupplyFurnishing order for {fsb.structType.name} at ({fsb.x},{fsb.y})");
+                } else {
+                    Debug.LogError($"WOM audit: furnishing building {fsb.structType.name} at ({fsb.x},{fsb.y}) has no SupplyFurnishing order");
+                }
+            }
+        }
+
         // ── Maintenance ──
         // Every structure currently below RegisterThreshold must have a Maintenance order.
         // Order stays in the queue once registered — isActive suppresses it above threshold
@@ -789,6 +833,11 @@ public class WorkOrderManager : MonoBehaviour {
             foreach (WorkOrder o in orders[2])
                 if (o.type == OrderType.SupplyBuilding && (o.building == null || o.building.go == null))
                     Debug.LogError($"WOM audit: SupplyBuilding order references a destroyed building ({o.building?.structType?.name})");
+
+            // FurnishingSupply: every SupplyFurnishing order must reference a live building
+            foreach (WorkOrder o in orders[3])
+                if (o.type == OrderType.SupplyFurnishing && (o.building == null || o.building.go == null))
+                    Debug.LogError($"WOM audit: SupplyFurnishing order references a destroyed building ({o.building?.structType?.name})");
 
             // Maintenance: every Maintenance order must reference a live, NeedsMaintenance structure
             foreach (WorkOrder o in orders[1])

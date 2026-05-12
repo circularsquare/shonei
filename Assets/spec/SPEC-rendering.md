@@ -8,7 +8,7 @@
 |---|---|
 | -10 | Background tile (`BackgroundTile`) |
 | -5 | Water overlay sprite (`WaterController`) — sits behind tiles so the bleed-into-solid-neighbour pixels (see Water Rendering §) only show through the tile sprite's transparent bevel gaps. Above the background wall so cave water still reads against dirt. |
-| 0 | Tiles |
+| 0..−4 | Tile bodies (chunked mesh per chunk × type — see §Tile body rendering). Within a chunk, all tiles of one type share one `MeshRenderer` at `sortingOrder = −rank(type)`, ranks 0..k−1 ascending by tile-type id (dirt 0, sand −1, limestone −2, granite −3, slate −4). Lower-id wins the soft-edge contest — its overhang draws on top of higher-id Main extensions. |
 | 1 | Roads (depth-3 structures) |
 | 2 | Tile snow cover (`SnowAccumulationSystem`). Sits above the tile body so accumulated snow covers the underlying ground; on roaded tiles snow draws on top, reading as a snow-covered road. Mutually exclusive at runtime with the grass overlay (snow accumulation snapshots and clears the overlay mask), so the ordering between snow (2) and overlay (11) doesn't visually matter. |
 | 5 | Power shafts (depth-4 structures) — render behind buildings so shafts read as wall-mounted plumbing |
@@ -55,32 +55,102 @@ Depth-based sortingOrder is the default; individual `StructType`s can override v
 
 `tile.building` is a convenience property: `structs[0] as Building` (Plant extends Building, so both are accessible through it). Multiple layers can coexist on the same tile. `GetBlueprintAt(int depth)` / `SetBlueprintAt(int depth, Blueprint bp)` directly index into `blueprints[]`.
 
+### Tile body rendering (chunked meshes)
+
+Tile bodies render through **chunked meshes**, not per-tile `SpriteRenderer`s. The world is divided into 16×16-tile chunks (7×5 = 35 chunks for a 100×80 world). For each chunk, one `MeshRenderer` per solid tile type owns a `Mesh` containing one quad per same-type tile in that chunk. With 5 solid types and 35 chunks the theoretical upper bound is ~175 mesh renderers (most far fewer in practice — chunks with no tiles of a given type are skipped, and overworld chunks have only dirt). Compare ~24k per-tile `SpriteRenderer` GameObjects in the pre-chunked layout.
+
+[TileMeshController.cs](../Controller/TileMeshController.cs) owns the grid (`bodyLayers[chunkX, chunkY, typeIdx]`), subscribes per-tile to `cbTileTypeChanged` + `cbOverlayChanged`, marks chunks dirty on callback fire, and rebuilds dirty chunks in `LateUpdate`.
+
+**Per-tile quad geometry.** Each tile contributes 4 vertices, 6 indices in its chunk-local mesh. Quads span 1.25 × 1.25 world units centred on `(tile.x, tile.y)` — same 20×20 footprint at PPU=16 as the pre-chunked SpriteRenderers, with the same 0.25-unit overhang into each neighbour's quad. Vertex attributes:
+
+| Channel | Semantic |
+|---|---|
+| POSITION | Chunk-local XY, Z=0 |
+| TEXCOORD0 | Atlas-slice UV, 0..1 |
+| TEXCOORD1.x | Slice index into the type's body sprite array |
+| TEXCOORD1.y | Slice index into the type's normal-map array |
+
+**Per-type Texture2DArrays.** [TileSpriteCache.cs](../Lighting/TileSpriteCache.cs) bakes the same 20×20 sprites + 256-mask-variant normal maps as before, plus a parallel `Texture2DArray` per tile type addressed by deterministic slice indices:
+
+| Array | Depth | Slice formula |
+|---|---|---|
+| Body sprite (`GetBodyArray(typeName)`) | 256 × N_variants | `cMask + 16 * trimMask + 256 * variantIdx` |
+| Normal map (`GetNormalMapArray(typeName)`) | 256 × N_variants | `mask8 + 256 * variantIdx` |
+
+The arrays are populated via `Graphics.CopyTexture` (GPU-side copy from the existing per-mask `Texture2D`s into array slices) — no CPU readback. Trim-mask sprite slices upload lazily on first request; trim=0 sprites + all 256 normals upload eagerly when the type's bundle is first allocated. See the §Chunked-mesh API block at the top of `TileSpriteCache.cs` for the public signatures (`GetBodySlice`, `GetNormalMapSlice`, `GetBodyArray`, `GetNormalMapArray`).
+
+**Materials and shaders.** One shared `chunkedTileMaterial` runs `Custom/ChunkedTileSprite` ([ChunkedTileSprite.shader](../Lighting/ChunkedTileSprite.shader)) for the visible Universal2D / UniversalForward passes. Each chunk's `MeshRenderer` binds via `MaterialPropertyBlock`:
+
+- `_MainTexArr` → the type's body sprite array
+- `_NormalArr`  → the type's normal-map array (only sampled by the normals capture pass)
+- `_SortBucket` → `sortingOrder / 255`, read by `ChunkedNormalsCapture` to write the B channel
+
+The normals capture pass uses a separate override material — `Hidden/ChunkedNormalsCapture` ([ChunkedNormalsCapture.shader](../Lighting/ChunkedNormalsCapture.shader)) — that samples the same Tex2DArrays via the per-vertex slice indices. Chunked tiles live on a dedicated `TileChunk` Unity layer; `LightFeature.NormalsCapturePass` draws that layer with the chunked override material in its own sub-pass (see §NormalsCapturePass).
+
+**Dirty tracking.** `OnTileTypeChanged(t)` marks chunks dirty for `t` + 8 neighbours (a type flip changes neighbours' `bodyCardinals` via the soft-edge contest). `OnTileOverlayChanged(t)` marks only `t`'s chunks (overlay bits feed into the tile's own `bodyCardinals` + `trimMask` but don't reach neighbours). Mark-then-rebuild coalesces N callbacks on the same chunk into one mesh upload per frame; bursty events (winter snow accumulation, mass mining) cost at most one rebuild per affected chunk per frame.
+
+`MarkBodyChunkDirty` blanket-dirties **all types** at the affected chunk position rather than reading the tile's current type — a neighbour-type flip can change the win/lose contest result for *other* types in the same chunk too. Rebuild loops skip empties cheaply.
+
+**Soft edges at different-type boundaries.** Two same-type tiles meeting at a boundary share their Main interior — the seam disappears because both bake `Main` up to the boundary and their 2-pixel overhangs clear out. Two tiles of *different* types would otherwise meet at a hard straight line: both Main interiors go opaque right up to the boundary, no border art is drawn because each thinks its neighbour is "buried".
+
+Soft edges fix that contest. The lower-id tile (the **winner**) treats the side as if it were facing air: its body bakes the same atlas border piece it would for a real air boundary, with 2px inside its own interior and 2px overhanging into the loser's interior. The higher-id tile (the **loser**) does nothing on that side — its Main stays intact. The overhang/Main overlap is resolved by **per-type sortingOrder**: the winner draws on top.
+
+- Solid tile types are sorted by id ascending and assigned ranks 0..k−1 in `TileMeshController.BuildTypeMaps`.
+- Each chunk's body MeshRenderer has `sortingOrder = −rank`. Lowest-id solid type gets sortingOrder 0, next gets −1, and so on. With current ids (dirt=2, sand=3, limestone=20, granite=21, slate=22) the band is `[0, −4]` — comfortably above water (sortingOrder −5) and below snow (sortingOrder 2).
+- Same-type tiles across all chunks share the sortingOrder so they don't fight each other — only different-type pairs get a tiebreak.
+
+Lighting is **intentionally not affected**: the body's normal map (`nMask`) runs on raw solidity (real-solid neighbours = buried) regardless of the type contest. The winner's border-art teeth at the boundary catch flat lighting and full deep-darkening alpha, identical to a buried interior — no ambient or sky light leaks through a seam between two solid tiles. The visible jaggedness is purely a sprite-pixel choice; the normal-map bake assumes the boundary is closed.
+
+Renumbering tile-type ids in `tilesDb.json` flips render priority — lower id always wins; keep this in mind when adding new tile types (a new sand-like surface material wants a low id; a deep stone variant wants a high one).
+
+#### Baked tile atlases (offline precompute)
+
+The 16-cMask × 16-trim × N-variant sprite sheets and 256-mask normal maps that `TileSpriteCache` would otherwise bake on first access are precomputed at edit time and saved as `Texture2DArray` assets under `Assets/Resources/BakedTileAtlases/`. The chunked renderer loads them via `Resources.Load<Texture2DArray>` — load cost drops from ~5s to <10ms.
+
+| Asset | Contents | Slice formula |
+|---|---|---|
+| `{name}_body.asset` | Body sprites: 16 cardinal × 16 trim × N variants | `cMask + 16*trimMask + 256*variantIdx` |
+| `{name}_normal.asset` | Normal maps: 256 (cardinal+diagonal) masks × N variants | `mask8 + 256*variantIdx` |
+| `{name}_overlay.asset` | Overlay sprites (grass / grass_dying / grass_dead / snow): 16 cardinal × N variants | `cMask + 16*variantIdx` |
+
+Sizes: per body type ~1.6 MB (dirt, limestone with N=3 variants) or ~800 KB (sand, granite, slate with N=1). Overlay atlases ~50 KB each. Total ~12 MB on disk, committed to git.
+
+**Bake workflow:**
+- `Tools → Bake All Tile Atlases` ([TileAtlasBaker.cs](../Editor/TileAtlasBaker.cs)) — full re-bake of every body type + overlay. Run once after pulling a fresh branch.
+- [TileAtlasBakeOnImport.cs](../Editor/TileAtlasBakeOnImport.cs) — `AssetPostprocessor` that watches `Resources/Sprites/Tiles/Sheets/*.png` and `Resources/Sprites/Tiles/*.png`. On any import / deletion / rename, identifies the affected atlas name (stripping trailing variant digits — `dirt2.png` → `dirt`) and re-bakes only that one. Logs `[TileAtlasBaker] Rebaked …` to console so the artist can confirm the bake ran.
+
+**Editor-mode caveat:** the baker needs `Db.tileTypes` populated to enumerate names, but `Db.Awake` only fires in play mode. `TileAtlasBaker.EnsureDbLoaded()` calls `Db.LoadAll()` (public method extracted from `Awake`) on the scene's existing `Db` component, populating statics without entering play mode.
+
+**Fallback contract:** if an expected `.asset` is missing (e.g. a new tile type whose bake hasn't run yet, or an `.asset` deleted from disk to force a refresh), `TileSpriteCache.EnsureTypeArrayBundle` / `EnsureOverlayArrayBundle` falls through to the runtime live bake. Functional but slow (~5s for the first type to load on miss). The fallback exists so dev iteration is never blocked — artist adds a tile type, hits Play, runtime bakes once, postprocessor catches up on next PNG save.
+
+**Why `SetPixels32 + Apply` for the editor bake (not `Graphics.CopyTexture`):** `AssetDatabase.CreateAsset` serializes the CPU-side pixel data of a `Texture2DArray`. `Graphics.CopyTexture` writes are GPU-only and don't persist through serialization — the resulting `.asset` would load with empty slices on next domain reload. The editor bake path explicitly uses the slower `SetPixels32` route for this reason. The runtime fallback continues to use `Graphics.CopyTexture` because runtime arrays are throwaway.
+
 ### Tile overlays (grass, moss, …)
 
-Every tile owns an optional **overlay** child SpriteRenderer that renders per-side decoration on top of the tile body. Today this is grass on dirt; the system generalises to moss on stone, snow, etc. Sits at `sortingOrder = 11` — one above buildings so the U-side grass tufts read in front of building bodies placed on or beside the tile.
+Per-side decoration rendered on top of the tile body. Today this is grass on dirt; the system generalises to moss on stone, snow, etc. Rendered through the **chunked tile renderer** (see §Tile body rendering): one `MeshRenderer` per (chunk × tile-type × overlay state), with the overlay's `Texture2DArray` bound as `_MainTexArr` and the body type's normal-map array as `_NormalArr` so body and overlay sample the same dirt-derived bevels. Sits at `sortingOrder = 11` — one above buildings so U-side grass tufts read in front of building bodies placed on or beside the tile.
 
 - **Atlas selection**: each `TileType` declares an optional `overlay` string (e.g. dirt → `"grass"`). The atlas lives at `Resources/Sprites/Tiles/Sheets/<overlay>.png` and uses the standard 32×32 9-piece layout. Edge/corner pieces hold the decoration art; the **Main 16×16 region is ignored** — `TileSpriteCache.GetOverlay` zeros it at bake time so any "buried" side reads as transparent regardless of what the artist authored there. (Without this, stray opaque Main pixels overwrite the body's bevelled edge piece on non-decorated sides — e.g. a flat dirt-brown band along the underside of a tile that only has side grass.)
 - **Per-tile state**: `Tile.overlayMask` is a 4-bit bitmask, layout `0=L 1=R 2=D 3=U` (matches the cMask convention used by the tile-sprite baker). Bit set = "this side is decorated."
-- **Effective mask**: `OnTileOverlayChanged` (in `WorldController`) AND-masks `overlayMask` with `~cMask` so a side only shows decoration while its neighbour is non-solid. Sides that get visually buried hide their grass without touching data.
-- **Map edges read as solid**: `WorldController.IsSolidAt` returns `true` for off-map coordinates, so an edge tile's outward-facing cMask bit is set and its overlay/bevel/edge-darkening is suppressed on that side — the world boundary reads as "more of the same material continues." This applies uniformly to body cMask, body nMask diagonals, and the snow nMask. Gameplay queries that need actual physical solidity (e.g. snow's "is the tile above blocking sky?" visibility check) bounds-check explicitly instead of calling `IsSolidAt`.
-- **Inverted-mask trick**: the renderer feeds `~effective & 0xF` into `TileSpriteCache.GetOverlay(overlayName, mask, x, y)`. Because the baker reads "bit set ⇒ neighbour solid ⇒ use Main interior" and overlay bakes force Main transparent, that produces edge art exactly on the desired sides. `GetOverlay` shares the atlas-pixel-bake path with `Get` — only the Main fill and the 256-entry normal-map bake are skipped (overlay SRs sample the body's normal map at runtime, never their own).
+- **Effective mask**: `TileMeshController.BuildOverlayGeometry` AND-masks `overlayMask` with `~cMask` so a side only shows decoration while its neighbour is non-solid. Sides that get visually buried hide their grass without touching data. Tiles where `effective == 0` emit no quad at all.
+- **Map edges read as solid**: `IsSolidAt` returns `true` for off-map coordinates, so an edge tile's outward-facing cMask bit is set and its overlay/bevel/edge-darkening is suppressed on that side — the world boundary reads as "more of the same material continues." This applies uniformly to body cMask, body nMask diagonals, and the snow nMask. Gameplay queries that need actual physical solidity (e.g. snow's "is the tile above blocking sky?" visibility check) bounds-check explicitly instead of calling `IsSolidAt`. (The helper is duplicated between `TileMeshController` and any other rendering code that still consults adjacency — same off-map-as-solid convention.)
+- **Inverted-mask trick**: the renderer feeds `~effective & 0xF` into `TileSpriteCache.GetOverlaySlice(overlayName, mask, x, y)`. Because the baker reads "bit set ⇒ neighbour solid ⇒ use Main interior" and overlay bakes force Main transparent, that produces edge art exactly on the desired sides. `GetOverlay`-family methods share the atlas-pixel-bake path with `Get` — only the Main fill and the 256-entry normal-map bake are skipped (overlay quads sample the body type's normal-map array, never their own).
 - **Replace, don't stack**: the body's sprite uses an *augmented* cMask `bodyCardinals = realCMask | overlayBits`, so sides with grass are treated as "buried" — the body draws Main interior there, no jagged dirt edge underneath the overlay. Without this, `NormalsCapturePass`'s `Blend Off` would let grass-blade pixels overwrite the body's directional edge bevel with the flat-blade-interior bevel that `BakeNormalMap`'s Sobel kernel inevitably produces from thin grass-blade silhouettes (visible in the frame debugger as a "straight break with no slope" along the grassed edge). When a road occupies the tile, `overlayBits = 0` so the body restores its real edges.
 - **Trim outer 2 inner-pixels of Main on overlay-replaced sides**: the body's Main interior extends through cols 2-17 / rows 2-17, so on a side where Main has replaced an edge piece, the silhouette would be a straight square at col 17 / row 17 — visible through transparent gaps in the overlay's edge art. `TileSpriteCache.Get(name, cMask, trimMask, x, y)` (overload, lazy-bakes per-trim-mask variants) clears the inner 2 pixels on each trim side. The renderer feeds `trimMask = overlayBits & ~realCMask` — only sides where the overlay covers a *naturally exposed* edge get trimmed; sides buried by a real solid neighbour keep Main extended for inter-tile continuity.
-- **Normal map (shared)**: both body and overlay point `_NormalMap` at the **same** texture: `TileSpriteCache.GetNormalMap(tile.type.name, realNMask, ...)` — the dirt's own real-cMask normal map. Whether the body's Main pixel or the overlay's grass-blade pixel wins NormalsCapture at a given location, the captured normal is the same dirt-derived directional bevel. Grass blades inherit the directional edge lighting a bare dirt edge would have had.
+- **Normal map (shared)**: body and overlay chunk renderers bind the **same** `Texture2DArray` as `_NormalArr` (the body type's normal-map array). The per-vertex normal slice index uses the same `mask8` keying as the body — `TileSpriteCache.GetNormalMapSlice(tileTypeName, realNMask, x, y)`. Whether the body's Main pixel or the overlay's grass-blade pixel wins NormalsCapture at a given location, the captured normal is the same dirt-derived directional bevel. Grass blades inherit the directional edge lighting a bare dirt edge would have had.
 - **Worldgen seeding**: `WorldGen.PopulateOverlays` runs after `FillDepressions` and seeds bits on every cardinal edge whose neighbour is non-solid AND non-flooded.
 - **Mining never auto-sets bits**: freshly exposed sides stay bare. The `Tile.type` setter clears `overlayMask` when transitioning to a type with no overlay (e.g. dirt → empty), so mined tiles don't carry stale data.
-- **Road suppression**: when `tile.structs[3] != null`, the overlay sprite is null. `Structure` ctor/`Destroy` call `Tile.NotifyOverlayDirty()` to refresh.
-- **Live growth + health state** (`OverlayGrowthSystem`): once per real-time second, dirt tiles with `moisture > 40` (when `temperature > 5°C`) roll a small chance to sprout grass on each non-grassy, exposed, non-flooded L/R/U side (~½ in-game day expected wait per side). Bottom never grows. The same Tick also evolves a per-tile `Tile.overlayState` (Live / Dying / Dead) — death is a per-tick roll while conditions warrant it (cold/dryout → Dying, deep freeze → Dead, ~10 s steady-state average), recovery to Live is the slower fresh-grass roll. The renderer appends `_dying` / `_dead` to the atlas name (`grass` → `grass_dying` → `grass_dead`); atlas geometry is identical across variants so per-side bit semantics are unchanged. See SPEC-systems "Soil Moisture" for the dispatch slot and full state-machine table.
+- **Road suppression**: when `tile.structs[3] != null`, the tile emits no overlay quad. `Structure` ctor/`Destroy` call `Tile.NotifyOverlayDirty()` which fires `cbOverlayChanged` and dirties the affected chunk.
+- **Live growth + health state** (`OverlayGrowthSystem`): once per real-time second, dirt tiles with `moisture > 40` (when `temperature > 5°C`) roll a small chance to sprout grass on each non-grassy, exposed, non-flooded L/R/U side (~½ in-game day expected wait per side). Bottom never grows. The same Tick also evolves a per-tile `Tile.overlayState` (Live / Dying / Dead) — death is a per-tick roll while conditions warrant it (cold/dryout → Dying, deep freeze → Dead, ~10 s steady-state average), recovery to Live is the slower fresh-grass roll. The chunked renderer maintains **one mesh per overlay state** per (chunk × tile-type): tiles in different states emit quads into different meshes, each bound to its state's atlas array (`grass` / `grass_dying` / `grass_dead`). Atlas geometry is identical across variants so per-side bit semantics are unchanged. See SPEC-systems "Soil Moisture" for the dispatch slot and full state-machine table.
 
 ### Snow cover
 
-Snow is rendered through a **separate per-tile child SpriteRenderer** at sortingOrder 2 — orthogonal to the grass overlay rather than another `tile.type.overlay` value. Reasons: grass is intrinsic to a tile type (dirt has it, stone doesn't); snow lands on any solid tile and is weather-driven, not authored. Coexistence beats reuse here.
+Snow is rendered through the **chunked tile renderer** as a separate layer at sortingOrder 2 — orthogonal to the grass overlay rather than another `tile.type.overlay` value. Reasons: grass is intrinsic to a tile type (dirt has it, stone doesn't); snow lands on any solid tile and is weather-driven, not authored. Coexistence beats reuse here. One `MeshRenderer` per (chunk × tile-type), with the shared `snow` `Texture2DArray` bound as `_MainTexArr` and the body type's normal-map array as `_NormalArr`.
 
 - **Per-tile state**: a single `bool Tile.snow`. Driven by `SnowAccumulationSystem` (see SPEC-systems "Snow accumulation"). Cleared in the `Tile.type` setter when a snowy tile is mined — same pattern as `_overlayMask`.
-- **Visibility**: hidden if the tile directly above is solid (a wall built over a snowy tile carries the data but doesn't render). No road/building gating here — sortingOrder layering handles the visuals.
+- **Visibility**: hidden if the tile directly above is solid (a wall built over a snowy tile carries the data but doesn't render). No road/building gating here — sortingOrder layering handles the visuals. Tiles failing this check emit no quad.
 - **Sprite**: same `TileSpriteCache.GetOverlay` cardinal-mask atlas pipeline as grass — `Resources/Sprites/Tiles/Sheets/snow.png` is a 32×32 atlas, and the renderer always asks for the U-only inverted-cardinal variant (`0b0111`), so the artist authors that one slot for "snow on top of tile". Atlas connectivity matters even with a single decorated side: corner/edge variants ensure snow reads continuously across neighbouring snowy tiles when authored that way.
-- **Stacks, doesn't replace**: critical departure from grass. The body's `bodyCardinals` is **not** augmented with the snow's U bit, so the body keeps drawing its real top-edge bevel piece. The snow sprite stacks on top at sortingOrder 2 — so the artist authors snow.png with transparency / vertical positioning that lets the body's bevel still read through (e.g. drawing snow in the upper region of the U-edge slot, or with semi-transparent flake pixels). This is a deliberate visual choice: unlike grass-on-dirt where the dirt edge has no business showing through, snow-on-anything wants to feel deposited on top of the tile, not built into it.
-- **Normal map**: matches the body's normal data (`TileSpriteCache.GetNormalMap(tile.type.name, nMask, ...)`), same trick as grass — overlay SRs sample the body's normals so edge bevels don't pick up the overlay sprite's silhouette gradients.
+- **Stacks, doesn't replace**: critical departure from grass. The body's `bodyCardinals` is **not** augmented with the snow's U bit, so the body keeps drawing its real top-edge bevel piece. The snow quad stacks on top at sortingOrder 2 — so the artist authors snow.png with transparency / vertical positioning that lets the body's bevel still read through (e.g. drawing snow in the upper region of the U-edge slot, or with semi-transparent flake pixels). This is a deliberate visual choice: unlike grass-on-dirt where the dirt edge has no business showing through, snow-on-anything wants to feel deposited on top of the tile, not built into it.
+- **Normal map**: matches the body's normal data — the snow chunk's `_NormalArr` is the body type's normal-map array, addressed by the same `mask8` keying as the body. Edge bevels don't pick up the snow sprite's silhouette gradients.
 - **Coexistence with grass**: accumulation **snapshots** the live `overlayMask` and `overlayState` into `tile.preSnowOverlayMask`/`State` and clears the live mask so snow renders cleanly on top. `OverlayGrowthSystem` skips snowed tiles, so the snapshot doesn't drift while snow sits there. On melt, the snapshot is restored verbatim — same grass returns. (Earlier the system killed the grass outright; preservation feels closer to real-world snow insulation and saves the player from losing established grass cover every winter.)
 
 ### Blueprint visuals
@@ -105,7 +175,7 @@ Two conventions flow from this choice:
 - The **Universal2D** pass exists so `NormalsCapturePass.Execute` (which filters via `ShaderTagId("Universal2D")`) can find these sprites and capture their normals into `_CapturedNormalsRT`.
 - The **UniversalForward** pass is what URP's Universal Renderer's transparent queue actually invokes to draw the sprite to screen.
 
-Affected files: [TileSprite.shader](../Lighting/TileSprite.shader), [BackgroundTile.shader](../Lighting/BackgroundTile.shader), [Water.shader](../Lighting/Water.shader), [Sprite.shader](../Lighting/Sprite.shader), [CrackedSprite.shader](../Resources/Shaders/CrackedSprite.shader). When adding any new lit sprite shader, follow this pattern and wrap material props in `CBUFFER_START(UnityPerMaterial) ... CBUFFER_END` so SRP Batcher can batch consecutive draws.
+Affected files: [ChunkedTileSprite.shader](../Lighting/ChunkedTileSprite.shader), [BackgroundTile.shader](../Lighting/BackgroundTile.shader), [Water.shader](../Lighting/Water.shader), [Sprite.shader](../Lighting/Sprite.shader), [CrackedSprite.shader](../Resources/Shaders/CrackedSprite.shader). When adding any new lit sprite shader, follow this pattern and wrap material props in `CBUFFER_START(UnityPerMaterial) ... CBUFFER_END` so SRP Batcher can batch consecutive draws.
 
 **2. Sprite material default.** URP's Universal Renderer has no per-renderer "default sprite material" slot, and the legacy `Sprites/Default` shader has no `Universal2D` pass — sprites using it would render but be invisible to NormalsCapture (rendering at constant deep-ambient with no torch/sun lighting). To avoid that, every runtime-created lit `SpriteRenderer` is routed through:
 
@@ -123,7 +193,7 @@ SpriteRenderer sr = SpriteMaterialUtil.AddSpriteRenderer(go);
 
 Three passes: **NormalsCapturePass** captures sprite normals + lighting tier into a temp RT; **LightPass** writes the light map (ambient + point lights + sun); **Composite** multiplies the light map onto the scene.
 
-**LightFeature skips cameras** where `cullingMask == 0` or where `(cullingMask & (litLayers | directionalOnlyLayers | waterLayer | backgroundLayer)) == 0` — cameras that see no sprites participating in the normals RT. The `UnlitOverlayCamera` (see §Sky / background) hits this check because the Unlit layer is excluded from all four masks.
+**LightFeature skips cameras** where `cullingMask == 0` or where `(cullingMask & (litLayers | directionalOnlyLayers | waterLayer | backgroundLayer | tileChunkLayer)) == 0` — cameras that see no sprites participating in the normals RT. The `UnlitOverlayCamera` (see §Sky / background) hits this check because the Unlit layer is excluded from all five masks.
 
 #### NormalsCapturePass (BeforeRenderingTransparents)
 
@@ -153,7 +223,9 @@ Draws sprites with `Hidden/NormalsCapture` override into `_CapturedNormalsRT` (f
 1. Background (`backgroundLayer`) — `NormalsCaptureBackground` override, alpha = 0.5 (lit-only). Drawn earliest so tiles/sprites overwrite.
 2. `directionalOnlyLayers` — alpha = 0.3.
 3. `litLayers & ~shadowCasterLayers & ~directionalOnlyLayers` — alpha = 0.5.
-4. `litLayers & shadowCasterLayers & ~directionalOnlyLayers` — alpha = `lerp(0.80, 1.0, _NormalMap.a)` where `_NormalMap.a` carries edge-distance falloff baked by `TileSpriteCache`.
+4. `tileChunkLayer` — `Hidden/ChunkedNormalsCapture` override, alpha = `lerp(0.80, 1.0, _NormalArr.a)` (shadow-caster tier). Samples per-renderer Tex2DArrays via per-vertex slice indices instead of MPB-bound 2D textures. See §Tile body rendering.
+5. `litLayers & shadowCasterLayers & ~directionalOnlyLayers & ~tileChunkLayer` — alpha = `lerp(0.80, 1.0, _NormalMap.a)` (standard sprite-renderer shadow casters, drawn last so animals/structures overwrite tile pixels where they overlap).
+6. `waterLayer` — `NormalsCaptureWater` override, alpha = 0.5 (lit-only).
 
 **Sort-aware lighting** (B-channel branching in `LightCircle.shader`): per-pixel `sortDelta = receiverBucket − lightBucket` decides:
 - **In-front** (`sortDelta > 0`): `effectiveHeight = −lightHeight`, zero ambient floor — forward-facing interior normals go dark (z-dot with toLight flips sign) while edge normals pointing sideways toward the light's XY still get lit. Clean silhouette block without killing rim lighting.
@@ -200,11 +272,11 @@ Three cameras render as a URP **Camera Stack**: SkyCamera is the Base, Main and 
 
 #### Sky color stops, gradient, and stars
 
-Two parallel 5-stop gradients on `SunController` describe the sky as a vertical band:
-- `skyDay/Twilight1/2/3/Night` — the **zenith** color (top of sky). Static getter: `SunController.skyColor`.
-- `horizonDay/Twilight1/2/3/Night` — the **horizon** color (bottom of sky). Static getter: `SunController.horizonColor`.
+Two parallel 4-stop gradients on `SunController` describe the sky as a vertical band:
+- `skyDay/Twilight1/Twilight3/Night` — the **zenith** color (top of sky). Static getter: `SunController.skyColor`.
+- `horizonDay/Twilight1/Twilight3/Night` — the **horizon** color (bottom of sky). Static getter: `SunController.horizonColor`.
 
-Both arrays share the same `twilightFraction`-driven phase via the private `LerpStops` helper. Author horizon stops with warmer/lighter values at twilight so the offscreen sun reads as a horizon glow.
+Both arrays share the same `twilightFraction`-driven phase via the private `LerpStops` helper, matching the sun-color gradient's 4 stops (Day/EarlyDusk/Dusk/Night). Author horizon stops with warmer/lighter values at twilight so the offscreen sun reads as a horizon glow. (Twilight2 was an earlier middle stop that's been removed; the gradient now interpolates Twilight1 → Twilight3 across the middle of the transition.)
 
 `SunController` also owns `_horizonY01` (static getter: `SunController.horizonY01`) — the viewport V at which the horizon→zenith blend completes. It's a non-time-varying authoring knob that lives on SunController so all "sky look" config (colors + horizon position) sits in one inspector panel.
 
@@ -214,7 +286,7 @@ Both arrays share the same `twilightFraction`-driven phase via the private `Lerp
 3. **Forces `alpha = 1`** on every gradient pixel and on the sample helper's return — authored color stops sometimes carry alpha=0 (Unity color picker quirk), which would otherwise make the gradient quad transparent.
 4. `tex.Apply(updateMipmaps: false)`.
 
-Public static API: `SkyGradient.SampleAtViewportY(float v01)` returns the same OkLab-interpolated blend (alpha=1), used by `CloudLayer` for per-cloud tint. Falls back to `SunController.skyColor` (also alpha-corrected) if the singleton isn't initialized yet.
+Public static API: `SkyGradient.SampleAtViewportY(float v01)` returns the same OkLab-interpolated blend (alpha=1). Falls back to `SunController.skyColor` (also alpha-corrected) if the singleton isn't initialized yet. (The previous sprite-pool CloudLayer used this for per-cloud tint; the current continuous-field CloudLayer doesn't sample it per-pixel, but the helper stays available for any future Sky-layer sprite that needs the gradient colour at a given viewport height.)
 
 **OkLab boundary**: Unity's `Color` stores sRGB-encoded values. OkLab math expects **linear sRGB**, so each boundary uses `Color.linear` / `Color.gamma` to convert. The private `RgbToOklab` / `OklabToRgb` helpers in SkyGradient.cs take/return linear values; callers do the conversion outside. Out-of-gamut linear results (rare but possible for extrapolated stops) are clamped to [0,1] before the gamma encode.
 
@@ -234,9 +306,60 @@ Whole-field rotation: `rotationRad` accumulates `rotationSpeed × dt` (degrees/s
 
 Visibility math: at full night, ambient ≈ dark blue. Star (white) × lightRT ≈ ambient (dim but ~10× brighter than the multiply-darkened sky). If they ever read too dim during play, escalate to a custom emissive shader or move stars to the Unlit layer.
 
-[CloudLayer.cs](../Controller/CloudLayer.cs) — at the end of `Update`, after parallax/wrap, each child cloud's SR.color is set to `Color.Lerp(Color.white, SkyGradient.SampleAtViewportY(viewportY), skyTintStrength)`. Sampling is done through the SkyCamera (not main) so the viewport coords align with the gradient's reference frame.
+[CloudLayer.cs](../Controller/CloudLayer.cs) — single SpriteRenderer (`CloudFieldSprite`) covering the camera viewport, whose `_MainTex` and `_NormalMap` are generated each `LateUpdate` on the GPU via two `Graphics.Blit` calls through [Hidden/CloudFieldGen](../Resources/Shaders/CloudFieldGen.shader). The cloud body is a constellation of CPU-spawned 3D sphere-blobs, placed at high-density spots in a continuous noise field; the gen shader renders each blob with a true sphere-surface normal and composites them by depth. No discrete cloud GameObjects, no sprite pool — every visible cloud is a cluster of blobs that scrolls naturally as the camera pans or wind blows.
 
-**Why lerp toward white** (default `skyTintStrength = 0.4`): full sky-color tint makes the cloud render as `cloud_sprite × sky_color × lighting`, while the surrounding sky pixel renders as `sky_color × lighting` — same colour, cloud blends invisibly into the sky. Lerping toward white keeps the cloud noticeably brighter than the sky band it's in while still picking up its hue (warm at sunset, cool at zenith). Note `sr.color` is a multiplicative tint, not a sprite replacement — cloud silhouette and shading are preserved.
+**Why blobs instead of shading the raw noise gradient**: an earlier iteration used the 2D noise gradient directly as a surface normal. It worked mathematically but didn't represent the cloud's actual 3D shape — the noise gradient keeps varying past the silhouette, producing irregular dark patches in the middle of each cloud that didn't read as "back side of a 3D blob." Switching to sphere-blob shading gives every pixel an unambiguous 3D normal (it's literally a sphere's surface normal), so the lit/shadow transition sweeps cleanly around each visible lobe.
+
+**Blob generation** (CPU, in `LateUpdate`):
+1. Walk a regular grid in sprite-local space at spacing `blobCellSize` (~1 world unit).
+2. At each cell, compute a hash-jittered position inside the cell (deterministic per cell — blobs are stable frame-to-frame for a given noise state).
+3. Sample 2D value noise at that position using the **same formula as the shader's `Density()`** — `Frac`/`Hash2D`/`ValueNoise` in [CloudLayer.cs](../Lighting/CloudLayer.cs) are a direct port of [Noise.hlsl](../Lighting/Noise.hlsl). The two MUST stay in sync; either change requires the matching change in the other file.
+4. If density exceeds `Lerp(thresholdClear, thresholdStorm, humidity)`, emit a blob: position in sprite-local space, radius lerped between `blobRadiusMin..blobRadiusMax` by density excess, z hash-jittered by `±blobDepthRange/2`.
+5. Pack into `Vector4[256]` and push via `Material.SetVectorArray("_Blobs", ...)` + `SetInt("_BlobCount", ...)`.
+
+CPU cost: ~`(2·halfW/cellSize) × (2·bandHalfHeight/cellSize)` cells (≈256 at defaults), each a cheap noise tap → ~50 μs/frame.
+
+**Two-pass gen shader**:
+- **Pass 0 → mainRT** (ARGB32 linear): for each pixel, iterate `_Blobs` with a `[loop]` of `_BlobCount` iterations. For each blob whose `dist² < r²`, compute `z_top = blob.z + sqrt(r² − dist²)`; track the largest `z_top` and that sphere's surface normal `(d.xy, sqrt(r² − dist²)) / r`. Lambertian dot with `_SunDir` (tangent space) → continuous `ndotl`, quantized into three discrete colour bands via `litBand` / `shadowBand` thresholds. Alpha = soft union of blob coverage (smoothstep on the outer 15% of each blob's radius). No self-shadow ray march — sphere normals give "back of the ball is dark" via low N·L on the sun-opposite side.
+- **Pass 1 → normalRT** (ARGB32 linear): FLAT tangent normal `(0.5, 0.5, 1.0, mask)`. Decodes via `(rgb·2 − 1)` to `(0, 0, 1)` — a camera-facing normal that's the same for every cloud pixel. The point is to make NormalsCapture's `_NormalMap` sample uniform across the cloud, so LightSun contributes a constant brightness rather than per-pixel N·L variation. That keeps the 3 colour bands crisp instead of getting smeared by the lightmap's smooth Lambertian. Alpha uses the noise-based mask (`CloudMask(Density(lp))`) rather than blob coverage — the two silhouettes overlap closely enough that NormalsCapture clips correctly either way, and duplicating the blob loop here would double per-pixel work for no visible win.
+
+**Why bake shading into mainRT rather than let the global lightmap do it**: with a per-pixel normal map driving LightSun, the lightmap multiply gives continuous shading across the cloud. That looked smooth and "unpixel-art-like" — discrete bands need a uniform lightmap. By flattening normalRT and doing all the shading in the gen shader, the lightmap becomes a single brightness multiplier (sun strength × ambient × day/night) that scales the bands without dissolving them. Day/night cycle still drives overall cloud brightness; `sr.color` still does humidity tint; the bands sit cleanly between.
+
+**Sun direction**: gen shader reads `_SunDir` and `_SunHeight` as globals (broadcast by [LightFeature.cs:443-444](../Lighting/LightFeature.cs#L443-L444) during the sun pass — our LateUpdate Blit reads the previous frame's values, one-frame lag invisible at sun-orbit speeds). These globals must be declared **outside** the `UnityPerMaterial` CBUFFER in the gen shader — Unity's SRP batcher rejects globals inside per-material cbuffers. On the first frame after Play, the globals may still be zero; this is handled naturally because `_SunHeight` defaults to 0 and `saturate(ndotl)` clamps the Lambertian — clouds render in the shadow band until LightFeature's first pass populates the globals.
+
+**Binding**: both RTs are bound per-renderer via `MaterialPropertyBlock`, overriding the auto-bound `_MainTex` (sprite source texture) and `_NormalMap`. Get-modify-set pattern so any other auto-bound properties survive. The SpriteRenderer's underlying sprite is created from a dummy 256×128 `Texture2D` whose contents are never read — it exists only to give `Sprite.Create` valid dimensions for the mesh / UV rect.
+
+**Why RenderTextures and not pure-procedural shader**: the URP lighting pipeline draws all lit sprites with a NormalsCapture override material that samples `_MainTex.a` and `_NormalMap.rgb`. Routing clouds through RTs means that pipeline cannot tell the textures are GPU-generated, and we don't have to thread a special case through `LightFeature.cs`.
+
+**Linear RTs are critical**: `sRGB=false` on both. An sRGB normalRT would silently warp the `(rgb·2 − 1)` decode in [NormalsCapture.shader](../Lighting/NormalsCapture.shader), tilting normals by the sRGB gamma curve.
+
+**Positioning** (in `LateUpdate`, with `[DefaultExecutionOrder(100)]` so it runs after SkyCamera's own LateUpdate has settled, and before any camera renders): `sr.transform.position = (skyCam.x, bandCenterY, renderZ)`. The reference camera is `SkyCamera.instance.BgCam`, NOT `Camera.main` — the cloud sprite is rendered by SkyCamera, so its frustum is what matters. `renderZ` must clear SkyCamera's near plane (0.3); the default of 5 matches the legacy hand-placed clouds. The outer `CloudLayer` GameObject stays parented wherever the scene places it; only the inner sprite's world position is overridden, so reparenting the CloudLayer doesn't matter.
+
+**Sprite tint**: `sr.color = Color.Lerp(baseColorClear, baseColorStorm, humidity)` — multiplies into all three colour bands uniformly. Storm clouds get darker across the board; bands stay distinct because the multiplier is uniform.
+
+**Per-frame, unconditional regen**: ~50 μs CPU (blob generation) + ~0.5 ms GPU (two Blits with the blob loop). No skip-frame logic — at this cost it's pure liability, and per-frame regen unblocks continuous animation.
+
+**Knobs** (inspector on the `CloudLayer` GameObject):
+- *Shape*: `textureSize` (256×128), `pixelsPerUnit` (8), `noiseScale` (0.15), `bandCenterY` / `bandHalfHeight`, `softEdge` (Pass 1 alpha only).
+- *Coverage*: `thresholdClear` / `thresholdStorm` mapped to humidity — controls how easily noise cells exceed the spawn threshold.
+- *Drift*: `windDriftScale`, `worldLockingX`.
+- *Tint*: `baseColorClear` / `baseColorStorm`.
+- *Shading bands*: `litColor` / `midColor` / `shadowColor`; `litBand` / `shadowBand` thresholds split the [0,1] light value into the three bands.
+- *Sphere-blobs*: `blobCellSize` (spawn grid density), `blobJitter` (within-cell randomness), `blobRadiusMin` / `blobRadiusMax` (lerp by density excess), `blobDepthRange` (z-jitter for varied overlap).
+- *Render*: `renderZ` — z position; must sit between SkyCamera's near and far planes.
+
+**Trade-offs worth knowing**:
+- **Cloud silhouette is a union of circles**. Looks lumpy / multi-lobed rather than smoothly wavy. This is the intended trade for "looks like 3D balls glued together."
+- **No cross-blob shadows**. The back of each sphere is dark via its own N·L, but a front sphere doesn't cast shadow onto a back sphere. If clouds look too "lit from all sides" we'd add a small extra march inside the blob loop.
+- **Hard normal seams at blob boundaries**. When two spheres meet at the same pixel, the pick-front rule causes a discontinuity in the normal direction. With 3-band quantize this is usually invisible (both spheres land in the same band) but is a possible artifact. Tunable via `blobDepthRange` (more z-jitter spreads contrast randomly rather than uniformly).
+- **Point lights can't illuminate clouds** through the global pipeline — the flat normalRT makes LightSun uniform. If we ever want a torch from below to glow on the cloud's underside, the gen shader would need to read the light source list directly.
+
+**Future shading hooks** (call-outs in `CloudLayer.cs` header):
+- Cross-blob shadows: small extra march toward sun inside the blob loop, marking the picked normal as occluded if another blob's surface is between this pixel and the sun.
+- Multi-octave blobs: a second sparser pass with larger radii layered behind smaller blobs — "big puff + small detail" hierarchy.
+- Rim translucency / forward scatter: pixels near the front-most blob's silhouette get a 4th colour band on the sun-facing side.
+
+See [[project-cloud-field-system]] and [[project-sky-camera-quirks]] in memory for context on why this system replaced the older sprite-pool approach and the SkyCamera-specific gotchas that made it hard to get visibility right.
 
 ### Sky exposure (`SkyExposure.cs`)
 
@@ -252,7 +375,7 @@ Visibility math: at full night, ambient ≈ dark blue. Star (white) × lightRT �
 
 ### Background tile (`BackgroundTile.cs`)
 
-`Assets/Controller/BackgroundTile.cs` — scene singleton (under Lighting), initialized by `WorldController.GenerateDefault()` and `SaveSystem.Load()`.
+`Assets/Lighting/BackgroundTile.cs` — scene singleton (under Lighting), initialized by `WorldController.GenerateDefault()` and `SaveSystem.Load()`.
 
 #### Wall placement
 
@@ -283,11 +406,12 @@ All lighting C# scripts and shaders live in `Assets/Lighting/`.
 | File | Role |
 |------|------|
 | `LightFeature.cs` | Top-level `ScriptableRendererFeature` containing `NormalsCapturePass` + `LightPass`. All inspector tunables (layer masks, ambient/penetration/skyBlend params) live here. |
-| `LightSource.cs` | Per-light component (`lightColor`, `intensity`, `outerRadius`, `lightHeight`, `isDirectional`, `sunModulated`, `sortOrderOverride`); registers in a static list read by `LightPass`. `sunModulated = true` lets `SunController` modulate intensity by time of day; `sortOrderOverride = -1` (default) auto-reads sortingOrder from a parent SR. |
+| `LightSource.cs` | Per-light component (`lightColor`, `intensity`, `outerRadius`, `lightHeight`, `isDirectional`, `sunModulated`, `sortOrderOverride`); registers in a static list read by `LightPass`. `sunModulated = true` makes this light pull `SunController.torchFactor` each `Update()` and scale its intensity by it (fades torches on at dusk / off at dawn); `sortOrderOverride = -1` (default) auto-reads sortingOrder from a parent SR. |
 | `LightReceiver.cs` | Two static utilities — `LightReceiverUtil.SetSortBucket(SR)` for B-channel MPB writes; `SpriteMaterialUtil.AddSpriteRenderer(go)` for runtime-created lit SRs. Plus a `LightReceiver` MonoBehaviour for prefabs with editor-authored sortingOrder (walks child SRs in `Start()`). |
 | `SunController.cs` | Orbiting sun, sky color, `GetAmbientColor()`, `GetSunDirection()`. Sun child has a `LightSource (isDirectional=true)`. Inspector tunables for orbit, twilight timing, color gradients. |
-| `NormalsCapture.shader` | Tangent→world normal transform for 2D sprites. Per-renderer world-space tangent/bitangent so rotating sprites (flywheel wheel, windmill blades) get correctly rotated normals. Clips on `_MainTex` alpha. |
-| `TileSprite.shader` | Tile sprite shader: samples pre-baked 20×20 `_MainTex`, clips transparent pixels. Dual-pass. |
+| `NormalsCapture.shader` | Tangent→world normal transform for 2D sprites (non-tile renderers — animals, structures, plants, etc.). Per-renderer world-space tangent/bitangent so rotating sprites (flywheel wheel, windmill blades) get correctly rotated normals. Clips on `_MainTex` alpha. |
+| `ChunkedNormalsCapture.shader` | Chunked-tile variant of `NormalsCapture`. Samples per-renderer `Texture2DArray` slices (`_MainTexArr` for alpha clip, `_NormalArr` for bevel + edge-depth) using slice indices carried in vertex `TEXCOORD1.xy`. Used as the override material for the `TileChunk` layer sub-pass. |
+| `ChunkedTileSprite.shader` | Visible-pass shader for chunked body / overlay / snow meshes. Dual-pass (Universal2D + UniversalForward). Samples `_MainTexArr` via the vertex slice index. |
 | `Sprite.shader` | Project-wide dual-pass replacement for `Sprite-Lit-Default` so runtime sprites participate in NormalsCapture under URP Universal Renderer. Material at `Resources/Materials/Sprite.mat`. |
 | `CrackedSprite.shader` (`Assets/Resources/Shaders/`) | Broken-structure overlay — composites a tileable world-space crack texture on top of `_MainTex`, alpha-masked by base sprite. Swapped in via `Structure.RefreshTint()`. See SPEC-systems.md §Maintenance System. |
 | `TileSpriteCache.cs` | Bakes 20×20 tile sprites + normal maps at load time from 32×32 border atlases. Multi-variant per tile type, deterministic per (x, y). Exposes `FlatNormalMap` for non-solid tiles. See §Normal maps for the bake details. |
@@ -462,9 +586,42 @@ After splitting, normal maps for the new files can be regenerated via **Tools �
 
 ## Plant Sprites
 
-Same Sheets/Split pattern as items. Source sheets live in `Assets/Resources/Sprites/Plants/Sheets/`, split output in `Assets/Resources/Sprites/Plants/Split/{plantName}/`. Each sheet is 64×16 (4 columns of 16×16 cells), producing `g0.png`–`g3.png` for growth stages 0–3.
+Same Sheets/Split pattern as items. Source sheets live in `Assets/Resources/Sprites/Plants/Sheets/`, split output in `Assets/Resources/Sprites/Plants/Split/{plantName}/`. Each sheet is 64×16 (4 columns of 16×16 cells), producing `g0.png`–`g3.png` for growth stages 0–3. Multi-tile plants (trees, bamboo) use a 2-row sheet: row 0 → `b{stage}.png` (anchor / bottom tile), row 1 → `g{stage}.png` (upper tile).
 
-`PlantSheetSplitter.cs` — **Tools → Split All Plant Sheets**. Sprite loading falls back: `g{stage}` → `g0` → `default`.
+`PlantSheetSplitter.cs` — **Tools → Split All Plant Sheets**. Sprite loading falls back: `g{stage}` → `g0` → `default`. Anchor falls back: `b{stage}` → `g{stage}` chain.
+
+The splitter skips `_blobs.png` and `_trunk.png` companion sheets — those are inputs to `PlantBlobBaker`, not in-game sprites.
+
+### Wind sway
+
+Plants animate against wind via one of two paths:
+
+1. **Shader vertex sway** (default; grass, bamboo, single-stalk plants). `WindShaderController` (a MonoBehaviour on the scene root) pushes wind globals into `PlantSprite.shader`; per-plant `MaterialPropertyBlock` writes (`SetPlantSwayMPB` in `LightReceiverUtil`) carry a per-instance phase + tile height. Bend amplitude grows with height-above-anchor so the trunk stays put and the canopy oscillates. Optional `_sway.png` companion sheet provides a per-pixel mask (R = sway weight, 0 = rigid); when present, `Plant.cs` flips the SR into mask-mode (currently disabled — see `HasSwayMaskCompanion`).
+
+2. **Blob-sway** (trees). When a plant ships a `{plantName}_blobs.png` companion mask, `PlantBlobBaker` bakes the foliage into per-blob sprites + a sway metadata JSON. At runtime the plant uses non-sway lit material and spawns one child SR per blob; `PlantController.Update` translates each blob's transform every frame:
+
+   ```
+   swing = (sin((t + plantPhase) * SwaySpeed + b.phase) + 1) * 0.5    // 0..1
+   dx    = swing * SwayAmplitudePx * windSigned                        // signed pixels
+   blob.localPosition.x = dx / 16
+   ```
+
+   `windSigned` comes from `WeatherSystem.wind` clamped to [-1, +1] (positive = blowing right). Swing only ever rests at 0 and leans 1, so blobs sway *with* the wind — never against. Continuous (no rounding) so wind smoothly scales amplitude. `SwayAmplitudePx = 1` keeps leaves from detaching at full gust.
+
+   **Authoring** (per plant):
+   - `{plantName}_blobs.png` — same cell grid as base sheet. Each unique colour = one blob region. Pure black or white = "static blob" (covers trunk but never sways — useful for anchor leaves at the trunk).
+   - `{plantName}_trunk.png` (optional) — persistent trunk silhouette visible *through* the foliage. Bake reads it as the fallback layer behind blob pixels, so when a leaf shifts off its rest position, the trunk shows through the gap instead of sky.
+
+   **Bake** (`Tools → Bake Plant Blob Sway + Generate Normal Maps`):
+   - Reads base + `_blobs` + optional `_trunk` sheets, walks the same cell grid as the splitter.
+   - Per cell emits `{cellName}_static.png` (trunk + non-foliage) and `{cellName}_b{i}.png` (one sprite per blob colour, transparent outside).
+   - Writes a single `sway_meta.json` per plant listing per-blob phase + isStatic for every cell (`PlantSwayMetaCache` reads + caches this at runtime).
+   - Cleans orphaned outputs from prior baker layouts (`_anim`, `_f*`, stale `_b*`/`_static`/`_n` companions).
+   - Existing `SpriteNormalMapGenerator` picks up the new `_static` / `_b*` PNGs automatically — each blob gets its own bevelled normal map for individual leaf shading.
+
+   **Runtime registration**: `Plant.TryEnableBlobSway` (called in the Plant ctor) probes `PlantSwayMetaCache.Get(plantName)`; if a sway_meta exists, the plant registers with `PlantController.RegisterSwaying` and the controller's `Update()` walks the swaying-plant list each frame. Calm weather (`|wind| < 0.001`) short-circuits the entire loop after one snap-to-zero pass.
+
+   **Gotcha — `UpdateSprite` is expensive on the blob-sway path**: it clears every child blob GO and respawns them at `localPosition = Vector3.zero`. Only call it when the plant's growth stage actually changes (see `Plant.Grow` — guards on `growthStage != prevStage`). Calling it every tick caused a synchronized one-frame snap on every blob in the scene; if you add a new caller, make sure it's truly needed.
 
 ---
 
@@ -472,7 +629,7 @@ Same Sheets/Split pattern as items. Source sheets live in `Assets/Resources/Spri
 
 **Encoding**: tangent space (sprite-local), packed 0–1. Out-of-texture = local +Z. Flat camera-facing pixel = tangent `(0, 0, +1)` → packed `(0.5, 0.5, 1.0)` (= `(128, 128, 255)` byte). `NormalsCapture.shader` transforms this to world space using the renderer's own basis (`worldT`, `worldB` derived from `TransformObjectToWorldDir`), so rotating sprites get correctly rotated normals. For an unrotated, axis-aligned sprite the transform reduces to `(x, y, −z)` in world space. Black = no sprite, shader uses flat fallback. No Y-flip on screen UV (DrawRenderers and the light pass projection both use OpenGL convention, V=0 at bottom).
 
-**Tile normal maps** (`TileSpriteCache.BakeNormalMap`): baked per-variant alongside each 20×20 sprite, driven by the sprite's own alpha + an 8-bit adjacency mask (4 cardinals + 4 diagonals). Applied via `MaterialPropertyBlock` on tile `SpriteRenderer`s; non-solid tiles use `TileSpriteCache.FlatNormalMap`.
+**Tile normal maps** (`TileSpriteCache.BakeNormalMap`): baked per-variant alongside each 20×20 sprite, driven by the sprite's own alpha + an 8-bit adjacency mask (4 cardinals + 4 diagonals). Chunked body meshes read them via per-vertex slice index into the type's normal-map `Texture2DArray`; per-tile overlay/snow `SpriteRenderer`s apply them via `MaterialPropertyBlock` (`_NormalMap`). Non-solid tiles use `TileSpriteCache.FlatNormalMap`.
 
 *Keying scheme.* Sprites are keyed by the 4-bit cardinal mask (16 entries per variant); normal maps need the full 8-bit mask (256 entries) because diagonal openings change both the RGB bevel and the edge-depth alpha at inside corners.
 

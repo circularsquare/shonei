@@ -15,7 +15,7 @@
         "capacity": 1,
         "tempMin": 0,  "tempMax": 28,
         "moistureMin": 10, "moistureMax": 100,
-        "maxHeight": 3
+        "maxHeight": 2
     },{
         "id": 503,
         "name": "pinetree",

@@ -1,0 +1,338 @@
+{
+    "cells": [
+        {
+            "cellName": "b0",
+            "blobs": [
+                {
+                    "phase": 0.0,
+                    "isStatic": true
+                },
+                {
+                    "phase": 4.42543888092041,
+                    "isStatic": false
+                },
+                {
+                    "phase": 1.938951849937439,
+                    "isStatic": false
+                }
+            ]
+        },
+        {
+            "cellName": "b1",
+            "blobs": [
+                {
+                    "phase": 0.0,
+                    "isStatic": true
+                },
+                {
+                    "phase": 4.42543888092041,
+                    "isStatic": false
+                },
+                {
+                    "phase": 2.4373998641967775,
+                    "isStatic": false
+                },
+                {
+                    "phase": 1.938951849937439,
+                    "isStatic": false
+                },
+                {
+                    "phase": 4.3758721351623539,
+                    "isStatic": false
+                }
+            ]
+        },
+        {
+            "cellName": "b2",
+            "blobs": [
+                {
+                    "phase": 0.0,
+                    "isStatic": true
+                },
+                {
+                    "phase": 4.42543888092041,
+                    "isStatic": false
+                },
+                {
+                    "phase": 2.4373998641967775,
+                    "isStatic": false
+                },
+                {
+                    "phase": 1.938951849937439,
+                    "isStatic": false
+                },
+                {
+                    "phase": 4.3758721351623539,
+                    "isStatic": false
+                },
+                {
+                    "phase": 3.9360032081604006,
+                    "isStatic": false
+                }
+            ]
+        },
+        {
+            "cellName": "b3",
+            "blobs": [
+                {
+                    "phase": 0.0,
+                    "isStatic": true
+                },
+                {
+                    "phase": 0.931882917881012,
+                    "isStatic": false
+                },
+                {
+                    "phase": 4.42543888092041,
+                    "isStatic": false
+                },
+                {
+                    "phase": 6.144773960113525,
+                    "isStatic": false
+                },
+                {
+                    "phase": 4.6708760261535648,
+                    "isStatic": false
+                },
+                {
+                    "phase": 2.4373998641967775,
+                    "isStatic": false
+                },
+                {
+                    "phase": 1.938951849937439,
+                    "isStatic": false
+                },
+                {
+                    "phase": 4.3758721351623539,
+                    "isStatic": false
+                },
+                {
+                    "phase": 3.9360032081604006,
+                    "isStatic": false
+                }
+            ]
+        },
+        {
+            "cellName": "b4",
+            "blobs": [
+                {
+                    "phase": 0.0,
+                    "isStatic": true
+                },
+                {
+                    "phase": 0.13029250502586366,
+                    "isStatic": false
+                },
+                {
+                    "phase": 0.931882917881012,
+                    "isStatic": false
+                },
+                {
+                    "phase": 4.42543888092041,
+                    "isStatic": false
+                },
+                {
+                    "phase": 6.144773960113525,
+                    "isStatic": false
+                },
+                {
+                    "phase": 4.6708760261535648,
+                    "isStatic": false
+                },
+                {
+                    "phase": 2.4373998641967775,
+                    "isStatic": false
+                },
+                {
+                    "phase": 1.938951849937439,
+                    "isStatic": false
+                },
+                {
+                    "phase": 4.3758721351623539,
+                    "isStatic": false
+                },
+                {
+                    "phase": 3.9360032081604006,
+                    "isStatic": false
+                },
+                {
+                    "phase": 3.6061015129089357,
+                    "isStatic": false
+                }
+            ]
+        },
+        {
+            "cellName": "g0",
+            "blobs": [
+                {
+                    "phase": 0.0,
+                    "isStatic": true
+                },
+                {
+                    "phase": 4.42543888092041,
+                    "isStatic": false
+                },
+                {
+                    "phase": 1.938951849937439,
+                    "isStatic": false
+                }
+            ]
+        },
+        {
+            "cellName": "g1",
+            "blobs": [
+                {
+                    "phase": 0.0,
+                    "isStatic": true
+                },
+                {
+                    "phase": 4.42543888092041,
+                    "isStatic": false
+                },
+                {
+                    "phase": 4.6708760261535648,
+                    "isStatic": false
+                },
+                {
+                    "phase": 1.938951849937439,
+                    "isStatic": false
+                },
+                {
+                    "phase": 4.3758721351623539,
+                    "isStatic": false
+                },
+                {
+                    "phase": 3.9360032081604006,
+                    "isStatic": false
+                },
+                {
+                    "phase": 4.9216156005859379,
+                    "isStatic": true
+                }
+            ]
+        },
+        {
+            "cellName": "g2",
+            "blobs": [
+                {
+                    "phase": 0.0,
+                    "isStatic": true
+                },
+                {
+                    "phase": 4.42543888092041,
+                    "isStatic": false
+                },
+                {
+                    "phase": 4.6708760261535648,
+                    "isStatic": false
+                },
+                {
+                    "phase": 1.938951849937439,
+                    "isStatic": false
+                },
+                {
+                    "phase": 4.3758721351623539,
+                    "isStatic": false
+                },
+                {
+                    "phase": 3.9360032081604006,
+                    "isStatic": false
+                },
+                {
+                    "phase": 4.9216156005859379,
+                    "isStatic": true
+                }
+            ]
+        },
+        {
+            "cellName": "g3",
+            "blobs": [
+                {
+                    "phase": 0.0,
+                    "isStatic": true
+                },
+                {
+                    "phase": 4.42543888092041,
+                    "isStatic": false
+                },
+                {
+                    "phase": 6.144773960113525,
+                    "isStatic": false
+                },
+                {
+                    "phase": 4.6708760261535648,
+                    "isStatic": false
+                },
+                {
+                    "phase": 2.4373998641967775,
+                    "isStatic": false
+                },
+                {
+                    "phase": 1.938951849937439,
+                    "isStatic": false
+                },
+                {
+                    "phase": 4.3758721351623539,
+                    "isStatic": false
+                },
+                {
+                    "phase": 3.9360032081604006,
+                    "isStatic": false
+                },
+                {
+                    "phase": 5.264430999755859,
+                    "isStatic": false
+                },
+                {
+                    "phase": 4.9216156005859379,
+                    "isStatic": true
+                }
+            ]
+        },
+        {
+            "cellName": "g4",
+            "blobs": [
+                {
+                    "phase": 0.0,
+                    "isStatic": true
+                },
+                {
+                    "phase": 4.42543888092041,
+                    "isStatic": false
+                },
+                {
+                    "phase": 6.144773960113525,
+                    "isStatic": false
+                },
+                {
+                    "phase": 4.6708760261535648,
+                    "isStatic": false
+                },
+                {
+                    "phase": 2.4373998641967775,
+                    "isStatic": false
+                },
+                {
+                    "phase": 1.938951849937439,
+                    "isStatic": false
+                },
+                {
+                    "phase": 4.3758721351623539,
+                    "isStatic": false
+                },
+                {
+                    "phase": 3.9360032081604006,
+                    "isStatic": false
+                },
+                {
+                    "phase": 5.264430999755859,
+                    "isStatic": false
+                },
+                {
+                    "phase": 4.9216156005859379,
+                    "isStatic": true
+                }
+            ]
+        }
+    ]
+}

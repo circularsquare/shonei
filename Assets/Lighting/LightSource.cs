@@ -126,6 +126,15 @@ public class LightSource : MonoBehaviour {
 
     void Update() {
         UpdateLitState();
+        // Sun-modulated point lights (torches, fireplaces) scale their
+        // intensity by how dark it is outside — `torchFactor` ramps from
+        // 0 in daylight up to 1 by mid-twilight. SunController owns
+        // computing that scalar each frame; we just pull it.
+        // (Execution order is the default — SunController runs before
+        // LightSource in practice; one-frame lag would be invisible
+        // anyway because torchFactor changes smoothly over twilight.)
+        if (sunModulated && !isDirectional)
+            intensity = isLit ? baseIntensity * SunController.torchFactor : 0f;
         UpdateEmissionMpb();
         // Fire child visibility tracks emission scale — fire appears/disappears
         // in sync with the emission glow, including smooth twilight fade.
