@@ -79,10 +79,11 @@ Shader "Hidden/CloudFieldGen" {
             float  _ShadowBand;
             float  _CloudSunHeight;
             float2 _NoiseOffset;
-            float  _SilhouetteWarpStrength;
-            float  _SilhouetteWarpScale;
+            float  _EdgeWobbleStrength;
+            float  _EdgeWobbleScale;
             float  _EdgeThreshold;
             float  _EdgeSoftness;
+            float  _BlobAspect;
             float4 _Blobs[MAX_BLOBS];
             int    _BlobCount;
         CBUFFER_END
@@ -115,26 +116,23 @@ Shader "Hidden/CloudFieldGen" {
             return (uv - 0.5) * _TexSize * _InvPpu;
         }
 
-        // Domain-warp the pixel's sample position via two ValueNoise
-        // taps. The warp is sampled at the noise-anchored coordinate
-        // (lp + _NoiseOffset) so it scrolls with the cloud body as
-        // wind drifts the noise field — without this term, the wobble
-        // would stay glued to the viewport and the cloud would appear
-        // to slide through a stationary warp pattern. Affects both
-        // silhouette (blob distance check uses the warped position)
-        // and shading (sphere normals point from the un-warped blob
-        // centre toward the warped pixel, breaking up the obviously-
-        // circular Lambertian).
-        float2 WarpLocal(float2 lp) {
-            float2 q = (lp + _NoiseOffset) * _SilhouetteWarpScale;
-            // Two noise taps with offset seeds give an independent
-            // [0,1] for each axis; remap to [-1,+1] and scale by the
-            // user-tunable strength.
-            float2 w = float2(
-                ValueNoise(q),
-                ValueNoise(q + float2(91.4, 47.2))
-            ) * 2.0 - 1.0;
-            return lp + w * _SilhouetteWarpStrength;
+        // Per-pixel edge-wobble: instead of warping the blob-distance
+        // sampling position (which previously twisted both silhouette
+        // and interior shading), we perturb only the metaball alpha
+        // threshold. The blob loop runs on un-warped positions — so
+        // sphere normals stay clean and untwisted — but each pixel's
+        // smoothstep cut point is shifted by ±_EdgeWobbleStrength
+        // around _EdgeThreshold according to a single noise tap.
+        // Result: silhouettes ripple organically without the cloud
+        // interior looking like a melted swirl.
+        //
+        // Sampled at the noise-anchored coordinate (lp + _NoiseOffset)
+        // so the wobble pattern travels with the cloud body as wind
+        // drifts the noise field, rather than staying glued to the
+        // viewport.
+        float EdgeThresholdAt(float2 lp) {
+            float n = ValueNoise((lp + _NoiseOffset) * _EdgeWobbleScale) * 2.0 - 1.0;
+            return _EdgeThreshold + n * _EdgeWobbleStrength;
         }
         ENDHLSL
 
@@ -145,21 +143,28 @@ Shader "Hidden/CloudFieldGen" {
             #pragma fragment fragMask
 
             half4 fragMask(Varyings IN) : SV_Target {
-                float2 lp = WarpLocal(SpriteLocalFromUV(IN.uv));
+                float2 lp = SpriteLocalFromUV(IN.uv);
 
                 // Single-pass shading. For every blob the pixel sits
-                // inside, accumulate (sphere surface normal × metaball
+                // inside, accumulate (ellipsoid surface normal × metaball
                 // influence). The normalized weighted sum gives a
                 // continuous normal across the cloud: pixels deep inside
-                // one blob get that sphere's normal (closest to the
-                // sphere has the strongest weight), pixels in a crack
-                // between two overlapping blobs get a smooth blend of
-                // both spheres' normals. No more max() discontinuity at
-                // sphere junctions — the cracks fill in naturally with
-                // contributions from every covering sphere.
+                // one blob get that ellipsoid's normal; pixels in a
+                // crack between two overlapping blobs get a smooth
+                // blend of both. No max() discontinuity at junctions —
+                // the cracks fill in naturally.
+                //
+                // Each blob is an ellipsoid stretched horizontally by
+                // _BlobAspect (1 = sphere, >1 = horizontally elongated
+                // lobe). We work in the blob's "scaled" coordinate frame
+                // where it looks like a unit sphere: scale d.x by
+                // 1 / _BlobAspect for the distance/influence check and
+                // for the surface "depth" z, then unscale x in the
+                // normal so it points in true world directions.
                 //
                 // The same metaball influences also feed totalInf for
-                // the smoothstep-thresholded coverage / alpha.
+                // the alpha-threshold smoothstep.
+                float invAspect = 1.0 / _BlobAspect;
                 float3 nAccum   = float3(0, 0, 0);
                 float  totalInf = 0;
 
@@ -167,21 +172,23 @@ Shader "Hidden/CloudFieldGen" {
                     float4 b     = _Blobs[i];
                     float  r2    = b.w * b.w;
                     float2 d     = lp - b.xy;
-                    float  dist2 = dot(d, d);
+                    // Ellipsoid → unit-sphere by squashing x.
+                    float2 dS    = float2(d.x * invAspect, d.y);
+                    float  dist2 = dot(dS, dS);
                     if (dist2 < r2) {
-                        float dz       = sqrt(r2 - dist2);
-                        float w        = saturate(1.0 - dist2 / r2);
-                        // Sphere surface normal at this xy on a sphere
-                        // centred at b.xy with radius b.w. Length = 1
-                        // since (d.x, d.y, dz) lies on the sphere of
-                        // radius b.w.
-                        float3 sphereN = float3(d, dz) / b.w;
+                        float dz = sqrt(r2 - dist2);
+                        float w  = saturate(1.0 - dist2 / r2);
+                        // Ellipsoid surface normal: gradient of
+                        // F = (x/aspect)² + y² + z² − r² gives
+                        // (2x/aspect², 2y, 2z). Normalize after.
+                        float3 sphereN = normalize(float3(d.x * invAspect * invAspect, d.y, dz));
                         nAccum   += sphereN * w;
                         totalInf += w;
                     }
                 }
 
-                float coverage = smoothstep(_EdgeThreshold - _EdgeSoftness, _EdgeThreshold + _EdgeSoftness, totalInf);
+                float threshold = EdgeThresholdAt(lp);
+                float coverage = smoothstep(threshold - _EdgeSoftness, threshold + _EdgeSoftness, totalInf);
                 if (coverage < 1e-3) return half4(0, 0, 0, 0);
 
                 // Default to camera-facing normal if all weights round to
@@ -228,16 +235,19 @@ Shader "Hidden/CloudFieldGen" {
             #pragma fragment fragNormal
 
             half4 fragNormal(Varyings IN) : SV_Target {
-                float2 lp = WarpLocal(SpriteLocalFromUV(IN.uv));
+                float2 lp = SpriteLocalFromUV(IN.uv);
+                float invAspect = 1.0 / _BlobAspect;
                 float totalInf = 0;
                 [loop] for (int i = 0; i < _BlobCount; i++) {
                     float4 b  = _Blobs[i];
                     float2 d  = lp - b.xy;
-                    float  d2 = dot(d, d);
+                    float2 dS = float2(d.x * invAspect, d.y);
+                    float  d2 = dot(dS, dS);
                     float  r2 = b.w * b.w;
                     totalInf += saturate(1.0 - d2 / r2);
                 }
-                float coverage = smoothstep(_EdgeThreshold - _EdgeSoftness, _EdgeThreshold + _EdgeSoftness, totalInf);
+                float threshold = EdgeThresholdAt(lp);
+                float coverage = smoothstep(threshold - _EdgeSoftness, threshold + _EdgeSoftness, totalInf);
                 return half4(0.5, 0.5, 1.0, coverage);
             }
             ENDHLSL

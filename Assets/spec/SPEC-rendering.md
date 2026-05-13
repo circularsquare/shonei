@@ -218,6 +218,12 @@ Draws sprites with `Hidden/NormalsCapture` override into `_CapturedNormalsRT` (f
 
 **Tile border clipping**: tiles use pre-baked 20×20 sprites whose alpha already encodes the border shape. NormalsCapture clips on `_MainTex` alpha for both tiles and non-tiles — no per-pixel atlas lookup needed.
 
+**⚠️ The native-UV invariant**: NormalsCapture's override materials sample `_MainTex` at the sprite's **native (0..1) UVs** — they have no knowledge of any custom UV math the visible shader does (world-coord sampling, parallax remap, UV scroll, vertex displacement, etc.). If your visible pass transforms UVs but NormalsCapture sees the untransformed mapping, the alpha mask captured into `_CapturedNormalsRT` won't match the alpha mask rendered to screen. The composite step then renders ghost silhouettes shaped like the *un-transformed* alpha wherever `lightmap` and `skyLightColor` differ (most visibly at sunset/sunrise; invisible at noon when the two converge).
+- **Symptom**: a sprite that uses world-coord UVs (e.g., a parallax background painting, a UV-scrolling banner, a tiled wall) shows ghost outlines in the surrounding sky at specific times of day. The ghost is at the position the alpha mask *would* be if there was no parallax / scroll.
+- **Fix**: bake the transformed image into a `RenderTexture` first via `Graphics.Blit` through a gen shader, then MPB-bind the RT as `_MainTex` on the sprite. The visible main pass samples the RT at native UV; NormalsCapture's override material samples the same RT at the same native UV. Masks agree.
+- **Existing examples**: `CloudLayer.cs` + `Hidden/CloudFieldGen` + cloud's `mainRT`/`normalRT`. `BackgroundLayer.cs` + `Hidden/BackgroundLayerGen` + `bgRT`. Both follow the same pattern: gen shader runs per-frame in `LateUpdate`, output RT is MPB-bound as `_MainTex`.
+- **Special cases the project already handles**: plant vertex sway (`NormalsCapture.shader` has dedicated logic in its frag that re-applies the same sway formula via `Sway.hlsl`), tile chunked sampling (`Hidden/ChunkedNormalsCapture` knows the per-vertex slice indices). When adding another sprite class that diverges from native-UV sampling, prefer the RT-bake pattern unless you also extend the override materials.
+
 **Draw calls** (in order; later overwrites earlier where they overlap, `Blend Off`):
 
 1. Background (`backgroundLayer`) — `NormalsCaptureBackground` override, alpha = 0.5 (lit-only). Drawn earliest so tiles/sprites overwrite.
@@ -306,60 +312,88 @@ Whole-field rotation: `rotationRad` accumulates `rotationSpeed × dt` (degrees/s
 
 Visibility math: at full night, ambient ≈ dark blue. Star (white) × lightRT ≈ ambient (dim but ~10× brighter than the multiply-darkened sky). If they ever read too dim during play, escalate to a custom emissive shader or move stars to the Unlit layer.
 
-[CloudLayer.cs](../Controller/CloudLayer.cs) — single SpriteRenderer (`CloudFieldSprite`) covering the camera viewport, whose `_MainTex` and `_NormalMap` are generated each `LateUpdate` on the GPU via two `Graphics.Blit` calls through [Hidden/CloudFieldGen](../Resources/Shaders/CloudFieldGen.shader). The cloud body is a constellation of CPU-spawned 3D sphere-blobs, placed at high-density spots in a continuous noise field; the gen shader renders each blob with a true sphere-surface normal and composites them by depth. No discrete cloud GameObjects, no sprite pool — every visible cloud is a cluster of blobs that scrolls naturally as the camera pans or wind blows.
+### Cloud system
 
-**Why blobs instead of shading the raw noise gradient**: an earlier iteration used the 2D noise gradient directly as a surface normal. It worked mathematically but didn't represent the cloud's actual 3D shape — the noise gradient keeps varying past the silhouette, producing irregular dark patches in the middle of each cloud that didn't read as "back side of a 3D blob." Switching to sphere-blob shading gives every pixel an unambiguous 3D normal (it's literally a sphere's surface normal), so the lit/shadow transition sweeps cleanly around each visible lobe.
+[CloudLayer.cs](../Lighting/CloudLayer.cs) — single SpriteRenderer (`CloudFieldSprite`) covering the camera viewport. Its `_MainTex` and `_NormalMap` are generated each `LateUpdate` on the GPU via two `Graphics.Blit` calls through [Hidden/CloudFieldGen](../Resources/Shaders/CloudFieldGen.shader). The cloud body is a constellation of CPU-spawned 3D sphere-(ellipsoid-)blobs placed at noise-density local maxima; the gen shader iterates the blobs per pixel, weighted-averages their sphere normals, and quantizes the result into 3 discrete colour bands.
+
+**Why blobs over raw noise-gradient shading**: an early iteration used the 2D noise gradient directly as a surface normal. The noise gradient keeps varying past the silhouette, producing irregular dark patches in the middle of each cloud that didn't read as "back side of a 3D blob." Sphere-blob shading gives every pixel an unambiguous 3D normal (it's literally a sphere's surface normal), so lit/shadow transitions sweep cleanly around each visible lobe.
 
 **Blob generation** (CPU, in `LateUpdate`):
-1. Walk a regular grid in sprite-local space at spacing `blobCellSize` (~1 world unit).
+1. Walk a regular grid **anchored in noise-space** (cell index = `floor((spriteLocal + noiseOffset) / cellSize)`) — so a given cell maps to a fixed point in the noise field regardless of camera position. Without this anchoring, blobs would pop in/out at viewport edges as the camera scrolls.
 2. At each cell, compute a hash-jittered position inside the cell (deterministic per cell — blobs are stable frame-to-frame for a given noise state).
-3. Sample 2D value noise at that position using the **same formula as the shader's `Density()`** — `Frac`/`Hash2D`/`ValueNoise` in [CloudLayer.cs](../Lighting/CloudLayer.cs) are a direct port of [Noise.hlsl](../Lighting/Noise.hlsl). The two MUST stay in sync; either change requires the matching change in the other file.
-4. If density exceeds `Lerp(thresholdClear, thresholdStorm, humidity)`, emit a blob: position in sprite-local space, radius lerped between `blobRadiusMin..blobRadiusMax` by density excess, z hash-jittered by `±blobDepthRange/2`.
-5. Pack into `Vector4[256]` and push via `Material.SetVectorArray("_Blobs", ...)` + `SetInt("_BlobCount", ...)`.
+3. Sample 2D value noise at that position using the **same formula as `Noise.hlsl::ValueNoise`** — `Frac`/`Hash2D`/`ValueNoise` in [CloudLayer.cs](../Lighting/CloudLayer.cs) are a direct port. The two MUST stay in sync.
+4. Noise is sampled with `anchorX / noiseAspect, anchorY` (horizontal stretch via `noiseAspect`) and gated by a quadratic band envelope with full `bandHalfHeight` above `bandCenterY` but only `bandHalfHeight × bandBottomScale` below — flat-bottom cumulus effect.
+5. If density exceeds `Lerp(thresholdClear, thresholdStorm, humidity)`, emit a **parent blob** with hash-jittered radius and z. Then spawn `subBlobCount` **sub-blobs** around it (cluster of smaller children at polar offsets within `subBlobSpread × parent.radius`) for fractal-cumulus detail (big puffs + cauliflower bumps).
+6. Density excess below `fadeRange` (= 0.05 above threshold) ramps the parent radius from 0 → full — smooths popping when noise grazes the threshold (humidity drifting, near-threshold cells crossing).
+7. Pack into `Vector4[512]` and push via `Material.SetVectorArray("_Blobs", ...)` + `SetInt("_BlobCount", ...)`.
 
-CPU cost: ~`(2·halfW/cellSize) × (2·bandHalfHeight/cellSize)` cells (≈256 at defaults), each a cheap noise tap → ~50 μs/frame.
+CPU cost: ~50 μs/frame for typical 250-blob counts.
 
 **Two-pass gen shader**:
-- **Pass 0 → mainRT** (ARGB32 linear): for each pixel, iterate `_Blobs` with a `[loop]` of `_BlobCount` iterations. For each blob whose `dist² < r²`, compute `z_top = blob.z + sqrt(r² − dist²)`; track the largest `z_top` and that sphere's surface normal `(d.xy, sqrt(r² − dist²)) / r`. Lambertian dot with `_SunDir` (tangent space) → continuous `ndotl`, quantized into three discrete colour bands via `litBand` / `shadowBand` thresholds. Alpha = soft union of blob coverage (smoothstep on the outer 15% of each blob's radius). No self-shadow ray march — sphere normals give "back of the ball is dark" via low N·L on the sun-opposite side.
-- **Pass 1 → normalRT** (ARGB32 linear): FLAT tangent normal `(0.5, 0.5, 1.0, mask)`. Decodes via `(rgb·2 − 1)` to `(0, 0, 1)` — a camera-facing normal that's the same for every cloud pixel. The point is to make NormalsCapture's `_NormalMap` sample uniform across the cloud, so LightSun contributes a constant brightness rather than per-pixel N·L variation. That keeps the 3 colour bands crisp instead of getting smeared by the lightmap's smooth Lambertian. Alpha uses the noise-based mask (`CloudMask(Density(lp))`) rather than blob coverage — the two silhouettes overlap closely enough that NormalsCapture clips correctly either way, and duplicating the blob loop here would double per-pixel work for no visible win.
+- **Pass 0 → mainRT** (ARGB32 linear): for each pixel, iterate `_Blobs`. Each covering blob contributes its **ellipsoidal** surface normal (`d.x / aspect, d.y, dz`, normalized, where `aspect = blobAspect` stretches blobs horizontally) weighted by metaball influence `saturate(1 − dist²/r²)`. The normalized weighted sum is a smooth normal that blends across overlapping spheres (no max() discontinuity at junctions). Lambertian against `_CloudSunHeight` × `_SunDir.xy` (cloud-specific sun elevation, decoupled from the scene's actual `_SunHeight` so the moon-phase curvature is visible regardless of in-game time of day) → continuous `ndotl`, quantized into 3 bands. Alpha = `smoothstep(thresholdCentre − softness, thresholdCentre + softness, totalInf)` where `thresholdCentre = _EdgeThreshold + noise · _EdgeWobbleStrength` — silhouettes get organically bumpy via threshold-perturb noise (NOT 2D domain warp, which previously twisted the interior shading).
+- **Pass 1 → normalRT** (ARGB32 linear): FLAT tangent normal `(0.5, 0.5, 1.0, mask)`. Decodes via `(rgb·2 − 1)` to `(0, 0, 1)` — a camera-facing normal that's the same for every cloud pixel. The point is to make NormalsCapture's `_NormalMap` sample uniform across the cloud, so LightSun contributes a constant brightness rather than per-pixel N·L variation. That keeps the 3 colour bands crisp instead of getting smeared by the lightmap's smooth Lambertian. Alpha uses the same metaball coverage so NormalsCapture's clip aligns with Pass 0's silhouette exactly.
 
-**Why bake shading into mainRT rather than let the global lightmap do it**: with a per-pixel normal map driving LightSun, the lightmap multiply gives continuous shading across the cloud. That looked smooth and "unpixel-art-like" — discrete bands need a uniform lightmap. By flattening normalRT and doing all the shading in the gen shader, the lightmap becomes a single brightness multiplier (sun strength × ambient × day/night) that scales the bands without dissolving them. Day/night cycle still drives overall cloud brightness; `sr.color` still does humidity tint; the bands sit cleanly between.
+**Why bake shading into mainRT rather than let the global lightmap do it**: with a per-pixel normal map driving LightSun, the lightmap multiply gives continuous shading across the cloud. That looked smooth and "unpixel-art-like" — discrete bands need a uniform lightmap. By flattening normalRT and doing all the shading in the gen shader, the lightmap becomes a single brightness multiplier (sun strength × ambient × day/night) that scales the bands without dissolving them.
 
-**Sun direction**: gen shader reads `_SunDir` and `_SunHeight` as globals (broadcast by [LightFeature.cs:443-444](../Lighting/LightFeature.cs#L443-L444) during the sun pass — our LateUpdate Blit reads the previous frame's values, one-frame lag invisible at sun-orbit speeds). These globals must be declared **outside** the `UnityPerMaterial` CBUFFER in the gen shader — Unity's SRP batcher rejects globals inside per-material cbuffers. On the first frame after Play, the globals may still be zero; this is handled naturally because `_SunHeight` defaults to 0 and `saturate(ndotl)` clamps the Lambertian — clouds render in the shadow band until LightFeature's first pass populates the globals.
+**Sun direction**: gen shader reads `_SunDir` (global, set by `LightFeature.cs:443-444`) and uses `_CloudSunHeight` for the elevation. Decoupling cloud-sun from scene-sun lets the moon-phase terminator curvature stay visible even at sunrise/sunset when the scene's actual sun is on the horizon. `_SunDir` must be declared **outside** the `UnityPerMaterial` CBUFFER in the gen shader — Unity's SRP batcher rejects globals inside per-material cbuffers.
 
-**Binding**: both RTs are bound per-renderer via `MaterialPropertyBlock`, overriding the auto-bound `_MainTex` (sprite source texture) and `_NormalMap`. Get-modify-set pattern so any other auto-bound properties survive. The SpriteRenderer's underlying sprite is created from a dummy 256×128 `Texture2D` whose contents are never read — it exists only to give `Sprite.Create` valid dimensions for the mesh / UV rect.
+**Positioning + parallax**: sprite is locked horizontally to `cam.x` (parallax comes from `_NoiseOffset = cam.x · worldLockingX + windOffsetX`, so as the camera or wind moves the noise pattern scrolls within the sprite). Vertically the sprite Y is `cam.y + (bandCenterY − cam.y) · worldLockingY` (sprite position physically moves with parallax for Y; same parameterization as horizontal but different mechanism since there's no `noiseOffset.y`). `worldLockingX/Y = 0` = sky-locked (no apparent motion), `= 1` = world-locked (full parallax, walk past it). Blobs are anchored to the band centre — `lyBand = anchorY − bandCenterY` is used as the blob's sprite-local y, and the whole cloud body rides along with the sprite's parallax motion.
 
-**Why RenderTextures and not pure-procedural shader**: the URP lighting pipeline draws all lit sprites with a NormalsCapture override material that samples `_MainTex.a` and `_NormalMap.rgb`. Routing clouds through RTs means that pipeline cannot tell the textures are GPU-generated, and we don't have to thread a special case through `LightFeature.cs`.
+**Binding**: both RTs are bound per-renderer via `MaterialPropertyBlock`, overriding the auto-bound `_MainTex` and `_NormalMap`. Get-modify-set pattern so any other auto-bound properties survive. Underlying sprite is a dummy 256×128 `Texture2D` whose contents are never read — it exists only to give `Sprite.Create` valid mesh dimensions.
 
-**Linear RTs are critical**: `sRGB=false` on both. An sRGB normalRT would silently warp the `(rgb·2 − 1)` decode in [NormalsCapture.shader](../Lighting/NormalsCapture.shader), tilting normals by the sRGB gamma curve.
+**Linear RTs are critical**: `sRGB=false` on both. An sRGB normalRT would silently warp the `(rgb·2 − 1)` decode in `NormalsCapture.shader`.
 
-**Positioning** (in `LateUpdate`, with `[DefaultExecutionOrder(100)]` so it runs after SkyCamera's own LateUpdate has settled, and before any camera renders): `sr.transform.position = (skyCam.x, bandCenterY, renderZ)`. The reference camera is `SkyCamera.instance.BgCam`, NOT `Camera.main` — the cloud sprite is rendered by SkyCamera, so its frustum is what matters. `renderZ` must clear SkyCamera's near plane (0.3); the default of 5 matches the legacy hand-placed clouds. The outer `CloudLayer` GameObject stays parented wherever the scene places it; only the inner sprite's world position is overridden, so reparenting the CloudLayer doesn't matter.
-
-**Sprite tint**: `sr.color = Color.Lerp(baseColorClear, baseColorStorm, humidity)` — multiplies into all three colour bands uniformly. Storm clouds get darker across the board; bands stay distinct because the multiplier is uniform.
-
-**Per-frame, unconditional regen**: ~50 μs CPU (blob generation) + ~0.5 ms GPU (two Blits with the blob loop). No skip-frame logic — at this cost it's pure liability, and per-frame regen unblocks continuous animation.
-
-**Knobs** (inspector on the `CloudLayer` GameObject):
-- *Shape*: `textureSize` (256×128), `pixelsPerUnit` (8), `noiseScale` (0.15), `bandCenterY` / `bandHalfHeight`, `softEdge` (Pass 1 alpha only).
-- *Coverage*: `thresholdClear` / `thresholdStorm` mapped to humidity — controls how easily noise cells exceed the spawn threshold.
-- *Drift*: `windDriftScale`, `worldLockingX`.
-- *Tint*: `baseColorClear` / `baseColorStorm`.
-- *Shading bands*: `litColor` / `midColor` / `shadowColor`; `litBand` / `shadowBand` thresholds split the [0,1] light value into the three bands.
-- *Sphere-blobs*: `blobCellSize` (spawn grid density), `blobJitter` (within-cell randomness), `blobRadiusMin` / `blobRadiusMax` (lerp by density excess), `blobDepthRange` (z-jitter for varied overlap).
-- *Render*: `renderZ` — z position; must sit between SkyCamera's near and far planes.
+**Knobs** (inspector on the `CloudLayer` GameObject — many parameters because the cloud system carries a lot of artistic dimensions):
+- *Shape*: `textureSize` (256×128), `pixelsPerUnit` (8), `noiseScale` (0.15), `noiseAspect` (horizontal feature stretch, default 2.0).
+- *Band*: `bandCenterY`, `bandHalfHeight`, `bandBottomScale` (compresses the bottom half of the envelope → flat cumulus base).
+- *Coverage*: `thresholdClear` / `thresholdStorm` mapped to humidity.
+- *Drift*: `windDriftScale`, `worldLockingX`, `worldLockingY`.
+- *Tint*: `baseColorClear` / `baseColorStorm` (sr.color, multiplies all bands).
+- *Shading bands*: `litColor` / `midColor` / `shadowColor`, `litBand` / `shadowBand` thresholds, `cloudSunHeight` (cloud-specific sun elevation for moon-phase shading curvature).
+- *Sphere-blobs*: `blobCellSize`, `blobJitter`, `blobRadiusMin`/`blobRadiusMax`, `blobDepthRange`, `blobAspect` (ellipsoidal horizontal stretch per blob).
+- *Sub-blobs (fractal detail)*: `subBlobCount`, `subBlobRadiusFactor`, `subBlobSpread`.
+- *Edge wobble*: `edgeWobbleStrength` (perturbs the metaball alpha threshold), `edgeWobbleScale` (noise frequency).
+- *Edge silhouette*: `edgeThreshold` (centre of metaball alpha smoothstep), `edgeSoftness` (half-width = fuzziness).
+- *Render*: `renderZ`.
 
 **Trade-offs worth knowing**:
-- **Cloud silhouette is a union of circles**. Looks lumpy / multi-lobed rather than smoothly wavy. This is the intended trade for "looks like 3D balls glued together."
-- **No cross-blob shadows**. The back of each sphere is dark via its own N·L, but a front sphere doesn't cast shadow onto a back sphere. If clouds look too "lit from all sides" we'd add a small extra march inside the blob loop.
-- **Hard normal seams at blob boundaries**. When two spheres meet at the same pixel, the pick-front rule causes a discontinuity in the normal direction. With 3-band quantize this is usually invisible (both spheres land in the same band) but is a possible artifact. Tunable via `blobDepthRange` (more z-jitter spreads contrast randomly rather than uniformly).
-- **Point lights can't illuminate clouds** through the global pipeline — the flat normalRT makes LightSun uniform. If we ever want a torch from below to glow on the cloud's underside, the gen shader would need to read the light source list directly.
+- **Cloud silhouette is a union of metaball-influenced ellipsoids**. Modern look is lumpy / multi-lobed with smooth blob blending — intended trade for "looks like 3D balls glued together."
+- **No cross-blob shadows**. Each sphere's own N·L darkens its sun-opposite side, but a front blob doesn't cast shadow on a back blob.
+- **Point lights can't illuminate clouds** — the flat normalRT makes LightSun uniform. If we ever want a torch glow on the underside, the gen shader would need direct light source access.
+- **`Hash2D`/`ValueNoise` in CloudLayer.cs MUST stay in sync with `Noise.hlsl`** — CPU spawn positions and shader noise sampling rely on identical output.
 
-**Future shading hooks** (call-outs in `CloudLayer.cs` header):
+**Future shading hooks**:
 - Cross-blob shadows: small extra march toward sun inside the blob loop, marking the picked normal as occluded if another blob's surface is between this pixel and the sun.
-- Multi-octave blobs: a second sparser pass with larger radii layered behind smaller blobs — "big puff + small detail" hierarchy.
 - Rim translucency / forward scatter: pixels near the front-most blob's silhouette get a 4th colour band on the sun-facing side.
+- Multi-level fractal: sub-blobs could themselves spawn grand-sub-blobs for another octave of detail.
 
-See [[project-cloud-field-system]] and [[project-sky-camera-quirks]] in memory for context on why this system replaced the older sprite-pool approach and the SkyCamera-specific gotchas that made it hard to get visibility right.
+See [[project-cloud-field-system]] and [[project-sky-camera-quirks]] in memory for historical context.
+
+### Background layer
+
+[BackgroundLayer.cs](../Lighting/BackgroundLayer.cs) — single SpriteRenderer that displays a user-supplied tileable texture (e.g., distant hills painting) behind the clouds with parallax. Sits at `sortingOrder = -75` on the Background sortingLayer by default — between the sky gradient (-100) and stars (-50), behind clouds (0).
+
+**Why this exists as a dedicated component**: the painting needs horizontal tiling (for camera pan), vertical clipping (one painting, not stacked tiles), parallax with `worldLockingX/Y` matching CloudLayer's convention, and lighting integration that doesn't ghost the un-parallaxed alpha mask into the sky.
+
+**RT-bake pattern** (same trick as CloudLayer — see §NormalsCapturePass for the underlying reason):
+1. Each `LateUpdate`, `Hidden/BackgroundLayerGen` runs via `Graphics.Blit(texture, bgRT, bgGenMat)` to bake the parallax-shifted view of the user texture into `bgRT`. The gen shader's fragment computes each RT pixel's world position from `_CameraPos + (uv − 0.5) · _ViewportSize`, applies parallax + texture-scale, samples `_MainTex`, and `discard`s for V outside [0,1] (vertical clip so the painting appears once, no stacked tiles).
+2. `bgRT` is MPB-bound as `_MainTex` on the SpriteRenderer. Both the visible main pass AND the NormalsCapture override sample the same RT at native UVs — alpha masks agree, no sunset-time ghost mountains.
+3. `bgRT` resizes to match `cam.pixelWidth/Height` so each RT pixel maps 1:1 to a screen pixel.
+
+**Lighting integration**: a flat 1×1 normal map (0.5, 0.5, 1.0) is MPB-bound as `_NormalMap` so NormalsCapture sees a uniform camera-facing normal across the background. LightSun then contributes a constant brightness (background dims uniformly with day/night via the lightmap composite) without per-pixel spurious sun shading.
+
+**Texture import**: Wrap Mode U = Repeat (for horizontal tiling). V can be anything since the gen shader `discard`s outside [0, 1]. Filter Mode = Point for pixel-art crispness.
+
+**Knobs** (inspector on the `BackgroundLayer` GameObject):
+- `texture`, `texturePixelsPerUnit` — content and world-scale.
+- `bandCenterY`, `renderZ` — position.
+- `worldLockingX`, `worldLockingY` — parallax (same convention as cloud: 0 = sky-locked, 1 = world-locked).
+- `tint` — multiplied into the texture.
+- `sortingOrder` — render order.
+
+**Future hooks**:
+- Real normal map for the background painting (currently flat). Would let the sun's actual direction tilt the mountains' shading. Drop-in: add a `Texture2D normalMap` field, MPB-bind it instead of the flat 1×1.
+- Day/night colour-tint pulled from `SunController` (e.g., warm at dusk, blue at night) — currently `tint` is a static inspector value.
 
 ### Sky exposure (`SkyExposure.cs`)
 

@@ -58,4 +58,11 @@ BUGS
 
 SHORT TERM
 test tarp
-simplify lighting params?
+test furnishing
+add toggle for jobs panel
+
+background 
+    - add a blue filter in front of the hills?
+    - shade the top rim of the hills? 
+    - have clouds randomly change perlin noise base occasionally? not sure how to do. only on wrap around? 
+    - prune parameters? (presets for cloud types?)

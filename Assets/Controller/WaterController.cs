@@ -29,6 +29,10 @@ public class WaterController : MonoBehaviour {
     // Inspector-assigned so the shader is force-included in builds (see LightFeature
     // for rationale — Shader.Find() works in editor but doesn't survive build stripping).
     [SerializeField] Shader waterShader;
+    // Solid 0.9-alpha base layer that sits behind BackgroundTile. Occludes the
+    // parallax sky painting while letting the cave wall draw on top so cave pools
+    // keep their see-through look. See SPEC-rendering.md §Water Rendering.
+    [SerializeField] Shader waterUnderlayShader;
 
     // Asset pixels per tile edge. 16 PPU assets → 16 game pixels per tile edge.
     private const int PixelsPerTile = 16;
@@ -50,6 +54,7 @@ public class WaterController : MonoBehaviour {
     private bool[] _tileIsSolid;       // true if tile.type.solid
 
     private Material _waterMat;
+    private Material _underlayMat;
 
     // Structures with a `{stem}_w.png` companion sprite register their water zone here,
     // keyed by Structure. Overlaid into _surfaceBytes each UpdateSurfaceMask tick.

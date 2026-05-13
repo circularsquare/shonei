@@ -18,6 +18,7 @@ public class UI : MonoBehaviour {
     // We toggle Canvas.enabled rather than GameObject.SetActive so panel hierarchies keep
     // their internal state (selections, open/collapsed groups, etc.) untouched.
     Canvas[] _allCanvases;
+    bool[]   _wasEnabled; // pre-hide snapshot so restore doesn't resurrect canvases that were already off (e.g. LoadingScreen post-End, closed exclusive panels)
     bool _uiHidden;
 
     // Exclusive panels — at most one may be visible at a time.
@@ -131,17 +132,36 @@ public class UI : MonoBehaviour {
             || sel.GetComponent<TMP_InputField>() != null;
     }
 
-    // Flips visibility of every Canvas in the scene. Re-scans on each press in case
-    // canvases have been added/removed at runtime (e.g. a future overlay canvas).
+    // Flips visibility of every Canvas in the scene. On hide we snapshot the current
+    // enabled-state of each root canvas; on restore we put each one back to exactly
+    // what it was before — never blanket-enable, because that would resurrect
+    // canvases that were intentionally off (LoadingScreen after End(), closed
+    // exclusive panels, etc.).
     void ToggleUIVisible() {
-        _allCanvases = FindObjectsOfType<Canvas>(includeInactive: false);
-        _uiHidden = !_uiHidden;
-        foreach (var c in _allCanvases) {
-            if (c == null) continue;
-            // Only toggle root canvases — nested canvases inherit enabled state from
-            // their parent's render hierarchy, and flipping them independently would
-            // leave child canvases visible after the parent is hidden.
-            if (c.isRootCanvas) c.enabled = !_uiHidden;
+        if (!_uiHidden) {
+            // Hide: re-scan (canvases may have been added/removed at runtime), snapshot, disable.
+            _allCanvases = FindObjectsOfType<Canvas>(includeInactive: false);
+            _wasEnabled  = new bool[_allCanvases.Length];
+            for (int i = 0; i < _allCanvases.Length; i++) {
+                var c = _allCanvases[i];
+                if (c == null) continue;
+                _wasEnabled[i] = c.enabled;
+                // Only toggle root canvases — nested canvases inherit enabled state from
+                // their parent's render hierarchy, and flipping them independently would
+                // leave child canvases visible after the parent is hidden.
+                if (c.isRootCanvas) c.enabled = false;
+            }
+            _uiHidden = true;
+        } else {
+            // Restore: only re-enable canvases that were enabled at hide time.
+            if (_allCanvases != null) {
+                for (int i = 0; i < _allCanvases.Length; i++) {
+                    var c = _allCanvases[i];
+                    if (c == null) continue;
+                    if (c.isRootCanvas) c.enabled = _wasEnabled[i];
+                }
+            }
+            _uiHidden = false;
         }
     }
 }

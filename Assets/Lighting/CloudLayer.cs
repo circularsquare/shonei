@@ -148,10 +148,12 @@ public class CloudLayer : MonoBehaviour {
     [Range(0.15f, 0.7f)] public float subBlobRadiusFactor = 0.45f;
     [Tooltip("How far each sub-blob sits from its parent's centre, as a fraction of parent radius. ~0.5 = mostly interior detail; ~0.7-0.9 = bumps that bulge out through the parent's silhouette; >1.0 = sub-blobs sit beyond the parent's edge as semi-detached lumps.")]
     [Range(0f, 1.5f)] public float subBlobSpread  = 0.7f;
-    [Tooltip("Strength (world units) of the per-pixel domain-warp noise that breaks up the otherwise-circular blob silhouettes. 0 = perfect spheres; ~0.2 = subtle wobble; >0.4 = obviously organic. Affects both silhouette and shading since the warp shifts the pixel's blob-distance sampling position.")]
-    public float silhouetteWarpStrength = 0.2f;
-    [Tooltip("Frequency of the warp noise (1/world-units). Higher = finer-grained wobble; lower = broader bulges. ~1 gives wobble at roughly one-world-unit scale.")]
-    public float silhouetteWarpScale    = 1.0f;
+    [Tooltip("Strength of the per-pixel edge-wobble noise. Perturbs the metaball alpha threshold (not the sampling position), so cloud silhouettes get organically bumpy without the interior shading twisting. In threshold units: ~0.05 = subtle bumps; >0.15 = obviously wavy.")]
+    [Range(0f, 0.2f)] public float edgeWobbleStrength = 0.05f;
+    [Tooltip("Frequency of the edge-wobble noise (1/world-units). Higher = finer-grained bumps; lower = broader undulations. ~1 gives wobble at roughly one-world-unit scale.")]
+    public float edgeWobbleScale = 1.0f;
+    [Tooltip("Horizontal stretch of each blob into an ellipsoid. 1 = perfect spheres; 1.5-2 = cumulus-like elongated lobes; >2.5 = obvious cigars. Composes with noiseAspect (which stretches where blobs cluster) — together they shape both the macro and the micro of horizontal cloud appearance.")]
+    [Range(1f, 3f)] public float blobAspect = 1.5f;
     [Tooltip("Edge threshold (centre of the metaball alpha smoothstep). Lower = more generous silhouette (blobs read solid further from their centres); higher = tighter cloud bodies. Single-blob silhouettes extend roughly to dist = sqrt(1 - threshold) * radius before the alpha begins fading.")]
     [Range(0.02f, 0.6f)] public float edgeThreshold = 0.2f;
     [Tooltip("Edge softness (half-width of the metaball alpha smoothstep). 0 = razor-hard silhouette; ~0.1 = subtle feather; >0.3 = visibly wispy. Combines with strength of warp noise — softer edges + bigger warp = puffy cumulus, sharper edges = more cartoony.")]
@@ -189,8 +191,9 @@ public class CloudLayer : MonoBehaviour {
     static readonly int ShadowBandId     = Shader.PropertyToID("_ShadowBand");
     static readonly int CloudSunHeightId = Shader.PropertyToID("_CloudSunHeight");
     static readonly int NoiseOffsetId    = Shader.PropertyToID("_NoiseOffset");
-    static readonly int WarpStrengthId   = Shader.PropertyToID("_SilhouetteWarpStrength");
-    static readonly int WarpScaleId      = Shader.PropertyToID("_SilhouetteWarpScale");
+    static readonly int WobbleStrengthId = Shader.PropertyToID("_EdgeWobbleStrength");
+    static readonly int WobbleScaleId    = Shader.PropertyToID("_EdgeWobbleScale");
+    static readonly int BlobAspectId     = Shader.PropertyToID("_BlobAspect");
     static readonly int EdgeThresholdId  = Shader.PropertyToID("_EdgeThreshold");
     static readonly int EdgeSoftnessId   = Shader.PropertyToID("_EdgeSoftness");
     static readonly int BlobsId          = Shader.PropertyToID("_Blobs");
@@ -347,8 +350,9 @@ public class CloudLayer : MonoBehaviour {
         cloudGenMat.SetFloat (ShadowBandId,     shadowBand);
         cloudGenMat.SetFloat (CloudSunHeightId, cloudSunHeight);
         cloudGenMat.SetVector(NoiseOffsetId,    noiseOffset);
-        cloudGenMat.SetFloat (WarpStrengthId,   silhouetteWarpStrength);
-        cloudGenMat.SetFloat (WarpScaleId,      silhouetteWarpScale);
+        cloudGenMat.SetFloat (WobbleStrengthId, edgeWobbleStrength);
+        cloudGenMat.SetFloat (WobbleScaleId,    edgeWobbleScale);
+        cloudGenMat.SetFloat (BlobAspectId,     blobAspect);
         cloudGenMat.SetFloat (EdgeThresholdId,  edgeThreshold);
         cloudGenMat.SetFloat (EdgeSoftnessId,   edgeSoftness);
 
