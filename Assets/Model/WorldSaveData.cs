@@ -10,6 +10,12 @@ public class WorldSaveData {
     // for those starts from 0 on load, which is fine — they had no reproducibility before.
     public int worldSeed;
     public TileSaveData[] tiles;             // tile types and floor inventories only
+    // Per-column original-surface heights from worldgen. Persisted because the
+    // value is immutable after generation: it's the natural ground line that
+    // FlowerController and OverlayGrowthSystem gate on, not the current
+    // topmost solid tile. Null on old saves → SaveSystem falls back to
+    // World.RecomputeSurfaceY (best-effort re-derivation from current geometry).
+    public int[] surfaceY;
     public StructureSaveData[] structures;   // all structures (buildings, plants, platforms, ladders, roads)
     public BlueprintSaveData[] blueprints;   // all blueprints
     public AnimalSaveData[] animals;
@@ -34,6 +40,9 @@ public class WorldSaveData {
     // Only deltas vs item.defaultOpen are stored (group item name → current open state), so the
     // dict stays small and new items automatically pick up their JSON default. Null on old saves.
     public Dictionary<string, bool> inventoryTreeOpen;
+    // Per-panel collapse state, keyed by CollapsibleHeader.saveKey ("inventory", "jobs").
+    // Only deltas vs default-open (true) are stored. Null on old saves → panels start open.
+    public Dictionary<string, bool> panelsOpen;
 }
 
 public class ResearchSaveData {

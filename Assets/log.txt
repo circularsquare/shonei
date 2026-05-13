@@ -1,9 +1,14 @@
 meoww!!
 
+5/13
+- flowers! and mushrooms
+- more cloud blobbing
+- furnishing more complete
 5/12
 - improved cloud blobbing: single smoothly variable cloud field 
 - started adding furnishing
 - cleaned up lighting system
+- background hills! yay!
 5/11
 - tree leaf blob drifting
 - prebake chunks of tiles and edges, improved load time

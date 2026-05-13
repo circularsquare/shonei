@@ -24,6 +24,14 @@ Shader "Hidden/LightSun" {
             float3 _SunDir;    // XY world direction toward sun (Z = 0)
             float  _SunHeight; // controls how much sun hits flat/camera-facing surfaces
             float  _AmbientNormal;
+            // 1 = ignore the world tile-grid exposure (SkyCamera path);
+            // 0 = sample it as normal (Main camera). LightPass sets this per
+            // camera. Without it the SkyCamera samples _SkyExposureTex with
+            // its own (dampened-zoom) _CamWorldBounds, landing the dark
+            // terrain pattern at a screen position that does NOT match where
+            // the Main camera draws the terrain — producing a ghost terrain
+            // silhouette on the sky, most visible at max zoom-in.
+            float  _SkyExposureBypass;
 
             // Populated each frame by NormalsCapturePass.
             TEXTURE2D(_CapturedNormalsRT);
@@ -78,7 +86,8 @@ Shader "Hidden/LightSun" {
                 // float sunFactor = 1.0 - inShadow * (1.0 - isCaster) * _ShadowDarkness;
 
                 // Fade sun with distance from sky — same exposure lookup as LightAmbientFill.
-                float exposure = SampleSkyExposure(IN.uv);
+                // Bypassed on the SkyCamera (see _SkyExposureBypass declaration above).
+                float exposure = lerp(SampleSkyExposure(IN.uv), 1.0, _SkyExposureBypass);
 
                 return float4(saturate(_SunColor.rgb * (_SunIntensity * ndotl * exposure)), 1.0);
             }

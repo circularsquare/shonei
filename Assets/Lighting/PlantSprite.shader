@@ -83,11 +83,20 @@ Shader "Custom/PlantSprite" {
         Varyings vert(Attributes v) {
             Varyings o;
             float3 worldPos = TransformObjectToWorld(v.positionOS);
-            // Vertex-mode (no mask): apply cantilever-weighted sway. Mask-mode
-            // leaves the geometry alone — the fragment stage handles per-pixel
-            // displacement instead.
-            if (_PlantSway > 0.5 && _UseMask < 0.5) {
-                worldPos.x += SwayOffsetForVertex(worldPos.y);
+            // _UseMask = 0:  regular plant. Per-vertex weighted bend.
+            // _UseMask = 1:  flower with `_sway` mask, two SRs per instance.
+            //   _RoleIsHead = 0 (stem SR): same per-vertex bend; frag discards
+            //                              the mask>0.5 half so only stem pixels
+            //                              survive.
+            //   _RoleIsHead = 1 (head SR): every vertex shifts uniformly by the
+            //                              amount at _HeadCenterY — the head
+            //                              reads as a rigid chunk whose anchor
+            //                              follows the stem-top below.
+            // PlantVertexShift() in Sway.hlsl picks the right formula based on
+            // _RoleIsHead so the two shaders (this + NormalsCapture) can't
+            // disagree on the math.
+            if (_PlantSway > 0.5) {
+                worldPos.x += PlantVertexShift(worldPos.y);
             }
             o.positionCS = TransformWorldToHClip(worldPos);
             o.uv         = v.uv;
@@ -96,15 +105,15 @@ Shader "Custom/PlantSprite" {
         }
 
         half4 frag(Varyings i) : SV_Target {
-            float2 sampleUV = i.uv;
-            // Mask-mode: shift the texture sample by amplitude × per-pixel mask.
-            // Trunk pixels (mask=0) sample original UV → drawn rigidly. Leaf
-            // pixels (mask=1) sample shifted UV → leaf content moves.
-            if (_PlantSway > 0.5 && _UseMask > 0.5) {
+            // Mask-discard mode: stem and head SRs share the same texture and
+            // mask; each keeps only its own half so they don't double-draw
+            // wherever the masks overlap. Pixels at the boundary fall into
+            // whichever side wins the > 0.5 split.
+            if (_UseMask > 0.5) {
                 float mask = SAMPLE_TEXTURE2D(_SwayMask, sampler_SwayMask, i.uv).r;
-                sampleUV.x -= SwayAmplitude() * mask;
+                if ((mask > 0.5) != (_RoleIsHead > 0.5)) discard;
             }
-            half4 c = i.color * SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, sampleUV);
+            half4 c = i.color * SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv);
             clip(c.a - 0.01);
             return c;
         }

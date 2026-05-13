@@ -41,10 +41,19 @@ public class FurnishingVisuals : MonoBehaviour {
             if (slotSRs[slotIndex] != null) slotSRs[slotIndex].sprite = null;
             return;
         }
-        Sprite sprite = Resources.Load<Sprite>($"Sprites/Buildings/{item.furnishingSprite}");
+        string path = $"Sprites/Buildings/furnishings/{item.furnishingSprite}";
+        Sprite sprite = Resources.Load<Sprite>(path);
+        // Multi-sliced sprite-sheet fallback: Resources.Load<Sprite> returns null on a
+        // sheet imported in "Multiple" mode. Mirrors StructType.LoadSprite's fallback.
         if (sprite == null) {
-            // Missing asset is fine — the mechanic works, the visual just doesn't render.
-            // No log: many furnishings may legitimately ship without art.
+            Sprite[] all = Resources.LoadAll<Sprite>(path);
+            if (all != null && all.Length > 0 && all[0].texture != null) sprite = all[0];
+        }
+        if (sprite == null) {
+            // Load failed — typical causes: (a) file missing, (b) texture imported as
+            // Texture instead of Sprite, (c) sliced sheet with no sub-frames. Log so the
+            // failure is debuggable instead of silently showing no overlay.
+            Debug.LogError($"FurnishingVisuals: failed to load Sprite at Resources/{path} for item '{item.name}'. Check import settings (must be 'Sprite (2D and UI)').");
             if (slotSRs[slotIndex] != null) slotSRs[slotIndex].sprite = null;
             return;
         }

@@ -17,7 +17,13 @@ public class StoragePanel : MonoBehaviour {
     [SerializeField] private GameObject itemDisplayPrefab;  // same ItemDisplay prefab used everywhere
 
     private Inventory currentInv;
+    // The allow tree is built lazily on first Show() and persisted across the panel's
+    // entire lifetime — rebinding to the current inv on each Show() instead of rebuilding.
+    // Db.items is stable (loaded once from JSON at startup), so cached rows never need
+    // structural invalidation. Click cost drops from ~600–800 GO instantiations to ~46
+    // SetActive + LoadAllowed calls. See SPEC-ui §StoragePanel for the contract.
     private Dictionary<int, GameObject> allowDisplayGos = new Dictionary<int, GameObject>();
+    private bool _allowTreeBuilt = false;
     private List<GameObject> slotGos = new List<GameObject>();
 
     void Awake() {
@@ -40,25 +46,30 @@ public class StoragePanel : MonoBehaviour {
             titleText.text = inv.displayName ?? "storage";
         }
         PopulateSlots();
-        PopulateAllowTree();
+        BuildAllowTreeOnce();
+        RefreshAllowTreeForInv(inv);
         // Force layout recalculation so ContentSizeFitters update before the frame renders
         Canvas.ForceUpdateCanvases();
         LayoutRebuilder.ForceRebuildLayoutImmediate(GetComponent<RectTransform>());
     }
 
-    // Hide the panel and clean up dynamic children.
+    // Hide the panel. Cached allow-tree rows persist as inactive children (cheap;
+    // rebound on the next Show). Slot rows are still destroyed since their structure
+    // (one row per actual ItemStack) varies per inventory.
     public void Hide() {
         currentInv = null;
         ClearSlots();
-        ClearAllowTree();
         gameObject.SetActive(false);
     }
 
-    // Refresh slot quantities and allow toggle states. Called from InventoryController.TickUpdate.
+    // Refresh slot quantities, allow toggle states, and tree visibility.
+    // Called from InventoryController.TickUpdate while the panel is active.
+    // RefreshAllowTreeForInv also picks up items discovered while the panel is open
+    // (research unlocks, first-time production) — they appear within one tick.
     public void UpdateDisplay() {
         if (currentInv == null) return;
         UpdateSlots();
-        UpdateAllowToggles();
+        RefreshAllowTreeForInv(currentInv);
     }
 
     // --- Slot display (compact view of actual item stacks) ---
@@ -131,16 +142,18 @@ public class StoragePanel : MonoBehaviour {
 
     // --- Allow tree (collapsible item hierarchy with toggles) ---
 
-    private void PopulateAllowTree() {
-        ClearAllowTree();
+    // One-shot tree construction. Instantiates a row for EVERY item in Db.items
+    // regardless of the current inventory's storageClass — the per-inventory
+    // ItemTypeCompatible filter is applied at refresh time so the same cached tree
+    // works for Default / Liquid / Book inventories. Db.items iteration order is
+    // parent-before-child (same as InventoryController.AddItemDisplay relies on),
+    // so parent rows always exist by the time a child needs to look up its parent.
+    private void BuildAllowTreeOnce() {
+        if (_allowTreeBuilt) return;
         RectTransform panelRoot = allowContainer.GetComponent<RectTransform>();
 
-        // Iterate all items in Db.items (same order as InventoryController.AddItemDisplay).
-        // Each item is parented to either allowContainer (root items) or its parent's GO.
         foreach (Item item in Db.items) {
             if (item == null) continue;
-            // Hard filter: skip items incompatible with this inventory type
-            if (!currentInv.ItemTypeCompatible(item)) continue;
 
             Transform parent = item.parent == null
                 ? allowContainer
@@ -149,45 +162,55 @@ public class StoragePanel : MonoBehaviour {
             GameObject go = Instantiate(itemDisplayPrefab, parent);
             go.name = "ItemDisplay_" + item.name;
             allowDisplayGos[item.id] = go;
-
-            // Only show discovered items, respecting tree collapse
-            bool discovered = InventoryController.instance.discoveredItems.ContainsKey(item.id)
-                && InventoryController.instance.discoveredItems[item.id];
-            // Also respect parent's open state — if parent is collapsed, hide this child
-            bool parentOpen = item.parent == null || !allowDisplayGos.ContainsKey(item.parent.id)
-                || allowDisplayGos[item.parent.id].GetComponent<ItemDisplay>().open;
-            go.SetActive(discovered && parentOpen);
+            // Start inactive; RefreshAllowTreeForInv activates the right rows immediately.
+            go.SetActive(false);
 
             ItemDisplay display = go.GetComponent<ItemDisplay>();
             display.item = item; // set immediately (Start() won't run until next frame)
             display.displayMode = ItemDisplay.DisplayMode.Storage;
             display.panelRoot = panelRoot;
-            display.targetInventory = currentInv;
             display.getDisplayGo = id => allowDisplayGos.ContainsKey(id) ? allowDisplayGos[id] : null;
             display.SetDisplayMode(ItemDisplay.DisplayMode.Storage);
 
-            // Default collapse: groups with ≤1 discovered child start collapsed
+            // Preempt ItemDisplay.Start() — it runs next frame, but RefreshAllowTreeForInv
+            // reads `display.open` THIS frame to compute child visibility. Setting it here
+            // (once, on build) also lets the user's collapse state survive across Show() calls,
+            // since Start() runs only once per row lifetime.
             display.open = ItemDisplay.DefaultOpenForGroup(item);
 
-            // Set the item name text and toggle state immediately
             if (display.itemText != null) display.itemText.text = item.name;
+        }
+        _allowTreeBuilt = true;
+    }
+
+    // Per-Show rebind: walks every cached row and updates targetInventory, visibility,
+    // and allow-toggle sprite. Also serves as the per-tick refresh from UpdateDisplay
+    // (picks up newly-discovered items and any external allow/disallow changes).
+    private void RefreshAllowTreeForInv(Inventory inv) {
+        var discovered = InventoryController.instance.discoveredItems;
+        foreach (var kvp in allowDisplayGos) {
+            GameObject go = kvp.Value;
+            ItemDisplay display = go.GetComponent<ItemDisplay>();
+            Item item = display.item;
+
+            display.targetInventory = inv;
+
+            bool compat = inv.ItemTypeCompatible(item);
+            bool isDiscovered = discovered.TryGetValue(item.id, out bool d) && d;
+            bool visible = compat && isDiscovered && IsVisibleInAllowTree(item);
+            if (go.activeSelf != visible) go.SetActive(visible);
+
             display.LoadAllowed();
         }
     }
 
-    private void UpdateAllowToggles() {
-        foreach (var kvp in allowDisplayGos) {
-            ItemDisplay display = kvp.Value.GetComponent<ItemDisplay>();
-            if (display != null) display.LoadAllowed();
-        }
-    }
-
-    private void ClearAllowTree() {
-        foreach (var kvp in allowDisplayGos) {
-            kvp.Value.SetActive(false);
-            Destroy(kvp.Value);
-        }
-        allowDisplayGos.Clear();
+    // Mirrors InventoryController.IsVisibleInTree but walks allowDisplayGos.
+    private bool IsVisibleInAllowTree(Item item) {
+        if (item.parent == null) return true;
+        if (!allowDisplayGos.TryGetValue(item.parent.id, out var parentGo)) return true;
+        ItemDisplay parentDisplay = parentGo.GetComponent<ItemDisplay>();
+        if (parentDisplay == null) return true;
+        return parentDisplay.open && IsVisibleInAllowTree(item.parent);
     }
 
     // --- Allow All / Deny All (wire to buttons in editor) ---

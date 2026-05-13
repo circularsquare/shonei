@@ -7,7 +7,7 @@ using TMPro;
 using System;
 using System.Linq;
 
-// Global inventory data + UI for the always-visible "town" panel.
+// Global inventory data + UI for the always-visible "inventory" panel.
 // Owns the registry of all Inventory instances (floor, storage, market, animal),
 // the GlobalInventory totals, per-item production targets, item discovery state,
 // and the collapsible ItemDisplay tree that shows global quantities.
@@ -32,6 +32,12 @@ public class InventoryController : MonoBehaviour {
     public Dictionary<string, bool> pendingGroupOpenOverrides;
 
     public TextMeshProUGUI inventoryTitle;
+    public CollapsibleHeader inventoryHeader; // optional; SaveSystem reads/writes open state via saveKey
+    // Outer wood-framed container (the InventoryScroll RectTransform). When the header
+    // collapses, we resize this to just the header's height so the wood frame visually
+    // shrinks too. Optional — leave unwired to skip the resize behaviour.
+    public RectTransform inventoryScrollRect;
+    private float _inventoryScrollExpandedHeight = -1f;
     [SerializeField] private StoragePanel storagePanel;
     public Dictionary<int, bool> allowedClipboard;
     public List<Inventory> inventories = new List<Inventory>();
@@ -49,6 +55,25 @@ public class InventoryController : MonoBehaviour {
         // acorn/sawdust default to 10 liang so multi-product plant harvest gating can trigger.
         // Everything else defaults to 100 liang. SaveSystem reapplies persisted overrides on load.
         targets = Db.itemsFlat.ToDictionary(i => i.id, i => i.DefaultTargetFen);
+
+        if (inventoryHeader != null) inventoryHeader.onToggled += OnHeaderToggled;
+    }
+
+    // Resizes the wood-framed scroll container so it shrinks to just the header when
+    // collapsed. Captures the expanded height on first call so the original (designer-set)
+    // value gets restored on expand without hardcoding it. Also re-applies visibility on
+    // expand — CollapsibleHeader's bulk SetActive(true) on every later sibling activates
+    // undiscovered rows for one frame before the next 0.2-second TickUpdate would correct
+    // it; UpdateItemsDisplay here closes that flash window.
+    void OnHeaderToggled(bool open){
+        if (inventoryScrollRect != null) {
+            if (_inventoryScrollExpandedHeight < 0)
+                _inventoryScrollExpandedHeight = inventoryScrollRect.sizeDelta.y;
+            var sd = inventoryScrollRect.sizeDelta;
+            sd.y = open ? _inventoryScrollExpandedHeight : 22f;
+            inventoryScrollRect.sizeDelta = sd;
+        }
+        if (open) UpdateItemsDisplay();
     }
 
     public void AddInventory(Inventory inv) {
@@ -119,27 +144,27 @@ public class InventoryController : MonoBehaviour {
     void UpdateItemDisplay(Item item){
         if (item == null) return;
 
-        // Discovery on first-time positive quantity is enforced at the source in
-        // GlobalInventory.AddItem — by the time we get here, anything with >0 is
-        // already discovered.
-        //
-        // Update text if discovered (even if quantity is now 0, e.g. after Reset).
-        // Respect tree collapse state — don't re-activate items whose parent is collapsed.
-        if (discoveredItems[item.id]){
-            itemDisplayGos[item.id]?.SetActive(IsVisibleInTree(item));
-            GameObject itemDisplayGo = itemDisplayGos[item.id];
-            if (itemDisplayGo == null){Debug.LogError("itemdisplaygo not found: " + item.name);return;}
+        // Enforce visibility every tick: discovered items get the IsVisibleInTree result;
+        // undiscovered items are forced inactive. Self-healing for any case where a row
+        // ended up active despite being undiscovered (root items in particular had been
+        // sneaking through with the prefab default "item" placeholder text).
+        GameObject itemDisplayGo = itemDisplayGos[item.id];
+        if (!discoveredItems[item.id]){
+            if (itemDisplayGo != null && itemDisplayGo.activeSelf) itemDisplayGo.SetActive(false);
+            return;
+        }
+        if (itemDisplayGo == null){Debug.LogError("itemdisplaygo not found: " + item.name); return;}
+        itemDisplayGo.SetActive(IsVisibleInTree(item));
 
-            ItemDisplay itemDisplayComp = itemDisplayGo.GetComponent<ItemDisplay>();
-            if (itemDisplayComp.itemText != null) itemDisplayComp.itemText.text = item.name;
-            if (itemDisplayComp.quantityText != null)
-                itemDisplayComp.quantityText.text = ItemStack.FormatQ(globalInventory.Quantity(item), item.discrete);
+        ItemDisplay itemDisplayComp = itemDisplayGo.GetComponent<ItemDisplay>();
+        if (itemDisplayComp.itemText != null) itemDisplayComp.itemText.text = item.name;
+        if (itemDisplayComp.quantityText != null)
+            itemDisplayComp.quantityText.text = ItemStack.FormatQ(globalInventory.Quantity(item), item.discrete);
 
-            itemDisplayComp.SetTargetDisplay(targets[item.id]);
+        itemDisplayComp.SetTargetDisplay(targets[item.id]);
 
-            if (item.parent != null){
-                UpdateItemDisplay(item.parent);
-            }
+        if (item.parent != null){
+            UpdateItemDisplay(item.parent);
         }
     }
     public void UpdateItemsDisplay(){ foreach (Item item in Db.itemsFlat){ UpdateItemDisplay(item); } }
@@ -198,7 +223,7 @@ public class InventoryController : MonoBehaviour {
         selectedInventory = inv;
         RefreshHighlights();
 
-        if (inventoryTitle != null) inventoryTitle.text = "town";
+        if (inventoryTitle != null) inventoryTitle.text = "inventory";
         if (inv != null && inv.invType == Inventory.InvType.Storage) {
             if (storagePanel != null) storagePanel.Show(inv);
         } else {
@@ -214,10 +239,10 @@ public class InventoryController : MonoBehaviour {
         selectedInventory = primary;
         RefreshHighlights();
         if (primary == null) {
-            if (inventoryTitle != null) inventoryTitle.text = "town";
+            if (inventoryTitle != null) inventoryTitle.text = "inventory";
             if (storagePanel != null) storagePanel.Hide();
         } else if (primary.invType == Inventory.InvType.Storage) {
-            if (inventoryTitle != null) inventoryTitle.text = "town";
+            if (inventoryTitle != null) inventoryTitle.text = "inventory";
             if (storagePanel != null) storagePanel.Show(primary);
         }
         UpdateItemsDisplay();
@@ -237,7 +262,7 @@ public class InventoryController : MonoBehaviour {
         }
         RefreshHighlights();
         if (selectedInventory == null) {
-            if (inventoryTitle != null) inventoryTitle.text = "town";
+            if (inventoryTitle != null) inventoryTitle.text = "inventory";
             if (storagePanel != null) storagePanel.Hide();
         } else if (selectedInventory.invType == Inventory.InvType.Storage) {
             if (storagePanel != null) storagePanel.Show(selectedInventory);
@@ -275,6 +300,9 @@ public class InventoryController : MonoBehaviour {
         pendingGroupOpenOverrides = null;
         foreach (var kv in itemDisplayGos)
             kv.Value?.SetActive(false);
+        // Hide StoragePanel so its cached rows don't keep stale Inventory refs from
+        // the previous world. Next click rebinds them via Show(inv).
+        if (storagePanel != null) storagePanel.Hide();
         Canvas.ForceUpdateCanvases();
         LayoutRebuilder.ForceRebuildLayoutImmediate(inventoryPanel.GetComponent<RectTransform>());
     }

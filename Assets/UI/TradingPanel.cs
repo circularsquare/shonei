@@ -41,7 +41,12 @@ public class TradingPanel : MonoBehaviour {
     [Header("Market Inventory")]
     public Transform      marketInvContent;
     public GameObject     itemDisplayPrefab;
+    // Built lazily on first Toggle(open) and reused for the panel's lifetime —
+    // same pattern as StoragePanel's allow tree. Rebound to the current market
+    // inventory on each open so a save-load (which destroys/recreates the market
+    // building) is picked up. See SPEC-ui §StoragePanel for the contract.
     private Dictionary<int, GameObject> marketDisplayGos = new Dictionary<int, GameObject>();
+    private bool _marketTreeBuilt = false;
     private Inventory     currentMarket;
 
     [Header("Item Icon Grid")]
@@ -117,7 +122,7 @@ public class TradingPanel : MonoBehaviour {
         if (gameObject.activeSelf) gameObject.SetActive(false);
         else {
             UI.OpenExclusive(gameObject);
-            PopulateMarketTree();
+            OpenMarketTree();
         }
     }
 
@@ -148,20 +153,35 @@ public class TradingPanel : MonoBehaviour {
 
     // ── Market inventory ItemDisplay tree ──────────────────────────
 
-    // Builds the full collapsible ItemDisplay tree for the market inventory.
-    // Follows the same pattern as StoragePanel.PopulateAllowTree.
-    void PopulateMarketTree() {
-        ClearMarketTree();
+    // Toggle(open) entry point: builds the tree on first call, then rebinds it
+    // to the current market inventory (which may differ from last open if the
+    // market building was destroyed/rebuilt) and refreshes display.
+    void OpenMarketTree() {
         if (marketInvContent == null || itemDisplayPrefab == null) return;
-
+        BuildMarketTreeOnce();
         currentMarket = TradingClient.FindMarketInventory();
         if (currentMarket == null) return;
+        // Rebind every cached row to the (possibly new) market inv before refresh.
+        foreach (var kvp in marketDisplayGos) {
+            ItemDisplay display = kvp.Value.GetComponent<ItemDisplay>();
+            if (display != null) display.targetInventory = currentMarket;
+        }
+        UpdateMarketTree();
+        Canvas.ForceUpdateCanvases();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(marketInvContent as RectTransform);
+    }
 
+    // One-shot tree construction. Builds a row for every item in Db.items
+    // regardless of ItemTypeCompatible — the per-market filter is applied at
+    // refresh time in UpdateMarketTree's visibility computation, so the same
+    // cache works if the market's storageClass ever changes. Mirrors
+    // StoragePanel.BuildAllowTreeOnce.
+    void BuildMarketTreeOnce() {
+        if (_marketTreeBuilt) return;
         RectTransform panelRoot = marketInvContent.GetComponent<RectTransform>();
 
         foreach (Item item in Db.items) {
             if (item == null) continue;
-            if (!currentMarket.ItemTypeCompatible(item)) continue;
 
             Transform parent = item.parent == null
                 ? marketInvContent
@@ -172,35 +192,35 @@ public class TradingPanel : MonoBehaviour {
             GameObject go = Instantiate(itemDisplayPrefab, parent);
             go.name = "ItemDisplay_" + item.name;
             marketDisplayGos[item.id] = go;
-
-            bool discovered = InventoryController.instance.discoveredItems.ContainsKey(item.id)
-                && InventoryController.instance.discoveredItems[item.id];
-            // Market panel: groups are always expanded, so visibility depends only on discovery.
-            go.SetActive(discovered);
+            // Start inactive; UpdateMarketTree (called from OpenMarketTree) activates
+            // discovered + compatible rows immediately.
+            go.SetActive(false);
 
             ItemDisplay display = go.GetComponent<ItemDisplay>();
             display.item = item;
             display.displayMode = ItemDisplay.DisplayMode.Market;
             display.panelRoot = panelRoot;
-            display.targetInventory = currentMarket;
             display.getDisplayGo = id => marketDisplayGos.ContainsKey(id) ? marketDisplayGos[id] : null;
             display.SetDisplayMode(ItemDisplay.DisplayMode.Market);
+            // Market mode default — Start() also sets this for Market mode, but we
+            // preempt so the first UpdateMarketTree's visibility walk is correct.
             display.open = true;
 
-            // Set initial text
-            UpdateMarketItemDisplay(display, item);
+            if (display.itemText != null) display.itemText.text = item.name;
         }
 
-        Canvas.ForceUpdateCanvases();
-        LayoutRebuilder.ForceRebuildLayoutImmediate(panelRoot);
+        _marketTreeBuilt = true;
     }
 
+    // OnDestroy cleanup — destroys cached rows. Tree will rebuild on next Toggle
+    // if the panel ever survives this (it normally doesn't; called at scene unload).
     void ClearMarketTree() {
         foreach (var kvp in marketDisplayGos) {
             kvp.Value.SetActive(false);
             Destroy(kvp.Value);
         }
         marketDisplayGos.Clear();
+        _marketTreeBuilt = false;
         currentMarket = null;
     }
 
@@ -213,13 +233,15 @@ public class TradingPanel : MonoBehaviour {
         foreach (var kvp in marketDisplayGos) {
             ItemDisplay display = kvp.Value.GetComponent<ItemDisplay>();
             if (display == null || display.item == null) continue;
-            // Re-apply visibility = discovered ∧ no-ancestor-collapsed — items
-            // discovered since the tree was built (e.g. via /give) stay hidden
-            // otherwise until panel reopen, and we mustn't fight a user's
-            // dropdown collapse by re-activating their hidden children.
+            // Visibility = compatible ∧ discovered ∧ no-ancestor-collapsed.
+            // Compat is checked here (not at build time) so the cached tree works
+            // even if the market's storageClass changes. Items discovered since the
+            // tree was built (e.g. via /give) appear within one tick, and we mustn't
+            // fight a user's dropdown collapse by re-activating their hidden children.
+            bool compat = currentMarket.ItemTypeCompatible(display.item);
             bool discovered = discoveredItems != null
                 && discoveredItems.TryGetValue(kvp.Key, out bool d) && d;
-            bool shouldBeActive = discovered && IsVisibleInMarketTree(display.item);
+            bool shouldBeActive = compat && discovered && IsVisibleInMarketTree(display.item);
             if (kvp.Value.activeSelf != shouldBeActive) {
                 kvp.Value.SetActive(shouldBeActive);
             }

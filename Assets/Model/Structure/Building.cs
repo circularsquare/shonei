@@ -156,6 +156,12 @@ public class Building : Structure {
         if (st.hasFurnishingSlots) {
             furnishingSlots = new FurnishingSlots(st.furnishingSlotNames, x, y, st.name);
             furnishingSlots.onSlotChanged = OnFurnishingSlotChanged;
+            // Wire visuals from the constructor (not AttachAnimations) — base() has already
+            // called AttachAnimations before we get here, and furnishingSlots wasn't set yet
+            // at that point. By the time this line runs, `go` and `sr` are populated, so
+            // FurnishingVisuals.Init can read parentSortingOrder normally.
+            var fv = go.AddComponent<FurnishingVisuals>();
+            fv.Init(this);
         }
     }
 
@@ -188,12 +194,9 @@ public class Building : Structure {
         if (structType.powerBoost > 1f && !(this is PowerSystem.IPowerConsumer)) {
             AttachPortStubs(BuildingPowerConsumer.GetPerimeterPorts(this));
         }
-        // Furnishing visuals: one SpriteRenderer per slot, layered above the base building
-        // sprite. Init reads furnishingSlots and subscribes to onSlotChanged via Building.
-        if (furnishingSlots != null) {
-            FurnishingVisuals fv = go.AddComponent<FurnishingVisuals>();
-            fv.Init(this);
-        }
+        // Note: FurnishingVisuals is attached from the Building constructor (after
+        // furnishingSlots is set), not here. AttachAnimations runs from base() before
+        // any of Building's own ctor body executes.
     }
 
     public override void OnPlaced() {

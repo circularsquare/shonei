@@ -35,6 +35,12 @@ public class InfoPanel : MonoBehaviour {
     // Backward-compat: returns the selected tile, used by Blueprint.cs to check if info needs refresh.
     public object obj => currentSelection?.tile;
 
+    // Whether the given animal is part of the currently-displayed selection.
+    // Used by MouseController for click-to-follow detection.
+    public bool IsAnimalSelected(Animal a) {
+        return a != null && currentSelection?.animals != null && currentSelection.animals.Contains(a);
+    }
+
     // What kind of entity each tab represents.
     private enum TabType { Tile, Structure, Blueprint, Animal }
 

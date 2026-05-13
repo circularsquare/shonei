@@ -37,6 +37,12 @@ public class Windmill : Building, PowerSystem.IPowerProducer {
     // spins one way and negative wind the other.
     public const float WheelDegPerSecAtMaxWind = 126f;
 
+    // Initial blade pose, in degrees. 4-blade windmills have 4-fold rotational
+    // symmetry, so any multiple of 90° looks identical to "cardinal" — pick
+    // something well off-axis. Avoids the "perfectly aligned" look on load
+    // when wind is near zero (rotation isn't persisted in the save).
+    public const float InitialWheelAngle = 15f;
+
     public Windmill(StructType st, int x, int y, bool mirrored = false) : base(st, x, y, mirrored) { }
 
     public override void OnPlaced() {
@@ -88,6 +94,7 @@ public class Windmill : Building, PowerSystem.IPowerProducer {
             // reflects across the building's horizontal centre, which is also edge-aligned.
             float hubX = mirrored ? (structType.nx - WheelHubX) : WheelHubX;
             wheelGO.transform.position = new Vector3(x - 0.5f + hubX, y - 0.5f + WheelHubY, 0f);
+            wheelGO.transform.localRotation = Quaternion.Euler(0f, 0f, InitialWheelAngle);
 
             SpriteRenderer wsr = SpriteMaterialUtil.AddSpriteRenderer(wheelGO);
             wsr.sprite = wheelSprite;

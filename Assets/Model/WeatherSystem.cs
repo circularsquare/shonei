@@ -8,17 +8,19 @@ using UnityEngine;
 // Rain is driven by a continuous `humidity` field: rain happens when humidity
 // crosses `rainThreshold` from below, and stops when it crosses back. Humidity
 // itself is a slow Ornstein-Uhlenbeck walk reverting toward `humidityMean`,
-// stepped once per in-game hour and smoothed continuously toward the target.
+// stepped 3× per in-game hour and smoothed continuously toward the target.
 // The walk is calibrated so humidity spends roughly a quarter of its time
 // above the rain threshold, matching the old hardcoded 4% / 12% transition
 // rates. CloudLayer also reads `humidity` to drive cloud count, size, altitude
 // and tint, so the sky visually builds up before rain and clears after.
 //
-// Precipitation type splits on temperature: when isRaining is true, the active
-// channel is rainAmount if temperature ≥ snowThresholdC, else snowAmount. Both
-// channels lerp smoothly via the same MoveTowards step, so transitions across
-// the threshold (which only shift slowly via the daily/yearly sine waves) cross-
-// fade rather than snap. Hard-switch design — no smoothing band today.
+// Precipitation intensity is a smooth function of humidity (see ComputeWetness):
+// 0 below (rainThreshold − rainLerpHalfRange), ramping linearly to 1 above
+// (rainThreshold + rainLerpHalfRange). Particles fade in before the discrete
+// `isRaining` flag flips and fade out after it clears. Temperature gates which
+// channel carries the intensity — rainAmount if ≥ snowThresholdC, else
+// snowAmount; both channels lerp smoothly via the same MoveTowards step so
+// temperature transitions cross-fade rather than snap.
 //
 // Light multipliers at full intensity (max(rainAmount, snowAmount) = 1):
 //   Sun intensity: 0.25
@@ -26,19 +28,19 @@ using UnityEngine;
 //
 // Transitions lerp over lerpDuration seconds (default 5s).
 //
-// Wind: Ornstein-Uhlenbeck random walk targets a new value each in-game
-// hour; the public `wind` field exponentially eases toward that target each
-// frame so all readers (Windmill output / blades, RainParticles horizontal
+// Wind: Ornstein-Uhlenbeck random walk steps targetWind 3× per in-game hour;
+// the public `wind` field exponentially eases toward that target each frame
+// so all readers (Windmill output / blades, RainParticles horizontal
 // velocity, CloudLayer drift, plant sway shader) see continuous motion
-// rather than hourly steps.
+// rather than sub-hourly steps.
 //   target step = -reversion * targetWind  +  Uniform(-shock, +shock)
 //   wind <- Lerp(wind, targetWind, 1 - exp(-dt * windSmoothingRate))
 // Mean reversion is slow — wind drifts for hours before pulling back, so
 // direction flips happen on average ~once per in-game day. Stationary
-// amplitude is set by the ratio shock² / (6·reversion): with both knobs
-// halved relative to a brisker config, jitter halves while amplitude is
-// preserved. Windmill clamps the magnitude for output via Mathf.Min(1, w),
-// so any excursions past ±1 saturate at MaxOutput. Positive = blowing right.
+// amplitude is set by the ratio shock² / (6·reversion); constants are sized
+// so the typical drift sits near ±0.4. Windmill clamps the magnitude for
+// output via Mathf.Min(1, w), so any excursions past ±1 saturate at
+// MaxOutput. Positive = blowing right.
 public class WeatherSystem {
     public static WeatherSystem instance { get; private set; }
 
@@ -68,11 +70,19 @@ public class WeatherSystem {
     // Not persisted — on load both reset to 0 and the walk warms back up.
     float targetWind;
 
-    // Exponential smoothing rate (per real second). 0.15 → ~95% of the way
-    // to a new target after ~20 s of real time, comfortably faster than the
-    // hourly step interval (≈25 s for a 10-min IRL day) so wind isn't
-    // perpetually mid-transition, but slow enough to feel weather-y.
-    const float windSmoothingRate = 0.15f;
+    // Per-sub-step OU constants. Sized so 3 sub-steps per in-game hour
+    // reproduce the same stationary std (≈0.41) and autocorrelation timescale
+    // (~100 in-game hours) as the previous hourly 0.01 / 0.10 step. Shock
+    // half-width scales with √reversion to preserve stationary variance
+    // V = h²/(6λ).
+    const float windReversion = 0.00333f;
+    const float windShock     = 0.0577f;
+
+    // Exponential smoothing rate (per real second). 0.45 → ~95% of the way
+    // to a new target after ~7 s of real time, comfortably faster than the
+    // sub-hourly step interval (~3.3 s real with ticksInDay=240) so wind
+    // isn't perpetually mid-transition, but slow enough to feel weather-y.
+    const float windSmoothingRate = 0.45f;
 
     // Ambient temperature in Celsius, driven by yearly + daily sine waves.
     // Yearly: peaks midsummer (day 7.5) at ~30°C high, troughs midwinter (day 17.5) at ~5°C high.
@@ -91,46 +101,72 @@ public class WeatherSystem {
     // threshold so clear weather is the default and rain is an excursion.
     public const float humidityMean = 0.5f;
 
-    // Above this, isRaining flips true. With humidityMean=0.5 and the shock
-    // params below, the walk's stationary std is ~0.22, putting the threshold
-    // about 0.7σ above mean — humidity sits above ~25% of the time, matching
-    // the old 4%/12% rate's long-run rain fraction.
-    public const float rainThreshold = 0.65f;
+    // Midpoint of the precipitation lerp band — also where the discrete
+    // `isRaining` boolean flips. With humidityMean=0.5 and the shock params
+    // below, the walk's stationary std is ~0.21, putting the threshold
+    // about 0.95σ above mean. Light drizzle starts below this (see lerp band).
+    public const float rainThreshold = 0.7f;
 
-    // Reversion ≈ 0.12/hr → autocorrelation timescale ~8 hours, so a rain
-    // episode (humidity sitting above the threshold) lasts on the order of
-    // single-digit in-game hours — matches the average rain duration the
-    // old 4% / 12% Bernoulli model produced.
-    const float humidityReversion = 0.12f;
+    // Half-width of the humidity band over which rainAmount/snowAmount lerp
+    // from 0 → 1. Below (rainThreshold − rainLerpHalfRange = 0.6) no particles;
+    // above (rainThreshold + rainLerpHalfRange = 0.8) full intensity. Most
+    // rain-driven effects (drain, replenish, tank fill, floor soak) scale
+    // their magnitude by the resulting wetness so light drizzle has light
+    // effects and heavy rain has heavy effects — no on/off cliff at the
+    // discrete threshold.
+    const float rainLerpHalfRange = 0.1f;
+
+    // Reversion ≈ 0.05 per sub-step × 3 sub-steps/hr ≈ 0.15/hr →
+    // autocorrelation timescale ~6.5 in-game hours. Bumped above the bare
+    // OU calibration so clear↔rain transitions are less autocorrelated and
+    // feel closer to the old per-hour Bernoulli model's independent flips.
+    const float humidityReversion = 0.05f;
     // Shock half-width scales with √reversion to preserve stationary
-    // variance V = h²/(6λ). Keeping std ≈ 0.22 puts the 0.65 threshold at
+    // variance V = h²/(6λ). Keeping std ≈ 0.21 puts the 0.65 threshold at
     // ~0.7σ above mean, so the long-run rain fraction stays around 25%.
-    const float humidityShock     = 0.18f;
+    const float humidityShock     = 0.1162f;
+
+    // Subtracted from `targetHumidity` each sub-step, scaled by current
+    // wetness. Physically: rain depletes atmospheric moisture, so episodes
+    // don't linger above the threshold. At full rain (wetness=1) the drain
+    // is the full value, lowering the effective equilibrium from
+    // humidityMean=0.5 to 0.5 - rainHumidityDrain/humidityReversion = 0.2 —
+    // well below rainThreshold so rain reliably terminates. At light
+    // drizzle the drain is proportionally smaller.
+    const float rainHumidityDrain = 0.015f;
 
     // Continuous smoothing rate (per real second). Slower than wind because
     // weather inertia should feel like hours not seconds — visible cloud
-    // build-up should outlast a single hourly step.
-    const float humiditySmoothingRate = 0.05f;
+    // build-up should outlast several sub-hourly steps.
+    const float humiditySmoothingRate = 0.15f;
 
     const float lerpDuration = 4f;
 
     // Called by World.Update() every frame.
     public void Tick(float dt) {
         UpdateTemperature();
-        bool snowing  = isRaining && temperature <  snowThresholdC;
-        bool rainingT = isRaining && temperature >= snowThresholdC;
+        // Precipitation intensity rises smoothly with humidity across a band
+        // centred on rainThreshold — particles fade in before isRaining flips
+        // and fade out after it clears. Temperature gates which channel (rain
+        // or snow) carries the wetness.
+        float wetness = ComputeWetness();
+        bool  isSnow  = temperature < snowThresholdC;
         float step    = dt / lerpDuration;
-        rainAmount = Mathf.MoveTowards(rainAmount, rainingT ? 1f : 0f, step);
-        snowAmount = Mathf.MoveTowards(snowAmount, snowing  ? 1f : 0f, step);
+        rainAmount = Mathf.MoveTowards(rainAmount, isSnow ? 0f : wetness, step);
+        snowAmount = Mathf.MoveTowards(snowAmount, isSnow ? wetness : 0f, step);
 
-        // Frame-rate-independent exponential ease toward the hourly targets.
+        // Frame-rate-independent exponential ease toward the sub-hourly targets.
         wind     = Mathf.Lerp(wind,     targetWind,     1f - Mathf.Exp(-dt * windSmoothingRate));
         humidity = Mathf.Lerp(humidity, targetHumidity, 1f - Mathf.Exp(-dt * humiditySmoothingRate));
     }
 
-    // Called by World.Update() once per in-game hour.
-    public void OnHourElapsed() {
-        targetWind += -0.01f * targetWind + Rng.Range(-0.10f, 0.10f);
+    // Called by World.Update() 3× per in-game hour. Steps the OU random-walk
+    // targets for wind and humidity, then checks the rain transition against
+    // the smoothed humidity. Constants are sized so the long-run statistics
+    // match the previous once-per-hour walk (see windReversion / humidityReversion).
+    public void StepWindHumidity() {
+        targetWind += -windReversion * targetWind
+                      + Rng.Range(-windShock, windShock);
 
         // Humidity OU step. Mean-revert toward humidityMean, then shock.
         // Clamp keeps the walk inside [0, 1] so cloud-cover math stays sane;
@@ -138,21 +174,30 @@ public class WeatherSystem {
         // inside the interval.
         targetHumidity += -humidityReversion * (targetHumidity - humidityMean)
                           + Rng.Range(-humidityShock, humidityShock);
+        // Rain depletes humidity, so episodes terminate instead of lingering.
+        // Scaled by wetness so light drizzle drains weakly and heavy rain
+        // drains hard — no on/off jump at the discrete threshold crossing.
+        targetHumidity -= rainHumidityDrain * ComputeWetness();
         targetHumidity = Mathf.Clamp01(targetHumidity);
 
         // Rain flips on the smoothed humidity (not the target) so the
         // transition matches what the player sees on the cloud field, which
-        // also reads the smoothed value.
+        // also reads the smoothed value. Checked on the finer sub-hourly
+        // cadence so rain start/stop isn't snapped to hour boundaries.
         bool nowRaining = humidity > rainThreshold;
         if (nowRaining != isRaining) SetRain(nowRaining);
+    }
 
-        if (isRaining) {
-            // Snow doesn't fill tanks or top up puddles immediately — accumulation
-            // and melt are a future feature; for now snowing skips this entirely.
-            if (temperature >= snowThresholdC) {
-                ReplenishRainwater();
-                SoakExposedFloorInventories();
-            }
+    // Called by World.Update() once per in-game hour. Hourly physical effects
+    // of weather; the OU random walks live in StepWindHumidity instead.
+    public void OnHourElapsed() {
+        // Snow doesn't fill tanks or top up puddles immediately — accumulation
+        // and melt are a future feature; for now snowing routes wetness to
+        // snowAmount and leaves rainAmount at 0, so the calls below early-exit
+        // without us needing an explicit temperature gate.
+        if (rainAmount > 0f) {
+            ReplenishRainwater(rainAmount);
+            SoakExposedFloorInventories(rainAmount);
         }
 
         // Soil diffusion, evaporation, and plant passive draw run once per in-game hour.
@@ -160,15 +205,18 @@ public class WeatherSystem {
         MoistureSystem.instance?.HourlyUpdate();
     }
 
-    // Refreshes the wet timer on every floor inventory exposed to the open sky while
-    // rain (not snow) is falling. Wet floor inventories decay at 2× the normal rate
-    // for the duration; sweep is hourly so a freshly-dropped pile waits at most one
-    // in-game hour before catching its first soak. Storage and animal inventories
-    // are never wet by construction (MarkWet gates on InvType.Floor).
-    void SoakExposedFloorInventories() {
+    // Refreshes the wet timer on every floor inventory exposed to the open sky.
+    // Wet floor inventories decay at 2× the normal rate for the duration; sweep
+    // is hourly so a freshly-dropped pile waits at most one in-game hour before
+    // catching its first soak. Storage and animal inventories are never wet by
+    // construction (MarkWet gates on InvType.Floor). Duration scales with
+    // rainIntensity so a light drizzle only wets briefly while a downpour wets
+    // for the full quarter-day baseline.
+    void SoakExposedFloorInventories(float rainIntensity) {
         World w = World.instance;
         if (w == null) return;
-        float duration = World.ticksInDay / 4f;
+        float duration = (World.ticksInDay / 4f) * rainIntensity;
+        if (duration <= 0f) return;
         for (int x = 0; x < w.nx; x++) {
             for (int y = 0; y < w.ny; y++) {
                 Tile t = w.GetTileAt(x, y);
@@ -179,10 +227,10 @@ public class WeatherSystem {
         }
     }
 
-    void ReplenishRainwater() {
+    void ReplenishRainwater(float rainIntensity) {
         if (WaterController.instance == null) return;
-        WaterController.instance.RainReplenish();
-        WaterController.instance.RainFillTanks();
+        WaterController.instance.RainReplenish(rainIntensity);
+        WaterController.instance.RainFillTanks(rainIntensity);
     }
 
     // Called by SaveSystem when loading a save file — snaps immediately, no lerp.
@@ -196,16 +244,29 @@ public class WeatherSystem {
     public void RestoreState(bool rain, float savedHumidity) {
         isRaining = rain;
         UpdateTemperature();
-        bool asSnow = rain && temperature < snowThresholdC;
-        rainAmount  = (rain && !asSnow) ? 1f : 0f;
-        snowAmount  = asSnow            ? 1f : 0f;
-
         if (savedHumidity > 0f) {
             humidity = savedHumidity;
         } else {
             humidity = rain ? rainThreshold + 0.05f : humidityMean;
         }
         targetHumidity = humidity;
+
+        // Snap rain/snow channels to the wetness implied by humidity so the
+        // loaded scene shows the right intensity on the first frame instead
+        // of fading in over lerpDuration.
+        float wetness = ComputeWetness();
+        bool  isSnow  = temperature < snowThresholdC;
+        rainAmount = isSnow ? 0f : wetness;
+        snowAmount = isSnow ? wetness : 0f;
+    }
+
+    // Smooth precipitation intensity from the current smoothed humidity:
+    // 0 below (rainThreshold − rainLerpHalfRange), ramps linearly to 1 above
+    // (rainThreshold + rainLerpHalfRange). Read by Tick() and RestoreState().
+    float ComputeWetness() {
+        return Mathf.InverseLerp(rainThreshold - rainLerpHalfRange,
+                                 rainThreshold + rainLerpHalfRange,
+                                 humidity);
     }
 
     // Combined precipitation intensity — overcast is overcast regardless of type.

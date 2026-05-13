@@ -93,9 +93,12 @@ public class SoundManager : MonoBehaviour {
 
         float rain = WeatherSystem.instance?.rainAmount ?? 0f;
 
-        // Quadratic curve so volume drops off faster than the linear particle
-        // alpha/emission — keeps sound and visuals feeling in sync.
-        float vol = rain * rain * ambientVolume * UserMaster() * UserAmbient();
+        // Step-then-ramp: as soon as there's any rain at all, jump straight
+        // to 50% of the ambient baseline, then ramp linearly to 100% at full
+        // rain. Gives a snappy "it just started raining" cue instead of
+        // creeping in quietly alongside the particle fade-in.
+        float curve = rain > 0f ? 0.5f + 0.5f * rain : 0f;
+        float vol = curve * ambientVolume * UserMaster() * UserAmbient();
 
         if (vol > 0.005f) {
             SetAmbientClip("rain");

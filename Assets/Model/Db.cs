@@ -17,6 +17,7 @@ public class Db : MonoBehaviour {
     public static Dictionary<string, StructType> structTypeByName {get; protected set;}
     public static Dictionary<string, PlantType> plantTypeByName {get; protected set;}
     public static Dictionary<string, TileType> tileTypeByName {get; protected set;}
+    public static Dictionary<string, FlowerType> flowerTypeByName {get; protected set;}
 
     public static Item[] items = new Item[500];
     public static Item[] itemsFlat = new Item[500];
@@ -58,6 +59,11 @@ public class Db : MonoBehaviour {
     public static StructType[] structTypes = new StructType[600];
     public static PlantType[] plantTypes = new PlantType[600];
     public static TileType[] tileTypes = new TileType[100];
+    // Flowers are decorative-only (no Structure registry, no save state). The flat
+    // list is kept for FlowerController's weighted-pick loop; flowerTypeByName lets
+    // future systems (e.g. a harvestability upgrade path) look up a type by name.
+    public static FlowerType[] flowerTypes = new FlowerType[64];
+    public static int flowerTypesCount = 0;
 
     // Mouse name pools loaded from Resources/Misc/names.csv.
     public static List<string> chineseNames = new List<string>();
@@ -93,6 +99,7 @@ public class Db : MonoBehaviour {
         structTypeByName = new Dictionary<string, StructType>();
         tileTypeByName = new Dictionary<string, TileType>();
         plantTypeByName = new Dictionary<string, PlantType>();
+        flowerTypeByName = new Dictionary<string, FlowerType>();
 
         items      = new Item[500];
         itemsFlat  = new Item[500];
@@ -102,6 +109,8 @@ public class Db : MonoBehaviour {
         structTypes = new StructType[600];
         plantTypes  = new PlantType[600];
         tileTypes   = new TileType[100];
+        flowerTypes = new FlowerType[64];
+        flowerTypesCount = 0;
         bookRecipeIdByTechId = new Dictionary<int, int>();
         bookItemIdByTechId   = new Dictionary<int, int>();
         itemsByFurnishingSlot = new Dictionary<string, List<Item>>();
@@ -505,6 +514,26 @@ public class Db : MonoBehaviour {
             if (recipe.skill != null) continue;
             if (jobByName.TryGetValue(recipe.job, out Job j))
                 recipe.skill = j.defaultSkill;
+        }
+
+        // read Flowers (purely decorative — no Structure registration, no save state).
+        // Missing file is non-fatal: log and continue. The game runs fine without any
+        // flowers; FlowerController just has nothing to spawn.
+        string jsonFlowerTypes = LoadJsonText("flowersDb");
+        if (jsonFlowerTypes != null) {
+            FlowerType[] flowerTypesUnplaced = JsonConvert.DeserializeObject<FlowerType[]>(jsonFlowerTypes);
+            foreach (FlowerType ft in flowerTypesUnplaced) {
+                if (flowerTypeByName.ContainsKey(ft.name)) {
+                    Debug.LogError($"multiple flower types with name='{ft.name}'");
+                    continue;
+                }
+                if (flowerTypesCount >= flowerTypes.Length) {
+                    Debug.LogError($"flower types exceed capacity ({flowerTypes.Length}) — increase Db.flowerTypes array size");
+                    break;
+                }
+                flowerTypes[flowerTypesCount++] = ft;
+                flowerTypeByName.Add(ft.name, ft);
+            }
         }
     }
 

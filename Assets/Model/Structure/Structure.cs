@@ -325,6 +325,7 @@ public class Structure {
                 if (t.structs[depth] != null)
                     Debug.LogError($"Already a depth-{depth} structure at {x+dx},{y+dy}!");
                 t.structs[depth] = this;
+                t.NotifyStructChanged();
                 // Roads (depth 3) suppress tile overlays — see WorldController.OnTileOverlayChanged.
                 if (depth == 3) t.NotifyOverlayDirty();
             }
@@ -485,6 +486,7 @@ public class Structure {
                 if (t == null) continue;
                 if (t.structs[depth] == this) {
                     t.structs[depth] = null;
+                    t.NotifyStructChanged();
                     // Removing a road un-suppresses any overlay on this tile.
                     if (depth == 3) t.NotifyOverlayDirty();
                 }

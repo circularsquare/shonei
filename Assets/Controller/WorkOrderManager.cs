@@ -482,7 +482,7 @@ public class WorkOrderManager : MonoBehaviour {
             isActive    = () => !building.disabled && !building.IsBroken
                               && building.res.reserved > 0
                               && fs.FindAnyHaulableSlotIndex() >= 0,
-            canDo       = a => a.job.name == "hauler",
+            canDo       = null,  // any mouse can furnish — furnishings are a colony polish task, not job-gated
             getDistance = a => Mathf.Abs(building.x - a.x) + Mathf.Abs(building.y - a.y)
         });
         return true;

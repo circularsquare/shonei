@@ -1,0 +1,62 @@
+[
+  {
+    "id": 0,
+    "name": "buttercup",
+    "weight": 1.0
+  },
+  {
+    "id": 1,
+    "name": "poppy",
+    "weight": 0.8
+  },
+  {
+    "id": 2,
+    "name": "daisy",
+    "weight": 1.2
+  },
+  {
+    "id": 3,
+    "name": "lily",
+    "weight": 0.5
+  },
+  {
+    "id": 4,
+    "name": "daylily",
+    "weight": 0.3
+  },
+  {
+    "id": 10,
+    "name": "brownmushroom",
+    "weight": 1.0,
+    "placement": "underground",
+    "windEffect": 0.0
+  },
+  {
+    "id": 11,
+    "name": "whitemushroom",
+    "weight": 0.8,
+    "placement": "underground",
+    "windEffect": 0.0
+  },
+  {
+    "id": 12,
+    "name": "redmushroom",
+    "weight": 0.4,
+    "placement": "underground",
+    "windEffect": 0.0
+  },
+  {
+    "id": 13,
+    "name": "bluemushroom",
+    "weight": 0.3,
+    "placement": "underground",
+    "windEffect": 0.0
+  },
+  {
+    "id": 14,
+    "name": "moss",
+    "weight": 1.5,
+    "placement": "underground",
+    "windEffect": 0.0
+  }
+]

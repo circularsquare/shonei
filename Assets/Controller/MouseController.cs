@@ -48,6 +48,32 @@ public class MouseController : MonoBehaviour {
     // inspector. Keep it disabled by default so it only appears when toggled on.
     [SerializeField] private GameObject debugCursorLight;
 
+    // ── Camera pan tuning ──────────────────────────────────────────────────
+    // Pan speed in screen-heights per second — independent of zoom, so a value
+    // of 1.0 traverses one full viewport height per second at any zoom level.
+    // Same magnitude on x and y (no aspect scaling) so motion feels symmetric.
+    // RMB drag stays the primary pan; these are secondary inputs.
+    [SerializeField] float panSpeedScreens = 0.6f;
+    [SerializeField] float edgePanInsetPx = 16f;  // dead zone from each screen edge that triggers edge-pan
+    [SerializeField] bool edgePanEnabled = true;
+    // Time (seconds) to ramp from rest → full speed when input starts, and
+    // full speed → rest when input stops. Smooths out keypress jerk and lets
+    // motion coast for a beat after release.
+    [SerializeField] float panRampTime = 0.1f;
+    private Vector2 _panVelocity;  // current pan velocity in screen-heights per second
+
+    // ── Click-to-follow ────────────────────────────────────────────────────
+    // Clicking an already-selected animal makes the camera track it exactly
+    // (no lerp). Selection is preserved so the indicator stays visible.
+    // Any pan input (WASD, edge, or RMB drag) cancels follow.
+    //
+    // Snap runs in LateUpdate, not Update, so it reads the animal's freshly-
+    // updated position for the frame. Unity doesn't guarantee an Update order
+    // between MonoBehaviours, so doing it in Update causes the camera to track
+    // a stale position on ~half of frames — visible as a one-pixel jitter
+    // under the Pixel Perfect Camera.
+    private Animal _followAnimal;
+
     void Start() {
         if (instance != null) {
             Debug.LogError("there should only be one mouse controller");}
@@ -89,7 +115,7 @@ public class MouseController : MonoBehaviour {
             InventoryController.instance?.ValidateGlobalInventory();
             var ws = WeatherSystem.instance;
             if (ws != null)
-                Debug.Log($"Temperature: {ws.temperature:F1}°C, Season: {ws.GetSeason()} (day {ws.GetDayOfYear():F1}/{World.daysInYear})");
+                Debug.Log($"Temperature: {ws.temperature:F1}°C, Season: {ws.GetSeason()} (day {ws.GetDayOfYear():F1}/{World.daysInYear}), Humidity: {ws.humidity:F2} (raining: {ws.isRaining}), Wind: {ws.wind:F2}");
         }
 
         // Debug cursor light toggle
@@ -104,6 +130,10 @@ public class MouseController : MonoBehaviour {
             Vector3 mouseWorld = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             debugCursorLight.transform.position = new Vector3(mouseWorld.x, mouseWorld.y, 0f);
         }
+
+        // Secondary pan inputs (WASD + screen edge). Runs before the overUI return
+        // so keyboard pan still fires when the cursor is parked on a UI panel.
+        HandleCameraPan();
 
         bool overUI = EventSystem.current.IsPointerOverGameObject();
         if (overUI && !_isDragging) {
@@ -338,6 +368,11 @@ public class MouseController : MonoBehaviour {
         bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
         bool ctrl  = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
 
+        // Any select-click cancels follow — the click either changes the selection
+        // (removing the indicator on the followed mouse) or hits the same mouse
+        // again, in which case the block below re-sets _followAnimal anyway.
+        _followAnimal = null;
+
         // Shift+LMB on storage = copy filters
         Inventory clickStorage = GetStorageAt(tileAt);
         if (shift && clickStorage != null) {
@@ -350,6 +385,15 @@ public class MouseController : MonoBehaviour {
         foreach (var col in hits) {
             Animal a = col.gameObject.GetComponent<Animal>();
             if (a != null) animals.Add(a);
+        }
+
+        // Click-to-follow: if any of the clicked animals is already in the active
+        // InfoPanel selection, treat this as the "second click" and start tracking.
+        // Checked before ShowSelection so the lookup uses the prior context.
+        if (InfoPanel.instance != null) {
+            foreach (var a in animals) {
+                if (InfoPanel.instance.IsAnimalSelected(a)) { _followAnimal = a; break; }
+            }
         }
 
         if (tileAt != null || animals.Count > 0) {
@@ -377,6 +421,8 @@ public class MouseController : MonoBehaviour {
 
     // Selects all storage inventories whose tile falls inside the screen-space drag rectangle.
     private void CommitDragSelect(Vector3 startScreen, Vector3 endScreen) {
+        // Drag-select picks new things — always cancel follow.
+        _followAnimal = null;
         var (minX, maxX, minY, maxY) = GetDragWorldBounds(startScreen, endScreen);
         var found = new System.Collections.Generic.List<Inventory>();
         Inventory primary = null;
@@ -480,6 +526,91 @@ public class MouseController : MonoBehaviour {
         float estimatedHalfH = Camera.main.orthographicSize * currentPPU / newPPU;
         if (world == null) world = WorldController.instance?.world;
         ClampCameraToWorld(estimatedHalfH);
+    }
+
+    // ── Camera pan (WASD + screen edge) ────────────────────────────────────
+    // Sums keyboard and edge-of-screen inputs into a single normalized direction,
+    // then translates the camera at panSpeed (world tiles / sec) in unscaled time
+    // so panning still works while the game is paused.
+    //
+    // Skipped entirely while RMB-drag is active — that's the precise pan, and
+    // these secondary inputs shouldn't fight it. WASD also yields when a text
+    // input is focused so trade-price / save-name fields aren't hijacked.
+    private void HandleCameraPan() {
+        if (Camera.main == null) return;
+
+        Vector2 dir = Vector2.zero;
+        bool rmbDrag = Input.GetMouseButton(1);
+
+        // Collect inputs unless RMB-drag is active — when it is, dir stays zero and
+        // the velocity decays so any in-progress coast eases out instead of snapping.
+        if (!rmbDrag) {
+            if (!IsInputFieldFocused()) {
+                if (Input.GetKey(KeyCode.W)) dir.y += 1f;
+                if (Input.GetKey(KeyCode.S)) dir.y -= 1f;
+                if (Input.GetKey(KeyCode.D)) dir.x += 1f;
+                if (Input.GetKey(KeyCode.A)) dir.x -= 1f;
+            }
+
+            // Edge-pan: cursor must be in-window, not over UI, and the app must
+            // have focus — otherwise an alt-tabbed user's offscreen cursor would
+            // silently drift the camera in the background.
+            if (edgePanEnabled && Application.isFocused) {
+                Vector3 mp = Input.mousePosition;
+                bool inWindow = mp.x >= 0f && mp.x < Screen.width && mp.y >= 0f && mp.y < Screen.height;
+                bool overUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+                if (inWindow && !overUI) {
+                    if (mp.x < edgePanInsetPx) dir.x -= 1f;
+                    else if (mp.x >= Screen.width - edgePanInsetPx) dir.x += 1f;
+                    if (mp.y < edgePanInsetPx) dir.y -= 1f;
+                    else if (mp.y >= Screen.height - edgePanInsetPx) dir.y += 1f;
+                }
+            }
+        }
+
+        // Any pan input (keys, edge, or RMB drag) cancels follow — user is taking
+        // manual control. Checked here so double-click → immediate WASD release works.
+        bool hasPanInput = dir.sqrMagnitude > 0.0001f || rmbDrag;
+        if (hasPanInput) _followAnimal = null;
+
+        // Normalize so diagonals aren't √2× faster than cardinals. Then move the
+        // current velocity toward the input target at a rate that crosses the full
+        // speed range in panRampTime seconds — same ramp for spin-up and wind-down.
+        Vector2 target = (dir.sqrMagnitude > 0.0001f) ? dir.normalized * panSpeedScreens : Vector2.zero;
+        float maxStep = (panRampTime > 0f) ? (panSpeedScreens / panRampTime) * Time.unscaledDeltaTime : float.MaxValue;
+        _panVelocity = Vector2.MoveTowards(_panVelocity, target, maxStep);
+
+        float orthoH = Camera.main.orthographicSize * 2f;
+        if (_panVelocity.sqrMagnitude > 1e-8f) {
+            Vector2 worldStep = _panVelocity * orthoH * Time.unscaledDeltaTime;
+            Camera.main.transform.Translate(worldStep.x, worldStep.y, 0f);
+            if (world == null) world = WorldController.instance?.world;
+            ClampCameraToWorld();
+        }
+
+    }
+
+    // Follow snap runs here (not in Update) so we read the animal's freshly-
+    // updated position for the frame — see the field comment for the rationale.
+    // Unity's overloaded == nulls the ref when the GameObject is destroyed,
+    // so this also handles the followed animal dying.
+    void LateUpdate() {
+        if (_followAnimal == null || Camera.main == null) return;
+        Vector3 camPos = Camera.main.transform.position;
+        camPos.x = _followAnimal.x;
+        camPos.y = _followAnimal.y;
+        Camera.main.transform.position = camPos;
+        if (world == null) world = WorldController.instance?.world;
+        ClampCameraToWorld();
+    }
+
+    // Keyboard pan must yield to text entry — checks both TMP and legacy InputField.
+    private static bool IsInputFieldFocused() {
+        var sel = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+        if (sel == null) return false;
+        if (sel.GetComponent<TMPro.TMP_InputField>() != null) return true;
+        if (sel.GetComponent<InputField>() != null) return true;
+        return false;
     }
 
     // Public wrapper so callers outside MouseController can re-clamp (e.g.

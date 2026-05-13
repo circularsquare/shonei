@@ -51,8 +51,8 @@ public class Item {
     // Fixed lifetime in in-game days. Counts down on each tick while installed; on 0-cross
     // the slot empties. Independent of decayRate (which governs food/cloth-as-clothing wear).
     public float furnishingLifetimeDays {get; set;}
-    // Optional name of a sprite under Resources/Sprites/Buildings/ to overlay on the house
-    // tile while this item is installed. Null = no visual.
+    // Optional name of a sprite under Resources/Sprites/Buildings/furnishings/ to overlay
+    // on the house tile while this item is installed. Null = no visual.
     public string furnishingSprite {get; set;}
 
     public Item parent;

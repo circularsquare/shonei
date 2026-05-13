@@ -16,12 +16,16 @@ using UnityEngine;
 // sufficient; there is no per-frame cost. If a sprite's sortingOrder ever
 // changes at runtime, call Refresh() (or SetSortBucket again) explicitly.
 public static class LightReceiverUtil {
-    static readonly int SortBucketId  = Shader.PropertyToID("_SortBucket");
-    static readonly int PlantBaseYId  = Shader.PropertyToID("_PlantBaseY");
-    static readonly int PlantHeightId = Shader.PropertyToID("_PlantHeight");
-    static readonly int PlantPhaseId  = Shader.PropertyToID("_PlantPhase");
-    static readonly int PlantSwayId   = Shader.PropertyToID("_PlantSway");
-    static readonly int UseMaskId     = Shader.PropertyToID("_UseMask");
+    static readonly int SortBucketId   = Shader.PropertyToID("_SortBucket");
+    static readonly int PlantBaseYId   = Shader.PropertyToID("_PlantBaseY");
+    static readonly int PlantHeightId  = Shader.PropertyToID("_PlantHeight");
+    static readonly int PlantPhaseId   = Shader.PropertyToID("_PlantPhase");
+    static readonly int PlantSwayId    = Shader.PropertyToID("_PlantSway");
+    static readonly int UseMaskId      = Shader.PropertyToID("_UseMask");
+    static readonly int SwayAmountId   = Shader.PropertyToID("_SwayAmount");
+    static readonly int RoleIsHeadId   = Shader.PropertyToID("_RoleIsHead");
+    static readonly int HeadCenterYId  = Shader.PropertyToID("_HeadCenterY");
+    static readonly int SwayMaskTexId  = Shader.PropertyToID("_SwayMask");
     static MaterialPropertyBlock _scratch;
 
     // Writes _SortBucket = sortingOrder/255 onto the renderer's MPB. We read
@@ -47,18 +51,39 @@ public static class LightReceiverUtil {
     // (i.e. trees with rigid trunks). `useMask = false` keeps the renderer in
     // vertex-mode (height-weighted whole-quad bend, Phase 1/2 behaviour).
     //
+    // `swayAmount` linearly attenuates the computed amplitude — 1 = full sway
+    // (the existing plant default), 0 = no motion (mushrooms, moss, anything
+    // rigid). When 0 we also clear the _PlantSway gate so the shader skips
+    // the math entirely instead of multiplying by zero.
+    //
+    // `useMask + roleIsHead + headCenterY + maskTexture` activate the flower
+    // stem/head split (see Sway.hlsl header). `useMask = true` is only meaningful
+    // when the caller is one half of a two-SR flower; `roleIsHead = true` puts
+    // this SR into uniform-shift head mode (the other SR keeps stem semantics).
+    // `headCenterY` is in world units relative to `baseY` and only consumed when
+    // roleIsHead = true. `maskTexture` is bound as `_SwayMask` so we don't rely
+    // on the SpriteSheet-secondary-texture mechanism for runtime-generated
+    // masks; pass null to keep whatever is already on the SR.
+    //
     // Called on plant ctor, on every extension claim, on RebuildExtensionTiles
     // (load), on ReleaseAllExtensionTiles (harvest), AND on every UpdateSprite
     // (the mask flag may flip with growth-stage sprite swaps).
-    public static void SetPlantSwayMPB(SpriteRenderer sr, float baseY, float plantHeight, float phase, bool useMask) {
+    public static void SetPlantSwayMPB(SpriteRenderer sr, float baseY, float plantHeight, float phase, bool useMask, float swayAmount = 1f, bool roleIsHead = false, float headCenterY = 0f, Texture maskTexture = null) {
         if (sr == null) { Debug.LogError("LightReceiverUtil.SetPlantSwayMPB: null SpriteRenderer"); return; }
         _scratch ??= new MaterialPropertyBlock();
         sr.GetPropertyBlock(_scratch);
         _scratch.SetFloat(PlantBaseYId,  baseY);
         _scratch.SetFloat(PlantHeightId, Mathf.Max(1f, plantHeight));
         _scratch.SetFloat(PlantPhaseId,  phase);
-        _scratch.SetFloat(PlantSwayId,   1f);
+        // Gate off when amount is exactly 0 — saves the vertex-shader work
+        // for rigid decorations and avoids any sub-pixel drift from the
+        // multiply-by-zero path.
+        _scratch.SetFloat(PlantSwayId,   swayAmount > 0f ? 1f : 0f);
         _scratch.SetFloat(UseMaskId,     useMask ? 1f : 0f);
+        _scratch.SetFloat(SwayAmountId,  Mathf.Clamp01(swayAmount));
+        _scratch.SetFloat(RoleIsHeadId,  roleIsHead ? 1f : 0f);
+        _scratch.SetFloat(HeadCenterYId, headCenterY);
+        if (maskTexture != null) _scratch.SetTexture(SwayMaskTexId, maskTexture);
         sr.SetPropertyBlock(_scratch);
     }
 }

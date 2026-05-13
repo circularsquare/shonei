@@ -17,13 +17,21 @@
 // scale math the visible BackgroundLayer.shader used to do inline.
 //
 // Inputs (set per-frame from BackgroundLayer.LateUpdate):
-//   _MainTex         user-supplied tileable texture (via Blit source)
-//   _ViewportSize    (worldW, worldH) of the SkyCamera viewport
-//   _CameraPos       camera world position
-//   _BandCenterY     world-y the texture's vertical centre aligns to
-//   _ParallaxOffset  camera × (1 - worldLocking) — same as the previous
-//                    inline parallax computation
-//   _TexUVScale      1 / texture world size, so multiplying gives UV
+//   _MainTex            user-supplied tileable texture (via Blit source)
+//   _ViewportSize       (worldW, worldH) of the SkyCamera viewport
+//   _CameraPos          camera world position
+//   _BandCenterY        world-y the texture's vertical centre aligns to
+//   _ParallaxOffset     camera × (1 - worldLocking) — same as the previous
+//                       inline parallax computation
+//   _TexUVScale         1 / texture world size, so multiplying gives UV
+//   _ShadowStrength     darkening intensity for cloud shadows on hills
+//   _ShadowNoiseScale   1 / world units — shadow blob frequency
+//   _ShadowSoftness     smoothstep half-width around _CloudThreshold
+//
+// Globals (broadcast by CloudLayer each frame):
+//   _CloudWindOffsetX     cloud wind drift accumulator (world units)
+//   _CloudEvolutionOffset cloud noise-field morph offset (noise units)
+//   _CloudThreshold       cloud spawn threshold for the current humidity
 Shader "Hidden/BackgroundLayerGen" {
     SubShader {
         Tags { "RenderType" = "Opaque" }
@@ -37,6 +45,7 @@ Shader "Hidden/BackgroundLayerGen" {
             #pragma vertex   vert
             #pragma fragment frag
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "../../Lighting/Noise.hlsl"
 
             TEXTURE2D(_MainTex); SAMPLER(sampler_MainTex);
 
@@ -46,7 +55,18 @@ Shader "Hidden/BackgroundLayerGen" {
                 float  _BandCenterY;
                 float2 _ParallaxOffset;
                 float2 _TexUVScale;
+                float  _ShadowStrength;
+                float  _ShadowNoiseScale;
+                float  _ShadowAspect;
+                float  _ShadowSoftness;
             CBUFFER_END
+
+            // Globals — broadcast by CloudLayer each frame. Declared
+            // outside UnityPerMaterial since they're SetGlobal'd (SRP
+            // batcher rejects globals inside per-material cbuffers).
+            float _CloudWindOffsetX;
+            float _CloudEvolutionOffset;
+            float _CloudThreshold;
 
             struct Attributes {
                 float3 positionOS : POSITION;
@@ -77,7 +97,32 @@ Shader "Hidden/BackgroundLayerGen" {
                 if (texUV.y < 0.0 || texUV.y > 1.0) return half4(0, 0, 0, 0);
                 // Horizontal wrap is handled by the texture import's
                 // Wrap Mode U setting.
-                return SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, texUV);
+                half4 col = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, texUV);
+
+                // Cloud-shadow overlay. Sample a 2-octave FBM at
+                // **hill-content** coordinates (worldXY − _ParallaxOffset)
+                // shifted by the cloud's wind / evolution offsets
+                // (broadcast as globals by CloudLayer). Using hill-
+                // parallaxed coords means the shadows visually move
+                // with the hills as the camera pans — not with the
+                // camera (which would feel sky-stuck) or with raw
+                // world (which would scroll past the hills at full
+                // parallax). x is divided by _ShadowAspect so shadow
+                // blobs stretch horizontally — cloud shadows are wider
+                // than they are tall (wind-elongated). Threshold
+                // matches the cloud's spawn threshold so shadow
+                // coverage tracks cloud coverage with humidity.
+                // Multiplied by col.a so shadows only fall on actual
+                // painting pixels (not the transparent sky band).
+                float2 hillP = worldXY - _ParallaxOffset
+                             + float2(_CloudWindOffsetX, _CloudEvolutionOffset * 5.0);
+                float2 nP = hillP * _ShadowNoiseScale;
+                nP.x /= _ShadowAspect;
+                float  n  = fbm(nP, 2);
+                float  shadowMask = smoothstep(_CloudThreshold - _ShadowSoftness,
+                                               _CloudThreshold + _ShadowSoftness, n);
+                col.rgb *= 1.0 - shadowMask * _ShadowStrength * col.a;
+                return col;
             }
             ENDHLSL
         }

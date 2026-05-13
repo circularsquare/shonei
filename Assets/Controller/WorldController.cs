@@ -70,6 +70,12 @@ public class WorldController : MonoBehaviour {
         var tmc = gameObject.AddComponent<TileMeshController>();
         tmc.Initialize(world, tilesTransform, chunkedTileMaterial, ChunkLayerName);
 
+        // Decorative flowers — scattered across grass-topped tiles. No save
+        // state of its own (deterministic from world seed). Subscribes per-tile
+        // overlay / snow callbacks on first OnWorldReady so the spawn set stays
+        // current as grass grows, dies, snows over, etc. See FlowerController.cs.
+        gameObject.AddComponent<FlowerController>();
+
         for (int x = 0; x < world.nx; x++){
             for (int y = world.ny - 1; y >= 0; y--){
                 Tile tile = world.GetTileAt(x, y);
@@ -90,6 +96,13 @@ public class WorldController : MonoBehaviour {
             StartCoroutine(SaveSystem.instance.PostLoadInit());
         }
         World.OnItemFall += SpawnItemFallAnimation;
+
+        // Decorative flowers do a full-world scan + subscribe their per-tile
+        // callbacks here, after both worldgen and save-load paths have settled.
+        // Rng.worldSeed is authoritative on both paths (set by GenerateDefault
+        // or by SaveSystem.ApplySaveData), so the layout is reproducible.
+        LoadingScreen.SetPhase("Scattering flowers");
+        FlowerController.instance?.OnWorldReady(world, Rng.worldSeed);
 
         // One more yield so the next frame's LateUpdate fires — that's where
         // TileMeshController rebuilds every dirty chunk for the first time
@@ -219,6 +232,10 @@ public class WorldController : MonoBehaviour {
         int seed = UnityEngine.Random.Range(1, 100000);
         Rng.Init(seed);
         int[] surfaceY = WorldGen.Generate(world, seed);
+        // Stash on World so decoration systems (FlowerController, OverlayGrowthSystem)
+        // can gate placement by depth. Authoritative for the new-world path —
+        // save loads recompute from the loaded tile grid instead (see ApplySaveData).
+        world.surfaceY = surfaceY;
         int sy = surfaceY[WorldGen.SpawnMinX]; // surface height at spawn zone (flat)
 
         // Market is placed at the left world edge and is intentionally off-screen.

@@ -223,7 +223,7 @@
         "furnishingSlot": "cloth",
         "furnishingHappiness": 1.0,
         "furnishingLifetimeDays": 5.0,
-        "furnishingSprite": "furnishing_cloth",
+        "furnishingSprite": "cloth",
         "children": [
             {
                 "id": 261,
@@ -247,6 +247,16 @@
         "id": 280,
         "name": "bamboo",
         "decayRate": 0.05,
+        "children": null
+    },{
+        "id": 290,
+        "name": "stool",
+        "decayRate": 0.06,
+        "discrete": true,
+        "furnishingSlot": "stool",
+        "furnishingHappiness": 1.0,
+        "furnishingLifetimeDays": 15.0,
+        "furnishingSprite": "stool",
         "children": null
     },{
         "id": 300,

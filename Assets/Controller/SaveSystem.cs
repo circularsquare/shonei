@@ -31,6 +31,7 @@ using Newtonsoft.Json;
 //   [x] World RNG seed (drives Rng — gameplay randomness reproduces on reload)
 //   [x] Per-animal RNG seed (drives Animal.random — animal AI reproduces on reload)
 //   [x] Tile types, floor inventories (incl. wetUntil rain-soaked timer), background wall, overlay masks (grass on dirt), overlay health state (live/dying/dead), and snow cover
+//   [x] Per-column original surface heights (worldgen ground line, persisted so decoration depth gates survive column mining)
 //   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, furnishingInvData + furnishingRemainingDays, mirrored, rotation, shapeIndex, disabled, plantHarvestFlagged, quarry capturedTileType, flywheel charge, elevator currentY + history buffers)
 //   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored, rotation, shapeIndex, disabled)
 //   [x] Animals (position, job, energy, food, happiness, decoration happiness, socialization, fireplace warmth, inv, foodSlotInv, toolSlotInv, clothingSlotInv, bookSlotInv)
@@ -44,6 +45,7 @@ using Newtonsoft.Json;
 //   [x] Market targets (via MarketBuilding.instance)
 //   [x] Camera position and zoom (PPU)
 //   [x] Global inventory panel tree collapse state (deltas vs item.defaultOpen)
+//   [x] Panel collapse state for CollapsibleHeader-equipped panels (deltas vs default-open)
 // -----------------------------------------------------------------------
 
 public class SaveSystem : MonoBehaviour {
@@ -99,6 +101,13 @@ public class SaveSystem : MonoBehaviour {
             }
         }
         data.tiles = tiles.ToArray();
+
+        // Original ground-line per column (immutable from worldgen). Persisted so
+        // the "natural surface" gate used by FlowerController / OverlayGrowthSystem
+        // survives across saves even when the player has mined the top off a column.
+        // Cloned defensively — World.surfaceY is the live array, not a snapshot.
+        if (world.surfaceY != null)
+            data.surfaceY = (int[])world.surfaceY.Clone();
 
         // Water levels — only write if any tile has water (keeps save files clean for dry worlds)
         bool anyWater = false;
@@ -192,6 +201,16 @@ public class SaveSystem : MonoBehaviour {
             }
             if (openDeltas.Count > 0) data.inventoryTreeOpen = openDeltas;
         }
+
+        // Per-panel collapse state (CollapsibleHeader). Default is open; only deltas stored.
+        var panelDeltas = new Dictionary<string, bool>();
+        var invHeader = InventoryController.instance?.inventoryHeader;
+        if (invHeader != null && !string.IsNullOrEmpty(invHeader.saveKey) && !invHeader.open)
+            panelDeltas[invHeader.saveKey] = false;
+        var jobsHeader = AnimalController.instance?.jobsHeader;
+        if (jobsHeader != null && !string.IsNullOrEmpty(jobsHeader.saveKey) && !jobsHeader.open)
+            panelDeltas[jobsHeader.saveKey] = false;
+        if (panelDeltas.Count > 0) data.panelsOpen = panelDeltas;
 
         if (MarketBuilding.instance?.storage?.targets != null) {
             var mt = new Dictionary<string, int>();
@@ -407,6 +426,9 @@ public class SaveSystem : MonoBehaviour {
         WeatherSystem.instance?.RestoreState(false, 0f);
         RecipePanel.instance?.ClearDisabled();
         ResearchSystem.instance?.ResetAll();
+        // Reset panel collapse state — both panels start open on a fresh world.
+        InventoryController.instance?.inventoryHeader?.SetOpenSilent(true);
+        AnimalController.instance?.jobsHeader?.SetOpenSilent(true);
     }
 
     public void Load(string slotName) {
@@ -586,6 +608,19 @@ public class SaveSystem : MonoBehaviour {
         if (InventoryController.instance != null)
             InventoryController.instance.pendingGroupOpenOverrides = save.inventoryTreeOpen;
 
+        // Restore per-panel collapse state. Headers default to open; we only override when the
+        // save explicitly recorded a collapsed panel.
+        if (save.panelsOpen != null) {
+            var ih = InventoryController.instance?.inventoryHeader;
+            if (ih != null && !string.IsNullOrEmpty(ih.saveKey)
+                    && save.panelsOpen.TryGetValue(ih.saveKey, out bool invOpen))
+                ih.SetOpenSilent(invOpen);
+            var jh = AnimalController.instance?.jobsHeader;
+            if (jh != null && !string.IsNullOrEmpty(jh.saveKey)
+                    && save.panelsOpen.TryGetValue(jh.saveKey, out bool jobsOpen))
+                jh.SetOpenSilent(jobsOpen);
+        }
+
         if (save.marketTargets != null && MarketBuilding.instance?.storage?.targets != null) {
             foreach (var kv in save.marketTargets)
                 if (Db.itemByName.TryGetValue(kv.Key, out Item item))
@@ -600,6 +635,16 @@ public class SaveSystem : MonoBehaviour {
         RestoreResearch(save.research);
 
         WeatherSystem.instance?.RestoreState(save.isRaining, save.humidity);
+
+        // Original ground-line per column. Persisted from worldgen as of the
+        // surfaceY-in-save-data change; old saves (and any save where the field
+        // was somehow lost) fall back to re-deriving from current geometry,
+        // which is best-effort — a player who mined the top off a column before
+        // saving will get the new top, not the original line.
+        if (save.surfaceY != null && save.surfaceY.Length == world.nx)
+            world.surfaceY = (int[])save.surfaceY.Clone();
+        else
+            world.RecomputeSurfaceY();
 
         // ── Phase 6: Observers ─────────────────────────────────────────────────────────
         // Register all WOM orders in one pass now that the world + configuration is final
@@ -765,11 +810,12 @@ public class SaveSystem : MonoBehaviour {
                 fb.reservoir.inv.Produce(leafItem, sd.quantity);
             }
         }
-        // Restore furnishing slots (items + per-slot remaining lifetime). No onSlotChanged
-        // fire here — Animals haven't loaded yet, so happiness recompute is deferred to
-        // PostLoadInit (which now does it for every animal-with-house). Visual refresh on
-        // load comes from FurnishingVisuals.Init iterating every slot once when the GO
-        // gets its components attached in AttachAnimations.
+        // Restore furnishing slots (items + per-slot remaining lifetime). The ctor-time
+        // FurnishingVisuals.Init iterated empty slots (fills happen here, after
+        // Structure.Create returns), so we manually fire onSlotChanged on every filled
+        // slot at the end via NotifyAllInstalled — that spawns the sprite GOs. Happiness
+        // recompute fans out from the same callback but no-ops here since AnimalController
+        // is still empty; the per-animal recompute happens later via FindHome.
         if (structure is Building fsBuilding && fsBuilding.furnishingSlots != null && ssd.furnishingInvData != null) {
             var fs = fsBuilding.furnishingSlots;
             int n = Mathf.Min(fs.SlotCount, ssd.furnishingInvData.Length);
@@ -788,6 +834,7 @@ public class SaveSystem : MonoBehaviour {
                 if (ssd.furnishingRemainingDays != null && i < ssd.furnishingRemainingDays.Length)
                     fs.slotRemainingDays[i] = ssd.furnishingRemainingDays[i];
             }
+            fs.NotifyAllInstalled();
         }
         // Restore storage inventory (items + allowed filter)
         if (structure is Building sb && sb.storage != null && ssd.storageInvData != null) {

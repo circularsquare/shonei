@@ -59,6 +59,14 @@ public class OverlayGrowthSystem {
     // Layout matches Tile.overlayMask: 0=L 1=R 2=D 3=U.
     const byte GrowableSidesMask = 0b1011;
 
+    // Max depth below the original surface where overlay growth is allowed.
+    // Beyond this point, decoration belongs to the underground decoration set
+    // (mushrooms / moss in FlowerController) rather than the chunked grass
+    // overlay. 5 keeps shallow skylights / sunken courtyards green while
+    // making sure grass never spreads through a deep mineshaft into the cave
+    // network below.
+    const int MaxDepthBelowSurface = 5;
+
     public static OverlayGrowthSystem Create() {
         instance = new OverlayGrowthSystem();
         return instance;
@@ -78,6 +86,7 @@ public class OverlayGrowthSystem {
 
         World world = World.instance;
         int nx = world.nx, ny = world.ny;
+        int[] surfaceY = world.surfaceY;
 
         for (int x = 0; x < nx; x++) {
             for (int y = 0; y < ny; y++) {
@@ -87,6 +96,17 @@ public class OverlayGrowthSystem {
                 // state or grow new sides while snow sits on top, otherwise
                 // the snapshot in tile.preSnowOverlay* drifts from reality.
                 if (t.snow) continue;
+                // Depth gate: grass overlay only grows within MaxDepthBelowSurface
+                // of the original surface. Tiles deeper than that get no new
+                // sides spawned AND no state evolution — keeps existing buried
+                // grass frozen-in-place (same intent as the cMask==0xF buried
+                // skip below). Without this, a moisture-rich cave near the
+                // surface would slowly fill with grass tufts, which competes
+                // visually with the mushroom / moss decoration that lives
+                // underground via FlowerController.
+                if (surfaceY != null && x >= 0 && x < surfaceY.Length
+                    && surfaceY[x] >= 0
+                    && y < surfaceY[x] - MaxDepthBelowSurface) continue;
 
                 // Cardinal-solidity bitmask: bit set = neighbour is solid (side buried).
                 // Computed once at the top so we can short-circuit fully-buried tiles

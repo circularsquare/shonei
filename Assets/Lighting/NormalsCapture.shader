@@ -78,8 +78,12 @@ Shader "Hidden/NormalsCapture" {
             // doesn't rotate the sprite's local axes, so the tangent → world
             // basis used to decode the normal map stays correct.
             float3 worldPos = TransformObjectToWorld(IN.positionOS);
-            if (_PlantSway > 0.5 && _UseMask < 0.5) {
-                worldPos.x += SwayOffsetForVertex(worldPos.y);
+            // Same role-aware shift as PlantSprite.shader. Stem SRs and
+            // unmasked plants get per-vertex weighted bend; head SRs get a
+            // single _HeadCenterY-based amount so the captured normals follow
+            // the visible head's rigid translation. See Sway.hlsl.
+            if (_PlantSway > 0.5) {
+                worldPos.x += PlantVertexShift(worldPos.y);
             }
             OUT.positionCS = TransformWorldToHClip(worldPos);
             OUT.uv         = IN.uv;
@@ -89,15 +93,16 @@ Shader "Hidden/NormalsCapture" {
         }
 
         float4 FragWithAlpha(Varyings IN, bool isFrontFace, float shadowAlpha) {
-            // Mask-mode plants: shift the sample UV per the per-pixel sway mask
-            // so captured normals follow the visible content (lit highlights
-            // track shifted leaves). Both _MainTex (for the alpha clip) and
-            // _NormalMap must use the same shifted UV.
-            float2 sampleUV = IN.uv;
-            if (_PlantSway > 0.5 && _UseMask > 0.5) {
+            // Mask-discard mode (flowers with auto head-mask): match PlantSprite.shader's
+            // frag — each SR keeps only its own half (stem vs head). Without this the
+            // normal-map pass captures pixels the visible pass discarded, so lighting
+            // highlights drift outside the sprite silhouette as the head translates.
+            if (_UseMask > 0.5) {
                 float mask = SAMPLE_TEXTURE2D(_SwayMask, sampler_SwayMask, IN.uv).r;
-                sampleUV.x -= SwayAmplitude() * mask;
+                if ((mask > 0.5) != (_RoleIsHead > 0.5)) discard;
             }
+
+            float2 sampleUV = IN.uv;
 
             // Discard transparent pixels — background stays black (flat fallback).
             // For tiles: the pre-baked 20×20 sprite alpha defines the border shape.

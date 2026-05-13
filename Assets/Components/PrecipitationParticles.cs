@@ -39,7 +39,7 @@ public abstract class PrecipitationParticles : MonoBehaviour {
     [SerializeField] protected float horizontalJitter    = 0f;     // ± random sideways deviation around the wind-driven base X velocity (world units/s); 0 = uniform sideways motion, useful (e.g. 0.5 for snow) so flakes don't move as a single sheet
     [SerializeField] protected float windSpeedScale      = 3f;     // world-units/s per unit of wind
     [SerializeField] protected float panFillThreshold    = 0.002f; // pan delta as fraction of viewport width below which natural emission keeps up
-    [SerializeField] protected int   maxParticlesCap     = 5000;   // bumped above prefab default to cover wide viewports at zoom-out
+    [SerializeField] protected int   maxParticlesCap     = 6000;   // bumped above prefab default to cover wide viewports at zoom-out
 
     protected ParticleSystem            ps;
     protected Camera                    mainCam;
@@ -76,6 +76,24 @@ public abstract class PrecipitationParticles : MonoBehaviour {
         float   halfW  = ortho * mainCam.aspect;
         Vector3 camPos = mainCam.transform.position;
 
+        intensity   = GetIntensity();
+        float wind  = WeatherSystem.instance?.wind ?? 0f;
+        float baseX = wind * windSpeedScale;
+
+        float fallDistance = 2f * halfH + topMargin;
+        float lifetime     = fallDistance / fallSpeed;
+
+        // Wind slants particles sideways at baseX, so over their lifetime they
+        // drift horizontally by windDrift = baseX * lifetime. With a fixed
+        // viewport-width spawn box, that drift leaves a triangular gap on the
+        // upwind side of the bottom of the viewport — particles from the upwind
+        // spawn edge drift downwind before reaching the floor, and nothing
+        // backfills behind them. Extend the spawn box upwind by |windDrift| so
+        // the slanted band still covers the full viewport, and bump emission
+        // rate proportionally so on-screen density doesn't thin with wind.
+        float windDrift    = baseX * lifetime;
+        float windDriftAbs = Mathf.Abs(windDrift);
+
         // ── Track emitter to viewport ───────────────────────────────────────
         Vector3 pos = camPos;
         pos.y += halfH + topMargin;
@@ -84,11 +102,11 @@ public abstract class PrecipitationParticles : MonoBehaviour {
 
         var shape = ps.shape;
         Vector3 sc = shape.scale;
-        sc.x = 2f * halfW + 2f * sideMargin;
+        sc.x = 2f * halfW + 2f * sideMargin + windDriftAbs;
         shape.scale = sc;
-
-        intensity  = GetIntensity();
-        float wind = WeatherSystem.instance?.wind ?? 0f;
+        Vector3 sp = shape.position;
+        sp.x = -0.5f * windDrift;                  // baseX>0 (wind right) → shift center left so extension covers the upwind edge
+        shape.position = sp;
 
         var vel = ps.velocityOverLifetime;
         vel.enabled = true;
@@ -98,7 +116,6 @@ public abstract class PrecipitationParticles : MonoBehaviour {
         // error. So when horizontalJitter > 0 we promote *all three* axes
         // to TwoConstants (y/z collapsed to a single value) and otherwise
         // keep all three as plain Constant.
-        float baseX = wind * windSpeedScale;
         var velX = vel.x;
         var velY = vel.y;
         var velZ = vel.z;
@@ -118,14 +135,12 @@ public abstract class PrecipitationParticles : MonoBehaviour {
         vel.y = velY;
         vel.z = velZ;
 
-        var   main         = ps.main;
-        float fallDistance = 2f * halfH + topMargin;
-        float lifetime     = fallDistance / fallSpeed;
+        var main = ps.main;
         main.startLifetime = lifetime;
 
         var   emission      = ps.emission;
         float viewportWidth = 2f * halfW;
-        float desiredRate   = densityPerUnitWidth * viewportWidth * intensity;
+        float desiredRate   = densityPerUnitWidth * (viewportWidth + windDriftAbs) * intensity;
         float maxSafeRate   = main.maxParticles * 0.85f / Mathf.Max(0.0001f, lifetime);
         float rate          = Mathf.Min(desiredRate, maxSafeRate);
         emission.rateOverTime = rate;

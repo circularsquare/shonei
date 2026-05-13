@@ -209,5 +209,17 @@
         "workload": 5.0,
         "ninputs": [],
         "noutputs": []
+    },{
+        "id": 60,
+        "job": "woodworker",
+        "tile": "workshop",
+        "description": "make a stool",
+        "workload": 5.0,
+        "ninputs": [
+            { "name": "planks", "quantity": 2 }
+        ],
+        "noutputs": [
+            { "name": "stool", "quantity": 1 }
+        ]
     }
 ]

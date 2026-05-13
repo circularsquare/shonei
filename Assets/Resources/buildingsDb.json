@@ -60,7 +60,7 @@
         "solidTop": true,
         "category": "storage",
         "hasFurnishingSlots": true,
-        "furnishingSlotNames": ["cloth"]
+        "furnishingSlotNames": ["cloth", "stool"]
     },{
         "id": 21,
         "name": "drawer",

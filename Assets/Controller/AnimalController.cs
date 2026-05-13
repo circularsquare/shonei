@@ -12,8 +12,14 @@ public class AnimalController : MonoBehaviour{
     public int na = 0;
     private int maxna = 1000;
     public GameObject jobsPanel;
+    public CollapsibleHeader jobsHeader; // optional; SaveSystem reads/writes open state via saveKey
+    // Outer wood-framed container (the JobsScroll RectTransform). When the header collapses,
+    // we resize this to just the header's height so the wood frame visually shrinks too.
+    // Optional — leave unwired to skip the resize behaviour.
+    public RectTransform jobsScrollRect;
+    private float _jobsScrollExpandedHeight = -1f;
     public GameObject happinessPanel;
-    public GameObject JobDisplay; 
+    public GameObject JobDisplay;
     private World world;
     public Dictionary<Job, int> jobCounts;
     private Dictionary<Tile, int> tileOccupancy;
@@ -48,6 +54,18 @@ public class AnimalController : MonoBehaviour{
     // Must finish before WorldController.Start() resumes in frame 1 and calls GenerateDefault().
     void Start() {
         jobCounts.Add(Db.jobs[0], 0);
+        if (jobsHeader != null) jobsHeader.onToggled += OnHeaderToggled;
+    }
+
+    // Mirrors InventoryController.OnHeaderToggled — shrinks the wood-framed scroll container
+    // to just the header height when collapsed, restores designer-set height on expand.
+    void OnHeaderToggled(bool open){
+        if (jobsScrollRect == null) return;
+        if (_jobsScrollExpandedHeight < 0)
+            _jobsScrollExpandedHeight = jobsScrollRect.sizeDelta.y;
+        var sd = jobsScrollRect.sizeDelta;
+        sd.y = open ? _jobsScrollExpandedHeight : 22f;
+        jobsScrollRect.sizeDelta = sd;
     }
 
 

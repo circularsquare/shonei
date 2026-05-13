@@ -12,6 +12,16 @@ public class World : MonoBehaviour {
     public Graph graph;
     public int nx;
     public int ny;
+    // Per-column original-surface heights from worldgen. Used by decoration
+    // systems (FlowerController, OverlayGrowthSystem) to gate spawning by
+    // depth — flowers stay at-or-above this line, grass overlay can spread
+    // up to a few tiles below it, but neither encroaches deep underground.
+    // Assigned by WorldController after worldgen and persisted in saves so it
+    // stays the immutable natural surface even after the player mines columns.
+    // Old saves without the field fall back to RecomputeSurfaceY (best-effort
+    // re-derivation from current geometry; see SaveSystem.ApplySaveData).
+    // Air-only columns store -1.
+    public int[] surfaceY;
     public WorldController worldController;
     public InventoryController invController;
     public AnimalController animalController;
@@ -111,7 +121,10 @@ public class World : MonoBehaviour {
             StructController.instance?.TickUpdate();
             InfoPanel.instance.UpdateInfo();
         }
-        float hourPeriod = ticksInDay / 24f; // 10 seconds = 1 in-game hour
+        float hourPeriod = ticksInDay / 24f;     // 10 seconds = 1 in-game hour
+        float subHourPeriod = hourPeriod / 3f;    // ~3.3 s = wind/humidity OU step
+        if (Math.Floor((timer + dt) / subHourPeriod) - Math.Floor(timer / subHourPeriod) > 0)
+            WeatherSystem.instance?.StepWindHumidity();
         if (Math.Floor((timer + dt) / hourPeriod) - Math.Floor(timer / hourPeriod) > 0)
             WeatherSystem.instance?.OnHourElapsed();
         WeatherSystem.instance?.Tick(dt);
@@ -138,6 +151,27 @@ public class World : MonoBehaviour {
         int xi = Mathf.FloorToInt(x + 0.5f);
         int yi = Mathf.FloorToInt(y + 0.5f);
         return GetTileAt(xi, yi);
+    }
+
+    // Recomputes the surface-height-per-column array from the current tile
+    // grid. WorldController.GenerateDefault assigns directly from WorldGen's
+    // return value (the authoritative original surface). SaveSystem only
+    // calls this as a fallback when loading an old save that pre-dates the
+    // surfaceY-in-save-data change. Caveat for that fallback path: if the
+    // player mined the topmost dirt tile in a column before saving, this
+    // returns the new top, not the original ground line.
+    public void RecomputeSurfaceY() {
+        surfaceY = new int[nx];
+        for (int x = 0; x < nx; x++) {
+            surfaceY[x] = -1;
+            for (int y = ny - 1; y >= 0; y--) {
+                Tile t = GetTileAt(x, y);
+                if (t != null && t.type != null && t.type.solid) {
+                    surfaceY[x] = y;
+                    break;
+                }
+            }
+        }
     }
 
     // True if nothing blocks a line of rain (or sun) from reaching (x, y) from the sky.

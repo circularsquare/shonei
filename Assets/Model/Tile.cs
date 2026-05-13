@@ -22,6 +22,12 @@ public class Tile {
     Action<Tile> cbBackgroundChanged;
     Action<Tile> cbOverlayChanged;
     Action<Tile> cbSnowChanged;
+    // Fired whenever this tile's structs[] contents change (Structure.Place /
+    // Destroy, Plant extension claim/release). The array is public so we can't
+    // intercept writes at the property setter — callers fire NotifyStructChanged
+    // after mutating. Subscribers re-derive whatever they need (depth-0 building,
+    // road suppression, etc.) themselves.
+    Action<Tile> cbStructChanged;
 
     World world;
     public int x, y;
@@ -156,10 +162,16 @@ public class Tile {
     public void UnregisterCbOverlayChanged(Action<Tile> callback){cbOverlayChanged -= callback;}
     public void RegisterCbSnowChanged(Action<Tile> callback){cbSnowChanged += callback;}
     public void UnregisterCbSnowChanged(Action<Tile> callback){cbSnowChanged -= callback;}
+    public void RegisterCbStructChanged(Action<Tile> callback){cbStructChanged += callback;}
+    public void UnregisterCbStructChanged(Action<Tile> callback){cbStructChanged -= callback;}
     // Fire the overlay callback without changing data — used when external state
     // that the renderer reads (e.g. structs[3] for road suppression) flips, but
     // the tile's own overlay fields haven't.
     public void NotifyOverlayDirty(){ cbOverlayChanged?.Invoke(this); }
+    // Fire after mutating structs[]. Centralised here so the four call sites
+    // (Structure.Place, Structure.Destroy, Plant.ClaimExtensionTile,
+    // Plant.ReleaseAllExtensionTiles) share a single firing point.
+    public void NotifyStructChanged(){ cbStructChanged?.Invoke(this); }
     public bool ContainsAvailableItem(Item item){return inv != null && inv.ContainsAvailableItem(item);}
     public ItemStack GetItemToHaul(){
         if (inv == null){return null;}

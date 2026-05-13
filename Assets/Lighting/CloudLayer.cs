@@ -10,13 +10,19 @@ using UnityEngine;
 // The cloud body is a constellation of CPU-spawned 3D sphere-blobs.
 // Each frame this script walks a regular grid ANCHORED IN NOISE-SPACE
 // (each cell maps to a fixed point in the noise field, not to a fixed
-// offset from the camera), samples the same 2D value noise the shader
-// uses (see Hash2D / ValueNoise below — must stay in sync with
-// Assets/Lighting/Noise.hlsl), and emits a blob wherever density
+// offset from the camera), samples a **3D value noise** field with the
+// z-axis driven by a slowly-growing `evolutionOffset` (so the sampled
+// pattern smoothly morphs through time — clouds form and dissolve in
+// place independent of wind drift), and emits a blob wherever density
 // exceeds the humidity-driven threshold. Each blob is a
-// Vector4(x_local, y_local, z, radius) in world units; the array
-// (max 256, typically 30–80 active) is pushed to the gen shader as
-// _Blobs + _BlobCount.
+// Vector4(x_local, y_local, z, radius) in world units, paired with a
+// per-blob horizontal-stretch aspect (varied ±20% around the inspector
+// `blobAspect` so neighbours don't all look like the same oval). Both
+// arrays (max 512, typically 30–80 active) are pushed to the gen
+// shader as _Blobs / _BlobAspects + _BlobCount. The shader doesn't
+// sample the density field itself — it only consumes the already-
+// placed blobs — so the CPU noise functions don't need to match the
+// shader's noise (which is only used for the silhouette curl-warp).
 //
 // Anchoring the grid in noise-space (not sprite-local) is what keeps
 // blobs from popping in/out at the viewport edges as the camera pans:
@@ -27,20 +33,27 @@ using UnityEngine;
 // z-jitter, jitter offset) doesn't churn.
 //
 // ── Shading ────────────────────────────────────────────────────────────
-// Pass 0 treats the blob array as a HEIGHT FIELD `h(x,y) = max_i(zTop_i)`
-// where `zTop_i = blob.z + sqrt(r² − dist²)` for each blob the pixel
-// sits inside. The surface normal at each pixel comes from a 5-tap
-// finite-difference gradient of this height field (centre + 4 cardinal
-// neighbours, step `normalEpsilon`). Adjacent blobs blend automatically
-// at their junctions — the L/R or B/T samples may pick different blobs
-// and the resulting gradient is a natural mix of their sphere normals,
-// so the cloud reads as one continuous body with bumps instead of
-// looking like discrete circles glued together. Lambertian against the
-// global _SunDir is then 3-band quantized.
+// Pass 0 treats the blob array as a HEIGHT FIELD
+//   `h(x, y) = max_i(zTop_i)` where `zTop_i = blob.z + sqrt(r² − dist²)`
+// and computes the surface normal from a 5-tap finite-difference
+// gradient of h (centre + 4 cardinal neighbours, step NORMAL_EPS in the
+// shader). Inside a single blob's territory FD reduces to the analytic
+// ellipsoid normal; at a seam between two overlapping blobs the FD
+// averages the two surfaces' gradients, smoothly bending the shading
+// from one lobe's normal to the other across the ridge. So the cloud
+// reads as one continuous puffy body with bumps where the blobs are,
+// rather than a pile of distinct intersecting ellipsoids with sharp
+// shading kinks at every junction. Lambertian against the global
+// _SunDir is then 3-band quantized.
 //
 // Alpha is a metaball-style merged silhouette (sum of per-blob linear
 // influences, smoothstep-thresholded). Adjacent overlapping blobs merge
 // into a single body rather than showing a bumpy circles-union outline.
+//
+// Both alpha and normal sample from the domain-warped position
+// `lp_alpha = lp + EdgeWarp(lp)` so the cloud's whole 3D form deforms
+// with the silhouette wobble — bands wrap around the wobbled bumps
+// rather than revealing un-warped ellipsoids underneath.
 //
 // Pass 1 writes a FLAT tangent normal (0,0,1) to normalRT, with the
 // same metaball alpha as Pass 0 so NormalsCapture's clip lines up with
@@ -112,10 +125,14 @@ public class CloudLayer : MonoBehaviour {
     [Range(0f, 1f)] public float worldLockingX = 0.25f;
     [Tooltip("Vertical parallax. 0 = sky-locked (sprite tracks camera y exactly, clouds glued to viewport vertically); 1 = world-locked (sprite stays at bandCenterY, clouds appear to move 100% as much as foreground vertically). 0.25 = 25% parallax. Under SkyCamera zoom-dampening the apparent ratio drifts slightly off this value when the main camera is zoomed out — tune to taste.")]
     [Range(0f, 1f)] public float worldLockingY = 0.25f;
+    [Tooltip("Rate at which the underlying noise field morphs over time (noise-units / second on the time axis of a 3D value noise). 0 = static field (only wind moves it); ~0.05 = clouds visibly form / dissolve over tens of seconds, like real cumulus evolving in place. Independent of wind drift, which just slides the field horizontally.")]
+    public float cloudEvolutionRate = 0.05f;
 
     [Header("Tint")]
     public Color baseColorClear = Color.white;
     public Color baseColorStorm = new Color(0.40f, 0.42f, 0.48f, 1f);
+    [Tooltip("Humidity below this keeps the cloud tint pinned exactly at baseColorClear; above, it lerps toward baseColorStorm as humidity goes from this value up to 1. ~0.4 = clouds stay crisp white through dry weather and only start greying as humidity approaches rain (WeatherSystem.rainThreshold = 0.7), instead of dirtying up linearly from humidity=0. Set to 0 for the old straight-from-clear-to-storm behaviour.")]
+    [Range(0f, 1f)] public float tintLerpStartHumidity = 0.4f;
 
     [Header("Cloud shading — 3 colour bands")]
     [Tooltip("Colour used for sunlit pixels (the brightest band).")]
@@ -140,22 +157,22 @@ public class CloudLayer : MonoBehaviour {
     public float blobRadiusMin   = 0.7f;
     [Tooltip("Maximum blob radius (world units) — used when density is well above threshold. Should overlap neighbouring cells so cloud bodies look continuous.")]
     public float blobRadiusMax   = 1.4f;
+    [Tooltip("Excess density (above spawn threshold) at which a cell's target radius saturates at blobRadiusMax. Lower = more cells reach max-size territory, denser-feeling clouds; higher = only the strongest noise peaks hit max size, so most cells lean toward blobRadiusMin. With the per-cell random size factor, this controls how big the BIGGEST possible blob in a cluster is — lower values broaden the spread upward. Default 0.3 means cells need noise ≈ threshold + 0.3 to spawn a full-size blob; with typical thresholds near 0.5 and noise capped at 1.0, that's a fairly rare peak.")]
+    public float excessForMaxSize = 0.3f;
     [Tooltip("Range of z-jitter per blob (world units). Spreads blobs in depth so the front-of-cloud isn't a flat plane; visible as varied silhouette overlap.")]
     public float blobDepthRange  = 0.5f;
-    [Tooltip("How many smaller 'detail' blobs to spawn around each parent. 0 = single-scale only; 3-5 gives a fractal cumulus look (big puffs with cauliflower bumps). Each multiplies the active blob count, so the shader's blob loop grows linearly — MAX_BLOBS is 512.")]
-    [Range(0, 8)] public int  subBlobCount        = 4;
-    [Tooltip("Sub-blob radius as a fraction of its parent's radius. 0.3-0.5 reads as crisp cauliflower; lower values make finer detail. Hashed per-child variation jitters this ±40% so siblings differ in size.")]
-    [Range(0.15f, 0.7f)] public float subBlobRadiusFactor = 0.45f;
-    [Tooltip("How far each sub-blob sits from its parent's centre, as a fraction of parent radius. ~0.5 = mostly interior detail; ~0.7-0.9 = bumps that bulge out through the parent's silhouette; >1.0 = sub-blobs sit beyond the parent's edge as semi-detached lumps.")]
-    [Range(0f, 1.5f)] public float subBlobSpread  = 0.7f;
-    [Tooltip("Strength of the per-pixel edge-wobble noise. Perturbs the metaball alpha threshold (not the sampling position), so cloud silhouettes get organically bumpy without the interior shading twisting. In threshold units: ~0.05 = subtle bumps; >0.15 = obviously wavy.")]
-    [Range(0f, 0.2f)] public float edgeWobbleStrength = 0.05f;
-    [Tooltip("Frequency of the edge-wobble noise (1/world-units). Higher = finer-grained bumps; lower = broader undulations. ~1 gives wobble at roughly one-world-unit scale.")]
-    public float edgeWobbleScale = 1.0f;
-    [Tooltip("Horizontal stretch of each blob into an ellipsoid. 1 = perfect spheres; 1.5-2 = cumulus-like elongated lobes; >2.5 = obvious cigars. Composes with noiseAspect (which stretches where blobs cluster) — together they shape both the macro and the micro of horizontal cloud appearance.")]
+    [Tooltip("Finite-difference step (world units) for the height-field surface-normal gradient in the shader. Smaller = sharper per-blob facets and more visible seam ridges between overlapping blobs; larger = smoother blending across seams but blurs fine surface detail (e.g., small blobs lose their 3D feel). 0.15 is a balanced default; try 0.05 for crisper bumps or 0.3 for very smooth cumulus.")]
+    [Range(0.02f, 0.5f)] public float normalEpsilon = 0.15f;
+    [Tooltip("Strength of per-pixel silhouette wobble — domain-warps the metaball alpha sample by up to this many world units. Silhouette ripples by ~strength; interior shading is unaffected (un-warped position drives normals). ~0.2 = subtle bumps; ~0.5 = clearly wavy cumulus; >1.0 = wispy / stringy edges.")]
+    [Range(0f, 1.5f)] public float edgeWobbleStrength = 0.4f;
+    [Tooltip("Frequency of the wobble noise field. Higher = finer-grained bumps along the silhouette; lower = broader undulations. ~1 gives bump features at roughly one-world-unit scale; ~2-3 gives the kind of fine fingers/wisps you'd see on a wispy cumulus.")]
+    public float edgeWobbleScale = 1.5f;
+    [Tooltip("Finite-difference step inside the curl-noise that drives the silhouette warp. Smaller = sharper / more pinched warp features (the curl gradient picks up high-frequency detail); larger = smoother, broader warp swirls. Composes with edgeWobbleScale — together they shape the size and texture of the bump pattern. 0.05 = default; try 0.02 for spiky / wispy, 0.15 for languid / billowy.")]
+    [Range(0.01f, 0.3f)] public float curlNoiseEps = 0.05f;
+    [Tooltip("Horizontal stretch of each blob into an ellipsoid. 1 = perfect spheres; 1.5-2 = cumulus-like elongated lobes; >2.5 = obvious cigars. Composes with noiseAspect (which stretches where blobs cluster) — together they shape both the macro and the micro of horizontal cloud appearance. Per-blob aspect varies ±20% around this value (hashed per cell, stable frame-to-frame) so adjacent blobs don't all look like identical stretched ovals.")]
     [Range(1f, 3f)] public float blobAspect = 1.5f;
     [Tooltip("Edge threshold (centre of the metaball alpha smoothstep). Lower = more generous silhouette (blobs read solid further from their centres); higher = tighter cloud bodies. Single-blob silhouettes extend roughly to dist = sqrt(1 - threshold) * radius before the alpha begins fading.")]
-    [Range(0.02f, 0.6f)] public float edgeThreshold = 0.2f;
+    [Range(0.0f, 0.6f)]  public float edgeThreshold = 0.2f;
     [Tooltip("Edge softness (half-width of the metaball alpha smoothstep). 0 = razor-hard silhouette; ~0.1 = subtle feather; >0.3 = visibly wispy. Combines with strength of warp noise — softer edges + bigger warp = puffy cumulus, sharper edges = more cartoony.")]
     [Range(0.0f, 0.4f)]  public float edgeSoftness  = 0.15f;
 
@@ -171,13 +188,22 @@ public class CloudLayer : MonoBehaviour {
     Material cloudGenMat;
     MaterialPropertyBlock mpb;
     float windOffsetX;
+    // Z-axis offset into the 3D value noise field. Grows linearly at
+    // cloudEvolutionRate per second so the sampled noise pattern
+    // smoothly evolves in place — independent of wind drift, which
+    // slides the field horizontally instead.
+    float evolutionOffset;
 
-    // Blob buffer — allocated once at MAX_BLOBS, reused every frame.
-    // SetVectorArray locks the array length on first call; reallocation
-    // would force a fresh upload of the new size, so the size is fixed.
-    // Must match MAX_BLOBS in CloudFieldGen.shader.
+    // Blob buffers — allocated once at MAX_BLOBS, reused every frame.
+    // SetVectorArray / SetFloatArray lock the array length on first
+    // call; reallocation would force a fresh upload of the new size, so
+    // the size is fixed. Must match MAX_BLOBS in CloudFieldGen.shader.
+    // Parallel arrays:
+    //   blobBuffer       — (x, y, z, radius) per blob.
+    //   blobAspectBuffer — horizontal stretch factor per blob.
     const int MAX_BLOBS = 512;
-    readonly Vector4[] blobBuffer = new Vector4[MAX_BLOBS];
+    readonly Vector4[] blobBuffer       = new Vector4[MAX_BLOBS];
+    readonly float[]   blobAspectBuffer = new float[MAX_BLOBS];
     int blobCount;
 
     static readonly int MainTexId        = Shader.PropertyToID("_MainTex");
@@ -193,10 +219,12 @@ public class CloudLayer : MonoBehaviour {
     static readonly int NoiseOffsetId    = Shader.PropertyToID("_NoiseOffset");
     static readonly int WobbleStrengthId = Shader.PropertyToID("_EdgeWobbleStrength");
     static readonly int WobbleScaleId    = Shader.PropertyToID("_EdgeWobbleScale");
-    static readonly int BlobAspectId     = Shader.PropertyToID("_BlobAspect");
+    static readonly int CurlEpsId        = Shader.PropertyToID("_CurlEps");
+    static readonly int NormalEpsilonId  = Shader.PropertyToID("_NormalEpsilon");
     static readonly int EdgeThresholdId  = Shader.PropertyToID("_EdgeThreshold");
     static readonly int EdgeSoftnessId   = Shader.PropertyToID("_EdgeSoftness");
     static readonly int BlobsId          = Shader.PropertyToID("_Blobs");
+    static readonly int BlobAspectsId    = Shader.PropertyToID("_BlobAspects");
     static readonly int BlobCountId      = Shader.PropertyToID("_BlobCount");
 
     void Start() {
@@ -217,6 +245,17 @@ public class CloudLayer : MonoBehaviour {
         int skyLayer = LayerMask.NameToLayer("Sky");
         if (skyLayer < 0) skyLayer = gameObject.layer;
         gameObject.layer = skyLayer;
+
+        // Auto-fit sprite height so the band always fits, regardless of
+        // bandHalfHeight / bandBottomScale tuning. Sprite is centred at
+        // bandCenterY (via LateUpdate's parallax math), so its half-
+        // extent must reach the band's furthest extreme — which is
+        // +bandHalfHeight above bandCenterY (the bottom side only goes
+        // bandHalfHeight*bandBottomScale down, never further). Add a
+        // margin for blob radii poking past the band edge. The
+        // inspector textureSize.y is treated as a minimum.
+        int neededH   = Mathf.CeilToInt((2f * bandHalfHeight + 2f * blobRadiusMax) * pixelsPerUnit);
+        textureSize.y = Mathf.Max(neededH, textureSize.y);
 
         int w = textureSize.x;
         int h = textureSize.y;
@@ -306,9 +345,16 @@ public class CloudLayer : MonoBehaviour {
     void LateUpdate() {
         if (cam == null || sr == null || cloudGenMat == null) return;
 
-        // Accumulate wind into a horizontal noise offset.
+        // Accumulate wind into a horizontal noise offset. Subtracts
+        // because lp / blob sprite-local x is `anchorX − noiseOffset.x`:
+        // for positive (rightward) wind to drift clouds rightward,
+        // noiseOffset.x must DECREASE so anchorX − noiseOffset.x grows
+        // and content slides right in the sprite.
         float wind = WeatherSystem.instance != null ? WeatherSystem.instance.wind : 0f;
-        windOffsetX += wind * windDriftScale * Time.deltaTime;
+        windOffsetX -= wind * windDriftScale * Time.deltaTime;
+        // Accumulate cloud evolution along the noise field's third axis
+        // so the underlying pattern slowly morphs in place.
+        evolutionOffset += cloudEvolutionRate * Time.deltaTime;
 
         // Position the sprite. Horizontal: locked to camera x (parallax
         // comes from the noise offset, not sprite motion). Vertical:
@@ -321,10 +367,14 @@ public class CloudLayer : MonoBehaviour {
         sr.transform.position = new Vector3(camPos.x, spriteY, renderZ);
 
         // Humidity-driven full-sprite tint, multiplied by _MainTex.rgb in
-        // the sprite shader.
+        // the sprite shader. Clamped to pure baseColorClear below
+        // tintLerpStartHumidity, then lerps to baseColorStorm over the
+        // remaining [tintLerpStartHumidity, 1] range — so clouds stay
+        // crisp white through dry weather and only grey as rain approaches.
         float humidity = WeatherSystem.instance != null
             ? WeatherSystem.instance.humidity : WeatherSystem.humidityMean;
-        sr.color = Color.Lerp(baseColorClear, baseColorStorm, humidity);
+        float tintT = Mathf.InverseLerp(tintLerpStartHumidity, 1f, humidity);
+        sr.color = Color.Lerp(baseColorClear, baseColorStorm, tintT);
 
         // Defensive: a domain reload (script recompile while in Play
         // mode) can leave the RT object alive but with its GPU contents
@@ -341,6 +391,16 @@ public class CloudLayer : MonoBehaviour {
         Vector2 noiseOffset = new Vector2(camPos.x * worldLockingX + windOffsetX, 0f);
         float threshold = Mathf.Lerp(thresholdClear, thresholdStorm, humidity);
 
+        // Broadcast cloud drift state as shader globals so other layers
+        // (background hills' shadow overlay, etc.) can render features
+        // that move in sync with the clouds without coupling to
+        // CloudLayer directly. _CloudThreshold matches the spawn
+        // threshold so a consumer using the same noise sampling gets
+        // roughly the same coverage as the cloud field.
+        Shader.SetGlobalFloat("_CloudWindOffsetX",     windOffsetX);
+        Shader.SetGlobalFloat("_CloudEvolutionOffset", evolutionOffset);
+        Shader.SetGlobalFloat("_CloudThreshold",       threshold);
+
         cloudGenMat.SetVector(TexSizeId,        new Vector2(textureSize.x, textureSize.y));
         cloudGenMat.SetFloat (InvPpuId,         1f / pixelsPerUnit);
         cloudGenMat.SetColor (LitColorId,       litColor);
@@ -352,17 +412,21 @@ public class CloudLayer : MonoBehaviour {
         cloudGenMat.SetVector(NoiseOffsetId,    noiseOffset);
         cloudGenMat.SetFloat (WobbleStrengthId, edgeWobbleStrength);
         cloudGenMat.SetFloat (WobbleScaleId,    edgeWobbleScale);
-        cloudGenMat.SetFloat (BlobAspectId,     blobAspect);
+        cloudGenMat.SetFloat (CurlEpsId,        curlNoiseEps);
+        cloudGenMat.SetFloat (NormalEpsilonId,  normalEpsilon);
         cloudGenMat.SetFloat (EdgeThresholdId,  edgeThreshold);
         cloudGenMat.SetFloat (EdgeSoftnessId,   edgeSoftness);
 
         // Generate the blob list for this frame and push to the shader.
         // Blob sprite-local y is always (anchorY - bandCenterY) — i.e.,
         // their offset within the band. The sprite itself moves with
-        // parallax (via spriteY above); the blobs ride along.
+        // parallax (via spriteY above); the blobs ride along. Aspects
+        // are passed as a parallel float array so each blob can have
+        // its own ellipsoid stretch.
         GenerateBlobs(threshold, noiseOffset);
-        cloudGenMat.SetVectorArray(BlobsId, blobBuffer);
-        cloudGenMat.SetInt(BlobCountId, blobCount);
+        cloudGenMat.SetVectorArray(BlobsId,        blobBuffer);
+        cloudGenMat.SetFloatArray (BlobAspectsId,  blobAspectBuffer);
+        cloudGenMat.SetInt        (BlobCountId,    blobCount);
 
         // Pass 0 → mainRT (blob-shaded 3-band colour + soft union mask),
         // Pass 1 → normalRT (flat tangent normal so the global lightmap
@@ -450,12 +514,17 @@ public class CloudLayer : MonoBehaviour {
                 float band     = Mathf.Clamp01(1f - bandDist * bandDist);
                 if (band <= 0f) continue;
 
-                // Noise sample at the anchored point. noiseAspect divides
-                // the x scale so features stretch horizontally — at
-                // aspect=2 the x noise frequency is half, so cloud
+                // Noise sample at the anchored point. noiseAspect
+                // divides the x scale so features stretch horizontally —
+                // at aspect=2 the x noise frequency is half, so cloud
                 // clusters end up about twice as wide as they are tall.
-                float d = ValueNoise(anchorX * noiseScale / noiseAspect,
-                                     anchorY * noiseScale) * band;
+                // The third (z) axis is `evolutionOffset` — a slowly-
+                // growing time offset that lets the sampled pattern
+                // smoothly morph through 3D noise space, so clouds form
+                // and dissolve in place rather than just translating.
+                float d = ValueNoise3D(anchorX * noiseScale / noiseAspect,
+                                       anchorY * noiseScale,
+                                       evolutionOffset) * band;
                 float excess = d - threshold;
                 if (excess <= 0f) continue;
 
@@ -464,66 +533,55 @@ public class CloudLayer : MonoBehaviour {
                 //      to where in [blobRadiusMin, blobRadiusMax] the
                 //      blob's full radius sits. Saturates above +0.3.
                 //   2) "fade-in" multiplier ramps radius from 0 at the
-                //      threshold to full over fadeRange. This is what
-                //      kills the popping that the user saw: when a cell's
-                //      noise value or the threshold drifts (humidity
-                //      shifting, wind grazing near-threshold cells), the
-                //      blob smoothly grows from a point rather than
-                //      flipping on at full size.
-                const float fadeRange = 0.05f;
-                float fadeIn = Mathf.Clamp01(excess / fadeRange);
+                //      threshold to full quickly via a sqrt curve over
+                //      fadeRange. This kills the popping (cells grazing
+                //      threshold during wind drift still grow smoothly
+                //      from a point) while keeping the tiny phase
+                //      brief — sqrt(t) puts the blob at 70% size by the
+                //      time excess is a quarter of fadeRange, so most
+                //      of the in-between time the blob looks close to
+                //      full rather than visibly small.
+                const float fadeRange = 0.02f;
+                float t      = Mathf.Clamp01(excess / fadeRange);
+                float fadeIn = Mathf.Sqrt(t);
                 float maxR   = Mathf.Lerp(blobRadiusMin, blobRadiusMax,
-                                           Mathf.Clamp01(excess / 0.3f));
-                float radius = maxR * fadeIn;
+                                           Mathf.Clamp01(excess / Mathf.Max(0.001f, excessForMaxSize)));
+                // Per-cell random size factor in [0, 1]. Cells in a
+                // high-noise cluster all see similar maxR, so without
+                // this they'd spawn a row of near-identical big lobes.
+                // Multiplying by a deterministic per-cell hash spreads
+                // sizes uniformly between 0 and maxR — a fractal-
+                // flavoured mix of big and small puffs scattered
+                // through the same cluster, instead of all-at-maxR.
+                // Hashed on (col, row) so the size is stable
+                // frame-to-frame for a given cell.
+                float sizeRand = Hash2D(col * 47.3f, row * 31.7f);
+                float radius = maxR * fadeIn * sizeRand;
                 // Skip blobs too small to contribute visibly. Frees up
                 // the MAX_BLOBS slot for cells that actually matter.
                 if (radius < blobRadiusMin * 0.2f) continue;
 
                 float z = (Hash2D(col * 5.19f, row * 9.71f) - 0.5f) * blobDepthRange;
-                blobBuffer[blobCount++] = new Vector4(lx, lyBand, z, radius);
+                // Per-blob aspect: ±20% around the inspector value,
+                // hashed per cell so adjacent blobs don't all look
+                // like identical horizontally-stretched ovals.
+                float aspectVar = (Hash2D(col * 5.71f, row * 3.13f) - 0.5f) * 0.4f;
+                float aspect    = blobAspect * (1f + aspectVar);
+                blobAspectBuffer[blobCount] = aspect;
+                blobBuffer[blobCount++]     = new Vector4(lx, lyBand, z, radius);
                 if (blobCount >= MAX_BLOBS) return;
-
-                // Sub-blob spawn: cluster a handful of smaller blobs
-                // around this parent so the cloud reads as fractal
-                // cumulus (big puffs + cauliflower bumps) rather than a
-                // single-scale field of identical spheres. Positions and
-                // sizes are hashed per (parent cell, sub index) so the
-                // result is deterministic per noise state — sub-blobs
-                // ride along with the parent through wind / parallax
-                // without independently popping in or out.
-                for (int s = 0; s < subBlobCount; s++) {
-                    float ha = Hash2D(col * 23.7f + s * 1.31f, row * 41.9f + s * 0.7f);
-                    float hd = Hash2D(col * 13.1f + s * 5.31f, row *  7.9f + s * 1.3f);
-                    float hr = Hash2D(col * 31.1f + s * 2.31f, row * 19.9f + s * 2.7f);
-                    float hz = Hash2D(col * 17.1f + s * 3.31f, row * 29.9f + s * 3.1f);
-
-                    float angle = ha * 6.28318530718f;            // 2π
-                    float dist  = hd * subBlobSpread * radius;    // 0 = at parent centre, 1*radius = at parent edge
-
-                    float subLx = lx     + Mathf.Cos(angle) * dist;
-                    float subLy = lyBand + Mathf.Sin(angle) * dist;
-                    // Sub-blob radius: subBlobRadiusFactor * parent.radius,
-                    // hash-modulated ±40% so siblings differ in size for
-                    // an organic look rather than a regular ring of clones.
-                    float subR  = radius * subBlobRadiusFactor * (0.6f + hr * 0.8f);
-                    // Slight extra z-jitter for sub-blobs, half the
-                    // parent's range — sits them at slightly different
-                    // depths than parent without breaking the cluster.
-                    float subZ  = z + (hz - 0.5f) * blobDepthRange * 0.5f;
-
-                    blobBuffer[blobCount++] = new Vector4(subLx, subLy, subZ, subR);
-                    if (blobCount >= MAX_BLOBS) return;
-                }
             }
         }
     }
 
-    // ── 2D value noise — port of Noise.hlsl::Hash2D / ValueNoise ───────
-    // Must stay bit-compatible with the shader so blob spawn positions
-    // match the visible cloud body. If you change Noise.hlsl, change
-    // these too (and vice versa). Both are short and stable enough that
-    // drift risk is low; the duplication buys us trivially-cheap CPU
-    // sampling for the spawn grid.
+    // ── Noise primitives (CPU side) ─────────────────────────────────
+    // Hash2D is used for per-cell deterministic jitter (blob position,
+    // radius, depth, aspect). ValueNoise3D samples the blob-density
+    // field, with the third axis driven by evolutionOffset so the
+    // sampled pattern morphs through time. These don't need to stay in
+    // sync with the shader's noise (the shader only consumes already-
+    // spawned blobs via the _Blobs array — it doesn't sample the
+    // density field per-pixel).
 
     static float Frac(float x) {
         return x - Mathf.Floor(x);
@@ -536,15 +594,36 @@ public class CloudLayer : MonoBehaviour {
         return Frac((ax + d) * (ay + d));
     }
 
-    static float ValueNoise(float px, float py) {
-        float ix = Mathf.Floor(px), iy = Mathf.Floor(py);
-        float fx = px - ix,         fy = py - iy;
-        float a = Hash2D(ix,     iy);
-        float b = Hash2D(ix + 1, iy);
-        float c = Hash2D(ix,     iy + 1);
-        float d = Hash2D(ix + 1, iy + 1);
+    static float Hash3D(float px, float py, float pz) {
+        float ax = Frac(px * 123.34f);
+        float ay = Frac(py * 456.21f);
+        float az = Frac(pz * 789.43f);
+        float d  = ax * (ax + 45.32f) + ay * (ay + 45.32f) + az * (az + 45.32f);
+        return Frac((ax + d) * (ay + d) * (az + d));
+    }
+
+    // Trilinear-interpolated value noise. Drop-in 3D extension of the
+    // 2D variant — Quilez-style smoothstep fade on each axis.
+    static float ValueNoise3D(float px, float py, float pz) {
+        float ix = Mathf.Floor(px), iy = Mathf.Floor(py), iz = Mathf.Floor(pz);
+        float fx = px - ix,         fy = py - iy,         fz = pz - iz;
+        float h000 = Hash3D(ix,     iy,     iz);
+        float h100 = Hash3D(ix + 1, iy,     iz);
+        float h010 = Hash3D(ix,     iy + 1, iz);
+        float h110 = Hash3D(ix + 1, iy + 1, iz);
+        float h001 = Hash3D(ix,     iy,     iz + 1);
+        float h101 = Hash3D(ix + 1, iy,     iz + 1);
+        float h011 = Hash3D(ix,     iy + 1, iz + 1);
+        float h111 = Hash3D(ix + 1, iy + 1, iz + 1);
         float ux = fx * fx * (3f - 2f * fx);
         float uy = fy * fy * (3f - 2f * fy);
-        return Mathf.Lerp(Mathf.Lerp(a, b, ux), Mathf.Lerp(c, d, ux), uy);
+        float uz = fz * fz * (3f - 2f * fz);
+        float x00 = Mathf.Lerp(h000, h100, ux);
+        float x10 = Mathf.Lerp(h010, h110, ux);
+        float x01 = Mathf.Lerp(h001, h101, ux);
+        float x11 = Mathf.Lerp(h011, h111, ux);
+        float y0  = Mathf.Lerp(x00, x10, uy);
+        float y1  = Mathf.Lerp(x01, x11, uy);
+        return Mathf.Lerp(y0, y1, uz);
     }
 }

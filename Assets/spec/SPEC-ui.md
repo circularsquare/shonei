@@ -88,7 +88,7 @@ Managed by `InventoryController` (`Assets/Controller/InventoryController.cs`).
 - ItemDisplay instances are created once in `AddItemDisplay()` during first `TickUpdate`, one per item in `Db.items`.
 - Tree structure: root items parent to `inventoryPanel.transform`, children parent to their parent ItemDisplay's transform.
 - **Discovery**: items are hidden until `globalInventory.Quantity > 0` (checked recursively via `HaveAnyOfChildren`). Once discovered, stays visible even if quantity drops to 0.
-- **Tree collapse**: `IsVisibleInTree` walks ancestors — if any parent ItemDisplay has `open == false`, the item is hidden. Groups start collapsed by default; flag `defaultOpen: true` in itemsDb.json to start a group expanded (e.g. `"food"`). Market mode always expands every group regardless of the flag. Per-group collapse state is persisted across saves for the global panel only (StoragePanel's allow tree is rebuilt on every panel open). SaveSystem stores only deltas vs `defaultOpen` in `WorldSaveData.inventoryTreeOpen`; on load the dict is staged on `InventoryController.pendingGroupOpenOverrides` and consumed by `ItemDisplay.Start`.
+- **Tree collapse**: `IsVisibleInTree` walks ancestors — if any parent ItemDisplay has `open == false`, the item is hidden. Groups start collapsed by default; flag `defaultOpen: true` in itemsDb.json to start a group expanded (e.g. `"food"`). Market mode always expands every group regardless of the flag. Per-group collapse state is persisted across saves for the global panel only via `WorldSaveData.inventoryTreeOpen` (stores only deltas vs `defaultOpen`); on load the dict is staged on `InventoryController.pendingGroupOpenOverrides` and consumed by `ItemDisplay.Start`. The StoragePanel allow tree is built once and reused across all `Show()` calls, so its collapse state persists within a session but isn't saved.
 - **Targets**: stored in `InventoryController.targets[itemId]` (default 10000 fen = 100 liang). Adjusted via +/- buttons (doubles/halves). Used by `Recipe.Score()` for work order prioritization.
 - **Market display**: handled by TradingPanel's own ItemDisplay tree (see TradingPanel section). The global panel always shows global quantities.
 
@@ -112,14 +112,16 @@ Populated from `inv.itemStacks`. Refreshed every tick via `UpdateSlots()`.
 A second set of ItemDisplay instances (separate from the global panel's) with `DisplayMode.Storage`. Shows the full item hierarchy with allow/disallow toggles. Only discovered items are visible.
 
 - `allowDisplayGos` — private `Dictionary<int, GameObject>` keyed by item id (independent of global panel's `itemDisplayGos`)
-- Items incompatible with the inventory type are filtered out (`Inventory.ItemTypeCompatible`)
-- `item` field is set directly at instantiation (bypassing `Start()` timing) so toggles display correctly on the first frame
+- **Built once, reused forever**: `BuildAllowTreeOnce()` instantiates one row per item in `Db.items` on first `Show()` and sets `_allowTreeBuilt = true`. Subsequent shows skip the build and just call `RefreshAllowTreeForInv(inv)` to rebind `targetInventory`, recompute visibility (`compat && discovered && parentOpen` walking via `IsVisibleInAllowTree`), and refresh allow-toggle sprites. This keeps click cost flat (~46 SetActive + LoadAllowed) instead of paying ~600–800 GameObject instantiations per click.
+- **Per-inventory filter at refresh time, not build time**: rows are built for every item regardless of class; `Inventory.ItemTypeCompatible` is applied in `RefreshAllowTreeForInv` so the same cached tree serves Default / Liquid / Book inventories.
+- `item` field is set directly at instantiation (bypassing `Start()` timing) so toggles display correctly on the first frame. `display.open` is also preempted to `DefaultOpenForGroup(item)` at build time so first-frame visibility is correct before `Start()` runs.
 
 ### Lifecycle
 
-- `Show(inv)` — activate, populate slots + allow tree, force layout rebuild
-- `Hide()` — deactivate children (`SetActive(false)` before `Destroy` to avoid layout glitches from deferred destruction), clear dictionaries
-- `UpdateDisplay()` — called from `InventoryController.TickUpdate()` when panel is active; refreshes slot text and toggle states
+- `Show(inv)` — activate, populate slots, `BuildAllowTreeOnce()` (no-op after first time), `RefreshAllowTreeForInv(inv)`, force layout rebuild.
+- `Hide()` — deactivate panel; slot rows are destroyed (their structure varies per inventory), allow tree rows persist as inactive children.
+- `UpdateDisplay()` — called from `InventoryController.TickUpdate()` while panel is active; rebuilds slots (cheap; few stacks) and calls `RefreshAllowTreeForInv(currentInv)` so newly-discovered items (research unlocks, first-time production) appear within one tick.
+- World reset: `InventoryController.ResetState()` calls `storagePanel.Hide()` so cached rows don't keep stale `Inventory` references between worlds. Cached `Db.Item` references are safe — items are loaded once from JSON at startup and never invalidated.
 
 ### Allow/Disallow
 
@@ -163,6 +165,50 @@ Sprites loaded from `Resources/Sprites/Skills/{skillname}` with `Sprites/Skills/
 
 ### Backward compatibility
 `ShowInfo(object)` wraps raw args into a `SelectionContext`. `UpdateInfo()` refreshes the active sub-view (called each tick from `World.cs`). `obj` property returns `currentSelection?.tile` for Blueprint.cs checks.
+
+## Collapsible panels
+
+Some always-visible panels can be collapsed to a single header row to reclaim
+screen real estate. Implemented via `Assets/Components/CollapsibleHeader.cs`
+— a reusable MonoBehaviour that sits at **sibling index 0** of a panel's
+VerticalLayoutGroup and toggles every later sibling on click.
+
+Current adopters:
+- **Inventory panel** (`InventoryController.inventoryHeader`, saveKey `"inventory"`)
+- **Jobs panel** (`AnimalController.jobsHeader`, saveKey `"jobs"`)
+
+The "header is sibling 0, content is the rest" pattern means runtime-spawned
+rows (ItemDisplay, JobDisplay) need no re-parenting — they continue to spawn
+at the end of the panel and become "content" siblings automatically.
+
+**Spawn-site collapse awareness**: when adding a new row to a collapsed panel,
+the spawn site (`InventoryController.AddItemDisplay`,
+`AnimalController.AddJobRow`) checks the header's `open` state and starts the
+new row inactive. Otherwise newly-spawned rows would pop through a collapsed
+panel.
+
+**Click handling**: `CollapsibleHeader` implements `IPointerClickHandler` on
+the row root. The row has a transparent Image with `raycastTarget=true` so
+clicks anywhere on the row (including the gap between arrow and label) fire
+the toggle.
+
+**Persistence**: `WorldSaveData.panelsOpen` (`Dictionary<string, bool>`)
+stores only deltas vs default-open (true), keyed by `CollapsibleHeader.saveKey`.
+Gather/restore live in `SaveSystem.cs` alongside `inventoryTreeOpen`.
+`ResetSystemState` sets both headers back to open on a fresh world.
+
+**Adding a new collapsible panel**:
+1. Add a header GameObject as sibling 0 of the panel's content container,
+   with HLG + transparent raycast Image + DropdownArrow child + TitleLabel
+   child + `CollapsibleHeader` component.
+2. Pick a unique `saveKey` (matches `Dictionary<string, bool>` keys).
+3. Add a `[SerializeField] CollapsibleHeader yourHeader;` ref on the
+   controller that owns the panel and wire it in the editor.
+4. Update `SaveSystem.GatherSaveData` and the Phase 5 restore block in
+   `ApplySaveData` to read/write the header's state via its `saveKey`.
+5. Update `SaveSystem.ResetSystemState` to set the header back to open.
+6. If the panel spawns rows at runtime, gate their initial `SetActive` on
+   `header.open`.
 
 ## GlobalHappinessPanel
 
@@ -245,6 +291,7 @@ The block falls through (no `return`); `MouseController` still processes its own
 | File | Role |
 |------|------|
 | `Assets/Controller/InventoryController.cs` | Global panel, selection routing, discovery, targets |
+| `Assets/Components/CollapsibleHeader.cs` | Reusable header row that collapses/expands later siblings; used by inventory + jobs panels |
 | `Assets/UI/ItemDisplay.cs` | Row prefab component (tree collapse, targets, allow toggle) |
 | `Assets/UI/StoragePanel.cs` | Storage detail panel (slot view + allow tree; handles liquid storage too) |
 | `Assets/Components/StorageSlotDisplay.cs` | Compact slot row text display |

@@ -78,6 +78,16 @@ public class BackgroundLayer : MonoBehaviour {
     [Tooltip("Sorting order within the Background sorting layer. -100 = sky gradient, -50 = stars, 0 = clouds. -75 puts the background between stars and clouds (in front of stars).")]
     public int sortingOrder = -75;
 
+    [Header("Cloud shadows")]
+    [Tooltip("How much to darken the hill painting where a cloud-shadow noise blob falls. 0 = no shadows, ~0.2 = subtle, ~0.5 = obvious dark patches. Multiplied by the painting's alpha so transparent / sky areas aren't shadowed.")]
+    [Range(0f, 1f)] public float shadowStrength = 0.25f;
+    [Tooltip("Frequency of the shadow noise field (1 / world-units). Lower = bigger, broader shadow blobs; higher = smaller, more numerous patches. ~0.15 gives shadows ~6-7 world units across.")]
+    public float shadowNoiseScale = 0.15f;
+    [Tooltip("Horizontal stretch of shadow blobs. 1 = round; 2 = twice as wide as tall (cloud shadows elongated by wind). Matches noiseAspect's purpose for the cloud blobs themselves.")]
+    [Range(1f, 4f)] public float shadowAspect = 2f;
+    [Tooltip("Softness of the shadow edge (half-width of the smoothstep around the cloud-coverage threshold). 0 = razor-sharp shadows; ~0.1 = soft fuzzy edges.")]
+    [Range(0f, 0.3f)] public float shadowSoftness = 0.08f;
+
 
     Camera cam;
     SpriteRenderer sr;
@@ -99,13 +109,17 @@ public class BackgroundLayer : MonoBehaviour {
     // contributes uniform brightness (no spurious per-pixel sun shading).
     static Texture2D _flatNormalTex;
 
-    static readonly int MainTexId        = Shader.PropertyToID("_MainTex");
-    static readonly int NormalMapId      = Shader.PropertyToID("_NormalMap");
-    static readonly int ViewportSizeId   = Shader.PropertyToID("_ViewportSize");
-    static readonly int CameraPosId      = Shader.PropertyToID("_CameraPos");
-    static readonly int BandCenterYId    = Shader.PropertyToID("_BandCenterY");
-    static readonly int ParallaxOffsetId = Shader.PropertyToID("_ParallaxOffset");
-    static readonly int TexUVScaleId     = Shader.PropertyToID("_TexUVScale");
+    static readonly int MainTexId           = Shader.PropertyToID("_MainTex");
+    static readonly int NormalMapId         = Shader.PropertyToID("_NormalMap");
+    static readonly int ViewportSizeId      = Shader.PropertyToID("_ViewportSize");
+    static readonly int CameraPosId         = Shader.PropertyToID("_CameraPos");
+    static readonly int BandCenterYId       = Shader.PropertyToID("_BandCenterY");
+    static readonly int ParallaxOffsetId    = Shader.PropertyToID("_ParallaxOffset");
+    static readonly int TexUVScaleId        = Shader.PropertyToID("_TexUVScale");
+    static readonly int ShadowStrengthId    = Shader.PropertyToID("_ShadowStrength");
+    static readonly int ShadowNoiseScaleId  = Shader.PropertyToID("_ShadowNoiseScale");
+    static readonly int ShadowAspectId      = Shader.PropertyToID("_ShadowAspect");
+    static readonly int ShadowSoftnessId    = Shader.PropertyToID("_ShadowSoftness");
 
     void Start() {
         if (SkyCamera.instance != null && SkyCamera.instance.BgCam != null) {
@@ -252,11 +266,15 @@ public class BackgroundLayer : MonoBehaviour {
         // into bgRT. The Blit's source supplies _MainTex (the user
         // texture); the rest of the per-pixel math happens in the gen
         // shader's fragment.
-        bgGenMat.SetVector(ViewportSizeId,   new Vector2(viewW, viewH));
-        bgGenMat.SetVector(CameraPosId,      new Vector2(camPos.x, camPos.y));
-        bgGenMat.SetFloat (BandCenterYId,    bandCenterY);
-        bgGenMat.SetVector(ParallaxOffsetId, parallaxOffset);
-        bgGenMat.SetVector(TexUVScaleId,     texUVScale);
+        bgGenMat.SetVector(ViewportSizeId,    new Vector2(viewW, viewH));
+        bgGenMat.SetVector(CameraPosId,       new Vector2(camPos.x, camPos.y));
+        bgGenMat.SetFloat (BandCenterYId,     bandCenterY);
+        bgGenMat.SetVector(ParallaxOffsetId,  parallaxOffset);
+        bgGenMat.SetVector(TexUVScaleId,      texUVScale);
+        bgGenMat.SetFloat (ShadowStrengthId,   shadowStrength);
+        bgGenMat.SetFloat (ShadowNoiseScaleId, shadowNoiseScale);
+        bgGenMat.SetFloat (ShadowAspectId,     shadowAspect);
+        bgGenMat.SetFloat (ShadowSoftnessId,   shadowSoftness);
 
         // Keep bgRT at exact camera-pixel resolution so the visible
         // sprite samples it 1:1 (no upscaling blur). If the camera's

@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
@@ -123,7 +122,7 @@ public class LightFeature : ScriptableRendererFeature {
         if ((cullingMask & (litLayers | directionalOnlyLayers | waterLayer | backgroundLayer | tileChunkLayer)) == 0) return;
         capturePass.Setup(litLayers, shadowCasterLayers, directionalOnlyLayers, waterLayer, backgroundLayer, tileChunkLayer);
         renderer.EnqueuePass(capturePass);
-        lightPass.Setup(renderer.cameraColorTarget, ambientNormal, deepAmbientColor, skyLightBlend, sortRampRange, behindFarHeightFactor, emissionStrength);
+        lightPass.Setup(renderer.cameraColorTarget, ambientNormal, deepAmbientColor, skyLightBlend, sortRampRange, behindFarHeightFactor, emissionStrength, tileChunkLayer);
         renderer.EnqueuePass(lightPass);
     }
 
@@ -297,6 +296,7 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
     float sortRampRange;
     float behindFarHeightFactor;
     float emissionStrength = 1f;
+    int   tileChunkMask;
     Color deepAmbientColor;
     RenderTargetIdentifier colorBuffer;
     readonly Material circleMat;
@@ -306,9 +306,6 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
     readonly Material emissionMat;
     readonly Mesh     quad;
     readonly MaterialPropertyBlock mpb = new();
-
-    // Cache sky camera check per camera to avoid GetComponent every frame.
-    readonly Dictionary<Camera, bool> skyCamCache = new();
 
     public LightPass(Shader lightCircle, Shader lightSun, Shader lightComposite, Shader lightAmbientFill, Shader emissionWriter) {
         if (lightCircle == null || lightSun == null || lightComposite == null || lightAmbientFill == null || emissionWriter == null) {
@@ -333,7 +330,7 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         CoreUtils.Destroy(quad);
     }
 
-    public void Setup(RenderTargetIdentifier colorBuffer, float ambientNormal, Color deepAmbientColor, float skyLightBlend, float sortRampRange, float behindFarHeightFactor, float emissionStrength) {
+    public void Setup(RenderTargetIdentifier colorBuffer, float ambientNormal, Color deepAmbientColor, float skyLightBlend, float sortRampRange, float behindFarHeightFactor, float emissionStrength, int tileChunkMask) {
         this.colorBuffer           = colorBuffer;
         this.ambientNormal         = ambientNormal;
         this.deepAmbientColor      = deepAmbientColor;
@@ -341,6 +338,7 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         this.sortRampRange         = sortRampRange;
         this.behindFarHeightFactor = behindFarHeightFactor;
         this.emissionStrength      = emissionStrength;
+        this.tileChunkMask         = tileChunkMask;
     }
 
     public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData rd) {
@@ -374,6 +372,17 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
 
         Color deepAmbient = deepAmbientColor;
 
+        // ── World-aligned vs sky-style lighting ─────────────────────────────
+        // A "world camera" renders the chunked tile layer — by definition the
+        // only camera whose frustum aligns with the world tile grid that built
+        // _SkyExposureTex. Everything else (SkyCamera, future overlay/parallax
+        // cameras, minimap previews, …) gets uniform sky-style lighting: no
+        // spatial exposure, no torches, no emission. This is a fail-safe
+        // default — a new camera "just works" without inheriting Main-camera
+        // assumptions and ghosting the terrain onto its render. Opt in by
+        // adding the TileChunk layer to the camera's culling mask.
+        bool isWorldCam = (cam.cullingMask & tileChunkMask) != 0;
+
         cmd.SetGlobalVector("_CamWorldBounds", new Vector4(camMinX, camMinY, orthoW, orthoH));
         cmd.SetGlobalVector("_WorldToUV",      new Vector2(1f / orthoW, 1f / orthoH));
         cmd.SetGlobalFloat("_AmbientNormal",   ambientNormal);
@@ -381,30 +390,36 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         // Ramp params consumed by LightCircle.shader for sort-aware effective height.
         cmd.SetGlobalFloat("_SortRampRange",         sortRampRange);
         cmd.SetGlobalFloat("_BehindFarHeightFactor", behindFarHeightFactor);
+        // Read by LightSun.shader. Bypass on non-world cameras because their
+        // _CamWorldBounds maps screen UV to world positions that don't
+        // correspond to what they actually draw — sampling exposure would
+        // ghost the world tile-grid silhouette onto sky/background content.
+        cmd.SetGlobalFloat("_SkyExposureBypass", isWorldCam ? 0f : 1f);
 
         // ── 2. Ambient setup (camera-specific) ──────────────────────────────
-        // Deep ambient: constant color, always present including deep underground.
-        // Sky light: full ambient color (day/night cycle), modulated by _SkyExposureTex.
-        // Sky camera gets full ambient (no spatial exposure) so clouds
-        // aren't affected by the underground cutoff.
+        // World cam: deep ambient floor + spatial sky-light fill via _SkyExposureTex
+        //   → underground stays dark, surface gets full ambient.
+        // Non-world cam: uniform clear to the time-of-day ambient color — no
+        //   spatial modulation, since the camera's content (clouds, sky,
+        //   parallax background) is not anchored to the world tile grid.
 
-        if (!skyCamCache.TryGetValue(cam, out bool isSkyCam))
-            skyCamCache[cam] = isSkyCam = cam.GetComponent<SkyCamera>() != null;
-        if (isSkyCam) {
-            cmd.ClearRenderTarget(false, true, SunController.GetAmbientColor());
-        } else {
+        if (isWorldCam) {
             Color skyLight = SunController.GetAmbientColor();
             cmd.ClearRenderTarget(false, true, deepAmbient);
             cmd.SetGlobalColor("_AmbientColor", skyLight);
             cmd.Blit(null, LightRTId, ambientFillMat);
+        } else {
+            cmd.ClearRenderTarget(false, true, SunController.GetAmbientColor());
         }
 
         // ── 3. Point lights (torches, lanterns, etc.) ────────────────────────
-        // Skipped for SkyCamera (no torches in the sky), and culled per-light
-        // against the camera AABB so off-screen torches don't issue draw calls.
-        // The cull uses outerRadius as the buffer — a light just off-screen still
-        // illuminates on-screen pixels as long as its reach extends into view.
-        if (!isSkyCam) {
+        // World cam only — torches/lanterns live on world tile positions, so
+        // non-world cameras (which draw parallax/sky content) ignore them.
+        // Lights are culled per-light against the camera AABB so off-screen
+        // torches don't issue draw calls. The cull uses outerRadius as the
+        // buffer — a light just off-screen still illuminates on-screen pixels
+        // as long as its reach extends into view.
+        if (isWorldCam) {
             float camMaxX = camMinX + orthoW;
             float camMaxY = camMinY + orthoH;
             foreach (var src in LightSource.all) {
@@ -463,8 +478,8 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         // Iterates the explicit emissive registry (LightSource.emissiveReceivers)
         // instead of DrawRenderers over the entire litMask — only ~N draws per
         // frame where N = active emitters, vs. one shader invocation per visible
-        // lit sprite. Skipped for SkyCamera (clouds carry no emission).
-        if (!isSkyCam && emissionMat != null && emissionStrength > 0f) {
+        // lit sprite. World cam only — emitters live at world tile positions.
+        if (isWorldCam && emissionMat != null && emissionStrength > 0f) {
             cmd.SetGlobalFloat("_EmissionStrength", emissionStrength);
             cmd.SetRenderTarget(LightRTId);
             foreach (var r in LightSource.emissiveReceivers) {

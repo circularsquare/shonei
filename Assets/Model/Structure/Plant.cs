@@ -360,6 +360,7 @@ public class Plant : Structure {
     private void ClaimExtensionTile(int h) {
         Tile t = World.instance.GetTileAt(tile.x, tile.y + h);
         t.structs[0] = this;
+        t.NotifyStructChanged();
 
         GameObject extGo = new GameObject($"plant_{plantType.name}_ext{h}");
         extGo.transform.SetParent(go.transform, false);
@@ -385,7 +386,10 @@ public class Plant : Structure {
     private void ReleaseAllExtensionTiles() {
         for (int h = 1; h < height; h++) {
             Tile t = World.instance.GetTileAt(tile.x, tile.y + h);
-            if (t != null && t.structs[0] == this) t.structs[0] = null;
+            if (t != null && t.structs[0] == this) {
+                t.structs[0] = null;
+                t.NotifyStructChanged();
+            }
         }
         foreach (var g in extensionGos) if (g != null) UnityEngine.Object.Destroy(g);
         extensionGos.Clear();

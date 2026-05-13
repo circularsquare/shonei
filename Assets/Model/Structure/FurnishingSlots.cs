@@ -114,6 +114,15 @@ public class FurnishingSlots {
         }
     }
 
+    // Fires onSlotChanged for every currently-filled slot. Use after a silent restore
+    // (SaveSystem.RestoreStructure populates slots directly without going through
+    // NotifyInstalled, so visuals + happiness need a manual nudge).
+    public void NotifyAllInstalled() {
+        for (int i = 0; i < slotItems.Length; i++) {
+            if (slotItems[i] != null) onSlotChanged?.Invoke(i);
+        }
+    }
+
     // Tears down every slot inventory. Called from Building.Destroy().
     public void Destroy() {
         for (int i = 0; i < slotInvs.Length; i++) {

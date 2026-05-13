@@ -123,6 +123,18 @@ public class WaterController : MonoBehaviour {
         _waterMat.SetTexture("_SurfaceTex", _surfaceTex);
         _waterMat.SetTexture("_TintTex",    _tintTex);
 
+        if (waterUnderlayShader == null) {
+            Debug.LogError("WaterController: waterUnderlayShader unassigned in Inspector — assign Water/WaterUnderlay (Assets/Lighting/WaterUnderlay.shader)");
+            yield break;
+        }
+        // Reuses the same _surfaceTex and _tintTex by reference, so per-tick
+        // texture updates flow to both materials without re-binding.
+        _underlayMat = new Material(waterUnderlayShader);
+        _underlayMat.SetColor("_BaseColor",
+            new Color(waterColorDark.r, waterColorDark.g, waterColorDark.b, 0.9f));
+        _underlayMat.SetTexture("_SurfaceTex", _surfaceTex);
+        _underlayMat.SetTexture("_TintTex",    _tintTex);
+
         // World-spanning sprite: 1×1 white pixel at PPU=1, scaled to (nx, ny) Unity units.
         // UV spans 0–1 across the world, which the shader maps to game-pixel coordinates.
         // Placed at (−0.5, −0.5) to align with the tile grid (tile centres are at integers).
@@ -155,6 +167,24 @@ public class WaterController : MonoBehaviour {
         // through.
         sr.sortingOrder = -5;
         LightReceiverUtil.SetSortBucket(sr);
+
+        // Underlay sprite — same geometry, same Water Unity layer, same shared
+        // surface mask. Sorts at -15 (behind BackgroundTile at -10) so the cave
+        // wall draws on top, preserving the underground see-through. Above ground
+        // (no BackgroundTile pixels) the 0.9-alpha base occludes the parallax
+        // sky painting that the front 0.5-alpha layer would otherwise let through.
+        // No shimmer/sparkles — those come from the front Water.shader only,
+        // avoiding the doubled-sparkle blowout that two stacked shimmer layers
+        // would produce.
+        GameObject underGo = new GameObject("WaterSpriteUnderlay");
+        underGo.transform.position   = go.transform.position;
+        underGo.transform.localScale = go.transform.localScale;
+        if (waterLayer >= 0) underGo.layer = waterLayer;
+        SpriteRenderer underSr = underGo.AddComponent<SpriteRenderer>();
+        underSr.sprite       = waterSprite; // share the 1×1 white sprite
+        underSr.material     = _underlayMat;
+        underSr.sortingOrder = -15;
+        LightReceiverUtil.SetSortBucket(underSr);
 
         // Sync with any water already present (e.g. from world gen or save load).
         UpdateSurfaceMask();
@@ -450,27 +480,32 @@ public class WaterController : MonoBehaviour {
         Shader.SetGlobalTexture("_WaterSurfaceTex", _surfaceTex);
     }
 
-    // Adds 2 water units to every partially-filled tile.
-    // Called by WeatherSystem.OnHourElapsed() when it is raining.
+    // Adds 2×rainIntensity (rounded) water units to every partially-filled tile.
+    // Called hourly from WeatherSystem.OnHourElapsed() with the current rainAmount.
     // Only affects tiles that already contain water (> 0) and aren't full,
-    // representing rain collecting in existing puddles/pools.
-    public void RainReplenish() {
+    // representing rain collecting in existing puddles/pools. Scaling by
+    // intensity means light drizzle tops puddles slowly, downpour quickly.
+    public void RainReplenish(float rainIntensity) {
+        int add = Mathf.RoundToInt(2f * rainIntensity);
+        if (add <= 0) return;
         World world = World.instance;
         for (int x = 0; x < world.nx; x++) {
             for (int y = 0; y < world.ny; y++) {
                 Tile tile = world.GetTileAt(x, y);
                 if (tile.type.solid || tile.water == 0 || tile.water >= WaterMax) continue;
-                tile.water = (ushort)Mathf.Min(tile.water + 2, WaterMax);
+                tile.water = (ushort)Mathf.Min(tile.water + add, WaterMax);
             }
         }
     }
 
     // Rain-catching for open-air liquid-storage buildings (tanks).
-    // Called once per rain-hour from WeatherSystem.OnHourElapsed().
-    // Adds a fixed amount of water to any tank whose tile is sky-exposed
+    // Called hourly from WeatherSystem.OnHourElapsed() with the current rainAmount.
+    // Adds rainIntensity-scaled water to any tank whose tile is sky-exposed
     // and whose storage filter allows water.
-    public void RainFillTanks() {
-        const int fillPerHourFen = 100; // 1 liang/hour; tank capacity is 100 liang (~100h full rain to fill)
+    public void RainFillTanks(float rainIntensity) {
+        const int baseFillPerHourFen = 100; // 1 liang/hour at full rain; tank capacity 100 liang (~100 h full rain to fill)
+        int fillFen = Mathf.RoundToInt(baseFillPerHourFen * rainIntensity);
+        if (fillFen <= 0) return;
 
         if (!Db.itemByName.TryGetValue("water", out Item water)) {
             Debug.LogError("RainFillTanks: no 'water' item in Db");
@@ -484,7 +519,7 @@ public class WaterController : MonoBehaviour {
             if (b.storage == null) continue;
             if (!b.storage.allowed.TryGetValue(water.id, out bool ok) || !ok) continue;
             if (!world.IsExposedAbove(b.x, b.y)) continue;
-            b.storage.Produce(water, fillPerHourFen);
+            b.storage.Produce(water, fillFen);
         }
     }
 
