@@ -143,6 +143,13 @@ public class Nav {
             return true;
         }
         if (SquareDistance(a.x, nextNode.wx, a.y, nextNode.wy) < 0.001f){
+            // Just arrived at nextNode — sync Animal.insideBuilding with the arrived node's
+            // interior membership. Set by Structure on waypoints inside its footprint; null
+            // on regular tile nodes and approach tiles. Result: entering through a door
+            // sets the flag automatically (interior node arrival); leaving via the same
+            // door clears it (next node along the path is the approach tile). Task code
+            // never has to know about doors.
+            a.insideBuilding = nextNode.interiorOf;
             if (pathIndex + 1 >= path.length){
                 EndNavigation();
                 return true;

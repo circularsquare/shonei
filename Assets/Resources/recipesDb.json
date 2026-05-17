@@ -57,7 +57,7 @@
         "description": "smelt iron ore into iron",
         "workload": 4.0,
         "research": "Furnace",
-        "researchPoints": 0.025,
+        "researchPoints": 0.02,
         "ninputs": [
             { "name": "coal", "quantity": 1 },
             { "name": "iron ore", "quantity": 2 }
@@ -72,7 +72,7 @@
         "description": "fuse sand into glass",
         "workload": 4.0,
         "research": "Glassmaking",
-        "researchPoints": 0.025,
+        "researchPoints": 0.02,
         "ninputs": [
             { "name": "coal", "quantity": 1 },
             { "name": "sand", "quantity": 2 }
@@ -87,7 +87,7 @@
         "description": "dig dirt",
         "workload": 2.0,
         "research": "Excavation",
-        "researchPoints": 0.025,
+        "researchPoints": 0.02,
         "ninputs": [
         ],
         "noutputs": [
@@ -100,7 +100,7 @@
         "description": "press soybeans into soymilk",
         "workload": 3.0,
         "research": "Soymilk",
-        "researchPoints": 0.025,
+        "researchPoints": 0.02,
         "ninputs": [
             { "name": "soybeans", "quantity": 2.0 },
             { "name": "water", "quantity": 0.5 }
@@ -125,7 +125,7 @@
         "description": "mine stone",
         "workload": 3.0,
         "research": "Quarry",
-        "researchPoints": 0.025,
+        "researchPoints": 0.02,
         "ninputs": [
         ],
         "noutputs": [
@@ -137,7 +137,7 @@
         "description": "coagulate soymilk into tofu",
         "workload": 5.0,
         "research": "Tofu",
-        "researchPoints": 0.025,
+        "researchPoints": 0.02,
         "ninputs": [
             { "name": "soymilk", "quantity": 2.0 },
             { "name": "gypsum", "quantity": 0.2 }
@@ -152,7 +152,7 @@
         "description": "weave ramie into ramie cloth",
         "workload": 3.0,
         "research": "Weaving",
-        "researchPoints": 0.025,
+        "researchPoints": 0.02,
         "ninputs": [
             { "name": "ramie", "quantity": 2 }
         ],
@@ -166,7 +166,7 @@
         "description": "sew ramie cloth into ramie shirt",
         "workload": 5.0,
         "research": "Tailoring",
-        "researchPoints": 0.025,
+        "researchPoints": 0.02,
         "ninputs": [
             { "name": "ramie cloth", "quantity": 2 }
         ],
@@ -180,7 +180,7 @@
         "description": "process wood and water into paper",
         "workload": 3.0,
         "research": "Papermaking",
-        "researchPoints": 0.025,
+        "researchPoints": 0.02,
         "ninputs": [
             { "name": "wood", "quantity": 1 },
             { "name": "water", "quantity": 0.5 }

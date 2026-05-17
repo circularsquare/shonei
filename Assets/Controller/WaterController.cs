@@ -55,6 +55,15 @@ public class WaterController : MonoBehaviour {
 
     private Material _waterMat;
     private Material _underlayMat;
+    // Water-sprite GameObjects — kept as refs so a world re-allocation can destroy
+    // the old ones before creating new ones at the new world scale.
+    private GameObject _waterSpriteGo;
+    private GameObject _underlaySpriteGo;
+    // True once the size-dependent resources have been built. Used to gate the
+    // OnWorldAllocated handler so we don't double-build on the very first
+    // allocation (Start handles that path); the handler only fires on
+    // subsequent reallocations after Start has completed.
+    private bool _worldResourcesBuilt;
 
     // Structures with a `{stem}_w.png` companion sprite register their water zone here,
     // keyed by Structure. Overlaid into _surfaceBytes each UpdateSurfaceMask tick.
@@ -86,12 +95,42 @@ public class WaterController : MonoBehaviour {
             return;
         }
         instance = this;
+        // Re-build the world-sized resources whenever the world grid is (re-)allocated.
+        // First-time build is driven by Start (we need the frame wait); subsequent
+        // re-allocations come through this handler.
+        World.OnWorldAllocated += HandleWorldReallocated;
+    }
+
+    void OnDestroy() {
+        World.OnWorldAllocated -= HandleWorldReallocated;
+    }
+
+    void HandleWorldReallocated() {
+        // Skip the first allocation — Start() drives it. After Start runs once,
+        // subsequent OnWorldAllocated events come from SaveSystem.LoadFromJson
+        // when the saved world size differs from the current size, and we tear
+        // down + rebuild at the new dimensions.
+        if (!_worldResourcesBuilt) return;
+        DisposeWorldSizedResources();
+        BuildWorldSizedResources();
+        UpdateSurfaceMask();
     }
 
     IEnumerator Start() {
         // Wait one frame so WorldController.Start() has created all tile references.
         yield return null;
+        BuildWorldSizedResources();
+        // Skip mask update if the build aborted (e.g. missing shader). The
+        // shader-null branch in BuildWorldSizedResources logs an error and
+        // returns without setting _worldResourcesBuilt; calling UpdateSurfaceMask
+        // here would dereference a null material.
+        if (_worldResourcesBuilt) UpdateSurfaceMask();
+    }
 
+    // Allocates the buffers, textures, materials, and sprite GameObjects sized to
+    // the current world. Idempotent only via DisposeWorldSizedResources first —
+    // call dispose then build to resize cleanly.
+    void BuildWorldSizedResources() {
         World world = World.instance;
 
         _texW = world.nx * PixelsPerTile;
@@ -113,7 +152,7 @@ public class WaterController : MonoBehaviour {
         // Create material and push colours.
         if (waterShader == null) {
             Debug.LogError("WaterController: waterShader unassigned in Inspector — assign Water/WaterSurface (Assets/Lighting/Water.shader)");
-            yield break;
+            return;
         }
         _waterMat = new Material(waterShader);
         _waterMat.SetColor("_WaterColorDark",  waterColorDark);
@@ -125,7 +164,7 @@ public class WaterController : MonoBehaviour {
 
         if (waterUnderlayShader == null) {
             Debug.LogError("WaterController: waterUnderlayShader unassigned in Inspector — assign Water/WaterUnderlay (Assets/Lighting/WaterUnderlay.shader)");
-            yield break;
+            return;
         }
         // Reuses the same _surfaceTex and _tintTex by reference, so per-tick
         // texture updates flow to both materials without re-binding.
@@ -144,17 +183,17 @@ public class WaterController : MonoBehaviour {
         whiteTex.Apply();
         Sprite waterSprite = Sprite.Create(whiteTex, new Rect(0, 0, 1, 1), Vector2.zero, 1f);
 
-        GameObject go = new GameObject("WaterSprite");
-        go.transform.position   = new Vector3(-0.5f, -0.5f, 0f);
-        go.transform.localScale = new Vector3(world.nx, world.ny, 1f);
+        _waterSpriteGo = new GameObject("WaterSprite");
+        _waterSpriteGo.transform.position   = new Vector3(-0.5f, -0.5f, 0f);
+        _waterSpriteGo.transform.localScale = new Vector3(world.nx, world.ny, 1f);
 
         int waterLayer = LayerMask.NameToLayer("Water");
         if (waterLayer < 0)
             Debug.LogError("WaterController: 'Water' layer not found — create it in Edit → Project Settings → Tags and Layers");
         else
-            go.layer = waterLayer;
+            _waterSpriteGo.layer = waterLayer;
 
-        SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+        SpriteRenderer sr = _waterSpriteGo.AddComponent<SpriteRenderer>();
         sr.sprite      = waterSprite;
         sr.material    = _waterMat;
         // Render behind tiles (0) but in front of the background wall (-10).
@@ -176,18 +215,34 @@ public class WaterController : MonoBehaviour {
         // No shimmer/sparkles — those come from the front Water.shader only,
         // avoiding the doubled-sparkle blowout that two stacked shimmer layers
         // would produce.
-        GameObject underGo = new GameObject("WaterSpriteUnderlay");
-        underGo.transform.position   = go.transform.position;
-        underGo.transform.localScale = go.transform.localScale;
-        if (waterLayer >= 0) underGo.layer = waterLayer;
-        SpriteRenderer underSr = underGo.AddComponent<SpriteRenderer>();
+        _underlaySpriteGo = new GameObject("WaterSpriteUnderlay");
+        _underlaySpriteGo.transform.position   = _waterSpriteGo.transform.position;
+        _underlaySpriteGo.transform.localScale = _waterSpriteGo.transform.localScale;
+        if (waterLayer >= 0) _underlaySpriteGo.layer = waterLayer;
+        SpriteRenderer underSr = _underlaySpriteGo.AddComponent<SpriteRenderer>();
         underSr.sprite       = waterSprite; // share the 1×1 white sprite
         underSr.material     = _underlayMat;
         underSr.sortingOrder = -15;
         LightReceiverUtil.SetSortBucket(underSr);
 
-        // Sync with any water already present (e.g. from world gen or save load).
-        UpdateSurfaceMask();
+        _worldResourcesBuilt = true;
+    }
+
+    // Destroys the world-sized resources so they can be rebuilt at a new size.
+    // Unity-managed objects (Texture2D, Material, GameObject) require explicit
+    // Destroy — letting GC handle them leaks GPU memory.
+    void DisposeWorldSizedResources() {
+        if (_surfaceTex != null)        { Destroy(_surfaceTex); _surfaceTex = null; }
+        if (_tintTex != null)           { Destroy(_tintTex); _tintTex = null; }
+        if (_waterMat != null)          { Destroy(_waterMat); _waterMat = null; }
+        if (_underlayMat != null)       { Destroy(_underlayMat); _underlayMat = null; }
+        if (_waterSpriteGo != null)     { Destroy(_waterSpriteGo); _waterSpriteGo = null; }
+        if (_underlaySpriteGo != null)  { Destroy(_underlaySpriteGo); _underlaySpriteGo = null; }
+        _surfaceBytes      = null;
+        _tintBytes         = null;
+        _waterPixelHeights = null;
+        _tileIsSolid       = null;
+        _worldResourcesBuilt = false;
     }
 
     // Called by World.Update every 0.2 seconds.
@@ -310,7 +365,11 @@ public class WaterController : MonoBehaviour {
     //
     // Per water pixel, checks 8 neighbours to determine surface/interior.
     // A pixel is "surface" if any neighbour is open air (non-solid, no water there).
-    private void UpdateSurfaceMask() {
+    // Public so worldgen paths can force a re-upload after placing water tiles
+    // without waiting for the next TickUpdate. Critical when the game starts
+    // paused (no tick) and when LoadDefault runs without a ReallocateGrid (same
+    // world size → no OnWorldAllocated → no automatic refresh).
+    public void UpdateSurfaceMask() {
         if (_surfaceTex == null) return;
         World world = World.instance;
 

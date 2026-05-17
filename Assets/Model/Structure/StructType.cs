@@ -24,6 +24,30 @@ public class StandableOffset {
     public int dy {get; set;}
 }
 
+// Door declaration: a tile in the footprint (dx, dy) + which side of that tile the
+// doorway opens out of. Used by housing (and future production) buildings whose
+// residents enter the footprint through a designated edge rather than standing on
+// top. The approach tile (where the mouse stands before stepping in) is derived from
+// dx/dy/side at runtime by Structure; mirroring flips dx and swaps left↔right.
+//
+// side ∈ "left" | "right" | "top" | "bottom" — relative to the un-mirrored footprint.
+public class Door {
+    public int dx {get; set;}
+    public int dy {get; set;}
+    public string side {get; set;}
+}
+
+// Interior tile: a footprint tile that should have interior walking space. Each
+// entry causes Structure to register an off-grid Node inside that tile (visually
+// below the roof line), edged to neighboring interior nodes so mice can walk
+// between tiles inside the building, and edged through any matching door to the
+// exterior approach tile. Pure graph topology — no Task code knows about doors.
+// Mirroring flips dx via nx-1-dx at lookup time.
+public class InteriorTile {
+    public int dx {get; set;}
+    public int dy {get; set;}
+}
+
 public class TileRequirement {
     public int dx {get; set;}
     public int dy {get; set;}
@@ -157,6 +181,21 @@ public class StructType {
     // See SPEC-systems.md and FurnishingSlots.cs.
     public bool hasFurnishingSlots {get; set;}
     public string[] furnishingSlotNames {get; set;}
+
+    // ── Door + interior ───────────────────────────────────────────────
+    // Housing (and future enterable production buildings) declare interior tiles and
+    // doors. Structure registers one off-grid Node per interior tile, edges adjacent
+    // interior nodes to each other, and edges each door's interior node to its
+    // exterior approach tile's existing graph node. From there pathfinding routes
+    // mice through doors naturally — Task code stays ignorant of door semantics.
+    // Mirror handling lives in Structure (see Door / InteriorTile comments above).
+    public Door[] doors {get; set;}
+    public InteriorTile[] interiorTiles {get; set;}
+
+    // Canonical "this building is a place mice live." Replaces the legacy hardcoded
+    // `structType.name == "house"` check that's sprinkled across Animal AI, info panels,
+    // and capacity queries. Set on every housing tier (house, shack, future burrow).
+    public bool isHousing {get; set;}
 
     // Decoration: nearby animals gain a happiness point when within decorRadius (Chebyshev) of this building.
     // A decoration with hasFuelInv=true only counts when its reservoir has fuel (e.g. fountain needs water).

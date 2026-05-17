@@ -137,7 +137,14 @@ public class AnimalController : MonoBehaviour{
 
     public void LoadAnimal(AnimalSaveData asd) {
         Animal animal = AddAnimal(asd.x, asd.y); // adds +1 to "none" job count
-        SnapToStandableBelow(animal);             // fix position if saved on non-standable tile (e.g. stairs)
+        // Skip the snap-to-standable rescue when the animal was saved inside a building.
+        // Their (x,y) is the off-grid interior anchor (e.g. 1.5, 0.5); rounding to (2, 1)
+        // lands on a tile inside the building column, which is non-standable, and the
+        // rescue would fall the mouse out of the structure. Animal.Start re-SnapTos to
+        // the live interior anchor after resolving insideBuilding.
+        if (!asd.insideBuildingX.HasValue) {
+            SnapToStandableBelow(animal);         // fix position if saved on non-standable tile (e.g. stairs)
+        }
         animal.pendingSaveData = asd; // Animal.Start() (next frame) will apply name/stats/inv/job
 
         // Fix job counts now: move from "none" to saved job

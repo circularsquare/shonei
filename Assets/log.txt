@@ -1,5 +1,9 @@
 meoww!!
 
+5/17
+- add window/world gen tuner
+5/14
+- variable size world
 5/13
 - flowers! and mushrooms
 - more cloud blobbing

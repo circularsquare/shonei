@@ -7,6 +7,15 @@ using Newtonsoft.Json;
 // Handles saving and loading world state to/from JSON files.
 //
 // -----------------------------------------------------------------------
+// SAVE FORMAT VERSION:
+//   Current version: 1.
+//   Bump WorldSaveData.saveVersion when the on-disk schema changes in a way
+//   that can't be inferred from nullable-field presence alone (e.g. semantic
+//   reinterpretation of an existing field, or a migration that must run before
+//   normal Restore* methods). Pure additive changes — new nullable fields with
+//   sensible null-fallbacks — do NOT require a bump; the existing pattern of
+//   "absent field → default" handles them.
+// -----------------------------------------------------------------------
 // ADDING NEW SAVEABLE DATA — checklist for future changes:
 //   1. Add fields to the relevant class in WorldSaveData.cs
 //      - Top-level world data (timer, etc.)  → WorldSaveData
@@ -90,6 +99,9 @@ public class SaveSystem : MonoBehaviour {
     WorldSaveData GatherSaveData() {
         World world = World.instance;
         WorldSaveData data = new WorldSaveData();
+        data.saveVersion = 1;
+        data.savedNx = world.nx;
+        data.savedNy = world.ny;
         data.timer = world.timer;
         data.worldSeed = Rng.worldSeed;
 
@@ -412,6 +424,16 @@ public class SaveSystem : MonoBehaviour {
                 asd.travelReturnLeg = hf.IsReturnLeg;
             }
         }
+        // Door + interior bookkeeping. Persist the building's anchor coords; on load
+        // Animal.Start resolves the live Building ref via World.GetTileAt(x,y).building.
+        if (a.homeBuilding != null) {
+            asd.homeBuildingX = a.homeBuilding.x;
+            asd.homeBuildingY = a.homeBuilding.y;
+        }
+        if (a.insideBuilding != null) {
+            asd.insideBuildingX = a.insideBuilding.x;
+            asd.insideBuildingY = a.insideBuilding.y;
+        }
         return asd;
     }
 
@@ -445,7 +467,23 @@ public class SaveSystem : MonoBehaviour {
     // animal-aggregate state — PostLoadInit runs as a coroutine on next frame.
     public void LoadFromJson(string json) {
         WorldSaveData data = JsonConvert.DeserializeObject<WorldSaveData>(json);
+        if (data == null) { Debug.LogError("Load aborted: save data failed to deserialize."); return; }
+
         WorldController.instance.ClearWorld();
+
+        // Re-size the world grid if the save's recorded dimensions differ from the
+        // live ones. Old saves (no savedNx/Ny) are assumed to match the legacy
+        // 100×80 baseline. ReallocateGrid fires World.OnWorldAllocated, which
+        // dependent systems (WaterController, TileMeshController) listen for to
+        // re-init their world-area-sized buffers and per-tile subscriptions.
+        // Must run AFTER ClearWorld (which iterates the OLD tiles to destroy
+        // structures/animals) and BEFORE ApplySaveData (which fills the new grid).
+        World world = World.instance;
+        int savedNx = data.savedNx ?? 100;
+        int savedNy = data.savedNy ?? 80;
+        if (savedNx != world.nx || savedNy != world.ny)
+            world.ReallocateGrid(savedNx, savedNy);
+
         ResetSystemState();
         ApplySaveData(data);
         StartCoroutine(PostLoadInit());
@@ -950,6 +988,11 @@ public class SaveSystem : MonoBehaviour {
     public IEnumerator PostLoadInit() {
         yield return null;
         AnimalController.instance.Load();
+        // Force a water render refresh: WaterController.Start's initial mask
+        // upload races with worldgen, and Tick-driven updates don't run while
+        // paused. This ensures water is visible immediately after every gen
+        // path (initial, reset, load), including a pause-on-start.
+        WaterController.instance?.UpdateSurfaceMask();
     }
 
     public void LoadDefault() {

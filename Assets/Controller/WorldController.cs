@@ -16,6 +16,15 @@ public class WorldController : MonoBehaviour {
     // generates a fresh world instead. Snapshot tests set this so they get a
     // deterministic, save-independent starting state. Default false (production).
     public static bool skipAutoLoad = false;
+
+    // ── Worldgen debug hooks ───────────────────────────────────────────────
+    // Used by WorldGenDebugPanel for iterating on worldgen parameters with a
+    // fixed seed across recompiles. None of these affect production paths:
+    // tests set skipAutoLoad directly without touching stickyWorldgen, so the
+    // lastSeed reuse branch never triggers there.
+    public static int? pendingSeedOverride;  // one-shot: consumed by the next GenerateDefault
+    public static int lastGeneratedSeed;     // updated after every GenerateDefault
+    public static bool stickyWorldgen;       // when true, GenerateDefault reuses lastGeneratedSeed instead of rolling
     public World world {get; protected set;}
     public Transform tilesTransform;
     Coroutine defaultSetupCoroutine;
@@ -224,12 +233,32 @@ public class WorldController : MonoBehaviour {
     // Called synchronously in frame 1 (from Start, Reset, or Load path).
     // graph.Initialize() here is what makes node.standable valid — must happen before DefaultJobSetup.
     public void GenerateDefault() {
+        // A fresh worldgen always produces the current default size. Handles the
+        // Reset-after-legacy-load case: if the user loaded a 100×80 save then
+        // clicked Reset, world.nx/ny is still 100×80 — without this call, the
+        // "new world" would inherit the loaded save's smaller dimensions. No-op
+        // when sizes already match.
+        World.instance.ReallocateGrid(World.DefaultNx, World.DefaultNy);
+
         // The world seed seeds Rng (all gameplay randomness) AND WorldGen. Generated once
         // here for new worlds; on the load path SaveSystem.ApplySaveData calls Rng.Init from
         // the persisted seed instead, so this only runs on Initial / Reset.
         // Range stays modest because WorldGen does `seed + offset` arithmetic — full int range
         // could overflow, and the resulting world variety from 100k seeds is plenty.
-        int seed = UnityEngine.Random.Range(1, 100000);
+        //
+        // Priority order: explicit override (debug panel one-shot) → sticky last seed
+        // (debug panel "Same seed" persistence across recompiles) → fresh roll.
+        int seed;
+        if (pendingSeedOverride.HasValue) {
+            seed = pendingSeedOverride.Value;
+            pendingSeedOverride = null;
+        } else if (stickyWorldgen && lastGeneratedSeed != 0) {
+            seed = lastGeneratedSeed;
+        } else {
+            seed = UnityEngine.Random.Range(1, 100000);
+        }
+        lastGeneratedSeed = seed;
+        if (stickyWorldgen) PlayerPrefs.SetInt(WorldGenDebugPanel.LastSeedKey, seed);
         Rng.Init(seed);
         int[] surfaceY = WorldGen.Generate(world, seed);
         // Stash on World so decoration systems (FlowerController, OverlayGrowthSystem)
@@ -284,6 +313,11 @@ public class WorldController : MonoBehaviour {
         for (int i = 0; i < 4; i++) AnimalController.instance.AddAnimal(29 + i, sy);
         Camera.main.transform.position = new Vector3(30f, sy + 4f, Camera.main.transform.position.z);
         defaultSetupCoroutine = StartCoroutine(DefaultJobSetup(sy));
+
+        // Pause after a fresh world gen so the player (or dev iterating on
+        // worldgen) can inspect the layout before the simulation starts moving.
+        // TimeController may not exist yet on the very first frame — null-safe.
+        TimeController.instance?.Pause();
     }
 
     // FRAME 2 — one frame after GenerateDefault(). By this point:

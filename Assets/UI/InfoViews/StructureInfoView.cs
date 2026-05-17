@@ -127,10 +127,10 @@ public class StructureInfoView : MonoBehaviour {
                 int fuelQty = bldg.reservoir.Quantity();
                 sb.Append($"\n fuel: {ItemStack.FormatQ(fuelQty)}/{ItemStack.FormatQ(bldg.reservoir.capacity)} {bldg.reservoir.fuelItem.name}");
             }
-            // Only houses surface their Structure.res — it's the home-assignment count.
+            // Only housing surfaces its Structure.res — it's the home-assignment count.
             // Other building types either don't have res (workstations, leisure, capacity==0)
             // or have it but never reserve into it.
-            if (bldg.structType.name == "house" && bldg.res != null)
+            if (bldg.structType.isHousing && bldg.res != null)
                 sb.Append("\n occupants: " + bldg.res.reserved + "/" + bldg.res.capacity);
             if (bldg.furnishingSlots != null)
                 AppendFurnishingSlots(sb, bldg.furnishingSlots);

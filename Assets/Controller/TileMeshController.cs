@@ -37,6 +37,10 @@ public class TileMeshController : MonoBehaviour {
 
     int chunksX, chunksY;
 
+    // True after BuildWorldSizedResources has run. Used to gate the OnWorldAllocated
+    // handler so the first allocation (driven by Initialize) doesn't double-build.
+    bool _worldResourcesBuilt;
+
     // ── Tile-type maps ──────────────────────────────────────────────────
     // Solid types compacted to 0..numTypes-1. Body sortingOrder = -typeIdx,
     // matching the soft-edge contest.
@@ -90,10 +94,36 @@ public class TileMeshController : MonoBehaviour {
             chunkLayerIndex = 0; // fall through to Default so we at least render
         }
 
+        BuildTypeMaps();
+        BuildWorldSizedResources();
+
+        // Listen for world re-allocation (different-size save load). The first
+        // allocation went through Initialize directly; subsequent events fire from
+        // SaveSystem.LoadFromJson and trigger a tear-down + rebuild at the new
+        // chunk grid size.
+        World.OnWorldAllocated += HandleWorldReallocated;
+    }
+
+    void OnDestroy() {
+        World.OnWorldAllocated -= HandleWorldReallocated;
+    }
+
+    void HandleWorldReallocated() {
+        if (!_worldResourcesBuilt) return;
+        DisposeWorldSizedResources();
+        BuildWorldSizedResources();
+        // Per-tile callbacks fire as new content arrives via ApplySaveData →
+        // RestoreTile, so we don't need an explicit "rebuild everything dirty"
+        // pass here — empty tiles produce empty meshes, and the load fills them
+        // in via the normal callback path.
+    }
+
+    // Allocates the chunk-grid arrays at the current world size and subscribes
+    // per-tile callbacks. Called from Initialize (first-time) and from the
+    // re-allocation handler (after disposing the previous resources).
+    void BuildWorldSizedResources() {
         chunksX = (world.nx + ChunkSize - 1) / ChunkSize;
         chunksY = (world.ny + ChunkSize - 1) / ChunkSize;
-
-        BuildTypeMaps();
 
         bodyLayers    = new ChunkLayer[chunksX, chunksY, numTypes];
         bodyDirty     = new bool[chunksX, chunksY, numTypes];
@@ -104,6 +134,8 @@ public class TileMeshController : MonoBehaviour {
 
         // Subscribe per-tile callbacks once. Each callback marks the affected
         // chunks dirty; mesh rebuild happens in LateUpdate (coalesced).
+        // Old-tile subscriptions die with the GC'd Tile instances on re-allocation;
+        // we re-subscribe here against the new tiles.
         for (int x = 0; x < world.nx; x++) {
             for (int y = 0; y < world.ny; y++) {
                 Tile t = world.GetTileAt(x, y);
@@ -112,6 +144,38 @@ public class TileMeshController : MonoBehaviour {
                 t.RegisterCbSnowChanged(OnTileSnowChanged);
             }
         }
+
+        _worldResourcesBuilt = true;
+    }
+
+    // Destroys all chunk meshes + GameObjects so the chunk grid can be
+    // re-allocated at a new size. Unity-managed assets need explicit Destroy.
+    void DisposeWorldSizedResources() {
+        if (bodyLayers != null) {
+            for (int cx = 0; cx < chunksX; cx++) {
+                for (int cy = 0; cy < chunksY; cy++) {
+                    for (int t = 0; t < numTypes; t++) {
+                        DestroyChunkLayer(bodyLayers[cx, cy, t]);
+                        DestroyChunkLayer(snowLayers[cx, cy, t]);
+                        for (int s = 0; s < NumOverlayStates; s++)
+                            DestroyChunkLayer(overlayLayers[cx, cy, t, s]);
+                    }
+                }
+            }
+        }
+        bodyLayers    = null;
+        bodyDirty     = null;
+        overlayLayers = null;
+        overlayDirty  = null;
+        snowLayers    = null;
+        snowDirty     = null;
+        _worldResourcesBuilt = false;
+    }
+
+    void DestroyChunkLayer(ChunkLayer layer) {
+        if (layer == null) return;
+        if (layer.mesh != null) Destroy(layer.mesh);
+        if (layer.go != null) Destroy(layer.go);
     }
 
     void BuildTypeMaps() {

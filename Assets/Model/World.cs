@@ -35,6 +35,13 @@ public class World : MonoBehaviour {
     // Args: srcX, srcY, dstX, dstY, representative item
     public static event Action<int, int, int, int, Item> OnItemFall;
 
+    // Fired by AllocateGrid / ReallocateGrid after the tile + node arrays have been
+    // (re)created and nx/ny are final. Subscribers re-size any world-area-dependent
+    // buffers they own (WaterController textures, TileMeshController chunks, etc.)
+    // and re-subscribe per-tile callbacks. Subscribe in Awake — the first allocation
+    // fires from World.Awake itself, so Start is too late.
+    public static event Action OnWorldAllocated;
+
     // Physics constant shared by item fall animation and mouse falling.
     // Gravity is derived so a 1-tile fall takes fallSecondsPerTile seconds.
     public const float fallSecondsPerTile = 0.4f;
@@ -43,7 +50,15 @@ public class World : MonoBehaviour {
     public static int ticksInDay = 240;
     public static int daysInYear = 24; // year is 7200s = 120 min
 
-    // FRAME 0 — runs before any Start(). Allocates tiles and graph.nodes.
+    // Default world size for a fresh game. Save loads may override via ReallocateGrid
+    // when their savedNx/Ny differ. Constants so other systems can reference the
+    // intended-fresh-game size without coupling to the live world.nx/ny.
+    public const int DefaultNx = 200;
+    public const int DefaultNy = 120;
+
+    // FRAME 0 — runs before any Start(). Allocates tiles and graph.nodes at the
+    // default size; loads with a different saved size re-allocate later via
+    // ReallocateGrid (fires OnWorldAllocated again so dependents re-init).
     // node.standable stays false until graph.Initialize() runs in GenerateDefault() (frame 1).
     public void Awake(){
         if (instance != null){
@@ -52,16 +67,8 @@ public class World : MonoBehaviour {
 
         graph = new Graph(this);
 
-        nx = 100;
-        ny = 80;
-        tiles = new Tile[nx, ny];
-        graph.nodes = new Node[nx, ny];
-        for (int x = 0; x < nx; x++){
-            for (int y = 0; y < ny; y++){
-                tiles[x, y] = new Tile(this, x, y);
-                graph.nodes[x, y] = tiles[x, y].node;
-            }
-        }
+        AllocateGrid(DefaultNx, DefaultNy);
+
         invController = InventoryController.instance;
         worldController = WorldController.instance;
         animalController = AnimalController.instance;
@@ -73,6 +80,40 @@ public class World : MonoBehaviour {
         OverlayGrowthSystem.Create();
         SnowAccumulationSystem.Create();
         PowerSystem.Create();
+    }
+
+    // Allocates (or re-allocates) tiles[,] and graph.nodes[,] at the given size,
+    // sets nx/ny, and fires OnWorldAllocated. Safe to call multiple times — the
+    // old arrays become garbage. No-op when the requested size already matches
+    // the live one (avoids unnecessary dispose+rebuild in event subscribers).
+    // Note: this does NOT clean up structures, animals, or inventories — callers
+    // must run ClearWorld first if a populated world exists. Used by Awake
+    // (initial allocation), SaveSystem.LoadFromJson (when saved size differs),
+    // and WorldController.GenerateDefault (Reset path: get back to default
+    // size after loading a smaller-world legacy save).
+    public void ReallocateGrid(int newNx, int newNy) {
+        if (newNx <= 0 || newNy <= 0) {
+            Debug.LogError($"World.ReallocateGrid: invalid size {newNx}×{newNy}; ignoring.");
+            return;
+        }
+        if (newNx == nx && newNy == ny) return;
+        AllocateGrid(newNx, newNy);
+    }
+
+    // Internal — does the actual allocation work. Awake calls this directly; external
+    // callers go through ReallocateGrid (which validates input).
+    void AllocateGrid(int newNx, int newNy) {
+        nx = newNx;
+        ny = newNy;
+        tiles = new Tile[nx, ny];
+        graph.nodes = new Node[nx, ny];
+        for (int x = 0; x < nx; x++) {
+            for (int y = 0; y < ny; y++) {
+                tiles[x, y] = new Tile(this, x, y);
+                graph.nodes[x, y] = tiles[x, y].node;
+            }
+        }
+        OnWorldAllocated?.Invoke();
     }
 
     public void Update(){

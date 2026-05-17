@@ -5,6 +5,17 @@ using System.Collections.Generic;
 // on MonoBehaviour fields (e.g. pendingSaveData) instead of leaving them null.
 
 public class WorldSaveData {
+    // Save format version. Bumped when the on-disk schema changes in a way that
+    // can't be inferred from nullable-field presence alone. Null on pre-versioning
+    // saves → treated as v0. Bump rule documented in SaveSystem.cs header.
+    public int? saveVersion;
+    // World dimensions at save time. Nullable so old saves stay readable; null is
+    // assumed to mean the legacy 100×80 baseline (the only size that ever shipped
+    // before versioning was added). SaveSystem.LoadFromJson refuses to load a save
+    // whose savedNx/Ny don't match the runtime world size — the consequences of
+    // mid-load resize ripple through WaterController, SkyExposure, etc.
+    public int? savedNx;
+    public int? savedNy;
     public float timer;
     // RNG seed used to drive Rng (gameplay randomness). 0 on old saves → reproducibility
     // for those starts from 0 on load, which is fine — they had no reproducibility before.
@@ -201,4 +212,14 @@ public class AnimalSaveData {
     public int?   travelStorageX;     // HaulFromMarket only — destination Building.storage tile
     public int?   travelStorageY;
     public bool   travelReturnLeg;    // HaulFromMarket only — true if past the ReceiveFromInventory
+
+    // Door + interior bookkeeping. homeBuildingX/Y persists the home reservation so loaded
+    // animals don't have to re-find a home on first SlowUpdate (which would also reset their
+    // furnishing happiness). insideBuildingX/Y persists "currently sleeping inside" so the
+    // mouse renders at the interior anchor on load instead of falling out. Both null on old
+    // saves; FindHome runs as it did before in that case.
+    public int? homeBuildingX;
+    public int? homeBuildingY;
+    public int? insideBuildingX;
+    public int? insideBuildingY;
 }

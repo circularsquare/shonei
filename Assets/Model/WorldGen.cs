@@ -5,22 +5,68 @@ using UnityEngine;
 // Pure C# world generation — no MonoBehaviour, all static methods.
 // Called from WorldController.GenerateDefault() to fill the tile grid
 // with terrain, caves, and natural features before graph.Initialize().
+//
+// Tuning params live as `public static` (not const) so the editor-only
+// WorldGenTuner window can drive them via sliders. EditorPrefs persistence
+// is handled in WorldGenTuner.cs — runtime defaults below are the canonical
+// values; tuner overrides are reapplied on every domain reload via
+// [InitializeOnLoadMethod].
 public static class WorldGen {
 
     // ── Terrain shape ─────────────────────────────────────────────────
-    public const int BaseHeight = 50;       // nominal surface y in the 100x80 grid
-    public const int SurfaceMin = 43;       // surface height never below this
-    public const int SurfaceMax = 62;       // surface height never above this
-    public const int DirtDepth = 3;         // dirt tiles above stone
-    public const int BedrockY = 0;          // lowest row is always solid
-    const float SurfaceFreq = 0.06f;        // noise frequency (lower = broader hills)
-    const float SurfaceAmp = 6.4f;          // noise amplitude (height variation)
-    const int SurfaceOctaves = 3;           // noise detail layers
+    // Tuned for the 200x120 default world. Surface sits ~halfway through the
+    // grid with ~10 tiles of variation either side. Raising BaseHeight raises
+    // the horizon line across the map; the rest of the world (dirt depth,
+    // veins, caves) is anchored to the surface dynamically so the shape of
+    // the underground stays consistent — only the absolute Y of the surface
+    // line changes. Keep WaterLine ≈ BaseHeight so basins fill at the
+    // expected horizon.
+    public static int BaseHeight = 60;       // nominal surface y
+    public static int SurfaceMin = 50;       // surface height never below this
+    public static int SurfaceMax = 72;       // surface height never above this
+    public static int DirtDepth = 3;         // dirt tiles above stone
+    public static int BedrockY = 0;          // lowest row is always solid
+    public static float SurfaceFreq = 0.06f; // noise frequency (lower = broader hills)
+    public static float SurfaceAmp = 5.0f;   // noise amplitude (height variation)
+    public static int SurfaceOctaves = 3;    // noise detail layers
+
+    // Domain warping: before sampling the surface FBM at column x, shift x by a
+    // second noise. Vanilla FBM looks "wavy" because the noise is statistically
+    // uniform along x — every wavelength looks like every other. Warping the
+    // input coordinate breaks that regularity, producing twisted, organic-
+    // looking surface shapes (peaks lean, valleys curl, features compress and
+    // stretch unevenly).
+    //
+    // WarpFreq must be on the same order as SurfaceFreq — if the warp varies
+    // much slower than the features it's trying to distort, it just uniformly
+    // slides whole regions of the noise around, which still looks like vanilla
+    // FBM. Matching the frequencies (and adding a second octave for inner
+    // detail) is what actually twists shapes within their own scale.
+    //
+    // The warp signal is decorrelated from the surface signal via a separate
+    // seed offset. WarpAmp is in tiles of x-shift; ~one surface-wavelength
+    // (≈16 at freq 0.06) is the upper bound before features start doubling
+    // back on themselves chaotically.
+    public static float SurfaceWarpFreq = 0.06f;
+    public static float SurfaceWarpAmp = 10.0f;
+    public static int SurfaceWarpOctaves = 2;
+    public static int SurfaceWarpSeedOffset = 31337;
+
+    // Region-level amplitude variation: a very slow noise signal multiplies the
+    // surface amplitude per column, so some stretches read as plains (small
+    // bumps) and others as hills/mountains (taller features). Freq is low
+    // enough that regions are dozens of tiles wide rather than column-flipping.
+    // The output is a multiplier on SurfaceAmp; values < 1 dampen, > 1 amplify.
+    // Decorrelated from the warp signal via a separate seed offset.
+    public static float SurfaceAmpVarFreq = 0.012f;
+    public static float SurfaceAmpVarMin = 0.6f;
+    public static float SurfaceAmpVarMax = 1.4f;
+    public static int SurfaceAmpVarSeedOffset = 7919;
 
     // ── Spawn zone ────────────────────────────────────────────────────
-    public const int SpawnMinX = 25;        // flat starting zone x-range (inclusive)
-    public const int SpawnMaxX = 37;        // >=12 tiles wide
-    public const int SpawnBlend = 4;        // tiles over which terrain blends to flat
+    public static int SpawnMinX = 25;        // flat starting zone x-range (inclusive)
+    public static int SpawnMaxX = 37;        // >=12 tiles wide
+    public static int SpawnBlend = 4;        // tiles over which terrain blends to flat
 
     // ── Stone veins ───────────────────────────────────────────────────
     // Per-stone vein pass tuning. Each pass samples FBM at its own frequency /
@@ -30,46 +76,66 @@ public static class WorldGen {
     // Thresholds are tuned for "veins" rather than "layers": FBM noise mean is
     // ~0.5, so threshold ~0.4 at peak bias converts roughly 30-40% of tiles at
     // the depth center. Bump up for more abundant veins, down for rarer ones.
-    const float GraniteFreq        = 0.08f;
-    const float GraniteThreshold   = 0.48f;
-    const float GraniteDepthCenter = 0.4f;   // (0=surface, 1=bedrock)
-    const float GraniteDepthWidth  = 0.3f;
-    const int   GraniteSeedOffset  = 1111;
+    public static float GraniteFreq        = 0.08f;
+    public static float GraniteThreshold   = 0.48f;
+    public static float GraniteDepthCenter = 0.4f;   // (0=surface, 1=bedrock)
+    public static float GraniteDepthWidth  = 0.3f;
+    public static int   GraniteSeedOffset  = 1111;
 
-    const float SlateFreq        = 0.09f;
-    const float SlateThreshold   = 0.50f;
-    const float SlateDepthCenter = 0.7f;
-    const float SlateDepthWidth  = 0.25f;
-    const int   SlateSeedOffset  = 2222;
+    public static float SlateFreq        = 0.09f;
+    public static float SlateThreshold   = 0.5f;
+    public static float SlateDepthCenter = 0.7f;
+    public static float SlateDepthWidth  = 0.25f;
+    public static int   SlateSeedOffset  = 2222;
 
     // ── Caves ────────────────────────────────────────────────────────
-    const float CaveFreqX = 0.06f;          // lower = wider caves horizontally
-    const float CaveFreqY = 0.14f;          // higher = thinner caves vertically
-    const int CaveOctaves = 2;              // FBM detail layers for cave noise (more = rougher walls)
-    const float CavePersistence = 0.5f;     // amplitude falloff per octave
-    const float CaveLacunarity = 2f;        // frequency multiplier per octave
-    const float CaveThresholdSurface = 0.27f; // near surface: fewer caves
-    const float CaveThresholdDeep = 0.34f;  // deep underground: more caves
-    const int CaveExclusionBelow = 6;       // no caves within this many tiles below surface
-    const int CACycles = 1;                 // cellular automata smoothing iterations (low = preserve FBM detail)
-    const int MinCaveSize = 8;              // flood-fill removes voids smaller than this
+    public static float CaveFreqX = 0.06f;          // lower = wider caves horizontally
+    public static float CaveFreqY = 0.14f;          // higher = thinner caves vertically
+    public static int CaveOctaves = 2;              // FBM detail layers for cave noise (more = rougher walls)
+    public static float CavePersistence = 0.5f;     // amplitude falloff per octave
+    public static float CaveLacunarity = 2.0f;        // frequency multiplier per octave
+    public static float CaveThresholdSurface = 0.28f; // near surface: fewer caves
+    public static float CaveThresholdDeep = 0.38f;  // deep underground: more caves
+    public static int CaveExclusionBelow = 4;       // no caves within this many tiles below surface
+    public static int CACycles = 1;                 // cellular automata smoothing iterations (low = preserve FBM detail)
+    public static int MinCaveSize = 8;              // flood-fill removes voids smaller than this
 
     // ── Worm carvers ──────────────────────────────────────────────────
-    const int WormCount = 1;                // number of worm tunnels (0 = disabled)
-    const int WormMinSteps = 100;
-    const int WormMaxSteps = 100;
-    const int WormRadius = 1;               // carve radius (1 = 3x3 area)
-    const int WormFalloff = 1;              // extra radius for soft falloff (must be wide enough to survive CA)
-    const int ChamberRadius = 1;            // wider carve every N steps
-    const int ChamberInterval = 10000;
-    const float WormStrength = 0.4f;        // how much worm pushes noise toward cave (higher = guaranteed tunnel)
-    const float WormTurnChance = 0.1f;      // chance per step to reverse horizontal direction
+    // Each world rolls a worm count in [Min, Max] and picks that many distinct
+    // random start columns from the eligible set, with WormMinSeparation enforced
+    // so worms don't clump. The walk itself reflects off the spawn-zone boundary
+    // (see BlendWormTunnels) so even after random direction reversals the worm
+    // stays on its starting side — the player's starting area never gets tunneled
+    // into.
+    public static int WormCountMin = 2;
+    public static int WormCountMax = 3;
+    public static int WormMinSeparation = 25;       // min x-distance between worm starts; relaxed if no candidate fits
+    public static int WormSpawnBuffer = 2;          // worm walk reflects off (spawn ± this many tiles)
+    public static int WormMinSteps = 100;
+    public static int WormMaxSteps = 150;
+    public static int WormRadius = 1;               // carve radius (1 = 3x3 area)
+    public static int WormFalloff = 1;              // extra radius for soft falloff (must be wide enough to survive CA)
+    public static int ChamberRadius = 1;            // wider carve every N steps
+    public static int ChamberInterval = 10000;
+    public static float WormStrength = 0.4f;        // how much worm pushes noise toward cave (higher = guaranteed tunnel)
+    public static float WormTurnChance = 0.1f;      // chance per step to reverse horizontal direction
 
     // ── Water ────────────────────────────────────────────────────────
-    public const int WaterLine = 50;        // depressions only fill below this y
-    const int MaxPools = 2;                 // at most this many pools per map
-    const int MinPoolVolume = 3;            // ignore basins smaller than this (widened so subtle terrain qualifies)
-    const int MaxPoolVolume = 50;           // cap large basins to this many water tiles
+    // Water budget is split into `WaterChunkCount` equal-width horizontal
+    // chunks. Each chunk independently rolls a budget in
+    // [WaterChunkBudgetMin, WaterChunkBudgetMax] and allocates it to basins
+    // whose center falls in that chunk, deepest-floor-first. This stops the
+    // whole map's water from clustering on one side of the world — every third
+    // gets its own pool(s), as long as the heightmap offers a basin there.
+    //
+    // Chunks with no eligible basins simply waste their roll. The
+    // "every world has water" guarantee runs per-chunk too: if a chunk has
+    // basins but none meet MinPoolVolume, the deepest is filled anyway.
+    public static int WaterLine = 60;        // depressions only fill below this y (≈ BaseHeight)
+    public static int WaterChunkCount = 3;          // horizontal slices the budget is split across
+    public static int WaterChunkBudgetMin = 25;     // per-chunk water tile budget, rolled per world
+    public static int WaterChunkBudgetMax = 60;
+    public static int MinPoolVolume = 3;            // basins smaller than this are skipped (unless they're the only option in a chunk)
 
     // ── Main entry point ─────────────────────────────────────────────────
 
@@ -92,9 +158,11 @@ public static class WorldGen {
         RefineCavesCA(isCave, nx, ny);
         RemoveSmallCaves(isCave, nx, ny);
         ApplyCaves(world, isCave, surfaceY);
-        RemoveSurfaceOutcroppings(world, surfaceY);
+        // TEMP: outcropping cleanup disabled while tuning surface warp/amp
+        // variation — restore when re-enabling.
+        // RemoveSurfaceOutcroppings(world, surfaceY);
 
-        FillDepressions(world, surfaceY);
+        FillDepressions(world, surfaceY, seed);
 
         ApplyBeachSand(world, seed);
 
@@ -152,8 +220,8 @@ public static class WorldGen {
     // not on tiles we're about to make sand). The Tile.type setter clears
     // overlayMask on a type change anyway — this ordering is just the simpler
     // invariant to reason about.
-    const float SandFreq = 0.18f;       // ~6-tile clumps
-    const float SandThreshold = 0.52f;  // Mathf.PerlinNoise concentrates around 0.5; ~0.52 ≈ 40% pass
+    public static float SandFreq = 0.18f;       // ~6-tile clumps
+    public static float SandThreshold = 0.52f;  // Mathf.PerlinNoise concentrates around 0.5; ~0.52 ≈ 40% pass
     public static void ApplyBeachSand(World world, int seed) {
         TileType sand = Db.tileTypeByName["sand"];
         TileType dirt = Db.tileTypeByName["dirt"];
@@ -240,7 +308,7 @@ public static class WorldGen {
     // Baseline soil dampness so virgin worlds support plant growth from turn 1,
     // and sheltered soil (caves, deep stone) has something for seep/plants to read.
     // Surface soil dries from here via MoistureSystem.HourlyUpdate; underground holds.
-    const byte StartingMoisture = 50;
+    public static byte StartingMoisture = 50;
     static void SeedMoisture(World world) {
         for (int x = 0; x < world.nx; x++)
             for (int y = 0; y < world.ny; y++) {
@@ -257,7 +325,15 @@ public static class WorldGen {
         int[] heights = new int[nx];
 
         for (int x = 0; x < nx; x++) {
-            float noiseH = BaseHeight + FBM1D(x, seed, SurfaceOctaves, SurfaceFreq, SurfaceAmp);
+            // Domain-warp the sample coordinate before feeding it to the surface
+            // FBM. Spawn-zone blending and the integer column index are untouched —
+            // only the noise lookup sees a shifted x.
+            float warp = FBM1D(x, seed + SurfaceWarpSeedOffset, SurfaceWarpOctaves, SurfaceWarpFreq, SurfaceWarpAmp);
+            // Slow region multiplier: FBM1D with amp=1 returns roughly [-1, 1];
+            // remap to [0, 1] then lerp to the configured min/max amplitude scale.
+            float ampSignal = FBM1D(x, seed + SurfaceAmpVarSeedOffset, 1, SurfaceAmpVarFreq, 1f);
+            float ampMult = Mathf.Lerp(SurfaceAmpVarMin, SurfaceAmpVarMax, Mathf.Clamp01((ampSignal + 1f) * 0.5f));
+            float noiseH = BaseHeight + FBM1D(x + warp, seed, SurfaceOctaves, SurfaceFreq, SurfaceAmp * ampMult);
             float flat = BaseHeight;
 
             // Blend toward flat in the spawn zone
@@ -266,13 +342,15 @@ public static class WorldGen {
             heights[x] = Mathf.Clamp(Mathf.RoundToInt(finalH), SurfaceMin, SurfaceMax);
         }
 
+        // TEMP: nub flattener disabled while tuning surface warp/amp variation
+        // — it was hiding small-scale shape detail. Restore when re-enabling.
         // Remove single-column nubs: if a column is higher or lower than both
         // neighbors, snap it to match so the surface stays smooth.
-        for (int x = 1; x < nx - 1; x++) {
-            int l = heights[x - 1], h = heights[x], r = heights[x + 1];
-            if ((h > l && h > r) || (h < l && h < r))
-                heights[x] = (l + r) / 2;
-        }
+        // for (int x = 1; x < nx - 1; x++) {
+        //     int l = heights[x - 1], h = heights[x], r = heights[x + 1];
+        //     if ((h > l && h > r) || (h < l && h < r))
+        //         heights[x] = (l + r) / 2;
+        // }
 
         return heights;
     }
@@ -498,21 +576,46 @@ public static class WorldGen {
     static void BlendWormTunnels(float[,] caveNoise, int[] surfaceY, int nx, int ny, int seed) {
         System.Random rng = new(seed + 777);
 
+        // Eligible start columns: away from world edges and outside the spawn-zone
+        // buffer. The walk below also reflects off the spawn boundary, so a worm
+        // that wanders toward spawn turns back rather than tunneling in.
         List<int> candidates = new();
+        int leftBound = SpawnMinX - WormSpawnBuffer;   // left walks must stay strictly below this
+        int rightBound = SpawnMaxX + WormSpawnBuffer;  // right walks must stay strictly above this
         for (int x = 5; x < nx - 5; x++) {
-            if (x >= SpawnMinX - 4 && x <= SpawnMaxX + 4) continue;
+            if (x >= leftBound && x <= rightBound) continue;
             candidates.Add(x);
         }
 
-        for (int w = 0; w < WormCount && candidates.Count > 0; w++) {
-            int idx = (int)((float)(w + 0.5f) / WormCount * candidates.Count);
-            idx = Math.Clamp(idx, 0, candidates.Count - 1);
-            int startX = candidates[idx];
-            int startY = surfaceY[startX] - 1; // start at surface, carves down through exclusion zone
+        // Pick worm count, then random distinct start columns with WormMinSeparation
+        // between them. If the separation can't be met within a few tries (narrow
+        // map, dense placement), accept whatever's left so the count target still hits.
+        int wormCount = rng.Next(WormCountMin, WormCountMax + 1);
+        List<int> starts = new();
+        for (int w = 0; w < wormCount && candidates.Count > 0; w++) {
+            int startX = -1;
+            for (int attempt = 0; attempt < 12; attempt++) {
+                int pick = candidates[rng.Next(candidates.Count)];
+                bool farEnough = true;
+                foreach (int s in starts) if (Math.Abs(s - pick) < WormMinSeparation) { farEnough = false; break; }
+                if (farEnough) { startX = pick; break; }
+            }
+            if (startX < 0) startX = candidates[rng.Next(candidates.Count)]; // relaxed fallback
+            starts.Add(startX);
+            candidates.Remove(startX);
+        }
 
+        // Walk each worm. Initial xDir is forced outward if the start sits right at
+        // the spawn buffer so the first step doesn't immediately bounce.
+        foreach (int startX in starts) {
+            int startY = surfaceY[startX] - 1; // start at surface, carves down through exclusion zone
+            bool startsLeft = startX < SpawnMinX;
             int steps = rng.Next(WormMinSteps, WormMaxSteps + 1);
             int cx = startX, cy = startY;
-            int xDir = rng.NextDouble() < 0.5 ? -1 : 1; // pick initial horizontal direction
+            int xDir;
+            if (startsLeft && cx >= leftBound - 1) xDir = -1;
+            else if (!startsLeft && cx <= rightBound + 1) xDir = 1;
+            else xDir = rng.NextDouble() < 0.5 ? -1 : 1;
 
             for (int s = 0; s < steps; s++) {
                 int r = (s % ChamberInterval == 0 && s > 0) ? ChamberRadius : WormRadius;
@@ -524,6 +627,12 @@ public static class WorldGen {
                 // Move: down or sideways in current direction
                 if (rng.NextDouble() < 0.3f) cy--;
                 else cx += xDir;
+
+                // Spawn-zone reflection: if the step pushed us into the buffer,
+                // step back out and flip direction. Keeps the worm strictly on
+                // its starting side for the whole walk.
+                if (startsLeft && cx >= leftBound) { cx = leftBound - 1; xDir = -1; }
+                else if (!startsLeft && cx <= rightBound) { cx = rightBound + 1; xDir = 1; }
 
                 cx = Math.Clamp(cx, 1, nx - 2);
                 cy = Math.Clamp(cy, BedrockY + 1, ny - 2);
@@ -603,21 +712,25 @@ public static class WorldGen {
 
     // ── Surface water — depression filling ────────────────────────────────
 
-    // Finds natural basins in the surface heightmap and fills the top MaxPools
-    // by volume with water. Two-pass "trapping rain water" to compute per-column
-    // water level, then collect eligible basins and fill the largest ones.
+    // Splits the world into `WaterChunkCount` equal-width horizontal chunks
+    // and allocates a seed-rolled budget [WaterChunkBudgetMin, …Max] to each.
+    // Inside a chunk, basins are sorted by floor elevation ascending and
+    // filled deepest-first; the last filled basin partial-fills via the
+    // binary-searched uniform-level helper if the chunk budget would overflow.
     //
-    // Capping at MaxPools (rather than filling every basin) keeps water presence
-    // consistent across seeds — otherwise lumpy heightmaps produce swampy maps
-    // and smooth ones produce dry maps.
+    // Chunked allocation keeps water reasonably even across the map width
+    // (a flat west side and lumpy east side used to dump all the water in the
+    // east). Per-chunk randomized budgets keep total surface water varying
+    // within a controlled band rather than the wide swing the old top-N-by-
+    // volume scheme produced.
     //
-    // Guarantee: the largest eligible (non-draining) basin is always filled, even
-    // if its volume is below MinPoolVolume. This ensures every world gets at least
-    // one visible water source — being stranded on a dry map is worse than having
-    // a tiny puddle. Additional pools (up to MaxPools) still require MinPoolVolume.
-    static void FillDepressions(World world, int[] surfaceY) {
+    // Guarantee (per chunk): if a chunk has any non-draining basin, at least
+    // one is filled even if all are below MinPoolVolume. Chunks with no
+    // eligible basins waste their roll.
+    static void FillDepressions(World world, int[] surfaceY, int seed) {
         int nx = world.nx;
         ushort waterMax = WaterController.WaterMax;
+        System.Random rng = new(seed + 555);
 
         // Use the EFFECTIVE surface (top of actual solid terrain, post-carve) rather
         // than the original heightmap surfaceY — otherwise worm tunnels and cave
@@ -643,17 +756,20 @@ public static class WorldGen {
             waterLevel[x] = Math.Min(maxLeft[x], maxRight[x]);
 
         // Pass 1: collect all eligible basins (contiguous runs where
-        // waterLevel > effSurfaceY, not draining into caves, big enough).
-        List<(int x0, int x1, int volume, int waterLevel)> basins = new();
+        // waterLevel > effSurfaceY, not draining into caves). MinPoolVolume
+        // gating happens in Pass 2 so the guarantee can bypass it.
+        List<(int x0, int x1, int volume, int waterLevel, int floor)> basins = new();
         int cursor = 0;
         while (cursor < nx) {
             if (waterLevel[cursor] <= effSurfaceY[cursor]) { cursor++; continue; }
 
             int x0 = cursor, x1 = cursor;
             int volume = 0;
+            int floor = int.MaxValue;
             while (x1 < nx && waterLevel[x1] > effSurfaceY[x1]) {
                 int cappedLevel = Math.Min(waterLevel[x1], WaterLine);
                 volume += Math.Max(0, cappedLevel - effSurfaceY[x1]);
+                if (effSurfaceY[x1] < floor) floor = effSurfaceY[x1];
                 x1++;
             }
 
@@ -666,63 +782,91 @@ public static class WorldGen {
                 }
             }
 
-            // Collect any non-draining basin with volume ≥ 1. MinPoolVolume gating
-            // now happens in Pass 2 so the largest basin can bypass it (guarantee).
             if (!drains && volume >= 1)
-                basins.Add((x0, x1, volume, Math.Min(waterLevel[x0], WaterLine)));
+                basins.Add((x0, x1, volume, Math.Min(waterLevel[x0], WaterLine), floor));
 
             cursor = x1;
         }
 
-        // Pass 2: sort by volume descending, fill up to MaxPools.
-        // The largest basin is always filled (even if below MinPoolVolume) so every
-        // world has at least one water source. Subsequent pools still require
-        // MinPoolVolume so tiny puddles don't proliferate.
-        basins.Sort((a, b) => b.volume.CompareTo(a.volume));
         if (basins.Count == 0) {
             // Fallback: the WaterLine cap zeros out volume for basins whose floor
             // sits above it, so on maps with mostly-high terrain the primary scan
             // finds nothing. Re-collect using the natural water level (uncapped).
             // Drain check is preserved — we still don't want water falling into caves.
             basins = CollectBasinsUncapped(world, effSurfaceY, waterLevel, nx);
-            basins.Sort((a, b) => b.volume.CompareTo(a.volume));
             if (basins.Count == 0) {
                 Debug.LogWarning("FillDepressions: no eligible basins on this map even with fallback — no surface water will spawn.");
                 return;
             }
         }
-        int toFill = Math.Min(MaxPools, basins.Count);
-        for (int i = 0; i < toFill; i++) {
-            // Only the first pool bypasses MinPoolVolume; others must meet it.
-            if (i > 0 && basins[i].volume < MinPoolVolume) break;
-            var b = basins[i];
-            int fillLevel = b.waterLevel;
 
-            // Large basins: binary-search the highest uniform level that keeps
-            // total volume ≤ MaxPoolVolume, so oversized depressions don't flood.
-            if (b.volume > MaxPoolVolume) {
-                int lo = effSurfaceY[b.x0], hi = fillLevel;
-                for (int x = b.x0; x < b.x1; x++)
-                    lo = Math.Min(lo, effSurfaceY[x]);
-                while (lo < hi) {
-                    int mid = (lo + hi + 1) / 2;
-                    int vol = 0;
-                    for (int x = b.x0; x < b.x1; x++)
-                        vol += Math.Max(0, mid - effSurfaceY[x]);
-                    if (vol <= MaxPoolVolume) lo = mid;
-                    else hi = mid - 1;
-                }
-                fillLevel = lo;
+        // Pass 2: bucket basins into chunks by center column, then allocate
+        // each chunk its own rolled budget. Inside a chunk, fill deepest-floor
+        // first; tiny basins are skipped unless none qualify (per-chunk
+        // fallback to the deepest available so the chunk doesn't go fully dry
+        // when terrain offers nothing of MinPoolVolume).
+        int chunkWidth = Math.Max(1, nx / WaterChunkCount);
+        var byChunk = new List<(int x0, int x1, int volume, int waterLevel, int floor)>[WaterChunkCount];
+        for (int i = 0; i < WaterChunkCount; i++) byChunk[i] = new();
+        foreach (var b in basins) {
+            int center = (b.x0 + b.x1 - 1) / 2;
+            int c = Math.Min(WaterChunkCount - 1, center / chunkWidth);
+            byChunk[c].Add(b);
+        }
+
+        for (int c = 0; c < WaterChunkCount; c++) {
+            var chunkBasins = byChunk[c];
+            if (chunkBasins.Count == 0) continue;
+            chunkBasins.Sort((a, b) => a.floor.CompareTo(b.floor));
+            int budget = rng.Next(WaterChunkBudgetMin, WaterChunkBudgetMax + 1);
+
+            bool anyFilled = false;
+            foreach (var b in chunkBasins) {
+                if (budget <= 0) break;
+                if (b.volume < MinPoolVolume) continue;
+                budget -= FillBasinUpTo(world, effSurfaceY, b, Math.Min(b.volume, budget), waterMax);
+                anyFilled = true;
             }
+            if (!anyFilled && budget > 0) {
+                var b = chunkBasins[0];
+                FillBasinUpTo(world, effSurfaceY, b, Math.Min(b.volume, budget), waterMax);
+            }
+        }
+    }
 
-            for (int x = b.x0; x < b.x1; x++) {
-                for (int y = effSurfaceY[x]; y < fillLevel; y++) {
-                    Tile t = world.GetTileAt(x, y);
-                    if (!t.type.solid)
-                        t.water = waterMax;
+    // Fills basin `b` with up to `cap` tiles of water at the highest uniform
+    // water level achievable. Returns the actual tile count placed. When `cap`
+    // is below the basin's natural capacity, binary-searches for the highest
+    // uniform level whose total volume ≤ cap — so partial fills stay flat
+    // rather than pooling against one side of the basin.
+    static int FillBasinUpTo(World world, int[] effSurfaceY,
+                             (int x0, int x1, int volume, int waterLevel, int floor) b,
+                             int cap, ushort waterMax) {
+        int fillLevel = b.waterLevel;
+        if (b.volume > cap) {
+            int lo = b.floor, hi = fillLevel;
+            while (lo < hi) {
+                int mid = (lo + hi + 1) / 2;
+                int vol = 0;
+                for (int x = b.x0; x < b.x1; x++)
+                    vol += Math.Max(0, mid - effSurfaceY[x]);
+                if (vol <= cap) lo = mid;
+                else hi = mid - 1;
+            }
+            fillLevel = lo;
+        }
+
+        int placed = 0;
+        for (int x = b.x0; x < b.x1; x++) {
+            for (int y = effSurfaceY[x]; y < fillLevel; y++) {
+                Tile t = world.GetTileAt(x, y);
+                if (!t.type.solid) {
+                    t.water = waterMax;
+                    placed++;
                 }
             }
         }
+        return placed;
     }
 
     // Actual topmost-solid-tile y per column, scanning down from the sky. Differs
@@ -748,17 +892,19 @@ public static class WorldGen {
     // basins count too. Drain-into-cave check is preserved — water on cave ceilings
     // would fall through. Used only when the primary below-WaterLine scan is empty.
     // Caller passes the effective (post-carve) surface so carved pits are visible.
-    static List<(int x0, int x1, int volume, int waterLevel)> CollectBasinsUncapped(
+    static List<(int x0, int x1, int volume, int waterLevel, int floor)> CollectBasinsUncapped(
         World world, int[] effSurfaceY, int[] waterLevel, int nx) {
-        var basins = new List<(int x0, int x1, int volume, int waterLevel)>();
+        var basins = new List<(int x0, int x1, int volume, int waterLevel, int floor)>();
         int cursor = 0;
         while (cursor < nx) {
             if (waterLevel[cursor] <= effSurfaceY[cursor]) { cursor++; continue; }
 
             int x0 = cursor, x1 = cursor;
             int volume = 0;
+            int floor = int.MaxValue;
             while (x1 < nx && waterLevel[x1] > effSurfaceY[x1]) {
                 volume += waterLevel[x1] - effSurfaceY[x1]; // no WaterLine cap
+                if (effSurfaceY[x1] < floor) floor = effSurfaceY[x1];
                 x1++;
             }
 
@@ -770,7 +916,7 @@ public static class WorldGen {
             }
 
             if (!drains && volume >= 1)
-                basins.Add((x0, x1, volume, waterLevel[x0]));
+                basins.Add((x0, x1, volume, waterLevel[x0], floor));
 
             cursor = x1;
         }
@@ -782,9 +928,9 @@ public static class WorldGen {
     // Scatters random plant clusters across the surface. Each eligible column
     // has a small chance to seed a cluster of 1-3 plants (pine, apple, ramie).
     // Called from WorldController.GenerateDefault after terrain + caves + water.
-    const float PlantChance = 0.08f;   // per-column chance to start a cluster
-    const int ClusterMin = 1;
-    const int ClusterMax = 3;
+    public static float PlantChance = 0.08f;   // per-column chance to start a cluster
+    public static int ClusterMin = 1;
+    public static int ClusterMax = 3;
 
     public static void ScatterPlants(World world, int[] surfaceY, int seed) {
         System.Random rng = new(seed + 999);

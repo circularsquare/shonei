@@ -173,9 +173,13 @@ public class StructController : MonoBehaviour {
 
     public int TotalHousingCapacity() {
         int total = 0;
-        var houses = GetByType(Db.structTypeByName["house"]);
-        if (houses != null)
-            foreach (Structure s in houses) total += s.res.capacity;
+        // Walks all placed structures and sums capacity over anything flagged isHousing.
+        // Replaces the legacy "look up house by name" scan — now picks up shack, future
+        // burrow, and any other housing tier without code changes.
+        foreach (Structure s in GetStructures()) {
+            if (s == null || s.res == null) continue;
+            if (s.structType.isHousing) total += s.res.capacity;
+        }
         return total;
     }
 

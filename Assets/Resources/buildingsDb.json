@@ -59,8 +59,25 @@
         "depth": 0,
         "solidTop": true,
         "category": "storage",
+        "isHousing": true,
         "hasFurnishingSlots": true,
         "furnishingSlotNames": ["cloth", "stool"]
+    },{
+        "id": 26,
+        "name": "shack",
+        "description": "a tiny shack for one mouse",
+        "nx": 2, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 4 }
+        ],
+        "njob": "hauler",
+        "capacity": 1,
+        "depth": 0,
+        "solidTop": true,
+        "category": "storage",
+        "isHousing": true,
+        "doors": [{ "dx": 0, "dy": 0, "side": "left" }],
+        "interiorTiles": [{ "dx": 0, "dy": 0 }, { "dx": 1, "dy": 0 }]
     },{
         "id": 21,
         "name": "drawer",

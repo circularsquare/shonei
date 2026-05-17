@@ -123,6 +123,22 @@ public class Structure {
     // as workTile, which works identically for floats.
     public Node workNode { get; private set; }
 
+    // Interior waypoints — one off-grid Graph node per StructType.interiorTiles entry,
+    // registered in the ctor. Each node sits visually below its tile's roof line (y - 0.3).
+    // Edges are wired so the graph alone routes mice in and out:
+    //   - Adjacent interior nodes within the footprint are edged to each other (walk inside).
+    //   - Each door's interior node is edged to the exterior approach tile's graph node
+    //     (transit through the doorway).
+    // Mirror handling: dx is flipped at ctor time; callers read these fields raw.
+    // Null on buildings without interiorTiles. Cleaned up in Destroy alongside workNode.
+    public Node[] interiorNodes;
+
+    // First door's approach tile (the tile just outside the door, on the door's side).
+    // Used by Animal.FindHome to set homeTile as a tile-level "where my home is" hint
+    // for UI / debug. Pathing doesn't go through this field — A* uses the door edge
+    // wired up between interiorNodes and approach tile nodes. Null on doorless buildings.
+    public Tile doorApproachTile { get; private set; }
+
     public Reservable res;
     // Per-seat reservables for leisure buildings. Each work tile gets its own Reservable(1)
     // so two mice won't path to the same seat. Null for non-leisure buildings.
@@ -407,6 +423,82 @@ public class Structure {
             // workTile getter may return null (out-of-bounds), in which case workNode stays null.
             workNode = workTile?.node;
         }
+
+        // Interior nodes + door edges. Same load-time contract as workNode: runs from the
+        // ctor so the load path picks it up before graph.Initialize. Doors are pure graph
+        // topology — each interior tile gets a waypoint Node, adjacent interior nodes are
+        // edged together, and each door is an edge from its interior node to the existing
+        // approach-tile node. A* then routes mice in / out without Task code involvement.
+        if (st.interiorTiles != null && st.interiorTiles.Length > 0) {
+            Building selfBuilding = this as Building;
+            interiorNodes = new Node[st.interiorTiles.Length];
+            // Cache per-entry mirrored dx so adjacency math (below) uses world tile coords.
+            int[] worldX = new int[st.interiorTiles.Length];
+            int[] worldY = new int[st.interiorTiles.Length];
+            for (int i = 0; i < st.interiorTiles.Length; i++) {
+                InteriorTile it = st.interiorTiles[i];
+                int mdx = mirrored ? (st.nx - 1 - it.dx) : it.dx;
+                worldX[i] = x + mdx;
+                worldY[i] = y + it.dy;
+                // Off-grid waypoint at the tile's center, shifted down so the rendered
+                // mouse sits under the roof line rather than on top of it.
+                Node n = new Node(worldX[i] + 0f, worldY[i] - 0.3f);
+                n.interiorOf = selfBuilding;
+                interiorNodes[i] = n;
+            }
+            // Edges between cardinally adjacent interior nodes — mice can walk between
+            // tiles inside the building.
+            for (int i = 0; i < interiorNodes.Length; i++) {
+                for (int j = i + 1; j < interiorNodes.Length; j++) {
+                    int dxDist = Mathf.Abs(worldX[i] - worldX[j]);
+                    int dyDist = Mathf.Abs(worldY[i] - worldY[j]);
+                    if (dxDist + dyDist == 1) interiorNodes[i].AddNeighbor(interiorNodes[j], reciprocal: true);
+                }
+            }
+            // Door edges — each door anchors to one interior node (by matching dx/dy)
+            // and one approach tile (by side). The result is a single graph edge bridging
+            // outside and inside.
+            if (st.doors != null) {
+                for (int d = 0; d < st.doors.Length; d++) {
+                    Door door = st.doors[d];
+                    int doorDx = mirrored ? (st.nx - 1 - door.dx) : door.dx;
+                    string side = door.side;
+                    if (mirrored) {
+                        if (side == "left") side = "right";
+                        else if (side == "right") side = "left";
+                    }
+                    // Find the interior node whose tile matches the door's tile.
+                    int doorWorldX = x + doorDx, doorWorldY = y + door.dy;
+                    Node interiorAtDoor = null;
+                    for (int i = 0; i < interiorNodes.Length; i++) {
+                        if (worldX[i] == doorWorldX && worldY[i] == doorWorldY) {
+                            interiorAtDoor = interiorNodes[i]; break;
+                        }
+                    }
+                    if (interiorAtDoor == null) {
+                        Debug.LogError($"{st.name} at ({x},{y}): door at ({door.dx},{door.dy}) has no matching interiorTile entry");
+                        continue;
+                    }
+                    int approachX = doorWorldX, approachY = doorWorldY;
+                    switch (side) {
+                        case "left":   approachX -= 1; break;
+                        case "right":  approachX += 1; break;
+                        case "top":    approachY += 1; break;
+                        case "bottom": approachY -= 1; break;
+                        default:
+                            Debug.LogError($"{st.name} at ({x},{y}): unknown door side '{side}'"); continue;
+                    }
+                    Tile approach = World.instance.GetTileAt(approachX, approachY);
+                    if (approach == null) {
+                        Debug.LogError($"{st.name} at ({x},{y}): door approach tile ({approachX},{approachY}) is out of bounds");
+                        continue;
+                    }
+                    interiorAtDoor.AddNeighbor(approach.node, reciprocal: true);
+                    // Remember the first door's approach tile for Animal.FindHome's homeTile hint.
+                    if (doorApproachTile == null) doorApproachTile = approach;
+                }
+            }
+        }
     }
 
     // Shared factory: dispatches to the correct subclass based on StructType properties.
@@ -468,6 +560,20 @@ public class Structure {
             foreach (Node n in workNode.neighbors) n.RemoveNeighbor(workNode);
             workNode.neighbors.Clear();
             workNode = null;
+        }
+        // Tear down all interior waypoints. Edges to neighboring interior nodes and
+        // to the door-approach tile node would otherwise dangle and pull A* into
+        // dead ends. Clearing interiorOf also unsticks Animal.insideBuilding via the
+        // Nav arrival hook on the next path step.
+        if (interiorNodes != null) {
+            for (int i = 0; i < interiorNodes.Length; i++) {
+                Node n = interiorNodes[i];
+                if (n == null) continue;
+                foreach (Node m in n.neighbors) m.RemoveNeighbor(n);
+                n.neighbors.Clear();
+                n.interiorOf = null;
+            }
+            interiorNodes = null;
         }
         // Defense-in-depth: PowerShaft/MouseWheel/Windmill clean themselves up in their
         // own Destroy overrides, but a future subclass that forgets won't leak stale

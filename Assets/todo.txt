@@ -25,10 +25,13 @@ CONTENT
         - cloth 
         - wood furniture
         - glass
+- handle stools better? so that they take up more than 1 liang of space?
 
+- upsizing
+    - houses 
+    - workshops
 
 VISUALS
-
 - lighting 
     - improve undergroundwall sprite 
     - procedurally generate rocks with normalmaps?
@@ -57,11 +60,8 @@ CODE CLEANUP
 BUGS
 
 SHORT TERM
-test tarp
-test furnishing
-add toggle for jobs panel
-
-background 
-    - shade the top rim of the hills?
-
-- handle stools better? so that they take up more than 1 liang of space?
+- test shack...
+- world gen
+    - specifically generate water pools rather than filling holes in 
+    - generate water in caves sometimes 
+    - mushrooms should be only in dark spots that are not exposed to the sky upward or with background exposure

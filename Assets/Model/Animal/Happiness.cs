@@ -151,7 +151,7 @@ public class Happiness {
     public void RecomputeFurnishingBonus(Animal a) {
         furnishingScore = 0f;
         if (a == null || !a.HasHouse) return;
-        FurnishingSlots fs = a.homeTile?.building?.furnishingSlots;
+        FurnishingSlots fs = a.homeBuilding?.furnishingSlots;
         if (fs == null) return;
         for (int i = 0; i < fs.SlotCount; i++) {
             Item it = fs.Get(i);

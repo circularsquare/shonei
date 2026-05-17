@@ -18,6 +18,12 @@ public class Node {
     // Null on regular nodes; static (constant) policies aren't stored here — they're chosen
     // by ResolveEdgePolicy from node geometry (waypoint flags, dy threshold).
     public EdgePolicy edgePolicy;
+    // Back-reference to the Building whose interior this node belongs to, when this
+    // is an off-grid interior waypoint registered by Structure. Null on tile nodes,
+    // workNode waypoints, and any other Node that isn't an interior. Used by Nav's
+    // arrival hook to set Animal.insideBuilding without Task code needing to know
+    // about doors. Cleared by Structure.Destroy alongside neighbor edges.
+    public Building interiorOf;
 
     public Node(Tile tile, int x, int y){
         this.tile = tile; this.x = x; this.y = y;

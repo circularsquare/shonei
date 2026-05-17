@@ -8,11 +8,11 @@ The individual unlockable things are called **technologies** (player- and user-f
 
 ## Progress & decay
 
-Each technology has a progress value (0 to 2x cost). Every tick, all nodes with progress > 0 lose `DecayRate` (0.01) progress. Scientists add `workEfficiency * ScientistRate (0.05)` per tick.
+Each technology has a progress value (0 to 2x cost). Every tick, all nodes with progress > 0 lose `DecayRate` (0.008) progress. Scientists add `workEfficiency * ScientistRate (0.04)` per tick.
 
 Passive progress sources (maintain-only — caps at 2x cost and cannot unlock a locked tech from scratch):
 - **Crafting**: recipes with a `research` field grant `researchPoints` to the named tech on each completed cycle. Hooked in `AnimalStateManager.ExecuteCraftTask`. Intended use: recipe-unlock techs gain from the recipe they unlock.
-- **Construction**: each time a tech-gated building finishes construction via `Blueprint.Complete`, the gating tech gets a flat `ConstructionGain` (1) progress. Routed through the `buildingToTechNode` reverse index built in `Start()` (see "Startup ordering" below). Only fires on the gameplay path — world load / worldgen go through `Structure.Create` directly and do not grant research.
+- **Construction**: each time a tech-gated building finishes construction via `Blueprint.Complete`, the gating tech gets a flat `ConstructionGain` (0.75) progress. Routed through the `buildingToTechNode` reverse index built in `Start()` (see "Startup ordering" below). Only fires on the gameplay path — world load / worldgen go through `Structure.Create` directly and do not grant research.
 - **Maintenance**: completing a `MaintenanceTask` grants `ConstructionGain × repairAmount` to the same tech. Calibrated so a full 0→1 repair matches a fresh build (e.g. a 40 % repair = 0.4 progress), implemented via the `scale` parameter on `AddConstructionProgress`.
 
 - **Unlock**: progress >= cost AND all prerequisites currently unlocked.

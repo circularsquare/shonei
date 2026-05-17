@@ -177,8 +177,8 @@ public class ResearchSystemTests {
     // ── AddScientistProgress ──────────────────────────────────────────────
     [Test]
     public void AddScientistProgress_AddsScaledProgressAndCanUnlock(){
-        // ScientistRate = 0.05. workEfficiency=20 → 1.0 progress per call. alpha cost=1 → unlocks in one tick.
-        rs.AddScientistProgress(20f, nodeA.id);
+        // ScientistRate = 0.04. workEfficiency=25 → 1.0 progress per call. alpha cost=1 → unlocks in one tick.
+        rs.AddScientistProgress(25f, nodeA.id);
         Assert.That(rs.GetProgress(nodeA.id), Is.EqualTo(1f).Within(1e-5f));
         Assert.That(rs.IsUnlocked(nodeA.id), Is.True);
     }
@@ -200,10 +200,10 @@ public class ResearchSystemTests {
     public void TickUpdate_DecaysAllNodesWithProgress(){
         rs.AddPassiveProgress("alpha", 0.5f);
         rs.AddPassiveProgress("beta", 0.5f);
-        // DecayRate = 0.01 per tick.
+        // DecayRate = 0.008 per tick.
         rs.TickUpdate();
-        Assert.That(rs.GetProgress(nodeA.id), Is.EqualTo(0.49f).Within(1e-5f));
-        Assert.That(rs.GetProgress(nodeB.id), Is.EqualTo(0.49f).Within(1e-5f));
+        Assert.That(rs.GetProgress(nodeA.id), Is.EqualTo(0.492f).Within(1e-5f));
+        Assert.That(rs.GetProgress(nodeB.id), Is.EqualTo(0.492f).Within(1e-5f));
     }
 
     [Test]

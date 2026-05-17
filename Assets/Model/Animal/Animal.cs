@@ -20,6 +20,20 @@ public class Animal : MonoBehaviour{
     public bool pendingRefresh = false; // deferred Refresh() when SetJob fires mid-waypoint
 
     public Node target;         // path endpoint (tile-node or off-grid waypoint) — where you are currently going
+    // The building this animal calls home — the authoritative reservation owner. Replaces
+    // the old "homeTile.building" idiom that broke for multi-tile housing (the home tile
+    // for a doored shack is the approach tile *outside* the footprint, where no building
+    // sits). Set/cleared by FindHome; preserved across save/load via homeBuildingX/Y.
+    public Building homeBuilding;
+    // The animal is currently rendered "inside" this building. Set by EnterBuildingObjective
+    // when arriving at an interior anchor, cleared on Eep exit (see AnimalStateManager) or
+    // when the building is demolished (see Building.Destroy). Non-null only inside doored
+    // housing today; production-building interiors will reuse the same field in later phases.
+    public Building insideBuilding;
+    // The integer tile this animal walks TO when going home. For legacy 1×1 houses this is
+    // the building's anchor (today's behaviour). For doored buildings this is the door's
+    // approach tile, just outside the footprint. Pathing terminates here; the door system
+    // then graph-edges through to the interior anchor (see Structure ctor).
     public Tile homeTile;
     private Tile _currentTile;  // cached for O(1) tile-occupancy tracking
 
@@ -197,6 +211,32 @@ public class Animal : MonoBehaviour{
                     this.workProgress = pendingSaveData.travelProgress;
                 } else {
                     this.task = null;
+                }
+            }
+            // Restore home + interior bookkeeping. homeBuildingX/Y resolves the home so the
+            // animal doesn't have to re-FindHome on load (which would also reset furnishing
+            // happiness). insideBuildingX/Y restores "currently sleeping inside" and snaps
+            // the animal back to the interior anchor — otherwise rounding (1.5, 0.5) to a
+            // tile yields a non-standable spot and UpdateMovement falls them out.
+            if (pendingSaveData.homeBuildingX.HasValue && pendingSaveData.homeBuildingY.HasValue) {
+                Tile homeAnchor = world.GetTileAt(pendingSaveData.homeBuildingX.Value, pendingSaveData.homeBuildingY.Value);
+                if (homeAnchor?.building != null && homeAnchor.building.structType.isHousing) {
+                    homeBuilding = homeAnchor.building;
+                    homeTile = homeBuilding.doorApproachTile ?? homeBuilding.tile;
+                    homeBuilding.res.Reserve(aName);
+                    happiness?.RecomputeFurnishingBonus(this);
+                }
+            }
+            if (pendingSaveData.insideBuildingX.HasValue && pendingSaveData.insideBuildingY.HasValue) {
+                Tile insideAnchor = world.GetTileAt(pendingSaveData.insideBuildingX.Value, pendingSaveData.insideBuildingY.Value);
+                Building b = insideAnchor?.building;
+                if (b != null && b.interiorNodes != null && b.interiorNodes.Length > 0) {
+                    insideBuilding = b;
+                    // Snap to the first interior node — v1 has one sleep slot per building.
+                    // (Phase 4 multi-resident housing will need to remember which slot was
+                    // assigned and snap to interiorNodes[slotIdx] instead.)
+                    Node spot = b.interiorNodes[0];
+                    SnapTo(spot.wx, spot.wy);
                 }
             }
             pendingSaveData = null;
@@ -818,36 +858,75 @@ public class Animal : MonoBehaviour{
 
     public void FindHome(){
         if (nav == null) return;
-        // if you have no home tile, or your hometile does not have a house,
-            // if u can find a house, set ur hometile to that
-        if (homeTile == null || !(homeTile?.building?.structType.name == "house") || homeTile.building.IsBroken){
-            Path housePath = nav.FindPathToBuilding(Db.structTypeByName["house"]);
-            if (housePath != null && housePath.tile.building?.structType.name == "house") {
-                // should maybe also unreserve previous house, if you can?
-                if (homeTile?.building?.structType.name == "house") homeTile.building.res.Unreserve();
-                homeTile = housePath.tile;
-                homeTile.building.res.Reserve(aName);
+
+        // Need a new home if (a) we don't have one, (b) the assignment was somehow lost
+        // its housing flag (StructType edited at runtime — unlikely but cheap to check),
+        // or (c) the building is broken and unusable.
+        bool needsHome = homeBuilding == null
+                      || !homeBuilding.structType.isHousing
+                      || homeBuilding.IsBroken;
+        if (needsHome) {
+            Building best = FindReachableHousing();
+            if (best != null) {
+                if (homeBuilding != null) homeBuilding.res.Unreserve();
+                AssignHome(best);
                 happiness?.RecomputeFurnishingBonus(this);
-            } else if (homeTile != null && happiness != null) {
+            } else if (homeBuilding != null && happiness != null) {
                 // Home was lost (demolished / broken) but no replacement found — clear any
-                // stale furnishing bonus that was pinned to the old house.
+                // stale furnishing bonus that was pinned to the old building.
                 happiness.RecomputeFurnishingBonus(this);
             }
-        } else if (!homeTile.building.res.Available()) {
-            // current house is full — look for another house with >= 2 free slots
-            Tile currentHome = homeTile;
-            Path betterPath = nav.FindPathTo(t =>
-                t != currentHome &&
-                t.building?.structType.name == "house" &&
-                !t.building.IsBroken &&
-                t.building.res.capacity - t.building.res.reserved >= 2);
-            if (betterPath != null) {
-                homeTile.building.res.Unreserve();
-                homeTile = betterPath.tile;
-                homeTile.building.res.Reserve(aName);
+        } else if (!homeBuilding.res.Available()) {
+            // Current home is full — look for a different housing building with ≥ 2 free slots
+            // (a one-slot gap isn't enough to be worth a move).
+            Building currentHome = homeBuilding;
+            Building better = FindReachableHousing(b =>
+                b != currentHome && b.res.capacity - b.res.reserved >= 2);
+            if (better != null) {
+                homeBuilding.res.Unreserve();
+                AssignHome(better);
                 happiness?.RecomputeFurnishingBonus(this);
             }
         }
+    }
+
+    // Commits a new home assignment: sets homeBuilding + homeTile (the path target —
+    // either the door's approach tile or the building's anchor for legacy housing) and
+    // reserves a slot on the building's Reservable.
+    void AssignHome(Building b) {
+        homeBuilding = b;
+        homeTile = b.doorApproachTile ?? b.tile;
+        b.res.Reserve(aName);
+    }
+
+    // Scans all reachable housing buildings (any StructType with isHousing == true) for the
+    // cheapest-cost path, optionally restricted by an extra filter (e.g. "must have ≥ 2 free
+    // slots" when migrating to a less-cramped house). Iterates StructController rather than
+    // routing through Nav.FindPathToStruct because housing isn't keyed by a single StructType.
+    private Building FindReachableHousing(System.Func<Building, bool> extraFilter = null) {
+        Node myNode = TileHere()?.node;
+        if (myNode == null) return null;
+        Building best = null;
+        float bestCost = float.MaxValue;
+        foreach (Structure s in StructController.instance.GetStructures()) {
+            Building b = s as Building;
+            if (b == null) continue;
+            if (!b.structType.isHousing) continue;
+            if (b.IsBroken) continue;
+            if (!b.res.Available()) continue;
+            if (extraFilter != null && !extraFilter(b)) continue;
+            // Doored buildings route through the first interior waypoint (A* picks up the
+            // door edge automatically); legacy housing (no interior tiles declared) uses
+            // workNode = workTile.node = anchor tile.
+            Node target = (b.interiorNodes != null && b.interiorNodes.Length > 0)
+                ? b.interiorNodes[0]
+                : b.workNode;
+            if (target == null) continue;
+            Path p = world.graph.Navigate(myNode, target);
+            if (p == null) continue;
+            if (p.cost < bestCost) { best = b; bestCost = p.cost; }
+        }
+        return best;
     }
 
     public Tile TileHere() { return world.GetTileAt(x, y); }
@@ -872,11 +951,21 @@ public class Animal : MonoBehaviour{
         }
     }
 
+    // True when the animal is physically inside its assigned home. For legacy 1×1 housing
+    // this fires whenever they're standing on the home tile (no separate "inside" concept).
+    // For doored buildings this fires only after EnterBuildingObjective has set insideBuilding,
+    // because standing on the approach tile outside the door doesn't count as "at home".
     public bool AtHome() {
-        return homeTile != null && homeTile == TileHere() && homeTile.building?.structType.name == "house";
+        if (homeBuilding == null) return false;
+        if (insideBuilding == homeBuilding) return true;
+        // Legacy path: 1×1 housing without interior tiles — standing on the building's
+        // anchor tile is "at home". Doored buildings always exercise the insideBuilding
+        // check above (Nav sets it on arrival at an interior node).
+        return (homeBuilding.interiorNodes == null || homeBuilding.interiorNodes.Length == 0)
+            && TileHere() == homeBuilding.tile;
     }
 
-    public bool HasHouse => homeTile?.building?.structType.name == "house";
+    public bool HasHouse => homeBuilding?.structType.isHousing == true;
 
     public bool IsMoving(){
         return state == AnimalState.Moving || state == AnimalState.Falling;

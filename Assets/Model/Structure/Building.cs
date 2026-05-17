@@ -167,7 +167,7 @@ public class Building : Structure {
 
     // Fires when a furnishing slot's contents change (install or decay-out). Recomputes
     // happiness for every resident animal and notifies the optional visual component.
-    // Resident discovery: scan AnimalController for any animal whose homeTile.building == this.
+    // Resident discovery: scan AnimalController for any animal whose homeBuilding == this.
     // Reservable.reservedBy is a single string and can't enumerate residents, so the scan
     // is the durable source of truth.
     void OnFurnishingSlotChanged(int slotIndex) {
@@ -176,7 +176,7 @@ public class Building : Structure {
             for (int i = 0; i < ac.na; i++) {
                 Animal a = ac.animals[i];
                 if (a == null) continue;
-                if (a.homeTile?.building == this)
+                if (a.homeBuilding == this)
                     a.happiness?.RecomputeFurnishingBonus(a);
             }
         }
@@ -238,6 +238,27 @@ public class Building : Structure {
     }
 
     public override void Destroy() {
+        // Drop any animal refs that pointed at this building. The interior waypoints
+        // themselves are torn down by Structure.Destroy (base call below); once gone,
+        // an animal standing on a now-orphaned interior node sits on a non-standable
+        // tile and UpdateMovement's fall integration catches them naturally — no need
+        // for an explicit eviction-snap here. We just clear the cached references so
+        // subsequent FindHome / task picks don't hit a stale Building.
+        if (!WorldController.isClearing) {
+            AnimalController ac = AnimalController.instance;
+            if (ac != null) {
+                for (int i = 0; i < ac.na; i++) {
+                    Animal a = ac.animals[i];
+                    if (a == null) continue;
+                    if (a.insideBuilding == this) a.insideBuilding = null;
+                    if (a.homeBuilding == this) {
+                        a.homeBuilding = null;
+                        a.homeTile = null;
+                        a.task?.Fail();
+                    }
+                }
+            }
+        }
         if (powerConsumer != null) {
             PowerSystem.instance?.UnregisterConsumer(powerConsumer);
             powerConsumer = null;

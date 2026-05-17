@@ -36,6 +36,12 @@ public class SoundManager : MonoBehaviour {
     // frame, and so we can resume mid-clip instead of re-attacking the sample.
     bool ambientPausedByGame;
 
+    // Time-smoothed copy of the rain shaping curve. The actual volume eases
+    // toward the rain-driven target at a fixed rate so weather changes fade
+    // in/out instead of popping.
+    float smoothedRainCurve;
+    const float rainRampSeconds = 3f;
+
     void Awake() {
         if (instance != null && instance != this) {
             Destroy(gameObject);
@@ -93,12 +99,15 @@ public class SoundManager : MonoBehaviour {
 
         float rain = WeatherSystem.instance?.rainAmount ?? 0f;
 
-        // Step-then-ramp: as soon as there's any rain at all, jump straight
-        // to 50% of the ambient baseline, then ramp linearly to 100% at full
-        // rain. Gives a snappy "it just started raining" cue instead of
-        // creeping in quietly alongside the particle fade-in.
-        float curve = rain > 0f ? 0.5f + 0.5f * rain : 0f;
-        float vol = curve * ambientVolume * UserMaster() * UserAmbient();
+        // Target curve: as soon as there's any rain at all, aim for 50% of
+        // the ambient baseline, then climb linearly to 100% at full rain.
+        // Then time-smooth toward that target so onsets fade in (and
+        // cessations fade out) over rainRampSeconds rather than popping.
+        // Tied to scaled deltaTime — pause already early-returned above,
+        // and fast-forward should pull the ramp through proportionally.
+        float targetCurve = rain > 0f ? 0.5f + 0.5f * rain : 0f;
+        smoothedRainCurve = Mathf.MoveTowards(smoothedRainCurve, targetCurve, Time.deltaTime / rainRampSeconds);
+        float vol = smoothedRainCurve * ambientVolume * UserMaster() * UserAmbient();
 
         if (vol > 0.005f) {
             SetAmbientClip("rain");
