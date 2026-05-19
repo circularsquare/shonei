@@ -18,16 +18,6 @@ public class MouseWheel : Building, PowerSystem.IPowerProducer {
 
     public MouseWheel(StructType st, int x, int y, bool mirrored = false) : base(st, x, y, mirrored) { }
 
-    public override void OnPlaced() {
-        base.OnPlaced(); // registers WOM craft order
-        PowerSystem.instance?.RegisterProducer(this);
-    }
-
-    public override void Destroy() {
-        PowerSystem.instance?.UnregisterProducer(this);
-        base.Destroy();
-    }
-
     // True iff a runner is currently in WorkObjective at this wheel. Drives both
     // power output (via CurrentOutput) and the FrameAnimator wheel-spin visual.
     public bool IsCurrentlyActive => HasActiveCrafter();

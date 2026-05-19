@@ -19,7 +19,18 @@ EventFeed.instance.history;                 // IReadOnlyList<Entry>, capped at 2
 
 ## Categories
 
-`Alert` / `Info` / `Chat` / `Fill`. Currently used as metadata only — renderers don't map category → color because senders already embed `<color=...>` tags inline (red for errors, green for success/fills, orange for research forgets). Category becomes useful once we want per-feed filtering, icons, or an overlay that only shows `Alert`.
+`Alert` / `Info` / `Chat` / `Fill`. Category drives routing (which renderer picks up the entry) — **not** styling. Senders embed `<color=...>` tags inline for color (red for errors, green for success/fills, orange for research forgets).
+
+**Routing rule** (mirrored in the renderer filters below):
+
+| Category | Goes to | Used for |
+|---|---|---|
+| `Alert` | AlertToast (overlay) | World-state events the player should notice immediately while looking away from chat — placement errors, research forgotten. |
+| `Info` | TradingPanel chat list | Chat-input feedback the player is already looking at — `/give` / `/rain` / `/day` / `/wind` command responses (both errors and successes), connection-offline errors. Red `<color=#cc3333>` tags still mark errors visually within the chat. |
+| `Chat` | TradingPanel chat list | Server chat from other players. |
+| `Fill` | TradingPanel chat list | Server trade fills. |
+
+When adding a new post site: ask "is the player looking at chat when this happens?" If yes → `Info`. If no (mid-action in the world) → `Alert`.
 
 ## Lifetime
 
@@ -39,25 +50,25 @@ Split into `EventFeedBindings.cs` once this table grows past ~5 rows or bindings
 
 Call sites that post directly (not via a binding):
 
-- `TradingPanel.OnClickSendChat` — connection-offline error
-- `TradingPanel.HandleCommand` / `CmdGive` / `CmdRain` / `CmdDay` / `CmdWind` — `/give`, `/rain`, `/day [n]`, `/wind [v]` command feedback (usage errors, unknown args, success messages). Unknown commands also post a red error.
-- `TradingPanel.DisplayChat` — server chat from other players (`Category.Chat`)
-- `TradingPanel.DisplayFill` — server trade fills (`Category.Fill`)
-- `BuildPanel.PlaceBlueprint` — blueprint placement rejections (single-tile and two-click bridge). Reason strings come from `StructPlacement.GetPlacementFailReason` / `GetTwoPointFailReason`; wrapped in `<color=#cc3333>` (red) and posted as `Category.Alert`.
+- `TradingPanel.OnClickSendChat` — connection-offline error (`Info`)
+- `TradingPanel.HandleCommand` / `CmdGive` / `CmdRain` / `CmdDay` / `CmdWind` — `/give`, `/rain`, `/day [n]`, `/wind [v]` command feedback. Errors and successes both `Info` (rendered side-by-side in chat); red color tag distinguishes errors visually.
+- `TradingPanel.DisplayChat` — server chat from other players (`Chat`)
+- `TradingPanel.DisplayFill` — server trade fills (`Fill`)
+- `BuildPanel.PlaceBlueprint` — blueprint placement rejections (single-tile and two-click bridge). Reason strings come from `StructPlacement.GetPlacementFailReason` / `GetTwoPointFailReason`; wrapped in `<color=#cc3333>` (red) and posted as `Alert`.
 
 ## Renderers
 
-Two scene-resident renderers subscribe to `OnEntry`:
+Two scene-resident renderers subscribe to `OnEntry` and split categories per the routing table above — no entry shows up in both, so there's no double-render.
 
-### TradingPanel chat list (history)
+### TradingPanel chat list (persistent log)
 
-TradingPanel subscribes to `OnEntry` in `Awake`, unsubscribes in `OnDestroy`. Renders **every** category. Entries go through the existing private `AddChat(text)` helper, which caps the visible list at 20 rows. No category-based styling — the rich-text tags in `entry.text` carry the color. The chatList rows persist for the lifetime of the panel (it only `SetActive(false)`s on close), so no history backfill is needed on re-open.
+TradingPanel subscribes to `OnEntry` in `Awake`, unsubscribes in `OnDestroy`. Renders **everything except `Category.Alert`** — i.e. `Info` (command success), `Chat` (server chat from other players), `Fill` (trade fills). The Alert filter lives in `HandleFeedEntry`. Entries go through the existing private `AddChat(text)` helper, which caps the visible list at 20 rows. No category-based styling — the rich-text tags in `entry.text` carry the color. The chatList rows persist for the lifetime of the panel (it only `SetActive(false)`s on close), so no history backfill is needed on re-open.
 
 ### AlertToast (transient overlay)
 
-`Assets/UI/AlertToast.cs`. Subscribes in `Start` (not Awake) per the Awake-order guidance above. Renders **`Category.Alert` only** — the chat list keeps the persistent record; the toast is the eye-catching brief surface for errors and important notifications.
+`Assets/UI/AlertToast.cs`. Subscribes in `Start` (not Awake) per the Awake-order guidance above. Renders **`Category.Alert` only** — the eye-catching brief surface for errors and important notifications. Sits above ChatPanel in the bottom-left HUD.
 
-- Max 3 simultaneous rows; oldest evicted when a 4th arrives.
-- Per-row lifetime: 4s real time, then 0.5s fade-out. Uses `Time.unscaledTime` so toasts still fade while the game is paused.
+- Max 5 simultaneous rows; oldest evicted when a 6th arrives.
+- Per-row lifetime: 8s real time, then 1s fade-out. Uses `Time.unscaledTime` so toasts still fade while the game is paused.
 - Dedupes consecutive identical messages by resetting the existing row's timer (prevents spam from rapid invalid clicks).
 - Scene placement: `UI/AlertToast` GameObject sits as a sibling of `ChatPanel`, anchored bottom-left, positioned just above ChatPanel's top edge. Owns its own VerticalLayoutGroup; rows are constructed at runtime following `TradingPanel.AddChat`'s pattern so both renderers stay visually consistent.

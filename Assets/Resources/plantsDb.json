@@ -9,7 +9,7 @@
             { "name": "pine", "quantity": 10 },
             { "name": "acorn", "quantity": 1 }
         ],
-        "growthTime": 80,
+        "growthTime": 100,
         "harvestTime": 7.0,
         "njob": "logger",
         "capacity": 1,
@@ -26,7 +26,7 @@
             { "name": "pine", "quantity": 10 },
             { "name": "pinecone", "quantity": 1 }
         ],
-        "growthTime": 80,
+        "growthTime": 100,
         "harvestTime": 7.0,
         "njob": "logger",
         "capacity": 1,
@@ -88,7 +88,7 @@
         "nproducts": [
             { "name": "apple", "quantity": 2 }
         ],
-        "growthTime": 35,
+        "growthTime": 40,
         "harvestTime": 2.0,
         "njob": "farmer",
         "capacity": 1,

@@ -33,6 +33,15 @@ public class MouseController : MonoBehaviour {
     // the second click commits or BuildPanel.firstEndpoint is cleared.
     GameObject firstEndpointGhostRoot;
     StructType cachedFirstEndpointSt;
+    // Ghost catenary shown between firstEndpoint and the hovered tile during
+    // a two-click placement's second-click phase. Rebuilt when the cursor
+    // moves to a new tile (cheap — sprite chain of ~20 SRs for a typical
+    // bridge). Cleared when firstEndpoint clears, when the cursor leaves
+    // the world, or when the same-tile cache hit lets us skip.
+    GameObject ghostCatenaryRoot;
+    Tile cachedGhostEnd;
+    Tile cachedGhostStart;
+    StructType cachedGhostSt;
     Vector3 prevPosition;
 
     public World world;
@@ -171,11 +180,37 @@ public class MouseController : MonoBehaviour {
             if (idx < 0) idx = ~idx;
             idx = Mathf.Clamp(idx + (scroll > 0 ? 1 : -1), 0, zoomLevels.Length - 1);
             int newPPU = zoomLevels[idx];
-            ppcAssetsPPU.SetValue(ppcComponent, newPPU);
-            // PPC updates orthographicSize in its own LateUpdate, so estimate the new
-            // half-height by scaling the current size by the PPU ratio (exact if zoom factor is stable).
-            float estimatedHalfH = Camera.main.orthographicSize * currentPPU / newPPU;
-            ClampCameraToWorld(estimatedHalfH);
+            if (newPPU != currentPPU) {
+                // Capture the world point under the cursor BEFORE the zoom change, then
+                // shift the camera so that same world point lands back under the cursor
+                // at the new ortho size. Falls back to centered zoom if the cursor is
+                // outside the game window.
+                Vector3 mouseScreen = Input.mousePosition;
+                bool cursorInWindow = mouseScreen.x >= 0f && mouseScreen.x <= Screen.width
+                                   && mouseScreen.y >= 0f && mouseScreen.y <= Screen.height;
+
+                ppcAssetsPPU.SetValue(ppcComponent, newPPU);
+                // PPC updates orthographicSize in its own LateUpdate, so estimate the new
+                // half-height by scaling the current size by the PPU ratio (exact if zoom factor is stable).
+                float oldHalfH = Camera.main.orthographicSize;
+                float estimatedHalfH = oldHalfH * currentPPU / newPPU;
+
+                if (cursorInWindow) {
+                    // Pixel-to-world scale = 2*halfH / Screen.height. Offset of cursor
+                    // from screen centre, in pixels, times the change in scale, is how
+                    // much the cursor's world point would drift if we didn't compensate.
+                    float pixelToWorld = 2f / Screen.height;
+                    float dxPixels = mouseScreen.x - Screen.width  * 0.5f;
+                    float dyPixels = mouseScreen.y - Screen.height * 0.5f;
+                    float shiftX = dxPixels * pixelToWorld * (oldHalfH - estimatedHalfH);
+                    float shiftY = dyPixels * pixelToWorld * (oldHalfH - estimatedHalfH);
+                    Vector3 p = Camera.main.transform.position;
+                    p.x += shiftX;
+                    p.y += shiftY;
+                    Camera.main.transform.position = p;
+                }
+                ClampCameraToWorld(estimatedHalfH);
+            }
         }
 
         // draggin world around
@@ -213,6 +248,16 @@ public class MouseController : MonoBehaviour {
                 int shapeIndex = BuildPanel.instance != null ? BuildPanel.instance.shapeIndex : 0;
                 bool mirrored  = BuildPanel.instance != null && BuildPanel.instance.mirrored;
                 int rotation   = (BuildPanel.instance != null) ? BuildPanel.instance.rotation : 0;
+                // Two-click placement (rope bridge), second-click hover: override the
+                // F-key mirror with the geometry the built post will end up with. If the
+                // cursor is to the LEFT of the firstEndpoint, this post becomes the LEFT
+                // post of the bridge → mirrored=true. Matches Blueprint.Complete's
+                // aIsLeft logic so the preview never disagrees with the build outcome.
+                if (BuildPanel.instance != null
+                        && BuildPanel.instance.firstEndpoint != null
+                        && st.placementMethod == "twoClick") {
+                    mirrored = anchorTile.x < BuildPanel.instance.firstEndpoint.x;
+                }
                 Shape shape    = st.GetShape(shapeIndex);
                 bool shapeAware = st.HasShapes;
 
@@ -271,6 +316,9 @@ public class MouseController : MonoBehaviour {
         // cursor-following preview above — sits at BuildPanel.firstEndpoint
         // until the second click commits or the endpoint is cleared.
         UpdateFirstEndpointGhost(tileAt);
+        // Ghost catenary between firstEndpoint and the hovered tile. Rebuilt
+        // only when the (endpoint, cursor tile, structType) tuple changes.
+        UpdateGhostCatenary(tileAt);
 
 
         // Shift+RMB on storage = paste filters (before drag handling consumes the click)
@@ -421,6 +469,53 @@ public class MouseController : MonoBehaviour {
             var srs = firstEndpointGhostRoot.GetComponentsInChildren<SpriteRenderer>();
             for (int i = 0; i < srs.Length; i++) srs[i].flipX = mirrored;
         }
+    }
+
+    // Manages the translucent catenary preview between BuildPanel.firstEndpoint
+    // and the currently-hovered tile, while a two-click placement is mid-flight.
+    // Visually shows the player what curve their bridge would draw before they
+    // commit the second click.
+    //
+    // Rebuilds only when (firstEndpoint, cursor tile, structType) changes — not
+    // every frame the cursor sits on the same tile. Validity is NOT colour-
+    // coded; CanPlaceTwoPoint already logs the rejection reason on click. Adding
+    // green/red here would require running validation per cursor-move, doable
+    // but skipped until asked.
+    void UpdateGhostCatenary(Tile cursorTile) {
+        BuildPanel bp = BuildPanel.instance;
+        Tile fe = bp?.firstEndpoint;
+        StructType st = bp?.structType;
+        bool shouldShow = fe != null && cursorTile != null && cursorTile != fe
+                          && st != null && st.placementMethod == "twoClick"
+                          && mouseMode == MouseMode.Build;
+
+        if (!shouldShow) {
+            if (ghostCatenaryRoot != null) {
+                Destroy(ghostCatenaryRoot);
+                ghostCatenaryRoot = null;
+                cachedGhostStart  = null;
+                cachedGhostEnd    = null;
+                cachedGhostSt     = null;
+            }
+            return;
+        }
+
+        // Skip rebuild when nothing changed.
+        if (ghostCatenaryRoot != null
+            && cachedGhostStart == fe
+            && cachedGhostEnd   == cursorTile
+            && cachedGhostSt    == st) return;
+
+        if (ghostCatenaryRoot != null) Destroy(ghostCatenaryRoot);
+        ghostCatenaryRoot = new GameObject("ghostCatenary");
+        ghostCatenaryRoot.transform.SetParent(StructController.instance.transform, true);
+        // sortingOrder 200 matches the cursor-following build preview tier, so
+        // the catenary preview sorts above world content the same way.
+        RopeBridge.BuildPreviewChain(ghostCatenaryRoot, st, fe.x, fe.y, cursorTile.x, cursorTile.y, 200);
+
+        cachedGhostStart = fe;
+        cachedGhostEnd   = cursorTile;
+        cachedGhostSt    = st;
     }
 
     private void CommitHarvestDrag(Vector3 startScreen, Vector3 endScreen) {

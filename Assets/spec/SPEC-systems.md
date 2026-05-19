@@ -104,37 +104,63 @@ Walkable rope curve strung between two endpoint posts. Placed by clicking two ti
 
 **Architecture: linked posts + side-car entity.**
 - Each `BridgePost` is a normal 1×1 depth-2 `Structure` for every purpose except its lifecycle entanglement with the partner — placement, supply, construction, save data, decay, selection, and rendering all flow through the standard structure paths.
-- `RopeBridge` is NOT a `Structure`. It's a plain side-car class holding the catenary's nav waypoint chain (N `Node`s edged into the `Graph`) and the visual `LineRenderer`. State that spans the gap lives here; state per-post lives on the posts.
+- `RopeBridge` is NOT a `Structure`. It's a plain side-car class holding the catenary's nav waypoint chain (N `Node`s edged into the `Graph`) and the sprite-chain visual. State that spans the gap lives here; state per-post lives on the posts.
 - Each post stores its partner's coords (`partnerX, partnerY`); the bridge holds back-refs to both posts. Mining one post calls `RopeBridge.OnPostDestroyed`, which tears down the waypoint chain + visuals AND destroys the surviving post (a lone stake in the ground is meaningless).
 
 **Placement validation** (`StructPlacement.CanPlaceTwoPoint`):
 - `minDx ≤ |xA − xB| ≤ maxDx`, `|yA − yB| ≤ maxDy`. Defaults 3/20/5; see `StructType.minDx` etc.
 - Both posts pass `CanPlaceHere` (standable, empty at depth 2, no blueprint).
 - Every integer tile along the catenary's claim (one per x-column from `min(xA, xB)` to `max(xA, xB)`) must be non-solid and empty at depth 2. The claim function (`Catenary.ClaimedTiles`) is the SAME one the live bridge uses — placement validation never disagrees with what gets occupied.
+- Failed clicks `Debug.LogWarning` the reason (`[bridge] reject: …`) so the player can diagnose without source diving.
 
 **Catenary math** (`Catenary` static helper, pure):
 - `y(t) = lerp(yLo, yHi, t) - sagFraction * |Δx| * sin(π * t)`, sampled monotonically left→right.
 - `sin`-arch approximates true `cosh` catenary — visually identical at this scale, cheaper.
 - Sag uses `|Δx|` only, NOT euclidean length. Drawing from euclidean length lets steep bridges dip below their lower endpoint — the rope would visually pass through the ground.
+- Two-typed API: `YAt`, `WaypointPositions`, `HorizontalDelta` are float (used by both tile-coord placement and world-coord visuals); `ClaimedTiles` stays int (operates on the tile grid).
 
-**Nav waypoint chain** (built in `RopeBridge` ctor):
-- `2 × |Δx| − 1` interior `Node` waypoints, monotonic in x. Endpoints of the chain are the two post tile-nodes.
-- Each interior waypoint carries the per-instance `BridgePolicy`. **Per-instance, not singleton**: `Graph.IsNeighbor` and `Graph.ResolveEdgePolicy` use shared-reference equality (`Navigation.cs` line 216, 335) — a singleton policy would falsely glue unrelated bridges' waypoints together across `UpdateNeighbors` rebuilds.
-- Approach edges (waypoint ↔ post tile-node) do NOT carry the policy — they resolve to `WaypointApproachPolicy.Instance` via the waypoint-flag fallback in `ResolveEdgePolicy`. Same euclidean cost; lower coupling.
+**Post sprite + mirror geometry.**
+- `bridgeplank.png` / `bridgerope.png` / `bridgeropev.png` (optional vertical variant) live in `Sprites/Buildings/` with auto-generated `_n` normal maps — they all participate in the lighting pipeline.
+- The post sprite (`ropebridgepost.png`) is asymmetric: pole on the LEFT half of the un-mirrored sprite. `Blueprint.Complete` flips the LEFT post (smaller x) mirrored=true so its pole sits on the tile's right side facing the bridge; the RIGHT post stays unmirrored. Mirror is geometry-driven for two-click bps and overrides whatever F-key state was on `BuildPanel.mirrored`.
+
+**Rope attachment geometry.** `RopeBridge.AttachmentPoints` returns the world-coord endpoints used by every layer (visual + nav). Both endpoints are pulled 0.125 PAST the tile edge into the post so the rope visually grips the pole rather than floating off the corner:
+- Left attachment: `(xL + AttachmentInset, yL − 0.5)` where `AttachmentInset = 0.375f`
+- Right attachment: `(xR − AttachmentInset, yR − 0.5)`
+
+**Nav waypoint chain** (built in `RopeBridge` ctor). Layout: `leftTile ↔ leftCorner ↔ wp[0] ↔ … ↔ wp[N−1] ↔ rightCorner ↔ rightTile`.
+- **Anchor-corner waypoints** (`leftCorner` / `rightCorner`) sit at the tile edge above the rope start (`x = wxL or wxR`; `y = post.y`, which equals `catenary_y + WalkAboveRope` at the rope endpoint). Without them the chain would step diagonally from post tile-centre straight into the first interior catenary sample — mice walked through the post silhouette before the rope descent. Corner waypoints force horizontal-then-descend.
+- **Interior waypoints**: `Catenary.WaypointPositions(wxL, wyL, wxR, wyR, sagFraction)` → roughly `2 × worldDx − 1`. Each has `wy = catenary_y + WalkAboveRope` (= `0.5f`) so the mouse stands on top of the rope, not through it. At the endpoint x's, this offset arithmetic resolves to `post.y` exactly, joining the corners seamlessly.
+- All bridge-owned waypoints carry the **per-instance** `BridgePolicy`. **Per-instance, not singleton**: `Graph.IsNeighbor` and `Graph.ResolveEdgePolicy` use shared-reference equality (`Navigation.cs:216, 335`) — a singleton would falsely glue unrelated bridges' waypoints together across `UpdateNeighbors` rebuilds.
+- Approach edges (corner ↔ post tile-node) do NOT carry the policy — they resolve to `WaypointApproachPolicy.Instance` via the waypoint-flag fallback in `ResolveEdgePolicy`. Same euclidean cost; lower coupling.
 - `BridgePolicy.PreventFall = true` so a mouse mid-chain doesn't fall when the integer tile below the waypoint isn't standable.
 
 **Load-time waypoint ordering.** `BridgePost` constructors run in Phase 2; `OnPlaced` is gameplay-only, so bridges don't materialise during load via the live path. Instead, `RopeBridge.PairAllAfterLoad()` runs between Phase 3 and Phase 4 (`SaveSystem.cs`, just before `graph.Initialize()`) so the waypoint chain enters the initial `RebuildComponents` sweep. Without this, mice can't path across a saved bridge until something else perturbs the graph.
 
-**Save format.** Bridges are NOT persisted as a separate top-level list. Each `BridgePost`'s `StructureSaveData` carries nullable `partnerX, partnerY`; `RopeBridge.PairAllAfterLoad` rebuilds the side-car entity from the matched pair. Mid-construction blueprints persist their second endpoint via nullable `BlueprintSaveData.x2/y2`.
+**Save format.** Bridges are NOT persisted as a separate top-level list. Each `BridgePost`'s `StructureSaveData` carries nullable `partnerX, partnerY`; `RopeBridge.PairAllAfterLoad` rebuilds the side-car entity from the matched pair. Mid-construction blueprints persist their second endpoint via nullable `BlueprintSaveData.x2/y2`. The per-post mirror flag round-trips through the existing `StructureSaveData.mirrored` field, so loaded posts keep the geometry-correct asymmetry.
 
-**Cost scaling.** A two-click blueprint claims BOTH post tiles in its ctor (one `Blueprint` instance referenced from both tiles' `structs[depth]` slot). Cost scales linearly with `|Δx|`: total = `ncosts × |Δx|`, authored per-tile-of-span. On `Complete()`, the blueprint calls `StructController.Construct` twice — once per post — with the partner's coords swapped, and the second post's `OnPlaced` spins up the `RopeBridge`.
+**Sprite-chain visual** (`RopeBridge.BuildVisual`). Replaces an earlier LineRenderer implementation — LineRenderers don't carry normal maps and render at sub-pixel widths, both wrong for pixel art. All three layers below are regular `SpriteRenderer`s through `SpriteMaterialUtil.AddSpriteRenderer`, picking up lighting + auto-normal-map for free. `GameObject[]` arrays for each layer are cached on the bridge so future wind physics can move individual planks without rebuilding.
+- **Walking line**: planks at every `PlankSpacing = 0.5f` world units, upright (no tangent rotation — the user found the rotated version visually busy). Endpoint planks (indices 0 and last) are **skipped** so a plank doesn't sit under each pole. Rope segments fill the gaps between consecutive samples, rotated to the local tangent and x-scaled so the rope sprite's native width covers the gap.
+- **Handrope**: rope segments only (no planks), at the same x samples shifted by `HandropeHeight = 0.625f`.
+- **Connectors**: vertical rope sprite at every `ConnectorEveryNPlanks = 3` planks, y-scaled to `HandropeHeight`. Uses dedicated `bridgeropev.png` when present, falls back to `bridgerope.png` rotated 90°.
 
-**Known v1 limitations / phase-2 polish:**
-- Single ghost preview at the first-click tile (no ghost catenary line during the second-click hover).
-- One `LineRenderer` for the walking line; no handrope / vertical connector ropes.
-- Supply delivery routes to the first post only — `Nav.PathToOrAdjacentBlueprint` iterates the anchor's rectangle footprint (1×1 for a post), not the partner. A polish pass would add a virtual `FootprintTiles` enumeration on `Blueprint` so both posts accept deliveries.
-- If the player mines the support out from under the partner post mid-construction, the blueprint's `IsSuspended` check only looks at the anchor — the second post can still complete on a non-standable tile. Could be tightened by extending `IsSuspended` for two-click bps.
-- No wind physics yet; `RopeBridge.RefreshLinePositions` is called once at `BuildVisual` time. Future wind work would tick segment positions and re-call `RefreshLinePositions`.
+**Sort-order layering**: planks 39 > horizontal ropes 38 > vertical connectors 37. Posts at depth-2 default (~40) so they punch through the rope at attachments. Mice at animal sort buckets (~50) render in front of planks — they visually walk on top.
+
+**Construction flow**:
+- `Blueprint` for two-click placements carries nullable `x2/y2` and claims BOTH post tiles in its ctor (one Blueprint instance referenced from both tiles' `structs[depth]` slot). Visual: one ghost spawned at the anchor + a partner ghost at `(x2, y2)` mirrored opposite. Frame overlay duplicated for the partner tile via `SpawnFrameSr` helper.
+- Cost scales linearly with `|Δx|`: total = `ncosts × |Δx|`, authored per-tile-of-span.
+- On `Complete()`, the blueprint calls `StructController.Construct` twice — once per post — with the partner's coords swapped and the geometry-driven mirror flag. The second post's `OnPlaced` finds the first BridgePost already in place and spins up the `RopeBridge`.
+- `Blueprint.IsSuspended` was extended to also check the partner tile's standability when `IsTwoClick` — without that, mining the support out from under the partner mid-construction silently completes onto a non-standable tile.
+- `Blueprint.FootprintTiles` and `Blueprint.CenterApproachTiles` are virtual enumerations consulted by `Nav.PathToOrAdjacentBlueprint`. Two-click bps yield both post tiles, so haulers route to whichever post is closer.
+
+**First-endpoint UX** (`MouseController.UpdateFirstEndpointGhost`). After the first click, a translucent ghost post sits at the chosen tile until the second click commits. Cursor x relative to the firstEndpoint flips the ghost's `flipX` so it shows the same mirror the built post will have:
+- `cursor.x > firstEndpoint.x` → firstEndpoint becomes the LEFT post → mirrored=true
+- `cursor.x < firstEndpoint.x` → firstEndpoint becomes the RIGHT post → mirrored=false
+
+Failed second clicks clear `BuildPanel.firstEndpoint` so the ghost goes away; `CanPlaceTwoPoint` already logged the reason.
+
+**Known v1 limitations / phase-3 polish:**
+- No wind physics yet; `RopeBridge.BuildVisual` is called once. Future wind work would tick segment positions on the cached plank/rope GameObject arrays.
+- Connector spacing isn't perfectly anchored — it lands on every Nth plank rather than at uniform world-x positions, so the gap pattern shifts slightly with `PlankSpacing`. Looks fine; calling it out for future tweakers.
 
 ---
 

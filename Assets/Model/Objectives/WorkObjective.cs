@@ -15,7 +15,13 @@ public class WorkObjective : Objective {
         this.recipe = recipe;
     }
     public override void Start(){
-        // TODO: check if you're actually at a workplace!
+        // Only CraftTask uses WorkObjective today, always preceded by GoObjective — so the
+        // animal SHOULD be at the workplace tile when we arrive here. Guard catches a future
+        // caller that skips Go, or a race where the workplace was reassigned mid-task.
+        if (task is CraftTask ct && ct.workplace != null && animal.TileHere() != ct.workplace) {
+            Debug.LogError($"{animal.aName} WorkObjective.Start: not at workplace ({ct.workplace.x},{ct.workplace.y}), animal at ({animal.x},{animal.y})");
+            Fail(); return;
+        }
         if (!animal.inv.ContainsItems(recipe.inputs)) {
             Debug.Log($"{animal.aName} WorkObjective: missing inputs for {recipe.description}, failing");
             Fail(); return;

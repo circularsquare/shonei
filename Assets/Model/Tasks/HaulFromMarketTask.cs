@@ -58,7 +58,7 @@ public class HaulFromMarketTask : Task {
     public override bool Initialize() {
         if (isResume) return InitializeResume();
 
-        if (animal.eeping.Eepness() < 0.75f) return false; // see HaulToMarketTask for rationale
+        if (animal.eeping.Eepness() < MinMarketEepness) return false;
         if (MarketBuilding.instance == null) return false;
         Inventory marketInv = MarketBuilding.instance.storage;
         if (marketInv == null) return false;

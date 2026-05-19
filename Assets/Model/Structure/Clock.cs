@@ -24,19 +24,6 @@ public class Clock : Building, PowerSystem.IPowerConsumer {
 
     public Clock(StructType st, int x, int y, bool mirrored = false) : base(st, x, y, mirrored) { }
 
-    public override void OnPlaced() {
-        // base.OnPlaced does WOM order registration AND the auto-wrapper path. Auto-wrapper
-        // is suppressed here because we implement IPowerConsumer directly (Building.EnsurePowerConsumer
-        // skips when `this is IPowerConsumer`), so we need to register ourselves explicitly.
-        base.OnPlaced();
-        PowerSystem.instance?.RegisterConsumer(this);
-    }
-
-    public override void Destroy() {
-        PowerSystem.instance?.UnregisterConsumer(this);
-        base.Destroy();
-    }
-
     // Spawns a child GameObject for the hand and attaches a ClockHand rotator wired to
     // the day phase + power/repair state. Same shape as Windmill/Flywheel's RotatingPart
     // wiring — building-specific knowledge lives here, the rotator is generic.

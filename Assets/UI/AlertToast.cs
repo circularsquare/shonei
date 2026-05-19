@@ -24,9 +24,9 @@ public class AlertToast : MonoBehaviour {
     [SerializeField] Transform rowContainer;
 
     // Per-row lifetime before fade begins (seconds, real time).
-    const float Lifetime     = 4f;
-    const float FadeDuration = 0.5f;
-    const int   MaxRows      = 3;
+    const float Lifetime     = 8f;
+    const float FadeDuration = 1f;
+    const int   MaxRows      = 5;
 
     class Row {
         public GameObject       go;

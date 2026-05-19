@@ -199,11 +199,67 @@ public class Building : Structure {
         // any of Building's own ctor body executes.
     }
 
+    // Shared rotating-part attachment for power machinery (Windmill blades, Flywheel wheel,
+    // and any future rotating visual). Spawns a child GameObject parented to `go`, pivots it
+    // at the given edge-aligned hub coordinates, applies mirroring + sort-bucket + flipX, and
+    // wires up a RotatingPart for tick-driven rotation. Returns the child GO so callers can
+    // attach further visuals if needed; returns null if the sprite is missing.
+    //
+    // Hub coords are edge-aligned in tiles from the anchor's bottom-left CORNER (which sits
+    // at world (x-0.5, y-0.5) since tiles are centred on integer coords). The mirror formula
+    // reflects across the building's horizontal centre, also edge-aligned.
+    protected GameObject AttachRotatingPart(
+        string spriteName,
+        float hubX, float hubY,
+        System.Func<float> speedSource,
+        System.Func<bool> isActive,
+        float degPerSecAtMaxSpeed,
+        float stallThreshold = 0f,
+        float directionSign = -1f,
+        int sortingOffset = 1,
+        float initialAngle = 0f,
+        string goName = "wheel") {
+        Sprite sprite = Resources.Load<Sprite>("Sprites/Buildings/" + spriteName);
+        if (sprite == null) {
+            Debug.LogWarning($"{spriteName} sprite missing at Resources/Sprites/Buildings/{spriteName} — rotating part will not render.");
+            return null;
+        }
+        GameObject partGO = new GameObject(goName);
+        partGO.transform.SetParent(go.transform, true);
+        float ahubX = mirrored ? (structType.nx - hubX) : hubX;
+        partGO.transform.position = new Vector3(x - 0.5f + ahubX, y - 0.5f + hubY, 0f);
+        if (initialAngle != 0f) partGO.transform.localRotation = Quaternion.Euler(0f, 0f, initialAngle);
+
+        SpriteRenderer wsr = SpriteMaterialUtil.AddSpriteRenderer(partGO);
+        wsr.sprite = sprite;
+        wsr.flipX = mirrored;
+        wsr.sortingOrder = (sr != null ? sr.sortingOrder : 10) + sortingOffset;
+        LightReceiverUtil.SetSortBucket(wsr);
+
+        RotatingPart rot = partGO.AddComponent<RotatingPart>();
+        rot.speedSource         = speedSource;
+        rot.isActive            = isActive;
+        rot.degPerSecAtMaxSpeed = degPerSecAtMaxSpeed;
+        rot.stallThreshold      = stallThreshold;
+        rot.directionSign       = directionSign;
+        return partGO;
+    }
+
     public override void OnPlaced() {
         WorkOrderManager.instance?.RegisterOrdersFor(this);
-        // Power-consumer auto-registration on the gameplay path (StructController.Construct).
-        // The load path (SaveSystem) skips OnPlaced — see EnsurePowerConsumer below, called
-        // from PowerSystem.RebuildFromWorld in Phase 6.
+        // Direct power-interface implementers (Windmill, Flywheel, MouseWheel, Clock,
+        // PumpBuilding, Elevator) self-register here so subclasses don't have to write
+        // boilerplate OnPlaced overrides. Auto-wrapped consumers (powerBoost > 1, no
+        // direct interface) go through EnsurePowerConsumer below. The two paths are
+        // mutually exclusive — EnsurePowerConsumer returns false when `this is IPowerConsumer`.
+        // The load path (SaveSystem) skips OnPlaced — PowerSystem.RebuildFromWorld
+        // re-registers everything in lifecycle Phase 6.
+        PowerSystem ps = PowerSystem.instance;
+        if (ps != null) {
+            if (this is PowerSystem.IPowerProducer p) ps.RegisterProducer(p);
+            if (this is PowerSystem.IPowerStorage s)  ps.RegisterStorage(s);
+            if (this is PowerSystem.IPowerConsumer c) ps.RegisterConsumer(c);
+        }
         if (EnsurePowerConsumer())
             PowerSystem.instance?.RegisterConsumer(powerConsumer);
     }
@@ -258,6 +314,14 @@ public class Building : Structure {
                     }
                 }
             }
+        }
+        // Direct power-interface implementers unregister symmetrically to OnPlaced.
+        // Auto-wrapped consumers go through `powerConsumer` (the two paths are exclusive).
+        PowerSystem ps = PowerSystem.instance;
+        if (ps != null) {
+            if (this is PowerSystem.IPowerProducer p) ps.UnregisterProducer(p);
+            if (this is PowerSystem.IPowerStorage s)  ps.UnregisterStorage(s);
+            if (this is PowerSystem.IPowerConsumer c) ps.UnregisterConsumer(c);
         }
         if (powerConsumer != null) {
             PowerSystem.instance?.UnregisterConsumer(powerConsumer);

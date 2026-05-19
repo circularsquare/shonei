@@ -181,8 +181,7 @@
         "storageClass": "liquid",
         "nStacks": 1,
         "storageStackSize": 100,
-        "category": "storage",
-        "defaultLocked": true
+        "category": "storage"
     },{
         "id": 25,
         "name": "bookshelf",

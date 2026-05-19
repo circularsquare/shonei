@@ -23,7 +23,6 @@ public class PlantController : MonoBehaviour {
     private bool lastWindZero = true;
 
     private World world;
-    public Dictionary<Job, int> jobCounts;
 
     // this class keeps track of all the plants
     void Start() {

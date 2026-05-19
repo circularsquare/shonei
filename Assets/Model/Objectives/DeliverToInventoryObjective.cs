@@ -24,11 +24,13 @@ public class DeliverToInventoryObjective : Objective {
         int toDeliver = Math.Min(have, iq.quantity);
         int moved = animal.inv.MoveItemTo(TargetInv, iq.item, toDeliver);
         if (moved < toDeliver) {
-            // Diagnostic dump: destination-side partial fill means FreeSpace shrunk between reserve and
-            // delivery despite the reservation system. Dump every stack's reservation state so we can
-            // tell whether our resSpace was clamped, eaten by another task, or never set.
+            // Reservation-system contract violation: FreeSpace shrunk between reserve and
+            // delivery, which by design shouldn't happen. Fail loudly with a diagnostic dump
+            // of every stack's reservation state — silently Complete()ing here would mask the
+            // bug indefinitely while the animal carries residue around. Animal keeps the
+            // unmoved items in its inv; Cleanup() (via Fail) unreserves the unused space.
             var sb = new System.Text.StringBuilder();
-            sb.Append($"{animal.aName} delivered {moved}/{toDeliver} {iq.item.name} to {TargetInv.displayName} — partial fill\n");
+            sb.Append($"{animal.aName} delivered {moved}/{toDeliver} {iq.item.name} to {TargetInv.displayName} — partial fill (reservation bug)\n");
             sb.Append($"  task={task} iq.quantity={iq.quantity} animal.inv.Quantity={have}\n");
             sb.Append($"  TargetInv stacks ({TargetInv.invType} at ({TargetInv.x},{TargetInv.y})):\n");
             for (int i = 0; i < TargetInv.nStacks; i++) {
@@ -36,7 +38,9 @@ public class DeliverToInventoryObjective : Objective {
                 string resOwner = s.resSpaceTask == this.task ? "OURS" : (s.resSpaceTask?.ToString() ?? "null");
                 sb.Append($"    [{i}] item={s.item?.name ?? "null"} qty={s.quantity}/{s.stackSize} resAmount={s.resAmount} resSpace={s.resSpace} resSpaceItem={s.resSpaceItem?.name ?? "null"} resSpaceTask={resOwner}\n");
             }
-            Debug.LogWarning(sb.ToString());
+            Debug.LogError(sb.ToString());
+            Fail();
+            return;
         }
         Complete();
     }

@@ -38,15 +38,11 @@ public class LeisureTask : Task {
     }
 
     public override void Complete() {
-        // Grant the happiness benefit for this building's leisure need, scaled by leisureGrant.
-        string need = building.structType.leisureNeed;
-        if (!string.IsNullOrEmpty(need)) {
-            animal.happiness.NoteLeisure(need, building.structType.leisureGrant);
-        } else {
-            Debug.LogError($"LeisureTask.Complete: building '{building.structType.name}' has no leisureNeed");
-        }
-
-        // Social satisfaction for socialWhenShared buildings is granted per-tick in HandleLeisure.
+        // Grant the happiness benefit. building.structType.leisureNeed is guaranteed
+        // non-empty here — Initialize filters buildings by leisureNeed equality and bails
+        // on empty input. Social satisfaction for socialWhenShared buildings is granted
+        // per-tick in HandleLeisure.
+        animal.happiness.NoteLeisure(building.structType.leisureNeed, building.structType.leisureGrant);
         base.Complete();
     }
 

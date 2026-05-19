@@ -36,16 +36,6 @@ public class Flywheel : Building, PowerSystem.IPowerStorage {
 
     public Flywheel(StructType st, int x, int y, bool mirrored = false) : base(st, x, y, mirrored) { }
 
-    public override void OnPlaced() {
-        base.OnPlaced();
-        PowerSystem.instance?.RegisterStorage(this);
-    }
-
-    public override void Destroy() {
-        PowerSystem.instance?.UnregisterStorage(this);
-        base.Destroy();
-    }
-
     // ── IPowerStorage ────────────────────────────────────────────────
     public Structure Structure => this;
 
@@ -78,35 +68,17 @@ public class Flywheel : Building, PowerSystem.IPowerStorage {
     // actual speed = (charge / Capacity) × WheelDegPerSecAtMaxCharge.
     public const float WheelDegPerSecAtMaxCharge = 180f;
 
+    // Renders the wheel behind the housing (sortingOffset = -1): the flywheel sprite is
+    // a frame around the wheel, and the spokes peek through the open centre.
     public override void AttachAnimations() {
-        Sprite wheelSprite = Resources.Load<Sprite>("Sprites/Buildings/flywheel_wheel");
-        if (wheelSprite != null) {
-            GameObject wheelGO = new GameObject("wheel");
-            wheelGO.transform.SetParent(go.transform, true);
-            // Edge-aligned hub; tiles centred at integer coords means anchor's bottom-left
-            // CORNER sits at world (x-0.5, y-0.5).
-            float hubX = mirrored ? (structType.nx - WheelHubX) : WheelHubX;
-            wheelGO.transform.position = new Vector3(x - 0.5f + hubX, y - 0.5f + WheelHubY, 0f);
-
-            SpriteRenderer wsr = SpriteMaterialUtil.AddSpriteRenderer(wheelGO);
-            wsr.sprite = wheelSprite;
-            wsr.flipX = mirrored;
-            // Render BEHIND the housing — the flywheel sprite is a frame around the wheel,
-            // and the spokes peek through the open centre of the frame.
-            wsr.sortingOrder = (sr != null ? sr.sortingOrder : 10) - 1;
-            LightReceiverUtil.SetSortBucket(wsr);
-
-            RotatingPart rot = wheelGO.AddComponent<RotatingPart>();
-            // Charge fraction is unsigned [0, 1]; the flywheel always spins one direction.
-            rot.speedSource         = () => charge / Capacity;
-            rot.isActive            = () => IsCurrentlyActive;
-            rot.degPerSecAtMaxSpeed = WheelDegPerSecAtMaxCharge;
-            rot.stallThreshold      = 0f; // IsCurrentlyActive already gates on charge > 0.01
-            rot.directionSign       = -1f; // negative deg = clockwise in Unity 2D
-        } else {
-            Debug.LogWarning("flywheel_wheel sprite missing at Resources/Sprites/Buildings/flywheel_wheel — flywheel wheel will not render.");
-        }
-
+        AttachRotatingPart(
+            spriteName:          "flywheel_wheel",
+            hubX:                WheelHubX,
+            hubY:                WheelHubY,
+            speedSource:         () => charge / Capacity,
+            isActive:            () => IsCurrentlyActive,
+            degPerSecAtMaxSpeed: WheelDegPerSecAtMaxCharge,
+            sortingOffset:       -1);
         AttachPortStubs(Ports);
     }
 

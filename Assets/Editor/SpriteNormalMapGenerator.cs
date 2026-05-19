@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Text;
 using SysPath = System.IO.Path;
 using SysFile = System.IO.File;
+using static EditorUtilities;
 
 // Right-click any Texture2D → "Generate Sprite Normal Map"  (single)
 // Tools menu             → "Generate All Sprite Normal Maps" (batch, Assets/Sprites/)
@@ -309,6 +310,53 @@ public static class SpriteNormalMapGenerator {
         return true;
     }
 
+    // ── shared I/O helpers ───────────────────────────────────────────────────
+    // Decode a PNG into a Color32[] via Texture2D.LoadImage — avoids the
+    // imp.isReadable=true reimport flip the old path used. `label` is purely
+    // diagnostic ("source", "height map"). Returns false on decode failure.
+    static bool LoadPixels(string path, string label, out Color32[] pixels, out int w, out int h) {
+        pixels = null; w = 0; h = 0;
+        Texture2D tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+        if (!tex.LoadImage(SysFile.ReadAllBytes(path))) {
+            Debug.LogError($"[NormalMapGen] Failed to decode {label} {path}");
+            Object.DestroyImmediate(tex);
+            return false;
+        }
+        pixels = tex.GetPixels32();
+        w = tex.width;
+        h = tex.height;
+        Object.DestroyImmediate(tex);
+        return true;
+    }
+
+    // Encode `dst` to {srcPath}'s `_n.png` companion and configure its importer.
+    // `sourceImp` supplies the filterMode to match. `logSuffix` is appended to the
+    // success log line (e.g. " (height)") so the two generation paths stay
+    // distinguishable in the editor console.
+    static void WriteNormalMap(string srcPath, Color32[] dst, int w, int h, TextureImporter sourceImp, string logSuffix) {
+        Texture2D normalTex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+        normalTex.SetPixels32(dst);
+        normalTex.Apply();
+
+        string outPath = NormalPathFor(srcPath);
+        SysFile.WriteAllBytes(outPath, normalTex.EncodeToPNG());
+        Object.DestroyImmediate(normalTex);
+
+        AssetDatabase.ImportAsset(outPath);
+        TextureImporter nImp = AssetImporter.GetAtPath(outPath) as TextureImporter;
+        if (nImp != null) {
+            // Use Default (not NormalMap) so the texture stays as plain RGBA32 —
+            // the same packed 0-1 format that TileSpriteCache bakes and NormalsCapture decodes.
+            nImp.textureType        = TextureImporterType.Default;
+            nImp.textureCompression = TextureImporterCompression.Uncompressed;
+            nImp.filterMode         = sourceImp.filterMode;
+            nImp.wrapMode           = TextureWrapMode.Clamp;
+            nImp.SaveAndReimport();
+        }
+
+        Debug.Log($"[NormalMapGen] Written{logSuffix}: {outPath}");
+    }
+
     // ── core ─────────────────────────────────────────────────────────────────
     // Phase 1 only: writes _n.png + configures its importer. Caller runs
     // WireSecondariesAndStamp in Phase 2 to wire `_NormalMap` (and optionally
@@ -350,19 +398,7 @@ public static class SpriteNormalMapGenerator {
             return WriteFlatNormal(srcPath, imp);
         }
 
-        // Load source pixels via PNG decode — no importer reimport needed.
-        // (Previous approach toggled `imp.isReadable` true/false around GetPixels32,
-        //  which cost two full reimports per sprite.)
-        Texture2D tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-        if (!tex.LoadImage(SysFile.ReadAllBytes(srcPath))) {
-            Debug.LogError($"[NormalMapGen] Failed to decode {srcPath}");
-            Object.DestroyImmediate(tex);
-            return false;
-        }
-        Color32[] src = tex.GetPixels32();
-        int w = tex.width, h = tex.height;
-        Object.DestroyImmediate(tex);
-
+        if (!LoadPixels(srcPath, "source", out Color32[] src, out int w, out int h)) return false;
         Color32[] dst = new Color32[w * h];
 
         // Default-fill: transparent fallback. Pixels outside any processed rect
@@ -428,29 +464,7 @@ public static class SpriteNormalMapGenerator {
             }
         }
 
-        // Write output PNG
-        Texture2D normalTex = new Texture2D(w, h, TextureFormat.RGBA32, false);
-        normalTex.SetPixels32(dst);
-        normalTex.Apply();
-
-        string outPath = NormalPathFor(srcPath);
-        SysFile.WriteAllBytes(outPath, normalTex.EncodeToPNG());
-        Object.DestroyImmediate(normalTex);
-
-        // Import as normal map matching source filter mode
-        AssetDatabase.ImportAsset(outPath);
-        TextureImporter nImp = AssetImporter.GetAtPath(outPath) as TextureImporter;
-        if (nImp != null) {
-            // Use Default (not NormalMap) so the texture stays as plain RGBA32 —
-            // the same packed 0-1 format that TileSpriteCache bakes and NormalsCapture decodes.
-            nImp.textureType        = TextureImporterType.Default;
-            nImp.textureCompression = TextureImporterCompression.Uncompressed;
-            nImp.filterMode         = imp.filterMode;
-            nImp.wrapMode           = TextureWrapMode.Clamp;
-            nImp.SaveAndReimport();
-        }
-
-        Debug.Log($"[NormalMapGen] Written: {outPath}");
+        WriteNormalMap(srcPath, dst, w, h, imp, logSuffix: "");
         return true;
     }
 
@@ -475,32 +489,14 @@ public static class SpriteNormalMapGenerator {
     static bool ProcessHeightToNormal(string srcPath, string heightPath, TextureImporter imp) {
         const float Strength = 2.0f;
 
-        // Load source pixels — needed for the alpha mask. Off-sprite pixels
-        // produce transparent normals just like edge-detect.
-        Texture2D srcTex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-        if (!srcTex.LoadImage(SysFile.ReadAllBytes(srcPath))) {
-            Debug.LogError($"[NormalMapGen] Failed to decode source {srcPath}");
-            Object.DestroyImmediate(srcTex);
+        // Source pixels feed the alpha mask; off-sprite pixels produce transparent
+        // normals just like edge-detect.
+        if (!LoadPixels(srcPath, "source", out Color32[] src, out int w, out int h)) return false;
+        if (!LoadPixels(heightPath, "height map", out Color32[] height, out int hw, out int hh)) return false;
+        if (hw != w || hh != h) {
+            Debug.LogError($"[NormalMapGen] Height map {heightPath} ({hw}×{hh}) doesn't match source {srcPath} ({w}×{h}). Skipping.");
             return false;
         }
-        Color32[] src = srcTex.GetPixels32();
-        int w = srcTex.width, h = srcTex.height;
-        Object.DestroyImmediate(srcTex);
-
-        // Load height pixels.
-        Texture2D heightTex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-        if (!heightTex.LoadImage(SysFile.ReadAllBytes(heightPath))) {
-            Debug.LogError($"[NormalMapGen] Failed to decode height map {heightPath}");
-            Object.DestroyImmediate(heightTex);
-            return false;
-        }
-        if (heightTex.width != w || heightTex.height != h) {
-            Debug.LogError($"[NormalMapGen] Height map {heightPath} ({heightTex.width}×{heightTex.height}) doesn't match source {srcPath} ({w}×{h}). Skipping.");
-            Object.DestroyImmediate(heightTex);
-            return false;
-        }
-        Color32[] height = heightTex.GetPixels32();
-        Object.DestroyImmediate(heightTex);
 
         // Match auto edge-detect's bevel-at-silhouette behavior: out-of-bounds
         // samples read as 0 (black/transparent), producing a strong gradient
@@ -835,13 +831,6 @@ public static class SpriteNormalMapGenerator {
         return Md5(sb.ToString());
     }
 
-    static string Md5(string s) {
-        using (var m = System.Security.Cryptography.MD5.Create()) {
-            byte[] b = m.ComputeHash(Encoding.UTF8.GetBytes(s));
-            return System.Convert.ToBase64String(b);
-        }
-    }
-
     // ── secondary-texture wiring ─────────────────────────────────────────────
     // Generic secondary-texture assignment. URP's Sprite Lit shader and our
     // own NormalsCapture / EmissionWriter shaders pick these up automatically
@@ -900,57 +889,7 @@ public static class SpriteNormalMapGenerator {
         }
     }
 
-    // ── userData flags ───────────────────────────────────────────────────────
-    // Importer userData carries semicolon-separated key=value pairs. Used here
-    // for the "merged" flag (multi-sliced spatial sheets) and for the cache
-    // key stamp `normalsCacheKey=<md5>`.
-    static bool HasUserDataFlag(TextureImporter imp, string key, string value) {
-        if (imp == null || string.IsNullOrEmpty(imp.userData)) return false;
-        foreach (string pair in imp.userData.Split(';')) {
-            int eq = pair.IndexOf('=');
-            if (eq < 0) continue;
-            if (pair.Substring(0, eq).Trim() == key && pair.Substring(eq + 1).Trim() == value)
-                return true;
-        }
-        return false;
-    }
-
-    static string GetUserDataValue(TextureImporter imp, string key) {
-        if (imp == null || string.IsNullOrEmpty(imp.userData)) return null;
-        foreach (string pair in imp.userData.Split(';')) {
-            int eq = pair.IndexOf('=');
-            if (eq < 0) continue;
-            if (pair.Substring(0, eq).Trim() == key) return pair.Substring(eq + 1).Trim();
-        }
-        return null;
-    }
-
-    static void SetUserDataFlag(TextureImporter imp, string key, string value) {
-        var pairs = new List<string>();
-        bool replaced = false;
-        if (!string.IsNullOrEmpty(imp.userData)) {
-            foreach (string pair in imp.userData.Split(';')) {
-                int eq = pair.IndexOf('=');
-                if (eq < 0) { if (!string.IsNullOrWhiteSpace(pair)) pairs.Add(pair); continue; }
-                string k = pair.Substring(0, eq).Trim();
-                if (k == key) { pairs.Add($"{key}={value}"); replaced = true; }
-                else          { pairs.Add(pair); }
-            }
-        }
-        if (!replaced) pairs.Add($"{key}={value}");
-        imp.userData = string.Join(";", pairs);
-    }
-
-    static void ClearUserDataFlag(TextureImporter imp, string key) {
-        if (string.IsNullOrEmpty(imp.userData)) return;
-        var pairs = new List<string>();
-        foreach (string pair in imp.userData.Split(';')) {
-            int eq = pair.IndexOf('=');
-            string k = eq >= 0 ? pair.Substring(0, eq).Trim() : pair.Trim();
-            if (k != key && !string.IsNullOrWhiteSpace(pair)) pairs.Add(pair);
-        }
-        imp.userData = string.Join(";", pairs);
-    }
+    // userData + Md5 helpers live in EditorUtilities (used by all sheet splitters too).
 
     // ── menu: toggle merged-normals flag ─────────────────────────────────────
     // Spatial sheets (elevator, platform stacks) want the generator to process

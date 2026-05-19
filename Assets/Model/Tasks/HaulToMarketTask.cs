@@ -80,10 +80,7 @@ public class HaulToMarketTask : Task {
     public override bool Initialize() {
         if (isResume) return InitializeResume();
 
-        // Market trips have a stricter eep gate than the general night-sleep threshold —
-        // a merchant who leaves close to the threshold could dip into efficiency-loss
-        // territory mid-transit and arrive useless at the far side.
-        if (animal.eeping.Eepness() < 0.75f) return false;
+        if (animal.eeping.Eepness() < MinMarketEepness) return false;
         if (MarketBuilding.instance == null) return false;
         Inventory marketInv = MarketBuilding.instance.storage;
         if (marketInv == null) return false;

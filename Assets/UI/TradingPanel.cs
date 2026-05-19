@@ -448,7 +448,7 @@ public class TradingPanel : MonoBehaviour {
 
         var client = TradingClient.instance;
         if (client == null || !client.isOnline) {
-            EventFeed.instance?.Post("<color=#cc3333>not connected to server 3:</color>", EventFeed.Category.Alert);
+            EventFeed.instance?.Post("<color=#cc3333>not connected to server 3:</color>", EventFeed.Category.Info);
             return;
         }
         client.SendChat(text);
@@ -469,7 +469,7 @@ public class TradingPanel : MonoBehaviour {
             case "/day":  CmdDay(parts);  break;
             case "/wind": CmdWind(parts); break;
             default:
-                EventFeed.instance?.Post($"<color=#cc3333>Unknown command: {cmd}</color>", EventFeed.Category.Alert);
+                EventFeed.instance?.Post($"<color=#cc3333>Unknown command: {cmd}</color>", EventFeed.Category.Info);
                 break;
         }
     }
@@ -479,7 +479,7 @@ public class TradingPanel : MonoBehaviour {
     //                          when humidity > WeatherSystem.rainThreshold (0.65).
     void CmdRain(string[] parts) {
         if (WeatherSystem.instance == null) {
-            EventFeed.instance?.Post("<color=#cc3333>WeatherSystem not initialised.</color>", EventFeed.Category.Alert);
+            EventFeed.instance?.Post("<color=#cc3333>WeatherSystem not initialised.</color>", EventFeed.Category.Info);
             return;
         }
 
@@ -494,7 +494,7 @@ public class TradingPanel : MonoBehaviour {
 
         if (parts.Length != 2 || !float.TryParse(parts[1], System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out float h)) {
-            EventFeed.instance?.Post("<color=#cc3333>Usage: /rain or /rain [0..1]</color>", EventFeed.Category.Alert);
+            EventFeed.instance?.Post("<color=#cc3333>Usage: /rain or /rain [0..1]</color>", EventFeed.Category.Info);
             return;
         }
         WeatherSystem.instance.SetHumidity(h);
@@ -509,16 +509,16 @@ public class TradingPanel : MonoBehaviour {
     // here even though most systems assume monotonic time.
     void CmdDay(string[] parts) {
         if (parts.Length != 2) {
-            EventFeed.instance?.Post("<color=#cc3333>Usage: /day [number]</color>", EventFeed.Category.Alert);
+            EventFeed.instance?.Post("<color=#cc3333>Usage: /day [number]</color>", EventFeed.Category.Info);
             return;
         }
         if (!float.TryParse(parts[1], System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out float day)) {
-            EventFeed.instance?.Post("<color=#cc3333>Day must be a number.</color>", EventFeed.Category.Alert);
+            EventFeed.instance?.Post("<color=#cc3333>Day must be a number.</color>", EventFeed.Category.Info);
             return;
         }
         if (World.instance == null) {
-            EventFeed.instance?.Post("<color=#cc3333>World not initialised.</color>", EventFeed.Category.Alert);
+            EventFeed.instance?.Post("<color=#cc3333>World not initialised.</color>", EventFeed.Category.Info);
             return;
         }
         // Wrap into [0, daysInYear) so e.g. /day 30 in a 24-day year lands at day 6.
@@ -536,16 +536,16 @@ public class TradingPanel : MonoBehaviour {
     // to 1; visuals like plant sway scale linearly so big values look extreme.
     void CmdWind(string[] parts) {
         if (parts.Length != 2) {
-            EventFeed.instance?.Post("<color=#cc3333>Usage: /wind [value]</color>", EventFeed.Category.Alert);
+            EventFeed.instance?.Post("<color=#cc3333>Usage: /wind [value]</color>", EventFeed.Category.Info);
             return;
         }
         if (!float.TryParse(parts[1], System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out float value)) {
-            EventFeed.instance?.Post("<color=#cc3333>Value must be a number.</color>", EventFeed.Category.Alert);
+            EventFeed.instance?.Post("<color=#cc3333>Value must be a number.</color>", EventFeed.Category.Info);
             return;
         }
         if (WeatherSystem.instance == null) {
-            EventFeed.instance?.Post("<color=#cc3333>WeatherSystem not initialised.</color>", EventFeed.Category.Alert);
+            EventFeed.instance?.Post("<color=#cc3333>WeatherSystem not initialised.</color>", EventFeed.Category.Info);
             return;
         }
         WeatherSystem.instance.SetWind(value);
@@ -558,7 +558,7 @@ public class TradingPanel : MonoBehaviour {
     //                                                      existing floor stack.
     void CmdGive(string[] parts) {
         if (parts.Length < 3) {
-            EventFeed.instance?.Post("<color=#cc3333>Usage: /give [item] [quantity] (optional: [x] [y])</color>", EventFeed.Category.Alert);
+            EventFeed.instance?.Post("<color=#cc3333>Usage: /give [item] [quantity] (optional: [x] [y])</color>", EventFeed.Category.Info);
             return;
         }
 
@@ -585,13 +585,13 @@ public class TradingPanel : MonoBehaviour {
 
         if (!float.TryParse(qtyStr, System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out float qtyLiang) || qtyLiang <= 0f) {
-            EventFeed.instance?.Post("<color=#cc3333>Quantity must be a positive number (in liang).</color>", EventFeed.Category.Alert);
+            EventFeed.instance?.Post("<color=#cc3333>Quantity must be a positive number (in liang).</color>", EventFeed.Category.Info);
             return;
         }
         int qtyFen = Mathf.RoundToInt(qtyLiang * 100f);
 
         if (!Db.itemByName.ContainsKey(itemName)) {
-            EventFeed.instance?.Post($"<color=#cc3333>Unknown item: {itemName}</color>", EventFeed.Category.Alert);
+            EventFeed.instance?.Post($"<color=#cc3333>Unknown item: {itemName}</color>", EventFeed.Category.Info);
             return;
         }
         Item item = Db.itemByName[itemName];
@@ -599,20 +599,20 @@ public class TradingPanel : MonoBehaviour {
 
         if (coordForm) {
             if (World.instance == null) {
-                EventFeed.instance?.Post("<color=#cc3333>World not initialised.</color>", EventFeed.Category.Alert);
+                EventFeed.instance?.Post("<color=#cc3333>World not initialised.</color>", EventFeed.Category.Info);
                 return;
             }
             Tile tile = World.instance.GetTileAt(tx, ty);
             if (tile == null) {
-                EventFeed.instance?.Post($"<color=#cc3333>Tile ({tx},{ty}) is out of bounds.</color>", EventFeed.Category.Alert);
+                EventFeed.instance?.Post($"<color=#cc3333>Tile ({tx},{ty}) is out of bounds.</color>", EventFeed.Category.Info);
                 return;
             }
             if (tile.type != null && tile.type.solid) {
-                EventFeed.instance?.Post($"<color=#cc3333>Tile ({tx},{ty}) is solid — can't drop a floor item there.</color>", EventFeed.Category.Alert);
+                EventFeed.instance?.Post($"<color=#cc3333>Tile ({tx},{ty}) is solid - can't drop a floor item there.</color>", EventFeed.Category.Info);
                 return;
             }
             if (tile.inv != null && !tile.inv.IsEmpty()) {
-                EventFeed.instance?.Post($"<color=#cc3333>Tile ({tx},{ty}) already has a floor stack.</color>", EventFeed.Category.Alert);
+                EventFeed.instance?.Post($"<color=#cc3333>Tile ({tx},{ty}) already has a floor stack.</color>", EventFeed.Category.Info);
                 return;
             }
 
@@ -622,13 +622,13 @@ public class TradingPanel : MonoBehaviour {
             if (producedF > 0)
                 EventFeed.instance?.Post($"<color=#aaffaa>Spawned {ItemStack.FormatQ(producedF, discrete)} {itemName} at ({tx},{ty}).</color>", EventFeed.Category.Info);
             if (leftoverF > 0)
-                EventFeed.instance?.Post($"<color=#cc3333>Could not fit {ItemStack.FormatQ(leftoverF, discrete)} {itemName} on tile ({tx},{ty}).</color>", EventFeed.Category.Alert);
+                EventFeed.instance?.Post($"<color=#cc3333>Could not fit {ItemStack.FormatQ(leftoverF, discrete)} {itemName} on tile ({tx},{ty}).</color>", EventFeed.Category.Info);
             return;
         }
 
         Inventory market = TradingClient.FindMarketInventory();
         if (market == null) {
-            EventFeed.instance?.Post("<color=#cc3333>No market building found.</color>", EventFeed.Category.Alert);
+            EventFeed.instance?.Post("<color=#cc3333>No market building found.</color>", EventFeed.Category.Info);
             return;
         }
 
@@ -637,7 +637,7 @@ public class TradingPanel : MonoBehaviour {
         if (produced > 0)
             EventFeed.instance?.Post($"<color=#aaffaa>Gave {ItemStack.FormatQ(produced, discrete)} {itemName} to market.</color>", EventFeed.Category.Info);
         if (leftover > 0)
-            EventFeed.instance?.Post($"<color=#cc3333>Could not fit {ItemStack.FormatQ(leftover, discrete)} {itemName} — market full.</color>", EventFeed.Category.Alert);
+            EventFeed.instance?.Post($"<color=#cc3333>Could not fit {ItemStack.FormatQ(leftover, discrete)} {itemName} - market full.</color>", EventFeed.Category.Info);
     }
 
     void DisplayChat(ChatMsg msg) {
@@ -653,7 +653,10 @@ public class TradingPanel : MonoBehaviour {
     }
 
     // Renders an entry posted to the EventFeed as a chat row.
+    // Alert-category entries are owned by AlertToast (transient overlay above chat) and
+    // are intentionally skipped here so error messages don't double-render.
     void HandleFeedEntry(EventFeed.Entry e) {
+        if (e.category == EventFeed.Category.Info) return;
         AddChat(e.text);
     }
 

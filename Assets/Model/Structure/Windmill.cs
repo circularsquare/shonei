@@ -45,16 +45,6 @@ public class Windmill : Building, PowerSystem.IPowerProducer {
 
     public Windmill(StructType st, int x, int y, bool mirrored = false) : base(st, x, y, mirrored) { }
 
-    public override void OnPlaced() {
-        base.OnPlaced();
-        PowerSystem.instance?.RegisterProducer(this);
-    }
-
-    public override void Destroy() {
-        PowerSystem.instance?.UnregisterProducer(this);
-        base.Destroy();
-    }
-
     // True iff sky access is unobstructed across the windmill's top row. Re-checked
     // on every tick / output query so a roof built after placement immediately kills
     // production. Mirrors the placement-time `mustBeOpenSkyAbove` check on the same tiles.
@@ -78,42 +68,20 @@ public class Windmill : Building, PowerSystem.IPowerProducer {
         }
     }
 
-    // Spawns a child GameObject for the wheel (blades) and rotates it via RotatingPart,
-    // signed by wind direction. Replaces the previous 2-frame FrameAnimator approach so the
-    // motion is smooth and spin direction tracks WeatherSystem.wind's sign. The static
-    // `windmill.png` no longer contains the wheel — it lives in `windmill_wheel.png` (square,
-    // centred pivot) so rotation doesn't translate the visual.
+    // Spawns the wheel as a separate child via Building.AttachRotatingPart. Replaces the
+    // previous 2-frame FrameAnimator approach so motion is smooth. Direction is unsigned
+    // (always clockwise) — wind sign maps to magnitude, not rotation direction, matching
+    // the flywheel and any future rotating power machinery.
     public override void AttachAnimations() {
-        Sprite wheelSprite = Resources.Load<Sprite>("Sprites/Buildings/windmill_wheel");
-        if (wheelSprite != null) {
-            GameObject wheelGO = new GameObject("wheel");
-            wheelGO.transform.SetParent(go.transform, true);
-            // World position of the rotation hub. WheelHubX/Y are edge-aligned (measured
-            // from the anchor tile's bottom-left CORNER, which sits at world (x-0.5, y-0.5)
-            // since tiles are centred at integer coords). The mirror formula `nx - hub`
-            // reflects across the building's horizontal centre, which is also edge-aligned.
-            float hubX = mirrored ? (structType.nx - WheelHubX) : WheelHubX;
-            wheelGO.transform.position = new Vector3(x - 0.5f + hubX, y - 0.5f + WheelHubY, 0f);
-            wheelGO.transform.localRotation = Quaternion.Euler(0f, 0f, InitialWheelAngle);
-
-            SpriteRenderer wsr = SpriteMaterialUtil.AddSpriteRenderer(wheelGO);
-            wsr.sprite = wheelSprite;
-            wsr.flipX = mirrored;
-            wsr.sortingOrder = (sr != null ? sr.sortingOrder : 10) + 1;
-            LightReceiverUtil.SetSortBucket(wsr);
-
-            RotatingPart rot = wheelGO.AddComponent<RotatingPart>();
-            // Unsigned magnitude — direction is fixed (clockwise) regardless of wind sign,
-            // matching the flywheel and any future rotating power machinery.
-            rot.speedSource         = () => Mathf.Abs(WeatherSystem.instance?.wind ?? 0f);
-            rot.isActive            = () => IsCurrentlyActive;
-            rot.degPerSecAtMaxSpeed = WheelDegPerSecAtMaxWind;
-            rot.stallThreshold      = StallThreshold;
-            rot.directionSign       = -1f; // negative deg = clockwise in Unity 2D
-        } else {
-            Debug.LogWarning("windmill_wheel sprite missing at Resources/Sprites/Buildings/windmill_wheel — windmill wheel will not render.");
-        }
-
+        AttachRotatingPart(
+            spriteName:          "windmill_wheel",
+            hubX:                WheelHubX,
+            hubY:                WheelHubY,
+            speedSource:         () => Mathf.Abs(WeatherSystem.instance?.wind ?? 0f),
+            isActive:            () => IsCurrentlyActive,
+            degPerSecAtMaxSpeed: WheelDegPerSecAtMaxWind,
+            stallThreshold:      StallThreshold,
+            initialAngle:        InitialWheelAngle);
         AttachPortStubs(Ports);
     }
 

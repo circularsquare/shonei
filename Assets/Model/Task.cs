@@ -51,6 +51,11 @@ public abstract class Task {
     public const int MinMarketHaulQuantity = 100;       // 1.0 liang (most items)
     public const int MinMarketHaulQuantitySilver = 40;  // 0.4 liang (silver moves in smaller amounts)
 
+    // Minimum animal eepness to start a market trip — stricter than the general night-sleep
+    // threshold. A merchant who leaves close to the threshold could dip into efficiency-loss
+    // territory mid-transit and arrive useless at the far side.
+    public const float MinMarketEepness = 0.75f;
+
     // ── Search radii ─────────────────────────────────────────────────────
     // Every task pathfind should be gated by one of these radii × FindRadiusTolerance.
     // A candidate target is rejected if the *actual* path cost to reach it exceeds

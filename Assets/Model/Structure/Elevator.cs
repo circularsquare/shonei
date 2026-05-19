@@ -198,11 +198,6 @@ public class Elevator : Building, PowerSystem.IPowerConsumer {
         _all.Add(this);
     }
 
-    public override void OnPlaced() {
-        base.OnPlaced();
-        PowerSystem.instance?.RegisterConsumer(this);
-    }
-
     public override void Destroy() {
         // Bail any waiting / riding mice cleanly so their tasks don't hang on a vanished
         // elevator. Snapshot the queue first since Animal.task.Fail() may mutate via task
@@ -233,7 +228,6 @@ public class Elevator : Building, PowerSystem.IPowerConsumer {
         edgePolicy = null;
 
         _all.Remove(this);
-        PowerSystem.instance?.UnregisterConsumer(this);
         base.Destroy();
         World.instance.graph.RebuildComponents();
     }

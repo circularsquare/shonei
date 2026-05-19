@@ -35,14 +35,6 @@ public class PumpBuilding : Building, PowerSystem.IPowerConsumer {
         waterTile.water = (ushort)UnityEngine.Mathf.Max(0, waterTile.water - WaterDrainPerRound);
     }
 
-    public override void OnPlaced() {
-        // base.OnPlaced does WOM order registration AND the auto-wrapper path. Auto-wrapper
-        // is suppressed here because we implement IPowerConsumer directly (Building.EnsurePowerConsumer
-        // skips when `this is IPowerConsumer`), so we need to register ourselves explicitly.
-        base.OnPlaced();
-        PowerSystem.instance?.RegisterConsumer(this);
-    }
-
     public override void AttachAnimations() {
         base.AttachAnimations();
         AttachPortStubs(Ports);

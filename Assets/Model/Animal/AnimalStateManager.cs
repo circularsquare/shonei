@@ -289,7 +289,7 @@ public class AnimalStateManager {
             animal.workProgress = 0f;
             animal.task.Complete();
         } else {
-            Debug.Log(animal.aName + " in working state but no work to do");
+            Debug.LogError(animal.aName + " in working state but no work to do");
         }
     }
 

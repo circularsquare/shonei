@@ -20,8 +20,6 @@ using TMPro;
 //                       Structures yet; promoted via Blueprint.Complete().
 //   leisureBuildings  — narrow subset used by the seat-reservation expiry sweep
 //                       so we don't walk every structure each tick.
-//   jobCounts         — per-Job tally maintained externally (Animal/Job code);
-//                       lives here so panels can read it without another singleton.
 //
 // ── Creation paths ─────────────────────────────────────────────────────
 // Two entry points, both routed through Structure.Create() (the shared factory
@@ -59,7 +57,6 @@ public class StructController : MonoBehaviour {
     private int _seatResExpireTick = 0;
     public int n = 0;
     private World world;
-    public Dictionary<Job, int> jobCounts;
 
     // this class keeps track of all the structures
     void Start() {    
@@ -133,6 +130,7 @@ public class StructController : MonoBehaviour {
         }
 
 
+        // ── Mining + tile-type swap ──────────────────────────────────────
         // Capture the original tile type BEFORE it's replaced below — the quarry
         // needs this to pick its extraction distribution per cycle.
         if (structure is Quarry q) q.CaptureOriginalTile(tile.type);
@@ -154,6 +152,7 @@ public class StructController : MonoBehaviour {
                 }
             }
         }
+        // ── Place + optional follow-up ───────────────────────────────────
         if (!st.isTile){
             Place(structure);
             structure.OnPlaced();
@@ -171,6 +170,7 @@ public class StructController : MonoBehaviour {
                 extra.OnPlaced();
             }
         }
+        // ── Nav graph refresh ────────────────────────────────────────────
         if (world == null) {world = World.instance;}
         // Refresh standability across the footprint and the row directly above the top —
         // every footprint tile may have changed standability via the same-structure-body
@@ -214,6 +214,8 @@ public class StructController : MonoBehaviour {
         for (int dx = 0; dx < fnx; dx++)
             world.FallIfUnstandable(tile.x + dx, tile.y + fny);
         world.graph.RebuildComponents();
+
+        // ── Refresh suspended blueprints above ───────────────────────────
         // Refresh any blueprints stacked directly above the top of the footprint — they may
         // have just become unsuspended, in which case they need both a tint update and
         // (re)registration of their WOM orders.
