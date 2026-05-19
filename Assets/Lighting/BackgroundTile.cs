@@ -72,6 +72,17 @@ public class BackgroundTile : MonoBehaviour {
     }
 
     void LateUpdate() {
+        // Domain-reload recovery: after a script recompile in Play
+        // mode, our private fields (`world`, `maskTex`, `wallMat`,
+        // `maskSprite`) reset to null and the runtime Sprite/Material
+        // bound on `spriteSR` are destroyed. Nothing re-calls
+        // InitializeWorld in that path, so the background tiles would
+        // render pink/blank. If World.instance is alive and we've
+        // lost our state, re-bootstrap from it.
+        if (world == null && maskTex == null && World.instance != null && World.instance.nx > 0) {
+            Initialize(World.instance);
+        }
+
         if (dirty) {
             dirty = false;
             RebuildMaskTexture();

@@ -552,18 +552,36 @@ public class TradingPanel : MonoBehaviour {
         EventFeed.instance?.Post($"<color=#aaffaa>Wind set to {value:F2}.</color>", EventFeed.Category.Info);
     }
 
-    // /give [itemname] [quantity in liang]
-    // Produces the item directly into the market inventory.
+    // /give [itemname] [quantity in liang]              — produce into the market inventory.
+    // /give [itemname] [quantity in liang] [x] [y]       — spawn as a floor item at tile (x,y)
+    //                                                      if the tile is non-solid and has no
+    //                                                      existing floor stack.
     void CmdGive(string[] parts) {
         if (parts.Length < 3) {
-            EventFeed.instance?.Post("<color=#cc3333>Usage: /give [item] [quantity]</color>", EventFeed.Category.Alert);
+            EventFeed.instance?.Post("<color=#cc3333>Usage: /give [item] [quantity] (optional: [x] [y])</color>", EventFeed.Category.Alert);
             return;
         }
 
-        // Item name may contain spaces — everything between first and last arg is the name.
-        // Last arg is always the quantity.
-        string qtyStr = parts[parts.Length - 1];
-        string itemName = string.Join(" ", parts, 1, parts.Length - 2);
+        // Detect the coord form: at least 4 args after /give, last two parse as ints, and
+        // the arg before them parses as a float (the quantity). Item names don't end in
+        // numbers in this game, so this disambiguates reliably.
+        bool coordForm = false;
+        int tx = 0, ty = 0;
+        int qtyArgIdx = parts.Length - 1;
+        if (parts.Length >= 5
+            && int.TryParse(parts[parts.Length - 2], System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture, out tx)
+            && int.TryParse(parts[parts.Length - 1], System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture, out ty)
+            && float.TryParse(parts[parts.Length - 3], System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out _)) {
+            coordForm = true;
+            qtyArgIdx = parts.Length - 3;
+        }
+
+        // Item name may contain spaces — everything between /give and the quantity arg is the name.
+        string qtyStr = parts[qtyArgIdx];
+        string itemName = string.Join(" ", parts, 1, qtyArgIdx - 1);
 
         if (!float.TryParse(qtyStr, System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out float qtyLiang) || qtyLiang <= 0f) {
@@ -577,6 +595,36 @@ public class TradingPanel : MonoBehaviour {
             return;
         }
         Item item = Db.itemByName[itemName];
+        bool discrete = item.discrete;
+
+        if (coordForm) {
+            if (World.instance == null) {
+                EventFeed.instance?.Post("<color=#cc3333>World not initialised.</color>", EventFeed.Category.Alert);
+                return;
+            }
+            Tile tile = World.instance.GetTileAt(tx, ty);
+            if (tile == null) {
+                EventFeed.instance?.Post($"<color=#cc3333>Tile ({tx},{ty}) is out of bounds.</color>", EventFeed.Category.Alert);
+                return;
+            }
+            if (tile.type != null && tile.type.solid) {
+                EventFeed.instance?.Post($"<color=#cc3333>Tile ({tx},{ty}) is solid — can't drop a floor item there.</color>", EventFeed.Category.Alert);
+                return;
+            }
+            if (tile.inv != null && !tile.inv.IsEmpty()) {
+                EventFeed.instance?.Post($"<color=#cc3333>Tile ({tx},{ty}) already has a floor stack.</color>", EventFeed.Category.Alert);
+                return;
+            }
+
+            Inventory floor = tile.EnsureFloorInventory();
+            int leftoverF = floor.Produce(item, qtyFen);
+            int producedF = qtyFen - leftoverF;
+            if (producedF > 0)
+                EventFeed.instance?.Post($"<color=#aaffaa>Spawned {ItemStack.FormatQ(producedF, discrete)} {itemName} at ({tx},{ty}).</color>", EventFeed.Category.Info);
+            if (leftoverF > 0)
+                EventFeed.instance?.Post($"<color=#cc3333>Could not fit {ItemStack.FormatQ(leftoverF, discrete)} {itemName} on tile ({tx},{ty}).</color>", EventFeed.Category.Alert);
+            return;
+        }
 
         Inventory market = TradingClient.FindMarketInventory();
         if (market == null) {
@@ -586,7 +634,6 @@ public class TradingPanel : MonoBehaviour {
 
         int leftover = market.Produce(item, qtyFen);
         int produced = qtyFen - leftover;
-        bool discrete = item.discrete;
         if (produced > 0)
             EventFeed.instance?.Post($"<color=#aaffaa>Gave {ItemStack.FormatQ(produced, discrete)} {itemName} to market.</color>", EventFeed.Category.Info);
         if (leftover > 0)

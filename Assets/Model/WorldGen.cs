@@ -2,140 +2,30 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-// Pure C# world generation — no MonoBehaviour, all static methods.
-// Called from WorldController.GenerateDefault() to fill the tile grid
-// with terrain, caves, and natural features before graph.Initialize().
+// Pure C# world generation — no MonoBehaviour, all static methods. Called from
+// WorldController.GenerateDefault() to fill the tile grid with terrain, caves,
+// and natural features before graph.Initialize().
 //
-// Tuning params live as `public static` (not const) so the editor-only
-// WorldGenTuner window can drive them via sliders. EditorPrefs persistence
-// is handled in WorldGenTuner.cs — runtime defaults below are the canonical
-// values; tuner overrides are reapplied on every domain reload via
-// [InitializeOnLoadMethod].
+// All tunable parameters live on a WorldGenConfig ScriptableObject loaded
+// lazily from Resources/WorldGenConfig.asset. Access via WorldGen.config.X.
+// Inspector sliders + tooltips live on the asset itself — right-click in
+// Project view → Create → Shonei → WorldGen Config to make one.
 public static class WorldGen {
 
-    // ── Terrain shape ─────────────────────────────────────────────────
-    // Tuned for the 200x120 default world. Surface sits ~halfway through the
-    // grid with ~10 tiles of variation either side. Raising BaseHeight raises
-    // the horizon line across the map; the rest of the world (dirt depth,
-    // veins, caves) is anchored to the surface dynamically so the shape of
-    // the underground stays consistent — only the absolute Y of the surface
-    // line changes. Keep WaterLine ≈ BaseHeight so basins fill at the
-    // expected horizon.
-    public static int BaseHeight = 60;       // nominal surface y
-    public static int SurfaceMin = 50;       // surface height never below this
-    public static int SurfaceMax = 72;       // surface height never above this
-    public static int DirtDepth = 3;         // dirt tiles above stone
-    public static int BedrockY = 0;          // lowest row is always solid
-    public static float SurfaceFreq = 0.06f; // noise frequency (lower = broader hills)
-    public static float SurfaceAmp = 5.0f;   // noise amplitude (height variation)
-    public static int SurfaceOctaves = 3;    // noise detail layers
-
-    // Domain warping: before sampling the surface FBM at column x, shift x by a
-    // second noise. Vanilla FBM looks "wavy" because the noise is statistically
-    // uniform along x — every wavelength looks like every other. Warping the
-    // input coordinate breaks that regularity, producing twisted, organic-
-    // looking surface shapes (peaks lean, valleys curl, features compress and
-    // stretch unevenly).
-    //
-    // WarpFreq must be on the same order as SurfaceFreq — if the warp varies
-    // much slower than the features it's trying to distort, it just uniformly
-    // slides whole regions of the noise around, which still looks like vanilla
-    // FBM. Matching the frequencies (and adding a second octave for inner
-    // detail) is what actually twists shapes within their own scale.
-    //
-    // The warp signal is decorrelated from the surface signal via a separate
-    // seed offset. WarpAmp is in tiles of x-shift; ~one surface-wavelength
-    // (≈16 at freq 0.06) is the upper bound before features start doubling
-    // back on themselves chaotically.
-    public static float SurfaceWarpFreq = 0.06f;
-    public static float SurfaceWarpAmp = 10.0f;
-    public static int SurfaceWarpOctaves = 2;
-    public static int SurfaceWarpSeedOffset = 31337;
-
-    // Region-level amplitude variation: a very slow noise signal multiplies the
-    // surface amplitude per column, so some stretches read as plains (small
-    // bumps) and others as hills/mountains (taller features). Freq is low
-    // enough that regions are dozens of tiles wide rather than column-flipping.
-    // The output is a multiplier on SurfaceAmp; values < 1 dampen, > 1 amplify.
-    // Decorrelated from the warp signal via a separate seed offset.
-    public static float SurfaceAmpVarFreq = 0.012f;
-    public static float SurfaceAmpVarMin = 0.6f;
-    public static float SurfaceAmpVarMax = 1.4f;
-    public static int SurfaceAmpVarSeedOffset = 7919;
-
-    // ── Spawn zone ────────────────────────────────────────────────────
-    public static int SpawnMinX = 25;        // flat starting zone x-range (inclusive)
-    public static int SpawnMaxX = 37;        // >=12 tiles wide
-    public static int SpawnBlend = 4;        // tiles over which terrain blends to flat
-
-    // ── Stone veins ───────────────────────────────────────────────────
-    // Per-stone vein pass tuning. Each pass samples FBM at its own frequency /
-    // seed offset and converts limestone tiles to the vein tile where the noise
-    // drops below `Threshold × depthBias`. depthBias is 1.0 at `DepthCenter`
-    // (0=surface, 1=bedrock), tapering linearly to 0 at ±DepthWidth.
-    // Thresholds are tuned for "veins" rather than "layers": FBM noise mean is
-    // ~0.5, so threshold ~0.4 at peak bias converts roughly 30-40% of tiles at
-    // the depth center. Bump up for more abundant veins, down for rarer ones.
-    public static float GraniteFreq        = 0.08f;
-    public static float GraniteThreshold   = 0.48f;
-    public static float GraniteDepthCenter = 0.4f;   // (0=surface, 1=bedrock)
-    public static float GraniteDepthWidth  = 0.3f;
-    public static int   GraniteSeedOffset  = 1111;
-
-    public static float SlateFreq        = 0.09f;
-    public static float SlateThreshold   = 0.5f;
-    public static float SlateDepthCenter = 0.7f;
-    public static float SlateDepthWidth  = 0.25f;
-    public static int   SlateSeedOffset  = 2222;
-
-    // ── Caves ────────────────────────────────────────────────────────
-    public static float CaveFreqX = 0.06f;          // lower = wider caves horizontally
-    public static float CaveFreqY = 0.14f;          // higher = thinner caves vertically
-    public static int CaveOctaves = 2;              // FBM detail layers for cave noise (more = rougher walls)
-    public static float CavePersistence = 0.5f;     // amplitude falloff per octave
-    public static float CaveLacunarity = 2.0f;        // frequency multiplier per octave
-    public static float CaveThresholdSurface = 0.28f; // near surface: fewer caves
-    public static float CaveThresholdDeep = 0.38f;  // deep underground: more caves
-    public static int CaveExclusionBelow = 4;       // no caves within this many tiles below surface
-    public static int CACycles = 1;                 // cellular automata smoothing iterations (low = preserve FBM detail)
-    public static int MinCaveSize = 8;              // flood-fill removes voids smaller than this
-
-    // ── Worm carvers ──────────────────────────────────────────────────
-    // Each world rolls a worm count in [Min, Max] and picks that many distinct
-    // random start columns from the eligible set, with WormMinSeparation enforced
-    // so worms don't clump. The walk itself reflects off the spawn-zone boundary
-    // (see BlendWormTunnels) so even after random direction reversals the worm
-    // stays on its starting side — the player's starting area never gets tunneled
-    // into.
-    public static int WormCountMin = 2;
-    public static int WormCountMax = 3;
-    public static int WormMinSeparation = 25;       // min x-distance between worm starts; relaxed if no candidate fits
-    public static int WormSpawnBuffer = 2;          // worm walk reflects off (spawn ± this many tiles)
-    public static int WormMinSteps = 100;
-    public static int WormMaxSteps = 150;
-    public static int WormRadius = 1;               // carve radius (1 = 3x3 area)
-    public static int WormFalloff = 1;              // extra radius for soft falloff (must be wide enough to survive CA)
-    public static int ChamberRadius = 1;            // wider carve every N steps
-    public static int ChamberInterval = 10000;
-    public static float WormStrength = 0.4f;        // how much worm pushes noise toward cave (higher = guaranteed tunnel)
-    public static float WormTurnChance = 0.1f;      // chance per step to reverse horizontal direction
-
-    // ── Water ────────────────────────────────────────────────────────
-    // Water budget is split into `WaterChunkCount` equal-width horizontal
-    // chunks. Each chunk independently rolls a budget in
-    // [WaterChunkBudgetMin, WaterChunkBudgetMax] and allocates it to basins
-    // whose center falls in that chunk, deepest-floor-first. This stops the
-    // whole map's water from clustering on one side of the world — every third
-    // gets its own pool(s), as long as the heightmap offers a basin there.
-    //
-    // Chunks with no eligible basins simply waste their roll. The
-    // "every world has water" guarantee runs per-chunk too: if a chunk has
-    // basins but none meet MinPoolVolume, the deepest is filled anyway.
-    public static int WaterLine = 60;        // depressions only fill below this y (≈ BaseHeight)
-    public static int WaterChunkCount = 3;          // horizontal slices the budget is split across
-    public static int WaterChunkBudgetMin = 25;     // per-chunk water tile budget, rolled per world
-    public static int WaterChunkBudgetMax = 60;
-    public static int MinPoolVolume = 3;            // basins smaller than this are skipped (unless they're the only option in a chunk)
+    public const string ConfigResourcePath = "WorldGenConfig";
+    static WorldGenConfig _config;
+    public static WorldGenConfig config {
+        get {
+            if (_config == null) {
+                _config = Resources.Load<WorldGenConfig>(ConfigResourcePath);
+                if (_config == null) {
+                    Debug.LogError($"WorldGen: config asset not found at Resources/{ConfigResourcePath}.asset — falling back to runtime defaults. Create one via Assets → Create → Shonei → WorldGen Config and place it in Assets/Resources/.");
+                    _config = ScriptableObject.CreateInstance<WorldGenConfig>();
+                }
+            }
+            return _config;
+        }
+    }
 
     // ── Main entry point ─────────────────────────────────────────────────
 
@@ -158,11 +48,27 @@ public static class WorldGen {
         RefineCavesCA(isCave, nx, ny);
         RemoveSmallCaves(isCave, nx, ny);
         ApplyCaves(world, isCave, surfaceY);
-        // TEMP: outcropping cleanup disabled while tuning surface warp/amp
-        // variation — restore when re-enabling.
-        // RemoveSurfaceOutcroppings(world, surfaceY);
 
-        FillDepressions(world, surfaceY, seed);
+        // Backgrounds run inside Generate (not just after, in WorldController)
+        // so RemoveFloatingChunks below can read post-erosion backgroundType
+        // for its connectivity graph. SetBackgrounds is pure on surfaceY +
+        // current tile solidity, so the call site doesn't matter for its own
+        // correctness — moved here purely to feed the chunk-removal pass.
+        SetBackgrounds(world, surfaceY);
+
+        // Remove solid clusters that aren't connected (orthogonally) to the
+        // mainland via either solid tiles OR background walls. Catches the
+        // floating-spire artefact that worm tunnels + sharp surfaceY steps
+        // produce when SetBackgrounds' Pass-2 erosion strips a chunk's wall.
+        RemoveFloatingChunks(world);
+
+        // Cave water runs BEFORE FillDepressions so the cave-region flood-fill
+        // sees the freshly-carved mask. Surface depression filling then proceeds
+        // independently on the top-of-column geometry.
+        FillCaveWater(world, isCave, nx, ny, seed);
+
+        bool[] chunkFilled = FillDepressions(world, surfaceY, seed);
+        CarveDryChunkPools(world, surfaceY, chunkFilled);
 
         ApplyBeachSand(world, seed);
 
@@ -220,13 +126,13 @@ public static class WorldGen {
     // not on tiles we're about to make sand). The Tile.type setter clears
     // overlayMask on a type change anyway — this ordering is just the simpler
     // invariant to reason about.
-    public static float SandFreq = 0.18f;       // ~6-tile clumps
-    public static float SandThreshold = 0.52f;  // Mathf.PerlinNoise concentrates around 0.5; ~0.52 ≈ 40% pass
     public static void ApplyBeachSand(World world, int seed) {
         TileType sand = Db.tileTypeByName["sand"];
         TileType dirt = Db.tileTypeByName["dirt"];
         float seedOffX = seed * 0.7f;
         float seedOffY = seed * 1.3f;
+        float sandFreq = config.SandFreq;
+        float sandThreshold = config.SandThreshold;
 
         for (int x = 0; x < world.nx; x++) {
             for (int y = 0; y < world.ny; y++) {
@@ -234,9 +140,9 @@ public static class WorldGen {
                 if (t.type != dirt) continue;
                 if (!HasAdjacentWater(world, x, y)) continue;
                 float n = Mathf.PerlinNoise(
-                    (x + seedOffX) * SandFreq,
-                    (y + seedOffY) * SandFreq);
-                if (n > SandThreshold) t.type = sand;
+                    (x + seedOffX) * sandFreq,
+                    (y + seedOffY) * sandFreq);
+                if (n > sandThreshold) t.type = sand;
             }
         }
     }
@@ -263,6 +169,7 @@ public static class WorldGen {
     public static void SetBackgrounds(World world, int[] surfaceY) {
         int nx = world.nx;
         int ny = world.ny;
+        int dirtDepth = config.DirtDepth;
 
         // Pass 1: place walls following the surface contour, with the near-surface
         // skylight relaxation for shallow caves.
@@ -272,7 +179,7 @@ public static class WorldGen {
             for (int y = 0; y < yMax; y++) {
                 Tile t = world.GetTileAt(x, y);
                 if (!t.type.solid && y >= sy - 2) continue;
-                t.backgroundType = (y >= sy - DirtDepth)
+                t.backgroundType = (y >= sy - dirtDepth)
                     ? BackgroundType.Dirt
                     : BackgroundType.Stone;
             }
@@ -308,38 +215,53 @@ public static class WorldGen {
     // Baseline soil dampness so virgin worlds support plant growth from turn 1,
     // and sheltered soil (caves, deep stone) has something for seep/plants to read.
     // Surface soil dries from here via MoistureSystem.HourlyUpdate; underground holds.
-    public static byte StartingMoisture = 50;
     static void SeedMoisture(World world) {
+        byte startingMoisture = config.StartingMoisture;
         for (int x = 0; x < world.nx; x++)
             for (int y = 0; y < world.ny; y++) {
                 Tile t = world.GetTileAt(x, y);
-                if (t.type.solid) t.moisture = StartingMoisture;
+                if (t.type.solid) t.moisture = startingMoisture;
             }
     }
 
     // ── Surface terrain ──────────────────────────────────────────────────
 
-    // Computes per-column surface height using layered Perlin noise (FBM).
-    // The starting zone is forced flat with smooth blending at the edges.
+    // Computes per-column surface height using layered Perlin noise (FBM) with
+    // domain warping and slow region-level amplitude variation.
+    //
+    // Domain warp: before sampling the surface FBM at column x, shift x by a
+    // second noise. Vanilla FBM looks "wavy" because the noise is statistically
+    // uniform along x — every wavelength looks like every other. Warping the
+    // input coordinate breaks that regularity, producing twisted, organic-
+    // looking surface shapes (peaks lean, valleys curl, features compress and
+    // stretch unevenly). WarpFreq must be on the same order as SurfaceFreq or
+    // the warp just uniformly slides whole regions of noise around.
+    //
+    // Region amp variation: a very slow noise signal multiplies the surface
+    // amplitude per column, so some stretches read as plains (small bumps) and
+    // others as hills/mountains (taller features). Decorrelated from the warp
+    // signal via a separate seed offset. The starting zone is forced flat with
+    // smooth blending at the edges.
     static int[] GenerateSurfaceHeights(int nx, int seed) {
+        var cfg = config;
         int[] heights = new int[nx];
 
         for (int x = 0; x < nx; x++) {
             // Domain-warp the sample coordinate before feeding it to the surface
             // FBM. Spawn-zone blending and the integer column index are untouched —
             // only the noise lookup sees a shifted x.
-            float warp = FBM1D(x, seed + SurfaceWarpSeedOffset, SurfaceWarpOctaves, SurfaceWarpFreq, SurfaceWarpAmp);
+            float warp = FBM1D(x, seed + cfg.SurfaceWarpSeedOffset, cfg.SurfaceWarpOctaves, cfg.SurfaceWarpFreq, cfg.SurfaceWarpAmp);
             // Slow region multiplier: FBM1D with amp=1 returns roughly [-1, 1];
             // remap to [0, 1] then lerp to the configured min/max amplitude scale.
-            float ampSignal = FBM1D(x, seed + SurfaceAmpVarSeedOffset, 1, SurfaceAmpVarFreq, 1f);
-            float ampMult = Mathf.Lerp(SurfaceAmpVarMin, SurfaceAmpVarMax, Mathf.Clamp01((ampSignal + 1f) * 0.5f));
-            float noiseH = BaseHeight + FBM1D(x + warp, seed, SurfaceOctaves, SurfaceFreq, SurfaceAmp * ampMult);
-            float flat = BaseHeight;
+            float ampSignal = FBM1D(x, seed + cfg.SurfaceAmpVarSeedOffset, 1, cfg.SurfaceAmpVarFreq, 1f);
+            float ampMult = Mathf.Lerp(cfg.SurfaceAmpVarMin, cfg.SurfaceAmpVarMax, Mathf.Clamp01((ampSignal + 1f) * 0.5f));
+            float noiseH = cfg.BaseHeight + FBM1D(x + warp, seed, cfg.SurfaceOctaves, cfg.SurfaceFreq, cfg.SurfaceAmp * ampMult);
+            float flat = cfg.BaseHeight;
 
             // Blend toward flat in the spawn zone
             float blend = SpawnBlendFactor(x);
             float finalH = Mathf.Lerp(noiseH, flat, blend);
-            heights[x] = Mathf.Clamp(Mathf.RoundToInt(finalH), SurfaceMin, SurfaceMax);
+            heights[x] = Mathf.Clamp(Mathf.RoundToInt(finalH), cfg.SurfaceMin, cfg.SurfaceMax);
         }
 
         // TEMP: nub flattener disabled while tuning surface warp/amp variation
@@ -357,14 +279,15 @@ public static class WorldGen {
 
     // Returns 1.0 inside the spawn zone, 0.0 outside, with smoothstep blend at edges.
     static float SpawnBlendFactor(int x) {
-        if (x >= SpawnMinX && x <= SpawnMaxX) return 1f;
+        var cfg = config;
+        if (x >= cfg.SpawnMinX && x <= cfg.SpawnMaxX) return 1f;
 
         float dist;
-        if (x < SpawnMinX) dist = SpawnMinX - x;
-        else dist = x - SpawnMaxX;
+        if (x < cfg.SpawnMinX) dist = cfg.SpawnMinX - x;
+        else dist = x - cfg.SpawnMaxX;
 
-        if (dist > SpawnBlend) return 0f;
-        float t = 1f - (dist / SpawnBlend);
+        if (dist > cfg.SpawnBlend) return 0f;
+        float t = 1f - (dist / cfg.SpawnBlend);
         return t * t * (3f - 2f * t); // smoothstep
     }
 
@@ -374,11 +297,12 @@ public static class WorldGen {
     static void FillTerrain(World world, int[] surfaceY) {
         TileType dirt = Db.tileTypeByName["dirt"];
         TileType limestone = Db.tileTypeByName["limestone"];
+        int dirtDepth = config.DirtDepth;
 
         for (int x = 0; x < world.nx; x++) {
             int surface = surfaceY[x];
             for (int y = 0; y < surface; y++) {
-                if (y >= surface - DirtDepth)
+                if (y >= surface - dirtDepth)
                     world.GetTileAt(x, y).type = dirt;
                 else
                     world.GetTileAt(x, y).type = limestone;
@@ -388,17 +312,24 @@ public static class WorldGen {
     }
 
     // ── Stone vein generation ────────────────────────────────────────────
-    // Runs after FillTerrain, before caves. Each pass samples its own FBM and
-    // converts limestone tiles to the target stone where the noise drops below
-    // the (depth-biased) threshold. Later passes can overwrite earlier ones
-    // only if they also start from limestone — since granite/slate pass checks
-    // the current tile against limestone, veins don't overlap (first pass wins
-    // per tile). Ordering: granite first, then slate.
+    // Per-stone vein pass: samples its own FBM and converts limestone tiles to
+    // the target stone where the noise drops below `Threshold × depthBias`.
+    // depthBias is 1.0 at DepthCenter (0=surface, 1=bedrock), tapering linearly
+    // to 0 at ±DepthWidth. Thresholds are tuned for "veins" rather than
+    // "layers": FBM noise mean is ~0.5, so threshold ~0.4 at peak bias converts
+    // roughly 30-40% of tiles at the depth center. Bump up for more abundant
+    // veins, down for rarer ones.
+    //
+    // Later passes can overwrite earlier ones only if they also start from
+    // limestone — since granite/slate pass checks the current tile against
+    // limestone, veins don't overlap (first pass wins per tile). Ordering:
+    // granite first, then slate.
     static void ApplyVeins(World world, int[] surfaceY, int seed) {
-        ApplyVeinPass(world, surfaceY, "granite", GraniteFreq, GraniteThreshold,
-                      GraniteDepthCenter, GraniteDepthWidth, seed + GraniteSeedOffset);
-        ApplyVeinPass(world, surfaceY, "slate",   SlateFreq,   SlateThreshold,
-                      SlateDepthCenter,   SlateDepthWidth,   seed + SlateSeedOffset);
+        var cfg = config;
+        ApplyVeinPass(world, surfaceY, "granite", cfg.GraniteFreq, cfg.GraniteThreshold,
+                      cfg.GraniteDepthCenter, cfg.GraniteDepthWidth, seed + cfg.GraniteSeedOffset);
+        ApplyVeinPass(world, surfaceY, "slate",   cfg.SlateFreq,   cfg.SlateThreshold,
+                      cfg.SlateDepthCenter,   cfg.SlateDepthWidth,   seed + cfg.SlateSeedOffset);
     }
 
     static void ApplyVeinPass(World world, int[] surfaceY, string tileName,
@@ -411,15 +342,16 @@ public static class WorldGen {
         TileType limestone = Db.tileTypeByName["limestone"];
         float seedOffX = seedOffset * 0.7f;
         float seedOffY = seedOffset * 1.3f;
+        int bedrockY = config.BedrockY;
         for (int x = 0; x < world.nx; x++) {
             int surface = surfaceY[x];
             // depthSpan protects against divide-by-zero on degenerate columns.
-            int depthSpan = Math.Max(1, surface - BedrockY);
-            for (int y = BedrockY + 1; y < surface; y++) {
+            int depthSpan = Math.Max(1, surface - bedrockY);
+            for (int y = bedrockY + 1; y < surface; y++) {
                 Tile t = world.GetTileAt(x, y);
                 // Only convert base limestone — leaves dirt, already-carved veins, and empties alone.
                 if (t.type != limestone) continue;
-                float depth = 1f - (float)(y - BedrockY) / depthSpan;
+                float depth = 1f - (float)(y - bedrockY) / depthSpan;
                 float bias = Mathf.Clamp01(1f - Mathf.Abs(depth - depthCenter) / depthWidth);
                 float noise = FBM2D((x + seedOffX) * freq, (y + seedOffY) * freq, 2, 0.5f, 2f);
                 // Lower noise + stronger depth bias → vein tile. When bias=0 (far from center)
@@ -436,17 +368,22 @@ public static class WorldGen {
     // blend in before the hard threshold step.
     // Spawn zone and near-surface tiles get a high value (1 = definitely solid).
     static float[,] BuildCaveNoiseField(int[] surfaceY, int nx, int ny, int seed) {
+        var cfg = config;
         float[,] field = new float[nx, ny];
         float seedOffX = seed * 0.7f;
         float seedOffY = seed * 1.3f;
+        int caveExclusion = cfg.CaveExclusionBelow;
+        int bedrockY = cfg.BedrockY;
+        int spawnMinX = cfg.SpawnMinX;
+        int spawnMaxX = cfg.SpawnMaxX;
 
         for (int x = 0; x < nx; x++) {
             int surface = surfaceY[x];
-            int caveTop = surface - CaveExclusionBelow;
-            bool inSpawn = x >= SpawnMinX - 2 && x <= SpawnMaxX + 2;
+            int caveTop = surface - caveExclusion;
+            bool inSpawn = x >= spawnMinX - 2 && x <= spawnMaxX + 2;
 
             for (int y = 0; y < ny; y++) {
-                if (inSpawn || y <= BedrockY || y >= surface) {
+                if (inSpawn || y <= bedrockY || y >= surface) {
                     field[x, y] = 1f;
                     continue;
                 }
@@ -458,9 +395,9 @@ public static class WorldGen {
                 }
 
                 field[x, y] = FBM2D(
-                    (x + seedOffX) * CaveFreqX,
-                    (y + seedOffY) * CaveFreqY,
-                    CaveOctaves, CavePersistence, CaveLacunarity
+                    (x + seedOffX) * cfg.CaveFreqX,
+                    (y + seedOffY) * cfg.CaveFreqY,
+                    cfg.CaveOctaves, cfg.CavePersistence, cfg.CaveLacunarity
                 );
             }
         }
@@ -473,12 +410,17 @@ public static class WorldGen {
     // so Perlin caves can't form there — but worm soft-carving can still push
     // values low enough to break through, creating natural tunnel entrances.
     static bool[,] ThresholdCaveField(float[,] field, int[] surfaceY, int nx, int ny) {
+        var cfg = config;
+        int bedrockY = cfg.BedrockY;
+        int caveExclusion = cfg.CaveExclusionBelow;
+        float threshSurface = cfg.CaveThresholdSurface;
+        float threshDeep = cfg.CaveThresholdDeep;
         bool[,] isCave = new bool[nx, ny];
         for (int x = 0; x < nx; x++) {
-            int caveTop = surfaceY[x] - CaveExclusionBelow;
-            for (int y = BedrockY + 1; y < surfaceY[x]; y++) {
-                float depthRatio = 1f - (float)(y - BedrockY) / (caveTop - BedrockY);
-                float threshold = Mathf.Lerp(CaveThresholdSurface, CaveThresholdDeep, depthRatio);
+            int caveTop = surfaceY[x] - caveExclusion;
+            for (int y = bedrockY + 1; y < surfaceY[x]; y++) {
+                float depthRatio = 1f - (float)(y - bedrockY) / (caveTop - bedrockY);
+                float threshold = Mathf.Lerp(threshSurface, threshDeep, depthRatio);
                 isCave[x, y] = field[x, y] < threshold;
             }
         }
@@ -491,9 +433,10 @@ public static class WorldGen {
     // A tile becomes solid (not cave) if >4 of its 8 neighbors are solid.
     // This transforms blobby Perlin output into craggy, natural-looking chambers.
     static void RefineCavesCA(bool[,] isCave, int nx, int ny) {
+        int cycles = config.CACycles;
         bool[,] buffer = new bool[nx, ny];
 
-        for (int iter = 0; iter < CACycles; iter++) {
+        for (int iter = 0; iter < cycles; iter++) {
             for (int x = 0; x < nx; x++) {
                 for (int y = 0; y < ny; y++) {
                     int solidNeighbors = CountSolidNeighbors(isCave, x, y, nx, ny);
@@ -529,6 +472,7 @@ public static class WorldGen {
 
     // Flood-fill removes disconnected cave pockets smaller than MinCaveSize.
     static void RemoveSmallCaves(bool[,] isCave, int nx, int ny) {
+        int minCaveSize = config.MinCaveSize;
         bool[,] visited = new bool[nx, ny];
         List<(int x, int y)> region = new();
         Queue<(int x, int y)> queue = new();
@@ -561,7 +505,7 @@ public static class WorldGen {
                 }
 
                 // Remove if too small
-                if (region.Count < MinCaveSize) {
+                if (region.Count < minCaveSize) {
                     foreach (var (rx, ry) in region)
                         isCave[rx, ry] = false;
                 }
@@ -572,16 +516,22 @@ public static class WorldGen {
     // ── Cave generation — Worm tunnel blending ────────────────────────
 
     // Walks worm paths and lowers the noise field along them with soft falloff,
-    // so tunnels merge naturally with surrounding Perlin caves.
+    // so tunnels merge naturally with surrounding Perlin caves. Each world rolls
+    // a worm count in [WormCountMin, WormCountMax] and picks distinct random
+    // start columns with WormMinSeparation enforced. The walk reflects off the
+    // spawn-zone boundary so even after random direction reversals the worm
+    // stays on its starting side — the player's starting area never gets
+    // tunneled into.
     static void BlendWormTunnels(float[,] caveNoise, int[] surfaceY, int nx, int ny, int seed) {
+        var cfg = config;
         System.Random rng = new(seed + 777);
 
         // Eligible start columns: away from world edges and outside the spawn-zone
         // buffer. The walk below also reflects off the spawn boundary, so a worm
         // that wanders toward spawn turns back rather than tunneling in.
         List<int> candidates = new();
-        int leftBound = SpawnMinX - WormSpawnBuffer;   // left walks must stay strictly below this
-        int rightBound = SpawnMaxX + WormSpawnBuffer;  // right walks must stay strictly above this
+        int leftBound = cfg.SpawnMinX - cfg.WormSpawnBuffer;   // left walks must stay strictly below this
+        int rightBound = cfg.SpawnMaxX + cfg.WormSpawnBuffer;  // right walks must stay strictly above this
         for (int x = 5; x < nx - 5; x++) {
             if (x >= leftBound && x <= rightBound) continue;
             candidates.Add(x);
@@ -590,14 +540,15 @@ public static class WorldGen {
         // Pick worm count, then random distinct start columns with WormMinSeparation
         // between them. If the separation can't be met within a few tries (narrow
         // map, dense placement), accept whatever's left so the count target still hits.
-        int wormCount = rng.Next(WormCountMin, WormCountMax + 1);
+        int wormCount = rng.Next(cfg.WormCountMin, cfg.WormCountMax + 1);
+        int wormMinSeparation = cfg.WormMinSeparation;
         List<int> starts = new();
         for (int w = 0; w < wormCount && candidates.Count > 0; w++) {
             int startX = -1;
             for (int attempt = 0; attempt < 12; attempt++) {
                 int pick = candidates[rng.Next(candidates.Count)];
                 bool farEnough = true;
-                foreach (int s in starts) if (Math.Abs(s - pick) < WormMinSeparation) { farEnough = false; break; }
+                foreach (int s in starts) if (Math.Abs(s - pick) < wormMinSeparation) { farEnough = false; break; }
                 if (farEnough) { startX = pick; break; }
             }
             if (startX < 0) startX = candidates[rng.Next(candidates.Count)]; // relaxed fallback
@@ -607,10 +558,19 @@ public static class WorldGen {
 
         // Walk each worm. Initial xDir is forced outward if the start sits right at
         // the spawn buffer so the first step doesn't immediately bounce.
+        int wormMinSteps = cfg.WormMinSteps;
+        int wormMaxSteps = cfg.WormMaxSteps;
+        int wormRadius = cfg.WormRadius;
+        int wormFalloff = cfg.WormFalloff;
+        int chamberRadius = cfg.ChamberRadius;
+        int chamberInterval = cfg.ChamberInterval;
+        float wormTurnChance = cfg.WormTurnChance;
+        int spawnMinX = cfg.SpawnMinX;
+        int bedrockY = cfg.BedrockY;
         foreach (int startX in starts) {
             int startY = surfaceY[startX] - 1; // start at surface, carves down through exclusion zone
-            bool startsLeft = startX < SpawnMinX;
-            int steps = rng.Next(WormMinSteps, WormMaxSteps + 1);
+            bool startsLeft = startX < spawnMinX;
+            int steps = rng.Next(wormMinSteps, wormMaxSteps + 1);
             int cx = startX, cy = startY;
             int xDir;
             if (startsLeft && cx >= leftBound - 1) xDir = -1;
@@ -618,11 +578,11 @@ public static class WorldGen {
             else xDir = rng.NextDouble() < 0.5 ? -1 : 1;
 
             for (int s = 0; s < steps; s++) {
-                int r = (s % ChamberInterval == 0 && s > 0) ? ChamberRadius : WormRadius;
-                SoftCarve(caveNoise, cx, cy, r + WormFalloff, nx, ny);
+                int r = (s % chamberInterval == 0 && s > 0) ? chamberRadius : wormRadius;
+                SoftCarve(caveNoise, cx, cy, r + wormFalloff, nx, ny);
 
                 // Small chance to reverse horizontal direction each step
-                if (rng.NextDouble() < WormTurnChance) xDir = -xDir;
+                if (rng.NextDouble() < wormTurnChance) xDir = -xDir;
 
                 // Move: down or sideways in current direction
                 if (rng.NextDouble() < 0.3f) cy--;
@@ -635,7 +595,7 @@ public static class WorldGen {
                 else if (!startsLeft && cx <= rightBound) { cx = rightBound + 1; xDir = 1; }
 
                 cx = Math.Clamp(cx, 1, nx - 2);
-                cy = Math.Clamp(cy, BedrockY + 1, ny - 2);
+                cy = Math.Clamp(cy, bedrockY + 1, ny - 2);
             }
         }
     }
@@ -643,6 +603,7 @@ public static class WorldGen {
     // Lowers noise values in a soft circle — full push at center, fading to zero at edge.
     // This makes the worm path "attract" cave space from the Perlin field.
     static void SoftCarve(float[,] field, int cx, int cy, int radius, int nx, int ny) {
+        float wormStrength = config.WormStrength;
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dy = -radius; dy <= radius; dy++) {
                 int x = cx + dx, y = cy + dy;
@@ -652,9 +613,76 @@ public static class WorldGen {
                 // Smoothstep falloff: 1 at center, 0 at edge
                 float t = 1f - dist / radius;
                 float strength = t * t * (3f - 2f * t);
-                field[x, y] -= strength * WormStrength;
+                field[x, y] -= strength * wormStrength;
             }
         }
+    }
+
+    // ── Free-floating chunk removal ──────────────────────────────────────
+
+    // Deletes solid tile clusters that aren't connected (orthogonally) to the
+    // mainland through either solid tiles OR background walls. Catches the
+    // floating-spire artefact that arises when a worm carves through a column
+    // with a sharp surfaceY transition and SetBackgrounds' Pass-2 erosion
+    // strips the leftover wall (its neighbours have no wall there because
+    // their surfaceY is well below). Connectivity uses post-erosion
+    // backgroundType so the rule matches what the player actually sees as
+    // "rooted vs floating."
+    //
+    // BFS seeds from every connectable cell on the bedrock row (y=0).
+    // 4-connected to stay consistent with RemoveSmallCaves. Solid tiles not
+    // reached become empty; their backgroundType is left alone (a stranded
+    // wall under newly-bared air just reads as a cave wall, which is fine).
+    static void RemoveFloatingChunks(World world) {
+        int nx = world.nx;
+        int ny = world.ny;
+
+        bool[,] connectable = new bool[nx, ny];
+        for (int x = 0; x < nx; x++) {
+            for (int y = 0; y < ny; y++) {
+                Tile t = world.GetTileAt(x, y);
+                connectable[x, y] = t.type.solid || t.backgroundType != BackgroundType.None;
+            }
+        }
+
+        bool[,] reached = new bool[nx, ny];
+        Queue<(int x, int y)> queue = new();
+        for (int x = 0; x < nx; x++) {
+            if (connectable[x, 0]) {
+                reached[x, 0] = true;
+                queue.Enqueue((x, 0));
+            }
+        }
+        while (queue.Count > 0) {
+            var (cx, cy) = queue.Dequeue();
+            TryEnqueueConnectable(connectable, reached, queue, cx - 1, cy, nx, ny);
+            TryEnqueueConnectable(connectable, reached, queue, cx + 1, cy, nx, ny);
+            TryEnqueueConnectable(connectable, reached, queue, cx, cy - 1, nx, ny);
+            TryEnqueueConnectable(connectable, reached, queue, cx, cy + 1, nx, ny);
+        }
+
+        TileType empty = Db.tileTypeByName["empty"];
+        int removed = 0;
+        for (int x = 0; x < nx; x++) {
+            for (int y = 0; y < ny; y++) {
+                Tile t = world.GetTileAt(x, y);
+                if (!t.type.solid) continue;
+                if (reached[x, y]) continue;
+                t.type = empty;
+                removed++;
+            }
+        }
+        if (removed > 0)
+            Debug.Log($"RemoveFloatingChunks: deleted {removed} unrooted solid tiles.");
+    }
+
+    static void TryEnqueueConnectable(bool[,] connectable, bool[,] reached,
+                                      Queue<(int x, int y)> queue,
+                                      int x, int y, int nx, int ny) {
+        if (x < 0 || x >= nx || y < 0 || y >= ny) return;
+        if (!connectable[x, y] || reached[x, y]) return;
+        reached[x, y] = true;
+        queue.Enqueue((x, y));
     }
 
     // ── Apply cave mask to tile grid ─────────────────────────────────────
@@ -667,44 +695,6 @@ public static class WorldGen {
             for (int y = 0; y < surfaceY[x]; y++) {
                 if (isCave[x, y]) {
                     world.GetTileAt(x, y).type = empty;
-                }
-            }
-        }
-    }
-
-    // ── Post-cave cleanup: remove hanging outcroppings near surface ────────
-
-    // Removes 1-wide solid nubs left where worm tunnels exit to the surface.
-    // Operates on actual world tiles (after ApplyCaves) so it sees the full
-    // picture: surface air + cave openings + worm exits.
-    // Scoped to near-surface to avoid eating deep cave walls.
-    static void RemoveSurfaceOutcroppings(World world, int[] surfaceY) {
-        TileType empty = Db.tileTypeByName["empty"];
-        int nx = world.nx;
-
-        // Check a band around the surface where worms exit
-        bool changed = true;
-        while (changed) {
-            changed = false;
-            for (int x = 1; x < nx - 1; x++) {
-                int yMin = Math.Max(0, surfaceY[x] - CaveExclusionBelow - 2);
-                int yMax = Math.Min(world.ny - 1, surfaceY[x] + 2);
-
-                for (int y = yMin; y <= yMax; y++) {
-                    Tile t = world.GetTileAt(x, y);
-                    if (!t.type.solid) continue;
-
-                    // Empty on both horizontal sides → hanging nub
-                    bool emptyLeft = !world.GetTileAt(x - 1, y).type.solid;
-                    bool emptyRight = !world.GetTileAt(x + 1, y).type.solid;
-                    // Empty on both vertical sides → floating pixel
-                    bool emptyBelow = y > 0 && !world.GetTileAt(x, y - 1).type.solid;
-                    bool emptyAbove = y < world.ny - 1 && !world.GetTileAt(x, y + 1).type.solid;
-
-                    if ((emptyLeft && emptyRight) || (emptyBelow && emptyAbove)) {
-                        t.type = empty;
-                        changed = true;
-                    }
                 }
             }
         }
@@ -727,10 +717,15 @@ public static class WorldGen {
     // Guarantee (per chunk): if a chunk has any non-draining basin, at least
     // one is filled even if all are below MinPoolVolume. Chunks with no
     // eligible basins waste their roll.
-    static void FillDepressions(World world, int[] surfaceY, int seed) {
+    //
+    // Returns a per-chunk bool[] marking which chunks actually placed water.
+    // CarveDryChunkPools consumes this to top up the empty chunks.
+    static bool[] FillDepressions(World world, int[] surfaceY, int seed) {
+        var cfg = config;
         int nx = world.nx;
         ushort waterMax = WaterController.WaterMax;
         System.Random rng = new(seed + 555);
+        int waterLine = cfg.WaterLine;
 
         // Use the EFFECTIVE surface (top of actual solid terrain, post-carve) rather
         // than the original heightmap surfaceY — otherwise worm tunnels and cave
@@ -767,23 +762,22 @@ public static class WorldGen {
             int volume = 0;
             int floor = int.MaxValue;
             while (x1 < nx && waterLevel[x1] > effSurfaceY[x1]) {
-                int cappedLevel = Math.Min(waterLevel[x1], WaterLine);
+                int cappedLevel = Math.Min(waterLevel[x1], waterLine);
                 volume += Math.Max(0, cappedLevel - effSurfaceY[x1]);
                 if (effSurfaceY[x1] < floor) floor = effSurfaceY[x1];
                 x1++;
             }
 
-            // Skip basins that would drain into caves — any column with an
-            // empty tile just below the actual (effective) floor lets water out.
-            bool drains = false;
-            for (int x = x0; x < x1 && !drains; x++) {
-                for (int y = effSurfaceY[x] - 1; y >= Math.Max(0, effSurfaceY[x] - 3); y--) {
-                    if (!world.GetTileAt(x, y).type.solid) { drains = true; break; }
-                }
-            }
+            // Reject worm-chimney basins: a column whose effective surface has
+            // dropped well below the original heightmap is a vertical pit, not
+            // a shallow surface depression. Filling it would dump a tower of
+            // water down a chimney. The basin's solid floor itself (eff-1) is
+            // always solid by ComputeEffectiveSurface's invariant, so caves
+            // further below don't actually drain a pond sitting on top of it.
+            bool drains = BasinShouldBeRejected(world, surfaceY, effSurfaceY, x0, x1, cfg.PitRejectDepth);
 
             if (!drains && volume >= 1)
-                basins.Add((x0, x1, volume, Math.Min(waterLevel[x0], WaterLine), floor));
+                basins.Add((x0, x1, volume, Math.Min(waterLevel[x0], waterLine), floor));
 
             cursor = x1;
         }
@@ -793,10 +787,11 @@ public static class WorldGen {
             // sits above it, so on maps with mostly-high terrain the primary scan
             // finds nothing. Re-collect using the natural water level (uncapped).
             // Drain check is preserved — we still don't want water falling into caves.
-            basins = CollectBasinsUncapped(world, effSurfaceY, waterLevel, nx);
+            basins = CollectBasinsUncapped(world, surfaceY, effSurfaceY, waterLevel, nx, cfg.PitRejectDepth);
             if (basins.Count == 0) {
-                Debug.LogWarning("FillDepressions: no eligible basins on this map even with fallback — no surface water will spawn.");
-                return;
+                // No natural basins anywhere; CarveDryChunkPools will be invoked
+                // for every chunk and create the world's surface water.
+                return new bool[cfg.WaterChunkCount];
             }
         }
 
@@ -805,33 +800,100 @@ public static class WorldGen {
         // first; tiny basins are skipped unless none qualify (per-chunk
         // fallback to the deepest available so the chunk doesn't go fully dry
         // when terrain offers nothing of MinPoolVolume).
-        int chunkWidth = Math.Max(1, nx / WaterChunkCount);
-        var byChunk = new List<(int x0, int x1, int volume, int waterLevel, int floor)>[WaterChunkCount];
-        for (int i = 0; i < WaterChunkCount; i++) byChunk[i] = new();
+        int chunkCount = cfg.WaterChunkCount;
+        int budgetMin = cfg.WaterChunkBudgetMin;
+        int budgetMax = cfg.WaterChunkBudgetMax;
+        int minPoolVolume = cfg.MinPoolVolume;
+        int chunkWidth = Math.Max(1, nx / chunkCount);
+        var byChunk = new List<(int x0, int x1, int volume, int waterLevel, int floor)>[chunkCount];
+        for (int i = 0; i < chunkCount; i++) byChunk[i] = new();
         foreach (var b in basins) {
             int center = (b.x0 + b.x1 - 1) / 2;
-            int c = Math.Min(WaterChunkCount - 1, center / chunkWidth);
+            int c = Math.Min(chunkCount - 1, center / chunkWidth);
             byChunk[c].Add(b);
         }
 
-        for (int c = 0; c < WaterChunkCount; c++) {
+        bool[] chunkFilled = new bool[chunkCount];
+        for (int c = 0; c < chunkCount; c++) {
             var chunkBasins = byChunk[c];
             if (chunkBasins.Count == 0) continue;
             chunkBasins.Sort((a, b) => a.floor.CompareTo(b.floor));
-            int budget = rng.Next(WaterChunkBudgetMin, WaterChunkBudgetMax + 1);
+            int budget = rng.Next(budgetMin, budgetMax + 1);
+
+            // Pre-filter: skip basins below MinPoolVolume entirely. Without
+            // this gate the chunk-global level would get pulled down trying
+            // to accommodate one-tile puddles, leaving the visible pools
+            // shallower than the rolled budget warrants. The deepest-basin
+            // fallback below handles the "chunk has only tiny basins" case.
+            var eligible = new List<(int x0, int x1, int volume, int waterLevel, int floor)>();
+            foreach (var b in chunkBasins)
+                if (b.volume >= minPoolVolume) eligible.Add(b);
 
             bool anyFilled = false;
-            foreach (var b in chunkBasins) {
-                if (budget <= 0) break;
-                if (b.volume < MinPoolVolume) continue;
-                budget -= FillBasinUpTo(world, effSurfaceY, b, Math.Min(b.volume, budget), waterMax);
-                anyFilled = true;
+            if (eligible.Count > 0) {
+                // Binary-search the highest chunk-global water level L such
+                // that the total fill volume across all eligible basins
+                // (each capped at its own natural rim) stays within budget.
+                // Spreads water across multiple basins like a water table
+                // instead of letting the deepest basin hog the whole chunk's
+                // budget — the old per-basin-fill approach would either
+                // overshoot wildly (a single huge basin balloons the chunk's
+                // total) or stop after one basin and leave the others dry.
+                // Per-basin rim cap keeps water from visually overflowing.
+                int loL = int.MaxValue, hiL = int.MinValue;
+                foreach (var b in eligible) {
+                    if (b.floor < loL) loL = b.floor;
+                    if (b.waterLevel > hiL) hiL = b.waterLevel;
+                }
+                int lo = loL, hi = hiL;
+                while (lo < hi) {
+                    int mid = (lo + hi + 1) / 2;
+                    int vol = ChunkVolAtLevel(eligible, effSurfaceY, mid);
+                    if (vol <= budget) lo = mid;
+                    else hi = mid - 1;
+                }
+                int chosenL = lo;
+
+                foreach (var b in eligible) {
+                    int basinLevel = Math.Min(chosenL, b.waterLevel);
+                    for (int x = b.x0; x < b.x1; x++) {
+                        for (int y = effSurfaceY[x]; y < basinLevel; y++) {
+                            Tile t = world.GetTileAt(x, y);
+                            if (!t.type.solid) {
+                                t.water = waterMax;
+                                anyFilled = true;
+                            }
+                        }
+                    }
+                }
             }
+
+            // Fallback: every basin was below MinPoolVolume, OR the binary
+            // search settled at the deepest floor (budget can't cover even
+            // the deepest basin's first row across its width). Partial-fill
+            // the deepest basin so the chunk doesn't read as dry.
             if (!anyFilled && budget > 0) {
                 var b = chunkBasins[0];
-                FillBasinUpTo(world, effSurfaceY, b, Math.Min(b.volume, budget), waterMax);
+                int placed = FillBasinUpTo(world, effSurfaceY, b, Math.Min(b.volume, budget), waterMax);
+                if (placed > 0) anyFilled = true;
             }
+            chunkFilled[c] = anyFilled;
         }
+        return chunkFilled;
+    }
+
+    // Sum of fill volume across all basins at chunk-global water level L,
+    // each basin capped at its own natural rim so it can't visually spill.
+    static int ChunkVolAtLevel(
+        List<(int x0, int x1, int volume, int waterLevel, int floor)> basins,
+        int[] effSurfaceY, int L) {
+        int total = 0;
+        foreach (var b in basins) {
+            int basinLevel = Math.Min(L, b.waterLevel);
+            for (int x = b.x0; x < b.x1; x++)
+                total += Math.Max(0, basinLevel - effSurfaceY[x]);
+        }
+        return total;
     }
 
     // Fills basin `b` with up to `cap` tiles of water at the highest uniform
@@ -893,7 +955,7 @@ public static class WorldGen {
     // would fall through. Used only when the primary below-WaterLine scan is empty.
     // Caller passes the effective (post-carve) surface so carved pits are visible.
     static List<(int x0, int x1, int volume, int waterLevel, int floor)> CollectBasinsUncapped(
-        World world, int[] effSurfaceY, int[] waterLevel, int nx) {
+        World world, int[] surfaceY, int[] effSurfaceY, int[] waterLevel, int nx, int pitRejectDepth) {
         var basins = new List<(int x0, int x1, int volume, int waterLevel, int floor)>();
         int cursor = 0;
         while (cursor < nx) {
@@ -908,12 +970,7 @@ public static class WorldGen {
                 x1++;
             }
 
-            bool drains = false;
-            for (int x = x0; x < x1 && !drains; x++) {
-                for (int y = effSurfaceY[x] - 1; y >= Math.Max(0, effSurfaceY[x] - 3); y--) {
-                    if (!world.GetTileAt(x, y).type.solid) { drains = true; break; }
-                }
-            }
+            bool drains = BasinShouldBeRejected(world, surfaceY, effSurfaceY, x0, x1, pitRejectDepth);
 
             if (!drains && volume >= 1)
                 basins.Add((x0, x1, volume, waterLevel[x0], floor));
@@ -923,19 +980,286 @@ public static class WorldGen {
         return basins;
     }
 
+    // Two-part basin reject used by both the primary and fallback scans:
+    //   1. Worm-chimney guard. A column whose effective surface has fallen >>
+    //      PitRejectDepth below the original heightmap surfaceY is the bottom
+    //      of a worm-carved shaft; filling it would create a tower of water
+    //      rather than a surface puddle.
+    //   2. Floor-must-be-solid. The tile directly under the basin floor needs
+    //      to be solid — water won't sit on air. By ComputeEffectiveSurface's
+    //      invariant this is almost always true, but the check is cheap and
+    //      catches y=0 bedrock-edge cases plus any future code change that
+    //      breaks the invariant.
+    // The old "scan 3 tiles below for any cave" check was too strict — a cave
+    // 2-3 rows below a solid basin floor doesn't actually drain the pool, it
+    // just sits below.
+    static bool BasinShouldBeRejected(World world, int[] surfaceY, int[] effSurfaceY,
+                                      int x0, int x1, int pitRejectDepth) {
+        for (int x = x0; x < x1; x++) {
+            if (surfaceY[x] - effSurfaceY[x] > pitRejectDepth) return true;
+            int floorY = effSurfaceY[x] - 1;
+            if (floorY < 0) return true;
+            Tile t = world.GetTileAt(x, floorY);
+            if (t == null || !t.type.solid) return true;
+        }
+        return false;
+    }
+
+    // ── Surface water — carved fallback pools ─────────────────────────────
+
+    // For every chunk that FillDepressions failed to put water in, scan the
+    // chunk's columns for the flattest low-elevation window and dig a small
+    // basin into the surface. This guarantees each chunk ends up with at least
+    // one pool even when the heightmap offers nothing the natural pass could
+    // use. Skipped chunks (no fitting window away from the spawn zone) log
+    // once so we notice degenerate maps without spamming.
+    static void CarveDryChunkPools(World world, int[] surfaceY, bool[] chunkFilled) {
+        var cfg = config;
+        int chunkCount = cfg.WaterChunkCount;
+        if (chunkCount <= 0) return;
+
+        int nx = world.nx;
+        int width = cfg.PoolCarveWidth;
+        int depth = cfg.PoolCarveDepth;
+        int maxRoughness = cfg.PoolCarveMaxRoughness;
+        if (width < 1 || depth < 1) return;
+
+        // Spawn-buffer guard: pools shouldn't carve into the starting flat
+        // (it's deliberately level for player builds). Use the same blend band
+        // the heightmap uses so we don't carve right at the transition either.
+        int spawnGuardLo = cfg.SpawnMinX - cfg.SpawnBlend;
+        int spawnGuardHi = cfg.SpawnMaxX + cfg.SpawnBlend;
+
+        int[] effSurfaceY = ComputeEffectiveSurface(world, surfaceY);
+        ushort waterMax = WaterController.WaterMax;
+        TileType empty = Db.tileTypeByName["empty"];
+        int chunkWidth = Math.Max(1, nx / chunkCount);
+        int half = width / 2;
+
+        for (int c = 0; c < chunkCount; c++) {
+            if (c < chunkFilled.Length && chunkFilled[c]) continue;
+
+            int cx0 = c * chunkWidth;
+            int cx1 = (c == chunkCount - 1) ? nx : Math.Min(nx, cx0 + chunkWidth);
+
+            // Strict-only window selection: roughness must fit
+            // PoolCarveMaxRoughness — no loose fallback. Accepting a high-
+            // roughness window means the rim sits well above some column's
+            // actual surface, and the per-column water would land on
+            // already-air cells connected to whatever carved the column
+            // (typically a worm tunnel), draining as soon as WaterController
+            // ticks. Better to leave a chunk dry than to spawn a leaking pool.
+            int bestCenter = -1;
+            int bestFloor = int.MaxValue;
+            int bestRoughness = int.MaxValue;
+
+            for (int cx = cx0 + half; cx < cx1 - half; cx++) {
+                int wx0 = cx - half;
+                int wx1 = cx - half + width;
+                if (wx0 < 0 || wx1 > nx) continue;
+                // Reject windows that overlap the spawn-zone guard.
+                if (wx1 > spawnGuardLo && wx0 <= spawnGuardHi) continue;
+
+                int hi = int.MinValue, lo = int.MaxValue;
+                for (int x = wx0; x < wx1; x++) {
+                    int s = effSurfaceY[x];
+                    if (s > hi) hi = s;
+                    if (s < lo) lo = s;
+                }
+                int rough = hi - lo;
+                if (rough > maxRoughness) continue;
+                if (hi < bestFloor || (hi == bestFloor && rough < bestRoughness)) {
+                    bestFloor = hi;
+                    bestRoughness = rough;
+                    bestCenter = cx;
+                }
+            }
+
+            if (bestCenter < 0) {
+                Debug.Log($"CarveDryChunkPools: chunk {c} ({cx0}..{cx1}) has no carve-eligible window (roughness ≤ {maxRoughness}) — skipping.");
+                continue;
+            }
+            int picked = bestCenter;
+
+            int pwx0 = picked - half;
+            int pwx1 = pwx0 + width;
+            int floor = int.MinValue;
+            for (int x = pwx0; x < pwx1; x++)
+                if (effSurfaceY[x] > floor) floor = effSurfaceY[x];
+
+            // Stepped trapezoidal depth: flat full-depth centre, edges stair-
+            // step down by 1 row per column once we're more than (depth - 1)
+            // tiles from the centre, clamped to 1 so every column still carves
+            // at least 1 tile (the visible pool spans the full width). For
+            // width=5 depth=2 that produces (1, 2, 2, 2, 1); for width=7
+            // depth=3 it's (1, 2, 3, 3, 3, 2, 1). Reads as a bowl with
+            // stepped sides, not a sharp parabola.
+            int[] colDepth = new int[width];
+            int centreFlatHalf = Math.Max(0, half - depth + 1);
+            for (int i = 0; i < width; i++) {
+                int dist = Math.Abs(i - half);
+                int taper = Math.Max(0, dist - centreFlatHalf);
+                int d = depth - taper;
+                if (d < 1) d = 1;
+                if (d > depth) d = depth;
+                colDepth[i] = d;
+            }
+
+            // Per-column leak check: each carving column needs solid ground
+            // directly below its own carve floor. If any column would leak,
+            // skip this window — picking another candidate is future work.
+            bool leaks = false;
+            for (int i = 0; i < width && !leaks; i++) {
+                int d = colDepth[i];
+                if (d <= 0) continue;
+                int colBottom = floor - d;
+                if (colBottom <= 0) { leaks = true; break; }
+                Tile below = world.GetTileAt(pwx0 + i, colBottom - 1);
+                if (below == null || !below.type.solid) leaks = true;
+            }
+            if (leaks) {
+                Debug.Log($"CarveDryChunkPools: chunk {c} window @ x={picked} would leak — skipping.");
+                continue;
+            }
+
+            // Carve + flood per-column. Water surface sits at floor-1 across the
+            // whole window; columns whose taper resolves to 0 stay solid (their
+            // dirt walls visually wrap the rim). Cells above the column's own
+            // effSurface were already empty — we just place water into the
+            // already-air rim cells alongside the newly-carved ones.
+            for (int i = 0; i < width; i++) {
+                int d = colDepth[i];
+                if (d <= 0) continue;
+                int x = pwx0 + i;
+                int top = effSurfaceY[x];
+                int colBottom = floor - d;
+                for (int y = colBottom; y < floor; y++) {
+                    Tile t = world.GetTileAt(x, y);
+                    if (t == null) continue;
+                    if (y < top) t.type = empty;
+                    t.water = waterMax;
+                }
+            }
+        }
+    }
+
+    // ── Cave water ────────────────────────────────────────────────────────
+
+    // For each cave region (flood-filled over the post-carve isCave mask),
+    // roll CaveWaterChance and on hit fill a random fraction [0, 1] of the
+    // region's volume with water. Uses a uniform fill level so paused worlds
+    // start with flat-looking pools rather than tile-by-tile bottom stacks
+    // that wouldn't settle until WaterController ticks.
+    //
+    // No sealing check — open caves (worm-tunneled to surface) drain naturally
+    // via WaterController on the first ticks. Acceptable per design.
+    static void FillCaveWater(World world, bool[,] isCave, int nx, int ny, int seed) {
+        var cfg = config;
+        float chance = cfg.CaveWaterChance;
+        if (chance <= 0f) return;
+
+        ushort waterMax = WaterController.WaterMax;
+        System.Random rng = new(seed + 4242);
+
+        bool[,] visited = new bool[nx, ny];
+        List<(int x, int y)> region = new();
+        Queue<(int x, int y)> queue = new();
+
+        for (int sx = 0; sx < nx; sx++) {
+            for (int sy = 0; sy < ny; sy++) {
+                if (!isCave[sx, sy] || visited[sx, sy]) continue;
+
+                region.Clear();
+                queue.Clear();
+                queue.Enqueue((sx, sy));
+                visited[sx, sy] = true;
+
+                while (queue.Count > 0) {
+                    var (cx, cy) = queue.Dequeue();
+                    region.Add((cx, cy));
+
+                    // 4-connected — match RemoveSmallCaves so region IDs align.
+                    TryEnqueue(isCave, visited, queue, cx - 1, cy, nx, ny);
+                    TryEnqueue(isCave, visited, queue, cx + 1, cy, nx, ny);
+                    TryEnqueue(isCave, visited, queue, cx, cy - 1, nx, ny);
+                    TryEnqueue(isCave, visited, queue, cx, cy + 1, nx, ny);
+                }
+
+                if (rng.NextDouble() >= chance) continue;
+
+                double fillFrac = rng.NextDouble();
+                int targetTiles = (int)Math.Round(fillFrac * region.Count);
+                if (targetTiles <= 0) continue;
+
+                // Find region bounds in y so we can binary-search a uniform fill level.
+                int minY = int.MaxValue, maxY = int.MinValue;
+                foreach (var (rx, ry) in region) {
+                    if (ry < minY) minY = ry;
+                    if (ry > maxY) maxY = ry;
+                }
+
+                // Highest level L such that #(tiles with y < L) <= targetTiles.
+                int lo = minY, hi = maxY + 1;
+                while (lo < hi) {
+                    int mid = (lo + hi + 1) / 2;
+                    int count = 0;
+                    foreach (var (rx, ry) in region) if (ry < mid) count++;
+                    if (count <= targetTiles) lo = mid;
+                    else hi = mid - 1;
+                }
+                int level = lo;
+
+                // Flood the cells below level. If we have budget left over (targetTiles
+                // didn't exactly land on a row boundary), top up tiles at level in
+                // ascending-x order so partial fills still look intentional.
+                int placed = 0;
+                foreach (var (rx, ry) in region) {
+                    if (ry >= level) continue;
+                    Tile t = world.GetTileAt(rx, ry);
+                    if (t == null || t.type.solid) continue;
+                    t.water = waterMax;
+                    placed++;
+                }
+                int remaining = targetTiles - placed;
+                if (remaining > 0) {
+                    // Sort by x for stable layout, then place remaining tiles at the rim.
+                    region.Sort((a, b) => a.x != b.x ? a.x.CompareTo(b.x) : a.y.CompareTo(b.y));
+                    foreach (var (rx, ry) in region) {
+                        if (remaining <= 0) break;
+                        if (ry != level) continue;
+                        Tile t = world.GetTileAt(rx, ry);
+                        if (t == null || t.type.solid) continue;
+                        t.water = waterMax;
+                        remaining--;
+                    }
+                }
+            }
+        }
+    }
+
+    static void TryEnqueue(bool[,] isCave, bool[,] visited, Queue<(int x, int y)> queue,
+                           int x, int y, int nx, int ny) {
+        if (x < 0 || x >= nx || y < 0 || y >= ny) return;
+        if (!isCave[x, y] || visited[x, y]) return;
+        visited[x, y] = true;
+        queue.Enqueue((x, y));
+    }
+
     // ── Plant scattering ──────────────────────────────────────────────────
 
     // Scatters random plant clusters across the surface. Each eligible column
     // has a small chance to seed a cluster of 1-3 plants (pine, apple, ramie).
     // Called from WorldController.GenerateDefault after terrain + caves + water.
-    public static float PlantChance = 0.08f;   // per-column chance to start a cluster
-    public static int ClusterMin = 1;
-    public static int ClusterMax = 3;
-
     public static void ScatterPlants(World world, int[] surfaceY, int seed) {
+        var cfg = config;
         System.Random rng = new(seed + 999);
         TileType dirt = Db.tileTypeByName["dirt"];
         int nx = world.nx;
+        int spawnMinX = cfg.SpawnMinX;
+        int spawnMaxX = cfg.SpawnMaxX;
+        float plantChance = cfg.PlantChance;
+        int clusterMin = cfg.ClusterMin;
+        int clusterMax = cfg.ClusterMax;
 
         // Track which columns already have a plant to avoid overlap
         bool[] occupied = new bool[nx];
@@ -943,15 +1267,18 @@ public static class WorldGen {
         for (int x = 0; x < nx; x++) {
             if (occupied[x]) continue;
             // Skip spawn zone — leave room for the player
-            if (x >= SpawnMinX - 2 && x <= SpawnMaxX + 2) continue;
+            if (x >= spawnMinX - 2 && x <= spawnMaxX + 2) continue;
             // Must have solid dirt at surface and no water above
             if (!IsPlantEligible(world, surfaceY, x, dirt)) continue;
 
-            if (rng.NextDouble() >= PlantChance) continue;
+            if (rng.NextDouble() >= plantChance) continue;
 
-            // Pick plant type: 50% pine, 25% apple, 25% ramie
+            // Pick plant type weighted by `genWeight` in plantsDb.json. Null means
+            // no plant has a positive genWeight — skip silently, PickPlantType
+            // already logged the misconfiguration once.
             string plantName = PickPlantType(rng);
-            int clusterSize = rng.Next(ClusterMin, ClusterMax + 1);
+            if (plantName == null) return;
+            int clusterSize = rng.Next(clusterMin, clusterMax + 1);
 
             for (int i = 0; i < clusterSize; i++) {
                 // Place cluster members nearby (within +-2 columns)
@@ -980,12 +1307,31 @@ public static class WorldGen {
         return true;
     }
 
+    // Weighted random pick over every PlantType with genWeight > 0. Weights are
+    // unnormalized — tune in plantsDb.json. Returns null only if no plant has a
+    // positive genWeight (legacy compat / accidental misconfiguration); caller
+    // skips the cluster in that case.
     static string PickPlantType(System.Random rng) {
-        double roll = rng.NextDouble();
-        if (roll < 0.40) return "pinetree";   // pine + pinecone (replaces legacy "tree" — old saves still load their existing "tree" plants by typeName)
-        if (roll < 0.60) return "appletree";
-        if (roll < 0.80) return "ramie";
-        return "bamboo";
+        float total = 0f;
+        foreach (var pt in Db.plantTypeByName.Values)
+            if (pt.genWeight > 0f) total += pt.genWeight;
+        if (total <= 0f) {
+            Debug.LogError("PickPlantType: no PlantTypes have genWeight > 0 — set genWeight on at least one entry in plantsDb.json.");
+            return null;
+        }
+        double pick = rng.NextDouble() * total;
+        float acc = 0f;
+        foreach (var pt in Db.plantTypeByName.Values) {
+            if (pt.genWeight <= 0f) continue;
+            acc += pt.genWeight;
+            if (pick < acc) return pt.name;
+        }
+        // Floating-point rounding can leave `pick` infinitesimally above `acc`
+        // on the last entry; fall through to the last weighted name.
+        string last = null;
+        foreach (var pt in Db.plantTypeByName.Values)
+            if (pt.genWeight > 0f) last = pt.name;
+        return last;
     }
 
     // ── Noise utilities ──────────────────────────────────────────────────

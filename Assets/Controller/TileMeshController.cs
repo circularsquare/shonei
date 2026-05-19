@@ -142,6 +142,7 @@ public class TileMeshController : MonoBehaviour {
                 t.RegisterCbTileTypeChanged(OnTileTypeChanged);
                 t.RegisterCbOverlayChanged(OnTileOverlayChanged);
                 t.RegisterCbSnowChanged(OnTileSnowChanged);
+                t.RegisterCbBodyChanged(OnTileBodyChanged);
             }
         }
 
@@ -221,6 +222,14 @@ public class TileMeshController : MonoBehaviour {
     // which doesn't move when the snow flag flips).
     void OnTileSnowChanged(Tile t) {
         MarkSnowChunkDirty(t.x, t.y);
+    }
+
+    // Rim-suppression mask change → body AND overlay redraw. The mask is read by
+    // both bakes (body picks the buried-side slice; overlay AND-NOTs the bit out of
+    // its effective sides). Only self — neighbours' bakes don't read this mask.
+    void OnTileBodyChanged(Tile t) {
+        MarkBodyChunkDirty(t.x, t.y);
+        MarkOverlayChunkDirty(t.x, t.y);
     }
 
     void MarkBodyChunkDirty(int x, int y) {
@@ -303,7 +312,10 @@ public class TileMeshController : MonoBehaviour {
 
                 bool roadSuppressed = t.structs[3] != null;
                 int  overlayBits    = roadSuppressed ? 0 : (t.overlayMask & 0xF);
-                int  bodyCardinals  = (realSolid & ~win) | overlayBits;
+                // bodyEdgeSuppressMask: structures (today: doored preservesTile buildings)
+                // can mark a side as "draw no rim" — OR it in so the bake picks the
+                // buried-side slice for that direction, hiding the 2px air bevel.
+                int  bodyCardinals  = (realSolid & ~win) | overlayBits | (t.bodyEdgeSuppressMask & 0xF);
                 int  trimMask       = (overlayBits & ~realSolid) & 0xF;
 
                 int bodySlice = TileSpriteCache.GetBodySlice(typeName, bodyCardinals, trimMask, x, y);
@@ -358,7 +370,7 @@ public class TileMeshController : MonoBehaviour {
                 if (IsSolidAt(x,     y - 1)) cMask |= 4;
                 if (IsSolidAt(x,     y + 1)) cMask |= 8;
 
-                int effective = (t.overlayMask & ~cMask) & 0xF;
+                int effective = (t.overlayMask & ~cMask & ~t.bodyEdgeSuppressMask) & 0xF;
                 if (effective == 0) continue; // every overlay side is buried
 
                 // Normal map shares the body type's normal — same nMask the body uses,

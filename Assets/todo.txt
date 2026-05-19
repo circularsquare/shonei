@@ -60,8 +60,5 @@ CODE CLEANUP
 BUGS
 
 SHORT TERM
-- test shack...
-- world gen
-    - specifically generate water pools rather than filling holes in 
-    - generate water in caves sometimes 
-    - mushrooms should be only in dark spots that are not exposed to the sky upward or with background exposure
+- test furnishings of house and burrow
+- rice stuff

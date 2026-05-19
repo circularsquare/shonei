@@ -41,8 +41,8 @@ using Newtonsoft.Json;
 //   [x] Per-animal RNG seed (drives Animal.random — animal AI reproduces on reload)
 //   [x] Tile types, floor inventories (incl. wetUntil rain-soaked timer), background wall, overlay masks (grass on dirt), overlay health state (live/dying/dead), and snow cover
 //   [x] Per-column original surface heights (worldgen ground line, persisted so decoration depth gates survive column mining)
-//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, furnishingInvData + furnishingRemainingDays, mirrored, rotation, shapeIndex, disabled, plantHarvestFlagged, quarry capturedTileType, flywheel charge, elevator currentY + history buffers)
-//   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored, rotation, shapeIndex, disabled)
+//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, furnishingInvData + furnishingRemainingDays, mirrored, rotation, shapeIndex, disabled, plantHarvestFlagged, quarry capturedTileType, flywheel charge, elevator currentY + history buffers, bridge-post partnerX/Y)
+//   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored, rotation, shapeIndex, disabled, two-click x2/y2)
 //   [x] Animals (position, job, energy, food, happiness, decoration happiness, socialization, fireplace warmth, inv, foodSlotInv, toolSlotInv, clothingSlotInv, bookSlotInv)
 //   [x] Mid-transit merchant task descriptor (travelTaskType + iq + storage tile + leg)
 //   [x] Research (progress, unlockedIds, studiedIds, unlockTimestamps, unlockCounter)
@@ -315,6 +315,10 @@ public class SaveSystem : MonoBehaviour {
             ssd.elevatorRecentTripTicks     = el.recentTripTicks.ToArray();
             ssd.elevatorRecentEndToEndTicks = el.recentEndToEndTicks.ToArray();
         }
+        if (s is BridgePost post) {
+            ssd.partnerX = post.partnerX;
+            ssd.partnerY = post.partnerY;
+        }
         return ssd;
     }
 
@@ -330,7 +334,9 @@ public class SaveSystem : MonoBehaviour {
             mirrored             = bp.mirrored,
             rotation             = bp.rotation,
             shapeIndex           = bp.shapeIndex,
-            disabled             = bp.disabled
+            disabled             = bp.disabled,
+            x2                   = bp.x2,
+            y2                   = bp.y2
         };
     }
 
@@ -628,6 +634,12 @@ public class SaveSystem : MonoBehaviour {
         // Order matches WorldController.GenerateDefault for symmetry between paths.
         SkyExposure.InitializeWorld(world);
         BackgroundTile.InitializeWorld(world);
+        // Pair up loaded rope-bridge posts and materialise each bridge's waypoint
+        // chain + visuals BEFORE graph.Initialize so the resulting edges are
+        // present in the first RebuildComponents sweep — otherwise mice can't
+        // path across a saved bridge until something else perturbs the graph.
+        // OnPlaced runs gameplay-only, so the live-build path doesn't reach here.
+        RopeBridge.PairAllAfterLoad();
         world.graph.Initialize();
 
         // ── Phase 5: Configuration ─────────────────────────────────────────────────────
@@ -789,7 +801,9 @@ public class SaveSystem : MonoBehaviour {
         if (tile == null) { Debug.LogError("Null tile on load for struct: " + ssd.typeName); return; }
         Structure structure = null;
 
-        structure = Structure.Create(st, ssd.x, ssd.y, ssd.mirrored, ssd.rotation, ssd.shapeIndex);
+        int partnerX = ssd.partnerX ?? -1;
+        int partnerY = ssd.partnerY ?? -1;
+        structure = Structure.Create(st, ssd.x, ssd.y, ssd.mirrored, ssd.rotation, ssd.shapeIndex, partnerX, partnerY);
         if (structure == null) {
             Debug.LogError("Structure.Create returned null on load: " + ssd.typeName); return;
         }
@@ -900,7 +914,7 @@ public class SaveSystem : MonoBehaviour {
             Debug.LogError("Unknown blueprint struct type on load: " + bsd.typeName); return;
         }
         StructType st = Db.structTypeByName[bsd.typeName];
-        Blueprint bp = new Blueprint(st, bsd.x, bsd.y, mirrored: bsd.mirrored, autoRegister: false, rotation: bsd.rotation, shapeIndex: bsd.shapeIndex);
+        Blueprint bp = new Blueprint(st, bsd.x, bsd.y, mirrored: bsd.mirrored, autoRegister: false, rotation: bsd.rotation, shapeIndex: bsd.shapeIndex, x2: bsd.x2, y2: bsd.y2);
         bp.state                = (Blueprint.BlueprintState)bsd.state;
         bp.constructionProgress = bsd.constructionProgress;
         bp.priority             = bsd.priority;

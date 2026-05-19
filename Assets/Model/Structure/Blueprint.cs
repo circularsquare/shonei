@@ -14,6 +14,43 @@ public class Blueprint {
     // Uses the chosen shape's nx so tall/wide variants pathfind to the right place.
     public Tile centerTile => World.instance.GetTileAt(x + (Shape.nx - 1) / 2, y);
 
+    // Tiles claimed by this blueprint at structType.depth. Default: every tile in
+    // the anchor rectangle. Two-click placements (rope bridges) override to yield
+    // ONLY the two post tiles — the catenary visually passes through other tiles
+    // but doesn't claim them (rope is mid-air, not a tile structure).
+    //
+    // Used by Nav.PathToOrAdjacentBlueprint to enumerate approach candidates so a
+    // hauler can deliver to whichever post is closer for a bridge.
+    public System.Collections.Generic.IEnumerable<Tile> FootprintTiles() {
+        if (IsTwoClick) {
+            Tile a = World.instance.GetTileAt(x, y);
+            Tile b = World.instance.GetTileAt(x2.Value, y2.Value);
+            if (a != null) yield return a;
+            if (b != null) yield return b;
+            yield break;
+        }
+        Shape shape = Shape;
+        int fnx = structType.HasShapes ? shape.nx : structType.nx;
+        int fny = structType.HasShapes ? shape.ny : Mathf.Max(1, structType.ny);
+        for (int dy = 0; dy < fny; dy++)
+            for (int dx = 0; dx < fnx; dx++) {
+                Tile t = World.instance.GetTileAt(x + dx, y + dy);
+                if (t != null) yield return t;
+            }
+    }
+
+    // Primary path targets for a hauler delivering to this blueprint. Single-click
+    // bps yield just centerTile; two-click bps yield both post tiles so the hauler
+    // walks to whichever has the cheaper path. Falls through to footprint-neighbour
+    // candidates in Nav.PathToOrAdjacentBlueprint if neither direct path exists.
+    public System.Collections.Generic.IEnumerable<Tile> CenterApproachTiles() {
+        yield return centerTile;
+        if (IsTwoClick) {
+            Tile partner = World.instance.GetTileAt(x2.Value, y2.Value);
+            if (partner != null) yield return partner;
+        }
+    }
+
     public Inventory inv;  // holds delivered materials; InvType.Blueprint keeps it out of haul/consolidate searches
     public ItemQuantity[] costs;
     public float constructionCost;
@@ -33,6 +70,14 @@ public class Blueprint {
     // ghost preview. Defaults to 0 (first authored shape, or base nx/ny when shapes is null).
     public int shapeIndex = 0;
     public Shape Shape => structType.GetShape(shapeIndex);
+
+    // Two-click placement (rope bridge): nullable second endpoint coords. When
+    // set, the blueprint claims BOTH posts' tiles (at structType.depth), scales
+    // its cost linearly with horizontal delta, and on Complete materialises
+    // both posts atomically via two Construct calls.
+    public int? x2;
+    public int? y2;
+    public bool IsTwoClick => x2.HasValue && y2.HasValue;
     // Items to give to the completing animal after construction/deconstruction finishes.
     // Set by StructController.Construct (mining output) or Deconstruct (refunded materials).
     public List<ItemQuantity> pendingOutput;
@@ -40,6 +85,9 @@ public class Blueprint {
     // Child SR rendering a sliced frame around the blueprint footprint. Always unlit so it
     // stays visible at night and reads as an overlay. Tint/alpha is updated by RefreshColor.
     private SpriteRenderer frameSr;
+    // Partner-tile frame for two-click placements (rope bridges). Null on single-click
+    // blueprints. Updated in tandem with frameSr by RefreshColor.
+    private SpriteRenderer frameSrPartner;
 
     // ── Frame overlay asset cache ─────────────────────────────────────────
     // Mirrors the pattern used in Plant.cs for its harvest overlay. If a future third user
@@ -86,13 +134,15 @@ public class Blueprint {
         return _unlitLayer;
     }
 
-    public Blueprint(StructType structType, int x, int y, bool mirrored = false, bool autoRegister = true, int rotation = 0, int shapeIndex = 0){
+    public Blueprint(StructType structType, int x, int y, bool mirrored = false, bool autoRegister = true, int rotation = 0, int shapeIndex = 0, int? x2 = null, int? y2 = null){
         this.structType = structType;
         this.x = x;
         this.y = y;
         this.mirrored = mirrored;
         this.rotation = rotation;
         this.shapeIndex = shapeIndex;
+        this.x2 = x2;
+        this.y2 = y2;
         this.tile = World.instance.GetTileAt(x, y);
 
         Shape shape = Shape;
@@ -105,6 +155,11 @@ public class Blueprint {
         for (int dy = 0; dy < claimNy; dy++)
             for (int dx = 0; dx < claimNx; dx++)
                 World.instance.GetTileAt(x + dx, y + dy).SetBlueprintAt(structType.depth, this);
+        // Two-click placement: also claim the second post's tile. The claim is the
+        // same blueprint reference so selection / collision / right-click lookup on
+        // EITHER tile resolves to this one blueprint.
+        if (IsTwoClick)
+            World.instance.GetTileAt(x2.Value, y2.Value)?.SetBlueprintAt(structType.depth, this);
 
         if (structType.constructionCost == 0f){
             constructionCost = 2f; // default
@@ -128,16 +183,35 @@ public class Blueprint {
         var refs = StructureVisualBuilder.Build(go, structType, shape, mirrored, rotation, 100, new Color(0.8f, 0.9f, 1f, 0.5f));
         sprite = refs.mainSr.sprite;  // null for custom-visual types — fine; nothing external reads this
 
+        // Two-click placement: spawn a SECOND ghost at the partner tile, mirrored
+        // OPPOSITE to the anchor. BuildPanel sets the anchor's `mirrored` flag
+        // from geometry (anchor-is-left → mirrored=true), so flipping it gives
+        // the partner the correct orientation. Parented to `go` so the standard
+        // GameObject.Destroy(go) in Complete/Destroy/Deconstruct tears it down
+        // alongside everything else — no extra cleanup paths needed.
+        if (IsTwoClick) {
+            GameObject partnerGo = new GameObject("blueprint_partner");
+            partnerGo.transform.SetParent(go.transform, false);
+            partnerGo.transform.localPosition = new Vector3(x2.Value - x, y2.Value - y, 0f);
+            StructureVisualBuilder.Build(partnerGo, structType, shape, !mirrored, rotation, 100,
+                                         new Color(0.8f, 0.9f, 1f, 0.5f));
+        }
+
         CreateFrameOverlay();
 
         // Deep-copy costs so LockGroupCostsAfterDelivery only affects this blueprint,
         // not every blueprint sharing the same StructType. Cost scales linearly with
         // shape footprint relative to shapes[0] (the authored baseline) — for the
         // platform's [1×1, 1×2, 1×3] this gives 1×, 2×, 3× the wood per height step.
+        // Two-click placements (rope bridges) scale by horizontal delta instead:
+        // ncosts is authored per-tile-of-span, total is ncosts × dx.
         int costMul = 1, costDiv = 1;
         if (shapeAware && structType.shapes.Length > 0) {
             costMul = shape.TileCount;
             costDiv = structType.shapes[0].TileCount;
+        } else if (IsTwoClick) {
+            costMul = (int)Catenary.HorizontalDelta(x, x2.Value);
+            costDiv = 1;
         }
         costs = new ItemQuantity[structType.costs.Length];
         for (int i = 0; i < costs.Length; i++) {
@@ -189,8 +263,6 @@ public class Blueprint {
     // Always visible regardless of lighting — serves as a persistent "this is a blueprint" cue.
     // Colour is driven by RefreshColor below; see SPEC-rendering.md for the Unlit layer pipeline.
     private void CreateFrameOverlay() {
-        GameObject frameGo = new GameObject("frame");
-        frameGo.transform.SetParent(go.transform, false);
         // Centre the frame on the footprint, independent of the main blueprint GO's pivot
         // (which for legacy multi-tile buildings is the visual centre, and for depth-3 floor
         // tiles is offset by -1/8 y, and for shape-aware structures is the anchor tile).
@@ -198,21 +270,38 @@ public class Blueprint {
         Shape shape = Shape;
         int fnx = structType.HasShapes ? shape.nx : structType.nx;
         int fny = structType.HasShapes ? shape.ny : structType.ny;
+        frameSr = SpawnFrameSr(name: "frame", fnx: fnx, fny: fny, worldX: x, worldY: y);
+
+        // Two-click placements (rope bridges) need a second frame at the partner
+        // post's tile so the player can see BOTH endpoints are claimed.
+        if (IsTwoClick) {
+            frameSrPartner = SpawnFrameSr(name: "frame_partner", fnx: fnx, fny: fny,
+                                          worldX: x2.Value, worldY: y2.Value);
+        }
+    }
+
+    // Helper: spawns one sliced-frame SR at the given world tile, parented under `go`
+    // and centred on the (fnx × fny) footprint. Returns the SR so RefreshColor can
+    // update its sprite/colour later.
+    private SpriteRenderer SpawnFrameSr(string name, int fnx, int fny, int worldX, int worldY) {
+        GameObject frameGo = new GameObject(name);
+        frameGo.transform.SetParent(go.transform, false);
         float fx = (fnx - 1) / 2f;
         float fy = Mathf.Max(0, fny - 1) / 2f;
-        frameGo.transform.position = new Vector3(x + fx, y + fy, 0);
+        frameGo.transform.position = new Vector3(worldX + fx, worldY + fy, 0);
 
         int unlitLayer = GetUnlitLayer();
         if (unlitLayer >= 0) frameGo.layer = unlitLayer;
-        frameSr = frameGo.AddComponent<SpriteRenderer>();
+        SpriteRenderer sr = frameGo.AddComponent<SpriteRenderer>();
         Material unlitMat = GetUnlitOverlayMaterial();
-        if (unlitMat != null) frameSr.sharedMaterial = unlitMat;
+        if (unlitMat != null) sr.sharedMaterial = unlitMat;
         // Default to the construct frame so the SR always has a valid sliced sprite.
         // RefreshColor swaps to the deconstruct sprite when appropriate.
-        frameSr.sprite = GetConstructFrameSprite();
-        frameSr.drawMode = SpriteDrawMode.Sliced;
-        frameSr.size = new Vector2(fnx, Mathf.Max(1, fny));
-        frameSr.sortingOrder = 101; // above the blueprint sprite (100)
+        sr.sprite = GetConstructFrameSprite();
+        sr.drawMode = SpriteDrawMode.Sliced;
+        sr.size = new Vector2(fnx, Mathf.Max(1, fny));
+        sr.sortingOrder = 101; // above the blueprint sprite (100)
+        return sr;
     }
 
     // Multiplicative red tint applied to the underlying structure's sprite while a deconstruct
@@ -250,13 +339,13 @@ public class Blueprint {
 
         // Frame: red sprite for deconstruct, blue sprite otherwise. Half alpha when suspended
         // or disabled so the inactive state still reads but doesn't compete with active blueprints.
-        if (frameSr != null) {
-            frameSr.sprite = state == BlueprintState.Deconstructing
-                ? GetDeconstructFrameSprite()
-                : GetConstructFrameSprite();
-            float a = (disabled || IsSuspended()) ? 0.5f : 1f;
-            frameSr.color = new Color(1f, 1f, 1f, a);
-        }
+        Sprite frameSprite = state == BlueprintState.Deconstructing
+            ? GetDeconstructFrameSprite()
+            : GetConstructFrameSprite();
+        float frameAlpha = (disabled || IsSuspended()) ? 0.5f : 1f;
+        Color frameColor = new Color(1f, 1f, 1f, frameAlpha);
+        if (frameSr != null)        { frameSr.sprite        = frameSprite; frameSr.color        = frameColor; }
+        if (frameSrPartner != null) { frameSrPartner.sprite = frameSprite; frameSrPartner.color = frameColor; }
 
         // Tint the underlying structure red for deconstruct blueprints. Applied every RefreshColor
         // so it's idempotent and works on the load path too. Restored in Destroy() on cancel.
@@ -344,6 +433,14 @@ public class Blueprint {
                 if (node != null && !node.standable) return true;
             }
         }
+        // Two-click placements (rope bridges) own a second tile that the anchor
+        // footprint loop above doesn't cover. The partner post needs the same
+        // standability gate or a mined-out support there would silently let the
+        // blueprint complete and float a post on empty air.
+        if (IsTwoClick) {
+            Node partner = World.instance.graph.nodes[x2.Value, y2.Value];
+            if (partner != null && !partner.standable) return true;
+        }
         return false;
     }
 
@@ -358,7 +455,10 @@ public class Blueprint {
                 if (tile.structs[d] != null) { structure = tile.structs[d]; break; }
         }
         if (structure == null) return null;
-        Blueprint bp = new Blueprint(structure.structType, tile.x, tile.y, structure.mirrored, autoRegister: false, rotation: structure.rotation, shapeIndex: structure.shapeIndex);
+        // Anchor the bp at the structure's origin, NOT the clicked tile. For multi-tile
+        // buildings every footprint tile points at the same Structure, so right-clicking
+        // the middle/right cell of a 3-wide burrow would otherwise spawn a footprint-shifted bp.
+        Blueprint bp = new Blueprint(structure.structType, structure.x, structure.y, structure.mirrored, autoRegister: false, rotation: structure.rotation, shapeIndex: structure.shapeIndex);
         bp.state = BlueprintState.Deconstructing;
         // RefreshColor hides the blueprint's duplicate sprite and applies a red multiplicative tint
         // to the underlying structure's SR — so growth stages and other live sprite changes keep
@@ -428,13 +528,47 @@ public class Blueprint {
         foreach (var stack in inv.itemStacks)
             if (stack.item != null && stack.quantity > 0)
                 inv.Produce(stack.item, -stack.quantity);
-        // Capture tile products before Construct() changes the tile type. Triggered when this
-        // blueprint will mine its tile — either the legacy isTile mine-tile (`empty`) or any
-        // structure placed inside a solid tile (mineshaft, future variants).
+        // Capture tile products before Construct() either changes or hides the tile. Three trigger
+        // paths: (a) the legacy isTile mine-tile (`empty`); (b) any structure placed inside a solid
+        // tile (mineshaft); (c) a `preservesTile` structure that leaves the tile alone visually but
+        // still yields its materials (burrow). The first two consume a single anchor tile. The
+        // preserve path walks the full footprint so multi-tile excavators (burrow: 3× dirt) yield
+        // one tile's worth of products per footprint tile.
         bool minesTile = (structType.isTile && structType.name == "empty") || structType.requiresSolidTilePlacement;
-        if (minesTile && tile.type.products != null)
+        if (minesTile && tile.type.products != null) {
             pendingOutput = new List<ItemQuantity>(tile.type.products);
-        StructController.instance.Construct(structType, tile, mirrored, rotation, shapeIndex);
+        } else if (structType.preservesTile) {
+            int fnx = structType.HasShapes ? Shape.nx : structType.nx;
+            int fny = structType.HasShapes ? Shape.ny : Mathf.Max(1, structType.ny);
+            pendingOutput = new List<ItemQuantity>();
+            World w = World.instance;
+            for (int dy = 0; dy < fny; dy++) {
+                for (int dx = 0; dx < fnx; dx++) {
+                    Tile t = w.GetTileAt(tile.x + dx, tile.y + dy);
+                    if (t == null || t.type.products == null) continue;
+                    foreach (var p in t.type.products)
+                        pendingOutput.Add(new ItemQuantity(p.item, p.quantity));
+                }
+            }
+        }
+        // Two-click placement: materialise BOTH posts atomically, each handed
+        // the OTHER's coords as its partner. The second Construct's OnPlaced
+        // finds the first BridgePost already in place and spins up the
+        // RopeBridge linking them.
+        //
+        // Mirror is geometry-driven, not player-driven: the LEFT post (smaller
+        // x) is mirrored so its pole faces right toward the bridge; the RIGHT
+        // post stays un-mirrored so its pole faces left. Overrides whatever
+        // `mirrored` field the BuildPanel had set — for bridges that flag is
+        // meaningless since the rope dictates orientation.
+        if (IsTwoClick) {
+            Tile tileB = World.instance.GetTileAt(x2.Value, y2.Value);
+            bool aIsLeft = x <= x2.Value;
+            StructController.instance.Construct(structType, tile,  aIsLeft,  rotation, shapeIndex, x2.Value, y2.Value);
+            StructController.instance.Construct(structType, tileB, !aIsLeft, rotation, shapeIndex, x,         y);
+        } else {
+            StructController.instance.Construct(structType, tile, mirrored, rotation, shapeIndex);
+        }
         // Passive research gain from constructing a tech-gated building.
         // No-op for ungated structures (floors, walls, etc.).
         ResearchSystem.instance?.AddConstructionProgress(structType.name);
@@ -466,7 +600,18 @@ public class Blueprint {
         // Destroy the structure at the slot this bp targets. structType.depth maps 1:1
         // to tile.structs[] index, so we always remove the structure that matches the
         // bp — even on multi-structure tiles where slot 0 is occupied by something else.
-        tile.structs[structType.depth]?.Destroy();
+        // Capture `preservesTile` before Destroy clears the slot — for burrow (and any future
+        // hole-style building) the dirt tiles get rewritten to empty AFTER destroy so the
+        // visual result matches "the roof was dug away and the hole collapsed inward".
+        Structure removed = tile.structs[structType.depth];
+        bool preservesTile = removed != null && removed.structType.preservesTile;
+        int preservedFnx = structType.HasShapes ? Shape.nx : structType.nx;
+        int preservedFny = structType.HasShapes ? Shape.ny : Mathf.Max(1, structType.ny);
+        removed?.Destroy();
+        if (preservesTile) {
+            World.instance.SetFootprintTileType(tile.x, tile.y, preservedFnx, preservedFny,
+                Db.tileTypeByName["empty"]);
+        }
         // remove blueprint
         ClearBlueprintFromTiles();
         GameObject.Destroy(go);
@@ -557,6 +702,9 @@ public class Blueprint {
         for (int dy = 0; dy < fny; dy++)
             for (int dx = 0; dx < fnx; dx++)
                 World.instance.GetTileAt(x + dx, y + dy)?.SetBlueprintAt(structType.depth, null);
+        // Symmetric to the two-tile claim in the ctor.
+        if (IsTwoClick)
+            World.instance.GetTileAt(x2.Value, y2.Value)?.SetBlueprintAt(structType.depth, null);
     }
 
     public string GetProgress(){ // for display string

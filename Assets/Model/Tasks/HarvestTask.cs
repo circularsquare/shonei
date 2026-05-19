@@ -5,6 +5,11 @@ using UnityEngine.EventSystems;
 using System;
 using System.Linq;
 
+// Harvests a Plant in place. Spawned from WOM Harvest orders registered by Plant
+// when it becomes harvestable.
+//
+// Queue: Go(plant tile) → Harvest → Drop(product₁) → Drop(product₂) → …
+// Reserves: Nothing (the plant itself isn't a reservable resource — harvestable flag gates it).
 public class HarvestTask : Task {
     public Tile tile;
     public HarvestTask(Animal animal, Tile tile) : base(animal){

@@ -1,19 +1,9 @@
 [
     {
-        "id": 1,
-        "name": "Excavation",
-        "description": "Learn to dig dirt pits.",
-        "prereqs": [],
-        "cost": 5,
-        "unlocks": [
-            { "type": "building", "target": "dirt pit" },
-            { "type": "job",      "target": "digger" }
-        ]
-    },{
         "id": 2,
         "name": "Mining",
         "description": "Extract stone and ores.",
-        "prereqs": [1],
+        "prereqs": [],
         "cost": 5,
         "unlocks": [
             { "type": "building", "target": "quarry" },
@@ -23,7 +13,7 @@
         "id": 4,
         "name": "Timekeeping",
         "description": "Track the passage of day and night.",
-        "prereqs": [],
+        "prereqs": [15],
         "cost": 5,
         "unlocks": [
             { "type": "building", "target": "clock" }
@@ -126,6 +116,32 @@
         "cost": 5,
         "unlocks": [
             { "type": "recipe", "target": "3" }
+        ]
+    },{
+        "id": 16,
+        "name": "Fermentation",
+        "description": "Brew rice into yeast and rice wine.",
+        "prereqs": [],
+        "cost": 5,
+        "unlocks": [
+            { "type": "building", "target": "brewery" },
+            { "type": "recipe",   "target": "40" },
+            { "type": "recipe",   "target": "41" }
+        ]
+    },{
+        "id": 15,
+        "name": "Mechanics",
+        "description": "Harness mechanical power with wheels, shafts, and flywheels.",
+        "prereqs": [],
+        "cost": 5,
+        "unlocks": [
+            { "type": "building", "target": "wheel" },
+            { "type": "building", "target": "windmill" },
+            { "type": "building", "target": "flywheel" },
+            { "type": "building", "target": "elevator" },
+            { "type": "building", "target": "power shaft" },
+            { "type": "building", "target": "power shaft turn" },
+            { "type": "building", "target": "power shaft 4" }
         ]
     }
 ]

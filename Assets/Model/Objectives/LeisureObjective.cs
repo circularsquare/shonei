@@ -5,6 +5,10 @@ using UnityEngine.EventSystems;
 using System;
 using System.Linq;
 
+// Puts the animal into the Leisuring state for `duration` ticks. Used by LeisureTask
+// and ReadBookTask. AnimalStateManager.HandleLeisure ticks workProgress, optionally
+// flags isSocializing when co-seated at a socialWhenShared building, and Completes when done.
+// PoseOverride resolves the seated building's leisurePose so the animator can use a sit/lie sprite.
 public class LeisureObjective : Objective {
     public int duration;
     public bool isSocializing; // set per-tick by HandleLeisure when co-seated at a socialWhenShared building

@@ -5,6 +5,8 @@ using UnityEngine.EventSystems;
 using System;
 using System.Linq;
 
+// Parks the animal in Working state to harvest a plant. AnimalStateManager.HandleWorking
+// ticks progress and calls task.Complete() when harvesting finishes.
 public class HarvestObjective : Objective {
     private Plant plant;
     public HarvestObjective(Task task, Plant plant) : base(task) {

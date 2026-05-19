@@ -13,19 +13,18 @@ using UnityEngine;
 // Sky-layer sprite — at night the haze dims along with the rest of the sky.
 //
 // ── Scene wiring ───────────────────────────────────────────────────────
-// Lives as a child of SkyCamera (same parent as SkyGradient). The component
-// finds its camera via transform.parent. Default sortingOrder = 10 in the
-// Background sortingLayer — in front of the cloud layer (0) but still
-// within the Sky-camera's Background pass.
+// Lives as a child of SkyCamera (same parent as SkyGradient). Default
+// sortingOrder = 10 in the Background sortingLayer — in front of the cloud
+// layer (0) but still within the Sky-camera's Background pass.
 //
 // ── NormalsCapture interaction ─────────────────────────────────────────
 // The texture alpha is `opacity` (> 0.1 by default) so NormalsCapture does
 // not clip; it overwrites the underlying normals contribution with this
 // sprite's flat normal at the directionalOnly shadowAlpha. That's fine
 // here because the hills and clouds underneath also use flat camera-facing
-// normals (see BackgroundLayer's `_flatNormalTex` MPB binding and the
-// flattened cloud normalRT), so the lit result is unchanged.
-public class HazeLayer : MonoBehaviour {
+// normals (see BackgroundLayer's flat normal MPB binding and the flattened
+// cloud normalRT), so the lit result is unchanged.
+public class HazeLayer : SkyLayerBase {
     [Range(0f, 1f)]
     [Tooltip("Per-pixel alpha of the haze overlay. Higher = stronger sky tint over hills/clouds.")]
     [SerializeField] float opacity = 0.15f;
@@ -39,25 +38,14 @@ public class HazeLayer : MonoBehaviour {
     [Tooltip("Must match SkyGradient's sortingLayerName so the haze renders in the same group as the sky/hills/clouds.")]
     [SerializeField] string sortingLayerName = "Background";
 
-    Camera bgCam;
     SpriteRenderer sr;
     Texture2D gradTex;
     Color[] pixels;
-    static Texture2D _flatNormalTex;
+    MaterialPropertyBlock mpb;
 
     static readonly int NormalMapId = Shader.PropertyToID("_NormalMap");
 
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetStatics() { _flatNormalTex = null; }
-
-    void Start() {
-        bgCam = transform.parent != null ? transform.parent.GetComponent<Camera>() : null;
-        if (bgCam == null) {
-            Debug.LogError("HazeLayer: parent must be a Camera (SkyCamera). Disabling.");
-            enabled = false;
-            return;
-        }
-
+    protected override void BuildContents() {
         var srGo = new GameObject("HazeLayerSR");
         srGo.transform.SetParent(transform, worldPositionStays: false);
         srGo.layer = gameObject.layer;
@@ -71,7 +59,7 @@ public class HazeLayer : MonoBehaviour {
             hideFlags  = HideFlags.HideAndDontSave,
         };
         // PPU=1 → native sprite size is (1, textureHeight); localScale.y is
-        // divided by textureHeight in LateUpdate to land at (w, h) world units.
+        // divided by textureHeight in DoLateUpdate to land at (w, h) world units.
         // See the "Sprite PPU pitfall" note in SkyGradient.cs.
         sr.sprite = Sprite.Create(gradTex, new Rect(0, 0, 1, textureHeight),
                                   new Vector2(0.5f, 0.5f), pixelsPerUnit: 1f);
@@ -83,14 +71,21 @@ public class HazeLayer : MonoBehaviour {
         // this MPB, the lit material would sample Unity's default white 1×1
         // texture and decode an off-axis normal that disagrees with everything
         // underneath the haze.
-        var mpb = new MaterialPropertyBlock();
+        mpb = new MaterialPropertyBlock();
         sr.GetPropertyBlock(mpb);
-        mpb.SetTexture(NormalMapId, GetFlatNormalTex());
+        mpb.SetTexture(NormalMapId, SpriteMaterialUtil.FlatNormalTex);
         sr.SetPropertyBlock(mpb);
     }
 
-    void LateUpdate() {
-        if (sr == null || bgCam == null) return;
+    protected override void DoLateUpdate() {
+        // Re-apply the MPB binding each frame — editor events (sprite
+        // reimport, material refresh) can clear it silently. Without
+        // _NormalMap, NormalsCapture sees the default white texture
+        // and decodes an off-axis normal that disagrees with the
+        // hills/clouds underneath.
+        sr.GetPropertyBlock(mpb);
+        mpb.SetTexture(NormalMapId, SpriteMaterialUtil.FlatNormalTex);
+        sr.SetPropertyBlock(mpb);
 
         // Match the SkyCamera frustum (same scaling pattern as SkyGradient).
         float h = bgCam.orthographicSize * 2f;
@@ -115,19 +110,5 @@ public class HazeLayer : MonoBehaviour {
 
     void OnDestroy() {
         if (gradTex != null) Destroy(gradTex);
-    }
-
-    static Texture2D GetFlatNormalTex() {
-        if (_flatNormalTex != null) return _flatNormalTex;
-        _flatNormalTex = new Texture2D(1, 1, TextureFormat.RGBA32, mipChain: false) {
-            filterMode = FilterMode.Point,
-            wrapMode   = TextureWrapMode.Clamp,
-            hideFlags  = HideFlags.HideAndDontSave,
-        };
-        // (0.5, 0.5, 1.0) decodes via (rgb*2 - 1) to (0, 0, 1) — a
-        // tangent-space normal pointing straight at the camera.
-        _flatNormalTex.SetPixel(0, 0, new Color(0.5f, 0.5f, 1.0f, 1.0f));
-        _flatNormalTex.Apply();
-        return _flatNormalTex;
     }
 }

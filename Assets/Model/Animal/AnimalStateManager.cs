@@ -57,7 +57,7 @@ public class AnimalStateManager {
             Tile here = animal.TileHere();
             if (here != null && AnimalController.instance.AnyOtherAnimalOnTile(here, animal)) {
                 if (animal.random.NextDouble() < 0.70) {
-                    Tile dest = PickRandomNavNeighbour(here);
+                    Tile dest = PickRandomNavNeighbour(animal.PathStartNode());
                     if (dest != null) {
                         animal.task = new GoTask(animal, dest);
                         if (!animal.task.Start()) animal.task = null;
@@ -68,7 +68,7 @@ public class AnimalStateManager {
             // Random walking when nothing else to do — prefer tiles without mice,
             // only consider direct nav-graph neighbours (no detours via ladders etc.)
             if (here != null && animal.random.Next(0, 5) == 0) {
-                Tile dest = PickRandomNavNeighbour(here);
+                Tile dest = PickRandomNavNeighbour(animal.PathStartNode());
                 if (dest != null) {
                     animal.task = new GoTask(animal, dest);
                     if (!animal.task.Start()) animal.task = null;
@@ -77,12 +77,16 @@ public class AnimalStateManager {
         }
     }
 
-    // Returns a random direct nav-graph neighbour tile (no waypoints).
-    // Prefers tiles with no other animals; returns null if none are available.
-    private Tile PickRandomNavNeighbour(Tile here) {
+    // Returns a random tile-backed standable neighbour reachable from `startNode`,
+    // skipping waypoints and tiles occupied by other animals. Caller passes the
+    // mouse's logical position node (Animal.PathStartNode) so a mouse standing on an
+    // interior waypoint inside a building can pick the door approach as its step out —
+    // the interior tile's grid node has no graph edges and would always return null.
+    private Tile PickRandomNavNeighbour(Node startNode) {
+        if (startNode == null) return null;
         var ac = AnimalController.instance;
         List<Tile> candidates = null;
-        foreach (Node n in here.node.neighbors) {
+        foreach (Node n in startNode.neighbors) {
             if (n.isWaypoint || n.tile == null || !n.standable) continue;
             if (ac.AnyOtherAnimalOnTile(n.tile, animal)) continue;
             if (candidates == null) candidates = new List<Tile>();
@@ -298,22 +302,22 @@ public class AnimalStateManager {
 
     private void HandleEeping() {
         animal.eeping.Eep(1f, animal.AtHome());
-        // reproduction: logistic growth, gated by population, housing capacity, and food supply
-        if (animal.AtHome()) {
-            AnimalController ac = AnimalController.instance;
-            if (ac.na < ac.populationCapacity && ac.na < ac.totalHousingCapacity) {
-                // Require global food > 4 × population before allowing births
-                int totalFood = 0;
-                GlobalInventory ginv = GlobalInventory.instance;
-                foreach (Item food in Db.edibleItems) totalFood += ginv.Quantity(food);
-                // Guard the birth roll only — must not early-return, the wake-up check below runs every tick.
-                if (totalFood > ac.na * 400) { // 4 liang per mouse (400 fen)
-                    float p = ac.na;
-                    float pmax = ac.populationCapacity;
-                    float birthChance = MaxBirthChancePerSleepTick * (pmax - p) / pmax;
-                    if ((float)animal.random.NextDouble() < birthChance) {
-                        ac.AddAnimal(animal.x, animal.y);
-                    }
+        // reproduction: logistic growth, gated by population, housing capacity, and food supply.
+        // Any sleeping mouse can trigger a birth as long as some house anywhere has a free slot —
+        // the sleeper doesn't need to be in their own home.
+        AnimalController ac = AnimalController.instance;
+        if (ac.na < ac.populationCapacity && ac.na < ac.totalHousingCapacity) {
+            // Require global food > 4 × population before allowing births
+            int totalFood = 0;
+            GlobalInventory ginv = GlobalInventory.instance;
+            foreach (Item food in Db.edibleItems) totalFood += ginv.Quantity(food);
+            // Guard the birth roll only — must not early-return, the wake-up check below runs every tick.
+            if (totalFood > ac.na * 400) { // 4 liang per mouse (400 fen)
+                float p = ac.na;
+                float pmax = ac.populationCapacity;
+                float birthChance = MaxBirthChancePerSleepTick * (pmax - p) / pmax;
+                if ((float)animal.random.NextDouble() < birthChance) {
+                    ac.AddAnimal(animal.x, animal.y);
                 }
             }
         }
@@ -419,7 +423,13 @@ public class AnimalStateManager {
             Debug.LogError($"{animal.name} is out of bounds at ({animal.x}, {animal.y})!");
             if (animal.state != AnimalState.Falling) animal.nav.Fall();
         } else if (!animal.nav.preventFall && !tileHere.node.standable
-            && animal.state != AnimalState.Falling) {
+            && animal.state != AnimalState.Falling
+            && animal.insideBuilding == null) {
+            // insideBuilding gate: when a mouse has crossed a door, the building's interior
+            // waypoint supports them logically — the tile underneath may be solid (burrow's
+            // preserved dirt) or otherwise non-standable, but that's expected. Without this
+            // gate, eeping mice inside a burrow get instantly Fall()-ed and snapped up to
+            // the surface above the bank.
             animal.nav.Fall();
         }
         if (animal.state == AnimalState.Falling) {

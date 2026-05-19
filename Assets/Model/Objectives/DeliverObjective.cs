@@ -5,6 +5,8 @@ using UnityEngine.EventSystems;
 using System;
 using System.Linq;
 
+// Navigates to a destination tile and drops the carried item there (onto whatever
+// floor/inventory accepts it via Animal.DropItem). Used by ConsolidateTask.
 public class DeliverObjective : Objective { // navigates and drops off item
     private ItemQuantity iq;
     private Tile destination;

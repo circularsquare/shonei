@@ -251,7 +251,30 @@ public class WaterController : MonoBehaviour {
         UpdateSurfaceMask();
     }
 
-    // One cellular-automaton step.
+    // Runs SimulateStep up to maxSteps times, exiting early when the step's
+    // total transfer count drops to moveThreshold or below. Refreshes the
+    // surface mask once at the end. Used by WorldController.GenerateDefault
+    // so a freshly-generated world's water is settled before the player sees
+    // it — uniform-level gen-time placement still leaks across worm tunnels
+    // and pool-carve seams that the live CA would otherwise need a few real
+    // ticks to drain.
+    //
+    // moveThreshold = 0 disables early exit. moveThreshold > 0 stops on the
+    // first step whose total moved water units is at or below the threshold;
+    // staircase artefacts that pass 3 chips away one unit per step show up
+    // as small persistent moves, so anything in single digits is "settled".
+    public void Settle(int maxSteps, int moveThreshold) {
+        for (int i = 0; i < maxSteps; i++) {
+            int moves = SimulateStep();
+            if (moves <= moveThreshold) break;
+        }
+        UpdateSurfaceMask();
+    }
+
+    // One cellular-automaton step. Returns the total water units transferred
+    // across all three passes — used by Settle() to detect convergence; live
+    // TickUpdate calls discard the return.
+    //
     // Pass 1 (bottom-to-top): pour water straight down into the tile below.
     // Pass 2 (bottom-to-top, alternating L/R): equalize with one horizontal neighbor (diff/2).
     // Pass 3 (same direction as Pass 2): look-ahead equalization for diff-1 slopes.
@@ -260,8 +283,9 @@ public class WaterController : MonoBehaviour {
     //   from that elevated source to the low tile, flattening the slope step by step.
     //   This prevents CA water from getting permanently stuck in a visible staircase.
     // Integer math guarantees volume conservation throughout.
-    private void SimulateStep() {
+    private int SimulateStep() {
         World world = World.instance;
+        int moves = 0;
 
         // Pass 1 — Fall
         for (int y = 1; y < world.ny; y++) {
@@ -276,6 +300,7 @@ public class WaterController : MonoBehaviour {
                 if (flow <= 0) continue;
                 tile.water  -= (ushort)flow;
                 below.water += (ushort)flow;
+                moves += flow;
             }
         }
 
@@ -298,6 +323,7 @@ public class WaterController : MonoBehaviour {
                 int flow = (tile.water - neighbor.water) / 2;
                 if (flow <= 0) continue;
                 tile.water -= (ushort)flow;
+                moves += flow;
 
                 // Diagonal fall: if the tile below the neighbor has space,
                 // send as much of the flow downward as possible instead of
@@ -347,6 +373,7 @@ public class WaterController : MonoBehaviour {
                     if (far.water >= tile.water + 2) {
                         tile.water++;
                         far.water--;
+                        moves++;
                         break;
                     }
                     if (far.water < tile.water + 1) break;
@@ -355,6 +382,7 @@ public class WaterController : MonoBehaviour {
         }
 
         flipDir = !flipDir;
+        return moves;
     }
 
     // Builds the R8 surface mask and uploads it to the GPU. Called every 0.2 s.

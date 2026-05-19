@@ -11,7 +11,8 @@ using UnityEngine;
 //   Per 1 s    (in-game s.) — RainUptakePerSecond() : adds a 1/TicksPerInGameHour slice
 //                             of the hourly rain rate to non-capped soil.
 //                           — SeepPerSecond() : water→soil neighbour absorption. Drains
-//                             actual water from the source tile (1 water → 10 moisture).
+//                             actual water from the source tile (1 water → 20 moisture,
+//                             billed via per-soil debt so water drains at sub-unit rate).
 //   Per 10 s   (in-game hr) — HourlyUpdate() : single snapshot-and-sweep that does
 //                             • soil-to-soil diffusion (capillary spread) on every solid tile
 //                             • evaporation on non-capped soil only
@@ -33,14 +34,19 @@ public class MoistureSystem {
     private const int  MoistureEvaporationPerHour = 1;      // non-capped soil only
     private const float MoistureDiffusionPerHour  = 0.05f;  // fraction of neighbour gap pulled per in-game hour (5%)
 
-    // Per-second seep budget: at most N water units drain from the wettest water neighbour
-    // per soil tile per second, each buying GainPerWater moisture. A full WaterMax-filled
-    // neighbour next to a dry soil tile therefore takes ~10 s to saturate that soil, and
-    // a 1-tile pond next to 4 solid tiles drains in ~(WaterMax/4) seconds under load.
-    private const int  MoistureSeepWaterPerSec    = 1;
-    private const int  MoistureSeepGainPerWater   = 10;
+    // Per-second seep budget:
+    //   • MoistureSeepMoisturePerSec — soil absorption rate cap (moisture/tile/sec). This
+    //     governs how fast a dry soil tile saturates from a wet neighbour (~10 s at 10/sec).
+    //   • MoistureSeepGainPerWater — moisture yield per 1 unit of water drained. Decoupled
+    //     from the absorption rate via a per-tile debt accumulator (`_seepDebt`): each tick's
+    //     absorbed moisture credits to the soil's debt, and only every whole GainPerWater of
+    //     debt cashes out as 1 water from the source. With GainPerWater > MoisturePerSec the
+    //     source drains at a sub-unit-per-second rate (e.g. 20/10 = 1 water per 2 s/soil).
+    private const int  MoistureSeepMoisturePerSec = 10;
+    private const int  MoistureSeepGainPerWater   = 20;
 
     private byte[] _moistureSnapshot;                       // reused per HourlyUpdate; lazy-init
+    private int[]  _seepDebt;                               // per-tile absorbed-but-unpaid moisture; flushes to water in whole GainPerWater chunks
 
     public static MoistureSystem Create() {
         instance = new MoistureSystem();
@@ -48,14 +54,19 @@ public class MoistureSystem {
     }
 
     // Per-second water→soil seep. Each solid tile with headroom pulls from its wettest
-    // 4-orthogonal water neighbour, converting MoistureSeepWaterPerSec water units into
-    // MoistureSeepGainPerWater moisture each. Partial fills (when soil is near
-    // saturation) still pay the same water-per-moisture-added ratio — no free moisture.
-    // Sweep-direction bias is accepted (minor: drain is 1 water/sec per pair).
+    // 4-orthogonal water neighbour and absorbs up to MoistureSeepMoisturePerSec moisture.
+    // Payment is debt-amortised via _seepDebt: each tick's absorbed moisture credits to
+    // the soil's debt; only every whole MoistureSeepGainPerWater of accumulated debt
+    // cashes out as 1 water drained from the source. This lets water drain at sub-unit-
+    // per-second rate (yield/rate = 2 today → ~1 water per 2 s per soil) without giving
+    // the soil free moisture in the long run. If the source runs dry mid-cycle we cap
+    // absorption so leftover debt stays below one whole water unit — no free overrun.
+    // Sweep-direction bias is accepted (minor).
     public void SeepPerSecond() {
         World world = World.instance;
         int nx = world.nx, ny = world.ny;
-        int maxThisTick = MoistureSeepWaterPerSec * MoistureSeepGainPerWater;
+        int cells = nx * ny;
+        if (_seepDebt == null || _seepDebt.Length != cells) _seepDebt = new int[cells];
 
         for (int x = 0; x < nx; x++) {
             for (int y = 0; y < ny; y++) {
@@ -67,17 +78,27 @@ public class MoistureSystem {
                 Tile src = PickWettestWaterNeighbor(world, x, y);
                 if (src == null) continue;
 
-                int desiredAdd = headroom < maxThisTick ? headroom : maxThisTick;
-                // Ceil-divide so a partial-fill soil still pays the same rate.
-                int waterCost = (desiredAdd + MoistureSeepGainPerWater - 1) / MoistureSeepGainPerWater;
-                if (waterCost > src.water) waterCost = src.water;
-                if (waterCost <= 0) continue;
+                int idx        = y * nx + x;
+                int desiredAdd = headroom < MoistureSeepMoisturePerSec ? headroom : MoistureSeepMoisturePerSec;
+                int newDebt    = _seepDebt[idx] + desiredAdd;
+                int waterCost  = newDebt / MoistureSeepGainPerWater;
 
-                int actualAdd = waterCost * MoistureSeepGainPerWater;
-                if (actualAdd > headroom) actualAdd = headroom;
+                // Source can't fully cover. Drain what's available and cap absorption so
+                // leftover debt stays in [0, GainPerWater). Anything we'd otherwise absorb
+                // past that bound would be unpaid moisture.
+                if (waterCost > src.water) {
+                    waterCost = src.water;
+                    int maxDebtAfter = (waterCost + 1) * MoistureSeepGainPerWater - 1;
+                    if (newDebt > maxDebtAfter) {
+                        desiredAdd -= newDebt - maxDebtAfter;
+                        newDebt     = maxDebtAfter;
+                    }
+                }
+                if (desiredAdd <= 0) continue;
 
-                src.water     -= (ushort)waterCost;
-                tile.moisture  = (byte)(tile.moisture + actualAdd);
+                if (waterCost > 0) src.water -= (ushort)waterCost;
+                _seepDebt[idx] = newDebt - waterCost * MoistureSeepGainPerWater;
+                tile.moisture  = (byte)(tile.moisture + desiredAdd);
             }
         }
     }
@@ -229,5 +250,6 @@ public class MoistureSystem {
                 world.GetTileAt(x, y).moisture = 0;
             }
         }
+        if (_seepDebt != null) System.Array.Clear(_seepDebt, 0, _seepDebt.Length);
     }
 }

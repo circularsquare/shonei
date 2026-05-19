@@ -9,6 +9,11 @@ using UnityEngine;
 // slots draw in a stable, predictable order above the building base sprite. Within-slot
 // updates (decay-out → empty → reinstall) preserve the GameObject; we just swap the sprite.
 //
+// Per-slot position: when the StructType declares furnishingSlotPositions[i], slot i's
+// renderer is offset by (dx, dy) from the building's anchor (with mirroring applied —
+// dx becomes nx-1-dx on mirrored buildings). Missing/short positions array → (0,0)
+// (slot draws on the anchor tile, the legacy behaviour).
+//
 // Wiring: AddComponent'd in Building.AttachAnimations() when furnishingSlots != null.
 // The Building wires onSlotChanged → its own handler, which calls this.Refresh(slotIndex)
 // via GetComponent. We don't subscribe to onSlotChanged directly here — Building owns
@@ -60,7 +65,16 @@ public class FurnishingVisuals : MonoBehaviour {
         if (slotGOs[slotIndex] == null) {
             GameObject sgo = new GameObject($"furnish_{owner.furnishingSlots.slotNames[slotIndex]}");
             sgo.transform.SetParent(transform, true);
-            sgo.transform.position = new Vector3(owner.x, owner.y, 0f);
+            // Resolve per-slot offset from StructType.furnishingSlotPositions, with mirroring.
+            int ox = 0, oy = 0;
+            var positions = owner.structType.furnishingSlotPositions;
+            if (positions != null && slotIndex < positions.Length && positions[slotIndex] != null) {
+                int dx = positions[slotIndex].dx;
+                if (owner.mirrored) dx = owner.structType.nx - 1 - dx;
+                ox = dx;
+                oy = positions[slotIndex].dy;
+            }
+            sgo.transform.position = new Vector3(owner.x + ox, owner.y + oy, 0f);
             SpriteRenderer sr = SpriteMaterialUtil.AddSpriteRenderer(sgo);
             sr.sortingOrder = parentOrder + 1 + slotIndex;
             LightReceiverUtil.SetSortBucket(sr);

@@ -109,6 +109,7 @@ public static class SpriteMaterialUtil {
     static bool _probedLit;
     static Material _cachedPlant;
     static bool _probedPlant;
+    static Texture2D _flatNormalTex;
 
     // Reload-Domain-off support: cached Material refs survive across play sessions
     // but the underlying Unity objects don't. Without this, _probedLit stays true,
@@ -118,6 +119,7 @@ public static class SpriteMaterialUtil {
     static void ResetStatics() {
         _cachedLit = null; _probedLit = false;
         _cachedPlant = null; _probedPlant = false;
+        _flatNormalTex = null;
     }
 
     // Loaded once from Resources/Materials/Sprite.mat. Null = asset missing;
@@ -171,6 +173,27 @@ public static class SpriteMaterialUtil {
         var mat = PlantSpriteMaterial ?? LitSpriteMaterial;
         if (mat != null) sr.sharedMaterial = mat;
         return sr;
+    }
+
+    // Shared 1×1 flat-normal texture for Sky-layer sprites that want
+    // NormalsCapture to see a uniform camera-facing normal (so
+    // LightSun contributes constant brightness rather than per-pixel
+    // sun shading). RGBA32 pixel (0.5, 0.5, 1.0) decodes via
+    // (rgb*2 - 1) → (0, 0, 1) — tangent-space normal at the camera.
+    // Lazy-init and cached across the play session; HideAndDontSave
+    // so it doesn't leak into scene saves.
+    public static Texture2D FlatNormalTex {
+        get {
+            if (_flatNormalTex != null) return _flatNormalTex;
+            _flatNormalTex = new Texture2D(1, 1, TextureFormat.RGBA32, mipChain: false) {
+                filterMode = FilterMode.Point,
+                wrapMode   = TextureWrapMode.Clamp,
+                hideFlags  = HideFlags.HideAndDontSave,
+            };
+            _flatNormalTex.SetPixel(0, 0, new Color(0.5f, 0.5f, 1.0f, 1.0f));
+            _flatNormalTex.Apply();
+            return _flatNormalTex;
+        }
     }
 }
 

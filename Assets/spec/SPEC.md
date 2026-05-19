@@ -34,7 +34,7 @@ Assets/
 │   ├── Animal/        Animal + state machine + Nav + needs (Eating, Eeping, Happiness, Skills)
 │   ├── Structure/     Structure base + Building/Plant subclasses (Windmill, Quarry, PumpBuilding, Flywheel, MouseWheel, MarketBuilding, PowerShaft, …) + Blueprint + StructType + StructureVisuals
 │   └── Inventory/     Inventory, GlobalInventory, ItemStack, Item
-├── Components/    Single-purpose MonoBehaviours: UI widgets (FillBar, ItemIcon) and building-attached visuals (ClockHand, RotatingPart, PortStubVisuals)
+├── Components/    Single-purpose MonoBehaviours: UI widgets (FillBar, ItemIcon) and building-attached visuals (RotatingPart, PortStubVisuals)
 ├── UI/            Panels, displays, tooltip system, InfoViews/ for the tabbed InfoPanel
 ├── Lighting/      Custom ScriptableRendererFeature lighting pipeline (shaders + SkyExposure + BackgroundTile)
 ├── Editor/        Editor-only tools (sheet splitters, sprite normal map generator)

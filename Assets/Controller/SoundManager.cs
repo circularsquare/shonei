@@ -63,7 +63,7 @@ public class SoundManager : MonoBehaviour {
 
     // --- SFX ---
 
-    /// Play a one-shot clip from Resources/Audio/SFX/{clipName}.
+    // Play a one-shot clip from Resources/Audio/SFX/{clipName}.
     public void PlaySFX(string clipName) {
         AudioClip clip = GetClip("Audio/SFX/" + clipName);
         if (clip == null) {

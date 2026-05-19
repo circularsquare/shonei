@@ -37,8 +37,8 @@ There is no "active research" concept — study is the only control. Multiple sc
 Each technology can grant multiple unlocks of mixed types. See SPEC-data.md for the full field schema.
 
 ```json
-{ "id": 1, "name": "Excavation", "prereqs": [], "cost": 5,
-  "unlocks": [ { "type": "building", "target": "dirt pit" } ] }
+{ "id": 2, "name": "Mining", "prereqs": [], "cost": 5,
+  "unlocks": [ { "type": "building", "target": "quarry" } ] }
 ```
 
 Unlock entry `type` is one of `"building"`, `"recipe"`, or `"job"`. For recipes, `target` is the recipe id as a string.

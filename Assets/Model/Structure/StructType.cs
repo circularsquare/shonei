@@ -48,6 +48,27 @@ public class InteriorTile {
     public int dy {get; set;}
 }
 
+// Furnishing slot position: where in the building footprint to render an
+// installed furnishing item. Parallel to StructType.furnishingSlotNames —
+// entry i gives the render offset for slot i. Mirroring flips dx via nx-1-dx
+// at lookup time (FurnishingVisuals.Refresh).
+public class FurnishingSlotPos {
+    public int dx {get; set;}
+    public int dy {get; set;}
+}
+
+// Ladder: an explicit vertical connection between two interior tiles within a
+// building's footprint. (dx, dy) is the BOTTOM tile; the edge connects to the
+// interior node at (dx, dy+1). Interior nodes auto-edge horizontal neighbors
+// by default but NOT vertical ones, so vertical access requires a declaration.
+// Lets authors choose where mice climb up inside a building (e.g. "ladder on
+// the left of a 2×2 house") instead of mice climbing through walls. Mirroring
+// flips dx via nx-1-dx; dy is unaffected.
+public class Ladder {
+    public int dx {get; set;}
+    public int dy {get; set;}
+}
+
 public class TileRequirement {
     public int dx {get; set;}
     public int dy {get; set;}
@@ -160,6 +181,15 @@ public class StructType {
     // (b) StructController.Construct() mines the tile to empty after placement (alongside the
     // existing `requiredTileName` mining trigger). Used by mineshaft.
     public bool requiresSolidTilePlacement;
+    // Skip the `tile.type = empty` swap in StructController.Construct(). The footprint
+    // tiles keep their original type — grass continues, snow accumulates, water still
+    // blocked, tile-graph solidity unchanged — and the structure renders in front of
+    // them as if it were a hole carved out. Yield path still fires: Blueprint.Complete
+    // captures each footprint tile's tile.type.products into pendingOutput so the
+    // player still receives the materials. Used by burrow (a hole into a dirt bank).
+    // Authors set this on structures with `requiredTileName` or `requiresSolidTilePlacement`
+    // that should preserve the underlying tile visually + physically.
+    public bool preservesTile {get; set;}
     // Optional name of an additional Structure to place on the tile after Construct() completes.
     // Resolved via Db.structTypeByName at construction time. Used by structures that bundle a
     // follow-up structure with their placement (mineshaft → ladder). Null = no extra placement.
@@ -181,6 +211,12 @@ public class StructType {
     // See SPEC-systems.md and FurnishingSlots.cs.
     public bool hasFurnishingSlots {get; set;}
     public string[] furnishingSlotNames {get; set;}
+    // Per-slot render offsets within the building footprint. Parallel to
+    // furnishingSlotNames — entry i is where slot i's installed item draws.
+    // Null/short → that slot defaults to (0,0) (the anchor tile). Authoring
+    // these lets multi-tile housing place cloth/stool on different interior
+    // tiles instead of stacked at the origin.
+    public FurnishingSlotPos[] furnishingSlotPositions {get; set;}
 
     // ── Door + interior ───────────────────────────────────────────────
     // Housing (and future enterable production buildings) declare interior tiles and
@@ -191,6 +227,7 @@ public class StructType {
     // Mirror handling lives in Structure (see Door / InteriorTile comments above).
     public Door[] doors {get; set;}
     public InteriorTile[] interiorTiles {get; set;}
+    public Ladder[] ladders {get; set;}
 
     // Canonical "this building is a place mice live." Replaces the legacy hardcoded
     // `structType.name == "house"` check that's sprinkled across Animal AI, info panels,
@@ -241,6 +278,20 @@ public class StructType {
     // tile-occupancy and placement math (footprint stays nx×ny). Rotation is purely visual
     // for most types; PowerShaft additionally derives its connectivity axis from rotation.
     public bool rotatable {get; set;}
+
+    // ── Two-click placement (rope bridge) ─────────────────────────────
+    // When `placementMethod == "twoClick"`, the player clicks two tiles to define
+    // a span — the first click drops the post here, the second click drops the
+    // partner post at the second tile and links them via a `RopeBridgeSystem`
+    // entity (waypoint chain + visuals). Costs scale linearly with horizontal
+    // delta: each post pays `ncosts × (dx / minDx)`. minDx / maxDx clamp the
+    // bridge length and maxDy clamps the vertical drop. See SPEC-systems.md
+    // §Rope bridges and `Catenary.cs` for the curve math.
+    public string placementMethod {get; set;}
+    public int minDx {get; set;}
+    public int maxDx {get; set;}
+    public int maxDy {get; set;}
+    public float sagFraction {get; set;}
 
     // Variable-shape variants. When non-null, the player cycles them with Q/E during
     // placement. shapes[0] is the "authored" baseline — `costs` are sized for it, and

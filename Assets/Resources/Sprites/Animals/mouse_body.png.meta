@@ -126,12 +126,12 @@ TextureImporter:
     edges: []
     weights: []
     secondaryTextures:
-    - texture: {fileID: 2800000, guid: f9e1b6814f0b26845a4270cabcaf1e68, type: 3}
+    - texture: {fileID: 2800000, guid: a548f4f31e55f1e4b8d0676e86037b61, type: 3}
       name: _NormalMap
     nameFileIdTable: {}
   spritePackingTag: 
   pSDRemoveMatte: 0
   pSDShowRemoveMatteOption: 0
-  userData: normalsCacheKey=aTzzqOnAUikaK0HEv0TiQQ==
+  userData: normalsCacheKey=w+i52e663Ccfj3LR2HLXeg==
   assetBundleName: 
   assetBundleVariant: 

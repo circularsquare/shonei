@@ -5,6 +5,12 @@ using UnityEngine.EventSystems;
 using System;
 using System.Linq;
 
+// Builds (or deconstructs) a blueprint. Spawned from WOM Construct/Deconstruct orders.
+//
+// Queue: Go(adjacent to blueprint) → Construct.
+// Reserves: Nothing (blueprint already holds delivered materials; no per-task reservation).
+// Initialize rejects suspended blueprints and blueprints that would cause an items-fall
+// or storage-empty hazard; for the deconstruct case it promotes hauls to clear those first.
 public class ConstructTask : Task {
     public Blueprint blueprint;
     public bool deconstructing;

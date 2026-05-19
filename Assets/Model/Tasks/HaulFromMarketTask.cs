@@ -5,6 +5,14 @@ using UnityEngine.EventSystems;
 using System;
 using System.Linq;
 
+// Merchant trip: walk to the off-screen market, receive excess goods (items above target),
+// travel back, and deliver into a home storage. Spawned from WOM HaulFromMarket orders
+// (tier 4). Round-trip travel hides the merchant during TravelingObjective phases.
+//
+// Queue: [optional food Fetch] → Go(portal) → Travel → Receive(market) → Travel → Go(storage) → Deliver.
+// Reserves: market source ItemStack, home storage space.
+// Has a resume constructor for mid-transit save/load and a FailAtMarket exit that walks
+// the merchant home instead of teleporting them idle to the portal.
 public class HaulFromMarketTask : Task {
     // Persisted for save/load so a mid-transit merchant can reconstruct the
     // receive/deliver tail on load. Set by the normal Initialize.

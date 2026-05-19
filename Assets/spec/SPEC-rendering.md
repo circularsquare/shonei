@@ -142,6 +142,11 @@ Per-side decoration rendered on top of the tile body. Today this is grass on dir
 - **Worldgen seeding**: `WorldGen.PopulateOverlays` runs after `FillDepressions` and seeds bits on every cardinal edge whose neighbour is non-solid AND non-flooded.
 - **Mining never auto-sets bits**: freshly exposed sides stay bare. The `Tile.type` setter clears `overlayMask` when transitioning to a type with no overlay (e.g. dirt → empty), so mined tiles don't carry stale data.
 - **Road suppression**: when `tile.structs[3] != null`, the tile emits no overlay quad. `Structure` ctor/`Destroy` call `Tile.NotifyOverlayDirty()` which fires `cbOverlayChanged` and dirties the affected chunk.
+- **Per-side rim suppression (`bodyEdgeSuppressMask`)**: a `byte` on `Tile` (same L=1/R=2/D=4/U=8 layout) that lets a structure mark specific sides as "draw no air-edge bevel and no overlay tuft" — without changing the tile's actual neighbour state. Used by doored `preservesTile` buildings (burrow) so the door tile doesn't show a dirt rim or grass tuft on the door side; the burrow's sprite then reads as a clean carved hole. Implementation:
+  - Body bake: `bodyCardinals = (realSolid & ~win) | overlayBits | bodyEdgeSuppressMask` — the mask bits force the buried-side slice on those sides.
+  - Overlay bake: `effective = overlayMask & ~cMask & ~bodyEdgeSuppressMask` — masked sides skip emitting a tuft.
+  - Maintenance: `Structure` ctor (for `preservesTile` buildings) ORs the door's side-bit into the door tile's mask + calls `Tile.NotifyBodyDirty()`; `Structure.Destroy` XORs the same bits back and notifies again. Refresh fires `cbBodyChanged` → `OnTileBodyChanged` marks both body **and** overlay chunks dirty (the mask affects both bakes).
+  - Self-only refresh: unlike the type-change callback, body-changed is **not** propagated to 8 neighbours — the mask is purely a self-side override; neighbours' bakes don't read it.
 - **Live growth + health state** (`OverlayGrowthSystem`): once per real-time second, dirt tiles with `moisture > 40` (when `temperature > 5°C`) and `y >= World.surfaceY[x] - 5` (within 5 below the original ground line) roll a small chance to sprout grass on each non-grassy, exposed, non-flooded L/R/U side (~½ in-game day expected wait per side). The depth gate keeps grass overlay an outdoor / shallow-skylight feature; deeper caves get mushrooms / moss via FlowerController instead. Tiles deeper than the gate skip both growth and state evolution. Bottom never grows. The same Tick also evolves a per-tile `Tile.overlayState` (Live / Dying / Dead) — death is a per-tick roll while conditions warrant it (cold/dryout → Dying, deep freeze → Dead, ~10 s steady-state average), recovery to Live is the slower fresh-grass roll. The chunked renderer maintains **one mesh per overlay state** per (chunk × tile-type): tiles in different states emit quads into different meshes, each bound to its state's atlas array (`grass` / `grass_dying` / `grass_dead`). Atlas geometry is identical across variants so per-side bit semantics are unchanged. See SPEC-systems "Soil Moisture" for the dispatch slot and full state-machine table.
 
 ### Decorative scatter (flowers, mushrooms, moss)
@@ -300,6 +305,18 @@ Three cameras render as a URP **Camera Stack**: SkyCamera is the Base, Main and 
 **Lightmap clamp in `LightComposite.shader`**: in the sprite branch (`normsAlpha ≥ 0.25`), `light.rgb` is `saturate`-clamped before the multiply. Without this, on SkyCamera at noon the cleared full-ambient + additive sun NdotL pushes channels above 1, and `skyDay × (1.2, 1.35, 1.5)` saturates per-channel at the framebuffer, crushing colored sky toward white. Clamping pre-multiply preserves hue. Project is LDR throughout, so this is a sane invariant (a "fully lit" sprite renders as its source color, no over-bright multiplier).
 
 **Sortinglayer for Sky-layer sprites**: every Sky-layer sprite *must* sit on sortingLayer **`Background`** (the cloud SRs' authored sortingLayer). Unity orders sortingLayers `Background → Default → Water → UI` (back to front) — sprites on `Default` draw *over* sprites on `Background`. SkyGradient and StarField default `sortingLayerName = "Background"` for this reason (caught when the gradient was hiding the clouds). Within `Background`: SkyGradient = -100 (back) → StarField = -50 → clouds = 0 (front).
+
+**Play-mode resilience (domain reload + asset reimport)**: every Sky-layer script that builds runtime sprite state (CloudLayer, BackgroundLayer, HazeLayer, SkyGradient, StarField — plus BackgroundTile, which lives outside this hierarchy but follows the same idea) is responsible for self-healing across two distinct editor events:
+- **Domain reload** (script recompile during Play). Non-`[SerializeField]` private fields reset to null while the serialized child SpriteRenderer / sprite GameObject survive. Without recovery, the SR keeps rendering its dummy backing texture tinted by `sr.color` — a flat coloured rectangle the exact shape of the sprite quad.
+- **Asset reimport** (e.g. user edits a sprite the game already has loaded). Unity refreshes the asset DB without nulling the runtime C# refs, but it silently clears the SpriteRenderer's `MaterialPropertyBlock` — and any MPB-bound `_MainTex` override (the procedural RT) drops back to the sprite's source texture (the dummy `spriteTex`). Same visual symptom as domain reload, different cause.
+
+The recovery pattern is **enforced by inheritance from [`SkyLayerBase`](../Lighting/SkyLayerBase.cs)** for the five sky-layer subclasses. The base owns `Start` and `LateUpdate`; subclasses implement two virtuals — `BuildContents()` (runtime sprite/RT setup) and `DoLateUpdate()` (per-frame work). The base's `LateUpdate` null-guards `bgCam` + a `bool initialized` flag and re-runs `EnsureInitialized()` if either was lost; on each init it resolves the camera (parent → `SkyCamera.instance.BgCam` → `Camera.main`), optionally pins the GO onto the Sky layer (`ManageSkyLayer => true` on CloudLayer + BackgroundLayer), destroys any leftover children, then delegates to `BuildContents()`. Subclasses that bind MPB textures (CloudLayer, BackgroundLayer, HazeLayer) re-apply the MPB binding at the top of their `DoLateUpdate()` to defeat the asset-reimport clear — the only thing the base can't do for them, since the binding shape (number/identity of `SetTexture` calls) varies per subclass.
+
+**Subclass footgun**: do NOT declare `void Start()` or `void LateUpdate()` in a `SkyLayerBase` subclass. Unity's message dispatch would call both the base and the subclass versions (or the subclass would shadow), bypassing the resilience guard. Override `BuildContents` / `DoLateUpdate` instead.
+
+StarField's `BuildContents` rebuilds its `stars` List deterministically from the `seed` field so the new starfield lands in identical positions after reload. BackgroundTile (outside the SkyLayerBase hierarchy because it's externally Init-driven by SaveSystem rather than Start-driven) re-bootstraps from `World.instance` inside its own `LateUpdate` if its `world` ref has been lost.
+
+The shared 1×1 flat-normal texture used by BackgroundLayer + HazeLayer (so NormalsCapture sees a uniform camera-facing normal under each layer) lives at [`SpriteMaterialUtil.FlatNormalTex`](../Lighting/LightReceiver.cs) — lazy-init, `HideAndDontSave`, reset by the same `[RuntimeInitializeOnLoadMethod]` hook that resets the rest of `SpriteMaterialUtil`.
 
 #### Sky color stops, gradient, and stars
 
@@ -713,13 +730,23 @@ Plants animate against wind via one of two paths:
 
 **Tile border atlases** (source format): 32×32 artist-authored textures in `Assets/Resources/Sprites/Tiles/Sheets/{name}.png`. Layout: main 16×16 at (8,8), top/bottom 16×4 borders at (8,0)/(8,28), left/right 4×16 borders at (0,8)/(28,8), four 4×4 corner pieces at (0,0)/(28,0)/(0,28)/(28,28). Columns 1,6 and rows 1,6 are empty separators. **Not sampled at runtime** — `TileSpriteCache` reads pixel data at load time to bake 16 cardinal-mask variants per tile type as 20×20 Sprites (PPU=16 → 1.25 units). Textures must have Read/Write enabled (`TileSpritePostprocessor` handles this automatically).
 
-**Sprite normal maps** (`SpriteNormalMapGenerator.cs`): editor tool (**Tools → Generate All Sprite Normal Maps**) batch-processes `Assets/Resources/Sprites/`. For each source texture (skipping `_n.png`, `_f.png`, and `_e.png` companions):
-1. Generates `{stem}_n.png` — edge pixels get outward normals, interior gets flat forward normal.
-2. Imports as `Default` / `Uncompressed` RGBA32 (not NormalMap type — must stay plain packed 0–1).
-3. Auto-assigns as `_NormalMap` secondary texture on the source sprite importer.
-4. If `{stem}_e.png` exists, auto-assigns it as `_EmissionMap` secondary texture on the source sprite.
+**Sprite normal maps** (`SpriteNormalMapGenerator.cs`): editor tool (**Tools → Generate All Sprite Normal Maps**) batch-processes `Assets/Resources/Sprites/`. For each source texture (skipping `_n.png`, `_nm.png`, `_h.png`, `_e.png`, `_f.png`, and `_sway.png` companions), the generator picks one of four paths, in precedence order:
 
-**Slice awareness.** Multi-sliced textures (`spriteImportMode == Multiple`) are processed **per slice by default** — pixels just outside each slice rect are treated as transparent, so frame boundaries get proper edge bevels. This is what animation strips want (e.g. `powershaft.png`, 80×16 sliced into 5 frames).
+1. **Manual override** — if `{stem}_nm.png` exists, skip generation and wire `_nm.png` as the `_NormalMap` secondary texture instead of `_n.png`. The auto-generated `_n.png` is left in place as a reference; only the wiring changes. The artist authors the manual file in full RGB-as-normal-vectors form.
+2. **Height-map source** — if `{stem}_h.png` exists (and no `_nm.png`), generate `_n.png` from grayscale height gradients via central difference. Mid-gray (128) = flat, brighter = raised, darker = recessed. Out-of-bounds height samples read as 0 (black) so the artist can match auto edge-detect behavior by painting black past the silhouette. Strength = 2.0 (hardcoded); push contrast on the height map to amplify. Doesn't apply to fire sprites — those stay flat unless overridden by `_nm.png`.
+3. **Liquid storage flat-fill** — for items under `Items/split/<itemname>/` whose `itemClass` is `liquid` in `itemsDb.json`, all variants except `floor` get uniform `(0,0,1)` normals (flat pool). The `floor` variant is the bucket sprite and gets normal item treatment. Currently affects soymilk; water is special-cased elsewhere.
+4. **Auto edge-detect (default)** — edge pixels get outward bevel normals, interior gets flat forward normal.
+
+Outputs (paths 2–4) are imported as `Default` / `Uncompressed` RGBA32 (not NormalMap type — must stay plain packed 0–1) and auto-assigned as `_NormalMap` secondary texture on the source sprite importer. If `{stem}_e.png` exists, it's also wired as `_EmissionMap`.
+
+**Interior-edge rules** (`GetInteriorEdges`): some sprite categories shouldn't bevel at their bottom edge because they rest on terrain at runtime. The rule applies to BOTH edge-detect (suppresses the bevel) and height-map generation (clamps the height sample instead of treating out-of-bounds as 0, so the gradient reads as flat):
+
+- **Plants** under `Plants/`: bottom always interior (every plant sits on terrain, including saplings). Top is interior for `g4` (mid-trunk segment) and `b4` (anchor with extensions above) per the `Plant.UpdateSprite` stacking rule; other plant sprites have a real top edge.
+- **Buildings** under `Buildings/`: bottom always interior (rests on terrain).
+- **Items** under `Items/`: bottom always interior (in-storage variants sit on a shelf inside a box; the floor variant sits on the floor).
+- **Animals**: no interior edges. Animals are heavily animated and body parts can occupy any silhouette position.
+
+**Slice awareness** (auto edge-detect only). Multi-sliced textures (`spriteImportMode == Multiple`) are processed **per slice by default** — pixels just outside each slice rect are treated as transparent, so frame boundaries get proper edge bevels. This is what animation strips want (e.g. `powershaft.png`, 80×16 sliced into 5 frames). The height-map path does NOT apply per-slice handling — height maps are inherently continuous, and the artist can paint explicit mid-gray gutters between slices if they need per-slice gradients.
 
 For *spatial* sheets — slices that abut each other in the world (elevator/platform stacks) — set the **merged-normals flag** via `Assets → Toggle Merged Normals` on the texture. The flag is stored as `normals=merged` in `TextureImporter.userData`; merged sheets are processed as one big sprite so inter-slice pixel boundaries remain interior. Each slice samples its own sub-region of the resulting normal map at runtime (secondary textures are shared across all slices in a sheet).
 
@@ -727,13 +754,18 @@ For *spatial* sheets — slices that abut each other in the world (elevator/plat
 
 Post-pass for fire sprites: each `_f.png` is wired as its own `_EmissionMap` (self-reference — all visible fire pixels emit). If a `{stem}_e.png` companion exists alongside the `_f.png`, that takes precedence.
 
-**Companion file conventions** (inside `Assets/Resources/Sprites/Buildings/`):
+**Cache key** (importer userData `normalsCacheKey=<md5>`): includes source mtime, slice config, merged flag, filter mode, interior-edge flags, and the existence + mtime of `_e.png` / `_nm.png` / `_h.png` / `_sway.png`. For sprites under `Items/`, also includes `itemsDb.json` mtime so toggling `itemClass: "liquid"` invalidates correctly. Cache-key shape changes regenerate everything once.
 
-| Suffix   | Purpose                          | Normal maps? | Emission wiring                                   |
-|----------|----------------------------------|--------------|----------------------------------------------------|
-| `_n.png` | Generated normal map             | N/A          | —                                                  |
-| `_e.png` | Emission mask                    | Skipped      | Assigned as `_EmissionMap` on base sprite           |
-| `_f.png` | Fire art (separate child sprite) | Skipped      | Self-reference `_EmissionMap` (all pixels emit)     |
+**Companion file conventions**:
+
+| Suffix    | Purpose                          | Skipped in batch? | Wiring on source sprite                                                  |
+|-----------|----------------------------------|-------------------|---------------------------------------------------------------------------|
+| `_n.png`  | Generated normal map             | Yes               | `_NormalMap` (when no `_nm.png` exists)                                   |
+| `_nm.png` | Manual normal map override       | Yes               | `_NormalMap` (takes precedence over `_n.png`)                             |
+| `_h.png`  | Grayscale height-map source      | Yes               | Not wired — read off-disk to derive `_n.png`                              |
+| `_e.png`  | Emission mask                    | Yes               | `_EmissionMap`                                                            |
+| `_f.png`  | Fire art (separate child sprite) | Yes               | Self-reference `_EmissionMap`; gets flat `_n.png` unless `_nm.png` exists |
+| `_sway.png` | Plant wind-sway mask           | Yes               | `_SwayMask`                                                               |
 
 ---
 

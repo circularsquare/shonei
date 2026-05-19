@@ -124,7 +124,8 @@ public class Structure {
     public Node workNode { get; private set; }
 
     // Interior waypoints — one off-grid Graph node per StructType.interiorTiles entry,
-    // registered in the ctor. Each node sits visually below its tile's roof line (y - 0.3).
+    // registered in the ctor. Each node sits at the tile's center (same world coords as
+    // standing on an exterior tile would land).
     // Edges are wired so the graph alone routes mice in and out:
     //   - Adjacent interior nodes within the footprint are edged to each other (walk inside).
     //   - Each door's interior node is edged to the exterior approach tile's graph node
@@ -132,6 +133,12 @@ public class Structure {
     // Mirror handling: dx is flipped at ctor time; callers read these fields raw.
     // Null on buildings without interiorTiles. Cleaned up in Destroy alongside workNode.
     public Node[] interiorNodes;
+    // Tiles whose bodyEdgeSuppressMask we OR'd bits into during ctor (for doored
+    // `preservesTile` buildings). Tracked so Destroy can XOR the same bits back out.
+    // Stored as parallel arrays (tile + bits) rather than a tuple list to keep alloc
+    // small — most structures contribute zero entries here.
+    private List<Tile> edgeSuppressTiles;
+    private List<byte> edgeSuppressBits;
 
     // First door's approach tile (the tile just outside the door, on the door's side).
     // Used by Animal.FindHome to set homeTile as a tile-level "where my home is" hint
@@ -321,11 +328,6 @@ public class Structure {
             res = (structType.capacity > 0 && !structType.isWorkstation) ? new Reservable(structType.capacity) : null;
         }
 
-        if (structType.name == "clock") {
-            var ch = go.AddComponent<ClockHand>();
-            ch.structure = this;
-        }
-
         // Register on tiles at the appropriate depth layer. Every tile in the visual
         // footprint claims the structure — so a 2×4 windmill writes itself to all 8 tiles
         // and a 1×3 platform writes to all 3 tiles. This keeps tile→structure lookup
@@ -440,19 +442,42 @@ public class Structure {
                 int mdx = mirrored ? (st.nx - 1 - it.dx) : it.dx;
                 worldX[i] = x + mdx;
                 worldY[i] = y + it.dy;
-                // Off-grid waypoint at the tile's center, shifted down so the rendered
-                // mouse sits under the roof line rather than on top of it.
-                Node n = new Node(worldX[i] + 0f, worldY[i] - 0.3f);
+                // Off-grid waypoint at the tile's center — same world position a mouse
+                // would stand at when on top of an exterior tile. With the standard
+                // sprite pivot this lands the rendered mouse aligned with the building's
+                // floor line, visually inside the silhouette.
+                Node n = new Node(worldX[i] + 0f, worldY[i]);
                 n.interiorOf = selfBuilding;
                 interiorNodes[i] = n;
             }
-            // Edges between cardinally adjacent interior nodes — mice can walk between
-            // tiles inside the building.
+            // Auto-edge horizontally-adjacent interior nodes only. Vertical access is
+            // intentional: it requires an explicit ladder declaration (below), so authors
+            // pick where mice climb up — they don't pass through walls or floors.
             for (int i = 0; i < interiorNodes.Length; i++) {
                 for (int j = i + 1; j < interiorNodes.Length; j++) {
-                    int dxDist = Mathf.Abs(worldX[i] - worldX[j]);
-                    int dyDist = Mathf.Abs(worldY[i] - worldY[j]);
-                    if (dxDist + dyDist == 1) interiorNodes[i].AddNeighbor(interiorNodes[j], reciprocal: true);
+                    if (worldY[i] == worldY[j] && Mathf.Abs(worldX[i] - worldX[j]) == 1)
+                        interiorNodes[i].AddNeighbor(interiorNodes[j], reciprocal: true);
+                }
+            }
+            // Ladder edges: each entry connects the interior node at (dx, dy) up to
+            // (dx, dy+1). Author can place multiple ladders for taller stacks or
+            // multiple climb points within one building.
+            if (st.ladders != null) {
+                for (int l = 0; l < st.ladders.Length; l++) {
+                    Ladder lad = st.ladders[l];
+                    int mdx = mirrored ? (st.nx - 1 - lad.dx) : lad.dx;
+                    int botX = x + mdx, botY = y + lad.dy;
+                    int topX = botX,     topY = botY + 1;
+                    Node bot = null, top = null;
+                    for (int i = 0; i < interiorNodes.Length; i++) {
+                        if (worldX[i] == botX && worldY[i] == botY) bot = interiorNodes[i];
+                        if (worldX[i] == topX && worldY[i] == topY) top = interiorNodes[i];
+                    }
+                    if (bot != null && top != null) {
+                        bot.AddNeighbor(top, reciprocal: true);
+                    } else {
+                        Debug.LogError($"{st.name} at ({x},{y}): ladder at ({lad.dx},{lad.dy}) requires interiorTiles at ({lad.dx},{lad.dy}) and ({lad.dx},{lad.dy+1})");
+                    }
                 }
             }
             // Door edges — each door anchors to one interior node (by matching dx/dy)
@@ -496,6 +521,32 @@ public class Structure {
                     interiorAtDoor.AddNeighbor(approach.node, reciprocal: true);
                     // Remember the first door's approach tile for Animal.FindHome's homeTile hint.
                     if (doorApproachTile == null) doorApproachTile = approach;
+                    // Rim suppression: for `preservesTile` buildings (burrow), the door tile is
+                    // still drawn as a solid dirt body underneath the building sprite. Without
+                    // this, the dirt's 2px air-side rim shows where the door opens. Suppress
+                    // that side's rim so the entrance reads as a clean carved hole.
+                    if (st.preservesTile) {
+                        Tile doorTile = World.instance.GetTileAt(doorWorldX, doorWorldY);
+                        if (doorTile != null) {
+                            byte bit = side switch {
+                                "left"   => (byte)1,
+                                "right"  => (byte)2,
+                                "bottom" => (byte)4,
+                                "top"    => (byte)8,
+                                _        => (byte)0,
+                            };
+                            if (bit != 0) {
+                                doorTile.bodyEdgeSuppressMask |= bit;
+                                doorTile.NotifyBodyDirty();
+                                if (edgeSuppressTiles == null) {
+                                    edgeSuppressTiles = new List<Tile>();
+                                    edgeSuppressBits  = new List<byte>();
+                                }
+                                edgeSuppressTiles.Add(doorTile);
+                                edgeSuppressBits.Add(bit);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -526,13 +577,22 @@ public class Structure {
         }
     }
 
-    public static Structure Create(StructType st, int x, int y, bool mirrored = false, int rotation = 0, int shapeIndex = 0) {
+    // partnerX / partnerY are only consulted by two-click placement types (today,
+    // "rope bridge post"). Other StructTypes ignore them. Default -1 keeps every
+    // existing caller (worldgen, AnimalStateManager's quarry-depletion path,
+    // single-click Blueprint.Complete) source-compatible.
+    public static Structure Create(StructType st, int x, int y, bool mirrored = false, int rotation = 0, int shapeIndex = 0, int partnerX = -1, int partnerY = -1) {
         if (st.isPlant)
             return new Plant(st as PlantType, x, y);
         // Power shafts are foreground (depth 2). One subclass for straight, turning, and
         // 4-way junction; axis is derived from (name, rotation) inside PowerShaft.
         if (st.name == "power shaft" || st.name == "power shaft turn" || st.name == "power shaft 4")
             return new PowerShaft(st, x, y, mirrored, rotation);
+        // Two-click placement: rope bridge posts come in pairs, each remembering the
+        // other's coords. RopeBridge is materialised in BridgePost.OnPlaced once both
+        // ends exist, or in RopeBridge.PairAllAfterLoad on the load path.
+        if (st.name == "rope bridge post")
+            return new BridgePost(st, x, y, mirrored, partnerX, partnerY);
         if (st.depth == 0 || st.isBuilding) {
             if (st.name == "pump")     return new PumpBuilding(st, x, y, mirrored);
             if (st.name == "market")   return new MarketBuilding(st, x, y, mirrored);
@@ -542,6 +602,7 @@ public class Structure {
             if (st.name == "flywheel") return new Flywheel(st, x, y, mirrored);
             if (st.name == "elevator") return new Elevator(st, x, y, mirrored, shapeIndex);
             if (st.name == "tarp")     return new Tarp(st, x, y, mirrored, shapeIndex);
+            if (st.name == "clock")    return new Clock(st, x, y, mirrored);
             return new Building(st, x, y, mirrored);
         }
         return new Structure(st, x, y, mirrored, rotation, shapeIndex); // platforms, ladders, stairs, foreground, roads
@@ -560,6 +621,17 @@ public class Structure {
             foreach (Node n in workNode.neighbors) n.RemoveNeighbor(workNode);
             workNode.neighbors.Clear();
             workNode = null;
+        }
+        // Clear any rim-suppression bits we OR'd into door tiles during ctor.
+        if (edgeSuppressTiles != null) {
+            for (int i = 0; i < edgeSuppressTiles.Count; i++) {
+                Tile t = edgeSuppressTiles[i];
+                if (t == null) continue;
+                t.bodyEdgeSuppressMask &= (byte)~edgeSuppressBits[i];
+                t.NotifyBodyDirty();
+            }
+            edgeSuppressTiles = null;
+            edgeSuppressBits  = null;
         }
         // Tear down all interior waypoints. Edges to neighboring interior nodes and
         // to the door-approach tile node would otherwise dangle and pull A* into

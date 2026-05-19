@@ -5,6 +5,9 @@ using UnityEngine.EventSystems;
 using System;
 using System.Linq;
 
+// Transfers carried items from the animal into a blueprint's input inventory and
+// promotes the blueprint to Constructing when fully delivered. Group-cost slots are
+// locked to a specific leaf on first delivery (LockGroupCostsAfterDelivery).
 public class DeliverToBlueprintObjective : Objective { // always queued after GoObjective; Start() runs immediately once the animal is in position
     private ItemQuantity iq;
     private Blueprint blueprint;

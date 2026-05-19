@@ -51,7 +51,7 @@ using UnityEngine;
 // at its natural altitude and disappears above / below. Filter Mode =
 // Point for crisp pixel art.
 [DefaultExecutionOrder(100)]
-public class BackgroundLayer : MonoBehaviour {
+public class BackgroundLayer : SkyLayerBase {
     [Header("Texture")]
     [Tooltip("Tileable background sprite. Set Wrap Mode U = Repeat in the texture importer for horizontal tiling.")]
     public Texture2D texture;
@@ -89,7 +89,6 @@ public class BackgroundLayer : MonoBehaviour {
     [Range(0f, 0.3f)] public float shadowSoftness = 0.08f;
 
 
-    Camera cam;
     SpriteRenderer sr;
     Material mat;
     Material bgGenMat;
@@ -104,10 +103,6 @@ public class BackgroundLayer : MonoBehaviour {
     // masks agree and the day/night composite doesn't ghost the
     // un-parallaxed painting into the sky.
     RenderTexture bgRT;
-    // Shared 1×1 flat-normal texture, so the NormalsCapture pass sees a
-    // camera-facing normal for every background pixel and LightSun
-    // contributes uniform brightness (no spurious per-pixel sun shading).
-    static Texture2D _flatNormalTex;
 
     static readonly int MainTexId           = Shader.PropertyToID("_MainTex");
     static readonly int NormalMapId         = Shader.PropertyToID("_NormalMap");
@@ -121,17 +116,12 @@ public class BackgroundLayer : MonoBehaviour {
     static readonly int ShadowAspectId      = Shader.PropertyToID("_ShadowAspect");
     static readonly int ShadowSoftnessId    = Shader.PropertyToID("_ShadowSoftness");
 
-    void Start() {
-        if (SkyCamera.instance != null && SkyCamera.instance.BgCam != null) {
-            cam = SkyCamera.instance.BgCam;
-        } else {
-            cam = Camera.main;
-        }
+    // BackgroundLayer normalises its own GO onto the Sky layer in case
+    // the inspector / a reparent knocked it off (sprite would fall into
+    // a culling gap between Main and SkyCamera otherwise).
+    protected override bool ManageSkyLayer => true;
 
-        int skyLayer = LayerMask.NameToLayer("Sky");
-        if (skyLayer < 0) skyLayer = gameObject.layer;
-        gameObject.layer = skyLayer;
-
+    protected override void BuildContents() {
         if (texture == null) {
             Debug.LogError("BackgroundLayer: no texture assigned — disabling.");
             enabled = false;
@@ -140,10 +130,10 @@ public class BackgroundLayer : MonoBehaviour {
 
         // The parallax-baked RT — both visible and lighting passes sample
         // this at native UV. Sized to match the camera's actual pixel
-        // dimensions (re-sized in LateUpdate if those change) so each
+        // dimensions (re-sized in DoLateUpdate if those change) so each
         // RT pixel corresponds to a screen pixel — no downsampling.
         // Linear (sRGB=false) for consistency with the cloud's RTs.
-        bgRT = MakeBgRT(Mathf.Max(1, cam.pixelWidth), Mathf.Max(1, cam.pixelHeight));
+        bgRT = MakeBgRT(Mathf.Max(1, bgCam.pixelWidth), Mathf.Max(1, bgCam.pixelHeight));
 
         // 64×64 dummy at PPU=64 → the sprite's native size is 1×1 world
         // units. Each frame we transform-scale the sprite to viewport
@@ -173,10 +163,6 @@ public class BackgroundLayer : MonoBehaviour {
         }
         bgGenMat = new Material(genSh) { hideFlags = HideFlags.HideAndDontSave };
 
-        for (int i = transform.childCount - 1; i >= 0; i--) {
-            DestroyImmediate(transform.GetChild(i).gameObject);
-        }
-
         var srGo = new GameObject("BackgroundLayerSprite");
         srGo.transform.SetParent(transform, worldPositionStays: false);
         srGo.layer = gameObject.layer;
@@ -194,10 +180,10 @@ public class BackgroundLayer : MonoBehaviour {
         mpb = new MaterialPropertyBlock();
         sr.GetPropertyBlock(mpb);
         mpb.SetTexture(MainTexId,   bgRT);
-        mpb.SetTexture(NormalMapId, GetFlatNormalTex());
+        mpb.SetTexture(NormalMapId, SpriteMaterialUtil.FlatNormalTex);
         sr.SetPropertyBlock(mpb);
 
-        sr.transform.position = new Vector3(cam.transform.position.x, cam.transform.position.y, renderZ);
+        sr.transform.position = new Vector3(bgCam.transform.position.x, bgCam.transform.position.y, renderZ);
     }
 
     static RenderTexture MakeBgRT(int w, int h) {
@@ -215,20 +201,6 @@ public class BackgroundLayer : MonoBehaviour {
         return rt;
     }
 
-    static Texture2D GetFlatNormalTex() {
-        if (_flatNormalTex != null) return _flatNormalTex;
-        _flatNormalTex = new Texture2D(1, 1, TextureFormat.RGBA32, mipChain: false) {
-            filterMode = FilterMode.Point,
-            wrapMode   = TextureWrapMode.Clamp,
-            hideFlags  = HideFlags.HideAndDontSave,
-        };
-        // (0.5, 0.5, 1.0) decodes via (rgb*2 - 1) to (0, 0, 1) — a
-        // tangent-space normal pointing straight at the camera.
-        _flatNormalTex.SetPixel(0, 0, new Color(0.5f, 0.5f, 1.0f, 1.0f));
-        _flatNormalTex.Apply();
-        return _flatNormalTex;
-    }
-
     void OnDestroy() {
         if (bgRT != null)     { bgRT.Release(); bgRT = null; }
         if (mat != null)      Destroy(mat);
@@ -236,16 +208,14 @@ public class BackgroundLayer : MonoBehaviour {
         if (spriteTex != null) Destroy(spriteTex);
     }
 
-    void LateUpdate() {
-        if (cam == null || sr == null || mat == null || bgGenMat == null) return;
-
-        Vector3 camPos = cam.transform.position;
+    protected override void DoLateUpdate() {
+        Vector3 camPos = bgCam.transform.position;
 
         // Cover the SkyCamera's viewport regardless of zoom. The sprite's
         // native size is 1×1 wu (from the 64×64 dummy at PPU=64) — scale
         // up by viewport extent so any visible pixel is on the quad.
-        float viewH = cam.orthographicSize * 2f;
-        float viewW = viewH * cam.aspect;
+        float viewH = bgCam.orthographicSize * 2f;
+        float viewW = viewH * bgCam.aspect;
         sr.transform.position = new Vector3(camPos.x, camPos.y, renderZ);
         sr.transform.localScale = new Vector3(viewW, viewH, 1f);
 
@@ -279,20 +249,29 @@ public class BackgroundLayer : MonoBehaviour {
         // Keep bgRT at exact camera-pixel resolution so the visible
         // sprite samples it 1:1 (no upscaling blur). If the camera's
         // pixel size changed (window resize, EvenResolutionEnforcer
-        // adjustment, etc.), re-allocate and re-bind via MPB.
-        int targetW = Mathf.Max(1, cam.pixelWidth);
-        int targetH = Mathf.Max(1, cam.pixelHeight);
+        // adjustment, etc.), re-allocate.
+        int targetW = Mathf.Max(1, bgCam.pixelWidth);
+        int targetH = Mathf.Max(1, bgCam.pixelHeight);
         if (bgRT.width != targetW || bgRT.height != targetH) {
             bgRT.Release();
             Destroy(bgRT);
             bgRT = MakeBgRT(targetW, targetH);
-            sr.GetPropertyBlock(mpb);
-            mpb.SetTexture(MainTexId,   bgRT);
-            mpb.SetTexture(NormalMapId, GetFlatNormalTex());
-            sr.SetPropertyBlock(mpb);
         }
 
         if (!bgRT.IsCreated()) bgRT.Create();
+
+        // Re-apply the MPB binding every frame. Various editor events
+        // (asset reimport on a sprite the user is iterating on,
+        // material refresh, OnValidate paths) can silently clear the
+        // SpriteRenderer's MaterialPropertyBlock — at which point
+        // _MainTex falls back to the sprite's source texture (the
+        // dummy `spriteTex`), and the hills painting reads as a flat
+        // tinted rectangle. Negligible cost.
+        sr.GetPropertyBlock(mpb);
+        mpb.SetTexture(MainTexId,   bgRT);
+        mpb.SetTexture(NormalMapId, SpriteMaterialUtil.FlatNormalTex);
+        sr.SetPropertyBlock(mpb);
+
         // Explicit _MainTex bind on the gen material before the Blit.
         // Graphics.Blit's source-arg binding occasionally doesn't reach
         // a custom material's TEXTURE2D(_MainTex) sampler — explicitly

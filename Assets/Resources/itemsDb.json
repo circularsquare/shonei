@@ -142,6 +142,13 @@
                 "happinessNeed": "wheat",
                 "children": null
             },{
+                "id": 154,
+                "name": "rice",
+                "decayRate": 0.3,
+                "foodValue": 18,
+                "happinessNeed": "rice",
+                "children": null
+            },{
                 "id": 152,
                 "name": "acorn",
                 "decayRate": 0.4,
@@ -193,6 +200,19 @@
                 "children": null
             }
         ]
+    },{
+        "id": 245,
+        "name": "yeast",
+        "decayRate": 0.0,
+        "discrete": true,
+        "children": null
+    },{
+        "id": 246,
+        "name": "rice wine",
+        "decayRate": 0.0,
+        "itemClass": "liquid",
+        "liquidColorHex": "#e8d28a",
+        "children": null
     },{
         "id": 200,
         "name": "tools",

@@ -22,8 +22,14 @@ using UnityEngine;
 //   1. Add a child GameObject under SkyCamera, attach this script.
 //   2. (Sortinglayer should match the cloud sortinglayer; sortingOrder is
 //       configured here at -100 so the gradient sits behind clouds.)
-public class SkyGradient : MonoBehaviour {
+public class SkyGradient : SkyLayerBase {
     public static SkyGradient instance { get; private set; }
+
+    // Reset on Reload-Domain-off play sessions — see project memory
+    // `project_plain_csharp_singletons` for why every static `instance`
+    // field needs this hook.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics() { instance = null; }
 
     [Tooltip("Resolution of the gradient texture (vertical pixels). 64 is plenty for a smooth gradient.")]
     [SerializeField] int textureHeight = 64;
@@ -33,7 +39,6 @@ public class SkyGradient : MonoBehaviour {
     [Tooltip("Must match the cloud SRs' sorting layer (Background) so the gradient sits behind clouds. Unity's sortingLayer list orders Background→Default→Water→UI; if gradient is on Default and clouds are on Background, the gradient draws over the clouds.")]
     [SerializeField] string sortingLayerName = "Background";
 
-    Camera bgCam;
     SpriteRenderer sr;
     Texture2D gradTex;
     Color[] pixels;
@@ -43,10 +48,7 @@ public class SkyGradient : MonoBehaviour {
         instance = this;
     }
 
-    void Start() {
-        bgCam = transform.parent != null ? transform.parent.GetComponent<Camera>() : null;
-        if (bgCam == null) { Debug.LogError("SkyGradient: parent must be a Camera (SkyCamera). Disabling."); enabled = false; return; }
-
+    protected override void BuildContents() {
         // Spawn our own child SR so this component is self-contained.
         var srGo = new GameObject("SkyGradientSR");
         srGo.transform.SetParent(transform, worldPositionStays: false);
@@ -69,9 +71,7 @@ public class SkyGradient : MonoBehaviour {
         pixels = new Color[textureHeight];
     }
 
-    void LateUpdate() {
-        if (sr == null || bgCam == null) return;
-
+    protected override void DoLateUpdate() {
         // Match the SkyCamera frustum exactly. SkyCamera's orthographicSize is
         // dampened by its own zoomFactor — must read from bgCam, not Camera.main.
         // Native sprite size is (1, textureHeight) (PPU = 1), so divide y by

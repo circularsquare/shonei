@@ -26,6 +26,16 @@ public class BuildPanel : MonoBehaviour {
     // Cycled by Q (-1) and E (+1) during Build mode, gated on structType.HasShapes.
     // Resets when a new building type is selected. See StructType.shapes / Shape.
     public int shapeIndex = 0;
+    // Two-click placement state: when StructType.placementMethod == "twoClick", the
+    // first click on a valid tile stashes it here; the second click commits a
+    // single blueprint carrying BOTH endpoints. Cleared on structType change,
+    // Esc, mode switch, and on commit. See StructPlacement.CanPlaceTwoPoint.
+    public Tile firstEndpoint;
+    public bool AwaitingSecondClick => firstEndpoint != null;
+    // Debug one-shot: when true, the next blueprint placed via PlaceBlueprint is
+    // instantly completed (no resources consumed, no worker step). Armed via
+    // Ctrl+Alt+B in MouseController; auto-disarms after one successful place.
+    public static bool instantBuildNext = false;
 
     static readonly string[] CategoryNames = { "structures", "plants", "production", "power", "storage", "tiles" };
 
@@ -98,6 +108,9 @@ public class BuildPanel : MonoBehaviour {
             Tooltippable tip = btn.GetComponent<Tooltippable>() ?? btn.gameObject.AddComponent<Tooltippable>();
             tip.title = cat;
             tip.body  = "";
+            // Hide categories with no unlocked buildings — clicking them otherwise opens
+            // an empty sub-panel. Re-shown by UnlockBuilding when research fills the category.
+            btn.gameObject.SetActive(cats[cat].Count > 0);
         }
     }
 
@@ -160,6 +173,10 @@ public class BuildPanel : MonoBehaviour {
         string cat = st.isPlant ? "plants" : st.category;
         if (cat == null || !subPanels.ContainsKey(cat)) return;
         AddBuildDisplay(subPanels[cat].transform, st);
+        // Category may have been hidden because it was empty — show it now.
+        if (catButtons.TryGetValue(cat, out Button catBtn) && catBtn != null) {
+            catBtn.gameObject.SetActive(true);
+        }
     }
 
     public void LockBuilding(string buildingName) {
@@ -170,7 +187,18 @@ public class BuildPanel : MonoBehaviour {
         if (cat == null || !subPanels.ContainsKey(cat)) return;
         Transform panel = subPanels[cat].transform;
         Transform entry = panel.Find("BuildDisplay_" + buildingName);
-        if (entry != null) Destroy(entry.gameObject);
+        if (entry == null) return;
+        // childCount==1 means we're about to remove the last entry; hide the category
+        // button so an empty sub-panel can't be opened. (Destroy is deferred, so check
+        // before calling it.) Also close the sub-panel if it was the one open.
+        bool nowEmpty = panel.childCount == 1;
+        Destroy(entry.gameObject);
+        if (nowEmpty) {
+            if (openCategory == cat) CloseSubPanel();
+            if (catButtons.TryGetValue(cat, out Button catBtn) && catBtn != null) {
+                catBtn.gameObject.SetActive(false);
+            }
+        }
     }
 
     public void SetStructType(StructType st) {
@@ -178,6 +206,7 @@ public class BuildPanel : MonoBehaviour {
         mirrored = false;
         rotation = 0;
         shapeIndex = 0;
+        firstEndpoint = null;  // changing structType always cancels an in-flight two-click placement
         MouseController.instance.SetModeBuild();
     }
 
@@ -205,10 +234,67 @@ public class BuildPanel : MonoBehaviour {
 
     public bool PlaceBlueprint(Tile tile) {
         if (structType == null) return false;
-        if (!CanPlaceHere(structType, tile)) return false;
 
+        // Two-click placement (rope bridges): first click stashes the endpoint;
+        // second click validates the span and creates ONE blueprint carrying
+        // both posts' coords. Returns true on the SECOND click only — the caller
+        // (MouseController) uses that to know when to exit Build mode.
+        if (structType.placementMethod == "twoClick") {
+            if (firstEndpoint == null) {
+                // First click: standalone single-tile feasibility check (cheap).
+                // Full two-point validation happens on the second click.
+                string whyFirst = StructPlacement.GetPlacementFailReason(structType, tile, mirrored, shapeIndex);
+                if (whyFirst != null) {
+                    EventFeed.instance?.Post($"<color=#cc3333>{whyFirst}</color>", EventFeed.Category.Alert);
+                    return false;
+                }
+                firstEndpoint = tile;
+                SoundManager.instance?.PlaySFX("click");
+                return false;  // don't exit Build mode yet
+            }
+            // Second click.
+            Tile a = firstEndpoint;
+            string whyTwo = StructPlacement.GetTwoPointFailReason(structType, a, tile);
+            if (whyTwo != null) {
+                // Invalid second point: clear firstEndpoint so the first-post
+                // ghost goes away. The reason is surfaced as a toast via EventFeed.
+                EventFeed.instance?.Post($"<color=#cc3333>{whyTwo}</color>", EventFeed.Category.Alert);
+                firstEndpoint = null;
+                return false;
+            }
+            firstEndpoint = null;
+            // Mirror is geometry-driven for two-click bridges: the LEFT post
+            // (smaller x) is mirrored so its pole faces right toward the bridge.
+            // Pass the anchor's mirror into the Blueprint so its primary ghost
+            // matches; the partner ghost flips it.
+            bool anchorIsLeft = a.x <= tile.x;
+            Blueprint bridgeBp = new Blueprint(structType, a.x, a.y, anchorIsLeft,
+                rotation: rotation, shapeIndex: shapeIndex,
+                x2: tile.x, y2: tile.y);
+            SoundManager.instance?.PlaySFX("click");
+            if (instantBuildNext) {
+                instantBuildNext = false;
+                Debug.Log($"[debug] instant-build {structType.name} at ({a.x},{a.y}) ↔ ({tile.x},{tile.y})");
+                bridgeBp.Complete();
+            }
+            return true;
+        }
+
+        string why = StructPlacement.GetPlacementFailReason(structType, tile, mirrored, shapeIndex);
+        if (why != null) {
+            EventFeed.instance?.Post($"<color=#cc3333>{why}</color>", EventFeed.Category.Alert);
+            return false;
+        }
         Blueprint blueprint = new Blueprint(structType, tile.x, tile.y, mirrored, rotation: rotation, shapeIndex: shapeIndex);
         SoundManager.instance?.PlaySFX("click");
+        // Debug one-shot: skip the worker/supply step entirely. Complete() with an empty
+        // inventory consumes no resources (the foreach over inv.itemStacks is a no-op).
+        // Bypasses the suspended-support gate by design — same spirit as Ctrl+Shift+D.
+        if (instantBuildNext) {
+            instantBuildNext = false;
+            Debug.Log($"[debug] instant-build {structType.name} at ({tile.x}, {tile.y})");
+            blueprint.Complete();
+        }
         return true;
     }
 
@@ -220,10 +306,13 @@ public class BuildPanel : MonoBehaviour {
     //  - Empty tile → no-op, return false.
     public bool Remove(Tile tile) {
         Blueprint existingBp = tile.GetAnyBlueprint();
-        if (existingBp != null) {
+            if (existingBp != null) {
             if (existingBp.state != Blueprint.BlueprintState.Deconstructing) {
+                // Refund onto the bp's anchor, not the clicked cell — for multi-tile bps
+                // those differ when the player right-clicks a non-anchor footprint tile.
+                Tile refundTile = existingBp.tile;
                 foreach (var cost in existingBp.costs)
-                    existingBp.inv.MoveItemTo(tile.EnsureFloorInventory(), cost.item, existingBp.inv.Quantity(cost.item));
+                    existingBp.inv.MoveItemTo(refundTile.EnsureFloorInventory(), cost.item, existingBp.inv.Quantity(cost.item));
             }
             existingBp.Destroy(); // sets cancelled, removes from bp list, WOM cleanup, unlocks storage if decon
             return true;

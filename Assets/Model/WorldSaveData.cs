@@ -147,6 +147,11 @@ public class StructureSaveData {
     // diagnostic. null on non-elevators / old saves; restore path treats null as empty.
     public int[] elevatorRecentTripTicks;
     public int[] elevatorRecentEndToEndTicks;
+    // BridgePost only: the partner post's tile coords. Nullable so old saves and
+    // every other StructType deserialize cleanly. RopeBridge.PairAllAfterLoad reads
+    // these to re-link both posts after Phase 2 restores them independently.
+    public int? partnerX;
+    public int? partnerY;
 }
 
 public class BlueprintSaveData {
@@ -161,6 +166,10 @@ public class BlueprintSaveData {
     // Variable-shape index. Default 0 covers old saves and StructTypes without `shapes`.
     public int shapeIndex;
     public bool disabled;
+    // Two-click placement (rope bridge): nullable second-endpoint coords for an
+    // in-progress bridge blueprint. Null on every other blueprint and on old saves.
+    public int? x2;
+    public int? y2;
 }
 
 public class InventorySaveData {

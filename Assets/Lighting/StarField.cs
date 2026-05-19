@@ -21,7 +21,7 @@ using UnityEngine;
 // Scene setup:
 //   1. Add a child GameObject under SkyCamera, attach this script.
 //   2. (Optional) tune starCount, twinkle/rotation speed, night threshold.
-public class StarField : MonoBehaviour {
+public class StarField : SkyLayerBase {
     [SerializeField] int   starCount   = 100;
     [SerializeField] int   seed        = 42;
 
@@ -44,7 +44,6 @@ public class StarField : MonoBehaviour {
     [Tooltip("Width of the smoothstep ramp around the threshold. Smaller = sharper on/off.")]
     [Range(0f, 0.5f)] [SerializeField] float rampWidth = 0.05f;
 
-    Camera bgCam;
     readonly List<Star> stars = new();
     float rotationRad;  // accumulated rotation angle (radians)
 
@@ -55,9 +54,8 @@ public class StarField : MonoBehaviour {
         public float phase;         // twinkle offset
     }
 
-    void Start() {
-        bgCam = transform.parent != null ? transform.parent.GetComponent<Camera>() : null;
-        if (bgCam == null) { Debug.LogError("StarField: parent must be a Camera (SkyCamera). Disabling."); enabled = false; return; }
+    protected override void BuildContents() {
+        stars.Clear();
 
         // Single shared 1×1 white sprite reused across all stars.
         var tex = new Texture2D(1, 1, TextureFormat.RGBA32, mipChain: false);
@@ -101,9 +99,7 @@ public class StarField : MonoBehaviour {
         }
     }
 
-    void LateUpdate() {
-        if (stars.Count == 0) return;
-
+    protected override void DoLateUpdate() {
         // Disk radius = frustum half-diagonal so the rotated disk always fully
         // covers the screen rectangle. Without this, rotating a screen-sized
         // rectangle reveals empty triangles at the corners on every quarter-turn.

@@ -36,6 +36,22 @@
         "noMaintenance": true,
         "category": "structures"
     },{
+        "id": 5,
+        "name": "rope bridge post",
+        "description": "An endpoint post for a rope bridge. Place by clicking two tiles — a post is built at each end, with a walkable rope strung between them. Costs scale with bridge length.",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 0.5 },
+            { "name": "ramie", "quantity": 0.25 }
+        ],
+        "depth": 2,
+        "category": "structures",
+        "placementMethod": "twoClick",
+        "minDx": 3,
+        "maxDx": 20,
+        "maxDy": 5,
+        "sagFraction": 0.15
+    },{
         "id": 4,
         "name": "road",
         "description": "paved road that increases movement speed",
@@ -49,19 +65,29 @@
     },{
         "id": 20,
         "name": "house",
-        "description": "a simple house for 4 mice",
-        "nx": 1, "ny": 1,
+        "description": "a proper 2x2 house for up to 4 mice",
+        "nx": 2, "ny": 2,
         "ncosts": [
-            { "name": "wood", "quantity": 10 }
+            { "name": "planks", "quantity": 20 }
         ],
         "njob": "hauler",
-        "capacity": 5,
+        "capacity": 4,
         "depth": 0,
         "solidTop": true,
         "category": "storage",
         "isHousing": true,
         "hasFurnishingSlots": true,
-        "furnishingSlotNames": ["cloth", "stool"]
+        "furnishingSlotNames": ["cloth", "stool"],
+        "furnishingSlotPositions": [
+            { "dx": 1, "dy": 1 },
+            { "dx": 1, "dy": 0 }
+        ],
+        "interiorTiles": [
+            { "dx": 1, "dy": 1 }, { "dx": 0, "dy": 1 },
+            { "dx": 0, "dy": 0 }, { "dx": 1, "dy": 0 }
+        ],
+        "ladders": [{ "dx": 0, "dy": 0 }],
+        "doors":   [{ "dx": 1, "dy": 0, "side": "right" }]
     },{
         "id": 26,
         "name": "shack",
@@ -76,8 +102,43 @@
         "solidTop": true,
         "category": "storage",
         "isHousing": true,
+        "hasFurnishingSlots": true,
+        "furnishingSlotNames": ["cloth"],
+        "furnishingSlotPositions": [
+            { "dx": 1, "dy": 0 }
+        ],
         "doors": [{ "dx": 0, "dy": 0, "side": "left" }],
-        "interiorTiles": [{ "dx": 0, "dy": 0 }, { "dx": 1, "dy": 0 }]
+        "interiorTiles": [{ "dx": 1, "dy": 0 }, { "dx": 0, "dy": 0 }]
+    },{
+        "id": 30,
+        "name": "burrow",
+        "description": "a cozy hole dug into a dirt bank, fits two mice",
+        "nx": 3, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 8 }
+        ],
+        "njob": "digger",
+        "capacity": 2,
+        "depth": 0,
+        "solidTop": true,
+        "category": "storage",
+        "isHousing": true,
+        "hasFurnishingSlots": true,
+        "furnishingSlotNames": ["cloth", "stool"],
+        "furnishingSlotPositions": [
+            { "dx": 0, "dy": 0 },
+            { "dx": 1, "dy": 0 }
+        ],
+        "interiorTiles": [
+            { "dx": 0, "dy": 0 }, { "dx": 1, "dy": 0 }, { "dx": 2, "dy": 0 }
+        ],
+        "doors": [{ "dx": 2, "dy": 0, "side": "right" }],
+        "requiredTileName": "dirt",
+        "preservesTile": true,
+        "tileRequirements": [
+            { "dx": 1, "dy": 0, "requiredTileName": "dirt" },
+            { "dx": 2, "dy": 0, "requiredTileName": "dirt" }
+        ]
     },{
         "id": 21,
         "name": "drawer",
@@ -428,6 +489,26 @@
         "category": "production",
         "defaultLocked": true
     },{
+        "id": 108,
+        "name": "brewery",
+        "description": "ferment rice into yeast and rice wine. liquid output bin on the right.",
+        "nx": 2, "ny": 1,
+        "storageTileX": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 10 },
+            { "name": "stone", "quantity": 5 }
+        ],
+        "njob": "cook",
+        "capacity": 1,
+        "isWorkstation": true,
+        "isStorage": true,
+        "storageClass": "liquid",
+        "nStacks": 1,
+        "storageStackSize": 100,
+        "solidTop": true,
+        "category": "production",
+        "defaultLocked": true
+    },{
         "id": 110,
         "name": "dirt pit",
         "description": "dig for dirt",
@@ -441,8 +522,7 @@
         "isWorkstation": true,
         "requiredTileName": "dirt",
         "solidTop": true,
-        "category": "production",
-        "defaultLocked": true
+        "category": "production"
     },{
         "id": 111,
         "name": "quarry",
@@ -516,7 +596,8 @@
         "workSpotX": 0.5,
         "workSpotY": 0.25,
         "workPose": "walk",
-        "category": "power"
+        "category": "power",
+        "defaultLocked": true
     },{
         "id": 141,
         "name": "windmill",
@@ -531,7 +612,8 @@
         "tileRequirements": [
             { "dx": 0, "dy": 3, "mustBeOpenSkyAbove": true },
             { "dx": 1, "dy": 3, "mustBeOpenSkyAbove": true }
-        ]
+        ],
+        "defaultLocked": true
     },{
         "id": 145,
         "name": "flywheel",
@@ -542,7 +624,8 @@
             { "name": "planks", "quantity": 4 }
         ],
         "njob": "hauler",
-        "category": "power"
+        "category": "power",
+        "defaultLocked": true
     },{
         "id": 146,
         "name": "elevator",
@@ -565,7 +648,8 @@
             { "nx": 1, "ny": 8 },
             { "nx": 1, "ny": 9 },
             { "nx": 1, "ny": 10 }
-        ]
+        ],
+        "defaultLocked": true
     },{
         "id": 142,
         "name": "power shaft",
@@ -577,7 +661,8 @@
         "njob": "hauler",
         "depth": 4,
         "category": "power",
-        "rotatable": true
+        "rotatable": true,
+        "defaultLocked": true
     },{
         "id": 144,
         "name": "power shaft turn",
@@ -589,7 +674,8 @@
         "njob": "hauler",
         "depth": 4,
         "category": "power",
-        "rotatable": true
+        "rotatable": true,
+        "defaultLocked": true
     },{
         "id": 143,
         "name": "power shaft 4",
@@ -600,6 +686,7 @@
         ],
         "njob": "hauler",
         "depth": 4,
-        "category": "power"
+        "category": "power",
+        "defaultLocked": true
     }
 ]

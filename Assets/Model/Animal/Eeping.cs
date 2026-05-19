@@ -8,15 +8,24 @@ public class Eeping {
     public static float eepRate = 2f;
     public static float outsideEepRate = 1f;
 
-    // Sleep thresholds. Below nightSleepThreshold a mouse goes to bed at night;
-    // below exhaustedSleepThreshold it sleeps any time of day (mid-shift nap).
+    // Sleep thresholds. exhaustedSleepThreshold is the daytime baseline — mice this tired
+    // sleep regardless of time. At bedtime, BedtimeUrgency (0→1 across the bedtime window)
+    // scales bedtimeMaxBoost on top: a mouse sleeps when
+    //   eep/maxEep < exhaustedSleepThreshold + bedtimeUrgency * bedtimeMaxBoost
+    // The deep-night ceiling is exhaustedSleepThreshold + bedtimeMaxBoost = 0.9, so
+    // fully-rested mice (e ≥ 0.9) never sleep even at the dead of night. Effect: low-energy
+    // mice peel off to bed earlier and higher-energy mice stay up later, so a houseful
+    // doesn't all rush home on the same tick, but no one wastes a productive night in bed.
+    // nightSleepThreshold is retained as a constant for EstimateDailyWorkFraction's
+    // analytical estimate (which expects a single sleep-cutoff value).
     public const float nightSleepThreshold = 0.85f;
-    public const float exhaustedSleepThreshold = 0.5f;
+    public const float exhaustedSleepThreshold = 0.4f;
+    public const float bedtimeMaxBoost = 0.5f;
 
     public Eeping(){}
-    public bool ShouldSleep(bool isNighttime){
+    public bool ShouldSleep(float bedtimeUrgency){
         float e = eep / maxEep;
-        return e < exhaustedSleepThreshold || (isNighttime && e < nightSleepThreshold);
+        return e < exhaustedSleepThreshold + bedtimeUrgency * bedtimeMaxBoost;
     }
     public float Efficiency(){
         if (eep / maxEep > 0.5f){

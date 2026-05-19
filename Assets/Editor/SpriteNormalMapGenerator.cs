@@ -35,6 +35,19 @@ using SysFile = System.IO.File;
 //       runtime as a toggleable child GO on the parent structure — see
 //       Structure.cs and LightSource.cs.
 //   `{stem}_n.png` — generated normal map output (skipped in batch).
+//   `{stem}_nm.png` — manual normal map override, authored by hand. When
+//       present, the generator skips the edge-detect / flat-fill pass for
+//       `{stem}.png` and wires `_nm.png` as the `_NormalMap` secondary instead
+//       of `_n.png`. The auto-generated `_n.png` is left in place as a
+//       reference; only the wiring changes. Skipped in batch.
+//   `{stem}_h.png` — grayscale height map, authored by hand. When present
+//       (and `_nm.png` is not), the generator builds `{stem}_n.png` from
+//       height gradients via central difference instead of edge detection:
+//       mid-gray=flat, brighter=raised, darker=recessed. Way more intuitive
+//       than eyedropping normal-vector RGB values, and softening a slope is
+//       just blurring the height map. Doesn't apply to fire sprites
+//       (`_f.png` stays flat unless overridden via `_nm.png`). Skipped in
+//       batch. Precedence: `_nm.png` > `_h.png` > auto edge-detect.
 //   `{stem}_sway.png` — plant wind-sway mask. Wired as `_SwayMask` secondary
 //       texture on `{stem}.png`. R-channel = per-pixel sway weight (0=rigid,
 //       1=full). Plant.cs detects the secondary's presence at runtime and
@@ -159,6 +172,8 @@ public static class SpriteNormalMapGenerator {
         foreach (string guid in guids) {
             string path = AssetDatabase.GUIDToAssetPath(guid);
             if (path.EndsWith("_n.png"))    continue;    // skip generated normal maps
+            if (path.EndsWith("_nm.png"))   continue;    // skip manual normal map overrides
+            if (path.EndsWith("_h.png"))    continue;    // skip height-map companions
             if (path.EndsWith("_e.png"))    continue;    // skip emission mask companions
             if (path.EndsWith("_sway.png")) continue;    // skip plant wind-sway mask companions
             if (path.Contains("/Sheets/"))  continue;    // skip source sheets — normals generated for split sprites only
@@ -240,7 +255,23 @@ public static class SpriteNormalMapGenerator {
 
         if (!force && IsUpToDate(srcPath, imp)) return false;
 
-        // Load source pixels via PNG decode — no importer reimport needed.
+        // Manual override: artist-authored `_nm.png` exists → skip flat-fill
+        // generation. Phase 2 will wire `_nm.png` as `_NormalMap` instead of
+        // `_n.png`. The auto-generated `_n.png` (if any) is left in place.
+        string manualPathFlat = ManualNormalPathFor(srcPath);
+        if (SysFile.Exists(manualPathFlat)) {
+            ConfigureManualNormalImporter(manualPathFlat, imp);
+            return true;
+        }
+
+        return WriteFlatNormal(srcPath, imp);
+    }
+
+    // Shared flat-fill writer used by ProcessFlatNormal (fire sprites) and the
+    // liquid-storage branch of ProcessTexture. Decodes the source for alpha,
+    // emits a `_n.png` where every opaque pixel is (0,0,1) normal-encoded.
+    // Caller is responsible for any upstream up-to-date / override checks.
+    static bool WriteFlatNormal(string srcPath, TextureImporter imp) {
         Texture2D tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
         if (!tex.LoadImage(SysFile.ReadAllBytes(srcPath))) {
             Debug.LogError($"[NormalMapGen] Failed to decode {srcPath}");
@@ -257,7 +288,6 @@ public static class SpriteNormalMapGenerator {
             dst[i] = new Color32(128, 128, 255, a);
         }
 
-        // Write output PNG
         Texture2D normalTex = new Texture2D(w, h, TextureFormat.RGBA32, false);
         normalTex.SetPixels32(dst);
         normalTex.Apply();
@@ -291,6 +321,34 @@ public static class SpriteNormalMapGenerator {
         if (imp == null) return false;
 
         if (!force && IsUpToDate(srcPath, imp)) return false;
+
+        // Manual override: artist-authored `_nm.png` exists → skip edge-detect
+        // generation. Phase 2 will wire `_nm.png` as `_NormalMap` instead of
+        // `_n.png`. The auto-generated `_n.png` (if any) is left in place as a
+        // reference for the artist.
+        string manualPath = ManualNormalPathFor(srcPath);
+        if (SysFile.Exists(manualPath)) {
+            ConfigureManualNormalImporter(manualPath, imp);
+            return true;
+        }
+
+        // Height-map source: artist-authored `_h.png` exists → derive `_n.png`
+        // from height gradients (central difference) instead of edge detection.
+        // The result still goes to `{stem}_n.png` and is wired the usual way in
+        // Phase 2 — only the generation algorithm differs.
+        string heightPath = HeightMapPathFor(srcPath);
+        if (SysFile.Exists(heightPath)) {
+            ConfigureHeightMapImporter(heightPath);
+            return ProcessHeightToNormal(srcPath, heightPath, imp);
+        }
+
+        // Liquid in storage: render as a flat pool (uniform (0,0,1) normals)
+        // regardless of silhouette. The `floor` variant of the same item is
+        // skipped by IsLiquidStorageSprite — it gets normal item treatment
+        // because the artist draws it as a bucket.
+        if (IsLiquidStorageSprite(srcPath)) {
+            return WriteFlatNormal(srcPath, imp);
+        }
 
         // Load source pixels via PNG decode — no importer reimport needed.
         // (Previous approach toggled `imp.isReadable` true/false around GetPixels32,
@@ -330,10 +388,10 @@ public static class SpriteNormalMapGenerator {
             rects.Add(new RectInt(0, 0, w, h));
         }
 
-        // Plant multi-tile sprites stack vertically at runtime — their interior
-        // boundaries shouldn't read as edges or the trunk lights as a series of
-        // beveled segments. See GetPlantInteriorEdges for the rule.
-        var (interiorBottom, interiorTop) = GetPlantInteriorEdges(srcPath);
+        // Interior-edge suppression: sprites that rest on / stack against
+        // something else at runtime shouldn't bevel where they meet it. Plants
+        // multi-tile, buildings/items at their bottom row, etc. See GetInteriorEdges.
+        var (interiorBottom, interiorTop) = GetInteriorEdges(srcPath);
 
         foreach (RectInt r in rects) {
             int xMin = r.xMin, xMax = r.xMax, yMin = r.yMin, yMax = r.yMax;
@@ -396,6 +454,115 @@ public static class SpriteNormalMapGenerator {
         return true;
     }
 
+    // ── height-map → normal ──────────────────────────────────────────────────
+    // Derive `_n.png` from a grayscale `_h.png` companion via central
+    // difference. The artist paints depth (intuitive — light=raised, dark=
+    // recessed, mid-gray=flat) and the generator turns it into a normal map.
+    // Softening a slope is just blurring the height map.
+    //
+    // Strength scales the gradient before normalization: higher = more
+    // aggressive tilt for the same height delta. 2.0 is a soft pixel-art
+    // default; bump contrast on the height map if you need more drama.
+    //
+    // Per-slice handling is intentionally *not* applied here. Unlike
+    // edge-detect (where slice boundaries are real silhouette edges), height
+    // maps are inherently continuous — clamping at image bounds is enough.
+    // If a multi-sliced sheet needs per-slice gradients, paint the height map
+    // with explicit mid-gray gutters between slices.
+    //
+    // Phase 1 only: writes `_n.png` + configures its importer. Caller runs
+    // WireSecondariesAndStamp in Phase 2.
+    static bool ProcessHeightToNormal(string srcPath, string heightPath, TextureImporter imp) {
+        const float Strength = 2.0f;
+
+        // Load source pixels — needed for the alpha mask. Off-sprite pixels
+        // produce transparent normals just like edge-detect.
+        Texture2D srcTex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+        if (!srcTex.LoadImage(SysFile.ReadAllBytes(srcPath))) {
+            Debug.LogError($"[NormalMapGen] Failed to decode source {srcPath}");
+            Object.DestroyImmediate(srcTex);
+            return false;
+        }
+        Color32[] src = srcTex.GetPixels32();
+        int w = srcTex.width, h = srcTex.height;
+        Object.DestroyImmediate(srcTex);
+
+        // Load height pixels.
+        Texture2D heightTex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+        if (!heightTex.LoadImage(SysFile.ReadAllBytes(heightPath))) {
+            Debug.LogError($"[NormalMapGen] Failed to decode height map {heightPath}");
+            Object.DestroyImmediate(heightTex);
+            return false;
+        }
+        if (heightTex.width != w || heightTex.height != h) {
+            Debug.LogError($"[NormalMapGen] Height map {heightPath} ({heightTex.width}×{heightTex.height}) doesn't match source {srcPath} ({w}×{h}). Skipping.");
+            Object.DestroyImmediate(heightTex);
+            return false;
+        }
+        Color32[] height = heightTex.GetPixels32();
+        Object.DestroyImmediate(heightTex);
+
+        // Match auto edge-detect's bevel-at-silhouette behavior: out-of-bounds
+        // samples read as 0 (black/transparent), producing a strong gradient
+        // and a bevel at the image edge. EXCEPT at "interior" edges, where the
+        // sprite meets another at runtime — there we clamp so the gradient
+        // reads as flat. See GetInteriorEdges for which edges count as interior.
+        var (interiorBottom, interiorTop) = GetInteriorEdges(srcPath);
+
+        Color32[] dst = new Color32[w * h];
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                int i = y * w + x;
+                if (src[i].a < 128) { dst[i] = new Color32(128, 128, 255, 0); continue; }
+
+                float hC = height[y * w + x].r / 255f;
+                float hL = x > 0     ? height[y * w + (x - 1)].r / 255f : 0f;
+                float hR = x < w - 1 ? height[y * w + (x + 1)].r / 255f : 0f;
+                float hD = y > 0     ? height[(y - 1) * w + x].r / 255f
+                                     : (interiorBottom ? hC : 0f);
+                float hU = y < h - 1 ? height[(y + 1) * w + x].r / 255f
+                                     : (interiorTop    ? hC : 0f);
+
+                // Surface tangent right = (1, 0, hR-hL); tangent up = (0, 1, hU-hD).
+                // Cross product → normal (-dx, -dy, 1) before normalize.
+                float nx = -(hR - hL) * Strength;
+                float ny = -(hU - hD) * Strength;
+                float nz = 1f;
+
+                float len = Mathf.Sqrt(nx * nx + ny * ny + nz * nz);
+                if (len > 0f) { nx /= len; ny /= len; nz /= len; }
+                else          { nx = 0f; ny = 0f; nz = 1f; }
+
+                dst[i] = new Color32(
+                    (byte)(nx * 127.5f + 128f),
+                    (byte)(ny * 127.5f + 128f),
+                    (byte)(nz * 127.5f + 128f),
+                    255
+                );
+            }
+        }
+
+        Texture2D normalTex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+        normalTex.SetPixels32(dst);
+        normalTex.Apply();
+        string outPath = NormalPathFor(srcPath);
+        SysFile.WriteAllBytes(outPath, normalTex.EncodeToPNG());
+        Object.DestroyImmediate(normalTex);
+
+        AssetDatabase.ImportAsset(outPath);
+        TextureImporter nImp = AssetImporter.GetAtPath(outPath) as TextureImporter;
+        if (nImp != null) {
+            nImp.textureType        = TextureImporterType.Default;
+            nImp.textureCompression = TextureImporterCompression.Uncompressed;
+            nImp.filterMode         = imp.filterMode;
+            nImp.wrapMode           = TextureWrapMode.Clamp;
+            nImp.SaveAndReimport();
+        }
+
+        Debug.Log($"[NormalMapGen] Written (height): {outPath}");
+        return true;
+    }
+
     // ── phase-2 wiring ───────────────────────────────────────────────────────
     // Wires `_NormalMap` (always) and `_EmissionMap` (regular sprites only,
     // based on `_e.png` companion existence) as secondary textures on the
@@ -410,7 +577,13 @@ public static class SpriteNormalMapGenerator {
         TextureImporter imp = AssetImporter.GetAtPath(srcPath) as TextureImporter;
         if (imp == null) return;
 
-        AssignSecondaryTexture(srcPath, NormalPathFor(srcPath), "_NormalMap");
+        // Manual `_nm.png` takes precedence over the auto-generated `_n.png`
+        // when wiring `_NormalMap`. The auto file is left untouched on disk
+        // (handy for diffing against the manual override) but isn't referenced
+        // by the source sprite while the override exists.
+        string manualPath = ManualNormalPathFor(srcPath);
+        string normalPath = SysFile.Exists(manualPath) ? manualPath : NormalPathFor(srcPath);
+        AssignSecondaryTexture(srcPath, normalPath, "_NormalMap");
 
         if (!fire) {
             // Wire/unwire `_EmissionMap` based on companion existence. Removing
@@ -435,39 +608,100 @@ public static class SpriteNormalMapGenerator {
         imp.SaveAndReimport();
     }
 
-    // ── plant multi-tile interior-edge rule ──────────────────────────────────
-    // Plant sprites under Plants/Split/<name>/ stack vertically at runtime
-    // (Plant.UpdateSprite). Some of their pixel-row boundaries always meet
-    // another tile, so default per-rect edge detection produces an unwanted
-    // up/down-facing bevel where the trunk is supposed to be continuous.
+    // ── interior-edge rules (per category) ───────────────────────────────────
+    // An "interior" edge means the sprite touches something at that boundary
+    // at runtime, so the auto edge-detect should NOT bevel there (the bevel
+    // would read as a seam between the sprite and the thing it's resting on).
+    // For height-map gradients the same rule applies: at an interior edge, we
+    // clamp the height sample instead of treating out-of-bounds as 0, so the
+    // gradient at the boundary reads as zero (flat) rather than a drop.
     //
-    // Rules — derived from how Plant.UpdateSprite picks anchor/extension sprites:
-    //   g0..g3  → topmost extension at growth stages 4..N (always sits on a
-    //             tile below) → bottom is interior, top is real (canopy).
-    //   g4      → mid-trunk segment, sandwiched between tiles above and below
-    //             → both edges interior.
-    //   b4      → anchor when extensions exist (trunk base) → top is interior
-    //             (g above), bottom is at soil (real edge).
-    //   b0..b3  → anchor when single-tile (sapling) → no interior edges.
-    //   anything else → no special handling.
+    // Category rules:
+    //   - Plants under Plants/: bottom always interior (every plant sits on
+    //     terrain — including saplings). Top depends on the multi-tile
+    //     stacking rule below.
+    //   - Buildings under Buildings/: bottom always interior (rests on
+    //     terrain). Top is a real silhouette edge.
+    //   - Items under Items/: bottom always interior (in-storage variants
+    //     sit on a shelf inside a box; the floor variant sits on the floor —
+    //     either way the bottom is at the resting surface).
+    //   - Animals under Animals/: no interior edges (animals are heavily
+    //     animated, body parts can be at any silhouette position).
+    //   - Anything else: no interior edges.
     //
-    // Returns (bottomInterior, topInterior). Both default to false so most
-    // sprites retain the existing all-edges-real behaviour.
-    static (bool bottom, bool top) GetPlantInteriorEdges(string srcPath) {
+    // Plant top rule (within Plants/Split/<name>/), derived from how
+    // Plant.UpdateSprite picks anchor/extension sprites:
+    //   g4  → mid-trunk segment sandwiched between tiles above and below.
+    //   b4  → anchor when extensions exist; another tile sits above.
+    //   anything else → top is a real silhouette edge (canopy or sapling).
+    static (bool bottom, bool top) GetInteriorEdges(string srcPath) {
         if (string.IsNullOrEmpty(srcPath)) return (false, false);
-        if (srcPath.IndexOf("/Plants/Split/", System.StringComparison.Ordinal) < 0) return (false, false);
-
-        string stem = SysPath.GetFileNameWithoutExtension(srcPath);
-        if (stem.Length < 2) return (false, false);
-
-        char prefix = stem[0];
-        if (prefix != 'g' && prefix != 'b') return (false, false);
-        if (!int.TryParse(stem.Substring(1), out int idx)) return (false, false);
-
-        if (prefix == 'g' && idx >= 0 && idx <= 3) return (bottom: true,  top: false);
-        if (prefix == 'g' && idx == 4)             return (bottom: true,  top: true);
-        if (prefix == 'b' && idx == 4)             return (bottom: false, top: true);
+        bool inPlants    = srcPath.IndexOf("/Plants/",    System.StringComparison.OrdinalIgnoreCase) >= 0;
+        bool inBuildings = srcPath.IndexOf("/Buildings/", System.StringComparison.OrdinalIgnoreCase) >= 0;
+        bool inItems     = srcPath.IndexOf("/Items/",     System.StringComparison.OrdinalIgnoreCase) >= 0;
+        if (inPlants)    return (bottom: true, top: GetPlantTopInterior(srcPath));
+        if (inBuildings) return (bottom: true, top: false);
+        if (inItems)     return (bottom: true, top: false);
         return (false, false);
+    }
+
+    static bool GetPlantTopInterior(string srcPath) {
+        if (srcPath.IndexOf("/Plants/Split/", System.StringComparison.OrdinalIgnoreCase) < 0) return false;
+        string stem = SysPath.GetFileNameWithoutExtension(srcPath);
+        return stem == "g4" || stem == "b4";
+    }
+
+    // ── liquids ──────────────────────────────────────────────────────────────
+    // Liquids in storage render as a flat pool in the container — no bevels
+    // anywhere. Only the `floor.png` variant (which the artist draws as a
+    // bucket) gets the normal item treatment. Source of truth for "is this
+    // item a liquid" is itemsDb.json's `itemClass: "liquid"` field.
+    //
+    // `floor` and `icon` are intentionally treated differently: floor is the
+    // in-world bucket sprite, icon is the UI representation which still reads
+    // as a puddle so it's safe to flatten.
+    static HashSet<string> _liquidItemsCache;
+    const string ItemsDbPath = "Assets/Resources/itemsDb.json";
+
+    static bool IsLiquidStorageSprite(string srcPath) {
+        if (string.IsNullOrEmpty(srcPath)) return false;
+        if (srcPath.IndexOf("/Items/split/", System.StringComparison.OrdinalIgnoreCase) < 0) return false;
+        string stem = SysPath.GetFileNameWithoutExtension(srcPath);
+        if (string.Equals(stem, "floor", System.StringComparison.OrdinalIgnoreCase)) return false;
+        string dir = SysPath.GetDirectoryName(srcPath);
+        if (string.IsNullOrEmpty(dir)) return false;
+        string itemName = SysPath.GetFileName(dir);
+        return GetLiquidItems().Contains(itemName);
+    }
+
+    static HashSet<string> GetLiquidItems() {
+        if (_liquidItemsCache != null) return _liquidItemsCache;
+        var set = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+        try {
+            string text = SysFile.ReadAllText(ItemsDbPath);
+            var root = Newtonsoft.Json.Linq.JToken.Parse(text);
+            WalkItemsForLiquid(root, set);
+        } catch (System.Exception ex) {
+            Debug.LogError($"[NormalMapGen] Failed to read {ItemsDbPath} for liquid detection: {ex.Message}");
+        }
+        _liquidItemsCache = set;
+        return set;
+    }
+
+    static void WalkItemsForLiquid(Newtonsoft.Json.Linq.JToken node, HashSet<string> liquids) {
+        if (node is Newtonsoft.Json.Linq.JArray arr) {
+            foreach (var c in arr) WalkItemsForLiquid(c, liquids);
+            return;
+        }
+        if (node is Newtonsoft.Json.Linq.JObject obj) {
+            var classTok = obj["itemClass"];
+            var nameTok  = obj["name"];
+            if (classTok != null && (string)classTok == "liquid" && nameTok != null) {
+                liquids.Add((string)nameTok);
+            }
+            var children = obj["children"];
+            if (children != null) WalkItemsForLiquid(children, liquids);
+        }
     }
 
     // ── path helpers ─────────────────────────────────────────────────────────
@@ -489,6 +723,46 @@ public static class SpriteNormalMapGenerator {
         return SysPath.Combine(dir, stem + "_sway.png").Replace('\\', '/');
     }
 
+    static string ManualNormalPathFor(string srcPath) {
+        string dir  = SysPath.GetDirectoryName(srcPath);
+        string stem = SysPath.GetFileNameWithoutExtension(srcPath);
+        return SysPath.Combine(dir, stem + "_nm.png").Replace('\\', '/');
+    }
+
+    static string HeightMapPathFor(string srcPath) {
+        string dir  = SysPath.GetDirectoryName(srcPath);
+        string stem = SysPath.GetFileNameWithoutExtension(srcPath);
+        return SysPath.Combine(dir, stem + "_h.png").Replace('\\', '/');
+    }
+
+    // Configure a height-map's importer so it doesn't pollute the Project view
+    // with spurious sprite slicing. Heights are read off-disk via LoadImage so
+    // the importer's actual texture pipeline is irrelevant — this is purely
+    // cosmetic / "don't accidentally try to use this as a sprite."
+    static void ConfigureHeightMapImporter(string heightPath) {
+        TextureImporter hImp = AssetImporter.GetAtPath(heightPath) as TextureImporter;
+        if (hImp == null) return;
+        bool changed = false;
+        if (hImp.textureType        != TextureImporterType.Default)         { hImp.textureType        = TextureImporterType.Default;         changed = true; }
+        if (hImp.textureCompression != TextureImporterCompression.Uncompressed) { hImp.textureCompression = TextureImporterCompression.Uncompressed; changed = true; }
+        if (changed) hImp.SaveAndReimport();
+    }
+
+    // Configure a manual normal map's importer to match what the generator
+    // would set on an auto `_n.png`: plain RGBA32 (no compression), clamp wrap,
+    // filter mode inherited from the source sprite. Called when a `_nm.png` is
+    // first picked up so the artist doesn't have to set these by hand.
+    static void ConfigureManualNormalImporter(string manualPath, TextureImporter sourceImp) {
+        TextureImporter nImp = AssetImporter.GetAtPath(manualPath) as TextureImporter;
+        if (nImp == null) return;
+        bool changed = false;
+        if (nImp.textureType        != TextureImporterType.Default)         { nImp.textureType        = TextureImporterType.Default;         changed = true; }
+        if (nImp.textureCompression != TextureImporterCompression.Uncompressed) { nImp.textureCompression = TextureImporterCompression.Uncompressed; changed = true; }
+        if (nImp.wrapMode           != TextureWrapMode.Clamp)               { nImp.wrapMode           = TextureWrapMode.Clamp;               changed = true; }
+        if (sourceImp != null && nImp.filterMode != sourceImp.filterMode)   { nImp.filterMode         = sourceImp.filterMode;                changed = true; }
+        if (changed) nImp.SaveAndReimport();
+    }
+
     // ── up-to-date check ─────────────────────────────────────────────────────
     // Inputs that should invalidate a cached `_n.png`:
     //   - source PNG content (mtime proxy)
@@ -497,10 +771,17 @@ public static class SpriteNormalMapGenerator {
     //   - filter mode (propagates into _n.png importer settings)
     //   - spritesheet rects + names (slice changes regenerate)
     //   - companion `_e.png` existence + mtime (affects _EmissionMap wiring)
+    //   - companion `_nm.png` existence + mtime (manual override; flips
+    //     wiring from auto `_n.png` to the artist-authored manual file)
+    //   - companion `_h.png` existence + mtime (height-map source; switches
+    //     the generation algorithm from edge-detect to gradient-from-height)
     // Hashed and stored as `normalsCacheKey=<md5>` in the source's importer userData.
+    //
+    // "Output exists" check accepts either the auto `_n.png` OR the manual
+    // `_nm.png` — when the artist adds a manual file before any auto-gen has
+    // run, we still want a successful up-to-date verdict after one round.
     static bool IsUpToDate(string srcPath, TextureImporter imp) {
-        string outPath = NormalPathFor(srcPath);
-        if (!SysFile.Exists(outPath)) return false;
+        if (!SysFile.Exists(NormalPathFor(srcPath)) && !SysFile.Exists(ManualNormalPathFor(srcPath))) return false;
         string stored = GetUserDataValue(imp, "normalsCacheKey");
         if (string.IsNullOrEmpty(stored)) return false;
         return stored == ComputeCacheKey(srcPath, imp);
@@ -527,11 +808,30 @@ public static class SpriteNormalMapGenerator {
         if (SysFile.Exists(swayPath)) {
             sb.Append("|S").Append(SysFile.GetLastWriteTimeUtc(swayPath).Ticks);
         }
-        // Plant interior-edge rule: include the resolved flags so cached normal
-        // maps invalidate when a sprite enters/leaves the rule (e.g. a renamed
-        // file, or future rule edits — bump anything in GetPlantInteriorEdges).
-        var (intB, intT) = GetPlantInteriorEdges(srcPath);
-        if (intB || intT) sb.Append("|P").Append(intB ? "B" : "_").Append(intT ? "T" : "_");
+        // Manual normal override flips wiring; presence + mtime invalidates the
+        // cache so the artist can iterate on `_nm.png` and see it re-wired.
+        string manualNormalPath = ManualNormalPathFor(srcPath);
+        if (SysFile.Exists(manualNormalPath)) {
+            sb.Append("|N").Append(SysFile.GetLastWriteTimeUtc(manualNormalPath).Ticks);
+        }
+        // Height-map source flips the generation algorithm; iterate on `_h.png`
+        // and the gradient-derived `_n.png` regenerates on the next batch.
+        string heightMapPath = HeightMapPathFor(srcPath);
+        if (SysFile.Exists(heightMapPath)) {
+            sb.Append("|H").Append(SysFile.GetLastWriteTimeUtc(heightMapPath).Ticks);
+        }
+        // Interior-edge rule: include the resolved flags so cached normal
+        // maps invalidate when a sprite enters/leaves the rule (renamed file,
+        // moved folder, or rule edits — bump anything in GetInteriorEdges).
+        var (intB, intT) = GetInteriorEdges(srcPath);
+        if (intB || intT) sb.Append("|I").Append(intB ? "B" : "_").Append(intT ? "T" : "_");
+        // Liquid-storage flag flips the generator to flat-fill. Include
+        // itemsDb.json's mtime for any sprite under Items/ so toggling an
+        // item's `itemClass` invalidates the cached normal map.
+        if (srcPath.IndexOf("/Items/", System.StringComparison.OrdinalIgnoreCase) >= 0) {
+            if (SysFile.Exists(ItemsDbPath)) sb.Append("|D").Append(SysFile.GetLastWriteTimeUtc(ItemsDbPath).Ticks);
+            if (IsLiquidStorageSprite(srcPath)) sb.Append("|L");
+        }
         return Md5(sb.ToString());
     }
 

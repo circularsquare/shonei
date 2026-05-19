@@ -5,6 +5,12 @@ using UnityEngine.EventSystems;
 using System;
 using System.Linq;
 
+// Fetches a quantity of a specific item into the animal's main inventory, or into a
+// named equip slot (e.g. food slot, tool slot). Used by survival steps in ChooseTask
+// (equip food / tool / clothing) — the simplest fetch-only task shape.
+//
+// Queue: Fetch(item).
+// Reserves: source ItemStack (via FetchAndReserve).
 public class ObtainTask : Task {
     public ItemQuantity iq;
     public Inventory targetInv; // null = animal's main inventory; pass foodSlotInv to equip

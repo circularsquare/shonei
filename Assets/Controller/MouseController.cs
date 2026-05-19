@@ -27,6 +27,12 @@ public class MouseController : MonoBehaviour {
     int        cachedPreviewShapeIndex;
     bool       cachedPreviewMirrored;
     int        cachedPreviewRotation;
+    // Persistent ghost shown at the first-clicked endpoint of a two-click
+    // placement (rope bridge). Lives separate from previewVisualRoot — that
+    // one tracks the cursor; this one stays parked at the chosen tile until
+    // the second click commits or BuildPanel.firstEndpoint is cleared.
+    GameObject firstEndpointGhostRoot;
+    StructType cachedFirstEndpointSt;
     Vector3 prevPosition;
 
     public World world;
@@ -106,6 +112,16 @@ public class MouseController : MonoBehaviour {
             BuildPanel.instance?.CycleShape(+1);
         if (Input.GetKeyDown(KeyCode.Q) && mouseMode == MouseMode.Build)
             BuildPanel.instance?.CycleShape(-1);
+        // Ctrl+Alt+B = arm one-shot instant-build for the next blueprint placed.
+        // Symmetric to InfoPanel's Ctrl+Shift+D instant-deconstruct. Uses Alt (not Shift)
+        // to dodge Unity's Ctrl+Shift+B Build Settings shortcut. Not gated on Build mode
+        // so the user can arm it before selecting a building.
+        if (Input.GetKeyDown(KeyCode.B)
+                && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+                && (Input.GetKey(KeyCode.LeftAlt)     || Input.GetKey(KeyCode.RightAlt))) {
+            BuildPanel.instantBuildNext = !BuildPanel.instantBuildNext;
+            Debug.Log($"[debug] instant-build next blueprint: {(BuildPanel.instantBuildNext ? "ARMED" : "disarmed")}");
+        }
         // Ctrl+D = audit dump. Excludes Shift so it doesn't double-fire with
         // InfoPanel's Ctrl+Shift+D instant-deconstruct shortcut.
         if (Input.GetKeyDown(KeyCode.D)
@@ -251,6 +267,11 @@ public class MouseController : MonoBehaviour {
             buildPreview.SetActive(false);
         }
 
+        // First-endpoint ghost (two-click placement). Independent of the
+        // cursor-following preview above — sits at BuildPanel.firstEndpoint
+        // until the second click commits or the endpoint is cleared.
+        UpdateFirstEndpointGhost(tileAt);
+
 
         // Shift+RMB on storage = paste filters (before drag handling consumes the click)
         Inventory storageHere = GetStorageAt(tileAt);
@@ -346,6 +367,60 @@ public class MouseController : MonoBehaviour {
         previewVisualRoot.transform.SetParent(buildPreview.transform, false);
         StructureVisualBuilder.Build(previewVisualRoot, st, shape, mirrored, rotation, 200,
                                      new Color(1f, 1f, 1f, 0.3f));
+    }
+
+    // Manages the persistent ghost shown at BuildPanel.firstEndpoint during a
+    // two-click placement (rope bridge). The first click stashes the endpoint
+    // but doesn't create a Blueprint yet — without a visible ghost the player
+    // has no feedback that the click registered. We spawn a translucent post
+    // sprite there and update its flipX based on cursor position relative to
+    // the endpoint:
+    //   cursor.x > endpoint.x → endpoint will be the LEFT post  → mirrored=true
+    //   cursor.x < endpoint.x → endpoint will be the RIGHT post → mirrored=false
+    // i.e. the ghost shows the same orientation the built post will have, so
+    // there's no surprise flip on commit.
+    //
+    // Teardown fires when firstEndpoint is null (clear / commit / cancel) or
+    // when leaving Build mode. Live structType swaps rebuild the ghost so the
+    // sprite stays in sync.
+    void UpdateFirstEndpointGhost(Tile cursorTile) {
+        BuildPanel bp = BuildPanel.instance;
+        Tile fe = bp?.firstEndpoint;
+        StructType st = bp?.structType;
+        bool shouldShow = fe != null && st != null && mouseMode == MouseMode.Build;
+
+        if (!shouldShow) {
+            if (firstEndpointGhostRoot != null) {
+                Destroy(firstEndpointGhostRoot);
+                firstEndpointGhostRoot = null;
+                cachedFirstEndpointSt = null;
+            }
+            return;
+        }
+
+        // Rebuild on structType swap so the sprite tracks the current selection.
+        if (firstEndpointGhostRoot != null && cachedFirstEndpointSt != st) {
+            Destroy(firstEndpointGhostRoot);
+            firstEndpointGhostRoot = null;
+        }
+        if (firstEndpointGhostRoot == null) {
+            firstEndpointGhostRoot = new GameObject("firstEndpointGhost");
+            firstEndpointGhostRoot.transform.SetParent(StructController.instance.transform, true);
+            StructureVisualBuilder.Build(firstEndpointGhostRoot, st, st.GetShape(0),
+                                         mirrored: false, rotation: 0, baseSortingOrder: 200,
+                                         tint: new Color(0.8f, 0.9f, 1f, 0.5f));
+            cachedFirstEndpointSt = st;
+        }
+
+        firstEndpointGhostRoot.transform.position = StructureVisuals.PositionFor(st, fe.x, fe.y);
+
+        // Mirror by cursor position. When the cursor is exactly on the endpoint's
+        // column, keep the last mirror — avoids flicker as the cursor crosses.
+        if (cursorTile != null && cursorTile.x != fe.x) {
+            bool mirrored = cursorTile.x > fe.x;
+            var srs = firstEndpointGhostRoot.GetComponentsInChildren<SpriteRenderer>();
+            for (int i = 0; i < srs.Length; i++) srs[i].flipX = mirrored;
+        }
     }
 
     private void CommitHarvestDrag(Vector3 startScreen, Vector3 endScreen) {
@@ -476,6 +551,7 @@ public class MouseController : MonoBehaviour {
         mouseMode = MouseMode.Remove;
         if (BuildPanel.instance != null){
             BuildPanel.instance.structType = null;
+            BuildPanel.instance.firstEndpoint = null;
             BuildPanel.instance.CloseSubPanel();
         }
     }
@@ -483,6 +559,7 @@ public class MouseController : MonoBehaviour {
         mouseMode = MouseMode.Harvest;
         if (BuildPanel.instance != null){
             BuildPanel.instance.structType = null;
+            BuildPanel.instance.firstEndpoint = null;
             BuildPanel.instance.CloseSubPanel();
         }
     }
@@ -490,6 +567,7 @@ public class MouseController : MonoBehaviour {
         mouseMode = MouseMode.Select;
         if (BuildPanel.instance != null){
             BuildPanel.instance.structType = null;
+            BuildPanel.instance.firstEndpoint = null;
             BuildPanel.instance.CloseSubPanel();
         }
     }

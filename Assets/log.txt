@@ -1,5 +1,14 @@
 meoww!!
 
+5/19
+- make sleeping feel more natural
+- burrow / house improvements / furnishing finishing
+- added rice!
+- adding rope bridge
+5/18
+- height map to normal map generator
+- world gen improvements, mostly water related
+- added mroe to shack, burrow, 2x2 house
 5/17
 - add window/world gen tuner
 5/14
@@ -30,7 +39,7 @@ meoww!!
 - background wall follows terrain 
 - mineshafts
 5/3
-- options panel
+- option    s panel
 4/30
 - gpu optimizations
 - test suite!

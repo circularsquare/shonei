@@ -5,6 +5,9 @@ using UnityEngine.EventSystems;
 using System;
 using System.Linq;
 
+// Finds the best drop target for a carried item (storage preferred, floor fallback),
+// walks there, and unloads. If no target is reachable, sets a 3 s dropCooldown so
+// ChooseTask doesn't spin on DropTask every tick.
 public class DropObjective : Objective {
     private Item item;
     private Tile destination;

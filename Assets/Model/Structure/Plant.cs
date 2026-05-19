@@ -608,6 +608,12 @@ public class PlantType : StructType {
     // 4-stage thresholds, claiming tiles above. Harvest yield scales linearly with current
     // height at harvest time, so a 3-tile bamboo drops 3× the per-tile yield in products.
     public int maxHeight {get; set;} = 1;
+
+    // Relative weight used by WorldGen.ScatterPlants to pick which plant type seeds
+    // each natural cluster. Sampled proportionally against all other plant types with
+    // genWeight > 0 — units are unnormalized. 0 (default) = never spawns naturally
+    // (legacy types, crops planted only by the player). Tune in plantsDb.json.
+    public float genWeight {get; set;} = 0f;
     // public string njob {get; set;}
     // public Job job;
 

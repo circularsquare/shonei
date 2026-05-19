@@ -306,10 +306,20 @@ public class Animal : MonoBehaviour{
         maxSpeed = 1.5f * efficiency;
     }
 
-    // True between 9 pm (phase 0.875) and 6 am (phase 0.25).
-    private bool IsNighttime() {
+    // Bedtime urgency — ramps 0 → 1 across the early-night window so mice don't all
+    // decide to sleep on the same tick. Scaled by Eeping.bedtimeMaxBoost (0.5) inside
+    // ShouldSleep, so the effective threshold range is [0.4, 0.9]:
+    //   bedtime=0   → sleep only if e < 0.4   (daytime: emergency nap when fatigued)
+    //   bedtime=0.5 → sleep if e < 0.65       (mid-evening: tired mice peel off)
+    //   bedtime=1   → sleep if e < 0.9        (deep night: even mostly-rested mice sleep,
+    //                                          but fully-rested mice (e ≥ 0.9) stay up)
+    // Window: 0 before 7pm, linearly 0→1 from 7pm to 11pm, holds at 1 through to 6am.
+    private float BedtimeUrgency() {
         float phase = (World.instance.timer % World.ticksInDay) / (float)World.ticksInDay;
-        return phase >= 21f / 24f || phase < 6f / 24f;
+        float hour = phase * 24f;
+        if (hour >= 6f && hour < 19f) return 0f;
+        if (hour >= 19f && hour < 23f) return (hour - 19f) / 4f;
+        return 1f;
     }
 
     // True between 5 pm and 9 pm — mice prefer leisure over work during this window.
@@ -415,7 +425,7 @@ public class Animal : MonoBehaviour{
             task = new DropTask(this);
             if (task.Start()) return; }
         if (eating.Hungry()) { if (FindFood()) return; }
-        if (eeping.ShouldSleep(IsNighttime())) {
+        if (eeping.ShouldSleep(BedtimeUrgency())) {
             task = new EepTask(this);
             if (task.Start()) return; }
         if (FindEquipment()) return;
@@ -904,7 +914,7 @@ public class Animal : MonoBehaviour{
     // slots" when migrating to a less-cramped house). Iterates StructController rather than
     // routing through Nav.FindPathToStruct because housing isn't keyed by a single StructType.
     private Building FindReachableHousing(System.Func<Building, bool> extraFilter = null) {
-        Node myNode = TileHere()?.node;
+        Node myNode = PathStartNode();
         if (myNode == null) return null;
         Building best = null;
         float bestCost = float.MaxValue;
@@ -930,6 +940,30 @@ public class Animal : MonoBehaviour{
     }
 
     public Tile TileHere() { return world.GetTileAt(x, y); }
+
+    // Pathing start node — the Node any FindPath / Navigate call should treat as the
+    // animal's "current" graph position. For mice outside a building, that's just the
+    // tile node under their feet. For mice inside a doored building (insideBuilding
+    // != null), the tile node may be solid dirt / non-standable (burrow's preserved
+    // dirt) and have no graph edges — using it as a start would orphan every path
+    // request. Return the nearest interior waypoint instead; it's edged to the door
+    // approach so A* can route out via the door automatically. Falls back to TileHere
+    // if interior data is missing (corrupted state).
+    public Node PathStartNode() {
+        if (insideBuilding != null && insideBuilding.interiorNodes != null
+            && insideBuilding.interiorNodes.Length > 0) {
+            Node best = null;
+            float bestDist = float.MaxValue;
+            for (int i = 0; i < insideBuilding.interiorNodes.Length; i++) {
+                Node n = insideBuilding.interiorNodes[i];
+                if (n == null) continue;
+                float d = (n.wx - x) * (n.wx - x) + (n.wy - y) * (n.wy - y);
+                if (d < bestDist) { bestDist = d; best = n; }
+            }
+            if (best != null) return best;
+        }
+        return TileHere()?.node;
+    }
 
     // Single point of truth for "set the animal's position." Mirrors (x, y) into the
     // GameObject transform so the model and view stay in sync — every other site that

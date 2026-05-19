@@ -5,6 +5,10 @@ using UnityEngine.EventSystems;
 using System;
 using System.Linq;
 
+// Parks the animal at a workstation to run a Recipe. AnimalStateManager.HandleWorking
+// ticks workProgress, consumes inputs, produces outputs each round, and calls
+// task.Complete() when roundsRemaining hits 0. PoseOverride pulls the workstation's
+// workPose (e.g. "walk" for the wheel runner so its legs cycle while producing power).
 public class WorkObjective : Objective {
     private Recipe recipe;
     public WorkObjective(Task task, Recipe recipe) : base(task) {

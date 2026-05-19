@@ -1,10 +1,10 @@
 using System.Reflection;
 using UnityEngine;
 
-/// Copies the PixelPerfectCamera assetsPPU from a source camera each LateUpdate,
-/// keeping the UnlitOverlayCamera's zoom in sync with the main camera.
-/// Uses reflection to access assetsPPU — same workaround as MouseController
-/// (direct type reference causes compile errors due to a package assembly conflict).
+// Copies the PixelPerfectCamera assetsPPU from a source camera each LateUpdate,
+// keeping the UnlitOverlayCamera's zoom in sync with the main camera.
+// Uses reflection to access assetsPPU — same workaround as MouseController
+// (direct type reference causes compile errors due to a package assembly conflict).
 [RequireComponent(typeof(Camera))]
 public class MatchCameraZoom : MonoBehaviour {
     [SerializeField] Camera source;

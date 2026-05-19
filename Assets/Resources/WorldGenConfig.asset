@@ -1,0 +1,83 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1d0baa78052ddf245b7ddd982dcd55bf, type: 3}
+  m_Name: WorldGenConfig
+  m_EditorClassIdentifier: 
+  BaseHeight: 60
+  SurfaceMin: 50
+  SurfaceMax: 75
+  DirtDepth: 3
+  BedrockY: 0
+  SurfaceFreq: 0.06
+  SurfaceAmp: 6
+  SurfaceOctaves: 3
+  SurfaceWarpFreq: 0.06
+  SurfaceWarpAmp: 5
+  SurfaceWarpOctaves: 2
+  SurfaceWarpSeedOffset: 31337
+  SurfaceAmpVarFreq: 0.012
+  SurfaceAmpVarMin: 0.6
+  SurfaceAmpVarMax: 1.4
+  SurfaceAmpVarSeedOffset: 7919
+  SpawnMinX: 25
+  SpawnMaxX: 37
+  SpawnBlend: 4
+  GraniteFreq: 0.08
+  GraniteThreshold: 0.48
+  GraniteDepthCenter: 0.4
+  GraniteDepthWidth: 0.3
+  GraniteSeedOffset: 1111
+  SlateFreq: 0.09
+  SlateThreshold: 0.5
+  SlateDepthCenter: 0.7
+  SlateDepthWidth: 0.25
+  SlateSeedOffset: 2222
+  CaveFreqX: 0.06
+  CaveFreqY: 0.14
+  CaveOctaves: 2
+  CavePersistence: 0.5
+  CaveLacunarity: 2
+  CaveThresholdSurface: 0.28
+  CaveThresholdDeep: 0.38
+  CaveExclusionBelow: 4
+  CACycles: 1
+  MinCaveSize: 8
+  WormCountMin: 2
+  WormCountMax: 3
+  WormMinSeparation: 25
+  WormSpawnBuffer: 2
+  WormMinSteps: 100
+  WormMaxSteps: 150
+  WormRadius: 1
+  WormFalloff: 1
+  ChamberRadius: 1
+  ChamberInterval: 10000
+  WormStrength: 0.4
+  WormTurnChance: 0.1
+  WaterLine: 60
+  WaterChunkCount: 3
+  WaterChunkBudgetMin: 15
+  WaterChunkBudgetMax: 45
+  MinPoolVolume: 3
+  PitRejectDepth: 4
+  PoolCarveWidth: 5
+  PoolCarveDepth: 2
+  PoolCarveMaxRoughness: 2
+  CaveWaterChance: 0.2
+  LiquidSettleMaxSteps: 100
+  LiquidSettleMoveThreshold: 4
+  SandFreq: 0.1
+  SandThreshold: 0.52
+  PlantChance: 0.08
+  ClusterMin: 1
+  ClusterMax: 3
+  StartingMoisture: 50

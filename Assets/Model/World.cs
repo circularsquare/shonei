@@ -267,6 +267,41 @@ public class World : MonoBehaviour {
         return tile.inv.Produce(item, quantity);
     }
 
+    // Bulk tile-type change for a rectangular footprint, outside the normal Construct path.
+    // Used by `preservesTile` self-heal (footprint restore to authored type) and `preservesTile`
+    // deconstruct (footprint → empty after the structure is destroyed). Sets tile.type per tile,
+    // sweeps standability over each changed tile and its 8 neighbours, refreshes items above the
+    // top row in case support changed, and rebuilds nav components. Returns the count of tiles
+    // actually changed so callers can short-circuit logging when there's nothing to do.
+    public int SetFootprintTileType(int ax, int ay, int width, int height, TileType target) {
+        int changed = 0;
+        for (int dy = 0; dy < height; dy++) {
+            for (int dx = 0; dx < width; dx++) {
+                Tile t = GetTileAt(ax + dx, ay + dy);
+                if (t == null || t.type == target) continue;
+                t.type = target;
+                changed++;
+            }
+        }
+        if (changed == 0) return 0;
+        for (int dy = 0; dy < height; dy++) {
+            for (int dx = 0; dx < width; dx++) {
+                int cx = ax + dx, cy = ay + dy;
+                for (int ddx = -1; ddx <= 1; ddx++) {
+                    for (int ddy = -1; ddy <= 1; ddy++) {
+                        int tx = cx + ddx, ty = cy + ddy;
+                        if (tx >= 0 && tx < nx && ty >= 0 && ty < ny)
+                            graph.UpdateNeighbors(tx, ty);
+                    }
+                }
+            }
+        }
+        for (int dx = 0; dx < width; dx++)
+            FallIfUnstandable(ax + dx, ay + height);
+        graph.RebuildComponents();
+        return changed;
+    }
+
     // Drops all items from tile.inv straight down to the first standable tile below.
     // Uses MoveItemTo to avoid double-counting GlobalInventory.
     // Falls items on tile if it is no longer standable. Call after graph updates.

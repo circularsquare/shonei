@@ -5,6 +5,14 @@ using UnityEngine.EventSystems;
 using System;
 using System.Linq;
 
+// Runs one or more rounds of a recipe at a workstation building. Selected via
+// Animal.ChooseCraftTask (recipe-score sorted), not WOM — craft is its own dispatch
+// layer between tiers 3 and 4 in ChooseTask.
+//
+// Queue: Fetch(input₁) → Fetch(input₂) → … → Go(workNode) → Work → Drop(output₁) → Drop(output₂) → …
+// Reserves: source ItemStacks for each input (via FetchAndReserve).
+// roundsRemaining is capped by recipe.maxRoundsPerTask; mid-task fetch shortfalls
+// either retry against a new stack or trim rounds down to what the animal already carries.
 public class CraftTask : Task {
     public Recipe recipe;
     public Tile workplace;

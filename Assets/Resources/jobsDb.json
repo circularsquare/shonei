@@ -36,8 +36,7 @@
         "name": "digger",
         "jobType": "gatherer",
         "defaultSkill": "mining",
-        "skillWeights": { "mining": 0.8, "construction": 0.2 },
-        "defaultLocked": true
+        "skillWeights": { "mining": 0.8, "construction": 0.2 }
     },{
         "id": 11,
         "name": "woodworker",

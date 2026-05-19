@@ -57,6 +57,31 @@ Mechanism:
 
 **Critical load invariant**: waypoint registration runs in the `Structure` constructor — *not* `OnPlaced()`, which is gameplay-only. `Structure.Create()` runs the constructor on both gameplay and load paths. Standability isn't checked when picking the connecting tile because at load time the constructor runs in `SaveSystem` Phase 2 *before* `graph.Initialize()` (Phase 4) sets `node.standable`. The picked tile is implicitly standable post-placement (placement validates it), and Phase 4's `RebuildComponents` BFS picks up the workspot via its neighbour edge.
 
+### Door + interior waypoints
+
+The mechanism that gets mice from outside a building to inside it. Doors are pure graph topology — Task code never branches on "does this building have a door?", it just calls `nav.PathTo(building.interiorNodes[0])` and A* routes through the door automatically.
+
+Buildings with `StructType.interiorTiles[]` register one off-grid `Node` per entry in their constructor (mirror of the workspot pattern, same load-invariant). Each interior node:
+- Is positioned at the tile's centre (`worldX[i], worldY[i]`) — same world coords a mouse standing on the exterior tile-on-top would land at.
+- Has `Node.interiorOf = this` (the owning `Building`). `Nav.MoveCore` reads this on every arrival and assigns `Animal.insideBuilding = arrivedNode.interiorOf`. Egress falls out naturally: the first exterior step on the way out clears the flag.
+- Is edged horizontally to interior-tile neighbours (Manhattan `|dx|=1, dy=0` adjacency only). Vertical access requires an explicit `ladders[]` entry — each ladder edges `(dx, dy)` up to `(dx, dy+1)`. Mice never climb through walls or ceilings unless an author declared it.
+
+For each `doors[]` entry the constructor edges the interior node at the door's tile to the *existing* approach-tile graph node (the tile just outside the door, computed from `side`: left/right/top/bottom). A door is one bidirectional edge — no separate door node in v1 — so the door is purely a connection point, not a stopover.
+
+Mirror handling lives entirely inside `Structure`: `dx` flips via `nx-1-dx`, `side: left ↔ right` swap, ladder dx flips, interior-tile dx flips. Callers read these fields raw.
+
+Cleanup in `Structure.Destroy`: every interior node has its neighbour edges removed and `interiorOf` cleared. Animals still pointing at the destroyed building have `insideBuilding`/`homeBuilding` nulled by `Building.Destroy` so future `FindHome` calls don't read a dangling ref; positional cleanup falls to the standard fall integration once the interior tiles return to empty air.
+
+### Housing assignment (`Animal.homeBuilding` vs `homeTile`)
+
+`Animal.homeBuilding` is the **authoritative reservation owner** — the `Building` whose `Reservable` holds this mouse's claim. `Animal.homeTile` is the path/approach tile (door's approach tile for doored housing, the building's anchor for any legacy doorless housing). The two are decoupled so multi-tile housing doesn't break: the home tile sits *outside* the footprint for doored buildings, where no `building` reference exists — using `homeTile.building` to mean "my home" would always be null.
+
+`AtHome()` returns true when `insideBuilding == homeBuilding`. The legacy 1-tile-on-top path still works through a fallback that checks `TileHere() == homeBuilding.tile` for buildings with no `interiorNodes`. `HasHouse` checks `homeBuilding?.structType.isHousing` rather than any hardcoded structType name — adding a new housing tier is JSON-only.
+
+`FindHome` (Animal.cs) iterates `StructController.GetStructures()` to find any reachable `isHousing` building with an available reservation slot, ranking by A* path cost to the building's first interior node (or `workNode` for legacy). Save/load persists `(homeBuildingX, homeBuildingY)` and `(insideBuildingX, insideBuildingY)` so reload restores reservations and inside-renders without re-running FindHome.
+
+`EepTask` is door-agnostic: all residents path to `home.interiorNodes[0]` (or `home.workNode` for doorless legacy), no door-system knowledge. To keep multiple residents from piling onto a single texel, `EepObjective.Start` shifts the rendered position horizontally by `(animal.id % capacity) × 2 px` (1/16 world unit per pixel). **Stagger direction** is read from the interior layout: `sign(interiorNodes[1].wx - interiorNodes[0].wx)` so the offset always pushes toward another tile that's part of the building. Without this, mirrored buildings (e.g. burrow whose mirrored anchor is the rightmost world tile) would shift slot-1 sleepers past the rightmost interior tile into the wall. No persistent per-mouse slot reservation — collisions when two mice share `id % capacity` are accepted (they stack).
+
 ### Transit (elevators)
 
 Capacity-1 vertical lifts that A* sees as a single graph edge. Implementation lives in [Elevator.cs](../Model/Structure/Elevator.cs) + [ElevatorEdgePolicy.cs](../Model/ElevatorEdgePolicy.cs); only the load-bearing contracts are documented here.
@@ -72,6 +97,44 @@ Capacity-1 vertical lifts that A* sees as a single graph edge. Implementation li
 **Boarding-tile `preventFall = true` is load-bearing** even though the boarding tile is itself standable. There's a one-frame seam between `Elevator.Tick` setting `ridingElevator` and `Nav.Move` re-asserting preventFall via the riding branch; `ElevatorPlatform.Update` may drag the passenger into the non-standable chassis interior before `Animal.Update` runs for that mouse, and `UpdateMovement`'s fall check would read stale-false on the first riding frame without the policy's preventFall.
 
 **Save/load.** `currentY` and the two history buffers (`recentTripTicks`, `recentEndToEndTicks`) persist via `StructureSaveData`. Dispatch state, queue, and pending reservations do NOT — they reset to Idle/empty on load (animals lose their tasks across save boundaries anyway).
+
+### Rope bridges
+
+Walkable rope curve strung between two endpoint posts. Placed by clicking two tiles — the first click drops a `BridgePost` at one end, the second click drops its partner and links them via a side-car `RopeBridge` entity that owns the nav waypoint chain and visual rope.
+
+**Architecture: linked posts + side-car entity.**
+- Each `BridgePost` is a normal 1×1 depth-2 `Structure` for every purpose except its lifecycle entanglement with the partner — placement, supply, construction, save data, decay, selection, and rendering all flow through the standard structure paths.
+- `RopeBridge` is NOT a `Structure`. It's a plain side-car class holding the catenary's nav waypoint chain (N `Node`s edged into the `Graph`) and the visual `LineRenderer`. State that spans the gap lives here; state per-post lives on the posts.
+- Each post stores its partner's coords (`partnerX, partnerY`); the bridge holds back-refs to both posts. Mining one post calls `RopeBridge.OnPostDestroyed`, which tears down the waypoint chain + visuals AND destroys the surviving post (a lone stake in the ground is meaningless).
+
+**Placement validation** (`StructPlacement.CanPlaceTwoPoint`):
+- `minDx ≤ |xA − xB| ≤ maxDx`, `|yA − yB| ≤ maxDy`. Defaults 3/20/5; see `StructType.minDx` etc.
+- Both posts pass `CanPlaceHere` (standable, empty at depth 2, no blueprint).
+- Every integer tile along the catenary's claim (one per x-column from `min(xA, xB)` to `max(xA, xB)`) must be non-solid and empty at depth 2. The claim function (`Catenary.ClaimedTiles`) is the SAME one the live bridge uses — placement validation never disagrees with what gets occupied.
+
+**Catenary math** (`Catenary` static helper, pure):
+- `y(t) = lerp(yLo, yHi, t) - sagFraction * |Δx| * sin(π * t)`, sampled monotonically left→right.
+- `sin`-arch approximates true `cosh` catenary — visually identical at this scale, cheaper.
+- Sag uses `|Δx|` only, NOT euclidean length. Drawing from euclidean length lets steep bridges dip below their lower endpoint — the rope would visually pass through the ground.
+
+**Nav waypoint chain** (built in `RopeBridge` ctor):
+- `2 × |Δx| − 1` interior `Node` waypoints, monotonic in x. Endpoints of the chain are the two post tile-nodes.
+- Each interior waypoint carries the per-instance `BridgePolicy`. **Per-instance, not singleton**: `Graph.IsNeighbor` and `Graph.ResolveEdgePolicy` use shared-reference equality (`Navigation.cs` line 216, 335) — a singleton policy would falsely glue unrelated bridges' waypoints together across `UpdateNeighbors` rebuilds.
+- Approach edges (waypoint ↔ post tile-node) do NOT carry the policy — they resolve to `WaypointApproachPolicy.Instance` via the waypoint-flag fallback in `ResolveEdgePolicy`. Same euclidean cost; lower coupling.
+- `BridgePolicy.PreventFall = true` so a mouse mid-chain doesn't fall when the integer tile below the waypoint isn't standable.
+
+**Load-time waypoint ordering.** `BridgePost` constructors run in Phase 2; `OnPlaced` is gameplay-only, so bridges don't materialise during load via the live path. Instead, `RopeBridge.PairAllAfterLoad()` runs between Phase 3 and Phase 4 (`SaveSystem.cs`, just before `graph.Initialize()`) so the waypoint chain enters the initial `RebuildComponents` sweep. Without this, mice can't path across a saved bridge until something else perturbs the graph.
+
+**Save format.** Bridges are NOT persisted as a separate top-level list. Each `BridgePost`'s `StructureSaveData` carries nullable `partnerX, partnerY`; `RopeBridge.PairAllAfterLoad` rebuilds the side-car entity from the matched pair. Mid-construction blueprints persist their second endpoint via nullable `BlueprintSaveData.x2/y2`.
+
+**Cost scaling.** A two-click blueprint claims BOTH post tiles in its ctor (one `Blueprint` instance referenced from both tiles' `structs[depth]` slot). Cost scales linearly with `|Δx|`: total = `ncosts × |Δx|`, authored per-tile-of-span. On `Complete()`, the blueprint calls `StructController.Construct` twice — once per post — with the partner's coords swapped, and the second post's `OnPlaced` spins up the `RopeBridge`.
+
+**Known v1 limitations / phase-2 polish:**
+- Single ghost preview at the first-click tile (no ghost catenary line during the second-click hover).
+- One `LineRenderer` for the walking line; no handrope / vertical connector ropes.
+- Supply delivery routes to the first post only — `Nav.PathToOrAdjacentBlueprint` iterates the anchor's rectangle footprint (1×1 for a post), not the partner. A polish pass would add a virtual `FootprintTiles` enumeration on `Blueprint` so both posts accept deliveries.
+- If the player mines the support out from under the partner post mid-construction, the blueprint's `IsSuspended` check only looks at the anchor — the second post can still complete on a non-standable tile. Could be tightened by extending `IsSuspended` for two-click bps.
+- No wind physics yet; `RopeBridge.RefreshLinePositions` is called once at `BuildVisual` time. Future wind work would tick segment positions and re-call `RefreshLinePositions`.
 
 ---
 
@@ -214,7 +277,7 @@ Distinct from liquid `tile.water` — moisture represents damp **soil**. Lives o
 
 **Per in-game second** (1 s real-time, dispatched from the 1 s block in `World.Update` — both run before `PlantController.TickUpdate` so plants' `Grow()` sees freshly-updated soil):
 - **Rain uptake** (`MoistureSystem.RainUptakePerSecond()`, soil whose immediate tile-above isn't a ceiling): gains `round(rainAmount × MoistureRainGainPerHour / TicksPerInGameHour)` (currently 10 at full rain — i.e. 100/h spread over 10 one-second slices). "Ceiling" = tile directly above is solid ground OR carries any `solidTop` structure; see `MoistureSystem.CapsSoilFromAbove`. This is *not* a full sky-trace — a detached overhang higher up doesn't block rain, only the tile immediately at y+1 matters. Simpler + avoids the asymmetry where a single ceiling layer would slip through a sky-trace (its tile type is non-solid; its `solidTop` struct flag would be missed).
-- **Water-neighbour seep** (`MoistureSystem.SeepPerSecond()`): each solid tile with moisture headroom picks its wettest 4-orthogonal water neighbour and converts `MoistureSeepWaterPerSec` water units (currently 1) into `MoistureSeepGainPerWater` moisture each (currently 10). Water is actually drained from the source tile — unlike rain, seep is conservative. A dry soil tile next to a full water tile saturates in ~10 s real-time; a 1-tile pond feeding 4 solid neighbours drains to empty in ~40 s under load. Partial-fill soil (near saturation) still pays the same water-per-moisture rate via ceil-divide — no free moisture. Pump-irrigated farms stay wet only while the pump keeps refilling water.
+- **Water-neighbour seep** (`MoistureSystem.SeepPerSecond()`): each solid tile with moisture headroom picks its wettest 4-orthogonal water neighbour and absorbs up to `MoistureSeepMoisturePerSec` (currently 10) moisture from it. Yield is `MoistureSeepGainPerWater` (currently 20) moisture per 1 unit of water drained — i.e. each unit of water in the source goes twice as far as it does in rain/evaporation accounting. Because `tile.water` is integer, the source can't lose half a unit per tick directly; the cost is amortised via a per-soil-tile debt accumulator (`_seepDebt`) that holds absorbed-but-unpaid moisture and cashes out 1 water from the source whenever it exceeds `GainPerWater`. Net effect: dry soil still saturates from a wet neighbour in ~10 s real-time (rate unchanged), but the source water drains at roughly half the previous rate — a 1-tile pond feeding 4 solid neighbours empties in ~80 s under load. If the source runs dry, absorption caps so leftover debt stays below one whole water unit (no free moisture). Pump-irrigated farms stay wet only while the pump keeps refilling water.
 - **Overlay growth + health state** (`OverlayGrowthSystem.Tick()`): ticks live decoration on overlay-bearing tiles (today: grass on dirt). Walks every overlay-bearing tile (no global cold early-exit — the death paths must fire below the growth gate). **Fully-buried tiles** (cardinal mask `0xF`, all four neighbours solid) skip both stages: buried grass is treated as preserved in place — insulated from surface weather, frozen at whatever state it carried when it got buried. Re-exposing the tile (mining a neighbour) makes the next Tick pick it up normally. Two stages per non-buried tile:
   1. **Health-state transition** (skipped on bare tiles, since there's no decoration to wilt). One Rng roll per tick — death rolls at `DeathChancePerSecond` (≈ 10 s steady-state expected); recovery rolls at the slower `GrowChancePerSecondPerSide` (~½ in-game day):
      - `temp < -1°C` → Dead (roll, from Live OR Dying; overrides Dying gate)
@@ -293,6 +356,20 @@ Lookup order for the suffixed sprite (first match wins): (1) slice named `{stem}
 **Save/load**: `shapeIndex` is persisted on both `StructureSaveData` and `BlueprintSaveData`; defaults to 0 for old saves and non-shape types.
 
 **Construction reach for multi-tile blueprints**: `Nav.PathToOrAdjacentBlueprint(bp)` extends the usual "stand on the centerTile or any of its 8 neighbours" pattern to consider neighbours of EVERY footprint tile. A hauler standing on a cliff that's level with the *top* of a 2-tall platform can now supply/construct it, even though the bottom (centerTile) is unreachable (cliff too tall to descend, water moat below). `ConstructTask` and `SupplyBlueprintTask` both route through this helper.
+
+## preservesTile buildings (holes-in-banks)
+
+A structure built into a solid tile (today only burrow, with `requiredTileName: "dirt"`) can opt out of the default "convert footprint to empty" mining behaviour by setting `preservesTile: true` in JSON. The footprint tiles keep their original type — grass continues, snow accumulates, water still blocked, support unchanged — and the structure renders in front of them as if it were a carved hole.
+
+**Effects of the flag**:
+- `StructController.Construct` skips both the `tile.type = empty` loop AND the 8-neighbour diagonal sweep (solidity didn't change, so cliff/stair edges around the diagonals don't need refreshing).
+- `Blueprint.Complete` still captures yields: for `preservesTile`, it walks every footprint tile and accumulates `tile.type.products` into `pendingOutput` (burrow → 3× dirt's products = 30 dirt). Without this branch the legacy `minesTile` capture would miss `requiredTileName`-only structures entirely.
+- `Blueprint.Deconstruct` converts the footprint to `empty` after `Destroy` runs — semantically "digging away the roof" — via the shared `World.SetFootprintTileType(x, y, w, h, target)` helper (also used by any future post-load self-heal). The helper handles graph sweep + items-fall + nav rebuild.
+- `StructPlacement.CanPlaceHere` rejects an `"empty"` (mine) blueprint placed on any tile occupied by a `preservesTile` structure. Without this, players could mine the dirt out from under their own burrow and silently break grass/standability/snow invariants.
+- See SPEC-rendering.md *Tile overlays* for the rim/grass suppression that goes with this (`bodyEdgeSuppressMask` set on door tiles).
+- See SPEC-ai.md *Doored buildings & path start* for the navigation contract that makes preservesTile interiors reachable.
+
+The flag is generic — any future "hole into a bank" building can opt in by pairing it with `requiredTileName` or `requiresSolidTilePlacement`. Schema is documented in SPEC-data.md.
 
 ## Weather & Temperature
 
@@ -390,7 +467,7 @@ Multiple orthogonal mechanisms can cause a Building / Blueprint / Plant to skip 
 | `Building.reservoir.HasFuel()` | `Building` (when `reservoir != null`) | Building skipped by animal AI work-finding, water routing, and light emission | Not a WOM gate — these are direct checks at use sites (`Animal.cs`, `WaterController.cs`, `LightSource.cs`). |
 | `LightSource.IsInActiveWindow()` | `LightSource` | Fuel burn + light emission outside `activeStartHour..activeEndHour` | StructType-driven schedule, e.g. torches lit only at night. |
 | `uses >= depleteAt` | `Workstation` (`uses`) + `StructType` (`depleteAt`) | Triggers building destruction at craft completion | Not technically a "skip" — the building gets removed. Checked in `AnimalStateManager` after each craft round. |
-| `Structure.IsBroken` | `Structure` (`condition < 0.5`) | Craft / research / fuel supply orders; decoration happiness; fountain decorative water; clock hand rotation; leisure seats; house sleep; road speed bonus; light burn + emission | Driven by the Maintenance System (see below). Gating sites mirror `disabled` — WOM `isActive` lambdas, plus direct checks in `Animal.cs`, `Navigation.cs`, `ModifierSystem.cs`, `LightSource.cs`, `WaterController.cs`, `ClockHand.cs`. |
+| `Structure.IsBroken` | `Structure` (`condition < 0.5`) | Craft / research / fuel supply orders; decoration happiness; fountain decorative water; clock hand rotation; leisure seats; house sleep; road speed bonus; light burn + emission | Driven by the Maintenance System (see below). Gating sites mirror `disabled` — WOM `isActive` lambdas, plus direct checks in `Animal.cs`, `Navigation.cs`, `ModifierSystem.cs`, `LightSource.cs`, `WaterController.cs`, and the `ClockHand.isActive` closure wired by `Clock.AttachAnimations`. |
 
 ### Disabled-enforcement asymmetry
 
@@ -475,7 +552,7 @@ Beyond the universal cracked-material tint, specific building types have additio
 | Laboratory | Research orders halt | WOM `isActive` lambda |
 | Torch / fireplace | Light + fuel burn stop | `LightSource.UpdateLitState()` |
 | Fountain | Decorative water overlay hidden; decoration happiness lost | `WaterController.UpdateSurfaceMask()`, `Animal.ScanForNearbyDecorations()` |
-| Clock | Hand freezes; catches up on repair (rotation derived from current time, not accumulated) | `ClockHand.Update()` |
+| Clock | Hand freezes; catches up on repair (rotation derived from current time, not accumulated) | `Clock.AttachAnimations` (`ClockHand.isActive` closure) |
 | House | Animals abandon and find new homes | `Animal.FindHome()` |
 | Road | Speed bonus drops to 0 | `Structure.EffectivePathCostReduction` |
 

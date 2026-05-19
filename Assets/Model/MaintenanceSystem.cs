@@ -30,7 +30,7 @@ using UnityEngine;
 //      comparisons). Current poll sites:
 //        - LightSource.UpdateLitState()           — suppresses fuel burn + emission
 //        - WaterController.UpdateSurfaceMask()     — hides fountain decorative water
-//        - ClockHand.Update()                      — freezes clock hand rotation
+//        - Clock.AttachAnimations (ClockHand.isActive closure) — freezes clock hand rotation
 //        - Animal.ScanForNearbyDecorations()       — skips decoration happiness
 //        - Animal.FindHome() / TryPickLeisure()    — skips houses / leisure seats
 //        - WOM isActive lambdas (craft/research/fuel) — suppresses work orders

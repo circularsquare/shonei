@@ -1,56 +1,20 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// Decorative scatter (flowers on grass, mushrooms / moss underground).
-// Deliberately separate from the chunked grass-overlay system (which is an
-// atlas swap on the tile body, see TileMeshController) AND from the Plant
-// Structure system (which carries gameplay state — growth, harvest, work
-// orders).
+// Decorative scatter — flowers on grass, mushrooms / moss underground.
+// Distinct from the chunked grass-overlay (atlas swap on the tile body)
+// and the Plant Structure system (carries growth / harvest / WOM weight);
+// decorations are visual-only.
 //
-// Why a third path: these decorations need per-instance variation (different
-// sprite, different x-offset, swaying independently, optional mirror), which
-// the chunked overlay can't express, but they don't deserve the save /
-// Structure registry / WOM weight that Plants carry. Spawning is fully
-// deterministic from (x, y, worldSeed), so reload-from-save reproduces the
-// exact same layout without persisting anything.
+// Design — placement zones, per-zone density, deterministic
+// (x, y, worldSeed) spawning so reload reproduces the same layout with
+// no save data, reactive lifecycle via per-tile callbacks, wind sway
+// via FlowerType.windEffect on PlantSprite, future "promote to Plant
+// on click" upgrade path — lives in SPEC-rendering.md §Decorative scatter.
 //
-// ── Placement zones ────────────────────────────────────────────────────
-// Each FlowerType declares its `placement` string. The controller maps each
-// tile to a `PlacementZone` and only considers variants whose placement
-// matches.
-//   SurfaceGrass     — solid grass-overlay tile, Live, U-bit set, no snow,
-//                      air above. The original flower domain.
-//   Underground  — any solid tile at least `undergroundMinDepth`
-//                      below the *original* land surface (cached at init,
-//                      not re-derived from current geometry — keeps "below
-//                      the natural surface" stable even as the player digs
-//                      new caves). Air above, no structure above.
-//
-// Each zone has its own density tunable so the surface meadow and the cave
-// floor decorate at independent rates.
-//
-// ── Spawn lifecycle ────────────────────────────────────────────────────
-//   - OnWorldReady(world, seed) is called by WorldController at the tail
-//     end of Start(), after both the worldgen and load paths have settled.
-//     It computes the per-column surfaceY cache, does a full-world scan,
-//     and subscribes per-tile callbacks (once).
-//   - cbTileTypeChanged: re-evaluate this tile AND the tile below (whose
-//     "tile above" check may have just changed).
-//   - cbOverlayChanged: re-evaluate this tile (grass live/dying/dead, mask).
-//   - cbSnowChanged: re-evaluate this tile (snow on/off).
-//
-// ── Wind sway ──────────────────────────────────────────────────────────
-//   Decorations share the PlantSprite shader with Plant.cs. Sway amplitude
-//   is attenuated per-variant by FlowerType.windEffect (1 = full sway like
-//   plants, 0 = rigid for mushrooms / moss), threaded through to the shader
-//   as the `_SwayAmount` MPB property. No per-frame controller work.
-//
-// ── Future upgrade path ────────────────────────────────────────────────
-//   If decorations become harvestable, the natural step is to look up a
-//   matching PlantType by name on player click and replace the decorative
-//   GameObject with a real Plant instance. The FlowerType / Plant data-model
-//   split lets the visual layer continue to back the decoration for
-//   un-clicked instances.
+// Name is historical: this controller handles ALL decoration zones, not
+// just flowers. Adding a zone is a JSON FlowerType.placement value +
+// a GetZone() case, not a new controller.
 public class FlowerController : MonoBehaviour {
     public static FlowerController instance { get; private set; }
 
@@ -215,11 +179,49 @@ public class FlowerController : MonoBehaviour {
         // worldgen — keeps "underground" tied to natural geometry, not the
         // currently-tallest dirt block in the column (which the player can
         // shift by mining the top off).
-        if (sYValid && t.y <= sY[t.x] - undergroundMinDepth) {
+        //
+        // Additional shelter gates for mushrooms / moss:
+        //   - Not vertically exposed to sky (any solid tile above the spot).
+        //   - The mushroom's air tile and all 8 neighbours have an intact
+        //     background wall — keeps decorations out of cave-mouth tiles
+        //     where the wall has been eroded away by SetBackgrounds.
+        // backgroundType is immutable after worldgen so the wall check is
+        // stable for the session; the sky-exposure check uses the current
+        // tile geometry and won't re-fire if the player mines a chimney
+        // post-spawn (acceptable — this is a worldgen-look constraint).
+        if (sYValid && t.y <= sY[t.x] - undergroundMinDepth
+            && !IsVerticallyExposedToSky(t.x, t.y + 1)
+            && HasSheltered3x3Background(t.x, t.y + 1)) {
             return PlacementZone.Underground;
         }
 
         return PlacementZone.None;
+    }
+
+    // True if walking straight up from (x, y) reaches the top of the world
+    // without encountering a solid tile. "Upward" only — diagonal exposure
+    // doesn't count, matching the rule's literal wording.
+    bool IsVerticallyExposedToSky(int x, int y) {
+        for (int yy = y + 1; yy < world.ny; yy++) {
+            Tile t = world.GetTileAt(x, yy);
+            if (t == null) return true;
+            if (t.type.solid) return false;
+        }
+        return true;
+    }
+
+    // True if the 3x3 of tiles centred on (cx, cy) all carry a background
+    // wall. A single missing wall in the neighbourhood (off-map or eroded
+    // by SetBackgrounds Pass 2) disqualifies the spot.
+    bool HasSheltered3x3Background(int cx, int cy) {
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                Tile t = world.GetTileAt(cx + dx, cy + dy);
+                if (t == null) return false;
+                if (t.backgroundType == BackgroundType.None) return false;
+            }
+        }
+        return true;
     }
 
     void Spawn(Tile t, PlacementZone zone) {

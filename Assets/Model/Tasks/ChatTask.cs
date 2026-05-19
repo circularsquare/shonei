@@ -5,6 +5,13 @@ using UnityEngine.EventSystems;
 using System;
 using System.Linq;
 
+// Two mice stand side-by-side and chat to grant each other "social" satisfaction.
+// The initiator picks a horizontally-adjacent tile, recruits the partner by assigning
+// them a reciprocal ChatTask, and both run ChatObjective in parallel.
+//
+// Queue (initiator): Go(adjacent tile) → Chat. Partner: optional Go → Chat.
+// Reserves: Nothing (no resources/space — just a partner reference).
+// IsWork = false. Cleanup force-fails partner if they haven't yet entered the chat phase.
 public class ChatTask : Task {
     public override bool IsWork => false;
     public Animal partner;

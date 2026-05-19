@@ -5,6 +5,11 @@ using UnityEngine.EventSystems;
 using System;
 using System.Linq;
 
+// Navigates to a source tile and takes items from its inventory into the animal's main
+// inv (or a named equip slot). Supports multi-tile aggregation: if a stack is partially
+// exhausted on arrival, the objective re-Start()s against a new source until iq.quantity
+// is gathered. softFetch mode short-circuits on missing source (Complete instead of Fail)
+// for callers that can proceed with what they got (CraftTask, ResearchTask book borrow).
 public class FetchObjective : Objective {
     private ItemQuantity iq;
     private Tile destination;

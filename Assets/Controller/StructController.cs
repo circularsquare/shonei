@@ -5,6 +5,51 @@ using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using TMPro;
 
+// Central runtime registry for every placed Structure in the world. Anything that
+// needs to enumerate, look up, or react to structures (Animal AI, UI panels,
+// happiness, housing, work dispatch, save/load) goes through here rather than
+// scanning tiles. The registry mirrors what's authoritatively stored on Tiles —
+// keeping it in sync is this class's main job.
+//
+// ── Registries ─────────────────────────────────────────────────────────
+//   structures        — flat list of every live Structure. The "iterate everything"
+//                       path (tick decay, housing totals, save gather).
+//   structsByType     — same set bucketed by StructType for cheap "all benches"
+//                       style lookups (GetByType).
+//   blueprints        — separate list of in-progress Blueprints. They are not
+//                       Structures yet; promoted via Blueprint.Complete().
+//   leisureBuildings  — narrow subset used by the seat-reservation expiry sweep
+//                       so we don't walk every structure each tick.
+//   jobCounts         — per-Job tally maintained externally (Animal/Job code);
+//                       lives here so panels can read it without another singleton.
+//
+// ── Creation paths ─────────────────────────────────────────────────────
+// Two entry points, both routed through Structure.Create() (the shared factory
+// that dispatches to the right subclass). See CLAUDE.md "Structure creation rules".
+//   Construct(st, tile, ...) — the gameplay path. Called from Blueprint.Complete()
+//                              after construction work finishes. Handles tile-type
+//                              swaps for isTile blueprints, multi-tile footprint
+//                              collision checks, mining-trigger tile clearing,
+//                              optional follow-up structures (mineshaft → ladder),
+//                              and the standability / nav-graph refresh sweep.
+//                              Returns false on placement failure (collision,
+//                              out of bounds) — callers must handle that.
+//   Place(structure)         — the load / worldgen path. The Structure already
+//                              exists; we just file it into the registries and
+//                              register any decorative water. No cost side-effects,
+//                              no failure mode.
+// Construct() calls Place() internally for the non-tile branch, so Place() is the
+// single funnel for "structure becomes live and tracked".
+//
+// ── Other contracts ────────────────────────────────────────────────────
+//   - Remove() must be called when a structure is destroyed; it mirrors the
+//     additions Place() does. Tile-side cleanup is the caller's responsibility.
+//   - TickUpdate() drives two things: a slow (~every 120 ticks) leisure-seat
+//     reservation expiry sweep, and a per-tick furnishing-slot decay pass.
+//     Called from World.Tick — not Unity Update.
+//   - Decorative water offsets are registered with WaterController in Place(),
+//     so any structure with waterPixelOffsets contributes to the water field
+//     the moment it's tracked.
 public class StructController : MonoBehaviour {
     public static StructController instance { get; protected set; }
     private List<Structure> structures = new List<Structure>();
@@ -51,7 +96,11 @@ public class StructController : MonoBehaviour {
             WaterController.instance?.RegisterDecorativeWater(structure);
     }
 
-    public bool Construct(StructType st, Tile tile, bool mirrored = false, int rotation = 0, int shapeIndex = 0){
+    // partnerX / partnerY thread through to Structure.Create so two-click placements
+    // (rope bridge posts) can hand each post its partner's coords. -1 sentinels mean
+    // "single-tile placement; ignore." Called twice in succession by Blueprint.Complete
+    // for two-click blueprints — once per post with the coords swapped.
+    public bool Construct(StructType st, Tile tile, bool mirrored = false, int rotation = 0, int shapeIndex = 0, int partnerX = -1, int partnerY = -1){
         Structure structure = null;
         // Visual footprint for non-tile, non-plant structures. Matches the full-footprint
         // claim in Structure / Blueprint, so the defense-in-depth collision check below
@@ -79,7 +128,7 @@ public class StructController : MonoBehaviour {
                     if (t.structs[st.depth] != null) { Debug.LogError("depth " + st.depth + " occupied at " + (tile.x+dx) + "," + (tile.y+dy)); return false; }
                 }
             }
-            structure = Structure.Create(st, tile.x, tile.y, mirrored, rotation, shapeIndex);
+            structure = Structure.Create(st, tile.x, tile.y, mirrored, rotation, shapeIndex, partnerX, partnerY);
             if (structure == null) return false;
         }
 
@@ -91,8 +140,19 @@ public class StructController : MonoBehaviour {
         // Mining trigger. Two paths converge here:
         //   - `requiredTileName != null` (quarry / dirt pit): the structure replaces a specific tile group.
         //   - `requiresSolidTilePlacement` (mineshaft): the structure occupies any solid tile, mining it.
-        if (st.requiredTileName != null || st.requiresSolidTilePlacement){
-            tile.type = Db.tileTypeByName["empty"];
+        // Mining loops the full footprint so multi-tile excavation buildings clear every claimed
+        // tile, not just the anchor. Single-tile buildings (mineshaft, quarry) run the loop once.
+        // `preservesTile` opts out: the structure renders over the tile as if it were a hole, but
+        // the tile stays its original type (burrow). Yield is still captured in Blueprint.Complete.
+        if ((st.requiredTileName != null || st.requiresSolidTilePlacement) && !st.preservesTile){
+            TileType empty = Db.tileTypeByName["empty"];
+            World w = World.instance;
+            for (int dy = 0; dy < fny; dy++) {
+                for (int dx = 0; dx < fnx; dx++) {
+                    Tile t = w.GetTileAt(tile.x + dx, tile.y + dy);
+                    if (t != null) t.type = empty;
+                }
+            }
         }
         if (!st.isTile){
             Place(structure);
@@ -127,19 +187,26 @@ public class StructController : MonoBehaviour {
             if (tile.x - 1 >= 0 && tile.y + 1 < ny) world.graph.UpdateNeighbors(tile.x - 1, tile.y + 1);
             if (tile.x + 1 < nx && tile.y + 1 < ny) world.graph.UpdateNeighbors(tile.x + 1, tile.y + 1);
         }
-        // 8-neighbor sweep around any tile that *changes type* during construction. Covers both
-        // isTile blueprints (tile.type swap) and structures that mine their placement tile
-        // (mineshaft via requiresSolidTilePlacement). Diagonal neighbours can have cliff/stair
-        // edges that depend on this tile's solidity.
-        if (st.isTile || st.requiresSolidTilePlacement) {
+        // 8-neighbor sweep around any tile that *changes type* during construction. Covers
+        // isTile blueprints (tile.type swap), single-tile excavators (mineshaft, quarry),
+        // and multi-tile excavators that mine their footprint. For multi-tile, the sweep
+        // walks the full footprint; per-footprint-tile sweeps overlap inside the rectangle,
+        // which is fine (UpdateNeighbors is idempotent). Diagonal neighbours can have
+        // cliff/stair edges that depend on this tile's solidity, so the diagonals matter.
+        // `preservesTile` opts out — solidity is unchanged, so no diagonal refresh needed.
+        if (st.isTile || ((st.requiredTileName != null || st.requiresSolidTilePlacement) && !st.preservesTile)) {
             int nx = world.nx, ny = world.ny;
-            for (int dx = -1; dx <= 1; dx++) {
-                for (int dy = -1; dy <= 1; dy++) {
-                    if (dx == 0 && dy == 0) continue; // already updated above
-                    if (dx == 0 && dy == 1) continue; // (tile.x, tile.y+1) already updated above
-                    int tx = tile.x + dx, ty = tile.y + dy;
-                    if (tx >= 0 && tx < nx && ty >= 0 && ty < ny)
-                        world.graph.UpdateNeighbors(tx, ty);
+            for (int fdy = 0; fdy < fny; fdy++) {
+                for (int fdx = 0; fdx < fnx; fdx++) {
+                    int cx = tile.x + fdx, cy = tile.y + fdy;
+                    for (int dx = -1; dx <= 1; dx++) {
+                        for (int dy = -1; dy <= 1; dy++) {
+                            if (dx == 0 && dy == 0) continue; // anchor footprint already updated
+                            int tx = cx + dx, ty = cy + dy;
+                            if (tx >= 0 && tx < nx && ty >= 0 && ty < ny)
+                                world.graph.UpdateNeighbors(tx, ty);
+                        }
+                    }
                 }
             }
         }

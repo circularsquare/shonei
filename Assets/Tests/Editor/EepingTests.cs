@@ -35,47 +35,22 @@ public class EepingTests {
     }
 
     // ── ShouldSleep ────────────────────────────────────────────────────
-    [Test]
-    public void ShouldSleep_BelowExhaustedThreshold_AlwaysSleeps(){
-        // Below 0.5 fullness, sleep regardless of time of day.
-        Eeping e = new Eeping();
-        e.eep = 49f;
-        Assert.That(e.ShouldSleep(isNighttime: false), Is.True);
-        Assert.That(e.ShouldSleep(isNighttime: true), Is.True);
-    }
-
-    [Test]
-    public void ShouldSleep_AtNightBelowNightThreshold_Sleeps(){
-        // Tired-ish (0.84) at night → bed time.
-        Eeping e = new Eeping();
-        e.eep = 84f;
-        Assert.That(e.ShouldSleep(isNighttime: true), Is.True);
-    }
-
-    [Test]
-    public void ShouldSleep_DuringDayAboveExhaustedThreshold_DoesNotSleep(){
-        // Tired-ish but daytime → keep working until exhausted.
-        Eeping e = new Eeping();
-        e.eep = 60f; // above 0.5, below 0.85
-        Assert.That(e.ShouldSleep(isNighttime: false), Is.False);
-    }
-
-    [Test]
-    public void ShouldSleep_AtNightAboveNightThreshold_DoesNotSleep(){
-        // Fully rested mouse stays awake even at night.
-        Eeping e = new Eeping();
-        e.eep = 90f; // above 0.85
-        Assert.That(e.ShouldSleep(isNighttime: true), Is.False);
-    }
-
-    [TestCase(85f, true,  false)] // exactly at 0.85 night threshold — "<" is strict, so not sleeping
-    [TestCase(85f, false, false)] // daytime: above exhausted threshold, no sleep
-    [TestCase(50f, false, false)] // exactly at 0.5 exhausted threshold (daytime) — "<" is strict
-    [TestCase(50f, true,  true)]  // exactly at 0.5 daytime → false; but at NIGHT, 0.5 < 0.85 fires
-    public void ShouldSleep_AtThresholdBoundary_IsStrictLessThan(float eep, bool night, bool expected){
+    // Contract: sleep when e/maxEep < exhaustedSleepThreshold (0.4) + urgency * bedtimeMaxBoost (0.5).
+    // Range: [0.4, 0.9]. bedtimeUrgency ramps 0→1 across the evening so mice peel off to
+    // bed at staggered moments; the 0.9 ceiling keeps fully-rested mice awake at deep night.
+    [TestCase(39f, 0f,    true)]   // fatigued, daytime → emergency nap
+    [TestCase(41f, 0f,    false)]  // mid-tired daytime → keep working (e=0.41 ≥ 0.4)
+    [TestCase(90f, 0f,    false)]  // rested daytime → working
+    [TestCase(60f, 0.5f,  true)]   // mid bedtime: threshold=0.65, e=0.60 → sleeps
+    [TestCase(70f, 0.5f,  false)]  // mid bedtime: threshold=0.65, e=0.70 → stays up
+    [TestCase(85f, 1f,    true)]   // deep night: threshold=0.9, e=0.85 → sleeps
+    [TestCase(90f, 1f,    false)]  // deep night: threshold=0.9 strict — e=0.9 not < 0.9
+    [TestCase(95f, 1f,    false)]  // deep night: rested mouse (e=0.95) stays up regardless
+    [TestCase(40f, 0f,    false)]  // boundary "<" is strict: e=0.4 not < 0.4
+    public void ShouldSleep_AdditiveBedtimeAndExhaustion(float eep, float bedtimeUrgency, bool expected){
         Eeping e = new Eeping();
         e.eep = eep;
-        Assert.That(e.ShouldSleep(night), Is.EqualTo(expected));
+        Assert.That(e.ShouldSleep(bedtimeUrgency), Is.EqualTo(expected));
     }
 
     // ── Efficiency ─────────────────────────────────────────────────────

@@ -3,32 +3,32 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-/*
-    WorkOrderManager centralises work prioritisation. Instead of each animal independently
-    scanning for tasks in a hardcoded order, work is registered here as prioritised WorkOrders.
-    Animals call ChooseOrder(animal, priority) to get the best task at exactly that priority tier.
-
-    Priority:  1 = highest (hauls unblocking a pending deconstruct)
-               2 = construct, supply blueprint, deconstruct, harvest, maintenance
-               3 = haul, consolidate, haul to market, craft
-               4 = research, haul from market
-                   (HaulFromMarket sits below HaulToMarket so merchants deliver first
-                    and opportunistically piggyback a pickup on the return leg; a pure
-                    pickup trip only fires when there's nothing to deliver.)
-                   Deconstruct lives at p2 alongside Construct so teardown isn't gated
-                   behind every floor haul; within p2 the tier is distance-sorted, so a
-                   nearby decon can outrank a far construct.
-
-    In Animal.ChooseTask the tiers are:
-        ChooseOrder(1) → ChooseOrder(2) → ChooseOrder(3) → ChooseOrder(4)
-
-    Blueprint-based work (Construct, Supply, Deconstruct) is registered explicitly when
-    blueprint state changes.  Haul orders are registered when items land on floor inventories.
-    Harvest orders are registered when plants are placed. isActive suppresses the order between grow cycles.
-    Research is maintained as a single standing order whenever a lab building exists.
-    Craft orders are registered for each placed workstation building (isWorkstation=true in buildingsDb).
-    isActive on craft orders gates the building (e.g. pump inactive when no water below).
-*/
+// WorkOrderManager centralises work prioritisation. Instead of each animal independently
+// scanning for tasks in a hardcoded order, work is registered here as prioritised WorkOrders.
+// Animals call ChooseOrder(animal, priority) to get the best task at exactly that priority tier.
+//
+// ── Priority ──────────────────────────────────────────────────────
+// Priority:  1 = highest (hauls unblocking a pending deconstruct)
+//            2 = construct, supply blueprint, deconstruct, harvest, maintenance
+//            3 = haul, consolidate, haul to market, craft
+//            4 = research, haul from market
+//                (HaulFromMarket sits below HaulToMarket so merchants deliver first
+//                 and opportunistically piggyback a pickup on the return leg; a pure
+//                 pickup trip only fires when there's nothing to deliver.)
+//                Deconstruct lives at p2 alongside Construct so teardown isn't gated
+//                behind every floor haul; within p2 the tier is distance-sorted, so a
+//                nearby decon can outrank a far construct.
+//
+// ── In Animal.ChooseTask ──────────────────────────────────────────
+// In Animal.ChooseTask the tiers are:
+//     ChooseOrder(1) → ChooseOrder(2) → ChooseOrder(3) → ChooseOrder(4)
+//
+// Blueprint-based work (Construct, Supply, Deconstruct) is registered explicitly when
+// blueprint state changes.  Haul orders are registered when items land on floor inventories.
+// Harvest orders are registered when plants are placed. isActive suppresses the order between grow cycles.
+// Research is maintained as a single standing order whenever a lab building exists.
+// Craft orders are registered for each placed workstation building (isWorkstation=true in buildingsDb).
+// isActive on craft orders gates the building (e.g. pump inactive when no water below).
 public class WorkOrderManager : MonoBehaviour {
     public static WorkOrderManager instance { get; private set; }
 

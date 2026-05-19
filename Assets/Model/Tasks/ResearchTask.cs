@@ -5,6 +5,13 @@ using UnityEngine.EventSystems;
 using System;
 using System.Linq;
 
+// Scientist studies the active research tech at a lab. WOM tier-4 order. Optionally
+// borrows a matching book on the way in (3× progress multiplier applied in HandleWorking)
+// and returns it to a shelf when done.
+//
+// Queue: [optional Fetch(book)] → Go(lab) → Research → [optional Unequip → Drop(book)].
+// Reserves: book ItemStack when a matching book exists (soft — proceeds without if it disappears).
+// Cleanup dumps any still-equipped book to the floor so it isn't orphaned in the slot.
 public class ResearchTask : Task {
     private readonly Building _lab;
     // Which tech this scientist is working on, chosen by PickStudyTarget at task creation.

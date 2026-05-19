@@ -19,6 +19,13 @@ public enum OverlayState : byte { Live = 0, Dying = 1, Dead = 2 }
 
 public class Tile {
     Action<Tile> cbTileTypeChanged;
+    Action<Tile> cbBodyChanged;
+    // Per-side rim-suppression bits (L=1, R=2, D=4, U=8 — same convention as the
+    // body renderer's cMask). When a bit is set, the body bake treats that side as
+    // if a solid neighbour were present, hiding the 2-pixel air-edge bevel. Used by
+    // doored `preservesTile` buildings (burrow) so the entrance doesn't draw a rim
+    // through the doorway. Maintained by Structure ctor / Destroy.
+    public byte bodyEdgeSuppressMask;
     Action<Tile> cbBackgroundChanged;
     Action<Tile> cbOverlayChanged;
     Action<Tile> cbSnowChanged;
@@ -156,6 +163,8 @@ public class Tile {
     
     public void RegisterCbTileTypeChanged(Action<Tile> callback){cbTileTypeChanged += callback;}
     public void UnregisterCbTileTypeChanged(Action<Tile> callback){cbTileTypeChanged -= callback;}
+    public void RegisterCbBodyChanged(Action<Tile> callback){cbBodyChanged += callback;}
+    public void UnregisterCbBodyChanged(Action<Tile> callback){cbBodyChanged -= callback;}
     public void RegisterCbBackgroundChanged(Action<Tile> callback){cbBackgroundChanged += callback;}
     public void UnregisterCbBackgroundChanged(Action<Tile> callback){cbBackgroundChanged -= callback;}
     public void RegisterCbOverlayChanged(Action<Tile> callback){cbOverlayChanged += callback;}
@@ -172,6 +181,9 @@ public class Tile {
     // (Structure.Place, Structure.Destroy, Plant.ClaimExtensionTile,
     // Plant.ReleaseAllExtensionTiles) share a single firing point.
     public void NotifyStructChanged(){ cbStructChanged?.Invoke(this); }
+    // Fire after mutating bodyEdgeSuppressMask. Body-only refresh — doesn't disturb
+    // overlay/snow/structs callbacks.
+    public void NotifyBodyDirty(){ cbBodyChanged?.Invoke(this); }
     public bool ContainsAvailableItem(Item item){return inv != null && inv.ContainsAvailableItem(item);}
     public ItemStack GetItemToHaul(){
         if (inv == null){return null;}

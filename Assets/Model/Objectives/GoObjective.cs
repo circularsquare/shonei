@@ -5,6 +5,8 @@ using UnityEngine.EventSystems;
 using System;
 using System.Linq;
 
+// Walks the animal to a destination tile (or an off-grid Node waypoint for workspot-aware
+// buildings like the wheel). Completes on OnArrival; Fails if no path exists.
 public class GoObjective : Objective {
     // Either a tile-backed destination (most callers) or an off-grid waypoint Node
     // (workspot-aware buildings like the wheel). Exactly one is non-null.

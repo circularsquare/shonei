@@ -62,7 +62,7 @@ Social satisfaction is granted **gradually** at `Happiness.socialTickGrant` (0.2
 
 `Animal.ChooseTask()` runs top-to-bottom when an animal is Idle:
 
-1. **Survival** (always first): drop inventory → eat if hungry → sleep (see thresholds below) → equip tool → equip clothing. Sleep gate is `Eeping.ShouldSleep(isNighttime)`: eep < 85 % **at night** (9 pm–6 am) OR eep < 50 % **any time** (mid-shift exhaustion nap).
+1. **Survival** (always first): drop inventory → eat if hungry → sleep (see thresholds below) → equip tool → equip clothing. Sleep gate is `Eeping.ShouldSleep(bedtimeUrgency)`: a mouse sleeps when `eep/maxEep < exhaustedSleepThreshold (0.4) + bedtimeUrgency`. **Bedtime urgency** ramps 0 → 1 across the early-night window via `Animal.BedtimeUrgency()` — 0 before 7 pm, linearly 0→1 from 7–11 pm, 1 through to 6 am. Effect: low-energy mice peel off to bed earlier in the evening, higher-energy mice stay up longer, and during the day only meaningfully fatigued mice (e < 0.4) take a nap. Replaces the older binary `isNighttime` gate so a houseful doesn't all switch state on the same tick.
 2. **Time-of-day behavior roll** — before work orders, a random roll determines whether the animal tries leisure, idles, or falls through to work. The weights depend on the time window:
    - **Leisure window (5–9 pm)**: 40% try leisure, 40% idle, 20% work.
    - **Work time (rest of day)**: 5% try leisure, 15% idle, 80% work.
@@ -137,6 +137,17 @@ Tasks reserve sources and destinations during `Initialize()` via `Task.ReserveSt
 - **Partial-delivery fallback**: if no path to more items exists but the animal already holds a partial amount (e.g., the original stack was raided mid-task), `FetchObjective` calls `Complete` instead of `Fail`. This avoids a tight drop-and-re-fetch loop where the animal would otherwise drop the partial amount, see it on the floor, and immediately pick it up again.
 
 **`DeliverToInventoryObjective`**: moves items from animal inventory into a specific target inventory (used by `HaulTask` for storage delivery, `HaulFromMarketTask`, `SupplyFuelTask`). Always queued after `GoObjective`. Fails with log if target is null or animal has nothing to deliver.
+
+### Doored buildings & path start
+
+Doored buildings (housing today; future production with interiors) declare an `interiorTiles[]` array in JSON. At construction time `Structure` allocates one off-grid `Node` waypoint per entry, edges adjacent interior nodes together, and edges each `doors[]` entry to its **approach tile** — the tile outside the door on the named side. `mirrored` flips both the entry `dx` (`nx-1-dx`) and `side` (left↔right) so the same JSON works in both orientations. The approach edge is the single graph bridge between outside and inside — A* routes mice in/out without Task code knowing about doors.
+
+**`insideBuilding`** on `Animal` tracks the current logical container. Nav's per-step arrival hook syncs it from the just-arrived node's `interiorOf`: walking onto an interior waypoint sets it; walking onto the approach (`interiorOf == null`) clears it. Two consequences pivot on this flag:
+
+- **Fall gate** — [AnimalStateManager.UpdateMovement](../Model/Animal/AnimalStateManager.cs) skips its "tile not standable → Fall" trigger when `insideBuilding != null`. The interior waypoint logically supports the mouse even though the underlying tile may be non-standable — critical for `preservesTile` buildings (burrow) whose interior tiles are solid dirt.
+- **Path start** — `Animal.PathStartNode()` returns the nearest interior waypoint when `insideBuilding != null`, else `TileHere()?.node`. **All Nav `FindPath*` / `Navigate` callers use `PathStartNode()`**, not `TileHere().node` — using the raw tile node would orphan path requests from inside-the-building mice (solid-dirt nodes have no edges). Same helper is used by idle wander (`PickRandomNavNeighbour`) so an idle mouse inside the burrow steps out via the door edge instead of getting stuck.
+
+**Placement gate** — `StructPlacement.CanPlaceHere` requires every door's approach tile to be `standable` at build time. Prevents players from placing a doored building (especially burrow) facing solid dirt or empty air and finding it unenterable post-build.
 
 ### Path-cost radius gate
 

@@ -1,96 +1,26 @@
 using UnityEngine;
 
-// Procedural cloud field. The cloud's _MainTex and _NormalMap textures
-// are generated each frame on the GPU via Graphics.Blit through the
-// two-pass "Hidden/CloudFieldGen" shader. The result is bound on the
-// SpriteRenderer via MaterialPropertyBlock — the rest of the rendering
-// pipeline cannot tell the textures are GPU-generated RenderTextures.
+// Procedural cloud field. _MainTex and _NormalMap are RTs generated each
+// frame on the GPU via Graphics.Blit through "Hidden/CloudFieldGen" and
+// bound on the SpriteRenderer via MaterialPropertyBlock.
 //
-// ── Shape ──────────────────────────────────────────────────────────────
-// The cloud body is a constellation of CPU-spawned 3D sphere-blobs.
-// Each frame this script walks a regular grid ANCHORED IN NOISE-SPACE
-// (each cell maps to a fixed point in the noise field, not to a fixed
-// offset from the camera), samples a **3D value noise** field with the
-// z-axis driven by a slowly-growing `evolutionOffset` (so the sampled
-// pattern smoothly morphs through time — clouds form and dissolve in
-// place independent of wind drift), and emits a blob wherever density
-// exceeds the humidity-driven threshold. Each blob is a
-// Vector4(x_local, y_local, z, radius) in world units, paired with a
-// per-blob horizontal-stretch aspect (varied ±20% around the inspector
-// `blobAspect` so neighbours don't all look like the same oval). Both
-// arrays (max 512, typically 30–80 active) are pushed to the gen
-// shader as _Blobs / _BlobAspects + _BlobCount. The shader doesn't
-// sample the density field itself — it only consumes the already-
-// placed blobs — so the CPU noise functions don't need to match the
-// shader's noise (which is only used for the silhouette curl-warp).
+// Design — sphere-blob shading, anchored noise grid, metaball alpha,
+// finite-difference normal, flat normalRT for NormalsCapture, perf
+// budget, future shading headroom — lives in SPEC-rendering.md §Cloud
+// system. Keep this header for code-adjacent notes only.
 //
-// Anchoring the grid in noise-space (not sprite-local) is what keeps
-// blobs from popping in/out at the viewport edges as the camera pans:
-// cell (col=5, row=3) ALWAYS maps to the same noise position, so its
-// density / threshold-test result is stable across frames. The blob's
-// sprite-local position then scrolls smoothly with the camera (via
-// `lx = anchorX − noiseOffset.x`), but the blob's identity (radius,
-// z-jitter, jitter offset) doesn't churn.
+// LateUpdate runs at order 100, after SkyCamera's default-order
+// LateUpdate has moved the camera to follow Main; at that point
+// bgCam.transform.position equals the intended sprite origin, so we
+// place, generate blobs, push uniforms, and Blit before URP renders.
 //
-// ── Shading ────────────────────────────────────────────────────────────
-// Pass 0 treats the blob array as a HEIGHT FIELD
-//   `h(x, y) = max_i(zTop_i)` where `zTop_i = blob.z + sqrt(r² − dist²)`
-// and computes the surface normal from a 5-tap finite-difference
-// gradient of h (centre + 4 cardinal neighbours, step NORMAL_EPS in the
-// shader). Inside a single blob's territory FD reduces to the analytic
-// ellipsoid normal; at a seam between two overlapping blobs the FD
-// averages the two surfaces' gradients, smoothly bending the shading
-// from one lobe's normal to the other across the ridge. So the cloud
-// reads as one continuous puffy body with bumps where the blobs are,
-// rather than a pile of distinct intersecting ellipsoids with sharp
-// shading kinks at every junction. Lambertian against the global
-// _SunDir is then 3-band quantized.
+// EnsureInitialized is idempotent — LateUpdate re-runs it after a
+// Play-mode recompile / domain reload (same pattern as SkyGradient).
 //
-// Alpha is a metaball-style merged silhouette (sum of per-blob linear
-// influences, smoothstep-thresholded). Adjacent overlapping blobs merge
-// into a single body rather than showing a bumpy circles-union outline.
-//
-// Both alpha and normal sample from the domain-warped position
-// `lp_alpha = lp + EdgeWarp(lp)` so the cloud's whole 3D form deforms
-// with the silhouette wobble — bands wrap around the wobbled bumps
-// rather than revealing un-warped ellipsoids underneath.
-//
-// Pass 1 writes a FLAT tangent normal (0,0,1) to normalRT, with the
-// same metaball alpha as Pass 0 so NormalsCapture's clip lines up with
-// the visible silhouette exactly. The project's NormalsCapture pipeline
-// reads the flat normal as a camera-facing world normal, so LightSun
-// contributes a uniform brightness across the cloud rather than per-
-// pixel N·L variation that would smear the discrete colour bands.
-// Day/night still works: sun strength × flat-normal-NdotL × ambient
-// gives the cloud's overall brightness; sr.color (humidity tint)
-// multiplies on top.
-//
-// ── Performance ────────────────────────────────────────────────────────
-// CPU: ~256 cells × cheap-noise eval = ~50 μs/frame. GPU: blob loop is
-// O(_BlobCount) per pixel with simple distance/sphere math — typically
-// 30–80 iterations of ~6 ops at 32k pixels, well under 1 ms even on
-// integrated graphics. The previous CPU-Perlin implementation ran
-// ~20k Mathf.PerlinNoise calls per frame and was the source of the
-// ~30 fps drop that motivated the original GPU migration.
-//
-// ── Future shading headroom ────────────────────────────────────────────
-// • Cross-blob shadows: small extra march toward sun inside the blob
-//   loop, marking the picked normal as occluded if another blob's
-//   surface sits between this pixel and the sun.
-// • Multi-octave blobs: a second sparser pass with larger radii layered
-//   behind smaller blobs — "big puff + small detail" hierarchy.
-// • Rim translucency: pixels near the front-most blob's silhouette get
-//   a 4th colour band on the sun-facing side (forward scatter).
-//
-// ── Execution order ────────────────────────────────────────────────────
-// LateUpdate at order 100 — runs after SkyCamera's default-order
-// LateUpdate (which moves the SkyCamera to follow the main camera).
-// At this point cam.transform.position is the sprite's intended world
-// origin for the frame; we set the sprite position, generate the blob
-// list, push uniforms, and Blit. URP renders the cameras afterwards
-// and sees fresh RT contents.
+// Hash2D / ValueNoise here MUST stay in sync with Noise.hlsl — CPU
+// blob placement and shader noise sampling depend on identical output.
 [DefaultExecutionOrder(100)]
-public class CloudLayer : MonoBehaviour {
+public class CloudLayer : SkyLayerBase {
     [Header("Field texture")]
     [Tooltip("Texture dimensions in pixels. Larger = more detail and screen coverage; GPU cost is negligible at these sizes.")]
     public Vector2Int textureSize = new Vector2Int(256, 128);
@@ -176,7 +106,6 @@ public class CloudLayer : MonoBehaviour {
     [Tooltip("Edge softness (half-width of the metaball alpha smoothstep). 0 = razor-hard silhouette; ~0.1 = subtle feather; >0.3 = visibly wispy. Combines with strength of warp noise — softer edges + bigger warp = puffy cumulus, sharper edges = more cartoony.")]
     [Range(0.0f, 0.4f)]  public float edgeSoftness  = 0.15f;
 
-    Camera cam;
     SpriteRenderer sr;
     // Dummy Texture2D backing for Sprite.Create — never written to. The
     // SpriteRenderer's _MainTex is MPB-overridden to mainRT, so this
@@ -227,28 +156,15 @@ public class CloudLayer : MonoBehaviour {
     static readonly int BlobAspectsId    = Shader.PropertyToID("_BlobAspects");
     static readonly int BlobCountId      = Shader.PropertyToID("_BlobCount");
 
-    void Start() {
-        // Reference camera = SkyCamera (the one that actually renders the
-        // cloud sprite). Falls back to Camera.main if SkyCamera isn't set up.
-        if (SkyCamera.instance != null && SkyCamera.instance.BgCam != null) {
-            cam = SkyCamera.instance.BgCam;
-        } else {
-            cam = Camera.main;
-        }
+    // CloudLayer normalises its own GO onto the Sky layer in case the
+    // inspector / a reparent knocked it off (sprite would fall into a
+    // culling gap between Main and SkyCamera otherwise).
+    protected override bool ManageSkyLayer => true;
 
-        // Ensure we're on the layer SkyCamera renders. The "Sky" layer is
-        // the standard in this project (Unity layer 6, mask 64 on
-        // SkyCamera). If a previous reparent / inspector tweak knocked
-        // this GameObject onto a different layer, the sprite would fall
-        // into a culling gap (Main camera excludes it, SkyCamera doesn't
-        // see it) and render in Scene view but not Game view.
-        int skyLayer = LayerMask.NameToLayer("Sky");
-        if (skyLayer < 0) skyLayer = gameObject.layer;
-        gameObject.layer = skyLayer;
-
+    protected override void BuildContents() {
         // Auto-fit sprite height so the band always fits, regardless of
         // bandHalfHeight / bandBottomScale tuning. Sprite is centred at
-        // bandCenterY (via LateUpdate's parallax math), so its half-
+        // bandCenterY (via DoLateUpdate's parallax math), so its half-
         // extent must reach the band's furthest extreme — which is
         // +bandHalfHeight above bandCenterY (the bottom side only goes
         // bandHalfHeight*bandBottomScale down, never further). Add a
@@ -283,11 +199,6 @@ public class CloudLayer : MonoBehaviour {
         }
         cloudGenMat = new Material(genShader) { hideFlags = HideFlags.HideAndDontSave };
 
-        // Clean any pre-existing scene children (legacy sprite-pool layout).
-        for (int i = transform.childCount - 1; i >= 0; i--) {
-            DestroyImmediate(transform.GetChild(i).gameObject);
-        }
-
         // FullRect mesh, NOT the default Tight. Tight builds the sprite
         // mesh from texture alpha at Create time — and the dummy backing
         // is all-zeros, so a Tight mesh would have no triangles and the
@@ -315,8 +226,8 @@ public class CloudLayer : MonoBehaviour {
         sr.SetPropertyBlock(mpb);
 
         // Plant the sprite at its intended world position immediately so
-        // the first-frame render is correct before LateUpdate runs.
-        Vector3 startCam = cam.transform.position;
+        // the first-frame render is correct before DoLateUpdate runs.
+        Vector3 startCam = bgCam.transform.position;
         float startSpriteY = startCam.y + (bandCenterY - startCam.y) * worldLockingY;
         sr.transform.position = new Vector3(startCam.x, startSpriteY, renderZ);
     }
@@ -342,9 +253,7 @@ public class CloudLayer : MonoBehaviour {
         if (cloudGenMat != null) Destroy(cloudGenMat);
     }
 
-    void LateUpdate() {
-        if (cam == null || sr == null || cloudGenMat == null) return;
-
+    protected override void DoLateUpdate() {
         // Accumulate wind into a horizontal noise offset. Subtracts
         // because lp / blob sprite-local x is `anchorX − noiseOffset.x`:
         // for positive (rightward) wind to drift clouds rightward,
@@ -362,7 +271,7 @@ public class CloudLayer : MonoBehaviour {
         // sky-locked (=0) and world-locked (=1) — worldLockingY=0.25 gives
         // 25% vertical parallax. renderZ must sit between SkyCamera's
         // near (0.3) and far planes.
-        Vector3 camPos = cam.transform.position;
+        Vector3 camPos = bgCam.transform.position;
         float spriteY = camPos.y + (bandCenterY - camPos.y) * worldLockingY;
         sr.transform.position = new Vector3(camPos.x, spriteY, renderZ);
 
@@ -382,6 +291,19 @@ public class CloudLayer : MonoBehaviour {
         // created.
         if (!mainRT.IsCreated())   mainRT.Create();
         if (!normalRT.IsCreated()) normalRT.Create();
+
+        // Re-apply the MPB binding every frame. Various editor events
+        // (asset reimport on a sprite the user is iterating on,
+        // material refresh, OnValidate paths) can silently clear the
+        // SpriteRenderer's MaterialPropertyBlock — at which point
+        // _MainTex falls back to the sprite's source texture (the
+        // dummy `spriteTex`), and the cloud reads as a uniform flat
+        // rectangle tinted by sr.color. Cost is negligible (two
+        // SetTexture calls + one SetPropertyBlock per frame).
+        sr.GetPropertyBlock(mpb);
+        mpb.SetTexture(MainTexId,   mainRT);
+        mpb.SetTexture(NormalMapId, normalRT);
+        sr.SetPropertyBlock(mpb);
 
         // Compute the noise-offset (parallax × camera-x + accumulated wind
         // drift) — used by GenerateBlobs to convert noise-anchored blob

@@ -252,7 +252,7 @@ public class Nav {
         Func<T, bool> filter,
         int r) {
         float maxCost = r * Task.FindRadiusTolerance;
-        Node myNode = a.TileHere().node;
+        Node myNode = a.PathStartNode();
         var scored = new List<(int cheb, T item)>();
         foreach (T c in candidates) {
             int cheb = Mathf.Max(Mathf.Abs(xFn(c) - (int)a.x), Mathf.Abs(yFn(c) - (int)a.y));
@@ -282,7 +282,7 @@ public class Nav {
     // is a "reasonable journey" relative to the caller's search radius.
     public Path FindPathTo(Func<Tile, bool> condition, int r = Task.MediumFindRadius){
         float maxCost = r * Task.FindRadiusTolerance;
-        Node myNode = a.TileHere().node;
+        Node myNode = a.PathStartNode();
         foreach (Tile tile in TilesAroundByDistance(world, (int)a.x, (int)a.y, r)) {
             if (!condition(tile)) continue;
             Path p = world.graph.Navigate(myNode, tile.node);
@@ -308,7 +308,7 @@ public class Nav {
     public (Path path, Inventory inv) FindPathToStorageMostSpace(Item item, int r = Task.MediumFindRadius, int minSpace = 1) {
         var ic = InventoryController.instance;
         float maxCost = r * Task.FindRadiusTolerance;
-        Node myNode = a.TileHere().node;
+        Node myNode = a.PathStartNode();
         var candidates = new List<(int space, Inventory inv, Tile tile)>();
         if (ic.byType.TryGetValue(Inventory.InvType.Storage, out var list)) {
             foreach (Inventory inv in list) {
@@ -446,13 +446,13 @@ public class Nav {
 
     public Path PathTo(Tile tile){
         if (tile == null || a.TileHere() == null){Debug.LogError("path to or from null tile?");}
-        return world.graph.Navigate(a.TileHere().node, tile.node);
+        return world.graph.Navigate(a.PathStartNode(), tile.node);
     }
     // Node overload — used when the path target is a workspot waypoint (off-grid) rather
     // than an integer tile. Same A* under the hood; the Node may be tile-backed or a waypoint.
     public Path PathTo(Node node){
         if (node == null || a.TileHere() == null){Debug.LogError("path to or from null node?");}
-        return world.graph.Navigate(a.TileHere().node, node);
+        return world.graph.Navigate(a.PathStartNode(), node);
     }
     public Path PathToOrAdjacent(Tile target) {
         Path directPath = PathTo(target);
@@ -503,20 +503,20 @@ public class Nav {
     // Footprint tiles themselves are excluded from the neighbour candidate sets (they're either
     // the centerTile already tried, or non-standable structure interior).
     public Path PathToOrAdjacentBlueprint(Blueprint bp) {
-        Path direct = PathTo(bp.centerTile);
+        // Direct paths to one or more "centre" tiles — single-click blueprints
+        // yield just centerTile; two-click bps (rope bridges) yield both post
+        // tiles. Pick whichever has the cheapest direct path.
+        Path direct = null;
+        foreach (Tile center in bp.CenterApproachTiles()) {
+            Path p = PathTo(center);
+            if (p != null && (direct == null || p.cost < direct.cost)) direct = p;
+        }
         if (direct != null) return direct;
 
-        Shape shape = bp.Shape;
-        bool shapeAware = bp.structType.HasShapes;
-        int fnx = shapeAware ? shape.nx : bp.structType.nx;
-        int fny = shapeAware ? shape.ny : Mathf.Max(1, bp.structType.ny);
-
-        var footprint = new HashSet<Tile>();
-        for (int dy = 0; dy < fny; dy++)
-            for (int dx = 0; dx < fnx; dx++) {
-                Tile t = world.GetTileAt(bp.x + dx, bp.y + dy);
-                if (t != null) footprint.Add(t);
-            }
+        // Fallback: shortest path to any standable neighbour of any claimed
+        // footprint tile. Blueprint.FootprintTiles() enumerates the right set
+        // for both single- and two-click placements.
+        var footprint = new HashSet<Tile>(bp.FootprintTiles());
 
         var orthCandidates = new HashSet<Tile>();
         var diagCandidates = new HashSet<Tile>();
@@ -557,7 +557,7 @@ public class Nav {
     public bool CanReachBuilding(StructType structType, int r = Task.MediumFindRadius) {
         var list = StructController.instance.GetByType(structType);
         if (list == null) return false;
-        Node myNode = a.TileHere()?.node;
+        Node myNode = a.PathStartNode();
         if (myNode == null) return false;
         foreach (Structure s in list) {
             if (Mathf.Max(Mathf.Abs(s.x - (int)a.x), Mathf.Abs(s.y - (int)a.y)) > r) continue;

@@ -18,13 +18,11 @@ public class WorldController : MonoBehaviour {
     public static bool skipAutoLoad = false;
 
     // ── Worldgen debug hooks ───────────────────────────────────────────────
-    // Used by WorldGenDebugPanel for iterating on worldgen parameters with a
-    // fixed seed across recompiles. None of these affect production paths:
-    // tests set skipAutoLoad directly without touching stickyWorldgen, so the
-    // lastSeed reuse branch never triggers there.
-    public static int? pendingSeedOverride;  // one-shot: consumed by the next GenerateDefault
-    public static int lastGeneratedSeed;     // updated after every GenerateDefault
-    public static bool stickyWorldgen;       // when true, GenerateDefault reuses lastGeneratedSeed instead of rolling
+    // Used by WorldGenConfigEditor's regen buttons. pendingSeedOverride is a
+    // one-shot consumed by the next GenerateDefault; lastGeneratedSeed is
+    // always set to whatever seed was actually used.
+    public static int? pendingSeedOverride;
+    public static int lastGeneratedSeed;
     public World world {get; protected set;}
     public Transform tilesTransform;
     Coroutine defaultSetupCoroutine;
@@ -246,26 +244,31 @@ public class WorldController : MonoBehaviour {
         // Range stays modest because WorldGen does `seed + offset` arithmetic — full int range
         // could overflow, and the resulting world variety from 100k seeds is plenty.
         //
-        // Priority order: explicit override (debug panel one-shot) → sticky last seed
-        // (debug panel "Same seed" persistence across recompiles) → fresh roll.
+        // Priority: explicit one-shot override (set by WorldGenConfigEditor's
+        // regen buttons) → fresh roll.
         int seed;
         if (pendingSeedOverride.HasValue) {
             seed = pendingSeedOverride.Value;
             pendingSeedOverride = null;
-        } else if (stickyWorldgen && lastGeneratedSeed != 0) {
-            seed = lastGeneratedSeed;
         } else {
             seed = UnityEngine.Random.Range(1, 100000);
         }
         lastGeneratedSeed = seed;
-        if (stickyWorldgen) PlayerPrefs.SetInt(WorldGenDebugPanel.LastSeedKey, seed);
         Rng.Init(seed);
         int[] surfaceY = WorldGen.Generate(world, seed);
+        // Settle gen-time water before any plant placement runs — uniform-level
+        // fills can still leak across worm tunnels and pool-carve seams, and
+        // ScatterPlants / starter-plant placement reads tile.water to skip
+        // submerged spots. Running the live CA up front gives plants the
+        // settled topology instead of the freshly-placed one.
+        WaterController.instance?.Settle(
+            WorldGen.config.LiquidSettleMaxSteps,
+            WorldGen.config.LiquidSettleMoveThreshold);
         // Stash on World so decoration systems (FlowerController, OverlayGrowthSystem)
         // can gate placement by depth. Authoritative for the new-world path —
         // save loads recompute from the loaded tile grid instead (see ApplySaveData).
         world.surfaceY = surfaceY;
-        int sy = surfaceY[WorldGen.SpawnMinX]; // surface height at spawn zone (flat)
+        int sy = surfaceY[WorldGen.config.SpawnMinX]; // surface height at spawn zone (flat)
 
         // Market is placed at the left world edge and is intentionally off-screen.
         // Merchants walk here and "disappear" for a travel period before goods arrive.
@@ -295,11 +298,10 @@ public class WorldController : MonoBehaviour {
         // skipped when the new mask equals the old, leaving 0-masked tiles
         // un-evaluated.)
 
-        // Background walls follow the natural surface contour — tiles below
-        // surfaceY[x] get a wall (Dirt for the top DirtDepth rows, Stone deeper),
-        // with shallow caves left open as skylights. See WorldGen.SetBackgrounds.
-        WorldGen.SetBackgrounds(world, surfaceY);
-
+        // Background walls are now set inside WorldGen.Generate (before
+        // RemoveFloatingChunks, which reads backgroundType). SkyExposure +
+        // BackgroundTile init still happen here since they need the world to
+        // be fully populated (plants, market) before snapshotting.
         SkyExposure.InitializeWorld(world);
         BackgroundTile.InitializeWorld(world);
 

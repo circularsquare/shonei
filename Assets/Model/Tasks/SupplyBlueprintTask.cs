@@ -5,6 +5,14 @@ using UnityEngine.EventSystems;
 using System;
 using System.Linq;
 
+// Hauls one outstanding cost item to a blueprint that's in the Receiving state.
+// Spawned from WOM SupplyBlueprint orders. Handles one cost slot per task; the animal
+// re-picks for the next slot afterward.
+//
+// Queue: [optional Fetch(cost)] → Go(adjacent) → DeliverToBlueprint.
+// Reserves: source ItemStack (when the animal doesn't already carry the cost item).
+// For group-item costs (e.g. "wood") commits to the most-abundant leaf up-front so the
+// blueprint isn't locked to a scarce leaf by accident of delivery order.
 public class SupplyBlueprintTask : Task {
     Blueprint blueprint;
     ItemQuantity iq;
