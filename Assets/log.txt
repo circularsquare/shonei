@@ -1,5 +1,8 @@
 meoww!!
 
+5/20
+- added unitweight for multi liang items like stools
+- batch fermentation process
 5/19
 - make sleeping feel more natural
 - burrow / house improvements / furnishing finishing

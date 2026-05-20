@@ -260,12 +260,19 @@ public class StructController : MonoBehaviour {
                     foreach (var seat in b.seatRes)
                         seat.ExpireIfStale(60f, $"{b.structType.name} seat");
         }
-        // Furnishing slot decay. Called every 0.2s from World.Tick; FurnishingSlots converts
-        // elapsed seconds → in-game days using World.ticksInDay. Empties slots whose lifetime
-        // crosses 0 and fires onSlotChanged so Happiness + visuals refresh.
+        // Per-building 0.2s updates. Called every 0.2s from World.Tick.
+        //  - Furnishing slot decay: FurnishingSlots converts elapsed seconds → in-game days
+        //    via World.ticksInDay, empties expired slots, fires onSlotChanged.
+        //  - Processor fermentation: Processor.Tick advances `progress` while Working, scaled
+        //    by ambient temperature. dtDays = 0.2s / ticksInDay (same seconds→days conversion).
         foreach (Structure structure in structures){
-            if (structure is Building b && b.furnishingSlots != null)
+            if (!(structure is Building b)) continue;
+            if (b.furnishingSlots != null)
                 b.furnishingSlots.TickDecay(0.2f);
+            if (b.processor != null) {
+                float temp = WeatherSystem.instance != null ? WeatherSystem.instance.temperature : 17.5f;
+                b.processor.Tick(0.2f / World.ticksInDay, temp);
+            }
         }
     }
 

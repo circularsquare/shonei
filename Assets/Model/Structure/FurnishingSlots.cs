@@ -20,7 +20,7 @@ using UnityEngine;
 //   animals whose homeTile.building == this) and recomputes their furnishingScore.
 public class FurnishingSlots {
     public string[] slotNames;           // from StructType.furnishingSlotNames; immutable
-    public Inventory[] slotInvs;         // one Inventory(Furnishing), 1 stack, cap 1 per slot
+    public Inventory[] slotInvs;         // one Inventory(Furnishing), 1 stack, sized to hold any one furnishing
     public float[] slotRemainingDays;    // per-slot lifetime timer; 0 when empty
 
     // Per-slot installed-item cache. Mirrors slotInvs[i].itemStacks[0].item but lets us
@@ -39,9 +39,13 @@ public class FurnishingSlots {
         slotInvs = new Inventory[this.slotNames.Length];
         slotRemainingDays = new float[this.slotNames.Length];
         slotItems = new Item[this.slotNames.Length];
+        // Slot capacity = the largest furnishing install-cost in the game, so any furnishing —
+        // including a heavy discrete one like a stool — fits as one whole unit. "One furnishing
+        // per slot" is enforced by slotItems/IsEmpty plus SupplyFurnishingTask delivering exactly
+        // one furnishing's worth, not by the stack size. Guarded for tests that skip Db load.
+        int slotCap = Db.maxFurnishingCostFen > 0 ? Db.maxFurnishingCostFen : 1;
         for (int i = 0; i < this.slotNames.Length; i++) {
-            // 1 stack, capacity 1 fen — a slot is "one furnishing or empty", not a quantity.
-            slotInvs[i] = new Inventory(1, 1, Inventory.InvType.Furnishing, x, y);
+            slotInvs[i] = new Inventory(1, slotCap, Inventory.InvType.Furnishing, x, y);
             slotInvs[i].displayName = $"{ownerName}_furnish_{this.slotNames[i]}";
         }
     }

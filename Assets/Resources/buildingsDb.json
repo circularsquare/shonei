@@ -20,7 +20,7 @@
         "name": "stairs",
         "nx": 1, "ny": 1,
         "ncosts": [
-            { "name": "wood", "quantity": 5 }
+            { "name": "wood", "quantity": 3 }
         ],
         "depth": 2,
         "noMaintenance": true,
@@ -30,7 +30,7 @@
         "name": "ladder",
         "nx": 1, "ny": 1,
         "ncosts": [
-            { "name": "wood", "quantity": 5 }
+            { "name": "wood", "quantity": 3 }
         ],
         "depth": 2,
         "noMaintenance": true,
@@ -68,7 +68,8 @@
         "description": "a proper 2x2 house for up to 4 mice",
         "nx": 2, "ny": 2,
         "ncosts": [
-            { "name": "planks", "quantity": 20 }
+            { "name": "planks", "quantity": 20 },
+            { "name": "wood", "quantity": 5 }
         ],
         "njob": "hauler",
         "capacity": 4,
@@ -265,7 +266,8 @@
         "description": "a warm hearth that lights the area. mice who sit by it gain warmth and happiness.",
         "nx": 3, "ny": 1,
         "ncosts": [
-            { "name": "wood", "quantity": 5 }
+            { "name": "wood", "quantity": 10 },
+            { "name": "stone", "quantity": 4 }
         ],
         "depth": 0,
         "isBuilding": true,
@@ -384,7 +386,7 @@
         "description": "wood processing",
         "nx": 1, "ny": 1,
         "ncosts": [
-            { "name": "wood", "quantity": 5 }
+            { "name": "wood", "quantity": 10 }
         ],
         "njob": "hauler",
         "capacity": 2,
@@ -411,7 +413,8 @@
         "nx": 2, "ny": 1,
         "storageTileX": 1,
         "ncosts": [
-            { "name": "stone", "quantity": 10 }
+            { "name": "stone", "quantity": 12 },
+            { "name": "wood", "quantity": 6 }
         ],
         "njob": "hauler",
         "isStorage": true,
@@ -427,8 +430,9 @@
         "description": "press soybeans and water into soymilk; 3x faster when powered",
         "nx": 1, "ny": 1,
         "ncosts": [
-            { "name": "wood", "quantity": 4 },
-            { "name": "planks", "quantity": 2 }
+            { "name": "planks", "quantity": 4 },
+            { "name": "wood", "quantity": 2 },
+            { "name": "stone", "quantity": 4 }
         ],
         "njob": "farmer",
         "isWorkstation": true,
@@ -442,8 +446,8 @@
         "description": "pumps water from an adjacent water tile; 3x faster when powered",
         "nx": 2, "ny": 1,
         "ncosts": [
-            { "name": "wood", "quantity": 3 },
-            { "name": "planks", "quantity": 2 }
+            { "name": "wood", "quantity": 6 },
+            { "name": "planks", "quantity": 6 }
         ],
         "njob": "hauler",
         "isWorkstation": true,
@@ -463,8 +467,9 @@
         "description": "process wood and water into paper",
         "nx": 1, "ny": 1,
         "ncosts": [
-            { "name": "wood", "quantity": 5 },
-            { "name": "planks", "quantity": 3 }
+            { "name": "planks", "quantity": 8 },
+            { "name": "wood", "quantity": 2 },
+            { "name": "stone", "quantity": 5 }
         ],
         "njob": "hauler",
         "capacity": 1,
@@ -478,8 +483,8 @@
         "description": "scribes write books here",
         "nx": 1, "ny": 1,
         "ncosts": [
-            { "name": "wood", "quantity": 5 },
-            { "name": "planks", "quantity": 3 }
+            { "name": "planks", "quantity": 10 },
+            { "name": "wood", "quantity": 2 }
         ],
         "njob": "hauler",
         "capacity": 1,
@@ -490,20 +495,28 @@
     },{
         "id": 108,
         "name": "brewery",
-        "description": "ferment rice into yeast and rice wine. liquid output bin on the right.",
+        "description": "cook crafts yeast here; the tank ferments rice into rice wine.",
         "nx": 2, "ny": 1,
-        "storageTileX": 1,
+        "processorTileX": 1,
         "ncosts": [
-            { "name": "wood", "quantity": 10 },
-            { "name": "stone", "quantity": 5 }
+            { "name": "wood", "quantity": 12 },
+            { "name": "planks", "quantity": 12 }
         ],
-        "njob": "cook",
+        "njob": "hauler",
         "capacity": 1,
         "isWorkstation": true,
-        "isStorage": true,
-        "storageClass": "liquid",
-        "nStacks": 1,
-        "storageStackSize": 100,
+        "hasProcessor": true,
+        "nprocessorInputs": [
+            { "name": "rice", "quantity": 5 },
+            { "name": "water", "quantity": 10 },
+            { "name": "yeast", "quantity": 1 }
+        ],
+        "nprocessorOutputs": [
+            { "name": "rice wine", "quantity": 10 }
+        ],
+        "processDays": 2.0,
+        "processTempMin": 5,
+        "processTempIdeal": 25,
         "solidTop": true,
         "category": "production",
         "defaultLocked": true
@@ -528,7 +541,8 @@
         "description": "dig for stone",
         "nx": 1, "ny": 1,
         "ncosts": [
-            { "name": "wood", "quantity": 5 }
+            { "name": "wood", "quantity": 8 },
+            { "name": "planks", "quantity": 5 }
         ],
         "njob": "miner",
         "capacity": 1,
@@ -556,8 +570,8 @@
         "description": "weave fiber into cloth",
         "nx": 1, "ny": 1,
         "ncosts": [
-            { "name": "wood", "quantity": 5 },
-            { "name": "planks", "quantity": 3 }
+            { "name": "planks", "quantity": 10 },
+            { "name": "wood", "quantity": 2 }
         ],
         "njob": "hauler",
         "capacity": 1,
@@ -571,7 +585,8 @@
         "description": "sew cloth into clothing",
         "nx": 1, "ny": 1,
         "ncosts": [
-            { "name": "planks", "quantity": 5 }
+            { "name": "planks", "quantity": 10 },
+            { "name": "wood", "quantity": 2 }
         ],
         "njob": "hauler",
         "capacity": 1,
@@ -585,8 +600,8 @@
         "description": "a runner mouse generates mechanical power while running on this wheel",
         "nx": 2, "ny": 2,
         "ncosts": [
-            { "name": "wood", "quantity": 4 },
-            { "name": "planks", "quantity": 2 }
+            { "name": "wood", "quantity": 8 },
+            { "name": "planks", "quantity": 6 }
         ],
         "njob": "hauler",
         "isWorkstation": true,
@@ -603,8 +618,9 @@
         "description": "harvests wind into mechanical power; needs open sky above",
         "nx": 2, "ny": 4,
         "ncosts": [
-            { "name": "wood", "quantity": 8 },
-            { "name": "planks", "quantity": 4 }
+            { "name": "wood", "quantity": 16 },
+            { "name": "planks", "quantity": 10 },
+            { "name": "stone", "quantity": 8 }
         ],
         "njob": "hauler",
         "category": "power",
@@ -619,8 +635,8 @@
         "description": "stores mechanical power. charges from a network's surplus and discharges to fill any deficit. slowly bleeds energy over time.",
         "nx": 2, "ny": 2,
         "ncosts": [
-            { "name": "stone", "quantity": 6 },
-            { "name": "planks", "quantity": 4 }
+            { "name": "stone", "quantity": 10 },
+            { "name": "planks", "quantity": 8 }
         ],
         "njob": "hauler",
         "category": "power",
@@ -631,8 +647,8 @@
         "description": "carries one mouse at a time between the bottom and top of its chassis. press E/Q while placing to grow/shrink. needs mechanical power.",
         "nx": 1, "ny": 3,
         "ncosts": [
-            { "name": "planks", "quantity": 3 },
-            { "name": "stone", "quantity": 1 }
+            { "name": "planks", "quantity": 6 },
+            { "name": "stone", "quantity": 4 }
         ],
         "njob": "hauler",
         "depth": 0,

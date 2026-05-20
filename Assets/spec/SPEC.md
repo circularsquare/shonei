@@ -93,6 +93,7 @@ Depth-0 buildings with custom behaviour subclass `Building` (e.g. `PumpBuilding`
 | [SPEC-books.md](SPEC-books.md) | Books feature — `ItemClass` enum, runtime tech-book generation, scribe + scriptorium + bookshelf, scientist book-borrow flow, reading leisure |
 | [SPEC-power.md](SPEC-power.md) | Mechanical power — `PowerSystem` singleton, shaft connectivity, producers (mouse wheel, windmill), powerBoost on workstations, save/load via Phase 6 reconcile |
 | [SPEC-mcp.md](SPEC-mcp.md) | Unity Editor work via MCP — when it's safe, common gotchas (Play mode, codedom, inactive lookups), UI style conventions (font sizes, sprites, spacing, color), workflow recipes |
+| [SPEC-checklists.md](SPEC-checklists.md) | Content-authoring checklists — buildings, recipes, items, jobs, plants, Structure subclasses. Read the relevant section before editing JSON or adding subclasses. |
 
 ---
 
@@ -108,7 +109,7 @@ When adding new content, read these files first and match their pattern:
 | New Building subclass | `PumpBuilding` | `Assets/Model/Structure/PumpBuilding.cs` + `Structure.Create` in `Structure.cs` |
 | New UI panel (exclusive) | `ResearchPanel` | `Assets/UI/ResearchPanel.cs` |
 | New UI panel (detail) | `StoragePanel` | `Assets/UI/StoragePanel.cs` |
-| New item/building/recipe | Existing JSON entries | `Assets/Resources/*.json` — see SPEC-data.md |
+| New item/building/recipe | Existing JSON entries | `Assets/Resources/*.json` — see SPEC-data.md for schema, [SPEC-checklists.md](SPEC-checklists.md) for the authoring workflow |
 | New save data | `ResearchSaveData` | `WorldSaveData.cs` + `SaveSystem.cs` checklist |
 | New item sprite | Existing sheets | `Sprites/Items/Sheets/` → Tools → Split All → Generate Normal Maps |
 | New lit object | Existing sprite setup | Must be on a `litLayers` layer — see SPEC-rendering.md |

@@ -23,16 +23,25 @@ public class Item {
     public float decayRate{get; set;}
     public float foodValue {get; set;}  // 0 = not edible; >0 = nutrition restored per unit eaten
     public string happinessNeed {get; set;} // which happiness satisfaction eating this food grants (e.g. "wheat", "fruit"); null = none
-    public bool discrete {get; set;}    // true = stored/moved in whole-liang (100 fen) multiples only
+    public bool discrete {get; set;}    // true = stored/moved in whole-unit (unitFen) multiples only
+    // Weight of one whole unit, in liang (JSON-authored). Only meaningful when discrete; 0 = unset
+    // and resolves to 1 liang. Lets a discrete item (stool, statue) cost more than 1 liang per unit,
+    // so it takes up proportionally more storage space — weight and bulk are deliberately one number.
+    public float unitWeight {get; set;}
+    // Fen per whole unit — the discrete step size. Non-discrete items return 100 but it is never
+    // read for them. Computed, not cached: the unitWeight cascade in Db runs after deserialization.
+    public int unitFen => discrete ? (unitWeight > 0 ? ItemStack.LiangToFen(unitWeight) : 100) : 100;
+    public bool startDiscovered {get; set;} // true = revealed in inventory/storage trees from game start, no research or production needed (e.g. water, drawn from ponds without research)
     public ItemClass itemClass {get; set;} = ItemClass.Default; // Default = solid goods; Liquid = water/soymilk/etc.; Book = tech & fiction books. Storage inventories accept only items matching their storageClass.
-    // Initial value seeded into InventoryController.targets for this item's id, in liang.
+    // Initial value seeded into InventoryController.targets for this item's id. In liang for normal
+    // items; in whole-unit count for discrete items (resolved via unitFen, like recipe quantities).
     // Lower for byproducts (acorn, sawdust) so the "outputs over target" gate can actually
     // trigger on multi-product plants without forcing the player to manually retune. Books
     // ignore this field — itemClass==Book overrides to 1 liang in DefaultTargetFen.
     public int defaultTarget {get; set;} = 100;
     // Resolved default target in fen — single source of truth shared by InventoryController.Start
     // (initial seed) and SaveSystem.Gather (delta-vs-default skip on save).
-    public int DefaultTargetFen => itemClass == ItemClass.Book ? 100 : defaultTarget * 100;
+    public int DefaultTargetFen => itemClass == ItemClass.Book ? 100 : (discrete ? defaultTarget * unitFen : defaultTarget * 100);
     public bool isLiquid => itemClass == ItemClass.Liquid; // convenience — lets WaterController and similar liquid-specific code stay readable
     // Optional per-liquid tint (#RRGGBB) used by WaterController when this liquid is rendered in a
     // decorative zone (tank/fountain). Absent/invalid → shader falls back to its default water blue.
@@ -54,6 +63,21 @@ public class Item {
     // Optional name of a sprite under Resources/Sprites/Buildings/furnishings/ to overlay
     // on the house tile while this item is installed. Null = no visual.
     public string furnishingSprite {get; set;}
+    // Amount of this item consumed to install it as one furnishing, authored in liang.
+    // 0 = unset → defaults to one whole unit (discrete) or 1 liang (non-discrete).
+    public float furnishingCost {get; set;}
+
+    // Resolved install cost in fen — what SupplyFurnishingTask delivers into a slot, and the size
+    // FurnishingSlots needs a slot to be. A discrete item installs as whole units, so the cost is
+    // floored to a unitFen multiple; an authored cost below one unit floors to 0, and Db validation
+    // logs an error (the item becomes un-installable).
+    public int furnishingCostFen {
+        get {
+            int raw = furnishingCost > 0f ? ItemStack.LiangToFen(furnishingCost)
+                                          : (discrete ? unitFen : 100);
+            return discrete ? (raw / unitFen) * unitFen : raw;
+        }
+    }
 
     public Item parent;
     // Loaded at startup by Db. Falls back to Sprites/Items/split/default/icon if no item-specific icon exists.
@@ -98,6 +122,9 @@ public class ItemQuantity {
         item = Db.items[id];
     }
 
+    // Raw constructors: `quantity` is fen, already converted. For a value authored in JSON — liang
+    // for normal items, a whole-unit count for discrete items — use the ItemNameQuantity constructor
+    // below instead; it does the discrete-aware conversion. These take pre-converted fen only.
     public ItemQuantity(int id, int quantity){
         this.id = id;
         this.item = Db.items[id];
@@ -113,8 +140,23 @@ public class ItemQuantity {
         this.item = Db.itemByName[name];
         this.quantity = quantity;
     }
+    // Builds an ItemQuantity from an authored ItemNameQuantity — the single chokepoint for
+    // JSON-quantity → fen conversion. The authored quantity is liang for normal items, but a whole
+    // unit count for discrete items (× unitFen), so a recipe can say { "stool": 1 } for one stool.
+    public ItemQuantity(ItemNameQuantity src){
+        this.id = Db.iidByName[src.name];
+        this.item = Db.itemByName[src.name];
+        if (item.discrete){
+            if (Math.Abs(src.quantity - Math.Round(src.quantity)) > 0.0001f)
+                Debug.LogWarning($"ItemQuantity: discrete item '{src.name}' authored with fractional quantity {src.quantity} — rounding to whole units.");
+            this.quantity = (int)Math.Round(src.quantity) * item.unitFen;
+        } else {
+            this.quantity = ItemStack.LiangToFen(src.quantity);
+        }
+        this.chance = src.chance;
+    }
     public override string ToString(){
-        return item.name + ": " + ItemStack.FormatQ(quantity, item.discrete);}
+        return item.name + ": " + ItemStack.FormatQ(quantity, item);}
     public string ItemName(){
         return item.name;
     }

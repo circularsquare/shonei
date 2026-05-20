@@ -61,4 +61,8 @@ BUGS
 
 SHORT TERM
 - test furnishings of house and burrow
-- rice stuff
+- rice stuf
+
+- liquid rendering
+- yeast 10 cap defualt 
+- refactor processor recipe into recipes?

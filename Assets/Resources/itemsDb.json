@@ -224,6 +224,7 @@
         "name": "water",
         "decayRate": 0,
         "itemClass": "liquid",
+        "startDiscovered": true,
         "children": null
     },{
         "id": 250,
@@ -241,6 +242,7 @@
         "name": "cloth",
         "decayRate": 0.08,
         "furnishingSlot": "cloth",
+        "furnishingCost": 2,
         "furnishingHappiness": 1.0,
         "furnishingLifetimeDays": 5.0,
         "furnishingSprite": "cloth",
@@ -273,7 +275,10 @@
         "name": "stool",
         "decayRate": 0.06,
         "discrete": true,
+        "unitWeight": 3,
+        "defaultTarget": 10,
         "furnishingSlot": "stool",
+        "furnishingCost": 3,
         "furnishingHappiness": 1.0,
         "furnishingLifetimeDays": 15.0,
         "furnishingSprite": "stool",

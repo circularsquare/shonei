@@ -1,5 +1,8 @@
 {
-  "timer": 2940.53052,
+  "saveVersion": 1,
+  "savedNx": 100,
+  "savedNy": 80,
+  "timer": 3338.78979,
   "worldSeed": 0,
   "tiles": [
     {
@@ -1389,11 +1392,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 274,
-            "decayCounter": 595102
+            "quantity": 224,
+            "decayCounter": 169335
           }
         ],
-        "wetUntil": 2979.98633
+        "wetUntil": 3364.96338
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -1758,11 +1761,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 1662,
-            "decayCounter": 541053
+            "quantity": 1361,
+            "decayCounter": 344628
           }
         ],
-        "wetUntil": 2979.98633
+        "wetUntil": 3364.96338
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -2127,11 +2130,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 1662,
-            "decayCounter": 967104
+            "quantity": 1361,
+            "decayCounter": 693460
           }
         ],
-        "wetUntil": 2979.98633
+        "wetUntil": 3364.96338
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -2496,11 +2499,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 1659,
-            "decayCounter": 637809
+            "quantity": 1359,
+            "decayCounter": 881521
           }
         ],
-        "wetUntil": 2979.98633
+        "wetUntil": 3364.96338
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -2872,11 +2875,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 1659,
-            "decayCounter": 968414
+            "quantity": 1358,
+            "decayCounter": 151567
           }
         ],
-        "wetUntil": 2979.98633
+        "wetUntil": 3364.96338
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -3248,11 +3251,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 1658,
-            "decayCounter": 313145
+            "quantity": 1358,
+            "decayCounter": 434355
           }
         ],
-        "wetUntil": 2979.98633
+        "wetUntil": 3364.96338
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -3624,11 +3627,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 1658,
-            "decayCounter": 912177
+            "quantity": 1358,
+            "decayCounter": 924359
           }
         ],
-        "wetUntil": 2979.98633
+        "wetUntil": 3364.96338
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -4000,11 +4003,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 1732,
-            "decayCounter": 529097
+            "quantity": 1418,
+            "decayCounter": 5129
           }
         ],
-        "wetUntil": 2979.98633
+        "wetUntil": 3364.96338
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -4376,11 +4379,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 2212,
-            "decayCounter": 447251
+            "quantity": 1812,
+            "decayCounter": 814472
           }
         ],
-        "wetUntil": 2979.98633
+        "wetUntil": 3364.96338
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -4741,6 +4744,24 @@
       "y": 0,
       "tileType": "limestone",
       "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 13,
+      "y": 51,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Floor",
+        "stacks": [
+          {
+            "itemName": "apple",
+            "quantity": 370,
+            "decayCounter": 298369
+          }
+        ],
+        "wetUntil": 3364.96338
+      },
+      "backgroundWallType": 0,
       "hasBackgroundWall": false
     },
     {
@@ -5110,11 +5131,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 1912,
-            "decayCounter": 672872
+            "quantity": 1566,
+            "decayCounter": 701029
           }
         ],
-        "wetUntil": 2979.98633
+        "wetUntil": 3364.96338
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -5486,11 +5507,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 1749,
-            "decayCounter": 565182
+            "quantity": 1432,
+            "decayCounter": 111495
           }
         ],
-        "wetUntil": 2979.98633
+        "wetUntil": 3364.96338
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -6206,24 +6227,6 @@
     },
     {
       "x": 17,
-      "y": 51,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "ramie cloth",
-            "quantity": 100,
-            "decayCounter": 416640
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
       "y": 48,
       "tileType": "dirt",
       "backgroundWallType": 0,
@@ -8594,24 +8597,6 @@
       "y": 0,
       "tileType": "limestone",
       "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 24,
-      "y": 50,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 245,
-            "decayCounter": 530264
-          }
-        ],
-        "wetUntil": 2979.98633
-      },
-      "backgroundWallType": 0,
       "hasBackgroundWall": false
     },
     {
@@ -10027,8 +10012,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 2496,
-            "decayCounter": 358121
+            "quantity": 1891,
+            "decayCounter": 543578
           }
         ],
         "wetUntil": 0.0
@@ -10396,11 +10381,11 @@
         "stacks": [
           {
             "itemName": "paper",
-            "quantity": 1053,
-            "decayCounter": 94630
+            "quantity": 773,
+            "decayCounter": 703657
           }
         ],
-        "wetUntil": 2979.98633
+        "wetUntil": 3102.51147
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -10765,8 +10750,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 2483,
-            "decayCounter": 195588
+            "quantity": 2499,
+            "decayCounter": 177982
           }
         ],
         "wetUntil": 0.0
@@ -11127,1073 +11112,1073 @@
     },
     {
       "x": 31,
-      "y": 49,
-      "tileType": "dirt",
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false,
-      "overlayMask": 8
-    },
-    {
-      "x": 31,
-      "y": 48,
-      "tileType": "dirt",
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 47,
-      "tileType": "dirt",
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 46,
-      "tileType": "limestone",
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 45,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 44,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 43,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 42,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 41,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 40,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 39,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 38,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 37,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 36,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 35,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 34,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 33,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 32,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 31,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 30,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 29,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 28,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 27,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 26,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 25,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 24,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 23,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 22,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 21,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 20,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 19,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 18,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 17,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 16,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 15,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 14,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 13,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 12,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 11,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 10,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 9,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 8,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 7,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 6,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 5,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 4,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 3,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 2,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 1,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 0,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 49,
-      "tileType": "dirt",
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false,
-      "overlayMask": 8
-    },
-    {
-      "x": 32,
-      "y": 48,
-      "tileType": "dirt",
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 47,
-      "tileType": "dirt",
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 46,
-      "tileType": "limestone",
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 45,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 44,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 43,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 42,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 41,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 40,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 39,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 38,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 37,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 36,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 35,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 34,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 33,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 32,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 31,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 30,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 29,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 28,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 27,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 26,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 25,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 24,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 23,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 22,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 21,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 20,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 19,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 18,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 17,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 16,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 15,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 14,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 13,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 12,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 11,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 10,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 9,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 8,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 7,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 6,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 5,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 4,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 3,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 2,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 1,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
-      "y": 0,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 49,
-      "tileType": "dirt",
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false,
-      "overlayMask": 8
-    },
-    {
-      "x": 33,
-      "y": 48,
-      "tileType": "dirt",
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 47,
-      "tileType": "dirt",
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 46,
-      "tileType": "limestone",
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 45,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 44,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 43,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 42,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 41,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 40,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 39,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 38,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 37,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 36,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 35,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 34,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 33,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 32,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 31,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 30,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 29,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 28,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 27,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 26,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 25,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 24,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 23,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 22,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 21,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 20,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 19,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 18,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 17,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 16,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 15,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 14,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 13,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 12,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 11,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 10,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 9,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 8,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 7,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 6,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 5,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 4,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 3,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 2,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 1,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 0,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 34,
-      "y": 50,
+      "y": 51,
       "tileType": "empty",
       "inv": {
         "invType": "Floor",
         "stacks": [
           {
-            "itemName": "wheat",
-            "quantity": 994,
-            "decayCounter": 100964
+            "itemName": "sawdust",
+            "quantity": 100,
+            "decayCounter": 854112
           }
         ],
-        "wetUntil": 2979.98633
+        "wetUntil": 0.0
       },
       "backgroundWallType": 0,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 49,
+      "tileType": "dirt",
+      "backgroundWallType": 0,
+      "hasBackgroundWall": false,
+      "overlayMask": 8
+    },
+    {
+      "x": 31,
+      "y": 48,
+      "tileType": "dirt",
+      "backgroundWallType": 0,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 47,
+      "tileType": "dirt",
+      "backgroundWallType": 0,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 46,
+      "tileType": "limestone",
+      "backgroundWallType": 0,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 45,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 44,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 43,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 42,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 41,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 40,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 39,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 38,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 37,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 36,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 35,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 34,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 33,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 32,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 31,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 30,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 29,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 28,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 27,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 26,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 25,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 24,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 23,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 22,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 21,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 20,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 19,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 18,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 17,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 16,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 15,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 14,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 13,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 12,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 11,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 10,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 9,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 8,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 7,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 6,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 5,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 4,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 3,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 2,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 1,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 31,
+      "y": 0,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 49,
+      "tileType": "dirt",
+      "backgroundWallType": 0,
+      "hasBackgroundWall": false,
+      "overlayMask": 8
+    },
+    {
+      "x": 32,
+      "y": 48,
+      "tileType": "dirt",
+      "backgroundWallType": 0,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 47,
+      "tileType": "dirt",
+      "backgroundWallType": 0,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 46,
+      "tileType": "limestone",
+      "backgroundWallType": 0,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 45,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 44,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 43,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 42,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 41,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 40,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 39,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 38,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 37,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 36,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 35,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 34,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 33,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 32,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 31,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 30,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 29,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 28,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 27,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 26,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 25,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 24,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 23,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 22,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 21,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 20,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 19,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 18,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 17,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 16,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 15,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 14,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 13,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 12,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 11,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 10,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 9,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 8,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 7,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 6,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 5,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 4,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 3,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 2,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 1,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
+      "y": 0,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 49,
+      "tileType": "dirt",
+      "backgroundWallType": 0,
+      "hasBackgroundWall": false,
+      "overlayMask": 8
+    },
+    {
+      "x": 33,
+      "y": 48,
+      "tileType": "dirt",
+      "backgroundWallType": 0,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 47,
+      "tileType": "dirt",
+      "backgroundWallType": 0,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 46,
+      "tileType": "limestone",
+      "backgroundWallType": 0,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 45,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 44,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 43,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 42,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 41,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 40,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 39,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 38,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 37,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 36,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 35,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 34,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 33,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 32,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 31,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 30,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 29,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 28,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 27,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 26,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 25,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 24,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 23,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 22,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 21,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 20,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 19,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 18,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 17,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 16,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 15,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 14,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 13,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 12,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 11,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 10,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 9,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 8,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 7,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 6,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 5,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 4,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 3,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 2,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 1,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 33,
+      "y": 0,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
       "hasBackgroundWall": false
     },
     {
@@ -13255,8 +13240,8 @@
         "stacks": [
           {
             "itemName": "limestone",
-            "quantity": 279,
-            "decayCounter": 246924
+            "quantity": 232,
+            "decayCounter": 692364
           }
         ],
         "wetUntil": 0.0
@@ -16782,11 +16767,11 @@
         "stacks": [
           {
             "itemName": "bamboo",
-            "quantity": 2500,
-            "decayCounter": 506864
+            "quantity": 2122,
+            "decayCounter": 867866
           }
         ],
-        "wetUntil": 2979.98633
+        "wetUntil": 3364.96338
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -17158,11 +17143,11 @@
         "stacks": [
           {
             "itemName": "bamboo",
-            "quantity": 1306,
-            "decayCounter": 875166
+            "quantity": 2029,
+            "decayCounter": 813121
           }
         ],
-        "wetUntil": 2979.98633
+        "wetUntil": 3364.96338
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -19949,6 +19934,24 @@
     },
     {
       "x": 56,
+      "y": 48,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Floor",
+        "stacks": [
+          {
+            "itemName": "apple",
+            "quantity": 58,
+            "decayCounter": 612609
+          }
+        ],
+        "wetUntil": 3364.96338
+      },
+      "backgroundWallType": 0,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 56,
       "y": 47,
       "tileType": "dirt",
       "backgroundWallType": 0,
@@ -20282,6 +20285,24 @@
       "y": 0,
       "tileType": "limestone",
       "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 57,
+      "y": 48,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Floor",
+        "stacks": [
+          {
+            "itemName": "apple",
+            "quantity": 56,
+            "decayCounter": 804300
+          }
+        ],
+        "wetUntil": 3364.96338
+      },
+      "backgroundWallType": 0,
       "hasBackgroundWall": false
     },
     {
@@ -34853,6 +34874,108 @@
       "backgroundWallType": 1,
       "hasBackgroundWall": false
     }
+  ],
+  "surfaceY": [
+    47,
+    48,
+    48,
+    49,
+    49,
+    49,
+    49,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    49,
+    48,
+    47,
+    47,
+    47,
+    47,
+    47,
+    49,
+    49,
+    49,
+    49,
+    49,
+    49,
+    49,
+    49,
+    49,
+    49,
+    49,
+    49,
+    49,
+    43,
+    49,
+    49,
+    50,
+    50,
+    50,
+    50,
+    49,
+    49,
+    49,
+    49,
+    50,
+    50,
+    50,
+    49,
+    49,
+    48,
+    48,
+    47,
+    47,
+    47,
+    47,
+    44,
+    43,
+    43,
+    43,
+    44,
+    44,
+    42,
+    42,
+    42,
+    41,
+    38,
+    47,
+    47,
+    47,
+    48,
+    48,
+    49,
+    49,
+    49,
+    49,
+    49,
+    49,
+    49,
+    49,
+    49,
+    49,
+    49,
+    49,
+    49,
+    50,
+    50,
+    50,
+    49,
+    49,
+    49,
+    48,
+    46,
+    45,
+    44,
+    44,
+    44,
+    44
   ],
   "structures": [
     {
@@ -35131,9 +35254,9 @@
       "x": 25,
       "y": 50,
       "typeName": "appletree",
-      "plantAge": 35,
-      "plantGrowthStage": 3,
-      "plantHarvestable": true,
+      "plantAge": 32,
+      "plantGrowthStage": 2,
+      "plantHarvestable": false,
       "plantHarvestFlagged": true,
       "uses": 0,
       "mirrored": false,
@@ -35148,7 +35271,7 @@
       "x": 56,
       "y": 48,
       "typeName": "appletree",
-      "plantAge": 411,
+      "plantAge": 291,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "plantHarvestFlagged": true,
@@ -35165,7 +35288,7 @@
       "x": 57,
       "y": 48,
       "typeName": "appletree",
-      "plantAge": 407,
+      "plantAge": 285,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "plantHarvestFlagged": true,
@@ -35182,7 +35305,7 @@
       "x": 80,
       "y": 50,
       "typeName": "tree",
-      "plantAge": 7165,
+      "plantAge": 7559,
       "plantGrowthStage": 7,
       "plantHarvestable": true,
       "uses": 0,
@@ -35198,7 +35321,7 @@
       "x": 84,
       "y": 50,
       "typeName": "tree",
-      "plantAge": 7165,
+      "plantAge": 7559,
       "plantGrowthStage": 7,
       "plantHarvestable": true,
       "uses": 0,
@@ -35223,8 +35346,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 9884,
-            "decayCounter": 973277
+            "quantity": 9987,
+            "decayCounter": 171247
           }
         ],
         "allowedItemIds": [
@@ -35239,7 +35362,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.944240153,
+      "condition": 0.916881,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -35256,8 +35379,8 @@
         "stacks": [
           {
             "itemName": "acorn",
-            "quantity": 2759,
-            "decayCounter": 876719
+            "quantity": 2590,
+            "decayCounter": 868546
           }
         ],
         "allowedItemIds": [
@@ -35269,7 +35392,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.9483371,
+      "condition": 0.92097795,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -35286,8 +35409,8 @@
         "stacks": [
           {
             "itemName": "wheat",
-            "quantity": 7863,
-            "decayCounter": 551080
+            "quantity": 7533,
+            "decayCounter": 102838
           }
         ],
         "allowedItemIds": [
@@ -35299,7 +35422,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.947781563,
+      "condition": 0.920422435,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -35316,7 +35439,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.7674474,
+      "condition": 0.992014468,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -35324,9 +35447,9 @@
       "x": 39,
       "y": 51,
       "typeName": "wheat",
-      "plantAge": 20,
-      "plantGrowthStage": 1,
-      "plantHarvestable": false,
+      "plantAge": 197,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
       "mirrored": false,
@@ -35341,9 +35464,9 @@
       "x": 40,
       "y": 51,
       "typeName": "wheat",
-      "plantAge": 29,
-      "plantGrowthStage": 1,
-      "plantHarvestable": false,
+      "plantAge": 193,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
       "mirrored": false,
@@ -35374,9 +35497,9 @@
       "x": 38,
       "y": 50,
       "typeName": "wheat",
-      "plantAge": 34,
-      "plantGrowthStage": 2,
-      "plantHarvestable": false,
+      "plantAge": 57,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
       "mirrored": false,
@@ -35395,11 +35518,39 @@
       "plantGrowthStage": 0,
       "plantHarvestable": false,
       "uses": 0,
+      "furnishingInvData": [
+        {
+          "invType": "Furnishing",
+          "stacks": [
+            {
+              "itemName": "ramie cloth",
+              "quantity": 1,
+              "decayCounter": 0
+            }
+          ],
+          "wetUntil": 0.0
+        },
+        {
+          "invType": "Furnishing",
+          "stacks": [
+            {
+              "itemName": "",
+              "quantity": 0,
+              "decayCounter": 0
+            }
+          ],
+          "wetUntil": 0.0
+        }
+      ],
+      "furnishingRemainingDays": [
+        4.631588,
+        0.0
+      ],
       "mirrored": false,
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.9572253,
+      "condition": 0.9298662,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -35407,9 +35558,9 @@
       "x": 37,
       "y": 50,
       "typeName": "wheat",
-      "plantAge": 41,
-      "plantGrowthStage": 2,
-      "plantHarvestable": false,
+      "plantAge": 61,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
       "mirrored": false,
@@ -35433,7 +35584,7 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 183,
+            "quantity": 94,
             "decayCounter": 0
           }
         ],
@@ -35443,7 +35594,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.95993346,
+      "condition": 0.932574332,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -35460,23 +35611,23 @@
         "stacks": [
           {
             "itemName": "bamboo",
-            "quantity": 1997,
-            "decayCounter": 731621
+            "quantity": 1991,
+            "decayCounter": 972549
           },
           {
             "itemName": "bamboo",
-            "quantity": 1997,
-            "decayCounter": 448236
+            "quantity": 1992,
+            "decayCounter": 707165
           },
           {
             "itemName": "sawdust",
-            "quantity": 1882,
-            "decayCounter": 570559
+            "quantity": 1981,
+            "decayCounter": 718934
           },
           {
             "itemName": "bamboo",
-            "quantity": 1993,
-            "decayCounter": 686919
+            "quantity": 1992,
+            "decayCounter": 938532
           }
         ],
         "allowedItemIds": [
@@ -35491,7 +35642,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.751893,
+      "condition": 0.975626767,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -35524,8 +35675,8 @@
         "stacks": [
           {
             "itemName": "pine planks",
-            "quantity": 3755,
-            "decayCounter": 774816
+            "quantity": 6107,
+            "decayCounter": 186793
           }
         ],
         "allowedItemIds": [
@@ -35540,7 +35691,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.96347487,
+      "condition": 0.936115742,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -35564,7 +35715,7 @@
       "x": 26,
       "y": 50,
       "typeName": "tree",
-      "plantAge": 503,
+      "plantAge": 221,
       "plantGrowthStage": 7,
       "plantHarvestable": true,
       "plantHarvestFlagged": true,
@@ -35601,11 +35752,39 @@
       "plantGrowthStage": 0,
       "plantHarvestable": false,
       "uses": 0,
+      "furnishingInvData": [
+        {
+          "invType": "Furnishing",
+          "stacks": [
+            {
+              "itemName": "ramie cloth",
+              "quantity": 1,
+              "decayCounter": 0
+            }
+          ],
+          "wetUntil": 0.0
+        },
+        {
+          "invType": "Furnishing",
+          "stacks": [
+            {
+              "itemName": "",
+              "quantity": 0,
+              "decayCounter": 0
+            }
+          ],
+          "wetUntil": 0.0
+        }
+      ],
+      "furnishingRemainingDays": [
+        4.63408852,
+        0.0
+      ],
       "mirrored": false,
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.9970141,
+      "condition": 0.969655,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -35621,7 +35800,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.9985418,
+      "condition": 0.971182644,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -35638,7 +35817,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.7536984,
+      "condition": 0.977362752,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -35694,9 +35873,9 @@
       "x": 41,
       "y": 51,
       "typeName": "wheat",
-      "plantAge": 14,
-      "plantGrowthStage": 0,
-      "plantHarvestable": false,
+      "plantAge": 183,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
       "mirrored": false,
@@ -35711,9 +35890,9 @@
       "x": 47,
       "y": 51,
       "typeName": "bamboo",
-      "plantAge": 0,
-      "plantGrowthStage": 0,
-      "plantHarvestable": false,
+      "plantAge": 394,
+      "plantGrowthStage": 11,
+      "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
       "mirrored": false,
@@ -35894,7 +36073,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.805153,
+      "condition": 0.7777939,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -35910,7 +36089,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.8088333,
+      "condition": 0.7814742,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -35942,7 +36121,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.822651744,
+      "condition": 0.7952926,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -35982,9 +36161,9 @@
       "x": 15,
       "y": 51,
       "typeName": "appletree",
-      "plantAge": 102,
-      "plantGrowthStage": 3,
-      "plantHarvestable": true,
+      "plantAge": 25,
+      "plantGrowthStage": 2,
+      "plantHarvestable": false,
       "plantHarvestFlagged": true,
       "uses": 0,
       "mirrored": false,
@@ -36008,7 +36187,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.835359156,
+      "condition": 0.808,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -36035,7 +36214,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.833414853,
+      "condition": 0.8060557,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -36043,9 +36222,9 @@
       "x": 14,
       "y": 51,
       "typeName": "appletree",
-      "plantAge": 121,
-      "plantGrowthStage": 3,
-      "plantHarvestable": true,
+      "plantAge": 34,
+      "plantGrowthStage": 2,
+      "plantHarvestable": false,
       "plantHarvestFlagged": true,
       "uses": 0,
       "mirrored": false,
@@ -36060,9 +36239,9 @@
       "x": 13,
       "y": 51,
       "typeName": "appletree",
-      "plantAge": 129,
-      "plantGrowthStage": 3,
-      "plantHarvestable": true,
+      "plantAge": 30,
+      "plantGrowthStage": 2,
+      "plantHarvestable": false,
       "plantHarvestFlagged": true,
       "uses": 0,
       "mirrored": false,
@@ -36101,7 +36280,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.8542467,
+      "condition": 0.826887548,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -36118,8 +36297,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 9989,
-            "decayCounter": 270639
+            "quantity": 9956,
+            "decayCounter": 941380
           }
         ],
         "allowedItemIds": [
@@ -36134,7 +36313,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.8552188,
+      "condition": 0.8278597,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -36151,8 +36330,8 @@
         "stacks": [
           {
             "itemName": "dirt",
-            "quantity": 1756,
-            "decayCounter": 180273
+            "quantity": 1750,
+            "decayCounter": 209130
           }
         ],
         "allowedItemIds": [
@@ -36164,7 +36343,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.8566076,
+      "condition": 0.8292485,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -36181,8 +36360,8 @@
         "stacks": [
           {
             "itemName": "limestone",
-            "quantity": 9986,
-            "decayCounter": 326411
+            "quantity": 9995,
+            "decayCounter": 674183
           }
         ],
         "allowedItemIds": [
@@ -36198,7 +36377,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.859107435,
+      "condition": 0.8317483,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -36214,8 +36393,8 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.8625794,
-      "flywheelCharge": 4.60612869,
+      "condition": 0.8352203,
+      "flywheelCharge": 12.4712677,
       "elevatorCurrentY": 0.0
     },
     {
@@ -36231,7 +36410,7 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 138,
+            "quantity": 49,
             "decayCounter": 0
           }
         ],
@@ -36241,7 +36420,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.869523346,
+      "condition": 0.8421642,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -36258,7 +36437,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.873550832,
+      "condition": 0.8461917,
       "capturedTileType": "limestone",
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
@@ -36291,15 +36470,10 @@
       "rotation": 0,
       "shapeIndex": 1,
       "disabled": false,
-      "condition": 0.8812586,
+      "condition": 0.8538995,
       "flywheelCharge": 0.0,
-      "elevatorCurrentY": 0.0,
+      "elevatorCurrentY": 1.8,
       "elevatorRecentTripTicks": [
-        4,
-        4,
-        3,
-        3,
-        4,
         3,
         4,
         4,
@@ -36308,31 +36482,36 @@
         3,
         3,
         4,
-        3,
+        4,
         3,
         4,
+        3,
+        4,
+        3,
+        4,
+        3,
         3,
         4,
         3,
         4
       ],
       "elevatorRecentEndToEndTicks": [
+        4,
         8,
-        12,
+        8,
+        4,
+        8,
+        4,
         6,
-        4,
-        8,
-        4,
         8,
         8,
         4,
         8,
         4,
-        4,
         8,
         4,
-        4,
-        10,
+        8,
+        8,
         4,
         8,
         4,
@@ -36351,7 +36530,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.8860499,
+      "condition": 0.8586908,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -36367,7 +36546,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.8874387,
+      "condition": 0.8600796,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -36383,7 +36562,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.8886886,
+      "condition": 0.8613295,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -36399,7 +36578,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.8900774,
+      "condition": 0.8627183,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -36415,7 +36594,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.898549,
+      "condition": 0.8711899,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -36431,7 +36610,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.891882837,
+      "condition": 0.8645237,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -36448,13 +36627,13 @@
         "stacks": [
           {
             "itemName": "coal",
-            "quantity": 277,
-            "decayCounter": 505120
+            "quantity": 276,
+            "decayCounter": 455050
           },
           {
             "itemName": "gypsum",
-            "quantity": 310,
-            "decayCounter": 571236
+            "quantity": 305,
+            "decayCounter": 854370
           },
           {
             "itemName": "",
@@ -36479,7 +36658,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.894591,
+      "condition": 0.867231846,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -36495,7 +36674,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.900285,
+      "condition": 0.8729259,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -36511,7 +36690,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.90215987,
+      "condition": 0.874800742,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -36528,7 +36707,7 @@
         "stacks": [
           {
             "itemName": "water",
-            "quantity": 2950,
+            "quantity": 3424,
             "decayCounter": 0
           }
         ],
@@ -36541,7 +36720,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.9041042,
+      "condition": 0.876745045,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -36558,7 +36737,7 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 276,
+            "quantity": 187,
             "decayCounter": 0
           }
         ],
@@ -36568,7 +36747,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.916603267,
+      "condition": 0.889244139,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -36576,7 +36755,7 @@
       "x": 42,
       "y": 51,
       "typeName": "wheat",
-      "plantAge": 2109,
+      "plantAge": 152,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "plantHarvestFlagged": true,
@@ -36602,8 +36781,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 9993,
-            "decayCounter": 939083
+            "quantity": 9995,
+            "decayCounter": 973201
           }
         ],
         "allowedItemIds": [
@@ -36618,7 +36797,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.9411848,
+      "condition": 0.9138257,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -36635,8 +36814,8 @@
         "stacks": [
           {
             "itemName": "sawdust",
-            "quantity": 619,
-            "decayCounter": 793532
+            "quantity": 978,
+            "decayCounter": 476914
           }
         ],
         "allowedItemIds": [
@@ -36648,7 +36827,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.946531653,
+      "condition": 0.9191725,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -36665,8 +36844,8 @@
         "stacks": [
           {
             "itemName": "apple",
-            "quantity": 736,
-            "decayCounter": 406650
+            "quantity": 1805,
+            "decayCounter": 748859
           }
         ],
         "allowedItemIds": [
@@ -36678,7 +36857,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.9434069,
+      "condition": 0.916047752,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -36734,8 +36913,8 @@
       "x": 12,
       "y": 51,
       "typeName": "tree",
-      "plantAge": 182,
-      "plantGrowthStage": 6,
+      "plantAge": 576,
+      "plantGrowthStage": 7,
       "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
@@ -36751,7 +36930,7 @@
       "x": 11,
       "y": 51,
       "typeName": "tree",
-      "plantAge": 609,
+      "plantAge": 1003,
       "plantGrowthStage": 7,
       "plantHarvestable": true,
       "plantHarvestFlagged": true,
@@ -36816,7 +36995,7 @@
       "x": 45,
       "y": 50,
       "typeName": "wheat",
-      "plantAge": 381,
+      "plantAge": 775,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "plantHarvestFlagged": true,
@@ -36841,7 +37020,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.9822235,
+      "condition": 0.9548644,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -36849,7 +37028,7 @@
       "x": 44,
       "y": 50,
       "typeName": "wheat",
-      "plantAge": 2131,
+      "plantAge": 2525,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "plantHarvestFlagged": true,
@@ -36866,7 +37045,7 @@
       "x": 46,
       "y": 50,
       "typeName": "wheat",
-      "plantAge": 386,
+      "plantAge": 780,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "plantHarvestFlagged": true,
@@ -36924,7 +37103,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.7905013,
+      "condition": 0.763142169,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -36957,7 +37136,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.7926539,
+      "condition": 0.7652948,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -36990,7 +37169,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.8091805,
+      "condition": 0.78182137,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -37038,7 +37217,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.8352897,
+      "condition": 0.8079306,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -37071,8 +37250,8 @@
         "stacks": [
           {
             "itemName": "wheat",
-            "quantity": 9980,
-            "decayCounter": 800833
+            "quantity": 9859,
+            "decayCounter": 925382
           }
         ],
         "allowedItemIds": [
@@ -37084,7 +37263,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.8411226,
+      "condition": 0.8137635,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -37117,7 +37296,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.8662597,
+      "condition": 0.838900566,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -37133,14 +37312,14 @@
         "invType": "Storage",
         "stacks": [
           {
-            "itemName": "book_writing",
-            "quantity": 100,
-            "decayCounter": 68888448
-          },
-          {
             "itemName": "book_excavation",
             "quantity": 100,
-            "decayCounter": 61909326
+            "decayCounter": 173610
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
           },
           {
             "itemName": "",
@@ -37206,7 +37385,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.872856438,
+      "condition": 0.8454973,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -37239,29 +37418,31 @@
         "stacks": [
           {
             "itemName": "ramie",
-            "quantity": 1800,
-            "decayCounter": 857699
+            "quantity": 1997,
+            "decayCounter": 943668
           },
           {
             "itemName": "ramie",
-            "quantity": 1961,
-            "decayCounter": 425256
+            "quantity": 1997,
+            "decayCounter": 767625
           },
           {
             "itemName": "ramie",
-            "quantity": 372,
-            "decayCounter": 971522
+            "quantity": 711,
+            "decayCounter": 636900
           },
           {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
+            "itemName": "ramie cloth",
+            "quantity": 549,
+            "decayCounter": 650318
           }
         ],
         "allowedItemIds": [
           220,
           250,
-          251
+          251,
+          260,
+          261
         ],
         "wetUntil": 0.0
       },
@@ -37269,7 +37450,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.901951551,
+      "condition": 0.8745924,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -37286,23 +37467,23 @@
         "stacks": [
           {
             "itemName": "paper",
-            "quantity": 1994,
-            "decayCounter": 830056
+            "quantity": 1993,
+            "decayCounter": 991531
           },
           {
             "itemName": "paper",
             "quantity": 1994,
-            "decayCounter": 167913
+            "decayCounter": 324915
           },
           {
             "itemName": "paper",
             "quantity": 1994,
-            "decayCounter": 691337
+            "decayCounter": 860352
           },
           {
             "itemName": "paper",
-            "quantity": 1995,
-            "decayCounter": 713825
+            "quantity": 1994,
+            "decayCounter": 881844
           }
         ],
         "allowedItemIds": [
@@ -37314,7 +37495,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.9150756,
+      "condition": 0.8877165,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -37322,9 +37503,9 @@
       "x": 10,
       "y": 51,
       "typeName": "ramie",
-      "plantAge": 115,
-      "plantGrowthStage": 3,
-      "plantHarvestable": true,
+      "plantAge": 24,
+      "plantGrowthStage": 2,
+      "plantHarvestable": false,
       "plantHarvestFlagged": true,
       "uses": 0,
       "mirrored": false,
@@ -37348,7 +37529,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.9331993,
+      "condition": 0.905840158,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -37356,7 +37537,7 @@
       "x": 9,
       "y": 51,
       "typeName": "ramie",
-      "plantAge": 176,
+      "plantAge": 98,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "plantHarvestFlagged": true,
@@ -37414,7 +37595,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.9719465,
+      "condition": 0.94458735,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     },
@@ -37431,6 +37612,38 @@
       "shapeIndex": 0,
       "disabled": false,
       "condition": 1.0,
+      "flywheelCharge": 0.0,
+      "elevatorCurrentY": 0.0
+    },
+    {
+      "x": 28,
+      "y": 55,
+      "typeName": "tarp",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "rotation": 0,
+      "shapeIndex": 2,
+      "disabled": false,
+      "condition": 1.0,
+      "flywheelCharge": 0.0,
+      "elevatorCurrentY": 0.0
+    },
+    {
+      "x": 34,
+      "y": 51,
+      "typeName": "bench",
+      "plantAge": 0,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
+      "uses": 0,
+      "mirrored": false,
+      "rotation": 0,
+      "shapeIndex": 0,
+      "disabled": false,
+      "condition": 0.98583436,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0
     }
@@ -37458,50 +37671,27 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false
-    },
-    {
-      "x": 28,
-      "y": 55,
-      "typeName": "tarp",
-      "state": 0,
-      "constructionProgress": 0.0,
-      "inv": {
-        "invType": "Blueprint",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "priority": 0,
-      "mirrored": false,
-      "rotation": 0,
-      "shapeIndex": 2,
-      "disabled": false
     }
   ],
   "animals": [
     {
       "aName": "Yue",
-      "x": 17.249218,
+      "x": 27.4244537,
       "y": 50.0,
       "rngSeed": 1559595546,
-      "jobName": "clothier",
-      "energy": 0.603528,
-      "food": 69.19829,
-      "eep": 95.7123947,
+      "jobName": "farmer",
+      "energy": 0.5521879,
+      "food": 64.99768,
+      "eep": 77.913,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 1.628244,
-        "fruit": 2.50855875,
+        "wheat": 1.77353621,
+        "fruit": 1.81723154,
         "fountain": 0.0,
         "fireplace": 0.0,
         "bench": 0.0,
-        "social": 1.65018618,
+        "social": 4.41960859,
         "reading": 0.0
       },
       "warmth": 0.0,
@@ -37581,7 +37771,7 @@
         "wetUntil": 0.0
       },
       "skillXp": [
-        20.61589,
+        24.5159054,
         0.0,
         2.26467252,
         0.0,
@@ -37602,23 +37792,23 @@
     },
     {
       "aName": "Zhen",
-      "x": 23.53202,
+      "x": 31.0188446,
       "y": 50.0,
       "rngSeed": 1755192844,
       "jobName": "woodworker",
       "energy": 0.616831541,
-      "food": 70.4444962,
-      "eep": 93.80715,
+      "food": 76.64389,
+      "eep": 78.10776,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 2.6355958,
-        "fruit": 1.78451324,
+        "wheat": 3.12887979,
+        "fruit": 1.09388661,
         "fountain": 0.0,
         "fireplace": 0.0,
-        "bench": 0.0,
-        "social": 0.0124809816,
-        "reading": 0.00170701381
+        "bench": 1.59663308,
+        "social": 2.32205057,
+        "reading": 0.000197771122
       },
       "warmth": 0.0,
       "inv": {
@@ -37701,7 +37891,7 @@
         0.0,
         1.1840539,
         0.0,
-        11.8915854
+        16.8916035
       ],
       "skillLevel": [
         1,
@@ -37718,23 +37908,23 @@
     },
     {
       "aName": "Shu",
-      "x": 26.1728573,
+      "x": 24.6987114,
       "y": 50.0,
       "rngSeed": 1649316166,
       "jobName": "farmer",
       "energy": 0.9736552,
-      "food": 69.4430542,
-      "eep": 96.51243,
+      "food": 69.4424438,
+      "eep": 78.51304,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 3.34249616,
-        "fruit": 0.775734961,
+        "wheat": 1.46314716,
+        "fruit": 2.580132,
         "fountain": 0.0,
         "fireplace": 0.0,
         "bench": 0.0,
-        "social": 1.17632937,
-        "reading": 0.959199131
+        "social": 1.79949164,
+        "reading": 0.116843276
       },
       "warmth": 0.0,
       "inv": {
@@ -37774,7 +37964,7 @@
           {
             "itemName": "",
             "quantity": 0,
-            "decayCounter": 26040
+            "decayCounter": 10416
           }
         ],
         "wetUntil": 0.0
@@ -37813,7 +38003,7 @@
         "wetUntil": 0.0
       },
       "skillXp": [
-        26.10004,
+        32.60005,
         0.0,
         2.46454453,
         0.0,
@@ -37834,23 +38024,23 @@
     },
     {
       "aName": "Nuan",
-      "x": 28.0,
+      "x": 30.0,
       "y": 50.0,
       "rngSeed": 1198642031,
-      "jobName": "logger",
-      "energy": 0.97143507,
+      "jobName": "scientist",
+      "energy": 0.264260769,
       "food": 0.0,
-      "eep": 70.2124,
+      "eep": 30.51298,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 0.71950525,
-        "fruit": 0.7477812,
+        "wheat": 0.08764536,
+        "fruit": 0.0910897553,
         "fountain": 0.0,
         "fireplace": 0.0,
         "bench": 0.0,
-        "social": 0.5173467,
-        "reading": 0.130346909
+        "social": 0.870362937,
+        "reading": 0.0158779956
       },
       "warmth": 0.0,
       "inv": {
@@ -37858,7 +38048,7 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 902,
+            "quantity": 116,
             "decayCounter": 0
           },
           {
@@ -37950,23 +38140,23 @@
     },
     {
       "aName": "Ember",
-      "x": 29.0,
-      "y": 50.0,
+      "x": 30.01618,
+      "y": 53.8244858,
       "rngSeed": 442452829,
       "jobName": "scientist",
       "energy": 0.0166251659,
-      "food": 60.2454453,
-      "eep": 94.111824,
+      "food": 61.44484,
+      "eep": 78.41243,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 2.300675,
-        "fruit": 1.270028,
+        "wheat": 1.86588919,
+        "fruit": 1.75715971,
         "fountain": 0.0,
         "fireplace": 0.0,
         "bench": 0.0,
-        "social": 1.89967155,
-        "reading": 0.888097942
+        "social": 2.129364,
+        "reading": 0.108182207
       },
       "warmth": 0.0,
       "inv": {
@@ -38048,7 +38238,7 @@
         1.16888928,
         0.0,
         0.0,
-        95.11128,
+        110.411049,
         0.0
       ],
       "skillLevel": [
@@ -38066,23 +38256,23 @@
     },
     {
       "aName": "Vesper",
-      "x": 23.0,
-      "y": 50.0,
+      "x": 32.0,
+      "y": 51.0,
       "rngSeed": 1200195957,
       "jobName": "mender",
       "energy": 0.577667236,
-      "food": 64.7394,
-      "eep": 94.8107452,
+      "food": 69.73879,
+      "eep": 79.8113556,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 2.18919253,
-        "fruit": 1.68431044,
+        "wheat": 2.88417435,
+        "fruit": 0.985076368,
         "fountain": 0.0,
         "fireplace": 0.0,
-        "bench": 0.0,
-        "social": 3.18454552,
-        "reading": 2.34213161
+        "bench": 3.3831,
+        "social": 3.053755,
+        "reading": 1.0469631
       },
       "warmth": 0.0,
       "inv": {
@@ -38122,7 +38312,7 @@
           {
             "itemName": "",
             "quantity": 0,
-            "decayCounter": 5208
+            "decayCounter": 0
           }
         ],
         "wetUntil": 0.0
@@ -38163,7 +38353,7 @@
       "skillXp": [
         0.0,
         0.0,
-        16.0015068,
+        17.5015125,
         0.0,
         0.0
       ],
@@ -38182,31 +38372,31 @@
     },
     {
       "aName": "Pip",
-      "x": 47.0,
-      "y": 51.0,
+      "x": 32.0,
+      "y": 50.0,
       "rngSeed": 1945678308,
-      "jobName": "farmer",
-      "energy": 0.457041025,
-      "food": 59.5998535,
-      "eep": 94.31071,
+      "jobName": "scribe",
+      "energy": 0.104050517,
+      "food": 34.4000053,
+      "eep": 54.6113129,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 1.46964169,
-        "fruit": 1.88447964,
+        "wheat": 2.38255167,
+        "fruit": 0.5612002,
         "fountain": 0.0,
         "fireplace": 0.0,
         "bench": 0.0,
-        "social": 0.8771517,
-        "reading": 0.00939448
+        "social": 1.60515893,
+        "reading": 0.00108842517
       },
       "warmth": 0.0,
       "inv": {
         "invType": "Animal",
         "stacks": [
           {
-            "itemName": "bamboo",
-            "quantity": 992,
+            "itemName": "",
+            "quantity": 0,
             "decayCounter": 0
           },
           {
@@ -38236,9 +38426,9 @@
         "invType": "Equip",
         "stacks": [
           {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
+            "itemName": "wheat",
+            "quantity": 100,
+            "decayCounter": 36456
           }
         ],
         "wetUntil": 0.0
@@ -38277,7 +38467,7 @@
         "wetUntil": 0.0
       },
       "skillXp": [
-        14.61249,
+        16.8124981,
         0.0,
         3.53201771,
         0.0,
@@ -38298,23 +38488,23 @@
     },
     {
       "aName": "Rong",
-      "x": 19.19695,
-      "y": 50.0,
+      "x": 31.070961,
+      "y": 52.00049,
       "rngSeed": 949569752,
       "jobName": "hauler",
-      "energy": 0.1950177,
-      "food": 71.44468,
-      "eep": 93.41072,
+      "energy": 0.5988226,
+      "food": 61.84407,
+      "eep": 79.51133,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 1.946042,
-        "fruit": 2.00609446,
+        "wheat": 2.79158616,
+        "fruit": 0.8228252,
         "fountain": 0.0,
         "fireplace": 0.0,
-        "bench": 0.0,
-        "social": 0.7741518,
-        "reading": 1.24663126
+        "bench": 0.734838545,
+        "social": 2.07032585,
+        "reading": 0.1444321
       },
       "warmth": 0.0,
       "inv": {
@@ -38354,7 +38544,7 @@
           {
             "itemName": "",
             "quantity": 0,
-            "decayCounter": 5208
+            "decayCounter": 0
           }
         ],
         "wetUntil": 0.0
@@ -38385,9 +38575,9 @@
         "invType": "Equip",
         "stacks": [
           {
-            "itemName": "fiction_book",
-            "quantity": 100,
-            "decayCounter": 5868018
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
           }
         ],
         "wetUntil": 0.0
@@ -38395,7 +38585,7 @@
       "skillXp": [
         0.0,
         0.0,
-        7.41457653,
+        7.61457634,
         0.0,
         0.0
       ],
@@ -38414,23 +38604,23 @@
     },
     {
       "aName": "Wisp",
-      "x": 20.04548,
-      "y": 50.0,
+      "x": 30.714407,
+      "y": 51.008152,
       "rngSeed": 2099272109,
       "jobName": "hauler",
-      "energy": 0.689556837,
-      "food": 73.19476,
-      "eep": 95.00923,
+      "energy": 0.823214769,
+      "food": 68.9941559,
+      "eep": 79.20984,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 2.91201544,
-        "fruit": 1.10659325,
+        "wheat": 2.18303847,
+        "fruit": 1.83224785,
         "fountain": 0.0,
         "fireplace": 0.0,
         "bench": 0.0,
-        "social": 0.480339319,
-        "reading": 0.0255336165
+        "social": 3.87442541,
+        "reading": 0.00295827142
       },
       "warmth": 0.0,
       "inv": {
@@ -38470,7 +38660,7 @@
           {
             "itemName": "",
             "quantity": 0,
-            "decayCounter": 26040
+            "decayCounter": 0
           }
         ],
         "wetUntil": 0.0
@@ -38511,7 +38701,7 @@
       "skillXp": [
         0.0,
         0.0,
-        6.356387,
+        6.556387,
         0.0,
         0.0
       ],
@@ -38530,23 +38720,23 @@
     },
     {
       "aName": "Yu",
-      "x": 23.5929871,
-      "y": 50.0,
+      "x": 29.0,
+      "y": 51.8,
       "rngSeed": 587775847,
       "jobName": "scientist",
-      "energy": 0.4267521,
-      "food": 68.64469,
-      "eep": 94.90887,
+      "energy": 0.390483737,
+      "food": 54.8440857,
+      "eep": 79.20947,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 2.18295956,
-        "fruit": 1.79846513,
+        "wheat": 2.14212871,
+        "fruit": 1.03750825,
         "fountain": 0.0,
         "fireplace": 0.0,
         "bench": 0.0,
-        "social": 1.20682609,
-        "reading": 1.29271555
+        "social": 4.022098,
+        "reading": 0.654125
       },
       "warmth": 0.0,
       "inv": {
@@ -38586,7 +38776,7 @@
           {
             "itemName": "",
             "quantity": 0,
-            "decayCounter": 5208
+            "decayCounter": 0
           }
         ],
         "wetUntil": 0.0
@@ -38628,7 +38818,7 @@
         9.621283,
         0.0,
         0.284221232,
-        27.08955,
+        42.3894119,
         0.0
       ],
       "skillLevel": [
@@ -38647,18 +38837,18 @@
   ],
   "research": {
     "progress": {
-      "1": 6.20642471,
-      "2": 5.55715275,
+      "1": 6.29033136,
+      "2": 4.86106,
       "4": 0.0,
       "5": 0.0,
       "6": 0.0,
       "7": 0.0,
-      "8": 5.23854446,
-      "9": 5.306874,
+      "8": 4.542452,
+      "9": 2.700815,
       "10": 0.0,
-      "11": 5.583625,
-      "12": 6.204992,
-      "13": 2.84999847,
+      "11": 5.187532,
+      "12": 4.42890739,
+      "13": 2.15395546,
       "14": 0.0,
       "3": 0.0
     },
@@ -38667,8 +38857,7 @@
       11,
       1,
       12,
-      8,
-      9
+      8
     ],
     "studiedIds": [
       1,
@@ -38690,9 +38879,10 @@
       "9": 23,
       "10": 9,
       "11": 19,
-      "12": 21
+      "12": 21,
+      "13": 24
     },
-    "unlockCounter": 23,
+    "unlockCounter": 24,
     "activeResearchId": 0
   },
   "waterLevels": [
@@ -43613,7 +43803,7 @@
     0,
     0,
     0,
-    159,
+    160,
     160,
     160,
     160,
@@ -46697,13 +46887,13 @@
     0,
     0
   ],
-  "moistureLevels": "MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBQUFBGUFpiYmJiYmJiYmJiYmJiYlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDw8PDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpaWlpaUFpiAAAAAAAAAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDxGRkZGRkZGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpiYmJiYlpiAAAAAAAAAAAAAAAAAAAARjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDw8PEZGUFBQUFBQUEY8MjIyMjIyMjIyMjIyMjIyMjI8PDw8PDwyMjIyMjIyMjIyMjIyPEZQAAAAAABiAAAAAAAAAAAyMjIyAAAAADwyMjIyPDw8PDw8PDw8MjIyMjIyMjI8PEZGRkZQUFpaWlpaWlpQRjwyMjIyMjIyMjIyMjIyMjI8RkZGRkZGPDwyMjIyMjIyMjIyMjI8RgAAAAAAAAAAADIyMjIyMjIyMjIyMjIyMjIyPEZGRkZGRkZGRjwyMjIyMjI8RkZQUFBQWlpiYmJiYmJiWlBGPDIyMjIyMjIyMjIyMjI8RlBQUFBQUEZGPDIyMjIyMjIyMjIyMjwAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyPEZQUFBQUFBQUFBGMjIyMjI8RlBQWlpaWmJiAAAAAAAAAGJaUEY8MjIyMjIyMjIyMjI8RlBaWlpaWlpQUEY8MjIyMjIyMjIyMjxGRkYAAAAAADwyMjIyMjIyMjIyMjIyMjIyPEZQWlpaWlpaWlpaUDIyMjI8RlBaWmJiYmIAAAAAAAAAAAAAUEY8MjIyMjIyMjIyMjI8RlBaYmJiYmJiWlpQRjwyMjIyMjIyMjxGUFBQWloAWlBGPDIyMjIyMjIyMjIyMjIyPEZQWmJiYmJiYmJiYloyMjI8RlBaYmIAAAAAAAAAAAAAAAAAPEY8MjIyMjIyMjIyMjIyPEZQWgAAAAAAAGJiWlBGPDIyMjIyMjxGUFpaWmJiAGJaUEY8PDIyMjIyMjIyMjIyMjI8RlAAAAAAAAAAAABQMjIyMjxGUAAAAAAAAAAAAAAAAAAAADI8MjIyMjIyMjIyMjIyPEZQWmIAAAAAAAAAAFBGPDIyMjIyMjxGUFpiYmIAAAAAYlpQRkY8MjIyMjIyMjIyMjIyMjxGAAAAAAAAAAAARjIyMjIyPEYAAAAAAAAAAAAAAAAyMjIyMjIyMjIyMjIyMjIyMjI8RlAAAAAAAAAAAABGPDIyMjIyMjIyPEZQAAAAAAAAAABiWlBQRjw8MjIyMjIyMjIyMjIyPDIyMjIyMjIyMjwyMjIyMjI8AAAAAAAAADIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGPAAAAAAAAAAyPDIyMjIyMjIyMjI8RjwAAAAAAAAAAGJaWlBGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjwyMgAAAAAAAAAAYmJaUFBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PDw8PDIyMjIyMgAAAAAAAAAAYlpaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RkZGRkY8MjIyMjIyMgAAAAAAAABiYlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGRjw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBQUFBQRjwyMjIyMjIyMgAAAAAAAABQRkZGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQUFBGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWlpaWlBGPDIyMjIyMjIAAAAAAAAAWlBQUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWlpaUFBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaYmJiYmJaUEY8MjIyMjIyMgAAAAAAYmJaWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmJiYlpaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUAAAAAAAYlpQRjwyMjIyMjIAAAAAAAAAYmJiWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmIAAABiYlpQRjwyMjIyMjIyMjIyMjIyMjIyMjw8MjIyMjIyMjIyPEYAAAAAAABQRjwyMjIyMjIyMjIyAAAAAAAAAGJaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGRlAAAAAAAABiWlBGPDIyMjIyMjIyMjIyMjIyMjxGRjwyMjIyMjIyMjI8AAAAADI8RjwyMjIyMjIyMjIyMjIAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQUFBaAAAAAAAAAGJaUEY8MjIyMjIyMjIyMjIyMjxGUFBGPDIyMjIyMjIyMjIyMjIyMjwyMjIyMjIyMjIyMjIyAAAAAAAARkZGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWlpaYgAAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjxGUFpaUEY8MjIyMjIyMjIyMjIyMjIyMjIyPDw8PDw8PDw8MgAAAAAAWlBQUFBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmJiYgAAAAAAAAAAPEY8MjIyMjIyMjIyMjIyMjxGUFpiYlpQRjwyMjIyMjIyMjIyMjIyMjI8PEZGRkZGRkZGRjwyAAAAAGJaWlpaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjI8RlAAAAAAAAAAAAAAAEY8MjIyMjIyMjIyMjIyMjxGUFpiAABQRjwyMjIyMjIyMjIyMjI8PDw8RkZQUFBQUFBQUFBGPAAAAAAAYmJiYlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjxGPAAAAAAAAABaWlpQRjwyMjIyMjIyMjIyMjxGUFpiAAAARjwyMjIyMjIyMjIyMjw8RkZGRlBQWlpaWlpaWlpaUEY8AAAAAAAAAABiWlBGPDwyMjIyMjIyMjIyMjIyMjIyMjIyPDIyMjI8RlBaYmJiWlBGPDIyMjIyMjIyMjIyPEZQAAAARjwyMjIyMjIyMjI8PDxGRlBQUFBaWmJiYmJiYmJiYlpQRgAAAAAAAAAAAGJaUEZGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaYgAAAGJaUEY8MjIyMjIyMjIyMjI8RgAAAFBGPDIyMjIyMjI8RkZGUFBaWlpaYmIAAAAAAAAAAABQRjwyAAAAAAAAAAAAWlBQUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUAAAAAAAUEY8MjIyMjIyMjIyMjIyMjwAAABaUEY8MjIyMjI8RlBQUFpaYmJiYgAAAAAAAAAAAAAARjwyPEZQWgAAAAAAAGJaWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEY8AAAAAEY8MjIyMjIyMjIyMjIyMjIyAAAAYlpQRjwyMjI8RlBaWlpiYgAAAAAAAAAAAAAAAAAAADwyPEZQWmIAAAAAAAAAYmJiWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8MjIyADI8MjIyMjIyMjIyMjIyMjIyMgAAAABQRjwyMjI8RlBaYmJiAAAAAAAAAAAAAAAAAAAAADIyPEZQWmIAAAAAAAAAAAAAAGJaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAARjwyMjIyMjxGUAAAAAAAAAAAADIyMjIyMjIyMjw8PDw8RlAAAAAAAAAAAAAAAAAAWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAADwyMjIyMjIyPEY8AAAAAAAAMjIyMjIyMjIyPDxGRkZGRkZGRgAAAAAAAAAAAAAAAGJaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAADIyMjIyMjIyMjI8MjIyAAAAADIyMjIyMjIyPEZGUFBQUFBQUFBQUFAAAAAAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQUFpaWlpaWlpaWlpaWmIAAAAAAAAAAEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWlpiYmJiYmJiYmJiYmIAAAAAAAAAAAA8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmJiAAAAAAAAAAAAAAAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PDwyPEZGRlAAAAAAAAAAAAAAADIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEY8MjIyMjIyMjIyMjIyMjIyMjIyMjI8RkZGPEZQUFBaAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQRjwyMjIyMjIyMjIyMjIyMjIyMjI8RlBQUEZQWlpaYgAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjxGRkZGMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWlBGPDIyMjIyMjIyMjIyMjIyMjI8RlBaWlpQWmJiYgAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBQUDwyMjIyMjIyMjIyMjIyMjIyMjw8PDw8MjIyMjIyMjIyPEZQWmJaUEY8MjIyMjIyMjIyMjIyMjw8RlBaYmJiWloAAAAAAAAAPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpaWlpGPDwyMjIyMjIyMjIyMjIyMjxGRkZGRjwyMjIyMjIyMjxGUFpkWlBGPDIyMjIyMjIyMjIyPDxGRlBaYgAAAGJiAAAAAAAAAEY8PDIyMjIyMjIyMjIyMjIyMjIyMjxGUFpiYmJiUEZGPDw8PDIyMjIyMjIyMjxGUFBQUFBGPDw8PDw8PDo8PEZQRlBGPDIyMjw8PDwyMjI8PEZGUFBQUAAAAAAAAAAAAAAAAFBQRkY8PDw8PDw8PDw8PDw8MjIyPDxGUFpiAAAAAFpQUEZGRkY8PDw8PDw8PDxGUFpaWlpaUEZGRkZGRkZERkZQWmRaUEY8PDxGRkZGPDw8RkZQUFpaWloAAAAAAAAAAAAAAFpaWlBQRkZGRkZGRkZGRkZGRjw8PEZGUFpiAAAAAABiWlpQUFBQRkZGRkZGRkZGUFpkZGRkZFpQUFBQUFBQTlBOUFRQVFBGRkZGUFBQUEZGRlBQWlpiYl5eAAAAAAAAAAAAAABiYmJaWlBQUFBQUFBQUFBQUFBGRkZQUFBaAAAAAAAAAGJiWlpaWlBQUFBQUFBQUFpkAAAAAABkWlpaWlpaWlhaWFpaZFpaUFBQUFpaWlpQUFBaWmJiAAAAAAAAAAAAAAAAAAAAAAAAYmJaWlpaWlpaWlpaWlpaUFBQWlpaYgAAAAAAAAAAAGJiYmJaWlpaWlpaWlpjAAAAAAAAZGQeXmJaWmRiZFpaYmRaWlpaWlpiXl5eWlpaYmIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYmJiYmJiXmJiYl5iYlpaWmJiYgAAAAAAAAAAAAAAAAAAYmJeXl5eXl5eAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABaWl5eAAAAAF5iYgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABiYmIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+  "moistureLevels": "MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBQUFBGUFpkZGRkZGRkZGRkZGRkZFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDw8PDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpaWlpaUFpkAAAAAAAAAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDxGRkZGRkZGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpkZGRkZFpkAAAAAAAAAAAAAAAAAAAARjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDw8PEZGUFBQUFBQUEY8MjIyMjIyMjIyMjIyMjIyMjI8PDw8PDwyMjIyMjIyMjIyMjIyPEZQAAAAAABkAAAAAAAAAAAyMjIyAAAAADwyMjIyPDw8PDw8PDw8MjIyMjIyMjI8PEZGRkZQUFpaWlpaWlpQRjwyMjIyMjIyMjIyMjIyMjI8RkZGRkZGPDwyMjIyMjIyMjIyMjI8RgAAAAAAAAAAADIyMjIyMjIyMjIyMjIyMjIyPEZGRkZGRkZGRjwyMjIyMjI8RkZQUFBQWlpkZGRkZGRkWlBGPDIyMjIyMjIyMjIyMjI8RlBQUFBQUEZGPDIyMjIyMjIyMjIyMjwAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyPEZQUFBQUFBQUFBGMjIyMjI8RlBQWlpaWmRkAAAAAAAAAGRaUEY8MjIyMjIyMjIyMjI8RlBaWlpaWlpQUEY8MjIyMjIyMjIyMjxGRkYAAAAAADwyMjIyMjIyMjIyMjIyMjIyPEZQWlpaWlpaWlpaUDIyMjI8RlBaWmRkZGQAAAAAAAAAAAAAUEY8MjIyMjIyMjIyMjI8RlBaZGRkZGRkWlpQRjwyMjIyMjIyMjxGUFBQWloAWlBGPDIyMjIyMjIyMjIyMjIyPEZQWmRkZGRkZGRkZFoyMjI8RlBaZGQAAAAAAAAAAAAAAAAAPEY8MjIyMjIyMjIyMjIyPEZQWgAAAAAAAGRkWlBGPDIyMjIyMjxGUFpaWmRkAGRaUEY8PDIyMjIyMjIyMjIyMjI8RlAAAAAAAAAAAABQMjIyMjxGUAAAAAAAAAAAAAAAAAAAADI8MjIyMjIyMjIyMjIyPEZQWmQAAAAAAAAAAFBGPDIyMjIyMjxGUFpkZGQAAAAAZFpQRkY8MjIyMjIyMjIyMjIyMjxGAAAAAAAAAAAARjIyMjIyPEYAAAAAAAAAAAAAAAAyMjIyMjIyMjIyMjIyMjIyMjI8RlAAAAAAAAAAAABGPDIyMjIyMjIyPEZQAAAAAAAAAABkWlBQRjw8MjIyMjIyMjIyMjIyPDIyMjIyMjIyMjwyMjIyMjI8AAAAAAAAADIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGPAAAAAAAAAAyPDIyMjIyMjIyMjI8RjwAAAAAAAAAAGRaWlBGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjwyMgAAAAAAAAAAZGRaUFBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PDw8PDIyMjIyMgAAAAAAAAAAZFpaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RkZGRkY8MjIyMjIyMgAAAAAAAABkZFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGRjw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBQUFBQRjwyMjIyMjIyMgAAAAAAAABQRkZGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQUFBGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWlpaWlBGPDIyMjIyMjIAAAAAAAAAWlBQUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWlpaUFBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaZGRkZGRaUEY8MjIyMjIyMgAAAAAAZGRaWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmRkZFpaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUAAAAAAAZFpQRjwyMjIyMjIAAAAAAAAAZGRkWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmQAAABkZFpQRjwyMjIyMjIyMjIyMjIyMjIyMjw8MjIyMjIyMjIyPEYAAAAAAABQRjwyMjIyMjIyMjIyAAAAAAAAAGRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGRlAAAAAAAABkWlBGPDIyMjIyMjIyMjIyMjIyMjxGRjwyMjIyMjIyMjI8AAAAADI8RjwyMjIyMjIyMjIyMjIAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQUFBaAAAAAAAAAGRaUEY8MjIyMjIyMjIyMjIyMjxGUFBGPDIyMjIyMjIyMjIyMjIyMjwyMjIyMjIyMjIyMjIyAAAAAAAARkZGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWlpaZAAAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjxGUFpaUEY8MjIyMjIyMjIyMjIyMjIyMjIyPDw8PDw8PDw8MgAAAAAAWlBQUFBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmRkZAAAAAAAAAAAPEY8MjIyMjIyMjIyMjIyMjxGUFpkZFpQRjwyMjIyMjIyMjIyMjIyMjI8PEZGRkZGRkZGRjwyAAAAAGRaWlpaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjI8RlAAAAAAAAAAAAAAAEY8MjIyMjIyMjIyMjIyMjxGUFpkAABQRjwyMjIyMjIyMjIyMjI8PDw8RkZQUFBQUFBQUFBGPAAAAAAAZGRkZFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjxGPAAAAAAAAABaWlpQRjwyMjIyMjIyMjIyMjxGUFpkAAAARjwyMjIyMjIyMjIyMjw8RkZGRlBQWlpaWlpaWlpaUEY8AAAAAAAAAABkWlBGPDwyMjIyMjIyMjIyMjIyMjIyMjIyPDIyMjI8RlBaZGRkWlBGPDIyMjIyMjIyMjIyPEZQAAAARjwyMjIyMjIyMjI8PDxGRlBQUFBaWmRkZGRkZGRkZFpQRgAAAAAAAAAAAGRaUEZGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaZAAAAGRaUEY8MjIyMjIyMjIyMjI8RgAAAFBGPDIyMjIyMjI8RkZGUFBaWlpaZGQAAAAAAAAAAABQRjwyAAAAAAAAAAAAWlBQUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUAAAAAAAUEY8MjIyMjIyMjIyMjIyMjwAAABaUEY8MjIyMjI8RlBQUFpaZGRkZAAAAAAAAAAAAAAARjwyPEZQWgAAAAAAAGRaWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEY8AAAAAEY8MjIyMjIyMjIyMjIyMjIyAAAAZFpQRjwyMjI8RlBaWlpkZAAAAAAAAAAAAAAAAAAAADwyPEZQWmQAAAAAAAAAZGRkWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8MjIyADI8MjIyMjIyMjIyMjIyMjIyMgAAAABQRjwyMjI8RlBaZGRkAAAAAAAAAAAAAAAAAAAAADIyPEZQWmQAAAAAAAAAAAAAAGRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAARjwyMjIyMjxGUAAAAAAAAAAAADIyMjIyMjIyMjw8PDw8RlAAAAAAAAAAAAAAAAAAWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAADwyMjIyMjIyPEY8AAAAAAAAMjIyMjIyMjIyPDxGRkZGRkZGRgAAAAAAAAAAAAAAAGRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAADIyMjIyMjIyMjI8MjIyAAAAADIyMjIyMjIyPEZGUFBQUFBQUFBQUFAAAAAAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQUFpaWlpaWlpaWlpaWmQAAAAAAAAAAEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWlpkZGRkZGRkZGRkZGQAAAAAAAAAAAA8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmRkAAAAAAAAAAAAAAAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PDwyPEZGRlAAAAAAAAAAAAAAADIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEY8MjIyMjIyMjIyMjIyMjIyMjIyMjI8RkZGPEZQUFBaAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQRjwyMjIyMjIyMjIyMjIyMjIyMjI8RlBQUEZQWlpaZAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjxGRkZGMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWlBGPDIyMjIyMjIyMjIyMjIyMjI8RlBaWlpQWmRkZAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBQUDwyMjIyMjIyMjIyMjIyMjIyMjw8PDw8MjIyMjIyMjIyPEZQWmRaUEY8MjIyMjIyMjIyMjIyMjw8RlBaZGRkWloAAAAAAAAAPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpaWlpGPDwyMjIyMjIyMjIyMjIyMjxGRkZGRjwyMjIyMjIyMjxGUFpkWlBGPDIyMjIyMjIyMjIyPDxGRlBaZAAAAGRkAAAAAAAAAEY8PDIyMjIyMjIyMjIyMjIyMjIyMjxGUFpkZGRkUEZGPDw8PDIyMjIyMjIyMjxGUFBQUFBGPDw8PDw8PDo8PEZQRlBGPDIyMjw8PDwyMjI8PEZGUFBQUAAAAAAAAAAAAAAAAFBQRkY8PDw8PDw8PDw8PDw8MjIyPDxGUFpkAAAAAFpQUEZGRkY8PDw8PDw8PDxGUFpaWlpaUEZGRkZGRkZERkZQWmRaUEY8PDxGRkZGPDw8RkZQUFpaWloAAAAAAAAAAAAAAFpaWlBQRkZGRkZGRkZGRkZGRjw8PEZGUFpkAAAAAABkWlpQUFBQRkZGRkZGRkZGUFpkZGRkZFpQUFBQUFBQTlBOUFRQVFBGRkZGUFBQUEZGRlBQWlpkZGRkAAAAAAAAAAAAAABkZGRaWlBQUFBQUFBQUFBQUFBGRkZQUFBaAAAAAAAAAGRkWlpaWlBQUFBQUFBQUFpkAAAAAABkWlpaWlpaWlhaWFpaZFpaUFBQUFpaWlpQUFBaWmRkAAAAAAAAAAAAAAAAAAAAAAAAZGRaWlpaWlpaWlpaWlpaUFBQWlpaZAAAAAAAAAAAAGRkZGRaWlpaWlpaWlpkAAAAAAAAZGQeZGRaWmRiZFpaZGRkZFpaWlpkZGRkWlpaZGQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAZGRkZGRkZGRkZGRkZFpaWmRkZAAAAAAAAAAAAAAAAAAAZGRkYGRkZGRkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABkZGRkAAAAAGRkZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABkZGQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
   "isRaining": false,
-  "humidity": 0.00626242,
+  "humidity": 0.6696393,
   "globalItemTargets": {
     "planks": 5000,
     "sawdust": 500,
-    "paper": 4000,
+    "paper": 5000,
     "wheat": 20000,
     "acorn": 9500,
     "pinecone": 10000,
@@ -46713,8 +46903,8 @@
     "bamboo": 9900,
     "book": 600
   },
-  "cameraX": 14.1661949,
-  "cameraY": 53.7506943,
+  "cameraX": 31.522,
+  "cameraY": 53.2026062,
   "cameraPPU": 24,
   "marketTargets": {
     "silver": 1200,

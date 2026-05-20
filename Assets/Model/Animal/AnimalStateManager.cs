@@ -424,9 +424,9 @@ public class AnimalStateManager {
             if (animal.state != AnimalState.Falling) animal.nav.Fall();
         } else if (!animal.nav.preventFall && !tileHere.node.standable
             && animal.state != AnimalState.Falling
-            && animal.insideBuilding == null) {
-            // insideBuilding gate: when a mouse has crossed a door, the building's interior
-            // waypoint supports them logically — the tile underneath may be solid (burrow's
+            && tileHere.interiorBuilding == null) {
+            // Interior gate: a mouse on a building's hollow interior tile is logically
+            // supported by the interior waypoint — the tile underneath is solid (burrow's
             // preserved dirt) or otherwise non-standable, but that's expected. Without this
             // gate, eeping mice inside a burrow get instantly Fall()-ed and snapped up to
             // the surface above the bank.

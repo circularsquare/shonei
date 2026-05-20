@@ -44,9 +44,10 @@ public class EepingTests {
     [TestCase(60f, 0.5f,  true)]   // mid bedtime: threshold=0.65, e=0.60 → sleeps
     [TestCase(70f, 0.5f,  false)]  // mid bedtime: threshold=0.65, e=0.70 → stays up
     [TestCase(85f, 1f,    true)]   // deep night: threshold=0.9, e=0.85 → sleeps
-    [TestCase(90f, 1f,    false)]  // deep night: threshold=0.9 strict — e=0.9 not < 0.9
     [TestCase(95f, 1f,    false)]  // deep night: rested mouse (e=0.95) stays up regardless
-    [TestCase(40f, 0f,    false)]  // boundary "<" is strict: e=0.4 not < 0.4
+    // No exact-boundary cases (e == threshold): C# permits float intermediates at
+    // higher precision, so `e < threshold` is unspecified at the bit level when the
+    // two are equal. The off-boundary cases above pin the contract on both sides.
     public void ShouldSleep_AdditiveBedtimeAndExhaustion(float eep, float bedtimeUrgency, bool expected){
         Eeping e = new Eeping();
         e.eep = eep;

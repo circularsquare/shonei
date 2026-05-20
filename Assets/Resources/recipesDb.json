@@ -214,21 +214,6 @@
             { "name": "yeast", "quantity": 1 }
         ]
     },{
-        "id": 41,
-        "job": "cook",
-        "tile": "brewery",
-        "description": "brew rice wine",
-        "workload": 6.0,
-        "research": "Fermentation",
-        "researchPoints": 0.02,
-        "ninputs": [
-            { "name": "rice", "quantity": 2 },
-            { "name": "yeast", "quantity": 1 }
-        ],
-        "noutputs": [
-            { "name": "rice wine", "quantity": 1 }
-        ]
-    },{
         "id": 50,
         "job": "runner",
         "tile": "wheel",

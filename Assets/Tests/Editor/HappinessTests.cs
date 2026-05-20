@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Reflection;
 using NUnit.Framework;
 
 // EditMode tests for Happiness — per-animal need-satisfaction tracking.
@@ -18,6 +19,7 @@ public class HappinessTests {
 
     HashSet<string> _origNeeds;
     List<string>    _origSorted;
+    WeatherSystem   _origWeather;
 
     [SetUp]
     public void SetUp(){
@@ -25,12 +27,32 @@ public class HappinessTests {
         _origSorted = Db.happinessNeedsSorted;
         Db.happinessNeeds = new HashSet<string>{ "wheat", "fruit", "social", "reading", "fireplace" };
         Db.happinessNeedsSorted = new List<string>{ "wheat", "fruit", "social", "fireplace", "reading" };
+        // WeatherSystem is a plain-C# singleton whose ResetStatics only fires on
+        // Play-mode entry (SubsystemRegistration) — so a prior playtest can leave
+        // WeatherSystem.instance populated with stale weather. TemperatureEfficiency
+        // reads it; null it here so the tests deterministically hit the 17.5C fallback.
+        _origWeather = WeatherSystem.instance;
+        SetWeatherInstance(null);
     }
 
     [TearDown]
     public void TearDown(){
         Db.happinessNeeds  = _origNeeds;
         Db.happinessNeedsSorted = _origSorted;
+        SetWeatherInstance(_origWeather);
+    }
+
+    // WeatherSystem.instance has a private setter; reflection on the auto-property
+    // backing field is the only way to null/restore it from outside the class.
+    static void SetWeatherInstance(WeatherSystem value){
+        FieldInfo backing = typeof(WeatherSystem).GetField(
+            "<instance>k__BackingField",
+            BindingFlags.Static | BindingFlags.NonPublic);
+        if (backing == null){
+            UnityEngine.Debug.LogError("HappinessTests: couldn't find WeatherSystem.instance backing field — TemperatureEfficiency tests may be non-deterministic.");
+            return;
+        }
+        backing.SetValue(null, value);
     }
 
     // ── Construction ────────────────────────────────────────────────────
@@ -194,11 +216,11 @@ public class HappinessTests {
         Assert.That(h.WouldHelp(gruel), Is.False);
     }
 
-    // ── TemperatureEfficiency (no Animal needed; WeatherSystem.instance is null in tests) ─
+    // ── TemperatureEfficiency (no Animal needed; SetUp forces WeatherSystem.instance null) ─
     [Test]
     public void TemperatureEfficiency_DefaultRangeAndDefaultTemp_IsOne(){
-        // Default comfortLow=10, comfortHigh=25; WeatherSystem.instance is null in
-        // EditMode tests, so the SlowUpdate fallback temp of 17.5C is used here too.
+        // Default comfortLow=10, comfortHigh=25; SetUp nulls WeatherSystem.instance,
+        // so TemperatureEfficiency falls back to 17.5C — inside the comfort range.
         Happiness h = new Happiness();
         Assert.That(h.TemperatureEfficiency(), Is.EqualTo(1f));
     }

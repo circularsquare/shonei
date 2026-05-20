@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 
 // Hauls a single furnishing item from the floor/storage into an empty slot on a house's
@@ -6,7 +5,7 @@ using UnityEngine;
 // isActive suppresses it while no slot is haulable. Mirrors SupplyFuelTask's shape:
 //   1. Pick the first empty slot whose name has matching items globally.
 //   2. Find a path to a stack of one of those items.
-//   3. Reserve 1 fen on the source stack and 1 fen of space in the target slot.
+//   3. Reserve one furnishing's worth (Item.furnishingCostFen) on the source stack and in the slot.
 //   4. Queue Go → Deliver. On Complete(), notify the slot so happiness + visuals refresh.
 public class SupplyFurnishingTask : Task {
     private readonly Building building;
@@ -38,15 +37,14 @@ public class SupplyFurnishingTask : Task {
                 if (!animal.nav.WithinRadius(standPath, MediumFindRadius)) continue;
 
                 int available = stack.quantity - stack.resAmount;
-                if (available <= 0) continue;
-                int qty = Math.Min(1, available); // a slot holds exactly 1 fen
+                int needed = candidate.furnishingCostFen; // one whole furnishing's worth of this item
+                if (needed <= 0 || available < needed) continue;
 
-                int spaceReserved = ReserveSpace(fs.slotInvs[i], candidate, qty);
-                if (spaceReserved <= 0) continue;
-                qty = Math.Min(qty, spaceReserved);
-                if (qty <= 0) { UndoLastSpaceReservation(); continue; }
+                // A furnishing is all-or-nothing — a partial reservation can't make one furnishing.
+                int spaceReserved = ReserveSpace(fs.slotInvs[i], candidate, needed);
+                if (spaceReserved < needed) { if (spaceReserved > 0) UndoLastSpaceReservation(); continue; }
 
-                ItemQuantity iq = new ItemQuantity(candidate, qty);
+                ItemQuantity iq = new ItemQuantity(candidate, needed);
                 FetchAndReserve(iq, itemPath.tile, stack);
                 objectives.AddLast(new GoObjective(this, standPath.tile));
                 objectives.AddLast(new DeliverToInventoryObjective(this, iq, fs.slotInvs[i]));

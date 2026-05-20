@@ -18,7 +18,7 @@ Feel free to spawn subagents to work on tasks or to double-check your own work �
 
 If you notice anything that could be reorganized to improve clarity or efficiency, please mention it.
 
-**Don't use MCP scene-mutating tools without explicit per-task permission.** Read-only MCP (find_gameobjects, get_hierarchy, read_console, scene/component resources) is fine for inspection. But actual mutations — `execute_code` that modifies state, `manage_gameobject create/modify`, `manage_components add/set_property`, etc. — only when I specifically say "use MCP" or similar. Default to no, and when in doubt describe the manual editor steps. MCP work has been consistently producing followup cleanup; until that pattern changes, the default is hands-off.
+**MCP scene work: live API is OK for simple stuff, ask for extensive.** Read-only MCP (find_gameobjects, get_hierarchy, read_console, scene/component resources) is always fine for inspection. Simple live-API mutations — assigning a shader/sprite/material to a SerializeField on an existing component, toggling a bool, single-property tweaks — just do them via MCP instead of writing out manual "select X, set property Y to Z" steps. For **extensive** scene work (building UI hierarchies, configuring anchors/layouts, multi-component setup, anything that touched the trouble areas in past sessions) **ask first** — past sessions consistently left cleanup tasks from broken layouts and anchor fights. Direct `.unity` / `.prefab` YAML writes are still risky and can clobber unsaved editor state; require explicit save confirmation first and prefer manual editor steps for those.
 
 ## Code practices
 

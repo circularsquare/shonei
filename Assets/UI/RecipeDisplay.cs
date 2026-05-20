@@ -104,9 +104,9 @@ public class RecipeDisplay : MonoBehaviour {
             int target = (targets != null && targets.TryGetValue(iq.item.id, out int t)) ? t : 0;
 
             string text = iq.item.name + ": "
-                + ItemStack.FormatQ(qty,    iq.item.discrete)
+                + ItemStack.FormatQ(qty,    iq.item)
                 + " / "
-                + ItemStack.FormatQ(target, iq.item.discrete);
+                + ItemStack.FormatQ(target, iq.item);
 
             if (isOutput && iq.chance < 1f)
                 text += " (" + Mathf.RoundToInt(iq.chance * 100f) + "%)";

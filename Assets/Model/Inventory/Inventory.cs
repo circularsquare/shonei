@@ -548,6 +548,8 @@ public class Inventory{
         return entries;
     }
 
+    // TODO: currently unused. If revived for discrete items, sum ItemStack.EffectiveCapacity
+    // rather than raw stackSize, or it over-reports capacity for heavy units. See plans/unit-weight.md.
     public int GetSpace(){ // only coutns empty stacks
         int amount = 0;
         foreach (ItemStack stack in itemStacks){
@@ -624,6 +626,9 @@ public class Inventory{
 
     // ── Other ────────────────────────────────────────────────────────────────
 
+    // TODO: currently unused. The direct quantity mutations below clamp against raw stackSize;
+    // if revived they must use ItemStack.EffectiveCapacity or they will leave discrete stacks at
+    // fractional-unit quantities. See plans/unit-weight.md.
     public void Restack(){
         var restackedInventory = new ItemStack[itemStacks.Length];
         int index = 0;

@@ -6,11 +6,11 @@
             { "name": "acorn", "quantity": 1 }
         ],
         "nproducts": [
-            { "name": "pine", "quantity": 10 },
-            { "name": "acorn", "quantity": 1 }
+            { "name": "pine", "quantity": 20 },
+            { "name": "acorn", "quantity": 2 }
         ],
-        "growthTime": 100,
-        "harvestTime": 7.0,
+        "growthTime": 300,
+        "harvestTime": 14.0,
         "njob": "logger",
         "capacity": 1,
         "tempMin": 0,  "tempMax": 28,
@@ -23,11 +23,11 @@
             { "name": "pinecone", "quantity": 1 }
         ],
         "nproducts": [
-            { "name": "pine", "quantity": 10 },
-            { "name": "pinecone", "quantity": 1 }
+            { "name": "pine", "quantity": 20 },
+            { "name": "pinecone", "quantity": 2 }
         ],
-        "growthTime": 100,
-        "harvestTime": 7.0,
+        "growthTime": 300,
+        "harvestTime": 14.0,
         "njob": "logger",
         "capacity": 1,
         "tempMin": 0,  "tempMax": 28,
@@ -41,10 +41,10 @@
             { "name": "wheat", "quantity": 1 }
         ],
         "nproducts": [
-            { "name": "wheat", "quantity": 4 }
+            { "name": "wheat", "quantity": 8 }
         ],
-        "growthTime": 45,
-        "harvestTime": 3.0,
+        "growthTime": 135,
+        "harvestTime": 6.0,
         "njob": "farmer",
         "capacity": 1,
         "tempMin": 5,  "tempMax": 30,
@@ -56,14 +56,14 @@
             { "name": "rice", "quantity": 1 }
         ],
         "nproducts": [
-            { "name": "rice", "quantity": 3 }
+            { "name": "rice", "quantity": 6 }
         ],
-        "growthTime": 30,
-        "harvestTime": 3.0,
+        "growthTime": 90,
+        "harvestTime": 6.0,
         "njob": "farmer",
         "capacity": 1,
-        "tempMin": 18, "tempMax": 35,
-        "moistureMin": 90, "moistureMax": 100
+        "tempMin": 15, "tempMax": 35,
+        "moistureMin": 80, "moistureMax": 100
     },{
         "id": 560,
         "name": "soybean",
@@ -71,10 +71,10 @@
             { "name": "soybeans", "quantity": 1 }
         ],
         "nproducts": [
-            { "name": "soybeans", "quantity": 3 }
+            { "name": "soybeans", "quantity": 6 }
         ],
-        "growthTime": 40,
-        "harvestTime": 3.0,
+        "growthTime": 120,
+        "harvestTime": 6.0,
         "njob": "farmer",
         "capacity": 1,
         "tempMin": 10, "tempMax": 30,
@@ -102,10 +102,10 @@
             { "name": "ramie", "quantity": 1 }
         ],
         "nproducts": [
-            { "name": "ramie", "quantity": 3 }
+            { "name": "ramie", "quantity": 6 }
         ],
-        "growthTime": 35,
-        "harvestTime": 3.0,
+        "growthTime": 105,
+        "harvestTime": 6.0,
         "njob": "farmer",
         "capacity": 1,
         "tempMin": 10, "tempMax": 30,
@@ -118,10 +118,10 @@
             { "name": "bamboo", "quantity": 1 }
         ],
         "nproducts": [
-            { "name": "bamboo", "quantity": 4 }
+            { "name": "bamboo", "quantity": 8 }
         ],
-        "growthTime": 40,
-        "harvestTime": 4.0,
+        "growthTime": 120,
+        "harvestTime": 8.0,
         "njob": "farmer",
         "capacity": 1,
         "tempMin": 15, "tempMax": 30,

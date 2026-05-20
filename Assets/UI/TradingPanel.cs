@@ -263,7 +263,7 @@ public class TradingPanel : MonoBehaviour {
         int qty = currentMarket.Quantity(item);
         if (display.itemText != null) display.itemText.text = item.name;
         if (display.quantityText != null)
-            display.quantityText.text = ItemStack.FormatQ(qty, item.discrete);
+            display.quantityText.text = ItemStack.FormatQ(qty, item);
         // Groups don't get meaningful targets in market mode — only leaf items do.
         if (item.IsGroup) return;
         int target = currentMarket.targets != null && currentMarket.targets.ContainsKey(item)
@@ -552,8 +552,9 @@ public class TradingPanel : MonoBehaviour {
         EventFeed.instance?.Post($"<color=#aaffaa>Wind set to {value:F2}.</color>", EventFeed.Category.Info);
     }
 
-    // /give [itemname] [quantity in liang]              — produce into the market inventory.
-    // /give [itemname] [quantity in liang] [x] [y]       — spawn as a floor item at tile (x,y)
+    // /give [itemname] [quantity]                        — produce into the market inventory.
+    //   quantity is liang for normal items, a whole unit count for discrete items (stools etc).
+    // /give [itemname] [quantity] [x] [y]                — spawn as a floor item at tile (x,y)
     //                                                      if the tile is non-solid and has no
     //                                                      existing floor stack.
     void CmdGive(string[] parts) {
@@ -583,19 +584,18 @@ public class TradingPanel : MonoBehaviour {
         string qtyStr = parts[qtyArgIdx];
         string itemName = string.Join(" ", parts, 1, qtyArgIdx - 1);
 
-        if (!float.TryParse(qtyStr, System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture, out float qtyLiang) || qtyLiang <= 0f) {
-            EventFeed.instance?.Post("<color=#cc3333>Quantity must be a positive number (in liang).</color>", EventFeed.Category.Info);
-            return;
-        }
-        int qtyFen = Mathf.RoundToInt(qtyLiang * 100f);
-
         if (!Db.itemByName.ContainsKey(itemName)) {
             EventFeed.instance?.Post($"<color=#cc3333>Unknown item: {itemName}</color>", EventFeed.Category.Info);
             return;
         }
         Item item = Db.itemByName[itemName];
-        bool discrete = item.discrete;
+
+        // Quantity is liang for normal items, a whole unit count for discrete items.
+        if (!ItemStack.TryParseQ(qtyStr, item, out int qtyFen) || qtyFen <= 0) {
+            string unit = item.discrete ? "a positive whole unit count" : "a positive number in liang";
+            EventFeed.instance?.Post($"<color=#cc3333>Quantity must be {unit}.</color>", EventFeed.Category.Info);
+            return;
+        }
 
         if (coordForm) {
             if (World.instance == null) {
@@ -619,10 +619,13 @@ public class TradingPanel : MonoBehaviour {
             Inventory floor = tile.EnsureFloorInventory();
             int leftoverF = floor.Produce(item, qtyFen);
             int producedF = qtyFen - leftoverF;
+            // Mid-air tiles aren't rejected — let the existing fall primitive land the stack
+            // on the first standable tile below, so /give in air behaves naturally.
+            World.instance.FallIfUnstandable(tx, ty);
             if (producedF > 0)
-                EventFeed.instance?.Post($"<color=#aaffaa>Spawned {ItemStack.FormatQ(producedF, discrete)} {itemName} at ({tx},{ty}).</color>", EventFeed.Category.Info);
+                EventFeed.instance?.Post($"<color=#aaffaa>Spawned {ItemStack.FormatQ(producedF, item)} {itemName} at ({tx},{ty}).</color>", EventFeed.Category.Info);
             if (leftoverF > 0)
-                EventFeed.instance?.Post($"<color=#cc3333>Could not fit {ItemStack.FormatQ(leftoverF, discrete)} {itemName} on tile ({tx},{ty}).</color>", EventFeed.Category.Info);
+                EventFeed.instance?.Post($"<color=#cc3333>Could not fit {ItemStack.FormatQ(leftoverF, item)} {itemName} on tile ({tx},{ty}).</color>", EventFeed.Category.Info);
             return;
         }
 
@@ -635,9 +638,9 @@ public class TradingPanel : MonoBehaviour {
         int leftover = market.Produce(item, qtyFen);
         int produced = qtyFen - leftover;
         if (produced > 0)
-            EventFeed.instance?.Post($"<color=#aaffaa>Gave {ItemStack.FormatQ(produced, discrete)} {itemName} to market.</color>", EventFeed.Category.Info);
+            EventFeed.instance?.Post($"<color=#aaffaa>Gave {ItemStack.FormatQ(produced, item)} {itemName} to market.</color>", EventFeed.Category.Info);
         if (leftover > 0)
-            EventFeed.instance?.Post($"<color=#cc3333>Could not fit {ItemStack.FormatQ(leftover, discrete)} {itemName} - market full.</color>", EventFeed.Category.Info);
+            EventFeed.instance?.Post($"<color=#cc3333>Could not fit {ItemStack.FormatQ(leftover, item)} {itemName} - market full.</color>", EventFeed.Category.Info);
     }
 
     void DisplayChat(ChatMsg msg) {
@@ -645,9 +648,9 @@ public class TradingPanel : MonoBehaviour {
     }
 
     void DisplayFill(Fill fill) {
-        bool discrete = Db.itemByName.TryGetValue(fill.item, out Item item) && item.discrete;
+        Db.itemByName.TryGetValue(fill.item, out Item item); // item may be null — FormatQ tolerates it
         EventFeed.instance?.Post(
-            $"<color=#55aa55>[fill] {fill.buyer} bought {ItemStack.FormatQ(fill.quantity, discrete)} {fill.item} from {fill.seller} @ {fill.price / 100f:0.##}</color>",
+            $"<color=#55aa55>[fill] {fill.buyer} bought {ItemStack.FormatQ(fill.quantity, item)} {fill.item} from {fill.seller} @ {fill.price / 100f:0.##}</color>",
             EventFeed.Category.Fill);
         UpdateMarketTree();
     }
@@ -656,7 +659,7 @@ public class TradingPanel : MonoBehaviour {
     // Alert-category entries are owned by AlertToast (transient overlay above chat) and
     // are intentionally skipped here so error messages don't double-render.
     void HandleFeedEntry(EventFeed.Entry e) {
-        if (e.category == EventFeed.Category.Info) return;
+        if (e.category == EventFeed.Category.Alert) return;
         AddChat(e.text);
     }
 
@@ -680,6 +683,7 @@ public class TradingPanel : MonoBehaviour {
         tmp.richText           = true;
         var csf = go.AddComponent<ContentSizeFitter>();
         csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        go.AddComponent<ChatRowFader>();   // stale rows fade out; chat-input focus reveals them again
         if (chatList.childCount > 20)
             Destroy(chatList.GetChild(0).gameObject);
         LayoutRebuilder.ForceRebuildLayoutImmediate(chatList as RectTransform);

@@ -25,11 +25,10 @@ public class Animal : MonoBehaviour{
     // for a doored shack is the approach tile *outside* the footprint, where no building
     // sits). Set/cleared by FindHome; preserved across save/load via homeBuildingX/Y.
     public Building homeBuilding;
-    // The animal is currently rendered "inside" this building. Set by EnterBuildingObjective
-    // when arriving at an interior anchor, cleared on Eep exit (see AnimalStateManager) or
-    // when the building is demolished (see Building.Destroy). Non-null only inside doored
-    // housing today; production-building interiors will reuse the same field in later phases.
-    public Building insideBuilding;
+    // The building whose hollow interior this animal is currently standing in, or null.
+    // Derived from the tile under the animal (Tile.interiorBuilding) — never cached, so it
+    // cannot go stale when the animal is displaced by a fall / snap / elevator / load.
+    public Building insideBuilding => TileHere()?.interiorBuilding;
     // The integer tile this animal walks TO when going home. For legacy 1×1 houses this is
     // the building's anchor (today's behaviour). For doored buildings this is the door's
     // approach tile, just outside the footprint. Pathing terminates here; the door system
@@ -213,11 +212,10 @@ public class Animal : MonoBehaviour{
                     this.task = null;
                 }
             }
-            // Restore home + interior bookkeeping. homeBuildingX/Y resolves the home so the
-            // animal doesn't have to re-FindHome on load (which would also reset furnishing
-            // happiness). insideBuildingX/Y restores "currently sleeping inside" and snaps
-            // the animal back to the interior anchor — otherwise rounding (1.5, 0.5) to a
-            // tile yields a non-standable spot and UpdateMovement falls them out.
+            // Restore the home reservation so the animal doesn't have to re-FindHome on
+            // first SlowUpdate (which would also reset furnishing happiness). insideBuilding
+            // needs no restore — it's derived from position, so a mouse saved inside a
+            // building keeps its saved (x, y) and resolves it for free.
             if (pendingSaveData.homeBuildingX.HasValue && pendingSaveData.homeBuildingY.HasValue) {
                 Tile homeAnchor = world.GetTileAt(pendingSaveData.homeBuildingX.Value, pendingSaveData.homeBuildingY.Value);
                 if (homeAnchor?.building != null && homeAnchor.building.structType.isHousing) {
@@ -225,18 +223,6 @@ public class Animal : MonoBehaviour{
                     homeTile = homeBuilding.doorApproachTile ?? homeBuilding.tile;
                     homeBuilding.res.Reserve(aName);
                     happiness?.RecomputeFurnishingBonus(this);
-                }
-            }
-            if (pendingSaveData.insideBuildingX.HasValue && pendingSaveData.insideBuildingY.HasValue) {
-                Tile insideAnchor = world.GetTileAt(pendingSaveData.insideBuildingX.Value, pendingSaveData.insideBuildingY.Value);
-                Building b = insideAnchor?.building;
-                if (b != null && b.interiorNodes != null && b.interiorNodes.Length > 0) {
-                    insideBuilding = b;
-                    // Snap to the first interior node — v1 has one sleep slot per building.
-                    // (Phase 4 multi-resident housing will need to remember which slot was
-                    // assigned and snap to interiorNodes[slotIdx] instead.)
-                    Node spot = b.interiorNodes[0];
-                    SnapTo(spot.wx, spot.wy);
                 }
             }
             pendingSaveData = null;
@@ -574,6 +560,15 @@ public class Animal : MonoBehaviour{
             candidates.Add((readingSat, TryStartReading));
         }
 
+        // Drinking option ("alcohol" need) — eligible whenever rice wine exists anywhere in
+        // the world. DrinkTask.Initialize verifies reachability; this cheap global-quantity
+        // check just avoids enqueuing a candidate when there's no wine at all.
+        if (Db.itemByName.TryGetValue("rice wine", out Item wine)
+            && GlobalInventory.instance.Quantity(wine) > 0) {
+            float alcoholSat = happiness.GetLeisureSatisfaction("alcohol");
+            candidates.Add((alcoholSat, TryStartDrinking));
+        }
+
         // Building options: one candidate per unique leisureNeed. Actual building selection
         // (filter suitability, pathfind, pick nearest-by-path, reserve seat) lives in
         // LeisureTask.Initialize — so if the candidate gets tried, it commits to the best
@@ -622,6 +617,15 @@ public class Animal : MonoBehaviour{
 
     private bool TryStartReading() {
         task = new ReadBookTask(this);
+        if (task.Start()) return true;
+        task = null;
+        return false;
+    }
+
+    // Drinking is consume-in-place leisure: DrinkTask finds rice wine wherever it's
+    // stored, walks there, and drinks 1 liang. Not tied to any building.
+    private bool TryStartDrinking() {
+        task = new DrinkTask(this);
         if (task.Start()) return true;
         task = null;
         return false;
@@ -829,13 +833,21 @@ public class Animal : MonoBehaviour{
             n = InventoryController.instance.TotalAvailableQuantity(input.item) / input.quantity;
             if (n < numRounds) { numRounds = n; }
         }
-        foreach (ItemQuantity output in recipe.outputs){
-            var (storePath, storeInv) = nav.FindPathToStorage(output.item);
-            if (storePath == null) { n = 0; }
-            else{
-                n = storeInv.GetStorageForItem(output.item) / output.quantity;
+        // Target cap: never overshoot the player's per-output target. See Recipe.CapRoundsByTarget.
+        var targets = InventoryController.instance.targets;
+        numRounds = recipe.CapRoundsByTarget(numRounds, targets);
+        // Storage cap — skipped entirely when every output is scarce enough to
+        // justify batch-crafting onto the workshop floor. Time + input + target
+        // caps above still apply either way. See Recipe.AllOutputsScarce.
+        if (!recipe.AllOutputsScarce(targets)){
+            foreach (ItemQuantity output in recipe.outputs){
+                var (storePath, storeInv) = nav.FindPathToStorage(output.item);
+                if (storePath == null) { n = 0; }
+                else{
+                    n = storeInv.GetStorageForItem(output.item) / output.quantity;
+                }
+                if (n < numRounds) { numRounds = Math.Max(n, 1); }
             }
-            if (n < numRounds) { numRounds = Math.Max(n, 1); }
         }
         return numRounds;
     }
@@ -950,12 +962,12 @@ public class Animal : MonoBehaviour{
     // approach so A* can route out via the door automatically. Falls back to TileHere
     // if interior data is missing (corrupted state).
     public Node PathStartNode() {
-        if (insideBuilding != null && insideBuilding.interiorNodes != null
-            && insideBuilding.interiorNodes.Length > 0) {
+        Building ib = insideBuilding; // property does a tile lookup — read once
+        if (ib != null && ib.interiorNodes != null && ib.interiorNodes.Length > 0) {
             Node best = null;
             float bestDist = float.MaxValue;
-            for (int i = 0; i < insideBuilding.interiorNodes.Length; i++) {
-                Node n = insideBuilding.interiorNodes[i];
+            for (int i = 0; i < ib.interiorNodes.Length; i++) {
+                Node n = ib.interiorNodes[i];
                 if (n == null) continue;
                 float d = (n.wx - x) * (n.wx - x) + (n.wy - y) * (n.wy - y);
                 if (d < bestDist) { bestDist = d; best = n; }
@@ -987,14 +999,15 @@ public class Animal : MonoBehaviour{
 
     // True when the animal is physically inside its assigned home. For legacy 1×1 housing
     // this fires whenever they're standing on the home tile (no separate "inside" concept).
-    // For doored buildings this fires only after EnterBuildingObjective has set insideBuilding,
-    // because standing on the approach tile outside the door doesn't count as "at home".
+    // For doored buildings this returns true only once the mouse is actually on an interior
+    // tile (insideBuilding == homeBuilding); standing on the approach tile outside the door
+    // doesn't count as "at home".
     public bool AtHome() {
         if (homeBuilding == null) return false;
         if (insideBuilding == homeBuilding) return true;
         // Legacy path: 1×1 housing without interior tiles — standing on the building's
         // anchor tile is "at home". Doored buildings always exercise the insideBuilding
-        // check above (Nav sets it on arrival at an interior node).
+        // check above (derived from the tile under the mouse).
         return (homeBuilding.interiorNodes == null || homeBuilding.interiorNodes.Length == 0)
             && TileHere() == homeBuilding.tile;
     }

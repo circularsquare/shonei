@@ -32,7 +32,7 @@ using UnityEngine;
 public class WorkOrderManager : MonoBehaviour {
     public static WorkOrderManager instance { get; private set; }
 
-    public enum OrderType { Haul, Harvest, Construct, SupplyBlueprint, Deconstruct, HaulToMarket, HaulFromMarket, Research, Craft, SupplyBuilding, Maintenance, SupplyFurnishing }
+    public enum OrderType { Haul, Harvest, Construct, SupplyBlueprint, Deconstruct, HaulToMarket, HaulFromMarket, Research, Craft, SupplyBuilding, Maintenance, SupplyFurnishing, FillProcessor, TapProcessor }
 
     public class WorkOrder {
         public OrderType type;
@@ -49,7 +49,7 @@ public class WorkOrderManager : MonoBehaviour {
         public Reservable res = new(1);
         // Optional: returns false to temporarily suppress this order without removing it from the queue.
         // Null means always active. ChooseOrder checks this before calling factory.
-        // Example: harvest orders use () => plant.harvestable so the order stays alive across grow cycles
+        // Example: harvest orders use () => plant.IsDoneGrowing() so the order stays alive across grow cycles
         // (plant.harvestFlagged gates the order's existence instead — Plant.SetHarvestFlagged registers /
         // unregisters as the flag flips, so unflagged plants carry no order at all).
         public Func<bool> isActive;
@@ -347,12 +347,14 @@ public class WorkOrderManager : MonoBehaviour {
             factory = a => new HarvestTask(a, tile),
             tile = tile,
             res = new(plant.plantType.capacity > 0 ? plant.plantType.capacity : 1),
-            // Gated on ripeness AND target satisfaction. Harvest orders only exist while the
+            // Gated on full growth AND target satisfaction. Harvest orders only exist while the
             // plant is flagged (SetHarvestFlagged(false) removes the order), so flag state isn't
-            // re-checked here; dormancy across grow cycles comes from `harvestable`. The target
-            // gate mirrors recipe output gating — if every product type is already at/above its
-            // global target, leave the crop standing instead of bloating storage.
-            isActive = () => plant.harvestable
+            // re-checked here; dormancy across grow cycles comes from `IsDoneGrowing()`, which
+            // also holds multi-tile plants until they reach full height so the height-scaled
+            // yield is delivered. The target gate mirrors recipe output gating — if every product
+            // type is already at/above its global target, leave the crop standing instead of
+            // bloating storage.
+            isActive = () => plant.IsDoneGrowing()
                 && !Recipe.AllItemsSatisfied(plant.plantType.products, InventoryController.instance?.targets),
             canDo = a => a.job == harvestJob,
             getDistance = a => Mathf.Abs(tile.x - a.x) + Mathf.Abs(tile.y - a.y)
@@ -493,6 +495,54 @@ public class WorkOrderManager : MonoBehaviour {
         orders[3].RemoveAll(o => o.type == OrderType.SupplyFurnishing && o.building == building);
     }
 
+    // Registers a standing FillProcessor order for a building with a Processor.
+    // Active only while the processor is Empty (awaiting a fresh load); FillProcessorTask.Initialize
+    // flips Empty→Filling on claim, so the order self-suppresses while a cook is loading.
+    // Mirrors RegisterFuelSupply. Priority 3 (Craft tier) — loading a processor is core production.
+    public bool RegisterFillProcessor(Building building) {
+        if (building?.processor == null) return false;
+        if (orders[2].Exists(o => o.type == OrderType.FillProcessor && o.building == building)) return false;
+        var processor = building.processor;
+        Add(new WorkOrder {
+            type        = OrderType.FillProcessor,
+            priority    = 3,
+            factory     = a => new FillProcessorTask(a, building),
+            building    = building,
+            isActive    = () => !building.disabled && !building.IsBroken
+                              && processor.state == Processor.State.Empty,
+            canDo       = a => a.job.name == "cook",
+            getDistance = a => Mathf.Abs(building.x - a.x) + Mathf.Abs(building.y - a.y)
+        });
+        return true;
+    }
+
+    // Registers a standing TapProcessor order for a building with a Processor.
+    // Active only while the processor is Ready (fermentation finished, awaiting a tap).
+    // The order's res capacity (1) keeps a single cook on the tap; TapProcessorTask.Complete
+    // does the Ready→Tapped transition. Mirrors RegisterFillProcessor.
+    public bool RegisterTapProcessor(Building building) {
+        if (building?.processor == null) return false;
+        if (orders[2].Exists(o => o.type == OrderType.TapProcessor && o.building == building)) return false;
+        var processor = building.processor;
+        Add(new WorkOrder {
+            type        = OrderType.TapProcessor,
+            priority    = 3,
+            factory     = a => new TapProcessorTask(a, building),
+            building    = building,
+            isActive    = () => !building.disabled && !building.IsBroken
+                              && processor.state == Processor.State.Ready,
+            canDo       = a => a.job.name == "cook",
+            getDistance = a => Mathf.Abs(building.x - a.x) + Mathf.Abs(building.y - a.y)
+        });
+        return true;
+    }
+
+    // Removes all processor work orders for a building (call when building is destroyed).
+    public void RemoveProcessorOrders(Building building) {
+        orders[2].RemoveAll(o => (o.type == OrderType.FillProcessor || o.type == OrderType.TapProcessor)
+                                 && o.building == building);
+    }
+
     // Registers a standing Maintenance order for any structure below RegisterThreshold.
     // Called from MaintenanceSystem.Tick() on the downward threshold crossing, and from
     // Reconcile() at load. Mender is the only job that matches canDo. isActive suppresses
@@ -535,6 +585,10 @@ public class WorkOrderManager : MonoBehaviour {
             RegisterFuelSupply(building);
         if (building.furnishingSlots != null)
             RegisterFurnishingSupply(building);
+        if (building.processor != null) {
+            RegisterFillProcessor(building);
+            RegisterTapProcessor(building);
+        }
     }
 
     // ── REMOVAL ────────────────────────────────────────────────────────────────────
@@ -758,6 +812,36 @@ public class WorkOrderManager : MonoBehaviour {
                     Debug.LogError($"WOM audit: fuel building {fb.structType.name} at ({fb.x},{fb.y}) has no SupplyBuilding order");
                 }
             }
+        }
+
+        // ── Processor (fill + tap) ──
+        // Standing orders for any building with a Processor. Re-registered here so they
+        // survive load (OnPlaced is skipped on the load path, same as Craft/fuel above).
+        foreach (Structure s in StructController.instance.GetStructures()) {
+            if (s is not Building pb || pb.processor == null) continue;
+            if (!orders[2].Exists(o => o.type == OrderType.FillProcessor && o.building == pb)) {
+                if (repair) {
+                    RegisterFillProcessor(pb);
+                    if (!silent) Debug.LogWarning($"WOM reconcile: registered missing FillProcessor order for {pb.structType.name} at ({pb.x},{pb.y})");
+                } else {
+                    Debug.LogError($"WOM audit: processor building {pb.structType.name} at ({pb.x},{pb.y}) has no FillProcessor order");
+                }
+            }
+            if (!orders[2].Exists(o => o.type == OrderType.TapProcessor && o.building == pb)) {
+                if (repair) {
+                    RegisterTapProcessor(pb);
+                    if (!silent) Debug.LogWarning($"WOM reconcile: registered missing TapProcessor order for {pb.structType.name} at ({pb.x},{pb.y})");
+                } else {
+                    Debug.LogError($"WOM audit: processor building {pb.structType.name} at ({pb.x},{pb.y}) has no TapProcessor order");
+                }
+            }
+            // A processor restored mid-Tapped holds wine in `output` with no haul-out order
+            // (TapProcessorTask registers those on the gameplay path only). RegisterStorageEvictionHaul
+            // dedups, so this is a safe no-op once the orders already exist.
+            if (repair && pb.processor.state == Processor.State.Tapped)
+                foreach (ItemStack st in pb.processor.output.itemStacks)
+                    if (st.item != null && st.quantity > 0)
+                        RegisterStorageEvictionHaul(st);
         }
 
         // ── Furnishing supply ──

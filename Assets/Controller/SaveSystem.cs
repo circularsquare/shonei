@@ -41,7 +41,7 @@ using Newtonsoft.Json;
 //   [x] Per-animal RNG seed (drives Animal.random — animal AI reproduces on reload)
 //   [x] Tile types, floor inventories (incl. wetUntil rain-soaked timer), background wall, overlay masks (grass on dirt), overlay health state (live/dying/dead), and snow cover
 //   [x] Per-column original surface heights (worldgen ground line, persisted so decoration depth gates survive column mining)
-//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, furnishingInvData + furnishingRemainingDays, mirrored, rotation, shapeIndex, disabled, plantHarvestFlagged, quarry capturedTileType, flywheel charge, elevator currentY + history buffers, bridge-post partnerX/Y)
+//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, furnishingInvData + furnishingRemainingDays, processor state/progress/inputData/outputData, mirrored, rotation, shapeIndex, disabled, plantHarvestFlagged, quarry capturedTileType, flywheel charge, elevator currentY + history buffers, bridge-post partnerX/Y)
 //   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored, rotation, shapeIndex, disabled, two-click x2/y2)
 //   [x] Animals (position, job, energy, food, happiness, decoration happiness, socialization, fireplace warmth, inv, foodSlotInv, toolSlotInv, clothingSlotInv, bookSlotInv)
 //   [x] Mid-transit merchant task descriptor (travelTaskType + iq + storage tile + leg)
@@ -51,6 +51,7 @@ using Newtonsoft.Json;
 //   [x] Moisture levels
 //   [x] Is raining + atmospheric humidity (drives rain via threshold)
 //   [x] Global item targets
+//   [x] Discovered items (so once-seen items stay visible even after going extinct)
 //   [x] Market targets (via MarketBuilding.instance)
 //   [x] Camera position and zoom (PPU)
 //   [x] Global inventory panel tree collapse state (deltas vs item.defaultOpen)
@@ -199,6 +200,20 @@ public class SaveSystem : MonoBehaviour {
             if (savedTargets.Count > 0) data.globalItemTargets = savedTargets;
         }
 
+        // Discovered items — persist by name so a once-seen item (rare ore mined out, research
+        // unlocked then forgotten, etc.) stays visible. Skip items flagged startDiscovered: those
+        // are seeded automatically by InventoryController on every load.
+        if (ic?.discoveredItems != null) {
+            var disc = new List<string>();
+            foreach (var kv in ic.discoveredItems) {
+                if (!kv.Value) continue;
+                Item item = kv.Key < Db.items.Length ? Db.items[kv.Key] : null;
+                if (item == null || item.startDiscovered) continue;
+                disc.Add(item.name);
+            }
+            if (disc.Count > 0) data.discoveredItems = disc.ToArray();
+        }
+
         // Global inventory panel collapse state — store only groups whose current open state
         // differs from their JSON defaultOpen, so new items pick up their authored default.
         if (ic?.itemDisplayGos != null) {
@@ -303,6 +318,12 @@ public class SaveSystem : MonoBehaviour {
                         ssd.furnishingRemainingDays[i] = b.furnishingSlots.slotRemainingDays[i];
                     }
                 }
+            }
+            if (b.processor != null) {
+                ssd.processorState    = (int)b.processor.state;
+                ssd.processorProgress = b.processor.progress;
+                if (!b.processor.inputBuffer.IsEmpty()) ssd.processorInputData  = GatherInventory(b.processor.inputBuffer);
+                if (!b.processor.output.IsEmpty())      ssd.processorOutputData = GatherInventory(b.processor.output);
             }
             if (b.disabled) ssd.disabled = true;
         }
@@ -430,15 +451,12 @@ public class SaveSystem : MonoBehaviour {
                 asd.travelReturnLeg = hf.IsReturnLeg;
             }
         }
-        // Door + interior bookkeeping. Persist the building's anchor coords; on load
-        // Animal.Start resolves the live Building ref via World.GetTileAt(x,y).building.
+        // Home reservation. Persist the building's anchor coords; on load Animal.Start
+        // resolves the live Building ref via World.GetTileAt(x,y).building. insideBuilding
+        // is not saved — it's derived from the animal's position on load.
         if (a.homeBuilding != null) {
             asd.homeBuildingX = a.homeBuilding.x;
             asd.homeBuildingY = a.homeBuilding.y;
-        }
-        if (a.insideBuilding != null) {
-            asd.insideBuildingX = a.insideBuilding.x;
-            asd.insideBuildingY = a.insideBuilding.y;
         }
         return asd;
     }
@@ -651,6 +669,15 @@ public class SaveSystem : MonoBehaviour {
             foreach (var kv in save.globalItemTargets)
                 if (Db.itemByName.TryGetValue(kv.Key, out Item item))
                     InventoryController.instance.targets[item.id] = kv.Value;
+        }
+
+        // Restore discoveries from save. Uses DiscoverItem so parent-chain walks happen
+        // (ancestor group rows light up). Items added since the save was written show up
+        // as undiscovered, which is correct — they hadn't been seen yet.
+        if (save.discoveredItems != null && InventoryController.instance != null) {
+            foreach (string name in save.discoveredItems)
+                if (Db.itemByName.TryGetValue(name, out Item item))
+                    InventoryController.instance.DiscoverItem(item);
         }
 
         // Stage tree-collapse overrides before the first TickUpdate creates ItemDisplays.
@@ -906,7 +933,31 @@ public class SaveSystem : MonoBehaviour {
                         sb.storage.AllowItem(Db.items[id]);
             sb.storage.UpdateSprite();
         }
-        // WOM orders (harvest, workstation, fuel supply) are registered by Reconcile() after all objects are restored.
+        // Restore processor state (lifecycle + progress + the two internal inventories).
+        // State/progress are set directly — do NOT re-fire transitions. ScanOrders re-registers
+        // the fill/tap orders (and any haul-out for a Tapped tank) after all objects are restored.
+        if (structure is Building pb && pb.processor != null) {
+            pb.processor.state    = (Processor.State)ssd.processorState;
+            pb.processor.progress = ssd.processorProgress;
+            RestoreProcessorInv(ssd.processorInputData,  pb.processor.inputBuffer);
+            RestoreProcessorInv(ssd.processorOutputData, pb.processor.output);
+        }
+        // WOM orders (harvest, workstation, fuel supply, processor) are registered by Reconcile() after all objects are restored.
+    }
+
+    // Restores a processor inventory (inputBuffer or output) by Producing each saved stack.
+    // Produce re-adds to the global inventory too — correct, since ginv is rebuilt from
+    // scratch on load. Null isd (empty inv / old save) is a no-op.
+    void RestoreProcessorInv(InventorySaveData isd, Inventory inv) {
+        if (isd?.stacks == null) return;
+        foreach (ItemStackSaveData sd in isd.stacks) {
+            if (string.IsNullOrEmpty(sd.itemName) || sd.quantity <= 0) continue;
+            if (!Db.itemByName.TryGetValue(sd.itemName, out Item item)) {
+                Debug.LogError($"RestoreProcessorInv: unknown item '{sd.itemName}'");
+                continue;
+            }
+            inv.Produce(item, sd.quantity);
+        }
     }
 
     void RestoreBlueprint(BlueprintSaveData bsd) {

@@ -255,7 +255,7 @@ public class Plant : Structure {
         // crossing also lands us in a new height band (stage / 4 increased), we
         // additionally require every new tile above to be free. Either gate failing
         // freezes age + stage for the tick so they stay coherent.
-        int maxStage       = 4 * plantType.maxHeight - 1;
+        int maxStage       = plantType.maxStage;
         int candidateAge   = age + t;
         int candidateStage = Math.Min(candidateAge * 3 / plantType.growthTime, maxStage);
         int prevStage      = growthStage;
@@ -276,8 +276,9 @@ public class Plant : Structure {
         age         = candidateAge;
         growthStage = candidateStage;
         // Harvestable once the plant has reached a "mature" 4-stage segment (stage 3 of any
-        // tile). Multi-tile plants keep growing past this — harvest at stage 3 gives 1× yield,
-        // stage 7 gives 2×, stage 11 gives 3×. Rewards the player for leaving tall bamboo alone.
+        // tile). Multi-tile plants keep growing past this; the harvest work order stays dormant
+        // until IsDoneGrowing(), so trees/bamboo are reaped at full height and deliver their
+        // height-scaled yield. `harvestable` here only gates harvest sanity rechecks.
         if (growthStage >= 3 && !harvestable){
             harvestable = true;
         }
@@ -294,12 +295,26 @@ public class Plant : Structure {
     // than failing, so a matured plant may end up shorter than maxHeight if the
     // world geometry doesn't allow full extension.
     public void Mature(){
-        int maxStage = 4 * plantType.maxHeight - 1;
+        int maxStage = plantType.maxStage;
         age         = plantType.growthTime * maxStage / 3; // keep age coherent with stage
         growthStage = maxStage;
         harvestable = true;
         RebuildExtensionTiles();
     }
+
+    // True when the plant will not grow any taller — either it reached its max
+    // growth stage, or it's frozen at the top of its current height band because
+    // the tile above is blocked. Gates the harvest work order so multi-tile plants
+    // are reaped at full height (delivering their height-scaled yield) instead of
+    // the instant they first become harvestable.
+    public bool IsDoneGrowing() {
+        if (growthStage >= plantType.maxStage) return true;
+        // Frozen-blocked: at the top stage of the current band with the next tile
+        // up unavailable. Assumes one Grow tick crosses at most one height band —
+        // true while growthTime >> 3, which all plant data satisfies.
+        return growthStage == 4 * height - 1 && !CanExtendTo(height + 1);
+    }
+
     public ItemQuantity[] Harvest(){
         if (!harvestable) { Debug.LogError($"Harvest() called on {plantType.name} but harvestable=false"); return Array.Empty<ItemQuantity>(); }
 
@@ -609,6 +624,10 @@ public class PlantType : StructType {
     // height at harvest time, so a 3-tile bamboo drops 3× the per-tile yield in products.
     public int maxHeight {get; set;} = 1;
 
+    // Highest growth stage this plant type reaches: 4 stages per height tile.
+    // Single source of truth for the formula previously inlined in Plant.Grow/Mature.
+    public int maxStage => 4 * maxHeight - 1;
+
     // Relative weight used by WorldGen.ScatterPlants to pick which plant type seeds
     // each natural cluster. Sampled proportionally against all other plant types with
     // genWeight > 0 — units are unnormalized. 0 (default) = never spawns naturally
@@ -655,8 +674,8 @@ public class PlantType : StructType {
 
     [OnDeserialized]
     new internal void OnDeserialized(StreamingContext context){
-        costs = ncosts.Select(iq => new ItemQuantity(iq.name, ItemStack.LiangToFen(iq.quantity))).ToArray();
-        products = nproducts.Select(iq => new ItemQuantity(iq.name, ItemStack.LiangToFen(iq.quantity))).ToArray();
+        costs = ncosts.Select(iq => new ItemQuantity(iq)).ToArray();
+        products = nproducts.Select(iq => new ItemQuantity(iq)).ToArray();
         if (njob != null){
             job = Db.jobByName[njob];
         }

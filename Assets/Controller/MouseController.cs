@@ -793,6 +793,20 @@ public class MouseController : MonoBehaviour {
         ClampCameraToWorld();
     }
 
+    // Centres the camera on a world point once, without engaging follow.
+    // Used by UI jumps like clicking a job name to look at that mouse —
+    // clears any active follow so the jump sticks instead of snapping back.
+    public void CenterCameraOn(float x, float y) {
+        if (Camera.main == null) return;
+        _followAnimal = null;
+        Vector3 pos = Camera.main.transform.position;
+        pos.x = x;
+        pos.y = y;
+        Camera.main.transform.position = pos;
+        if (world == null) world = WorldController.instance?.world;
+        ClampCameraToWorld();
+    }
+
     // ── Camera bounds ──────────────────────────────────────────────────────
     // Clamps the camera so the viewport never shows outside the world rectangle.
     // Tiles occupy x ∈ [0, nx-1] and y ∈ [0, ny-1] (centered on integers),

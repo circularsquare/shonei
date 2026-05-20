@@ -24,10 +24,11 @@ public class ItemStack {
     public float resSpaceTime = 0f; // World.instance.timer value when last ReserveSpace() was called (for staleness)
     public Task resSpaceTask;    // task that made the space reservation (for validity checking + logging)
 
-    // Formats a fen quantity as a liang string (e.g. 250 → "2.5", 200 → "2", 5 → "0.05")
-    // Once magnitude reaches 3 digits (≥99.5 liang), drops decimals entirely to keep UI compact.
-    public static string FormatQ(int fen, bool discrete = false){
-        if (discrete) return (fen / 100).ToString();
+    // Formats a fen quantity for display. For a discrete item, shows the whole-unit count
+    // (fen / unitFen). Otherwise renders liang (e.g. 250 → "2.5", 200 → "2", 5 → "0.05"); once
+    // magnitude reaches 3 digits (≥99.5 liang) decimals are dropped to keep the UI compact.
+    public static string FormatQ(int fen, Item item = null){
+        if (item != null && item.discrete) return (fen / item.unitFen).ToString();
         if (fen % 100 == 0) return (fen / 100).ToString(); // exact integer, no decimals
         float val = fen / 100f;
         return Math.Abs(val) switch{
@@ -36,7 +37,7 @@ public class ItemStack {
             _ => val.ToString("0.##")
         };
     }
-    public static string FormatQ(ItemQuantity iq) => FormatQ(iq.quantity, iq.item.discrete);
+    public static string FormatQ(ItemQuantity iq) => FormatQ(iq.quantity, iq.item);
 
     // Converts an author-facing liang value (from JSON) into internal fen.
     // All ItemNameQuantity → ItemQuantity conversion sites should use this to
@@ -44,20 +45,22 @@ public class ItemStack {
     // For user-typed input use TryParseQ instead — it handles overflow and validation.
     public static int LiangToFen(float liang) => (int)Math.Round(liang * 100);
 
-    // Inverse of FormatQ — parses a user-typed liang string into fen.
-    // Empty/whitespace → 0. Discrete items must parse to a whole liang.
-    // Returns false for unparseable, negative, or overflowing input; callers should revert the display.
-    public static bool TryParseQ(string liangStr, bool discrete, out int fen) {
+    // Inverse of FormatQ — parses a user-typed quantity string into fen. For a discrete item the
+    // input is a whole unit count (fen = count × unitFen); otherwise it is liang (fen = liang × 100).
+    // Empty/whitespace → 0. Returns false for unparseable, negative, non-whole-count (discrete), or
+    // overflowing input; callers should revert the display.
+    public static bool TryParseQ(string qStr, Item item, out int fen) {
         fen = 0;
-        if (string.IsNullOrWhiteSpace(liangStr)) return true;
-        if (!float.TryParse(liangStr.Trim(),
+        if (string.IsNullOrWhiteSpace(qStr)) return true;
+        if (!float.TryParse(qStr.Trim(),
                             System.Globalization.NumberStyles.Float,
                             System.Globalization.CultureInfo.InvariantCulture,
-                            out float liang))
+                            out float val))
             return false;
-        if (liang < 0) return false;
-        if (discrete && Mathf.Abs(liang - Mathf.Round(liang)) > 0.0001f) return false;
-        double fenD = Math.Round(liang * 100.0);
+        if (val < 0) return false;
+        bool discrete = item != null && item.discrete;
+        if (discrete && Mathf.Abs(val - Mathf.Round(val)) > 0.0001f) return false;
+        double fenD = discrete ? Math.Round(val) * item.unitFen : Math.Round(val * 100.0);
         if (fenD > int.MaxValue) return false;
         fen = (int)fenD;
         return true;
@@ -71,13 +74,18 @@ public class ItemStack {
         decayCounter = 0;
     }
 
+    // Usable capacity in fen. A discrete stack can only hold whole units, so the raw stackSize is
+    // floored to the nearest unitFen multiple — a trailing remainder smaller than one unit is dead
+    // space. Non-discrete items use the full stackSize.
+    public int EffectiveCapacity => (item != null && item.discrete) ? stackSize - stackSize % item.unitFen : stackSize;
+
     public void Decay(float time = 1f){
         if (item != null && quantity > 0 && item.decayRate != 0){
             float decayedQuantity = (float)quantity * (item.decayRate * time / (float)(World.ticksInDay*World.daysInYear));
             // ^ number near 0
             decayCounter += (int)(decayedQuantity * maxDecayCount);
             int amountToDecay = decayCounter / maxDecayCount;
-            if (item.discrete) amountToDecay = (amountToDecay / 100) * 100; // only decay whole items
+            if (item.discrete) amountToDecay = (amountToDecay / item.unitFen) * item.unitFen; // only decay whole units
             if (amountToDecay > 0){
                 // Capture pre-decay state so we can flag the rare case where decay empties a stack —
                 // decay slows with quantity, so full zero-out means a small remnant sat around. Notable
@@ -99,13 +107,15 @@ public class ItemStack {
             this.item = item; }
         if (item != this.item){ // item slot occupied by different item. go next
             return null; }
-        if (item.discrete && quantity % 100 != 0){
-            Debug.LogWarning($"Discrete item '{item.name}': non-whole-liang quantity {quantity} fen passed to AddItem");
+        // Guard deposits only — a non-unit *removal* must never be silently discarded; only a
+        // non-unit deposit is the error.
+        if (item.discrete && quantity > 0 && quantity % item.unitFen != 0){
+            Debug.LogWarning($"Discrete item '{item.name}': non-unit deposit {quantity} fen (unit={item.unitFen}) passed to AddItem");
             return 0; // discard the fractional item entirely
         }
-        if (this.quantity + quantity > stackSize){
-            int sizeOver = this.quantity + quantity - stackSize;
-            this.quantity = stackSize;
+        if (this.quantity + quantity > EffectiveCapacity){
+            int sizeOver = this.quantity + quantity - EffectiveCapacity;
+            this.quantity = EffectiveCapacity;
             resSpace = 0; // stack is full, no space to reserve
             resSpaceItem = null;
             return sizeOver; // overflow (3 if still have 3 to deposit)
@@ -121,7 +131,7 @@ public class ItemStack {
             this.quantity += quantity; // add to stack
             if (resAmount > this.quantity) resAmount = this.quantity;
             // Clamp resSpace: someone else may have added items, reducing available space
-            int maxResSpace = stackSize - this.quantity;
+            int maxResSpace = EffectiveCapacity - this.quantity;
             if (resSpace > maxResSpace) resSpace = maxResSpace;
             return 0;
         }
@@ -132,7 +142,7 @@ public class ItemStack {
         return (item == iitem && quantity > 0);
     }
     public bool HasSpaceForItem(Item iitem){
-        return (item == iitem && quantity < stackSize); 
+        return (item == iitem && quantity < EffectiveCapacity);
     }
 
 
@@ -154,23 +164,33 @@ public class ItemStack {
         return true;
     }
     public void Unreserve(int n = 1) {
-        if (resAmount < n) { Debug.LogError($"ItemStack.Unreserve: underflow! item={item?.name ?? "null"} resAmount={FormatQ(resAmount)} n={FormatQ(n)}"); resAmount = 0; resTask = null; return; }
+        if (resAmount < n) { Debug.LogError($"ItemStack.Unreserve: underflow! item={item?.name ?? "null"} resAmount={FormatQ(resAmount, item)} n={FormatQ(n, item)}"); resAmount = 0; resTask = null; return; }
         resAmount -= n;
         if (resAmount == 0) resTask = null;
     }
 
     // ── Destination reservations (resSpace) ──────────────────
-    // How much free space is available for `item`, accounting for resSpace.
+    // How much free space is available for `item`, accounting for resSpace. For a discrete forItem
+    // the result is floored to a whole-unit multiple — callers must never be handed space they
+    // cannot fill with whole units.
     public int FreeSpace(Item forItem) {
         if (item != null && item == forItem)
-            return Math.Max(0, stackSize - quantity - resSpace);
+            return FloorToUnit(stackSize - quantity - resSpace, forItem);
         if (item == null || quantity == 0) {
             // Empty stack: available if unclaimed or claimed by the same item
             if (resSpaceItem == null || resSpaceItem == forItem)
-                return Math.Max(0, stackSize - resSpace);
+                return FloorToUnit(stackSize - resSpace, forItem);
             return 0; // claimed by a different item
         }
         return 0; // occupied by a different item
+    }
+    // Clamps a free-space figure to >=0, and for a discrete item down to a whole-unit (unitFen)
+    // multiple. Floors the final figure — never EffectiveCapacity separately — so a non-unit
+    // resSpace can't leak a fractional remainder through.
+    private static int FloorToUnit(int free, Item forItem) {
+        if (free <= 0) return 0;
+        if (forItem != null && forItem.discrete) free -= free % forItem.unitFen;
+        return free;
     }
     // Reserves up to `n` units of free space for incoming `item`. Returns amount reserved.
     public int ReserveSpace(Item forItem, int n, Task by = null) {
@@ -201,7 +221,7 @@ public class ItemStack {
         if (resAmount > 0 && World.instance.timer - resTime > maxAge && !TaskStillActive(resTask)) {
             string itemName = item?.name ?? "null";
             string by = resTask != null ? $" by {resTask.animal.aName}" : "";
-            Debug.LogWarning($"Cleared stale ItemStack source reservation{by}: item={itemName} resAmount={FormatQ(resAmount)} qty={FormatQ(quantity)} inv={inv.invType} ({inv.x},{inv.y}) held={World.instance.timer - resTime:F0}s");
+            Debug.LogWarning($"Cleared stale ItemStack source reservation{by}: item={itemName} resAmount={FormatQ(resAmount, item)} qty={FormatQ(quantity, item)} inv={inv.invType} ({inv.x},{inv.y}) held={World.instance.timer - resTime:F0}s");
             resAmount = 0;
             resTask = null;
             expired = true;
@@ -209,7 +229,7 @@ public class ItemStack {
         if (resSpace > 0 && World.instance.timer - resSpaceTime > maxAge && !TaskStillActive(resSpaceTask)) {
             string itemName = resSpaceItem?.name ?? item?.name ?? "null";
             string by = resSpaceTask != null ? $" by {resSpaceTask.animal.aName}" : "";
-            Debug.LogWarning($"Cleared stale ItemStack space reservation{by}: item={itemName} resSpace={FormatQ(resSpace)} qty={FormatQ(quantity)} inv={inv.invType} ({inv.x},{inv.y}) held={World.instance.timer - resSpaceTime:F0}s");
+            Debug.LogWarning($"Cleared stale ItemStack space reservation{by}: item={itemName} resSpace={FormatQ(resSpace, resSpaceItem ?? item)} qty={FormatQ(quantity, item)} inv={inv.invType} ({inv.x},{inv.y}) held={World.instance.timer - resSpaceTime:F0}s");
             resSpace = 0;
             resSpaceItem = null;
             resSpaceTask = null;
@@ -220,12 +240,12 @@ public class ItemStack {
 
     public override string ToString(){
         if (item != null){
-            string resStr = resAmount > 0 ? " (r" + FormatQ(resAmount, item.discrete) + ")" : "";
-            string spcStr = resSpace > 0 ? " (s" + FormatQ(resSpace, item.discrete) + ")" : "";
-            return item.name + " x " + FormatQ(quantity, item.discrete) + resStr + spcStr + "\n";
+            string resStr = resAmount > 0 ? " (r" + FormatQ(resAmount, item) + ")" : "";
+            string spcStr = resSpace > 0 ? " (s" + FormatQ(resSpace, item) + ")" : "";
+            return item.name + " x " + FormatQ(quantity, item) + resStr + spcStr + "\n";
         }
         if (resSpace > 0 && resSpaceItem != null){
-            return "(reserved for " + resSpaceItem.name + " s" + FormatQ(resSpace, resSpaceItem.discrete) + ")\n";
+            return "(reserved for " + resSpaceItem.name + " s" + FormatQ(resSpace, resSpaceItem) + ")\n";
         }
         return "";
     }

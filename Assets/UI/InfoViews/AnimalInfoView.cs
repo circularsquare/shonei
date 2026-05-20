@@ -73,7 +73,7 @@ public class AnimalInfoView : MonoBehaviour {
 
     static string FormatSlot(Inventory slot) {
         var s = slot.itemStacks[0];
-        return s.item != null ? s.item.name + " " + ItemStack.FormatQ(s.quantity, s.item.discrete) : "empty";
+        return s.item != null ? s.item.name + " " + ItemStack.FormatQ(s.quantity, s.item) : "empty";
     }
 
     static string FormatAnimal(Animal ani) {

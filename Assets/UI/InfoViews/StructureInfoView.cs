@@ -109,14 +109,14 @@ public class StructureInfoView : MonoBehaviour {
         }
 
         if (structure is Plant plant) {
-            int maxStage = 4 * plant.plantType.maxHeight - 1;
+            int maxStage = plant.plantType.maxStage;
             sb.Append($"\n stage: {plant.growthStage}/{maxStage}");
             if (plant.plantType.maxHeight > 1)
                 sb.Append($"  height: {plant.height}/{plant.plantType.maxHeight}");
             AppendPlantComfort(sb, plant);
             // Surface the target-gated dormancy from RegisterHarvest's isActive — without this
             // the player sees a flagged, ripe crop sitting un-harvested with no in-game cue.
-            if (plant.harvestFlagged && plant.harvestable
+            if (plant.harvestFlagged && plant.IsDoneGrowing()
                 && Recipe.AllItemsSatisfied(plant.plantType.products, InventoryController.instance?.targets))
                 sb.Append("\n <color=#d04040>will not harvest: outputs above target</color>");
             AppendTileOrders(sb, plant.tile);
@@ -134,6 +134,8 @@ public class StructureInfoView : MonoBehaviour {
                 sb.Append("\n occupants: " + bldg.res.reserved + "/" + bldg.res.capacity);
             if (bldg.furnishingSlots != null)
                 AppendFurnishingSlots(sb, bldg.furnishingSlots);
+            if (bldg.processor != null)
+                AppendProcessor(sb, bldg.processor);
             AppendTileOrders(sb, bldg.tile);
             AppendBuildingOrders(sb, bldg);
             if (bldg.storage != null)
@@ -472,6 +474,20 @@ public class StructureInfoView : MonoBehaviour {
             } else {
                 float days = fs.slotRemainingDays[i];
                 sb.Append($"\n  {fs.slotNames[i]}: {item.name} ({days:F1}d left)");
+            }
+        }
+    }
+
+    // Minimal per-processor fermentation readout. The full progress-bar UI is deferred
+    // to the rice-wine plan's P2-M6 — this is just dev visibility: lifecycle state, and
+    // while Working the progress in in-game days plus the current temperature rate.
+    static void AppendProcessor(System.Text.StringBuilder sb, Processor p) {
+        sb.Append($"\n processor: {p.state.ToString().ToLower()}");
+        if (p.state == Processor.State.Working) {
+            sb.Append($"  {p.progress:F2}/{p.processDays:F1}d");
+            if (p.TempScaled) {
+                float now = WeatherSystem.instance != null ? WeatherSystem.instance.temperature : 17.5f;
+                sb.Append($"  rate {p.Rate(now):P0}");
             }
         }
     }

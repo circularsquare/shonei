@@ -538,24 +538,7 @@ public static class SpriteNormalMapGenerator {
             }
         }
 
-        Texture2D normalTex = new Texture2D(w, h, TextureFormat.RGBA32, false);
-        normalTex.SetPixels32(dst);
-        normalTex.Apply();
-        string outPath = NormalPathFor(srcPath);
-        SysFile.WriteAllBytes(outPath, normalTex.EncodeToPNG());
-        Object.DestroyImmediate(normalTex);
-
-        AssetDatabase.ImportAsset(outPath);
-        TextureImporter nImp = AssetImporter.GetAtPath(outPath) as TextureImporter;
-        if (nImp != null) {
-            nImp.textureType        = TextureImporterType.Default;
-            nImp.textureCompression = TextureImporterCompression.Uncompressed;
-            nImp.filterMode         = imp.filterMode;
-            nImp.wrapMode           = TextureWrapMode.Clamp;
-            nImp.SaveAndReimport();
-        }
-
-        Debug.Log($"[NormalMapGen] Written (height): {outPath}");
+        WriteNormalMap(srcPath, dst, w, h, imp, logSuffix: " (height)");
         return true;
     }
 

@@ -237,8 +237,9 @@ public class ResearchSystemTests {
         try {
             // RevertEffect logs a Debug.Log for the forget event.
             LogAssert.Expect(LogType.Log, new System.Text.RegularExpressions.Regex("Technology forgotten: alpha"));
-            // Need to drop from ~1.0 below 0.75 → at 0.01/tick, 26 ticks suffices.
-            for (int i = 0; i < 30; i++) rs.TickUpdate();
+            // Need to drop from ~1.0 below the 0.75 threshold → at DecayRate 0.008/tick,
+            // 40 ticks sheds ~0.32, landing near 0.68 with comfortable margin.
+            for (int i = 0; i < 40; i++) rs.TickUpdate();
         } finally {
             ResearchSystem.OnTechForgotten -= handler;
         }

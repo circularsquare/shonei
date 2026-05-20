@@ -102,7 +102,8 @@ public class ItemStackTests {
     [TestCase(9999, "99")]
     [TestCase(10000, "100")]
     public void FormatQ_Discrete_IntegerLiangOnly(int fen, string expected){
-        Assert.That(ItemStack.FormatQ(fen, discrete: true), Is.EqualTo(expected));
+        Item d = MakeItem("d", discrete: true); // unitFen 100 → fen/100
+        Assert.That(ItemStack.FormatQ(fen, d), Is.EqualTo(expected));
     }
 
     [Test]
@@ -112,10 +113,10 @@ public class ItemStackTests {
     }
 
     [Test]
-    public void FormatQ_ItemQuantityOverload_DelegatesToIntBoolVersion(){
+    public void FormatQ_ItemQuantityOverload_DelegatesToItemVersion(){
         Item discreteItem = MakeItem("apple", discrete: true);
         ItemQuantity iq = new ItemQuantity(discreteItem, 250);
-        // discrete=true → 250 fen → "2"
+        // discrete, unitFen 100 → 250 fen → "2"
         Assert.That(ItemStack.FormatQ(iq), Is.EqualTo("2"));
 
         Item smoothItem = MakeItem("water", discrete: false);
@@ -128,7 +129,7 @@ public class ItemStackTests {
     [TestCase("   ", 0)]
     [TestCase(null, 0)]
     public void TryParseQ_EmptyOrWhitespace_ReturnsTrueWithZero(string input, int expectedFen){
-        bool ok = ItemStack.TryParseQ(input, discrete: false, out int fen);
+        bool ok = ItemStack.TryParseQ(input, null, out int fen);
         Assert.That(ok, Is.True);
         Assert.That(fen, Is.EqualTo(expectedFen));
     }
@@ -140,14 +141,14 @@ public class ItemStackTests {
     [TestCase("99.5", 9950)]
     [TestCase("1000", 100000)]
     public void TryParseQ_Valid_RoundTrips(string input, int expectedFen){
-        bool ok = ItemStack.TryParseQ(input, discrete: false, out int fen);
+        bool ok = ItemStack.TryParseQ(input, null, out int fen);
         Assert.That(ok, Is.True);
         Assert.That(fen, Is.EqualTo(expectedFen));
     }
 
     [Test]
     public void TryParseQ_TrimsWhitespace(){
-        bool ok = ItemStack.TryParseQ("  2.5  ", discrete: false, out int fen);
+        bool ok = ItemStack.TryParseQ("  2.5  ", null, out int fen);
         Assert.That(ok, Is.True);
         Assert.That(fen, Is.EqualTo(250));
     }
@@ -155,7 +156,7 @@ public class ItemStackTests {
     [TestCase("-1")]
     [TestCase("-0.5")]
     public void TryParseQ_Negative_ReturnsFalse(string input){
-        bool ok = ItemStack.TryParseQ(input, discrete: false, out int fen);
+        bool ok = ItemStack.TryParseQ(input, null, out int fen);
         Assert.That(ok, Is.False);
     }
 
@@ -163,19 +164,21 @@ public class ItemStackTests {
     [TestCase("1.2.3")]
     [TestCase("--1")]
     public void TryParseQ_Garbage_ReturnsFalse(string input){
-        bool ok = ItemStack.TryParseQ(input, discrete: false, out int fen);
+        bool ok = ItemStack.TryParseQ(input, null, out int fen);
         Assert.That(ok, Is.False);
     }
 
     [Test]
     public void TryParseQ_DiscreteFractional_ReturnsFalse(){
-        bool ok = ItemStack.TryParseQ("1.5", discrete: true, out int fen);
+        Item d = MakeItem("d", discrete: true);
+        bool ok = ItemStack.TryParseQ("1.5", d, out int fen);
         Assert.That(ok, Is.False);
     }
 
     [Test]
     public void TryParseQ_DiscreteWhole_ReturnsTrue(){
-        bool ok = ItemStack.TryParseQ("3", discrete: true, out int fen);
+        Item d = MakeItem("d", discrete: true); // unitFen 100 → "3" parses to 300
+        bool ok = ItemStack.TryParseQ("3", d, out int fen);
         Assert.That(ok, Is.True);
         Assert.That(fen, Is.EqualTo(300));
     }
@@ -183,13 +186,13 @@ public class ItemStackTests {
     [Test]
     public void TryParseQ_Overflow_ReturnsFalse(){
         // liang * 100 must exceed int.MaxValue (2_147_483_647). 1e9 liang = 1e11 fen.
-        bool ok = ItemStack.TryParseQ("99999999999", discrete: false, out int fen);
+        bool ok = ItemStack.TryParseQ("99999999999", null, out int fen);
         Assert.That(ok, Is.False);
     }
 
     [Test]
     public void TryParseQ_InvariantCulture_DotDecimal(){
-        bool ok = ItemStack.TryParseQ("1.5", discrete: false, out int fen);
+        bool ok = ItemStack.TryParseQ("1.5", null, out int fen);
         Assert.That(ok, Is.True);
         Assert.That(fen, Is.EqualTo(150));
     }
@@ -199,7 +202,7 @@ public class ItemStackTests {
         // "1,5" must NOT parse as 1.5 — TryParseQ pins InvariantCulture.
         // (NumberStyles.Float still allows thousands separators in some cultures, but
         //  "1,5" under invariant should fail because ',' isn't a decimal separator.)
-        bool ok = ItemStack.TryParseQ("1,5", discrete: false, out int fen);
+        bool ok = ItemStack.TryParseQ("1,5", null, out int fen);
         Assert.That(ok, Is.False);
     }
 
@@ -227,10 +230,10 @@ public class ItemStackTests {
 
     [Test]
     public void AddItem_DiscreteFractional_ReturnsZeroAndWarns(){
-        // Discrete items must come in whole-liang (100 fen) chunks. Anything else
+        // Discrete items must come in whole-unit (unitFen) chunks. Anything else
         // is silently dropped (returns 0) plus a Debug.LogWarning.
         LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex(
-            "Discrete item.*non-whole-liang quantity"));
+            "Discrete item.*non-unit deposit"));
         Item apple = MakeItem("apple", discrete: true);
         ItemStack s = new ItemStack(null, apple, 0);
         int? r = s.AddItem(apple, 150); // 1.5 liang — fractional for discrete
@@ -465,8 +468,74 @@ public class ItemStackTests {
         Assert.That(s.FreeSpace(pear), Is.EqualTo(0));
     }
 
+    // ── unitFen / EffectiveCapacity (heavy discrete items) ─────────────
+    [Test]
+    public void UnitFen_DiscreteWithWeight_ResolvesToWeightTimes100(){
+        Assert.That(MakeItem("stool", discrete: true, unitWeight: 3f).unitFen, Is.EqualTo(300));
+    }
+
+    [Test]
+    public void UnitFen_DiscreteNoWeight_DefaultsTo100(){
+        Assert.That(MakeItem("tool", discrete: true).unitFen, Is.EqualTo(100));
+    }
+
+    [Test]
+    public void UnitFen_NonDiscrete_IsAlways100(){
+        // Non-discrete items never read unitFen; it returns 100 and ignores unitWeight.
+        Assert.That(MakeItem("water", discrete: false, unitWeight: 3f).unitFen, Is.EqualTo(100));
+    }
+
+    [Test]
+    public void EffectiveCapacity_HeavyDiscrete_FloorsToWholeUnits(){
+        // 1000-fen slot, 300-fen stools → holds 3 (900 fen); trailing 100 fen is dead space.
+        Item stool = MakeItem("stool", discrete: true, unitWeight: 3f);
+        ItemStack s = new ItemStack(null, stool, 0, stackSize: 1000);
+        Assert.That(s.EffectiveCapacity, Is.EqualTo(900));
+    }
+
+    [Test]
+    public void EffectiveCapacity_NonDiscrete_IsRawStackSize(){
+        ItemStack s = new ItemStack(null, MakeItem("water"), 0, stackSize: 1000);
+        Assert.That(s.EffectiveCapacity, Is.EqualTo(1000));
+    }
+
+    [Test]
+    public void AddItem_HeavyDiscrete_OverflowsWholeUnitsCleanly(){
+        // The core bug fix: a 1000-fen slot of 300-fen stools clamps to 900 and overflows
+        // exactly one whole stool (300) — never a fractional quantity or fractional overflow.
+        Item stool = MakeItem("stool", discrete: true, unitWeight: 3f);
+        ItemStack s = new ItemStack(null, stool, 900, stackSize: 1000);
+        int? overflow = s.AddItem(stool, 300); // 4th stool doesn't fit
+        Assert.That(overflow, Is.EqualTo(300));
+        Assert.That(s.quantity, Is.EqualTo(900));
+    }
+
+    [Test]
+    public void FreeSpace_HeavyDiscrete_FloorsToWholeUnits(){
+        // 1000-fen empty slot for 300-fen stools → 900 usable, not 1000.
+        Item stool = MakeItem("stool", discrete: true, unitWeight: 3f);
+        ItemStack s = new ItemStack(null, null, 0, stackSize: 1000);
+        Assert.That(s.FreeSpace(stool), Is.EqualTo(900));
+    }
+
+    [Test]
+    public void FormatQ_HeavyDiscrete_ShowsUnitCount(){
+        // 900 fen of 3-liang stools displays as "3", not "9" liang.
+        Item stool = MakeItem("stool", discrete: true, unitWeight: 3f);
+        Assert.That(ItemStack.FormatQ(900, stool), Is.EqualTo("3"));
+    }
+
+    [Test]
+    public void TryParseQ_HeavyDiscrete_ParsesCountToFen(){
+        // User types "3" stools → 3 × 300 fen.
+        Item stool = MakeItem("stool", discrete: true, unitWeight: 3f);
+        bool ok = ItemStack.TryParseQ("3", stool, out int fen);
+        Assert.That(ok, Is.True);
+        Assert.That(fen, Is.EqualTo(900));
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────
-    static Item MakeItem(string name = "test", bool discrete = false){
-        return new Item { id = 1, name = name, discrete = discrete };
+    static Item MakeItem(string name = "test", bool discrete = false, float unitWeight = 0f){
+        return new Item { id = 1, name = name, discrete = discrete, unitWeight = unitWeight };
     }
 }

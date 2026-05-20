@@ -42,6 +42,13 @@ public class WorldSaveData {
     // Global item targets set by the player via ItemDisplay UI (item name → target qty in fen).
     // Only non-default entries (≠ 10000) are stored; absent entries load as default (10000).
     public Dictionary<string, int> globalItemTargets;
+    // Items the player has discovered (seen produced or unlocked via research). Persisted so
+    // a now-extinct item (e.g. a rare ore mined out) stays visible in inventory/storage trees
+    // across sessions. Items flagged `startDiscovered` in itemsDb are not written — they're
+    // re-seeded by InventoryController on every load. Null on old saves → no extra discoveries
+    // restored; the research re-apply + GlobalInventory positive-qty invariant repopulate from
+    // current state, matching pre-persistence behavior.
+    public string[] discoveredItems;
     public float? cameraX;  // null on old saves → camera not repositioned on load
     public float? cameraY;
     public int?   cameraPPU; // null on old saves → zoom not changed on load
@@ -119,6 +126,13 @@ public class StructureSaveData {
     // null = no furnishing slots / all slots empty (treated as empty on load).
     public InventorySaveData[] furnishingInvData;
     public float[] furnishingRemainingDays;
+    // Processor buildings only: the fermentation tank's lifecycle state (Processor.State
+    // cast to int — 0 = Empty, the safe default for old saves), progress in in-game days,
+    // and the contents of its two internal inventories. null inv data = empty / old save.
+    public int processorState;
+    public float processorProgress;
+    public InventorySaveData processorInputData;
+    public InventorySaveData processorOutputData;
     public bool mirrored;
     // 90° clockwise rotation steps (0..3). Default 0 covers old saves.
     public int rotation;
@@ -222,13 +236,10 @@ public class AnimalSaveData {
     public int?   travelStorageY;
     public bool   travelReturnLeg;    // HaulFromMarket only — true if past the ReceiveFromInventory
 
-    // Door + interior bookkeeping. homeBuildingX/Y persists the home reservation so loaded
-    // animals don't have to re-find a home on first SlowUpdate (which would also reset their
-    // furnishing happiness). insideBuildingX/Y persists "currently sleeping inside" so the
-    // mouse renders at the interior anchor on load instead of falling out. Both null on old
-    // saves; FindHome runs as it did before in that case.
+    // Home reservation. homeBuildingX/Y persists the home reservation so loaded animals
+    // don't have to re-find a home on first SlowUpdate (which would also reset their
+    // furnishing happiness). Null on old saves; FindHome runs as it did before in that
+    // case. (insideBuilding is not persisted — it's derived from the animal's position.)
     public int? homeBuildingX;
     public int? homeBuildingY;
-    public int? insideBuildingX;
-    public int? insideBuildingY;
 }

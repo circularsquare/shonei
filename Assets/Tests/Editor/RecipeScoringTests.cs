@@ -3,11 +3,14 @@ using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 
-// EditMode tests for Recipe (defined in Db.cs). Focuses on the three picking-related
-// methods that drive recipe selection in WorkOrderManager / Animal.PickRecipe*:
+// EditMode tests for Recipe (defined in Db.cs). Focuses on the picking- and
+// batch-sizing methods that drive recipe selection and craft-round counts in
+// WorkOrderManager / Animal.PickRecipe* / Animal.CalculateWorkPossible:
 //   - Score(Dictionary<int, int> targets)
 //   - AllOutputsSatisfied(Dictionary<int, int> targets)
 //   - IsEligibleForPicking()
+//   - CapRoundsByTarget(int rounds, Dictionary<int, int> targets)
+//   - AllOutputsScarce(Dictionary<int, int> targets)
 //
 // Score and AllOutputsSatisfied both read GlobalInventory.instance.Quantity(item),
 // so the fixture stands up a minimal GlobalInventory once in [OneTimeSetUp]:
@@ -395,6 +398,130 @@ public class RecipeScoringTests {
         Assume.That(r.IsEligibleForPicking(), Is.False);
         RecipePanel.instance.SetAllowed(r.id, true);
         Assert.That(r.IsEligibleForPicking(), Is.True);
+    }
+
+    // ── CapRoundsByTarget ──────────────────────────────────────────────
+    // Caps a craft session's round count so production stops near the player's
+    // per-output target. Ceiling division is the off-by-one-prone part — covered
+    // explicitly. The method only ever lowers the incoming count, never raises it.
+    [Test]
+    public void CapRoundsByTarget_NullTargets_ReturnsRoundsUnchanged(){
+        // No targets dict → no opinion on production volume → pass the cap through.
+        Recipe r = MakeRecipe(outputs: new[] { IQ(itemA, 10) });
+        Assert.That(r.CapRoundsByTarget(8, null), Is.EqualTo(8));
+    }
+
+    [Test]
+    public void CapRoundsByTarget_UntrackedOutput_NoCap(){
+        // itemA is produced but absent from the targets dict — even sitting at 0
+        // (maximum headroom, if it were tracked) it imposes no cap.
+        SetGlobal(itemA, 0);
+        var targets = new Dictionary<int, int> { { itemB.id, 100 } };
+        Recipe r = MakeRecipe(outputs: new[] { IQ(itemA, 10) });
+        Assert.That(r.CapRoundsByTarget(8, targets), Is.EqualTo(8));
+    }
+
+    [TestCase(100)]  // qty == target → headroom 0 → no cap
+    [TestCase(150)]  // qty above target → negative headroom → no cap
+    public void CapRoundsByTarget_OutputAtOrAboveTarget_NoCap(int qty){
+        // Already-satisfied outputs are accepted as collateral overshoot — see the
+        // method comment. The recipe only reached here because some *other* output
+        // was still under target.
+        SetGlobal(itemA, qty);
+        var targets = new Dictionary<int, int> { { itemA.id, 100 } };
+        Recipe r = MakeRecipe(outputs: new[] { IQ(itemA, 10) });
+        Assert.That(r.CapRoundsByTarget(8, targets), Is.EqualTo(8));
+    }
+
+    [TestCase(70, 10, 3)]   // headroom 30, exact multiple → 3 rounds
+    [TestCase(75, 10, 3)]   // headroom 25 → ceil(25/10) = 3, not 2
+    [TestCase(99, 10, 1)]   // headroom 1 → ceil(1/10) = 1, always ≥ one round
+    public void CapRoundsByTarget_CeilingDivisionToTarget(int qty, int perRound, int expected){
+        SetGlobal(itemA, qty);
+        var targets = new Dictionary<int, int> { { itemA.id, 100 } };
+        Recipe r = MakeRecipe(outputs: new[] { IQ(itemA, perRound) });
+        // Generous incoming cap so the target is the binding constraint.
+        Assert.That(r.CapRoundsByTarget(99, targets), Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void CapRoundsByTarget_NeverRaisesRounds(){
+        // Target leaves room for far more rounds, but the incoming cap (2) is
+        // smaller — CapRoundsByTarget only ever tightens the count.
+        SetGlobal(itemA, 0);
+        var targets = new Dictionary<int, int> { { itemA.id, 100 } };
+        Recipe r = MakeRecipe(outputs: new[] { IQ(itemA, 1) });
+        Assert.That(r.CapRoundsByTarget(2, targets), Is.EqualTo(2));
+    }
+
+    [Test]
+    public void CapRoundsByTarget_MultipleOutputs_TakesTightestCap(){
+        // itemA has room for 5 rounds to target, itemB only 2 → the tighter cap wins.
+        SetGlobal(itemA, 50);   // headroom 50, /10 → 5 rounds
+        SetGlobal(itemB, 80);   // headroom 20, /10 → 2 rounds
+        var targets = new Dictionary<int, int> {
+            { itemA.id, 100 },
+            { itemB.id, 100 },
+        };
+        Recipe r = MakeRecipe(outputs: new[] { IQ(itemA, 10), IQ(itemB, 10) });
+        Assert.That(r.CapRoundsByTarget(99, targets), Is.EqualTo(2));
+    }
+
+    // ── AllOutputsScarce ───────────────────────────────────────────────
+    // Decides whether a mouse may ignore the storage cap and batch-craft onto the
+    // floor. An output is "scarce" when global qty is strictly below
+    // min(ScarcityRoundsThreshold * perRound, target); the bypass fires only when
+    // every output is scarce. Tests derive quantities from the live constant so
+    // they survive a retune of ScarcityRoundsThreshold.
+    const int ScarcityT = Recipe.ScarcityRoundsThreshold;
+
+    [Test]
+    public void AllOutputsScarce_AllOutputsBelowRoundsThreshold_ReturnsTrue(){
+        // perRound 10 → rounds threshold = 10 * ScarcityT. Both outputs sit one
+        // below it. Null targets → the rounds threshold is used on its own.
+        SetGlobal(itemA, 10 * ScarcityT - 1);
+        SetGlobal(itemB, 10 * ScarcityT - 1);
+        Recipe r = MakeRecipe(outputs: new[] { IQ(itemA, 10), IQ(itemB, 10) });
+        Assert.That(r.AllOutputsScarce(null), Is.True);
+    }
+
+    [Test]
+    public void AllOutputsScarce_OneOutputAtThreshold_ReturnsFalse(){
+        // qty == threshold is NOT scarce (the check is `>=`) — a single such output
+        // sinks the whole bypass.
+        SetGlobal(itemA, 10 * ScarcityT - 1);  // scarce
+        SetGlobal(itemB, 10 * ScarcityT);      // exactly at threshold → not scarce
+        Recipe r = MakeRecipe(outputs: new[] { IQ(itemA, 10), IQ(itemB, 10) });
+        Assert.That(r.AllOutputsScarce(null), Is.False);
+    }
+
+    [Test]
+    public void AllOutputsScarce_LowTargetClampsThreshold(){
+        // Target 50 is well below the rounds threshold (100 * ScarcityT) → threshold
+        // clamps to 50. qty 60 is under the rounds threshold but at/above target,
+        // so the clamp makes it not scarce. Without the clamp it would read scarce.
+        SetGlobal(itemA, 60);
+        var targets = new Dictionary<int, int> { { itemA.id, 50 } };
+        Recipe r = MakeRecipe(outputs: new[] { IQ(itemA, 100) });
+        Assert.That(r.AllOutputsScarce(targets), Is.False);
+    }
+
+    [Test]
+    public void AllOutputsScarce_TargetZero_NeverScarce(){
+        // target 0 clamps the threshold to 0; qty ≥ 0 always holds → the bypass can
+        // never fire for a "produce none" item.
+        SetGlobal(itemA, 0);
+        var targets = new Dictionary<int, int> { { itemA.id, 0 } };
+        Recipe r = MakeRecipe(outputs: new[] { IQ(itemA, 10) });
+        Assert.That(r.AllOutputsScarce(targets), Is.False);
+    }
+
+    [Test]
+    public void AllOutputsScarce_EmptyOutputs_ReturnsTrue(){
+        // Vacuous truth — no output violates scarcity. Harmless: the storage-cap
+        // loop it gates is also a no-op for an outputless recipe.
+        Recipe r = MakeRecipe();
+        Assert.That(r.AllOutputsScarce(null), Is.True);
     }
 
     // ── Helpers ────────────────────────────────────────────────────────

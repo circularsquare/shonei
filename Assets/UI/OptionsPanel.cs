@@ -74,6 +74,7 @@ public class OptionsPanel : MonoBehaviour {
     // Layout sizes for the controls section. Tweak here, not at call sites.
     const float KeysColumnWidth = 84f;   // fits the widest combo: "shift" + "lmb" ≈ 50px, with headroom for chip padding
     const float RowHeight       = 18f;   // chip is 16; +2 vertical breathing room
+    const float RowTextHeight   = 14f;   // text-rect height for chip labels AND action text — both must match so their bottom-aligned baselines line up
     const int   ChipPadX        = 3;     // sliced 2px border + 1px inset around the label
     const float DividerHeight   = 2f;
     const float SectionGap      = 6f;
@@ -162,7 +163,9 @@ public class OptionsPanel : MonoBehaviour {
         tmp.color     = Color.black;
         tmp.fontSize  = 16;
         if (font != null) tmp.font = font;
-        tmp.alignment = TextAlignmentOptions.Left;
+        // Bottom-aligned, not Middle: Middle's (rectHeight - textHeight)/2 lands on a
+        // half-pixel and blurs the pixel font. Bottom pins the baseline to an integer.
+        tmp.alignment = TextAlignmentOptions.BottomLeft;
         tmp.enableWordWrapping = false;
         var le = go.AddComponent<LayoutElement>();
         le.preferredHeight = 16;
@@ -213,12 +216,15 @@ public class OptionsPanel : MonoBehaviour {
         actTmp.color     = Color.black;
         actTmp.fontSize  = 16;
         if (font != null) actTmp.font = font;
-        actTmp.alignment          = TextAlignmentOptions.Left;
+        // Bottom-aligned (see AddKeyChip) so the baseline is integer-aligned. The
+        // rect height matches the chip label's (RowTextHeight) and both rects are
+        // centred in the same RowHeight, so the action text and chip text share a baseline.
+        actTmp.alignment          = TextAlignmentOptions.BottomLeft;
         actTmp.enableWordWrapping = false;
         actTmp.overflowMode       = TextOverflowModes.Overflow;
         var actLe = actGo.AddComponent<LayoutElement>();
         actLe.flexibleWidth    = 1;
-        actLe.preferredHeight  = 16;
+        actLe.preferredHeight  = RowTextHeight;
     }
 
     static void AddKeyChip(Transform parent, string label, TMP_FontAsset font,
@@ -249,11 +255,13 @@ public class OptionsPanel : MonoBehaviour {
         tmp.color     = Color.black;
         tmp.fontSize  = 16;
         if (font != null) tmp.font = font;
-        tmp.alignment          = TextAlignmentOptions.Center;
+        // Bottom-centre, not Middle-centre: Middle's (rectHeight - textHeight)/2
+        // lands on a half-pixel and blurs the pixel font. Horizontal stays centred.
+        tmp.alignment          = TextAlignmentOptions.Bottom;
         tmp.enableWordWrapping = false;
         tmp.overflowMode       = TextOverflowModes.Overflow;
         var lblLe = lbl.AddComponent<LayoutElement>();
-        lblLe.preferredHeight = 14;
+        lblLe.preferredHeight = RowTextHeight;
     }
 
     void OnEnable() {

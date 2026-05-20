@@ -125,8 +125,7 @@
         "cost": 5,
         "unlocks": [
             { "type": "building", "target": "brewery" },
-            { "type": "recipe",   "target": "40" },
-            { "type": "recipe",   "target": "41" }
+            { "type": "recipe",   "target": "40" }
         ]
     },{
         "id": 15,

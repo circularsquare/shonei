@@ -137,14 +137,10 @@ public class AnimalController : MonoBehaviour{
 
     public void LoadAnimal(AnimalSaveData asd) {
         Animal animal = AddAnimal(asd.x, asd.y); // adds +1 to "none" job count
-        // Skip the snap-to-standable rescue when the animal was saved inside a building.
-        // Their (x,y) is the off-grid interior anchor (e.g. 1.5, 0.5); rounding to (2, 1)
-        // lands on a tile inside the building column, which is non-standable, and the
-        // rescue would fall the mouse out of the structure. Animal.Start re-SnapTos to
-        // the live interior anchor after resolving insideBuilding.
-        if (!asd.insideBuildingX.HasValue) {
-            SnapToStandableBelow(animal);         // fix position if saved on non-standable tile (e.g. stairs)
-        }
+        // Fix position if saved on a non-standable tile (e.g. stairs). Self-guards: a
+        // mouse saved inside a building sits on a non-standable interior tile, and
+        // SnapToStandableBelow skips the rescue for those (interiorBuilding != null).
+        SnapToStandableBelow(animal);
         animal.pendingSaveData = asd; // Animal.Start() (next frame) will apply name/stats/inv/job
 
         // Fix job counts now: move from "none" to saved job
@@ -168,7 +164,9 @@ public class AnimalController : MonoBehaviour{
         int ax = Mathf.RoundToInt(animal.x);
         int ay = Mathf.RoundToInt(animal.y);
         Tile t = World.instance.GetTileAt(ax, ay);
-        if (t != null && t.node.standable) return; // already on a valid tile
+        // Already on a valid tile, or legitimately inside a building's interior (those
+        // tiles are non-standable dirt but the mouse belongs there — don't rescue it).
+        if (t != null && (t.node.standable || t.interiorBuilding != null)) return;
 
         for (int checkY = ay - 1; checkY >= 0; checkY--) {
             Tile below = World.instance.GetTileAt(ax, checkY);
@@ -389,6 +387,9 @@ public class AnimalController : MonoBehaviour{
             return;
         }
         InfoPanel.instance.ShowInfo(new List<Animal>{ chosen });
+
+        // Jump the camera to the picked mouse once (no follow).
+        MouseController.instance?.CenterCameraOn(chosen.x, chosen.y);
     }
 
     public void OnClickJobAssignment(string jobstr, string buttontype){

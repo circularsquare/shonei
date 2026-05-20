@@ -64,6 +64,8 @@ Two scene-resident renderers subscribe to `OnEntry` and split categories per the
 
 TradingPanel subscribes to `OnEntry` in `Awake`, unsubscribes in `OnDestroy`. Renders **everything except `Category.Alert`** — i.e. `Info` (command success), `Chat` (server chat from other players), `Fill` (trade fills). The Alert filter lives in `HandleFeedEntry`. Entries go through the existing private `AddChat(text)` helper, which caps the visible list at 20 rows. No category-based styling — the rich-text tags in `entry.text` carry the color. The chatList rows persist for the lifetime of the panel (it only `SetActive(false)`s on close), so no history backfill is needed on re-open.
 
+Each row carries a `ChatRowFader` (`Assets/Components/ChatRowFader.cs`): the row stays fully opaque for 60s, then fades to transparent over 5s so stale messages stop cluttering the HUD. Rows are never destroyed by the fade — focusing the chat input snaps every row back to full opacity so the player can read the whole backlog; releasing focus resumes the age-based fade. Alpha is recomputed from the row's age each frame (correct even if the panel was closed mid-life) using `Time.unscaledTime`, matching AlertToast.
+
 ### AlertToast (transient overlay)
 
 `Assets/UI/AlertToast.cs`. Subscribes in `Start` (not Awake) per the Awake-order guidance above. Renders **`Category.Alert` only** — the eye-catching brief surface for errors and important notifications. Sits above ChatPanel in the bottom-left HUD.

@@ -447,8 +447,11 @@ public class Structure {
                 // sprite pivot this lands the rendered mouse aligned with the building's
                 // floor line, visually inside the silhouette.
                 Node n = new Node(worldX[i] + 0f, worldY[i]);
-                n.interiorOf = selfBuilding;
                 interiorNodes[i] = n;
+                // Tile-level back-ref — the authoritative "this tile is inside a
+                // building" marker that Animal.insideBuilding derives from.
+                Tile interiorTile = World.instance.GetTileAt(worldX[i], worldY[i]);
+                if (interiorTile != null) interiorTile.interiorBuilding = selfBuilding;
             }
             // Auto-edge horizontally-adjacent interior nodes only. Vertical access is
             // intentional: it requires an explicit ladder declaration (below), so authors
@@ -635,15 +638,17 @@ public class Structure {
         }
         // Tear down all interior waypoints. Edges to neighboring interior nodes and
         // to the door-approach tile node would otherwise dangle and pull A* into
-        // dead ends. Clearing interiorOf also unsticks Animal.insideBuilding via the
-        // Nav arrival hook on the next path step.
+        // dead ends. Clearing each tile's interiorBuilding back-ref makes mice on
+        // those tiles derive insideBuilding == null, so the fall integration evicts
+        // them naturally once the interior reverts to empty air.
         if (interiorNodes != null) {
             for (int i = 0; i < interiorNodes.Length; i++) {
                 Node n = interiorNodes[i];
                 if (n == null) continue;
                 foreach (Node m in n.neighbors) m.RemoveNeighbor(n);
                 n.neighbors.Clear();
-                n.interiorOf = null;
+                Tile t = World.instance.GetTileAt((int)n.wx, (int)n.wy);
+                if (t != null && t.interiorBuilding == this) t.interiorBuilding = null;
             }
             interiorNodes = null;
         }

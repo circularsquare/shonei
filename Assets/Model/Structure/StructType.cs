@@ -205,6 +205,23 @@ public class StructType {
     public int fuelCapacity {get; set;}    // max stack size in fen (JSON in liang, converted in OnDeserialized); supply triggers below half capacity
     public float fuelBurnRate {get; set;}  // liang/day consumed; LightSource converts to fen/s at runtime
 
+    // ── Processor ──────────────────────────────────────────────────────
+    // A passive timed converter (see Processor.cs). hasProcessor=true → Building creates a
+    // Processor component. Inputs/outputs are authored in liang like ncosts and resolved to
+    // fen in OnDeserialized. processDays is the base fermentation time at full rate;
+    // processTempMin/Ideal (optional, nullable) make the rate temperature-scaled.
+    public bool hasProcessor {get; set;}
+    public int processorTileX {get; set;}  // tile offset of the processor's inventory tile
+    public int processorTileY {get; set;}
+    public ItemNameQuantity[] nprocessorInputs {get; set;}   // raw JSON
+    public ItemNameQuantity[] nprocessorOutputs {get; set;}  // raw JSON
+    public ItemQuantity[] processorInputs;                   // resolved from nprocessorInputs
+    public ItemQuantity[] processorOutputs;                  // resolved from nprocessorOutputs
+    public float processDays {get; set;}                     // base duration at full (rate 1.0) speed
+    public float? processTempMin {get; set;}                 // null = constant rate (not temperature-scaled)
+    public float? processTempIdeal {get; set;}
+    public bool autoTap {get; set;}                          // schema stub — manual tap only for now
+
     // Furnishing slots: when set, Building creates a FurnishingSlots sub-component with one
     // slot inventory per name in `furnishingSlotNames`. Mice auto-haul matching items into
     // empty slots via WOM SupplyFurnishing orders; installed items grant happiness to residents.
@@ -334,7 +351,7 @@ public class StructType {
         if (storageStackSize > 0){ storageStackSize *= 100; } // convert liang → fen
         costs = new ItemQuantity[ncosts.Length];
         for (int i = 0; i < ncosts.Length; i++){
-            costs[i] = new ItemQuantity(ncosts[i].name, ItemStack.LiangToFen(ncosts[i].quantity));
+            costs[i] = new ItemQuantity(ncosts[i]);
         }
         if (njob != null){
             job = Db.jobByName[njob];
@@ -351,6 +368,17 @@ public class StructType {
                 fuelItem = Db.itemByName[fuelItemName];
             else
                 Debug.LogError($"StructType '{name}': hasFuelInv=true but fuelItemName '{fuelItemName}' not found in Db");
+        }
+        // Processor: resolve input/output recipes (liang → fen via the ItemQuantity ctor).
+        if (hasProcessor) {
+            int ni = nprocessorInputs?.Length ?? 0;
+            processorInputs = new ItemQuantity[ni];
+            for (int i = 0; i < ni; i++) processorInputs[i] = new ItemQuantity(nprocessorInputs[i]);
+            int no = nprocessorOutputs?.Length ?? 0;
+            processorOutputs = new ItemQuantity[no];
+            for (int i = 0; i < no; i++) processorOutputs[i] = new ItemQuantity(nprocessorOutputs[i]);
+            if (ni == 0 || no == 0)
+                Debug.LogError($"StructType '{name}': hasProcessor=true but nprocessorInputs/nprocessorOutputs is empty");
         }
         // Cache placement-tile solid requirement so StructPlacement / StructController don't rescan.
         if (tileRequirements != null) {

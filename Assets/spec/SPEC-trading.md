@@ -349,8 +349,12 @@ manages one item and maintains dynamic buy/sell prices based on internal stock.
 **Pricing:**
 ```
 sellPrice = clamp(defaultPrice × defaultStock / stock + minPrice, _, maxPrice)
-buyPrice  = sellPrice / 2
+buyPrice  = sellPrice / 4
 ```
+`buyPrice` is what the nation pays the player when buying the player's exports —
+the `/4` spread means a refined good's `defaultPrice` must clear ~4× the player's
+input cost before exporting it turns a profit. (See `shonei-server/CLAUDE.md`,
+which is authoritative for server mechanics.)
 
 **Stock dynamics:** `startFarming()` ticks every 10 s, adjusting stock toward
 `defaultStock`. Low stock → gains; excess stock → losses. Max gain/loss per tick

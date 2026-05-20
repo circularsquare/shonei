@@ -49,6 +49,7 @@ public class InventoryController : MonoBehaviour {
         instance = this;
         globalInventory = new GlobalInventory();
         discoveredItems = Db.itemsFlat.ToDictionary(i => i.id, i => false);
+        SeedStartDiscovered();
         itemDisplayGos = Db.itemsFlat.ToDictionary(i => i.id, i => default(GameObject));
         // Per-item default target seeded from Item.DefaultTargetFen. Books default to 1 liang
         // (one copy is plenty; scribes skip a book recipe once any exists). Byproducts like
@@ -129,6 +130,11 @@ public class InventoryController : MonoBehaviour {
         itemDisplayGo.SetActive(discoveredItems[item.id]);
 
         ItemDisplay display = itemDisplayGo.GetComponent<ItemDisplay>();
+        // Set item now rather than relying on ItemDisplay.Start(): Start() never runs while the GO
+        // is inactive (item undiscovered, or under a collapsed parent). A null item makes
+        // SetTargetDisplay no-op, stranding the prefab's placeholder target text ("a") until the
+        // row is first revealed AND a later tick repaints it.
+        display.item = item;
         display.SetDisplayMode(ItemDisplay.DisplayMode.Global);
 
         UpdateItemDisplay(item);
@@ -153,13 +159,16 @@ public class InventoryController : MonoBehaviour {
             if (itemDisplayGo != null && itemDisplayGo.activeSelf) itemDisplayGo.SetActive(false);
             return;
         }
-        if (itemDisplayGo == null){Debug.LogError("itemdisplaygo not found: " + item.name); return;}
+        // GO may legitimately be null pre-first-TickUpdate: Start seeds discoveredItems but
+        // AddItemDisplay is lazy. The first TickUpdate creates GOs and repaints, so we just
+        // skip silently here. Any persistent failure would surface at Instantiate time.
+        if (itemDisplayGo == null) return;
         itemDisplayGo.SetActive(IsVisibleInTree(item));
 
         ItemDisplay itemDisplayComp = itemDisplayGo.GetComponent<ItemDisplay>();
         if (itemDisplayComp.itemText != null) itemDisplayComp.itemText.text = item.name;
         if (itemDisplayComp.quantityText != null)
-            itemDisplayComp.quantityText.text = ItemStack.FormatQ(globalInventory.Quantity(item), item.discrete);
+            itemDisplayComp.quantityText.text = ItemStack.FormatQ(globalInventory.Quantity(item), item);
 
         itemDisplayComp.SetTargetDisplay(targets[item.id]);
 
@@ -289,6 +298,17 @@ public class InventoryController : MonoBehaviour {
         }
     }
 
+    // Items flagged `startDiscovered` in itemsDb (e.g. water) are revealed before any production
+    // or research. Walks the parent chain so ancestor group rows are activated too — without this
+    // a leaf would stay hidden behind an inactive parent. Called from Start and ResetState (world
+    // reset wipes discoveredItems before save data is applied, so we have to re-seed each time).
+    void SeedStartDiscovered() {
+        foreach (Item item in Db.itemsFlat) {
+            if (!item.startDiscovered) continue;
+            for (Item it = item; it != null; it = it.parent) discoveredItems[it.id] = true;
+        }
+    }
+
     // Called on world reset.
     public void ResetState() {
         selectedInventories.Clear();
@@ -297,6 +317,7 @@ public class InventoryController : MonoBehaviour {
             targets[key] = Db.items[key].itemClass == ItemClass.Book ? 100 : 10000;
         foreach (var key in discoveredItems.Keys.ToList())
             discoveredItems[key] = false;
+        SeedStartDiscovered();
         pendingGroupOpenOverrides = null;
         foreach (var kv in itemDisplayGos)
             kv.Value?.SetActive(false);

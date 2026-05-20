@@ -147,6 +147,10 @@ public class Tile {
     public Blueprint[] blueprints = new Blueprint[NumDepths];
     public Building building => structs[0] as Building; // alias for depth-0 Building (does NOT match Plant)
     public Plant plant => structs[0] as Plant;           // alias for depth-0 Plant
+    // Non-null when this tile is a hollow interior tile of a building with declared
+    // interiorTiles (burrow, doored housing). Set/cleared by Structure interior-node
+    // setup/teardown. Animal.insideBuilding is derived from this — don't cache it elsewhere.
+    public Building interiorBuilding;
     public Inventory inv; // this encapsulates all inventory types
     public ushort water; // 0–160 internal fixed-point (10 units = 1 display unit); 160 = fully filled tile
     public byte moisture; // 0–100 soil wetness percent. Only meaningful on SOLID tiles (dirt/stone) — air tiles stay 0. Plants above read moisture from the soil tile directly below them.
@@ -266,16 +270,13 @@ public class TileType {
         if (nproducts != null){
             products = new ItemQuantity[nproducts.Length];
             for (int i = 0; i < nproducts.Length; i++){
-                products[i] = new ItemQuantity(nproducts[i].name, ItemStack.LiangToFen(nproducts[i].quantity));
+                products[i] = new ItemQuantity(nproducts[i]);
             }
         }
         if (nExtractionProducts != null){
             extractionProducts = new ItemQuantity[nExtractionProducts.Length];
             for (int i = 0; i < nExtractionProducts.Length; i++){
-                var src = nExtractionProducts[i];
-                var iq = new ItemQuantity(src.name, ItemStack.LiangToFen(src.quantity));
-                iq.chance = src.chance;
-                extractionProducts[i] = iq;
+                extractionProducts[i] = new ItemQuantity(nExtractionProducts[i]); // chance carried by the constructor
             }
         }
     }

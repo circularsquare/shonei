@@ -178,7 +178,7 @@ public class ItemDisplay : MonoBehaviour {
     public void OnTargetEndEdit(string s) {
         if (displayMode == DisplayMode.Storage) return;
         if (item == null) return;
-        if (!ItemStack.TryParseQ(s, item.discrete, out int fen)) {
+        if (!ItemStack.TryParseQ(s, item, out int fen)) {
             RefreshAfterTargetChange();
             return;
         }
@@ -199,7 +199,7 @@ public class ItemDisplay : MonoBehaviour {
     public void SetTargetDisplay(int fenValue, bool force = false) {
         if (targetInput == null || item == null) return;
         if (!force && targetInput.isFocused) return;
-        targetInput.SetTextWithoutNotify(ItemStack.FormatQ(fenValue, item.discrete));
+        targetInput.SetTextWithoutNotify(ItemStack.FormatQ(fenValue, item));
     }
 
     private void RefreshAfterTargetChange() {

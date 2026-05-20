@@ -53,22 +53,10 @@ public class TooltipSystem : MonoBehaviour {
         bodyCsf.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
         bodyCsf.verticalFit   = ContentSizeFitter.FitMode.PreferredSize;
 
-        var panelCsf = panelGo.AddComponent<ContentSizeFitter>();
-        panelCsf.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+        // Panel sizing (ContentSizeFitter) is configured on the scene GameObject
+        // alongside the VerticalLayoutGroup — no need to add one here.
 
         panelGo.SetActive(false);
-    }
-
-    // Snap text rect heights to integers after ContentSizeFitter runs
-    void LateUpdate() {
-        SnapHeight(titleText);
-        SnapHeight(bodyText);
-    }
-
-    static void SnapHeight(TextMeshProUGUI tmp) {
-        if (tmp == null) return;
-        var r = tmp.rectTransform;
-        r.sizeDelta = new Vector2(r.sizeDelta.x, Mathf.Round(r.sizeDelta.y));
     }
 
     void Update() {

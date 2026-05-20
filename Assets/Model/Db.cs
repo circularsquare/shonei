@@ -41,15 +41,19 @@ public class Db : MonoBehaviour {
     // structTypes × itemsByFurnishingSlot at Db.LoadAll time. Drives the bar scale on the
     // GlobalHappinessPanel's furnishing row and contributes to happinessMaxScore.
     public static float maxFurnishingPerMouse;
+    // Largest furnishingCostFen across all furnishing leaf items. FurnishingSlots sizes every slot
+    // inventory to this so any furnishing — including a heavy discrete one (a stool) — fits as one
+    // whole unit. Computed in BuildFurnishingSlotRegistry.
+    public static int maxFurnishingCostFen;
 
     // Preferred display order for the happiness panel.
     // Food needs first, then decoration, then social, then leisure.
     // Needs not in this list are appended alphabetically at the end (future-proofing).
     private static readonly string[] happinessNeedsDisplayOrder = {
-        "wheat", "fruit", "soymilk", "dairy",  // food
+        "wheat", "rice", "fruit", "soymilk", "dairy",  // food
         "fountain",                    // decoration
         "social",                      // social
-        "fireplace", "bench", "reading", // leisure
+        "fireplace", "bench", "reading", "alcohol", // leisure
     };
 
     // Largest decorRadius across all structTypes. Computed at startup; used by Animal.ScanForNearbyDecorations.
@@ -140,6 +144,7 @@ public class Db : MonoBehaviour {
         BuildFurnishingSlotRegistry();
         BuildHappinessNeedRegistry();
         ValidateNoGroupOutputs();
+        ValidateDiscreteUnitsFit();
         LoadItemIcons();
         LoadNames();
         Debug.Log("db loaded");
@@ -150,6 +155,7 @@ public class Db : MonoBehaviour {
     // from their group parent (see AddItemToDb), so authors only tag the group.
     void BuildFurnishingSlotRegistry() {
         itemsByFurnishingSlot = new Dictionary<string, List<Item>>();
+        maxFurnishingCostFen = 0;
         foreach (Item item in itemsFlat) {
             if (item == null || item.IsGroup) continue; // only leaves can be installed
             if (string.IsNullOrEmpty(item.furnishingSlot)) continue;
@@ -158,6 +164,14 @@ public class Db : MonoBehaviour {
                 itemsByFurnishingSlot[item.furnishingSlot] = list;
             }
             list.Add(item);
+            // Validate the install cost holds at least one whole unit, and track the largest
+            // so FurnishingSlots can size every slot to fit any furnishing.
+            int costFen = item.furnishingCostFen;
+            if (costFen <= 0) {
+                string hint = item.discrete ? $" A discrete furnishing needs a cost of at least one unit ({item.unitWeight} liang)." : "";
+                Debug.LogError($"Db validation: furnishing '{item.name}' resolves to a {costFen}-fen install cost (furnishingCost {item.furnishingCost} liang) — it cannot be installed.{hint}");
+            }
+            if (costFen > maxFurnishingCostFen) maxFurnishingCostFen = costFen;
         }
     }
 
@@ -175,6 +189,7 @@ public class Db : MonoBehaviour {
         }
         happinessNeeds.Add("social");  // ChatTask — not data-driven
         happinessNeeds.Add("reading"); // ReadBookTask — not data-driven (no leisure building backs it)
+        happinessNeeds.Add("alcohol"); // DrinkTask — not data-driven (wine is consumed wherever stored)
 
         // Build sorted list using manual display order; unknown future needs fall through alphabetically.
         happinessNeedsSorted = new List<string>();
@@ -200,6 +215,7 @@ public class Db : MonoBehaviour {
             if (sum > maxFurnishingPerMouse) maxFurnishingPerMouse = sum;
         }
         happinessMaxScore = happinessNeeds.Count + 1 + 2 + Mathf.CeilToInt(maxFurnishingPerMouse); // +1 housing, +2 temp max, + furnishing ceiling
+        if (happinessNeeds.Contains("alcohol")) happinessMaxScore += 1; // the alcohol need scores +2 when satisfied, not +1
 
         maxDecoScanRadius = 0;
         foreach (StructType st in structTypes)
@@ -414,6 +430,25 @@ public class Db : MonoBehaviour {
         }
     }
 
+    // Warns if a discrete item's unit is too heavy to fit in even the largest storage stack.
+    // Such an item would be un-storable — every stack's EffectiveCapacity floors to 0 — yet
+    // CalculateWorkPossible would still let one un-storable unit get crafted onto the floor.
+    // A content-authoring sanity net for heavy discrete items (stools, statues).
+    void ValidateDiscreteUnitsFit(){
+        int maxStorageStack = 0;
+        foreach (StructType st in structTypes)
+            if (st != null && st.storageStackSize > maxStorageStack)
+                maxStorageStack = st.storageStackSize; // already in fen (StructType.OnDeserialized)
+        if (maxStorageStack == 0) return; // no storage buildings defined
+        foreach (Item item in itemsFlat){
+            if (item == null || !item.discrete) continue;
+            if (item.unitFen > maxStorageStack)
+                Debug.LogError($"Db validation: discrete item '{item.name}' has unitWeight {item.unitWeight} " +
+                    $"({item.unitFen} fen) — heavier than the largest storage stack ({maxStorageStack} fen). " +
+                    $"It will be un-storable.");
+        }
+    }
+
     // Loads a JSON file from Assets/Resources/. Use this instead of
     // File.ReadAllText(Application.dataPath + "/Resources/X.json") — that pattern
     // works in the Editor but breaks in built players, where Resources/ is baked
@@ -557,6 +592,7 @@ public class Db : MonoBehaviour {
                 child.parent = item;
                 if (child.decayRate == 0f) child.decayRate = item.decayRate;
                 if (!child.discrete) child.discrete = item.discrete;
+                if (child.unitWeight == 0f) child.unitWeight = item.unitWeight;
                 if (child.itemClass == ItemClass.Default) child.itemClass = item.itemClass;
                 // Furnishing fields cascade so authors can tag a single group (e.g. "cloth")
                 // and every leaf descendant becomes a valid furnishing without per-leaf JSON.
@@ -564,6 +600,7 @@ public class Db : MonoBehaviour {
                 if (child.furnishingHappiness == 0f)  child.furnishingHappiness = item.furnishingHappiness;
                 if (child.furnishingLifetimeDays == 0f) child.furnishingLifetimeDays = item.furnishingLifetimeDays;
                 if (child.furnishingSprite == null)   child.furnishingSprite = item.furnishingSprite;
+                if (child.furnishingCost == 0f)       child.furnishingCost = item.furnishingCost;
             }
         }
     }
@@ -619,11 +656,10 @@ public class Recipe {
         inputs = new ItemQuantity[ninputs.Length];
         outputs = new ItemQuantity[noutputs.Length];
         for (int i = 0; i < ninputs.Length; i++){
-            inputs[i] = new ItemQuantity(ninputs[i].name, ItemStack.LiangToFen(ninputs[i].quantity));
+            inputs[i] = new ItemQuantity(ninputs[i]);
         }
         for (int i = 0; i < noutputs.Length; i++){
-            outputs[i] = new ItemQuantity(noutputs[i].name, ItemStack.LiangToFen(noutputs[i].quantity));
-            outputs[i].chance = noutputs[i].chance;
+            outputs[i] = new ItemQuantity(noutputs[i]); // chance carried by the constructor
         }
     }
     public float Score(Dictionary<int, int> targets){ // only takes into account global quantity / target. nothing about recipe ratios.
@@ -673,6 +709,45 @@ public class Recipe {
             if (GlobalInventory.instance.Quantity(iq.item) < target) return false;
         }
         return anyTracked;
+    }
+
+    // ── Crafting batch sizing ──────────────────────────────────────────
+    // How many rounds' worth of an output must be missing from the global
+    // stockpile before a mouse may ignore the storage cap and batch-craft onto
+    // the workshop floor. See Animal.CalculateWorkPossible.
+    public const int ScarcityRoundsThreshold = 3;
+
+    // Caps `rounds` so a craft session doesn't overshoot the player's per-output
+    // target. Outputs already at/above their target are left alone — collateral
+    // overshoot is accepted because AllOutputsSatisfied would have gated the recipe
+    // out entirely if *every* output were satisfied. Ceiling division guarantees at
+    // least enough rounds to cross the target, bounding overshoot to one round's
+    // worth. Untracked outputs and a null targets dict impose no cap.
+    public int CapRoundsByTarget(int rounds, Dictionary<int, int> targets){
+        if (targets == null) return rounds;
+        foreach (ItemQuantity output in outputs){
+            if (!targets.TryGetValue(output.item.id, out int target)) continue;
+            int headroom = target - GlobalInventory.instance.Quantity(output.item);
+            if (headroom <= 0) continue;
+            int roundsToTarget = (headroom + output.quantity - 1) / output.quantity;
+            if (roundsToTarget < rounds) rounds = roundsToTarget;
+        }
+        return rounds;
+    }
+
+    // True when every output is scarce enough to justify a mouse ignoring the
+    // storage cap and batch-crafting onto the workshop floor: global quantity below
+    // both ScarcityRoundsThreshold rounds' worth AND the player-set target (so a
+    // low/zero target clamps the bypass and prevents a floor flood). A null targets
+    // dict uses the rounds threshold alone. Empty-output recipes are vacuously scarce.
+    public bool AllOutputsScarce(Dictionary<int, int> targets){
+        foreach (ItemQuantity output in outputs){
+            int threshold = ScarcityRoundsThreshold * output.quantity;
+            if (targets != null && targets.TryGetValue(output.item.id, out int target))
+                threshold = System.Math.Min(threshold, target);
+            if (GlobalInventory.instance.Quantity(output.item) >= threshold) return false;
+        }
+        return true;
     }
 }
 

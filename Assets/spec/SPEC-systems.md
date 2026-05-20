@@ -63,14 +63,14 @@ The mechanism that gets mice from outside a building to inside it. Doors are pur
 
 Buildings with `StructType.interiorTiles[]` register one off-grid `Node` per entry in their constructor (mirror of the workspot pattern, same load-invariant). Each interior node:
 - Is positioned at the tile's centre (`worldX[i], worldY[i]`) — same world coords a mouse standing on the exterior tile-on-top would land at.
-- Has `Node.interiorOf = this` (the owning `Building`). `Nav.MoveCore` reads this on every arrival and assigns `Animal.insideBuilding = arrivedNode.interiorOf`. Egress falls out naturally: the first exterior step on the way out clears the flag.
+- Marks its tile with `Tile.interiorBuilding = this` (the owning `Building`). `Animal.insideBuilding` is a derived property reading `TileHere()?.interiorBuilding` — never cached, so it can't go stale when the animal is displaced by a fall / snap / load. A mouse is "inside" exactly while it stands on an interior tile.
 - Is edged horizontally to interior-tile neighbours (Manhattan `|dx|=1, dy=0` adjacency only). Vertical access requires an explicit `ladders[]` entry — each ladder edges `(dx, dy)` up to `(dx, dy+1)`. Mice never climb through walls or ceilings unless an author declared it.
 
 For each `doors[]` entry the constructor edges the interior node at the door's tile to the *existing* approach-tile graph node (the tile just outside the door, computed from `side`: left/right/top/bottom). A door is one bidirectional edge — no separate door node in v1 — so the door is purely a connection point, not a stopover.
 
 Mirror handling lives entirely inside `Structure`: `dx` flips via `nx-1-dx`, `side: left ↔ right` swap, ladder dx flips, interior-tile dx flips. Callers read these fields raw.
 
-Cleanup in `Structure.Destroy`: every interior node has its neighbour edges removed and `interiorOf` cleared. Animals still pointing at the destroyed building have `insideBuilding`/`homeBuilding` nulled by `Building.Destroy` so future `FindHome` calls don't read a dangling ref; positional cleanup falls to the standard fall integration once the interior tiles return to empty air.
+Cleanup in `Structure.Destroy`: every interior node has its neighbour edges removed and its tile's `interiorBuilding` back-ref cleared — so `insideBuilding` self-corrects to null for any mouse left on those tiles. `Building.Destroy` nulls `homeBuilding` so future `FindHome` calls don't read a dangling ref; positional cleanup falls to the standard fall integration once the interior tiles return to empty air.
 
 ### Housing assignment (`Animal.homeBuilding` vs `homeTile`)
 
@@ -78,9 +78,9 @@ Cleanup in `Structure.Destroy`: every interior node has its neighbour edges remo
 
 `AtHome()` returns true when `insideBuilding == homeBuilding`. The legacy 1-tile-on-top path still works through a fallback that checks `TileHere() == homeBuilding.tile` for buildings with no `interiorNodes`. `HasHouse` checks `homeBuilding?.structType.isHousing` rather than any hardcoded structType name — adding a new housing tier is JSON-only.
 
-`FindHome` (Animal.cs) iterates `StructController.GetStructures()` to find any reachable `isHousing` building with an available reservation slot, ranking by A* path cost to the building's first interior node (or `workNode` for legacy). Save/load persists `(homeBuildingX, homeBuildingY)` and `(insideBuildingX, insideBuildingY)` so reload restores reservations and inside-renders without re-running FindHome.
+`FindHome` (Animal.cs) iterates `StructController.GetStructures()` to find any reachable `isHousing` building with an available reservation slot, ranking by A* path cost to the building's first interior node (or `workNode` for legacy). Save/load persists `(homeBuildingX, homeBuildingY)` so reload restores the home reservation without re-running FindHome; `insideBuilding` is derived from the animal's position (see §Door + interior waypoints) and needs no persistence.
 
-`EepTask` is door-agnostic: all residents path to `home.interiorNodes[0]` (or `home.workNode` for doorless legacy), no door-system knowledge. To keep multiple residents from piling onto a single texel, `EepObjective.Start` shifts the rendered position horizontally by `(animal.id % capacity) × 2 px` (1/16 world unit per pixel). **Stagger direction** is read from the interior layout: `sign(interiorNodes[1].wx - interiorNodes[0].wx)` so the offset always pushes toward another tile that's part of the building. Without this, mirrored buildings (e.g. burrow whose mirrored anchor is the rightmost world tile) would shift slot-1 sleepers past the rightmost interior tile into the wall. No persistent per-mouse slot reservation — collisions when two mice share `id % capacity` are accepted (they stack).
+`EepTask` is door-agnostic: each resident paths to its own id-indexed interior tile, `home.interiorNodes[id % interiorNodes.Length]` (or `home.workNode` for doorless legacy housing), with no door-system knowledge. interiorNodes are edged together, so A* walks the mouse the whole way onto its tile — through the door and up an interior ladder if needed — and `EepObjective` does no repositioning (no end-of-path snap). The id index is stable, so a mouse always returns to the same spot. No persistent per-mouse slot reservation — collisions when two residents share `id % interiorNodes.Length` are accepted (purely cosmetic).
 
 ### Transit (elevators)
 
@@ -208,7 +208,7 @@ JSON fields on StructType:
 
 - Items decay over time (Floor fastest; Animal/Market never; Equip at normal rate)
 - **Rain-soaked floor invs** decay at 2× their already-fast Floor rate. `WeatherSystem.OnHourElapsed` sweeps every tile while raining (rain only — gated on `isRaining && temperature ≥ snowThresholdC`); any tile carrying a Floor inv that is `World.IsExposedAbove` gets its `Inventory.wetUntil` refreshed to `World.timer + ticksInDay/4`. `Inventory.Decay` doubles its multiplier while `wetUntil > World.timer`. The wet timer doesn't dry early — once a pile has been soaked, it stays at 2× decay for the full quarter-day even if a roof goes up before then. `wetUntil` is persisted on `InventorySaveData`.
-- **Discrete items** (`Item.discrete = true`, e.g. tools): always stored/moved in whole-liang (100 fen) multiples; decay removes whole items only; display shows integer count. Adding a non-multiple-of-100 quantity logs a warning.
+- **Discrete items** (`Item.discrete = true`, e.g. tools, stools): stored/moved in whole-**unit** multiples. A unit is `Item.unitFen` fen — `unitWeight` liang (JSON-authored, default 1) × 100. Tools weigh 1 liang/unit (`unitFen` 100); a stool weighs 3 (`unitFen` 300), so a fixed-fen slot holds proportionally fewer — weight and bulk are deliberately one number. `ItemStack.EffectiveCapacity` floors a stack's raw `stackSize` down to a whole-unit multiple (trailing remainder is dead space); `AddItem` / `FreeSpace` / `HasSpaceForItem` all use it. Decay removes whole units only; display shows the unit count (`fen / unitFen`). Depositing a non-unit-multiple quantity logs a warning. Recipe/cost JSON authors discrete quantities as a **unit count**, not liang (see Fen/Liang below). `Db` warns at load if a discrete item's `unitFen` exceeds the largest storage stack (it would be un-storable).
 - `allowed` dict filters what item types a storage accepts (all allowed by default for other types)
 - `Reservable` (capacity-based) prevents multiple animals targeting same resource. Has two fields: `capacity` (hard max from JSON) and `effectiveCapacity` (player-adjustable; defaults to `capacity`); `Available()` gates on `effectiveCapacity`. **Not** created for workstation buildings — WOM Craft orders own their reservation directly.
 - `Produce()` adds to inventory and global inventory simultaneously; `MoveItemTo()` moves between inventories without touching global inventory
@@ -335,7 +335,7 @@ Plants advance through discrete growth stages, stored as `growthStage` on `Plant
 - `height = 1 + growthStage / 4`. Derived, not persisted — rebuilt on load by `Plant.RebuildExtensionTiles()`.
 - When a stage crossing triggers height increase, Plant claims the tile at `y + h` via `tile.structs[0] = this` and spawns a child `GameObject` + `SpriteRenderer` for rendering. Placement code (`StructPlacement.CanPlaceHere`, `StructController.Construct`) sees this and blocks new *depth-0* placements there. Other depths (shafts, roads, foreground decorations) are allowed to coexist with the plant — visual clipping inside the trunk is accepted as a trade-off for the freedom.
 - Rendering: the topmost occupied tile shows `g{stage % 4}`, every tile below shows `g4` (stalk continuation). Bamboo requires `g0..g4` in `Sprites/Plants/Split/bamboo/`.
-- Harvest yield scales linearly with `height` at harvest time. Harvest releases all extension tiles and resets `age = 0`, `growthStage = 0`.
+- Harvest yield scales linearly with `height` at harvest time. The harvest work order is gated on `Plant.IsDoneGrowing()` — a multi-tile plant is auto-harvested only once it reaches its full attainable height (max stage, or frozen-blocked at a band top), so the height-scaled yield is actually delivered rather than lost to an early stage-3 cut. Harvest releases all extension tiles and resets `age = 0`, `growthStage = 0`.
 - `Plant.Destroy()` releases all extension tiles.
 
 **`Mature()` shortcut** (worldgen): sets age + stage directly to max, calls `RebuildExtensionTiles()` which claims as many upper tiles as the geometry allows. Skips the moisture advancement cost (fresh soil isn't guaranteed wet yet) and silently tops-out below `maxHeight` if the world above the anchor is blocked.
@@ -355,6 +355,29 @@ When balancing a plant's `[moistureMin, moistureMax]` comfort window against `gr
 **Key takeaway**: an `mHi < 100` cap forfeits the entire "rain cap" phase as unhappy, which dominates the slowdown. As of 2026-04-28 every default plant sets `moistureMax = 100` for this reason; only `moistureMin` is varied to differentiate species. Trees `[10, 100]` come out ~0.7× speed; a `[20, 80]` plant ~0.32× speed.
 
 Caveats: steady-state only (first cycle on a fresh world is worse — `StartingMoisture = 50` and weather starts clear); temperature gate is independent and multiplies on top; the stage-crossing cost (`2 × moistureDrawPerHour`) is effectively free vs. the comfort gate as long as `mLo ≥ 2 × moistureDrawPerHour`.
+
+## Fermentation processors
+
+A `Processor` is an optional `Building` component (sibling to `Workstation` / `Reservoir`, in `Processor.cs`) — a **passive timed converter**. Created when `StructType.hasProcessor` is set. The brewery is the first user (rice + water + yeast → rice wine); the component is generic, so vinegar / soy-sauce / compost buildings can reuse it via JSON alone.
+
+It differs from the worker-driven `CraftTask` paradigm: no worker is present during the wait, inputs are consumed at load time, and progress advances on world ticks regardless of who is nearby.
+
+**Two internal inventories** (neither is the building's `storage` — the brewery has no `storage`):
+- `inputBuffer` — `InvType.Reservoir`, so it accepts mixed item classes together (rice/water/yeast), never decays, and is never a haul source.
+- `output` — `InvType.Storage` (liquid), so the finished goods are a normal haul source.
+
+**Lifecycle** (`Processor.State`): `Empty → Filling → Working → Ready → Tapped → Empty`.
+- `Empty` — a WOM `FillProcessor` order is open (`isActive`).
+- `Filling` — a cook is delivering inputs (`FillProcessorTask`); the fill order self-suppresses.
+- `Working` — inputs locked; `progress` accrues each tick via `Processor.Tick`, scaled by ambient temperature (`Rate()` — linear ramp between `processTempMin`/`processTempIdeal`, or constant 1.0 if unconfigured). On `progress ≥ processDays` → `Ready`.
+- `Ready` — a WOM `TapProcessor` order is open. `TapProcessorTask` → `Processor.Tap()` drains the inputs, produces the outputs, → `Tapped`.
+- `Tapped` — `output` holds the finished goods (haulable). `Tick` flips back to `Empty` once `output` is drained.
+
+**Ticking**: `StructController.TickUpdate()` calls `Processor.Tick` for every building with a processor, alongside furnishing decay (no dedicated controller — fewer reload-state footguns).
+
+**WOM**: `RegisterFillProcessor` / `RegisterTapProcessor` (priority 3, cook-gated) are registered from `Building.OnPlaced` and re-registered by `WorkOrderManager.ScanOrders` on load. `RemoveProcessorOrders` pairs with deconstruct. `Building.Destroy` drops both inventories' contents to the floor and destroys them.
+
+**Save/load**: `StructureSaveData.processorState` / `processorProgress` / `processorInputData` / `processorOutputData` round-trip the full state. State/progress restore directly (no re-fired transitions); `ScanOrders` re-registers orders and any haul-out for a tank restored mid-`Tapped`.
 
 ## Variable-shape structures
 
@@ -600,9 +623,9 @@ Beyond the universal cracked-material tint, specific building types have additio
 
 ## Unit System — Fen / Liang
 
-All item quantities are stored as **fen** (integers), where **100 fen = 1 liang**. Display uses `ItemStack.FormatQ(int fen, bool discrete = false)` — drops trailing zeros, shows no decimals for exact integers. Overload `FormatQ(ItemQuantity iq)` uses `iq.item.discrete` automatically.
+All item quantities are stored as **fen** (integers), where **100 fen = 1 liang**. Display uses `ItemStack.FormatQ(int fen, Item item = null)` — for a discrete item shows the whole-unit count (`fen / item.unitFen`); otherwise renders liang, dropping trailing zeros. Overload `FormatQ(ItemQuantity iq)` passes `iq.item` automatically.
 
-- **JSON data** is authored in liang (can be decimal, e.g. `0.5`). The field type is `float` (`ItemNameQuantity.quantity`).
-- **Conversion** to fen happens at all `ItemNameQuantity → ItemQuantity` sites (Db.cs, Structure.cs, Tile.cs, Plant.cs) via `ItemStack.LiangToFen(q)`. User-typed input uses `ItemStack.TryParseQ` instead (adds overflow/validation).
+- **JSON data** is authored in liang for normal items (can be decimal, e.g. `0.5`), but as a whole **unit count** for discrete items. The field type is `float` (`ItemNameQuantity.quantity`).
+- **Conversion** to fen for all authored `ItemNameQuantity` values goes through one chokepoint — the `ItemQuantity(ItemNameQuantity)` constructor (used by Db.cs, StructType.cs, Tile.cs, Plant.cs). It applies `LiangToFen` for normal items but `count × unitFen` for discrete items, so a recipe says `{ "stool": 1 }` for one stool. User-typed input uses `ItemStack.TryParseQ(string, Item)` — same discrete-vs-liang split, plus overflow/validation.
 - **Stack sizes**: animal inv = 5 × 1000 fen; floor/default = 1000 fen; storage = `storageStackSize * 100` (converted in `StructType.OnDeserialized`).
 - Old saves are **incompatible** (quantities were in the old unit). Fresh start required after this change.

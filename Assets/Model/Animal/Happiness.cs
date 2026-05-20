@@ -138,10 +138,12 @@ public class Happiness {
             temperatureScore = 2f - deviation / 5f;
         }
 
-        // Score: +1 per satisfied need + housing + temperature + per-item furnishing bonus
+        // Score: +1 per satisfied need + housing + temperature + per-item furnishing bonus.
+        // The "alcohol" need counts double — a satisfied tipple is worth more than a tidy bench.
         score = (house ? 1f : 0f) + temperatureScore + furnishingScore;
         foreach (var kv in satisfactions) {
-            if (kv.Value >= satisfiedThreshold) score += 1f;
+            if (kv.Value >= satisfiedThreshold)
+                score += kv.Key == "alcohol" ? 2f : 1f;
         }
     }
 

@@ -115,6 +115,9 @@ public class Building : Structure {
     // holds at most one furnishing item, decays on a fixed lifetime timer, and grants happiness
     // to residents while installed. See FurnishingSlots.cs.
     public FurnishingSlots furnishingSlots { get; private set; }
+    // Non-null only for buildings with a passive timed converter. Conditionally created
+    // from structType.hasProcessor. See Processor.cs.
+    public Processor processor { get; private set; }
     // Non-null only for buildings whose StructType declares powerBoost > 1. Created in
     // OnPlaced so registration order (after WOM orders) is deterministic. Subclasses that
     // implement PowerSystem.IPowerConsumer directly (custom port layouts) should leave
@@ -162,6 +165,13 @@ public class Building : Structure {
             // FurnishingVisuals.Init can read parentSortingOrder normally.
             var fv = go.AddComponent<FurnishingVisuals>();
             fv.Init(this);
+        }
+
+        if (st.hasProcessor) {
+            Tile pTile = World.instance.GetTileAt(
+                x + (mirrored ? (st.nx - 1 - st.processorTileX) : st.processorTileX),
+                y + st.processorTileY);
+            processor = new Processor(st, pTile.x, pTile.y, sr.sortingOrder);
         }
     }
 
@@ -298,15 +308,16 @@ public class Building : Structure {
         // themselves are torn down by Structure.Destroy (base call below); once gone,
         // an animal standing on a now-orphaned interior node sits on a non-standable
         // tile and UpdateMovement's fall integration catches them naturally — no need
-        // for an explicit eviction-snap here. We just clear the cached references so
-        // subsequent FindHome / task picks don't hit a stale Building.
+        // for an explicit eviction-snap here. insideBuilding is derived from the tile's
+        // interiorBuilding back-ref (cleared by that same teardown), so it self-corrects;
+        // we only clear the cached home reference so FindHome / task picks don't hit a
+        // stale Building.
         if (!WorldController.isClearing) {
             AnimalController ac = AnimalController.instance;
             if (ac != null) {
                 for (int i = 0; i < ac.na; i++) {
                     Animal a = ac.animals[i];
                     if (a == null) continue;
-                    if (a.insideBuilding == this) a.insideBuilding = null;
                     if (a.homeBuilding == this) {
                         a.homeBuilding = null;
                         a.homeTile = null;
@@ -344,6 +355,12 @@ public class Building : Structure {
             WorkOrderManager.instance?.RemoveFurnishingSupplyOrders(this);
             furnishingSlots.Destroy();
             furnishingSlots = null;
+        }
+        if (processor != null) {
+            WorkOrderManager.instance?.RemoveProcessorOrders(this);
+            if (!WorldController.isClearing)
+                processor.DropToFloor(tile);
+            processor.Destroy();
         }
         base.Destroy();
     }

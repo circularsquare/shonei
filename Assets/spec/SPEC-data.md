@@ -2,6 +2,8 @@
 
 All game content is defined in JSON and loaded at startup via `Db.cs` using Newtonsoft.Json. String references (e.g., `"wood"`) are resolved to object references in `[OnDeserialized]` callbacks.
 
+> **Adding new content?** This doc is the schema reference. For the authoring workflow and common footguns (the `njob` operator-vs-logistics mix-up, group-vs-leaf items, etc.), read the corresponding section in [SPEC-checklists.md](SPEC-checklists.md) first.
+
 Lookups: `itemByName`, `jobByName`, `structTypeByName`, `plantTypeByName`, `tileTypeByName`
 
 ## `buildingsDb.json` — StructTypes
@@ -52,8 +54,8 @@ Fields:
 | `isDecoration` | bool? | nearby animals gain passive happiness |
 | `decorationNeed` | string? | which happiness satisfaction this decoration targets (e.g. "fountain"); required when `isDecoration` is true |
 | `decorRadius` | int? | Chebyshev radius for decoration effect |
-| `isLeisure` | bool? | mice actively visit during leisure time (e.g. fireplace) |
-| `leisureNeed` | string? | which happiness satisfaction this building targets (e.g. "fireplace"); required when `isLeisure` is true |
+| `isLeisure` | bool? | mice actively visit during leisure time (e.g. fireplace, brewery). May be combined with `isWorkstation` on the same building — the workstation `res` and leisure `seatRes[]` reservation systems are independent. The `brewery` is the first such dual-purpose building: a cook crafts at the work tile while a drinker stands at the keg (storage) tile. When combining, place the leisure seat on a different `nworkTiles` entry than the work tile so the two roles don't physically collide. |
+| `leisureNeed` | string? | which happiness satisfaction this building targets (e.g. "fireplace", brewery → "alcohol"); required when `isLeisure` is true |
 | `leisureGrant` | float? | multiplier on `Happiness.activityGrant` when `NoteLeisure` fires (default `1.0`). Lower values for cheap/always-on buildings (e.g. bench = `0.5`) so they don't fully substitute for premium leisure. Warmth buff on fireplace is NOT scaled. |
 | `leisurePose` | string? | body pose an animal strikes while seated at this building (e.g. `"sit"`). Read by `LeisureObjective.PoseOverride` and mapped to an Animator int by `AnimationController.PoseToInt`. null/missing = default state-driven animation. See SPEC-rendering.md §Animation states & pose overrides. |
 | `workSpotX` | float? | optional fractional x-offset (anchor-relative, in tile units) for an off-grid worker pose. When both `workSpotX` and `workSpotY` are set, `Structure` registers a Graph waypoint Node at that position and edges it to the nearest bottom-row tile-node; `Structure.workNode` then targets the waypoint instead of `workTile.node`. Used by the wheel runner to stand centred between the 2×2 footprint columns (`0.5`, `0.25`). null = use integer `workTile` (today's behaviour). Mirror formula `nx-1-x` is reused — works identically for floats. See SPEC-systems.md §Workspot waypoints. |
@@ -63,6 +65,13 @@ Fields:
 | `fuelItemName` | string? | item consumed by reservoir (group or leaf) |
 | `fuelCapacity` | float? | max fuel in liang |
 | `fuelBurnRate` | float? | consumption rate in liang/day |
+| `hasProcessor` | bool? | building has a `Processor` component — a passive timed converter (see SPEC-systems.md §Fermentation processors). The brewery is the first user. |
+| `processorTileX`, `processorTileY` | int? | tile offset of the processor's inventory tile within the footprint |
+| `nprocessorInputs` | `[{name, quantity}]` | the load recipe (authored in liang, resolved to fen) — fermented into `nprocessorOutputs` |
+| `nprocessorOutputs` | `[{name, quantity}]` | what one batch yields |
+| `processDays` | float? | base fermentation duration in in-game days at full (temperature rate 1.0) speed |
+| `processTempMin`, `processTempIdeal` | float? | optional temperature ramp: rate is 0 at/below `processTempMin`, 1.0 at/above `processTempIdeal`, linear between. Omit both → constant full rate. |
+| `autoTap` | bool? | schema stub — reserved for processors that yield output without a manual tap. Not yet implemented. |
 | `noMaintenance` | bool? | opts this StructType out of the maintenance / condition decay system. Set to `true` on nav-critical types (platform, stairs, ladder) so a neglected world doesn't cut mice off from parts of the map. Plants and cost-free structures are already auto-exempt — see SPEC-systems.md §Maintenance System. |
 | `placementMethod` | string? | When `"twoClick"`, the StructType is placed by clicking TWO tiles (the two endpoint posts of a rope bridge). First click stashes the post; second click commits a single blueprint carrying both endpoints. Defaults to single-click placement. See SPEC-systems.md §Rope bridges. |
 | `minDx`, `maxDx` | int? | Horizontal-delta bounds for two-click placement. Bridge requires `minDx ≤ |xA - xB| ≤ maxDx`. Defaults: 3 / 20. |
@@ -70,7 +79,7 @@ Fields:
 | `sagFraction` | float? | Catenary sag amount as a fraction of `|Δx|`. Higher = more droop. Default 0.15. Drawn from horizontal delta only (not euclidean length) so steep bridges don't sag below their lower endpoint. |
 | `shapes` | `[{nx, ny, standableOffsets?}]?` | optional list of variable-shape footprint variants. When present, the player cycles between them with Q/E during build placement; the chosen shape's `nx`/`ny` override the StructType's base footprint on the placed structure & blueprint. `shapes[0]` is the "authored" baseline — `ncosts` are sized for it, and other shapes scale linearly with tile count. v1 supports vertical extension only (`nx=1, ny>=1`). Optional `standableOffsets: [{dx, dy}, …]` per shape declares walkable tiles inside the footprint that the default solidTop / multi-tile-body rule wouldn't expose — read by `Structure.HasInternalFloorAt` (mirroring applied at lookup; author offsets un-mirrored). Lets non-subclassed multi-tile buildings publish partial-top patterns from JSON. See SPEC-systems.md §Variable-shape structures. |
 | `isHousing` | bool? | canonical "this building is a place mice live." Replaces the legacy `structType.name == "house"` check that `FindHome` / `AtHome` / `HasHouse` / `TotalHousingCapacity` / InfoPanel occupants all read. Adding a new housing tier is JSON-only — set this flag and the system picks it up. See SPEC-systems.md §Housing assignment. |
-| `interiorTiles` | `[{dx, dy}]?` | footprint tiles that should have *interior* walking space. Each entry causes `Structure` to register an off-grid `Node` inside that tile (mirror-aware via `nx-1-dx`), with `node.interiorOf` back-pointing at the building so `Nav` can update `Animal.insideBuilding` on arrival. Interior nodes auto-edge horizontally to neighbours (Manhattan `\|dx\|=1, dy=0`); vertical access requires `ladders[]`. Used by housing (shack, house, burrow) and any future "you can enter this building" type. See SPEC-systems.md §Door + interior waypoints. |
+| `interiorTiles` | `[{dx, dy}]?` | footprint tiles that should have *interior* walking space. Each entry causes `Structure` to register an off-grid `Node` inside that tile (mirror-aware via `nx-1-dx`) and mark the tile with `Tile.interiorBuilding` back-pointing at the building, so `Animal.insideBuilding` derives correctly while a mouse stands there. Interior nodes auto-edge horizontally to neighbours (Manhattan `\|dx\|=1, dy=0`); vertical access requires `ladders[]`. Used by housing (shack, house, burrow) and any future "you can enter this building" type. See SPEC-systems.md §Door + interior waypoints. |
 | `doors` | `[{dx, dy, side}]?` | door declarations. `(dx, dy)` is the footprint tile the door sits in (must also appear in `interiorTiles`); `side` is `"left"` / `"right"` / `"top"` / `"bottom"` and selects the *approach tile* — the existing graph node just outside the door on that side. Each door becomes a single bidirectional graph edge between the interior node and the approach tile's node. Mirror handling: `dx` flips, `left ↔ right` swap; top/bottom unaffected. Multiple doors are allowed (e.g. burrow with side + roof). |
 | `ladders` | `[{dx, dy}]?` | explicit vertical edges between interior nodes. Each entry connects the interior node at `(dx, dy)` to `(dx, dy+1)`. Required because horizontal-adjacent edging is automatic but vertical isn't — authors choose where mice climb (e.g. "ladder on the left of a 2×2 house") instead of mice climbing through floors. Multiple ladders allowed for taller stacks or multiple climb points. Mirror-aware (`nx-1-dx`). |
 

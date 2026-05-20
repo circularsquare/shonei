@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../../.claude/projects/c--Users-anita-projects-shonei"
+		}
+	],
+	"settings": {
+		"dotnet.preferCSharpExtension": true,
+		"dotnet.defaultSolution": "shonei.sln"
+	}
+}

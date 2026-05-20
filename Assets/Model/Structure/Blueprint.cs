@@ -711,7 +711,7 @@ public class Blueprint {
         string progress = "";
         if (state != BlueprintState.Deconstructing) {
             for (int i = 0; i < costs.Length; i++) {
-                progress += costs[i].item.name + " " + ItemStack.FormatQ(inv.Quantity(costs[i].item), costs[i].item.discrete) + "/" + ItemStack.FormatQ(costs[i]);
+                progress += costs[i].item.name + " " + ItemStack.FormatQ(inv.Quantity(costs[i].item), costs[i].item) + "/" + ItemStack.FormatQ(costs[i]);
             }
         }
         if (state == BlueprintState.Constructing || state == BlueprintState.Deconstructing){
