@@ -39,6 +39,7 @@ All messages use an envelope wrapper:
 |---|---|---|
 | `order` | Place a buy or sell order | `item`, `side` ("b"/"s"), `price`, `quantity` |
 | `market_query` | Request the current order book for an item | `item` |
+| `price_history_query` | Request downsampled price history for an item | `item`, `rangeSec`, `bucketSec` |
 | `chat` | Send a chat message to all players | `text` |
 
 `from` is always injected server-side from the connection name.
@@ -51,6 +52,7 @@ All messages use an envelope wrapper:
 | `fill` | All clients | Trade executed | `buyer`, `seller`, `item`, `price`, `quantity` |
 | `order` | All clients | Order placement broadcast | `from`, `item`, `side`, `price`, `quantity` |
 | `chat` | All clients | Chat message | `from`, `text` |
+| `price_history_response` | Requester only | Downsampled price history | `item`, `rangeSec`, `bucketSec`, `startSec`, `endSec`, `samples[]` |
 
 `buys[]` is sorted highest price first (best bid at index 0).
 `sells[]` is sorted lowest price first (best ask at index 0).
@@ -69,6 +71,71 @@ Continuous double auction, price-time priority:
 5. All fills broadcast to all clients.
 
 Insertion maintains sorted order via binary search.
+
+## Price History & Graph
+
+The server logs a bid/ask snapshot of every order book on a fixed interval so
+clients can plot price over time in the trading panel.
+
+### Server-side logging (`pricelog.go`)
+
+- `startPriceLogging` runs a ticker goroutine (modeled on
+  `DynamicTrader.startFarming`). It snapshots once immediately on startup, then
+  every `PriceLogInterval` — default `1 min`; bump to `5 min` for long test
+  sessions. Single named const. After the startup snapshot it sleeps to the
+  next `PriceLogInterval` wall-clock boundary before starting the ticker, so
+  samples land near :00 of each minute regardless of server start time (and
+  stay aligned across restarts).
+- Each tick records a `PriceSample{ t, bid, ask }` per item: `t` = unix
+  seconds, `bid`/`ask` = best bid/ask price in fen, `0` when no order rests on
+  that side.
+- History is an in-memory per-item ring buffer capped at `PriceLogMaxSamples`
+  (10080 — 7 days at 1/min, so the week view has data). One minutely stream;
+  the coarser views are downsampled from it per query, not logged separately.
+- **Persisted to disk** (`pricelog.json`, gitignored): the whole store is
+  rewritten atomically (temp file + rename) after every tick and reloaded on
+  startup, so history survives a server restart. Because samples carry
+  wall-clock timestamps, server downtime leaves a real time gap in the data
+  rather than corrupting it.
+- **Downsampled per query.** `price_history_query {item, rangeSec, bucketSec}` →
+  the server takes the window `[now-rangeSec, now]`, buckets samples by
+  `floor(t / bucketSec)`, keeps the **first** sample of each non-empty bucket
+  (`t` snapped to the bucket start), and replies `price_history_response
+  {item, rangeSec, bucketSec, startSec, endSec, samples[]}`. Empty buckets are
+  simply absent; `samples` is always a non-nil array. `downsample()` is a pure
+  function in `pricelog.go`.
+
+### Client-side graph (`PriceGraph`, `PriceGraphPanel`)
+
+- `PriceGraph` (`Assets/Components/`) draws up to three polylines into a
+  `Texture2D` shown through a `RawImage`: the **mid** price (always shown) plus
+  optional **bid** / **ask** lines. (A custom `Graphic` / `VertexHelper` mesh
+  was tried first but would not render as a runtime-added component; the
+  texture path is robust and suits the pixel-art look — point filtering keeps
+  it crisp.)
+- **Mid-price rule** (`PriceGraph.Mid` — the single tunable spot): both sides →
+  `(bid+ask)/2`; bid only → `2×bid`; ask only → `½ ask`; neither → no point.
+- **Time X axis + range views.** Three range buttons select the window —
+  Hour (3600-s span / 60-s buckets), Day (86400 / 600), Week (604800 / 3600).
+  The X axis is real time over `[startSec, endSec]`; each sample sits at its
+  timestamp. Two samples connect only when within ~1.5 buckets — a wider gap
+  (server downtime, a missing bucket) renders blank. The final segment into the
+  live tip is exempt from the gap test (it is continuous with "now"). A side
+  with no order also breaks that series' line. The Y axis starts at 0.
+- **Axes.** Thin L-shaped X/Y axis lines are drawn along the plot's bottom and
+  left edges (in the texture); the plot data is inset to sit inside them. Three
+  X-axis labels (scene `TextMeshProUGUI` objects driven by `PriceGraphPanel`)
+  show relative times — full span back / halfway / `now`.
+- `PriceGraphPanel` (`Assets/UI/`) is a thin controller on the scene-placed
+  `PriceGraphContainer` (inspector ref `priceGraphPanel` on `TradingPanel`). Its
+  UI — wood-frame background, the graph, the Bid/Ask series toggles, the
+  Hour/Day/Week range buttons, the corner labels — is authored as scene
+  GameObjects wired into the controller via `[SerializeField]`. It owns the
+  selected range; `TradingPanel` reads `RangeSec`/`BucketSec` when it queries.
+- `TradingPanel` queries history at the current range in `OnClickQuery` and on a
+  `PriceHistoryPollSeconds` (25 s) poll; a range-button click calls
+  `RequeryHistory()` for an immediate refresh. Responses for a no-longer-viewed
+  item *or* a no-longer-selected range are ignored.
 
 ## Unity Client — TradingClient.cs
 
@@ -359,6 +426,15 @@ which is authoritative for server mechanics.)
 **Stock dynamics:** `startFarming()` ticks every 10 s, adjusting stock toward
 `defaultStock`. Low stock → gains; excess stock → losses. Max gain/loss per tick
 configurable per trader.
+
+**Stock persistence:** because price is derived purely from stock, the server
+persists every trader's current `stock` to `traderstock.json` (gitignored) on
+the price-logging cadence (1 min — `saveTraderStock` rides the same ticker as
+`logSnapshot`). On startup `initDynamicTraders` loads it: a saved `stock` for a
+matching `name`+`item` overrides the `traders.json` value, so a restart resumes
+prices where they left off. `traders.json` `stock` is only the cold-start
+baseline (no save file, parse error, or a trader newly added to config). Only
+`stock` is restored — all pricing config stays authored in `traders.json`.
 
 **Order refresh:** `refreshOrders()` calls `cancelOrdersForItem(name, item)` (scoped
 to this trader's item only — important when a nation has multiple traders) then

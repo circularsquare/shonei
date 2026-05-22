@@ -2,8 +2,9 @@ using NUnit.Framework;
 
 // EditMode tests for Eeping — per-animal sleep/fatigue state. Pure C#: no
 // Unity singletons or Animal reference required. Covers ShouldSleep across
-// the day/night threshold split, Eep recovery (atHome vs outside), Update
-// depletion, the zero-floor clamp, and Efficiency at the threshold boundary.
+// the day/night threshold split, Eep recovery (atHome vs outside) and its
+// max clamp, Update depletion and its zero-floor clamp, and Efficiency at
+// the threshold boundary.
 //
 // Note: tireRate / eepRate / outsideEepRate are STATIC fields. Tests that
 // mutate them must restore the original value in [TearDown] so they don't
@@ -99,14 +100,14 @@ public class EepingTests {
     }
 
     [Test]
-    public void Eep_DoesNotClampAboveMax(){
-        // Surprising: Eep() lets eep exceed maxEep. ShouldSleep still works
-        // (it just becomes "false" forever), but this is worth pinning so we
-        // notice if a clamp is added or required later.
+    public void Eep_ClampsAtMax(){
+        // Eep() clamps at maxEep. Recovery is ticked wall-clock (Animal.HandleNeeds) while
+        // the wake-up check is energy-gated (HandleEeping); a low-efficiency sleeper's
+        // recovery can outrun the wake check, so without the clamp eep would drift past cap.
         Eeping e = new Eeping();
         e.eep = 99f;
-        e.Eep(t: 10f, atHome: true); // +20 → 119
-        Assert.That(e.eep, Is.GreaterThan(e.maxEep));
+        e.Eep(t: 10f, atHome: true); // +20, clamped → 100
+        Assert.That(e.eep, Is.EqualTo(e.maxEep).Within(0.0001f));
     }
 
     // ── Update (fatigue) ───────────────────────────────────────────────

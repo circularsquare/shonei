@@ -43,7 +43,7 @@ using Newtonsoft.Json;
 //   [x] Per-column original surface heights (worldgen ground line, persisted so decoration depth gates survive column mining)
 //   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, furnishingInvData + furnishingRemainingDays, processor state/progress/inputData/outputData, mirrored, rotation, shapeIndex, disabled, plantHarvestFlagged, quarry capturedTileType, flywheel charge, elevator currentY + history buffers, bridge-post partnerX/Y)
 //   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored, rotation, shapeIndex, disabled, two-click x2/y2)
-//   [x] Animals (position, job, energy, food, happiness, decoration happiness, socialization, fireplace warmth, inv, foodSlotInv, toolSlotInv, clothingSlotInv, bookSlotInv)
+//   [x] Animals (position, job, energy, food, starvation countdown, happiness, decoration happiness, socialization, fireplace warmth, inv, foodSlotInv, toolSlotInv, clothingSlotInv, bookSlotInv)
 //   [x] Mid-transit merchant task descriptor (travelTaskType + iq + storage tile + leg)
 //   [x] Research (progress, unlockedIds, studiedIds, unlockTimestamps, unlockCounter)
 //   [x] Disabled recipe ids
@@ -397,6 +397,7 @@ public class SaveSystem : MonoBehaviour {
             jobName            = a.job.name,
             energy             = a.energy,
             food               = a.eating.food,
+            starvingTicks      = a.eating.starvingTicks,
             eep                = a.eeping.eep,
             satisfactions        = new Dictionary<string, float>(a.happiness.satisfactions),
             warmth               = a.happiness.warmth,

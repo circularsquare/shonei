@@ -212,6 +212,7 @@ public class AnimalSaveData {
     public string jobName;
     public float energy;
     public float food;
+    public int   starvingTicks;   // consecutive ticks at zero food; 0 on old saves (not starving)
     public float eep;
     public Dictionary<string, float> satisfactions;
     public float warmth;

@@ -62,8 +62,8 @@
         "harvestTime": 6.0,
         "njob": "farmer",
         "capacity": 1,
-        "tempMin": 15, "tempMax": 35,
-        "moistureMin": 80, "moistureMax": 100
+        "tempMin": 12, "tempMax": 35,
+        "moistureMin": 60, "moistureMax": 100
     },{
         "id": 560,
         "name": "soybean",

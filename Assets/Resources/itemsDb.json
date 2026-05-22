@@ -205,6 +205,7 @@
         "name": "yeast",
         "decayRate": 0.0,
         "discrete": true,
+        "defaultTarget": 10,
         "children": null
     },{
         "id": 246,

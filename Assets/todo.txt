@@ -20,23 +20,21 @@ CONTENT
 - thermometer/glass 
     - sand
 - house furnishing
-    - empty frame house
     - furniture system (house script?)
         - cloth 
-        - wood furniture
         - glass
-- handle stools better? so that they take up more than 1 liang of space?
 
 - upsizing
-    - houses 
     - workshops
+
+- lots of herbs (see cool plants plan)
 
 VISUALS
 - lighting 
     - improve undergroundwall sprite 
     - procedurally generate rocks with normalmaps?
 - wind sway on tarp?
-- change tree wind swaying?
+- update all plants to have blob swaying
 
 MOUSE AI
 - ponder inventory management
@@ -60,9 +58,6 @@ CODE CLEANUP
 BUGS
 
 SHORT TERM
-- test furnishings of house and burrow
-- rice stuf
 
-- liquid rendering
-- yeast 10 cap defualt 
-- refactor processor recipe into recipes?
+price graph 
+have market save stock every minute and load from save

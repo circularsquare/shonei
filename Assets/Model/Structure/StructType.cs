@@ -207,20 +207,14 @@ public class StructType {
 
     // ── Processor ──────────────────────────────────────────────────────
     // A passive timed converter (see Processor.cs). hasProcessor=true → Building creates a
-    // Processor component. Inputs/outputs are authored in liang like ncosts and resolved to
-    // fen in OnDeserialized. processDays is the base fermentation time at full rate;
-    // processTempMin/Ideal (optional, nullable) make the rate temperature-scaled.
+    // Processor component. The conversion itself — inputs, outputs, duration, temperature
+    // ramp, the Working-state liquid tint — is data-driven from processorRecipesDb.json,
+    // linked to this building by name (see ProcessorRecipe in Db.cs). The only processor
+    // data kept here is processorTileX/Y, because that's footprint geometry: where in the
+    // building the processor's inventory tile sits, not part of the recipe.
     public bool hasProcessor {get; set;}
     public int processorTileX {get; set;}  // tile offset of the processor's inventory tile
     public int processorTileY {get; set;}
-    public ItemNameQuantity[] nprocessorInputs {get; set;}   // raw JSON
-    public ItemNameQuantity[] nprocessorOutputs {get; set;}  // raw JSON
-    public ItemQuantity[] processorInputs;                   // resolved from nprocessorInputs
-    public ItemQuantity[] processorOutputs;                  // resolved from nprocessorOutputs
-    public float processDays {get; set;}                     // base duration at full (rate 1.0) speed
-    public float? processTempMin {get; set;}                 // null = constant rate (not temperature-scaled)
-    public float? processTempIdeal {get; set;}
-    public bool autoTap {get; set;}                          // schema stub — manual tap only for now
 
     // Furnishing slots: when set, Building creates a FurnishingSlots sub-component with one
     // slot inventory per name in `furnishingSlotNames`. Mice auto-haul matching items into
@@ -368,17 +362,6 @@ public class StructType {
                 fuelItem = Db.itemByName[fuelItemName];
             else
                 Debug.LogError($"StructType '{name}': hasFuelInv=true but fuelItemName '{fuelItemName}' not found in Db");
-        }
-        // Processor: resolve input/output recipes (liang → fen via the ItemQuantity ctor).
-        if (hasProcessor) {
-            int ni = nprocessorInputs?.Length ?? 0;
-            processorInputs = new ItemQuantity[ni];
-            for (int i = 0; i < ni; i++) processorInputs[i] = new ItemQuantity(nprocessorInputs[i]);
-            int no = nprocessorOutputs?.Length ?? 0;
-            processorOutputs = new ItemQuantity[no];
-            for (int i = 0; i < no; i++) processorOutputs[i] = new ItemQuantity(nprocessorOutputs[i]);
-            if (ni == 0 || no == 0)
-                Debug.LogError($"StructType '{name}': hasProcessor=true but nprocessorInputs/nprocessorOutputs is empty");
         }
         // Cache placement-tile solid requirement so StructPlacement / StructController don't rescan.
         if (tileRequirements != null) {

@@ -1,8 +1,10 @@
 using NUnit.Framework;
 
 // EditMode tests for Eating — per-animal hunger state. Pure C#: no Unity
-// singletons, no Animal reference required. Covers Eat, Update, SlowUpdate,
-// Fullness/Hungry/Efficiency, and the timeSinceLastAte/AteRecently bookkeeping.
+// singletons, no Animal reference required (World.ticksInDay is a plain static
+// field, not the singleton). Covers Eat, Update, SlowUpdate, Fullness/Hungry/
+// Efficiency, the timeSinceLastAte/AteRecently bookkeeping, and the starvation
+// countdown (starvingTicks / StarvedToDeath).
 //
 // ── Deferred to integration tests ────────────────────────────────────
 // FindFood scoring and the seekFood/hungry-driven AI behaviours live on
@@ -168,5 +170,69 @@ public class EatingTests {
         e.Update(10f);              // -4 → 76
         Assert.That(e.food, Is.EqualTo(76f).Within(0.0001f));
         Assert.That(e.timeSinceLastAte, Is.EqualTo(0f));
+    }
+
+    // ── Starvation ──────────────────────────────────────────────────────
+    // A mouse held at zero food accumulates starvingTicks; a full in-game day
+    // of them is fatal (StarvedToDeath). Eat() — or any tick with food left —
+    // wipes the countdown.
+    [Test]
+    public void Constructor_StarvingTicksStartsAtZero(){
+        Assert.That(new Eating().starvingTicks, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void Update_AtZeroFood_AccumulatesStarvingTicks(){
+        Eating e = new Eating();
+        e.food = 0.4f;
+        e.hungerRate = 0.4f;
+        e.Update(1f); // food → 0  → starvingTicks 1
+        e.Update(1f); // stays 0   → 2
+        e.Update(1f); // stays 0   → 3
+        Assert.That(e.starvingTicks, Is.EqualTo(3));
+    }
+
+    [Test]
+    public void Update_WithFoodRemaining_KeepsStarvingTicksZero(){
+        Eating e = new Eating();
+        e.food = 50f;
+        e.Update(1f);
+        Assert.That(e.starvingTicks, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void Update_FoodRestored_ResetsStarvingTicks(){
+        // A mouse that gets food after starving has its countdown wiped on the
+        // next tick that finds food remaining.
+        Eating e = new Eating();
+        e.food = 0f;
+        e.Update(1f);  // starvingTicks → 1
+        e.food = 50f;
+        e.Update(1f);  // food remaining → reset
+        Assert.That(e.starvingTicks, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void Eat_ResetsStarvingTicks(){
+        Eating e = new Eating();
+        e.food = 0f;
+        e.Update(1f); // starvingTicks → 1
+        e.Update(1f); // → 2
+        e.Eat(30f);
+        Assert.That(e.starvingTicks, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void StarvedToDeath_FalseBeforeAFullDay(){
+        Eating e = new Eating();
+        e.starvingTicks = World.ticksInDay - 1;
+        Assert.That(e.StarvedToDeath(), Is.False);
+    }
+
+    [Test]
+    public void StarvedToDeath_TrueAtAFullDayAtZeroFood(){
+        Eating e = new Eating();
+        e.starvingTicks = World.ticksInDay;
+        Assert.That(e.StarvedToDeath(), Is.True);
     }
 }

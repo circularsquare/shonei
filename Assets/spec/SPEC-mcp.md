@@ -337,6 +337,11 @@ that quietly didn't.
 ### For style
 - All TMP text uses `Color.black`.
 - All TMP `fontSize == 16` (or 32/48 for the rare big title).
+- **Never center-align TMP text** (`alignment` of Center / Midline). Centering
+  lands the m5x7 pixel font on half-pixels and renders it blurry. Always use
+  edge-pinned alignment — `Bottom`/`Top` + `Left`/`Right` (e.g. `BottomLeft`) —
+  so glyphs sit on integer pixels. Inset the text RectTransform for padding
+  instead of relying on centring.
 - Backgrounds use a project sprite (`woodframe.png` etc.), not a flat
   Image color.
 - Reused widgets pull from existing project sprites where possible

@@ -60,6 +60,10 @@ public class Db : MonoBehaviour {
     public static int maxDecoScanRadius;
     public static Job[] jobs = new Job[100];
     public static Recipe[] recipes = new Recipe[500];
+    // Processor recipes (passive timed conversions — see ProcessorRecipe / Processor.cs),
+    // loaded from processorRecipesDb.json and bucketed by the building that runs them.
+    // One building = one recipe today; GetProcessorRecipe resolves the building's recipe.
+    public static Dictionary<string, List<ProcessorRecipe>> processorRecipesByBuilding;
     public static StructType[] structTypes = new StructType[600];
     public static PlantType[] plantTypes = new PlantType[600];
     public static TileType[] tileTypes = new TileType[100];
@@ -118,6 +122,7 @@ public class Db : MonoBehaviour {
         bookRecipeIdByTechId = new Dictionary<int, int>();
         bookItemIdByTechId   = new Dictionary<int, int>();
         itemsByFurnishingSlot = new Dictionary<string, List<Item>>();
+        processorRecipesByBuilding = new Dictionary<string, List<ProcessorRecipe>>();
         // ReadJson Add()s into chineseNames/inventedNames — reset so reloads don't
         // double the pool (which would shift Rng-based name selection deterministically
         // wrong, breaking snapshot reproducibility).
@@ -145,6 +150,7 @@ public class Db : MonoBehaviour {
         BuildHappinessNeedRegistry();
         ValidateNoGroupOutputs();
         ValidateDiscreteUnitsFit();
+        ValidateProcessorRecipes();
         LoadItemIcons();
         LoadNames();
         Debug.Log("db loaded");
@@ -428,6 +434,37 @@ public class Db : MonoBehaviour {
                 if (iq.item.children != null)
                     Debug.LogError($"Db validation: tile '{tt.name}' product '{iq.item.name}' is a group item. Only leaf items may be produced.");
         }
+        foreach (List<ProcessorRecipe> list in processorRecipesByBuilding.Values){
+            foreach (ProcessorRecipe pr in list)
+                foreach (ItemQuantity iq in pr.outputs)
+                    if (iq.item.children != null)
+                        Debug.LogError($"Db validation: processor recipe '{pr.description}' output '{iq.item.name}' is a group item. Only leaf items may be produced.");
+        }
+    }
+
+    // Cross-checks processor recipes against buildings: every recipe must target a real
+    // building, and every hasProcessor building must have at least one recipe — otherwise
+    // its Processor component can't be created (see Building constructor).
+    void ValidateProcessorRecipes(){
+        foreach (string buildingName in processorRecipesByBuilding.Keys)
+            if (!structTypeByName.ContainsKey(buildingName))
+                Debug.LogError($"Db validation: processor recipe targets building '{buildingName}' which does not exist.");
+        foreach (StructType st in structTypes){
+            if (st == null || !st.hasProcessor) continue;
+            if (GetProcessorRecipe(st.name) == null)
+                Debug.LogError($"Db validation: building '{st.name}' has hasProcessor=true but no processor recipe in processorRecipesDb.json.");
+        }
+    }
+
+    // Returns the processor recipe a building runs, or null if none is declared.
+    // One building = one recipe today; multi-recipe selection is a future extension,
+    // at which point callers pick from processorRecipesByBuilding[name] directly.
+    public static ProcessorRecipe GetProcessorRecipe(string buildingName){
+        if (processorRecipesByBuilding != null
+            && processorRecipesByBuilding.TryGetValue(buildingName, out List<ProcessorRecipe> list)
+            && list.Count > 0)
+            return list[0];
+        return null;
     }
 
     // Warns if a discrete item's unit is too heavy to fit in even the largest storage stack.
@@ -549,6 +586,25 @@ public class Db : MonoBehaviour {
             if (recipe.skill != null) continue;
             if (jobByName.TryGetValue(recipe.job, out Job j))
                 recipe.skill = j.defaultSkill;
+        }
+
+        // read Processor recipes (passive timed conversions — see Processor.cs). Must load
+        // after itemsDb: ProcessorRecipe.OnDeserialized resolves item names to fen quantities.
+        // Bucketed by building name; Building resolves its recipe via Db.GetProcessorRecipe.
+        // Missing file is non-fatal — ValidateProcessorRecipes then flags any orphaned
+        // hasProcessor building.
+        string jsonProcRecipes = LoadJsonText("processorRecipesDb");
+        if (jsonProcRecipes != null) {
+            var seenProcIds = new HashSet<int>();
+            foreach (ProcessorRecipe pr in JsonConvert.DeserializeObject<ProcessorRecipe[]>(jsonProcRecipes)) {
+                if (!seenProcIds.Add(pr.id))
+                    Debug.LogError($"Db: duplicate processor recipe id={pr.id} ('{pr.description}')");
+                if (!processorRecipesByBuilding.TryGetValue(pr.building, out List<ProcessorRecipe> list)) {
+                    list = new List<ProcessorRecipe>();
+                    processorRecipesByBuilding[pr.building] = list;
+                }
+                list.Add(pr);
+            }
         }
 
         // read Flowers (purely decorative — no Structure registration, no save state).
@@ -748,6 +804,49 @@ public class Recipe {
             if (GlobalInventory.instance.Quantity(output.item) >= threshold) return false;
         }
         return true;
+    }
+}
+
+// A passive timed conversion run by a building's Processor component (see Processor.cs).
+// Loaded from processorRecipesDb.json and linked to a building by name — mirroring how
+// Recipe.tile links a craft recipe to its workstation. Distinct from Recipe because a
+// processor recipe is a different concept: no active labor (processDays is wall-clock,
+// not work-ticks), an optional temperature ramp, and no scoring / job-skill model.
+// Quantities are authored in liang (float) and resolved to fen (int) in OnDeserialized.
+public class ProcessorRecipe {
+    public int id {get; set;}              // informational — recipes are keyed by building name, not array-indexed
+    public string building {get; set;}     // name of the building whose Processor runs this recipe
+    public string description {get; set;}
+    public ItemNameQuantity[] ninputs {get; set;}   // raw JSON
+    public ItemNameQuantity[] noutputs {get; set;}  // raw JSON
+    public ItemQuantity[] inputs;                   // resolved from ninputs (liang → fen)
+    public ItemQuantity[] outputs;                  // resolved from noutputs (liang → fen)
+    public float processDays {get; set;}            // base duration at full (rate 1.0) speed
+    public float? processTempMin {get; set;}        // null = constant rate (not temperature-scaled)
+    public float? processTempIdeal {get; set;}
+    public bool autoTap {get; set;}                 // schema stub — manual tap only for now
+    // Optional tint for the building's _w liquid zone while the processor is Working
+    // (e.g. the cloudy white of rice mash mid-fermentation). Authored as #RRGGBB; absent →
+    // the zone keeps its loading colour. Parsed to processColor in OnDeserialized.
+    public string processColorHex {get; set;}
+    public Color32 processColor;                    // parsed; alpha=0 when processColorHex is unset
+
+    [OnDeserialized]
+    internal void OnDeserialized(StreamingContext context){
+        int ni = ninputs?.Length ?? 0;
+        inputs = new ItemQuantity[ni];
+        for (int i = 0; i < ni; i++) inputs[i] = new ItemQuantity(ninputs[i]);
+        int no = noutputs?.Length ?? 0;
+        outputs = new ItemQuantity[no];
+        for (int i = 0; i < no; i++) outputs[i] = new ItemQuantity(noutputs[i]);
+        if (!string.IsNullOrEmpty(processColorHex)) {
+            if (ColorUtility.TryParseHtmlString(processColorHex, out Color pc)) {
+                processColor = pc;
+                processColor.a = 255; // alpha flags "tint active" for the renderer
+            } else {
+                Debug.LogError($"ProcessorRecipe '{description}': invalid processColorHex '{processColorHex}'");
+            }
+        }
     }
 }
 

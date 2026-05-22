@@ -1,0 +1,19 @@
+[
+    {
+        "id": 0,
+        "building": "brewery",
+        "description": "ferment rice into rice wine",
+        "ninputs": [
+            { "name": "rice", "quantity": 5 },
+            { "name": "water", "quantity": 10 },
+            { "name": "yeast", "quantity": 1 }
+        ],
+        "noutputs": [
+            { "name": "rice wine", "quantity": 10 }
+        ],
+        "processDays": 2.0,
+        "processTempMin": 5,
+        "processTempIdeal": 25,
+        "processColorHex": "#e8e8e3"
+    }
+]

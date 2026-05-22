@@ -36,8 +36,12 @@ public class Eeping {
     }
     public float Eepness(){ return eep / maxEep; }
     public void Eep(float t, bool atHome){
-        if (atHome){ eep += t * eepRate; }
-        else { eep += t * outsideEepRate; }
+        eep += t * (atHome ? eepRate : outsideEepRate);
+        // Clamp at the cap: recovery is ticked wall-clock (Animal.HandleNeeds) while the
+        // wake-up check is energy-gated (AnimalStateManager.HandleEeping). For a low-efficiency
+        // sleeper the recovery can outrun the wake check by a few ticks — without this clamp
+        // eep would drift above maxEep in that window.
+        if (eep > maxEep){ eep = maxEep; }
     }
     public void Update(float t = 1f){
         eep -= tireRate * t;

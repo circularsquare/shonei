@@ -301,7 +301,9 @@ public class AnimalStateManager {
     private const float MaxBirthChancePerSleepTick = 0.024f;
 
     private void HandleEeping() {
-        animal.eeping.Eep(1f, animal.AtHome());
+        // Sleep recovery (eeping.Eep) is ticked wall-clock in Animal.HandleNeeds, not here —
+        // see the comment there. This handler runs only on the energy-gated UpdateState path,
+        // so it keeps just the per-sleep-tick *events*: the reproduction roll and the wake check.
         // reproduction: logistic growth, gated by population, housing capacity, and food supply.
         // Any sleeping mouse can trigger a birth as long as some house anywhere has a free slot —
         // the sleeper doesn't need to be in their own home.

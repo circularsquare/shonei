@@ -358,7 +358,7 @@ Caveats: steady-state only (first cycle on a fresh world is worse — `StartingM
 
 ## Fermentation processors
 
-A `Processor` is an optional `Building` component (sibling to `Workstation` / `Reservoir`, in `Processor.cs`) — a **passive timed converter**. Created when `StructType.hasProcessor` is set. The brewery is the first user (rice + water + yeast → rice wine); the component is generic, so vinegar / soy-sauce / compost buildings can reuse it via JSON alone.
+A `Processor` is an optional `Building` component (sibling to `Workstation` / `Reservoir`, in `Processor.cs`) — a **passive timed converter**. Created when `StructType.hasProcessor` is set; the conversion it runs — inputs, outputs, `processDays`, temperature ramp, Working-state tint — is a `ProcessorRecipe` loaded from `processorRecipesDb.json` and linked to the building by name (see SPEC-data.md §`processorRecipesDb.json`). The `Processor` holds its recipe by reference, so a future "select a process" feature only has to reassign it. The brewery is the first user (rice + water + yeast → rice wine); the component is generic, so vinegar / soy-sauce / compost buildings can reuse it by adding a building plus a processor recipe — no new code.
 
 It differs from the worker-driven `CraftTask` paradigm: no worker is present during the wait, inputs are consumed at load time, and progress advances on world ticks regardless of who is nearby.
 

@@ -65,13 +65,8 @@ Fields:
 | `fuelItemName` | string? | item consumed by reservoir (group or leaf) |
 | `fuelCapacity` | float? | max fuel in liang |
 | `fuelBurnRate` | float? | consumption rate in liang/day |
-| `hasProcessor` | bool? | building has a `Processor` component — a passive timed converter (see SPEC-systems.md §Fermentation processors). The brewery is the first user. |
-| `processorTileX`, `processorTileY` | int? | tile offset of the processor's inventory tile within the footprint |
-| `nprocessorInputs` | `[{name, quantity}]` | the load recipe (authored in liang, resolved to fen) — fermented into `nprocessorOutputs` |
-| `nprocessorOutputs` | `[{name, quantity}]` | what one batch yields |
-| `processDays` | float? | base fermentation duration in in-game days at full (temperature rate 1.0) speed |
-| `processTempMin`, `processTempIdeal` | float? | optional temperature ramp: rate is 0 at/below `processTempMin`, 1.0 at/above `processTempIdeal`, linear between. Omit both → constant full rate. |
-| `autoTap` | bool? | schema stub — reserved for processors that yield output without a manual tap. Not yet implemented. |
+| `hasProcessor` | bool? | building has a `Processor` component — a passive timed converter (see SPEC-systems.md §Fermentation processors). The conversion itself (inputs, outputs, duration, temperature ramp, tint) is defined separately in `processorRecipesDb.json`, linked to the building by name — see the `processorRecipesDb.json` section below. The brewery is the first user. |
+| `processorTileX`, `processorTileY` | int? | tile offset of the processor's inventory tile within the footprint. This is footprint geometry, so it stays on the building — unlike the recipe data, which lives in `processorRecipesDb.json`. |
 | `noMaintenance` | bool? | opts this StructType out of the maintenance / condition decay system. Set to `true` on nav-critical types (platform, stairs, ladder) so a neglected world doesn't cut mice off from parts of the map. Plants and cost-free structures are already auto-exempt — see SPEC-systems.md §Maintenance System. |
 | `placementMethod` | string? | When `"twoClick"`, the StructType is placed by clicking TWO tiles (the two endpoint posts of a rope bridge). First click stashes the post; second click commits a single blueprint carrying both endpoints. Defaults to single-click placement. See SPEC-systems.md §Rope bridges. |
 | `minDx`, `maxDx` | int? | Horizontal-delta bounds for two-click placement. Bridge requires `minDx ≤ |xA - xB| ≤ maxDx`. Defaults: 3 / 20. |
@@ -142,6 +137,26 @@ Fields:
 | `maxRoundsPerTask` | int? | cap on rounds in one CraftTask trip (0/omit = unlimited). Set to 1 for "one item per trip" recipes (e.g. book writing) where each cycle should be a deliberate, discrete action rather than a batch. |
 | `ninputs` | `[{name, quantity}]` | consumed items in liang |
 | `noutputs` | `[{name, quantity, chance?}]` | produced items; `chance` (0–1) = probability of output |
+
+## `processorRecipesDb.json` — Processor recipes
+
+A **processor recipe** is the passive timed conversion run by a building's `Processor` component (see SPEC-systems.md §Fermentation processors). It is a distinct concept from a craft `Recipe`: no active labor (`processDays` is wall-clock, not work-ticks), an optional temperature ramp, no job/skill/scoring model. Each recipe is linked to a building by name — mirroring how `Recipe.tile` links a craft recipe to its workstation. One building runs one recipe today; the data model (`Db.processorRecipesByBuilding`, a list per building) already allows several, so multiple-processes-per-building is an additive future extension.
+
+Loaded into `Db.processorRecipesByBuilding` (keyed by building name); `Db.GetProcessorRecipe(name)` resolves a building's recipe. `Db.ValidateProcessorRecipes()` cross-checks that every `hasProcessor` building has a recipe and every recipe targets a real building.
+
+Fields:
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | int | informational — recipes are keyed by building name, not array-indexed. Duplicate ids are logged. |
+| `building` | string | name of the building whose `Processor` runs this recipe |
+| `description` | string | shown in UI / InfoPanel |
+| `ninputs` | `[{name, quantity}]` | the load recipe, authored in liang, resolved to fen |
+| `noutputs` | `[{name, quantity}]` | what one batch yields, authored in liang |
+| `processDays` | float | base conversion duration in in-game days at full (temperature rate 1.0) speed |
+| `processTempMin`, `processTempIdeal` | float? | optional temperature ramp: rate is 0 at/below `processTempMin`, 1.0 at/above `processTempIdeal`, linear between. Omit both → constant full rate. |
+| `autoTap` | bool? | schema stub — reserved for processors that yield output without a manual tap. Not yet implemented. |
+| `processColorHex` | string? | `#RRGGBB` tint for the building's `_w` liquid zone while the processor is Working (e.g. cloudy white rice mash mid-fermentation). Absent → the zone keeps its loading colour. See SPEC-rendering.md §Decorative liquid zones. |
 
 ## `jobsDb.json` — Jobs
 

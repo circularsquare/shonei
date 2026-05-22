@@ -124,6 +124,54 @@ public class Building : Structure {
     // structType.powerBoost = 1 so this wrapper isn't created in addition to themselves.
     public BuildingPowerConsumer powerConsumer { get; private set; }
 
+    // ── Decorative liquid zone ─────────────────────────────────────────────
+    // Resolves what liquid this building shows in its {name}_w.png companion
+    // zone and how full it draws (0..1, bottom-up). The zone art itself is
+    // opt-in (Structure.waterPixelOffsets); this is the single source of truth
+    // for fill level + tint, polled by WaterController each surface-mask tick.
+    // Priority: reservoir (fountain) > liquid storage (tank) > processor
+    // (brewery) > plain full zone. A `tint` with alpha 0 renders as the shader's
+    // default blue. `surfaceRow` flags whether the top rendered row shimmers
+    // white like a pond surface. Returns false -> render nothing.
+    public bool TryGetDisplayLiquid(out float fillFraction, out Color32 tint, out bool surfaceRow) {
+        fillFraction = 0f;
+        tint         = default;             // alpha 0 → shader default blue
+        surfaceRow   = true;                // tanks / processors / plain zones shimmer at the liquid top
+
+        if (reservoir != null) {
+            // Fountain: the basin reads full whenever the reservoir holds water,
+            // dry when broken. No surface row — the authored water band is too
+            // thin to give up a pixel to the shimmer highlight.
+            if (IsBroken || !reservoir.HasFuel()) return false;
+            fillFraction = 1f;
+            surfaceRow   = false;
+            if (reservoir.fuelItem != null && reservoir.fuelItem.isLiquid)
+                tint = reservoir.fuelItem.liquidColor;
+            return true;
+        }
+        if (structType.isLiquidStorage && storage != null) {
+            // Tank: the first non-empty liquid stack drives both fill and tint.
+            foreach (ItemStack st in storage.itemStacks) {
+                if (st?.item == null || !st.item.isLiquid || st.quantity <= 0) continue;
+                int capacity = storage.stackSize * storage.nStacks;
+                if (capacity <= 0) return false;
+                fillFraction = st.quantity / (float)capacity;
+                tint         = st.item.liquidColor;
+                return fillFraction > 0f;
+            }
+            return false;
+        }
+        if (processor != null) {
+            // Brewery: state-driven fill + tint (blue while loading, the ferment
+            // colour while Working, the output liquid's colour once Ready/Tapped).
+            processor.GetVisualFill(out fillFraction, out tint);
+            return fillFraction > 0f;
+        }
+        // Has a _w zone but no liquid-bearing component — render a plain full zone.
+        fillFraction = 1f;
+        return true;
+    }
+
     public Building(StructType st, int x, int y, bool mirrored = false, int shapeIndex = 0) : base(st, x, y, mirrored, shapeIndex: shapeIndex){
         go.name = "building_" + structType.name;
 
@@ -168,10 +216,16 @@ public class Building : Structure {
         }
 
         if (st.hasProcessor) {
-            Tile pTile = World.instance.GetTileAt(
-                x + (mirrored ? (st.nx - 1 - st.processorTileX) : st.processorTileX),
-                y + st.processorTileY);
-            processor = new Processor(st, pTile.x, pTile.y, sr.sortingOrder);
+            // The conversion recipe lives in processorRecipesDb.json, linked by building name.
+            ProcessorRecipe pr = Db.GetProcessorRecipe(st.name);
+            if (pr == null) {
+                Debug.LogError($"Building '{st.name}': hasProcessor=true but no processor recipe found in processorRecipesDb.json — skipping processor.");
+            } else {
+                Tile pTile = World.instance.GetTileAt(
+                    x + (mirrored ? (st.nx - 1 - st.processorTileX) : st.processorTileX),
+                    y + st.processorTileY);
+                processor = new Processor(pr, pTile.x, pTile.y, sr.sortingOrder);
+            }
         }
     }
 

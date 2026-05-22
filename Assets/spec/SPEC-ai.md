@@ -23,10 +23,14 @@ Any  → Falling (involuntary; interrupts current task) → Idle on landing
 
 | Need | Effect |
 |------|--------|
-| Hunger | Reduces efficiency; eating restores |
+| Hunger | Reduces efficiency; eating restores. A full in-game day at zero food is fatal — see **Starvation death** below. |
 | Sleep | Reduces efficiency; sleeping at home restores |
 | Temperature | Reduces efficiency when outside comfort range (default 10–25°C). Clothing expands the range by ±3°C. |
 | Efficiency | `eating.Efficiency() * eeping.Efficiency() * happiness.TemperatureEfficiency()` — scales move speed and work rate |
+
+**Needs tick wall-clock; only work ticks on efficiency.** Need depletion *and* recovery (hunger, sleep) run every tick in `Animal.HandleNeeds()`, independent of efficiency. The energy/efficiency throttle (`energy += efficiency; if (energy > 1) UpdateState()`) paces only *work* — craft/build/harvest/research progress, and the per-sleep-tick events in `HandleEeping` (reproduction roll, wake-up check). Sleep **recovery** must stay in `HandleNeeds`: driving it from the throttled path scales recovery with efficiency while depletion stays unthrottled, so a low-efficiency mouse (hungry + exhausted) loses eep faster than it regains it and never wakes — a death spiral that locks the whole colony. Do not move `eeping.Eep()` back into `HandleEeping`.
+
+**Starvation death.** A mouse whose `food` hits 0 starts a countdown: `Eating.starvingTicks` is incremented every tick `Eating.Update()` finds food at 0, and reset to 0 by `Eat()` or any tick with food remaining. Once it reaches `World.ticksInDay` — a full in-game day at zero food — `Eating.StarvedToDeath()` trips and `Animal.TickUpdate()` sets the transient `pendingDeath` flag (skipping the rest of that mouse's tick). `AnimalController.RemoveDeadAnimals()`, run once **after** the per-animal tick loop so `animals[]` is never compacted mid-iteration, sweeps for the flag and calls `HandleDeath`: it posts an EventFeed alert, drops the mouse's inventory + all four equip slots to the floor via `Animal.DropInventoryToFloor()` (recoverable by the player), fixes the job count, deselects the InfoPanel if it was showing the mouse, and tears the mouse down via `Animal.Destroy()` — which now also releases the home reservation and destroys the equip-slot inventories. A separate EventFeed warning fires the moment the countdown first starts (`starvingTicks == 1`). With the default `hungerRate` (0.4) it takes roughly **2 in-game days** from a full belly to death. `starvingTicks` is persisted in `AnimalSaveData` (0 on old saves = not starving).
 
 ### Happiness satisfactions
 
@@ -48,6 +52,8 @@ Adding a new food or building happiness source: JSON changes auto-register the n
 ### Social satisfaction
 
 Social satisfaction is granted **gradually** at `Happiness.socialTickGrant` (0.2) per tick, not as a lump sum. This applies to both standalone chatting and fireplace co-leisure.
+
+**Initial value**: freshly-created mice — the starting colony and any born via reproduction — seed `social` to a random value in `[3, 5)` in `Animal.Start()`'s fresh-spawn branch, so a new colony doesn't begin life lonely. Given the thresholds below, those mice won't actively seek socializing until decay drops `social` under 2.0. Loaded mice restore `social` from save data instead. All other satisfactions start at 0.
 
 **Thresholds** (apply to both chat and fireplace socializing):
 - **Initiate**: a mouse only seeks chat / starts fireplace socializing when social < 2.0

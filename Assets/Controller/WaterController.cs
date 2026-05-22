@@ -478,55 +478,33 @@ public class WaterController : MonoBehaviour {
             }
         }
 
-        // Overlay decorative water zones. Two gating modes:
-        //   - Fountains (Building with a reservoir): binary — all pixels render if HasFuel().
-        //   - Tanks (structType.isLiquidStorage): fill-level — only the bottom fraction of
-        //     pixels render, scaled to the stored liquid's quantity vs total capacity.
-        //     The top row of rendered pixels is flagged surface (255) so it shimmers white
-        //     like a pond surface; everything below is interior water (127).
-        // Tanks also stamp their liquid's liquidColor into _tintBytes so the shader
-        // can tint the fill (e.g. soymilk renders beige, water stays default blue).
+        // Overlay decorative liquid zones. Each building with a {name}_w.png
+        // companion answers TryGetDisplayLiquid with how full its zone draws
+        // (0..1, bottom-up), its tint colour, and whether the top row
+        // shimmers. Only the bottom fraction of zone pixels render; the top
+        // rendered row is flagged surface (255) so it shimmers white like a
+        // pond surface (unless surfaceRow is false, e.g. fountains), and
+        // everything below is interior water (127). The liquid's liquidColor
+        // is stamped into _tintBytes so the shader can tint the fill (rice
+        // wine renders gold, water stays default blue). The fill/tint dispatch
+        // (fountain / tank / processor / plain) lives in Building.
         foreach (var kvp in _decorativeZones) {
             Structure s = kvp.Key;
             DecorativeZone z = kvp.Value;
 
-            int fillThreshold    = int.MaxValue; // exclusive upper bound for local Y
-            int surfaceThreshold = int.MinValue; // local Y that becomes surface pixels
-            Color32 tintColor    = default;      // alpha=0 → don't stamp (fallback path)
-            bool skip = false;
+            // Non-Building zones (none today) fall back to a plain full zone.
+            float   fraction   = 1f;
+            Color32 tintColor  = default;
+            bool    surfaceRow = true;
+            if (s is Building b && !b.TryGetDisplayLiquid(out fraction, out tintColor, out surfaceRow))
+                continue;
 
-            if (s is Building b) {
-                if (b.reservoir != null) {
-                    if (!b.reservoir.HasFuel() || b.IsBroken) skip = true;
-                } else if (b.structType.isLiquidStorage && b.storage != null) {
-                    // Tanks hold one liquid at a time — find the first non-empty liquid stack
-                    // so we can drive both the fill level and the tint from the same source.
-                    Item liquid = null;
-                    int  liquidFen = 0;
-                    foreach (ItemStack st in b.storage.itemStacks) {
-                        if (st?.item != null && st.item.isLiquid && st.quantity > 0) {
-                            liquid = st.item;
-                            liquidFen = st.quantity;
-                            break;
-                        }
-                    }
-                    if (liquid == null) { skip = true; }
-                    else {
-                        int capacityFen = b.storage.stackSize * b.storage.nStacks;
-                        int rows        = z.localMaxY - z.localMinY + 1;
-                        int fillRows    = capacityFen > 0
-                            ? Mathf.RoundToInt(liquidFen / (float)capacityFen * rows)
-                            : 0;
-                        if (fillRows <= 0) skip = true;
-                        else {
-                            fillThreshold    = z.localMinY + fillRows; // exclusive
-                            surfaceThreshold = fillThreshold - 1;
-                            tintColor        = liquid.liquidColor; // alpha=0 when liquid has no hex
-                        }
-                    }
-                }
-            }
-            if (skip) continue;
+            int rows     = z.localMaxY - z.localMinY + 1;
+            int fillRows = Mathf.RoundToInt(fraction * rows);
+            if (fillRows <= 0) continue;
+            int fillThreshold    = z.localMinY + fillRows;                       // exclusive upper bound for local Y
+            int surfaceThreshold = surfaceRow ? fillThreshold - 1 : int.MinValue; // MinValue → no pixel flagged surface
+            // tintColor: alpha=0 → shader's default blue; alpha=255 → liquid-specific tint.
 
             var worldPixels = z.worldPixels;
             var localYs     = z.localYs;

@@ -93,6 +93,9 @@ public class AnimalController : MonoBehaviour{
             if (Mathf.Floor(prevTickAccumulator - off) < Mathf.Floor(tickAccumulator - off))
                 animals[a].TickUpdate();
         }
+        // Remove any mice that starved to death this tick. Done here — after the
+        // tick loop — so animals[] is never compacted mid-iteration.
+        RemoveDeadAnimals();
         // Colony-wide bookkeeping: once per full second boundary
         if (Mathf.Floor(prevTickAccumulator) < Mathf.Floor(tickAccumulator)) {
             colonyTickCounter++;
@@ -133,6 +136,40 @@ public class AnimalController : MonoBehaviour{
         animal.tickOffset = (animal.id * 0.618034f) % 1f;
         animals[na] = animal;
         na += 1;
+    }
+
+    // Compacts animals[] in place, removing any flagged pendingDeath (set by
+    // Animal.TickUpdate on starvation). Each removed mouse is torn down via
+    // HandleDeath. Called from Tick() after the per-animal loop so the array is
+    // never mutated mid-iteration; cheap when nobody died — a single linear pass.
+    private void RemoveDeadAnimals() {
+        int write = 0;
+        for (int read = 0; read < na; read++) {
+            Animal a = animals[read];
+            if (a != null && a.pendingDeath) {
+                HandleDeath(a);
+                continue; // drop from the compacted array
+            }
+            animals[write++] = a;
+        }
+        for (int i = write; i < na; i++) animals[i] = null;
+        na = write;
+    }
+
+    // Tears down one mouse that has died. Order matters: drop its goods to the
+    // floor and fix the job count BEFORE Destroy() nulls the animal's references.
+    private void HandleDeath(Animal a) {
+        EventFeed.instance?.Post($"<color=#ff4444>{a.aName} starved to death.</color>");
+        a.DropInventoryToFloor();
+        if (a.job != null && jobCounts.ContainsKey(a.job)) {
+            jobCounts[a.job] -= 1;
+            UpdateJobCount(a.job);
+        }
+        // Drop the InfoPanel selection if it was showing this mouse — its
+        // GameObject is about to be destroyed.
+        if (InfoPanel.instance != null && InfoPanel.instance.IsAnimalSelected(a))
+            InfoPanel.instance.ShowInfo(null);
+        a.Destroy();
     }
 
     public void LoadAnimal(AnimalSaveData asd) {

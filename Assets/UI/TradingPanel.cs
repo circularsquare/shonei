@@ -61,8 +61,17 @@ public class TradingPanel : MonoBehaviour {
     [Header("Merchant Journey")]
     public MerchantJourneyDisplay merchantJourney;
 
+    [Header("Price Graph")]
+    public PriceGraphPanel priceGraphPanel;
+
     bool _orderIsBuy   = true;
     bool _orderSideSet = false; // neither buy nor sell selected by default
+
+    // Item whose price history is currently in the graph. Drives the periodic
+    // re-poll and filters out stale price_history_response messages.
+    string _queriedItem = "";
+    float  _lastHistoryPoll;
+    const float PriceHistoryPollSeconds = 25f; // re-poll cadence while the panel is open
 
     void Start() {
         if (instance != null) { Debug.LogError("there should only be one TradingPanel"); }
@@ -85,6 +94,7 @@ public class TradingPanel : MonoBehaviour {
             client.OnMarketResponse += DisplayMarketBook;
             client.OnFill           += DisplayFill;
             client.OnChat           += DisplayChat;
+            client.OnPriceHistory   += OnPriceHistory;
         }
         if (EventFeed.instance != null) EventFeed.instance.OnEntry += HandleFeedEntry;
 
@@ -101,6 +111,16 @@ public class TradingPanel : MonoBehaviour {
             orderPrice.ActivateInputField();
             orderPrice.MoveTextEnd(false);
         }
+
+        // Re-poll price history (new minute-cadence samples) and the order book
+        // (keeps the graph's live tip fresh) without a manual re-query.
+        // Update() only runs while the panel is open; both are no-ops offline.
+        if (_queriedItem.Length > 0
+                && Time.unscaledTime - _lastHistoryPoll > PriceHistoryPollSeconds) {
+            _lastHistoryPoll = Time.unscaledTime;
+            QueryHistory(_queriedItem);
+            TradingClient.instance?.QueryMarket(_queriedItem);
+        }
     }
 
     void OnDestroy() {
@@ -110,6 +130,7 @@ public class TradingPanel : MonoBehaviour {
             client.OnMarketResponse -= DisplayMarketBook;
             client.OnFill           -= DisplayFill;
             client.OnChat           -= DisplayChat;
+            client.OnPriceHistory   -= OnPriceHistory;
         }
         if (EventFeed.instance != null) EventFeed.instance.OnEntry -= HandleFeedEntry;
     }
@@ -346,6 +367,32 @@ public class TradingPanel : MonoBehaviour {
         string item = ItemName();
         if (item.Length == 0) return;
         TradingClient.instance?.QueryMarket(item);
+        _queriedItem = item;
+        _lastHistoryPoll = Time.unscaledTime;
+        QueryHistory(item);
+    }
+
+    // Queries price history for an item at the graph's currently-selected range.
+    void QueryHistory(string item) {
+        if (priceGraphPanel == null) return;
+        TradingClient.instance?.QueryPriceHistory(item, priceGraphPanel.RangeSec, priceGraphPanel.BucketSec);
+    }
+
+    // Re-queries the current item's history — called when the graph's range
+    // changes. Resets the poll timer so the 25 s poll doesn't immediately re-fire.
+    public void RequeryHistory() {
+        if (_queriedItem.Length == 0) return;
+        _lastHistoryPoll = Time.unscaledTime;
+        QueryHistory(_queriedItem);
+    }
+
+    // Price-history response handler — feeds the graph, ignoring responses for
+    // an item other than the one in view, or for a no-longer-selected range.
+    void OnPriceHistory(PriceHistoryData data) {
+        if (data == null || data.item != _queriedItem) return;
+        if (data.rangeSec != 0 && priceGraphPanel != null
+                && data.rangeSec != priceGraphPanel.RangeSec) return;
+        priceGraphPanel?.SetHistory(data);
     }
 
     void DisplayMarketBook(MarketBook book) {
@@ -358,6 +405,14 @@ public class TradingPanel : MonoBehaviour {
             foreach (Transform child in sellsList) Destroy(child.gameObject);
             if (book.sells != null)
                 foreach (var o in book.sells) SpawnOrder(o, sellsList);
+        }
+
+        // Feed the graph's live tip when this book is for the item in view.
+        // buys[0] is the best bid, sells[0] the best ask (server sends them sorted).
+        if (book.item == _queriedItem && priceGraphPanel != null) {
+            int liveBid = (book.buys  != null && book.buys.Length  > 0) ? book.buys[0].price  : 0;
+            int liveAsk = (book.sells != null && book.sells.Length > 0) ? book.sells[0].price : 0;
+            priceGraphPanel.SetLivePrice(book.item, liveBid, liveAsk);
         }
     }
 

@@ -16,10 +16,11 @@ public class TradingClient : MonoBehaviour {
     const string WsUrl = "ws://127.0.0.1:8083/ws?name=" + playerName;
     const float ReconnectInterval = 20f;
 
-    public event Action<bool>       OnConnectionChanged;
-    public event Action<MarketBook> OnMarketResponse;
-    public event Action<Fill>       OnFill;
-    public event Action<ChatMsg>    OnChat;
+    public event Action<bool>             OnConnectionChanged;
+    public event Action<MarketBook>       OnMarketResponse;
+    public event Action<Fill>             OnFill;
+    public event Action<ChatMsg>          OnChat;
+    public event Action<PriceHistoryData> OnPriceHistory;
 
     public async void Connect() {
         if (isConnecting || isOnline) return;
@@ -61,6 +62,9 @@ public class TradingClient : MonoBehaviour {
                 break;
             case "chat":
                 OnChat?.Invoke(JsonUtility.FromJson<ChatEnvelope>(raw).payload);
+                break;
+            case "price_history_response":
+                OnPriceHistory?.Invoke(JsonUtility.FromJson<PriceHistoryEnvelope>(raw).payload);
                 break;
         }
     }
@@ -130,6 +134,14 @@ public class TradingClient : MonoBehaviour {
         if (!await TrySend(envelope)) return;
     }
 
+    // Requests logged bid/ask price history for an item over the past rangeSec
+    // seconds, downsampled to bucketSec-wide buckets (for the price graph).
+    public async void QueryPriceHistory(string item, int rangeSec, int bucketSec) {
+        if (!isOnline) return;
+        var envelope = $"{{\"type\":\"price_history_query\",\"payload\":{{\"item\":\"{item}\",\"rangeSec\":{rangeSec},\"bucketSec\":{bucketSec}}}}}";
+        if (!await TrySend(envelope)) return;
+    }
+
     public async void SendChat(string text) {
         if (!isOnline) return;
         var payload = JsonUtility.ToJson(new ChatPayload { text = text });
@@ -181,3 +193,17 @@ public class TradingClient : MonoBehaviour {
 [Serializable] public class Fill        { public string buyer; public string seller; public string item; public int price; public int quantity; }
 [Serializable] public class ChatMsg     { public string from; public string text; }
 [Serializable] class ChatPayload        { public string text; }
+[Serializable] class PriceHistoryEnvelope { public string type; public PriceHistoryData payload; }
+// One bid/ask snapshot. Prices are in fen; 0 means no order rested on that side.
+// t is unix seconds — a large jump in t between samples marks server downtime.
+[Serializable] public class PriceSample      { public long t; public int bid; public int ask; }
+// samples are downsampled to bucketSec buckets; startSec/endSec are the time
+// window the server measured (axis left/right edges, unix seconds).
+[Serializable] public class PriceHistoryData {
+    public string item;
+    public int    rangeSec;
+    public int    bucketSec;
+    public long   startSec;
+    public long   endSec;
+    public PriceSample[] samples;
+}

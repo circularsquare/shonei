@@ -506,17 +506,6 @@
         "capacity": 1,
         "isWorkstation": true,
         "hasProcessor": true,
-        "nprocessorInputs": [
-            { "name": "rice", "quantity": 5 },
-            { "name": "water", "quantity": 10 },
-            { "name": "yeast", "quantity": 1 }
-        ],
-        "nprocessorOutputs": [
-            { "name": "rice wine", "quantity": 10 }
-        ],
-        "processDays": 2.0,
-        "processTempMin": 5,
-        "processTempIdeal": 25,
         "solidTop": true,
         "category": "production",
         "defaultLocked": true

@@ -91,6 +91,12 @@ public class Animal : MonoBehaviour{
     // tick while the animal is boxed in. Transient — not saved.
     [System.NonSerialized] public float dropCooldownUntil = 0f;
 
+    // Set true by TickUpdate when the mouse has starved to death. AnimalController
+    // sweeps for this flag after the tick loop and removes the mouse — never
+    // mid-iteration, so animals[] stays safe to compact. Transient — not saved
+    // (a starved mouse is removed before the next save could capture it).
+    [System.NonSerialized] public bool pendingDeath = false;
+
     // Set before Start() runs when loading a save; Start() checks this and applies it.
     // [NonSerialized] prevents Unity from serializing a default AnimalSaveData instance in place of null.
     [System.NonSerialized] public AnimalSaveData pendingSaveData = null;
@@ -139,6 +145,7 @@ public class Animal : MonoBehaviour{
             this.energy = pendingSaveData.energy;
             this.eating = new Eating();
             this.eating.food = pendingSaveData.food;
+            this.eating.starvingTicks = pendingSaveData.starvingTicks;
             this.eeping = new Eeping();
             this.eeping.eep = pendingSaveData.eep;
             this.happiness = new Happiness();
@@ -238,6 +245,8 @@ public class Animal : MonoBehaviour{
             this.eeping = new Eeping();
             this.eeping.eep = this.eeping.maxEep;
             this.happiness = new Happiness();
+            // Seed social satisfaction so freshly-created mice don't start life lonely.
+            this.happiness.satisfactions["social"] = 3f + (float)random.NextDouble() * 2f;
             FindHome();
         }
         // Stagger SlowUpdate across animals so they don't all fire on the same tick
@@ -257,6 +266,13 @@ public class Animal : MonoBehaviour{
             SlowUpdate();
         }
         HandleNeeds();
+        // Starvation: warn the player the moment the countdown starts, and flag the
+        // mouse for removal once it's gone a full day without food. The dead mouse
+        // skips the rest of its tick; AnimalController.RemoveDeadAnimals does the
+        // actual teardown after the tick loop.
+        if (eating.starvingTicks == 1)
+            EventFeed.instance?.Post($"<color=#ff6666>{aName} is starving!</color>");
+        if (eating.StarvedToDeath()) { pendingDeath = true; return; }
         UpdateEfficiency();
         energy += efficiency;
         if (energy > 1f) { // if you have enough energy, spend it. also then you can work if you're Working.
@@ -268,6 +284,14 @@ public class Animal : MonoBehaviour{
     private void HandleNeeds() {
         eating.Update();
         eeping.Update();
+        // Sleep recovery is wall-clock — ticked here every tick, NOT from HandleEeping.
+        // HandleEeping only runs when the energy/efficiency throttle fires UpdateState, so
+        // driving recovery from there would scale it with efficiency while depletion
+        // (eeping.Update above) stays unthrottled. A hungry, exhausted mouse has low
+        // efficiency; throttled recovery + unthrottled depletion would let it lose eep
+        // faster than it regains it and never wake. Ticking recovery here keeps it
+        // symmetric with depletion — and with eating recovery below.
+        if (state == AnimalState.Eeping) { eeping.Eep(1f, AtHome()); }
         if (eating.Hungry()) {
             Item slotFood = foodSlotInv.itemStacks[0].item;
             if (slotFood != null && foodSlotInv.Quantity(slotFood) > 0) {
@@ -662,6 +686,32 @@ public class Animal : MonoBehaviour{
     }
     public int DropItem(ItemQuantity iq) { return(DropItem(iq.item, iq.quantity)); }
 
+    // Spills everything the mouse is carrying — main inventory and all four equip
+    // slots — onto the floor when it dies, so the player can recover the food and
+    // tools. Each item type routes through FindPathToDrop so it lands on a tile
+    // with space (mirrors Produce's overflow handling); MoveItemTo keeps the
+    // GlobalInventory totals correct. Called by AnimalController before Destroy().
+    public void DropInventoryToFloor() {
+        Inventory[] sources = { inv, foodSlotInv, toolSlotInv, clothingSlotInv, bookSlotInv };
+        foreach (Inventory src in sources) {
+            if (src == null) continue;
+            foreach (ItemStack stack in src.itemStacks) {
+                Item item = stack.item;
+                int quantity = stack.quantity;
+                if (item == null || quantity == 0) continue;
+                Path dropPath = nav.FindPathToDrop(item, quantity);
+                Tile dropTile = dropPath?.tile ?? TileHere();
+                if (dropTile == null) {
+                    Debug.LogError($"{aName} died but found nowhere to drop {item.name} — {quantity} fen lost");
+                    continue;
+                }
+                int leftover = src.MoveItemTo(dropTile.EnsureFloorInventory(), item, quantity);
+                if (leftover > 0)
+                    Debug.Log($"{aName}'s {item.name} ({leftover} fen) had no floor space on death — lost");
+            }
+        }
+    }
+
     // produces item in ani inv, dumps at nearby tile if inv full
     public void Produce(Item item, int quantity = 1){
         if (quantity < 0){
@@ -1024,7 +1074,18 @@ public class Animal : MonoBehaviour{
         task?.Fail();
         AnimalController.instance.UnregisterAnimalFromTile(_currentTile);
         _currentTile = null;
-        if (inv != null) { inv.Destroy(reason: $"{aName} died"); inv = null; }
+        // Release the home slot so another mouse can claim it.
+        homeBuilding?.res.Unreserve();
+        homeBuilding = null;
+        // Destroy every owned inventory — main + the four equip slots. Without the
+        // equip-slot teardown they leak into InventoryController's lists as dead
+        // references: the ClearWorld path happens to catch them via its inventory
+        // sweep, but a runtime death (starvation) does not.
+        if (inv != null)             { inv.Destroy(reason: $"{aName} died"); inv = null; }
+        if (foodSlotInv != null)     { foodSlotInv.Destroy(reason: $"{aName} died"); foodSlotInv = null; }
+        if (toolSlotInv != null)     { toolSlotInv.Destroy(reason: $"{aName} died"); toolSlotInv = null; }
+        if (clothingSlotInv != null) { clothingSlotInv.Destroy(reason: $"{aName} died"); clothingSlotInv = null; }
+        if (bookSlotInv != null)     { bookSlotInv.Destroy(reason: $"{aName} died"); bookSlotInv = null; }
         GameObject.Destroy(gameObject);
     }
 
