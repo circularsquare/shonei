@@ -14,11 +14,23 @@ Please feel free to explain your thought process.
 
 If you think my query is based on incorrect assumptions or doesn't make sense to you, feel free to ask for clarification.
 
-Feel free to spawn subagents to work on tasks or to double-check your own work — a fresh perspective catches mistakes your own context has normalized. This is especially valuable for (a) tasks with lots of moving or abstract parts, where there's more surface area for misunderstanding, and (b) any task that calls for an *estimate* (how hard something will be, how much compute alternatives might take, how long a refactor will run) — independent estimates reduce anchoring on your first guess.
+Spawn a subagent when (a) you're about to touch a subsystem not already in your context — have it read the relevant SPEC + named files and report current-state-vs-spec, (b) you need to verify a specific claim (file:line, API signature, memory entry) before acting on it — brief it with "quote the exact line", since past audit subagents have hallucinated, or (c) you're estimating effort or comparing approaches — your first guess anchors you.
+
+Brief well: pose a question, name the files to read, ask for a short structured report. Vague briefs produce vague work.
 
 If you notice anything that could be reorganized to improve clarity or efficiency, please mention it.
 
+**Self-verify before asking.** If a value, state, or behaviour can be checked with the tools you have (read the file, grep, MCP read-only resources like `find_gameobjects` / `get_hierarchy` / scene+component resources, `read_console`, `execute_code` for runtime inspection, a quick test, or WebSearch for anything likely covered by docs/forums), do that instead of asking me to context-switch into the editor or look something up. I'm usually juggling other agents, so "can you check X?" is much more expensive than it looks. Only ask when verification genuinely isn't possible from your side (e.g. subjective visual judgement, info that only exists in my head).
+
+**Verify mechanism, not symptoms.** Performance metrics (FPS, SetPass, srpHealth, GC) are noisy and shift with camera pan / scene state — treat as directional, not as proof a change worked. Before scaling a fix or layering more changes on top, confirm the underlying mechanism actually engaged via a direct invariant check (`execute_code` to query state, `atlas.spriteCount > 0`, a unit test, etc.). Aggregate metric moving the right direction isn't the same as the thing you just did working.
+
 **MCP scene work: live API is OK for simple stuff, ask for extensive.** Read-only MCP (find_gameobjects, get_hierarchy, read_console, scene/component resources) is always fine for inspection. Simple live-API mutations — assigning a shader/sprite/material to a SerializeField on an existing component, toggling a bool, single-property tweaks — just do them via MCP instead of writing out manual "select X, set property Y to Z" steps. For **extensive** scene work (building UI hierarchies, configuring anchors/layouts, multi-component setup, anything that touched the trouble areas in past sessions) **ask first** — past sessions consistently left cleanup tasks from broken layouts and anchor fights. Direct `.unity` / `.prefab` YAML writes are still risky and can clobber unsaved editor state; require explicit save confirmation first and prefer manual editor steps for those.
+
+## Writing to SPEC, CLAUDE.md, or memory
+
+These load every session — bloat dilutes the rules that matter. Before adding a line, check: is it **non-obvious**, **load-bearing** (removing it would cause a wrong call), and **stable** (true in 3 months)? If not all three, don't write it.
+
+When editing an existing section, prune redundant/stale lines in the same edit. Prefer one tight sentence over a paragraph; lead with the rule, not the narrative.
 
 ## Code practices
 
@@ -29,6 +41,10 @@ Make stuff private if you think it should be private.
 ## Code style
 
 Prioritize documentation and code clarity, in a way that future Claudes would find easy to understand.
+
+**Survey before adding.** When introducing a new entry into a class with similar existing entries (UI row Refresh methods, factory dispatch cases, panel rows, save data fields, etc.), survey the existing shape *before* writing your version. If the existing entries already vary in signature, that's a smell — propose unifying them, don't add a third variant. Additive specialization compounds: every new specialized entry makes the next one feel justified.
+
+**Player-facing text must be extremely concise.** Tooltips, labels, alerts, panel headers, button labels — only essential information, no extra context. Players don't want to read. Prefer data first ("9/9 mice have a home"), drop articles and connective words. Sentence fragments / single-line info pockets (tooltips, labels) take no trailing period; full multi-sentence messages do. The exception is tutorial / help pages — those don't exist yet but when they do, longer is fine *only there*.
 
 For braces: open brace on first line of function declaration.
 
@@ -59,6 +75,16 @@ Design plans for non-trivial in-progress features live in `C:\Users\anita\.claud
 
 ## C# / Unity IDE warnings
 The VSCode C# extension (OmniSharp/Roslyn) sometimes reports errors like "missing using directive" or "type not found" for types that are defined in other Unity-compiled assemblies (e.g. UnityEngine types, or classes in other .cs files without explicit namespaces). These are **false positives** — Unity's own compiler resolves them correctly when it builds. Do not add spurious `using` statements or restructure code to silence these IDE-only warnings.
+
+## Unity / URP / shader claims
+
+Model training on Unity specifics is unreliable. When you're about to **act** on a Unity API, URP internal, shader/MPB lifecycle, or package behavior claim — verify via `mcp__unity__unity_docs` or WebSearch and cite inline, OR say "unverified" and ask. A wrong shader/URP change is expensive; citation is cheap.
+
+This applies to acting, not chatting. Don't gate every sentence on a doc lookup — gate the ones that drive an edit.
+
+**Version-sensitive APIs:** when a feature's behavior depends on Unity version (atlas v1/v2, addressables, render pipeline versions, async APIs), check `Application.unityVersion` *first* — one line via `execute_code`. "Newer/recommended" advice from training data is often wrong for this project's version.
+
+**Silent failures:** Unity asset pipelines commonly fail with no error — atlas-not-packed, addressable-not-built, sprite-not-bound, importer-skipped. "No red console message" is not evidence of success. Confirm with a direct query after the action (e.g. `atlas.spriteCount`, `atlas.GetSprite(name) != null`, asset path resolves to expected type).
 
 ## Core patterns (always follow these)
 
@@ -147,6 +173,7 @@ The runner pauses `Time.timeScale`, sets `WorldController.skipAutoLoad` so the u
 - **Craft order job check**: Do NOT use `structType.job` for craft eligibility — that's the *construction* job (e.g. "hauler" for a sawmill). Use `Array.Exists(a.job.recipes, r => r != null && r.tile == buildingName)`.
 - **Stale WOM orders after world clear**: `WorkOrderManager.ClearAllOrders()` must be called at the start of `ClearWorld()`, before destroying any objects — otherwise `WorkOrder` references survive into the new session pointing at pre-load `ItemStack`/`Blueprint` objects.
 - **Static collections that accumulate across scene reloads**: when adding a new `static List<>` / `static HashSet<>` / `static Dictionary<>` in a singleton (especially `Db.cs`), reset it in the singleton's constructor — not just declare it once. Otherwise scene reloads (PlayMode tests, future "new game" feature) double-populate, breaking determinism. See the reset block in `Db.cs:72-100` for the pattern.
+- **Sprite Atlas V2 in Unity 2021.3**: V2 (`SpriteAtlasAsset`) creates the source file but the import pipeline never generates the runtime `SpriteAtlas`, so sprites never bind. Use V1 only: `new SpriteAtlas()` + `SpriteAtlasExtensions.Set*Settings` / `.Add` + `AssetDatabase.CreateAsset` + `SpriteAtlasUtility.PackAtlases`. Project's `EditorSettings.spritePackerMode` must be `AlwaysOnAtlas`. See `Assets/Editor/GameplayAtlasBuilder.cs` for the working pattern.
 - **Custom-UV sprite shaders break NormalsCapture's alpha mask**: NormalsCapture's override material samples `_MainTex` at the sprite's NATIVE (0..1) UVs — it does *not* know about any custom UV math your shader does (world-coord sampling, parallax shift, UV scroll, vertex displacement, etc.). When your visible shader transforms UVs but NormalsCapture sees the un-transformed mapping, the two disagree on where the sprite's alpha is. `LightFeature.cs` then renders ghost silhouettes shaped like the un-transformed alpha mask, visible whenever `lightmap` and `skyLightColor` diverge (most strongly at sunset/sunrise; near-invisible at noon). **Fix**: bake the transformed view into a `RenderTexture` via `Graphics.Blit` through a gen shader, then MPB-bind the RT as `_MainTex`. Both the visible pass and NormalsCapture now sample the same image. See `CloudLayer.cs` + `BackgroundLayer.cs` for the pattern, and SPEC-rendering.md §NormalsCapturePass for the full diagnosis.
 
 ## Session wrap-up checklist
