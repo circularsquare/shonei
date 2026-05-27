@@ -126,15 +126,28 @@ public class MouseController : MonoBehaviour {
             BuildPanel.instance?.CycleShape(+1);
         if (Input.GetKeyDown(KeyCode.Q) && mouseMode == MouseMode.Build)
             BuildPanel.instance?.CycleShape(-1);
-        // Ctrl+Alt+B = arm one-shot instant-build for the next blueprint placed.
+        // Ctrl+Alt+B has two modes depending on what the cursor is over:
+        //  (a) hovering an existing blueprint → instant-complete that blueprint.
+        //  (b) elsewhere → toggle the one-shot arm for the NEXT blueprint placed.
         // Symmetric to InfoPanel's Ctrl+Shift+D instant-deconstruct. Uses Alt (not Shift)
-        // to dodge Unity's Ctrl+Shift+B Build Settings shortcut. Not gated on Build mode
-        // so the user can arm it before selecting a building.
+        // to dodge Unity's Ctrl+Shift+B Build Settings shortcut. Not gated on Build mode.
         if (Input.GetKeyDown(KeyCode.B)
                 && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
                 && (Input.GetKey(KeyCode.LeftAlt)     || Input.GetKey(KeyCode.RightAlt))) {
-            BuildPanel.instantBuildNext = !BuildPanel.instantBuildNext;
-            Debug.Log($"[debug] instant-build next blueprint: {(BuildPanel.instantBuildNext ? "ARMED" : "disarmed")}");
+            Blueprint hoveredBp = null;
+            WorldController wc = WorldController.instance;
+            if (!EventSystem.current.IsPointerOverGameObject() && wc != null && wc.world != null) {
+                Vector3 mouseWorld = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+                Tile hoverTile = wc.world.GetTileAt(mouseWorld.x, mouseWorld.y);
+                hoveredBp = hoverTile?.GetAnyBlueprint();
+            }
+            if (hoveredBp != null) {
+                Debug.Log($"[debug] instant-complete {hoveredBp.structType.name} at ({hoveredBp.tile.x}, {hoveredBp.tile.y})");
+                hoveredBp.Complete();
+            } else {
+                BuildPanel.instantBuildNext = !BuildPanel.instantBuildNext;
+                Debug.Log($"[debug] instant-build next blueprint: {(BuildPanel.instantBuildNext ? "ARMED" : "disarmed")}");
+            }
         }
         // Ctrl+D = audit dump. Excludes Shift so it doesn't double-fire with
         // InfoPanel's Ctrl+Shift+D instant-deconstruct shortcut.

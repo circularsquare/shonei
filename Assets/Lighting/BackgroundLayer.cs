@@ -252,18 +252,6 @@ public class BackgroundLayer : SkyLayerBase {
         float extH  = viewH + 2f * panBuffer;
         sr.transform.localScale = new Vector3(extW, extH, 1f);
 
-        // ── Per-frame: parallax-compensated sprite position ─────────────────
-        // The bake fixes parallax for the bake's camera position; between
-        // bakes the camera moves but the baked content does not. To make the
-        // apparent texture motion still track the camera at the correct
-        // parallax rate (wlx × camMotion), the sprite must move at
-        // (1 - wlx) × camMotion. Formula collapses to camPos at bake time
-        // (full sky-lock from the baked content's perspective). Mirrors
-        // CloudLayer's parallax-compensation formula.
-        float spriteX = camPos.x - worldLockingX * (camPos.x - bakedCamX);
-        float spriteY = camPos.y - worldLockingY * (camPos.y - bakedCamY);
-        sr.transform.position = new Vector3(spriteX, spriteY, renderZ);
-
         // Per-frame MPB rebind. Editor events (sprite reimport, material
         // refresh, OnValidate paths) can silently clear the SpriteRenderer's
         // MaterialPropertyBlock — at which point _MainTex falls back to the
@@ -278,59 +266,73 @@ public class BackgroundLayer : SkyLayerBase {
         sr.color = tint;
 
         // ── Throttled heavy work (~15Hz) ─────────────────────────────────────
-        if (Time.time < nextHeavyUpdateTime) return;
-        nextHeavyUpdateTime = Time.time + heavyUpdateInterval;
+        // Unscaled time: see CloudLayer for the rationale — paused camera
+        // pans must still re-bake or the sprite drifts off the viewport.
+        if (Time.unscaledTime >= nextHeavyUpdateTime) {
+            nextHeavyUpdateTime = Time.unscaledTime + heavyUpdateInterval;
 
-        // Snapshot camera for parallax compensation in the next interval's
-        // cheap per-frame updates. Must match what the bake below uses for
-        // its parallaxOffset, or the per-frame sprite-position formula
-        // disagrees with the baked content and the background visibly jumps
-        // at each throttle tick.
-        bakedCamX = camPos.x;
-        bakedCamY = camPos.y;
+            // Snapshot camera for parallax compensation in the next interval's
+            // cheap per-frame updates. Must match what the bake below uses for
+            // its parallaxOffset, or the per-frame sprite-position formula
+            // disagrees with the baked content and the background visibly jumps
+            // at each throttle tick.
+            bakedCamX = camPos.x;
+            bakedCamY = camPos.y;
 
-        // Parallax offset: shifts the texture UV. Convention matches
-        // CloudLayer — worldLocking=0 → offset tracks camera fully so
-        // the UV stays constant (sky-locked: texture rides with the
-        // viewport); worldLocking=1 → offset is zero so the UV equals
-        // world position (world-locked: you walk past the texture).
-        Vector2 parallaxOffset = new Vector2(camPos.x * (1f - worldLockingX),
-                                             camPos.y * (1f - worldLockingY));
+            // Parallax offset: shifts the texture UV. Convention matches
+            // CloudLayer — worldLocking=0 → offset tracks camera fully so
+            // the UV stays constant (sky-locked: texture rides with the
+            // viewport); worldLocking=1 → offset is zero so the UV equals
+            // world position (world-locked: you walk past the texture).
+            Vector2 parallaxOffset = new Vector2(camPos.x * (1f - worldLockingX),
+                                                 camPos.y * (1f - worldLockingY));
 
-        // Texture covers (texture.width / ppu) world units per UV tile.
-        float texWorldW = texture.width  / texturePixelsPerUnit;
-        float texWorldH = texture.height / texturePixelsPerUnit;
-        Vector2 texUVScale = new Vector2(1f / texWorldW, 1f / texWorldH);
+            // Texture covers (texture.width / ppu) world units per UV tile.
+            float texWorldW = texture.width  / texturePixelsPerUnit;
+            float texWorldH = texture.height / texturePixelsPerUnit;
+            Vector2 texUVScale = new Vector2(1f / texWorldW, 1f / texWorldH);
 
-        bgGenMat.SetVector(ViewportSizeId,    new Vector2(extW, extH));
-        bgGenMat.SetVector(CameraPosId,       new Vector2(camPos.x, camPos.y));
-        bgGenMat.SetFloat (BandCenterYId,     bandCenterY);
-        bgGenMat.SetVector(ParallaxOffsetId,  parallaxOffset);
-        bgGenMat.SetVector(TexUVScaleId,      texUVScale);
-        bgGenMat.SetFloat (ShadowStrengthId,   shadowStrength);
-        bgGenMat.SetFloat (ShadowNoiseScaleId, shadowNoiseScale);
-        bgGenMat.SetFloat (ShadowAspectId,     shadowAspect);
-        bgGenMat.SetFloat (ShadowSoftnessId,   shadowSoftness);
+            bgGenMat.SetVector(ViewportSizeId,    new Vector2(extW, extH));
+            bgGenMat.SetVector(CameraPosId,       new Vector2(camPos.x, camPos.y));
+            bgGenMat.SetFloat (BandCenterYId,     bandCenterY);
+            bgGenMat.SetVector(ParallaxOffsetId,  parallaxOffset);
+            bgGenMat.SetVector(TexUVScaleId,      texUVScale);
+            bgGenMat.SetFloat (ShadowStrengthId,   shadowStrength);
+            bgGenMat.SetFloat (ShadowNoiseScaleId, shadowNoiseScale);
+            bgGenMat.SetFloat (ShadowAspectId,     shadowAspect);
+            bgGenMat.SetFloat (ShadowSoftnessId,   shadowSoftness);
 
-        // Keep bgRT at the camera's pixel-per-world ratio so the visible sprite
-        // samples it 1:1 (no upscaling blur). Scale up by the buffered/viewport
-        // ratio so the extra world coverage gets proportional pixel coverage.
-        int targetW = Mathf.Max(1, Mathf.RoundToInt(bgCam.pixelWidth  * (extW / viewW)));
-        int targetH = Mathf.Max(1, Mathf.RoundToInt(bgCam.pixelHeight * (extH / viewH)));
-        if (bgRT.width != targetW || bgRT.height != targetH) {
-            bgRT.Release();
-            Destroy(bgRT);
-            bgRT = MakeBgRT(targetW, targetH);
-            // Re-bind on the next per-frame MPB rebind (no extra work here).
+            // Keep bgRT at the camera's pixel-per-world ratio so the visible sprite
+            // samples it 1:1 (no upscaling blur). Scale up by the buffered/viewport
+            // ratio so the extra world coverage gets proportional pixel coverage.
+            int targetW = Mathf.Max(1, Mathf.RoundToInt(bgCam.pixelWidth  * (extW / viewW)));
+            int targetH = Mathf.Max(1, Mathf.RoundToInt(bgCam.pixelHeight * (extH / viewH)));
+            if (bgRT.width != targetW || bgRT.height != targetH) {
+                bgRT.Release();
+                Destroy(bgRT);
+                bgRT = MakeBgRT(targetW, targetH);
+                // Re-bind on the next per-frame MPB rebind (no extra work here).
+            }
+
+            if (!bgRT.IsCreated()) bgRT.Create();
+
+            // Explicit _MainTex bind on the gen material before the Blit.
+            // Graphics.Blit's source-arg binding occasionally doesn't reach a
+            // custom material's TEXTURE2D(_MainTex) sampler — explicitly setting
+            // it here removes the dependency on that implicit hook.
+            bgGenMat.SetTexture(MainTexId, texture);
+            Graphics.Blit(texture, bgRT, bgGenMat);
         }
 
-        if (!bgRT.IsCreated()) bgRT.Create();
-
-        // Explicit _MainTex bind on the gen material before the Blit.
-        // Graphics.Blit's source-arg binding occasionally doesn't reach a
-        // custom material's TEXTURE2D(_MainTex) sampler — explicitly setting
-        // it here removes the dependency on that implicit hook.
-        bgGenMat.SetTexture(MainTexId, texture);
-        Graphics.Blit(texture, bgRT, bgGenMat);
+        // ── Sprite position (always last) ──────────────────────────────────
+        // Run AFTER any bake so bakedCam* in the formula reflect the just-
+        // baked anchors. If positioning ran first, the bake frame would
+        // render new RT content at the OLD sprite anchor — visible as a
+        // 15Hz jitter while panning. Formula collapses to camPos right
+        // after a bake and drifts at (1 - worldLocking) × camMotion until
+        // the next bake. Mirrors CloudLayer's compensation formula.
+        float spriteX = camPos.x - worldLockingX * (camPos.x - bakedCamX);
+        float spriteY = camPos.y - worldLockingY * (camPos.y - bakedCamY);
+        sr.transform.position = new Vector3(spriteX, spriteY, renderZ);
     }
 }

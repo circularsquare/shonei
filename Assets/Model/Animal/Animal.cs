@@ -753,9 +753,12 @@ public class Animal : MonoBehaviour{
         }
         else { Debug.Log($"{aName} ({job.name}) called produce without ingredients for recipe at ({(int)x},{(int)y})"); }
     }
-    public bool CanProduce(Recipe recipe) {
-        Building b = TileHere()?.building;
-        return b != null && inv.ContainsItems(recipe.inputs) && recipe.tile == b.structType.name;
+    // `workBuilding` is the building the active task says we're working at — the source
+    // of truth, not whatever `TileHere().building` happens to be. Matters when the
+    // workNode is an off-grid waypoint that drops the worker into a different tile
+    // (digging pit's elevated/sinking stand spot, wheel's centred runner pose).
+    public bool CanProduce(Recipe recipe, Building workBuilding) {
+        return workBuilding != null && inv.ContainsItems(recipe.inputs) && recipe.tile == workBuilding.structType.name;
     }
     public void Consume(Item item, int quantity = 1){
         // Group items (e.g. "planks") can't exist in inventories — resolve to the leaf actually held.

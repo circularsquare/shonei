@@ -41,7 +41,7 @@ using Newtonsoft.Json;
 //   [x] Per-animal RNG seed (drives Animal.random — animal AI reproduces on reload)
 //   [x] Tile types, floor inventories (incl. wetUntil rain-soaked timer), background wall, overlay masks (grass on dirt), overlay health state (live/dying/dead), and snow cover
 //   [x] Per-column original surface heights (worldgen ground line, persisted so decoration depth gates survive column mining)
-//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, furnishingInvData + furnishingRemainingDays, processor state/progress/inputData/outputData, mirrored, rotation, shapeIndex, disabled, plantHarvestFlagged, quarry capturedTileType, flywheel charge, elevator currentY + history buffers, bridge-post partnerX/Y, savedNx/savedNy footprint)
+//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, furnishingInvData + furnishingRemainingDays, processor state/progress/inputData/outputData, mirrored, rotation, shapeIndex, disabled, plantHarvestFlagged, quarry/digging pit capturedTileType, flywheel charge, elevator currentY + history buffers, bridge-post partnerX/Y, savedNx/savedNy footprint)
 //   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored, rotation, shapeIndex, disabled, two-click x2/y2)
 //   [x] Animals (position, job, energy, food, starvation countdown, happiness, decoration happiness, socialization, fireplace warmth, inv, foodSlotInv, toolSlotInv, clothingSlotInv, bookSlotInv)
 //   [x] Mid-transit merchant task descriptor (travelTaskType + iq + storage tile + leg)
@@ -63,6 +63,11 @@ public class SaveSystem : MonoBehaviour {
 
     // Name of the slot that was last loaded or saved. Null for a fresh/reset world.
     public string currentSlot { get; private set; }
+
+    // Cache of slot name → animal count, populated lazily by GetAnimalCount via a
+    // streaming JSON read and kept fresh by Save/DeleteSlot/RenameSlot. Avoids
+    // re-parsing multi-MB save files every time the save menu panel is opened.
+    Dictionary<string, int> _animalCountCache = new Dictionary<string, int>();
 
     string SaveDir {
         get {
@@ -86,6 +91,11 @@ public class SaveSystem : MonoBehaviour {
         string json = SerializeToJson();
         System.IO.File.WriteAllText(SlotPath(slotName), json);
         currentSlot = slotName;
+        // Refresh the cache from the live animal count — avoids re-parsing the file we just wrote.
+        if (AnimalController.instance != null)
+            _animalCountCache[slotName] = AnimalController.instance.na;
+        else
+            _animalCountCache.Remove(slotName);
         Debug.Log("Saved world to slot: " + slotName);
     }
 
@@ -329,6 +339,8 @@ public class SaveSystem : MonoBehaviour {
         }
         if (s is Quarry q && q.capturedTile != null)
             ssd.capturedTileType = q.capturedTile.name;
+        if (s is DiggingPit dp && dp.capturedTile != null)
+            ssd.capturedTileType = dp.capturedTile.name;
         if (s is Flywheel fw)
             ssd.flywheelCharge = fw.charge;
         if (s is Elevator el) {
@@ -872,6 +884,18 @@ public class SaveSystem : MonoBehaviour {
             else
                 Debug.LogError($"RestoreStructure: unknown capturedTileType '{ssd.capturedTileType}' for quarry at ({ssd.x},{ssd.y})");
         }
+        if (structure is DiggingPit drp && !string.IsNullOrEmpty(ssd.capturedTileType)) {
+            if (Db.tileTypeByName.TryGetValue(ssd.capturedTileType, out TileType tt)) {
+                drp.capturedTile = tt;
+                // OnPlaced is skipped on the load path, so build the dish visual
+                // here once capturedTile + workstation.uses are both restored.
+                // ssd.uses was applied above (the Building branch); workNode was
+                // wired in the Structure ctor; we just need to render.
+                drp.RebuildDishVisual();
+            }
+            else
+                Debug.LogError($"RestoreStructure: unknown capturedTileType '{ssd.capturedTileType}' for digging pit at ({ssd.x},{ssd.y})");
+        }
         if (structure is Flywheel fw)
             fw.charge = Mathf.Clamp(ssd.flywheelCharge, 0f, Flywheel.Capacity);
         if (structure is Elevator el) {
@@ -1111,6 +1135,7 @@ public class SaveSystem : MonoBehaviour {
         string path = SlotPath(slotName);
         if (!System.IO.File.Exists(path)) { Debug.LogError("DeleteSlot: slot not found: " + slotName); return; }
         System.IO.File.Delete(path);
+        _animalCountCache.Remove(slotName);
         Debug.Log("Deleted slot: " + slotName);
     }
 
@@ -1121,22 +1146,52 @@ public class SaveSystem : MonoBehaviour {
         if (!System.IO.File.Exists(oldPath)) { Debug.LogError("RenameSlot: source not found: " + oldName); return false; }
         if (System.IO.File.Exists(newPath)) { Debug.LogError("RenameSlot: destination exists: " + newName); return false; }
         System.IO.File.Move(oldPath, newPath);
+        if (_animalCountCache.TryGetValue(oldName, out int cached)) {
+            _animalCountCache.Remove(oldName);
+            _animalCountCache[newName] = cached;
+        }
         Debug.Log("Renamed slot \"" + oldName + "\" → \"" + newName + "\"");
         return true;
     }
 
-    // Returns animal count stored in a save file (reads from disk). Returns 0 on failure.
+    // Returns the animal count for a save slot. Results are cached in
+    // _animalCountCache so repeat lookups (e.g. re-opening the save menu) are free;
+    // the cache is kept fresh by Save / DeleteSlot / RenameSlot.
+    //
+    // On cache miss, streams the save file with JsonTextReader and counts the
+    // top-level objects in the `animals` array. This avoids materializing the
+    // rest of WorldSaveData (tiles, structures, blueprints, water/moisture grids,
+    // etc.) just to read one length — that full deserialize was responsible for
+    // the noticeable freeze when opening the save panel with several large saves.
     public int GetAnimalCount(string slotName) {
+        if (_animalCountCache.TryGetValue(slotName, out int cached)) return cached;
+
         string path = SlotPath(slotName);
         if (!System.IO.File.Exists(path)) { Debug.LogError("GetAnimalCount: slot not found: " + slotName); return 0; }
+        int count = 0;
         try {
-            string json = System.IO.File.ReadAllText(path);
-            WorldSaveData data = JsonConvert.DeserializeObject<WorldSaveData>(json);
-            return data?.animals?.Length ?? 0;
+            using (var sr = new System.IO.StreamReader(path))
+            using (var reader = new JsonTextReader(sr)) {
+                while (reader.Read()) {
+                    if (reader.TokenType == JsonToken.PropertyName
+                        && (string)reader.Value == "animals") {
+                        if (!reader.Read() || reader.TokenType != JsonToken.StartArray) break;
+                        while (reader.Read() && reader.TokenType != JsonToken.EndArray) {
+                            if (reader.TokenType == JsonToken.StartObject) {
+                                count++;
+                                reader.Skip(); // jump to matching EndObject
+                            }
+                        }
+                        break; // animals array done — no need to read the rest of the file
+                    }
+                }
+            }
         } catch (System.Exception e) {
             Debug.LogError("GetAnimalCount: failed to parse \"" + slotName + "\": " + e.Message);
             return 0;
         }
+        _animalCountCache[slotName] = count;
+        return count;
     }
 
     string SlotPath(string slotName) => System.IO.Path.Combine(SaveDir, slotName + ".json");

@@ -29,9 +29,9 @@ CONTENT
 
 - lots of herbs (see cool plants plan)
 - metallurgy 
-    - clay tile 
-    - clay item 
-    - furnace
+    - clay tile  x
+    - clay item  x
+    - furnace upsize
     - copper ore
     - tin ore 
     - copper / tin / bronze ingot
@@ -83,3 +83,4 @@ upsize more workshop buildings
     furnace (taller, 1x2m)
 tie up optimization ends 
 sketch out metalworking?
+working pose facing back

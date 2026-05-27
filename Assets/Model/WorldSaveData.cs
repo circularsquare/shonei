@@ -145,8 +145,10 @@ public class StructureSaveData {
     // saves (field absent) deserialize as 0 which the restore path treats as "missing → default
     // to 1.0" so pre-maintenance saves don't load every structure as broken.
     public float condition;
-    // Quarry only: name of the stone tile the quarry was placed on. Drives the
-    // per-stone extraction distribution. null on non-quarry / old saves.
+    // Quarry / digging pit: name of the tile the structure was placed on. Quarry
+    // uses it to pick the per-stone extraction distribution; digging pit uses it
+    // to produce the substrate's primary product (dirt / sand / clay). null on
+    // other structures and on old saves.
     public string capturedTileType;
     // Flywheel only: stored mechanical-power energy. 0 on non-flywheels / old saves.
     // Without this, flywheels would reset to empty on every load and surrender any

@@ -75,6 +75,7 @@ public class TileRequirement {
     public bool mustBeStandable {get; set;}
     public bool mustHaveWater {get; set;}    // tile.water > 0
     public bool mustBeEmpty {get; set;}      // structs[0] (building layer) must be null
+    public bool mustNotBePlant {get; set;}   // if structs[0] is a Plant, reject. Lets a structure permit non-plant occupants while still refusing rooted plants — e.g. digging pit on a dirt tile rejects when a plant grows in the air tile above, since hollowing out the dirt would orphan it.
     public bool mustBeSolidTile {get; set;}  // tile.type.solid must be true (ground tiles only, not solidTop buildings)
     public bool mustBeOpenSkyAbove {get; set;}  // World.IsExposedAbove(tx, ty) — used by windmill on each top-row tile
     public string requiredTileName {get; set;}

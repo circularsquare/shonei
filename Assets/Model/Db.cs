@@ -97,10 +97,25 @@ public class Db : MonoBehaviour {
         if (instance != null){
             Debug.LogError("tried to create two instances of database"); }
         instance = this;
+        ResetCollections();
+    }
 
-        // Reset every static collection — without this, a scene reload (e.g. PlayMode
-        // snapshot tests, or a future "new game" feature) finds the previous Db's
-        // entries still populated and AddItemToDb fires duplicate-id errors.
+    // Fires before any Awake on every play press, regardless of the Enter Play
+    // Mode "Reload Domain" setting. With Reload Domain disabled (this project's
+    // fast-play config), the constructor only runs on the very first scene load —
+    // so on re-entering play, the existing Db MonoBehaviour persists with its
+    // statics still populated from last session, and LoadAll's AddItemToDb fires
+    // duplicate-id errors. SubsystemRegistration guarantees a clean reset every
+    // play press. See project_plain_csharp_singletons.md (memory) for the pattern.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics() {
+        ResetCollections();
+    }
+
+    // Reset every static collection so a fresh LoadAll produces clean state.
+    // Called from the ctor (first play + editor-mode TileAtlasBaker.EnsureDbLoaded)
+    // and from the SubsystemRegistration hook (subsequent play presses).
+    static void ResetCollections() {
         iidByName = new Dictionary<string, int>();
         itemByName = new Dictionary<string, Item>();
         jobByName = new Dictionary<string, Job>();
@@ -128,7 +143,7 @@ public class Db : MonoBehaviour {
         // wrong, breaking snapshot reproducibility).
         chineseNames.Clear();
         inventedNames.Clear();
-    } 
+    }
 
     void Awake(){ // this runs before Start() like in world
         LoadAll();

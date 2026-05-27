@@ -11,6 +11,7 @@
         "id": 2,
         "name": "dirt",
         "solid": 1,
+        "group": "earth",
         "overlay": "grass",
         "nproducts": [
             { "name": "dirt", "quantity": 10 }
@@ -19,6 +20,7 @@
         "id": 3,
         "name": "sand",
         "solid": 1,
+        "group": "earth",
         "nproducts": [
             { "name": "sand", "quantity": 10 }
         ]
@@ -26,7 +28,7 @@
         "id": 4,
         "name": "clay",
         "solid": 1,
-        "group": "dirt",
+        "group": "earth",
         "nproducts": [
             { "name": "clay", "quantity": 10 }
         ]
@@ -41,7 +43,8 @@
         "nExtractionProducts": [
             { "name": "limestone", "quantity": 1 },
             { "name": "gypsum",    "quantity": 1, "chance": 0.10 },
-            { "name": "coal",      "quantity": 1, "chance": 0.03 }
+            { "name": "coal",      "quantity": 1, "chance": 0.03 },
+            { "name": "malachite", "quantity": 1, "chance": 0.04 }
         ]
     },{
         "id": 21,
@@ -52,10 +55,11 @@
             { "name": "granite", "quantity": 10 }
         ],
         "nExtractionProducts": [
-            { "name": "granite",  "quantity": 1 },
-            { "name": "iron ore", "quantity": 1, "chance": 0.15 },
-            { "name": "coal",     "quantity": 1, "chance": 0.05 },
-            { "name": "silver",   "quantity": 0.5, "chance": 0.02 }
+            { "name": "granite",      "quantity": 1 },
+            { "name": "iron ore",     "quantity": 1, "chance": 0.15 },
+            { "name": "coal",         "quantity": 1, "chance": 0.05 },
+            { "name": "silver",       "quantity": 0.5, "chance": 0.02 },
+            { "name": "cassiterite",  "quantity": 1, "chance": 0.06 }
         ]
     },{
         "id": 22,

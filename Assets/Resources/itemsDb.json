@@ -83,6 +83,16 @@
             }
         ]
     },{
+        "id": 33,
+        "name": "malachite",
+        "decayRate": 0.0,
+        "children": null
+    },{
+        "id": 34,
+        "name": "cassiterite",
+        "decayRate": 0.0,
+        "children": null
+    },{
         "id": 40,
         "name": "iron",
         "decayRate": 0.0,

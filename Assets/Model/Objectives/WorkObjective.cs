@@ -16,11 +16,24 @@ public class WorkObjective : Objective {
     }
     public override void Start(){
         // Only CraftTask uses WorkObjective today, always preceded by GoObjective — so the
-        // animal SHOULD be at the workplace tile when we arrive here. Guard catches a future
-        // caller that skips Go, or a race where the workplace was reassigned mid-task.
-        if (task is CraftTask ct && ct.workplace != null && animal.TileHere() != ct.workplace) {
-            Debug.LogError($"{animal.aName} WorkObjective.Start: not at workplace ({ct.workplace.x},{ct.workplace.y}), animal at ({animal.x},{animal.y})");
-            Fail(); return;
+        // animal SHOULD be at the workNode position when we arrive here. Guard catches a
+        // future caller that skips Go, or a race where the workplace was reassigned mid-task.
+        //
+        // Position-based (not tile-based): workNode may be an off-grid waypoint that snaps
+        // the animal to a sub-tile location whose nearest-int tile rounds away from the
+        // workplace tile (digging pit's elevated stand-on-dirt-roof spot when the dish is
+        // fresh; wheel's centred runner waypoint that lands on the right half of a 2×2).
+        // A tile-equality check rejected those legitimate states.
+        if (task is CraftTask ct && ct.workplace != null) {
+            Building wb = ct.workplace.building;
+            Node target = wb?.workNode;
+            bool atSpot = target != null
+                ? (Mathf.Abs(animal.x - target.wx) < 0.5f && Mathf.Abs(animal.y - target.wy) < 0.5f)
+                : animal.TileHere() == ct.workplace;
+            if (!atSpot) {
+                Debug.LogError($"{animal.aName} WorkObjective.Start: not at workplace ({ct.workplace.x},{ct.workplace.y}), animal at ({animal.x},{animal.y})");
+                Fail(); return;
+            }
         }
         if (!animal.inv.ContainsItems(recipe.inputs)) {
             Debug.Log($"{animal.aName} WorkObjective: missing inputs for {recipe.description}, failing");

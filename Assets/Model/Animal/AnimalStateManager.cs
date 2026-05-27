@@ -195,14 +195,19 @@ public class AnimalStateManager {
             if (taskSkill.HasValue) animal.skills.GainXp(taskSkill.Value, baseWorkEff * 0.1f);
             while (animal.workProgress >= recipe.workload) {
                 animal.workProgress -= recipe.workload;
-                if (animal.CanProduce(recipe)) {
+                if (animal.CanProduce(recipe, wsBuilding)) {
                     // Consume inputs and produce outputs, rolling chance for each output.
-                    // Quarry routes outputs through its captured-tile's extractionProducts
-                    // instead of the recipe's (empty) outputs — see Quarry.cs.
+                    // Quarry and digging pit route outputs through their captured-tile's
+                    // products instead of the recipe's (empty) outputs — see Quarry.cs /
+                    // DiggingPit.cs.
                     foreach (ItemQuantity iq in recipe.inputs) animal.Consume(iq.item, iq.quantity);
                     ItemQuantity[] outputs = recipe.outputs;
                     if (craftTask.workplace?.building is Quarry quarry) {
                         var extra = quarry.GetExtractionOutputs();
+                        if (extra != null) outputs = extra;
+                    }
+                    if (craftTask.workplace?.building is DiggingPit diggingPit) {
+                        var extra = diggingPit.GetExtractionOutputs();
                         if (extra != null) outputs = extra;
                     }
                     foreach (ItemQuantity output in outputs) {
@@ -220,10 +225,26 @@ public class AnimalStateManager {
                         wb.workstation.uses++;
                         if (wb.workstation.uses >= wb.structType.depleteAt) {
                             Tile depletedTile = craftTask.workplace;
+                            bool wasPit = wb is DiggingPit;
                             wb.Destroy();
+                            // Digging pit kept the tile intact during operation (preservesTile)
+                            // — on full depletion the dirt is finally gone, so empty the tile
+                            // before the platform takes its place. Without this, the follow-up
+                            // platform would sit on top of the original solid substrate.
+                            if (wasPit) depletedTile.type = Db.tileTypeByName["empty"];
                             StructController.instance.Construct(Db.structTypeByName["platform"], depletedTile);
                             craftTask.Complete();
                             return;
+                        }
+                        // Digging pit: refresh the dish visual and drop the workspot
+                        // so the next craft round shows the new excavation depth and
+                        // the digger keeps standing on the receding floor. The animal
+                        // is already standing AT workNode (CraftTask arrived) so it
+                        // needs an explicit SnapTo — otherwise its transform stays at
+                        // the old wy until it walks somewhere else.
+                        if (wb is DiggingPit pit) {
+                            pit.RebuildDishVisual();
+                            if (pit.workNode != null) animal.SnapTo(animal.x, pit.workNode.wy);
                         }
                     }
                     craftTask.roundsRemaining--;

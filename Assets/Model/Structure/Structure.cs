@@ -553,6 +553,24 @@ public class Structure {
                 }
             }
         }
+
+        // Workstation-with-interior: when no explicit workSpotX/Y was declared, repoint
+        // workNode away from the (non-standable) tile-node at workTile and onto the
+        // matching interior node instead. Door edges connect the interior node to outside
+        // approach tiles, so CraftTask's path-to-workNode resolves through the door — the
+        // worker enters the building and stands inside it while crafting. Currently used
+        // by digging pit (preservesTile, workTile sits inside the original solid tile);
+        // safe for any future workstation with an interior layer.
+        if (st.isWorkstation && interiorNodes != null && interiorNodes.Length > 0 && !st.workSpotX.HasValue) {
+            int wxTile = x + (mirrored ? (st.nx - 1 - st.workTileX) : st.workTileX);
+            int wyTile = y + st.workTileY;
+            for (int i = 0; i < interiorNodes.Length; i++) {
+                if (interiorNodes[i].x == wxTile && interiorNodes[i].y == wyTile) {
+                    workNode = interiorNodes[i];
+                    break;
+                }
+            }
+        }
     }
 
     // Shared factory: dispatches to the correct subclass based on StructType properties.
@@ -600,6 +618,7 @@ public class Structure {
             if (st.name == "pump")     return new PumpBuilding(st, x, y, mirrored);
             if (st.name == "market")   return new MarketBuilding(st, x, y, mirrored);
             if (st.name == "quarry")   return new Quarry(st, x, y, mirrored);
+            if (st.name == "digging pit") return new DiggingPit(st, x, y, mirrored);
             if (st.name == "wheel")    return new MouseWheel(st, x, y, mirrored);
             if (st.name == "windmill") return new Windmill(st, x, y, mirrored);
             if (st.name == "flywheel") return new Flywheel(st, x, y, mirrored);

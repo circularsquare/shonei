@@ -5,6 +5,10 @@ meoww!!
     - atlasing of most sprites
     - cloud throttling
 - clay!
+- dirt pit rework
+    - dynamic height as it gets dug out 
+    - solid tile preservation 
+- malachite / cassiterite
 5/26
 - optimization attempts...
 - upsized sawmill, workshop

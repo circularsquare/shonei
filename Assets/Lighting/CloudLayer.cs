@@ -342,27 +342,7 @@ public class CloudLayer : SkyLayerBase {
         // morph in place.
         evolutionOffset += cloudEvolutionRate * Time.deltaTime;
 
-        // Position the sprite. Vertical: sprite tracks camera y with
-        // worldLockingY interpolating between sky-locked (=0) and
-        // world-locked (=1) — handled per-frame so y parallax stays
-        // smooth. renderZ must sit between SkyCamera's near (0.3) and
-        // far planes.
-        //
-        // Horizontal: at bake time the sprite would sit at camPos.x with
-        // blob.lx values computed from noiseOffset = camPos.x * worldLockingX +
-        // windOffsetX (full sky-lock; the noise scroll provides parallax).
-        // Between bakes the BAKED lx values are fixed, so the sprite must
-        // do the parallax-and-wind drift itself or the visual reverts to
-        // sky-locked + windless. Formula collapses to camPos.x at bake
-        // time (full sky-lock as intended) and drifts the sprite by
-        // (1 - worldLockingX) × camMotion + windDrift between bakes so
-        // each baked blob appears at the right world-space position.
         Vector3 camPos = bgCam.transform.position;
-        float spriteX = camPos.x
-                      - worldLockingX * (camPos.x - bakedCamX)
-                      + (bakedWindOffsetX - windOffsetX);
-        float spriteY = camPos.y + (bandCenterY - camPos.y) * worldLockingY;
-        sr.transform.position = new Vector3(spriteX, spriteY, renderZ);
 
         // Humidity-driven full-sprite tint. Multiplied by _MainTex.rgb in
         // the sprite shader. Stays pure baseColorClear below
@@ -385,72 +365,104 @@ public class CloudLayer : SkyLayerBase {
         Shader.SetGlobalFloat("_CloudThreshold",       threshold);
 
         // ── Throttled heavy work (~15Hz) ─────────────────────────────────
-        if (Time.time < nextHeavyUpdateTime) return;
-        nextHeavyUpdateTime = Time.time + heavyUpdateInterval;
+        // Unscaled time: while paused (Time.timeScale=0) the user can still
+        // RMB-pan the camera. If the throttle gated on Time.time, no re-bake
+        // would fire and bakedCamX would freeze — the per-frame parallax-
+        // compensation formula then shifts the sprite progressively off-
+        // screen as the camera pans further. The bake CONTENT still freezes
+        // correctly because windOffsetX / evolutionOffset use Time.deltaTime.
+        if (Time.unscaledTime >= nextHeavyUpdateTime) {
+            nextHeavyUpdateTime = Time.unscaledTime + heavyUpdateInterval;
 
-        // Snapshot camera+wind for parallax compensation in the next
-        // interval's cheap per-frame updates. The bake below uses these
-        // exact values (camPos.x and windOffsetX) to compute noiseOffset
-        // → blob.lx, so storing them here ensures the per-frame sprite
-        // position formula stays consistent with the baked content.
-        bakedCamX = camPos.x;
-        bakedWindOffsetX = windOffsetX;
+            // Snapshot camera+wind for parallax compensation in the next
+            // interval's cheap per-frame updates. The bake below uses these
+            // exact values (camPos.x and windOffsetX) to compute noiseOffset
+            // → blob.lx, so storing them here ensures the per-frame sprite
+            // position formula stays consistent with the baked content.
+            bakedCamX = camPos.x;
+            bakedWindOffsetX = windOffsetX;
 
-        // Resize RTs if camera viewport changed meaningfully (zoom / resize).
-        MaybeResizeForViewport();
+            // Resize RTs if camera viewport changed meaningfully (zoom / resize).
+            MaybeResizeForViewport();
 
-        // Defensive: domain reload (script recompile while in Play mode)
-        // can leave the RT object alive but with its GPU contents dropped.
-        // Cheap when already created.
-        if (!mainRT.IsCreated())   mainRT.Create();
-        if (!normalRT.IsCreated()) normalRT.Create();
+            // Defensive: domain reload (script recompile while in Play mode)
+            // can leave the RT object alive but with its GPU contents dropped.
+            // Cheap when already created.
+            if (!mainRT.IsCreated())   mainRT.Create();
+            if (!normalRT.IsCreated()) normalRT.Create();
 
-        // Re-apply the MPB binding. Editor events (sprite reimport, material
-        // refresh, OnValidate paths) can silently clear the SpriteRenderer's
-        // MaterialPropertyBlock — at which point _MainTex falls back to the
-        // dummy spriteTex and the cloud reads as a flat rectangle.
-        if (mpb == null) mpb = new MaterialPropertyBlock();
-        sr.GetPropertyBlock(mpb);
-        mpb.SetTexture(MainTexId,   mainRT);
-        mpb.SetTexture(NormalMapId, normalRT);
-        sr.SetPropertyBlock(mpb);
+            // Re-apply the MPB binding. Editor events (sprite reimport, material
+            // refresh, OnValidate paths) can silently clear the SpriteRenderer's
+            // MaterialPropertyBlock — at which point _MainTex falls back to the
+            // dummy spriteTex and the cloud reads as a flat rectangle.
+            if (mpb == null) mpb = new MaterialPropertyBlock();
+            sr.GetPropertyBlock(mpb);
+            mpb.SetTexture(MainTexId,   mainRT);
+            mpb.SetTexture(NormalMapId, normalRT);
+            sr.SetPropertyBlock(mpb);
 
-        // Noise offset = parallax × camera-x + accumulated wind drift.
-        // Used by GenerateBlobs to convert noise-anchored positions to
-        // sprite-local coords.
-        Vector2 noiseOffset = new Vector2(camPos.x * worldLockingX + windOffsetX, 0f);
+            // Noise offset = parallax × camera-x + accumulated wind drift.
+            // Used by GenerateBlobs to convert noise-anchored positions to
+            // sprite-local coords.
+            Vector2 noiseOffset = new Vector2(camPos.x * worldLockingX + windOffsetX, 0f);
 
-        cloudGenMat.SetVector(TexSizeId,        new Vector2(textureSize.x, textureSize.y));
-        cloudGenMat.SetFloat (InvPpuId,         1f / pixelsPerUnit);
-        cloudGenMat.SetColor (LitColorId,       litColor);
-        cloudGenMat.SetColor (MidColorId,       midColor);
-        cloudGenMat.SetColor (ShadowColorId,    shadowColor);
-        cloudGenMat.SetFloat (LitBandId,        litBand);
-        cloudGenMat.SetFloat (ShadowBandId,     shadowBand);
-        cloudGenMat.SetFloat (CloudSunHeightId, cloudSunHeight);
-        cloudGenMat.SetVector(NoiseOffsetId,    noiseOffset);
-        cloudGenMat.SetFloat (WobbleStrengthId, edgeWobbleStrength);
-        cloudGenMat.SetFloat (WobbleScaleId,    edgeWobbleScale);
-        cloudGenMat.SetFloat (CurlEpsId,        curlNoiseEps);
-        cloudGenMat.SetFloat (NormalEpsilonId,  normalEpsilon);
-        cloudGenMat.SetFloat (EdgeThresholdId,  edgeThreshold);
-        cloudGenMat.SetFloat (EdgeSoftnessId,   edgeSoftness);
-        // Flat-lighting toggle: when on, Pass 0 skips the 5-tap height-field
-        // normal + Lambertian band selection (saves ~80% of blob-loop work).
-        bool flatLight = SettingsManager.instance != null
-                      && !SettingsManager.instance.cloudLightingEnabled;
-        cloudGenMat.SetFloat(FlatLightingId, flatLight ? 1f : 0f);
+            cloudGenMat.SetVector(TexSizeId,        new Vector2(textureSize.x, textureSize.y));
+            cloudGenMat.SetFloat (InvPpuId,         1f / pixelsPerUnit);
+            cloudGenMat.SetColor (LitColorId,       litColor);
+            cloudGenMat.SetColor (MidColorId,       midColor);
+            cloudGenMat.SetColor (ShadowColorId,    shadowColor);
+            cloudGenMat.SetFloat (LitBandId,        litBand);
+            cloudGenMat.SetFloat (ShadowBandId,     shadowBand);
+            cloudGenMat.SetFloat (CloudSunHeightId, cloudSunHeight);
+            cloudGenMat.SetVector(NoiseOffsetId,    noiseOffset);
+            cloudGenMat.SetFloat (WobbleStrengthId, edgeWobbleStrength);
+            cloudGenMat.SetFloat (WobbleScaleId,    edgeWobbleScale);
+            cloudGenMat.SetFloat (CurlEpsId,        curlNoiseEps);
+            cloudGenMat.SetFloat (NormalEpsilonId,  normalEpsilon);
+            cloudGenMat.SetFloat (EdgeThresholdId,  edgeThreshold);
+            cloudGenMat.SetFloat (EdgeSoftnessId,   edgeSoftness);
+            // Flat-lighting toggle: when on, Pass 0 skips the 5-tap height-field
+            // normal + Lambertian band selection (saves ~80% of blob-loop work).
+            bool flatLight = SettingsManager.instance != null
+                          && !SettingsManager.instance.cloudLightingEnabled;
+            cloudGenMat.SetFloat(FlatLightingId, flatLight ? 1f : 0f);
 
-        GenerateBlobs(threshold, noiseOffset);
-        cloudGenMat.SetVectorArray(BlobsId,       blobBuffer);
-        cloudGenMat.SetFloatArray (BlobAspectsId, blobAspectBuffer);
-        cloudGenMat.SetInt        (BlobCountId,   blobCount);
+            GenerateBlobs(threshold, noiseOffset);
+            cloudGenMat.SetVectorArray(BlobsId,       blobBuffer);
+            cloudGenMat.SetFloatArray (BlobAspectsId, blobAspectBuffer);
+            cloudGenMat.SetInt        (BlobCountId,   blobCount);
 
-        // Pass 0 → mainRT (blob-shaded 3-band colour + soft union mask).
-        // Pass 1 → normalRT (flat tangent normal so the global lightmap
-        // contributes uniform brightness across the cloud).
-        Graphics.Blit(null, mainRT,   cloudGenMat, 0);
-        Graphics.Blit(null, normalRT, cloudGenMat, 1);
+            // Pass 0 → mainRT (blob-shaded 3-band colour + soft union mask).
+            // Pass 1 → normalRT (flat tangent normal so the global lightmap
+            // contributes uniform brightness across the cloud).
+            Graphics.Blit(null, mainRT,   cloudGenMat, 0);
+            Graphics.Blit(null, normalRT, cloudGenMat, 1);
+        }
+
+        // ── Sprite position (always last) ────────────────────────────────
+        // Run AFTER any bake so bakedCamX/bakedWindOffsetX in the formula
+        // reflect the just-baked anchors. If positioning ran before the
+        // bake, the bake frame would render new RT content at the old
+        // sprite anchor — visible as a 15Hz jitter while panning (most
+        // noticeable when paused, where the unscaled-time throttle keeps
+        // bakes firing but per-frame wind drift is zero so there's no
+        // motion to mask the jump).
+        //
+        // Vertical: sprite tracks camera y with worldLockingY interpolating
+        // between sky-locked (=0) and world-locked (=1).
+        //
+        // Horizontal: at bake time the sprite sits at camPos.x with blob.lx
+        // values computed from noiseOffset = camPos.x * worldLockingX +
+        // windOffsetX. Between bakes the BAKED lx values are fixed, so the
+        // sprite must do the parallax-and-wind drift itself or the visual
+        // reverts to sky-locked + windless. Formula collapses to camPos.x
+        // immediately after a bake and drifts by (1 - worldLockingX) ×
+        // camMotion + windDrift until the next bake.
+        float spriteX = camPos.x
+                      - worldLockingX * (camPos.x - bakedCamX)
+                      + (bakedWindOffsetX - windOffsetX);
+        float spriteY = camPos.y + (bandCenterY - camPos.y) * worldLockingY;
+        sr.transform.position = new Vector3(spriteX, spriteY, renderZ);
     }
 
     // Walk a regular grid anchored in NOISE-SPACE (not sprite-local),

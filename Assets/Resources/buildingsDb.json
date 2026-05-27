@@ -342,6 +342,9 @@
         ],
         "isTile": true,
         "njob": "digger",
+        "tileRequirements": [
+            { "dx": 0, "dy": 1, "mustNotBePlant": true, "mustBeEmpty": true }
+        ],
         "category": "tiles"
     },{
         "id": 81,
@@ -537,18 +540,30 @@
         "defaultLocked": true
     },{
         "id": 110,
-        "name": "dirt pit",
-        "description": "dig for dirt",
+        "name": "digging pit",
+        "description": "dig for the underlying earth — dirt, sand, or clay",
         "nx": 1, "ny": 1,
         "ncosts": [
-            { "name": "dirt", "quantity": 10 },
-            { "name": "wood", "quantity": 2 }
+            { "name": "wood", "quantity": 5 }
         ],
         "njob": "digger",
         "capacity": 1,
         "isWorkstation": true,
-        "requiredTileName": "dirt",
+        "requiredTileName": "earth",
+        "preservesTile": true,
         "solidTop": true,
+        "depleteAt": 20,
+        "interiorTiles": [
+            { "dx": 0, "dy": 0 }
+        ],
+        "doors": [
+            { "dx": 0, "dy": 0, "side": "top" },
+            { "dx": 0, "dy": 0, "side": "left" },
+            { "dx": 0, "dy": 0, "side": "right" }
+        ],
+        "tileRequirements": [
+            { "dx": 0, "dy": 1, "mustNotBePlant": true }
+        ],
         "category": "production"
     },{
         "id": 111,

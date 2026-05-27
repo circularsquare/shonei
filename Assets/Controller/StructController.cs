@@ -131,12 +131,14 @@ public class StructController : MonoBehaviour {
 
 
         // ── Mining + tile-type swap ──────────────────────────────────────
-        // Capture the original tile type BEFORE it's replaced below — the quarry
-        // needs this to pick its extraction distribution per cycle.
+        // Capture the original tile type BEFORE it's replaced below — quarry and
+        // digging pit both produce their substrate's material per cycle, so they
+        // need the tile they were built on remembered.
         if (structure is Quarry q) q.CaptureOriginalTile(tile.type);
+        if (structure is DiggingPit dp) dp.CaptureOriginalTile(tile.type);
 
         // Mining trigger. Two paths converge here:
-        //   - `requiredTileName != null` (quarry / dirt pit): the structure replaces a specific tile group.
+        //   - `requiredTileName != null` (quarry / digging pit): the structure replaces a specific tile group.
         //   - `requiresSolidTilePlacement` (mineshaft): the structure occupies any solid tile, mining it.
         // Mining loops the full footprint so multi-tile excavation buildings clear every claimed
         // tile, not just the anchor. Single-tile buildings (mineshaft, quarry) run the loop once.

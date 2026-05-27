@@ -95,11 +95,15 @@ public static class StructPlacement {
             }
         }
 
-        // Door-approach validation: every declared door must open onto a standable tile so
-        // mice can actually reach it. Without this, doored buildings (burrow, shack) can be
-        // placed facing solid dirt or empty air and become unenterable post-build. Mirroring
-        // applies the same flip Structure.cs uses when wiring the door at construction time.
-        if (st.doors != null) {
+        // Door-approach validation: at least one declared door must open onto a standable
+        // tile so mice can actually reach the building. Buildings with multiple doors
+        // (e.g. digging pit with top/left/right) are placeable as long as ONE side is
+        // reachable — useful when the surrounding world only has one open side. Without
+        // this, doored buildings (burrow, shack) can be placed facing solid dirt or
+        // empty air and become unenterable post-build. Mirroring applies the same flip
+        // Structure.cs uses when wiring the door at construction time.
+        if (st.doors != null && st.doors.Length > 0) {
+            bool anyDoorOpen = false;
             for (int i = 0; i < st.doors.Length; i++) {
                 Door door = st.doors[i];
                 int doorDx = mirrored ? (st.nx - 1 - door.dx) : door.dx;
@@ -115,9 +119,12 @@ public static class StructPlacement {
                     case "top":    aY += 1; break;
                     case "bottom": aY -= 1; break;
                 }
-                if (aX < 0 || aX >= world.nx || aY < 0 || aY >= world.ny) return "door has nowhere to open";
-                if (!world.graph.nodes[aX, aY].standable) return "door has nowhere to open";
+                if (aX < 0 || aX >= world.nx || aY < 0 || aY >= world.ny) continue;
+                if (!world.graph.nodes[aX, aY].standable) continue;
+                anyDoorOpen = true;
+                break;
             }
+            if (!anyDoorOpen) return "no door has open approach";
         }
 
         // Data-driven per-tile constraints from JSON.
@@ -129,7 +136,10 @@ public static class StructPlacement {
                 if (t == null) return "footprint extends off the map";
                 if (req.mustBeStandable && !world.graph.nodes[t.x, t.y].standable) return "needs standable tile";
                 if (req.mustHaveWater && t.water == 0) return "needs water";
-                if (req.mustBeEmpty && t.structs[0] != null) return "needs empty tile";
+                // Plant check runs before the generic mustBeEmpty so a plant gets the
+                // more specific message even when both flags are set on the same req.
+                if (req.mustNotBePlant && t.structs[0] is Plant) return "plant resting on this tile";
+                if (req.mustBeEmpty && t.structs[0] != null) return "something resting on this tile";
                 if (req.mustBeSolidTile && !t.type.solid) return "needs solid tile";
                 if (req.mustBeOpenSkyAbove && !world.IsExposedAbove(t.x, t.y)) return "needs open sky above";
                 if (req.requiredTileName != null

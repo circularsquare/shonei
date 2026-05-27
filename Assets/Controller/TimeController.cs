@@ -4,7 +4,7 @@ using UnityEngine.UI;
 using TMPro;
 
 // Owns Time.timeScale (Pause/Normal/Fast) AND the render-side frame-rate cap.
-// Three caps: active play (60), paused-but-focused (30), backgrounded (5).
+// Three caps: active play (60), paused-but-focused (60), backgrounded (30).
 // The active-play cap is further clamped against the user-configurable
 // SettingsManager.targetFps (0 = unlimited). vsync follows
 // SettingsManager.vsyncEnabled — when on, the OS controls timing and
@@ -21,7 +21,7 @@ public class TimeController : MonoBehaviour {
 
     // ── Frame-rate caps ──────────────────────────────────────────────────────
     const int activeFps     = 60;
-    const int pausedFps     = 30;
+    const int pausedFps     = 60;
     const int backgroundFps = 30;
     bool _isFocused = true;
 
