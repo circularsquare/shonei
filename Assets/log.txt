@@ -2,6 +2,9 @@ meoww!!
 
 5/27
 - more optimization!
+    - atlasing of most sprites
+    - cloud throttling
+- clay!
 5/26
 - optimization attempts...
 - upsized sawmill, workshop
