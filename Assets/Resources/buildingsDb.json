@@ -228,6 +228,7 @@
         "fuelCapacity": 5,
         "fuelBurnRate": 1.0,
         "isLightSource": true,
+        "lightOuterRadius": 9,
         "sortingOrder": 40,
         "category": "structures"
     },{
@@ -383,27 +384,37 @@
     },{
         "id": 101,
         "name": "sawmill",
-        "description": "wood processing",
-        "nx": 1, "ny": 1,
+        "description": "wood processing; storage on the right",
+        "nx": 2, "ny": 1,
+        "storageTileX": 1,
         "ncosts": [
-            { "name": "wood", "quantity": 10 }
+            { "name": "wood", "quantity": 20 }
         ],
         "njob": "hauler",
+        "isStorage": true,
+        "nStacks": 1,
+        "storageStackSize": 50,
         "capacity": 2,
         "isWorkstation": true,
+        "nworkTiles": [ { "dx": 0, "dy": 0 } ],
         "solidTop": true,
         "category": "production"
     },{
         "id": 102,
         "name": "workshop",
-        "description": "tool creation",
-        "nx": 1, "ny": 1,
+        "description": "tool creation; storage on the right",
+        "nx": 2, "ny": 1,
+        "storageTileX": 1,
         "ncosts": [
-            { "name": "planks", "quantity": 5 }
+            { "name": "planks", "quantity": 10 }
         ],
         "njob": "hauler",
+        "isStorage": true,
+        "nStacks": 1,
+        "storageStackSize": 50,
         "capacity": 1,
         "isWorkstation": true,
+        "nworkTiles": [ { "dx": 0, "dy": 0 } ],
         "solidTop": true,
         "category": "production"
     },{
@@ -427,7 +438,7 @@
     },{
         "id": 104,
         "name": "press",
-        "description": "press soybeans and water into soymilk; 3x faster when powered",
+        "description": "press soymilk curds into tofu; 3x faster when powered",
         "nx": 1, "ny": 1,
         "ncosts": [
             { "name": "planks", "quantity": 4 },
@@ -435,6 +446,21 @@
             { "name": "stone", "quantity": 4 }
         ],
         "njob": "farmer",
+        "isWorkstation": true,
+        "capacity": 1,
+        "category": "production",
+        "powerBoost": 3.0,
+        "defaultLocked": true
+    },{
+        "id": 109,
+        "name": "mill",
+        "description": "grind soybeans into soymilk; 3x faster when powered",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "stone", "quantity": 6 },
+            { "name": "wood", "quantity": 2 },
+            { "name": "planks", "quantity": 2 }
+        ],
         "isWorkstation": true,
         "capacity": 1,
         "category": "production",

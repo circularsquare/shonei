@@ -13,7 +13,8 @@
 //   R, G = world-space normal.x, normal.y packed 0–1 (z reconstructed in
 //          LightCircle / LightSun via z = -sqrt(1 - x² - y²), assumes
 //          camera-facing sprite normals)
-//   B    = receiver sort bucket (sortingOrder / 255), read per-pixel in
+//   B    = receiver sort bucket (quantized to 6 buckets, 0.0/0.2/.../1.0;
+//          see SortBucketUtil), read per-pixel in
 //          LightCircle to ramp effective light height. Smuggled in via a
 //          per-renderer MaterialPropertyBlock (LightReceiverUtil).
 //   A    = lighting tier:

@@ -1,3 +1,4 @@
+using Unity.Profiling;
 using UnityEngine;
 
 // Atmospheric haze: a low-opacity sky-gradient overlay drawn in front of
@@ -77,7 +78,22 @@ public class HazeLayer : SkyLayerBase {
         sr.SetPropertyBlock(mpb);
     }
 
+    // CPU-side marker — sampled by Components/GpuStatsHUD.cs. See CloudLayer
+    // for why this is CPU-only.
+    public const string MarkerName = "Shonei.HazeLayer";
+    static readonly ProfilerMarker s_marker = new(MarkerName);
+
+    // Throttle the gradient regen (SkyGradient sample + Color[] fill + texture
+    // upload) to ~15 Hz. Sky color changes are slow enough (day/night, weather)
+    // that 15 Hz vs 60 Hz is visually indistinguishable. Mirrors CloudLayer's
+    // throttle. The per-frame work (MPB rebind, transform tracking,
+    // sortingOrder sync) stays at 60 Hz so the haze quad keeps covering the
+    // viewport during zoom / window resize.
+    const float heavyUpdateInterval = 1f / 15f;
+    float nextHeavyUpdateTime;
+
     protected override void DoLateUpdate() {
+        using var _ = s_marker.Auto();
         // Re-apply the MPB binding each frame — editor events (sprite
         // reimport, material refresh) can clear it silently. Without
         // _NormalMap, NormalsCapture sees the default white texture
@@ -93,8 +109,17 @@ public class HazeLayer : SkyLayerBase {
         sr.transform.localPosition = new Vector3(0f, 0f, 10f);
         sr.transform.localScale    = new Vector3(w, h / textureHeight, 1f);
 
-        // Re-fill the gradient from SkyGradient's blend each frame so the
-        // haze tracks twilight color shifts in lock-step with the sky behind.
+        // Re-sync sortingOrder in case it was tweaked in the inspector at runtime.
+        sr.sortingOrder = sortingOrder;
+
+        // ── Throttled gradient regen ─────────────────────────────────────────
+        if (Time.time < nextHeavyUpdateTime) return;
+        nextHeavyUpdateTime = Time.time + heavyUpdateInterval;
+
+        // Re-fill the gradient from SkyGradient's blend so the haze tracks
+        // twilight color shifts in lock-step with the sky behind. Throttled
+        // because both the source gradient and the haze opacity evolve over
+        // many seconds at minimum.
         for (int i = 0; i < textureHeight; i++) {
             float v = (i + 0.5f) / textureHeight;
             Color c = SkyGradient.SampleAtViewportY(v);
@@ -103,9 +128,6 @@ public class HazeLayer : SkyLayerBase {
         }
         gradTex.SetPixels(pixels);
         gradTex.Apply(updateMipmaps: false);
-
-        // Re-sync sortingOrder in case it was tweaked in the inspector at runtime.
-        sr.sortingOrder = sortingOrder;
     }
 
     void OnDestroy() {

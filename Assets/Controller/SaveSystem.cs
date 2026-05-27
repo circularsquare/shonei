@@ -41,7 +41,7 @@ using Newtonsoft.Json;
 //   [x] Per-animal RNG seed (drives Animal.random — animal AI reproduces on reload)
 //   [x] Tile types, floor inventories (incl. wetUntil rain-soaked timer), background wall, overlay masks (grass on dirt), overlay health state (live/dying/dead), and snow cover
 //   [x] Per-column original surface heights (worldgen ground line, persisted so decoration depth gates survive column mining)
-//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, furnishingInvData + furnishingRemainingDays, processor state/progress/inputData/outputData, mirrored, rotation, shapeIndex, disabled, plantHarvestFlagged, quarry capturedTileType, flywheel charge, elevator currentY + history buffers, bridge-post partnerX/Y)
+//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, furnishingInvData + furnishingRemainingDays, processor state/progress/inputData/outputData, mirrored, rotation, shapeIndex, disabled, plantHarvestFlagged, quarry capturedTileType, flywheel charge, elevator currentY + history buffers, bridge-post partnerX/Y, savedNx/savedNy footprint)
 //   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored, rotation, shapeIndex, disabled, two-click x2/y2)
 //   [x] Animals (position, job, energy, food, starvation countdown, happiness, decoration happiness, socialization, fireplace warmth, inv, foodSlotInv, toolSlotInv, clothingSlotInv, bookSlotInv)
 //   [x] Mid-transit merchant task descriptor (travelTaskType + iq + storage tile + leg)
@@ -291,7 +291,7 @@ public class SaveSystem : MonoBehaviour {
     }
 
     StructureSaveData GatherStructure(Structure s) {
-        var ssd = new StructureSaveData { x = s.x, y = s.y, typeName = s.structType.name, mirrored = s.mirrored, rotation = s.rotation, shapeIndex = s.shapeIndex, condition = s.condition };
+        var ssd = new StructureSaveData { x = s.x, y = s.y, typeName = s.structType.name, mirrored = s.mirrored, rotation = s.rotation, shapeIndex = s.shapeIndex, condition = s.condition, savedNx = s.Shape.nx, savedNy = s.Shape.ny };
         if (s is Plant plant) {
             ssd.plantAge         = plant.age;
             ssd.plantGrowthStage = plant.growthStage;
@@ -825,6 +825,17 @@ public class SaveSystem : MonoBehaviour {
             Debug.LogError("Unknown struct type on load: " + ssd.typeName); return;
         }
         StructType st = Db.structTypeByName[ssd.typeName];
+        // Size-mismatch drop: if the structure was saved at a footprint that no longer
+        // matches the current StructType (most commonly because the building was upsized
+        // since this save was written), silently drop the entry. Old saves without
+        // savedNx/Ny are trusted — see SPEC-checklists.md "Upsizing an existing building".
+        if (ssd.savedNx is int snx && ssd.savedNy is int sny) {
+            Shape current = st.GetShape(ssd.shapeIndex);
+            if (snx != current.nx || sny != current.ny) {
+                Debug.Log($"RestoreStructure: dropping {ssd.typeName} at ({ssd.x},{ssd.y}) — saved size {snx}×{sny} != current {current.nx}×{current.ny}");
+                return;
+            }
+        }
         Tile tile = World.instance.GetTileAt(ssd.x, ssd.y);
         if (tile == null) { Debug.LogError("Null tile on load for struct: " + ssd.typeName); return; }
         Structure structure = null;

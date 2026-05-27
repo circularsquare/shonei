@@ -26,6 +26,7 @@ public class SettingsManager : MonoBehaviour {
     const string K_TargetFps  = "settings.targetFps";   // 0 = unlimited
     const string K_Vsync      = "settings.vsync";       // 0 / 1
     const string K_Lighting   = "settings.lighting";    // 0 / 1
+    const string K_CloudLight = "settings.cloudLighting"; // 0 / 1
 
     // ── Values ───────────────────────────────────────────────────────────────
     public float masterVolume   { get; private set; } = 1f;
@@ -34,6 +35,11 @@ public class SettingsManager : MonoBehaviour {
     public int   targetFps      { get; private set; } = 60;
     public bool  vsyncEnabled   { get; private set; } = false;
     public bool  lightingEnabled{ get; private set; } = true;
+    // When off, CloudFieldGen Pass 0 skips the 5-tap height-field normal +
+    // Lambertian band selection and outputs a flat-colour silhouette. Saves
+    // ~80% of the cloud blob-loop work; useful for measuring the cost of the
+    // cloud lighting pass on weaker GPUs.
+    public bool  cloudLightingEnabled{ get; private set; } = true;
 
     // Fired after any setter writes a value. Subscribers re-pull whatever they
     // care about. Cheap because the panel only emits on user input, not per-frame.
@@ -56,6 +62,7 @@ public class SettingsManager : MonoBehaviour {
         targetFps       = Mathf.Max(0, PlayerPrefs.GetInt(K_TargetFps, 60));
         vsyncEnabled    = PlayerPrefs.GetInt(K_Vsync, 0) != 0;
         lightingEnabled = PlayerPrefs.GetInt(K_Lighting, 1) != 0;
+        cloudLightingEnabled = PlayerPrefs.GetInt(K_CloudLight, 1) != 0;
     }
 
     // ── Setters ──────────────────────────────────────────────────────────────
@@ -105,6 +112,13 @@ public class SettingsManager : MonoBehaviour {
         if (enabled == lightingEnabled) return;
         lightingEnabled = enabled;
         PlayerPrefs.SetInt(K_Lighting, enabled ? 1 : 0);
+        OnChanged?.Invoke();
+    }
+
+    public void SetCloudLighting(bool enabled) {
+        if (enabled == cloudLightingEnabled) return;
+        cloudLightingEnabled = enabled;
+        PlayerPrefs.SetInt(K_CloudLight, enabled ? 1 : 0);
         OnChanged?.Invoke();
     }
 

@@ -193,6 +193,7 @@ public class Building : Structure {
             if (st.isLightSource) {
                 var ls = go.AddComponent<LightSource>();
                 ls.baseIntensity = st.lightIntensity;
+                ls.outerRadius   = st.lightOuterRadius;
                 ls.reservoir = reservoir;
                 ls.building  = this; // gates burn + emission on this.disabled
                 ls.sunModulated    = true;

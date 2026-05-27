@@ -526,11 +526,17 @@ public class TileMeshController : MonoBehaviour {
 
         // Per-renderer MPB: tile-type's body/overlay/snow array + the body
         // type's normal-map array + sort bucket (read per-pixel by
-        // ChunkedNormalsCapture for sort-aware lighting).
+        // ChunkedNormalsCapture for sort-aware lighting). The MPB on chunks
+        // is unavoidable (per-chunk Texture2DArray bindings) — chunked
+        // tiles are deliberately outside Phase 4's renderingLayerMask
+        // bucket-loop scheme. They still must write their sort bucket on
+        // the SAME scale the rest of the system uses (SortBucketUtil),
+        // otherwise lights compare against tiles on different scales and
+        // sort-aware lighting flips sign — see LightSource.sortBucket.
         var mpb = new MaterialPropertyBlock();
         mpb.SetTexture(MainTexArrayId, mainArray);
         mpb.SetTexture(NormalArrayId,  normalArray);
-        mpb.SetFloat(SortBucketId, Mathf.Clamp01(sortingOrder / 255f));
+        mpb.SetFloat(SortBucketId, SortBucketUtil.BucketToNormalized(SortBucketUtil.GetBucket(sortingOrder)));
         mr.SetPropertyBlock(mpb);
 
         return new ChunkLayer { go = go, mf = mf, mr = mr, mesh = mesh };

@@ -1,3 +1,4 @@
+using Unity.Profiling;
 using UnityEngine;
 
 // Parallax background layer. A single SpriteRenderer behind the clouds
@@ -73,6 +74,10 @@ public class BackgroundLayer : SkyLayerBase {
     [Header("Tint")]
     [Tooltip("Multiplied into the texture. Useful for day/night tinting (e.g., desaturate at dusk). Day/night brightness is already handled by the LightSun composite, so leave at white unless you want extra colour shift.")]
     public Color tint = Color.white;
+
+    [Header("Pan buffer")]
+    [Tooltip("Extra world-unit padding baked beyond the visible viewport on each side. Without this, fast camera pans expose un-baked area between 15Hz refreshes (the sprite, shifted by parallax-compensation, no longer covers the viewport edge). 2 wu handles typical fast pans; raise if you see edge gaps. Larger = a bit more GPU per bake.")]
+    [Range(0f, 8f)] public float panBuffer = 2f;
 
     [Header("Render order")]
     [Tooltip("Sorting order within the Background sorting layer. -100 = sky gradient, -50 = stars, 0 = clouds. -75 puts the background between stars and clouds (in front of stars).")]
@@ -184,6 +189,12 @@ public class BackgroundLayer : SkyLayerBase {
         sr.SetPropertyBlock(mpb);
 
         sr.transform.position = new Vector3(bgCam.transform.position.x, bgCam.transform.position.y, renderZ);
+
+        // Anchor parallax-compensation snapshot to current camera so the
+        // first per-frame sprite-position calc collapses to sky-lock and
+        // doesn't read uninitialized (0, 0) bakedCam values.
+        bakedCamX = bgCam.transform.position.x;
+        bakedCamY = bgCam.transform.position.y;
     }
 
     static RenderTexture MakeBgRT(int w, int h) {
@@ -208,16 +219,75 @@ public class BackgroundLayer : SkyLayerBase {
         if (spriteTex != null) Destroy(spriteTex);
     }
 
+    // CPU-side marker — sampled by Components/GpuStatsHUD.cs. See CloudLayer
+    // for why this is CPU-only.
+    public const string MarkerName = "Shonei.BackgroundLayer";
+    static readonly ProfilerMarker s_marker = new(MarkerName);
+
+    // Throttle the fullscreen Blit through BackgroundLayerGen to ~15 Hz —
+    // baked content barely changes per frame (parallax + cloud-shadow drift
+    // both move slowly), so regenerating at 60 Hz wastes ~3 of every 4 bakes.
+    // Cheap per-frame work (sprite pos with parallax compensation, MPB
+    // rebind, tint, sortingOrder sync) still runs every frame so apparent
+    // parallax stays smooth between bakes. Mirrors CloudLayer's throttle.
+    const float heavyUpdateInterval = 1f / 15f;
+    float nextHeavyUpdateTime;
+    // Snapshot of camera position at the last heavy bake. Used to compute
+    // the sprite-position parallax compensation each frame — see DoLateUpdate.
+    // Initialized in BuildContents.
+    float bakedCamX, bakedCamY;
+
     protected override void DoLateUpdate() {
+        using var _ = s_marker.Auto();
         Vector3 camPos = bgCam.transform.position;
 
-        // Cover the SkyCamera's viewport regardless of zoom. The sprite's
-        // native size is 1×1 wu (from the 64×64 dummy at PPU=64) — scale
-        // up by viewport extent so any visible pixel is on the quad.
+        // Cover the SkyCamera's viewport regardless of zoom, with a panBuffer
+        // of extra world-unit padding on each side so fast camera pans don't
+        // expose un-baked edges during the 15Hz refresh interval. extW/extH
+        // are the actual world extent the sprite spans; viewW/viewH are kept
+        // only for the camera pixel-density ratio used to size the RT.
         float viewH = bgCam.orthographicSize * 2f;
         float viewW = viewH * bgCam.aspect;
-        sr.transform.position = new Vector3(camPos.x, camPos.y, renderZ);
-        sr.transform.localScale = new Vector3(viewW, viewH, 1f);
+        float extW  = viewW + 2f * panBuffer;
+        float extH  = viewH + 2f * panBuffer;
+        sr.transform.localScale = new Vector3(extW, extH, 1f);
+
+        // ── Per-frame: parallax-compensated sprite position ─────────────────
+        // The bake fixes parallax for the bake's camera position; between
+        // bakes the camera moves but the baked content does not. To make the
+        // apparent texture motion still track the camera at the correct
+        // parallax rate (wlx × camMotion), the sprite must move at
+        // (1 - wlx) × camMotion. Formula collapses to camPos at bake time
+        // (full sky-lock from the baked content's perspective). Mirrors
+        // CloudLayer's parallax-compensation formula.
+        float spriteX = camPos.x - worldLockingX * (camPos.x - bakedCamX);
+        float spriteY = camPos.y - worldLockingY * (camPos.y - bakedCamY);
+        sr.transform.position = new Vector3(spriteX, spriteY, renderZ);
+
+        // Per-frame MPB rebind. Editor events (sprite reimport, material
+        // refresh, OnValidate paths) can silently clear the SpriteRenderer's
+        // MaterialPropertyBlock — at which point _MainTex falls back to the
+        // dummy spriteTex. Negligible cost.
+        sr.GetPropertyBlock(mpb);
+        mpb.SetTexture(MainTexId,   bgRT);
+        mpb.SetTexture(NormalMapId, SpriteMaterialUtil.FlatNormalTex);
+        sr.SetPropertyBlock(mpb);
+
+        // Per-frame: sortingOrder + tint (cheap, may change at runtime).
+        sr.sortingOrder = sortingOrder;
+        sr.color = tint;
+
+        // ── Throttled heavy work (~15Hz) ─────────────────────────────────────
+        if (Time.time < nextHeavyUpdateTime) return;
+        nextHeavyUpdateTime = Time.time + heavyUpdateInterval;
+
+        // Snapshot camera for parallax compensation in the next interval's
+        // cheap per-frame updates. Must match what the bake below uses for
+        // its parallaxOffset, or the per-frame sprite-position formula
+        // disagrees with the baked content and the background visibly jumps
+        // at each throttle tick.
+        bakedCamX = camPos.x;
+        bakedCamY = camPos.y;
 
         // Parallax offset: shifts the texture UV. Convention matches
         // CloudLayer — worldLocking=0 → offset tracks camera fully so
@@ -232,11 +302,7 @@ public class BackgroundLayer : SkyLayerBase {
         float texWorldH = texture.height / texturePixelsPerUnit;
         Vector2 texUVScale = new Vector2(1f / texWorldW, 1f / texWorldH);
 
-        // Push gen-shader uniforms then bake the parallax-shifted view
-        // into bgRT. The Blit's source supplies _MainTex (the user
-        // texture); the rest of the per-pixel math happens in the gen
-        // shader's fragment.
-        bgGenMat.SetVector(ViewportSizeId,    new Vector2(viewW, viewH));
+        bgGenMat.SetVector(ViewportSizeId,    new Vector2(extW, extH));
         bgGenMat.SetVector(CameraPosId,       new Vector2(camPos.x, camPos.y));
         bgGenMat.SetFloat (BandCenterYId,     bandCenterY);
         bgGenMat.SetVector(ParallaxOffsetId,  parallaxOffset);
@@ -246,44 +312,25 @@ public class BackgroundLayer : SkyLayerBase {
         bgGenMat.SetFloat (ShadowAspectId,     shadowAspect);
         bgGenMat.SetFloat (ShadowSoftnessId,   shadowSoftness);
 
-        // Keep bgRT at exact camera-pixel resolution so the visible
-        // sprite samples it 1:1 (no upscaling blur). If the camera's
-        // pixel size changed (window resize, EvenResolutionEnforcer
-        // adjustment, etc.), re-allocate.
-        int targetW = Mathf.Max(1, bgCam.pixelWidth);
-        int targetH = Mathf.Max(1, bgCam.pixelHeight);
+        // Keep bgRT at the camera's pixel-per-world ratio so the visible sprite
+        // samples it 1:1 (no upscaling blur). Scale up by the buffered/viewport
+        // ratio so the extra world coverage gets proportional pixel coverage.
+        int targetW = Mathf.Max(1, Mathf.RoundToInt(bgCam.pixelWidth  * (extW / viewW)));
+        int targetH = Mathf.Max(1, Mathf.RoundToInt(bgCam.pixelHeight * (extH / viewH)));
         if (bgRT.width != targetW || bgRT.height != targetH) {
             bgRT.Release();
             Destroy(bgRT);
             bgRT = MakeBgRT(targetW, targetH);
+            // Re-bind on the next per-frame MPB rebind (no extra work here).
         }
 
         if (!bgRT.IsCreated()) bgRT.Create();
 
-        // Re-apply the MPB binding every frame. Various editor events
-        // (asset reimport on a sprite the user is iterating on,
-        // material refresh, OnValidate paths) can silently clear the
-        // SpriteRenderer's MaterialPropertyBlock — at which point
-        // _MainTex falls back to the sprite's source texture (the
-        // dummy `spriteTex`), and the hills painting reads as a flat
-        // tinted rectangle. Negligible cost.
-        sr.GetPropertyBlock(mpb);
-        mpb.SetTexture(MainTexId,   bgRT);
-        mpb.SetTexture(NormalMapId, SpriteMaterialUtil.FlatNormalTex);
-        sr.SetPropertyBlock(mpb);
-
         // Explicit _MainTex bind on the gen material before the Blit.
-        // Graphics.Blit's source-arg binding occasionally doesn't reach
-        // a custom material's TEXTURE2D(_MainTex) sampler — explicitly
-        // setting it here removes the dependency on that implicit hook.
+        // Graphics.Blit's source-arg binding occasionally doesn't reach a
+        // custom material's TEXTURE2D(_MainTex) sampler — explicitly setting
+        // it here removes the dependency on that implicit hook.
         bgGenMat.SetTexture(MainTexId, texture);
         Graphics.Blit(texture, bgRT, bgGenMat);
-
-        // Sorting order can change at runtime; sync it.
-        sr.sortingOrder = sortingOrder;
-
-        // Day/night tint is the user's explicit knob. LightSun's
-        // contribution to the lightmap handles overall brightness.
-        sr.color = tint;
     }
 }

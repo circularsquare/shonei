@@ -38,6 +38,29 @@ public class AnimalController : MonoBehaviour{
     public int totalHousingCapacity = 0;
     public int populationCapacity = 0;
 
+    // Population cap when every mouse has every happiness need fully satisfied.
+    // populationCapacity scales linearly: avgHappiness / Db.happinessMaxScore × MaxPopulationCap.
+    // This decouples the cap from the score-cap composition so adding/removing happiness
+    // needs no longer shifts the implicit ceiling.
+    public const int MaxPopulationCap = 40;
+
+    // ── Colony food-storage stats (driven by UpdateColonyStats every 10 ticks) ──
+    // daysOfFoodInStorage: total stored food in colony, expressed as days-of-hunger
+    // per current mouse. 0 with no food, +infinity with no mice.
+    // foodStorageHappinessBonus: 0..4, applied uniformly to every mouse's happiness
+    // score by Happiness.SlowUpdate. Caps out at MaxFoodStorageBonus when daysOfFood
+    // ≥ FoodStorageBonusFullDays — same threshold used by the birth-rate taper.
+    public float daysOfFoodInStorage = 0f;
+    public float foodStorageHappinessBonus = 0f;
+    public const float MaxFoodStorageBonus = 4f;
+    public const float FoodStorageBonusFullDays = 10f;
+
+    // Last frame on which MaybeRescueSpawn fired. AddAnimal queues animals that
+    // register on the next frame (Animal.Start), so na lags by a frame — without
+    // a cooldown the same low-population trigger fires again before the new mice
+    // count. 120 frames (~2s at 60fps) safely covers registration.
+    private int rescueLastFrame = -1000;
+
 
     // FRAME 0 — before any Start(). Sets instance and allocates arrays.
     void Awake() {
@@ -96,6 +119,9 @@ public class AnimalController : MonoBehaviour{
         // Remove any mice that starved to death this tick. Done here — after the
         // tick loop — so animals[] is never compacted mid-iteration.
         RemoveDeadAnimals();
+        // Anti-softlock: if the colony has collapsed to ≤3 mice, spawn a relief
+        // wave (skipped in winter — newcomers wait for the next thaw).
+        MaybeRescueSpawn();
         // Colony-wide bookkeeping: once per full second boundary
         if (Mathf.Floor(prevTickAccumulator) < Mathf.Floor(tickAccumulator)) {
             colonyTickCounter++;
@@ -170,6 +196,50 @@ public class AnimalController : MonoBehaviour{
         if (InfoPanel.instance != null && InfoPanel.instance.IsAnimalSelected(a))
             InfoPanel.instance.ShowInfo(null);
         a.Destroy();
+    }
+
+    // Rescues the colony from a starvation softlock. When the population falls
+    // below 4 (mice can no longer reproduce reliably and one more death wipes the
+    // run), top us back up to 4. Skipped in winter so the player isn't handed a
+    // relief wave during the lean season; help comes in spring/summer/fall.
+    //
+    // Spawn site: any existing housing building, or — failing that — the left
+    // surface edge (x=1; x=0 is the worldgen market column).
+    private void MaybeRescueSpawn() {
+        int needed = 4 - na;
+        if (needed <= 0) return;
+        if (Time.frameCount - rescueLastFrame < 120) return;
+        if (World.instance == null || WeatherSystem.instance == null) return;
+        if (WeatherSystem.instance.GetSeason() == "Winter") return;
+
+        float sx, sy;
+        Building home = FindAnyHousing();
+        if (home != null) {
+            sx = home.x;
+            sy = home.y;
+        } else {
+            int[] surf = World.instance.surfaceY;
+            const int leftX = 1;
+            if (surf == null || surf.Length <= leftX) {
+                Debug.LogError("MaybeRescueSpawn: surfaceY unavailable, skipping rescue");
+                return;
+            }
+            sx = leftX;
+            sy = surf[leftX];
+        }
+        for (int i = 0; i < needed; i++) AddAnimal(sx, sy);
+        string noun = needed == 1 ? "mouse" : "mice";
+        EventFeed.instance?.Post($"<color=#66ff66>{needed} {noun} arrived at the colony.</color>");
+        rescueLastFrame = Time.frameCount;
+    }
+
+    private Building FindAnyHousing() {
+        StructController sc = StructController.instance;
+        if (sc == null) return null;
+        foreach (Structure s in sc.GetStructures()) {
+            if (s is Building b && b.structType.isHousing) return b;
+        }
+        return null;
     }
 
     public void LoadAnimal(AnimalSaveData asd) {
@@ -322,11 +392,45 @@ public class AnimalController : MonoBehaviour{
         for (int a = 0; a < na; a++) avgHappiness += animals[a].happiness.score;
         avgHappiness /= na;
         totalHousingCapacity = StructController.instance.TotalHousingCapacity();
-        populationCapacity = Mathf.FloorToInt(avgHappiness * 2.5f);
+
+        // Recompute food-storage stats before pop-cap so any mice ticking SlowUpdate
+        // on the same frame see the up-to-date colony bonus.
+        daysOfFoodInStorage = ComputeDaysOfFoodInStorage();
+        foodStorageHappinessBonus = Mathf.Clamp01(daysOfFoodInStorage / FoodStorageBonusFullDays) * MaxFoodStorageBonus;
+
+        // Linear rescale from avgHappiness ∈ [0, happinessMaxScore] to [0, MaxPopulationCap].
+        // Falls back to the legacy ×2.5 constant if Db hasn't finished loading (shouldn't
+        // happen in practice since UpdateColonyStats is gated on na > 0).
+        int maxScore = Db.happinessMaxScore;
+        populationCapacity = maxScore > 0
+            ? Mathf.FloorToInt(avgHappiness / maxScore * MaxPopulationCap)
+            : Mathf.FloorToInt(avgHappiness * 2.5f);
         if (happinessDisplay == null)
             happinessDisplay = happinessPanel.GetComponent<TMPro.TextMeshProUGUI>();
         if (happinessDisplay != null)
             happinessDisplay.text = $"happiness: {avgHappiness:0.0}  pop: {na}/{populationCapacity}";
+    }
+
+    // Days of food in colony storage, expressed per current mouse.
+    // hungerRate × ticksInDay hunger units per mouse per day; each food's foodValue is
+    // hunger restored per liang eaten (quantities are stored in fen — 100 fen = 1 liang).
+    // Returns +Infinity when the colony is empty so callers don't have to special-case na == 0.
+    public float ComputeDaysOfFoodInStorage() {
+        if (na <= 0) return float.PositiveInfinity;
+        GlobalInventory ginv = GlobalInventory.instance;
+        if (ginv == null || Db.edibleItems == null) return 0f;
+        float totalHunger = 0f;
+        foreach (Item food in Db.edibleItems) {
+            int qFen = ginv.Quantity(food);
+            if (qFen <= 0) continue;
+            totalHunger += (qFen / 100f) * food.foodValue;
+        }
+        // hungerRate is a per-Animal field (default 0.4); colony-wide stat uses the
+        // default value rather than averaging across animals — mice all share the rate today.
+        const float defaultHungerRate = 0.4f;
+        float perMousePerDay = defaultHungerRate * World.ticksInDay; // 0.4 × 240 = 96 by default
+        if (perMousePerDay <= 0f) return 0f;
+        return totalHunger / (perMousePerDay * na);
     }
 
     int GetJobCount(Job job){

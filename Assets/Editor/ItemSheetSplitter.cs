@@ -62,11 +62,6 @@ public static class ItemSheetSplitter {
         SplitFolders(new[] { SheetsFolder }, force: false);
     }
 
-    [MenuItem("Tools/Split All Item Sheets (Force)")]
-    internal static void SplitAllForce() {
-        SplitFolders(new[] { SheetsFolder }, force: true);
-    }
-
     // ── folder: right-click a folder to split all sheets in it ───────────────
     [MenuItem("Assets/Split Item Sheets in Folder", validate = true)]
     static bool ValidateFolder() {

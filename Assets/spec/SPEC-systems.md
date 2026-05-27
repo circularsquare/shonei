@@ -275,10 +275,11 @@ Stacks are bound to their cost slot via `Inventory.slotConstraints[i] = costs[i]
 
 **Data**: `Tile.water` (`ushort`, 0–160). `WaterController.WaterMax = 160` = fully filled tile. The 10× internal scale (instead of 0–16) eliminates the integer truncation dead zone in the spread formula (`diff/2 == 0` when `diff == 1`), which would otherwise leave water visibly stuck in a staircase. The dead zone shrinks to 1/10 of a visual unit — sub-pixel. Only non-solid tiles hold water.
 
-**Simulation**: `TickUpdate()` called every 0.2 s from `World.Update()`. Three passes, bottom-to-top:
+**Simulation**: `TickUpdate()` called every 0.2 s from `World.Update()`. Four passes, bottom-to-top:
 1. **Fall** — pour water straight down (`flow = min(tile.water, WaterMax - below.water)`).
 2. **Spread** — equalize with one horizontal neighbor (`flow = (tile.water - neighbor.water) / 2`). Direction alternates left/right each tick to avoid directional bias.
 3. **Look-ahead equalization** — fixes diff-1 slopes that Pass 2 can't resolve (truncates to 0). When a tile is exactly 1 unit below its sweep-direction neighbor, scans further for a tile at +2 or higher and pulls 1 unit from it.
+4. **Look-ahead drain for residual** (dual of Pass 3) — sub-pixel residual (`water < ResidualBandMax = 5`, i.e. tiles that render as 0 px) picks a random direction via `Rng` and scans across plateau tiles at equal water for a strictly-lower target, pushing 1 unit there. Mirrors Pass 3's plateau-walking structure; the difference is push-from-residual vs pull-to-low-tile, and random direction vs sweep direction (alternation would just shuffle residual back and forth across symmetric shelves). Random walks abandoned residual off open edges so it doesn't get re-grown into a visible pool by the next rain (`RainReplenish` gates on `water > 0`, not on the render threshold). Sealed flat shelves still trap residual but it stays invisible.
 
 Volume is conserved exactly (integer math, explicit transfers).
 

@@ -138,13 +138,16 @@ public class Happiness {
             temperatureScore = 2f - deviation / 5f;
         }
 
-        // Score: +1 per satisfied need + housing + temperature + per-item furnishing bonus.
+        // Score: +1 per satisfied need + housing + temperature + per-item furnishing bonus
+        // + colony-wide food-storage bonus (0..4, see AnimalController.foodStorageHappinessBonus).
         // The "alcohol" need counts double — a satisfied tipple is worth more than a tidy bench.
         score = (house ? 1f : 0f) + temperatureScore + furnishingScore;
         foreach (var kv in satisfactions) {
             if (kv.Value >= satisfiedThreshold)
                 score += kv.Key == "alcohol" ? 2f : 1f;
         }
+        AnimalController ac = AnimalController.instance;
+        if (ac != null) score += ac.foodStorageHappinessBonus;
     }
 
     // Recomputes furnishingScore for `a` by summing furnishingHappiness across all filled
@@ -180,7 +183,10 @@ public class Happiness {
         sb.Append($"housing: {(house?1:0)}/1, ");
         sb.Append($"furnishing: {furnishingScore:0.0}, ");
         sb.Append($"warmth: {warmth:0.0}, ");
-        sb.Append($"temp: {temperatureScore:0.0}/2  ({score:0.0})");
+        sb.Append($"temp: {temperatureScore:0.0}/2, ");
+        AnimalController ac = AnimalController.instance;
+        float foodBonus = ac != null ? ac.foodStorageHappinessBonus : 0f;
+        sb.Append($"food storage: {foodBonus:0.0}/{AnimalController.MaxFoodStorageBonus:0}  ({score:0.0})");
         return sb.ToString();
     }
 }

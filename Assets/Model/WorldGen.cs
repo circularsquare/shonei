@@ -71,6 +71,7 @@ public static class WorldGen {
         CarveDryChunkPools(world, surfaceY, chunkFilled);
 
         ApplyBeachSand(world, seed);
+        ApplyClayBanks(world, seed);
 
         PopulateOverlays(world);
 
@@ -143,6 +144,31 @@ public static class WorldGen {
                     (x + seedOffX) * sandFreq,
                     (y + seedOffY) * sandFreq);
                 if (n > sandThreshold) t.type = sand;
+            }
+        }
+    }
+
+    // Sibling of ApplyBeachSand on the same water-adjacent-dirt pool. Runs
+    // after sand so any tile already flipped to sand is skipped — sand wins
+    // overlap. Distinct seed offsets keep clay patches uncorrelated with
+    // sand patches.
+    public static void ApplyClayBanks(World world, int seed) {
+        TileType clay = Db.tileTypeByName["clay"];
+        TileType dirt = Db.tileTypeByName["dirt"];
+        float seedOffX = seed * 2.1f;
+        float seedOffY = seed * 0.9f;
+        float clayFreq = config.ClayFreq;
+        float clayThreshold = config.ClayThreshold;
+
+        for (int x = 0; x < world.nx; x++) {
+            for (int y = 0; y < world.ny; y++) {
+                Tile t = world.GetTileAt(x, y);
+                if (t.type != dirt) continue;
+                if (!HasAdjacentWater(world, x, y)) continue;
+                float n = Mathf.PerlinNoise(
+                    (x + seedOffX) * clayFreq,
+                    (y + seedOffY) * clayFreq);
+                if (n > clayThreshold) t.type = clay;
             }
         }
     }

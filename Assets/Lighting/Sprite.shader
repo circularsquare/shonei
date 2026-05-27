@@ -12,7 +12,11 @@ Shader "Custom/Sprite" {
     Properties {
         [PerRendererData] _MainTex ("Sprite Texture", 2D) = "white" {}
         [HideInInspector] _Color         ("Tint", Color) = (1,1,1,1)
-        [HideInInspector] _RendererColor ("RendererColor", Color) = (1,1,1,1)
+        // _RendererColor is auto-injected per-renderer by SpriteRenderer
+        // via MPB. It MUST sit outside UnityPerMaterial — keeping it in
+        // CBUFFER opts every SpriteRenderer out of SRP Batching, since
+        // any MPB write to a CBUFFER property disqualifies the renderer.
+        [HideInInspector] [PerRendererData] _RendererColor ("RendererColor", Color) = (1,1,1,1)
     }
     SubShader {
         Tags {
@@ -36,8 +40,9 @@ Shader "Custom/Sprite" {
 
             CBUFFER_START(UnityPerMaterial)
                 float4 _Color;
-                half4  _RendererColor;
             CBUFFER_END
+            // Outside CBUFFER — SpriteRenderer writes this per-renderer via MPB.
+            half4 _RendererColor;
 
             struct Attributes {
                 float3 positionOS : POSITION;
@@ -78,8 +83,9 @@ Shader "Custom/Sprite" {
 
             CBUFFER_START(UnityPerMaterial)
                 float4 _Color;
-                half4  _RendererColor;
             CBUFFER_END
+            // Outside CBUFFER — SpriteRenderer writes this per-renderer via MPB.
+            half4 _RendererColor;
 
             struct Attributes {
                 float3 positionOS : POSITION;

@@ -27,16 +27,11 @@ public class PriceGraph : MonoBehaviour {
     const int   DotSize       = 3;    // px — isolated (unconnectable) samples
     const float RangePadFrac  = 0.1f; // vertical headroom above the data
 
-    // Plot margins, px from the texture edge. The X axis is drawn along the
-    // bottom margin and the Y axis along the right margin — so the bottom
-    // margin leaves room for the X-axis labels + buttons and the right margin
-    // for the Y-axis price labels. Tune in the inspector to line up with the
-    // scene labels.
-    [Header("Plot margins")]
-    [SerializeField] int _marginLeft   = 3;
-    [SerializeField] int _marginTop    = 3;
-    [SerializeField] int _marginRight  = 34;
-    [SerializeField] int _marginBottom = 46;
+    // The plot fills the entire RawImage rect: the X axis runs along the
+    // bottom edge, the Y axis up the right edge, and samples plot into the
+    // remaining area. Size the Graph rect in the inspector to match the
+    // visible plot region — labels, buttons and the wood-frame background sit
+    // as separate siblings around it.
 
     static readonly Color32 BgColor   = new Color32(0, 0, 0, 0);        // transparent — wood frame shows through
     static readonly Color32 AxisColor = new Color32(74, 58, 40, 255);   // dark brown — X/Y axis lines
@@ -177,12 +172,12 @@ public class PriceGraph : MonoBehaviour {
 
         int n = SampleCount;
         if (n >= 1 && _endSec > _startSec) {
-            // Plot data region — left/top to the margin, bottom/right just
-            // inside the X/Y axes.
-            int x0 = _marginLeft;
-            int y0 = _marginBottom + AxisThickness + 1;
-            int pw = Mathf.Max(1, (_w - _marginRight - AxisThickness - 1) - x0);
-            int ph = Mathf.Max(1, (_h - _marginTop) - y0);
+            // Plot data region — fills the rect, inset on the bottom/right
+            // just enough to sit inside the X/Y axes.
+            int x0 = 0;
+            int y0 = AxisThickness + 1;
+            int pw = Mathf.Max(1, (_w - AxisThickness - 1) - x0);
+            int ph = Mathf.Max(1, _h - y0);
 
             // X: each sample at its real time within the [_startSec, _endSec]
             // window. Clamped — a snapped first bucket can fall just before the
@@ -217,17 +212,15 @@ public class PriceGraph : MonoBehaviour {
         _tex.Apply(false);
     }
 
-    // Draws the axes: a horizontal X axis along the bottom margin and a
-    // vertical Y axis up the right margin, meeting at the bottom-right corner.
-    // The plot data is inset (see Redraw) so it sits inside them; the margins
-    // leave room for the X labels/buttons below and the Y labels at the right.
+    // Draws the axes: a horizontal X axis along the bottom edge and a
+    // vertical Y axis up the right edge, meeting at the bottom-right corner.
+    // The plot data is inset by AxisThickness (see Redraw) so it sits inside
+    // them.
     void DrawAxes() {
-        int plotL = _marginLeft,       plotB = _marginBottom;
-        int plotR = _w - _marginRight, plotT = _h - _marginTop;
-        if (plotR <= plotL || plotT <= plotB) return; // margins exceed the texture
+        if (_w < 2 || _h < 2) return;
         for (int t = 0; t < AxisThickness; t++) {
-            for (int x = plotL; x <= plotR; x++) Plot(x, plotB + t, AxisColor); // X axis — bottom
-            for (int y = plotB; y <= plotT; y++) Plot(plotR - t, y, AxisColor); // Y axis — right
+            for (int x = 0; x < _w; x++)     Plot(x,             t, AxisColor); // X axis — bottom
+            for (int y = 0; y < _h; y++)     Plot(_w - 1 - t,    y, AxisColor); // Y axis — right
         }
     }
 

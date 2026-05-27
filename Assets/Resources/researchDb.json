@@ -30,21 +30,21 @@
     },{
         "id": 6,
         "name": "Soymilk",
-        "description": "Press soybeans into soymilk.",
-        "prereqs": [5],
+        "description": "Grind soybeans into soymilk.",
+        "prereqs": [5, 15],
         "cost": 5,
         "unlocks": [
-            { "type": "building", "target": "press" },
             { "type": "recipe",   "target": "13" }
         ]
     },{
         "id": 7,
         "name": "Tofu",
-        "description": "Coagulate soymilk into tofu.",
+        "description": "Press coagulated soymilk into tofu.",
         "prereqs": [6],
         "cost": 5,
         "unlocks": [
-            { "type": "recipe", "target": "15" }
+            { "type": "building", "target": "press" },
+            { "type": "recipe",   "target": "15" }
         ]
     },{
         "id": 8,
@@ -140,7 +140,8 @@
             { "type": "building", "target": "elevator" },
             { "type": "building", "target": "power shaft" },
             { "type": "building", "target": "power shaft turn" },
-            { "type": "building", "target": "power shaft 4" }
+            { "type": "building", "target": "power shaft 4" },
+            { "type": "building", "target": "mill" }
         ]
     }
 ]

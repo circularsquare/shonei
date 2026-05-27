@@ -28,6 +28,14 @@ CONTENT
     - workshops
 
 - lots of herbs (see cool plants plan)
+- metallurgy 
+    - clay tile 
+    - clay item 
+    - furnace
+    - copper ore
+    - tin ore 
+    - copper / tin / bronze ingot
+    - foundry
 
 VISUALS
 - lighting 
@@ -35,6 +43,9 @@ VISUALS
     - procedurally generate rocks with normalmaps?
 - wind sway on tarp?
 - update all plants to have blob swaying
+OPTIMIZATION  
+- plant sway mpb redesign
+- chunk tiles?
 
 MOUSE AI
 - ponder inventory management
@@ -59,5 +70,16 @@ BUGS
 
 SHORT TERM
 
-price graph 
-have market save stock every minute and load from save
+upsize more workshop buildings
+    press 
+    paper mill
+    scriptorium
+    brewery
+    dirt pit
+    quarry
+    laboratory
+    weaver
+    tailor
+    furnace (taller, 1x2m)
+tie up optimization ends 
+sketch out metalworking?

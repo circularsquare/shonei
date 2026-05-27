@@ -168,6 +168,16 @@ public class WorldGenConfig : ScriptableObject {
     [Tooltip("Perlin output threshold for sand. ~0.52 ≈ 40% of eligible tiles convert.")]
     [Range(0f, 1f)] public float SandThreshold = 0.52f;
 
+    // ── Clay banks ────────────────────────────────────────────────────
+    // Runs after the sand pass on the same water-adjacent-dirt pool, so
+    // sand wins any overlap. Independent Perlin mask (own seed offsets) so
+    // clay patches are uncorrelated with sand patches.
+    [Header("Clay banks")]
+    [Tooltip("Frequency of the clay clump mask. Lower = larger clumps.")]
+    [Range(0.01f, 0.5f)] public float ClayFreq = 0.20f;
+    [Tooltip("Perlin output threshold for clay. Higher = rarer. 1.0 disables clay entirely.")]
+    [Range(0f, 1f)] public float ClayThreshold = 0.55f;
+
     // ── Plants ────────────────────────────────────────────────────────
     [Header("Plants")]
     [Tooltip("Per-column chance to start a plant cluster on eligible surface dirt.")]

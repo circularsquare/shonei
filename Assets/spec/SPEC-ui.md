@@ -221,16 +221,20 @@ Opened by clicking the happiness HUD element (`AnimalController.happinessPanel`)
 - `needContainer` Transform (VerticalLayoutGroup) — `HappinessNeedRow` instances spawned here lazily on first open
 - `needRowPrefab` — `HappinessNeedRow` prefab
 
-Rows are spawned lazily on first open (in `OnEnable`) from `Db.happinessNeedsSorted` (one per satisfaction need, plus housing and temperature), so data populates immediately with no 1-frame delay. Adding a new need to JSON auto-adds a row — no code changes needed (but update `Db.happinessNeedsDisplayOrder` for correct ordering). Refreshes every 1 s while open. Closes on click-outside.
+Rows are spawned lazily on first open (in `OnEnable`) from `Db.happinessNeedsSorted` (one per satisfaction need, plus housing, furnishing, temperature, and the colony food-storage row). Adding a new need to JSON auto-adds a row — no code changes needed (but update `Db.happinessNeedsDisplayOrder` for correct ordering). Refreshes every 1 s while open. Closes on click-outside.
 
 ### HappinessNeedRow
 
-`Assets/UI/HappinessNeedRow.cs` — one row in the needs table.
+`Assets/UI/HappinessNeedRow.cs` — one row in the needs table. Single prefab; per-row variation comes from runtime config, **not** prefab variants. Adding new prefabs per row would fragment styling and break the data-driven model (per-need rows come from JSON).
 
-Prefab has a HorizontalLayoutGroup with four children: `NeedName` TMP, `Count` TMP (e.g. "4/5"), `FillBar`, `AvgValue` TMP. Three refresh methods:
-- `Refresh(satisfied, total, avgVal)` — value-based needs (all satisfaction dictionary entries)
-- `RefreshBool(satisfied, total)` — housing (no meaningful avg value)
-- `RefreshTemp(avgTempScore)` — temperature (hides the fill bar; only shows score)
+**Contract (every row follows this exactly):**
+
+1. `Configure(name, points)` — called **once** at spawn. Sets the name AND sizes the fill bar to `BarWidthPerPoint × points`. The row stores `maxPoints`; this enforces the bar-width-encodes-point-value invariant structurally (callers cannot pass mismatched fill + width at refresh time).
+2. `Refresh(averagePoints, detailText = "")` — called **every tick**. `averagePoints ∈ [0, maxPoints]` is the row's avg happiness contribution; the row displays it in the middle text and fills the bar to `averagePoints / maxPoints`. `detailText` is an optional raw underlying value shown to the right (e.g. raw satisfaction avg for the wheat row); pass `""` for rows that don't expose one.
+
+`points` per row type: value/bool needs = 1, temperature = 2, furnishing = `Db.maxFurnishingPerMouse`, food storage = `AnimalController.MaxFoodStorageBonus`. The panel's `SpawnRow(key, points)` helper is the single place these values are declared.
+
+**Anti-pattern**: do **not** add a 3rd specialized `RefreshXyz(...)` method when introducing a new row type. The Refresh API is deliberately single-shape — derive `averagePoints` and `detailText` in the panel's switch instead. If the row genuinely needs a new visual element (e.g. an icon), add it to the prefab and a setter on `Configure`, not a new Refresh variant.
 
 ### FillBar
 
@@ -259,6 +263,18 @@ Harvest and Select both use the shared `_dragStartScreenPos` / `_isDragging` / `
 Each panel's `Toggle()` calls `UI.OpenExclusive(gameObject)` when opening, and `SetActive(false)` when closing.
 
 **To add a new exclusive panel**: call `UI.RegisterExclusive(gameObject)` in `Awake`/`Start`, and replace any `SetActive(true)` in the toggle path with `UI.OpenExclusive(gameObject)`.
+
+## Sub-canvases (mesh-rebuild localization)
+
+The root `UI` GameObject has a single `Canvas` component (`ScreenSpaceOverlay`) that all panels live under. Without intervention, **every** UI widget change — an item count text updating, a fillbar tick, a toast fade — invalidates the root canvas's mesh and forces a rebuild of the entire UI hierarchy (~600 active widgets in a typical play state). This is purely a CPU cost, not a draw count cost; the draw count stays roughly the same, but the per-frame work to regenerate the canvas mesh balloons with hierarchy size.
+
+**Pattern:** add a `Canvas` + `GraphicRaycaster` component to a panel root. The panel becomes a "sub-canvas" — its mesh rebuilds stay local to its subtree and don't dirty siblings. With default settings (`overrideSorting = false`, `renderMode = ScreenSpaceOverlay` to match root) the sub-canvas inherits sort order from the root canvas, so there's no visual change.
+
+**Current sub-canvases** (all added 2026-05-26): `InventoryScroll`, `BuildPanel`, `JobsScroll`, `AlertToast`, `ChatPanel`. Each was chosen because either (a) it contains many widgets (InventoryScroll has 773 in the typical state), or (b) it updates frequently (toast fades per-frame, chat receives messages, jobs change).
+
+**When to add one**: a panel either holds a large widget subtree OR has frequent per-frame mesh changes that don't need to propagate to siblings. Don't add one per widget — each sub-canvas is its own batching domain, and over-fragmenting trades rebuild cost for batching cost.
+
+**Adding via MCP**: see `Components/GpuStatsHUD.cs` session notes for the live-API pattern — `AddComponent<Canvas>` + `AddComponent<GraphicRaycaster>` + force `renderMode = ScreenSpaceOverlay` (Unity sometimes defaults a nested Canvas to WorldSpace) + `MarkSceneDirty`. Don't add via direct `.unity` YAML write — clobbers unsaved editor state.
 
 ## Esc key chain
 

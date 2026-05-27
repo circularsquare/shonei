@@ -1,3 +1,4 @@
+using Unity.Profiling;
 using UnityEngine;
 
 // Procedural cloud field. _MainTex and _NormalMap are RTs generated each
@@ -22,10 +23,13 @@ using UnityEngine;
 [DefaultExecutionOrder(100)]
 public class CloudLayer : SkyLayerBase {
     [Header("Field texture")]
-    [Tooltip("Texture dimensions in pixels. Larger = more detail and screen coverage; GPU cost is negligible at these sizes.")]
-    public Vector2Int textureSize = new Vector2Int(256, 128);
     [Tooltip("Pixels-per-world-unit. Half the project's main PPU (8 vs 16) gives 2x2 screen pixels per texel — still reads as pixel art.")]
     public float pixelsPerUnit = 8f;
+    // Texture dimensions are now derived from the camera viewport (width)
+    // and the band envelope (height), not inspector-set. Updated by
+    // RebuildRTsAndSprite. Kept as a field so other code (shader uniform
+    // push) can read the current dims.
+    [System.NonSerialized] public Vector2Int textureSize;
 
     [Tooltip("World-units → noise-units multiplier. Smaller = larger smooth cloud features; larger = noisier, more broken-up shapes.")]
     public float noiseScale = 0.15f;
@@ -155,6 +159,7 @@ public class CloudLayer : SkyLayerBase {
     static readonly int BlobsId          = Shader.PropertyToID("_Blobs");
     static readonly int BlobAspectsId    = Shader.PropertyToID("_BlobAspects");
     static readonly int BlobCountId      = Shader.PropertyToID("_BlobCount");
+    static readonly int FlatLightingId   = Shader.PropertyToID("_CloudFlatLighting");
 
     // CloudLayer normalises its own GO onto the Sky layer in case the
     // inspector / a reparent knocked it off (sprite would fall into a
@@ -162,32 +167,6 @@ public class CloudLayer : SkyLayerBase {
     protected override bool ManageSkyLayer => true;
 
     protected override void BuildContents() {
-        // Auto-fit sprite height so the band always fits, regardless of
-        // bandHalfHeight / bandBottomScale tuning. Sprite is centred at
-        // bandCenterY (via DoLateUpdate's parallax math), so its half-
-        // extent must reach the band's furthest extreme — which is
-        // +bandHalfHeight above bandCenterY (the bottom side only goes
-        // bandHalfHeight*bandBottomScale down, never further). Add a
-        // margin for blob radii poking past the band edge. The
-        // inspector textureSize.y is treated as a minimum.
-        int neededH   = Mathf.CeilToInt((2f * bandHalfHeight + 2f * blobRadiusMax) * pixelsPerUnit);
-        textureSize.y = Mathf.Max(neededH, textureSize.y);
-
-        int w = textureSize.x;
-        int h = textureSize.y;
-
-        // Procedural RTs. Linear (sRGB=false) is critical for normalRT —
-        // sRGB would warp the (rgb*2 - 1) decode in NormalsCapture.shader.
-        // Same flags on mainRT for symmetry.
-        mainRT   = MakeRT(w, h);
-        normalRT = MakeRT(w, h);
-
-        // Dummy backing for Sprite.Create — see field comment.
-        spriteTex = new Texture2D(w, h, TextureFormat.RGBA32, mipChain: false) {
-            filterMode = FilterMode.Point,
-            hideFlags  = HideFlags.HideAndDontSave,
-        };
-
         // Load gen shader. Lives under Resources/ so we can pull it in by
         // string without an Inspector reference — keeps CloudLayer
         // self-contained.
@@ -199,37 +178,107 @@ public class CloudLayer : SkyLayerBase {
         }
         cloudGenMat = new Material(genShader) { hideFlags = HideFlags.HideAndDontSave };
 
-        // FullRect mesh, NOT the default Tight. Tight builds the sprite
-        // mesh from texture alpha at Create time — and the dummy backing
-        // is all-zeros, so a Tight mesh would have no triangles and the
-        // sprite would render nothing forever after.
-        var sprite = Sprite.Create(spriteTex, new Rect(0, 0, w, h),
-                                   new Vector2(0.5f, 0.5f), pixelsPerUnit,
-                                   extrude: 0, meshType: SpriteMeshType.FullRect);
-
+        // Build the sprite renderer GO. Sprite + RTs are wired in
+        // RebuildRTsAndSprite which is also called on viewport changes.
         var srGo = new GameObject("CloudFieldSprite");
         srGo.transform.SetParent(transform, worldPositionStays: false);
         srGo.layer = gameObject.layer;
         sr = SpriteMaterialUtil.AddSpriteRenderer(srGo);
-        sr.sprite = sprite;
         sr.sortingLayerName = "Background";
         sr.sortingOrder = 0;
 
-        // Bind both procedural RTs via MPB. Override _MainTex (normally
-        // auto-bound to the sprite's source texture) so the SpriteRenderer
-        // samples the procedural mainRT instead of the empty dummy.
-        // Get-modify-set so any other auto-bound properties survive.
         mpb = new MaterialPropertyBlock();
-        sr.GetPropertyBlock(mpb);
-        mpb.SetTexture(MainTexId,   mainRT);
-        mpb.SetTexture(NormalMapId, normalRT);
-        sr.SetPropertyBlock(mpb);
+
+        RebuildRTsAndSprite(ComputeNeededWidth(), ComputeNeededHeight());
 
         // Plant the sprite at its intended world position immediately so
         // the first-frame render is correct before DoLateUpdate runs.
         Vector3 startCam = bgCam.transform.position;
         float startSpriteY = startCam.y + (bandCenterY - startCam.y) * worldLockingY;
         sr.transform.position = new Vector3(startCam.x, startSpriteY, renderZ);
+
+        // Anchor parallax-compensation snapshots to current camera so the
+        // first per-frame sprite-position calc collapses to sky-lock.
+        bakedCamX = startCam.x;
+        bakedWindOffsetX = windOffsetX;
+    }
+
+    // Width is driven by the camera viewport so off-screen pixels aren't
+    // generated. Pad by blobRadiusMax so partial-blob bodies at viewport
+    // edges still spawn without popping at the seam.
+    int ComputeNeededWidth() {
+        float viewW = bgCam.orthographicSize * bgCam.aspect * 2f;
+        return Mathf.CeilToInt((viewW + 2f * blobRadiusMax) * pixelsPerUnit);
+    }
+
+    // Height covers the cloud band centred on bandCenterY. Sprite is
+    // symmetric in y (centred at bandCenterY), and must reach the band's
+    // furthest extreme = +bandHalfHeight (the bottom only goes
+    // bandHalfHeight*bandBottomScale down, never further). Pad for blob
+    // radii poking past the band edge.
+    int ComputeNeededHeight() {
+        return Mathf.CeilToInt((2f * bandHalfHeight + 2f * blobRadiusMax) * pixelsPerUnit);
+    }
+
+    // (Re)create the procedural RTs + dummy-backed sprite at the requested
+    // pixel dimensions. Called once from BuildContents and again whenever
+    // the camera viewport changes meaningfully (zoom / window resize).
+    // Cheap on first call; on resize, releases the old RTs/sprite and
+    // re-binds the MPB to the new RTs in one shot so there's no glitch
+    // frame where _MainTex falls back to the stale dummy texture.
+    void RebuildRTsAndSprite(int w, int h) {
+        if (mainRT != null)    { mainRT.Release();   mainRT = null; }
+        if (normalRT != null)  { normalRT.Release(); normalRT = null; }
+        if (spriteTex != null) { DestroyImmediate(spriteTex); spriteTex = null; }
+        var oldSprite = sr.sprite;
+
+        // Linear (sRGB=false) is critical for normalRT — sRGB would warp
+        // the (rgb*2 - 1) decode in NormalsCapture.shader. Same flags on
+        // mainRT for symmetry.
+        mainRT   = MakeRT(w, h);
+        normalRT = MakeRT(w, h);
+
+        // Dummy backing for Sprite.Create — never read at runtime; the
+        // SpriteRenderer's _MainTex is MPB-overridden to mainRT.
+        spriteTex = new Texture2D(w, h, TextureFormat.RGBA32, mipChain: false) {
+            filterMode = FilterMode.Point,
+            hideFlags  = HideFlags.HideAndDontSave,
+        };
+
+        // FullRect mesh, NOT the default Tight. Tight builds the sprite
+        // mesh from texture alpha at Create time — and the dummy backing
+        // is all-zeros, so a Tight mesh would have no triangles and the
+        // sprite would render nothing forever after.
+        var newSprite = Sprite.Create(spriteTex, new Rect(0, 0, w, h),
+                                      new Vector2(0.5f, 0.5f), pixelsPerUnit,
+                                      extrude: 0, meshType: SpriteMeshType.FullRect);
+        sr.sprite = newSprite;
+        if (oldSprite != null) DestroyImmediate(oldSprite);
+
+        // Bind both procedural RTs via MPB. Override _MainTex (normally
+        // auto-bound to the sprite's source texture) so the SpriteRenderer
+        // samples the procedural mainRT instead of the empty dummy.
+        // MaterialPropertyBlock isn't Unity-serializable, so a Play-mode
+        // recompile can wipe the field — recreate defensively.
+        if (mpb == null) mpb = new MaterialPropertyBlock();
+        sr.GetPropertyBlock(mpb);
+        mpb.SetTexture(MainTexId,   mainRT);
+        mpb.SetTexture(NormalMapId, normalRT);
+        sr.SetPropertyBlock(mpb);
+
+        textureSize = new Vector2Int(w, h);
+    }
+
+    // Recreate RTs + sprite if the viewport-derived dimensions have
+    // shifted significantly. 10% slack so smooth zoom doesn't thrash
+    // RT allocation every frame.
+    void MaybeResizeForViewport() {
+        int neededW = ComputeNeededWidth();
+        int neededH = ComputeNeededHeight();
+        bool widthShift  = Mathf.Abs(neededW - textureSize.x) > textureSize.x * 0.1f;
+        bool heightShift = Mathf.Abs(neededH - textureSize.y) > textureSize.y * 0.1f;
+        if (!widthShift && !heightShift) return;
+        RebuildRTsAndSprite(neededW, neededH);
     }
 
     RenderTexture MakeRT(int w, int h) {
@@ -253,7 +302,35 @@ public class CloudLayer : SkyLayerBase {
         if (cloudGenMat != null) Destroy(cloudGenMat);
     }
 
+    // CPU-side marker — sampled by Components/GpuStatsHUD.cs. Sky layers
+    // generate their RTs via Graphics.Blit (not CommandBuffer), so we can't
+    // bracket GPU work here without a larger refactor; CPU dispatch time is
+    // still useful as an order-of-magnitude signal.
+    public const string MarkerName = "Shonei.CloudLayer";
+    static readonly ProfilerMarker s_marker = new(MarkerName);
+
+    // Throttle the expensive blob-gen + 2× Blit to ~15Hz. Content barely
+    // changes per frame at 60Hz (cloud evolution = 0.05 noise-units/sec,
+    // wind drift typically <1 world-unit/sec), so regenerating every
+    // frame is wasted. Cheap per-frame work (sprite pos, tint, drift
+    // accumulators, shader globals) still runs every frame so motion
+    // and hill-shadow sync stay smooth.
+    const float heavyUpdateInterval = 1f / 15f;
+    float nextHeavyUpdateTime;
+
+    // Snapshot of camera x + wind offset at the LAST heavy update. Used
+    // to compensate the sprite position between bakes so the BAKED blob
+    // content (which reflects the world state at bake time) appears at
+    // the correct parallax/wind drift rate every frame, not just at
+    // 15Hz. Without this the clouds visibly lag behind the world during
+    // pans and judder with wind. Initialized in BuildContents.
+    float bakedCamX;
+    float bakedWindOffsetX;
+
     protected override void DoLateUpdate() {
+        using var _ = s_marker.Auto();
+
+        // ── Cheap per-frame work ─────────────────────────────────────────
         // Accumulate wind into a horizontal noise offset. Subtracts
         // because lp / blob sprite-local x is `anchorX − noiseOffset.x`:
         // for positive (rightward) wind to drift clouds rightward,
@@ -261,67 +338,87 @@ public class CloudLayer : SkyLayerBase {
         // and content slides right in the sprite.
         float wind = WeatherSystem.instance != null ? WeatherSystem.instance.wind : 0f;
         windOffsetX -= wind * windDriftScale * Time.deltaTime;
-        // Accumulate cloud evolution along the noise field's third axis
-        // so the underlying pattern slowly morphs in place.
+        // Cloud evolution along the noise field's third axis — slow
+        // morph in place.
         evolutionOffset += cloudEvolutionRate * Time.deltaTime;
 
-        // Position the sprite. Horizontal: locked to camera x (parallax
-        // comes from the noise offset, not sprite motion). Vertical:
-        // sprite tracks camera y with worldLockingY interpolating between
-        // sky-locked (=0) and world-locked (=1) — worldLockingY=0.25 gives
-        // 25% vertical parallax. renderZ must sit between SkyCamera's
-        // near (0.3) and far planes.
+        // Position the sprite. Vertical: sprite tracks camera y with
+        // worldLockingY interpolating between sky-locked (=0) and
+        // world-locked (=1) — handled per-frame so y parallax stays
+        // smooth. renderZ must sit between SkyCamera's near (0.3) and
+        // far planes.
+        //
+        // Horizontal: at bake time the sprite would sit at camPos.x with
+        // blob.lx values computed from noiseOffset = camPos.x * worldLockingX +
+        // windOffsetX (full sky-lock; the noise scroll provides parallax).
+        // Between bakes the BAKED lx values are fixed, so the sprite must
+        // do the parallax-and-wind drift itself or the visual reverts to
+        // sky-locked + windless. Formula collapses to camPos.x at bake
+        // time (full sky-lock as intended) and drifts the sprite by
+        // (1 - worldLockingX) × camMotion + windDrift between bakes so
+        // each baked blob appears at the right world-space position.
         Vector3 camPos = bgCam.transform.position;
+        float spriteX = camPos.x
+                      - worldLockingX * (camPos.x - bakedCamX)
+                      + (bakedWindOffsetX - windOffsetX);
         float spriteY = camPos.y + (bandCenterY - camPos.y) * worldLockingY;
-        sr.transform.position = new Vector3(camPos.x, spriteY, renderZ);
+        sr.transform.position = new Vector3(spriteX, spriteY, renderZ);
 
-        // Humidity-driven full-sprite tint, multiplied by _MainTex.rgb in
-        // the sprite shader. Clamped to pure baseColorClear below
-        // tintLerpStartHumidity, then lerps to baseColorStorm over the
-        // remaining [tintLerpStartHumidity, 1] range — so clouds stay
-        // crisp white through dry weather and only grey as rain approaches.
+        // Humidity-driven full-sprite tint. Multiplied by _MainTex.rgb in
+        // the sprite shader. Stays pure baseColorClear below
+        // tintLerpStartHumidity, then lerps to baseColorStorm.
         float humidity = WeatherSystem.instance != null
             ? WeatherSystem.instance.humidity : WeatherSystem.humidityMean;
         float tintT = Mathf.InverseLerp(tintLerpStartHumidity, 1f, humidity);
         sr.color = Color.Lerp(baseColorClear, baseColorStorm, tintT);
 
-        // Defensive: a domain reload (script recompile while in Play
-        // mode) can leave the RT object alive but with its GPU contents
-        // dropped, so re-Create before the Blit. Cheap when already
-        // created.
+        float threshold = Mathf.Lerp(thresholdClear, thresholdStorm, humidity);
+
+        // Broadcast cloud drift state as shader globals so other layers
+        // (background hills' shadow overlay, etc.) can render features
+        // moving in sync with clouds without coupling to CloudLayer.
+        // _CloudThreshold matches the spawn threshold so a consumer
+        // sampling the same noise gets roughly matching coverage.
+        // Hill shadows update every frame, so these globals must too.
+        Shader.SetGlobalFloat("_CloudWindOffsetX",     windOffsetX);
+        Shader.SetGlobalFloat("_CloudEvolutionOffset", evolutionOffset);
+        Shader.SetGlobalFloat("_CloudThreshold",       threshold);
+
+        // ── Throttled heavy work (~15Hz) ─────────────────────────────────
+        if (Time.time < nextHeavyUpdateTime) return;
+        nextHeavyUpdateTime = Time.time + heavyUpdateInterval;
+
+        // Snapshot camera+wind for parallax compensation in the next
+        // interval's cheap per-frame updates. The bake below uses these
+        // exact values (camPos.x and windOffsetX) to compute noiseOffset
+        // → blob.lx, so storing them here ensures the per-frame sprite
+        // position formula stays consistent with the baked content.
+        bakedCamX = camPos.x;
+        bakedWindOffsetX = windOffsetX;
+
+        // Resize RTs if camera viewport changed meaningfully (zoom / resize).
+        MaybeResizeForViewport();
+
+        // Defensive: domain reload (script recompile while in Play mode)
+        // can leave the RT object alive but with its GPU contents dropped.
+        // Cheap when already created.
         if (!mainRT.IsCreated())   mainRT.Create();
         if (!normalRT.IsCreated()) normalRT.Create();
 
-        // Re-apply the MPB binding every frame. Various editor events
-        // (asset reimport on a sprite the user is iterating on,
-        // material refresh, OnValidate paths) can silently clear the
-        // SpriteRenderer's MaterialPropertyBlock — at which point
-        // _MainTex falls back to the sprite's source texture (the
-        // dummy `spriteTex`), and the cloud reads as a uniform flat
-        // rectangle tinted by sr.color. Cost is negligible (two
-        // SetTexture calls + one SetPropertyBlock per frame).
+        // Re-apply the MPB binding. Editor events (sprite reimport, material
+        // refresh, OnValidate paths) can silently clear the SpriteRenderer's
+        // MaterialPropertyBlock — at which point _MainTex falls back to the
+        // dummy spriteTex and the cloud reads as a flat rectangle.
+        if (mpb == null) mpb = new MaterialPropertyBlock();
         sr.GetPropertyBlock(mpb);
         mpb.SetTexture(MainTexId,   mainRT);
         mpb.SetTexture(NormalMapId, normalRT);
         sr.SetPropertyBlock(mpb);
 
-        // Compute the noise-offset (parallax × camera-x + accumulated wind
-        // drift) — used by GenerateBlobs to convert noise-anchored blob
-        // positions to sprite-local coordinates. The shader no longer
-        // needs it directly; blob spawning fully replaces the per-pixel
-        // noise sampling that used it before.
+        // Noise offset = parallax × camera-x + accumulated wind drift.
+        // Used by GenerateBlobs to convert noise-anchored positions to
+        // sprite-local coords.
         Vector2 noiseOffset = new Vector2(camPos.x * worldLockingX + windOffsetX, 0f);
-        float threshold = Mathf.Lerp(thresholdClear, thresholdStorm, humidity);
-
-        // Broadcast cloud drift state as shader globals so other layers
-        // (background hills' shadow overlay, etc.) can render features
-        // that move in sync with the clouds without coupling to
-        // CloudLayer directly. _CloudThreshold matches the spawn
-        // threshold so a consumer using the same noise sampling gets
-        // roughly the same coverage as the cloud field.
-        Shader.SetGlobalFloat("_CloudWindOffsetX",     windOffsetX);
-        Shader.SetGlobalFloat("_CloudEvolutionOffset", evolutionOffset);
-        Shader.SetGlobalFloat("_CloudThreshold",       threshold);
 
         cloudGenMat.SetVector(TexSizeId,        new Vector2(textureSize.x, textureSize.y));
         cloudGenMat.SetFloat (InvPpuId,         1f / pixelsPerUnit);
@@ -338,19 +435,18 @@ public class CloudLayer : SkyLayerBase {
         cloudGenMat.SetFloat (NormalEpsilonId,  normalEpsilon);
         cloudGenMat.SetFloat (EdgeThresholdId,  edgeThreshold);
         cloudGenMat.SetFloat (EdgeSoftnessId,   edgeSoftness);
+        // Flat-lighting toggle: when on, Pass 0 skips the 5-tap height-field
+        // normal + Lambertian band selection (saves ~80% of blob-loop work).
+        bool flatLight = SettingsManager.instance != null
+                      && !SettingsManager.instance.cloudLightingEnabled;
+        cloudGenMat.SetFloat(FlatLightingId, flatLight ? 1f : 0f);
 
-        // Generate the blob list for this frame and push to the shader.
-        // Blob sprite-local y is always (anchorY - bandCenterY) — i.e.,
-        // their offset within the band. The sprite itself moves with
-        // parallax (via spriteY above); the blobs ride along. Aspects
-        // are passed as a parallel float array so each blob can have
-        // its own ellipsoid stretch.
         GenerateBlobs(threshold, noiseOffset);
-        cloudGenMat.SetVectorArray(BlobsId,        blobBuffer);
-        cloudGenMat.SetFloatArray (BlobAspectsId,  blobAspectBuffer);
-        cloudGenMat.SetInt        (BlobCountId,    blobCount);
+        cloudGenMat.SetVectorArray(BlobsId,       blobBuffer);
+        cloudGenMat.SetFloatArray (BlobAspectsId, blobAspectBuffer);
+        cloudGenMat.SetInt        (BlobCountId,   blobCount);
 
-        // Pass 0 → mainRT (blob-shaded 3-band colour + soft union mask),
+        // Pass 0 → mainRT (blob-shaded 3-band colour + soft union mask).
         // Pass 1 → normalRT (flat tangent normal so the global lightmap
         // contributes uniform brightness across the cloud).
         Graphics.Blit(null, mainRT,   cloudGenMat, 0);

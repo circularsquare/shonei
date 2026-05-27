@@ -272,8 +272,11 @@ public class StructType {
 
     // Light source: building emits point light and passively burns fuel while torchFactor > 0.
     // lightIntensity is the baseIntensity passed to LightSource (default 0.80).
+    // lightOuterRadius is the radial reach in world units (default 10). Smaller =
+    // tighter lit area and ~quadratic GPU savings on the light-circle pass.
     public bool isLightSource {get; set;}
     public float lightIntensity {get; set;}
+    public float lightOuterRadius {get; set;}
 
     // ── Mechanical power ──────────────────────────────────────────────
     // powerBoost > 1.0 turns this StructType into a power consumer at runtime: when the
@@ -353,6 +356,7 @@ public class StructType {
             job = Db.jobByName["hauler"]; // default if no njob provided
         }
         if (isLightSource && lightIntensity == 0f) lightIntensity = 0.80f;
+        if (isLightSource && lightOuterRadius == 0f) lightOuterRadius = 10f;
         if (nworkTiles == null || nworkTiles.Length == 0)
             nworkTiles = new[] { new WorkTileOffset { dx = workTileX, dy = workTileY } };
         // Fuel inventory: convert liang → fen; resolve fuel item reference.

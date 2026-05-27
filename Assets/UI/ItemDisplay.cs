@@ -43,12 +43,30 @@ public class ItemDisplay : MonoBehaviour {
     [System.NonSerialized] public Inventory targetInventory;                   // for Storage mode allow/disallow; null = use selectedInventory
     [System.NonSerialized] public System.Func<int, GameObject> getDisplayGo;   // tree lookup; null = use itemDisplayGos
 
+    // Cached on Start so SetTargetChromeActive doesn't GetComponent each toggle.
+    private UnityEngine.UI.RectMask2D _targetInputMask;
+
     public void Start(){
         // gameObject.name is "ItemDisplay_<item.name>" (set by InventoryController/StoragePanel/TradingPanel).
         // Split with count=2 so item names containing '_' (e.g. "fiction_book", "book_soymilk") survive intact —
         // a naive Split('_')[1] would drop everything after the second underscore.
         item = Db.itemByName[gameObject.name.Split(new[]{'_'}, 2)[1]];
         if (itemIcon != null) itemIcon.SetItem(item);
+
+        // Hide the InputField's chrome (bg + clipping mask) when not focused so
+        // the row collapses to a single batchable Text draw. Each TMP_InputField's
+        // RectMask2D otherwise creates a hard batch boundary across the whole
+        // inventory — 64 inputs = 64 boundaries, even with shared atlas textures.
+        // Re-enabled on focus, disabled on commit/blur. The InputField's own
+        // Text child stays visible always so the current target value shows.
+        if (targetInput != null) {
+            // TMP_InputField puts the mask on its Text Area child, not the root.
+            _targetInputMask = targetInput.GetComponentInChildren<UnityEngine.UI.RectMask2D>(true);
+            targetInput.onSelect.AddListener(OnTargetSelect);
+            targetInput.onDeselect.AddListener(OnTargetDeselect);
+            SetTargetChromeActive(false);
+        }
+
         Transform btn = transform.Find("HorizontalLayout/ButtonDropdown");
         if (btn != null) dropdownImage = btn.GetComponent<Image>();
         // Market mode keeps every group expanded — no sense in hiding tradeable leaves behind collapses.
@@ -200,6 +218,18 @@ public class ItemDisplay : MonoBehaviour {
         if (targetInput == null || item == null) return;
         if (!force && targetInput.isFocused) return;
         targetInput.SetTextWithoutNotify(ItemStack.FormatQ(fenValue, item));
+    }
+
+    // Chrome toggle for the target InputField — see Start() for the rationale.
+    private void OnTargetSelect(string _)   => SetTargetChromeActive(true);
+    private void OnTargetDeselect(string _) => SetTargetChromeActive(false);
+
+    // Only toggle the mask — its batch boundary is the dominant cost.
+    // The bg stays on always so users still see the white box hinting at
+    // typability. The bg's per-row draws are cheap (all share UnityWhite,
+    // mostly batch with each other within the canvas).
+    private void SetTargetChromeActive(bool active) {
+        if (_targetInputMask != null) _targetInputMask.enabled = active;
     }
 
     private void RefreshAfterTargetChange() {

@@ -1,4 +1,6 @@
+using Unity.Profiling;
 using UnityEngine;
+using UnityEngine.Profiling;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
@@ -34,7 +36,6 @@ public class LightFeature : ScriptableRendererFeature {
     [Header("Composite")]
     [Tooltip("How much the sun tints empty sky/background pixels (0 = no tint, 1 = full lightmap applied).")]
     [Range(0f, 1f)] public float skyLightBlend = 1f;
-
     [Header("Emission")]
     [Tooltip("Global multiplier on per-pixel emission written into the lightmap by EmissionWriter.shader. " +
              "0 = no emissive glow, 1 = mask alpha drives the lightmap directly, >1 = boost. " +
@@ -43,12 +44,12 @@ public class LightFeature : ScriptableRendererFeature {
     [Range(0f, 2f)] public float emissionStrength = 1f;
 
     [Header("Sort-aware effective light height")]
-    [Tooltip("Sort-bucket delta (in normalized units, 1.0 = 255 sortingOrder units) over " +
+    [Tooltip("Sort-bucket delta (in normalized units, 1.0 spans all 6 buckets) over " +
              "which the effective light height ramps across BEHIND receivers from +lightHeight " +
              "(at delta=0) toward +lightHeight * behindFarHeightFactor (at full range). " +
-             "0.08 ≈ 20 sortingOrder units. In-front receivers always use -lightHeight " +
-             "(hard flip), independent of this range.")]
-    [Range(0.01f, 0.5f)] public float sortRampRange = 0.08f;
+             "0.20 ≈ one bucket step (Phase 4 buckets: ~0.2 apart in normalized space). " +
+             "In-front receivers always use -lightHeight (hard flip), independent of this range.")]
+    [Range(0.01f, 0.5f)] public float sortRampRange = 0.20f;
     [Tooltip("Height scale at the far end of the behind ramp. 1.0 = flat ramp (uniform " +
              "behind lighting). >1 = steeper/more top-down for deep-behind receivers. " +
              "<1 = shallower/more grazing. Only affects the BEHIND branch — in-front " +
@@ -137,7 +138,26 @@ public class LightFeature : ScriptableRendererFeature {
 // Must run before LightPass so the RT is populated when lighting reads it.
 
 class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
+    // Profiler markers — sampled by Components/GpuStatsHUD.cs. Keep the names
+    // stable; the HUD references them by literal string.
+    //
+    // MarkerName is the CPU-side dispatch marker (ProfilerMarker.Auto in
+    // Execute). s_gpuSampler is a CustomSampler created with collectGpuData=true
+    // — this is REQUIRED for GPU timing to actually be captured. The plain
+    // cmd.BeginSample(string) overload does NOT request GPU data; only the
+    // CustomSampler overload does. Read via
+    // Sampler.Get(name).GetRecorder().gpuElapsedNanoseconds.
+    public const string MarkerName    = "Shonei.NormalsCapturePass";
+    public const string GpuSampleName = "Shonei.NormalsCapturePass.GPU";
+    static readonly ProfilerMarker s_marker    = new(MarkerName);
+    static readonly CustomSampler  s_gpuSampler = CustomSampler.Create(GpuSampleName, true);
+
     static readonly int CapturedNormalsId = Shader.PropertyToID("_CapturedNormalsRT");
+    // Global shader property — set per bucket iteration in Execute so the
+    // override-material shaders (NormalsCapture, NormalsCaptureWater,
+    // NormalsCaptureBgTile) write the right sort bucket into the RT's B
+    // channel. Replaces the per-sprite _SortBucket MPB.
+    static readonly int SortBucketGlobalId = Shader.PropertyToID("_SortBucket");
     readonly Material mat;
     readonly Material waterMat;
     readonly Material backgroundMat;
@@ -192,93 +212,162 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
 
     public override void Execute(ScriptableRenderContext context, ref RenderingData rd) {
         if (mat == null) return;
+        using var _ = s_marker.Auto();
         var cmd = CommandBufferPool.Get("NormalsCapture");
+        // GPU-side sample bracket. BeginSample is recorded into the GPU
+        // command stream; EndSample fires after all subsequent DrawRenderers
+        // calls (they're submitted into the same stream by the SRP context),
+        // so the captured GPU time covers clear + all draws.
+        // MUST use the CustomSampler overload — the string overload does
+        // not request GPU timing.
+        cmd.BeginSample(s_gpuSampler);
         cmd.SetRenderTarget(CapturedNormalsId);
-        cmd.ClearRenderTarget(false, true, Color.clear); // black = flat fallback in light shaders
+
+        // Skip per-sprite normal capture on non-world cameras (SkyCamera and
+        // future overlay/minimap cams). They only need directional sun
+        // lighting; with the right cleared values, LightSun and LightComposite
+        // produce the same result as the previous per-sprite-with-flat-normal-
+        // map path, but we skip the entire DrawRenderers workload.
+        //
+        // Clear color encodes flat camera-facing normal + directional-only
+        // tier:
+        //   rg = 0.5  → decoded normal xy = 0 → reconstructed = (0, 0, -1)
+        //                 (camera-facing) — matches what cloud/hill normal
+        //                 maps were producing anyway.
+        //   b  = 0    → bucket 0 (unused; non-world cams skip point lights).
+        //   a  = 0.3  → directional-only tier. Critical: LightComposite uses
+        //                 alpha > 0.25 to decide "multiply by lightmap" vs
+        //                 "use bright daytime _SkyLightColor fallback".
+        //                 Without this, the sky would not darken at night.
+        bool isWorldCam = (rd.cameraData.camera.cullingMask & tileChunkMask) != 0;
+        Color clearColor = isWorldCam ? Color.clear : new Color(0.5f, 0.5f, 0f, 0.3f);
+        cmd.ClearRenderTarget(false, true, clearColor);
         context.ExecuteCommandBuffer(cmd);
-        CommandBufferPool.Release(cmd);
+        cmd.Clear();
 
-        // Draw background first (pass 1, lit-only) — uses NormalsCaptureBackground which
-        // clips transparent top pixels so they read as sky. Drawn earliest so any
-        // tile or sprite that overlaps the background overwrites it in the normals RT.
-        if (backgroundMask != 0 && backgroundMat != null) {
-            var ds = CreateDrawingSettings(
-                new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
-            ds.overrideMaterial          = backgroundMat;
-            ds.overrideMaterialPassIndex = 1; // alpha = 0.5 (lit-only)
-
-            var fs = new FilteringSettings(RenderQueueRange.all, backgroundMask);
-            context.DrawRenderers(rd.cullResults, ref ds, ref fs);
+        if (!isWorldCam) {
+            cmd.EndSample(s_gpuSampler);
+            context.ExecuteCommandBuffer(cmd);
+            CommandBufferPool.Release(cmd);
+            return;
         }
 
-        // Draw directional-only sprites (pass 2, alpha=0.3) — sun + ambient only, no torch light.
-        // Drawn first; litOnlyMask and shadowMask both exclude dirOnlyMask so they can't overwrite.
-        if (dirOnlyMask != 0) {
-            var ds = CreateDrawingSettings(
-                new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
-            ds.overrideMaterial          = mat;
-            ds.overrideMaterialPassIndex = 2; // alpha = 0.3 (directional-only)
-
-            var fs = new FilteringSettings(RenderQueueRange.all, dirOnlyMask);
-            context.DrawRenderers(rd.cullResults, ref ds, ref fs);
-        }
-
-        // Draw lit-only sprites next (pass 1, alpha=0.5) — no shadow cast.
-        // Shadow casters are drawn last (pass 0, alpha=1.0) so they overwrite on overlap.
-        // dirOnlyMask is excluded from both: those sprites were already drawn above with pass 2.
+        // ── Per-bucket sprite draws ─────────────────────────────────────────
+        // Preserve the original tier order: background → dirOnly → litOnly →
+        // tileChunk → shadow → water. Later draws overwrite earlier ones in
+        // the normals RT; tiles must overwrite background (so a tile pixel
+        // gets shadow-caster alpha + tile normals, not lit-only alpha + flat
+        // normals), and shadow casters must overwrite tiles (so an animal
+        // standing on a tile shows its own normals/bucket).
+        //
+        // Implementation: two bucket loops with the chunked tile draw between
+        // them. The first loop runs background/dirOnly/litOnly per bucket;
+        // the second runs shadow/water per bucket. Chunked tiles draw once
+        // outside any loop (they carry _SortBucket per-chunk via MPB — the
+        // bucket loop's global _SortBucket wouldn't reach them anyway).
+        //
+        // Each bucket sets _SortBucket as a global; the override shaders
+        // (NormalsCapture / NormalsCaptureBackground / NormalsCaptureWater)
+        // read it from the global, no per-sprite MPB needed.
         int litOnlyMask = litMask & ~shadowMask & ~dirOnlyMask;
-        if (litOnlyMask != 0) {
-            var ds = CreateDrawingSettings(
-                new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
-            ds.overrideMaterial          = mat;
-            ds.overrideMaterialPassIndex = 1; // alpha = 0.5 (lit, no shadow)
+        int shadowOnlyMask = litMask & shadowMask & ~dirOnlyMask & ~tileChunkMask;
 
-            var fs = new FilteringSettings(RenderQueueRange.all, litOnlyMask);
-            context.DrawRenderers(rd.cullResults, ref ds, ref fs);
+        // ── Loop A: tiers that draw BEFORE chunked tiles ────────────────────
+        for (int b = 0; b < SortBucketUtil.BucketCount; b++) {
+            cmd.SetGlobalFloat(SortBucketGlobalId, SortBucketUtil.BucketToNormalized(b));
+            context.ExecuteCommandBuffer(cmd);
+            cmd.Clear();
+
+            uint bucketMask = 1u << b;
+
+            // Background (pass 1, lit-only).
+            if (backgroundMask != 0 && backgroundMat != null) {
+                var ds = CreateDrawingSettings(
+                    new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
+                ds.overrideMaterial          = backgroundMat;
+                ds.overrideMaterialPassIndex = 1;
+                var fs = new FilteringSettings(RenderQueueRange.all, backgroundMask);
+                fs.renderingLayerMask = bucketMask;
+                context.DrawRenderers(rd.cullResults, ref ds, ref fs);
+            }
+
+            // Directional-only (pass 2, alpha=0.3).
+            if (dirOnlyMask != 0) {
+                var ds = CreateDrawingSettings(
+                    new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
+                ds.overrideMaterial          = mat;
+                ds.overrideMaterialPassIndex = 2;
+                var fs = new FilteringSettings(RenderQueueRange.all, dirOnlyMask);
+                fs.renderingLayerMask = bucketMask;
+                context.DrawRenderers(rd.cullResults, ref ds, ref fs);
+            }
+
+            // Lit-only (pass 1, alpha=0.5). dirOnly excluded — drawn above.
+            if (litOnlyMask != 0) {
+                var ds = CreateDrawingSettings(
+                    new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
+                ds.overrideMaterial          = mat;
+                ds.overrideMaterialPassIndex = 1;
+                var fs = new FilteringSettings(RenderQueueRange.all, litOnlyMask);
+                fs.renderingLayerMask = bucketMask;
+                context.DrawRenderers(rd.cullResults, ref ds, ref fs);
+            }
         }
 
-        // Draw chunked tile meshes (own override material, samples Texture2DArray
-        // slices via per-vertex slice indices). Drawn before the standard shadow-
-        // caster pass so animal/structure sprites overlapping a tile overwrite
-        // the chunked-tile pixels (animal SR has higher sortingOrder than tile
-        // body — the standard pass running second wins on overlap).
+        // ── Chunked tile meshes (single draw, between the two bucket loops) ─
+        // Chunked tiles carry their own _SortBucket via per-chunk MPB
+        // (TileMeshController) — necessary because each chunk binds its own
+        // Texture2DArray slices and that MPB is unavoidable. Position-wise
+        // they sit AFTER background/litOnly (so their shadow-caster alpha
+        // overwrites the lit-only alpha at overlap pixels — otherwise
+        // underground tiles with background behind them would lose their
+        // edge-depth darkening) and BEFORE shadow casters (so animals
+        // standing on tiles win the overlap).
         if (tileChunkMask != 0 && chunkedMat != null) {
             var ds = CreateDrawingSettings(
                 new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
             ds.overrideMaterial          = chunkedMat;
             ds.overrideMaterialPassIndex = 0; // chunked shader has a single pass — shadow caster
-
             var fs = new FilteringSettings(RenderQueueRange.all, tileChunkMask);
             context.DrawRenderers(rd.cullResults, ref ds, ref fs);
         }
 
-        // Draw shadow-casting sprites (pass 0, alpha=1.0).
-        // tileChunkMask is excluded — chunked tiles were drawn just above with
-        // their own override material, and re-drawing them with the standard
-        // mat would sample a non-existent _MainTex/_NormalMap MPB.
-        {
-            var ds = CreateDrawingSettings(
-                new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
-            ds.overrideMaterial          = mat;
-            ds.overrideMaterialPassIndex = 0; // alpha = 1.0 (casts shadow)
+        // ── Loop B: tiers that draw AFTER chunked tiles ─────────────────────
+        for (int b = 0; b < SortBucketUtil.BucketCount; b++) {
+            cmd.SetGlobalFloat(SortBucketGlobalId, SortBucketUtil.BucketToNormalized(b));
+            context.ExecuteCommandBuffer(cmd);
+            cmd.Clear();
 
-            var fs = new FilteringSettings(RenderQueueRange.all, litMask & shadowMask & ~dirOnlyMask & ~tileChunkMask);
-            context.DrawRenderers(rd.cullResults, ref ds, ref fs);
+            uint bucketMask = 1u << b;
+
+            // Shadow casters (pass 0, alpha=1.0). tileChunk excluded — drawn
+            // between the loops. Animals/structures overwrite tile pixels
+            // where they overlap.
+            {
+                var ds = CreateDrawingSettings(
+                    new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
+                ds.overrideMaterial          = mat;
+                ds.overrideMaterialPassIndex = 0;
+                var fs = new FilteringSettings(RenderQueueRange.all, shadowOnlyMask);
+                fs.renderingLayerMask = bucketMask;
+                context.DrawRenderers(rd.cullResults, ref ds, ref fs);
+            }
+
+            // Water (pass 1, alpha=0.5).
+            if (waterMask != 0 && waterMat != null) {
+                var ds = CreateDrawingSettings(
+                    new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
+                ds.overrideMaterial          = waterMat;
+                ds.overrideMaterialPassIndex = 1;
+                var fs = new FilteringSettings(RenderQueueRange.all, waterMask);
+                fs.renderingLayerMask = bucketMask;
+                context.DrawRenderers(rd.cullResults, ref ds, ref fs);
+            }
         }
 
-        // Draw water as lit-only (pass 1, alpha=0.5): torch + sun light, no shadow cast.
-        // Uses NormalsCaptureWater which samples the global _WaterSurfaceTex set by
-        // WaterController, so only pixels with actual water get normals written.
-        if (waterMask != 0 && waterMat != null) {
-            var ds = CreateDrawingSettings(
-                new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
-            ds.overrideMaterial          = waterMat;
-            ds.overrideMaterialPassIndex = 1; // alpha = 0.5 (lit-only)
-
-            var fs = new FilteringSettings(RenderQueueRange.all, waterMask);
-            context.DrawRenderers(rd.cullResults, ref ds, ref fs);
-        }
-
+        cmd.EndSample(s_gpuSampler);
+        context.ExecuteCommandBuffer(cmd);
+        CommandBufferPool.Release(cmd);
     }
 
     public override void OnCameraCleanup(CommandBuffer cmd) {
@@ -289,8 +378,15 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
 // ── Light Pass ────────────────────────────────────────────────────────────────
 
 class LightPass : ScriptableRenderPass, System.IDisposable {
-    static readonly int LightRTId = Shader.PropertyToID("_CustomLightRT");
+    // Profiler markers — sampled by Components/GpuStatsHUD.cs. Keep the names
+    // stable; the HUD references them by literal string.
+    // See NormalsCapturePass for the CPU vs GPU marker pattern explanation.
+    public const string MarkerName    = "Shonei.LightPass";
+    public const string GpuSampleName = "Shonei.LightPass.GPU";
+    static readonly ProfilerMarker s_marker     = new(MarkerName);
+    static readonly CustomSampler  s_gpuSampler = CustomSampler.Create(GpuSampleName, true);
 
+    static readonly int LightRTId = Shader.PropertyToID("_CustomLightRT");
     float ambientNormal;
     float skyLightBlend;
     float sortRampRange;
@@ -304,13 +400,13 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
     readonly Material compositeMat;
     readonly Material ambientFillMat;
     readonly Material emissionMat;
-    readonly Mesh     quad;
+    readonly Mesh     circleMesh;
     readonly MaterialPropertyBlock mpb = new();
 
     public LightPass(Shader lightCircle, Shader lightSun, Shader lightComposite, Shader lightAmbientFill, Shader emissionWriter) {
         if (lightCircle == null || lightSun == null || lightComposite == null || lightAmbientFill == null || emissionWriter == null) {
             Debug.LogError("LightFeature: Light* shader fields are unassigned — assign them in the URP Universal Renderer asset's LightFeature inspector. Lighting will be disabled.");
-            quad = CreateQuad();
+            circleMesh = CreateOctagon();
             return;
         }
         circleMat       = CoreUtils.CreateEngineMaterial(lightCircle);
@@ -318,7 +414,7 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         compositeMat    = CoreUtils.CreateEngineMaterial(lightComposite);
         ambientFillMat  = CoreUtils.CreateEngineMaterial(lightAmbientFill);
         emissionMat     = CoreUtils.CreateEngineMaterial(emissionWriter);
-        quad            = CreateQuad();
+        circleMesh      = CreateOctagon();
     }
 
     public void Dispose() {
@@ -327,7 +423,7 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         CoreUtils.Destroy(compositeMat);
         CoreUtils.Destroy(ambientFillMat);
         CoreUtils.Destroy(emissionMat);
-        CoreUtils.Destroy(quad);
+        CoreUtils.Destroy(circleMesh);
     }
 
     public void Setup(RenderTargetIdentifier colorBuffer, float ambientNormal, Color deepAmbientColor, float skyLightBlend, float sortRampRange, float behindFarHeightFactor, float emissionStrength, int tileChunkMask) {
@@ -351,8 +447,9 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
 
     public override void Execute(ScriptableRenderContext context, ref RenderingData rd) {
         if (circleMat == null || sunMat == null || compositeMat == null) return;
-
+        using var _ = s_marker.Auto();
         var cmd = CommandBufferPool.Get("CustomLighting");
+        cmd.BeginSample(s_gpuSampler);
 
         var view = rd.cameraData.GetViewMatrix();
         var proj = GL.GetGPUProjectionMatrix(rd.cameraData.GetProjectionMatrix(), renderIntoTexture: false);
@@ -443,7 +540,7 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
                     Quaternion.identity,
                     new Vector3(d, d, 1f));
 
-                cmd.DrawMesh(quad, matrix, circleMat, 0, 0, mpb);
+                cmd.DrawMesh(circleMesh, matrix, circleMat, 0, 0, mpb);
             }
         }
 
@@ -475,15 +572,25 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         // pixels keep their painted color verbatim — torches/fireplaces glow
         // regardless of time-of-day or distance from a real LightSource.
         //
-        // Iterates the explicit emissive registry (LightSource.emissiveReceivers)
+        // Iterates the explicit emitter registry (LightSource.emitters)
         // instead of DrawRenderers over the entire litMask — only ~N draws per
         // frame where N = active emitters, vs. one shader invocation per visible
         // lit sprite. World cam only — emitters live at world tile positions.
+        //
+        // `_EmissionScale` and `_SortBucket` are set as globals per-emitter
+        // (replacing the older per-renderer MPB scheme). Globals don't break
+        // SRP Batcher; the emission pass draws one emitter at a time so
+        // there's no batching concern here anyway.
         if (isWorldCam && emissionMat != null && emissionStrength > 0f) {
             cmd.SetGlobalFloat("_EmissionStrength", emissionStrength);
             cmd.SetRenderTarget(LightRTId);
-            foreach (var r in LightSource.emissiveReceivers) {
+            foreach (var src in LightSource.emitters) {
+                if (src == null) continue;
+                var r = src.EmissionReceiver;
                 if (r == null || !r.enabled || !r.gameObject.activeInHierarchy) continue;
+                cmd.SetGlobalFloat("_EmissionScale", src.CurrentEmissionScale);
+                cmd.SetGlobalFloat("_SortBucket",
+                    SortBucketUtil.BucketToNormalized(SortBucketUtil.GetBucket(r.sortingOrder)));
                 cmd.DrawRenderer(r, emissionMat, 0, 0);
             }
         }
@@ -500,6 +607,7 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         compositeMat.SetFloat("_SkyLightBlend", skyLightBlend);
         cmd.Blit(LightRTId, colorBuffer, compositeMat);
 
+        cmd.EndSample(s_gpuSampler);
         context.ExecuteCommandBuffer(cmd);
         CommandBufferPool.Release(cmd);
     }
@@ -508,14 +616,40 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         cmd.ReleaseTemporaryRT(LightRTId);
     }
 
-    static Mesh CreateQuad() {
-        var m = new Mesh { name = "LightQuad" };
-        m.SetVertices(new Vector3[] {
-            new(-0.5f, -0.5f, 0), new(0.5f, -0.5f, 0),
-            new(-0.5f,  0.5f, 0), new(0.5f,  0.5f, 0),
-        });
-        m.SetUVs(0, new Vector2[] { Vector2.zero, Vector2.right, Vector2.up, Vector2.one });
-        m.SetTriangles(new int[] { 0, 2, 1, 2, 3, 1 }, 0);
+    // Axis-aligned regular octagon, apothem 0.5, fan-triangulated from center.
+    // Replaces the unit quad for point-light draws. The LightCircle shader's
+    // radial smoothstep discards anything outside r=0.5 in UV space, so the
+    // quad's four corners (~21% of fragment work per light) were always
+    // wasted. The octagon's apothem matches r=0.5 — every covered pixel
+    // contributes — saving ~17% of fragment invocations per point light.
+    // See plans/gpu-perf-pass.md §Phase 7.
+    static Mesh CreateOctagon() {
+        const int   N = 8;
+        const float R = 0.5f / 0.9238795325f;  // apothem / cos(π/8) = circumradius
+        var verts = new Vector3[N + 1];
+        var uvs   = new Vector2[N + 1];
+        verts[0]  = Vector3.zero;
+        uvs[0]    = new Vector2(0.5f, 0.5f);
+        // Angles offset by π/8 so flats face cardinal axes (top/bottom/left/right).
+        for (int i = 0; i < N; i++) {
+            float a = Mathf.PI / 8f + i * (Mathf.PI / 4f);
+            float x = R * Mathf.Cos(a);
+            float y = R * Mathf.Sin(a);
+            verts[i + 1] = new Vector3(x, y, 0f);
+            // UV mirrors object position + 0.5 so the shader's `IN.uv - 0.5`
+            // recovers the local position (identical to the old quad mapping).
+            uvs[i + 1]   = new Vector2(x + 0.5f, y + 0.5f);
+        }
+        var tris = new int[N * 3];
+        for (int i = 0; i < N; i++) {
+            tris[i * 3 + 0] = 0;
+            tris[i * 3 + 1] = i + 1;
+            tris[i * 3 + 2] = ((i + 1) % N) + 1;
+        }
+        var m = new Mesh { name = "LightOctagon" };
+        m.SetVertices(verts);
+        m.SetUVs(0, uvs);
+        m.SetTriangles(tris, 0);
         m.UploadMeshData(true);
         return m;
     }

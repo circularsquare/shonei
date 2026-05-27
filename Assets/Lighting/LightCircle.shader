@@ -24,9 +24,8 @@ Shader "Hidden/LightCircle" {
             float  _InnerFraction;     // innerRadius / outerRadius  (0–1)
             float4 _LightWorldPos;     // world-space XY of the light source
             float  _LightHeight;       // Z offset above sprite plane for NdotL angle
-            float  _LightSortBucket;   // this light's sortingOrder / 255 (see LightSource.sortBucket)
+            float  _LightSortBucket;   // this light's bucket value (SortBucketUtil scheme; see LightSource.sortBucket)
             float  _AmbientNormal;     // minimum NdotL floor (softens back-face darkness)
-
             // Global ramp params (set once per frame by LightPass).
             // _SortRampRange         = sort-delta range (in normalized bucket units) over
             //                         which the effective height ramps, on the behind side,

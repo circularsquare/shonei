@@ -96,6 +96,11 @@ Shader "Hidden/CloudFieldGen" {
             // what Unity expects for Material.SetFloatArray.
             float  _BlobAspects[MAX_BLOBS];
             int    _BlobCount;
+            // Flat-lighting toggle (0 = full shading, 1 = flat). When set,
+            // Pass 0 skips the 5-tap height-field normal + Lambertian
+            // band selection and outputs _MidColor × coverage. Driven by
+            // SettingsManager.cloudLightingEnabled via CloudLayer.cs.
+            float  _CloudFlatLighting;
         CBUFFER_END
 
         // ── Globals — declared OUTSIDE the CBUFFER ──────────────────────
@@ -202,6 +207,31 @@ Shader "Hidden/CloudFieldGen" {
 
             half4 fragMask(Varyings IN) : SV_Target {
                 float2 lp = SpriteLocalFromUV(IN.uv);
+
+                // ── Flat-lighting fast path ─────────────────────────────
+                // When the user disables cloud lighting (Options panel),
+                // skip the expensive 5-tap height-field shading and just
+                // emit _MidColor × coverage. The blob loop here only does
+                // a single tap per blob (alpha contribution) rather than
+                // the five taps the lit path requires — ~80% less work
+                // in the per-pixel loop.
+                if (_CloudFlatLighting > 0.5) {
+                    float2 lp_a = lp + EdgeWarp(lp);
+                    float totalInfFlat = 0;
+                    [loop] for (int i = 0; i < _BlobCount; i++) {
+                        float4 b  = _Blobs[i];
+                        float  invAspect = 1.0 / _BlobAspects[i];
+                        float2 d  = lp_a - b.xy;
+                        float2 dS = float2(d.x * invAspect, d.y);
+                        float  d2 = dot(dS, dS);
+                        float  r2 = b.w * b.w;
+                        totalInfFlat += saturate(1.0 - d2 / r2);
+                    }
+                    float loFlat = max(0.0, _EdgeThreshold - _EdgeSoftness);
+                    float covFlat = smoothstep(loFlat, _EdgeThreshold + _EdgeSoftness, totalInfFlat);
+                    if (covFlat < 1e-3) return half4(0, 0, 0, 0);
+                    return half4(_MidColor.rgb, covFlat);
+                }
 
                 // For shading: pick the frontmost blob's normal at this
                 // pixel — the blob with the highest zTop = b.z +

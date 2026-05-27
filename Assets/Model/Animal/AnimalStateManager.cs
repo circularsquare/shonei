@@ -300,6 +300,11 @@ public class AnimalStateManager {
     // factor: 1 - (1-p)^12 = 0.25  →  p ≈ 0.0237.
     private const float MaxBirthChancePerSleepTick = 0.024f;
 
+    // Reproduction food gate. Below the hard floor: no births at all.
+    // Between floor and full days: chance scales linearly from 0 → MaxBirthChancePerSleepTick.
+    private const float BirthFoodHardFloorDays = 2f;
+    private const float BirthFoodFullDays      = 10f;
+
     private void HandleEeping() {
         // Sleep recovery (eeping.Eep) is ticked wall-clock in Animal.HandleNeeds, not here —
         // see the comment there. This handler runs only on the energy-gated UpdateState path,
@@ -309,15 +314,16 @@ public class AnimalStateManager {
         // the sleeper doesn't need to be in their own home.
         AnimalController ac = AnimalController.instance;
         if (ac.na < ac.populationCapacity && ac.na < ac.totalHousingCapacity) {
-            // Require global food > 4 × population before allowing births
-            int totalFood = 0;
-            GlobalInventory ginv = GlobalInventory.instance;
-            foreach (Item food in Db.edibleItems) totalFood += ginv.Quantity(food);
+            // Birth gate uses the colony's days-of-food-in-storage stat (cached in
+            // UpdateColonyStats). Two-stage: hard floor at 2 days (crisis — no births),
+            // then linear taper × clamp(days/10) up to full birth rate at 10 days.
             // Guard the birth roll only — must not early-return, the wake-up check below runs every tick.
-            if (totalFood > ac.na * 400) { // 4 liang per mouse (400 fen)
+            float days = ac.daysOfFoodInStorage;
+            if (days >= BirthFoodHardFloorDays) {
+                float foodFactor = Mathf.Clamp01(days / BirthFoodFullDays);
                 float p = ac.na;
                 float pmax = ac.populationCapacity;
-                float birthChance = MaxBirthChancePerSleepTick * (pmax - p) / pmax;
+                float birthChance = MaxBirthChancePerSleepTick * (pmax - p) / pmax * foodFactor;
                 if ((float)animal.random.NextDouble() < birthChance) {
                     ac.AddAnimal(animal.x, animal.y);
                 }

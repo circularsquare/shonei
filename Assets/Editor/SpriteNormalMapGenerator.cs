@@ -141,9 +141,6 @@ public static class SpriteNormalMapGenerator {
     [MenuItem("Tools/Generate All Sprite Normal Maps")]
     internal static void GenerateAll() => GenerateAllInternal(force: false);
 
-    [MenuItem("Tools/Generate All Sprite Normal Maps (Force)")]
-    internal static void GenerateAllForce() => GenerateAllInternal(force: true);
-
     static void GenerateAllInternal(bool force) {
         var (processed, skipped, cancelled) = ProcessFolders(BatchFolders, force);
         AssetDatabase.Refresh();

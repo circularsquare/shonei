@@ -35,7 +35,7 @@ public class Db : MonoBehaviour {
     // Built at startup; used by Happiness.cs and both happiness panels to auto-discover needs.
     public static HashSet<string> happinessNeeds;
     public static List<string> happinessNeedsSorted; // stable ordering for panel display
-    public static int happinessMaxScore; // happinessNeeds.Count + 1 (housing) + 2 (temp max) + ceil(maxFurnishingPerMouse)
+    public static int happinessMaxScore; // happinessNeeds.Count + 1 (housing) + 2 (temp max) + 4 (food storage) + ceil(maxFurnishingPerMouse)
     // Max furnishing happiness an animal could get if they lived in the most generously
     // furnished house type with the highest-happiness item in every slot. Computed from
     // structTypes × itemsByFurnishingSlot at Db.LoadAll time. Drives the bar scale on the
@@ -220,7 +220,8 @@ public class Db : MonoBehaviour {
             }
             if (sum > maxFurnishingPerMouse) maxFurnishingPerMouse = sum;
         }
-        happinessMaxScore = happinessNeeds.Count + 1 + 2 + Mathf.CeilToInt(maxFurnishingPerMouse); // +1 housing, +2 temp max, + furnishing ceiling
+        // +1 housing, +2 temp max, +4 colony food storage (see AnimalController.MaxFoodStorageBonus), + furnishing ceiling
+        happinessMaxScore = happinessNeeds.Count + 1 + 2 + Mathf.CeilToInt(AnimalController.MaxFoodStorageBonus) + Mathf.CeilToInt(maxFurnishingPerMouse);
         if (happinessNeeds.Contains("alcohol")) happinessMaxScore += 1; // the alcohol need scores +2 when satisfied, not +1
 
         maxDecoScanRadius = 0;

@@ -531,7 +531,11 @@ public static class TileSpriteCache {
         var spritePixels = new Color32[16][];
         for (int cMask = 0; cMask < 16; cMask++)
             (v.sprites[cMask], spritePixels[cMask]) = BakeSpriteVariant(atlasPixels, mainPixels, cMask, trimMask);
-        if (!isOverlay) {
+        // Trim variants' .normals are never read — only the base (trim=0) variant's
+        // normal maps populate TypeArrayBundle.normalArray and feed the runtime
+        // GetNormalMap path. Skipping the 256-call BakeNormalMap loop here is the
+        // bulk of the speedup in TileAtlasBaker.BakeAll.
+        if (!isOverlay && trimMask == 0) {
             for (int mask = 0; mask < 256; mask++)
                 v.normals[mask] = BakeNormalMap(spritePixels[mask & 0xF], mask);
         }

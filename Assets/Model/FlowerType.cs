@@ -106,19 +106,23 @@ public class FlowerType {
 
         Sprite source = LoadSprite();
         if (source == null) return null;
-        if (source.texture == null) return null;
-        if (!source.texture.isReadable) {
+
+        // Load the source Texture2D directly rather than reading via
+        // `source.texture` — at runtime that returns the packed Plants
+        // atlas, whose `readable` flag is false (see GameplayAtlasBuilder
+        // StandardTexture). The source PNG has Read/Write enabled via
+        // DecorativeSpritePostprocessor, so it's safe to GetPixels32 from.
+        string clean = name.Replace(" ", "");
+        Texture2D srcTex = Resources.Load<Texture2D>("Sprites/Plants/Decorative/" + clean);
+        if (srcTex == null) return null;
+        if (!srcTex.isReadable) {
             Debug.LogWarning($"FlowerType '{name}': source texture isn't readable — auto head-mask generation skipped. Check DecorativeSpritePostprocessor or set Read/Write Enabled in the import inspector.");
             return null;
         }
 
-        Rect rect = source.textureRect;
-        int x0 = (int)rect.x;
-        int y0 = (int)rect.y;
-        int w  = (int)rect.width;
-        int h  = (int)rect.height;
-        Color32[] pixels = source.texture.GetPixels32();
-        int texW = source.texture.width;
+        int w = srcTex.width;
+        int h = srcTex.height;
+        Color32[] pixels = srcTex.GetPixels32();
 
         var maskPixels = new Color32[w * h];
         long ySum = 0;
@@ -127,7 +131,7 @@ public class FlowerType {
 
         for (int py = 0; py < h; py++) {
             for (int px = 0; px < w; px++) {
-                Color32 p = pixels[(y0 + py) * texW + (x0 + px)];
+                Color32 p = pixels[py * w + px];
                 int idx = py * w + px;
                 if (p.a < 128) {
                     maskPixels[idx] = new Color32(0, 0, 0, 0);

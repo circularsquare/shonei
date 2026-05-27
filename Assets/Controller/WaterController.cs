@@ -83,8 +83,14 @@ public class WaterController : MonoBehaviour {
     // Internal fixed-point scale: 10 internal units = 1 display unit (tile fully filled at 160).
     // Scaling up from 16 eliminates the integer-truncation dead zone in the spread formula
     // (diff/2 == 0 when diff == 1), which would otherwise leave water in a staircase pattern.
-    // The dead zone shrinks to 1/10 of a visual unit — sub-pixel, undetectable.
+    // The dead zone shrinks to 1/10 of a visual unit — sub-pixel.
     public const ushort WaterMax = 160;
+
+    // Tiles with water in [1, ResidualBandMax) render as 0 pixel rows (round(w/160*16) = 0
+    // for w ≤ 4 and = 1 for w = 5; we use 5 here as the strict upper bound). Pass 4 jitters
+    // tiles in this band so abandoned residual eventually drains off an open edge rather
+    // than getting re-grown into a visible pool by RainReplenish.
+    public const ushort ResidualBandMax = 5;
 
     // Alternates each SimulateStep to prevent directional spread bias.
     private bool flipDir = false;
@@ -272,7 +278,7 @@ public class WaterController : MonoBehaviour {
     }
 
     // One cellular-automaton step. Returns the total water units transferred
-    // across all three passes — used by Settle() to detect convergence; live
+    // across all four passes — used by Settle() to detect convergence; live
     // TickUpdate calls discard the return.
     //
     // Pass 1 (bottom-to-top): pour water straight down into the tile below.
@@ -282,6 +288,13 @@ public class WaterController : MonoBehaviour {
     //   for a tile at +2 or higher (ignoring plateau tiles at +1). If found, pull 1 unit
     //   from that elevated source to the low tile, flattening the slope step by step.
     //   This prevents CA water from getting permanently stuck in a visible staircase.
+    // Pass 4 (random direction per tile): look-ahead drain for sub-pixel residual,
+    //   the dual of Pass 3. For each residual tile (water < ResidualBandMax) scan
+    //   along a randomly-chosen direction across plateau tiles at equal water and
+    //   push 1 unit to the first strictly-lower tile found, mirroring Pass 3's
+    //   plateau-walking structure. Lets stranded residual drift to an open edge
+    //   (Pass 1 next tick drops it into any pool below) instead of being re-grown
+    //   into a visible pool by RainReplenish (which gates on water > 0).
     // Integer math guarantees volume conservation throughout.
     private int SimulateStep() {
         World world = World.instance;
@@ -377,6 +390,44 @@ public class WaterController : MonoBehaviour {
                         break;
                     }
                     if (far.water < tile.water + 1) break;
+                }
+            }
+        }
+
+        // Pass 4 — Look-ahead drain for sub-pixel residual (dual of Pass 3)
+        // Pass 3 pulls 1 unit from an elevated +2-or-higher far source down to a
+        // local low tile, flattening a diff-1 staircase. Pass 4 mirrors that for
+        // residual tiles (water in (0, ResidualBandMax)) stranded on a flat shelf
+        // where no diff-1 staircase exists to walk down: scan along a randomly-
+        // chosen direction across plateau tiles at equal water, and push 1 unit
+        // to the first STRICTLY-lower tile found. Random direction instead of
+        // sweep direction — alternation would just shuffle residual back and
+        // forth across symmetric shelves. Tiles at equal water ("the plateau")
+        // are traversed; scan stops on a strictly-lower tile (push and done),
+        // a strictly-higher tile (no uphill push), or solid / world edge.
+        //
+        // Without this pass, abandoned sub-pixel residual sits forever and gets
+        // re-grown into a visible pool by RainReplenish (which gates on water > 0,
+        // not on the render threshold).
+        for (int y = 0; y < world.ny; y++) {
+            for (int x = 0; x < world.nx; x++) {
+                Tile tile = world.GetTileAt(x, y);
+                if (tile.type.solid || tile.water == 0) continue;
+                if (tile.water >= ResidualBandMax) continue;
+
+                int dir = Rng.Range(0, 2) == 0 ? -1 : 1;
+                for (int reach = 1; reach <= world.nx; reach++) {
+                    int fx = x + reach * dir;
+                    if (fx < 0 || fx >= world.nx) break;
+                    Tile far = world.GetTileAt(fx, y);
+                    if (far.type.solid) break;
+                    if (far.water < tile.water) {
+                        tile.water--;
+                        far.water++;
+                        moves++;
+                        break;
+                    }
+                    if (far.water > tile.water) break;
                 }
             }
         }

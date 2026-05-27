@@ -21,6 +21,9 @@ using TMPro;
 //     fpsDropdown    — TMP_Dropdown, options exactly: "30", "60", "120", "144", "Unlimited"
 //     vsyncToggle    — Toggle
 //     lightingToggle — Toggle
+//     cloudLightingToggle — Toggle (when off, clouds use flat shading — skips
+//                          height-field normal + Lambertian band selection in
+//                          CloudFieldGen Pass 0)
 //     closeButton    — Button (optional; an X in the corner)
 //     controlsText   — TMP_Text (optional); content is auto-filled at Awake.
 //                      Relies on m5x7's monospace metrics for column alignment.
@@ -36,6 +39,7 @@ public class OptionsPanel : MonoBehaviour {
     [SerializeField] TMP_Dropdown fpsDropdown;
     [SerializeField] Toggle       vsyncToggle;
     [SerializeField] Toggle       lightingToggle;
+    [SerializeField] Toggle       cloudLightingToggle;
 
     [Header("Misc")]
     [SerializeField] Button closeButton;
@@ -282,6 +286,7 @@ public class OptionsPanel : MonoBehaviour {
         if (fpsDropdown    != null) fpsDropdown.onValueChanged.AddListener(OnFpsIndex);
         if (vsyncToggle    != null) vsyncToggle.onValueChanged.AddListener(OnVsync);
         if (lightingToggle != null) lightingToggle.onValueChanged.AddListener(OnLighting);
+        if (cloudLightingToggle != null) cloudLightingToggle.onValueChanged.AddListener(OnCloudLighting);
         if (closeButton    != null) closeButton.onClick.AddListener(() => gameObject.SetActive(false));
     }
 
@@ -298,6 +303,7 @@ public class OptionsPanel : MonoBehaviour {
         if (fpsDropdown    != null) fpsDropdown.value    = FpsValueToIndex(s.targetFps);
         if (vsyncToggle    != null) vsyncToggle.isOn     = s.vsyncEnabled;
         if (lightingToggle != null) lightingToggle.isOn  = s.lightingEnabled;
+        if (cloudLightingToggle != null) cloudLightingToggle.isOn = s.cloudLightingEnabled;
         suppressCallbacks = false;
     }
 
@@ -316,6 +322,7 @@ public class OptionsPanel : MonoBehaviour {
     void OnAmbient(float v)  { if (!suppressCallbacks) SettingsManager.instance?.SetAmbientVolume(v); }
     void OnVsync(bool v)     { if (!suppressCallbacks) SettingsManager.instance?.SetVsync(v); }
     void OnLighting(bool v)  { if (!suppressCallbacks) SettingsManager.instance?.SetLighting(v); }
+    void OnCloudLighting(bool v) { if (!suppressCallbacks) SettingsManager.instance?.SetCloudLighting(v); }
 
     void OnFpsIndex(int i) {
         if (suppressCallbacks) return;

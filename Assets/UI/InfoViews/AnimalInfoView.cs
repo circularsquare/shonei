@@ -67,6 +67,11 @@ public class AnimalInfoView : MonoBehaviour {
         }
         sb.AppendLine($"  {"housing:",-11} {OX(h.house)}");
         sb.AppendLine($"  {"furnishing:",-11} +{h.furnishingScore:0.0}");
+        AnimalController ac = AnimalController.instance;
+        if (ac != null) {
+            string daysStr = float.IsInfinity(ac.daysOfFoodInStorage) ? "lots" : $"{ac.daysOfFoodInStorage:0.0} days";
+            sb.AppendLine($"  {"food store:",-11} +{ac.foodStorageHappinessBonus:0.0}  ({daysStr})");
+        }
         sb.Append    ($"  {"temp:",-11} {tempPrefix}{h.temperatureScore:0.0}  (comfort {h.comfortTempLow:0}-{h.comfortTempHigh:0}C)");
         return sb.ToString();
     }

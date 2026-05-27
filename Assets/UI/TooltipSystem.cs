@@ -64,9 +64,18 @@ public class TooltipSystem : MonoBehaviour {
         UpdatePosition();
     }
 
-    // Clamp so the panel doesn't go off-screen, then snap to integer pixels.
-    // sizeDelta is accurate after ForceRebuildLayoutImmediate (called in Show) or after
-    // the first layout pass.
+    // Position the panel relative to the mouse, flipping sides to keep it on-screen,
+    // then snap to integer pixels.
+    //
+    // Two-stage approach:
+    //   1. Default to bottom-right of mouse; flip horizontally / vertically if that
+    //      would overflow the right / bottom screen edges.
+    //   2. After the flips, clamp to the screen rect — covers the case where the
+    //      tooltip is wider than the space on either side of the mouse (a flip-left
+    //      from a near-left-edge mouse would otherwise place the panel off-screen).
+    //
+    // sizeDelta is accurate after ForceRebuildLayoutImmediate (called in Show) or
+    // after the first layout pass.
     void UpdatePosition() {
         Vector2 mouse = Input.mousePosition;
         Vector2 pos   = mouse + new Vector2(18f, -18f);
@@ -74,6 +83,13 @@ public class TooltipSystem : MonoBehaviour {
         Vector2 size = tooltipPanel.sizeDelta;
         if (pos.x + size.x > Screen.width)  pos.x = mouse.x - size.x - 14f;
         if (pos.y - size.y < 0)             pos.y = mouse.y + size.y + 14f;
+
+        // Clamp so the panel stays fully on-screen even if the flip overshot the
+        // opposite edge. When size > Screen extent the max clamps to 0 / size, so
+        // the tooltip's top-left corner stays in view (the right/bottom may still
+        // clip, but at least the title is visible).
+        pos.x = Mathf.Clamp(pos.x, 0f, Mathf.Max(0f, Screen.width - size.x));
+        pos.y = Mathf.Clamp(pos.y, Mathf.Min(size.y, Screen.height), Screen.height);
 
         tooltipPanel.position = new Vector2(Mathf.Round(pos.x), Mathf.Round(pos.y));
     }
@@ -84,11 +100,13 @@ public class TooltipSystem : MonoBehaviour {
         instance.bodyText.text         = body;
         instance.bodyLe.preferredWidth = -1f; // auto-size; body text uses explicit \n breaks
         instance.tooltipPanel.gameObject.SetActive(true);
-        // Force layout so sizeDelta is current before we position (avoids one-frame snap).
+        // Force TMP to rebuild its mesh first so its preferred-size reports reflect the
+        // new text BEFORE we rebuild the layout — otherwise ContentSizeFitter sees the
+        // previous frame's text width and we position against stale sizeDelta.
+        instance.titleText.ForceMeshUpdate();
+        instance.bodyText.ForceMeshUpdate();
         LayoutRebuilder.ForceRebuildLayoutImmediate(instance.tooltipPanel);
         instance.UpdatePosition();
-        // Render on top of everything else in the canvas.
-        // instance.transform.SetAsLastSibling();
     }
 
     public static void Hide() {

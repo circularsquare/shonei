@@ -34,7 +34,12 @@ public class LightSource : MonoBehaviour {
     private int _effectiveSort;
 
     // Normalized sort value (0–1) consumed by LightCircle.shader as _LightSortBucket.
-    public float sortBucket => Mathf.Clamp01(_effectiveSort / 255f);
+    // Phase 4: must match the receiver's bucket scheme (SortBucketUtil), otherwise
+    // light vs receiver are compared on different scales and the sortDelta math
+    // flips sign (e.g. torch at sortingOrder 64 read as 0.25 on the old scale
+    // vs receiver building at bucket 2 read as 0.4 on the new scale — building
+    // looks unlit from the torch).
+    public float sortBucket => SortBucketUtil.BucketToNormalized(SortBucketUtil.GetBucket(_effectiveSort));
 
     // Set to the Reservoir that powers this light. Null = no fuel needed (always lit).
     [HideInInspector] public Reservoir reservoir;
@@ -54,24 +59,39 @@ public class LightSource : MonoBehaviour {
 
     public static readonly List<LightSource> all = new();
 
-    // Renderers with a real _EmissionMap (torch fire children, fireplace bodies, etc.).
-    // LightFeature § 5 iterates this instead of DrawRenderers(litMask) so the emission
-    // pass only touches sprites that actually contribute, not every visible lit sprite.
-    // Keep in lockstep with _emissionReceiver via SetEmissionReceiver().
-    public static readonly List<Renderer> emissiveReceivers = new();
+    // LightSources with an _EmissionMap (torch fire children, fireplace
+    // bodies, etc.). LightFeature § 5 iterates this — for each entry it
+    // sets `_EmissionScale` and `_SortBucket` as globals, then draws the
+    // emission via DrawRenderer(EmissionReceiver, emissionMat). Skips
+    // directional lights (sun has no _EmissionMap).
+    //
+    // Storing LightSource (not Renderer) lets the emission pass read the
+    // per-emitter scale + bucket without a back-pointer lookup. Replaces
+    // the older List<Renderer> + per-renderer MPB scheme — see Phase 4 of
+    // the GPU perf plan.
+    public static readonly List<LightSource> emitters = new();
 
     // Fractional-fen accumulator so sub-fen burn rates work correctly across frames.
     private float _fuelAccumulator = 0f;
 
-    // Per-renderer MPB plumbing for emission gating. When intensity drops to 0
-    // (daytime, out of fuel, disabled, outside active hours), we write
-    // _EmissionScale = 0 onto the receiver SpriteRenderer so EmissionWriter
-    // suppresses the per-pixel glow. Smooth — tracks `intensity / baseIntensity`,
-    // so torches fade in/out across twilight rather than popping.
+    // The SpriteRenderer that carries the _EmissionMap. Resolved in
+    // OnEnable / Start (fire child if present, else parent SR).
     private SpriteRenderer _emissionReceiver;
-    private float _lastEmissionScale = -1f; // sentinel, forces first write
-    private static MaterialPropertyBlock _scratchMpb;
-    private static readonly int EmissionScaleId = Shader.PropertyToID("_EmissionScale");
+    public SpriteRenderer EmissionReceiver => _emissionReceiver;
+
+    // Current emission scale, derived from intensity / baseIntensity each frame.
+    // Read by LightFeature § 5 (set as global per emitter before drawing
+    // EmissionWriter), and by Update() to gate the fire-child GameObject's
+    // visibility (`scale > 0.05f` ≈ visible glow).
+    //   night, lit, fueled  → intensity = baseIntensity → scale ≈ 1
+    //   daytime / unlit     → intensity = 0             → scale = 0
+    //   twilight ramp       → intensity in between      → smooth fade
+    public float CurrentEmissionScale {
+        get {
+            if (baseIntensity <= 0.001f) return 1f; // fallback for non-real-LS sprites
+            return Mathf.Clamp01(intensity / baseIntensity);
+        }
+    }
 
     void OnEnable() {
         all.Add(this);
@@ -79,31 +99,26 @@ public class LightSource : MonoBehaviour {
         // If the building has a fire child, _EmissionMap lives on its SpriteRenderer.
         // Otherwise fall back to the parent SR (legacy path for non-fire emissive buildings).
         SetEmissionReceiver(building?.fireSR ?? GetComponentInParent<SpriteRenderer>());
-        UpdateEmissionMpb();
     }
     void Start() {
         // Re-resolve: building is null during the OnEnable triggered by
         // AddComponent — the caller assigns ls.building = this afterward.
         // By Start(), all fields are set, so we can target fireSR correctly.
         SetEmissionReceiver(building?.fireSR ?? GetComponentInParent<SpriteRenderer>());
-        UpdateEmissionMpb();
     }
     void OnDisable() {
         all.Remove(this);
-        // Restore default emission on disable so the sprite doesn't stay dark
-        // if the LightSource is removed but the structure persists.
-        if (_emissionReceiver != null) WriteEmissionMpb(1f);
         SetEmissionReceiver(null);
         if (building?.fireGO != null) building.fireGO.SetActive(false);
     }
 
-    // Keeps _emissionReceiver and the emissiveReceivers registry in lockstep.
+    // Keeps _emissionReceiver and the emitters registry in lockstep.
     // Skips registering directional lights (sun) — they have no _EmissionMap and
     // would just add a wasted draw call to LightFeature § 5.
     private void SetEmissionReceiver(SpriteRenderer next) {
-        if (_emissionReceiver != null) emissiveReceivers.Remove(_emissionReceiver);
+        if (_emissionReceiver != null) emitters.Remove(this);
         _emissionReceiver = next;
-        if (next != null && !isDirectional) emissiveReceivers.Add(next);
+        if (next != null && !isDirectional) emitters.Add(this);
     }
 
     private void ResolveSortOrder() {
@@ -135,11 +150,10 @@ public class LightSource : MonoBehaviour {
         // anyway because torchFactor changes smoothly over twilight.)
         if (sunModulated && !isDirectional)
             intensity = isLit ? baseIntensity * SunController.torchFactor : 0f;
-        UpdateEmissionMpb();
         // Fire child visibility tracks emission scale — fire appears/disappears
         // in sync with the emission glow, including smooth twilight fade.
         if (building?.fireGO != null)
-            building.fireGO.SetActive(_lastEmissionScale > 0.05f);
+            building.fireGO.SetActive(CurrentEmissionScale > 0.05f);
     }
 
     private void UpdateLitState() {
@@ -161,28 +175,4 @@ public class LightSource : MonoBehaviour {
 
     private bool IsInActiveWindow() => SunController.IsHourInRange(activeStartHour, activeEndHour);
 
-    // ── Emission MPB ─────────────────────────────────────────────────────────
-    // Mirrors the source's current visible intensity (set by SunController) onto
-    // the receiver SpriteRenderer's _EmissionScale MPB. The shader multiplies
-    // emission by this value, so emission tracks the actual light output:
-    //   night, lit, fueled  → intensity = baseIntensity → scale ≈ 1
-    //   daytime / unlit     → intensity = 0             → scale = 0
-    //   twilight ramp       → intensity in between      → smooth fade
-    private void UpdateEmissionMpb() {
-        if (_emissionReceiver == null) return;
-        float scale = baseIntensity > 0.001f
-            ? Mathf.Clamp01(intensity / baseIntensity)
-            : 1f;
-        // Tolerate sub-1/255 jitter — that's below visual resolution anyway.
-        if (Mathf.Abs(scale - _lastEmissionScale) < 0.004f) return;
-        WriteEmissionMpb(scale);
-    }
-
-    private void WriteEmissionMpb(float scale) {
-        _scratchMpb ??= new MaterialPropertyBlock();
-        _emissionReceiver.GetPropertyBlock(_scratchMpb);
-        _scratchMpb.SetFloat(EmissionScaleId, scale);
-        _emissionReceiver.SetPropertyBlock(_scratchMpb);
-        _lastEmissionScale = scale;
-    }
 }

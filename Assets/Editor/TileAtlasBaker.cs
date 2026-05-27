@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -13,6 +14,9 @@ using Debug = UnityEngine.Debug;
 // mode skips the bake entirely.
 //
 // Run once after pulling a fresh branch ("Tools → Bake All Tile Atlases").
+// "Bake All" skips any type/overlay whose baked .asset is newer than its newest
+// source PNG — re-running it after no source changes is a near-instant no-op.
+// Use "Bake All Tile Atlases (Force)" to ignore timestamps and rebake everything.
 // After that, TileAtlasBakeOnImport (AssetPostprocessor) re-runs the relevant
 // per-name bake whenever an artist saves over a source PNG under
 // `Resources/Sprites/Tiles/` — no manual step needed.
@@ -22,32 +26,106 @@ using Debug = UnityEngine.Debug;
 public static class TileAtlasBaker {
     const string BakedDir         = "Assets/Resources/BakedTileAtlases";
     const string BakedResourceDir = "BakedTileAtlases"; // for Resources.Load
+    const string SheetsDir        = "Assets/Resources/Sprites/Tiles/Sheets";
+    const string FlatDir          = "Assets/Resources/Sprites/Tiles";
     const string SnowOverlayName  = "snow"; // hardcoded by TileMeshController
 
     // ── Entry points ────────────────────────────────────────────────────
 
     [MenuItem("Tools/Bake All Tile Atlases")]
     public static void BakeAll() {
+        BakeAllImpl(force: false);
+    }
+
+    // Force-rebake every type and overlay regardless of source/asset timestamps.
+    // Use after deleting a variant PNG (so no surviving source got touched), or
+    // if a baked .asset was manually edited and its mtime no longer reflects
+    // source-derived state.
+    [MenuItem("Tools/Bake All Tile Atlases (Force)")]
+    public static void BakeAllForce() {
+        BakeAllImpl(force: true);
+    }
+
+    static void BakeAllImpl(bool force) {
         EnsureDirectory();
         EnsureDbLoaded();
 
         var sw = Stopwatch.StartNew();
-        int bodyCount = 0, overlayCount = 0;
+        int bodyBaked = 0, bodySkipped = 0, overlayBaked = 0, overlaySkipped = 0;
 
         foreach (var tt in Db.tileTypes) {
             if (tt == null || !tt.solid) continue;
+            if (!force && IsBodyUpToDate(tt.name)) { bodySkipped++; continue; }
             BakeType(tt.name);
-            bodyCount++;
+            bodyBaked++;
         }
 
         foreach (var name in CollectOverlayNames()) {
+            if (!force && IsOverlayUpToDate(name)) { overlaySkipped++; continue; }
             BakeOverlay(name);
-            overlayCount++;
+            overlayBaked++;
         }
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log($"[TileAtlasBaker] Baked {bodyCount} body types + {overlayCount} overlays in {sw.ElapsedMilliseconds} ms");
+        Debug.Log($"[TileAtlasBaker] Bodies: {bodyBaked} baked, {bodySkipped} skipped (up-to-date). " +
+                  $"Overlays: {overlayBaked} baked, {overlaySkipped} skipped. " +
+                  $"Total {sw.ElapsedMilliseconds} ms{(force ? " (force)" : "")}");
+    }
+
+    // ── Up-to-date checks ───────────────────────────────────────────────
+    // Compare the baked .asset's mtime to the newest source PNG's mtime. If the
+    // asset is newer (and complete), nothing under that name has changed since
+    // the last bake.
+
+    static bool IsBodyUpToDate(string name) {
+        string bodyPath   = $"{BakedDir}/{name}_body.asset";
+        string normalPath = $"{BakedDir}/{name}_normal.asset";
+        if (!File.Exists(bodyPath) || !File.Exists(normalPath)) return false;
+        var newestSource = NewestSourceMtime(name);
+        if (newestSource == DateTime.MinValue) return false; // no sources: let BakeType handle / log
+        var bakedMtime = MinMtime(bodyPath, normalPath);
+        return bakedMtime > newestSource;
+    }
+
+    static bool IsOverlayUpToDate(string name) {
+        string overlayPath = $"{BakedDir}/{name}_overlay.asset";
+        if (!File.Exists(overlayPath)) {
+            // Asset missing — but if no source exists either, the overlay is
+            // legitimately absent (e.g. grass_dying not authored). Treat as
+            // up-to-date so BakeOverlay's no-source early-return doesn't run
+            // pointlessly each time.
+            return NewestSourceMtime(name) == DateTime.MinValue;
+        }
+        var newestSource = NewestSourceMtime(name);
+        if (newestSource == DateTime.MinValue) return true; // asset exists but source gone — let force handle it
+        return File.GetLastWriteTimeUtc(overlayPath) > newestSource;
+    }
+
+    // Newest mtime across every variant PNG that contributes to atlas `name`
+    // — atlas variants `Sheets/<name>{,2,3,…}.png` and flat fallbacks
+    // `Tiles/<name>{,2,3,…}.png`. Returns DateTime.MinValue if nothing exists.
+    static DateTime NewestSourceMtime(string name) {
+        var newest = DateTime.MinValue;
+        ScanVariantSeries(SheetsDir, name, ref newest);
+        ScanVariantSeries(FlatDir,   name, ref newest);
+        return newest;
+    }
+
+    static void ScanVariantSeries(string dir, string name, ref DateTime newest) {
+        for (int i = 1; ; i++) {
+            string suffix = i == 1 ? "" : i.ToString();
+            string path = $"{dir}/{name}{suffix}.png";
+            if (!File.Exists(path)) break;
+            var t = File.GetLastWriteTimeUtc(path);
+            if (t > newest) newest = t;
+        }
+    }
+
+    static DateTime MinMtime(string a, string b) {
+        var ta = File.GetLastWriteTimeUtc(a);
+        var tb = File.GetLastWriteTimeUtc(b);
+        return ta < tb ? ta : tb;
     }
 
     // Single-type bake — called by the postprocessor when a source PNG is saved.
@@ -139,21 +217,21 @@ public static class TileAtlasBaker {
     // statics get populated. Idempotent — early-out if already loaded.
     static void EnsureDbLoaded() {
         if (Db.tileTypeByName != null && Db.tileTypeByName.Count > 0) return;
-        var existing = Object.FindObjectOfType<Db>(includeInactive: true);
+        var existing = UnityEngine.Object.FindObjectOfType<Db>(includeInactive: true);
         if (existing != null) {
             existing.LoadAll();
         } else {
             var go = new GameObject("__TempDbForBake__");
             var db = go.AddComponent<Db>();
             db.LoadAll();
-            Object.DestroyImmediate(go);
+            UnityEngine.Object.DestroyImmediate(go);
         }
     }
 
     // CreateAsset throws if the path already exists — overwrite by deleting
     // first. The pre-bake DeleteAsset is what guarantees the new Texture2DArray
     // fully replaces the old one (slice count, format, name).
-    static void WriteAsset(Object obj, string path) {
+    static void WriteAsset(UnityEngine.Object obj, string path) {
         if (File.Exists(path)) AssetDatabase.DeleteAsset(path);
         AssetDatabase.CreateAsset(obj, path);
     }

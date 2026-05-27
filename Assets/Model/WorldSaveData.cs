@@ -166,6 +166,13 @@ public class StructureSaveData {
     // these to re-link both posts after Phase 2 restores them independently.
     public int? partnerX;
     public int? partnerY;
+    // Footprint at save time (anchored at Shape.nx × Shape.ny — accounts for variable-shape
+    // structures). On load, RestoreStructure drops any entry whose saved size doesn't match
+    // the current StructType definition — that's the detection mechanism for "this building
+    // was upsized between save and load." Null on pre-detection saves; null skips the check
+    // (we trust the current def in that case — see SPEC-checklists.md "Upsizing").
+    public int? savedNx;
+    public int? savedNy;
 }
 
 public class BlueprintSaveData {

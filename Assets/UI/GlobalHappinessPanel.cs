@@ -61,32 +61,33 @@ public class GlobalHappinessPanel : MonoBehaviour {
         rows.Clear();
         rowKeys.Clear();
 
-        // One row per satisfaction need (sorted), then housing, then temperature
-        foreach (string need in Db.happinessNeedsSorted) {
-            var row = Instantiate(needRowPrefab, needContainer);
-            row.SetNeedName(need);
-            rows.Add(row);
-            rowKeys.Add(need);
-        }
-        // Housing row
-        var housingRow = Instantiate(needRowPrefab, needContainer);
-        housingRow.SetNeedName("housing");
-        rows.Add(housingRow);
-        rowKeys.Add("housing");
+        // Food storage row — colony-wide stat worth up to MaxFoodStorageBonus points.
+        // Spawned first so the heaviest single contributor to colony happiness sits at
+        // the top of the panel where the player sees it immediately.
+        SpawnRow("food storage", AnimalController.MaxFoodStorageBonus);
+
+        // One row per satisfaction need (sorted). All per-need rows are worth 1 happiness
+        // point. (Alcohol scores +2 in Happiness.SlowUpdate but shares the same bar width
+        // as other needs — the row tracks satisfaction fraction, not the doubled bonus.)
+        foreach (string need in Db.happinessNeedsSorted)
+            SpawnRow(need, 1f);
+
+        SpawnRow("housing", 1f);
         // Furnishing row — spawned only when there's at least one furnishing in the data,
         // so colonies with no furnishings authored stay visually clean. Sits between housing
         // and temperature since it's house-derived but open-ended.
-        if (Db.maxFurnishingPerMouse > 0f) {
-            var furnishingRow = Instantiate(needRowPrefab, needContainer);
-            furnishingRow.SetNeedName("furnishing");
-            rows.Add(furnishingRow);
-            rowKeys.Add("furnishing");
-        }
-        // Temperature row
-        var tempRow = Instantiate(needRowPrefab, needContainer);
-        tempRow.SetNeedName("temperature");
-        rows.Add(tempRow);
-        rowKeys.Add("temperature");
+        if (Db.maxFurnishingPerMouse > 0f)
+            SpawnRow("furnishing", Db.maxFurnishingPerMouse);
+        SpawnRow("temperature", 2f);
+    }
+
+    // Spawns and registers a row, sizing its bar to match the row's happiness-point value
+    // in one call so the BarWidthPerPoint × points invariant can't drift over time.
+    void SpawnRow(string key, float points) {
+        var row = Instantiate(needRowPrefab, needContainer);
+        row.Configure(key, points);
+        rows.Add(row);
+        rowKeys.Add(key);
     }
 
     // ── Refresh ───────────────────────────────────────────────────────────
@@ -132,16 +133,45 @@ public class GlobalHappinessPanel : MonoBehaviour {
                 $"pop capacity: {ac.populationCapacity}";
         }
 
-        // Update rows. Match by rowKeys (parallel to rows) so SpawnRows can omit the
-        // furnishing row when no furnishings exist in data without breaking index math.
+        // Update rows. Every row uses the same Refresh(averagePoints, detailText, tooltip)
+        // API; the per-key switch only differs in how it derives those values from the
+        // colony aggregates above. Match by rowKeys (parallel to rows) so SpawnRows can
+        // omit the furnishing row when no furnishings exist in data.
         for (int i = 0; i < rows.Count; i++) {
             string key = rowKeys[i];
+            float avg;
+            string detail = "";
+            string tooltip;
             switch (key) {
-                case "housing":     rows[i].RefreshBool(satHousing, n); break;
-                case "temperature": rows[i].RefreshTemp(sumTemp / n); break;
-                case "furnishing":  rows[i].RefreshScore(sumFurnishing / n, Db.maxFurnishingPerMouse); break;
-                default:            rows[i].Refresh(satCounts[key], n, satSums[key] / n); break;
+                case "food storage":
+                    avg = ac.foodStorageHappinessBonus;
+                    tooltip = float.IsInfinity(ac.daysOfFoodInStorage)
+                        ? "lots of food in storage"
+                        : $"{ac.daysOfFoodInStorage:0.0} days of food in storage";
+                    break;
+                case "housing":
+                    avg = (float)satHousing / n;
+                    tooltip = $"{satHousing} of {n} mice have a home";
+                    break;
+                case "temperature":
+                    avg = sumTemp / n;
+                    tooltip = $"{avg / 2f * 100f:0}% average temperature comfort";
+                    break;
+                case "furnishing":
+                    avg = sumFurnishing / n;
+                    tooltip = $"{avg:0.0} / {Db.maxFurnishingPerMouse:0.0} furnishing points";
+                    break;
+                default:
+                    // Value-based need (wheat, social, etc). Each satisfied mouse contributes
+                    // 1 point, so avg points = fraction satisfied. detail shows raw satisfaction
+                    // avg as a debug aid (visible distance from the 1.0 satisfied threshold).
+                    avg = (float)satCounts[key] / n;
+                    float rawAvg = satSums[key] / n;
+                    detail = rawAvg.ToString("0.0");
+                    tooltip = $"{satCounts[key]} of {n} mice satisfied";
+                    break;
             }
+            rows[i].Refresh(avg, detail, tooltip);
         }
     }
 }

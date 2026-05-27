@@ -1,5 +1,10 @@
 meoww!!
 
+5/27
+- more optimization!
+5/26
+- optimization attempts...
+- upsized sawmill, workshop
 5/22
 - refactor to processor recipes
 - non-water liquid display

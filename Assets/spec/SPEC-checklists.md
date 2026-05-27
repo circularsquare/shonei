@@ -22,6 +22,26 @@ If you're adding a building, recipe, item, job, plant, research node, exclusive 
 - [ ] **If it's a `Structure` subclass** (Windmill, Quarry, …): see "Adding a new Structure subclass" below.
 - [ ] **If it has recipes**: see "Adding a new recipe" below — `recipe.tile` must exactly match this building's `name`.
 
+## Upsizing an existing building (1×1 → multi-tile)
+
+When growing a building's footprint (e.g. sawmill 1×1 → 2×1), the model is **delete + replace, no coexistence**. Existing instances of the old size in legacy saves are silently dropped on load by the size-mismatch check in [SaveSystem.RestoreStructure](../Controller/SaveSystem.cs). Players (= you) accept that pre-upsize buildings disappear after the upsize ships.
+
+This is the workflow:
+
+- [ ] **Edit the existing entry in `buildingsDb.json` in place.** Same `name`, same `id`. Change `nx`, `ny`, `ncosts`, and add the new geometry fields:
+  - `nworkTiles: [ { "dx": ?, "dy": ? } ]` — where the operator stands (relative to anchor). Defaults to `(0, 0)` if omitted. Use `workSpotX/Y` for sub-tile precision (mouse-wheel pattern).
+  - `storageTileX/Y` — if the building has storage, which tile holds it (anchor is `(0, 0)`; e.g. `storageTileX: 1` for storage on the right of a 2×1).
+  - `solidTop: true` if mice should stand *on* the building.
+- [ ] **Author the new sprite at the same `name`** (e.g. `Sprites/Buildings/sawmill.png` for `sawmill`). Confirm pixels-per-unit and pivot are correct for the new footprint — easiest is to copy `.meta` settings from a comparably-sized existing building (e.g. `furnace.png` for 2×1).
+- [ ] **Recipes don't change.** `recipe.tile` still matches the building's name — no rename needed.
+- [ ] **Storage filter is per-instance, not data-driven.** New storage starts with all items disallowed ([Inventory.cs:111](../Model/Inventory/Inventory.cs#L111)); players set the filter on each placed building via the storage UI. If a building should auto-allow a specific item by default, that's a separate feature (currently not implemented).
+- [ ] **Test in a fresh world**: place the building, verify work tile, storage tile, mirror orientation, sprite alignment.
+- [ ] **Test with a legacy save**: load a save containing the old-sized instance. Expect a `RestoreStructure: dropping ... saved size A×B != current C×D` log line; the building should silently disappear. No collision, no broken work orders, no inert ghost building.
+
+**Why no coexistence?**: We tried the `_v2` + `displayName` + `deprecated` approach. It's straightforwardly buildable but carries permanent JSON clutter for every upsize, requires per-recipe duplication, and leaves inert legacy buildings in saves. For a solo project where the player is the developer, "delete + drop on mismatch" trades a small one-time loss (old buildings vanish) for a permanently cleaner data model.
+
+**Pre-existing multi-tile buildings**: if you're changing a building that's *already* multi-tile (e.g. `furnace` from 2×1 → 3×1), the same workflow applies — the size-mismatch check uses the actual footprint, not 1×1 specifically.
+
 ## Adding a new recipe (`recipesDb.json`)
 
 - [ ] **`tile` matches a building's `name` exactly.** Typo → recipe is orphaned and silently never runs.
@@ -40,6 +60,7 @@ If you're adding a building, recipe, item, job, plant, research node, exclusive 
 - [ ] **Icon sprite exists** — see "Adding a new item sprite" below.
 - [ ] **`itemClass` set** if storage restrictions apply (liquid → tank, book → bookshelf).
 - [ ] **New `happinessNeed`?** Also add the need name to `Db.happinessNeedsDisplayOrder` ([Db.cs:48](../Model/Db.cs#L48)) — otherwise the row sorts alphabetically at the bottom of UI panels.
+- [ ] **Need shows in both panels.** Per-need rows in `GlobalHappinessPanel` are auto-spawned from `Db.happinessNeedsSorted`, and per-mouse breakdown in `AnimalInfoView.FormatHappiness` iterates the same list — both pick up new entries for free.
 
 ## Adding a new job (`jobsDb.json`)
 
@@ -82,6 +103,17 @@ If you're adding a building, recipe, item, job, plant, research node, exclusive 
 - [ ] **Path convention is load-bearing**: `Sprites/Items/split/<itemName>/icon`. Missing icon = silent fallback to `default/icon`.
 - [ ] **After adding a sheet**: Tools → Split All → Generate Normal Maps.
 - [ ] **If the sprite should be lit at runtime**: sorting layer must be one of the `litLayers` (see SPEC-rendering.md).
+
+## Adding a new colony-wide happiness contributor
+
+For *per-need* contributors (food items, decoration/leisure buildings) just set `happinessNeed` / `decorationNeed` / `leisureNeed` in JSON — both panels auto-discover via `Db.happinessNeedsSorted`. This section is only for *colony-wide* contributors that bypass the satisfactions dictionary (current example: `foodStorageHappinessBonus`).
+
+- [ ] **Bump `Db.happinessMaxScore`** in `BuildHappinessNeedRegistry` ([Db.cs](../Model/Db.cs)) — include the new contributor's max value or the global score appears < its true ceiling everywhere.
+- [ ] **Add it to `Happiness.SlowUpdate`'s score sum** so every mouse's `score` reflects the bonus. Read from your singleton if it's colony-wide (see how `AnimalController.foodStorageHappinessBonus` is read).
+- [ ] **Add a row to `GlobalHappinessPanel.SpawnRows`** via `SpawnRow(key, points)`. The points value here sizes the bar — keep it equal to the max value used in `Db.happinessMaxScore`.
+- [ ] **Handle it in `GlobalHappinessPanel.Refresh`'s switch** — provide `averagePoints`, optional `detailText`, and a tooltip body. Use the single `Refresh(...)` API; don't add a specialized method.
+- [ ] **Add a line to `AnimalInfoView.FormatHappiness`** so the per-mouse breakdown still sums to the total. Per-need rows auto-iterate `Db.happinessNeedsSorted`; colony-wide contributors don't — they must be appended explicitly.
+- [ ] **Update [SPEC-ai.md](SPEC-ai.md) §Happiness satisfactions** — both the score formula sentence and the `happinessMaxScore` composition line.
 
 ## Adding new save data
 

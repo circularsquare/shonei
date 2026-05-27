@@ -118,6 +118,16 @@ public class Animal : MonoBehaviour{
         this.go = this.gameObject;
         this.sr = go.transform.Find("Body").GetComponent<SpriteRenderer>();
         animationController = go.GetComponent<AnimationController>();
+        // Paper-doll parts share sortingOrder 50 and sort by world-Y. Without a
+        // SortingGroup, two mice crossing paths interleave their parts (one's head
+        // between the other's legs). The group sorts each mouse as a unit. The
+        // id-hash offset gives a deterministic winner when two mice tie on Y (e.g.
+        // passing on a ladder) — ~6% of pairs still tie within the 15 buckets and
+        // fall back to Unity's renderer-id tiebreaker. Phase 4's coarse-bucket
+        // collapse will quantize 50..64 back into one batch.
+        var sg = go.GetComponent<UnityEngine.Rendering.SortingGroup>();
+        if (sg == null) sg = go.AddComponent<UnityEngine.Rendering.SortingGroup>();
+        sg.sortingOrder = 50 + (id % 15);
         this.inv = new Inventory(5, 1000, Inventory.InvType.Animal);
         this.foodSlotInv = new Inventory(1, 300, Inventory.InvType.Equip);
         this.toolSlotInv = new Inventory(1, 200, Inventory.InvType.Equip);

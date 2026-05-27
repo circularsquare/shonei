@@ -94,8 +94,8 @@
     },{
         "id": 13,
         "job": "cook",
-        "tile": "press",
-        "description": "press soybeans into soymilk",
+        "tile": "mill",
+        "description": "grind soybeans into soymilk",
         "workload": 3.0,
         "research": "Soymilk",
         "researchPoints": 0.02,

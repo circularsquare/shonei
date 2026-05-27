@@ -58,6 +58,11 @@ public class MouseController : MonoBehaviour {
     private const float DragThresholdPixels = 8f;
     [SerializeField] private RectTransform dragRectTransform;
 
+    // RMB click-vs-drag detection. RMB-drag pans the camera; an RMB without
+    // significant movement is treated as a "cancel" click that exits
+    // Remove/Harvest modes back to Select. Reuses DragThresholdPixels.
+    private Vector3 _rmbDownScreenPos;
+
     // --- debug cursor light (Ctrl+T toggles SetActive) ---
     // Wire a GameObject with a LightSource (and optional sortOrderOverride) in the
     // inspector. Keep it disabled by default so it only appears when toggled on.
@@ -162,7 +167,13 @@ public class MouseController : MonoBehaviour {
 
         bool overUI = EventSystem.current.IsPointerOverGameObject();
         if (overUI && !_isDragging) {
-            if (Input.GetMouseButtonDown(0) && mouseMode == MouseMode.Build)
+            // Clicking any UI element while a tool mode is active exits back to Select.
+            // Lets the player retarget by clicking a different toolbar button (or any
+            // panel) without first pressing Esc.
+            if (Input.GetMouseButtonDown(0)
+                && (mouseMode == MouseMode.Build
+                    || mouseMode == MouseMode.Remove
+                    || mouseMode == MouseMode.Harvest))
                 SetModeSelect();
             return;
         }
@@ -218,7 +229,7 @@ public class MouseController : MonoBehaviour {
         currPosition.z = 1f;
         if (Input.GetMouseButtonDown(1)){
             prevPosition = Input.mousePosition;
-            // if (mouseMode == MouseMode.Build) SetModeSelect();             // cancels build mode on right click
+            _rmbDownScreenPos = Input.mousePosition;
         }
         if (Input.GetMouseButton(1)) {
             Vector3 currScreenPosition = Input.mousePosition;
@@ -228,6 +239,14 @@ public class MouseController : MonoBehaviour {
             Camera.main.transform.Translate(delta);
             prevPosition = currScreenPosition;
             ClampCameraToWorld();
+        }
+        // RMB-up with no significant movement = a click, not a pan. Exit Remove/Harvest
+        // back to Select. Build-mode RMB cancel was tried previously and disabled
+        // (see commit history) so it's deliberately omitted here.
+        if (Input.GetMouseButtonUp(1)
+            && (mouseMode == MouseMode.Remove || mouseMode == MouseMode.Harvest)
+            && Vector3.Distance(Input.mousePosition, _rmbDownScreenPos) <= DragThresholdPixels) {
+            SetModeSelect();
         }
 
         // set buildPreview if in build/remove mode
@@ -300,7 +319,14 @@ public class MouseController : MonoBehaviour {
                 buildPreviewSr.enabled  = true;
                 buildPreviewSr.sprite   = buildPreviewDefaultSprite;
                 buildPreviewSr.flipX    = false;
-                buildPreviewSr.color    = Color.white;
+                // Tint by tool: Remove=red, Harvest=green. Build-fallback (no
+                // StructType yet) stays white so it doesn't imply a destructive action.
+                if (mouseMode == MouseMode.Remove)
+                    buildPreviewSr.color = new Color(0.8f, 0.2f, 0.2f, 1f);
+                else if (mouseMode == MouseMode.Harvest)
+                    buildPreviewSr.color = new Color(0.2f, 0.6f, 0.1f, 1f);
+                else
+                    buildPreviewSr.color = Color.white;
                 buildPreviewSr.drawMode = SpriteDrawMode.Simple;
                 buildPreview.transform.localScale = Vector3.one;
                 buildPreview.transform.rotation = Quaternion.identity;

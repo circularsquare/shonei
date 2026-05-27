@@ -63,6 +63,11 @@
         "decayRate": 0.01,
         "children": null
     },{
+        "id": 22,
+        "name": "clay",
+        "decayRate": 0.0,
+        "children": null
+    },{
         "id": 30,
         "name": "ore",
         "decayRate": 0.01,
