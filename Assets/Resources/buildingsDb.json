@@ -36,6 +36,18 @@
         "noMaintenance": true,
         "category": "structures"
     },{
+        "id": 6,
+        "name": "ladder_side",
+        "description": "A ladder hung against the side of a wall or building. Needs no floor beneath it. Place by hovering near the edge of a tile while building a ladder.",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 3 }
+        ],
+        "depth": 2,
+        "noMaintenance": true,
+        "category": "structures",
+        "defaultLocked": true
+    },{
         "id": 5,
         "name": "rope bridge post",
         "description": "An endpoint post for a rope bridge. Place by clicking two tiles — a post is built at each end, with a walkable rope strung between them. Costs scale with bridge length.",
@@ -424,11 +436,11 @@
         "id": 103,
         "name": "furnace",
         "description": "smelts and processes materials; storage on the right",
-        "nx": 2, "ny": 1,
+        "nx": 2, "ny": 2,
         "storageTileX": 1,
         "ncosts": [
             { "name": "stone", "quantity": 12 },
-            { "name": "wood", "quantity": 6 }
+            { "name": "clay",  "quantity": 8 }
         ],
         "njob": "hauler",
         "isStorage": true,
@@ -552,7 +564,7 @@
         "requiredTileName": "earth",
         "preservesTile": true,
         "solidTop": true,
-        "depleteAt": 20,
+        "depleteAt": 100,
         "interiorTiles": [
             { "dx": 0, "dy": 0 }
         ],

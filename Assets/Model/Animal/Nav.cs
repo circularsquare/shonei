@@ -182,8 +182,17 @@ public class Nav {
 
         // Use the edge direction rather than the live position delta, so we don't
         // flicker facing when the animal lands exactly on a waypoint mid-frame.
+        // Vertical fractional-X edges (cliff / side-ladder waypoint columns sit at
+        // wpx = bx ± 0.24) have facingDx ≈ 0, so the entry-edge facing would carry
+        // over — wrong on descent. Derive facing from the waypoint's fractional X:
+        // frac < 0.5 → wall on right → face right; frac > 0.5 → wall on left → face left.
         float facingDx = nextNode.wx - prevNode.wx;
-        if (Mathf.Abs(facingDx) > 0.01f) a.facingRight = facingDx > 0;
+        if (Mathf.Abs(facingDx) > 0.01f) {
+            a.facingRight = facingDx > 0;
+        } else {
+            float frac = nextNode.wx - Mathf.Floor(nextNode.wx);
+            if (frac > 0.01f && frac < 0.99f) a.facingRight = frac < 0.5f;
+        }
         return false;
     }
 

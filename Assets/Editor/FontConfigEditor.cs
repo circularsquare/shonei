@@ -21,7 +21,7 @@ public class FontConfigEditor : Editor {
         }
     }
 
-    [MenuItem("Tools/Apply Font Config")]
+    [MenuItem("Tools/Apply Font Config", priority = 910)]
     static void ApplyMenu() {
         var cfg = Resources.Load<FontConfig>("FontConfig");
         if (cfg == null) { Debug.LogError("FontConfig: Assets/Resources/FontConfig.asset not found"); return; }

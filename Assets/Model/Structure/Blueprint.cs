@@ -161,6 +161,18 @@ public class Blueprint {
         if (IsTwoClick)
             World.instance.GetTileAt(x2.Value, y2.Value)?.SetBlueprintAt(structType.depth, this);
 
+        // Side-ladder blueprints need the nav graph to refresh so the cliff chain
+        // adds a step-off edge onto this tile — otherwise a mid-air placement is
+        // unreachable for the builder and construction never starts. RebuildComponents
+        // is required because the new step-off may connect a previously-impassable
+        // (componentId=-1) air tile into a reachable component; without it, the
+        // SameComponent fast-exit would still report the blueprint as unreachable.
+        // Other blueprints don't affect navigation, so we keep the trigger scoped.
+        if (structType.name == "ladder_side") {
+            World.instance.graph.UpdateNeighbors(x, y);
+            World.instance.graph.RebuildComponents();
+        }
+
         if (structType.constructionCost == 0f){
             constructionCost = 2f; // default
         } else {
@@ -705,6 +717,12 @@ public class Blueprint {
         // Symmetric to the two-tile claim in the ctor.
         if (IsTwoClick)
             World.instance.GetTileAt(x2.Value, y2.Value)?.SetBlueprintAt(structType.depth, null);
+        // Symmetric to the ctor's nav refresh: removing a side-ladder blueprint should
+        // tear down the chain step-off edge that pointed at this tile.
+        if (structType.name == "ladder_side") {
+            World.instance.graph?.UpdateNeighbors(x, y);
+            World.instance.graph?.RebuildComponents();
+        }
     }
 
     public string GetProgress(){ // for display string

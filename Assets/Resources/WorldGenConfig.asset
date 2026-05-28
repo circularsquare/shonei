@@ -15,7 +15,6 @@ MonoBehaviour:
   BaseHeight: 60
   SurfaceMin: 50
   SurfaceMax: 75
-  DirtDepth: 3
   BedrockY: 0
   SurfaceFreq: 0.06
   SurfaceAmp: 6
@@ -31,15 +30,27 @@ MonoBehaviour:
   SpawnMinX: 25
   SpawnMaxX: 37
   SpawnBlend: 4
+  DirtFalloffDepth: 5
+  DirtSurfaceBoost: 1
+  DirtTailBoost: 0.22
+  DirtFreq: 0.08
+  DirtNoiseAmp: 1
+  DirtThreshold: 1
+  DirtWallMaxDepth: 6
+  DirtSeedOffset: 4242
   GraniteFreq: 0.08
-  GraniteThreshold: 0.48
-  GraniteDepthCenter: 0.4
-  GraniteDepthWidth: 0.3
+  GraniteAspect: 1.2
+  GraniteThreshold: 0.6
+  GraniteDepthLower: 0.28
+  GraniteDepthUpper: 0.6
+  GraniteDepthFalloff: 0.2
   GraniteSeedOffset: 1111
-  SlateFreq: 0.09
-  SlateThreshold: 0.5
-  SlateDepthCenter: 0.7
-  SlateDepthWidth: 0.25
+  SlateFreq: 0.05
+  SlateAspect: 1.5
+  SlateThreshold: 0.3
+  SlateDepthLower: 0.75
+  SlateDepthUpper: 1
+  SlateDepthFalloff: 0.3
   SlateSeedOffset: 2222
   CaveFreqX: 0.06
   CaveFreqY: 0.14
@@ -75,9 +86,22 @@ MonoBehaviour:
   CaveWaterChance: 0.2
   LiquidSettleMaxSteps: 100
   LiquidSettleMoveThreshold: 4
-  SandFreq: 0.1
-  SandThreshold: 0.52
-  PlantChance: 0.08
+  SandFreq: 0.08
+  SandThreshold: 0.92
+  SandFalloffDepth: 3
+  SandSurfaceBoost: 0.14
+  SandWaterRange: 3
+  SandWaterBoost: 0.4
+  SandMinPatchSize: 2
+  ClayFreq: 0.11
+  ClayThreshold: 0.92
+  ClayFalloffDepth: 5
+  ClaySurfaceBoost: 0.13
+  ClayWaterRange: 4
+  ClayWaterBoost: 0.3
+  ClayMinPatchSize: 2
+  WaterDistanceCap: 8
+  PlantChance: 0.12
   ClusterMin: 1
   ClusterMax: 3
   StartingMoisture: 50

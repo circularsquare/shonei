@@ -41,4 +41,20 @@ public class WorldGenConfigEditor : Editor {
         SaveSystem.instance.LoadDefault();
     }
 
+    // Open the WorldGenConfig asset in the inspector from anywhere. Saves
+    // hunting through the project tree — the asset can live in any Resources
+    // folder and this finds it by type via AssetDatabase.
+    [MenuItem("Tools/Open WorldGen Config", priority = 900)]
+    static void OpenWorldGenConfig() {
+        var guids = AssetDatabase.FindAssets("t:WorldGenConfig");
+        if (guids.Length == 0) {
+            Debug.LogError("WorldGenConfig: no asset found in project. Create one via Assets → Create → Shonei → WorldGen Config and place it in a Resources folder.");
+            return;
+        }
+        var path = AssetDatabase.GUIDToAssetPath(guids[0]);
+        var asset = AssetDatabase.LoadAssetAtPath<WorldGenConfig>(path);
+        Selection.activeObject = asset;
+        EditorGUIUtility.PingObject(asset);
+    }
+
 }

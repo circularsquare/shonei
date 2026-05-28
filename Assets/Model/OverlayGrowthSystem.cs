@@ -62,10 +62,11 @@ public class OverlayGrowthSystem {
     // Max depth below the original surface where overlay growth is allowed.
     // Beyond this point, decoration belongs to the underground decoration set
     // (mushrooms / moss in FlowerController) rather than the chunked grass
-    // overlay. 5 keeps shallow skylights / sunken courtyards green while
-    // making sure grass never spreads through a deep mineshaft into the cave
-    // network below.
-    const int MaxDepthBelowSurface = 5;
+    // overlay. Shared with WorldGen.PopulateOverlays so the seed pass and the
+    // live growth pass agree on the cutoff. Matches DirtWallMaxDepth — keeps
+    // shallow skylights green while making sure grass never spreads through
+    // a deep mineshaft into the cave network below.
+    public const int MaxDepthBelowSurface = 6;
 
     public static OverlayGrowthSystem Create() {
         instance = new OverlayGrowthSystem();

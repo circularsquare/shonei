@@ -1,5 +1,10 @@
 meoww!!
 
+5/28
+- better clay/sand/dirt world gen
+- furnace 
+- copper / tin smelting
+- side ladders 
 5/27
 - more optimization!
     - atlasing of most sprites

@@ -1950,7 +1950,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   pixelsPerUnit: 16
-  noiseScale: 0.4
+  noiseScale: 0.3
   noiseAspect: 1.6
   thresholdClear: 0.7
   thresholdStorm: 0.36
@@ -1973,14 +1973,14 @@ MonoBehaviour:
   cloudSunHeight: 0.7
   blobCellSize: 1
   blobJitter: 0.58
-  blobRadiusMin: 0.7
+  blobRadiusMin: 1
   blobRadiusMax: 2
-  excessForMaxSize: 0.3
+  excessForMaxSize: 0.26
   blobDepthRange: 1.5
   normalEpsilon: 0.252
   edgeWobbleStrength: 0.2
   edgeWobbleScale: 0.7
-  curlNoiseEps: 0.145
+  curlNoiseEps: 0.1
   blobAspect: 1.5
   edgeThreshold: 0.02
   edgeSoftness: 0

@@ -39,7 +39,7 @@ public static class GameplayAtlasBuilder
     // Single entry point: rebuilds every gameplay atlas in one pass. Individual
     // per-atlas menus were collapsed into this — rebuilds are cheap (~seconds
     // total) and a partial atlas state is almost never useful.
-    [MenuItem("Tools/Rebuild Atlases")]
+    [MenuItem("Tools/Rebuild Atlases", priority = 1)]
     public static void RebuildAll()
     {
         // Recursive — Animals picks up Clothing/, Buildings picks up furnishings/.

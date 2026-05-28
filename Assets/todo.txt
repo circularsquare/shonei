@@ -80,7 +80,6 @@ upsize more workshop buildings
     laboratory
     weaver
     tailor
-    furnace (taller, 1x2m)
-tie up optimization ends 
+    furnace (taller, 2x2m)
 sketch out metalworking?
 working pose facing back

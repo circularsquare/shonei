@@ -27,6 +27,22 @@ public static class StructPlacement {
 
         if (tile.GetBlueprintAt(st.depth) != null) return "already a blueprint here";
 
+        // Side ladder: hangs on a wall, no floor needed. Skips standability and the rest
+        // of the generic rule set — sideladder doesn't use requiredTileName, doors,
+        // tileRequirements, or shapes. Only requires (a) target tile is air-and-empty at
+        // its depth and (b) the wall tile on the mounted side is solid (tile or building).
+        // dir convention: mirrored=true → wall on right (sprite flipped); mirrored=false → wall on left.
+        if (st.name == "ladder_side") {
+            if (tile.type.id != 0) return "tile is not empty";
+            if (tile.structs[st.depth] != null) return "footprint is blocked";
+            int dir = mirrored ? +1 : -1;
+            Tile wall = world.GetTileAt(tile.x + dir, tile.y);
+            if (wall == null) return "needs wall on this side";
+            bool wallSolid = wall.type.solid || wall.structs[0] != null;
+            if (!wallSolid) return "needs wall on this side";
+            return null;
+        }
+
         // A mustBeSolidTile requirement on the placement tile itself (cached as
         // `requiresSolidTilePlacement` in OnDeserialized) is the author's explicit signal that this
         // StructType is meant to occupy a solid tile (e.g. mineshaft → mines stone and leaves a ladder).

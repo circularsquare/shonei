@@ -51,21 +51,6 @@
             { "name": "tools", "quantity": 1 }
         ]
     },{
-        "id": 2,
-        "job": "smith",
-        "tile": "furnace",
-        "description": "smelt iron ore into iron",
-        "workload": 4.0,
-        "research": "Furnace",
-        "researchPoints": 0.02,
-        "ninputs": [
-            { "name": "coal", "quantity": 1 },
-            { "name": "iron ore", "quantity": 2 }
-        ],
-        "noutputs": [
-            { "name": "iron", "quantity": 2 }
-        ]
-    },{
         "id": 3,
         "job": "smith",
         "tile": "furnace",
@@ -81,11 +66,41 @@
             { "name": "glass", "quantity": 2 }
         ]
     },{
+        "id": 4,
+        "job": "smith",
+        "tile": "furnace",
+        "description": "smelt malachite into copper",
+        "workload": 3.0,
+        "research": "Furnace",
+        "researchPoints": 0.02,
+        "ninputs": [
+            { "name": "coal", "quantity": 1 },
+            { "name": "malachite", "quantity": 2 }
+        ],
+        "noutputs": [
+            { "name": "copper bar", "quantity": 2 }
+        ]
+    },{
+        "id": 5,
+        "job": "smith",
+        "tile": "furnace",
+        "description": "smelt cassiterite into tin",
+        "workload": 3.0,
+        "research": "Furnace",
+        "researchPoints": 0.02,
+        "ninputs": [
+            { "name": "coal", "quantity": 1 },
+            { "name": "cassiterite", "quantity": 2 }
+        ],
+        "noutputs": [
+            { "name": "tin bar", "quantity": 2 }
+        ]
+    },{
         "id": 10,
         "job": "digger",
         "tile": "digging pit",
         "description": "dig",
-        "workload": 2.0,
+        "workload": 4.0,
         "ninputs": [
         ],
         "noutputs": [
@@ -120,7 +135,7 @@
         "job": "miner",
         "tile": "quarry",
         "description": "mine stone",
-        "workload": 3.0,
+        "workload": 6.0,
         "research": "Quarry",
         "researchPoints": 0.02,
         "ninputs": [

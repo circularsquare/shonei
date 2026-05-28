@@ -32,7 +32,7 @@ public static class TileAtlasBaker {
 
     // ── Entry points ────────────────────────────────────────────────────
 
-    [MenuItem("Tools/Bake All Tile Atlases")]
+    [MenuItem("Tools/Bake/Bake All Tile Atlases", priority = 110)]
     public static void BakeAll() {
         BakeAllImpl(force: false);
     }
@@ -41,7 +41,7 @@ public static class TileAtlasBaker {
     // Use after deleting a variant PNG (so no surviving source got touched), or
     // if a baked .asset was manually edited and its mtime no longer reflects
     // source-derived state.
-    [MenuItem("Tools/Bake All Tile Atlases (Force)")]
+    [MenuItem("Tools/Bake/Bake All Tile Atlases (Force)", priority = 120)]
     public static void BakeAllForce() {
         BakeAllImpl(force: true);
     }

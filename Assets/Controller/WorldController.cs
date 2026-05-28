@@ -308,6 +308,19 @@ public class WorldController : MonoBehaviour {
         world.timer = World.ticksInDay * 0.3f;
         world.graph.Initialize();
 
+        // Per-world weather variety: start humidity below the long-run mean so
+        // worlds debut dry-ish and clouds build over time, but vary the exact
+        // starting point so no two new worlds open identically.
+        WeatherSystem.instance?.SetHumidity(Rng.Range(0.2f, 0.4f));
+        // Fixed starting wind so the first cloud field has motion to it.
+        WeatherSystem.instance?.SetWind(0.2f);
+
+        // Reseed the cloud noise pattern so silhouettes differ per world.
+        // Large random offset (>> blobCellSize) lands in an uncorrelated
+        // region of the hashed field.
+        var cloudLayer = FindObjectOfType<CloudLayer>();
+        if (cloudLayer != null) cloudLayer.RandomizePattern(Rng.Range(-10000f, 10000f));
+
         // Register WOM orders for all placed structures (harvest, market, etc.) now that the
         // graph is built. Mirrors the Reconcile() call at the end of ApplySaveData().
         WorkOrderManager.instance?.Reconcile(silent: true);

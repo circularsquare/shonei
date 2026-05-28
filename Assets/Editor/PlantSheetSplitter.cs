@@ -58,7 +58,7 @@ public static class PlantSheetSplitter {
     const string CacheKey     = "plantSplitCacheKey";
 
     // ── batch: all sheets in Sheets/ ─────────────────────────────────────────
-    [MenuItem("Tools/Split All Plant Sheets")]
+    [MenuItem("Tools/Sprites/Split All Plant Sheets", priority = 110)]
     internal static void SplitAll() {
         SplitFolders(new[] { SheetsFolder }, force: false);
     }
@@ -246,7 +246,7 @@ public static class PlantSheetSplitter {
     }
 
     // ── combo: split plant sheets then generate normal maps ──────────────────
-    [MenuItem("Tools/Split Plant Sheets + Generate Normal Maps")]
+    [MenuItem("Tools/Sprites/Split Plant Sheets + Normals", priority = 210)]
     static void SplitThenGenerateNormals() {
         SplitAll();
         SpriteNormalMapGenerator.GenerateAll();

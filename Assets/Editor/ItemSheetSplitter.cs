@@ -57,7 +57,7 @@ public static class ItemSheetSplitter {
     };
 
     // ── batch: all sheets in Sheets/ ─────────────────────────────────────────
-    [MenuItem("Tools/Split All Item Sheets")]
+    [MenuItem("Tools/Sprites/Split All Item Sheets", priority = 100)]
     internal static void SplitAll() {
         SplitFolders(new[] { SheetsFolder }, force: false);
     }
@@ -214,7 +214,7 @@ public static class ItemSheetSplitter {
     }
 
     // ── combo: split all sheets then generate normal maps for everything ────
-    [MenuItem("Tools/Split Sheets + Generate Normal Maps")]
+    [MenuItem("Tools/Sprites/Split All Sheets + Normals", priority = 200)]
     static void SplitThenGenerateNormals() {
         SplitAll();
         PlantSheetSplitter.SplitAll();

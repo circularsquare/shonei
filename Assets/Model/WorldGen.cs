@@ -37,7 +37,12 @@ public static class WorldGen {
         int ny = world.ny;
 
         int[] surfaceY = GenerateSurfaceHeights(nx, seed);
-        FillTerrain(world, surfaceY);
+
+        // Wavy dirt/stone boundary: precompute the mask once, share between
+        // FillTerrain (deciding tile type) and SetBackgrounds (deciding wall
+        // type) so cave-roof walls match what the tile would have been.
+        bool[,] dirtMask = ComputeDirtMask(surfaceY, nx, ny, seed);
+        FillTerrain(world, surfaceY, dirtMask);
         ApplyVeins(world, surfaceY, seed);
 
         // Cave generation: build a continuous noise field, blend in worm tunnels,
@@ -54,7 +59,7 @@ public static class WorldGen {
         // for its connectivity graph. SetBackgrounds is pure on surfaceY +
         // current tile solidity, so the call site doesn't matter for its own
         // correctness — moved here purely to feed the chunk-removal pass.
-        SetBackgrounds(world, surfaceY);
+        SetBackgrounds(world, surfaceY, dirtMask);
 
         // Remove solid clusters that aren't connected (orthogonally) to the
         // mainland via either solid tiles OR background walls. Catches the
@@ -70,10 +75,15 @@ public static class WorldGen {
         bool[] chunkFilled = FillDepressions(world, surfaceY, seed);
         CarveDryChunkPools(world, surfaceY, chunkFilled);
 
-        ApplyBeachSand(world, seed);
-        ApplyClayBanks(world, seed);
+        // Water-distance field — computed after all water placement finishes
+        // (depressions + dry-chunk carving + cave water). Shared by sand and
+        // clay so both can score on proximity to water rather than hard
+        // adjacency.
+        int[,] distToWater = ComputeWaterDistance(world, config.WaterDistanceCap);
+        ApplyBeachSand(world, seed, surfaceY, distToWater);
+        ApplyClayBanks(world, seed, surfaceY, distToWater);
 
-        PopulateOverlays(world);
+        PopulateOverlays(world, surfaceY);
 
         SeedMoisture(world);
 
@@ -89,13 +99,17 @@ public static class WorldGen {
     //
     // Runs after FillDepressions so we can see which surface tiles are flooded —
     // submerged dirt shouldn't sprout grass on the under-water side. Underground
-    // dirt exposed to caves is intentionally treated like the surface and gets
-    // grass on the cave-facing edges.
-    public static void PopulateOverlays(World world) {
+    // dirt exposed to caves within OverlayGrowthSystem.MaxDepthBelowSurface gets
+    // grass on the cave-facing edges; deeper dirt pockets stay bare (the live
+    // growth pass uses the same cutoff so the two stay in sync).
+    public static void PopulateOverlays(World world, int[] surfaceY) {
+        int maxDepth = OverlayGrowthSystem.MaxDepthBelowSurface;
         for (int x = 0; x < world.nx; x++) {
+            int depthCutoffY = surfaceY[x] - maxDepth; // y < this → too deep for grass seeding
             for (int y = 0; y < world.ny; y++) {
                 Tile t = world.GetTileAt(x, y);
                 if (t.type.overlay == null) continue;
+                if (y < depthCutoffY) continue;
 
                 byte mask = 0;
                 // Bit layout matches cMask: 0=L, 1=R, 2=D, 3=U.
@@ -117,95 +131,211 @@ public static class WorldGen {
     }
 
     // ── Beach sand ───────────────────────────────────────────────────────
-    // Convert a clumpy fraction of dirt tiles touching water (orthogonal OR
-    // diagonal) into sand. A perlin mask shapes which eligible tiles flip so
-    // we get patchy beaches and dunes instead of a uniform sand ring around
-    // every pool. Frequency picks the clump size; threshold tunes coverage.
+    // Score = noise + depthBoost + waterBoost ; sand iff score > Threshold.
+    // Iterates ALL dirt tiles — the old hard "must touch water" gate is
+    // replaced with a distance-to-water bonus. Sand stays *dirt-only* so
+    // the sand-wins-overlap rule with clay reads cleanly. Compared to clay
+    // the depth falloff is shorter and the water boost stronger, so sand
+    // hugs visible waterlines.
     //
-    // Runs AFTER FillDepressions (so water placement is final) and BEFORE
-    // PopulateOverlays (so grass bits are seeded on dirt's final boundary,
-    // not on tiles we're about to make sand). The Tile.type setter clears
-    // overlayMask on a type change anyway — this ordering is just the simpler
-    // invariant to reason about.
-    public static void ApplyBeachSand(World world, int seed) {
+    // Runs AFTER FillDepressions (water placement is final) and BEFORE
+    // PopulateOverlays (so grass bits are seeded on dirt's final boundary).
+    public static void ApplyBeachSand(World world, int seed, int[] surfaceY, int[,] distToWater) {
+        var cfg = config;
         TileType sand = Db.tileTypeByName["sand"];
         TileType dirt = Db.tileTypeByName["dirt"];
         float seedOffX = seed * 0.7f;
         float seedOffY = seed * 1.3f;
-        float sandFreq = config.SandFreq;
-        float sandThreshold = config.SandThreshold;
+        float freq = cfg.SandFreq;
+        float threshold = cfg.SandThreshold;
+        int falloff = Mathf.Max(1, cfg.SandFalloffDepth);
+        float depthBoostMax = cfg.SandSurfaceBoost;
+        int waterRange = Mathf.Max(1, cfg.SandWaterRange);
+        float waterBoostMax = cfg.SandWaterBoost;
 
+        // Phase 1: mark candidates where the score clears threshold.
+        bool[,] candidate = new bool[world.nx, world.ny];
         for (int x = 0; x < world.nx; x++) {
+            int topSolid = surfaceY[x] - 1;
             for (int y = 0; y < world.ny; y++) {
                 Tile t = world.GetTileAt(x, y);
                 if (t.type != dirt) continue;
-                if (!HasAdjacentWater(world, x, y)) continue;
-                float n = Mathf.PerlinNoise(
-                    (x + seedOffX) * sandFreq,
-                    (y + seedOffY) * sandFreq);
-                if (n > sandThreshold) t.type = sand;
+
+                int depth = topSolid - y;
+                float depthBoost = depth < falloff
+                    ? (1f - (float)depth / falloff) * depthBoostMax
+                    : 0f;
+                int dw = distToWater[x, y];
+                float waterBoost = dw < waterRange
+                    ? (1f - (float)dw / waterRange) * waterBoostMax
+                    : 0f;
+                float noise = Mathf.PerlinNoise((x + seedOffX) * freq, (y + seedOffY) * freq);
+                float score = noise + depthBoost + waterBoost;
+                if (score > threshold) candidate[x, y] = true;
+            }
+        }
+
+        // Phase 2: drop tiny isolated patches. Otherwise the noise produces
+        // confetti — single tiles flipping every few columns.
+        RemoveSmallPatches(candidate, world.nx, world.ny, cfg.SandMinPatchSize);
+
+        // Phase 3: commit survivors.
+        for (int x = 0; x < world.nx; x++) {
+            for (int y = 0; y < world.ny; y++) {
+                if (candidate[x, y]) world.GetTileAt(x, y).type = sand;
             }
         }
     }
 
-    // Sibling of ApplyBeachSand on the same water-adjacent-dirt pool. Runs
-    // after sand so any tile already flipped to sand is skipped — sand wins
-    // overlap. Distinct seed offsets keep clay patches uncorrelated with
-    // sand patches.
-    public static void ApplyClayBanks(World world, int seed) {
+    // Sibling of ApplyBeachSand. Same score shape but looser — clay may
+    // convert dirt OR limestone (so pockets can form below the dirt band)
+    // and uses a wider/weaker water boost so clay drifts inland. Runs
+    // after sand: any tile already flipped to sand fails the dirt/limestone
+    // check, so sand wins overlap.
+    public static void ApplyClayBanks(World world, int seed, int[] surfaceY, int[,] distToWater) {
+        var cfg = config;
         TileType clay = Db.tileTypeByName["clay"];
         TileType dirt = Db.tileTypeByName["dirt"];
+        TileType limestone = Db.tileTypeByName["limestone"];
         float seedOffX = seed * 2.1f;
         float seedOffY = seed * 0.9f;
-        float clayFreq = config.ClayFreq;
-        float clayThreshold = config.ClayThreshold;
+        float freq = cfg.ClayFreq;
+        float threshold = cfg.ClayThreshold;
+        int falloff = Mathf.Max(1, cfg.ClayFalloffDepth);
+        float depthBoostMax = cfg.ClaySurfaceBoost;
+        int waterRange = Mathf.Max(1, cfg.ClayWaterRange);
+        float waterBoostMax = cfg.ClayWaterBoost;
 
+        // Phase 1: mark candidates where the score clears threshold.
+        bool[,] candidate = new bool[world.nx, world.ny];
         for (int x = 0; x < world.nx; x++) {
+            int topSolid = surfaceY[x] - 1;
             for (int y = 0; y < world.ny; y++) {
                 Tile t = world.GetTileAt(x, y);
-                if (t.type != dirt) continue;
-                if (!HasAdjacentWater(world, x, y)) continue;
-                float n = Mathf.PerlinNoise(
-                    (x + seedOffX) * clayFreq,
-                    (y + seedOffY) * clayFreq);
-                if (n > clayThreshold) t.type = clay;
+                if (t.type != dirt && t.type != limestone) continue;
+
+                int depth = topSolid - y;
+                float depthBoost = depth < falloff
+                    ? (1f - (float)depth / falloff) * depthBoostMax
+                    : 0f;
+                int dw = distToWater[x, y];
+                float waterBoost = dw < waterRange
+                    ? (1f - (float)dw / waterRange) * waterBoostMax
+                    : 0f;
+                float noise = Mathf.PerlinNoise((x + seedOffX) * freq, (y + seedOffY) * freq);
+                float score = noise + depthBoost + waterBoost;
+                if (score > threshold) candidate[x, y] = true;
+            }
+        }
+
+        // Phase 2: drop tiny isolated patches.
+        RemoveSmallPatches(candidate, world.nx, world.ny, cfg.ClayMinPatchSize);
+
+        // Phase 3: commit survivors.
+        for (int x = 0; x < world.nx; x++) {
+            for (int y = 0; y < world.ny; y++) {
+                if (candidate[x, y]) world.GetTileAt(x, y).type = clay;
             }
         }
     }
 
-    static bool HasAdjacentWater(World world, int x, int y) {
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dy = -1; dy <= 1; dy++) {
-                if (dx == 0 && dy == 0) continue;
-                Tile n = world.GetTileAt(x + dx, y + dy);
-                if (n != null && n.water > 0) return true;
+    // ── Patch cleanup ────────────────────────────────────────────────────
+    // 4-connected flood-fill over a candidate mask; any component smaller
+    // than `minSize` is cleared in-place. Shared by the sand and clay passes
+    // to clean up confetti from the per-tile noise threshold.
+    static void RemoveSmallPatches(bool[,] mask, int nx, int ny, int minSize) {
+        if (minSize <= 1) return;
+        bool[,] visited = new bool[nx, ny];
+        var queue = new Queue<(int x, int y)>();
+        var component = new List<(int x, int y)>();
+        for (int sx = 0; sx < nx; sx++) {
+            for (int sy = 0; sy < ny; sy++) {
+                if (!mask[sx, sy] || visited[sx, sy]) continue;
+                component.Clear();
+                queue.Clear();
+                queue.Enqueue((sx, sy));
+                visited[sx, sy] = true;
+                while (queue.Count > 0) {
+                    var (cx, cy) = queue.Dequeue();
+                    component.Add((cx, cy));
+                    if (cx > 0      && mask[cx - 1, cy] && !visited[cx - 1, cy]) { visited[cx - 1, cy] = true; queue.Enqueue((cx - 1, cy)); }
+                    if (cx < nx - 1 && mask[cx + 1, cy] && !visited[cx + 1, cy]) { visited[cx + 1, cy] = true; queue.Enqueue((cx + 1, cy)); }
+                    if (cy > 0      && mask[cx, cy - 1] && !visited[cx, cy - 1]) { visited[cx, cy - 1] = true; queue.Enqueue((cx, cy - 1)); }
+                    if (cy < ny - 1 && mask[cx, cy + 1] && !visited[cx, cy + 1]) { visited[cx, cy + 1] = true; queue.Enqueue((cx, cy + 1)); }
+                }
+                if (component.Count < minSize) {
+                    foreach (var (cx, cy) in component) mask[cx, cy] = false;
+                }
             }
         }
-        return false;
+    }
+
+    // ── Water distance field ─────────────────────────────────────────────
+    // Multi-source BFS from every tile with water > 0, 4-connected, capped
+    // at `cap` tiles. Cells beyond `cap` keep the sentinel `cap + 1`, which
+    // sand/clay treat as "too far → 0 bonus". Cheap and shared between the
+    // two passes.
+    static int[,] ComputeWaterDistance(World world, int cap) {
+        int nx = world.nx;
+        int ny = world.ny;
+        int[,] dist = new int[nx, ny];
+        int sentinel = cap + 1;
+        for (int x = 0; x < nx; x++)
+            for (int y = 0; y < ny; y++)
+                dist[x, y] = sentinel;
+
+        var queue = new Queue<(int x, int y)>();
+        for (int x = 0; x < nx; x++) {
+            for (int y = 0; y < ny; y++) {
+                if (world.GetTileAt(x, y).water > 0) {
+                    dist[x, y] = 0;
+                    queue.Enqueue((x, y));
+                }
+            }
+        }
+
+        while (queue.Count > 0) {
+            var (cx, cy) = queue.Dequeue();
+            int nd = dist[cx, cy] + 1;
+            if (nd > cap) continue;
+            if (cx > 0)      RelaxWaterDist(dist, queue, cx - 1, cy, nd);
+            if (cx < nx - 1) RelaxWaterDist(dist, queue, cx + 1, cy, nd);
+            if (cy > 0)      RelaxWaterDist(dist, queue, cx, cy - 1, nd);
+            if (cy < ny - 1) RelaxWaterDist(dist, queue, cx, cy + 1, nd);
+        }
+        return dist;
+    }
+
+    static void RelaxWaterDist(int[,] dist, Queue<(int x, int y)> queue, int x, int y, int nd) {
+        if (dist[x, y] <= nd) return;
+        dist[x, y] = nd;
+        queue.Enqueue((x, y));
     }
 
     // ── Background walls ─────────────────────────────────────────────────
     // Place a wall behind every tile below the natural surface heightmap, with
     // a near-surface skylight relaxation: a non-solid tile within 2 of the
     // surface stays open so shallow caves visibly punch through to sky.
-    // Wall type is positional (top DirtDepth rows = Dirt, deeper = Stone) and
-    // saved per-tile — never changes after mining. Since FillTerrain seeds the
-    // top DirtDepth rows as dirt and stone-vein passes only convert limestone,
-    // the positional decision matches what each tile was at fill time.
-    public static void SetBackgrounds(World world, int[] surfaceY) {
+    // Wall type follows the precomputed dirtMask near the surface — keeps
+    // wavy dirt pockets visible from inside shallow caves — but deeper than
+    // `DirtWallMaxDepth` we always use Stone, so deep caves that punch
+    // through buried dirt pockets don't show dirt/grass walls.
+    public static void SetBackgrounds(World world, int[] surfaceY, bool[,] dirtMask) {
         int nx = world.nx;
         int ny = world.ny;
-        int dirtDepth = config.DirtDepth;
+        int dirtWallMaxDepth = config.DirtWallMaxDepth;
 
         // Pass 1: place walls following the surface contour, with the near-surface
         // skylight relaxation for shallow caves.
         for (int x = 0; x < nx; x++) {
             int sy = surfaceY[x];
             int yMax = Mathf.Min(sy, ny);
+            int dirtWallCutoffY = sy - 1 - dirtWallMaxDepth; // below this row, always Stone wall
             for (int y = 0; y < yMax; y++) {
                 Tile t = world.GetTileAt(x, y);
                 if (!t.type.solid && y >= sy - 2) continue;
-                t.backgroundType = (y >= sy - dirtDepth)
+                bool dirtAllowed = y > dirtWallCutoffY;
+                t.backgroundType = (dirtAllowed && dirtMask[x, y])
                     ? BackgroundType.Dirt
                     : BackgroundType.Stone;
             }
@@ -317,24 +447,66 @@ public static class WorldGen {
         return t * t * (3f - 2f * t); // smoothstep
     }
 
-    // Fills the grid with dirt and stone based on surface heights.
-    // All underground solid is seeded as limestone; vein passes (ApplyVeins) then
-    // convert bands of it into granite / slate to create mining variety.
-    static void FillTerrain(World world, int[] surfaceY) {
+    // Fills the grid with dirt and stone based on the precomputed dirt mask.
+    // Non-dirt underground is seeded as limestone; vein passes (ApplyVeins)
+    // then convert bands of it into granite / slate for mining variety. Veins
+    // only touch limestone, so dirt pockets are untouched by them.
+    static void FillTerrain(World world, int[] surfaceY, bool[,] dirtMask) {
         TileType dirt = Db.tileTypeByName["dirt"];
         TileType limestone = Db.tileTypeByName["limestone"];
-        int dirtDepth = config.DirtDepth;
 
         for (int x = 0; x < world.nx; x++) {
             int surface = surfaceY[x];
             for (int y = 0; y < surface; y++) {
-                if (y >= surface - dirtDepth)
-                    world.GetTileAt(x, y).type = dirt;
-                else
-                    world.GetTileAt(x, y).type = limestone;
+                world.GetTileAt(x, y).type = dirtMask[x, y] ? dirt : limestone;
             }
             // y >= surface stays empty (default TileType)
         }
+    }
+
+    // ── Dirt mask ────────────────────────────────────────────────────────
+    // Builds the wavy dirt/stone boundary. Scored per tile:
+    //   depthBoost = lerp(SurfaceBoost, TailBoost) over the first FalloffDepth
+    //                tiles, then lerp(TailBoost, 0) over the rest to bedrock.
+    //   score = depthBoost + perlin(x, y) * NoiseAmp
+    //   dirt iff score > Threshold
+    // The TailBoost floor lets rare dirt pockets spawn deep underground, only
+    // fading out near bedrock. Shared between FillTerrain (tile type) and
+    // SetBackgrounds (wall type) so caves cut through a coherent boundary.
+    static bool[,] ComputeDirtMask(int[] surfaceY, int nx, int ny, int seed) {
+        var cfg = config;
+        bool[,] mask = new bool[nx, ny];
+        int bedrockY = cfg.BedrockY;
+        int falloff = Mathf.Max(1, cfg.DirtFalloffDepth);
+        float surfaceBoost = cfg.DirtSurfaceBoost;
+        float tailBoost = cfg.DirtTailBoost;
+        float noiseAmp = cfg.DirtNoiseAmp;
+        float threshold = cfg.DirtThreshold;
+        float freq = cfg.DirtFreq;
+        float seedOffX = (seed + cfg.DirtSeedOffset) * 0.5f;
+        float seedOffY = (seed + cfg.DirtSeedOffset) * 1.7f;
+
+        for (int x = 0; x < nx; x++) {
+            int sy = surfaceY[x];
+            int topSolid = sy - 1;
+            int bedrockDepth = Mathf.Max(1, topSolid - bedrockY);
+            int tailLen = Mathf.Max(1, bedrockDepth - falloff);
+            for (int y = bedrockY; y < sy && y < ny; y++) {
+                int depth = topSolid - y;
+                float depthBoost;
+                if (depth <= falloff) {
+                    float t = (float)depth / falloff;
+                    depthBoost = Mathf.Lerp(surfaceBoost, tailBoost, t);
+                } else {
+                    float t = Mathf.Clamp01((float)(depth - falloff) / tailLen);
+                    depthBoost = Mathf.Lerp(tailBoost, 0f, t);
+                }
+                float noise = Mathf.PerlinNoise((x + seedOffX) * freq, (y + seedOffY) * freq);
+                float score = depthBoost + noise * noiseAmp;
+                if (score > threshold) mask[x, y] = true;
+            }
+        }
+        return mask;
     }
 
     // ── Stone vein generation ────────────────────────────────────────────
@@ -352,15 +524,18 @@ public static class WorldGen {
     // granite first, then slate.
     static void ApplyVeins(World world, int[] surfaceY, int seed) {
         var cfg = config;
-        ApplyVeinPass(world, surfaceY, "granite", cfg.GraniteFreq, cfg.GraniteThreshold,
-                      cfg.GraniteDepthCenter, cfg.GraniteDepthWidth, seed + cfg.GraniteSeedOffset);
-        ApplyVeinPass(world, surfaceY, "slate",   cfg.SlateFreq,   cfg.SlateThreshold,
-                      cfg.SlateDepthCenter,   cfg.SlateDepthWidth,   seed + cfg.SlateSeedOffset);
+        ApplyVeinPass(world, surfaceY, "granite", cfg.GraniteFreq, cfg.GraniteAspect, cfg.GraniteThreshold,
+                      cfg.GraniteDepthLower, cfg.GraniteDepthUpper, cfg.GraniteDepthFalloff,
+                      seed + cfg.GraniteSeedOffset);
+        ApplyVeinPass(world, surfaceY, "slate",   cfg.SlateFreq,   cfg.SlateAspect,   cfg.SlateThreshold,
+                      cfg.SlateDepthLower,   cfg.SlateDepthUpper,   cfg.SlateDepthFalloff,
+                      seed + cfg.SlateSeedOffset);
     }
 
     static void ApplyVeinPass(World world, int[] surfaceY, string tileName,
-                              float freq, float threshold,
-                              float depthCenter, float depthWidth, int seedOffset) {
+                              float freq, float aspect, float threshold,
+                              float depthLower, float depthUpper, float depthFalloff,
+                              int seedOffset) {
         if (!Db.tileTypeByName.TryGetValue(tileName, out TileType veinTile)) {
             Debug.LogError($"ApplyVeinPass: tileType '{tileName}' not found in tilesDb");
             return;
@@ -378,11 +553,16 @@ public static class WorldGen {
                 // Only convert base limestone — leaves dirt, already-carved veins, and empties alone.
                 if (t.type != limestone) continue;
                 float depth = 1f - (float)(y - bedrockY) / depthSpan;
-                float bias = Mathf.Clamp01(1f - Mathf.Abs(depth - depthCenter) / depthWidth);
-                float noise = FBM2D((x + seedOffX) * freq, (y + seedOffY) * freq, 2, 0.5f, 2f);
-                // Lower noise + stronger depth bias → vein tile. When bias=0 (far from center)
-                // the threshold goes to 0 and no tiles convert, naturally gating by depth.
-                if (noise < threshold * bias) t.type = veinTile;
+                // Trapezoidal bias: flat 1 inside [lower, upper], linear taper over depthFalloff
+                // past each edge. Bias=0 outside the band kills the score regardless of noise.
+                float dist = Mathf.Max(0f, Mathf.Max(depthLower - depth, depth - depthUpper));
+                float bias = Mathf.Clamp01(1f - dist / depthFalloff);
+                // aspect>1 lowers x-frequency → wider features in x → horizontal stretch; <1 stretches vertically.
+                float noise = FBM2D((x + seedOffX) * freq / aspect, (y + seedOffY) * freq, 2, 0.5f, 2f);
+                // Canonical "score > threshold" form: vacancy (1-noise) gated by depth bias.
+                // Higher Threshold = rarer veins, matching dirt/cave conventions.
+                float score = (1f - noise) * bias;
+                if (score > threshold) t.type = veinTile;
             }
         }
     }
@@ -1287,6 +1467,11 @@ public static class WorldGen {
         int clusterMin = cfg.ClusterMin;
         int clusterMax = cfg.ClusterMax;
 
+        // Cluster size distribution: weight ∝ 1/N so single plants dominate
+        // and large clusters are rare. Total weight precomputed once.
+        float clusterWeightTotal = 0f;
+        for (int k = clusterMin; k <= clusterMax; k++) clusterWeightTotal += 1f / k;
+
         // Track which columns already have a plant to avoid overlap
         bool[] occupied = new bool[nx];
 
@@ -1304,7 +1489,16 @@ public static class WorldGen {
             // already logged the misconfiguration once.
             string plantName = PickPlantType(rng);
             if (plantName == null) return;
-            int clusterSize = rng.Next(clusterMin, clusterMax + 1);
+
+            // Weighted draw: P(N) ∝ 1/N. Fallback to clusterMax if FP rounding
+            // edges past the accumulator on the last bucket.
+            double pick = rng.NextDouble() * clusterWeightTotal;
+            float acc = 0f;
+            int clusterSize = clusterMax;
+            for (int k = clusterMin; k <= clusterMax; k++) {
+                acc += 1f / k;
+                if (pick < acc) { clusterSize = k; break; }
+            }
 
             for (int i = 0; i < clusterSize; i++) {
                 // Place cluster members nearby (within +-2 columns)

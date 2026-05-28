@@ -58,6 +58,12 @@ public class InventoryController : MonoBehaviour {
         targets = Db.itemsFlat.ToDictionary(i => i.id, i => i.DefaultTargetFen);
 
         if (inventoryHeader != null) inventoryHeader.onToggled += OnHeaderToggled;
+
+        // Initial plant-menu population, now that discovery state is seeded. Null-safe so it
+        // doesn't matter whether BuildPanel.Start ran before or after this (if before, its own
+        // seed gate ran with stale state and this corrects it; if after, this no-ops and its
+        // gate reads the seeded state directly).
+        BuildPanel.instance?.RefreshPlantVisibility();
     }
 
     // Resizes the wood-framed scroll container so it shrinks to just the header when
@@ -207,6 +213,8 @@ public class InventoryController : MonoBehaviour {
             Canvas.ForceUpdateCanvases();
             LayoutRebuilder.ForceRebuildLayoutImmediate(inventoryPanel.GetComponent<RectTransform>());
         }
+        // A newly-discovered item may be a plant's seed — reveal that plant in the build menu.
+        BuildPanel.instance?.RefreshPlantVisibility();
     }
 
     public void ValidateGlobalInventory() {
@@ -318,6 +326,9 @@ public class InventoryController : MonoBehaviour {
         foreach (var key in discoveredItems.Keys.ToList())
             discoveredItems[key] = false;
         SeedStartDiscovered();
+        // Drop plant entries whose seed is no longer discovered; the load path re-adds the valid
+        // ones as it restores discovery via DiscoverItem. Prevents stale entries surviving a reload.
+        BuildPanel.instance?.RefreshPlantVisibility();
         pendingGroupOpenOverrides = null;
         foreach (var kv in itemDisplayGos)
             kv.Value?.SetActive(false);

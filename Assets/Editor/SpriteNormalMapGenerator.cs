@@ -138,7 +138,7 @@ public static class SpriteNormalMapGenerator {
         "Assets/Resources/Sprites/Plants",
     };
 
-    [MenuItem("Tools/Generate All Sprite Normal Maps")]
+    [MenuItem("Tools/Sprites/Generate All Normal Maps", priority = 120)]
     internal static void GenerateAll() => GenerateAllInternal(force: false);
 
     static void GenerateAllInternal(bool force) {

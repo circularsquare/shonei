@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 // ScriptableObject holding all WorldGen tuning parameters. WorldGen reads these
 // at gen time via `WorldGen.config`. The live asset lives at
@@ -23,8 +24,6 @@ public class WorldGenConfig : ScriptableObject {
     [Range(10, 100)] public int SurfaceMin = 50;
     [Tooltip("Surface height never goes above this row.")]
     [Range(20, 110)] public int SurfaceMax = 72;
-    [Tooltip("Number of dirt tiles above stone.")]
-    [Range(0, 10)] public int DirtDepth = 3;
     [Tooltip("Lowest row that's always solid.")]
     [Range(0, 10)] public int BedrockY = 0;
     [Tooltip("Surface noise frequency. Lower = broader hills.")]
@@ -65,24 +64,55 @@ public class WorldGenConfig : ScriptableObject {
     [Tooltip("Tiles over which terrain smoothly blends to flat at the spawn edges.")]
     [Range(0, 16)] public int SpawnBlend = 4;
 
+    // ── Dirt mask ─────────────────────────────────────────────────────
+    // Wavy dirt/stone boundary. For each tile below the surface:
+    //   depthBoost = lerp(SurfaceBoost, TailBoost) over the first FalloffDepth
+    //                tiles, then lerp(TailBoost, 0) over the rest to bedrock.
+    //   score = depthBoost + perlin * NoiseAmp ;  dirt iff score > Threshold.
+    // The tail floor lets rare dirt pockets spawn deep underground.
+    [Header("Dirt mask")]
+    [Tooltip("Depth (tiles below surface) at which the boost reaches the tail floor. Fast knee from SurfaceBoost to TailBoost happens over this range.")]
+    [Range(1, 10)] public int DirtFalloffDepth = 5;
+    [Tooltip("Boost at depth 0 (topmost solid row). With Threshold=1 and any positive noise, this guarantees dirt at the surface.")]
+    [Range(0f, 2f)] public float DirtSurfaceBoost = 1.0f;
+    [Tooltip("Boost floor at DirtFalloffDepth. Decays linearly to 0 by bedrock. Higher = more dirt pockets deep underground.")]
+    [Range(0f, 1f)] public float DirtTailBoost = 0.1f;
+    [Tooltip("Perlin frequency for the dirt mask. Lower = larger dirt blobs.")]
+    [Range(0.01f, 0.5f)] public float DirtFreq = 0.15f;
+    [Tooltip("Multiplier on the Perlin term in the score. 1.0 = noise contributes ~[0,1].")]
+    [Range(0f, 2f)] public float DirtNoiseAmp = 1.0f;
+    [Tooltip("Score threshold. With SurfaceBoost=1 and NoiseAmp=1, 1.0 means the surface is always dirt and the tail bands hold only rare pockets.")]
+    [Range(0f, 3f)] public float DirtThreshold = 1.0f;
+    [Tooltip("Max depth below surface where dirt background walls may appear. Beyond this, walls are always Stone regardless of the tile-side dirt mask. Keeps grassy/dirt walls from showing in deep caves under dirt pockets.")]
+    [Range(0, 30)] public int DirtWallMaxDepth = 6;
+    public int DirtSeedOffset = 4242;
+
     // ── Stone veins ───────────────────────────────────────────────────
-    // Per-stone pass: noise < threshold × depthBias converts limestone to the
-    // vein tile. depthBias = 1.0 at DepthCenter (0=surface, 1=bedrock), tapering
-    // linearly to 0 at ±DepthWidth. Higher Threshold = more abundant veins.
+    // Per-stone pass: score = (1 - noise) × depthBias.  Limestone converts to
+    // the vein tile when score > Threshold. depthBias = 1.0 inside
+    // [DepthLower, DepthUpper] (0=surface, 1=bedrock), tapering linearly to 0
+    // over DepthFalloff past each edge. Higher Threshold = rarer veins
+    // (canonical with Dirt/Cave thresholds).
     [Header("Veins — Granite")]
     [Range(0.01f, 0.3f)] public float GraniteFreq = 0.08f;
-    [Range(0f, 1f)] public float GraniteThreshold = 0.48f;
-    [Tooltip("0=surface, 1=bedrock — where the vein is most likely.")]
-    [Range(0f, 1f)] public float GraniteDepthCenter = 0.4f;
-    [Range(0.01f, 1f)] public float GraniteDepthWidth = 0.3f;
+    [Tooltip(">1 stretches veins horizontally; <1 stretches vertically; 1 = isotropic.")]
+    [Range(0.2f, 5f)] public float GraniteAspect = 1f;
+    [Range(0f, 1f)] public float GraniteThreshold = 0.52f;
+    [Tooltip("0=surface, 1=bedrock — flat-max band edges.")]
+    [Range(0f, 1f)] public float GraniteDepthLower = 0.25f;
+    [Range(0f, 1f)] public float GraniteDepthUpper = 0.55f;
+    [Range(0.01f, 1f)] public float GraniteDepthFalloff = 0.3f;
     public int GraniteSeedOffset = 1111;
 
     [Header("Veins — Slate")]
     [Range(0.01f, 0.3f)] public float SlateFreq = 0.09f;
+    [Tooltip(">1 stretches veins horizontally; <1 stretches vertically; 1 = isotropic.")]
+    [Range(0.2f, 5f)] public float SlateAspect = 1f;
     [Range(0f, 1f)] public float SlateThreshold = 0.5f;
-    [Tooltip("0=surface, 1=bedrock — where the vein is most likely.")]
-    [Range(0f, 1f)] public float SlateDepthCenter = 0.7f;
-    [Range(0.01f, 1f)] public float SlateDepthWidth = 0.25f;
+    [Tooltip("0=surface, 1=bedrock — flat-max band edges.")]
+    [Range(0f, 1f)] public float SlateDepthLower = 0.58f;
+    [Range(0f, 1f)] public float SlateDepthUpper = 0.82f;
+    [Range(0.01f, 1f)] public float SlateDepthFalloff = 0.28f;
     public int SlateSeedOffset = 2222;
 
     // ── Caves ─────────────────────────────────────────────────────────
@@ -162,21 +192,52 @@ public class WorldGenConfig : ScriptableObject {
     [Range(0, 50)] public int LiquidSettleMoveThreshold = 4;
 
     // ── Beach sand ────────────────────────────────────────────────────
+    // Scored on noise + depthBoost + waterBoost. Sand still only converts
+    // dirt (so the sand-wins-overlap rule with clay works on a clean pool),
+    // but the old hard "must touch water" gate is replaced with a distance-
+    // to-water bonus. Stronger water boost + tighter range than clay so
+    // sand reads as beach.
     [Header("Beach sand")]
-    [Tooltip("Frequency of the sand clump mask. Lower = larger clumps.")]
+    [Tooltip("Frequency of the sand Perlin mask. Lower = larger clumps.")]
     [Range(0.01f, 0.5f)] public float SandFreq = 0.18f;
-    [Tooltip("Perlin output threshold for sand. ~0.52 ≈ 40% of eligible tiles convert.")]
-    [Range(0f, 1f)] public float SandThreshold = 0.52f;
+    [Tooltip("Score threshold. Higher = rarer sand.")]
+    [Range(0f, 2f)] public float SandThreshold = 0.7f;
+    [Tooltip("Depth (tiles below surface) at which the sand depth bonus reaches 0. Keep small so sand hugs the surface.")]
+    [Range(1, 10)] public int SandFalloffDepth = 2;
+    [Tooltip("Boost at depth 0 (topmost solid row). Linearly decays to 0 by SandFalloffDepth.")]
+    [FormerlySerializedAs("SandDepthBoost")]
+    [Range(0f, 1f)] public float SandSurfaceBoost = 0.15f;
+    [Tooltip("Distance (tiles) at which the water bonus reaches 0. Tighter than clay.")]
+    [Range(1, 10)] public int SandWaterRange = 3;
+    [Tooltip("Water bonus at distance 0 (adjacent to water). Strong so sand reads as beach.")]
+    [Range(0f, 1f)] public float SandWaterBoost = 0.4f;
+    [Tooltip("Minimum connected-patch size kept after threshold pass. Smaller patches are dropped to clear confetti. 1 disables cleanup.")]
+    [Range(1, 20)] public int SandMinPatchSize = 3;
 
     // ── Clay banks ────────────────────────────────────────────────────
-    // Runs after the sand pass on the same water-adjacent-dirt pool, so
-    // sand wins any overlap. Independent Perlin mask (own seed offsets) so
-    // clay patches are uncorrelated with sand patches.
+    // Same shape as the sand score (noise + depthBoost + waterBoost) but
+    // looser: clay can convert dirt OR shallow stone (limestone), the water
+    // range is wider, and the water boost is smaller. Result: clay drifts
+    // inland with patches still concentrated near water. Runs after the
+    // sand pass — sand wins any overlap.
     [Header("Clay banks")]
-    [Tooltip("Frequency of the clay clump mask. Lower = larger clumps.")]
+    [Tooltip("Frequency of the clay Perlin mask. Lower = larger clumps.")]
     [Range(0.01f, 0.5f)] public float ClayFreq = 0.20f;
-    [Tooltip("Perlin output threshold for clay. Higher = rarer. 1.0 disables clay entirely.")]
-    [Range(0f, 1f)] public float ClayThreshold = 0.55f;
+    [Tooltip("Score threshold. Higher = rarer clay.")]
+    [Range(0f, 2f)] public float ClayThreshold = 0.7f;
+    [Tooltip("Depth (tiles below surface) at which the clay depth bonus reaches 0.")]
+    [Range(1, 15)] public int ClayFalloffDepth = 5;
+    [Tooltip("Boost at depth 0 (topmost solid row). Linearly decays to 0 by ClayFalloffDepth.")]
+    [FormerlySerializedAs("ClayDepthBoost")]
+    [Range(0f, 1f)] public float ClaySurfaceBoost = 0.2f;
+    [Tooltip("Distance (tiles) at which the water bonus reaches 0. Wider than sand.")]
+    [Range(1, 10)] public int ClayWaterRange = 4;
+    [Tooltip("Water bonus at distance 0. Weaker than sand so clay drifts inland.")]
+    [Range(0f, 1f)] public float ClayWaterBoost = 0.25f;
+    [Tooltip("Minimum connected-patch size kept after threshold pass. Smaller patches are dropped to clear confetti. 1 disables cleanup.")]
+    [Range(1, 20)] public int ClayMinPatchSize = 3;
+    [Tooltip("Maximum tile distance computed by the BFS water-distance field. Both sand and clay share this. Larger = slower gen and waterRange must stay <= this.")]
+    [Range(1, 20)] public int WaterDistanceCap = 8;
 
     // ── Plants ────────────────────────────────────────────────────────
     [Header("Plants")]

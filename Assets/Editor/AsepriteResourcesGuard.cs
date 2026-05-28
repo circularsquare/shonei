@@ -31,7 +31,7 @@ public class AsepriteResourcesGuard : AssetPostprocessor
         foreach (var path in moved)    TryRelocate(path);
     }
 
-    [MenuItem("Tools/Move .ase Out of Resources")]
+    [MenuItem("Tools/Move .ase Out of Resources", priority = 500)]
     public static void ScanResourcesNow()
     {
         if (!AssetDatabase.IsValidFolder(SourceRoot)) {

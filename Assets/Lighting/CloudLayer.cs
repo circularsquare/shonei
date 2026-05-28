@@ -203,6 +203,17 @@ public class CloudLayer : SkyLayerBase {
         bakedWindOffsetX = windOffsetX;
     }
 
+    // Shifts the cloud field by a large random offset so the noise pattern
+    // looks distinct from any other run. Called on new-world creation
+    // (WorldController.GenerateDefault). The magnitude is >> any plausible
+    // cellSize, so the resulting sample is uncorrelated with the previous
+    // pattern. Baked snapshot is kept in sync so the sprite doesn't visibly
+    // slide on the first frame after the shift.
+    public void RandomizePattern(float offset) {
+        windOffsetX = offset;
+        bakedWindOffsetX = offset;
+    }
+
     // Width is driven by the camera viewport so off-screen pixels aren't
     // generated. Pad by blobRadiusMax so partial-blob bodies at viewport
     // edges still spawn without popping at the seam.
@@ -576,16 +587,19 @@ public class CloudLayer : SkyLayerBase {
                 float fadeIn = Mathf.Sqrt(t);
                 float maxR   = Mathf.Lerp(blobRadiusMin, blobRadiusMax,
                                            Mathf.Clamp01(excess / Mathf.Max(0.001f, excessForMaxSize)));
-                // Per-cell random size factor in [0, 1]. Cells in a
+                // Per-cell random size factor in [0.5, 1]. Cells in a
                 // high-noise cluster all see similar maxR, so without
                 // this they'd spawn a row of near-identical big lobes.
                 // Multiplying by a deterministic per-cell hash spreads
-                // sizes uniformly between 0 and maxR — a fractal-
-                // flavoured mix of big and small puffs scattered
-                // through the same cluster, instead of all-at-maxR.
-                // Hashed on (col, row) so the size is stable
-                // frame-to-frame for a given cell.
-                float sizeRand = Hash2D(col * 47.3f, row * 31.7f);
+                // sizes between half and full maxR — a fractal-flavoured
+                // mix of big and small puffs scattered through the same
+                // cluster, instead of all-at-maxR. The 0.5 floor (vs a
+                // raw [0,1] hash) stops blobs collapsing far below the
+                // cell spacing: a near-zero factor at a cluster's fading
+                // edge made that edge row detach into a string of
+                // disconnected dots under the cloud body. Hashed on
+                // (col, row) so the size is stable frame-to-frame.
+                float sizeRand = 0.5f + 0.5f * Hash2D(col * 47.3f, row * 31.7f);
                 float radius = maxR * fadeIn * sizeRand;
                 // Skip blobs too small to contribute visibly. Frees up
                 // the MAX_BLOBS slot for cells that actually matter.

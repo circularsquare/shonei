@@ -201,6 +201,8 @@ public class StructureInfoView : MonoBehaviour {
         var sb = new System.Text.StringBuilder();
         sb.Append("blueprint: " + blueprint.structType.name);
         sb.Append("\n progress: " + blueprint.GetProgress());
+        if (blueprint.structType.job != null)
+            sb.Append("\n job: " + blueprint.structType.job.name);
         // Surface the silent failure paths in ConstructTask.Initialize for deconstructs:
         // both predicates make Initialize return false (with a haul re-promotion side effect),
         // leaving the order at 0/1 forever with no other in-game cue.

@@ -61,7 +61,14 @@ public class Graph {
     static void ResetStatics() { instance = null; }
 
     private Dictionary<(int,int),  (Node,Node)> stairWaypoints = new Dictionary<(int,int),  (Node,Node)>();
-    private Dictionary<(int,int,int),(Node,Node)> cliffWaypoints = new Dictionary<(int,int,int),(Node,Node)>();
+    // Cliff chain keyed by bottom base (bx, by, dir). Value is the full waypoint column
+    // from y=by up to y=by+H (H+1 entries). H is the climb height — the chain reaches the
+    // first standable cell on the wall column above. Side ladders along the chain upgrade
+    // individual segments to LadderPolicy (cheaper); pure cliff segments use CliffPolicy.
+    private Dictionary<(int,int,int), Node[]> cliffWaypoints = new Dictionary<(int,int,int), Node[]>();
+    // Upper bound on cliff height we'll scan / store. Sets the cost of UpdateNeighbors
+    // refresh propagation when a tile mutates partway up a tall cliff.
+    private const int CLIFF_MAX_HEIGHT = 32;
 
     public Graph(World world){
         this.world = world;
@@ -89,7 +96,9 @@ public class Graph {
 
         // Reset waypoint nodes (stored in dictionaries, not in nodes[,])
         foreach (var (wp1, wp2) in stairWaypoints.Values) { wp1.componentId = -1; wp2.componentId = -1; }
-        foreach (var (wp1, wp2) in cliffWaypoints.Values)  { wp1.componentId = -1; wp2.componentId = -1; }
+        foreach (Node[] chain in cliffWaypoints.Values) {
+            for (int i = 0; i < chain.Length; i++) chain[i].componentId = -1;
+        }
 
         // BFS from each unvisited standable tile-node; waypoints get IDs transitively via edges
         int nextId = 0;
@@ -187,13 +196,17 @@ public class Graph {
                 CreateStairWaypoints(cx, cy);
             }
         }
-        // Refresh cliff waypoints for all cliffs that depend on this tile.
-        CreateCliffWaypoints(x,   y);              // (x,y) as base
-        CreateCliffWaypointForSide(x-1, y,   +1);  // (x,y) is the wall
-        CreateCliffWaypointForSide(x+1, y,   -1);
-        CreateCliffWaypoints(x,   y-1);            // (x,y) is space above base
-        CreateCliffWaypointForSide(x-1, y-1, +1);  // (x,y) is cliff top
-        CreateCliffWaypointForSide(x+1, y-1, -1);
+        // Refresh cliff waypoints. With multi-tile chains the bottom-base is the only
+        // entry that owns the chain — a mutation partway up affects whichever base sits
+        // below it. Walk downward CLIFF_MAX_HEIGHT tiles refreshing every candidate base
+        // for which (x,y) could be: part of the air column, part of the wall column,
+        // or the standable exit at the top. Non-base candidates early-return cheaply.
+        for (int dy = y; dy >= Math.Max(0, y - CLIFF_MAX_HEIGHT); dy--) {
+            CreateCliffWaypointForSide(x,   dy, +1);
+            CreateCliffWaypointForSide(x,   dy, -1);
+            if (x - 1 >= 0)        CreateCliffWaypointForSide(x - 1, dy, +1);
+            if (x + 1 < world.nx)  CreateCliffWaypointForSide(x + 1, dy, -1);
+        }
     }
 
     private void CreateCliffWaypoints(int x, int y) {
@@ -215,35 +228,77 @@ public class Graph {
         || (xDiff == 0 && yDiff == -1 && neighbor.tile.HasLadder()));
     }
 
-    // Creates two waypoints for a one-block cliff climb from base (bx,by) in direction dir (+1=right, -1=left).
-    // Path: base → wp1 (short horizontal) → wp2 (vertical, slow) → cliff_top (short horizontal).
-    // This avoids the "floating horizontal" bug where intermediate non-standable tiles above gaps
-    // were directly connected, making a gap appear traversable at height by+1.
+    // Creates a vertical waypoint chain for scaling a cliff of any height from base (bx,by) in
+    // direction dir (+1=right, -1=left). The chain runs up the side of the wall column cx = bx+dir
+    // until the first standable cell on cx — that's the exit. Path:
+    //   base → chain[0] (short horizontal) → chain[1] → … → chain[H] → cliff_top (short horizontal).
+    // Each vertical segment k→k+1 is CliffPolicy by default (slow), upgraded to LadderPolicy when a
+    // side ladder is present at tile (bx, by+k) on the matching dir side — encoded by setting
+    // chain[k].edgePolicy / chain[k+1].edgePolicy to LadderPolicy.Instance so Graph.ResolveEdgePolicy's
+    // shared-policy check returns it for that segment (mixed chains work: only matching pairs match).
+    // Fractional X of the chain is the historical 0.24-from-base offset — this avoids the "floating
+    // horizontal" bug where intermediate non-standable tiles above gaps connected directly.
     private void CreateCliffWaypointForSide(int bx, int by, int dir) {
         var key = (bx, by, dir);
-        if (cliffWaypoints.ContainsKey(key)) {
-            var (oldWp1, oldWp2) = cliffWaypoints[key];
-            foreach (Node n in oldWp1.neighbors) n.RemoveNeighbor(oldWp1);
-            foreach (Node n in oldWp2.neighbors) n.RemoveNeighbor(oldWp2);
+        if (cliffWaypoints.TryGetValue(key, out Node[] oldChain)) {
+            for (int i = 0; i < oldChain.Length; i++)
+                foreach (Node n in oldChain[i].neighbors) n.RemoveNeighbor(oldChain[i]);
             cliffWaypoints.Remove(key);
         }
         if (bx < 0 || bx >= world.nx || by < 0 || by >= world.ny) return;
         int cx = bx + dir;
         if (cx < 0 || cx >= world.nx || by + 1 >= world.ny) return;
         if (!nodes[bx, by].standable) return;
-        if (!world.GetTileAt(cx, by).type.solid) return;      // wall must exist
-        if (world.GetTileAt(bx, by + 1).type.solid) return;   // space above base must be clear
-        if (!GetStandability(cx, by + 1)) return;             // cliff top must be standable
+        if (!world.GetTileAt(cx, by).type.solid) return;      // wall must exist at base level
+
+        // Walk upward: wall column stays solid, air column stays clear, until we find a standable
+        // cell on the wall column. That standable cell is the exit at height by+H.
+        int H = 0;
+        while (true) {
+            H++;
+            if (H > CLIFF_MAX_HEIGHT) return;                            // give up — chain too tall
+            if (by + H >= world.ny) return;                              // off-map upward
+            if (world.GetTileAt(bx, by + H).type.solid) return;          // air column blocked → no climb
+            if (GetStandability(cx, by + H)) break;                      // standable exit reached
+            if (!world.GetTileAt(cx, by + H).type.solid) return;         // wall ended without exit
+        }
 
         float wpx = bx + dir * 0.24f;
-        Node wp1 = new Node(wpx, (float)by);        // at base height, close to base (0.25 from it)
-        Node wp2 = new Node(wpx, (float)(by + 1));  // at cliff-top height, close to base (0.75 from top)
+        Node[] chain = new Node[H + 1];
+        for (int k = 0; k <= H; k++) chain[k] = new Node(wpx, (float)(by + k));
 
-        nodes[bx, by].AddNeighbor(wp1, true);  // short horizontal approach
-        wp1.AddNeighbor(wp2, true);             // vertical climb (slow via GetEdgeInfo)
-        wp2.AddNeighbor(nodes[cx, by + 1], true); // short horizontal exit
+        // Per-segment policy: segment k → k+1 corresponds to side ladder at tile (bx, by+k).
+        // Set both endpoints' edgePolicy so ResolveEdgePolicy's shared-policy check picks it
+        // up. A waypoint sitting between a ladder segment and a cliff segment carries the
+        // policy — the cliff segment's other end has null policy, so the shared check fails
+        // there and falls through to the waypoint-waypoint-vertical CliffPolicy branch.
+        for (int k = 0; k <= H; k++) {
+            bool ladderBelow = k > 0 && world.GetTileAt(bx, by + k - 1).HasSideLadder(dir);
+            bool ladderAbove = k < H && world.GetTileAt(bx, by + k    ).HasSideLadder(dir);
+            if (ladderBelow || ladderAbove) chain[k].edgePolicy = LadderPolicy.Instance;
+        }
 
-        cliffWaypoints[key] = (wp1, wp2);
+        nodes[bx, by].AddNeighbor(chain[0], true);                 // base → first waypoint
+        for (int k = 0; k < H; k++) chain[k].AddNeighbor(chain[k + 1], true);  // vertical climb
+        chain[H].AddNeighbor(nodes[cx, by + H], true);             // last waypoint → cliff top
+
+        // Step-off edges into the air column at side-ladder levels. Without these, a
+        // mid-air side ladder blueprint (its tile is air with no floor below) has no
+        // reachable integer-X node, so the construction task can't path to it. We add
+        // an edge whenever the level has a side ladder *or* its blueprint, so a fresh
+        // blueprint becomes reachable for the builder; we also add it for any otherwise-
+        // standable air tile (e.g. a floating platform) so the chain integrates with
+        // existing structures. Bare-air levels stay unconnected so mice can't randomly
+        // step off the chain into empty space.
+        for (int k = 1; k < H; k++) {
+            Tile t = world.GetTileAt(bx, by + k);
+            bool hasSideLadder = t.HasSideLadderAny()
+                || (t.GetBlueprintAt(2) != null && t.GetBlueprintAt(2).structType.name == "ladder_side");
+            if (hasSideLadder || nodes[bx, by + k].standable)
+                chain[k].AddNeighbor(nodes[bx, by + k], true);
+        }
+
+        cliffWaypoints[key] = chain;
     }
     private void CreateStairWaypoints(int sx, int sy) {
         // Clean up old waypoints if present
@@ -363,6 +418,12 @@ public class Graph {
         if (tileBelow.building != null && tileBelow.building.structType.solidTop) {return true;} // tile below is solid-top building
         if (tileBelow.structs[1] != null && tileBelow.structs[1].structType.solidTop) {return true;} // tile below is solid-top mStruct
         if (tileHere.HasLadder() || tileBelow.HasLadder()) {return true;}
+        // Side ladders: same standability rule as regular ladders. Mice stand on the
+        // ladder's tile or on the air tile directly above the stack. Crucially, unlike
+        // HasLadder this does NOT trigger an integer-X vertical edge in UpdateNeighbors
+        // — vertical climb through a side ladder routes through the cliff chain's
+        // fractional-X waypoints (so the mouse hugs the wall visually).
+        if (tileHere.HasSideLadderAny() || tileBelow.HasSideLadderAny()) {return true;}
         return false;
     }
     public void UpdateStandability(int x, int y){ nodes[x,y].standable = GetStandability(x, y); }

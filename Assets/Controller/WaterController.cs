@@ -650,7 +650,11 @@ public class WaterController : MonoBehaviour {
     // origin, unmirrored — the mirror flip is applied later in RegisterDecorativeWater.
     public static List<Vector2Int> ScanWaterPixels(Sprite sprite) {
         if (sprite == null || sprite.texture == null) return null;
-        string stem = sprite.texture.name;
+        // sprite.name (asset name, e.g. "tank") not sprite.texture.name — after the
+        // Buildings sprite-atlas binds at runtime, sprite.texture is the atlas page
+        // and its name is the atlas's, not the source file's. sprite.name stays the
+        // original asset stem in both atlased and loose-sprite paths.
+        string stem = sprite.name;
         if (string.IsNullOrEmpty(stem)) return null;
         Texture2D mask = Resources.Load<Texture2D>($"Sprites/Buildings/{stem}_w");
         if (mask == null) return null; // no companion — this building doesn't render water

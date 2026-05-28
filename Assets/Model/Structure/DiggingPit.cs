@@ -31,6 +31,17 @@ public class DiggingPit : Building {
     Color32[] substratePixels;
     int lastDishUses = -1; // skip texture rebuilds when uses hasn't changed
 
+    // Side-door gating. While the dish is > 40% full (progress < 0.6), only the
+    // top door is reachable — mice popping in diagonally from the side looks weird
+    // when there's still a lot of dirt in the way. Once enough has been mined out,
+    // the L/R door edges get added back. References captured the first time we
+    // see them on the interior node's neighbour list; null = that side was never
+    // wired (e.g. off-map, or door declaration missing).
+    Node leftApproach;
+    Node rightApproach;
+    bool sidesCaptured;     // have we scanned for L/R neighbours yet?
+    bool sidesConnected = true;  // current edge state; true matches Structure ctor's default
+
     public DiggingPit(StructType st, int x, int y, bool mirrored = false) : base(st, x, y, mirrored) { }
 
     // Called by StructController.Construct before the underlying tile is emptied.
@@ -44,9 +55,11 @@ public class DiggingPit : Building {
         capturedTile = t;
     }
 
-    // Returns a single-item extraction: the substrate's primary product at 1 liang per craft
-    // (matches the original `dirt × 1` recipe quantity). Null on bad state → AnimalStateManager
-    // falls back to the recipe's (empty) outputs.
+    // Returns the substrate's primary product at 1 liang per craft (matches the original
+    // `dirt × 1` recipe quantity), plus a 10% bonus clay nodule when digging dirt or sand —
+    // alluvial pockets in real soils occasionally turn up clay even outside formal clay
+    // beds. Clay substrate skips the bonus since it's already producing clay as primary.
+    // Null on bad state → AnimalStateManager falls back to the recipe's (empty) outputs.
     public ItemQuantity[] GetExtractionOutputs() {
         if (capturedTile == null) {
             Debug.LogError($"DiggingPit at {x},{y} has no capturedTile — falling back to recipe outputs");
@@ -56,7 +69,13 @@ public class DiggingPit : Building {
             Debug.LogError($"DiggingPit at {x},{y}: tile '{capturedTile.name}' has no nproducts defined");
             return null;
         }
-        return new[] { new ItemQuantity(capturedTile.products[0].item, ItemStack.LiangToFen(1f)) };
+        var primary = new ItemQuantity(capturedTile.products[0].item, ItemStack.LiangToFen(1f));
+        if (capturedTile.name == "dirt" || capturedTile.name == "sand") {
+            var bonus = new ItemQuantity(Db.itemByName["clay"], ItemStack.LiangToFen(1f));
+            bonus.chance = 0.10f;
+            return new[] { primary, bonus };
+        }
+        return new[] { primary };
     }
 
     public override void OnPlaced() {
@@ -72,6 +91,42 @@ public class DiggingPit : Building {
         EnsureDishObject();
         UpdateDishTexture();
         UpdateWorkSpot();
+        UpdateSideAccess();
+    }
+
+    // Add or remove the L/R door edges depending on dish progress. The top edge
+    // stays wired forever; sides only join when the dish has been mined down enough
+    // that a side approach reads as "into the open" rather than "diagonally through
+    // dirt". Threshold matches the user's 40%-full callout (progress < 0.6 = sides off).
+    void UpdateSideAccess() {
+        if (workNode == null) return;
+        // Capture references on first call (after ctor has already wired everything).
+        if (!sidesCaptured) {
+            foreach (Node n in workNode.neighbors) {
+                if (n.tile == null) continue;
+                if (n.x == x - 1 && n.y == y) leftApproach  = n;
+                else if (n.x == x + 1 && n.y == y) rightApproach = n;
+            }
+            sidesCaptured = true;
+        }
+        if (leftApproach == null && rightApproach == null) return;
+
+        int uses = workstation != null ? workstation.uses : 0;
+        int depleteAt = Mathf.Max(1, structType.depleteAt);
+        float progress = Mathf.Clamp01(uses / (float)depleteAt);
+        bool shouldConnect = progress >= 0.6f;
+        if (shouldConnect == sidesConnected) return;
+
+        if (shouldConnect) {
+            if (leftApproach  != null) workNode.AddNeighbor(leftApproach,  reciprocal: true);
+            if (rightApproach != null) workNode.AddNeighbor(rightApproach, reciprocal: true);
+        } else {
+            if (leftApproach  != null) { workNode.RemoveNeighbor(leftApproach);  leftApproach.RemoveNeighbor(workNode);  }
+            if (rightApproach != null) { workNode.RemoveNeighbor(rightApproach); rightApproach.RemoveNeighbor(workNode); }
+        }
+        sidesConnected = shouldConnect;
+        // Reachability set may have changed — refresh A* connectivity components.
+        World.instance.graph.RebuildComponents();
     }
 
     void EnsureDishObject() {
@@ -161,11 +216,11 @@ public class DiggingPit : Building {
         // The whole bowl translates downward uniformly as progress increases; depth
         // (edge minus center) stays fixed at DEPTH so the shape is preserved as the
         // pit empties. Endpoints:
-        //   progress=0 → edge at top of tile (iy=15)  → bottom at iy=13
-        //   progress=1 → bottom at floor (iy=0)        → edge at iy=2
+        //   progress=0 → edge at iy=14 (1px below tile top) → bottom at iy=12
+        //   progress=1 → bottom at floor (iy=0)              → edge at iy=2
         // At progress=1 the pit is destroyed and replaced with a platform, so the
         // visual never actually has to reach a vanishing dish.
-        int edgeTopPx      = Mathf.RoundToInt(Mathf.Lerp(15f, DEPTH, progress));
+        int edgeTopPx      = Mathf.RoundToInt(Mathf.Lerp(14f, DEPTH, progress));
         int centerBottomPx = edgeTopPx - DEPTH;
 
         if (dishTex == null) {
@@ -213,8 +268,8 @@ public class DiggingPit : Building {
         int depleteAt = Mathf.Max(1, structType.depleteAt);
         float progress = Mathf.Clamp01(uses / (float)depleteAt);
         // Match the dish-texture math: bowl floor in interior-pixel-space rounded
-        // to nearest pixel. centerBottomPx ranges 13 → 0 across the lifetime.
-        int edgeTopPx      = Mathf.RoundToInt(Mathf.Lerp(15f, 2f, progress));
+        // to nearest pixel. centerBottomPx ranges 12 → 0 across the lifetime.
+        int edgeTopPx      = Mathf.RoundToInt(Mathf.Lerp(14f, 2f, progress));
         int centerBottomPx = edgeTopPx - 2;
         // Convert interior pixel index (0..15) to world y relative to tile center.
         // Pixel iy spans world y in [(iy − 8)/16, (iy − 7)/16]; the worker's feet

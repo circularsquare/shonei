@@ -63,7 +63,7 @@ public static class PlantBlobBaker {
     const string MetaFileName = "sway_meta.json";
 
     // ── menu entries ─────────────────────────────────────────────────────────
-    [MenuItem("Tools/Bake All Plant Blob Sway")]
+    [MenuItem("Tools/Bake/Bake All Plant Blob Sway", priority = 200)]
     internal static void BakeAll() {
         var written  = new List<string>();
         int plantCnt = 0;
@@ -114,7 +114,7 @@ public static class PlantBlobBaker {
     // walks Assets/Resources/Sprites/Plants and picks up the new `_static`
     // and `_b*` PNGs automatically (each blob's silhouette gets its own
     // bevelled normals; the static layer behaves like any other sprite).
-    [MenuItem("Tools/Bake Plant Blob Sway + Generate Normal Maps")]
+    [MenuItem("Tools/Bake/Bake Plant Blob Sway + Normals", priority = 210)]
     static void BakeAllThenGenerateNormals() {
         BakeAll();
         SpriteNormalMapGenerator.GenerateAll();

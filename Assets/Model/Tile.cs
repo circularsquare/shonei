@@ -126,9 +126,10 @@ public class Tile {
     public byte preSnowOverlayMask;
     public OverlayState preSnowOverlayState;
     // Background wall behind the tile (rendered by BackgroundTile.cs).
-    // Type is fixed at world-gen and never changes after mining: top DirtDepth
-    // rows below surface get Dirt walls, deeper get Stone. `hasBackground` is
-    // a derived getter for callers that just want presence (SkyExposure etc.).
+    // Type is fixed at world-gen and never changes after mining: wall type
+    // mirrors the worldgen dirt mask (wavy boundary) so cave-roof walls match
+    // what the tile would have been. `hasBackground` is a derived getter for
+    // callers that just want presence (SkyExposure etc.).
     private BackgroundType _backgroundType;
     public BackgroundType backgroundType {
         get { return _backgroundType; }
@@ -200,6 +201,25 @@ public class Tile {
     public bool HasLadder(){ return structs[2]?.structType.name == "ladder"; }
     public bool HasStairRight(){ return structs[2]?.structType.name == "stairs" && !structs[2].mirrored; }
     public bool HasStairLeft(){ return structs[2]?.structType.name == "stairs" && structs[2].mirrored; }
+    // Side-ladder presence test, scoped by which side the wall is on.
+    // dir = +1 → wall on right (sprite flipX, mirrored=true).
+    // dir = -1 → wall on left  (sprite as-authored, mirrored=false).
+    // Navigation uses this per-segment to upgrade a cliff-scaling segment to ladder cost.
+    public bool HasSideLadder(int dir){
+        Structure s = structs[2];
+        if (s == null || s.structType.name != "ladder_side") return false;
+        return dir > 0 ? s.mirrored : !s.mirrored;
+    }
+    // Direction-agnostic "is there any side ladder on this tile?" — used by
+    // Navigation.GetStandability so a side ladder's tile is walkable (lets builders
+    // reach mid-air stack levels and stand atop the ladder), without committing to
+    // a particular wall direction. Vertical navigation through the ladder still
+    // happens via the cliff/side-ladder waypoint chain at fractional X — this
+    // standability extension does NOT add a direct integer-X vertical edge.
+    public bool HasSideLadderAny(){
+        Structure s = structs[2];
+        return s != null && s.structType.name == "ladder_side";
+    }
 
     public Blueprint GetAnyBlueprint(){
         foreach (var bp in blueprints) if (bp != null) return bp;
@@ -237,8 +257,8 @@ public class Tile {
 
 
 // Wall type behind a tile. Saved per-tile and authoritative for which
-// background texture renders at that grid cell. Decided at world-gen by
-// position (top DirtDepth rows = Dirt, deeper = Stone) and never changes.
+// background texture renders at that grid cell. Decided at world-gen
+// from the dirt mask (wavy boundary) and never changes.
 public enum BackgroundType {
     None  = 0,
     Stone = 1,

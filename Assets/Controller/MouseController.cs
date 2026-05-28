@@ -273,12 +273,21 @@ public class MouseController : MonoBehaviour {
             anchorTile = WorldController.instance.world.GetTileAt(tileAt.x - offsetX, tileAt.y);
         }
 
+        // Ladder variant resolution: hovering near the edge of a tile swaps the
+        // placement to a sideladder (mounted on the adjacent wall). The player's
+        // selected build mode stays "ladder" — only the ghost/blueprint variant changes.
+        // For non-ladder modes this is a no-op and `st` / `anchorTile` keep their defaults.
+        StructType placeSt = st;
+        bool placeMirrored = BuildPanel.instance != null && BuildPanel.instance.mirrored;
+        if (mouseMode == MouseMode.Build && st != null && st.name == "ladder") {
+            BuildPanel.ResolveLadderVariant(currPosition, tileAt, st, out placeSt, out placeMirrored, out anchorTile);
+        }
+
         if (tileAt == null){ buildPreview.SetActive(false); }
         else if ((mouseMode == MouseMode.Build) || (mouseMode == MouseMode.Remove) || (mouseMode == MouseMode.Harvest)){
             buildPreview.SetActive(true);
-            if (mouseMode == MouseMode.Build && st != null && anchorTile != null) {
+            if (mouseMode == MouseMode.Build && placeSt != null && anchorTile != null) {
                 int shapeIndex = BuildPanel.instance != null ? BuildPanel.instance.shapeIndex : 0;
-                bool mirrored  = BuildPanel.instance != null && BuildPanel.instance.mirrored;
                 int rotation   = (BuildPanel.instance != null) ? BuildPanel.instance.rotation : 0;
                 // Two-click placement (rope bridge), second-click hover: override the
                 // F-key mirror with the geometry the built post will end up with. If the
@@ -287,24 +296,24 @@ public class MouseController : MonoBehaviour {
                 // aIsLeft logic so the preview never disagrees with the build outcome.
                 if (BuildPanel.instance != null
                         && BuildPanel.instance.firstEndpoint != null
-                        && st.placementMethod == "twoClick") {
-                    mirrored = anchorTile.x < BuildPanel.instance.firstEndpoint.x;
+                        && placeSt.placementMethod == "twoClick") {
+                    placeMirrored = anchorTile.x < BuildPanel.instance.firstEndpoint.x;
                 }
-                Shape shape    = st.GetShape(shapeIndex);
-                bool shapeAware = st.HasShapes;
+                Shape shape    = placeSt.GetShape(shapeIndex);
+                bool shapeAware = placeSt.HasShapes;
 
                 // Respawn the preview visual whenever the choice of structType / shape /
                 // mirror / rotation changes. Cheap — these change on user input (build menu
                 // click, Q/E, F, R), not per frame. The transform.position update below
                 // happens every frame regardless and never reallocates.
-                if (cachedPreviewSt        != st
+                if (cachedPreviewSt        != placeSt
                     || cachedPreviewShapeIndex != shapeIndex
-                    || cachedPreviewMirrored   != mirrored
+                    || cachedPreviewMirrored   != placeMirrored
                     || cachedPreviewRotation   != rotation) {
-                    RebuildPreviewVisual(st, shape, mirrored, rotation);
-                    cachedPreviewSt        = st;
+                    RebuildPreviewVisual(placeSt, shape, placeMirrored, rotation);
+                    cachedPreviewSt        = placeSt;
                     cachedPreviewShapeIndex = shapeIndex;
-                    cachedPreviewMirrored   = mirrored;
+                    cachedPreviewMirrored   = placeMirrored;
                     cachedPreviewRotation   = rotation;
                 }
 
@@ -317,8 +326,8 @@ public class MouseController : MonoBehaviour {
                 // anchor at the bottom-left tile centre (matching Structure / Blueprint ctor's
                 // shape-aware origin); legacy multi-tile uses the centred-footprint helper.
                 buildPreview.transform.position = shapeAware
-                    ? new Vector3(anchorTile.x, anchorTile.y + (st.depth == 3 ? -1f/8f : 0f), -1f)
-                    : StructureVisuals.PositionFor(st, anchorTile.x, anchorTile.y, z: -1);
+                    ? new Vector3(anchorTile.x, anchorTile.y + (placeSt.depth == 3 ? -1f/8f : 0f), -1f)
+                    : StructureVisuals.PositionFor(placeSt, anchorTile.x, anchorTile.y, z: -1);
                 buildPreview.transform.localScale = Vector3.one;
                 // Rotation lives on previewVisualRoot (Build sets it there) so the parent
                 // stays at identity for clean position math.
@@ -387,7 +396,7 @@ public class MouseController : MonoBehaviour {
                 } else {
                     Tile placeTile = anchorTile ?? tileAt;
                     bool shift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-                    if (BuildPanel.instance.PlaceBlueprint(placeTile) && !shift)
+                    if (BuildPanel.instance.PlaceBlueprint(placeTile, placeSt, placeMirrored) && !shift)
                         mouseMode = MouseMode.Select;
                 }
             } else if (mouseMode == MouseMode.Remove) {

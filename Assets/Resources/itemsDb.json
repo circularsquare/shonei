@@ -94,7 +94,17 @@
         "children": null
     },{
         "id": 40,
-        "name": "iron",
+        "name": "iron bar",
+        "decayRate": 0.0,
+        "children": null
+    },{
+        "id": 41,
+        "name": "copper bar",
+        "decayRate": 0.0,
+        "children": null
+    },{
+        "id": 42,
+        "name": "tin bar",
         "decayRate": 0.0,
         "children": null
     },{

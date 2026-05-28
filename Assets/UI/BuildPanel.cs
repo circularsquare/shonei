@@ -59,6 +59,10 @@ public class BuildPanel : MonoBehaviour {
         foreach (StructType st in Db.structTypes) {
             if (st == null) continue;
             if (st.defaultLocked) continue;
+            // Plants only appear once their seed has been discovered — otherwise the player
+            // sees plants they can't grow (e.g. a tree entry with no acorns). Undiscovered
+            // ones are added later by RefreshPlantVisibility when the seed turns up.
+            if (!PlantSeedDiscovered(st)) continue;
             string cat = st.isPlant ? "plants" : st.category;
             if (cat != null && cats.ContainsKey(cat)) cats[cat].Add(st);
         }
@@ -201,6 +205,48 @@ public class BuildPanel : MonoBehaviour {
         }
     }
 
+    // True when st can be shown in the build menu as far as input discovery is concerned:
+    // non-plants are unconstrained; a plant requires every input item (its seed) discovered.
+    bool PlantSeedDiscovered(StructType st) {
+        if (!st.isPlant || st.costs == null) return true;
+        foreach (ItemQuantity iq in st.costs)
+            if (iq.item != null && !iq.item.IsDiscovered()) return false;
+        return true;
+    }
+
+    // Reconciles plant entries against current seed-discovery state. Idempotent: adds a plant's
+    // entry when its seed becomes discovered (picked up, traded for, researched) and removes it
+    // when the seed is no longer discovered (after a save load / world reset). Called by
+    // InventoryController whenever discovery state changes or is re-seeded.
+    //
+    // Scoped to the seed gate only — research-locked plants are owned by Unlock/LockBuilding, so
+    // defaultLocked plants are left untouched here. (No plant is currently both seed- and research-
+    // gated; if one were added, the two gates would need to be unified.)
+    public void RefreshPlantVisibility() {
+        if (!subPanels.TryGetValue("plants", out GameObject sp) || sp == null) return;
+        Transform panel = sp.transform;
+        foreach (StructType st in Db.structTypes) {
+            if (st == null || !st.isPlant || st.defaultLocked) continue;
+            bool shouldShow = PlantSeedDiscovered(st);
+            Transform entry = panel.Find("BuildDisplay_" + st.name);
+            if (shouldShow && entry == null) AddBuildDisplay(panel, st);
+            else if (!shouldShow && entry != null) Destroy(entry.gameObject);
+        }
+        RefreshPlantCategoryButton();
+    }
+
+    // Shows the plants category button only when at least one plant is buildable. Counts from the
+    // data model rather than panel.childCount because Destroy is deferred — just-removed entries
+    // would still be counted this frame.
+    void RefreshPlantCategoryButton() {
+        if (!catButtons.TryGetValue("plants", out Button btn) || btn == null) return;
+        int n = 0;
+        foreach (StructType st in Db.structTypes)
+            if (st != null && st.isPlant && !st.defaultLocked && PlantSeedDiscovered(st)) n++;
+        btn.gameObject.SetActive(n > 0);
+        if (n == 0 && openCategory == "plants") CloseSubPanel();
+    }
+
     public void SetStructType(StructType st) {
         structType = st;
         mirrored = false;
@@ -232,8 +278,62 @@ public class BuildPanel : MonoBehaviour {
         return StructPlacement.CanPlaceHere(st, tile, mirrored, shapeIndex);
     }
 
-    public bool PlaceBlueprint(Tile tile) {
+    // Cursor-position-driven ladder variant resolution. When the player is in ladder build
+    // mode, hovering near the left/right edge of a tile switches the placement to the
+    // sideladder StructType (mounted to the adjacent wall surface). The cost panel and
+    // hotkeys keep reading the selected `structType` (ladder); only what gets *placed*
+    // switches. Returns the resolved (StructType, mirrored, anchor) — the resolved
+    // StructType stays "ladder" (centred) when the cursor is in the middle of a tile or
+    // when ladder isn't selected at all.
+    //
+    // dir/mirror convention for sideladder: mirrored=true → wall on right of the ladder's
+    // tile; mirrored=false → wall on left. See Tile.HasSideLadder.
+    public static void ResolveLadderVariant(Vector2 world, Tile tileAt, StructType activeSt,
+                                            out StructType resolvedSt, out bool resolvedMirrored,
+                                            out Tile resolvedAnchor) {
+        resolvedSt = activeSt;
+        resolvedMirrored = BuildPanel.instance != null && BuildPanel.instance.mirrored;
+        resolvedAnchor = tileAt;
+        if (activeSt == null || activeSt.name != "ladder" || tileAt == null) return;
+        StructType sideSt = Db.structTypeByName.TryGetValue("ladder_side", out var ss) ? ss : null;
+        if (sideSt == null) return;
+
+        // Tiles are center-pivot — tile (tx, _) spans world.x ∈ [tx-0.5, tx+0.5).
+        // World.GetTileAt(float) uses floor(x + 0.5) to snap. Convert to [0,1] relative
+        // to the SNAPPED tile, not raw floor(world.x) (which is off by half a tile and
+        // makes the cursor-at-tile-center read as "left edge").
+        float frac = world.x - tileAt.x + 0.5f;
+        const float EDGE = 0.2f;
+        bool hereSolid = tileAt.type.solid || tileAt.structs[0] != null;
+        World w = World.instance;
+
+        if (frac < EDGE) {
+            // Cursor near left edge. Ladder mounts onto the wall to the left of its own tile.
+            if (hereSolid) {
+                Tile air = w.GetTileAt(tileAt.x - 1, tileAt.y);
+                if (air == null) return;
+                resolvedSt = sideSt; resolvedMirrored = true; resolvedAnchor = air; // wall (tileAt) on right of air
+            } else {
+                resolvedSt = sideSt; resolvedMirrored = false; resolvedAnchor = tileAt;
+            }
+        } else if (frac > 1f - EDGE) {
+            if (hereSolid) {
+                Tile air = w.GetTileAt(tileAt.x + 1, tileAt.y);
+                if (air == null) return;
+                resolvedSt = sideSt; resolvedMirrored = false; resolvedAnchor = air; // wall (tileAt) on left of air
+            } else {
+                resolvedSt = sideSt; resolvedMirrored = true; resolvedAnchor = tileAt;
+            }
+        }
+    }
+
+    public bool PlaceBlueprint(Tile tile, StructType placeSt = null, bool? placeMirrored = null) {
         if (structType == null) return false;
+        // Overrides let the caller (MouseController) commit a cursor-resolved variant
+        // (e.g. ladder → sideladder) without mutating BuildPanel.structType, so the cost
+        // panel and selected-tool indicator keep showing the player's chosen build mode.
+        StructType effSt = placeSt ?? structType;
+        bool effMirrored = placeMirrored ?? mirrored;
 
         // Two-click placement (rope bridges): first click stashes the endpoint;
         // second click validates the span and creates ONE blueprint carrying
@@ -280,19 +380,19 @@ public class BuildPanel : MonoBehaviour {
             return true;
         }
 
-        string why = StructPlacement.GetPlacementFailReason(structType, tile, mirrored, shapeIndex);
+        string why = StructPlacement.GetPlacementFailReason(effSt, tile, effMirrored, shapeIndex);
         if (why != null) {
             EventFeed.instance?.Post($"<color=#cc3333>{why}</color>", EventFeed.Category.Alert);
             return false;
         }
-        Blueprint blueprint = new Blueprint(structType, tile.x, tile.y, mirrored, rotation: rotation, shapeIndex: shapeIndex);
+        Blueprint blueprint = new Blueprint(effSt, tile.x, tile.y, effMirrored, rotation: rotation, shapeIndex: shapeIndex);
         SoundManager.instance?.PlaySFX("click");
         // Debug one-shot: skip the worker/supply step entirely. Complete() with an empty
         // inventory consumes no resources (the foreach over inv.itemStacks is a no-op).
         // Bypasses the suspended-support gate by design — same spirit as Ctrl+Shift+D.
         if (instantBuildNext) {
             instantBuildNext = false;
-            Debug.Log($"[debug] instant-build {structType.name} at ({tile.x}, {tile.y})");
+            Debug.Log($"[debug] instant-build {effSt.name} at ({tile.x}, {tile.y})");
             blueprint.Complete();
         }
         return true;
