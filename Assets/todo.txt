@@ -83,3 +83,5 @@ upsize more workshop buildings
     furnace (taller, 2x2m)
 sketch out metalworking?
 working pose facing back
+test side ladders / cliff climbing
+tools

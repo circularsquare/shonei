@@ -23,7 +23,7 @@ Any  → Falling (involuntary; interrupts current task) → Idle on landing
 
 | Need | Effect |
 |------|--------|
-| Hunger | Reduces efficiency; eating restores. A full in-game day at zero food is fatal — see **Starvation death** below. |
+| Hunger | Reduces efficiency; eating restores. A full in-game day at zero food is fatal — see **Starvation death** below. Food choice is scored in `Animal.FindFood` (foodValue × craving × distance-discount); a **seed** item (one that's also a planting cost — `Db.seedItems`, derived from `PlantType.costs`) under 300 fen world-total is held to a fallback tier and eaten only when no other food is reachable, so mice don't strand farmers by eating the last replanting stock. |
 | Sleep | Reduces efficiency; sleeping at home restores |
 | Temperature | Reduces efficiency when outside comfort range (default 10–25°C). Clothing expands the range by ±3°C. |
 | Efficiency | `eating.Efficiency() * eeping.Efficiency() * happiness.TemperatureEfficiency()` — scales move speed and work rate |

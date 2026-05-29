@@ -38,6 +38,19 @@ public Eating(){ }
             return Fullness() * 2f * 0.8f + 0.2f; // 20% at worst.
         }
     }
+
+    // Smooth 0..1 urgency to seek food, for the unified ChooseTask picker (see
+    // plans/urgency-system.md). Replaces the hard Hungry() cliff with a curve: 0 at/above
+    // seekFoodThreshold, rising convexly to 1 at empty. The convex exponent keeps a
+    // slightly-hungry mouse's pull low (so it finishes a nearby job) while a near-starving
+    // mouse's pull dominates almost everything. Hungry() is retained for any binary callers.
+    public const float urgencyConvexity = 1.5f; // >1 = low pull when slightly hungry, sharp near empty
+    public float HungerUrgency(){
+        float f = Fullness();
+        if (f >= seekFoodThreshold) return 0f;
+        float t = (seekFoodThreshold - f) / seekFoodThreshold; // 0 at threshold → 1 at empty
+        return UnityEngine.Mathf.Pow(t, urgencyConvexity);
+    }
     public void Eat(float nFood){
         food = UnityEngine.Mathf.Min(food + nFood, maxFood);
         timeSinceLastAte = 0f;

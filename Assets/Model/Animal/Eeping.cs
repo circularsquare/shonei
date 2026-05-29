@@ -27,6 +27,17 @@ public class Eeping {
         float e = eep / maxEep;
         return e < exhaustedSleepThreshold + bedtimeUrgency * bedtimeMaxBoost;
     }
+
+    // Smooth 0..1 urgency to sleep, for the unified ChooseTask picker (see
+    // plans/urgency-system.md). Same trigger boundary as ShouldSleep — 0 at/above the
+    // (bedtime-shifted) threshold — but linear pull below it: the more exhausted past the
+    // threshold, the stronger the draw to bed. ShouldSleep is retained for binary callers.
+    public float SleepUrgency(float bedtimeUrgency){
+        float e = eep / maxEep;
+        float threshold = exhaustedSleepThreshold + bedtimeUrgency * bedtimeMaxBoost;
+        if (e >= threshold) return 0f;
+        return (threshold - e) / threshold;
+    }
     public float Efficiency(){
         if (eep / maxEep > 0.5f){
             return 1f;

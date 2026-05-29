@@ -1950,7 +1950,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   pixelsPerUnit: 16
-  noiseScale: 0.3
+  noiseScale: 0.26
   noiseAspect: 1.6
   thresholdClear: 0.7
   thresholdStorm: 0.36
@@ -1961,7 +1961,7 @@ MonoBehaviour:
   windDriftScale: 0.5
   worldLockingX: 0.1
   worldLockingY: 0.1
-  cloudEvolutionRate: 0.002
+  cloudEvolutionRate: 0.004
   baseColorClear: {r: 1, g: 1, b: 1, a: 1}
   baseColorStorm: {r: 0.6915272, g: 0.7180866, b: 0.7924528, a: 1}
   tintLerpStartHumidity: 0.25
@@ -1971,19 +1971,20 @@ MonoBehaviour:
   litBand: 0.56
   shadowBand: 0
   cloudSunHeight: 0.7
-  blobCellSize: 1
+  blobCellSize: 0.8
   blobJitter: 0.58
   blobRadiusMin: 1
-  blobRadiusMax: 2
+  blobRadiusMax: 2.2
   excessForMaxSize: 0.26
   blobDepthRange: 1.5
   normalEpsilon: 0.252
   edgeWobbleStrength: 0.2
   edgeWobbleScale: 0.7
   curlNoiseEps: 0.1
-  blobAspect: 1.5
+  blobAspect: 1.6
   edgeThreshold: 0.02
   edgeSoftness: 0
+  fadeRange: 0.07
 --- !u!1 &107429651
 GameObject:
   m_ObjectHideFlags: 0

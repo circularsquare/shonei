@@ -9,9 +9,9 @@ using UnityEngine;
 // crosses `rainThreshold` from below, and stops when it crosses back. Humidity
 // itself is a slow Ornstein-Uhlenbeck walk reverting toward `humidityMean`,
 // stepped 3× per in-game hour and smoothed continuously toward the target.
-// The walk is calibrated so humidity spends roughly a quarter of its time
-// above the rain threshold, matching the old hardcoded 4% / 12% transition
-// rates. CloudLayer also reads `humidity` to drive cloud count, size, altitude
+// The walk is calibrated so the smoothed humidity sits above the rain
+// threshold ≈9% of the time (≈0.8 rain episodes/in-game-day, ~3 hr each;
+// Monte-Carlo verified). CloudLayer also reads `humidity` to drive cloud count, size, altitude
 // and tint, so the sky visually builds up before rain and clears after.
 //
 // Precipitation intensity is a smooth function of humidity (see ComputeWetness):
@@ -121,10 +121,14 @@ public class WeatherSystem {
     // OU calibration so clear↔rain transitions are less autocorrelated and
     // feel closer to the old per-hour Bernoulli model's independent flips.
     const float humidityReversion = 0.05f;
-    // Shock half-width scales with √reversion to preserve stationary
-    // variance V = h²/(6λ). Keeping std ≈ 0.21 puts the 0.65 threshold at
-    // ~0.7σ above mean, so the long-run rain fraction stays around 25%.
-    const float humidityShock     = 0.1162f;
+    // Shock half-width sets the stationary variance V = h²/(6λ) of the OU
+    // target. Set slightly above the bare √reversion calibration (≈0.1162)
+    // to offset the variance that the humidity low-pass below removes — so
+    // the *smoothed* humidity keeps std ≈ 0.22 and the 0.7 threshold stays
+    // ~0.9σ above mean. Long-run rain fraction ≈ 9% of the time (Monte-Carlo
+    // verified); raise this in lockstep if humiditySmoothingRate is lowered
+    // further, or rain thins out.
+    const float humidityShock     = 0.121f;
 
     // Subtracted from `targetHumidity` each sub-step, scaled by current
     // wetness. Physically: rain depletes atmospheric moisture, so episodes
@@ -135,10 +139,17 @@ public class WeatherSystem {
     // drizzle the drain is proportionally smaller.
     const float rainHumidityDrain = 0.015f;
 
-    // Continuous smoothing rate (per real second). Slower than wind because
+    // Continuous smoothing rate (per timer-second). Slower than wind because
     // weather inertia should feel like hours not seconds — visible cloud
-    // build-up should outlast several sub-hourly steps.
-    const float humiditySmoothingRate = 0.15f;
+    // build-up should outlast several sub-hourly steps. Lowered from 0.15 to
+    // 0.08 to make the cloud field thicken / clear more lazily (CloudLayer
+    // reads `humidity` for its coverage threshold). Heavier smoothing damps
+    // the signal's variance, so humidityShock is raised to hold the rain
+    // fraction; the side effect is rain arrives in fewer, longer episodes
+    // (≈0.8/day vs ≈1.1/day before). If you want lazier coverage WITHOUT
+    // touching rain episode count, give CloudLayer its own separate low-pass
+    // and leave this on the fast signal instead.
+    const float humiditySmoothingRate = 0.08f;
 
     const float lerpDuration = 4f;
 

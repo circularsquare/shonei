@@ -68,6 +68,39 @@ public class EatingTests {
         Assert.That(e.Efficiency(), Is.EqualTo(expected).Within(0.0001f));
     }
 
+    // ── HungerUrgency ─────────────────────────────────────────────────────
+    // Contract: 0 at/above seekFoodThreshold (0.6), convex rise to 1 at empty.
+    // u = ((0.6 - fullness) / 0.6) ^ 1.5. Convex: slightly-hungry pull is low.
+    [TestCase(100f, 0f)]        // full → no pull
+    [TestCase(60f,  0f)]        // exactly at seek threshold → no pull
+    [TestCase(0f,   1f)]        // empty → max pull (1^1.5 = 1)
+    [TestCase(50f,  0.06804f)]  // fullness 0.5: t=(0.6-0.5)/0.6=0.1667, 0.1667^1.5 ≈ 0.0680
+    [TestCase(30f,  0.35355f)]  // fullness 0.3: t=0.5, 0.5^1.5 ≈ 0.3536
+    public void HungerUrgency_ZeroAboveThreshold_ConvexBelow(float food, float expected){
+        Eating e = new Eating();
+        e.food = food;
+        Assert.That(e.HungerUrgency(), Is.EqualTo(expected).Within(0.001f));
+    }
+
+    // HungerUrgency and Hungry must agree on the trigger: urgency > 0 iff Hungry.
+    [TestCase(59f)]  // hungry
+    [TestCase(60f)]  // not hungry (boundary)
+    [TestCase(90f)]  // not hungry
+    public void HungerUrgency_PositiveIffHungry(float food){
+        Eating e = new Eating();
+        e.food = food;
+        Assert.That(e.HungerUrgency() > 0f, Is.EqualTo(e.Hungry()));
+    }
+
+    // Convexity invariant: a slightly-hungry mouse's pull should be well below the
+    // linear midpoint, so it prefers finishing nearby work over topping up.
+    [Test]
+    public void HungerUrgency_IsConvex_SlightlyHungryPullIsLow(){
+        Eating e = new Eating();
+        e.food = 45f; // fullness 0.45, t = 0.25 → 0.25^1.5 = 0.125, below the linear 0.25
+        Assert.That(e.HungerUrgency(), Is.LessThan(0.25f));
+    }
+
     // ── Eat ─────────────────────────────────────────────────────────────
     [Test]
     public void Eat_RestoresFood(){

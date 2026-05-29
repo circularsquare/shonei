@@ -23,6 +23,10 @@ public class Db : MonoBehaviour {
     public static Item[] itemsFlat = new Item[500];
     public static int itemsCount = 0;
     public static List<Item> edibleItems;
+    // Edible items that are also a planting cost (some PlantType.costs entry). Mice avoid
+    // eating the last few of these so farmers/loggers aren't left unable to replant — see
+    // Animal.FindFood. Derived from plant data in LoadAll; no JSON flag.
+    public static HashSet<Item> seedItems;
     public static List<Item> equipmentItems;
     public static List<Item> clothingItems;
     // Leaf items that fit into a named furnishing slot. Built at Db.LoadAll time by
@@ -159,6 +163,14 @@ public class Db : MonoBehaviour {
         GenerateBookRecipes();
         itemsFlat = itemsFlat.Take(itemsCount).ToArray();
         edibleItems = itemsFlat.Where(i => i.foodValue > 0).OrderByDescending(i => i.foodValue).ToList();
+        // An edible counts as a "seed" if some plant lists it as a planting cost. PlantType.costs
+        // is resolved in PlantType.OnDeserialized (ReadJson, above), so it's populated here.
+        seedItems = new HashSet<Item>();
+        foreach (PlantType pt in plantTypes) {
+            if (pt?.costs == null) continue;
+            foreach (ItemQuantity c in pt.costs)
+                if (c.item != null && c.item.foodValue > 0) seedItems.Add(c.item);
+        }
         equipmentItems = itemsFlat.Where(i => { Item cur = i; while (cur != null) { if (cur.name == "tools") return true; cur = cur.parent; } return false; }).ToList();
         clothingItems = itemsFlat.Where(i => { Item cur = i; while (cur != null) { if (cur.name == "clothing") return true; cur = cur.parent; } return false; }).ToList();
         BuildFurnishingSlotRegistry();

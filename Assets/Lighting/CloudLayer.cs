@@ -83,8 +83,8 @@ public class CloudLayer : SkyLayerBase {
     public float cloudSunHeight = 1.5f;
 
     [Header("Sphere-blobs")]
-    [Tooltip("Grid cell size in world units. Smaller = denser blob spawn, more solid clouds. Blob radii should overlap adjacent cells (radiusMax ≈ cellSize) so clouds merge visually.")]
-    public float blobCellSize    = 1.0f;
+    [Tooltip("Grid cell size in world units. Smaller = denser blob spawn, more solid clouds. Blob radii should overlap adjacent cells (radiusMax ≈ cellSize) so clouds merge visually. Floored at 0.2 — smaller values explode the per-bake grid-cell count and hang the editor.")]
+    [Min(0.2f)] public float blobCellSize = 1.0f;
     [Tooltip("How much each blob jitters within its cell (0=grid-aligned, 1=full cell). Hashed per cell, deterministic frame-to-frame.")]
     [Range(0f, 1f)] public float blobJitter = 0.5f;
     [Tooltip("Minimum blob radius (world units) — used when density barely exceeds threshold.")]
@@ -109,6 +109,8 @@ public class CloudLayer : SkyLayerBase {
     [Range(0.0f, 0.6f)]  public float edgeThreshold = 0.2f;
     [Tooltip("Edge softness (half-width of the metaball alpha smoothstep). 0 = razor-hard silhouette; ~0.1 = subtle feather; >0.3 = visibly wispy. Combines with strength of warp noise — softer edges + bigger warp = puffy cumulus, sharper edges = more cartoony.")]
     [Range(0.0f, 0.4f)]  public float edgeSoftness  = 0.15f;
+    [Tooltip("Density window (excess above the spawn threshold) over which a blob ramps from radius 0 to full, via a sqrt curve. Wider = blobs fade in/out gradually as the noise field drifts a cell across the threshold, softening the 'popping / blinking into existence' at cloud edges; narrower = crisper but blobs snap in. 0.02 = old near-instant pop; ~0.08 = a gentle fade.")]
+    [Range(0.005f, 0.2f)] public float fadeRange = 0.08f;
 
     SpriteRenderer sr;
     // Dummy Texture2D backing for Sprite.Create — never written to. The
@@ -138,6 +140,10 @@ public class CloudLayer : SkyLayerBase {
     readonly Vector4[] blobBuffer       = new Vector4[MAX_BLOBS];
     readonly float[]   blobAspectBuffer = new float[MAX_BLOBS];
     int blobCount;
+
+    // Throttle for the MAX_BLOBS-exceeded warning so it doesn't spam the
+    // console every bake when a dense sky genuinely wants more than the cap.
+    float nextBlobCapWarnTime;
 
     static readonly int MainTexId        = Shader.PropertyToID("_MainTex");
     static readonly int NormalMapId      = Shader.PropertyToID("_NormalMap");
@@ -497,7 +503,10 @@ public class CloudLayer : SkyLayerBase {
     void GenerateBlobs(float threshold, Vector2 noiseOffset) {
         float halfW  = (textureSize.x * 0.5f) / pixelsPerUnit;
         float halfH  = bandHalfHeight;       // only walk inside the band envelope
-        float cellSz = Mathf.Max(0.01f, blobCellSize);
+        // Hard floor (matches the [Min] on blobCellSize): a near-zero cell
+        // size makes the col/row grid span millions of cells per bake and
+        // hangs the editor. Guards code paths that bypass the inspector.
+        float cellSz = Mathf.Max(0.2f, blobCellSize);
 
         // Noise-space x range covered by the viewport: a sprite-local x
         // of -halfW..+halfW maps to noise-anchor x of -halfW+nOff.x..+halfW+nOff.x.
@@ -569,24 +578,19 @@ public class CloudLayer : SkyLayerBase {
                 float excess = d - threshold;
                 if (excess <= 0f) continue;
 
-                // Two stacked lerps:
-                //   1) "density → max radius" maps how-far-above-threshold
-                //      to where in [blobRadiusMin, blobRadiusMax] the
-                //      blob's full radius sits. Saturates above +0.3.
-                //   2) "fade-in" multiplier ramps radius from 0 at the
-                //      threshold to full quickly via a sqrt curve over
-                //      fadeRange. This kills the popping (cells grazing
-                //      threshold during wind drift still grow smoothly
-                //      from a point) while keeping the tiny phase
-                //      brief — sqrt(t) puts the blob at 70% size by the
-                //      time excess is a quarter of fadeRange, so most
-                //      of the in-between time the blob looks close to
-                //      full rather than visibly small.
-                const float fadeRange = 0.02f;
-                float t      = Mathf.Clamp01(excess / fadeRange);
-                float fadeIn = Mathf.Sqrt(t);
-                float maxR   = Mathf.Lerp(blobRadiusMin, blobRadiusMax,
-                                           Mathf.Clamp01(excess / Mathf.Max(0.001f, excessForMaxSize)));
+                // Density → max radius: how-far-above-threshold maps into
+                // [blobRadiusMin, blobRadiusMax], saturating at excessForMaxSize.
+                float maxR = Mathf.Lerp(blobRadiusMin, blobRadiusMax,
+                                        Mathf.Clamp01(excess / Mathf.Max(0.001f, excessForMaxSize)));
+
+                // Linear radius fade-in over fadeRange: a cell just above the
+                // spawn threshold grows its blob from 0 → full as excess goes
+                // 0 → fadeRange. Crisp edges throughout (pixel-art); the only
+                // thing that makes a despawn/spawn smooth is shrinking the disc
+                // to nothing rather than popping a still-visible one off (see
+                // the sub-pixel cull below).
+                float fadeIn = Mathf.Clamp01(excess / fadeRange);
+
                 // Per-cell random size factor in [0.5, 1]. Cells in a
                 // high-noise cluster all see similar maxR, so without
                 // this they'd spawn a row of near-identical big lobes.
@@ -595,15 +599,19 @@ public class CloudLayer : SkyLayerBase {
                 // mix of big and small puffs scattered through the same
                 // cluster, instead of all-at-maxR. The 0.5 floor (vs a
                 // raw [0,1] hash) stops blobs collapsing far below the
-                // cell spacing: a near-zero factor at a cluster's fading
-                // edge made that edge row detach into a string of
-                // disconnected dots under the cloud body. Hashed on
-                // (col, row) so the size is stable frame-to-frame.
+                // cell spacing. Hashed on (col, row) so the size is
+                // stable frame-to-frame.
                 float sizeRand = 0.5f + 0.5f * Hash2D(col * 47.3f, row * 31.7f);
-                float radius = maxR * fadeIn * sizeRand;
-                // Skip blobs too small to contribute visibly. Frees up
-                // the MAX_BLOBS slot for cells that actually matter.
-                if (radius < blobRadiusMin * 0.2f) continue;
+                float radius   = maxR * fadeIn * sizeRand;
+
+                // Cull only SUB-PIXEL blobs (< 1px diameter). As a cell nears
+                // the spawn threshold its radius fades to ~0, so by the time we
+                // drop it the disc is below one pixel — an invisible vanish.
+                // This is the key anti-blink fix: the old cull at
+                // 0.2·blobRadiusMin (~4.5px) chopped off a STILL-VISIBLE disc,
+                // and clusters of fringe blobs hitting that cutoff together read
+                // as the cloud "blinking". Resolution-aware via pixelsPerUnit.
+                if (radius * 2f * pixelsPerUnit < 1f) continue;
 
                 float z = (Hash2D(col * 5.19f, row * 9.71f) - 0.5f) * blobDepthRange;
                 // Per-blob aspect: ±20% around the inspector value,
@@ -611,9 +619,21 @@ public class CloudLayer : SkyLayerBase {
                 // like identical horizontally-stretched ovals.
                 float aspectVar = (Hash2D(col * 5.71f, row * 3.13f) - 0.5f) * 0.4f;
                 float aspect    = blobAspect * (1f + aspectVar);
+
                 blobAspectBuffer[blobCount] = aspect;
                 blobBuffer[blobCount++]     = new Vector4(lx, lyBand, z, radius);
-                if (blobCount >= MAX_BLOBS) return;
+                // Cap is a safety net, not a normal operating point. Warn (not
+                // silently truncate) so a genuinely over-dense sky is visible —
+                // truncation reshuffles which blobs make the cut as the field
+                // drifts, which reads as blinking.
+                if (blobCount >= MAX_BLOBS) {
+                    if (Time.unscaledTime >= nextBlobCapWarnTime) {
+                        nextBlobCapWarnTime = Time.unscaledTime + 5f;
+                        Debug.LogWarning($"CloudLayer: blob demand hit MAX_BLOBS ({MAX_BLOBS}); field truncated. " +
+                                         "Raise MAX_BLOBS (+ shader #define) or increase blobCellSize.");
+                    }
+                    return;
+                }
             }
         }
     }

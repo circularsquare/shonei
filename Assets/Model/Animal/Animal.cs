@@ -91,6 +91,12 @@ public class Animal : MonoBehaviour{
     // tick while the animal is boxed in. Transient — not saved.
     [System.NonSerialized] public float dropCooldownUntil = 0f;
 
+    // Set by DeliverToBlueprintObjective when this animal delivers the last material and promotes a
+    // blueprint to Constructing. Consumed (and cleared) on the very next ChooseTask to skip the
+    // leisure/idle roll, so the animal — already standing on the site, and the only job eligible to
+    // build it — finishes construction instead of rolling idle and wandering off. Transient — not saved.
+    [System.NonSerialized] public bool justPromotedConstruct = false;
+
     // Set true by TickUpdate when the mouse has starved to death. AnimalController
     // sweeps for this flag after the tick loop and removes the mouse — never
     // mid-iteration, so animals[] stays safe to compact. Transient — not saved
@@ -462,13 +468,21 @@ public class Animal : MonoBehaviour{
             leisureChance = 0.05f; idleChance = 0.15f;
         }
 
-        float roll = (float)random.NextDouble();
-        if (roll < leisureChance) {
-            if (TryPickLeisure()) return;
-            task = null; return; // no leisure available — idle
-        }
-        if (roll < leisureChance + idleChance) {
-            task = null; return; // idle
+        // Skip the leisure/idle roll on the tick right after delivering a blueprint's last material:
+        // fall straight through to the work loop so the deliverer finishes the construct order it's
+        // standing on, rather than rolling idle and forcing a second trip. Consumed once. Survival
+        // needs above still apply — a starving mouse will have already left for food before here.
+        bool skipRoll = justPromotedConstruct;
+        justPromotedConstruct = false;
+        if (!skipRoll) {
+            float roll = (float)random.NextDouble();
+            if (roll < leisureChance) {
+                if (TryPickLeisure()) return;
+                task = null; return; // no leisure available — idle
+            }
+            if (roll < leisureChance + idleChance) {
+                task = null; return; // idle
+            }
         }
 
         // 2. Work orders: p1 → p2 → p3 (haul, then craft via recipe-first) → p4
@@ -556,23 +570,38 @@ public class Animal : MonoBehaviour{
         // Peek nearest reachable source per food (no reservation — FindPathItemStack is read-only),
         // score it, then try ObtainTask in descending score order so a stolen stack falls through to
         // the next-best candidate rather than aborting the whole pick.
+        //
+        // Two tiers: a seed item we're nearly out of (< seedReserveFen in the world) is held back
+        // into a fallback list so mice don't eat the colony's last planting stock when other food
+        // exists. The fallback is still tried before giving up, so a mouse with nothing else
+        // reachable eats it rather than starves — the reserve is a soft preference, not a lock.
         var candidates = new List<(float score, Item food)>();
+        var scarceSeeds = new List<(float score, Item food)>();
         foreach (Item food in Db.edibleItems) {
             if (slotItem != null && slotItem != food) continue; // slot has a different food
             var (path, _) = nav.FindPathItemStack(food);
             if (path == null) continue;
             float cravingMult = happiness.WouldHelp(food) ? Eating.cravingMultiplier : 1f;
             float discount = 1f / (1f + path.cost * urgency);
-            candidates.Add((food.foodValue * cravingMult * discount, food));
+            var entry = (food.foodValue * cravingMult * discount, food);
+
+            bool scarceSeed = Db.seedItems.Contains(food)
+                && GlobalInventory.instance.Quantity(food) < seedReserveFen;
+            (scarceSeed ? scarceSeeds : candidates).Add(entry);
         }
 
         candidates.Sort((a, b) => b.score.CompareTo(a.score));
-        foreach (var (_, food) in candidates) {
+        scarceSeeds.Sort((a, b) => b.score.CompareTo(a.score));
+        foreach (var (_, food) in candidates.Concat(scarceSeeds)) { // normal food first, scarce seeds as fallback
             task = new ObtainTask(this, food, amountToPickUp, foodSlotInv);
             if (task.Start()) return true;
         }
         return false;
     }
+
+    // Below this world-total (fen) a seed item is treated as scarce and eaten only as a last
+    // resort — 3 whole units (300 fen) of replanting stock kept in reserve. See FindFood.
+    private const int seedReserveFen = 300;
 
 
     // Picks the best available leisure activity by targeting the lowest happiness satisfaction.

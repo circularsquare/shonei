@@ -35,6 +35,9 @@ public class DeliverToBlueprintObjective : Objective { // always queued after Go
             if (blueprint.IsFullyDelivered()) {
                 blueprint.state = Blueprint.BlueprintState.Constructing;
                 WorkOrderManager.instance?.PromoteToConstruct(blueprint);
+                // The deliverer is standing on the site and is the only job eligible to build it.
+                // Flag it so its next ChooseTask skips the idle roll and finishes construction.
+                animal.justPromotedConstruct = true;
             }
             Complete();
         } else {

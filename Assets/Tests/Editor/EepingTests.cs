@@ -55,6 +55,33 @@ public class EepingTests {
         Assert.That(e.ShouldSleep(bedtimeUrgency), Is.EqualTo(expected));
     }
 
+    // ── SleepUrgency ───────────────────────────────────────────────────
+    // Contract: 0 at/above the (bedtime-shifted) sleep threshold, linear pull below it.
+    // threshold = 0.4 + bedtimeUrgency * 0.5. Mirrors ShouldSleep's trigger boundary.
+    [TestCase(40f, 0f,   0f)]      // e=0.40 == daytime threshold → no pull
+    [TestCase(90f, 0f,   0f)]      // rested daytime → no pull
+    [TestCase(0f,  0f,   1f)]      // empty daytime: (0.4-0)/0.4 = 1
+    [TestCase(20f, 0f,   0.5f)]    // e=0.20, threshold 0.4: (0.4-0.2)/0.4 = 0.5
+    [TestCase(65f, 0.5f, 0f)]      // mid-bedtime threshold 0.65, e=0.65 → 0
+    [TestCase(40f, 0.5f, 0.3846154f)] // threshold 0.65, e=0.40: (0.65-0.40)/0.65
+    [TestCase(0f,  1f,   1f)]      // deep night, empty: (0.9-0)/0.9 = 1
+    public void SleepUrgency_ZeroAboveThreshold_LinearBelow(float eep, float bedtime, float expected){
+        Eeping e = new Eeping();
+        e.eep = eep;
+        Assert.That(e.SleepUrgency(bedtime), Is.EqualTo(expected).Within(0.0001f));
+    }
+
+    // SleepUrgency and ShouldSleep must agree on the trigger: urgency > 0 iff ShouldSleep.
+    [TestCase(39f, 0f)]
+    [TestCase(41f, 0f)]
+    [TestCase(60f, 0.5f)]
+    [TestCase(85f, 1f)]
+    public void SleepUrgency_PositiveIffShouldSleep(float eep, float bedtime){
+        Eeping e = new Eeping();
+        e.eep = eep;
+        Assert.That(e.SleepUrgency(bedtime) > 0f, Is.EqualTo(e.ShouldSleep(bedtime)));
+    }
+
     // ── Efficiency ─────────────────────────────────────────────────────
     [TestCase(100f, 1f)]
     [TestCase(60f,  1f)]
