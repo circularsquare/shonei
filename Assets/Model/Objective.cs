@@ -30,5 +30,9 @@ public abstract class Objective {
     // default state-driven animation (idle/walk/eep). Read by AnimationController each frame
     // and mapped to an Animator int. Self-clears on objective transition — no explicit reset.
     public virtual string PoseOverride => null;
+    // Facing-view this objective forces ("back"/"front"), or null for nav/state-driven facing.
+    // Mirrors PoseOverride: read by AnimationController each frame, mapped via ViewNameToFacing.
+    // Self-clears on objective transition — no explicit reset.
+    public virtual string ViewOverride => null;
     public override string ToString() {return GetObjectiveName();}
 }

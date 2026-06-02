@@ -72,9 +72,9 @@ public class CollapsibleHeader : MonoBehaviour, IPointerClickHandler {
             else if (!open && spriteCollapsed != null) dropdownImage.sprite = spriteCollapsed;
         }
         if (forceLayoutRebuild){
-            Canvas.ForceUpdateCanvases();
-            RectTransform rt = parent as RectTransform;
-            if (rt != null) LayoutRebuilder.ForceRebuildLayoutImmediate(rt);
+            // Canonical bottom-up settle so nested content opens at full height in one
+            // frame (no min-height pop). See LayoutUtil.
+            LayoutUtil.RebuildImmediate(parent as RectTransform);
         }
     }
 }

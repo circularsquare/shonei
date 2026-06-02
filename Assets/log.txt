@@ -1,5 +1,10 @@
 meoww!!
 
+6/2
+- more recipe panel improvements
+- tutorial tasks
+6/1
+- added kiln
 5/30
 - fix mouse positioning on load
 - recipe panel item icons, and grouping by workstation

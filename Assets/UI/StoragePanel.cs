@@ -48,9 +48,9 @@ public class StoragePanel : MonoBehaviour {
         PopulateSlots();
         BuildAllowTreeOnce();
         RefreshAllowTreeForInv(inv);
-        // Force layout recalculation so ContentSizeFitters update before the frame renders
-        Canvas.ForceUpdateCanvases();
-        LayoutRebuilder.ForceRebuildLayoutImmediate(GetComponent<RectTransform>());
+        // Settle nested ContentSizeFitters bottom-up so the panel shows at full size
+        // before the frame renders (no min-height pop). See LayoutUtil.
+        LayoutUtil.RebuildImmediate(GetComponent<RectTransform>());
     }
 
     // Hide the panel. Cached allow-tree rows persist as inactive children (cheap;

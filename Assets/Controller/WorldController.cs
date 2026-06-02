@@ -286,6 +286,7 @@ public class WorldController : MonoBehaviour {
         PlantAt("pinetree", 28);
         PlantAt("wheat", 35);
         PlantAt("wheat", 36);
+        PlantAt("wheat", 37); // 3 wheat so the onboarding "flag 3 wheat" PlayerTask is completable from a fresh world
 
         WorldGen.ScatterPlants(world, surfaceY, seed);
 

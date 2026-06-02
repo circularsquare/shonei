@@ -100,6 +100,9 @@ public class TradingPanel : MonoBehaviour {
 
         PopulateItemIconGrid();
 
+        // Graph stays hidden until a query returns real history (see OnClickQuery).
+        priceGraphPanel?.Hide();
+
         gameObject.SetActive(false);
     }
 
@@ -188,8 +191,7 @@ public class TradingPanel : MonoBehaviour {
             if (display != null) display.targetInventory = currentMarket;
         }
         UpdateMarketTree();
-        Canvas.ForceUpdateCanvases();
-        LayoutRebuilder.ForceRebuildLayoutImmediate(marketInvContent as RectTransform);
+        LayoutUtil.RebuildImmediate(marketInvContent as RectTransform);
     }
 
     // One-shot tree construction. Builds a row for every item in Db.items
@@ -366,6 +368,10 @@ public class TradingPanel : MonoBehaviour {
     public void OnClickQuery() {
         string item = ItemName();
         if (item.Length == 0) return;
+        // Switching items: hide the previous item's graph until this item's
+        // history comes back. Re-polls (Update) don't go through here, so the
+        // graph doesn't flicker while viewing a single item.
+        if (item != _queriedItem) priceGraphPanel?.Hide();
         TradingClient.instance?.QueryMarket(item);
         _queriedItem = item;
         _lastHistoryPoll = Time.unscaledTime;
@@ -741,7 +747,7 @@ public class TradingPanel : MonoBehaviour {
         go.AddComponent<ChatRowFader>();   // stale rows fade out; chat-input focus reveals them again
         if (chatList.childCount > 20)
             Destroy(chatList.GetChild(0).gameObject);
-        LayoutRebuilder.ForceRebuildLayoutImmediate(chatList as RectTransform);
+        LayoutUtil.RebuildImmediate(chatList as RectTransform);
     }
 
     void AddCancelRow(string text, Transform parent, long orderId) {

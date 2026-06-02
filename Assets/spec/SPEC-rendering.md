@@ -645,7 +645,9 @@ Animal (root — Animator, Animal.cs, BoxCollider2D, no SpriteRenderer)
 ```
 
 ### Facing direction
-Flip is done via `transform.localScale.x = -1` on the root, which mirrors all children. No per-renderer `flipX`.
+Two orthogonal axes:
+- **Left/right** (`Animal.facingRight`): `transform.localScale.x = ±1` on the root, mirroring all children. No per-renderer `flipX`. Set by `Nav` from edge direction.
+- **Side/back/front view** (`Animal.FacingView`): back/front are *not* mirrors of the side art, so they use a distinct sprite set rather than flipping. Resolved per-frame in `AnimationController.UpdateState` (never stored), precedence: `Objective.ViewOverride` (data-driven, e.g. crucible `workView:"back"`) → else the edge-implied view while locomoting (`Nav.CurrentEdgeView`, `Back` only on a straight non-waypoint vertical ladder edge — side-ladders stay Side) → else `Side`. `Nav.RefreshFacingView()` fires `UpdateState` on a view flip (mandatory — `IsLocomoting` doesn't change tile→ladder→tile). The view drives the `back` Animator int, which selects back clips; **the sprite swap is owned by the clips** (sprite + `Enabled` keyframes per part — hide the arm), same mechanism `mouseEep` uses for the head. Reverting to side is automatic because all states have **Write Defaults on** — leaving a back clip restores each part's prefab-default (side) sprite. Back art is assumed symmetric, so the L/R mirror during a back-climb is harmless. Front is scaffolded (enum + `ViewNameToFacing` case) but has no trigger or art.
 
 ### Per-part clothing
 `AnimationController.clothingParts` is a serialized array of `PartClothing` entries (partName + renderer reference). Each entry loads its sprite from `Resources/Sprites/Animals/Clothing/{item}/{partName}.png`. Missing sprites are handled gracefully (renderer stays disabled). Clothing renderers are children of their body part, so they inherit transforms automatically.
@@ -661,6 +663,7 @@ The Animator (`AnimControllerMouse.controller`) is driven by two int parameters 
 |-----------|--------|--------|
 | `state` | `animal.state` (high-level activity) | 0 = Idle, 1 = Moving, 2 = Eeping |
 | `pose` | `animal.task?.currentObjective?.PoseOverride` → `PoseToInt` | 0 = none (state drives), 1 = sit |
+| `back` | resolved `FacingView` (see §Facing direction) | 0 = side, 1 = back. Selects back clip variants (`mouseBackClimb`/`mouseBackWork`); wire back-first in Any State (Unity evaluates top-down). Set only if the param exists, so it's inert until authored. |
 
 Each state/pose corresponds to a single `.anim` clip. Stationary poses are fine as 2-frame static clips (see `mouseEep.anim` as the reference — just holds per-part transforms). Pose wins over state: whenever `pose != 0` the animal is in that pose regardless of walking/idle/eep.
 

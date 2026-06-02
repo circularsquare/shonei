@@ -543,8 +543,12 @@ public class WorkOrderManager : MonoBehaviour {
             priority    = 3,
             factory     = a => new FillProcessorTask(a, building),
             building    = building,
+            // Player can pause a process from the Recipes panel (RecipePanel.SetProcessAllowed,
+            // keyed by building name) — gates new fills only; an in-progress batch still taps.
             isActive    = () => !building.disabled && !building.IsBroken
-                              && processor.state == Processor.State.Empty,
+                              && processor.state == Processor.State.Empty
+                              && (RecipePanel.instance == null
+                                  || RecipePanel.instance.IsProcessAllowed(building.structType.name)),
             canDo       = a => a.job.name == "cook",
             getDistance = a => Mathf.Abs(building.x - a.x) + Mathf.Abs(building.y - a.y)
         });

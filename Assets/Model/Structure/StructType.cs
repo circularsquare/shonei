@@ -173,6 +173,10 @@ public class StructType {
     // "walk" through the state Animator int (reusing the existing walk clip — no extra
     // Animator state needed). Other names map via PoseToInt. Null = default Working state.
     public string workPose {get; set;}
+    // Facing-view the worker strikes while crafting here ("back"/"front"). Read by
+    // WorkObjective.ViewOverride, mapped by AnimationController.ViewNameToFacing. Null =
+    // default nav/state-driven (side) facing. See SPEC-rendering.md §Animal Paper-Doll.
+    public string workView {get; set;}
     public int storageTileX {get; set;} // tile offset to the storage inventory tile (default 0,0 = anchor)
     public int storageTileY {get; set;}
     public TileRequirement[] tileRequirements {get; set;} // extra per-tile constraints checked at placement

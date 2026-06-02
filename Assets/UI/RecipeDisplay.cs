@@ -29,23 +29,57 @@ public class RecipeDisplay : MonoBehaviour {
     public Transform inputsContainer;   // InputsRow — item labels spawn here
     public Transform outputsContainer;  // OutputsRow — item labels spawn here
 
-    Recipe recipe;
-    Job    job;
+    Recipe          recipe;   // set for craft recipes; null for processes
+    ProcessorRecipe process;  // set for processes; null for craft recipes
+    Job             job;
+    ItemQuantity[]  inputs;
+    ItemQuantity[]  outputs;
     readonly List<TMP_Text> inputLabels  = new List<TMP_Text>();
     readonly List<TMP_Text> outputLabels = new List<TMP_Text>();
 
+    // Craft recipe card.
     public void Setup(Recipe r) {
         recipe = r;
-        job    = Db.GetJobByName(recipe.job);
+        job    = Db.GetJobByName(r.job);
+        Build(string.IsNullOrEmpty(r.description) ? r.tile : r.description, r.inputs, r.outputs);
+    }
 
-        string display = string.IsNullOrEmpty(recipe.description) ? recipe.tile : recipe.description;
-        descText.text = display;
+    // Process card (passive timed conversion). No worker/job — the header shows brew time,
+    // and On/Off toggles the process by building (see RecipePanel.SetProcessAllowed).
+    public void Setup(ProcessorRecipe pr) {
+        process = pr;
+        Build(string.IsNullOrEmpty(pr.description) ? pr.building : pr.description, pr.inputs, pr.outputs);
+    }
 
+    // Allow toggle shown as the same circle/x icons as the inventory item-disallow UI
+    // (Sprites/Misc/check, redx), instead of "On"/"Off" text. Loaded once, shared.
+    static Sprite iconAllowed, iconDisallowed;
+    static void EnsureIcons() {
+        if (iconAllowed    == null) iconAllowed    = Resources.Load<Sprite>("Sprites/Misc/check");
+        if (iconDisallowed == null) iconDisallowed = Resources.Load<Sprite>("Sprites/Misc/redx");
+    }
+
+    void Build(string description, ItemQuantity[] ins, ItemQuantity[] outs) {
+        inputs  = ins  ?? new ItemQuantity[0];
+        outputs = outs ?? new ItemQuantity[0];
+        descText.text = description;
+
+        EnsureIcons();
+        // Repurpose the allow button as a bare icon: drop the wood-frame sprite styling,
+        // hide the "On"/"Off" label; Refresh sets the circle/x sprite from allow state.
+        if (allowButton.image != null) {
+            allowButton.image.type = Image.Type.Simple;
+            allowButton.image.preserveAspect = true;
+        }
+        if (allowButtonText != null) allowButtonText.gameObject.SetActive(false);
         allowButton.onClick.AddListener(OnClickAllow);
 
-        SpawnItemLabels(inputsContainer,  recipe.inputs,  inputLabels,  isOutput: false);
-        SpawnItemLabels(outputsContainer, recipe.outputs, outputLabels, isOutput: true);
+        // Nudge the toggle icon ~2px off the top-right corner for breathing room.
+        var headerHlg = allowButton.transform.parent.GetComponent<HorizontalLayoutGroup>();
+        if (headerHlg != null) headerHlg.padding = new RectOffset(headerHlg.padding.left, 2, 2, headerHlg.padding.bottom);
 
+        SpawnItemLabels(inputsContainer,  inputs,  inputLabels,  isOutput: false);
+        SpawnItemLabels(outputsContainer, outputs, outputLabels, isOutput: true);
         Refresh();
     }
 
@@ -116,21 +150,32 @@ public class RecipeDisplay : MonoBehaviour {
     }
 
     public void Refresh() {
-        // Job text + animal count
-        int count = 0;
-        if (job != null && AnimalController.instance != null)
-            AnimalController.instance.jobCounts.TryGetValue(job, out count);
-        jobText.text = recipe.job + " (" + count + ")";
+        bool allowed;
+        if (process != null) {
+            // Passive process: no worker count — show brew time (+ ideal temp) instead.
+            jobText.text = FormatProcessHeader(process);
+            allowed = RecipePanel.instance == null || RecipePanel.instance.IsProcessAllowed(process.building);
+        } else {
+            int count = 0;
+            if (job != null && AnimalController.instance != null)
+                AnimalController.instance.jobCounts.TryGetValue(job, out count);
+            jobText.text = recipe.job + " (" + count + ")";
+            allowed = RecipePanel.instance == null || RecipePanel.instance.IsAllowed(recipe.id);
+        }
 
-        // Item quantity labels
         var ginv = GlobalInventory.instance;
+        RefreshLabels(inputs,  inputLabels,  ginv, isOutput: false);
+        RefreshLabels(outputs, outputLabels, ginv, isOutput: true);
 
-        RefreshLabels(recipe.inputs,  inputLabels,  ginv, isOutput: false);
-        RefreshLabels(recipe.outputs, outputLabels, ginv, isOutput: true);
+        if (allowButton.image != null) allowButton.image.sprite = allowed ? iconAllowed : iconDisallowed;
+    }
 
-        // Allow button
-        bool allowed = RecipePanel.instance == null || RecipePanel.instance.IsAllowed(recipe.id);
-        allowButtonText.text = allowed ? "On" : "Off";
+    // Process header: brew time + ideal temperature, e.g. "2d 25°" (° is now baked into m5x7).
+    static string FormatProcessHeader(ProcessorRecipe pr) {
+        string n = pr.processDays == Mathf.Floor(pr.processDays) ? ((int)pr.processDays).ToString() : pr.processDays.ToString("0.#");
+        string s = n + "d";
+        if (pr.processTempIdeal.HasValue) s += " at " + Mathf.RoundToInt(pr.processTempIdeal.Value) + "°";
+        return s;
     }
 
     // Row text is "name: <recipe amount> (<amount in global inventory>)". The first
@@ -154,9 +199,10 @@ public class RecipeDisplay : MonoBehaviour {
     }
 
     void OnClickAllow() {
-        if (RecipePanel.instance == null) return;
-        bool nowAllowed = RecipePanel.instance.IsAllowed(recipe.id);
-        RecipePanel.instance.SetAllowed(recipe.id, !nowAllowed);
+        var rp = RecipePanel.instance;
+        if (rp == null) return;
+        if (process != null) rp.SetProcessAllowed(process.building, !rp.IsProcessAllowed(process.building));
+        else                 rp.SetAllowed(recipe.id, !rp.IsAllowed(recipe.id));
         Refresh();
     }
 }

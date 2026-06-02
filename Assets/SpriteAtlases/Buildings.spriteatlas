@@ -63,6 +63,8 @@ SpriteAtlas:
     - {fileID: 2800000, guid: 272a3e7703f4f544796e3406bcbba411, type: 3}
     - {fileID: 2800000, guid: 34a231262467fc04fb8cf2091f462d71, type: 3}
     - {fileID: 2800000, guid: 78180377fe070b1498370572f89bd1aa, type: 3}
+    - {fileID: 2800000, guid: 40df7481055fb28408e6d56ca564db7f, type: 3}
+    - {fileID: 2800000, guid: a0799755e0948ae45908b2e0617d5138, type: 3}
     - {fileID: 2800000, guid: 525258f5ee6de9740898ed3b9fa1f2a1, type: 3}
     - {fileID: 2800000, guid: 8938b9fe7c490b94c9a79ed40fbb8fcd, type: 3}
     - {fileID: 2800000, guid: 73f634d4e74f5f0479fe6578e604b3bc, type: 3}
@@ -143,6 +145,7 @@ SpriteAtlas:
   - {fileID: 21300000, guid: 336e6c619d2d6004c80a4d2ba0d10d0d, type: 3}
   - {fileID: 21300000, guid: b4603cd20db6a624dbbdbb00ea7e88e9, type: 3}
   - {fileID: 21300000, guid: 73f634d4e74f5f0479fe6578e604b3bc, type: 3}
+  - {fileID: 21300000, guid: a0799755e0948ae45908b2e0617d5138, type: 3}
   - {fileID: 21300000, guid: 2faa8b269bb775b40b9cd23f8803d757, type: 3}
   - {fileID: 21300000, guid: 7b0c5e67c62acc74687ec5416b51713c, type: 3}
   - {fileID: 21300000, guid: 78180377fe070b1498370572f89bd1aa, type: 3}
@@ -176,6 +179,7 @@ SpriteAtlas:
   - {fileID: 1065528190, guid: b46ea44b8a12d144491aaa336996a949, type: 3}
   - {fileID: 1486806857, guid: b46ea44b8a12d144491aaa336996a949, type: 3}
   - {fileID: 2066216776, guid: b46ea44b8a12d144491aaa336996a949, type: 3}
+  - {fileID: 21300000, guid: 40df7481055fb28408e6d56ca564db7f, type: 3}
   - {fileID: 21300000, guid: 727a74c1f1bfdb2409447c5195be0cba, type: 3}
   - {fileID: 21300000, guid: 34a231262467fc04fb8cf2091f462d71, type: 3}
   - {fileID: 21300000, guid: 1112ba993a0d6a44ba1d758468cbe65f, type: 3}
@@ -252,6 +256,7 @@ SpriteAtlas:
   - burrow_n
   - ropebridgepost_n
   - diggingpit_n
+  - crucible_n
   - sawmill_new_n
   - torch_e
   - crate_mn_n
@@ -285,6 +290,7 @@ SpriteAtlas:
   - powershaftturn_3
   - powershaftturn_0
   - powershaftturn_1
+  - crucible
   - platform
   - crate_mn
   - sawmill_new

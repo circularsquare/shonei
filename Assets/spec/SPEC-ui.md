@@ -210,6 +210,33 @@ Gather/restore live in `SaveSystem.cs` alongside `inventoryTreeOpen`.
 6. If the panel spawns rows at runtime, gate their initial `SetActive` on
    `header.open`.
 
+## Avoiding layout pop on reveal (LayoutUtil)
+
+**The bug:** when you `SetActive(true)` a UI subtree (or spawn rows into one), Unity
+only schedules a layout rebuild for end-of-frame, so the content shows at
+padding-only height for one frame then snaps to full size — a visible "pop". A single
+top-down `LayoutRebuilder.ForceRebuildLayoutImmediate` does **not** fix this when the
+subtree has **nested** LayoutGroups/ContentSizeFitters (e.g. RecipePanel: content →
+group → cards container → card → section → row): each parent fitter measures its
+children before they're sized, so it takes multiple frames to settle.
+
+**The fix — always use `LayoutUtil.RebuildImmediate(rect)`** (`Assets/UI/LayoutUtil.cs`)
+after toggling visibility or spawning content. It (1) calls
+`Canvas.ForceUpdateCanvases()` once so dirtied TMP reports current preferred sizes,
+then (2) rebuilds **bottom-up** (children before parents) so nested fitters resolve in
+one frame. Pass the **outermost** rect whose size depends on the change (e.g. the
+scroll Content), not just the toggled row — its ancestors' fitters must re-measure too.
+
+Adopters (all reveal/resize-after-content-change paths): `CollapsibleHeader`,
+`RecipeGroupDisplay`, `RecipePanel`, `ItemDisplay` (tree dropdown), `InventoryController`
+(discover/clear reflow), `InfoPanel` (tab spawn), `StoragePanel.Show`, `TradingPanel`
+(market tree + chat), `AlertToast`. When building a new expand/collapse or reveal, call
+`LayoutUtil.RebuildImmediate` rather than rolling a bespoke `ForceRebuildLayoutImmediate`.
+
+Exception: `TooltipSystem.Show` stays bespoke — it isn't a pop case but a precise
+measure-then-position that calls `ForceMeshUpdate` on its two specific TMPs (tighter
+than a canvas flush) before measuring; runs on every hover, so left untouched.
+
 ## GlobalHappinessPanel
 
 `Assets/UI/GlobalHappinessPanel.cs` — exclusive panel showing colony-wide happiness.

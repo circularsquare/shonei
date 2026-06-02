@@ -55,5 +55,13 @@ public class WorkObjective : Objective {
             return null;
         }
     }
+    // Facing-view override — mirrors PoseOverride. The crucible declares workView:"back" so
+    // its smelter mouse turns its back to the camera while crafting.
+    public override string ViewOverride {
+        get {
+            if (task is CraftTask ct) return ct.workplace?.building?.structType.workView;
+            return null;
+        }
+    }
     // animalstatemanager.HandleWorking will call task.Complete() when it's done!
 }

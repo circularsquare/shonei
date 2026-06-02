@@ -154,8 +154,7 @@ public class ItemDisplay : MonoBehaviour {
         }
         RefreshDropdownSprite();
         // Rebuild from the panel root so all parent containers reflow, not just this row.
-        Canvas.ForceUpdateCanvases();
-        LayoutRebuilder.ForceRebuildLayoutImmediate(GetPanelRoot());
+        LayoutUtil.RebuildImmediate(GetPanelRoot());
     }
 
     // Resolve which inventory to use for market-target operations.

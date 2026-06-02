@@ -93,7 +93,7 @@ public class AlertToast : MonoBehaviour {
             spawnUnscaled = Time.unscaledTime,
         });
 
-        if (rowContainer is RectTransform rt) LayoutRebuilder.ForceRebuildLayoutImmediate(rt);
+        if (rowContainer is RectTransform rt) LayoutUtil.RebuildImmediate(rt);
     }
 
     void Update() {

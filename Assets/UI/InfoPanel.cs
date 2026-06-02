@@ -196,8 +196,7 @@ public class InfoPanel : MonoBehaviour {
         }
 
         // Force layout rebuild so tabs don't stack on first frame
-        Canvas.ForceUpdateCanvases();
-        LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)tabContent);
+        LayoutUtil.RebuildImmediate((RectTransform)tabContent);
     }
 
     private void SelectTab(int index) {

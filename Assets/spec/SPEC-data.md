@@ -61,6 +61,7 @@ Fields:
 | `workSpotX` | float? | optional fractional x-offset (anchor-relative, in tile units) for an off-grid worker pose. When both `workSpotX` and `workSpotY` are set, `Structure` registers a Graph waypoint Node at that position and edges it to the nearest bottom-row tile-node; `Structure.workNode` then targets the waypoint instead of `workTile.node`. Used by the wheel runner to stand centred between the 2×2 footprint columns (`0.5`, `0.25`). null = use integer `workTile` (today's behaviour). Mirror formula `nx-1-x` is reused — works identically for floats. See SPEC-systems.md §Workspot waypoints. |
 | `workSpotY` | float? | companion to `workSpotX`. Both must be set for the workspot waypoint to be created. |
 | `workPose` | string? | body pose the worker strikes while crafting at this building (mirrors `leisurePose`). Read by `WorkObjective.PoseOverride`. The special value `"walk"` reuses the existing walk animator state instead of needing a new pose layer — used by the wheel runner so the mouse cycles its legs while producing power. Other names map via `AnimationController.PoseToInt`. null = default Working state. |
+| `workView` | string? | facing-view the worker strikes while crafting here (`"back"`/`"front"`). Read by `WorkObjective.ViewOverride`, mapped by `AnimationController.ViewNameToFacing`; swaps the paper-doll to the back/front sprite set. null = default side facing. e.g. crucible = `"back"`. See SPEC-rendering.md §Facing direction. |
 | `hasFuelInv` | bool? | building has an internal fuel reservoir |
 | `fuelItemName` | string? | item consumed by reservoir (group or leaf) |
 | `fuelCapacity` | float? | max fuel in liang |
@@ -137,8 +138,13 @@ Fields:
 | `researchPoints` | float? | passive research progress granted per cycle, paired with `research` |
 | `skill` | string? | skill domain for XP (e.g. `"mining"`); defaults to `job.defaultSkill` if omitted |
 | `maxRoundsPerTask` | int? | cap on rounds in one CraftTask trip (0/omit = unlimited). Set to 1 for "one item per trip" recipes (e.g. book writing) where each cycle should be a deliberate, discrete action rather than a batch. |
+| `hidden` | bool? | omit from the Recipes panel (still craftable). Used for non-conventional pseudo-recipes like `dig` / `mine stone` whose "workstation" (digging pit, quarry) shouldn't appear as a recipe group. |
 | `ninputs` | `[{name, quantity}]` | consumed items in liang |
 | `noutputs` | `[{name, quantity, chance?}]` | produced items; `chance` (0–1) = probability of output |
+
+**Recipes panel display notes:**
+- `description` should stay short — `Db.WarnLongRecipeNames()` logs a warning at load for any longer than the reference string `"smelt malachite into copper (wood-"` (34 chars), since long names truncate in the card header.
+- Book-writing recipes (any recipe whose single output is `ItemClass.Book` — the runtime per-tech books + authored `fiction_book`) collapse in the panel into **one** generic "write a book" card per workstation; its On/Off toggles all book recipes together. See `RecipePanel.IsBookRecipe` / `BuildBookProxy`.
 
 ## `processorRecipesDb.json` — Processor recipes
 
@@ -150,7 +156,7 @@ Fields:
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `id` | int | informational — recipes are keyed by building name, not array-indexed. Duplicate ids are logged. |
+| `id` | int | informational — recipes are keyed by building name, not array-indexed. Duplicate ids are logged. Use a high range (≥1000) to avoid confusion with craft `Recipe` ids, which share no namespace but can collide numerically. |
 | `building` | string | name of the building whose `Processor` runs this recipe |
 | `description` | string | shown in UI / InfoPanel |
 | `ninputs` | `[{name, quantity}]` | the load recipe, authored in liang, resolved to fen |
@@ -159,6 +165,8 @@ Fields:
 | `processTempMin`, `processTempIdeal` | float? | optional temperature ramp: rate is 0 at/below `processTempMin`, 1.0 at/above `processTempIdeal`, linear between. Omit both → constant full rate. |
 | `autoTap` | bool? | schema stub — reserved for processors that yield output without a manual tap. Not yet implemented. |
 | `processColorHex` | string? | `#RRGGBB` tint for the building's `_w` liquid zone while the processor is Working (e.g. cloudy white rice mash mid-fermentation). Absent → the zone keeps its loading colour. See SPEC-rendering.md §Decorative liquid zones. |
+
+**Recipes panel:** processes appear as cards grouped under their building alongside that building's craft recipes. A process card shows the brew time (e.g. `2d`) in place of the worker-count line and an On/Off toggle that pauses the process — keyed by building name in `RecipePanel.disabledProcesses`, enforced by gating the `FillProcessor` work order's `isActive` (new fills stop; an in-progress batch still finishes + taps). Persisted as `WorldSaveData.disabledProcesses`.
 
 ## `jobsDb.json` — Jobs
 

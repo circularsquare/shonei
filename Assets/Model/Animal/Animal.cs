@@ -70,6 +70,12 @@ public class Animal : MonoBehaviour{
         Leisuring,      // leisure activity (chatting, tea house, etc.)
         Traveling,      // hidden while journeying to/from the off-screen market
     }
+
+    // Which way the paper-doll faces, orthogonal to facingRight (the L/R mirror).
+    // Side = the default L/R-mirrored view. Back = climbing a straight ladder / working
+    // a back-facing station (crucible). Front is scaffolded but unused — no trigger, no art.
+    // Resolved per-frame in AnimationController (never stored), like pose — see SPEC-rendering.
+    public enum FacingView{ Side, Back, Front }
     private AnimalStateManager stateManager;
     private AnimalState _state;
     public AnimalState state{

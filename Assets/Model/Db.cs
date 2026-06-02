@@ -161,6 +161,7 @@ public class Db : MonoBehaviour {
         ReadJson();
         GenerateBookItems();
         GenerateBookRecipes();
+        WarnLongRecipeNames();
         itemsFlat = itemsFlat.Take(itemsCount).ToArray();
         edibleItems = itemsFlat.Where(i => i.foodValue > 0).OrderByDescending(i => i.foodValue).ToList();
         // An edible counts as a "seed" if some plant lists it as a planting cost. PlantType.costs
@@ -438,6 +439,17 @@ public class Db : MonoBehaviour {
             scribe.recipes[scribe.nRecipes++] = recipe;
             bookRecipeIdByTechId[tech.id] = nextId;
             nextId++;
+        }
+    }
+
+    // Recipe panel names truncate in the card header when too long. Warn at load for any
+    // description longer than this reference string so over-long names get noticed and trimmed.
+    void WarnLongRecipeNames() {
+        const string reference = "smelt malachite into copper (wood-";
+        foreach (Recipe r in recipes) {
+            if (r == null || string.IsNullOrEmpty(r.description)) continue;
+            if (r.description.Length > reference.Length)
+                Debug.LogWarning($"Recipe name too long ({r.description.Length} > {reference.Length}): \"{r.description}\" (id {r.id}). Shorten it — long names truncate in the Recipes panel.");
         }
     }
 
@@ -730,6 +742,7 @@ public class Recipe {
     // CalculateWorkPossible's normal estimate is used. Set to 1 for "one item per trip" recipes
     // like book-writing where each cycle should be a deliberate, discrete action — not a batch.
     public int    maxRoundsPerTask { get; set; }
+    public bool   hidden { get; set; } // true = omit from the Recipes panel (e.g. dig/mine pseudo-recipes that aren't conventional crafting)
     public TileType tileType;
     public ItemNameQuantity[] ninputs {get; set;}
     public ItemNameQuantity[] noutputs {get; set;}

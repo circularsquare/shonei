@@ -249,7 +249,7 @@
         "description": "a decorative fountain. requires water to stay full. nearby mice feel happier.",
         "nx": 1, "ny": 1,
         "ncosts": [
-            { "name": "limestone", "quantity": 10 }
+            { "name": "stone", "quantity": 10 }
         ],
         "depth": 0,
         "isBuilding": true,
@@ -604,6 +604,7 @@
         ],
         "capacity": 1,
         "isWorkstation": true,
+        "workView": "back",
         "category": "production"
     },{
         "id": 120,

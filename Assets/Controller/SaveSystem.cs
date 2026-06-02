@@ -48,6 +48,7 @@ using Newtonsoft.Json;
 //   [x] Research (progress, unlockedIds, studiedIds, unlockTimestamps, unlockCounter)
 //   [x] Disabled recipe ids
 //   [x] Expanded recipe groups (Recipes panel — workstation collapse state)
+//   [x] Disabled processes (Recipes panel — paused fermentation etc., by building name)
 //   [x] Water levels
 //   [x] Moisture levels
 //   [x] Is raining + atmospheric humidity (drives rain via threshold)
@@ -57,6 +58,7 @@ using Newtonsoft.Json;
 //   [x] Camera position and zoom (PPU)
 //   [x] Global inventory panel tree collapse state (deltas vs item.defaultOpen)
 //   [x] Panel collapse state for CollapsibleHeader-equipped panels (deltas vs default-open)
+//   [x] Onboarding PlayerTask progress (current task index; null on old saves → onboarding skipped)
 // -----------------------------------------------------------------------
 
 public class SaveSystem : MonoBehaviour {
@@ -197,6 +199,9 @@ public class SaveSystem : MonoBehaviour {
 
             var expanded = rp.CopyExpandedGroups();
             if (expanded.Length > 0) data.expandedRecipeGroups = expanded;
+
+            var disabledProc = rp.CopyDisabledProcesses();
+            if (disabledProc.Length > 0) data.disabledProcesses = disabledProc;
         }
 
         data.isRaining = WeatherSystem.instance?.isRaining ?? false;
@@ -252,6 +257,9 @@ public class SaveSystem : MonoBehaviour {
         if (jobsHeader != null && !string.IsNullOrEmpty(jobsHeader.saveKey) && !jobsHeader.open)
             panelDeltas[jobsHeader.saveKey] = false;
         if (panelDeltas.Count > 0) data.panelsOpen = panelDeltas;
+
+        if (PlayerTaskController.instance != null)
+            data.playerTaskIndex = PlayerTaskController.instance.currentIndex;
 
         if (MarketBuilding.instance?.storage?.targets != null) {
             var mt = new Dictionary<string, int>();
@@ -489,10 +497,12 @@ public class SaveSystem : MonoBehaviour {
         WeatherSystem.instance?.RestoreState(false, 0f);
         RecipePanel.instance?.ClearDisabled();
         RecipePanel.instance?.ClearExpandedGroups();
+        RecipePanel.instance?.ClearDisabledProcesses();
         ResearchSystem.instance?.ResetAll();
         // Reset panel collapse state — both panels start open on a fresh world.
         InventoryController.instance?.inventoryHeader?.SetOpenSilent(true);
         AnimalController.instance?.jobsHeader?.SetOpenSilent(true);
+        PlayerTaskController.instance?.ResetState(); // fresh world → onboarding starts at task 0
     }
 
     public void Load(string slotName) {
@@ -716,6 +726,11 @@ public class SaveSystem : MonoBehaviour {
                 jh.SetOpenSilent(jobsOpen);
         }
 
+        // Restore onboarding progress. Null (pre-feature save) → skip onboarding entirely so
+        // returning players aren't re-shown tasks they've effectively already completed.
+        if (PlayerTaskController.instance != null)
+            PlayerTaskController.instance.currentIndex = save.playerTaskIndex ?? int.MaxValue;
+
         if (save.marketTargets != null && MarketBuilding.instance?.storage?.targets != null) {
             foreach (var kv in save.marketTargets)
                 if (Db.itemByName.TryGetValue(kv.Key, out Item item))
@@ -728,6 +743,8 @@ public class SaveSystem : MonoBehaviour {
                 rp.SetAllowed(id, false);
         if (rp != null && save.expandedRecipeGroups != null)
             rp.SetExpandedGroups(save.expandedRecipeGroups);
+        if (rp != null && save.disabledProcesses != null)
+            rp.SetDisabledProcesses(save.disabledProcesses);
 
         RestoreResearch(save.research);
 

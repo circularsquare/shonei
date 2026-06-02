@@ -1,6 +1,6 @@
 [
     {
-        "id": 0,
+        "id": 1000,
         "building": "brewery",
         "description": "ferment rice into rice wine",
         "ninputs": [

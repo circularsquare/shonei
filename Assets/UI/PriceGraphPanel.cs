@@ -76,22 +76,39 @@ public class PriceGraphPanel : MonoBehaviour {
 
     // ── Public API ──────────────────────────────────────────────────────
 
-    // Feeds a logged price-history response into the graph. Null / empty safe.
+    // Feeds a logged price-history response into the graph. The whole widget is
+    // hidden unless the response carries real samples — an item with no logged
+    // history (or no data back from the server) shows nothing rather than an
+    // empty frame. Showing re-activates the GameObject so it's visible again.
     public void SetHistory(PriceHistoryData data) {
-        EnsureItem(data != null ? data.item : null);
+        bool hasData = data != null && data.samples != null && data.samples.Length > 0;
+        if (!hasData) { Hide(); return; }
+
+        if (!gameObject.activeSelf) gameObject.SetActive(true);
+        EnsureItem(data.item);
         _history = data;
         Rebuild();
     }
 
     // Feeds the current live bid/ask (from the order book) as the graph's last
     // point, so the line's right end tracks the market in real time between
-    // the server's minute-cadence log samples.
+    // the server's minute-cadence log samples. No-op while hidden or for a
+    // different item — the live tip only decorates a graph already showing
+    // history for this item; it never reveals the widget on its own.
     public void SetLivePrice(string item, int bid, int ask) {
-        EnsureItem(item);
+        if (!gameObject.activeSelf || item != _item) return;
         _liveBid = bid;
         _liveAsk = ask;
         _hasLive = bid > 0 || ask > 0;
         Rebuild();
+    }
+
+    // Hides the whole widget and drops cached history / live tip, so stale data
+    // can't flash when it's next shown. Called when a query returns no history
+    // and when TradingPanel starts a fresh query (until data arrives).
+    public void Hide() {
+        EnsureItem(null);
+        if (gameObject.activeSelf) gameObject.SetActive(false);
     }
 
     // ── Range selection ─────────────────────────────────────────────────

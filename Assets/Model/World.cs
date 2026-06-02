@@ -74,6 +74,7 @@ public class World : MonoBehaviour {
         animalController = AnimalController.instance;
         plantController = PlantController.instance;
         waterController = WaterController.instance;
+        PlayerTaskController.EnsureExists();
         WeatherSystem.Create();
         MaintenanceSystem.Create();
         MoistureSystem.Create();

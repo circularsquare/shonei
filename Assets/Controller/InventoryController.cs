@@ -209,10 +209,8 @@ public class InventoryController : MonoBehaviour {
         if (item.parent != null && itemDisplayGos != null &&
             itemDisplayGos.TryGetValue(item.parent.id, out var parentGo) && parentGo != null)
             parentGo.GetComponent<ItemDisplay>()?.RefreshDropdownSprite();
-        if (inventoryPanel != null){
-            Canvas.ForceUpdateCanvases();
-            LayoutRebuilder.ForceRebuildLayoutImmediate(inventoryPanel.GetComponent<RectTransform>());
-        }
+        if (inventoryPanel != null)
+            LayoutUtil.RebuildImmediate(inventoryPanel.GetComponent<RectTransform>());
         // A newly-discovered item may be a plant's seed — reveal that plant in the build menu.
         BuildPanel.instance?.RefreshPlantVisibility();
     }
@@ -335,8 +333,7 @@ public class InventoryController : MonoBehaviour {
         // Hide StoragePanel so its cached rows don't keep stale Inventory refs from
         // the previous world. Next click rebinds them via Show(inv).
         if (storagePanel != null) storagePanel.Hide();
-        Canvas.ForceUpdateCanvases();
-        LayoutRebuilder.ForceRebuildLayoutImmediate(inventoryPanel.GetComponent<RectTransform>());
+        LayoutUtil.RebuildImmediate(inventoryPanel.GetComponent<RectTransform>());
     }
 
     // --- Copy / Paste filters (Factorio-style: shift+LMB copy, shift+RMB paste) ---

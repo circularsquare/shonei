@@ -41,6 +41,13 @@ public class Nav {
     // idle animation instead of the walk cycle in those cases.
     public bool IsLocomoting { get; private set; } = false;
 
+    // Which facing-view the current edge implies. Back only on a straight (non-waypoint,
+    // vertical) ladder edge — side-ladder cliff segments share LadderPolicy.Instance but
+    // climb a fractional-X waypoint column against a wall, so they stay Side. Set in
+    // MoveCore from edge geometry, read by AnimationController to swap the back sprite set.
+    public Animal.FacingView CurrentEdgeView { get; private set; } = Animal.FacingView.Side;
+    private Animal.FacingView lastFacingView = Animal.FacingView.Side;
+
 
     public Nav (Animal a){
         this.a = a;
@@ -81,7 +88,9 @@ public class Nav {
         foreach (EdgePolicy ep in pendingPolicies) ep?.OnPathRelease(a);
         pendingPolicies.Clear();
         path = null; pathIndex = 0; prevNode = null; nextNode = null; preventFall = false;
+        CurrentEdgeView = Animal.FacingView.Side;
         RefreshLocomotion();
+        RefreshFacingView();
     }
 
     // Recomputes IsLocomoting from current state and notifies the animator on changes so
@@ -92,6 +101,15 @@ public class Nav {
         bool now = ComputeLocomoting();
         if (now == IsLocomoting) return;
         IsLocomoting = now;
+        a.animationController?.UpdateState();
+    }
+
+    // Notifies the animator when the edge-implied facing-view flips. Mandatory: stepping
+    // tile→ladder→tile keeps IsLocomoting true throughout, so RefreshLocomotion won't fire
+    // and the back-sprite swap would otherwise never trigger mid-walk. Idempotent.
+    void RefreshFacingView() {
+        if (CurrentEdgeView == lastFacingView) return;
+        lastFacingView = CurrentEdgeView;
         a.animationController?.UpdateState();
     }
     bool ComputeLocomoting() {
@@ -121,6 +139,7 @@ public class Nav {
         // every transition (path commit, transit-edge entry, riding handoff, completion).
         bool result = MoveCore(deltaTime);
         RefreshLocomotion();
+        RefreshFacingView();
         return result;
     }
 
@@ -193,6 +212,13 @@ public class Nav {
             float frac = nextNode.wx - Mathf.Floor(nextNode.wx);
             if (frac > 0.01f && frac < 0.99f) a.facingRight = frac < 0.5f;
         }
+        // Back-facing only on a straight ladder: a vertical tile-to-tile edge with both
+        // endpoints non-waypoint. Side-ladder cliff segments are fractional-X waypoint
+        // columns (climbed against a wall) and must stay Side even though they also resolve
+        // to LadderPolicy.Instance — hence the geometry test rather than a policy-type check.
+        bool straightLadder = !prevNode.isWaypoint && !nextNode.isWaypoint
+            && Mathf.Abs(nextNode.wy - prevNode.wy) > 0.1f;
+        CurrentEdgeView = straightLadder ? Animal.FacingView.Back : Animal.FacingView.Side;
         return false;
     }
 

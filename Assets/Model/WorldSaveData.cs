@@ -33,6 +33,7 @@ public class WorldSaveData {
     public ResearchSaveData research;
     public int[] disabledRecipeIds; // null = all enabled
     public string[] expandedRecipeGroups; // workstation tile-names of expanded recipe groups; null = all collapsed
+    public string[] disabledProcesses;    // building-names of processes the player paused; null = all running
     public ushort[] waterLevels;    // flat array, index = y * nx + x; null if all-dry
     public byte[] moistureLevels;   // flat array, same layout as waterLevels; null if every tile is dry soil
     public bool isRaining;          // false = clear (safe default for old saves)
@@ -62,6 +63,9 @@ public class WorldSaveData {
     // Per-panel collapse state, keyed by CollapsibleHeader.saveKey ("inventory", "jobs").
     // Only deltas vs default-open (true) are stored. Null on old saves → panels start open.
     public Dictionary<string, bool> panelsOpen;
+    // Onboarding progress: index of the current PlayerTask. Null on pre-feature saves →
+    // onboarding is treated as already complete (returning players aren't re-shown tasks).
+    public int? playerTaskIndex;
 }
 
 public class ResearchSaveData {

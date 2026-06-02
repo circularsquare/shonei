@@ -24,11 +24,16 @@ public class AnimationController : MonoBehaviour {
     public SpriteRenderer chatBubble;
 
     private Item cachedClothingItem;  // tracks equipped item so we only reload on change
+    private bool hasBackParam;        // true if the Animator declares the "back" int (wired later)
 
     void Start() {
         animator = GetComponent<Animator>();
         animal = GetComponent<Animal>();
         if (chatBubble != null) chatBubble.enabled = false;
+        // Probe for the "back" Animator param so we don't spam warnings before it's authored.
+        if (animator != null)
+            foreach (var param in animator.parameters)
+                if (param.type == AnimatorControllerParameterType.Int && param.name == "back") { hasBackParam = true; break; }
     }
 
     public void UpdateState() {
@@ -65,8 +70,32 @@ public class AnimationController : MonoBehaviour {
         animator.SetInteger("state", stateInt);
         animator.SetInteger("pose", poseInt);
 
+        // Facing-view: an objective override (e.g. crucible workView) wins; otherwise the
+        // edge-implied view while actually locomoting (a straight-ladder climb); else Side.
+        // The two sources never co-occur — a climb runs under GoObjective (null ViewOverride),
+        // and work is stationary (not locomoting) — so this is a clean precedence, not a race.
+        string viewOverride = animal.task?.currentObjective?.ViewOverride;
+        Animal.FacingView view;
+        if (!string.IsNullOrEmpty(viewOverride)) view = ViewNameToFacing(viewOverride);
+        else if (animal.nav != null && animal.nav.IsLocomoting) view = animal.nav.CurrentEdgeView;
+        else view = Animal.FacingView.Side;
+
+        if (hasBackParam) animator.SetInteger("back", view == Animal.FacingView.Back ? 1 : 0);
+
         UpdateClothingOverlay();
         UpdateChatBubble();
+    }
+
+    // Maps a view name (from JSON workView / Objective.ViewOverride) to a FacingView.
+    // Parallels PoseToInt. Front is accepted for forward-compat but has no art yet.
+    private static Animal.FacingView ViewNameToFacing(string view) {
+        switch (view) {
+            case "back":  return Animal.FacingView.Back;
+            case "front": return Animal.FacingView.Front;
+            default:
+                Debug.LogError($"AnimationController.ViewNameToFacing: unknown view '{view}' — add a case here.");
+                return Animal.FacingView.Side;
+        }
     }
 
     // Maps a pose name (from JSON / Objective.PoseOverride) to the `pose` Animator int.

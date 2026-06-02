@@ -62,8 +62,36 @@ SpriteAtlas:
     isAtlasV2: 0
     cachedData: {fileID: 0}
   m_MasterAtlas: {fileID: 0}
-  m_PackedSprites: []
-  m_PackedSpriteNamesToIndex: []
+  m_PackedSprites:
+  - {fileID: 21300000, guid: ea2ec5d7c0d90ce4baed6160e3bd48c7, type: 3}
+  - {fileID: 21300000, guid: 2bc36ccec8865c14cb1b5b39959f2005, type: 3}
+  - {fileID: 21300000, guid: 8ad64457c5054b74b83108c6872fa466, type: 3}
+  - {fileID: 21300000, guid: a8e641fea89689a4db95fd797312a3f1, type: 3}
+  - {fileID: 21300000, guid: 93709fad2515dbf45ba6c5b6f1b529ca, type: 3}
+  - {fileID: 21300000, guid: 1a4a8c4e088b2d6409fc3514aacf6e8e, type: 3}
+  - {fileID: 21300000, guid: e9c4a52671407b94c9226afad2d2c0eb, type: 3}
+  - {fileID: 21300000, guid: 5b7579cb8d40f304ea472a4c6fb11cbf, type: 3}
+  - {fileID: 21300000, guid: 8aec6137c45abb542be7df273435c7d2, type: 3}
+  - {fileID: 21300000, guid: dc35ecd89b3e91d46822d023e7e4f746, type: 3}
+  - {fileID: 21300000, guid: e5b25640bb8e6de47901045f6e27b7e2, type: 3}
+  - {fileID: 21300000, guid: fcdd5e19dedcdc744bb8a2dc2b87fa7b, type: 3}
+  - {fileID: 21300000, guid: 145b6c6079ccfa244a742b2345a08ad0, type: 3}
+  - {fileID: 21300000, guid: c6eb8ce9f3a51754bbd367eb9109d880, type: 3}
+  m_PackedSpriteNamesToIndex:
+  - mouse_back_n
+  - mouse2
+  - mouseEep
+  - mouse
+  - mouse_foot
+  - body
+  - chatbubble
+  - mouse_body
+  - mouseold
+  - mouse_back
+  - mouse_tail
+  - mouse_head
+  - mouse_arm
+  - mouse_headEep
   m_RenderDataMap: {}
   m_Tag: Animals
   m_IsVariant: 0

@@ -24,6 +24,7 @@ public class RecipeGroupDisplay : MonoBehaviour {
 
     string                    tile;
     List<Recipe>              recipes;
+    List<ProcessorRecipe>     processes;
     RecipeDisplay             cardPrefab;
     RectTransform             cardsContainer;
     TMP_Text                  indicator;
@@ -35,17 +36,20 @@ public class RecipeGroupDisplay : MonoBehaviour {
     // tileKey persists across saves; st is the resolved StructType (may be null if a
     // recipe's tile isn't a known building — then we show the name with no icon).
     public void Setup(string tileKey, StructType st, List<Recipe> rs,
-                      RecipeDisplay prefab, bool startExpanded) {
+                      List<ProcessorRecipe> procs, RecipeDisplay prefab, bool startExpanded) {
         tile       = tileKey;
         recipes    = rs;
+        processes  = procs;
         cardPrefab = prefab;
 
         BuildHeader(st);
         BuildContainer();
 
         expanded = startExpanded;
-        if (expanded) BuildCards();
+        // Activate before building so cards spawn active (TMP enabled, ItemIcon Awake
+        // runs). The panel's Rebuild path settles layout afterwards via LayoutUtil.
         cardsContainer.gameObject.SetActive(expanded);
+        if (expanded) BuildCards();
         indicator.text = expanded ? "-" : "+";
     }
 
@@ -94,10 +98,11 @@ public class RecipeGroupDisplay : MonoBehaviour {
         iconLE.minWidth = iconLE.preferredWidth = IconSize;
         iconLE.flexibleWidth = 0f;
 
-        // Name + recipe count, fills the remaining width.
+        // Name + recipe count (craft recipes + processes), fills the remaining width.
         var label = MakeText("Label", -1f);
         string name = st != null ? st.name : tile;
-        label.text = name + " (" + recipes.Count + ")";
+        int count = recipes.Count + (processes?.Count ?? 0);
+        label.text = name + " (" + count + ")";
     }
 
     // width<0 => flexible (fills remaining); width>0 => locked to that width.
@@ -153,21 +158,31 @@ public class RecipeGroupDisplay : MonoBehaviour {
             card.Setup(r);
             cards.Add(card);
         }
+        if (processes != null) {
+            foreach (ProcessorRecipe pr in processes) {
+                var card = Instantiate(cardPrefab, cardsContainer, false);
+                card.name = "ProcessDisplay_" + pr.building + "_" + pr.id;
+                card.Setup(pr);
+                cards.Add(card);
+            }
+        }
     }
 
     // ── Toggle / refresh ───────────────────────────────────────────────
 
     void SetExpanded(bool exp, bool persist) {
         expanded = exp;
-        if (exp && !built) BuildCards();
+        // Activate before building so cards spawn active and their TMP/fitters are
+        // measurable in the same frame.
         cardsContainer.gameObject.SetActive(exp);
+        if (exp && !built) BuildCards();
         indicator.text = exp ? "-" : "+";
 
         if (persist) RecipePanel.instance?.SetGroupExpanded(tile, exp);
 
-        // Settle the whole list in one frame so nothing "pops".
-        var content = RecipePanel.instance?.recipeListContent as RectTransform;
-        if (content != null) LayoutRebuilder.ForceRebuildLayoutImmediate(content);
+        // Settle the whole list bottom-up in one frame so the group opens at full
+        // height immediately instead of popping from min-height (see LayoutUtil).
+        LayoutUtil.RebuildImmediate(RecipePanel.instance?.recipeListContent as RectTransform);
     }
 
     // Called by RecipePanel's refresh timer; cheap no-op while collapsed.
