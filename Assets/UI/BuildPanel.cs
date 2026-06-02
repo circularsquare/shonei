@@ -34,7 +34,7 @@ public class BuildPanel : MonoBehaviour {
     public bool AwaitingSecondClick => firstEndpoint != null;
     // Debug one-shot: when true, the next blueprint placed via PlaceBlueprint is
     // instantly completed (no resources consumed, no worker step). Armed via
-    // Ctrl+Alt+B in MouseController; auto-disarms after one successful place.
+    // Ctrl+Shift+F in MouseController; auto-disarms after one successful place.
     public static bool instantBuildNext = false;
 
     static readonly string[] CategoryNames = { "structures", "plants", "production", "power", "storage", "tiles" };

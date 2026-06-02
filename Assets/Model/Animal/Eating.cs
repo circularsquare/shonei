@@ -40,16 +40,27 @@ public Eating(){ }
     }
 
     // Smooth 0..1 urgency to seek food, for the unified ChooseTask picker (see
-    // plans/urgency-system.md). Replaces the hard Hungry() cliff with a curve: 0 at/above
-    // seekFoodThreshold, rising convexly to 1 at empty. The convex exponent keeps a
-    // slightly-hungry mouse's pull low (so it finishes a nearby job) while a near-starving
-    // mouse's pull dominates almost everything. Hungry() is retained for any binary callers.
-    public const float urgencyConvexity = 1.5f; // >1 = low pull when slightly hungry, sharp near empty
+    // plans/urgency-system.md). Replaces the hard Hungry() cliff. Two regimes:
+    //   • seekFoodThreshold (0.6) → HungerDominateThreshold (0.3): a CONCAVE curve (exponent < 1) so
+    //     urgency rises fast as soon as the mouse is hungry — a mouse is already clearly seeking
+    //     food by ~0.5 fullness (≈0.41), not loitering until near-empty.
+    //   • below HungerDominateThreshold (0.3): ramp from the dominate floor up to 1.0 at empty. The
+    //     floor sits ABOVE the realistic work ceiling (p1 order at distance 0 ≈ 0.70), so once a
+    //     mouse is genuinely low it is essentially impossible for work or leisure to out-score eating.
+    // Tuning constants live in UrgencyConfig. Hungry() is retained for any binary callers.
     public float HungerUrgency(){
         float f = Fullness();
         if (f >= seekFoodThreshold) return 0f;
-        float t = (seekFoodThreshold - f) / seekFoodThreshold; // 0 at threshold → 1 at empty
-        return UnityEngine.Mathf.Pow(t, urgencyConvexity);
+        float dominate = UrgencyConfig.HungerDominateThreshold;
+        float floor = UrgencyConfig.HungerDominateFloor;
+        if (f < dominate) {
+            // Linear ramp floor → 1.0 as fullness goes dominate → 0.
+            float d = (dominate - f) / dominate; // 0 at threshold → 1 at empty
+            return floor + (1f - floor) * d;
+        }
+        // Concave curve across [dominate, seekFoodThreshold), ending at the floor.
+        float t = (seekFoodThreshold - f) / (seekFoodThreshold - dominate); // 0 at seek → 1 at dominate
+        return UnityEngine.Mathf.Pow(t, UrgencyConfig.HungerConcavity) * floor;
     }
     public void Eat(float nFood){
         food = UnityEngine.Mathf.Min(food + nFood, maxFood);

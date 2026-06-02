@@ -69,17 +69,21 @@ public class EatingTests {
     }
 
     // ── HungerUrgency ─────────────────────────────────────────────────────
-    // Contract: 0 at/above seekFoodThreshold (0.6), convex rise to 1 at empty.
-    // u = ((0.6 - fullness) / 0.6) ^ 1.5. Convex: slightly-hungry pull is low.
-    [TestCase(100f, 0f)]        // full → no pull
-    [TestCase(60f,  0f)]        // exactly at seek threshold → no pull
-    [TestCase(0f,   1f)]        // empty → max pull (1^1.5 = 1)
-    [TestCase(50f,  0.06804f)]  // fullness 0.5: t=(0.6-0.5)/0.6=0.1667, 0.1667^1.5 ≈ 0.0680
-    [TestCase(30f,  0.35355f)]  // fullness 0.3: t=0.5, 0.5^1.5 ≈ 0.3536
-    public void HungerUrgency_ZeroAboveThreshold_ConvexBelow(float food, float expected){
+    // Two-regime curve (see Eating.HungerUrgency): 0 at/above seek (0.6); concave seek-rise
+    // from 0.6→0.3 ending at the dominate floor (0.8); linear ramp 0.8→1.0 from 0.3→empty.
+    // Concave shape means the mouse is clearly seeking food by 0.5 fullness, and food dominates
+    // (≥0.8, above the realistic work ceiling) once below 0.3.
+    [TestCase(100f, 0f)]      // full → no pull
+    [TestCase(60f,  0f)]      // exactly at seek threshold → no pull
+    [TestCase(50f,  0.413f)]  // f=0.5: t=(0.6-0.5)/0.3=0.333, 0.333^0.6 * 0.8 ≈ 0.413
+    [TestCase(40f,  0.628f)]  // f=0.4: t=0.667, 0.667^0.6 * 0.8 ≈ 0.628
+    [TestCase(30f,  0.8f)]    // f=0.3: dominate floor (continuous boundary)
+    [TestCase(20f,  0.867f)]  // f=0.2: 0.8 + 0.2*((0.3-0.2)/0.3) ≈ 0.867
+    [TestCase(0f,   1f)]      // empty → max pull
+    public void HungerUrgency_ConcaveSeek_ThenDominateRamp(float food, float expected){
         Eating e = new Eating();
         e.food = food;
-        Assert.That(e.HungerUrgency(), Is.EqualTo(expected).Within(0.001f));
+        Assert.That(e.HungerUrgency(), Is.EqualTo(expected).Within(0.002f));
     }
 
     // HungerUrgency and Hungry must agree on the trigger: urgency > 0 iff Hungry.
@@ -92,13 +96,28 @@ public class EatingTests {
         Assert.That(e.HungerUrgency() > 0f, Is.EqualTo(e.Hungry()));
     }
 
-    // Convexity invariant: a slightly-hungry mouse's pull should be well below the
-    // linear midpoint, so it prefers finishing nearby work over topping up.
-    [Test]
-    public void HungerUrgency_IsConvex_SlightlyHungryPullIsLow(){
+    // Dominance invariant: below the dominate threshold (0.3), food urgency must exceed the
+    // realistic work ceiling (a p1 order at distance 0 ≈ 0.70) so eating reliably wins.
+    [TestCase(29f)]
+    [TestCase(15f)]
+    [TestCase(0f)]
+    public void HungerUrgency_BelowDominateThreshold_BeatsWorkCeiling(float food){
         Eating e = new Eating();
-        e.food = 45f; // fullness 0.45, t = 0.25 → 0.25^1.5 = 0.125, below the linear 0.25
-        Assert.That(e.HungerUrgency(), Is.LessThan(0.25f));
+        e.food = food;
+        Assert.That(e.HungerUrgency(), Is.GreaterThan(0.70f));
+    }
+
+    // Monotonic: hungrier is always at-least-as-urgent (no dip at the regime boundary).
+    [Test]
+    public void HungerUrgency_IsMonotonic(){
+        Eating e = new Eating();
+        float prev = -1f;
+        for (int pct = 60; pct >= 0; pct -= 5) {
+            e.food = pct;
+            float u = e.HungerUrgency();
+            Assert.That(u, Is.GreaterThanOrEqualTo(prev), $"dip at fullness {pct/100f}");
+            prev = u;
+        }
     }
 
     // ── Eat ─────────────────────────────────────────────────────────────

@@ -20,11 +20,9 @@ public class ModifierSystemTests {
     // ── Constants ──────────────────────────────────────────────────────
     // These are pinned values: changing them is a deliberate balance change, not a refactor.
     // Tests document the intended magnitudes so a stray edit triggers a failure.
-    [Test]
-    public void ToolWorkBonus_IsExpectedValue(){
-        Assert.That(ModifierSystem.ToolWorkBonus, Is.EqualTo(1.25f));
-    }
-
+    // (Tool work bonus is no longer a single constant — each tool item authors its own
+    //  workEfficiency in itemsDb.json. Coverage of that contract lives in integration
+    //  tests once the Animal fixture lands.)
     [Test]
     public void BaseAnimalSpeed_IsExpectedValue(){
         Assert.That(ModifierSystem.BaseAnimalSpeed, Is.EqualTo(1.5f));
@@ -41,13 +39,7 @@ public class ModifierSystemTests {
     }
 
     // ── Constant invariants ────────────────────────────────────────────
-    // Compositional sanity: penalties are penalties (in (0,1)), bonuses are bonuses (>1).
-    [Test]
-    public void ToolWorkBonus_IsAboveOne(){
-        // A tool should speed work up, not slow it down.
-        Assert.That(ModifierSystem.ToolWorkBonus, Is.GreaterThan(1f));
-    }
-
+    // Compositional sanity: penalties are penalties (in (0,1)), speeds positive.
     [Test]
     public void BaseAnimalSpeed_IsPositive(){
         // Used as a multiplier on travel speed — must be > 0 or animals never move.

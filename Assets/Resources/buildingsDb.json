@@ -595,6 +595,17 @@
         "defaultLocked": true,
         "depleteAt": 100
     },{
+        "id": 112,
+        "name": "crucible",
+        "description": "cheap clay smelter; slow + ore-hungry",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "clay", "quantity": 6 }
+        ],
+        "capacity": 1,
+        "isWorkstation": true,
+        "category": "production"
+    },{
         "id": 120,
         "name": "laboratory",
         "description": "scientists conduct research here",

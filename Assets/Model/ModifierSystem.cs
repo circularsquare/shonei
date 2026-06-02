@@ -10,18 +10,24 @@ using UnityEngine;
 // Out of scope: hunger/sleep penalties, which are biological and live on Animal.efficiency.
 public static class ModifierSystem {
     // --- Constants ---
-    public const float ToolWorkBonus               = 1.25f;
     public const float BaseAnimalSpeed             = 1.5f;
     public const float FloorItemSpeedPenalty        = 0.8f;
     public const float CrowdingSpeedPenalty         = 0.8f;
 
     // --- Query methods ---
 
+    // Tool multiplier from the item equipped in the tool slot. Returns the item's
+    // `workEfficiency` (data-driven per tool tier in itemsDb.json); 1.0 when no tool
+    // is equipped, so an empty tool slot is treated the same as an item with no bonus.
+    static float GetToolMultiplier(Animal animal) {
+        Item tool = animal.toolSlotInv.itemStacks[0].item;
+        return tool != null ? tool.workEfficiency : 1f;
+    }
+
     // Combined work speed multiplier for an animal (efficiency × tool bonus × skill level bonus).
     // Pass skill=null for tasks that have no associated skill domain (e.g. hauling).
     public static float GetWorkMultiplier(Animal animal, Skill? skill = null) {
-        bool hasTool = animal.toolSlotInv.itemStacks[0].item != null;
-        float toolMult  = hasTool ? ToolWorkBonus : 1f;
+        float toolMult  = GetToolMultiplier(animal);
         float skillMult = skill.HasValue ? animal.skills.GetBonus(skill.Value) : 1f;
         return animal.efficiency * toolMult * skillMult;
     }
@@ -29,9 +35,7 @@ public static class ModifierSystem {
     // Base work efficiency before the skill bonus — used to calculate XP gain so that
     // the skill bonus doesn't accelerate its own XP accumulation.
     public static float GetBaseWorkEfficiency(Animal animal) {
-        bool hasTool = animal.toolSlotInv.itemStacks[0].item != null;
-        float toolMult = hasTool ? ToolWorkBonus : 1f;
-        return animal.efficiency * toolMult;
+        return animal.efficiency * GetToolMultiplier(animal);
     }
 
     // Travel speed for an animal on its current tile.

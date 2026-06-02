@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 7152bf51f63dbec469bef6e639a9e3bc
+guid: 5adf7328a46a28e4cbf598ebc7abcb05
 TextureImporter:
   internalIDToNameTable: []
   externalObjects: {}
@@ -126,12 +126,12 @@ TextureImporter:
     edges: []
     weights: []
     secondaryTextures:
-    - texture: {fileID: 2800000, guid: 981a95ff57f6d9e47b8d38868733cd25, type: 3}
+    - texture: {fileID: 2800000, guid: a36f316d58b828b4588ab6f3ad30b40c, type: 3}
       name: _NormalMap
     nameFileIdTable: {}
   spritePackingTag: 
   pSDRemoveMatte: 0
   pSDShowRemoveMatteOption: 0
-  userData: normalsCacheKey=VYjTY9rvR1FdxR8qejv1cw==
+  userData: normalsCacheKey=GPAStbJZpK8GaZAGxd8SSQ==
   assetBundleName: 
   assetBundleVariant: 

@@ -51,6 +51,23 @@ public class AnimalStateManager {
             if (animal.tickCounter % 2 == 1) {
                 JobSwapper.TrySwap(animal);
             }
+            // Don't loiter on ladder-only footing (a rung in mid-air) — looks wrong and
+            // strands mice after a mid-climb job switch or load. Head for the nearest stable
+            // tile (usually the ladder's top/bottom landing). Real work, if any, was already
+            // chosen by ChooseTask above and walks the mouse off naturally; this only fires
+            // when it would otherwise just sit on the rung.
+            Tile foot = animal.TileHere();
+            if (foot != null && animal.world.graph.IsLadderOnlyFooting(foot.x, foot.y)) {
+                Path escape = animal.nav.FindPathTo(
+                    t => t != foot && t.node.standable
+                         && !animal.world.graph.IsLadderOnlyFooting(t.x, t.y),
+                    r: Task.MediumFindRadius);
+                if (escape != null) {
+                    animal.task = new GoTask(animal, escape.tile);
+                    if (!animal.task.Start()) animal.task = null;
+                }
+                return;
+            }
             // De-stack: if sharing a tile with another mouse, try to walk to a direct nav-graph
             // neighbour. Only attempt 70% of the time so a large stack doesn't move in lockstep.
             // Skips the random walk below — that's for non-stacked idle behaviour.
@@ -111,6 +128,18 @@ public class AnimalStateManager {
         return null;
     }
 
+    // Per-tick wear on every equip slot while the animal is working. Each stack's
+    // EquipDecay reads its item's equipDecayRate (per-year units, like decayRate) and
+    // contributes to the same decayCounter that passive decay uses. Items with
+    // equipDecayRate == 0 are no-ops, so this is safe to call on slots whose contents
+    // aren't meant to wear from use (foodSlotInv, bookSlotInv). Wear is deterministic.
+    private static void ApplyEquipDecay(Animal animal) {
+        animal.toolSlotInv?.itemStacks[0]?.EquipDecay(1f);
+        animal.clothingSlotInv?.itemStacks[0]?.EquipDecay(1f);
+        animal.foodSlotInv?.itemStacks[0]?.EquipDecay(1f);
+        animal.bookSlotInv?.itemStacks[0]?.EquipDecay(1f);
+    }
+
     // Returns the skill domain for the animal's current task, or null if the task
     // has no associated skill (e.g. hauling, idle wandering).
     private static Skill? GetTaskSkill(Animal animal) {
@@ -128,6 +157,7 @@ public class AnimalStateManager {
         Skill? taskSkill      = GetTaskSkill(animal);
         float  baseWorkEff    = ModifierSystem.GetBaseWorkEfficiency(animal);
         float  workEfficiency = ModifierSystem.GetWorkMultiplier(animal, taskSkill);
+        ApplyEquipDecay(animal);
 
         if (animal.task is HarvestTask harvestTask) {
             Plant plant = harvestTask.tile.plant;

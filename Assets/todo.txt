@@ -62,6 +62,7 @@ UI
 - tab styling, add building icons?
 - recipe list / enabling disabling globally and locally for crafting buildings info panel
 
+- item icons in recipe list
 
 
 CODE CLEANUP
@@ -85,3 +86,6 @@ sketch out metalworking?
 working pose facing back
 test side ladders / cliff climbing
 tools
+
+todoship
+

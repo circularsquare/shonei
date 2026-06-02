@@ -108,9 +108,20 @@
         "decayRate": 0.0,
         "children": null
     },{
+        "id": 43,
+        "name": "bronze bar",
+        "decayRate": 0.0,
+        "children": null
+    },{
         "id": 50,
         "name": "glass",
         "decayRate": 0.0,
+        "children": null
+    },{
+        "id": 51,
+        "name": "clay mold",
+        "decayRate": 0.0,
+        "discrete": true,
         "children": null
     },{
         "id": 60,
@@ -242,9 +253,34 @@
     },{
         "id": 200,
         "name": "tools",
-        "decayRate": 2.0,
-        "discrete": true,
-        "children": null
+        "decayRate": 0,
+        "children": [
+            {
+                "id": 201,
+                "name": "stone tools",
+                "decayRate": 0.05,
+                "discrete": true,
+                "workEfficiency": 1.10,
+                "equipDecayRate": 7.5,
+                "children": null
+            },{
+                "id": 202,
+                "name": "copper tools",
+                "decayRate": 0.05,
+                "discrete": true,
+                "workEfficiency": 1.20,
+                "equipDecayRate": 5.0,
+                "children": null
+            },{
+                "id": 203,
+                "name": "bronze tools",
+                "decayRate": 0.05,
+                "discrete": true,
+                "workEfficiency": 1.30,
+                "equipDecayRate": 4.0,
+                "children": null
+            }
+        ]
     },{
         "id": 210,
         "name": "water",
@@ -282,7 +318,7 @@
     },{
         "id": 270,
         "name": "clothing",
-        "decayRate": 2.0,
+        "decayRate": 4.0,
         "discrete": true,
         "children": [
             {

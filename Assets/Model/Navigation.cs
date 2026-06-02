@@ -392,7 +392,13 @@ public class Graph {
         return null;  // plain horizontal — handled by ComputeEdge default branch
     }
 
-    public bool GetStandability(int x, int y){
+    public bool GetStandability(int x, int y){ return GetStandability(x, y, allowLadder: true); }
+
+    // allowLadder=false restricts the test to "real" footing: solid ground or a
+    // building floor beneath. A tile that's standable only via a ladder / side-ladder
+    // (a rung in mid-air, nothing under it) returns false. See IsLadderOnlyFooting,
+    // which uses this to tell resting spots from rungs so idle mice climb off.
+    public bool GetStandability(int x, int y, bool allowLadder){
         Tile tileHere = world.GetTileAt(x, y);
         Tile tileBelow = world.GetTileAt(x, y-1);
         if (tileBelow == null) {return false;} // need tile below to exist
@@ -417,6 +423,8 @@ public class Graph {
         if (tileBelow.type.solid) {return true;} // tile below is solid
         if (tileBelow.building != null && tileBelow.building.structType.solidTop) {return true;} // tile below is solid-top building
         if (tileBelow.structs[1] != null && tileBelow.structs[1].structType.solidTop) {return true;} // tile below is solid-top mStruct
+        // Everything below here is ladder-only footing — a rung in mid-air with no ground beneath.
+        if (!allowLadder) return false;
         if (tileHere.HasLadder() || tileBelow.HasLadder()) {return true;}
         // Side ladders: same standability rule as regular ladders. Mice stand on the
         // ladder's tile or on the air tile directly above the stack. Crucially, unlike
@@ -427,6 +435,107 @@ public class Graph {
         return false;
     }
     public void UpdateStandability(int x, int y){ nodes[x,y].standable = GetStandability(x, y); }
+
+    // True when a mouse standing at (x,y) is held up only by a ladder / side-ladder
+    // (a rung in mid-air) rather than by solid ground or a building floor. Idle mice
+    // path off such tiles — you shouldn't loiter halfway up a ladder.
+    public bool IsLadderOnlyFooting(int x, int y){
+        if (x < 0 || x >= world.nx || y < 0 || y >= world.ny) return false;
+        return nodes[x, y].standable && !GetStandability(x, y, allowLadder: false);
+    }
+
+    // ── Load-time footing rescue ─────────────────────────────────────────────
+    // Finds the nearest standable node to an arbitrary world position. Save data
+    // persists only the raw (x, y), so a mouse saved mid-traversal (ladder / stairs /
+    // cliff / rope bridge) comes back off-grid — it would otherwise drift diagonally
+    // toward a horizontal neighbour on its first move (the lerp starts from the off-grid
+    // point) and idle in mid-air. Snapping it onto a real node fixes both.
+    //
+    // Two candidate sources; nearest-by-Euclidean wins:
+    //   1. Standable tile nodes in a small box. Handles ladders (the column tiles ARE
+    //      standable tile nodes — ladders use direct tile-node edges, not waypoints)
+    //      and any case with ground close by.
+    //   2. The nearest waypoint of any stair / cliff / bridge chain, then a bounded BFS
+    //      along that chain to its standable boundary (cliff base/top, stair entry/exit,
+    //      nearer bridge post) — which may be many tiles away.
+    // Returns null if nothing standable is reachable (caller falls back).
+    public Node FindNearestStandableNode(float x, float y, float r = 3f){
+        int ri = Mathf.CeilToInt(r);
+        int cx = Mathf.RoundToInt(x);
+        int cy = Mathf.RoundToInt(y);
+
+        Node best = null;
+        float bestSqr = float.MaxValue;
+
+        // 1. Direct standable tile nodes in the box.
+        for (int dx = -ri; dx <= ri; dx++){
+            for (int dy = -ri; dy <= ri; dy++){
+                int nx = cx + dx, ny = cy + dy;
+                if (nx < 0 || nx >= world.nx || ny < 0 || ny >= world.ny) continue;
+                Node n = nodes[nx, ny];
+                if (!n.standable) continue;
+                float d = (n.wx - x) * (n.wx - x) + (n.wy - y) * (n.wy - y);
+                if (d < bestSqr){ bestSqr = d; best = n; }
+            }
+        }
+
+        // 2. Nearest waypoint of any chain (Chebyshev pre-filter, mirroring Nav.FindPathToCandidate).
+        Node nearestWp = null;
+        float wpSqr = float.MaxValue;
+        foreach (Node wp in AllChainWaypoints()){
+            if (wp == null) continue;
+            if (Mathf.Max(Mathf.Abs(wp.wx - x), Mathf.Abs(wp.wy - y)) > r) continue;
+            float d = (wp.wx - x) * (wp.wx - x) + (wp.wy - y) * (wp.wy - y);
+            if (d < wpSqr){ wpSqr = d; nearestWp = wp; }
+        }
+        if (nearestWp != null){
+            Node viaChain = NearestStandableBoundary(nearestWp, x, y);
+            if (viaChain != null){
+                float d = (viaChain.wx - x) * (viaChain.wx - x) + (viaChain.wy - y) * (viaChain.wy - y);
+                if (d < bestSqr){ bestSqr = d; best = viaChain; }
+            }
+        }
+        return best;
+    }
+
+    // Every waypoint node the graph knows about, across stair / cliff / bridge chains.
+    // Used only by the one-shot load-time snap, so a full sweep is fine.
+    private IEnumerable<Node> AllChainWaypoints(){
+        foreach (var (wp1, wp2) in stairWaypoints.Values){ yield return wp1; yield return wp2; }
+        foreach (Node[] chain in cliffWaypoints.Values)
+            for (int i = 0; i < chain.Length; i++) yield return chain[i];
+        foreach (RopeBridge bridge in RopeBridge.All){
+            if (bridge.waypoints == null) continue;
+            foreach (Node wp in bridge.waypoints) yield return wp;
+        }
+    }
+
+    // BFS from a waypoint through its connected chain to the nearest standable boundary
+    // node (by Euclidean distance to (x, y)). Expands only through non-standable waypoint
+    // nodes; standable neighbours are recorded as boundary candidates but never expanded —
+    // otherwise the flood would escape the chain into the whole walkable component via an
+    // endpoint's edges. Returns null if the chain has no standable boundary.
+    private Node NearestStandableBoundary(Node startWp, float x, float y){
+        var visited = new HashSet<Node>{ startWp };
+        var queue = new Queue<Node>();
+        queue.Enqueue(startWp);
+        Node best = null;
+        float bestSqr = float.MaxValue;
+        while (queue.Count > 0){
+            Node cur = queue.Dequeue();
+            foreach (Node nb in cur.neighbors){
+                if (nb == null || !visited.Add(nb)) continue;
+                if (nb.standable){
+                    float d = (nb.wx - x) * (nb.wx - x) + (nb.wy - y) * (nb.wy - y);
+                    if (d < bestSqr){ bestSqr = d; best = nb; }
+                    // boundary — do not expand past it
+                } else {
+                    queue.Enqueue(nb);
+                }
+            }
+        }
+        return best;
+    }
 }
 
 

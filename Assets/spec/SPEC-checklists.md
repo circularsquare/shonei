@@ -91,6 +91,7 @@ This is the workflow:
 - [ ] **If `AttachAnimations` is overridden**: don't reference subclass-side fields from it — it runs during `base()` before subclass ctor body.
 - [ ] **Any new `dx` field** (interior tile, door, ladder, workSpot, furnishing offset, …): apply `nx-1-dx` on mirror lookup. Convention used throughout — see [StructType.cs:45-66](../Model/Structure/StructType.cs#L45).
 - [ ] **If the subclass adds saveable state**: see "Adding new save data" below.
+- [ ] **Substrate-capture pattern** (your building's behaviour depends on the tile it was built on): mirror `Quarry` / `DiggingPit`. Add a `TileType capturedTile` field, capture it via `StructController.Construct` before the tile is mined (add an `if (s is YourType y) y.CaptureOriginalTile(tile.type)` next to the existing Quarry/DiggingPit lines), expose `GetExtractionOutputs()` if you want to override the recipe's outputs, hook into the override site in `AnimalStateManager.HandleWorking`, and reuse the existing `WorldSaveData.capturedTileType` save field (gather + restore alongside the existing entries). Recipes with dynamic outputs should leave `noutputs: []` in JSON — the override path supplies them, and a null return falls back to the static list as a safety net.
 
 ## Adding a new exclusive UI panel
 

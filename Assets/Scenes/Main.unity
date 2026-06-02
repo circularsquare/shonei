@@ -1952,6 +1952,9 @@ MonoBehaviour:
   pixelsPerUnit: 16
   noiseScale: 0.26
   noiseAspect: 1.6
+  densityJitter: 0.05
+  densityJitterSkew: 3
+  densityJitterRate: 0.05
   thresholdClear: 0.7
   thresholdStorm: 0.36
   bandCenterY: 105
@@ -1972,7 +1975,7 @@ MonoBehaviour:
   shadowBand: 0
   cloudSunHeight: 0.7
   blobCellSize: 0.8
-  blobJitter: 0.58
+  blobJitter: 0.778
   blobRadiusMin: 1
   blobRadiusMax: 2.2
   excessForMaxSize: 0.26
@@ -1984,7 +1987,9 @@ MonoBehaviour:
   blobAspect: 1.6
   edgeThreshold: 0.02
   edgeSoftness: 0
-  fadeRange: 0.07
+  fadeRange: 0.05
+  fadeExponent: 0.8
+  minBlobPixels: 2
 --- !u!1 &107429651
 GameObject:
   m_ObjectHideFlags: 0
@@ -16739,7 +16744,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Content: {fileID: 403137047}
-  m_Horizontal: 1
+  m_Horizontal: 0
   m_Vertical: 1
   m_MovementType: 1
   m_Elasticity: 0.1

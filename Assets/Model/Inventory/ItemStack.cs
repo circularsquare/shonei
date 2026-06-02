@@ -79,9 +79,17 @@ public class ItemStack {
     // space. Non-discrete items use the full stackSize.
     public int EffectiveCapacity => (item != null && item.discrete) ? stackSize - stackSize % item.unitFen : stackSize;
 
-    public void Decay(float time = 1f){
-        if (item != null && quantity > 0 && item.decayRate != 0){
-            float decayedQuantity = (float)quantity * (item.decayRate * time / (float)(World.ticksInDay*World.daysInYear));
+    public void Decay(float time = 1f) => DecayAtRate(item?.decayRate ?? 0f, time);
+
+    // Wear applied while equipped on an animal that is currently working. Same
+    // per-year unit as decayRate but only ticked from HandleWorking, so idle and
+    // sleeping mice don't wear their tools/clothes. Shares decayCounter with the
+    // passive Decay path — both contributions accumulate toward the same wear pool.
+    public void EquipDecay(float time = 1f) => DecayAtRate(item?.equipDecayRate ?? 0f, time);
+
+    void DecayAtRate(float rate, float time){
+        if (item != null && quantity > 0 && rate != 0){
+            float decayedQuantity = (float)quantity * (rate * time / (float)(World.ticksInDay*World.daysInYear));
             // ^ number near 0
             decayCounter += (int)(decayedQuantity * maxDecayCount);
             int amountToDecay = decayCounter / maxDecayCount;

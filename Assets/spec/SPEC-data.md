@@ -88,13 +88,13 @@ ID ranges:
 | 1–4 | currency (silver) |
 | 5–9 | raw wood group + leaves (wood=5, oak=6, maple=7, pine=8) |
 | 10–19 | raw stone group + leaves (stone=10, slate=11, granite=12, limestone=13) |
-| 20–29 | dirt |
-| 30–39 | ores (iron ore, coal) |
-| 40–49 | metals (iron) |
+| 20–29 | earth items (dirt=20, sand=21, clay=22) |
+| 30–39 | ores (ore group=30, iron ore=31, coal=32, malachite=33, cassiterite=34) |
+| 40–49 | metals (iron bar=40, copper bar=41, tin bar=42, bronze bar=43) |
 | 60–69 | gems (gem=60, jade=61) |
 | 100–119 | processed wood group + leaves (planks=100, oak planks=101, maple planks=102, pine planks=103, sawdust=110, paper=112) |
 | 150–199 | food and seeds |
-| 200–209 | tools and equipment |
+| 200–209 | tools group + leaves (tools=200, stone tools=201, copper tools=202, bronze tools=203) |
 | 210–239 | liquids and processed food (water, soymilk, tofu) |
 | 250–259 | fiber group (ramie) |
 | 260–269 | cloth group (ramie cloth) |
@@ -108,7 +108,9 @@ Fields:
 |-------|------|-------|
 | `id` | int | unique |
 | `name` | string | lookup key |
-| `decayRate` | float | decay per tick on floors (0 = no decay); inherited by children if not specified on child |
+| `decayRate` | float | passive decay per tick (multiplied by per-`InvType` factor: Floor 5×, Storage 1×, Equip 1×, Animal/Market/Blueprint/Reservoir/Furnishing 0); 0 = no passive decay; inherited by children if not specified on child. Units are "per in-game year" — see `ItemStack.Decay`. |
+| `equipDecayRate` | float? | extra wear ticked only while the item sits in an animal's Equip slot AND the animal is in the Working state (HandleWorking). Same per-year units as `decayRate`. Deterministic — shares `ItemStack.decayCounter` with passive decay so both contributions accumulate to the same wear pool. Set on tools (and could be set on clothing) to make wear scale with how much the animal actually works. 0/absent = no use-based wear. |
+| `workEfficiency` | float? | multiplier applied to `ModifierSystem.GetWorkMultiplier` when this item is equipped in the tool slot. 1.0 (default) = "no tool" — empty slot and a workEfficiency-1 item are indistinguishable. >1 = active bonus. Stone tools 1.10, copper 1.20, bronze 1.30; reserve ~1.5 for far-future endgame tools. Meaningless on non-tool items where it stays 1.0. |
 | `foodValue` | int? | hunger restored when eaten |
 | `happinessNeed` | string? | which happiness satisfaction eating this food grants (e.g. "wheat", "fruit", "soymilk"); null = none |
 | `discrete` | bool? | stored/moved in whole-liang (100 fen) units only (e.g. tools, clothing); inherited by children |
@@ -210,13 +212,13 @@ Fields:
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `id` | int | unique (0=empty, 1=structure, 2=dirt, 3=sand, 20=limestone, 21=granite, 22=slate). Solid-tile ids drive the soft-edge sort ranking — lower id draws on top at different-type boundaries (see SPEC-rendering "Tile body sort order"). |
+| `id` | int | unique (0=empty, 1=structure, 2=dirt, 3=sand, 4=clay, 20=limestone, 21=granite, 22=slate). Solid-tile ids drive the soft-edge sort ranking — lower id draws on top at different-type boundaries (see SPEC-rendering "Tile body sort order"). |
 | `name` | string | lookup key |
 | `solid` | int | 0=passable, 1=solid (blocks movement) |
-| `group` | string? | logical family (e.g. `"stone"` for limestone/granite/slate). `StructPlacement` treats `requiredTileName` as a match on either the tile's name or its group, so quarry's `requiredTileName: "stone"` accepts any stone variant. |
+| `group` | string? | logical family (e.g. `"stone"` for limestone/granite/slate, `"earth"` for dirt/sand/clay). `StructPlacement` treats `requiredTileName` as a match on either the tile's name or its group, so quarry's `requiredTileName: "stone"` accepts any stone variant and digging pit's `"earth"` accepts dirt/sand/clay. **Watch out**: name-only matches (e.g. burrow's `requiredTileName: "dirt"`) skip the group, so a burrow only digs into the dirt tile even though dirt is in the `"earth"` group. |
 | `overlay` | string? | name of an overlay sprite sheet that tiles of this type can carry per-side decoration from. `dirt → "grass"` today; future moss-on-stone would set this on stone variants. Loads from `Resources/Sprites/Tiles/Sheets/<overlay>.png` (32×32 atlas, transparent Main interior). See SPEC-rendering "Tile overlays" for the rendering trick. |
 | `nproducts` | `[{name, quantity}]`? | items dropped on tile break (semantically: "clear the area"). Simple flat drops, no chance. |
-| `nExtractionProducts` | `[{name, quantity, chance?}]`? | items produced each cycle by an extraction building (e.g. quarry) placed on this tile. Distinct from `nproducts` because extraction is deliberate harvesting, not mining clearance. Consumed via `Quarry.GetExtractionOutputs` → `AnimalStateManager` craft loop. |
+| `nExtractionProducts` | `[{name, quantity, chance?}]`? | items produced each cycle by an extraction building (`Quarry`) placed on this tile. Distinct from `nproducts` because extraction is deliberate harvesting, not mining clearance. Consumed via `Quarry.GetExtractionOutputs` → `AnimalStateManager` craft loop. (`DiggingPit` uses a different mechanism — it reads `nproducts[0]` and emits one liang per craft, scaled by substrate; see `DiggingPit.GetExtractionOutputs`.) |
 
 ## `researchDb.json` — Technologies
 

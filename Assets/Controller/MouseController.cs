@@ -126,14 +126,13 @@ public class MouseController : MonoBehaviour {
             BuildPanel.instance?.CycleShape(+1);
         if (Input.GetKeyDown(KeyCode.Q) && mouseMode == MouseMode.Build)
             BuildPanel.instance?.CycleShape(-1);
-        // Ctrl+Alt+B has two modes depending on what the cursor is over:
+        // Ctrl+Shift+F has two modes depending on what the cursor is over:
         //  (a) hovering an existing blueprint → instant-complete that blueprint.
         //  (b) elsewhere → toggle the one-shot arm for the NEXT blueprint placed.
-        // Symmetric to InfoPanel's Ctrl+Shift+D instant-deconstruct. Uses Alt (not Shift)
-        // to dodge Unity's Ctrl+Shift+B Build Settings shortcut. Not gated on Build mode.
-        if (Input.GetKeyDown(KeyCode.B)
+        // Symmetric to InfoPanel's Ctrl+Shift+D instant-deconstruct. Not gated on Build mode.
+        if (Input.GetKeyDown(KeyCode.F)
                 && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
-                && (Input.GetKey(KeyCode.LeftAlt)     || Input.GetKey(KeyCode.RightAlt))) {
+                && (Input.GetKey(KeyCode.LeftShift)   || Input.GetKey(KeyCode.RightShift))) {
             Blueprint hoveredBp = null;
             WorldController wc = WorldController.instance;
             if (!EventSystem.current.IsPointerOverGameObject() && wc != null && wc.world != null) {

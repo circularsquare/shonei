@@ -91,12 +91,6 @@ public class Animal : MonoBehaviour{
     // tick while the animal is boxed in. Transient — not saved.
     [System.NonSerialized] public float dropCooldownUntil = 0f;
 
-    // Set by DeliverToBlueprintObjective when this animal delivers the last material and promotes a
-    // blueprint to Constructing. Consumed (and cleared) on the very next ChooseTask to skip the
-    // leisure/idle roll, so the animal — already standing on the site, and the only job eligible to
-    // build it — finishes construction instead of rolling idle and wandering off. Transient — not saved.
-    [System.NonSerialized] public bool justPromotedConstruct = false;
-
     // Set true by TickUpdate when the mouse has starved to death. AnimalController
     // sweeps for this flag after the tick loop and removes the mouse — never
     // mid-iteration, so animals[] stays safe to compact. Transient — not saved
@@ -440,83 +434,97 @@ public class Animal : MonoBehaviour{
     }
 
 
+    // ── Urgency-based task selection (see plans/urgency-system.md) ───────────────────
+    // Every category the idle mouse could act on yields a 0..1 urgency; the mouse attempts
+    // categories in descending-urgency order and takes the first that starts a task. This
+    // replaces the old hard ladder + random leisure/idle dice with a smooth comparison, so
+    // needs scale (a slightly-hungry mouse finishes nearby work; a starving one drops everything
+    // to eat) and urgent work can beat evening leisure. Each category delegates to its EXISTING
+    // helper (FindFood / ChooseCraftTask / TryPickLeisure / …) — urgency only orders the attempts,
+    // it does not flatten those subsystems' internal scoring.
+    //
+    // Drop stays a hard pre-step (policy: idle mice keep main inv empty, food/tools in equip slots).
+    // It has its own cooldown fallback so a boxed-in mouse doesn't loop forever.
     public void ChooseTask() {
         if (task != null){ return; }
 
-        // 1. Survival needs (always first)
-        // drop all main inventory when idle (food/tools are in equip slots)
-        // Skip if a recent drop attempt failed — the cooldown lets ChooseTask fall through
-        // to other branches (food, eep, work) instead of looping on an unreachable drop.
+        // Hard pre-step: drop carried items. Not urgency-ranked — see method comment.
         if (!inv.IsEmpty() && World.instance.timer >= dropCooldownUntil) {
             task = new DropTask(this);
-            if (task.Start()) return; }
-        if (eating.Hungry()) { if (FindFood()) return; }
-        if (eeping.ShouldSleep(BedtimeUrgency())) {
-            task = new EepTask(this);
-            if (task.Start()) return; }
-        if (FindEquipment()) return;
-        if (FindClothing()) return;
-
-        // 1b. Time-of-day behavior roll.
-        //     Leisure (5–9 pm): 40% leisure, 40% idle, 20% work.
-        //     Work (rest of day): 5% leisure, 15% idle, 80% work.
-        //     Leisure pick is need-based: target the lowest happiness satisfaction.
-        float leisureChance, idleChance;
-        if (IsLeisureTime()) {
-            leisureChance = 0.40f; idleChance = 0.40f;
-        } else {
-            leisureChance = 0.05f; idleChance = 0.15f;
+            if (task.Start()) return;
         }
 
-        // Skip the leisure/idle roll on the tick right after delivering a blueprint's last material:
-        // fall straight through to the work loop so the deliverer finishes the construct order it's
-        // standing on, rather than rolling idle and forcing a second trip. Consumed once. Survival
-        // needs above still apply — a starving mouse will have already left for food before here.
-        bool skipRoll = justPromotedConstruct;
-        justPromotedConstruct = false;
-        if (!skipRoll) {
-            float roll = (float)random.NextDouble();
-            if (roll < leisureChance) {
-                if (TryPickLeisure()) return;
-                task = null; return; // no leisure available — idle
-            }
-            if (roll < leisureChance + idleChance) {
-                task = null; return; // idle
-            }
-        }
+        // Score every category, jittering each score (see Jitter). Helpers that no-op when nothing
+        // applies (full slot, no orders) get urgency 0 so they're never attempted. Idle is the floor.
+        // Craft and leisure are gathered once here and threaded into both their urgency and their
+        // pick, so the (non-trivial) scan isn't run twice per idle tick.
+        var candidates = new List<(float urgency, System.Func<bool> tryStart)>();
 
-        // 2. Work orders: p1 → p2 → p3 (haul, then craft via recipe-first) → p4
-        //    Craft uses ChooseCraftTask() instead of ChooseOrder so recipe score drives building selection.
+        candidates.Add((Jitter(eating.HungerUrgency()), FindFood));
+        candidates.Add((Jitter(eeping.SleepUrgency(BedtimeUrgency())), TryStartSleep));
+        // Equip/clothing: fixed pull, only when the slot is actually empty (else the helper would
+        // rank then no-op — see validation note in the plan).
+        float equipU = toolSlotInv.itemStacks[0].item == null ? UrgencyConfig.EquipUrgency : 0f;
+        float clothingU = clothingSlotInv.itemStacks[0].item == null ? UrgencyConfig.EquipUrgency : 0f;
+        candidates.Add((Jitter(equipU), FindEquipment));
+        candidates.Add((Jitter(clothingU), FindClothing));
+
         var wom = WorkOrderManager.instance;
         if (wom != null) {
             wom.PruneStale();
-            task = wom.ChooseOrder(this, 1); if (task != null) return;
-            task = wom.ChooseOrder(this, 2); if (task != null) return;
-            task = wom.ChooseOrder(this, 3, exclude: WorkOrderManager.OrderType.Craft); if (task != null) return;
-            task = ChooseCraftTask(); if (task != null) return;
-            task = wom.ChooseOrder(this, 4); if (task != null) return;
+            candidates.Add((Jitter(wom.BestWorkUrgency(this)), TryStartWorkOrder));
+            var craft = ScoreCraftRecipes();
+            candidates.Add((Jitter(CraftUrgency(craft)), () => ChooseCraftTask(craft)));
+        }
+        var leisure = GatherLeisureCandidates();
+        candidates.Add((Jitter(LeisureUrgency(leisure)), () => TryPickLeisure(leisure)));
+        candidates.Add((Jitter(IdleUrgency()), () => { task = null; return true; })); // idle floor — always "succeeds"
+
+        // Highest urgency first; attempt each until one starts a task.
+        candidates.Sort((a, b) => b.urgency.CompareTo(a.urgency));
+        foreach (var c in candidates) {
+            if (c.urgency <= 0f) continue;
+            if (c.tryStart()) return;
         }
         task = null;
+    }
+
+    // Adds randomness to a category score, scaled by headroom: s + (1-s) * JitterStrength * rand.
+    // The (1-s) factor means urgent scores (s→1) barely move — so when something is pressing the
+    // pick stays deterministic — while low scores get real variety, so a chill mouse picks among
+    // comparable options differently each time rather than always the same one. Preserves the
+    // ordering of well-separated scores; only shuffles near-ties. Uses `random` (seeded, saved) for
+    // reproducibility. A 0 score stays 0 so a genuinely-unavailable category gets no spurious pull.
+    private float Jitter(float s) {
+        if (s <= 0f) return 0f;
+        return s + (1f - s) * UrgencyConfig.JitterStrength * (float)random.NextDouble();
+    }
+
+    // Tries the work-order tiers in the same internal order as before (p1 → p2 → p3-excl-craft → p4).
+    // Craft is handled by its own category (ChooseCraftTask) so recipe economics, not proximity,
+    // drives station choice. Returns true if a task was started.
+    private bool TryStartWorkOrder() {
+        var wom = WorkOrderManager.instance;
+        if (wom == null) return false;
+        task = wom.ChooseOrder(this, 1); if (task != null) return true;
+        task = wom.ChooseOrder(this, 2); if (task != null) return true;
+        task = wom.ChooseOrder(this, 3, exclude: WorkOrderManager.OrderType.Craft); if (task != null) return true;
+        task = wom.ChooseOrder(this, 4); if (task != null) return true;
+        return false;
+    }
+
+    private bool TryStartSleep() {
+        task = new EepTask(this);
+        return task.Start();
     }
 
     // Scores all of this animal's recipes globally, then finds the nearest building for the
     // top-scoring recipe. Falls through to lower-scoring recipes when no building is available.
     // This is recipe-first selection: economic score drives which building type to visit,
     // rather than proximity driving which recipes are considered.
-    private Task ChooseCraftTask() {
+    private bool ChooseCraftTask(List<(Recipe recipe, float score)> scored) {
         var wom = WorkOrderManager.instance;
-        if (wom == null) return null;
-        var targets = InventoryController.instance?.targets;
-
-        var scored = new List<(Recipe recipe, float score)>();
-        foreach (var r in job.recipes) {
-            if (r == null) continue;
-            if (!r.IsEligibleForPicking()) continue;
-            if (!ginv.SufficientResources(r.inputs)) continue;
-            if (r.AllOutputsSatisfied(targets)) continue;
-            scored.Add((r, r.Score(targets)));
-        }
-        scored.Sort((a, b) => b.score.CompareTo(a.score)); // highest score first
+        if (wom == null) return false;
 
         foreach (var (recipe, _) in scored) {
             var found = wom.FindCraftOrder(recipe.tile, this);
@@ -526,10 +534,38 @@ public class Animal : MonoBehaviour{
             if (craftTask.Start()) {
                 order.res.Reserve();
                 craftTask.workOrder = order;
-                return craftTask;
+                task = craftTask;
+                return true;
             }
         }
-        return null;
+        return false;
+    }
+
+    // Eligible recipes for this animal's job, scored by economic need and sorted best-first.
+    // Shared by ChooseCraftTask (which station to visit) and CraftUrgency (how badly to craft).
+    private List<(Recipe recipe, float score)> ScoreCraftRecipes() {
+        var targets = InventoryController.instance?.targets;
+        var scored = new List<(Recipe recipe, float score)>();
+        foreach (var r in job.recipes) {
+            if (r == null) continue;
+            if (!r.IsEligibleForPicking()) continue;
+            if (!ginv.SufficientResources(r.inputs)) continue;
+            if (r.AllOutputsSatisfied(targets)) continue;
+            scored.Add((r, r.Score(targets)));
+        }
+        scored.Sort((a, b) => b.score.CompareTo(a.score)); // highest score first
+        return scored;
+    }
+
+    // 0..1 urgency for the craft category. Recipe.Score is unbounded multiplicative (a scarce-input
+    // /overstocked-output recipe can score «1 or »1), so it can't be compared directly to the
+    // tier-based work urgencies — map it through s/(1+s), which is monotonic and lands in (0,1).
+    // UrgencyConfig.CraftWeight scales the whole category so craft sits sensibly against haul/build work.
+    private float CraftUrgency(List<(Recipe recipe, float score)> scored) {
+        if (scored.Count == 0) return 0f;
+        float s = scored[0].score; // best-first
+        if (s <= 0f) return 0f;
+        return UrgencyConfig.CraftWeight * (s / (1f + s));
     }
 
     // Picks up one tool into toolSlotInv if the slot is empty.
@@ -605,8 +641,23 @@ public class Animal : MonoBehaviour{
 
 
     // Picks the best available leisure activity by targeting the lowest happiness satisfaction.
-    // Gathers all options (chat + each leisure building need), sorts by satisfaction, tries in order.
-    private bool TryPickLeisure() {
+    // Sorts the gathered options by satisfaction and tries the least-satisfied need first.
+    private bool TryPickLeisure(List<(float sat, System.Func<bool> tryStart)> candidates) {
+        if (candidates.Count == 0) return false;
+
+        // Sort by satisfaction ascending — try the least-satisfied need first
+        candidates.Sort((a, b) => a.sat.CompareTo(b.sat));
+        foreach (var c in candidates) {
+            if (c.tryStart()) return true;
+        }
+        return false;
+    }
+
+    // Gathers the currently-available leisure options as (satisfaction, tryStart) pairs.
+    // Shared by TryPickLeisure (which attempts them least-satisfied first) and LeisureUrgency
+    // (which reads the lowest satisfaction to size the category's pull). Each option's actual
+    // building/seat selection lives in its task's Initialize — these are just the eligible needs.
+    private List<(float sat, System.Func<bool> tryStart)> GatherLeisureCandidates() {
         var candidates = new List<(float sat, System.Func<bool> tryStart)>();
 
         // Chat option (social need) — only seek chat when social is low
@@ -651,15 +702,28 @@ public class Animal : MonoBehaviour{
                 candidates.Add((sat, () => TryStartLeisureFor(captured)));
             }
         }
+        return candidates;
+    }
 
-        if (candidates.Count == 0) return false;
+    // 0..1 urgency for the leisure category. Time-of-day is the dial (evening makes leisure
+    // competitive with work; daytime keeps a low-but-present pull so mice still occasionally take a
+    // break); the least-satisfied available need sets how strong the pull is within that dial.
+    // Returns 0 when no leisure option is available, so the category is simply skipped.
+    private float LeisureUrgency(List<(float sat, System.Func<bool> tryStart)> candidates) {
+        if (candidates.Count == 0) return 0f;
+        float lowestSat = float.MaxValue;
+        foreach (var c in candidates) if (c.sat < lowestSat) lowestSat = c.sat;
+        float needPull = Mathf.Clamp01((Happiness.wantThreshold - lowestSat) / Happiness.wantThreshold);
+        float bias = IsLeisureTime() ? UrgencyConfig.LeisureBiasEvening : UrgencyConfig.LeisureBiasDay;
+        return bias * needPull;
+    }
 
-        // Sort by satisfaction ascending — try the least-satisfied need first
-        candidates.Sort((a, b) => a.sat.CompareTo(b.sat));
-        foreach (var c in candidates) {
-            if (c.tryStart()) return true;
-        }
-        return false;
+    // Always-available baseline "take a break" urgency — the floor that low-value work and leisure
+    // must clear to be worth doing. When nothing is pressing, a mouse sometimes idles/chats rather
+    // than always grabbing the nearest low-value haul; a real need or nearby work out-scores it.
+    // Evening idles more than daytime. Randomness comes from the general Jitter applied in ChooseTask.
+    private float IdleUrgency() {
+        return IsLeisureTime() ? UrgencyConfig.IdleBaseEvening : UrgencyConfig.IdleBaseDay;
     }
 
     private bool FindChatPartner() {

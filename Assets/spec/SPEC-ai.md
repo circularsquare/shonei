@@ -70,24 +70,56 @@ Social satisfaction is granted **gradually** at `Happiness.socialTickGrant` (0.2
 
 **Fireplace co-leisure** (`LeisureTask` / `HandleLeisure`): each tick, `HandleLeisure` checks if a `socialWhenShared` building has another mouse present. Either mouse having social < 2.0 is enough to spark conversation (symmetric — the chatty one draws the other in). Both mice get the grant and show chat bubbles. The socializing aspect stops naturally once both mice exceed 2.0, but the fireplace leisure session continues for its warmth/need benefit.
 
-### Task dispatch (ChooseTask priority order)
+### Task dispatch (ChooseTask — unified urgency picker)
 
-`Animal.ChooseTask()` runs top-to-bottom when an animal is Idle:
+`Animal.ChooseTask()` runs when an animal is Idle. It scores every **category** of action with a
+0..1 **urgency**, then attempts categories in descending-urgency order, taking the first that
+starts a task. This replaced the older hard priority ladder + random leisure/idle dice (mid-2026):
+the goal is smooth, need-scaled behaviour — a slightly-hungry mouse finishes nearby work while a
+starving one drops everything to eat, and urgent work can beat evening leisure instead of being
+skipped by an unlucky roll. Design + tuning rationale: `plans/urgency-system.md`.
 
-1. **Survival** (always first): drop inventory → eat if hungry → sleep (see thresholds below) → equip tool → equip clothing. Sleep gate is `Eeping.ShouldSleep(bedtimeUrgency)`: a mouse sleeps when `eep/maxEep < exhaustedSleepThreshold (0.4) + bedtimeUrgency`. **Bedtime urgency** ramps 0 → 1 across the early-night window via `Animal.BedtimeUrgency()` — 0 before 7 pm, linearly 0→1 from 7–11 pm, 1 through to 6 am. Effect: low-energy mice peel off to bed earlier in the evening, higher-energy mice stay up longer, and during the day only meaningfully fatigued mice (e < 0.4) take a nap. Replaces the older binary `isNighttime` gate so a houseful doesn't all switch state on the same tick.
-2. **Time-of-day behavior roll** — before work orders, a random roll determines whether the animal tries leisure, idles, or falls through to work. The weights depend on the time window:
-   - **Leisure window (5–9 pm)**: 40% try leisure, 40% idle, 20% work.
-   - **Work time (rest of day)**: 5% try leisure, 15% idle, 80% work.
-   Leisure pick is need-based: `TryPickLeisure()` enqueues one candidate per unique `structType.leisureNeed` across placed leisure buildings (plus chat = "social" and reading when a fiction book exists), sorts by the animal's current satisfaction for that need (ascending), and tries each in order — so the mouse targets its least-satisfied need first. Each candidate's `LeisureTask.Initialize` then scans all suitable buildings for that need and picks the nearest-by-path available seat. **Drinking** is enqueued separately (like reading, not building-backed) — whenever `rice wine` exists anywhere in the world, an `"alcohol"` candidate routes to `DrinkTask`. Falls back to idle if nothing is available.
-3. **Work orders:**
-   - `wom.PruneStale()` — call once before the tier sequence
-   - `wom.ChooseOrder(this, 1)` — hauls unblocking a deconstruct
-   - `wom.ChooseOrder(this, 2)` — construct / supply / deconstruct / harvest / maintenance (distance-sorted within tier)
-   - `wom.ChooseOrder(this, 3, exclude: Craft)` — haul / market (distance-sorted)
-   - `ChooseCraftTask()` — craft (recipe-score sorted; see below)
-   - `wom.ChooseOrder(this, 4)` — research, haul-from-market
+**Hard pre-step (not urgency-ranked):** drop carried inventory if non-empty (policy: idle mice keep
+main inv empty, food/tools in equip slots). Has a `dropCooldownUntil` fallback so a boxed-in mouse
+doesn't loop. (A mouse that just delivered a blueprint's last material finishes the build via plain
+urgency — the construct order it's standing on scores ≈0.70, no special flag needed.)
 
-`ChooseOrder(animal, priority, exclude?)` only considers the single requested tier, optionally filters out a specific `OrderType`, filters to `res.Available()` orders, additionally skips haul orders where `stack.Available()` is false (stack fully reserved by in-flight tasks), distance-sorts remaining candidates, and on success calls `order.res.Reserve()` and assigns `task.workOrder = order`. Orders are **never removed when claimed** — they stay in the queue so they can be re-claimed after the task ends. WOM tasks are job-filtered via the `canDo` predicate on each `WorkOrder`.
+**Categories and their urgency sources:**
+- **eat** — `Eating.HungerUrgency()`: two-regime curve. 0 at/above `seekFoodThreshold` (0.6); a
+  CONCAVE rise from 0.6→0.3 (clearly seeking by ~0.5 fullness ≈ 0.41); below `dominateThreshold`
+  (0.3) a ramp from the `dominateFloor` (0.8, above the realistic work ceiling ~0.70) to 1.0 at
+  empty, so a genuinely-low mouse reliably out-scores all work/leisure. Internal food choice still
+  via `FindFood` (foodValue × craving × distance-discount).
+- **sleep** — `Eeping.SleepUrgency(bedtimeUrgency)`: 0 at/above the bedtime-shifted threshold
+  (`0.4 + bedtimeUrgency*0.5`), linear pull below. Same trigger boundary as the retained
+  `ShouldSleep`. **Bedtime urgency** ramps 0→1 across 7–11 pm via `Animal.BedtimeUrgency()`.
+- **equip / clothing** — fixed urgency (0.45, same for both) only when the slot is empty (else 0).
+  Above the idle ceiling so a tool-less mouse gears up over loitering. Rarely fires (usually nothing
+  to equip).
+- **work** — `WorkOrderManager.BestWorkUrgency(animal)`: max over the animal's pickable orders
+  (excl. craft) of `tierBase[priority] + proximityBonus + finishBonus`. Side-effect-free; an UPPER
+  BOUND — when work wins, the existing tier-by-tier `ChooseOrder(1→2→3-excl-craft→4)` sequence does
+  the actual reserve-on-commit pick (possibly a different order). Urgency decides *whether* to work,
+  not which order. `IsPickable` mirrors `ChooseOrder`'s filters exactly — keep in sync.
+- **craft** — `CraftUrgency()`: normalized best recipe score `craftWeight * s/(1+s)` (Recipe.Score is
+  unbounded multiplicative, so it's remapped to (0,1) before competing with tier urgencies). Internal
+  recipe-first station selection still via `ChooseCraftTask` (shares `ScoreCraftRecipes` with the
+  urgency calc).
+- **leisure** — `LeisureUrgency()`: time-of-day bias (evening 0.50 / day 0.12) × least-satisfied
+  available need's pull. Internal pick via `TryPickLeisure` (shares `GatherLeisureCandidates`).
+- **idle** — `IdleUrgency()`: always-available baseline (evening 0.35 / day 0.15). The floor that
+  low-value work/leisure must clear; when nothing presses, a mouse sometimes idles/chats.
+
+**Score jitter:** every category score is passed through `Animal.Jitter(s) = s + (1-s)·0.15·rand`
+(seeded `random`, save-reproducible) before ranking. The `(1-s)` headroom factor means urgent
+scores barely move (pressing decisions stay deterministic) while low scores get real variety — so a
+chill mouse varies its pick among comparable options instead of always taking the same one. Only
+shuffles near-ties; well-separated scores keep their order. A 0 score stays 0.
+
+**TUNING:** the constants above (tier bases, proximity falloff, idle/leisure/equip weights) are
+first-guess values pending playtest — see the tuning block in `plans/urgency-system.md`.
+
+`ChooseOrder(animal, priority, exclude?)` (still used by the work category) only considers the single requested tier, optionally filters out a specific `OrderType`, filters to `res.Available()` orders, additionally skips haul orders where `stack.Available()` is false (stack fully reserved by in-flight tasks), distance-sorts remaining candidates, and on success calls `order.res.Reserve()` and assigns `task.workOrder = order`. Orders are **never removed when claimed** — they stay in the queue so they can be re-claimed after the task ends. WOM tasks are job-filtered via the `canDo` predicate on each `WorkOrder`.
 
 **Recipe-first craft selection (`Animal.ChooseCraftTask`):**
 Craft tasks are separated from `ChooseOrder` p3 so that recipe economic score — not building proximity — drives which workstation an animal visits. The algorithm:

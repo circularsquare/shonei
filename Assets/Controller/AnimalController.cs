@@ -244,10 +244,12 @@ public class AnimalController : MonoBehaviour{
 
     public void LoadAnimal(AnimalSaveData asd) {
         Animal animal = AddAnimal(asd.x, asd.y); // adds +1 to "none" job count
-        // Fix position if saved on a non-standable tile (e.g. stairs). Self-guards: a
-        // mouse saved inside a building sits on a non-standable interior tile, and
-        // SnapToStandableBelow skips the rescue for those (interiorBuilding != null).
-        SnapToStandableBelow(animal);
+        // Settle the loaded mouse onto a real graph node. Save data carries only raw
+        // (x, y), so a mouse saved mid-traversal (ladder / stairs / cliff / rope bridge)
+        // comes back off-grid; snapping it onto the nearest standable node kills the
+        // diagonal drift on its first move and the mid-air idle. Skips mice legitimately
+        // inside a building's interior (non-standable dirt — they belong there).
+        SnapOntoGraph(animal);
         animal.pendingSaveData = asd; // Animal.Start() (next frame) will apply name/stats/inv/job
 
         // Fix job counts now: move from "none" to saved job
@@ -265,16 +267,29 @@ public class AnimalController : MonoBehaviour{
         UpdateColonyStats();
     }
 
-    // Snaps an animal down to the nearest standable tile below their current position.
-    // Called after LoadAnimal to handle cases where a mouse was saved on a non-standable tile (e.g. stairs).
-    private void SnapToStandableBelow(Animal animal) {
+    // Settles a freshly-loaded animal onto the nearest standable graph node. Save data
+    // carries only raw (x, y), so a mouse saved mid-traversal returns off-grid; snapping
+    // it onto a node prevents the diagonal first-move drift and the mid-air idle.
+    // Runs before Animal.Start() (a later frame), so animal.go is still null — we write
+    // the transform directly rather than calling animal.SnapTo (which assumes go is set).
+    private void SnapOntoGraph(Animal animal) {
+        // Mice legitimately inside a building's hollow interior sit on non-standable
+        // dirt (e.g. a burrow's preserved substrate) — they belong there, leave them.
+        Tile here = World.instance.GetTileAt(animal.x, animal.y);
+        if (here != null && here.interiorBuilding != null) return;
+
+        Node n = World.instance.graph.FindNearestStandableNode(animal.x, animal.y);
+        if (n != null) {
+            animal.x = n.wx;
+            animal.y = n.wy;
+            animal.gameObject.transform.position = new Vector3(n.wx, n.wy, 0);
+            return;
+        }
+
+        // Fallback: scan straight down for standable ground. Covers footing the graph's
+        // chain sets don't enumerate (e.g. an elevator shaft).
         int ax = Mathf.RoundToInt(animal.x);
         int ay = Mathf.RoundToInt(animal.y);
-        Tile t = World.instance.GetTileAt(ax, ay);
-        // Already on a valid tile, or legitimately inside a building's interior (those
-        // tiles are non-standable dirt but the mouse belongs there — don't rescue it).
-        if (t != null && (t.node.standable || t.interiorBuilding != null)) return;
-
         for (int checkY = ay - 1; checkY >= 0; checkY--) {
             Tile below = World.instance.GetTileAt(ax, checkY);
             if (below == null) break;
@@ -284,7 +299,7 @@ public class AnimalController : MonoBehaviour{
                 return;
             }
         }
-        Debug.LogError($"SnapToStandableBelow: no standable tile found below ({ax},{ay}) for loaded animal");
+        Debug.LogError($"SnapOntoGraph: no standable node found near ({ax},{ay}) for loaded animal");
     }
 
     public void AddJob(string jobstr, int n = 1){

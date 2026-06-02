@@ -68,6 +68,41 @@ public class WorkOrderManager : MonoBehaviour {
 
     void OnDestroy() { instance = null; }
 
+    // ── URGENCY (for unified ChooseTask picker — see plans/urgency-system.md) ────────
+    // Max 0..1 urgency over this animal's currently-pickable work orders, EXCLUDING Craft
+    // (craft is its own category, scored by recipe economics — see Animal.ChooseCraftTask).
+    // Per-order urgency = UrgencyConfig.TierBase[priority] + proximityBonus + finishBonus.
+    // Side-effect free: reads order fields only, never reserves or starts. The returned value is
+    // an UPPER BOUND — when the work category wins, the tier-by-tier ChooseOrder sequence does the
+    // actual pick, which may land on a different order. Urgency decides *whether* to work, not which.
+    // A construct order the animal is standing on (distance ~0) naturally scores TierBase[2] + full
+    // proximity + FinishBonus ≈ 0.70, so the deliverer finishes the build without a special flag.
+    public float BestWorkUrgency(Animal animal) {
+        float best = 0f;
+        for (int p = 1; p <= 4; p++) {
+            foreach (WorkOrder o in orders[p - 1]) {
+                // Exclude Craft: it's its own category, scored by recipe economics (ChooseCraftTask).
+                if (!IsPickable(o, animal, exclude: OrderType.Craft)) continue;
+                float dist = o.getDistance?.Invoke(animal) ?? 0f;
+                float prox = UrgencyConfig.ProxWeight / (1f + dist / UrgencyConfig.ProxFalloff);
+                float finish = o.type == OrderType.Construct ? UrgencyConfig.FinishBonus : 0f;
+                float u = Mathf.Clamp01(UrgencyConfig.TierBase[p - 1] + prox + finish);
+                if (u > best) best = u;
+            }
+        }
+        return best;
+    }
+
+    // Mirrors ChooseOrder's candidate filters EXACTLY (including the exclude param) so urgency only
+    // counts orders that would actually be startable. Keep in sync with ChooseOrder if filters change.
+    private static bool IsPickable(WorkOrder o, Animal animal, OrderType? exclude = null) {
+        return (exclude == null || o.type != exclude)
+            && (o.isActive == null || o.isActive())
+            && o.res.Available()
+            && (o.canDo == null || o.canDo(animal))
+            && (o.stack == null || o.stack.Available());
+    }
+
     // ── QUERY ──────────────────────────────────────────────────────────────────────
 
     // Returns the best (distance-sorted) startable task at exactly this priority tier, or null.

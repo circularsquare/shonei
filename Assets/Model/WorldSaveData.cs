@@ -32,6 +32,7 @@ public class WorldSaveData {
     public AnimalSaveData[] animals;
     public ResearchSaveData research;
     public int[] disabledRecipeIds; // null = all enabled
+    public string[] expandedRecipeGroups; // workstation tile-names of expanded recipe groups; null = all collapsed
     public ushort[] waterLevels;    // flat array, index = y * nx + x; null if all-dry
     public byte[] moistureLevels;   // flat array, same layout as waterLevels; null if every tile is dry soil
     public bool isRaining;          // false = clear (safe default for old saves)

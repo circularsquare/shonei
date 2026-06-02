@@ -19,6 +19,9 @@ public class ItemIcon : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
     }
 
     public void SetItem(Item newItem) {
+        // Lazy-init: callers may SetItem before Awake runs (e.g. building into a
+        // still-inactive container), where the cached Image isn't assigned yet.
+        if (image == null) image = GetComponent<Image>();
         item = newItem;
         if (item == null) { gameObject.SetActive(false); return; }
         image.sprite = ResolveIcon(item);

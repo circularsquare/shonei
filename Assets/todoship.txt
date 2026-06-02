@@ -1,0 +1,28 @@
+SHIP TODO
+get a rough build in front of strangers. resist adding content.
+
+P0 - sharing is pointless without these
+- host shonei-server publicly (small ws order matcher)
+- market url: drop the 127.0.0.1 const, make configurable (TradingClient.cs)
+- player name: const now, needs to be unique per player or market orders collide
+- make a standalone build + smoke test it
+    - built != editor: shader stripping, Resources load, atlas bind, normalscapture
+    - boot on fresh profile: no save, no playerprefs, play 10 min
+
+P1 - stranger can find the loop
+- onboarding: one starting goal that pulls them build -> assign job -> trade
+    - need a player-facing quest/todo/goal system. name tbd (goals? ledger? tasks?)
+    - cheap version: starting goal card + 2-3 tooltips, no full tutorial
+- verify no-save fresh boot end to end on a clean machine
+    - (code path exists: WorldController generates default world when no save)
+
+P2 - polish + getting them in the door
+- softlock / nullref pass. one freeze for a newcomer = they quit forever
+- the shareable frame: name, one-line pitch, 1 good screenshot/gif for itch
+    - this is what the visual work is FOR (acquisition)
+- title screen + quit + resolution/windowed working in a build
+    - low prio, boots straight into a world right now which is fine
+
+OUT OF SCOPE - resist
+- all of todo.txt CONTENT (metallurgy, upsizing, bunnies, trains, herbs...)
+- the point is to STOP adding and ship the depth that already exists

@@ -35,6 +35,12 @@ public class CloudLayer : SkyLayerBase {
     public float noiseScale = 0.15f;
     [Tooltip("Horizontal stretch of the noise field. 1 = isotropic. >1 = features wider than tall (canonical horizontal-cumulus shapes). 2 default gives clouds about twice as wide as they are tall.")]
     public float noiseAspect = 2.0f;
+    [Tooltip("Max per-cell density HEAD START — INDEPENDENT per grid cell (unlike blobJitter, which only nudges a blob's position within its cell). A cell that rolls high crosses the spawn threshold early and grows into a dominant lobe while neighbours lag and appear to grow out of it — breaking up the 'same-size dotted line'. One-sided (cells only ever advance), shaped by densityJitterSkew. ~0.05 = subtle; higher = more ragged edges.")]
+    [Range(0f, 0.2f)] public float densityJitter = 0.05f;
+    [Tooltip("Skew of the per-cell head-start roll (exponential curve). 1 ≈ uniform (head starts evenly spread → flat-looking edge). Higher = right-skewed: MOST cells get ~no head start (cross together) and only a FEW roll high and pop in early as dominant lobes. ~4 = a few clear dominants.")]
+    [Range(1f, 10f)] public float densityJitterSkew = 4f;
+    [Tooltip("How fast each cell's head-start roll drifts over time (multiplies the cloud evolution clock). 0 = static dominant blobs; higher = edges restructure faster. Kept slow so jitter-driven threshold crossings stay gradual (no popping).")]
+    [Range(0f, 40f)] public float densityJitterRate = 8f;
 
     [Header("Coverage by humidity")]
     [Tooltip("Density threshold at humidity=0 (clear). Higher = less coverage (fewer blobs spawn).")]
@@ -109,8 +115,12 @@ public class CloudLayer : SkyLayerBase {
     [Range(0.0f, 0.6f)]  public float edgeThreshold = 0.2f;
     [Tooltip("Edge softness (half-width of the metaball alpha smoothstep). 0 = razor-hard silhouette; ~0.1 = subtle feather; >0.3 = visibly wispy. Combines with strength of warp noise — softer edges + bigger warp = puffy cumulus, sharper edges = more cartoony.")]
     [Range(0.0f, 0.4f)]  public float edgeSoftness  = 0.15f;
-    [Tooltip("Density window (excess above the spawn threshold) over which a blob ramps from radius 0 to full, via a sqrt curve. Wider = blobs fade in/out gradually as the noise field drifts a cell across the threshold, softening the 'popping / blinking into existence' at cloud edges; narrower = crisper but blobs snap in. 0.02 = old near-instant pop; ~0.08 = a gentle fade.")]
+    [Tooltip("Density window (excess above the spawn threshold) over which a blob ramps from radius 0 to full. Wider = blobs grow/shrink more gradually as the noise field drifts a cell across the threshold; narrower = crisper but blobs snap in. ~0.08 = a gentle fade.")]
     [Range(0.005f, 0.2f)] public float fadeRange = 0.08f;
+    [Tooltip("Exponent of the radius fade-in curve (radius grows as excess^exponent over fadeRange). <1 front-loads growth so fringe cells reach a mergeable size quickly and spend little time tiny — fewer scattered specks at the cloud boundary. 0.5 = sqrt (strong front-load), 1 = linear (more time small), ~0.8 = mild front-load.")]
+    [Range(0.2f, 1.5f)] public float fadeExponent = 0.8f;
+    [Tooltip("Minimum blob DIAMETER in pixels; smaller blobs are culled. These are the shrinking fringe blobs near the spawn threshold. ~1 = invisible vanish (no pop). Higher (e.g. 2-3) trims more boundary specks at the cost of a small pop when they cull. Resolution-aware via pixelsPerUnit.")]
+    [Range(0.5f, 5f)] public float minBlobPixels = 2f;
 
     SpriteRenderer sr;
     // Dummy Texture2D backing for Sprite.Create — never written to. The
@@ -503,6 +513,12 @@ public class CloudLayer : SkyLayerBase {
     void GenerateBlobs(float threshold, Vector2 noiseOffset) {
         float halfW  = (textureSize.x * 0.5f) / pixelsPerUnit;
         float halfH  = bandHalfHeight;       // only walk inside the band envelope
+
+        // Head-start curve normalizer (hoisted — constant per bake). Maps a
+        // uniform roll u∈[0,1] through (exp(u·k)−1)/(exp(k)−1): a convex,
+        // right-skewed curve so most cells get ~0 head start and a few roll high.
+        float jk     = Mathf.Max(0.01f, densityJitterSkew);
+        float jkNorm = 1f / (Mathf.Exp(jk) - 1f);
         // Hard floor (matches the [Min] on blobCellSize): a near-zero cell
         // size makes the col/row grid span millions of cells per bake and
         // hangs the editor. Guards code paths that bypass the inspector.
@@ -572,9 +588,30 @@ public class CloudLayer : SkyLayerBase {
                 // growing time offset that lets the sampled pattern
                 // smoothly morph through 3D noise space, so clouds form
                 // and dissolve in place rather than just translating.
-                float d = ValueNoise3D(anchorX * noiseScale / noiseAspect,
-                                       anchorY * noiseScale,
-                                       evolutionOffset) * band;
+                float coarse = ValueNoise3D(anchorX * noiseScale / noiseAspect,
+                                            anchorY * noiseScale,
+                                            evolutionOffset);
+
+                // Per-cell density head start — INDEPENDENT per cell, smooth in
+                // time. Hash3D(col, row, ·) is uncorrelated cell-to-cell; lerping
+                // between integer time steps lets each cell's roll drift slowly
+                // without the discrete steps flickering.
+                float tz   = evolutionOffset * densityJitterRate;
+                float ti   = Mathf.Floor(tz);
+                float tf   = tz - ti;
+                float tu   = tf * tf * (3f - 2f * tf);   // smoothstep ease in time
+                float u    = Mathf.Lerp(Hash3D(col, row, ti),
+                                        Hash3D(col, row, ti + 1f), tu);
+
+                // Right-skew the uniform roll into a one-sided head start: most
+                // cells get ~0 (cross the threshold together at the base time),
+                // a FEW roll high and cross EARLY — popping in as dominant lobes
+                // the others grow out from, instead of an even dotted line of
+                // same-size blobs. densityJitterSkew sets how rare the early
+                // ones are. The base density gradient still shapes the overall
+                // edge, so this breaks up the line rather than dithering it.
+                float headStart = (Mathf.Exp(u * jk) - 1f) * jkNorm;
+                float d = (coarse + headStart * densityJitter) * band;
                 float excess = d - threshold;
                 if (excess <= 0f) continue;
 
@@ -583,13 +620,16 @@ public class CloudLayer : SkyLayerBase {
                 float maxR = Mathf.Lerp(blobRadiusMin, blobRadiusMax,
                                         Mathf.Clamp01(excess / Mathf.Max(0.001f, excessForMaxSize)));
 
-                // Linear radius fade-in over fadeRange: a cell just above the
-                // spawn threshold grows its blob from 0 → full as excess goes
-                // 0 → fadeRange. Crisp edges throughout (pixel-art); the only
-                // thing that makes a despawn/spawn smooth is shrinking the disc
-                // to nothing rather than popping a still-visible one off (see
-                // the sub-pixel cull below).
-                float fadeIn = Mathf.Clamp01(excess / fadeRange);
+                // Radius fade-in over fadeRange, shaped by fadeExponent.
+                // exponent < 1 front-loads the growth (a low-excess fringe cell
+                // jumps to a substantial size quickly), so blobs spend little
+                // time tiny — fringe blobs reach a size that OVERLAPS neighbours
+                // and merges, instead of scattering as a field of disconnected
+                // specks at the cloud boundary. The steeper final shrink that
+                // front-loading implies is harmless: the sub-pixel-ish cull
+                // below trims the blob before the abrupt part shows.
+                float t      = Mathf.Clamp01(excess / fadeRange);
+                float fadeIn = Mathf.Pow(t, fadeExponent);
 
                 // Per-cell random size factor in [0.5, 1]. Cells in a
                 // high-noise cluster all see similar maxR, so without
@@ -604,14 +644,14 @@ public class CloudLayer : SkyLayerBase {
                 float sizeRand = 0.5f + 0.5f * Hash2D(col * 47.3f, row * 31.7f);
                 float radius   = maxR * fadeIn * sizeRand;
 
-                // Cull only SUB-PIXEL blobs (< 1px diameter). As a cell nears
-                // the spawn threshold its radius fades to ~0, so by the time we
-                // drop it the disc is below one pixel — an invisible vanish.
-                // This is the key anti-blink fix: the old cull at
-                // 0.2·blobRadiusMin (~4.5px) chopped off a STILL-VISIBLE disc,
-                // and clusters of fringe blobs hitting that cutoff together read
-                // as the cloud "blinking". Resolution-aware via pixelsPerUnit.
-                if (radius * 2f * pixelsPerUnit < 1f) continue;
+                // Cull blobs below minBlobPixels diameter. As a cell nears the
+                // spawn threshold its radius fades toward 0; culling near the
+                // pixel scale means the vanish is ~invisible (the key anti-blink
+                // fix — the old cull at 0.2·blobRadiusMin ~4.5px chopped off a
+                // STILL-VISIBLE disc, and clusters hitting that cutoff together
+                // read as the cloud "blinking"). Raising minBlobPixels trims more
+                // boundary specks for a small pop. Resolution-aware via pixelsPerUnit.
+                if (radius * 2f * pixelsPerUnit < minBlobPixels) continue;
 
                 float z = (Hash2D(col * 5.19f, row * 9.71f) - 0.5f) * blobDepthRange;
                 // Per-blob aspect: ±20% around the inspector value,

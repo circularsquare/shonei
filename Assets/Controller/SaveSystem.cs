@@ -47,6 +47,7 @@ using Newtonsoft.Json;
 //   [x] Mid-transit merchant task descriptor (travelTaskType + iq + storage tile + leg)
 //   [x] Research (progress, unlockedIds, studiedIds, unlockTimestamps, unlockCounter)
 //   [x] Disabled recipe ids
+//   [x] Expanded recipe groups (Recipes panel — workstation collapse state)
 //   [x] Water levels
 //   [x] Moisture levels
 //   [x] Is raining + atmospheric humidity (drives rain via threshold)
@@ -193,6 +194,9 @@ public class SaveSystem : MonoBehaviour {
             var disabled = new int[rp.DisabledCount];
             rp.CopyDisabledIds(disabled);
             if (disabled.Length > 0) data.disabledRecipeIds = disabled;
+
+            var expanded = rp.CopyExpandedGroups();
+            if (expanded.Length > 0) data.expandedRecipeGroups = expanded;
         }
 
         data.isRaining = WeatherSystem.instance?.isRaining ?? false;
@@ -484,6 +488,7 @@ public class SaveSystem : MonoBehaviour {
         InventoryController.instance?.ResetState();
         WeatherSystem.instance?.RestoreState(false, 0f);
         RecipePanel.instance?.ClearDisabled();
+        RecipePanel.instance?.ClearExpandedGroups();
         ResearchSystem.instance?.ResetAll();
         // Reset panel collapse state — both panels start open on a fresh world.
         InventoryController.instance?.inventoryHeader?.SetOpenSilent(true);
@@ -721,6 +726,8 @@ public class SaveSystem : MonoBehaviour {
         if (rp != null && save.disabledRecipeIds != null)
             foreach (int id in save.disabledRecipeIds)
                 rp.SetAllowed(id, false);
+        if (rp != null && save.expandedRecipeGroups != null)
+            rp.SetExpandedGroups(save.expandedRecipeGroups);
 
         RestoreResearch(save.research);
 

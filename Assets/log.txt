@@ -1,5 +1,10 @@
 meoww!!
 
+5/30
+- fix mouse positioning on load
+- recipe panel item icons, and grouping by workstation
+5/29
+- urgency system
 5/28
 - better clay/sand/dirt world gen
 - furnace 

@@ -32,6 +32,16 @@ public class Item {
     // read for them. Computed, not cached: the unitWeight cascade in Db runs after deserialization.
     public int unitFen => discrete ? (unitWeight > 0 ? ItemStack.LiangToFen(unitWeight) : 100) : 100;
     public bool startDiscovered {get; set;} // true = revealed in inventory/storage trees from game start, no research or production needed (e.g. water, drawn from ponds without research)
+    // Multiplier applied when this item is equipped in the tool slot. 1.0 = no bonus (treated
+    // as "no tool"). >1 = a usable tool. Higher-tier metals (bronze > copper > stone) get
+    // larger values. Read by ModifierSystem; meaningless on non-tool items where it stays 1.
+    public float workEfficiency {get; set;} = 1f;
+    // Wear rate applied while equipped on an animal that is currently working. Same
+    // per-year units as `decayRate` — but only ticks during HandleWorking, so an idle
+    // or sleeping mouse doesn't wear its tools/clothes. Deterministic (shares ItemStack's
+    // decayCounter with passive decay). 0 = no wear from use; `decayRate` still applies
+    // passively whenever this item is anywhere in an inventory.
+    public float equipDecayRate {get; set;} = 0f;
     public ItemClass itemClass {get; set;} = ItemClass.Default; // Default = solid goods; Liquid = water/soymilk/etc.; Book = tech & fiction books. Storage inventories accept only items matching their storageClass.
     // Initial value seeded into InventoryController.targets for this item's id. In liang for normal
     // items; in whole-unit count for discrete items (resolved via unitFen, like recipe quantities).
