@@ -166,7 +166,7 @@ Fields:
 | `autoTap` | bool? | schema stub — reserved for processors that yield output without a manual tap. Not yet implemented. |
 | `processColorHex` | string? | `#RRGGBB` tint for the building's `_w` liquid zone while the processor is Working (e.g. cloudy white rice mash mid-fermentation). Absent → the zone keeps its loading colour. See SPEC-rendering.md §Decorative liquid zones. |
 
-**Recipes panel:** processes appear as cards grouped under their building alongside that building's craft recipes. A process card shows the brew time (e.g. `2d`) in place of the worker-count line and an On/Off toggle that pauses the process — keyed by building name in `RecipePanel.disabledProcesses`, enforced by gating the `FillProcessor` work order's `isActive` (new fills stop; an in-progress batch still finishes + taps). Persisted as `WorldSaveData.disabledProcesses`.
+**Recipes panel:** processes appear as cards grouped under their building alongside that building's craft recipes. A process card shows the brew time + ideal temp (e.g. `2d at 25°`) in place of the worker-count line and an On/Off toggle that pauses the process — keyed by building name in `RecipePanel.disabledProcesses`, enforced by gating the `FillProcessor` work order's `isActive` (new fills stop; an in-progress batch still finishes + taps). Persisted as `WorldSaveData.disabledProcesses`.
 
 ## `jobsDb.json` — Jobs
 

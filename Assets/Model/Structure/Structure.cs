@@ -400,6 +400,8 @@ public class Structure {
             float spotX = mirrored ? (st.nx - 1 - st.workSpotX.Value) : st.workSpotX.Value;
             float spotY = st.workSpotY.Value;
             workNode = new Node(x + spotX, y + spotY);
+            // Register so RebuildComponents resets this off-grid waypoint's componentId.
+            World.instance.graph.RegisterWaypoint(workNode);
             // Edge to the bottom-row tile-node closest to the workspot's x (tie → lower x).
             // Standability isn't checked here: at load time, Structure constructors run in
             // SaveSystem Phase 2 BEFORE graph.Initialize (Phase 4) sets node.standable, so a
@@ -448,6 +450,8 @@ public class Structure {
                 // floor line, visually inside the silhouette.
                 Node n = new Node(worldX[i] + 0f, worldY[i]);
                 interiorNodes[i] = n;
+                // Register so RebuildComponents resets this off-grid waypoint's componentId.
+                World.instance.graph.RegisterWaypoint(n);
                 // Tile-level back-ref — the authoritative "this tile is inside a
                 // building" marker that Animal.insideBuilding derives from.
                 Tile interiorTile = World.instance.GetTileAt(worldX[i], worldY[i]);
@@ -640,6 +644,7 @@ public class Structure {
         // by the Graph itself (don't touch them); only waypoints created by this structure
         // need teardown here.
         if (workNode != null && workNode.isWaypoint) {
+            World.instance.graph.UnregisterWaypoint(workNode);
             foreach (Node n in workNode.neighbors) n.RemoveNeighbor(workNode);
             workNode.neighbors.Clear();
             workNode = null;
@@ -664,6 +669,7 @@ public class Structure {
             for (int i = 0; i < interiorNodes.Length; i++) {
                 Node n = interiorNodes[i];
                 if (n == null) continue;
+                World.instance.graph.UnregisterWaypoint(n);
                 foreach (Node m in n.neighbors) m.RemoveNeighbor(n);
                 n.neighbors.Clear();
                 Tile t = World.instance.GetTileAt((int)n.wx, (int)n.wy);

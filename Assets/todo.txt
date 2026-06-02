@@ -20,20 +20,15 @@ CONTENT
 - thermometer/glass 
     - sand
 - house furnishing
-    - furniture system (house script?)
-        - cloth 
-        - glass
+    - glass
+    - torch?
 
 - upsizing
     - workshops
 
 - lots of herbs (see cool plants plan)
 - metallurgy 
-    - clay tile  x
-    - clay item  x
     - furnace upsize
-    - copper ore
-    - tin ore 
     - copper / tin / bronze ingot
     - foundry
 
@@ -43,6 +38,7 @@ VISUALS
     - procedurally generate rocks with normalmaps?
 - wind sway on tarp?
 - update all plants to have blob swaying
+
 OPTIMIZATION  
 - plant sway mpb redesign
 - chunk tiles?
@@ -62,9 +58,6 @@ UI
 - tab styling, add building icons?
 - recipe list / enabling disabling globally and locally for crafting buildings info panel
 
-- item icons in recipe list
-
-
 CODE CLEANUP
 
 BUGS
@@ -82,10 +75,11 @@ upsize more workshop buildings
     weaver
     tailor
     furnace (taller, 2x2m)
-sketch out metalworking?
-working pose facing back
-test side ladders / cliff climbing
+test kiln
+finish foundry
+working pose facing back (apply in other places)
 tools
-
+stone from mineshaft...
+apple tree
 todoship
 

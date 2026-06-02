@@ -85,13 +85,18 @@ public class PlayerTaskController : MonoBehaviour {
             new PlayerTask("build_sawmill", "Build a sawmill",
                 () => new TaskProgress(CountStructures("sawmill"), 1)),
             new PlayerTask("assign_woodworker", "Assign a woodworker",
-                () => new TaskProgress(CountWoodworkers(), 1)),
+                () => new TaskProgress(CountJob("woodworker"), 1)),
             new PlayerTask("build_drawer", "Build a drawer",
                 () => new TaskProgress(CountStructures("drawer"), 1)),
             new PlayerTask("six_mice", "Have 6 mice",
                 () => new TaskProgress(CountMice(), 6)),
             new PlayerTask("build_laboratory", "Build a laboratory",
                 () => new TaskProgress(CountStructures("laboratory"), 1)),
+            new PlayerTask("assign_scientist", "Assign a scientist",
+                () => new TaskProgress(CountJob("scientist"), 1)),
+            new PlayerTask("research_tools", "Research Tools",
+                () => new TaskProgress(
+                    ResearchSystem.instance != null && ResearchSystem.instance.IsUnlockedByName("Tools") ? 1 : 0, 1)),
         };
     }
 
@@ -160,12 +165,12 @@ public class PlayerTaskController : MonoBehaviour {
         return n;
     }
 
-    // Number of mice currently assigned the woodworker job (via the jobCounts tally,
+    // Number of mice currently assigned the given job (via the jobCounts tally,
     // keyed by the canonical Job from Db.jobByName).
-    int CountWoodworkers() {
+    int CountJob(string jobName) {
         AnimalController ac = AnimalController.instance;
         if (ac?.jobCounts == null) return 0;
-        if (!Db.jobByName.TryGetValue("woodworker", out Job j) || j == null) return 0;
+        if (!Db.jobByName.TryGetValue(jobName, out Job j) || j == null) return 0;
         return ac.jobCounts.TryGetValue(j, out int cnt) ? Mathf.Max(0, cnt) : 0;
     }
 

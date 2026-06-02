@@ -47,6 +47,16 @@ public class RecipePanel : MonoBehaviour {
     float       refreshTimer;
     const float RefreshInterval = 0.5f;
 
+    // Master-detail: left = the grouped list (existing scroll), right = a detail pane
+    // showing the selected recipe. Assign detailPane in the scene to tweak it in the
+    // editor; if left null, BuildLayout builds the split in code as a fallback.
+    [SerializeField] RectTransform detailPane;
+    RectTransform detailContainer;
+    RecipeDisplay detailCard;
+    RecipeListRow selectedRow;
+    bool          layoutBuilt;
+    const float   LeftWidth = 250f; // left list column width; detail pane starts just past it
+
     void Awake() {
         if (instance != null) { Debug.LogError("two RecipePanels!"); }
         instance = this;
@@ -55,6 +65,7 @@ public class RecipePanel : MonoBehaviour {
     }
 
     void OnEnable() {
+        BuildLayout();
         Rebuild();
     }
 
@@ -63,12 +74,77 @@ public class RecipePanel : MonoBehaviour {
         if (refreshTimer >= RefreshInterval) {
             refreshTimer = 0f;
             foreach (var group in spawnedGroups) group.RefreshVisibleCards();
+            if (detailCard != null) detailCard.Refresh(); // live have-amounts in the detail pane
         }
     }
 
     public void Toggle() {
         if (gameObject.activeSelf) gameObject.SetActive(false);
         else UI.OpenExclusive(gameObject);
+    }
+
+    // ── Master-detail layout + selection ───────────────────────────────
+
+    // One-time split of the panel: the existing scroll becomes a fixed-width left column,
+    // and a right detail pane is created in code (no manual scene wiring). Idempotent.
+    void BuildLayout() {
+        if (layoutBuilt) return;
+        layoutBuilt = true;
+
+        // Always narrow the scroll to a fixed-width left column (code; idempotent + robust,
+        // so we never have to edit the scene's scroll RectTransform). The serialized
+        // scrollRect ref isn't wired in the scene — derive it from the content hierarchy.
+        if (scrollRect == null && recipeListContent != null)
+            scrollRect = recipeListContent.GetComponentInParent<ScrollRect>();
+        RectTransform root = null;
+        if (scrollRect != null) {
+            var scrollRT = scrollRect.GetComponent<RectTransform>();
+            root = scrollRT.parent as RectTransform;
+            scrollRT.anchorMin = new Vector2(0f, 0f);
+            scrollRT.anchorMax = new Vector2(0f, 1f);
+            scrollRT.offsetMin = new Vector2(2f, 2f);
+            scrollRT.offsetMax = new Vector2(2f + LeftWidth, -2f);
+        }
+
+        // Detail container: an editor-authored DetailPane (wired in the scene, tweakable)
+        // if present; otherwise build one in code so the panel still works unwired.
+        if (detailPane != null) { detailContainer = detailPane; return; }
+        if (root == null) { Debug.LogError("RecipePanel: no panel root for the detail pane"); return; }
+
+        var dGO = new GameObject("DetailPane", typeof(RectTransform));
+        dGO.transform.SetParent(root, false);
+        detailContainer = dGO.GetComponent<RectTransform>();
+        detailContainer.anchorMin = new Vector2(0f, 0f);
+        detailContainer.anchorMax = new Vector2(1f, 1f);
+        detailContainer.offsetMin = new Vector2(LeftWidth + 8f, 2f);
+        detailContainer.offsetMax = new Vector2(-2f, -2f);
+        detailContainer.SetAsFirstSibling(); // draw behind the close button + scroll
+    }
+
+    // Called by a list row's body click.
+    public void Select(RecipeListRow row) {
+        if (selectedRow != null && selectedRow != row) selectedRow.SetSelected(false);
+        selectedRow = row;
+        if (row != null) row.SetSelected(true);
+        BuildDetail();
+    }
+
+    // Rebuilds the right pane for the current selection — fresh RecipeDisplay each time
+    // (RecipeDisplay.Setup assumes a clean card, so we don't re-Setup one instance).
+    void BuildDetail() {
+        if (detailCard != null) { Destroy(detailCard.gameObject); detailCard = null; }
+        if (selectedRow == null || detailContainer == null || recipeDisplayPrefab == null) return;
+
+        detailCard = Instantiate(recipeDisplayPrefab, detailContainer, false);
+        detailCard.name = "DetailCard";
+        if (selectedRow.ProcessData != null) detailCard.Setup(selectedRow.ProcessData);
+        else                                 detailCard.Setup(selectedRow.RecipeData);
+        LayoutUtil.RebuildImmediate(detailContainer);
+    }
+
+    void ClearSelection() {
+        selectedRow = null; // its row GameObject is being destroyed by Rebuild
+        BuildDetail();      // tears down the detail card + shows the placeholder
     }
 
     void Rebuild() {
@@ -80,6 +156,7 @@ public class RecipePanel : MonoBehaviour {
         foreach (Transform child in recipeListContent) Destroy(child.gameObject);
         spawnedGroups.Clear();
         refreshTimer = 0f;
+        ClearSelection(); // old rows are gone; reset detail to the placeholder
 
         // Group unlocked recipes by workstation (recipe.tile), preserving first-seen
         // order so the list order is the authored recipesDb order. Book recipes (one per
@@ -124,9 +201,11 @@ public class RecipePanel : MonoBehaviour {
             }
         }
 
-        foreach (string tile in order) {
+        for (int i = 0; i < order.Count; i++) {
+            string tile = order[i];
             procByTile.TryGetValue(tile, out var procs);
             SpawnGroup(tile, byTile[tile], procs);
+            if (i < order.Count - 1) SpawnDivider(); // separate workstation sections
         }
 
         if (scrollRect != null) StartCoroutine(ScrollToTop());
@@ -139,13 +218,30 @@ public class RecipePanel : MonoBehaviour {
         scrollRect.verticalNormalizedPosition = 1f;
     }
 
+    static Sprite dividerSprite;
+    void SpawnDivider() {
+        if (dividerSprite == null) dividerSprite = Resources.Load<Sprite>("Sprites/Misc/divider");
+        var go = new GameObject("Divider", typeof(RectTransform));
+        go.transform.SetParent(recipeListContent, false);
+        // recipeListContent's VerticalLayoutGroup has childControlHeight=0, so it won't
+        // size the divider — set the rect explicitly (group width, 2px tall) like SpawnGroup.
+        var rt = go.GetComponent<RectTransform>();
+        rt.sizeDelta = new Vector2(LeftWidth, 2f);
+        var img = go.AddComponent<Image>();
+        img.sprite = dividerSprite;
+        img.type   = Image.Type.Sliced;
+        img.raycastTarget = false;
+        var le = go.AddComponent<LayoutElement>();
+        le.minHeight = le.preferredHeight = 2f;
+    }
+
     void SpawnGroup(string tile, List<Recipe> recipes, List<ProcessorRecipe> processes) {
         StructType st = (Db.structTypeByName != null && Db.structTypeByName.TryGetValue(tile, out var t)) ? t : null;
 
         var go = new GameObject("RecipeGroup_" + tile, typeof(RectTransform));
         go.transform.SetParent(recipeListContent, false);
         var rt = go.GetComponent<RectTransform>();
-        rt.sizeDelta = new Vector2((recipeDisplayPrefab.transform as RectTransform).rect.width, 0f);
+        rt.sizeDelta = new Vector2(LeftWidth, 0f);
 
         var vlg = go.AddComponent<VerticalLayoutGroup>();
         vlg.spacing                = 2f;
@@ -232,6 +328,21 @@ public class RecipePanel : MonoBehaviour {
     public string[] CopyDisabledProcesses()          { var a = new string[disabledProcesses.Count]; disabledProcesses.CopyTo(a); return a; }
     public void     SetDisabledProcesses(string[] b) { disabledProcesses.Clear(); if (b != null) foreach (string s in b) disabledProcesses.Add(s); }
     public void     ClearDisabledProcesses()         => disabledProcesses.Clear();
+
+    // --- Unified allow dispatch (one entry is a craft Recipe — incl. book proxy — OR a
+    //     ProcessorRecipe). Used by both the list rows and the detail card so the
+    //     craft/process/book routing lives in one place. ---
+
+    public bool IsEntryAllowed(Recipe r, ProcessorRecipe p) {
+        if (p != null) return IsProcessAllowed(p.building);
+        if (r != null) return IsAllowed(r.id); // handles the BookProxyRecipeId sentinel
+        return true;
+    }
+
+    public void ToggleEntryAllowed(Recipe r, ProcessorRecipe p) {
+        if (p != null)      SetProcessAllowed(p.building, !IsProcessAllowed(p.building));
+        else if (r != null) SetAllowed(r.id, !IsAllowed(r.id));
+    }
 
     // --- Expanded workstation groups (persisted; see SaveSystem) ---
 

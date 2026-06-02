@@ -10,7 +10,8 @@ public class AnimationController : MonoBehaviour {
     // Per-part clothing overlays — assign in prefab inspector.
     // Each entry maps a body-part name (e.g. "body", "arm", "foot") to its
     // clothing SpriteRenderer child.  Sprites are loaded from
-    // Resources/Sprites/Animals/Clothing/{item}/{partName}.png
+    // Resources/Sprites/Animals/Clothing/{item}/{partName}.png — or
+    // {partName}_back.png when the mouse is back-facing (no back variant → part hidden).
     [System.Serializable]
     public class PartClothing {
         public string partName;            // "body", "arm", "foot"
@@ -24,6 +25,7 @@ public class AnimationController : MonoBehaviour {
     public SpriteRenderer chatBubble;
 
     private Item cachedClothingItem;  // tracks equipped item so we only reload on change
+    private Animal.FacingView cachedClothingView = Animal.FacingView.Side; // reload also on view flip
     private bool hasBackParam;        // true if the Animator declares the "back" int (wired later)
 
     void Start() {
@@ -82,7 +84,7 @@ public class AnimationController : MonoBehaviour {
 
         if (hasBackParam) animator.SetInteger("back", view == Animal.FacingView.Back ? 1 : 0);
 
-        UpdateClothingOverlay();
+        UpdateClothingOverlay(view);
         UpdateChatBubble();
     }
 
@@ -135,7 +137,7 @@ public class AnimationController : MonoBehaviour {
         chatBubble.enabled = chatting || fireplaceChat;
     }
 
-    private void UpdateClothingOverlay() {
+    private void UpdateClothingOverlay(Animal.FacingView view) {
         if (clothingParts == null || clothingParts.Length == 0) return;
 
         Item equipped = animal.clothingSlotInv?.itemStacks[0]?.item;
@@ -146,12 +148,16 @@ public class AnimationController : MonoBehaviour {
             return;
         }
 
-        // Reload sprites if clothing item changed
-        if (equipped != cachedClothingItem) {
+        // Reload sprites if the equipped item OR the facing-view changed. Back-facing loads
+        // the {part}_back variant; a part with no back variant resolves to null and hides
+        // (matches the body-part arm-hide convention) rather than showing its front sprite.
+        if (equipped != cachedClothingItem || view != cachedClothingView) {
             cachedClothingItem = equipped;
+            cachedClothingView = view;
             string basePath = "Sprites/Animals/Clothing/" + equipped.name;
+            string suffix = view == Animal.FacingView.Back ? "_back" : "";
             foreach (var part in clothingParts) {
-                part.sprite = Resources.Load<Sprite>(basePath + "/" + part.partName);
+                part.sprite = Resources.Load<Sprite>(basePath + "/" + part.partName + suffix);
             }
         }
 

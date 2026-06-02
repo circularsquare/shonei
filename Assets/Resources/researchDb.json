@@ -4,7 +4,7 @@
         "name": "Mining",
         "description": "Extract stone and ores.",
         "prereqs": [],
-        "cost": 5,
+        "cost": 3,
         "unlocks": [
             { "type": "building", "target": "quarry" },
             { "type": "job",      "target": "miner" }
@@ -51,7 +51,7 @@
         "name": "Roads",
         "description": "Pave roads so mice travel faster.",
         "prereqs": [],
-        "cost": 5,
+        "cost": 3,
         "unlocks": [
             { "type": "building", "target": "road" }
         ]
@@ -81,7 +81,7 @@
         "name": "Papermaking",
         "description": "Process wood pulp and water into paper.",
         "prereqs": [],
-        "cost": 5,
+        "cost": 3,
         "unlocks": [
             { "type": "building", "target": "paper mill" },
             { "type": "recipe",   "target": "22" }
@@ -102,7 +102,7 @@
         "name": "Furnace",
         "description": "Smelt ores and refine metals.",
         "prereqs": [2],
-        "cost": 5,
+        "cost": 10,
         "unlocks": [
             { "type": "building", "target": "furnace" },
             { "type": "building", "target": "crucible" },
@@ -135,7 +135,7 @@
         "name": "Mechanics",
         "description": "Harness mechanical power with wheels, shafts, and flywheels.",
         "prereqs": [],
-        "cost": 5,
+        "cost": 10,
         "unlocks": [
             { "type": "building", "target": "wheel" },
             { "type": "building", "target": "windmill" },
@@ -145,6 +145,16 @@
             { "type": "building", "target": "power shaft turn" },
             { "type": "building", "target": "power shaft 4" },
             { "type": "building", "target": "mill" }
+        ]
+    },{
+        "id": 17,
+        "name": "Tools",
+        "description": "Craft stone tools at a workshop.",
+        "prereqs": [],
+        "cost": 3,
+        "unlocks": [
+            { "type": "building", "target": "workshop" },
+            { "type": "recipe",   "target": "1" }
         ]
     }
 ]

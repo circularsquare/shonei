@@ -26,6 +26,21 @@ public class Tile {
     // doored `preservesTile` buildings (burrow) so the entrance doesn't draw a rim
     // through the doorway. Maintained by Structure ctor / Destroy.
     public byte bodyEdgeSuppressMask;
+    // When true, this tile skips emitting its own body + overlay quads in
+    // TileMeshController — the cell reads as an open hole and whatever sits
+    // behind it (background wall, or sky where backgroundType==None) shows
+    // through. Solidity is UNCHANGED, so neighbouring tiles still bake their
+    // normals as if this cell were solid earth. Set by `preservesTile`
+    // excavation buildings (digging pit) that draw their own receding-substrate
+    // sprite over the cell. Fire NotifyBodyDirty() after mutating.
+    public bool bodyRenderSuppressed;
+    // When true, neighbours treat this cell as open AIR for their normal-map
+    // (lighting) bake, so their edges facing it light as exposed cliff faces
+    // rather than buried seams. Separate from bodyRenderSuppressed: an excavation
+    // pit suppresses its body immediately, but only flips this once it's dug
+    // enough that the cell reads as mostly-open (see DiggingPit.UpdateHoleLighting).
+    // Solidity itself is unchanged. Fire NotifyBodyDirty() after mutating.
+    public bool lightAsAir;
     Action<Tile> cbBackgroundChanged;
     Action<Tile> cbOverlayChanged;
     Action<Tile> cbSnowChanged;

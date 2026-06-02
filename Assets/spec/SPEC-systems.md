@@ -14,8 +14,9 @@
 
 ### Connected-components reachability cache
 
-`Graph` maintains a component ID on every `Node` (`node.componentId: int`, -1 = impassable). `Graph.RebuildComponents()` runs a BFS flood-fill over all standable nodes and assigns integer IDs; waypoint nodes get IDs transitively via neighbor edges. `Graph.SameComponent(a, b)` is an O(1) check.
+`Graph` maintains a component ID on every `Node` (`node.componentId: int`, -1 = impassable). `Graph.RebuildComponents()` runs a BFS flood-fill over all standable nodes and assigns integer IDs **renumbered from scratch each call**; waypoint nodes get IDs transitively via neighbor edges. `Graph.SameComponent(a, b)` is an O(1) check.
 
+- **Off-grid waypoints must be reset to be re-flooded.** BFS uses `componentId >= 0` as its visited marker, so every off-grid waypoint must be reset to -1 first or it freezes at a stale id (and, since numbers are reassigned each rebuild, silently strands whatever it gates — e.g. a mouse inside a building). Stair/cliff waypoints are reset via their dicts. **Structure-owned waypoints (building interiors, workspot `workNode`, rope-bridge chains) must register via `Graph.RegisterWaypoint` on creation and `UnregisterWaypoint` on teardown** — they have no other handle. Any new off-grid waypoint type must do the same.
 - **Rebuild triggers**: `StructController.Construct()` (end of method, after all `UpdateNeighbors` calls) and `Graph.AddNeighborsInitial()` (startup/load). Cost ≈ 0.1–0.2 ms for a 100×50 map.
 - **Usage as pre-filter**: `Graph.Navigate()` itself checks `SameComponent` before running A*, so all pathfinding automatically rejects unreachable targets in O(1). Individual search loops no longer need their own `SameComponent` calls.
 - **`Nav.CanReachBuilding(StructType, r)`**: checks whether any building of a given type is in the same component — used by `PickRecipe`/`PickRecipeRandom` instead of a full A* scan.

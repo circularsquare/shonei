@@ -70,6 +70,18 @@ public class Graph {
     // refresh propagation when a tile mutates partway up a tall cliff.
     private const int CLIFF_MAX_HEIGHT = 32;
 
+    // Off-grid waypoints created OUTSIDE the stair/cliff machinery above — building interiors,
+    // workspots, rope-bridge chains. Unlike stair/cliff waypoints (tracked in the dicts above
+    // and reset there) these live on their owning Structure, so RebuildComponents has no other
+    // handle on them. They MUST be reset every rebuild: component ids are renumbered from
+    // scratch each call, so a waypoint left with a stale id is skipped by the BFS visited-check
+    // and frozen out of the colony — see RebuildComponents. Owners register on creation /
+    // unregister on teardown. Leak-tolerant: a stale entry just gets reset to -1 and, having no
+    // neighbours, is never revisited — unregister only bounds memory across build/destroy churn.
+    private readonly HashSet<Node> registeredWaypoints = new HashSet<Node>();
+    public void RegisterWaypoint(Node n)   { if (n != null && n.isWaypoint) registeredWaypoints.Add(n); }
+    public void UnregisterWaypoint(Node n) { if (n != null) registeredWaypoints.Remove(n); }
+
     public Graph(World world){
         this.world = world;
         if (instance != null){
@@ -94,11 +106,14 @@ public class Graph {
             for (int y = 0; y < world.ny; y++)
                 nodes[x, y].componentId = -1;
 
-        // Reset waypoint nodes (stored in dictionaries, not in nodes[,])
+        // Reset waypoint nodes (stored off the nodes[,] grid). Three mechanisms: stair/cliff
+        // waypoints live in the dicts below (which double as rebuild keys); structure-owned
+        // waypoints (interiors, workspots, bridges) live in registeredWaypoints.
         foreach (var (wp1, wp2) in stairWaypoints.Values) { wp1.componentId = -1; wp2.componentId = -1; }
         foreach (Node[] chain in cliffWaypoints.Values) {
             for (int i = 0; i < chain.Length; i++) chain[i].componentId = -1;
         }
+        foreach (Node n in registeredWaypoints) n.componentId = -1;
 
         // BFS from each unvisited standable tile-node; waypoints get IDs transitively via edges
         int nextId = 0;

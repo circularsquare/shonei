@@ -224,12 +224,16 @@ public class TileMeshController : MonoBehaviour {
         MarkSnowChunkDirty(t.x, t.y);
     }
 
-    // Rim-suppression mask change → body AND overlay redraw. The mask is read by
-    // both bakes (body picks the buried-side slice; overlay AND-NOTs the bit out of
-    // its effective sides). Only self — neighbours' bakes don't read this mask.
+    // Body-state change (rim-suppression mask OR bodyRenderSuppressed) → body AND
+    // overlay redraw. bodyRenderSuppressed feeds neighbours' soft-edge contest
+    // (they treat a suppressed cell as air for their body silhouette), so dirty
+    // the full 3×3 — a neighbour in an adjacent chunk must re-bake too.
     void OnTileBodyChanged(Tile t) {
-        MarkBodyChunkDirty(t.x, t.y);
-        MarkOverlayChunkDirty(t.x, t.y);
+        for (int dy = -1; dy <= 1; dy++)
+            for (int dx = -1; dx <= 1; dx++) {
+                MarkBodyChunkDirty   (t.x + dx, t.y + dy);
+                MarkOverlayChunkDirty(t.x + dx, t.y + dy);
+            }
     }
 
     void MarkBodyChunkDirty(int x, int y) {
@@ -296,27 +300,42 @@ public class TileMeshController : MonoBehaviour {
             for (int x = x0; x < x1; x++) {
                 Tile t = world.GetTileAt(x, y);
                 if (t == null || !t.type.solid || t.type.id != typeId) continue;
+                // Excavation buildings (digging pit) draw their own receding
+                // substrate sprite over the cell — skip the full body quad so
+                // the dug-out region reads as an open hole. Solidity is
+                // unchanged, so neighbours still bake against this as solid.
+                if (t.bodyRenderSuppressed) continue;
 
-                // Soft-edge contest — same algorithm as the SR-based renderer.
-                int realSolid = 0, win = 0;
-                AccumulateTypeBoundary(t, x - 1, y,     1, ref realSolid, ref win);
-                AccumulateTypeBoundary(t, x + 1, y,     2, ref realSolid, ref win);
-                AccumulateTypeBoundary(t, x,     y - 1, 4, ref realSolid, ref win);
-                AccumulateTypeBoundary(t, x,     y + 1, 8, ref realSolid, ref win);
+                // Two independent masks. The silhouette contest (bodySolid/bodyWin)
+                // treats a bodyRenderSuppressed neighbour as open air, so this tile
+                // keeps its jagged exposed edge toward an excavation hole. The
+                // lighting mask (nMask) treats a `lightAsAir` neighbour as air, so
+                // edges facing a sufficiently-dug pit light as exposed cliff faces.
+                // Both equal the plain solidity bake away from such neighbours, so
+                // normal terrain is unaffected.
+                int bodySolid = 0, bodyWin = 0;
+                AccumulateTypeBoundary(t, x - 1, y,     1, ref bodySolid, ref bodyWin);
+                AccumulateTypeBoundary(t, x + 1, y,     2, ref bodySolid, ref bodyWin);
+                AccumulateTypeBoundary(t, x,     y - 1, 4, ref bodySolid, ref bodyWin);
+                AccumulateTypeBoundary(t, x,     y + 1, 8, ref bodySolid, ref bodyWin);
 
-                int nMask = realSolid;
-                if (IsSolidAt(x - 1, y - 1)) nMask |= 16;
-                if (IsSolidAt(x + 1, y - 1)) nMask |= 32;
-                if (IsSolidAt(x - 1, y + 1)) nMask |= 64;
-                if (IsSolidAt(x + 1, y + 1)) nMask |= 128;
+                int nMask = 0;
+                if (LightSolidAt(x - 1, y    )) nMask |= 1;
+                if (LightSolidAt(x + 1, y    )) nMask |= 2;
+                if (LightSolidAt(x,     y - 1)) nMask |= 4;
+                if (LightSolidAt(x,     y + 1)) nMask |= 8;
+                if (LightSolidAt(x - 1, y - 1)) nMask |= 16;
+                if (LightSolidAt(x + 1, y - 1)) nMask |= 32;
+                if (LightSolidAt(x - 1, y + 1)) nMask |= 64;
+                if (LightSolidAt(x + 1, y + 1)) nMask |= 128;
 
                 bool roadSuppressed = t.structs[3] != null;
                 int  overlayBits    = roadSuppressed ? 0 : (t.overlayMask & 0xF);
                 // bodyEdgeSuppressMask: structures (today: doored preservesTile buildings)
                 // can mark a side as "draw no rim" — OR it in so the bake picks the
                 // buried-side slice for that direction, hiding the 2px air bevel.
-                int  bodyCardinals  = (realSolid & ~win) | overlayBits | (t.bodyEdgeSuppressMask & 0xF);
-                int  trimMask       = (overlayBits & ~realSolid) & 0xF;
+                int  bodyCardinals  = (bodySolid & ~bodyWin) | overlayBits | (t.bodyEdgeSuppressMask & 0xF);
+                int  trimMask       = (overlayBits & ~bodySolid) & 0xF;
 
                 int bodySlice = TileSpriteCache.GetBodySlice(typeName, bodyCardinals, trimMask, x, y);
                 int nSlice    = TileSpriteCache.GetNormalMapSlice(typeName, nMask, x, y);
@@ -357,6 +376,7 @@ public class TileMeshController : MonoBehaviour {
             for (int x = x0; x < x1; x++) {
                 Tile t = world.GetTileAt(x, y);
                 if (t == null || !t.type.solid || t.type.id != typeId) continue;
+                if (t.bodyRenderSuppressed) continue; // dug-up cell: no grass over the hole
                 if (t.overlayMask == 0) continue;
                 if ((int)t.overlayState != stateIdx) continue;
                 // Roads visually replace the ground surface — suppress overlay
@@ -550,22 +570,34 @@ public class TileMeshController : MonoBehaviour {
     }
 
     // ── Helpers ────────────────────────────────────────────────────────
-    void AccumulateTypeBoundary(Tile tile, int nx, int ny, int bit, ref int realSolid, ref int win) {
+    // Soft-edge contest for the body silhouette. A bodyRenderSuppressed neighbour
+    // (excavation hole) reads as open air, so this tile draws its exposed/jagged
+    // edge toward it rather than a buried seam.
+    void AccumulateTypeBoundary(Tile tile, int nx, int ny, int bit, ref int bodySolid, ref int bodyWin) {
         if (nx < 0 || nx >= world.nx || ny < 0 || ny >= world.ny) {
-            realSolid |= bit;
+            bodySolid |= bit;   // off-map: solid (no jagged edge at the world border)
             return;
         }
         Tile n = world.GetTileAt(nx, ny);
-        if (n == null || !n.type.solid) return;
-        realSolid |= bit;
+        if (n == null || !n.type.solid || n.bodyRenderSuppressed) return;
+        bodySolid |= bit;
         if (n.type == tile.type) return;
-        if (tile.type.id < n.type.id) win |= bit;
+        if (tile.type.id < n.type.id) bodyWin |= bit;
     }
 
     bool IsSolidAt(int x, int y) {
         if (x < 0 || x >= world.nx || y < 0 || y >= world.ny) return true;
         Tile t = world.GetTileAt(x, y);
         return t != null && t.type.solid;
+    }
+
+    // Solidity as seen by the normal-map (lighting) bake: a `lightAsAir` cell
+    // (a sufficiently-excavated pit) reads as open air so neighbours light their
+    // facing edges as exposed cliffs. Off-map reads solid (no border glow).
+    bool LightSolidAt(int x, int y) {
+        if (x < 0 || x >= world.nx || y < 0 || y >= world.ny) return true;
+        Tile t = world.GetTileAt(x, y);
+        return t != null && t.type.solid && !t.lightAsAir;
     }
 
     static Bounds ChunkBounds() {

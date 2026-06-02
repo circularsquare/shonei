@@ -229,6 +229,9 @@ public class RopeBridge {
             waypoints[i + 1] = n;
         }
         waypoints[waypoints.Length - 1] = rightCorner;
+        // Register so RebuildComponents resets these off-grid waypoints' componentId each rebuild.
+        for (int i = 0; i < waypoints.Length; i++)
+            World.instance.graph.RegisterWaypoint(waypoints[i]);
         for (int i = 0; i < waypoints.Length - 1; i++)
             waypoints[i].AddNeighbor(waypoints[i + 1], reciprocal: true);
 
@@ -507,6 +510,7 @@ public class RopeBridge {
         for (int i = 0; i < waypoints.Length; i++) {
             Node wp = waypoints[i];
             if (wp == null) continue;
+            World.instance.graph.UnregisterWaypoint(wp);
             foreach (Node n in wp.neighbors) n.RemoveNeighbor(wp);
             wp.neighbors.Clear();
         }

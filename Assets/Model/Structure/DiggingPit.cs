@@ -15,11 +15,23 @@ using UnityEngine;
 // standard StructureVisualBuilder path) plus a dynamically generated "earth
 // dish" sprite rendered in front. The dish is a 20×20 texture built from the
 // captured tile's interior pixels (cardinal mask 15) with a parabolic mask
-// carved out — high at the edges, lowest in the center — so it looks like a
-// partially excavated bowl of the original substrate. As uses accumulates,
-// both the edges and the center drop, and the workspot drops with them so the
-// digger appears to stand on the receding floor of the pit. On depletion the
-// pit is replaced by a regular platform (see AnimalStateManager.HandleWorking).
+// carved out — high at the edges, lowest in the center — so it shows the
+// REMAINING substrate as a partially excavated bowl. As uses accumulates, both
+// the edges and the center drop, and the workspot drops with them so the digger
+// appears to stand on the receding floor. On depletion the pit is replaced by a
+// regular platform (see AnimalStateManager.HandleWorking).
+//
+// The cell's own tile body is suppressed (Tile.bodyRenderSuppressed) while the
+// pit operates, so the carved-away region is a real open hole — the background
+// wall, or sky where there is none, shows through the dish's transparent area.
+// `preservesTile` is deliberately kept ON: the tile stays solid so NEIGHBOURING
+// tiles still light as if the pit were solid earth. Only this cell's own body
+// is hidden, replaced by the dish.
+//
+// The dish's normal map is re-baked from the carved silhouette every time the
+// excavation deepens (TileSpriteCache.BakeMaskedNormalMap), so the receding bowl
+// is lit as a freshly-cut surface (rim beveled, depths darkened) rather than a
+// flat full tile.
 public class DiggingPit : Building {
     public TileType capturedTile;
 
@@ -27,6 +39,7 @@ public class DiggingPit : Building {
     // torn down by this class so the texture allocation doesn't leak.
     SpriteRenderer dishSr;
     Texture2D dishTex;
+    Texture2D dishNormalTex; // carve-matched normal map; re-baked when uses changes, owned here
     Sprite dishSprite;
     Color32[] substratePixels;
     int lastDishUses = -1; // skip texture rebuilds when uses hasn't changed
@@ -92,6 +105,23 @@ public class DiggingPit : Building {
         UpdateDishTexture();
         UpdateWorkSpot();
         UpdateSideAccess();
+        UpdateHoleLighting();
+    }
+
+    // Once the pit is dug past ~10%, flag the cell so neighbours light their
+    // facing edges as exposed cliffs instead of buried seams (Tile.lightAsAir).
+    // Below the threshold the cell still reads as solid earth, so a barely-dug
+    // pit doesn't pop its neighbours bright. Re-bakes the 3×3 on change only.
+    void UpdateHoleLighting() {
+        Tile tile = World.instance?.GetTileAt(x, y);
+        if (tile == null) return;
+        int uses = workstation != null ? workstation.uses : 0;
+        int depleteAt = Mathf.Max(1, structType.depleteAt);
+        bool dugEnough = uses >= depleteAt * 0.1f;
+        if (tile.lightAsAir != dugEnough) {
+            tile.lightAsAir = dugEnough;
+            tile.NotifyBodyDirty();
+        }
     }
 
     // Add or remove the L/R door edges depending on dish progress. The top edge
@@ -139,21 +169,15 @@ public class DiggingPit : Building {
         dishSr = SpriteMaterialUtil.AddSpriteRenderer(dishGo);
         dishSr.sortingOrder = sr.sortingOrder + 1;
         LightReceiverUtil.SetSortBucket(dishSr);
-        // Bind the substrate's full-tile normal map so the dish gets the same
-        // edge-distance darkening a regular tile would at this position — bright
-        // near exposed sides, darker deep in the interior. Without this MPB
-        // binding the sprite's _NormalMap defaults to flat (alpha=1 everywhere),
-        // so the dish reads as uniformly lit and inconsistent with neighbouring
-        // dirt. The mask reflects the tile's actual neighbours, so a surface pit
-        // gets a top-bright/bottom-dark gradient while a buried pit reads
-        // uniformly dark — same as the dirt block it carves into.
-        int mask8 = ComputeNeighborMask8(x, y);
-        Texture2D normalMap = TileSpriteCache.GetNormalMap(capturedTile.name, mask8, x, y);
-        if (normalMap != null) {
-            var mpb = new MaterialPropertyBlock();
-            dishSr.GetPropertyBlock(mpb);
-            mpb.SetTexture(Shader.PropertyToID("_NormalMap"), normalMap);
-            dishSr.SetPropertyBlock(mpb);
+        // Hide this cell's own tile body so the dish's carved-away region reads
+        // as an open hole (background / sky shows through). Solidity is left
+        // intact (preservesTile), so neighbours still light against us as solid.
+        // The dish's own normal map is bound dynamically in UpdateDishTexture so
+        // it follows the receding bowl rather than a static full-tile mask.
+        Tile tile = World.instance.GetTileAt(x, y);
+        if (tile != null) {
+            tile.bodyRenderSuppressed = true;
+            tile.NotifyBodyDirty();
         }
         // Inherit any blueprint/structure tint applied to the parent SRs. Listed
         // in tintableSrs so SetTint walks it alongside the main SR.
@@ -187,12 +211,33 @@ public class DiggingPit : Building {
         return t != null && t.type.solid;
     }
 
+    // Cardinal "buried" mask for the dish substrate sprite (bit layout L=1 R=2
+    // D=4 U=8 — set = flat/buried side). Matches the tile soft-edge rule: a side
+    // is flat only against a SOLID neighbour of the SAME substrate type; against
+    // air or a DIFFERENT type it stays exposed, so the dish carries the same
+    // jagged inter-type border the full tile would — e.g. the clay floor
+    // overhangs the dirt below with a jagged edge instead of a flat cutoff.
+    int ComputeSubstrateCardinalMask() {
+        World w = World.instance;
+        int m = 0;
+        if (SameSubstrate(w, x - 1, y)) m |= 1;
+        if (SameSubstrate(w, x + 1, y)) m |= 2;
+        if (SameSubstrate(w, x,     y - 1)) m |= 4;
+        if (SameSubstrate(w, x,     y + 1)) m |= 8;
+        return m;
+    }
+
+    bool SameSubstrate(World w, int tx, int ty) {
+        Tile t = w.GetTileAt(tx, ty);
+        return t != null && t.type.solid && t.type == capturedTile;
+    }
+
     void UpdateDishTexture() {
         // Resample substrate pixels on first call OR when capturedTile changed
         // (saves on load: the field is set after the SR object exists in memory
         // from a prior pit, e.g. across scene reloads in PlayMode tests).
         if (substratePixels == null) {
-            Sprite substrate = TileSpriteCache.Get(capturedTile.name, 15, x, y);
+            Sprite substrate = TileSpriteCache.Get(capturedTile.name, ComputeSubstrateCardinalMask(), x, y);
             if (substrate == null) {
                 Debug.LogError($"DiggingPit dish: TileSpriteCache returned null for '{capturedTile.name}' at {x},{y}");
                 return;
@@ -230,22 +275,40 @@ public class DiggingPit : Building {
             };
         }
 
-        var pixels = new Color32[SIZE * SIZE];  // default: clear (0,0,0,0)
-        for (int py = BORDER; py < BORDER + INNER; py++) {
-            int iy = py - BORDER;
-            for (int px = BORDER; px < BORDER + INNER; px++) {
-                int ix = px - BORDER;
-                float xNorm = (ix + 0.5f) / INNER;            // pixel center across the full interior
-                float t = 4f * (xNorm - 0.5f) * (xNorm - 0.5f); // 0 at center, 1 at edges
-                int surfacePx = Mathf.RoundToInt(centerBottomPx + (edgeTopPx - centerBottomPx) * t);
-                if (iy <= surfacePx) {
-                    pixels[py * SIZE + px] = substratePixels[py * SIZE + px];
-                }
-            }
+        // Start from the FULL substrate, including its 2px overhang borders —
+        // those borders carry the jagged inter-type edges (e.g. the clay/dirt
+        // seam lives in the bottom border rows, not the flat interior). Then
+        // excavate everything strictly ABOVE the parabolic bowl surface.
+        // Building interior-only (the previous approach) clipped the bottom to a
+        // flat interior row and lost the jagged seam. Side border columns use a
+        // clamped profile (t=1 at and beyond the edges), so the left cliff edge
+        // and the bottom seam survive while the dug-out top is cleared.
+        var pixels = (Color32[])substratePixels.Clone();
+        var clear  = new Color32(0, 0, 0, 0);
+        for (int px = 0; px < SIZE; px++) {
+            float xNorm = (px - BORDER + 0.5f) / INNER;            // <0 / >1 in the side borders
+            float t = Mathf.Clamp01(4f * (xNorm - 0.5f) * (xNorm - 0.5f)); // 0 center, 1 at/over edges
+            int surfaceIy = Mathf.RoundToInt(centerBottomPx + (edgeTopPx - centerBottomPx) * t);
+            int surfacePy = BORDER + surfaceIy;                    // clear strictly above the surface
+            for (int py = surfacePy + 1; py < SIZE; py++) pixels[py * SIZE + px] = clear;
         }
 
         dishTex.SetPixels32(pixels);
         dishTex.Apply();
+
+        // Re-bake the normal map from the carved silhouette so the receding bowl
+        // is lit as a freshly-cut surface (rim beveled, depths darkened) rather
+        // than a flat full tile. mask8 reflects the cell's solid neighbours, so
+        // exposed sides (top/left of a surface pit) get edge lighting while
+        // buried sides stay dark — consistent with the surrounding earth.
+        int mask8 = ComputeNeighborMask8(x, y);
+        Texture2D newNormal = TileSpriteCache.BakeMaskedNormalMap(pixels, mask8);
+        if (dishNormalTex != null) Object.Destroy(dishNormalTex);
+        dishNormalTex = newNormal;
+        var mpb = new MaterialPropertyBlock();
+        dishSr.GetPropertyBlock(mpb);
+        mpb.SetTexture(Shader.PropertyToID("_NormalMap"), dishNormalTex);
+        dishSr.SetPropertyBlock(mpb);
 
         if (dishSprite == null) {
             // PPU=16 matches TileSpriteCache so the dish's 16×16 interior aligns
@@ -281,11 +344,24 @@ public class DiggingPit : Building {
     }
 
     public override void Destroy() {
-        // Tear down the texture we allocated. Sprite/SR are children of `go` and
+        // Restore normal cell rendering. The depletion path already swaps the
+        // tile to "empty" (so this is a no-op there), but a player deconstruct
+        // leaves the original solid tile behind and needs its body back.
+        Tile tile = World.instance?.GetTileAt(x, y);
+        if (tile != null && (tile.bodyRenderSuppressed || tile.lightAsAir)) {
+            tile.bodyRenderSuppressed = false;
+            tile.lightAsAir = false;
+            tile.NotifyBodyDirty();
+        }
+        // Tear down the textures we allocated. Sprite/SR are children of `go` and
         // get cleaned up by the base GameObject destroy.
         if (dishTex != null) {
             Object.Destroy(dishTex);
             dishTex = null;
+        }
+        if (dishNormalTex != null) {
+            Object.Destroy(dishNormalTex);
+            dishNormalTex = null;
         }
         dishSprite = null;
         dishSr = null;

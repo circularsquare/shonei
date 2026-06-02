@@ -23,12 +23,7 @@
 | 17 | Floor items resting on a platform's solid top (computed — platform +2) |
 | parent + 1 | Items in storage display (drawer stacks, crate placeholder, tank fill, bookshelf fill) — `Inventory` ctor takes `parentSortingOrder` from the owning `Building` (e.g. drawer at 10 → stacks at 11). Falls back to 30 when no parent is supplied (test fixtures only). |
 | 40 | Foreground structures (depth-2: stairs, ladders) |
-| 48 | Animal tail (paper-doll part) |
-| 49 | Animal back foot (paper-doll part) |
-| 50 | Animal body (paper-doll part) |
-| 51 | Animal front foot (paper-doll part) |
-| 52 | Animal arm (paper-doll part) |
-| 55–57 | Clothing overlays (per-part children: body 55, foot 56, arm 57) |
+| 50 | Animal paper-doll parts + clothing — all share order 50. The root `SortingGroup` (order `50 + id%15`) sorts each mouse as a unit; parts layer within the mouse by Z offset in the clips. Per-part `sortingOrder` is safe *if kept in 48–99* (bucket 4) — SRP Batcher batches by shader so reordering same-atlas parts within the group doesn't add SetPass; leaving the 48–99 band would move a part to another lighting bucket. |
 | 60 | Plants |
 | 64 | Light-source buildings (torch, fireplace) — per-type override via `StructType.sortingOrder`, sits above animals/plants so `LightSource` (auto-detect) front-lights them |
 | 65 | Falling items (mid-air animation) |
@@ -143,10 +138,15 @@ Per-side decoration rendered on top of the tile body. Today this is grass on dir
 - **Mining never auto-sets bits**: freshly exposed sides stay bare. The `Tile.type` setter clears `overlayMask` when transitioning to a type with no overlay (e.g. dirt → empty), so mined tiles don't carry stale data.
 - **Road suppression**: when `tile.structs[3] != null`, the tile emits no overlay quad. `Structure` ctor/`Destroy` call `Tile.NotifyOverlayDirty()` which fires `cbOverlayChanged` and dirties the affected chunk.
 - **Per-side rim suppression (`bodyEdgeSuppressMask`)**: a `byte` on `Tile` (same L=1/R=2/D=4/U=8 layout) that lets a structure mark specific sides as "draw no air-edge bevel and no overlay tuft" — without changing the tile's actual neighbour state. Used by doored `preservesTile` buildings (burrow) so the door tile doesn't show a dirt rim or grass tuft on the door side; the burrow's sprite then reads as a clean carved hole. Implementation:
-  - Body bake: `bodyCardinals = (realSolid & ~win) | overlayBits | bodyEdgeSuppressMask` — the mask bits force the buried-side slice on those sides.
+  - Body bake: `bodyCardinals = (bodySolid & ~bodyWin) | overlayBits | bodyEdgeSuppressMask` — the mask bits force the buried-side slice on those sides.
   - Overlay bake: `effective = overlayMask & ~cMask & ~bodyEdgeSuppressMask` — masked sides skip emitting a tuft.
   - Maintenance: `Structure` ctor (for `preservesTile` buildings) ORs the door's side-bit into the door tile's mask + calls `Tile.NotifyBodyDirty()`; `Structure.Destroy` XORs the same bits back and notifies again. Refresh fires `cbBodyChanged` → `OnTileBodyChanged` marks both body **and** overlay chunks dirty (the mask affects both bakes).
-  - Self-only refresh: unlike the type-change callback, body-changed is **not** propagated to 8 neighbours — the mask is purely a self-side override; neighbours' bakes don't read it.
+- **Excavation hole suppression (`bodyRenderSuppressed` + `lightAsAir`)**: digging pits keep their tile solid (`preservesTile`) but draw their own receding-substrate "dish" sprite over the cell (see [DiggingPit.cs](../Model/Structure/DiggingPit.cs)). Two `bool`s on `Tile` let the cell read as a hole without touching solidity:
+  - `bodyRenderSuppressed`: the cell skips its own body + overlay quads, so the dug-out (transparent) region of the dish shows the background wall / sky behind. Neighbours also treat the cell as **air for the body silhouette contest**, so their edges toward the hole stay jagged instead of flat-seaming against it.
+  - `lightAsAir`: neighbours treat the cell as **air for the normal-map (lighting) bake**, so edges facing the hole light as exposed cliffs. The pit sets this only past ~10% dug (a barely-dug pit shouldn't pop neighbours bright); below that the cell still lights as solid. Binary per side — the lower edge where substrate still remains is slightly over-lit; a true per-pixel ("half-occupied") solution is deferred.
+  - The body bake therefore keeps **two independent masks**: `bodySolid`/`bodyWin` (silhouette; a `bodyRenderSuppressed` neighbour reads as air, via `AccumulateTypeBoundary`) and `nMask` (lighting; a `lightAsAir` neighbour reads as air, via `LightSolidAt`). Away from such cells both equal the plain solidity bake, so normal terrain is unaffected.
+  - The dish sprite samples its substrate with a same-type-aware cardinal mask (flat only toward same-substrate solid neighbours, jagged toward air / other types) and carves the bowl from the **full** substrate including its 2px overhang borders — that's what preserves the jagged inter-type seam at the bottom. Its normal map is re-baked per carve via `TileSpriteCache.BakeMaskedNormalMap` so the receding bowl is lit as a real cut surface.
+  - Because these flags drive **neighbours'** bakes, `OnTileBodyChanged` dirties the full 3×3 (not self-only). `DiggingPit` sets/clears the flags in `RebuildDishVisual` / `Destroy` and calls `NotifyBodyDirty`; neither flag is saved — both are re-derived on load. (The older `bodyEdgeSuppressMask` is still a self-only override, but shares the now-3×3 refresh path.)
 - **Live growth + health state** (`OverlayGrowthSystem`): once per real-time second, dirt tiles with `moisture > 40` (when `temperature > 5°C`) and `y >= World.surfaceY[x] - 5` (within 5 below the original ground line) roll a small chance to sprout grass on each non-grassy, exposed, non-flooded L/R/U side (~½ in-game day expected wait per side). The depth gate keeps grass overlay an outdoor / shallow-skylight feature; deeper caves get mushrooms / moss via FlowerController instead. Tiles deeper than the gate skip both growth and state evolution. Bottom never grows. The same Tick also evolves a per-tile `Tile.overlayState` (Live / Dying / Dead) — death is a per-tick roll while conditions warrant it (cold/dryout → Dying, deep freeze → Dead, ~10 s steady-state average), recovery to Live is the slower fresh-grass roll. The chunked renderer maintains **one mesh per overlay state** per (chunk × tile-type): tiles in different states emit quads into different meshes, each bound to its state's atlas array (`grass` / `grass_dying` / `grass_dead`). Atlas geometry is identical across variants so per-side bit semantics are unchanged. See SPEC-systems "Soil Moisture" for the dispatch slot and full state-machine table.
 
 ### Decorative scatter (flowers, mushrooms, moss)
@@ -635,14 +635,16 @@ Animals use a paper-doll (multi-sprite) approach: each body part is a separate c
 
 ### Prefab hierarchy
 ```
-Animal (root — Animator, Animal.cs, BoxCollider2D, no SpriteRenderer)
-├─ Tail           (order 48)
-├─ BackFoot       (order 49)
-├─ Body           (order 50)  ← Animal.sr references this renderer
-│  └─ ClothingBody  (order 55)
-├─ FrontFoot      (order 51)
-└─ Arm            (order 52)
+Animal (root — Animator, Animal.cs, BoxCollider2D, SortingGroup, no SpriteRenderer)
+├─ Tail
+├─ Arm
+├─ Body            ← Animal.sr references this renderer
+│  └─ ClothingBody
+├─ LeftLeg / RightLeg   (both use mouse_foot)
+├─ Head
+└─ ChatBubble      (counter-flipped to stay world-upright)
 ```
+All part renderers share `sortingOrder` 50; the root `SortingGroup` (order `50 + id%15`, `Animal.cs`) sorts each mouse as a unit vs. the world, and within the mouse the parts layer by tiny Z offsets in the clips. Per-part `sortingOrder` is also fine *as long as every part stays in bucket 4 (48–99)* — see §Sorting orders.
 
 ### Facing direction
 Two orthogonal axes:
@@ -650,10 +652,10 @@ Two orthogonal axes:
 - **Side/back/front view** (`Animal.FacingView`): back/front are *not* mirrors of the side art, so they use a distinct sprite set rather than flipping. Resolved per-frame in `AnimationController.UpdateState` (never stored), precedence: `Objective.ViewOverride` (data-driven, e.g. crucible `workView:"back"`) → else the edge-implied view while locomoting (`Nav.CurrentEdgeView`, `Back` only on a straight non-waypoint vertical ladder edge — side-ladders stay Side) → else `Side`. `Nav.RefreshFacingView()` fires `UpdateState` on a view flip (mandatory — `IsLocomoting` doesn't change tile→ladder→tile). The view drives the `back` Animator int, which selects back clips; **the sprite swap is owned by the clips** (sprite + `Enabled` keyframes per part — hide the arm), same mechanism `mouseEep` uses for the head. Reverting to side is automatic because all states have **Write Defaults on** — leaving a back clip restores each part's prefab-default (side) sprite. Back art is assumed symmetric, so the L/R mirror during a back-climb is harmless. Front is scaffolded (enum + `ViewNameToFacing` case) but has no trigger or art.
 
 ### Per-part clothing
-`AnimationController.clothingParts` is a serialized array of `PartClothing` entries (partName + renderer reference). Each entry loads its sprite from `Resources/Sprites/Animals/Clothing/{item}/{partName}.png`. Missing sprites are handled gracefully (renderer stays disabled). Clothing renderers are children of their body part, so they inherit transforms automatically.
+`AnimationController.clothingParts` is a serialized array of `PartClothing` entries (partName + renderer reference). Each loads from `Resources/Sprites/Animals/Clothing/{item}/{partName}.png`, or `{partName}_back.png` when back-facing. Reload triggers on equipped-item *or* view change. Missing sprites are handled gracefully (renderer disabled) — so a part with no `_back` variant hides while back-facing (same convention as the arm). Clothing renderers are children of their body part, so they inherit transforms automatically; the arm's clothing hides for free because the back clips disable the Arm GameObject.
 
 ### Sprite assets
-Part sprites in `Assets/Resources/Sprites/Animals/`: `mouse_body.png`, `mouse_tail.png`, `mouse_foot.png`, `mouse_arm.png` (+ `_n.png` normal maps). Pivots set in Sprite Editor per part (feet: top, arm: top, tail: base, body: center).
+Part sprites in `Assets/Resources/Sprites/Animals/`: `mouse_body`, `mouse_tail`, `mouse_foot`, `mouse_arm`, `mouse_head` (+ `_n` normal maps), and the back set `mouse_back_body/head/foot/tail` (no back arm). Pivots set in Sprite Editor per part (feet: top, arm: top, tail: base, body: center).
 
 ### Animation states & pose overrides
 
@@ -683,6 +685,8 @@ Each state/pose corresponds to a single `.anim` clip. Stationary poses are fine 
 4. Pick where the pose name originates:
    - **Leisure-tied** (cushion, reading nook): `"leisurePose": "<name>"` in `buildingsDb.json`. No code changes.
    - **Task-tied** (crafting, studying): override `PoseOverride` on the relevant Objective subclass, or add a parallel field (`workPose`) and a matching getter on the Objective that runs that activity.
+
+**Back-facing clips.** Selected by the `back` int (see table). Unlike side clips (transform-only, sprites owned by the prefab), back clips **own their sprites via PPtr keyframes** — each part's `m_Sprite` is keyframed to the back sprite as a single held value, and the arm is hidden by keyframing `Body/Arm` GameObject `m_IsActive = 0`. Write Defaults (on for all states) reverts every part to its side default when leaving a back state, so no side-restore plumbing is needed. Keep any motion (e.g. the climb leg-cycle) as flat holds or clean loops — a back clip that morphs *toward* the side pose will visibly slide. Current back states: `mouseBackIdle` (static; covers standing back + crucible work, `back==1 && state==0`) and `mouseBackClimb` (looping climb, `back==1 && state==1`). Exits to `mouseIdle` on `back==0`.
 
 ---
 

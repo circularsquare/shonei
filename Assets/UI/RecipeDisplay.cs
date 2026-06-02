@@ -80,7 +80,30 @@ public class RecipeDisplay : MonoBehaviour {
 
         SpawnItemLabels(inputsContainer,  inputs,  inputLabels,  isOutput: false);
         SpawnItemLabels(outputsContainer, outputs, outputLabels, isOutput: true);
+        BuildConditionsLine();
         Refresh();
+    }
+
+    // Detail-pane extra line: where the recipe came from + how long it takes. Built once
+    // (static per recipe). Skipped for processes — their header already shows time/temp.
+    void BuildConditionsLine() {
+        if (process != null) return;
+        var parts = new List<string>();
+        string unlock = ResearchSystem.instance != null ? ResearchSystem.instance.GetUnlockResearchName(recipe.id) : null;
+        if (!string.IsNullOrEmpty(unlock)) parts.Add("needs " + unlock);
+        if (recipe.workload > 0f) parts.Add("work " + Mathf.RoundToInt(recipe.workload));
+        if (parts.Count == 0) return;
+
+        var go = new GameObject("Conditions", typeof(RectTransform));
+        go.transform.SetParent(transform, false); // card root VLG → appended below outputs
+        var le = go.AddComponent<LayoutElement>();
+        le.preferredHeight = 14f;
+        le.flexibleWidth   = 1f;
+        var tmp = go.AddComponent<TextMeshProUGUI>();
+        if (descText != null) { tmp.font = descText.font; tmp.fontSize = descText.fontSize; tmp.color = descText.color; }
+        tmp.enableWordWrapping = false;
+        tmp.overflowMode = TextOverflowModes.Truncate;
+        tmp.text = string.Join("   ", parts);
     }
 
     const float RowHeight  = 16f;
@@ -150,23 +173,21 @@ public class RecipeDisplay : MonoBehaviour {
     }
 
     public void Refresh() {
-        bool allowed;
         if (process != null) {
             // Passive process: no worker count — show brew time (+ ideal temp) instead.
             jobText.text = FormatProcessHeader(process);
-            allowed = RecipePanel.instance == null || RecipePanel.instance.IsProcessAllowed(process.building);
         } else {
             int count = 0;
             if (job != null && AnimalController.instance != null)
                 AnimalController.instance.jobCounts.TryGetValue(job, out count);
             jobText.text = recipe.job + " (" + count + ")";
-            allowed = RecipePanel.instance == null || RecipePanel.instance.IsAllowed(recipe.id);
         }
 
         var ginv = GlobalInventory.instance;
         RefreshLabels(inputs,  inputLabels,  ginv, isOutput: false);
         RefreshLabels(outputs, outputLabels, ginv, isOutput: true);
 
+        bool allowed = RecipePanel.instance == null || RecipePanel.instance.IsEntryAllowed(recipe, process);
         if (allowButton.image != null) allowButton.image.sprite = allowed ? iconAllowed : iconDisallowed;
     }
 
@@ -201,8 +222,7 @@ public class RecipeDisplay : MonoBehaviour {
     void OnClickAllow() {
         var rp = RecipePanel.instance;
         if (rp == null) return;
-        if (process != null) rp.SetProcessAllowed(process.building, !rp.IsProcessAllowed(process.building));
-        else                 rp.SetAllowed(recipe.id, !rp.IsAllowed(recipe.id));
+        rp.ToggleEntryAllowed(recipe, process);
         Refresh();
     }
 }

@@ -291,6 +291,39 @@ Each panel's `Toggle()` calls `UI.OpenExclusive(gameObject)` when opening, and `
 
 **To add a new exclusive panel**: call `UI.RegisterExclusive(gameObject)` in `Awake`/`Start`, and replace any `SetActive(true)` in the toggle path with `UI.OpenExclusive(gameObject)`.
 
+## Recipes panel (master-detail)
+
+`RecipePanel` is a full-screen exclusive panel showing every unlocked recipe. Layout is
+**master-detail**: a grouped, scrollable list on the **left** (the in-scene `RecipeScroll`,
+narrowed to a fixed `LeftWidth` column in code) and a **detail pane on the right**.
+
+**Left list** — recipes are grouped by workstation (`Recipe.tile`) into collapsible
+`RecipeGroupDisplay`s (header: building icon + `name (N)`; click toggles). A group lazily
+spawns compact `RecipeListRow`s only when first expanded — so a collapsed panel costs ~one
+header per workstation, not a card per recipe. Each row is `[output icon][name][inline
+On/Off icon]` + a behind-highlight; clicking the row body selects it, the On/Off icon
+toggles allow in place. A thin `Sprites/Misc/divider` separates each group.
+
+**Detail pane** — on select, a fresh `RecipeDisplay` card (the prefab) is instantiated into
+the detail container showing inputs/outputs (live have-amounts), job, a conditions line
+("needs `<research>`" + workload), and the On/Off toggle. Fresh instance per selection —
+`RecipeDisplay.Setup` assumes a clean card. The detail container is an editor-authored
+scene object wired to `RecipePanel.detailPane` (tweak its size/position/background in the
+editor); if unwired, `BuildLayout` builds one in code as a fallback.
+
+**Allow dispatch** is unified on `RecipePanel.IsEntryAllowed/ToggleEntryAllowed(recipe,
+process)` (used by both rows and the detail card), routing craft → `disabledRecipes` (id),
+process → `disabledProcesses` (building name, gates the `FillProcessor` work order), book →
+`BookProxyRecipeId` sentinel. Icons: `Sprites/Misc/check` / `redx` at **native 11×11** (do
+not scale — keeps the pixel art crisp).
+
+**Special display cases**: book-writing recipes (output `ItemClass.Book`) collapse into one
+"write a book" proxy whose toggle drives all book recipes; processes (ProcessorRecipe)
+appear under their building with a `Nd at T°` header; `hidden`-flagged recipes (dig/mine/
+wheel) are omitted entirely. Expanded-group state persists (`expandedRecipeGroups`); see
+SPEC-data.md for the recipe/process panel data notes. Layout reveals use
+`LayoutUtil.RebuildImmediate` (see above) to avoid the min-height pop.
+
 ## Sub-canvases (mesh-rebuild localization)
 
 The root `UI` GameObject has a single `Canvas` component (`ScreenSpaceOverlay`) that all panels live under. Without intervention, **every** UI widget change — an item count text updating, a fillbar tick, a toast fade — invalidates the root canvas's mesh and forces a rebuild of the entire UI hierarchy (~600 active widgets in a typical play state). This is purely a CPU cost, not a draw count cost; the draw count stays roughly the same, but the per-frame work to regenerate the canvas mesh balloons with hierarchy size.

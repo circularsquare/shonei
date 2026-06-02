@@ -211,6 +211,13 @@ public class ResearchSystem : MonoBehaviour {
 
     public bool IsUnlocked(int id) => unlockedIds.Contains(id);
 
+    // True if the tech with this name is fully researched. Used by onboarding (PlayerTask).
+    public bool IsUnlockedByName(string techName) {
+        foreach (var node in nodes)
+            if (node.name == techName) return unlockedIds.Contains(node.id);
+        return false;
+    }
+
     public bool PrereqsMet(ResearchNodeData node) {
         foreach (int prereq in node.prereqs)
             if (!IsUnlocked(prereq)) return false;
@@ -334,6 +341,13 @@ public class ResearchSystem : MonoBehaviour {
     public bool IsRecipeUnlocked(int recipeId) {
         if (!recipeToTechNode.TryGetValue(recipeId, out int techNodeId)) return true;
         return unlockedIds.Contains(techNodeId);
+    }
+
+    // Display name of the tech node that gates this recipe, or null if the recipe is
+    // ungated. Used by the Recipes panel detail pane to show "needs <research>".
+    public string GetUnlockResearchName(int recipeId) {
+        if (!recipeToTechNode.TryGetValue(recipeId, out int nodeId)) return null;
+        return nodeById.TryGetValue(nodeId, out ResearchNodeData node) ? node.name : null;
     }
 
     // True if the job is unlocked: either no tech gates it (via an unlocks entry), or

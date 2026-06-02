@@ -28,7 +28,7 @@ public class RecipeGroupDisplay : MonoBehaviour {
     RecipeDisplay             cardPrefab;
     RectTransform             cardsContainer;
     TMP_Text                  indicator;
-    readonly List<RecipeDisplay> cards = new List<RecipeDisplay>();
+    readonly List<RecipeListRow> rows = new List<RecipeListRow>();
 
     bool expanded;
     bool built; // cards instantiated yet?
@@ -49,7 +49,7 @@ public class RecipeGroupDisplay : MonoBehaviour {
         // Activate before building so cards spawn active (TMP enabled, ItemIcon Awake
         // runs). The panel's Rebuild path settles layout afterwards via LayoutUtil.
         cardsContainer.gameObject.SetActive(expanded);
-        if (expanded) BuildCards();
+        if (expanded) BuildRows();
         indicator.text = expanded ? "-" : "+";
     }
 
@@ -150,22 +150,21 @@ public class RecipeGroupDisplay : MonoBehaviour {
         fitter.verticalFit   = ContentSizeFitter.FitMode.PreferredSize;
     }
 
-    void BuildCards() {
+    void BuildRows() {
         built = true;
-        foreach (Recipe r in recipes) {
-            var card = Instantiate(cardPrefab, cardsContainer, false);
-            card.name = "RecipeDisplay_" + r.id;
-            card.Setup(r);
-            cards.Add(card);
-        }
-        if (processes != null) {
-            foreach (ProcessorRecipe pr in processes) {
-                var card = Instantiate(cardPrefab, cardsContainer, false);
-                card.name = "ProcessDisplay_" + pr.building + "_" + pr.id;
-                card.Setup(pr);
-                cards.Add(card);
-            }
-        }
+        foreach (Recipe r in recipes)
+            AddRow("Row_" + r.id, r, null);
+        if (processes != null)
+            foreach (ProcessorRecipe pr in processes)
+                AddRow("ProcRow_" + pr.building + "_" + pr.id, null, pr);
+    }
+
+    void AddRow(string name, Recipe r, ProcessorRecipe pr) {
+        var go = new GameObject(name, typeof(RectTransform));
+        go.transform.SetParent(cardsContainer, false);
+        var row = go.AddComponent<RecipeListRow>();
+        row.Setup(r, pr, cardPrefab); // cardPrefab supplies the panel font
+        rows.Add(row);
     }
 
     // ── Toggle / refresh ───────────────────────────────────────────────
@@ -175,7 +174,7 @@ public class RecipeGroupDisplay : MonoBehaviour {
         // Activate before building so cards spawn active and their TMP/fitters are
         // measurable in the same frame.
         cardsContainer.gameObject.SetActive(exp);
-        if (exp && !built) BuildCards();
+        if (exp && !built) BuildRows();
         indicator.text = exp ? "-" : "+";
 
         if (persist) RecipePanel.instance?.SetGroupExpanded(tile, exp);
@@ -185,9 +184,10 @@ public class RecipeGroupDisplay : MonoBehaviour {
         LayoutUtil.RebuildImmediate(RecipePanel.instance?.recipeListContent as RectTransform);
     }
 
-    // Called by RecipePanel's refresh timer; cheap no-op while collapsed.
+    // Called by RecipePanel's refresh timer; cheap no-op while collapsed. Rows only show
+    // name + On/Off, so they just re-sync the allow icon (quantities live in the detail pane).
     public void RefreshVisibleCards() {
         if (!expanded) return;
-        foreach (var c in cards) c.Refresh();
+        foreach (var r in rows) r.RefreshAllowIcon();
     }
 }

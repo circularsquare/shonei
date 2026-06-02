@@ -871,6 +871,15 @@ public static class TileSpriteCache {
         return tex;
     }
 
+    // Public entry for callers that bake a normal map from their OWN pixel
+    // array rather than a cached tile sprite — e.g. the digging pit's
+    // dynamically carved dish. Same bevel + edge-depth algorithm as the tile
+    // bake; the caller owns (and must Destroy) the returned texture, since it
+    // changes every carve and isn't pooled in the per-type cache.
+    public static Texture2D BakeMaskedNormalMap(Color32[] pixels, int mask) {
+        return BakeNormalMap(pixels, mask);
+    }
+
     // Flat forward normal, alpha 1. Used for non-solid tiles (and as a safe
     // default for any sprite whose _NormalMap gets cleared via this path).
     static Texture2D BuildFlatNormalMap() {
