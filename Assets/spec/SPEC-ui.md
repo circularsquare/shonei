@@ -244,10 +244,10 @@ than a canvas flush) before measuring; runs on every hover, so left untouched.
 
 `Assets/UI/GlobalHappinessPanel.cs` — exclusive panel showing colony-wide happiness.
 
-Opened by clicking the happiness HUD element (`AnimalController.happinessPanel`); that GameObject needs a **Button** component with onClick wired to `GlobalHappinessPanel.instance.Toggle()`.
+Opened by clicking the top-bar happiness readout — a `Button` on `UI/TopBar` wired **in code** via `AnimalController.happinessButton` → `GlobalHappinessPanel.instance.Toggle()`. `instance` is a lazy getter that resolves the (inactive) panel via `FindObjectOfType(true)`, so the first click works before the panel has ever activated (without it, `Awake` hasn't run and `instance` is null → silent no-op). The readout is the single entry point — the old standalone `HappinessToggle` button was removed.
 
 **Layout** (set up in editor):
-- `headerText` TMP — colony average score + pop capacity
+- `headerText` TMP — colony average score, `pop n/cap`, and a one-line "grow pop" hint (raise happiness / build housing / stock food) so players know how to lift the cap
 - `needContainer` Transform (VerticalLayoutGroup) — `HappinessNeedRow` instances spawned here lazily on first open
 - `needRowPrefab` — `HappinessNeedRow` prefab
 
@@ -272,7 +272,9 @@ Rows are spawned lazily on first open (in `OnEnable`) from `Db.happinessNeedsSor
 
 ## Build Bar & Mouse Modes
 
-The build bar (`BuildCategoryBar` in Main.unity) holds both category buttons (Structures / Plants / Production / Power / Storage / Tiles) and standalone mode buttons. Each standalone button calls a `SetMode*()` method on `MouseController`, which sets `MouseController.mouseMode` (enum `MouseMode { Select, Build, Remove, Harvest }`) and clears `BuildPanel.structType`.
+The build bar (`BuildCategoryBar` in Main.unity) holds both category buttons and standalone mode buttons. Each standalone button calls a `SetMode*()` method on `MouseController`, which sets `MouseController.mouseMode` (enum `MouseMode { Select, Build, Remove, Harvest }`) and clears `BuildPanel.structType`.
+
+**Category buttons are data-driven.** `BuildPanel.Categories` is a `{key, label, icon}` array (Tiles, Structures, Plants, Production, Power, Housing, Storage); at `Start` each entry is spawned from the `CategoryButton` prefab into `BuildCategoryBar` at `categoryInsertIndex` (between the leading/trailing tool buttons), with its icon loaded from `Sprites/Misc/buildicons/<icon>` and onClick/tooltip wired in code. Adding a tab = one `Categories` entry + a `buildicons/<icon>.png` + author the buildings' JSON `category` — **no scene wiring or per-category SerializeField**. Housing buildings (`isHousing`) live in the `housing` category, not `storage`.
 
 | Mode | Trigger | Behavior |
 |------|---------|----------|

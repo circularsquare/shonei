@@ -336,12 +336,6 @@ public abstract class Task {
         currentObjective = objectives.First.Value;
         objectives.RemoveFirst();
         currentObjective.Start();
-        // Refresh the paper-doll for the new objective's PoseOverride / ViewOverride. The
-        // animator is otherwise only driven on state-change / nav locomotion, so a stationary
-        // objective (construct, craft-at-workstation, research) that sets state=Working but
-        // doesn't move would never apply its pose/view without this. Fires after Start() so
-        // the objective has settled its state; null-safe if Start() failed/advanced the task.
-        animal.animationController?.UpdateState();
     }
     public void OnArrival(){
         currentObjective?.OnArrival();

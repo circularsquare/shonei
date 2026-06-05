@@ -193,7 +193,7 @@ public class Plant : Structure {
     // wired by SpriteNormalMapGenerator's editor-time post-pass and bound by
     // Unity at render time. We can't query secondary textures at runtime in
     // this Unity version, so we use companion-file presence as a proxy:
-    // user must run Tools → Generate All Sprite Normal Maps after authoring
+    // user must run Tools → Generate All Normal Maps after authoring
     // a `_sway.png` so the secondary binding is created (same workflow as
     // `_n.png` / `_e.png`). Resources.Load caches results internally so the
     // repeated lookups during growth ticks are cheap.
@@ -602,10 +602,9 @@ public class Plant : Structure {
         if (cellMeta == null || cellMeta.blobs == null) return;
 
         for (int i = 0; i < cellMeta.blobs.Length; i++) {
-            Sprite blobSprite = Resources.Load<Sprite>(
-                "Sprites/Plants/Split/" + plantName + "/" + cellName + "_b" + i);
+            Sprite blobSprite = PlantBlobSpriteCache.Get(plantName, cellName + "_b" + i);
             if (blobSprite == null) {
-                Debug.LogError($"Plant: missing blob sprite {plantName}/{cellName}_b{i} — sway_meta lists {cellMeta.blobs.Length} blob(s) but PNG is gone. Re-bake required.");
+                Debug.LogError($"Plant: missing blob sprite {cellName}_b{i} in {plantName}_blobs_baked — sway_meta lists {cellMeta.blobs.Length} blob(s) but the sheet slice is gone. Re-bake required.");
                 continue;
             }
 
@@ -673,7 +672,7 @@ public class Plant : Structure {
     // doesn't fit). Returns null if absent so callers fall back to the full cell.
     private static Sprite LoadCellStatic(string plantName, string cell) {
         if (string.IsNullOrEmpty(cell)) return null;
-        return Resources.Load<Sprite>("Sprites/Plants/Split/" + plantName + "/" + cell + "_static");
+        return PlantBlobSpriteCache.Get(plantName, cell + "_static");
     }
 
     private static Sprite LoadStageSprite(string plantName, int stageIdx) {
@@ -701,11 +700,11 @@ public class Plant : Structure {
     // look up the matching blob set in the metadata cache.
     private static Sprite LoadStaticSprite(string plantName, string preferredPrefix, int stageIdx, out string cellName) {
         cellName = preferredPrefix + stageIdx;
-        var s = Resources.Load<Sprite>("Sprites/Plants/Split/" + plantName + "/" + cellName + "_static");
+        var s = PlantBlobSpriteCache.Get(plantName, cellName + "_static");
         if (s != null) return s;
         if (preferredPrefix == "b") {
             cellName = "g" + stageIdx;
-            s = Resources.Load<Sprite>("Sprites/Plants/Split/" + plantName + "/" + cellName + "_static");
+            s = PlantBlobSpriteCache.Get(plantName, cellName + "_static");
         }
         return s;
     }

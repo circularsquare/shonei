@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using UnityEngine.Serialization;
 using TMPro;
 
 // this class keeps track of all the animals and adds animals and such
@@ -18,8 +19,10 @@ public class AnimalController : MonoBehaviour{
     // Optional — leave unwired to skip the resize behaviour.
     public RectTransform jobsScrollRect;
     private float _jobsScrollExpandedHeight = -1f;
-    public GameObject happinessPanel;
-    // Top-bar happiness/pop readout button — clicking it opens the full GlobalHappinessPanel.
+    // Top-bar readout TMP GameObject ("happiness X  pop n/cap"). Held to fetch its
+    // TextMeshProUGUI; the click-to-open Button is happinessButton below.
+    [FormerlySerializedAs("happinessPanel")] public GameObject happinessReadoutText;
+    // Top-bar readout button — clicking it opens the full GlobalHappinessPanel.
     [SerializeField] UnityEngine.UI.Button happinessButton;
     public GameObject JobDisplay;
     private World world;
@@ -437,7 +440,7 @@ public class AnimalController : MonoBehaviour{
             ? Mathf.FloorToInt(avgHappiness / maxScore * MaxPopulationCap)
             : Mathf.FloorToInt(avgHappiness * 2.5f);
         if (happinessDisplay == null)
-            happinessDisplay = happinessPanel.GetComponent<TMPro.TextMeshProUGUI>();
+            happinessDisplay = happinessReadoutText.GetComponent<TMPro.TextMeshProUGUI>();
         if (happinessDisplay != null)
             happinessDisplay.text = $"happiness {avgHappiness:0.0}  pop {na}/{populationCapacity}";
     }

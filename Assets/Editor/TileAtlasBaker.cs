@@ -13,10 +13,10 @@ using Debug = UnityEngine.Debug;
 // EnsureOverlayArrayBundle fast-paths load these via `Resources.Load` so play
 // mode skips the bake entirely.
 //
-// Run once after pulling a fresh branch ("Tools → Bake All Tile Atlases").
-// "Bake All" skips any type/overlay whose baked .asset is newer than its newest
-// source PNG — re-running it after no source changes is a near-instant no-op.
-// Use "Bake All Tile Atlases (Force)" to ignore timestamps and rebake everything.
+// Run once after pulling a fresh branch ("Tools → Bake Tile Edges").
+// "Bake Tile Edges" skips any type/overlay whose baked .asset is newer than its
+// newest source PNG — re-running it after no source changes is a near-instant no-op.
+// Use "Bake Tile Edges (Force)" to ignore timestamps and rebake everything.
 // After that, TileAtlasBakeOnImport (AssetPostprocessor) re-runs the relevant
 // per-name bake whenever an artist saves over a source PNG under
 // `Resources/Sprites/Tiles/` — no manual step needed.
@@ -32,7 +32,7 @@ public static class TileAtlasBaker {
 
     // ── Entry points ────────────────────────────────────────────────────
 
-    [MenuItem("Tools/Bake/Bake All Tile Atlases", priority = 110)]
+    [MenuItem("Tools/Bake Tile Edges", priority = 140)]
     public static void BakeAll() {
         BakeAllImpl(force: false);
     }
@@ -41,7 +41,7 @@ public static class TileAtlasBaker {
     // Use after deleting a variant PNG (so no surviving source got touched), or
     // if a baked .asset was manually edited and its mtime no longer reflects
     // source-derived state.
-    [MenuItem("Tools/Bake/Bake All Tile Atlases (Force)", priority = 120)]
+    [MenuItem("Tools/Bake Tile Edges (Force)", priority = 141)]
     public static void BakeAllForce() {
         BakeAllImpl(force: true);
     }

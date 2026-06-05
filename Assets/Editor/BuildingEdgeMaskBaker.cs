@@ -38,7 +38,7 @@ public static class BuildingEdgeMaskBaker {
         public int right;
     }
 
-    [MenuItem("Tools/Bake Building Edge Masks")]
+    [MenuItem("Tools/Bake Building Edge Masks", priority = 142)]
     public static void Bake() {
         TextAsset json = Resources.Load<TextAsset>("buildingsDb");
         if (json == null) { Debug.LogError("BuildingEdgeMaskBaker: buildingsDb not found in Resources"); return; }

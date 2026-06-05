@@ -7,8 +7,7 @@ using SysFile = System.IO.File;
 using static EditorUtilities;
 
 // Right-click any Texture2D → "Generate Sprite Normal Map"  (single)
-// Tools menu             → "Generate All Sprite Normal Maps" (batch, Assets/Sprites/)
-// Tools menu             → "Generate All Sprite Normal Maps (Force)" (ignores cache)
+// Tools → Generate All Normal Maps  (batch over building + sprite folders, cache-aware)
 //
 // Each _n.png is auto-assigned as a _NormalMap secondary texture on the source
 // sprite so URP's Sprite Lit shader picks it up with no runtime code needed.
@@ -138,7 +137,7 @@ public static class SpriteNormalMapGenerator {
         "Assets/Resources/Sprites/Plants",
     };
 
-    [MenuItem("Tools/Sprites/Generate All Normal Maps", priority = 120)]
+    [MenuItem("Tools/Generate All Normal Maps", priority = 103)]
     internal static void GenerateAll() => GenerateAllInternal(force: false);
 
     static void GenerateAllInternal(bool force) {

@@ -63,3 +63,40 @@ public static class PlantSwayMetaCache {
         cache.Clear();
     }
 }
+
+// Loads + caches the packed blob sheet baked by PlantBlobBaker:
+//   Assets/Resources/Sprites/Plants/Split/{plantName}/{plantName}_blobs_baked.png
+// a Multiple-mode sprite sheet whose sub-sprites are named per cell+layer
+// ("g0_static", "g0_b0", "b4_b2", …). Plant.cs looks them up by name when
+// building a tile's static SR + child blob SRs. One Resources.LoadAll per plant
+// (cached) replaces the dozens of per-file Resources.Load calls the old
+// loose-file layout needed. Plants without a baked sheet cache a null dict so
+// the absence check is a single dictionary lookup.
+public static class PlantBlobSpriteCache {
+    private static readonly Dictionary<string, Dictionary<string, Sprite>> sheets
+        = new Dictionary<string, Dictionary<string, Sprite>>();
+
+    // Returns the named sub-sprite (e.g. "g0_static", "g3_b1"), or null if the
+    // plant has no baked sheet or the slice doesn't exist.
+    public static Sprite Get(string plantName, string spriteName) {
+        if (!sheets.TryGetValue(plantName, out var dict)) {
+            dict = LoadSheet(plantName);
+            sheets[plantName] = dict;   // may be null — caches the "no sheet" answer
+        }
+        return (dict != null && dict.TryGetValue(spriteName, out var s)) ? s : null;
+    }
+
+    private static Dictionary<string, Sprite> LoadSheet(string plantName) {
+        var all = Resources.LoadAll<Sprite>(
+            "Sprites/Plants/Split/" + plantName + "/" + plantName + "_blobs_baked");
+        if (all == null || all.Length == 0) return null;
+        var d = new Dictionary<string, Sprite>(all.Length);
+        foreach (var s in all) d[s.name] = s;
+        return d;
+    }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetCache() {
+        sheets.Clear();
+    }
+}

@@ -38,6 +38,8 @@ Avoid failing silently. Instead, LogError. Or if an unexpected case occurs, at l
 
 Make stuff private if you think it should be private.
 
+**Prefer scene-authored UI over code-built.** Build panels, widgets, and layout in the scene (Unity editor) rather than instantiating/positioning them in C#, so they can be rearranged later without touching code. Reserve code construction for genuinely dynamic content (per-item rows, runtime lists).
+
 ## Code style
 
 Prioritize documentation and code clarity, in a way that future Claudes would find easy to understand.

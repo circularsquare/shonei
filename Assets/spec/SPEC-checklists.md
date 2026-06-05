@@ -107,7 +107,7 @@ This is the workflow:
 ## Adding a new item sprite / icon
 
 - [ ] **Path convention is load-bearing**: `Sprites/Items/split/<itemName>/icon`. Missing icon = silent fallback to `default/icon`.
-- [ ] **After adding a sheet**: Tools → Split All → Generate Normal Maps.
+- [ ] **After adding a sheet**: Tools → Split Item Sheets + Normals.
 - [ ] **If the sprite should be lit at runtime**: sorting layer must be one of the `litLayers` (see SPEC-rendering.md).
 
 ## Adding a new colony-wide happiness contributor

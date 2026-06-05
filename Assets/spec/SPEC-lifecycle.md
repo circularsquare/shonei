@@ -99,6 +99,10 @@ Load:    ClearWorld() + SaveSystem.ApplySaveData()  →  PostLoadInit (next fram
 - `SaveSystem` slot API: `GetSaveSlots`, `SlotExists`, `RenameSlot`, `DeleteSlot`, `GetAnimalCount` (deserialises just enough to read `animals.Length` for the mice-count label).
 - `ConfirmationPopup` (`Assets/UI/ConfirmationPopup.cs`) — reusable singleton modal. **Keep inactive in scene** — `Show` finds it via `FindObjectOfType<ConfirmationPopup>(true)` so the inactive version is reachable. Sets itself last sibling on show; `Blocker` child absorbs background clicks. `Show(msg, onConfirm, confirmLabel?)`.
 
+### Autosave
+
+Gated on `SettingsManager.autosaveEnabled` (a PlayerPref, default on, toggled from `OptionsPanel`). `SaveSystem.Update` runs an **unscaled**-time timer (fires even while paused) and every 5 min writes the world to a dedicated `"autosave"` slot via `Save(slot, setCurrent: false)` — the `setCurrent:false` overload leaves the player's active `currentSlot` untouched so the background write never hijacks their named slot. `Save` is synchronous and stalls the frame on large worlds, so `AutosaveRoutine` activates the `SavingOverlay` (a plain centered UI element under the main canvas, referenced by `SaveSystem.savingOverlay`) and yields a frame to let it paint **before** the freeze, then hides it. Any save (manual or auto) resets the interval timer; it holds at 0 while there's no world loaded.
+
 ---
 
 ## Time System

@@ -47,8 +47,7 @@ using static EditorUtilities;
 //   SpriteNormalMapGenerator's caching shape.
 //
 // Usage:
-//   Tools → Split All Plant Sheets          — processes every sheet (cache-aware)
-//   Tools → Split All Plant Sheets (Force)  — ignores cache
+//   Tools → Split Plant Sheets + Normals    — split every sheet (cache-aware) + normals
 //   Right-click sheet → Split Plant Sheet   — processes selected sheet(s), force
 //   Right-click folder → Split Plant Sheets in Folder
 public static class PlantSheetSplitter {
@@ -57,8 +56,8 @@ public static class PlantSheetSplitter {
     const string SplitFolder  = "Assets/Resources/Sprites/Plants/Split";
     const string CacheKey     = "plantSplitCacheKey";
 
-    // ── batch: all sheets in Sheets/ ─────────────────────────────────────────
-    [MenuItem("Tools/Sprites/Split All Plant Sheets", priority = 110)]
+    // ── batch: all sheets in Sheets/ (no menu item — invoked by the
+    //    "Split Plant Sheets + Normals" combo below) ───────────────────────────
     internal static void SplitAll() {
         SplitFolders(new[] { SheetsFolder }, force: false);
     }
@@ -246,7 +245,7 @@ public static class PlantSheetSplitter {
     }
 
     // ── combo: split plant sheets then generate normal maps ──────────────────
-    [MenuItem("Tools/Sprites/Split Plant Sheets + Normals", priority = 210)]
+    [MenuItem("Tools/Split Plant Sheets + Normals", priority = 101)]
     static void SplitThenGenerateNormals() {
         SplitAll();
         SpriteNormalMapGenerator.GenerateAll();

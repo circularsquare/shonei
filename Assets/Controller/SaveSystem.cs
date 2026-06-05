@@ -97,7 +97,7 @@ public class SaveSystem : MonoBehaviour {
     // freeze. Gated on SettingsManager.autosaveEnabled.
     const string AutosaveSlot = "autosave";
     const float  AutosaveIntervalSeconds = 300f; // 5 minutes of real time
-    [SerializeField] GameObject savingOverlay;    // centered "saving..." HUD; shown during a save
+    [SerializeField] GameObject savingOverlay; // centered "saving..." box (scene object), shown during a save
     float autosaveTimer;
     bool  autosaving;
 

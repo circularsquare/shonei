@@ -28,9 +28,12 @@ public abstract class Objective {
     }
     // Body pose the animal should strike while this objective is current, or null for the
     // default state-driven animation (idle/walk/eep). Mapped to an Animator int by
-    // AnimationController.UpdateState(), which runs on objective transition (Task.StartNextObjective),
-    // state change, and nav locomotion — NOT every frame. So an override only updates the
-    // paper-doll at those moments; it self-clears on the next objective transition.
+    // AnimationController.UpdateState(), which runs on animal-state change, nav locomotion,
+    // and task selection (AnimalStateManager.HandleIdle) — NOT every frame. So an override is
+    // applied at those moments; it stays until the next such event re-reads the current
+    // objective. New objectives normally land on a state change (Moving→Working), which fires
+    // the refresh; the HandleIdle hook covers the case where a task parks the animal straight
+    // into a stationary pose before animal.task is even assigned.
     public virtual string PoseOverride => null;
     // Facing-view this objective forces ("back"/"front"), or null for nav/state-driven facing.
     // Mirrors PoseOverride: applied via ViewNameToFacing at the same UpdateState() moments.

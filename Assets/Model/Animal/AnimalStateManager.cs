@@ -44,6 +44,13 @@ public class AnimalStateManager {
             return;
         }
         animal.ChooseTask();
+        // ChooseTask can park the animal straight into a stationary working pose — e.g. a
+        // construct order whose builder is already standing on the footprint tile. On that
+        // path the WOM dispatch (ChooseOrder) runs the objective's Start() BEFORE animal.task
+        // is assigned, so the Start-time UpdateState() read a null task and missed the
+        // objective's ViewOverride/PoseOverride (mouse stays side-facing). Refresh now that
+        // animal.task is set so the paper-doll reflects the chosen objective.
+        if (animal.task != null) animal.animationController?.UpdateState();
         if (animal.state == AnimalState.Idle) {
             // Try job swap every 2 ticks when truly idle. Cadence is ~2.5× the prior
             // every-5-ticks rate to compensate for the idle-only partner filter in

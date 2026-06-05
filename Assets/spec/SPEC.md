@@ -124,6 +124,6 @@ When adding new content, read these files first and match their pattern:
 | New UI panel (detail) | `StoragePanel` | `Assets/UI/StoragePanel.cs` |
 | New item/building/recipe | Existing JSON entries | `Assets/Resources/*.json` — see SPEC-data.md for schema, [SPEC-checklists.md](SPEC-checklists.md) for the authoring workflow |
 | New save data | `ResearchSaveData` | `WorldSaveData.cs` + `SaveSystem.cs` checklist |
-| New item sprite | Existing sheets | `Sprites/Items/Sheets/` → Tools → Split All → Generate Normal Maps |
+| New item sprite | Existing sheets | `Sprites/Items/Sheets/` → Tools → Split Item Sheets + Normals |
 | New lit object | Existing sprite setup | Must be on a `litLayers` layer — see SPEC-rendering.md |
 

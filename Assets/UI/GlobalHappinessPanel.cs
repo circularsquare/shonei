@@ -12,7 +12,7 @@ using TMPro;
 //
 //   RectTransform: Anchor Min=(0,0) Max=(1,1), Left/Right/Top/Bottom = 20
 //
-//   HUD: add Button to AnimalController.happinessPanel, onClick -> GlobalHappinessPanel.instance.Toggle()
+//   HUD: the top-bar readout Button (AnimalController.happinessButton) calls instance.Toggle() in code.
 public class GlobalHappinessPanel : MonoBehaviour {
     static GlobalHappinessPanel _instance;
     // Lazily resolves the (possibly inactive) panel so callers can Toggle() it before it has
