@@ -97,7 +97,11 @@ public class StructController : MonoBehaviour {
     // (rope bridge posts) can hand each post its partner's coords. -1 sentinels mean
     // "single-tile placement; ignore." Called twice in succession by Blueprint.Complete
     // for two-click blueprints — once per post with the coords swapped.
-    public bool Construct(StructType st, Tile tile, bool mirrored = false, int rotation = 0, int shapeIndex = 0, int partnerX = -1, int partnerY = -1){
+    // `materials` is the actual leaf items + fen the structure was built from (set by
+    // Blueprint.Complete from its delivered, leaf-locked costs). Stored on the Structure for
+    // exact deconstruct refunds + future tinting. null on non-blueprint paths (worldgen, load,
+    // mineshaft-ladder follow-up) → deconstruct falls back to first-leaf of each cost.
+    public bool Construct(StructType st, Tile tile, bool mirrored = false, int rotation = 0, int shapeIndex = 0, int partnerX = -1, int partnerY = -1, List<ItemQuantity> materials = null){
         Structure structure = null;
         // Visual footprint for non-tile, non-plant structures. Matches the full-footprint
         // claim in Structure / Blueprint, so the defense-in-depth collision check below
@@ -156,6 +160,7 @@ public class StructController : MonoBehaviour {
         }
         // ── Place + optional follow-up ───────────────────────────────────
         if (!st.isTile){
+            structure.materials = materials; // null on non-blueprint paths; deconstruct falls back to first-leaf
             Place(structure);
             structure.OnPlaced();
         }

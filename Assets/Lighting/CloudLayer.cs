@@ -146,7 +146,7 @@ public class CloudLayer : SkyLayerBase {
     // Parallel arrays:
     //   blobBuffer       — (x, y, z, radius) per blob.
     //   blobAspectBuffer — horizontal stretch factor per blob.
-    const int MAX_BLOBS = 512;
+    const int MAX_BLOBS = 800;
     readonly Vector4[] blobBuffer       = new Vector4[MAX_BLOBS];
     readonly float[]   blobAspectBuffer = new float[MAX_BLOBS];
     int blobCount;

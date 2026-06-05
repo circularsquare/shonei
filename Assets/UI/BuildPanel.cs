@@ -7,12 +7,12 @@ public class BuildPanel : MonoBehaviour {
     [SerializeField] GameObject buildDisplayPrefab;
     [SerializeField] GameObject textDisplayPrefab;
     [SerializeField] Transform subpanel;
-    [SerializeField] Button btnStructures;
-    [SerializeField] Button btnPlants;
-    [SerializeField] Button btnProduction;
-    [SerializeField] Button btnPower;
-    [SerializeField] Button btnStorage;
-    [SerializeField] Button btnTiles;
+    // Data-driven category tabs. categoryButtonPrefab is cloned once per BuildCat into
+    // categoryBar; categoryInsertIndex is the sibling slot the first category button lands
+    // at — the bar also holds non-category tool buttons (select before, remove/harvest after).
+    [SerializeField] GameObject categoryButtonPrefab;
+    [SerializeField] Transform categoryBar;
+    [SerializeField] int categoryInsertIndex = 1;
     public static BuildPanel instance { get; protected set; }
     public StructType structType;
     // Whether the next placed blueprint will be horizontally mirrored.
@@ -37,7 +37,25 @@ public class BuildPanel : MonoBehaviour {
     // Ctrl+Shift+F in MouseController; auto-disarms after one successful place.
     public static bool instantBuildNext = false;
 
-    static readonly string[] CategoryNames = { "structures", "plants", "production", "power", "storage", "tiles" };
+    // Build-menu tabs, in display order. To add a tab: add an entry here, author the
+    // buildings' "category" in buildingsDb.json, and drop a <icon>.png in
+    // Sprites/Misc/buildicons/. No scene wiring — buttons spawn from categoryButtonPrefab.
+    //   key   — matches StructType.category (st.isPlant routes to "plants")
+    //   label — tooltip title
+    //   icon  — sprite stem under Sprites/Misc/buildicons/ (filenames don't all match keys)
+    struct BuildCat {
+        public string key, label, icon;
+        public BuildCat(string key, string label, string icon) { this.key = key; this.label = label; this.icon = icon; }
+    }
+    static readonly BuildCat[] Categories = {
+        new BuildCat("tiles",      "tiles",      "tiles"),
+        new BuildCat("structures", "structures", "structures"),
+        new BuildCat("plants",     "plants",     "plant"),
+        new BuildCat("production", "production", "production"),
+        new BuildCat("power",      "power",      "power"),
+        new BuildCat("storage",    "storage",    "storage"),
+        new BuildCat("housing",    "housing",    "housing"),
+    };
 
     readonly Dictionary<string, GameObject> subPanels = new Dictionary<string, GameObject>();
     readonly Dictionary<string, Button> catButtons = new Dictionary<string, Button>();
@@ -51,10 +69,11 @@ public class BuildPanel : MonoBehaviour {
         if (instance != null) { Debug.LogError("there should only be one build panel: " + gameObject.name); return; }
         instance = this;
         if (subpanel == null) { Debug.LogError("BuildPanel: subpanel not assigned"); return; }
+        if (categoryButtonPrefab == null || categoryBar == null) { Debug.LogError("BuildPanel: categoryButtonPrefab/categoryBar not assigned"); return; }
 
         // sort all struct types into categories
         var cats = new Dictionary<string, List<StructType>>();
-        foreach (string c in CategoryNames) cats[c] = new List<StructType>();
+        foreach (BuildCat c in Categories) cats[c.key] = new List<StructType>();
 
         foreach (StructType st in Db.structTypes) {
             if (st == null) continue;
@@ -68,7 +87,8 @@ public class BuildPanel : MonoBehaviour {
         }
 
         // build one hidden sub-panel per category
-        foreach (string cat in CategoryNames) {
+        foreach (BuildCat bc in Categories) {
+            string cat = bc.key;
             GameObject sp = new GameObject("SubPanel_" + cat);
             sp.transform.SetParent(subpanel, false);
 
@@ -95,26 +115,32 @@ public class BuildPanel : MonoBehaviour {
             subPanels[cat] = sp;
         }
 
-        // hook up the manually-placed category buttons. Tooltips are attached here
-        // (rather than in the editor) so the category-name text stays driven by
-        // CategoryNames — no risk of editor labels drifting from code.
-        catButtons["structures"] = btnStructures;
-        catButtons["plants"]     = btnPlants;
-        catButtons["production"] = btnProduction;
-        catButtons["power"]      = btnPower;
-        catButtons["storage"]    = btnStorage;
-        catButtons["tiles"]      = btnTiles;
-        foreach (var kv in catButtons) {
-            Button btn = kv.Value;
-            if (btn == null) continue;
-            string cat = kv.Key;
+        // Spawn one category button per BuildCat from the prefab, slotting them into
+        // categoryBar after the leading tool button(s) so the bar reads select | tabs |
+        // remove | harvest. Icon, onClick, and tooltip are all code-driven, so adding a
+        // tab never needs scene work.
+        for (int i = 0; i < Categories.Length; i++) {
+            BuildCat bc = Categories[i];
+            GameObject btnGo = Instantiate(categoryButtonPrefab, categoryBar);
+            btnGo.name = "BuildCat_" + bc.key;
+            btnGo.transform.SetSiblingIndex(categoryInsertIndex + i);
+
+            // Icon lives on the button's "Icon" child (the button's own Image is the woodframe).
+            Transform iconT = btnGo.transform.Find("Icon");
+            Sprite iconSprite = Resources.Load<Sprite>("Sprites/Misc/buildicons/" + bc.icon);
+            if (iconT != null && iconSprite != null) iconT.GetComponent<Image>().sprite = iconSprite;
+            else Debug.LogWarning("BuildPanel: missing Icon child or sprite for category '" + bc.key + "'");
+
+            Button btn = btnGo.GetComponent<Button>();
+            string cat = bc.key;
             btn.onClick.AddListener(() => ToggleCategory(cat));
             Tooltippable tip = btn.GetComponent<Tooltippable>() ?? btn.gameObject.AddComponent<Tooltippable>();
-            tip.title = cat;
+            tip.title = bc.label;
             tip.body  = "";
+            catButtons[cat] = btn;
             // Hide categories with no unlocked buildings — clicking them otherwise opens
             // an empty sub-panel. Re-shown by UnlockBuilding when research fills the category.
-            btn.gameObject.SetActive(cats[cat].Count > 0);
+            btnGo.SetActive(cats[cat].Count > 0);
         }
     }
 
@@ -131,9 +157,19 @@ public class BuildPanel : MonoBehaviour {
             SetStructType(captured);
             CloseSubPanel();
         });
-        string buildingName = (st.name == "empty") ? "mine tile" : st.name;
+        string buildingName = (st.name == "empty") ? "mine tile" : st.DisplayName;
         go.transform.Find("BuildingButton/TextBuildingName").GetComponent<TextMeshProUGUI>().text = buildingName;
         go.name = "BuildDisplay_" + st.name;
+
+        // Hover tooltip from the StructType's description (e.g. burrow "houses 2"). Attached
+        // to the BuildingButton (it has the raycast-target Button, so pointer events fire) and
+        // driven by JSON data rather than per-prefab editor wiring.
+        if (!string.IsNullOrEmpty(st.description)) {
+            Transform btn = go.transform.Find("BuildingButton") ?? go.transform;
+            Tooltippable tip = btn.GetComponent<Tooltippable>() ?? btn.gameObject.AddComponent<Tooltippable>();
+            tip.title = buildingName;
+            tip.body  = st.description;
+        }
     }
 
     public void ToggleCategory(string cat) {

@@ -34,11 +34,11 @@ This is the workflow:
   - `solidTop: true` if mice should stand *on* the building.
 - [ ] **Author the new sprite at the same `name`** (e.g. `Sprites/Buildings/sawmill.png` for `sawmill`). Confirm pixels-per-unit and pivot are correct for the new footprint — easiest is to copy `.meta` settings from a comparably-sized existing building (e.g. `furnace.png` for 2×1).
 - [ ] **Recipes don't change.** `recipe.tile` still matches the building's name — no rename needed.
-- [ ] **Storage filter is per-instance, not data-driven.** New storage starts with all items disallowed ([Inventory.cs:111](../Model/Inventory/Inventory.cs#L111)); players set the filter on each placed building via the storage UI. If a building should auto-allow a specific item by default, that's a separate feature (currently not implemented).
+- [ ] **Storage filter is per-instance, not data-driven.** New storage starts with all items disallowed ([Inventory.cs](../Model/Inventory/Inventory.cs)); players set the filter on each placed building via the storage UI. If a building should auto-allow a specific item by default, that's a separate feature (currently not implemented).
 - [ ] **Test in a fresh world**: place the building, verify work tile, storage tile, mirror orientation, sprite alignment.
 - [ ] **Test with a legacy save**: load a save containing the old-sized instance. Expect a `RestoreStructure: dropping ... saved size A×B != current C×D` log line; the building should silently disappear. No collision, no broken work orders, no inert ghost building.
 
-**Why no coexistence?**: We tried the `_v2` + `displayName` + `deprecated` approach. It's straightforwardly buildable but carries permanent JSON clutter for every upsize, requires per-recipe duplication, and leaves inert legacy buildings in saves. For a solo project where the player is the developer, "delete + drop on mismatch" trades a small one-time loss (old buildings vanish) for a permanently cleaner data model.
+**Why no coexistence?**: The `_v2` + `displayName` + `deprecated` alternative works, but permanently clutters JSON, requires per-recipe duplication, and leaves inert legacy buildings in saves — so "delete + drop on mismatch" wins for a solo project where the player is the developer.
 
 **Pre-existing multi-tile buildings**: if you're changing a building that's *already* multi-tile (e.g. `furnace` from 2×1 → 3×1), the same workflow applies — the size-mismatch check uses the actual footprint, not 1×1 specifically.
 
@@ -59,13 +59,13 @@ This is the workflow:
 - [ ] **`defaultTarget` defaults to 100 liang.** Byproducts (sawdust, acorn, pinecone) want `10` — otherwise multi-product harvest gating won't fire.
 - [ ] **Icon sprite exists** — see "Adding a new item sprite" below.
 - [ ] **`itemClass` set** if storage restrictions apply (liquid → tank, book → bookshelf).
-- [ ] **New `happinessNeed`?** Also add the need name to `Db.happinessNeedsDisplayOrder` ([Db.cs:48](../Model/Db.cs#L48)) — otherwise the row sorts alphabetically at the bottom of UI panels.
+- [ ] **New `happinessNeed`?** Also add the need name to `Db.happinessNeedsDisplayOrder` ([Db.cs](../Model/Db.cs)) — otherwise the row sorts alphabetically at the bottom of UI panels.
 - [ ] **Need shows in both panels.** Per-need rows in `GlobalHappinessPanel` are auto-spawned from `Db.happinessNeedsSorted`, and per-mouse breakdown in `AnimalInfoView.FormatHappiness` iterates the same list — both pick up new entries for free.
 
 ## Adding a new job (`jobsDb.json`)
 
 - [ ] **`recipes` array lists every recipe this job can operate.** This is the actual eligibility gate — animals only see recipes their job allows.
-- [ ] **`defaultSkill` propagates to recipes that don't set their own `skill`** ([Db.cs:512](../Model/Db.cs#L512)). Picking the wrong default silently mislabels XP for every recipe under this job.
+- [ ] **`defaultSkill` propagates to recipes that don't set their own `skill`** ([Db.cs](../Model/Db.cs)). Picking the wrong default silently mislabels XP for every recipe under this job.
 - [ ] **`defaultLocked: true`** needs an unlock entry on some research node, or the job stays hidden forever.
 - [ ] Animals can be assigned to this job somewhere in UI, or it's dead.
 
@@ -89,9 +89,14 @@ This is the workflow:
 - [ ] **Add dispatch case to `Structure.Create()`** in [Structure.cs](../Model/Structure/Structure.cs). Without it, your StructType falls back to plain `Building` and overrides never fire.
 - [ ] **File goes in `Assets/Model/Structure/`** — not `Assets/Components/`. (See CLAUDE.md folder conventions.)
 - [ ] **If `AttachAnimations` is overridden**: don't reference subclass-side fields from it — it runs during `base()` before subclass ctor body.
-- [ ] **Any new `dx` field** (interior tile, door, ladder, workSpot, furnishing offset, …): apply `nx-1-dx` on mirror lookup. Convention used throughout — see [StructType.cs:45-66](../Model/Structure/StructType.cs#L45).
+- [ ] **Any new `dx` field** (interior tile, door, ladder, workSpot, furnishing offset, …): apply `nx-1-dx` on mirror lookup. Convention used throughout — see [StructType.cs](../Model/Structure/StructType.cs).
 - [ ] **If the subclass adds saveable state**: see "Adding new save data" below.
-- [ ] **Substrate-capture pattern** (your building's behaviour depends on the tile it was built on): mirror `Quarry` / `DiggingPit`. Add a `TileType capturedTile` field, capture it via `StructController.Construct` before the tile is mined (add an `if (s is YourType y) y.CaptureOriginalTile(tile.type)` next to the existing Quarry/DiggingPit lines), expose `GetExtractionOutputs()` if you want to override the recipe's outputs, hook into the override site in `AnimalStateManager.HandleWorking`, and reuse the existing `WorldSaveData.capturedTileType` save field (gather + restore alongside the existing entries). Recipes with dynamic outputs should leave `noutputs: []` in JSON — the override path supplies them, and a null return falls back to the static list as a safety net.
+- [ ] **Substrate-capture pattern** (your building's behaviour depends on the tile it was built on): mirror `Quarry` / `DiggingPit`.
+  - Add a `TileType capturedTile` field.
+  - Capture it via `StructController.Construct` before the tile is mined: add an `if (s is YourType y) y.CaptureOriginalTile(tile.type)` next to the existing Quarry/DiggingPit lines.
+  - Expose `GetExtractionOutputs()` if you want to override the recipe's outputs, and hook into the override site in `AnimalStateManager.HandleWorking`.
+  - Reuse the existing `WorldSaveData.capturedTileType` save field (gather + restore alongside the existing entries).
+  - Recipes with dynamic outputs should leave `noutputs: []` in JSON — the override path supplies them, and a null return falls back to the static list as a safety net.
 
 ## Adding a new exclusive UI panel
 
@@ -128,5 +133,5 @@ For *per-need* contributors (food items, decoration/leisure buildings) just set 
 
 - [ ] **JSON parses cleanly.** Trailing commas / smart quotes silently break `Db` load.
 - [ ] **No hardcoded content in C#.** If you're tempted to special-case a content name in code, you're bypassing the data-driven design.
-- [ ] **New `static List<>` / `static Dictionary<>` cache in a singleton?** Reset it in the singleton's constructor, not just at declaration — otherwise scene reloads double-populate. See the reset block in [Db.cs:72-100](../Model/Db.cs#L72) for the pattern.
+- [ ] **New `static List<>` / `static Dictionary<>` cache in a singleton?** Reset it in the singleton's constructor, not just at declaration — otherwise scene reloads double-populate. See the reset block in [Db.cs](../Model/Db.cs)'s constructor for the pattern.
 - [ ] **Test with an EXISTING save**, not just a fresh start. Silent orphaned references (recipe `tile` typo, renamed item) often only surface on load, never on new-world generation.

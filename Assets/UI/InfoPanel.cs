@@ -169,16 +169,16 @@ public class InfoPanel : MonoBehaviour {
         // Blueprints before structures: queued/in-progress work is usually what the player wants
         // to act on (e.g. cancel a deconstruct, adjust priority), so surface it to the left.
         foreach (var bp in ctx.blueprints)
-            tabs.Add(new TabEntry { type = TabType.Blueprint, label = "bp: " + bp.structType.name, data = bp });
+            tabs.Add(new TabEntry { type = TabType.Blueprint, label = "bp: " + bp.structType.DisplayName, data = bp });
 
         // Structures by increasing depth (0=building, 1=platform, 2=foreground, 3=road)
         foreach (var s in ctx.structures)
-            tabs.Add(new TabEntry { type = TabType.Structure, label = s.structType.name, data = s });
+            tabs.Add(new TabEntry { type = TabType.Structure, label = s.structType.DisplayName, data = s });
 
         // Tile tab last — use tile type name if available, otherwise generic "tile".
         // Skipped entirely when there's no tile context (animals-only selection).
         if (ctx.tile != null) {
-            string tileName = ctx.tile.type?.name;
+            string tileName = ctx.tile.type?.DisplayName;
             string tileLabel = string.IsNullOrEmpty(tileName) || tileName == "empty" ? "tile" : tileName;
             tabs.Add(new TabEntry { type = TabType.Tile, label = tileLabel, data = ctx.tile });
         }

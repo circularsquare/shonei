@@ -17,4 +17,15 @@ public class ConstructObjective : Objective {
         animal.state = Animal.AnimalState.Working;
         // AnimalStateManager.HandleWorking calls task.Complete() when construction finishes.
     }
+    // Facing-view override — turn the builder's back to the camera while it works from
+    // INSIDE the footprint (standing on one of the blueprint's own tiles). A builder
+    // working from an adjacent ground tile keeps the default side view. Mirrors
+    // WorkObjective's data-driven workView, but the trigger is positional, not a flag.
+    public override string ViewOverride {
+        get {
+            if (blueprint == null) return null;
+            Tile here = animal.TileHere();
+            return here != null && blueprint.FootprintTiles().Contains(here) ? "back" : null;
+        }
+    }
 }

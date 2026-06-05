@@ -63,8 +63,8 @@ Shader "Hidden/CloudFieldGen" {
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
         #include "../../Lighting/Noise.hlsl"
 
-        // Must match MAX_BLOBS in CloudLayer.cs. 512 × float4 = 8 KB.
-        #define MAX_BLOBS 512
+        // Must match MAX_BLOBS in CloudLayer.cs. 800 × float4 = 12.5 KB.
+        #define MAX_BLOBS 800
 
         // Metaball alpha smoothstep bounds derived from inspector-tunable
         // _EdgeThreshold (centre) and _EdgeSoftness (half-width). Single-

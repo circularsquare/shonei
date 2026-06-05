@@ -100,7 +100,7 @@ public class RecipeGroupDisplay : MonoBehaviour {
 
         // Name + recipe count (craft recipes + processes), fills the remaining width.
         var label = MakeText("Label", -1f);
-        string name = st != null ? st.name : tile;
+        string name = st != null ? st.DisplayName : tile;
         int count = recipes.Count + (processes?.Count ?? 0);
         label.text = name + " (" + count + ")";
     }

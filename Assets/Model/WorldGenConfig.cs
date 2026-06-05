@@ -245,6 +245,10 @@ public class WorldGenConfig : ScriptableObject {
     [Range(0f, 0.5f)] public float PlantChance = 0.08f;
     [Range(1, 6)] public int ClusterMin = 1;
     [Range(1, 8)] public int ClusterMax = 3;
+    [Tooltip("No natural plant scatter within this many tiles of spawn center — keeps the opening view to curated starter plants. (Spawn zone is excluded regardless.)")]
+    [Range(0, 60)] public int StartClearRadius = 10;
+    [Tooltip("Guarantee at least one ramie within this many tiles of spawn center; if none scatters naturally, force a cluster in the ring between StartClearRadius and this.")]
+    [Range(0, 80)] public int RamieGuaranteeRadius = 15;
 
     // ── Moisture ──────────────────────────────────────────────────────
     [Header("Moisture")]

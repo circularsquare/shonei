@@ -155,6 +155,7 @@ public class MouseController : MonoBehaviour {
                 && !(Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))) {
             WorkOrderManager.instance?.AuditOrders();
             InventoryController.instance?.ValidateGlobalInventory();
+            Debug.Log($"World seed: {Rng.worldSeed}");
             var ws = WeatherSystem.instance;
             if (ws != null)
                 Debug.Log($"Temperature: {ws.temperature:F1}°C, Season: {ws.GetSeason()} (day {ws.GetDayOfYear():F1}/{World.daysInYear}), Humidity: {ws.humidity:F2} (raining: {ws.isRaining}), Wind: {ws.wind:F2}");

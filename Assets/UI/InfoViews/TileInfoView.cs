@@ -28,7 +28,7 @@ public class TileInfoView : MonoBehaviour {
         sb.Append("\nstandable: " + tile.node.standable + "  neighbors: " + tile.node.neighbors.Count);
 
         if (tile.type.id != 0) {
-            sb.Append("\ntile: " + tile.type.name + "  solid: " + tile.type.solid);
+            sb.Append("\ntile: " + tile.type.DisplayName + "  solid: " + tile.type.solid);
         }
 
         if (tile.water > 0)

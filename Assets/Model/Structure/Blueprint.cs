@@ -563,6 +563,15 @@ public class Blueprint {
                 }
             }
         }
+        // Record the exact leaf items this structure is built from, for an exact deconstruct
+        // refund (and future wood-type tinting). By now costs are locked to their delivered
+        // leaves (the blueprint is fully delivered); FirstLeaf() is a no-op on those but also
+        // resolves a still-group cost defensively on the instant-build debug path (empty inv,
+        // no LockGroupCostsAfterDelivery), so `materials` is always leaf-valued.
+        List<ItemQuantity> mats = new List<ItemQuantity>(costs.Length);
+        foreach (var c in costs)
+            if (c.quantity > 0) mats.Add(new ItemQuantity(c.item.FirstLeaf(), c.quantity));
+
         // Two-click placement: materialise BOTH posts atomically, each handed
         // the OTHER's coords as its partner. The second Construct's OnPlaced
         // finds the first BridgePost already in place and spins up the
@@ -573,14 +582,21 @@ public class Blueprint {
         // post stays un-mirrored so its pole faces left. Overrides whatever
         // `mirrored` field the BuildPanel had set — for bridges that flag is
         // meaningless since the rope dictates orientation.
+        //
+        // Both posts record the FULL bridge cost (not a split): on teardown only one post runs
+        // through the refunding Deconstruct — the partner is direct-Destroyed without refund —
+        // so storing the whole cost on each yields half back, identical to any building.
         if (IsTwoClick) {
             Tile tileB = World.instance.GetTileAt(x2.Value, y2.Value);
             bool aIsLeft = x <= x2.Value;
-            StructController.instance.Construct(structType, tile,  aIsLeft,  rotation, shapeIndex, x2.Value, y2.Value);
-            StructController.instance.Construct(structType, tileB, !aIsLeft, rotation, shapeIndex, x,         y);
+            StructController.instance.Construct(structType, tile,  aIsLeft,  rotation, shapeIndex, x2.Value, y2.Value, mats);
+            StructController.instance.Construct(structType, tileB, !aIsLeft, rotation, shapeIndex, x,         y,        mats);
         } else {
-            StructController.instance.Construct(structType, tile, mirrored, rotation, shapeIndex);
+            StructController.instance.Construct(structType, tile, mirrored, rotation, shapeIndex, materials: mats);
         }
+        // A tile mined to empty drops any side-ladder that was leaning on the now-removed wall;
+        // its wood is routed to the mining mouse (via pendingOutput → animal.Produce fallbacks).
+        if (minesTile) DestroyDependentSideLadders();
         // Passive research gain from constructing a tech-gated building.
         // No-op for ungated structures (floors, walls, etc.).
         ResearchSystem.instance?.AddConstructionProgress(structType.name);
@@ -592,30 +608,78 @@ public class Blueprint {
             InfoPanel.instance.RebuildSelection(newStructure);
         }
     }
+
+    // Side-ladders mount against a wall (a solid tile or a building's body). When this completion
+    // mines a footprint tile to empty, any side-ladder leaning on it has lost its wall — destroy it
+    // instantly and route its half-cost wood to the mining mouse via pendingOutput (animal.Produce
+    // already falls back to a floor drop, then vanishing-with-log, if the mouse can't hold it).
+    void DestroyDependentSideLadders() {
+        World w = World.instance;
+        int fnx = structType.HasShapes ? Shape.nx : structType.nx;
+        int fny = structType.HasShapes ? Shape.ny : Mathf.Max(1, structType.ny);
+        bool anyDestroyed = false;
+        for (int dy = 0; dy < fny; dy++)
+            for (int dx = 0; dx < fnx; dx++) {
+                Tile wall = w.GetTileAt(tile.x + dx, tile.y + dy);
+                if (wall == null || wall.type.solid) continue;          // still a wall → nothing lost
+                Structure wb = wall.structs[0];
+                if (wb != null && !(wb is Plant)) continue;             // a building still provides a wall
+                // Ladder to the RIGHT of the wall leans on its left face (mirrored=false → HasSideLadder(-1));
+                // ladder to the LEFT leans on its right face (mirrored=true → HasSideLadder(+1)).
+                anyDestroyed |= TryDestroyLadder(w.GetTileAt(wall.x + 1, wall.y), -1);
+                anyDestroyed |= TryDestroyLadder(w.GetTileAt(wall.x - 1, wall.y), +1);
+            }
+        if (anyDestroyed) w.graph.RebuildComponents();
+    }
+
+    bool TryDestroyLadder(Tile ladderTile, int wallDir) {
+        if (ladderTile == null || !ladderTile.HasSideLadder(wallDir)) return false;
+        Structure ladder = ladderTile.structs[2];
+        if (ladder == null) return false;
+        // Half-cost refund (mirrors Deconstruct), group cost resolved to a concrete leaf.
+        if (pendingOutput == null) pendingOutput = new List<ItemQuantity>();
+        foreach (ItemQuantity cost in ladder.structType.costs) {
+            int amt = Mathf.FloorToInt(cost.quantity / 2f);
+            if (amt <= 0) continue;
+            pendingOutput.Add(new ItemQuantity(cost.item.FirstLeaf(), amt));
+        }
+        ladder.Destroy();
+        World.instance.graph.UpdateNeighbors(ladderTile.x, ladderTile.y);
+        World.instance.graph.UpdateNeighbors(ladderTile.x, ladderTile.y + 1);
+        World.instance.graph.UpdateNeighbors(ladderTile.x, ladderTile.y - 1);
+        return true;
+    }
+
     public void Deconstruct() {
         StructController.instance.RemoveBlueprint(this);
         WorkOrderManager.instance?.RemoveForBlueprint(this);
+        // Structure being removed. structType.depth maps 1:1 to tile.structs[] index, so we
+        // always target the structure that matches this bp — even on multi-structure tiles.
+        // Fetched up-front so plant removal yields can read live growth state before Destroy.
+        Structure removed = tile.structs[structType.depth];
         pendingOutput = new List<ItemQuantity>(); // given in asm.handleworking
-        foreach (ItemQuantity cost in costs) {
-            int amount = Mathf.FloorToInt(cost.quantity / 2f);
-            if (amount <= 0) continue;
-            // Resolve group costs (e.g. "wood") to the actual leaf item that was delivered (e.g. "pine").
-            // cost.item reverts to the group after save/load, so check the inv stack directly.
-            Item item = cost.item;
-            if (item.children != null) {
-                ItemStack delivered = inv.GetItemStack(item);
-                if (delivered == null) continue; // nothing was delivered for this cost
-                item = delivered.item;
+        if (removed is Plant plant) {
+            // Plants yield their removal products (chopped wood / crop), not a build-cost refund.
+            pendingOutput.AddRange(plant.RemovalYield());
+        } else if (removed?.materials != null && removed.materials.Count > 0) {
+            // Refund half of the exact leaf items this structure was built from.
+            foreach (ItemQuantity m in removed.materials) {
+                int amount = Mathf.FloorToInt(m.quantity / 2f);
+                if (amount > 0) pendingOutput.Add(new ItemQuantity(m.item, amount));
             }
-            pendingOutput.Add(new ItemQuantity(item, amount));
+        } else {
+            // No material record (legacy save, or a non-blueprint structure: worldgen, mined
+            // tile, mineshaft-ladder follow-up). Refund half of the first leaf of each cost.
+            Debug.Log($"Deconstruct: {structType.name} at ({x},{y}) has no material record; refunding first-leaf of each cost.");
+            foreach (ItemQuantity cost in costs) {
+                int amount = Mathf.FloorToInt(cost.quantity / 2f);
+                if (amount <= 0) continue;
+                pendingOutput.Add(new ItemQuantity(cost.item.FirstLeaf(), amount));
+            }
         }
-        // Destroy the structure at the slot this bp targets. structType.depth maps 1:1
-        // to tile.structs[] index, so we always remove the structure that matches the
-        // bp — even on multi-structure tiles where slot 0 is occupied by something else.
         // Capture `preservesTile` before Destroy clears the slot — for burrow (and any future
         // hole-style building) the dirt tiles get rewritten to empty AFTER destroy so the
         // visual result matches "the roof was dug away and the hole collapsed inward".
-        Structure removed = tile.structs[structType.depth];
         bool preservesTile = removed != null && removed.structType.preservesTile;
         int preservedFnx = structType.HasShapes ? Shape.nx : structType.nx;
         int preservedFny = structType.HasShapes ? Shape.ny : Mathf.Max(1, structType.ny);
@@ -733,7 +797,7 @@ public class Blueprint {
             }
         }
         if (state == BlueprintState.Constructing || state == BlueprintState.Deconstructing){
-            progress += " (" + constructionProgress.ToString() + "/" + constructionCost.ToString() + ")";
+            progress += " (" + constructionProgress.ToString("F2") + "/" + constructionCost.ToString() + ")";
         }
         return progress;
     }

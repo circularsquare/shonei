@@ -364,8 +364,8 @@ public class Animal : MonoBehaviour{
         float leisureStartHour = 17f,
         float workChanceDuringWork = 0.80f,
         float workChanceDuringLeisure = 0.20f,
-        float tireRate = 0.1f,    // Eeping.tireRate
-        float eepRate = 2f,       // Eeping.eepRate (at home)
+        float tireRate = 0.2f,    // Eeping.tireRate
+        float eepRate = 1f,       // Eeping.eepRate (at home)
         float maxEep = 100f,      // Eeping.maxEep
         float sleepThreshold = 0.85f // Eeping.nightSleepThreshold
     ) {
@@ -495,15 +495,26 @@ public class Animal : MonoBehaviour{
         task = null;
     }
 
-    // Adds randomness to a category score, scaled by headroom: s + (1-s) * JitterStrength * rand.
-    // The (1-s) factor means urgent scores (s→1) barely move — so when something is pressing the
-    // pick stays deterministic — while low scores get real variety, so a chill mouse picks among
-    // comparable options differently each time rather than always the same one. Preserves the
-    // ordering of well-separated scores; only shuffles near-ties. Uses `random` (seeded, saved) for
-    // reproducibility. A 0 score stays 0 so a genuinely-unavailable category gets no spurious pull.
+    // Adds two-directional Gaussian noise to a category score, scaled by headroom:
+    // s + (1-s) * N(0, JitterStdev). The (1-s) factor means urgent scores (s→1) barely move — so when
+    // something is pressing the pick stays deterministic — while low scores get real variety, so a
+    // chill mouse picks among comparable options differently each time. The normal tail occasionally
+    // produces a large nudge, so a mouse rarely does something well off the obvious choice. A nudge
+    // can push a low score below 0; ChooseTask then skips it (harmless — that category just sits out
+    // this tick). Uses `random` (seeded, saved) for reproducibility. A 0 score stays 0 so a
+    // genuinely-unavailable category gets no spurious pull.
     private float Jitter(float s) {
         if (s <= 0f) return 0f;
-        return s + (1f - s) * UrgencyConfig.JitterStrength * (float)random.NextDouble();
+        return s + (1f - s) * UrgencyConfig.JitterStdev * (float)NextGaussian();
+    }
+
+    // Standard normal sample N(0,1) via Box-Muller, drawing from the seeded `random` so the result
+    // is reproducible across save/load. Discards the second Box-Muller output rather than caching it,
+    // to avoid carrying a spare-sample field that would need to be serialized.
+    private double NextGaussian() {
+        double u1 = 1.0 - random.NextDouble(); // shift to (0,1] so Log is never -infinity
+        double u2 = random.NextDouble();
+        return Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Cos(2.0 * Math.PI * u2);
     }
 
     // Tries the work-order tiers in the same internal order as before (p1 → p2 → p3-excl-craft → p4).
@@ -563,15 +574,21 @@ public class Animal : MonoBehaviour{
         return scored;
     }
 
-    // 0..1 urgency for the craft category. Recipe.Score is unbounded multiplicative (a scarce-input
-    // /overstocked-output recipe can score «1 or »1), so it can't be compared directly to the
-    // tier-based work urgencies — map it through s/(1+s), which is monotonic and lands in (0,1).
-    // UrgencyConfig.CraftWeight scales the whole category so craft sits sensibly against haul/build work.
+    // 0..1 urgency for the craft category. Recipe.Score is unbounded (0..+∞), so it can't be
+    // compared directly to the tier-based work urgencies — map it into the fixed [CraftFloor,
+    // CraftCeil] band via s/(1+s) (monotonic, lands in (0,1)). The floor sits just above the
+    // daytime idle floor so any eligible recipe (s>0) is never soft-locked out; the ceil is the
+    // asymptote a scarce-output recipe approaches.
     private float CraftUrgency(List<(Recipe recipe, float score)> scored) {
         if (scored.Count == 0) return 0f;
         float s = scored[0].score; // best-first
         if (s <= 0f) return 0f;
-        return UrgencyConfig.CraftWeight * (s / (1f + s));
+        // A never-yet-produced output makes Recipe.Score +Infinity (the recipe is "infinitely"
+        // needed). s/(1+s) would then be ∞/∞ = NaN, which sinks craft below the idle floor in
+        // ChooseTask's sort and the mouse never crafts. Saturate to the ceil instead (s/(1+s) → 1).
+        if (float.IsInfinity(s)) return UrgencyConfig.CraftCeil;
+        return UrgencyConfig.CraftFloor
+             + (UrgencyConfig.CraftCeil - UrgencyConfig.CraftFloor) * (s / (1f + s));
     }
 
     // Picks up one tool into toolSlotInv if the slot is empty.

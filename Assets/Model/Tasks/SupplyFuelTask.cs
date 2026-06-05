@@ -28,7 +28,7 @@ public class SupplyFuelTask : Task {
         int spaceReserved = ReserveSpace(fuel.inv, fuel.fuelItem, qty);
         if (spaceReserved <= 0) return false;
         qty = Math.Min(qty, spaceReserved);
-        if (qty < MinHaulQuantity && qty < available) return false; // de minimis
+        if (!MeetsHaulMinimum(qty, available)) return false; // de minimis
         ItemQuantity iq = new ItemQuantity(fuel.fuelItem, qty);
         FetchAndReserve(iq, itemPath.tile, stack);
         objectives.AddLast(new GoObjective(this, standPath.tile));

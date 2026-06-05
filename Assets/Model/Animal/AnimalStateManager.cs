@@ -344,12 +344,15 @@ public class AnimalStateManager {
         }
     }
 
-    // Per-tick birth probability when (pmax-p)/pmax = 1 (early-game, lots of headroom).
-    // Derivation: net eep gain while sleeping ≈ eepRate-tireRate = 1.9/tick; sleep cycle is
-    // (maxEep-eepyThreshold)/1.9 ≈ 16 sleep-ticks per ~316-tick wake-sleep cycle, which works
-    // out to ~12 sleep-ticks per in-game day (240 ticks). For ~25% chance/day at full breeding
-    // factor: 1 - (1-p)^12 = 0.25  →  p ≈ 0.0237.
-    private const float MaxBirthChancePerSleepTick = 0.024f;
+    // Birth rate is specified as the chance per in-game day, per sleeping mouse, at full breeding
+    // factor (the population/food throttles below scale it down). The per-sleep-tick probability is
+    // derived from it, so the day-rate stays fixed even if the sleep rates are retuned: a mouse
+    // accrues ticksInDay * tireRate/eepRate sleep-ticks per day (the sleepFraction identity in
+    // Eeping), and we invert 1 - (1-p)^sleepTicksPerDay = perDay for p.
+    private const float BirthChancePerDayAtFullFactor = 0.36f;
+    private static readonly float MaxBirthChancePerSleepTick =
+        1f - Mathf.Pow(1f - BirthChancePerDayAtFullFactor,
+                       Eeping.eepRate / (World.ticksInDay * Eeping.tireRate));
 
     // Reproduction food gate. Below the hard floor: no births at all.
     // Between floor and full days: chance scales linearly from 0 → MaxBirthChancePerSleepTick.
@@ -375,8 +378,13 @@ public class AnimalStateManager {
                 float p = ac.na;
                 float pmax = ac.populationCapacity;
                 float birthChance = MaxBirthChancePerSleepTick * (pmax - p) / pmax * foodFactor;
+                // Double the rate for the first couple of births so a new colony grows past its
+                // starting size quickly (see AnimalController.EarlyBirthBoost* for the rationale).
+                if (ac.births < AnimalController.EarlyBirthBoostBirths)
+                    birthChance *= AnimalController.EarlyBirthBoostMultiplier;
                 if ((float)animal.random.NextDouble() < birthChance) {
                     ac.AddAnimal(animal.x, animal.y);
+                    ac.births++;
                 }
             }
         }

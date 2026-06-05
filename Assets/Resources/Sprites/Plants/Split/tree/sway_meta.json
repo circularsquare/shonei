@@ -79,15 +79,7 @@
                     "isStatic": true
                 },
                 {
-                    "phase": 0.931882917881012,
-                    "isStatic": false
-                },
-                {
                     "phase": 4.42543888092041,
-                    "isStatic": false
-                },
-                {
-                    "phase": 6.144773960113525,
                     "isStatic": false
                 },
                 {
@@ -124,15 +116,7 @@
                     "isStatic": false
                 },
                 {
-                    "phase": 0.931882917881012,
-                    "isStatic": false
-                },
-                {
                     "phase": 4.42543888092041,
-                    "isStatic": false
-                },
-                {
-                    "phase": 6.144773960113525,
                     "isStatic": false
                 },
                 {
@@ -253,10 +237,6 @@
                 },
                 {
                     "phase": 4.42543888092041,
-                    "isStatic": false
-                },
-                {
-                    "phase": 6.144773960113525,
                     "isStatic": false
                 },
                 {

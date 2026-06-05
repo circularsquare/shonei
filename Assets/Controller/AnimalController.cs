@@ -19,6 +19,8 @@ public class AnimalController : MonoBehaviour{
     public RectTransform jobsScrollRect;
     private float _jobsScrollExpandedHeight = -1f;
     public GameObject happinessPanel;
+    // Top-bar happiness/pop readout button — clicking it opens the full GlobalHappinessPanel.
+    [SerializeField] UnityEngine.UI.Button happinessButton;
     public GameObject JobDisplay;
     private World world;
     public Dictionary<Job, int> jobCounts;
@@ -43,6 +45,14 @@ public class AnimalController : MonoBehaviour{
     // This decouples the cap from the score-cap composition so adding/removing happiness
     // needs no longer shifts the implicit ceiling.
     public const int MaxPopulationCap = 40;
+
+    // Early-growth boost: the first EarlyBirthBoostBirths births (starting colony of 4 → 6) roll
+    // at EarlyBirthBoostMultiplier× the normal chance, so a fresh colony gets moving faster.
+    // `births` is the cumulative birth count this colony (persisted, reset on fresh world). It
+    // does NOT decrease on death, so the boost is strictly the first two births — not "while pop < 6".
+    public const int   EarlyBirthBoostBirths     = 2;
+    public const float EarlyBirthBoostMultiplier = 2f;
+    public int births = 0;
 
     // ── Colony food-storage stats (driven by UpdateColonyStats every 10 ticks) ──
     // daysOfFoodInStorage: total stored food in colony, expressed as days-of-hunger
@@ -78,6 +88,12 @@ public class AnimalController : MonoBehaviour{
     void Start() {
         jobCounts.Add(Db.jobs[0], 0);
         if (jobsHeader != null) jobsHeader.onToggled += OnHeaderToggled;
+        // The whole top-bar readout opens the happiness breakdown. Wired in code (not the
+        // inspector) so the static-instance Toggle() target can't drift.
+        if (happinessButton != null)
+            happinessButton.onClick.AddListener(() => {
+                if (GlobalHappinessPanel.instance != null) GlobalHappinessPanel.instance.Toggle();
+            });
     }
 
     // Mirrors InventoryController.OnHeaderToggled — shrinks the wood-framed scroll container
@@ -423,7 +439,7 @@ public class AnimalController : MonoBehaviour{
         if (happinessDisplay == null)
             happinessDisplay = happinessPanel.GetComponent<TMPro.TextMeshProUGUI>();
         if (happinessDisplay != null)
-            happinessDisplay.text = $"happiness: {avgHappiness:0.0}  pop: {na}/{populationCapacity}";
+            happinessDisplay.text = $"happiness {avgHappiness:0.0}  pop {na}/{populationCapacity}";
     }
 
     // Days of food in colony storage, expressed per current mouse.

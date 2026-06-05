@@ -32,13 +32,27 @@ and for direct workstation acceleration.
 | `windmill`          | producer     | 2×4   | passive; output = `Mathf.Abs(WeatherSystem.wind) × MaxOutput`; needs open sky above the top row, re-checked each tick |
 | `flywheel`          | storage      | 2×2   | charges from network surplus, discharges into deficits, exponential decay each tick |
 | `clock`             | consumer     | 1×1       | always-on demand `0.1` whenever not broken/disabled (no crafter gate — clocks have no worker). Hand freezes when unpowered. Three port options — see table below. |
-| `elevator`          | consumer     | 1×N (3..10 via shapes) | variable-height transit. Implements `IPowerConsumer` directly; ports `(-1, 0, H)` and `(nx, 0, H)` at base. Demand is **proportional to per-tick motion**: `PowerPerTile (= 0.5) × min(PlatformSpeed, |targetY − currentY|)` while in `MovingToBoardingFloor` or `Riding`; `0` while `Idle` or `Unloading`. Total power for a trip = `0.5 × tilesTravelled` exactly (mid-trip ticks bill `0.6`, partial last tick less). Both empty-cabin fetch and the lift draw. All gates (cost branch in `Graph.GetEdgeInfo`, Idle→Trip start, MovingToBoardingFloor / Riding advance) use the inclusive `IsPowerAvailable` check (network's raw supply + storage discharge ≥ `MaxTickDemand` = `0.6`) rather than the strict `IsBuildingPowered` to avoid mid-trip freezes during normal allocator-rotation gaps. See SPEC-systems.md §Transit for the navigation side. |
+| `elevator`          | consumer     | 1×N (3..10 via shapes) | variable-height transit. Implements `IPowerConsumer` directly; ports `(-1, 0, H)` and `(nx, 0, H)` at base. Demand proportional to per-tick motion — see §Elevator demand below. See SPEC-systems.md §Transit for the navigation side. |
 
 Existing pump and press declare `powerBoost: 3.0` in JSON, opting them in as
 consumers — operator's work-tick rate triples while the building is on a powered
 network. **Demand is gated on active crafting**: a placed pump only reports
 `Demand = 1.0` while a mouse is currently in WorkObjective at it. Idle / unmanned
 buildings report `0`, so they don't drain the network or its flywheels.
+
+### Elevator demand
+
+Demand is proportional to per-tick motion: `PowerPerTile (= 0.5) ×
+min(PlatformSpeed, |targetY − currentY|)` while in `MovingToBoardingFloor` or
+`Riding`; `0` while `Idle` or `Unloading`. Total power for a trip =
+`0.5 × tilesTravelled` exactly (mid-trip ticks bill `0.6`, partial last tick
+less). Both empty-cabin fetch and the lift draw.
+
+All gates (cost branch in `Graph.GetEdgeInfo`, Idle→Trip start,
+MovingToBoardingFloor / Riding advance) use the inclusive `IsPowerAvailable`
+check (network's raw supply + storage discharge ≥ `MaxTickDemand` = `0.6`)
+rather than the strict `IsBuildingPowered`, to avoid mid-trip freezes during
+normal allocator-rotation gaps.
 
 ## Connectivity rules
 
@@ -70,10 +84,8 @@ A wheel with shafts on its left AND its right is one network, not two — the
 wheel itself bridges them. Same for a flywheel with shafts on multiple
 perimeter tiles, a windmill with shafts at its base AND below its base, etc.
 
-This was not the case in earlier versions: `FindAttachedNetwork` returned the
-first port hit and stopped, so a power building registered to whichever side
-was placed first and the other side stayed isolated. The current rebuild
-collects every port hit per participant and unions the touched networks.
+The rebuild collects every port hit per participant and unions the touched
+networks.
 
 ### 0-gap adjacency
 
@@ -105,7 +117,7 @@ show through the gaps and convey "axle running between the two buildings".
 | Wheel        | `(-1, 0, Horizontal)` and `(nx, 0, Horizontal)` — both bottom-row sides. Routing is symmetric so the F flip is purely cosmetic. |
 | Windmill     | Four options for routing flexibility: `(-1, 0, Horizontal)` and `(nx, 0, Horizontal)` (both base sides), `(0, -1, Vertical)` and `(1, -1, Vertical)` (under each base tile). |
 | Flywheel     | Full perimeter, `Axis.Both` per tile — any adjacent shaft on any side connects. |
-| Pump / press | Auto-wrapper (`BuildingPowerConsumer`) provides full perimeter `Axis.Both` — any side, any axis. The SPEC table previously said `(0, 0, Both)`; the actual wrapper layout is the perimeter. |
+| Pump / press | Auto-wrapper (`BuildingPowerConsumer`) provides full perimeter `Axis.Both` — any side, any axis. |
 | Clock        | Three options: `(-1, 0, Horizontal)` and `(1, 0, Horizontal)` (left/right axles) and `(0, -1, Vertical)` (below). No top port — the hand spins there. |
 
 ## Architecture

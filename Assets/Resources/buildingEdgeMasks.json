@@ -1,0 +1,182 @@
+[
+  {
+    "name": "stairs",
+    "left": 0,
+    "right": 0
+  },
+  {
+    "name": "ladder",
+    "left": 0,
+    "right": 0
+  },
+  {
+    "name": "ladder_side",
+    "left": 1,
+    "right": 0
+  },
+  {
+    "name": "rope bridge post",
+    "left": 0,
+    "right": 0
+  },
+  {
+    "name": "road",
+    "left": 0,
+    "right": 0
+  },
+  {
+    "name": "house",
+    "left": 15,
+    "right": 15
+  },
+  {
+    "name": "shack",
+    "left": 2,
+    "right": 3
+  },
+  {
+    "name": "burrow",
+    "left": 7,
+    "right": 7
+  },
+  {
+    "name": "drawer",
+    "left": 1,
+    "right": 1
+  },
+  {
+    "name": "crate",
+    "left": 1,
+    "right": 1
+  },
+  {
+    "name": "tank",
+    "left": 1,
+    "right": 1
+  },
+  {
+    "name": "bookshelf",
+    "left": 1,
+    "right": 1
+  },
+  {
+    "name": "market",
+    "left": 0,
+    "right": 0
+  },
+  {
+    "name": "torch",
+    "left": 0,
+    "right": 0
+  },
+  {
+    "name": "fountain",
+    "left": 0,
+    "right": 0
+  },
+  {
+    "name": "clock",
+    "left": 0,
+    "right": 0
+  },
+  {
+    "name": "fireplace",
+    "left": 0,
+    "right": 0
+  },
+  {
+    "name": "bench",
+    "left": 0,
+    "right": 0
+  },
+  {
+    "name": "mineshaft",
+    "left": 1,
+    "right": 1
+  },
+  {
+    "name": "sawmill",
+    "left": 3,
+    "right": 3
+  },
+  {
+    "name": "workshop",
+    "left": 3,
+    "right": 3
+  },
+  {
+    "name": "furnace",
+    "left": 11,
+    "right": 5
+  },
+  {
+    "name": "press",
+    "left": 0,
+    "right": 0
+  },
+  {
+    "name": "mill",
+    "left": 1,
+    "right": 1
+  },
+  {
+    "name": "pump",
+    "left": 0,
+    "right": 0
+  },
+  {
+    "name": "paper mill",
+    "left": 1,
+    "right": 1
+  },
+  {
+    "name": "scriptorium",
+    "left": 1,
+    "right": 1
+  },
+  {
+    "name": "brewery",
+    "left": 0,
+    "right": 0
+  },
+  {
+    "name": "digging pit",
+    "left": 0,
+    "right": 0
+  },
+  {
+    "name": "quarry",
+    "left": 1,
+    "right": 1
+  },
+  {
+    "name": "crucible",
+    "left": 0,
+    "right": 0
+  },
+  {
+    "name": "laboratory",
+    "left": 1,
+    "right": 1
+  },
+  {
+    "name": "weaver",
+    "left": 1,
+    "right": 1
+  },
+  {
+    "name": "tailor",
+    "left": 1,
+    "right": 1
+  },
+  {
+    "name": "windmill",
+    "left": 10,
+    "right": 5
+  },
+  {
+    "name": "flywheel",
+    "left": 10,
+    "right": 1
+  }
+]

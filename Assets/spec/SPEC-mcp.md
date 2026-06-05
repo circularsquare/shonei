@@ -97,42 +97,15 @@ Practical workflow:
   target.
 - **Multi-Unity instances**: if MCP errors with "multiple connected, no
   active instance set", call `set_active_instance` once with `Name@hash`.
-- **Slider handle defaults are wrong twice.** `DefaultControls.CreateSlider`
-  produces a handle that (a) stretches vertically and (b) overshoots the
-  ends of the slider when at min/max. Both need fixing for any custom
-  slider sprite to look right.
-
-  **Vertical stretch:** Handle's perpendicular-axis anchor is set to
-  `(0,0)`/`(0,1)` — "stretch to fill." Slider drives *only* the slide-axis
-  anchor at runtime, so the stretch sticks. Collapse the perpendicular
-  anchor to a single point (0.5 for horizontal sliders) and snap to
-  native sprite size.
-
-  **Edge overshoot:** Handle Slide Area is stretched flush to the
-  slider's edges, so at max value the handle's *center* sits at the edge
-  and half the handle overflows. Inset the slide area by `handleWidth/2`
-  on each end of the slide axis.
-
-  Combined fix for a horizontal slider:
-  ```csharp
-  var hRt = slider.handleRect;
-  // (a) stop vertical stretch + use native sprite size
-  hRt.anchorMin = new Vector2(hRt.anchorMin.x, 0.5f);
-  hRt.anchorMax = new Vector2(hRt.anchorMax.x, 0.5f);
-  hRt.GetComponent<UnityEngine.UI.Image>().SetNativeSize();
-  // (b) inset slide area so handle stops at the edge, not past it
-  // ONLY touch the X axis — wholesale `slideArea.anchorMin = Vector2.zero;
-  // anchorMax = Vector2.one;` would also reset the Y axis and undo any
-  // manual height customization on the slide area.
-  var slideArea = hRt.parent as RectTransform;
-  float half = hRt.sizeDelta.x * 0.5f;
-  var aMin = slideArea.anchorMin; aMin.x = 0; slideArea.anchorMin = aMin;
-  var aMax = slideArea.anchorMax; aMax.x = 1; slideArea.anchorMax = aMax;
-  var oMin = slideArea.offsetMin; oMin.x =  half; slideArea.offsetMin = oMin;
-  var oMax = slideArea.offsetMax; oMax.x = -half; slideArea.offsetMax = oMax;
-  ```
-  For vertical sliders: swap axes (collapse X anchor to 0.5, inset on
-  `offsetMin/Max.y`, preserve X axis on the slide area).
+- **Slider handle defaults need fixing for custom sprites.** A
+  `DefaultControls.CreateSlider` handle stretches vertically and overshoots
+  the track ends at min/max. The non-obvious part: the Slider *drives* the
+  handle's anchors (resets them to stretch every `UpdateVisuals`), so you
+  can't pin the handle's height via its own anchor — set the height on the
+  **parent** Handle Slide Area and let the handle stretch to it, and inset
+  the slide area by `handleWidth/2` to stop edge overshoot. The volume
+  sliders in `OptionsPanel` are a working reference — duplicate that
+  configuration rather than re-deriving the anchor math.
 
 ## UI style conventions
 
@@ -220,15 +193,10 @@ to match (handles, dropdown arrows, checkmarks, item icons). For `Sliced`
 sprites only the borders are protected; the middle stretches — fine for
 backgrounds, but the rect's *minor axis* should still be ≥ 2× the border
 (otherwise borders eat the whole sprite and there's nothing to stretch).
-Watch out for parent stretching: a Slider's Handle defaults to vertically-
-stretched anchors (`anchorMin.y=0, anchorMax.y=1`), and **`Slider.UpdateVisuals`
-resets these every frame** — it rebuilds anchors from `Vector2.zero` /
-`Vector2.one` and only overwrites the parallel (value) axis, so trying to
-pin the handle to centre-V via anchors **won't survive runtime**. To get a
-fixed-height handle: set the **parent** Handle Slide Area to the target
-height (`sizeDelta.y = N` with centre-V anchors) and set the Handle's
-`sizeDelta.y = 0` so it stretches to match its 8-tall parent. Width is
-safe — Slider only drives the parallel-axis anchors based on value.
+Watch out for Slider handles specifically: the Slider drives the handle's
+anchors, so a custom-sprite handle needs the fixed-height-on-Slide-Area trick
+— see "Slider handle defaults need fixing for custom sprites" under Common
+gotchas.
 
 ### Color palette (text + state)
 

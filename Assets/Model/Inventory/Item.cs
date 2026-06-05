@@ -97,6 +97,15 @@ public class Item {
     // (see SPEC-trading). Only leaf items exist in inventories and on market targets.
     public bool IsGroup => children != null && children.Length > 0;
 
+    // Descends to the first leaf of a group item (following children[0] repeatedly). Returns
+    // `this` when already a leaf. Used wherever a group cost must resolve to a concrete,
+    // refundable item — e.g. deconstruct refunds when no specific leaf was recorded.
+    public Item FirstLeaf(){
+        Item it = this;
+        while (it.children != null && it.children.Length > 0) it = it.children[0];
+        return it;
+    }
+
     public bool IsDiscovered(){
         if (InventoryController.instance != null){
             return InventoryController.instance.discoveredItems[id];

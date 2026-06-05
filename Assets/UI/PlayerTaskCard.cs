@@ -1,5 +1,6 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 // PlayerTaskCard — the persistent on-screen "Tasks" card. A thin view over
 // PlayerTaskController: on a throttled tick it shows the current task's title and
@@ -11,7 +12,7 @@ using UnityEngine;
 // Self-wires its child widgets by name in Awake (transform "Frame" -> its TMP) to
 // avoid silent null SerializeField refs. Uses unscaled time so it updates while the
 // game is paused (a fresh world pauses after worldgen).
-public class PlayerTaskCard : MonoBehaviour {
+public class PlayerTaskCard : MonoBehaviour, IPointerClickHandler {
     const float CelebrateSeconds = 3f; // how long "complete!" shows before advancing
 
     GameObject      frame;   // visible woodframe; toggled off when there's no current task
@@ -71,6 +72,17 @@ public class PlayerTaskCard : MonoBehaviour {
         }
         int shown = Mathf.Min(p.current, p.target); // cap display so over-flagging shows 3/3, not 5/3
         SetText(t.title + "\n" + shown + "/" + p.target);
+    }
+
+    // Clicking the card while it shows "complete!" skips the rest of the celebration
+    // and advances immediately — manual control instead of waiting out CelebrateSeconds.
+    // Clicks bubble up from the Frame Image (which must have raycastTarget on) to this
+    // handler on the root. No-op when the current task isn't yet complete.
+    public void OnPointerClick(PointerEventData eventData) {
+        if (!celebrating) return;
+        celebrating = false;
+        PlayerTaskController.instance?.Advance();
+        nextCheck = 0f; // force the next Update to refresh, so the new task shows at once
     }
 
     // `body` is the title + progress (or "complete!") line(s); a fixed "task:" header

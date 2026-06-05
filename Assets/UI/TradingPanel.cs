@@ -529,6 +529,8 @@ public class TradingPanel : MonoBehaviour {
             case "/rain": CmdRain(parts); break;
             case "/day":  CmdDay(parts);  break;
             case "/wind": CmdWind(parts); break;
+            case "/generate":   CmdGenerate(parts);   break;
+            case "/regenerate": CmdRegenerate(parts); break;
             default:
                 EventFeed.instance?.Post($"<color=#cc3333>Unknown command: {cmd}</color>", EventFeed.Category.Info);
                 break;
@@ -611,6 +613,45 @@ public class TradingPanel : MonoBehaviour {
         }
         WeatherSystem.instance.SetWind(value);
         EventFeed.instance?.Post($"<color=#aaffaa>Wind set to {value:F2}.</color>", EventFeed.Category.Info);
+    }
+
+    // /generate [seed] — wipe and rebuild the world from the given integer seed.
+    // Use a seed from the Ctrl+D debug log to reproduce a specific world.
+    void CmdGenerate(string[] parts) {
+        if (parts.Length != 2) {
+            EventFeed.instance?.Post("<color=#cc3333>Usage: /generate [seed]</color>", EventFeed.Category.Info);
+            return;
+        }
+        if (!int.TryParse(parts[1], System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture, out int seed) || seed <= 0) {
+            EventFeed.instance?.Post("<color=#cc3333>Seed must be a positive whole number.</color>", EventFeed.Category.Info);
+            return;
+        }
+        Regenerate(seed);
+    }
+
+    // /regenerate — rebuild the world from its current seed (Rng.worldSeed, which is
+    // authoritative on both fresh-gen and loaded-save paths), discarding edits.
+    void CmdRegenerate(string[] parts) {
+        if (!Rng.IsInitialized) {
+            EventFeed.instance?.Post("<color=#cc3333>No world seed yet.</color>", EventFeed.Category.Info);
+            return;
+        }
+        Regenerate(Rng.worldSeed);
+    }
+
+    // Shared regen: stash the seed as a one-shot override, then run the same default-world
+    // reset path the Save menu uses — SaveSystem.LoadDefault clears the world and calls
+    // GenerateDefault, which consumes pendingSeedOverride. Discards the current world
+    // without confirmation (debug command, like /give).
+    void Regenerate(int seed) {
+        if (SaveSystem.instance == null) {
+            EventFeed.instance?.Post("<color=#cc3333>SaveSystem not initialised.</color>", EventFeed.Category.Info);
+            return;
+        }
+        WorldController.pendingSeedOverride = seed;
+        SaveSystem.instance.LoadDefault();
+        EventFeed.instance?.Post($"<color=#aaffaa>World regenerated (seed {seed}).</color>", EventFeed.Category.Info);
     }
 
     // /give [itemname] [quantity]                        — produce into the market inventory.

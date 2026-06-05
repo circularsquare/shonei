@@ -14,6 +14,7 @@ using System.Linq;
 // Cleanup dumps any still-equipped book to the floor so it isn't orphaned in the slot.
 public class ResearchTask : Task {
     private readonly Building _lab;
+    public Building Lab => _lab;  // exposed so ResearchObjective can read the lab's workView
     // Which tech this scientist is working on, chosen by PickStudyTarget at task creation.
     // -1 means nothing to do (scientist will idle through the work loop with no effect).
     public int studyTargetId = -1;

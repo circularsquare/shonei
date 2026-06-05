@@ -102,6 +102,13 @@ public class UI : MonoBehaviour {
         // two layers in the same frame — e.g. closing a build subpanel AND leaving Build
         // mode would feel like Esc "skipped" a step.
         if (Input.GetKeyDown(KeyCode.Escape)) {
+            // 0. UI hidden via F1 — restore it first. The whole HUD is invisible, so the
+            // other Esc layers can't be seen or acted on anyway; bringing the UI back is
+            // the only sensible response to an Esc press in this state.
+            if (_uiHidden) {
+                ToggleUIVisible();
+                return;
+            }
             // 1. save menu (most modal — full-screen overlay)
             if (SaveMenuPanel.instance != null && SaveMenuPanel.instance.gameObject.activeSelf) {
                 SaveMenuPanel.instance.gameObject.SetActive(false);

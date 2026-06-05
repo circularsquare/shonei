@@ -7,7 +7,7 @@ Shonei is a 2D tile-based colony management simulation (in the vein of Dwarf For
 ## Genre & Core Loop
 
 - **Genre**: Colony sim / base builder
-- **Perspective**: 2D side-view, tile-based (100×50 grid)
+- **Perspective**: 2D side-view, tile-based (200×120 grid)
 - **Core loop**: Assign jobs → mice carry out tasks → resources are gathered/processed → new buildings unlock → repeat
 
 ## Architecture
@@ -54,6 +54,17 @@ Depth-0 buildings with custom behaviour subclass `Building` (e.g. `PumpBuilding`
 
 **OnPlaced() hook**: Virtual method on `Structure`, called by `StructController.Construct()` after `Place()`. Building overrides to register WOM orders (`RegisterOrdersFor`), Plant overrides to register its harvest order. Not called during load — `Reconcile()` handles that.
 
+### Assembly structure
+
+Source is split across four asmdefs:
+
+- `Assets/Shonei.Runtime.asmdef` — all gameplay code (Model, Controller, Components, UI, Lighting). Auto-referenced. Pulls in TextMeshPro, URP Universal+Core, NativeWebSocket.
+- `Assets/Editor/Shonei.Editor.asmdef` — editor-only utilities (sheet splitters, sprite postprocessors). References `Shonei.Runtime`.
+- `Assets/Tests/Editor/Shonei.EditMode.Tests.asmdef` — EditMode tests. References `Shonei.Runtime` + `Shonei.Editor`.
+- `Assets/Tests/PlayMode/Shonei.PlayMode.Tests.asmdef` — PlayMode tests. References `Shonei.Runtime`.
+
+A new top-level `Assets/` source folder falls into `Shonei.Runtime` automatically (the asmdef sits at Assets root); a new editor utility under `Assets/Editor/` falls into `Shonei.Editor`. New first-party engine module dependency (e.g. a URP feature)? Add it to `Shonei.Runtime`'s `references` array, then check `read_console` for missing-type errors after recompile.
+
 ---
 
 ## Key Design Decisions
@@ -87,6 +98,7 @@ Depth-0 buildings with custom behaviour subclass `Building` (e.g. `PumpBuilding`
 | [SPEC-trading.md](SPEC-trading.md) | WebSocket protocol, matching engine, TradingClient, TradingPanel, in-game market logistics |
 | [SPEC-research.md](SPEC-research.md) | Research points mechanic, node structure, key classes, save data |
 | [SPEC-ui.md](SPEC-ui.md) | Inventory UI panels — global panel, StoragePanel, ItemDisplay DisplayMode, selection routing |
+| [SPEC-onboarding.md](SPEC-onboarding.md) | Onboarding — PlayerTask system, the Tasks card, unscaled-time advance, save index, adding tasks |
 | [SPEC-eventfeed.md](SPEC-eventfeed.md) | EventFeed singleton — in-game alert dispatcher, categories, bindings, renderer contract |
 | [SPEC-sound.md](SPEC-sound.md) | Sound system — SoundManager singleton, SFX one-shots, ambient loops |
 | [SPEC-worldgen.md](SPEC-worldgen.md) | World generation pipeline — terrain, caves, worm tunnels, water |
@@ -94,6 +106,7 @@ Depth-0 buildings with custom behaviour subclass `Building` (e.g. `PumpBuilding`
 | [SPEC-power.md](SPEC-power.md) | Mechanical power — `PowerSystem` singleton, shaft connectivity, producers (mouse wheel, windmill), powerBoost on workstations, save/load via Phase 6 reconcile |
 | [SPEC-mcp.md](SPEC-mcp.md) | Unity Editor work via MCP — when it's safe, common gotchas (Play mode, codedom, inactive lookups), UI style conventions (font sizes, sprites, spacing, color), workflow recipes |
 | [SPEC-checklists.md](SPEC-checklists.md) | Content-authoring checklists — buildings, recipes, items, jobs, plants, Structure subclasses. Read the relevant section before editing JSON or adding subclasses. |
+| [SPEC-testing.md](SPEC-testing.md) | Test types (EditMode/PlayMode/Snapshot), the snapshot golden workflow, headless `run-tests.bat`, conventions for adding tests. |
 
 ---
 

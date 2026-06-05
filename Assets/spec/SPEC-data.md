@@ -26,8 +26,9 @@ Fields:
 | Field | Type | Notes |
 |-------|------|-------|
 | `id` | int | unique; defines ordering |
-| `name` | string | lookup key |
-| `description` | string? | shown in UI |
+| `name` | string | **internal** lookup key (referenced by recipes, saves, edge-mask bake). Never shown to the player. |
+| `displayName` | string? | optional player-facing name; falls back to `name` via `StructType.DisplayName`. Used by the build menu, InfoPanel tabs, and RecipeGroupDisplay header. Lets the internal key differ from the label (e.g. `rope bridge post` → "rope bridge", plants `pinetree` → "pine tree"). |
+| `description` | string? | build-menu hover tooltip body (a `Tooltippable` attached in `BuildPanel.AddBuildDisplay`). Keep concise per the player-facing-text rules. |
 | `nx`, `ny` | int | footprint in tiles |
 | `storageTileX` | int? | X offset of storage tile within multi-tile buildings |
 | `ncosts` | `[{name, quantity}]` | build cost in liang |
@@ -117,11 +118,11 @@ Fields:
 | `discrete` | bool? | stored/moved in whole-liang (100 fen) units only (e.g. tools, clothing); inherited by children |
 | `itemClass` | enum? | `"default"` (solid), `"liquid"` (water, soymilk), `"book"` (tech/fiction books). Storage inventories match class exactly — liquids only fit in tanks, books only in bookshelves. Inherited by children. Defaults to `"default"`. |
 | `defaultTarget` | int? | initial global production target in liang. Used by `InventoryController.Start` to seed `targets[itemId]`, and by recipe / harvest scoring (`Recipe.Score`, `Recipe.AllItemsSatisfied`) as the threshold. Defaults to `100`; lower for byproducts (acorn, sawdust, pinecone are `10`) so multi-product harvest gating actually triggers. Books override to 1 liang via `itemClass==Book` regardless of this field. SaveSystem only persists deltas vs this default. |
-
-Note: IDs 300+ are reserved for books. The `book` group (id 300) is authored in this file with `fiction_book` (id 301) as its only static child. **One tech book per research tech is generated at runtime** by `Db.GenerateBookItems()` and appended as additional children of the `book` group, with sequential IDs starting at 302. The tech-id → book-item-id map lives in `Db.bookItemIdByTechId`. All books share one sprite (`Sprites/Items/split/books/icon`).
 | `liquidColorHex` | string? | `#RRGGBB` tint used when this liquid is rendered in a decorative water zone (tank/fountain); absent → shader falls back to its default water blue |
 | `defaultOpen` | bool? | group items only: start expanded in the inventory tree by default (e.g. `"food"`). Groups without this flag start collapsed. Runtime collapse state overrides on click. |
 | `children` | array? | leaf sub-types; see group item note above |
+
+Note: IDs 300+ are reserved for books. The `book` group (id 300) is authored in this file with `fiction_book` (id 301) as its only static child. **One tech book per research tech is generated at runtime** by `Db.GenerateBookItems()` and appended as additional children of the `book` group, with sequential IDs starting at 302. The tech-id → book-item-id map lives in `Db.bookItemIdByTechId`. All books share one sprite (`Sprites/Items/split/books/icon`).
 
 ## `recipesDb.json` — Recipes
 
@@ -143,6 +144,7 @@ Fields:
 | `noutputs` | `[{name, quantity, chance?}]` | produced items; `chance` (0–1) = probability of output |
 
 **Recipes panel display notes:**
+- The panel hides a recipe unless its **workstation is reachable** — research-unlocked OR currently placed (`ResearchSystem.IsBuildingUnlocked` ∥ `StructController.GetByType`) — and unless **every input item has been discovered** (`InventoryController.discoveredItems`, sticky + parent-chain-aware, so a group input like "wood" counts once any leaf appears). So e.g. the crucible's recipes and the oak-planks variant don't clutter the panel before you can make them. Filters live in `RecipePanel.IsWorkstationAvailable` / `InputsDiscovered`; the panel re-evaluates on every open.
 - `description` should stay short — `Db.WarnLongRecipeNames()` logs a warning at load for any longer than the reference string `"smelt malachite into copper (wood-"` (34 chars), since long names truncate in the card header.
 - Book-writing recipes (any recipe whose single output is `ItemClass.Book` — the runtime per-tech books + authored `fiction_book`) collapse in the panel into **one** generic "write a book" card per workstation; its On/Off toggles all book recipes together. See `RecipePanel.IsBookRecipe` / `BuildBookProxy`.
 
@@ -220,8 +222,11 @@ Fields:
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `id` | int | unique (0=empty, 1=structure, 2=dirt, 3=sand, 4=clay, 20=limestone, 21=granite, 22=slate). Solid-tile ids drive the soft-edge sort ranking — lower id draws on top at different-type boundaries (see SPEC-rendering "Tile body sort order"). |
-| `name` | string | lookup key |
+| `id` | int | unique (0=empty, 1=structure, 2=dirt, 3=sand, 4=clay, 20=limestone, 21=granite, 22=slate, 23=limestone_placed, 24=dirt_placed). Solid-tile ids drive the soft-edge sort ranking — lower id draws on top at different-type boundaries (see SPEC-rendering "Tile body sort order"). |
+| `name` | string | internal lookup key — never shown to the player |
+| `displayName` | string? | player-facing name in the info panel; falls back to `name` (see `TileType.DisplayName`). Lets a placed variant read as its base material — `limestone_placed` / `dirt_placed` both display as `limestone` / `dirt`. |
+| `spriteName` | string? | **override** to borrow some *other* tile type's texture (not the `_placed` base). Rarely needed — `_placed` variants auto-borrow their base art. Resolution lives in `TileType.SpriteStem`, the single stem source shared by `TileSpriteCache` (final tile render) and `StructType.LoadSprite` (blueprint / build-ghost / menu icon), so all agree. |
+| `_placed` convention | — | A player-built, non-harvestable variant of a base tile. Name it `<base>_placed`, set `displayName` = base, and **omit `group` (and any `nExtractionProducts`)** so a quarry/digging-pit can't target it. The sprite auto-borrows `<base>`'s via `SpriteStem` (no `spriteName` needed). `limestone_placed` = `limestone` minus group; `dirt_placed` = `dirt` (incl. its grass `overlay`) minus group — that's the *only* difference, blocking the digging pit and changing nothing else. |
 | `solid` | int | 0=passable, 1=solid (blocks movement) |
 | `group` | string? | logical family (e.g. `"stone"` for limestone/granite/slate, `"earth"` for dirt/sand/clay). `StructPlacement` treats `requiredTileName` as a match on either the tile's name or its group, so quarry's `requiredTileName: "stone"` accepts any stone variant and digging pit's `"earth"` accepts dirt/sand/clay. **Watch out**: name-only matches (e.g. burrow's `requiredTileName: "dirt"`) skip the group, so a burrow only digs into the dirt tile even though dirt is in the `"earth"` group. |
 | `overlay` | string? | name of an overlay sprite sheet that tiles of this type can carry per-side decoration from. `dirt → "grass"` today; future moss-on-stone would set this on stone variants. Loads from `Resources/Sprites/Tiles/Sheets/<overlay>.png` (32×32 atlas, transparent Main interior). See SPEC-rendering "Tile overlays" for the rendering trick. |

@@ -20,9 +20,9 @@ public class EepingTests {
         Eeping e = new Eeping();
         Assert.That(e.maxEep, Is.EqualTo(100f));
         Assert.That(e.eep, Is.EqualTo(90f));
-        Assert.That(Eeping.tireRate, Is.EqualTo(0.1f));
-        Assert.That(Eeping.eepRate, Is.EqualTo(2f));
-        Assert.That(Eeping.outsideEepRate, Is.EqualTo(1f));
+        Assert.That(Eeping.tireRate, Is.EqualTo(0.2f));
+        Assert.That(Eeping.eepRate, Is.EqualTo(1f));
+        Assert.That(Eeping.outsideEepRate, Is.EqualTo(0.7f));
     }
 
     // ── Eepness ────────────────────────────────────────────────────────
@@ -106,24 +106,24 @@ public class EepingTests {
     public void Eep_AtHome_RecoversAtEepRate(){
         Eeping e = new Eeping();
         e.eep = 50f;
-        e.Eep(t: 1f, atHome: true); // +2
-        Assert.That(e.eep, Is.EqualTo(52f).Within(0.0001f));
+        e.Eep(t: 1f, atHome: true); // +1
+        Assert.That(e.eep, Is.EqualTo(51f).Within(0.0001f));
     }
 
     [Test]
     public void Eep_Outside_RecoversAtOutsideRate(){
         Eeping e = new Eeping();
         e.eep = 50f;
-        e.Eep(t: 1f, atHome: false); // +1
-        Assert.That(e.eep, Is.EqualTo(51f).Within(0.0001f));
+        e.Eep(t: 1f, atHome: false); // +0.7
+        Assert.That(e.eep, Is.EqualTo(50.7f).Within(0.0001f));
     }
 
     [Test]
     public void Eep_ScalesByDt(){
         Eeping e = new Eeping();
         e.eep = 50f;
-        e.Eep(t: 5f, atHome: true); // +10
-        Assert.That(e.eep, Is.EqualTo(60f).Within(0.0001f));
+        e.Eep(t: 5f, atHome: true); // +5
+        Assert.That(e.eep, Is.EqualTo(55f).Within(0.0001f));
     }
 
     [Test]
@@ -133,7 +133,7 @@ public class EepingTests {
         // recovery can outrun the wake check, so without the clamp eep would drift past cap.
         Eeping e = new Eeping();
         e.eep = 99f;
-        e.Eep(t: 10f, atHome: true); // +20, clamped → 100
+        e.Eep(t: 10f, atHome: true); // +10, clamped → 100
         Assert.That(e.eep, Is.EqualTo(e.maxEep).Within(0.0001f));
     }
 
@@ -143,22 +143,22 @@ public class EepingTests {
         Eeping e = new Eeping();
         e.eep = 50f;
         e.Update(1f);
-        Assert.That(e.eep, Is.EqualTo(49.9f).Within(0.0001f));
+        Assert.That(e.eep, Is.EqualTo(49.8f).Within(0.0001f));
     }
 
     [Test]
     public void Update_ScalesByDt(){
         Eeping e = new Eeping();
         e.eep = 50f;
-        e.Update(10f); // -1.0
-        Assert.That(e.eep, Is.EqualTo(49f).Within(0.0001f));
+        e.Update(10f); // -2.0
+        Assert.That(e.eep, Is.EqualTo(48f).Within(0.0001f));
     }
 
     [Test]
     public void Update_ClampsAtZero(){
         Eeping e = new Eeping();
         e.eep = 0.05f;
-        e.Update(1f); // 0.05 - 0.1 = -0.05 → clamp 0
+        e.Update(1f); // 0.05 - 0.2 = -0.15 → clamp 0
         Assert.That(e.eep, Is.EqualTo(0f));
     }
 
@@ -175,8 +175,8 @@ public class EepingTests {
     public void EepThenUpdate_RoundTrip(){
         Eeping e = new Eeping();
         e.eep = 0f;
-        e.Eep(t: 10f, atHome: true);  // +20 → 20
-        e.Update(50f);                 // -5 → 15
-        Assert.That(e.eep, Is.EqualTo(15f).Within(0.0001f));
+        e.Eep(t: 20f, atHome: true);  // +20 → 20
+        e.Update(50f);                 // -10 → 10
+        Assert.That(e.eep, Is.EqualTo(10f).Within(0.0001f));
     }
 }

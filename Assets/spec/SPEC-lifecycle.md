@@ -47,7 +47,7 @@ Phase 4 (`graph.Initialize`) and run identically through Phases 5–9.
 
 **Single objects can span phases**: e.g. the market `Building` is constructed in Phase 2 with default zero-targets, then its `targets` dict is overwritten in Phase 5. Don't try to do everything for one object in one place.
 
-**Phase 7 is split across two frames.** `LoadAnimal` stages save state on `Animal.pendingSaveData` in frame 1; `Animal.Start` consumes it in frame 2. `PostLoadInit` runs after that and finalises colony-wide state. Anything that needs animals fully ready (cross-animal aggregates, colony stats) belongs in `PostLoadInit` — not directly in `ApplySaveData`.
+**Phase 7 is split across two frames** (full frame-by-frame mechanics in §Startup ordering): animals spawn in frame 1, `Animal.Start` finalises them in frame 2, then `PostLoadInit` runs. Anything that needs animals fully ready (cross-animal aggregates, colony stats) belongs in `PostLoadInit` — not directly in `ApplySaveData`.
 
 ### Startup ordering (frame by frame)
 
@@ -82,9 +82,11 @@ Load:    ClearWorld() + SaveSystem.ApplySaveData()  →  PostLoadInit (next fram
 **Frame 2** — coroutines resume:
 - **`Animal.Start()`** — initializes hunger/sleep/happiness; applies `pendingSaveData` if on load path
 - **`DefaultJobSetup`** — assigns jobs, calls `World.ProduceAtTile` (standability and animals both ready)
-- **`PostLoadInit`** — calls `AnimalController.Load()` → `SlowUpdate()`, `UpdateColonyStats()`
+- **`PostLoadInit`** — calls `AnimalController.Load()` → `SlowUpdate()`, `UpdateColonyStats()`; `WaterController.UpdateSurfaceMask()`; and `FlowerController.OnWorldReady()` (builds the decoration layer — restores the saved flower layout stashed by Phase 9, or scatters fresh on gen/reset). The flower build lives here *because* this is the one hook every world-creation path runs — putting it only in the boot coroutine left in-session reset/new-world worlds flowerless.
 
-**Key rule**: use `PostLoadInit` for any initialization that depends on animals being fully ready. It runs on all three paths. Do NOT use the `if (world == null)` guard in `AnimalController.TickUpdate` — unreliable on Reset/Load since `world` is never reset to null.
+**Key rule**: use `PostLoadInit` for any initialization that must run on **every** world-creation path (initial gen, reset, load) — it's the single common hook. Reset-side clearing of such state goes in `ResetSystemState` (e.g. `FlowerController.ResetState`), the symmetric "tear down" hook. It also runs after animals are fully ready, so cross-animal aggregates belong here too.
+
+> **Anti-pattern**: do NOT use the `if (world == null)` guard in `AnimalController.TickUpdate` to detect a fresh world — unreliable on Reset/Load since `world` is never reset to null.
 
 `pendingSaveData`: `LoadAnimal()` sets this before `Animal.Start()` runs. `Start()` checks it and applies saved state if present; otherwise initializes fresh. Marked `[System.NonSerialized]` to prevent Unity from replacing null with a default instance.
 
@@ -113,7 +115,7 @@ All game logic is intended to be tick-driven. Movement and fall physics are the 
 
 `AnimalController` follows the same pattern: `AnimalController.Update()` wraps `AnimalController.Tick(float dt)`, so per-animal staggered ticks are also testable from a fixed-step driver.
 
-**Why Tick(float dt) is public**: tests and the (planned) snapshot harness can call `World.Tick(1/60f)` repeatedly to advance the simulation deterministically without depending on Unity's frame loop. Production keeps using `Time.deltaTime`, so timeScale and pause continue to work without special handling.
+**Why Tick(float dt) is public**: tests and the snapshot harness can call `World.Tick(1/60f)` repeatedly to advance the simulation deterministically without depending on Unity's frame loop. Production keeps using `Time.deltaTime`, so timeScale and pause continue to work without special handling.
 
 ### Time scale
 

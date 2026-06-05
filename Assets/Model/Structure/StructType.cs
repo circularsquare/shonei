@@ -103,7 +103,11 @@ public class Shape {
 
 public class StructType {
     public int id {get; set;}
-    public string name {get; set;}
+    public string name {get; set;}                  // internal lookup key — referenced by recipes, saves, etc. Never shown to the player.
+    public string displayName {get; set;}           // optional player-facing name; falls back to `name`. See DisplayName.
+    public string description {get; set;}            // optional build-menu tooltip body
+    // Player-facing name: prefer displayName, fall back to the internal name.
+    public string DisplayName => string.IsNullOrEmpty(displayName) ? name : displayName;
     public int nx {get; set;}
     public int ny {get; set;}
     public ItemNameQuantity[] ncosts {get; set;}
@@ -332,8 +336,12 @@ public class StructType {
     public virtual Sprite LoadSprite() {
         if (isTile) {
             if (name == "empty") return null;
-            Sprite s = Resources.Load<Sprite>("Sprites/Tiles/" + name.Replace(" ", ""));
-            return s != null && s.texture != null ? s : null;
+            // Tile art lives only in the baked TileSpriteCache (32px sheets under
+            // Sprites/Tiles/Sheets/), not as a flat sprite — so pull the representative
+            // fully-surrounded block (cardinal mask 0xF = no rim) for the blueprint /
+            // build-ghost / menu icon. SpriteStem resolves "<base>_placed" to the base art.
+            // Returns null if the cache has no sheet for the stem → caller falls back to default.
+            return TileSpriteCache.Get(TileType.SpriteStem(name), 0xF, 0, 0);
         }
         string path = "Sprites/Buildings/" + name.Replace(" ", "");
         Sprite s2 = Resources.Load<Sprite>(path);
@@ -379,5 +387,28 @@ public class StructType {
                 if (r.dx == 0 && r.dy == 0 && r.mustBeSolidTile) { requiresSolidTilePlacement = true; break; }
             }
         }
+    }
+
+    // ── Sprite body-edge mask (side-ladder mounting) ──────────────────────
+    // Per-footprint-tile bitmasks (bit dy*nx+dx) of which tiles present a solid wall on their
+    // left / right edge — so a side-ladder won't mount against a visually-empty footprint tile
+    // (e.g. a windmill's blade tiles, claimed in tile.structs[] but with no sprite body). Baked
+    // offline from sprite alpha by Tools/Bake Building Edge Masks and applied at Db load via
+    // SetEdgeMasks. -1 = unbaked → permissive (treat every edge as solid) so we never wrongly
+    // reject a mount before the bake has run. Authored un-mirrored; SideEdgeSolid applies mirror.
+    int leftEdgeMask  = -1;
+    int rightEdgeMask = -1;
+    public void SetEdgeMasks(int left, int right) { leftEdgeMask = left; rightEdgeMask = right; }
+
+    // True if footprint tile (dx,dy) presents a wall on the side facing a mounting ladder.
+    // wallRightSide = the ladder rests against this tile's RIGHT face. structMirrored flips
+    // both the column lookup and which authored side we read.
+    public bool SideEdgeSolid(int dx, int dy, bool wallRightSide, bool structMirrored) {
+        if (leftEdgeMask < 0) return true;                   // unbaked → permissive
+        int lx = structMirrored ? (nx - 1 - dx) : dx;
+        bool readRight = structMirrored ? !wallRightSide : wallRightSide;
+        if (lx < 0 || lx >= nx || dy < 0 || dy >= ny) return true;
+        int mask = readRight ? rightEdgeMask : leftEdgeMask;
+        return ((mask >> (dy * nx + lx)) & 1) != 0;
     }
 }

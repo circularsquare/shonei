@@ -475,10 +475,15 @@ public static class TileSpriteCache {
     // EnsureTrimmedVariants), and at trimmed pixels the sprite is alpha-clipped
     // anyway so NormalsCapture skips them.
     static Variant[] BuildVariants(string tileName, int trimMask = 0, bool isOverlay = false) {
+        // Texture stem: a placed variant borrows its base tile's art (e.g. limestone_placed ->
+        // limestone), via the shared TileType.SpriteStem convention. Caching stays keyed by
+        // tileName; only the texture load uses the stem. Overlays (grass/snow) aren't tile types.
+        string stem = isOverlay ? tileName : TileType.SpriteStem(tileName);
+
         var atlasVariants = new List<Variant>();
         for (int i = 1; ; i++) {
             string suffix = i == 1 ? "" : i.ToString();
-            var atlas = Resources.Load<Texture2D>("Sprites/Tiles/Sheets/" + tileName + suffix);
+            var atlas = Resources.Load<Texture2D>("Sprites/Tiles/Sheets/" + stem + suffix);
             if (atlas == null) break;
             if (!atlas.isReadable) {
                 Debug.LogError($"TileSpriteCache: atlas '{tileName}{suffix}' is not readable. Enable Read/Write in import settings.");
@@ -491,7 +496,7 @@ public static class TileSpriteCache {
         var flatVariants = new List<Variant>();
         for (int i = 1; ; i++) {
             string suffix = i == 1 ? "" : i.ToString();
-            var flat = Resources.Load<Texture2D>("Sprites/Tiles/" + tileName + suffix);
+            var flat = Resources.Load<Texture2D>("Sprites/Tiles/" + stem + suffix);
             if (flat == null) break;
             if (!flat.isReadable) {
                 Debug.LogError($"TileSpriteCache: flat sprite '{tileName}{suffix}' is not readable. Enable Read/Write in import settings.");

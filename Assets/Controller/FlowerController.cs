@@ -46,14 +46,22 @@ public class FlowerController : MonoBehaviour {
 
     enum PlacementZone { None, SurfaceGrass, Underground }
 
+    // A placed flower: its GameObject + the variant it rolled. The variant is tracked so
+    // the layout can be persisted (and restored exactly) — see GatherSave / RestoreFlowers.
+    struct FlowerEntry { public GameObject go; public FlowerType type; }
+
     World world;
     int worldSeed;
     Transform flowersRoot;
     bool subscribed;
 
-    // (x, y) → spawned flower GameObject. Encoded long key to avoid Tile
-    // refs (cheap, and we'd risk holding refs across a ClearWorld pass).
-    readonly Dictionary<long, GameObject> flowers = new Dictionary<long, GameObject>();
+    // (x, y) → spawned flower. Encoded long key to avoid Tile refs (cheap, and we'd risk
+    // holding refs across a ClearWorld pass).
+    readonly Dictionary<long, FlowerEntry> flowers = new Dictionary<long, FlowerEntry>();
+
+    // Saved layout stashed by SaveSystem on load (before the next OnWorldReady), so the load
+    // path restores the exact saved flowers instead of re-deriving from live grass/snow state.
+    FlowerSaveData[] pendingRestore;
 
     void Awake() {
         if (instance != null) {
@@ -78,12 +86,14 @@ public class FlowerController : MonoBehaviour {
         DespawnAll();
 
         if (!subscribed) {
+            // Only structural callbacks — flowers are a persisted layer that must NOT react
+            // to grass/snow drift (that drift is RNG-driven and diverges across a reload, which
+            // is exactly what made flowers look different on load). They're removed only when
+            // their host tile is destroyed (mined) or built over.
             for (int x = 0; x < world.nx; x++) {
                 for (int y = 0; y < world.ny; y++) {
                     Tile t = world.GetTileAt(x, y);
                     t.RegisterCbTileTypeChanged(OnTileTypeChanged);
-                    t.RegisterCbOverlayChanged(OnTileChanged);
-                    t.RegisterCbSnowChanged(OnTileChanged);
                     t.RegisterCbStructChanged(OnTileStructChanged);
                 }
             }
@@ -92,10 +102,22 @@ public class FlowerController : MonoBehaviour {
 
         if (Db.flowerTypesCount == 0) {
             Debug.LogWarning("FlowerController: no flower types loaded (flowersDb.json empty or missing). Nothing will spawn.");
+            pendingRestore = null;
             return;
         }
-        // Full scan. Quick enough at world sizes ≤200×200: at most a handful
-        // of comparisons per tile, plus the few percent that actually spawn.
+
+        // Load path: restore the exact saved layout (even if empty — a world saved with no
+        // flowers stays bare). Skips the eligibility scan entirely so the result can't drift
+        // with grass/snow that evolved differently since the save. Null (old saves / never
+        // saved) falls through to a fresh scatter.
+        if (pendingRestore != null) {
+            RestoreFlowers(pendingRestore);
+            pendingRestore = null;
+            return;
+        }
+
+        // Fresh world: scatter once from the worldgen-seeded grass. This set is the canonical
+        // layout and gets persisted; it no longer grows as grass spreads later.
         for (int x = 0; x < world.nx; x++) {
             for (int y = 0; y < world.ny; y++) {
                 Reevaluate(world.GetTileAt(x, y));
@@ -103,36 +125,39 @@ public class FlowerController : MonoBehaviour {
         }
     }
 
-    // ── Reactive callbacks ──────────────────────────────────────────────
+    // ── Structural removal (no spawning — see OnWorldReady) ──────────────
 
-    void OnTileChanged(Tile t) {
-        // World ref isn't valid until OnWorldReady has run at least once.
-        // Filter out the noisy initial setup pass before that point.
-        if (world == null) return;
-        Reevaluate(t);
-    }
-
-    // Type changes affect both this tile (its own eligibility) AND the tile
-    // below (whose "tile above must be empty" check just flipped). The
-    // alternative would be to re-evaluate the whole column, but two tiles
-    // is enough — eligibility never reaches further than the immediate
-    // neighbour above.
+    // A flower is dropped only when its host tile is destroyed: mining the tile itself
+    // (type → non-solid) or placing a structure on the air tile above it. Two-tile reach:
+    // this tile (its own host) AND the tile below (whose "tile above" just changed).
     void OnTileTypeChanged(Tile t) {
         if (world == null) return;
-        Reevaluate(t);
+        RemoveIfInvalid(t);
         Tile below = world.GetTileAt(t.x, t.y - 1);
-        if (below != null) Reevaluate(below);
+        if (below != null) RemoveIfInvalid(below);
     }
 
-    // Struct changes have the same two-tile reach as type changes: a building
-    // landing on an air tile blocks the flower on the solid tile below (so the
-    // tile-below check matters), and a road/shaft on the solid tile itself
-    // ends its eligibility directly (so the tile-itself check matters).
     void OnTileStructChanged(Tile t) {
         if (world == null) return;
-        Reevaluate(t);
+        RemoveIfInvalid(t);
         Tile below = world.GetTileAt(t.x, t.y - 1);
-        if (below != null) Reevaluate(below);
+        if (below != null) RemoveIfInvalid(below);
+    }
+
+    void RemoveIfInvalid(Tile t) {
+        long key = Key(t.x, t.y);
+        if (flowers.ContainsKey(key) && !IsValidFlowerHost(t)) Despawn(key);
+    }
+
+    // The structural half of GetZone: a solid tile with empty, unbuilt air above. Deliberately
+    // omits the grass / snow / depth gates — those are decorative drift we no longer react to.
+    bool IsValidFlowerHost(Tile t) {
+        if (t == null || t.type == null || !t.type.solid) return false;
+        Tile above = world.GetTileAt(t.x, t.y + 1);
+        if (above == null) return false;
+        if (above.type != null && above.type.solid) return false;
+        if (above.structs[0] != null) return false;
+        return true;
     }
 
     // ── Eligibility + spawn/despawn ─────────────────────────────────────
@@ -161,24 +186,25 @@ public class FlowerController : MonoBehaviour {
         int[] sY = world.surfaceY;
         bool sYValid = sY != null && t.x >= 0 && t.x < sY.Length && sY[t.x] >= 0;
 
-        // Surface grass: live, top-edge tuft, snow-free, AND at-or-above the
-        // original ground line. The depth gate keeps flowers strictly out of
-        // caves: even if grass somehow grew on a tile below the surface (e.g.
-        // the player carved a skylight letting grass spread inward), we
-        // suppress flowers there — flowers should read as an outdoor signal.
+        // Surface grass: live, top-edge tuft, snow-free, AND at-or-above the original ground
+        // line. The depth gate keeps flowers out of caves (grass that spread inward through a
+        // player-carved skylight is suppressed — flowers read as an outdoor signal). NOTE:
+        // worldgen's surfaceY is the AIR tile just above the ground (solid + 1), so the topmost
+        // grass tile sits at sY-1 — the gate compares against sY-1, not sY, or no surface tile
+        // could ever pass. (RecomputeSurfaceY's old-save fallback uses the solid line instead;
+        // sY-1 just admits one extra row there, which is harmless.)
         if (t.type.overlay == "grass"
             && t.overlayState == OverlayState.Live
             && (t.overlayMask & 0b1000) != 0
             && !t.snow
-            && (!sYValid || t.y >= sY[t.x])) {
+            && (!sYValid || t.y >= sY[t.x] - 1)) {
             return PlacementZone.SurfaceGrass;
         }
 
         // Underground: at least N tiles below the original ground line.
-        // world.surfaceY is the topmost solid tile per column captured at
-        // worldgen — keeps "underground" tied to natural geometry, not the
-        // currently-tallest dirt block in the column (which the player can
-        // shift by mining the top off).
+        // world.surfaceY is the air tile just above the original ground per column, captured at
+        // worldgen — keeps "underground" tied to natural geometry, not the currently-tallest
+        // dirt block in the column (which the player can shift by mining the top off).
         //
         // Additional shelter gates for mushrooms / moss:
         //   - Not vertically exposed to sky (any solid tile above the spot).
@@ -224,40 +250,37 @@ public class FlowerController : MonoBehaviour {
         return true;
     }
 
+    // Worldgen scatter: roll the density gate + variant for a freshly-eligible tile, then
+    // place it. Variant + visual bits all read from SEPARATE bytes of the per-tile hash —
+    // overlapping byte ranges introduce systematic biases (a previous version had density
+    // and xOffset both on bits 8-15, giving every flower a mean −4 px offset).
+    //   bits 0-7 : density gate   bits 8-15 : variant   bits 16-23 : x offset   bit 24 : mirror
     void Spawn(Tile t, PlacementZone zone) {
         uint h = HashTile(t.x, t.y, worldSeed);
-
-        // Each independent random property reads from a SEPARATE byte of the
-        // 32-bit hash. Overlapping byte ranges introduce systematic biases —
-        // a previous version had density and xOffset both reading bits 8-15,
-        // which produced a mean −4 px offset on every flower in the world.
-        //   bits 0-7   : density gate
-        //   bits 8-15  : variant pick
-        //   bits 16-23 : sub-pixel x offset
-        //   bit  24    : horizontal mirror
         float density = zone == PlacementZone.SurfaceGrass ? surfaceGrassDensity : undergroundDensity;
-        uint bDensity = h & 0xFFu;
-        if (bDensity >= (uint)(density * 256f)) return;
+        if ((h & 0xFFu) >= (uint)(density * 256f)) return;
 
         string placement = zone == PlacementZone.SurfaceGrass ? ZoneSurfaceGrass : ZoneUnderground;
         FlowerType ft = PickVariantForPlacement(((h >> 8) & 0xFFu) / 256f, placement);
-        if (ft == null) return;
+        if (ft != null) SpawnAt(t, ft);
+    }
 
+    // Places a known variant and records it. The deterministic visual bits (x-offset, mirror,
+    // phase) come from the per-tile hash, so a restored flower lands identically to the original.
+    // Used by both the worldgen scatter (Spawn) and save-restore (RestoreFlowers).
+    void SpawnAt(Tile t, FlowerType ft) {
         Sprite sprite = ft.LoadSprite();
         if (sprite == null) return; // missing artwork — already warned in FlowerType
 
-        // Sub-pixel x offset, snapped to 1/16 (PPU=16). Range ≈ ±0.3 tile.
-        // Keeps adjacent decorations from sitting in identical positions
-        // without drifting so far they overlap into the next tile.
+        uint h = HashTile(t.x, t.y, worldSeed);
+        // Sub-pixel x offset, snapped to 1/16 (PPU=16). Range ≈ ±0.3 tile — keeps adjacent
+        // decorations from sitting in identical positions without overlapping the next tile.
         float xOffset = (((int)((h >> 16) & 0xFFu) - 128) / 256f) * 0.6f;
         xOffset = Mathf.Round(xOffset * 16f) / 16f;
 
-        // World position: anchored to the air tile above the solid tile.
-        // With sprite pivot=Center on a 16x16 PNG, this puts the sprite
-        // bottom flush against the tile's top edge (sprite spans
-        // [y+0.5, y+1.5]). _PlantBaseY = t.y + 0.5 (sprite bottom) so the
-        // cantilever weight ramps from 0 at the bottom of the sprite to 1
-        // at the top — the natural bend a viewer expects.
+        // World position: anchored to the air tile above the solid tile. With sprite
+        // pivot=Center on a 16x16 PNG the sprite bottom sits flush on the tile top (spans
+        // [y+0.5, y+1.5]); baseY = t.y + 0.5 so the cantilever weight ramps bottom→top.
         Vector3 pos = new Vector3(t.x + xOffset, t.y + 1f, 0f);
         float baseY = t.y + 0.5f;
         float phase = ComputeFlowerPhase(t.x, t.y);
@@ -267,19 +290,13 @@ public class FlowerController : MonoBehaviour {
         go.transform.SetParent(flowersRoot, false);
         go.transform.position = pos;
 
-        // Two-SR split only kicks in when the variant has visible wind AND
-        // its auto-detected mask actually found a head region. Mushrooms /
-        // moss with windEffect=0 stay single-SR (no point splitting a thing
-        // that doesn't move). All-green flowers without a head also stay
-        // single-SR (LoadHeadMask returns null → hasHead stays false).
+        // Two-SR split only when the variant has visible wind AND its mask found a head.
+        // Mushrooms / moss (windEffect=0) and headless flowers stay single-SR.
         Texture2D mask = (ft.windEffect > 0f) ? ft.LoadHeadMask() : null;
-        if (mask != null && ft.hasHead) {
-            BuildSwayingFlower(go, sprite, ft, baseY, phase, flip, mask);
-        } else {
-            BuildSimpleFlower(go, sprite, ft, baseY, phase, flip);
-        }
+        if (mask != null && ft.hasHead) BuildSwayingFlower(go, sprite, ft, baseY, phase, flip, mask);
+        else                            BuildSimpleFlower(go, sprite, ft, baseY, phase, flip);
 
-        flowers[Key(t.x, t.y)] = go;
+        flowers[Key(t.x, t.y)] = new FlowerEntry { go = go, type = ft };
     }
 
     // Single-SR path — the original behaviour, used by rigid decorations
@@ -333,17 +350,54 @@ public class FlowerController : MonoBehaviour {
     }
 
     void Despawn(long key) {
-        if (flowers.TryGetValue(key, out GameObject go)) {
-            if (go != null) Destroy(go);
+        if (flowers.TryGetValue(key, out FlowerEntry e)) {
+            if (e.go != null) Destroy(e.go);
             flowers.Remove(key);
         }
     }
 
     void DespawnAll() {
         foreach (var kv in flowers) {
-            if (kv.Value != null) Destroy(kv.Value);
+            if (kv.Value.go != null) Destroy(kv.Value.go);
         }
         flowers.Clear();
+    }
+
+    // ── Save / restore (persisted flower layout) ────────────────────────
+    // Flowers are persisted rather than re-derived on load: their eligibility depends on live
+    // grass/snow state that evolves via the shared RNG and so doesn't reproduce across a reload.
+    // SaveSystem stashes the saved layout via StashRestore before the next OnWorldReady.
+
+    public void StashRestore(FlowerSaveData[] saved) { pendingRestore = saved; }
+
+    public FlowerSaveData[] GatherSave() {
+        var list = new List<FlowerSaveData>(flowers.Count);
+        foreach (var kv in flowers) {
+            if (kv.Value.type == null) continue;
+            list.Add(new FlowerSaveData {
+                x = (int)((kv.Key >> 16) & 0xFFFF),
+                y = (int)(kv.Key & 0xFFFF),
+                type = kv.Value.type.name,
+            });
+        }
+        return list.ToArray();
+    }
+
+    void RestoreFlowers(FlowerSaveData[] saved) {
+        foreach (FlowerSaveData fs in saved) {
+            if (fs == null || fs.type == null) continue;
+            Tile t = world.GetTileAt(fs.x, fs.y);
+            if (t == null) continue;
+            if (Db.flowerTypeByName != null
+                && Db.flowerTypeByName.TryGetValue(fs.type, out FlowerType ft) && ft != null)
+                SpawnAt(t, ft);
+        }
+    }
+
+    // Cleared on world reset (LoadDefault / new game) so a stale layout doesn't survive.
+    public void ResetState() {
+        DespawnAll();
+        pendingRestore = null;
     }
 
     // ── Determinism helpers ─────────────────────────────────────────────

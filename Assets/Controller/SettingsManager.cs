@@ -27,6 +27,7 @@ public class SettingsManager : MonoBehaviour {
     const string K_Vsync      = "settings.vsync";       // 0 / 1
     const string K_Lighting   = "settings.lighting";    // 0 / 1
     const string K_CloudLight = "settings.cloudLighting"; // 0 / 1
+    const string K_Autosave   = "settings.autosave";    // 0 / 1
 
     // ── Values ───────────────────────────────────────────────────────────────
     public float masterVolume   { get; private set; } = 1f;
@@ -40,6 +41,8 @@ public class SettingsManager : MonoBehaviour {
     // ~80% of the cloud blob-loop work; useful for measuring the cost of the
     // cloud lighting pass on weaker GPUs.
     public bool  cloudLightingEnabled{ get; private set; } = true;
+    // When on, SaveSystem writes the world to the "autosave" slot every few minutes.
+    public bool  autosaveEnabled { get; private set; } = true;
 
     // Fired after any setter writes a value. Subscribers re-pull whatever they
     // care about. Cheap because the panel only emits on user input, not per-frame.
@@ -63,6 +66,7 @@ public class SettingsManager : MonoBehaviour {
         vsyncEnabled    = PlayerPrefs.GetInt(K_Vsync, 0) != 0;
         lightingEnabled = PlayerPrefs.GetInt(K_Lighting, 1) != 0;
         cloudLightingEnabled = PlayerPrefs.GetInt(K_CloudLight, 1) != 0;
+        autosaveEnabled = PlayerPrefs.GetInt(K_Autosave, 1) != 0;
     }
 
     // ── Setters ──────────────────────────────────────────────────────────────
@@ -119,6 +123,13 @@ public class SettingsManager : MonoBehaviour {
         if (enabled == cloudLightingEnabled) return;
         cloudLightingEnabled = enabled;
         PlayerPrefs.SetInt(K_CloudLight, enabled ? 1 : 0);
+        OnChanged?.Invoke();
+    }
+
+    public void SetAutosave(bool enabled) {
+        if (enabled == autosaveEnabled) return;
+        autosaveEnabled = enabled;
+        PlayerPrefs.SetInt(K_Autosave, enabled ? 1 : 0);
         OnChanged?.Invoke();
     }
 

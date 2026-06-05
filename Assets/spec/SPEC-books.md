@@ -53,7 +53,7 @@ After `Db.Awake`, `ResearchSystem.Awake` runs `LoadNodes` → `InjectBookRecipeU
 
 ## Buildings
 
-- **`bookshelf`** (id 25): storage building, `storageClass: "book"`, 10 stacks × 1 liang each. Auto-allows all books on construction (see `Inventory` constructor — book-class storage opts every book in by default; tanks deliberately don't auto-allow liquids since players usually dedicate a tank to one liquid). Renders as a single whole-shelf sprite via `Inventory.UpdateSprite` with three fill levels (`slow` / `smid` / `shigh`) at `Sprites/Items/split/books/`. Constructor at `Inventory.cs:84-95` excludes Book-class storage from the multi-stack-per-slot rendering branch so the whole shelf shows one sprite regardless of `nStacks`.
+- **`bookshelf`** (id 25): storage building, `storageClass: "book"`, 10 stacks × 1 liang each. Auto-allows all books on construction (see `Inventory` constructor — book-class storage opts every book in by default; tanks deliberately don't auto-allow liquids since players usually dedicate a tank to one liquid). Renders as a single whole-shelf sprite via `Inventory.UpdateSprite` with three fill levels (`slow` / `smid` / `shigh`) at `Sprites/Items/split/books/`. The `Inventory` constructor excludes Book-class storage from the multi-stack-per-slot rendering branch so the whole shelf shows one sprite regardless of `nStacks`.
 - **`scriptorium`** (id 107): standard workstation. `njob: "hauler"` (the *logistics* job — who builds it; operators come from `recipe.job`, see CLAUDE.md "Craft order job check" anti-pattern).
 
 ## Equip slot
@@ -122,4 +122,4 @@ For books this means scribes idle when all bookshelves are full (vs piling books
 
 ## Random tiebreak
 
-`PickRecipe` and `PickRecipeForBuilding` use reservoir sampling (k=1) when multiple recipes tie at `maxScore`. Without this, iteration order (recipe id) deterministically wins ties — most visible for newly-unlocked tech books, all of which compute `Score` = +Infinity (output qty = 0 means division by zero in the `score /= qty/target` step), so the first one always wrote first.
+`PickRecipe` and `PickRecipeForBuilding` use reservoir sampling (k=1) when multiple recipes tie at `maxScore`. Without it, iteration order (recipe id) deterministically wins ties. This is most visible for newly-unlocked tech books: all compute `Score` = +Infinity (output qty = 0 divides by zero in the `score /= qty/target` step), so the first by id always wrote first.

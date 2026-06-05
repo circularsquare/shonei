@@ -4,7 +4,10 @@ Scientists working in **laboratory** buildings generate research progress. Progr
 
 ## Terminology
 
-The individual unlockable things are called **technologies** (player- and user-facing noun). The *action* of working towards them is **research** (verb). The system, panel, task, and code identifiers are all still named "Research" — only the per-node noun changed. User and Claude may use "research" and "technology" interchangeably when referring to a single node; prefer "technology" in new player-facing copy.
+- **technology** — an individual unlockable node (player-facing noun).
+- **research** — the action of working towards one (verb).
+
+The system, panel, task, and code identifiers are all still named "Research"; only the per-node noun changed. "research" and "technology" are interchangeable when referring to a single node, but prefer "technology" in new player-facing copy.
 
 ## Progress & decay
 
@@ -55,6 +58,10 @@ Every animal-side recipe pick site routes through `Recipe.IsEligibleForPicking()
 
 Jobs flagged `defaultLocked: true` in `jobsDb.json` are hidden until a tech with `{"type":"job","target":"<name>"}` is unlocked. `IsJobUnlocked(name)` returns true when ungated or gating tech is currently unlocked. Reverse index `jobToTechNode` built in `Start()`.
 
+## Contextual placement gates
+
+Some unlocks gate an *action in context* rather than a whole building, so they can't use the `defaultLocked` building mechanism. **Mining** gates stone extraction: `StructPlacement.GetPlacementFailReason` rejects any tile-mining structure (`empty` mine-tile or a `requiresSolidTilePlacement` structure like the mineshaft) placed on a `group == "stone"` tile (limestone/granite/slate) unless Mining is unlocked — returning `"needs Mining technology"` as a toast. Earth tiles (dirt/sand/clay) stay free so burrows/digging pits need no tech. The quarry is gated the ordinary way (`defaultLocked` + building unlock), so it never reaches this check. Gate is permissive when `ResearchSystem.instance` is null (unit-test contexts). New "X tech enables this action only here" gates should follow this pattern (placement-time reason string) rather than `defaultLocked`, which hides the building outright.
+
 ## Startup ordering
 
 `Awake()` only parses `researchDb.json` into `nodes` / `nodeById` / `progress`. All reverse-index building (`InjectBookRecipeUnlocks`, `BuildRecipeLockIndex`, `BuildJobLockIndex`, `BuildBuildingLockIndex`) and `ValidateJobUnlocks` happen in `Start()` because they read `Db.bookRecipeIdByTechId` and `Db.jobByName`, which are populated in `Db.Awake`. See SPEC-lifecycle.md "Cross-singleton Awake rule" for the general principle.
@@ -71,6 +78,7 @@ On unlock: `AnimalController.UnlockJob(name)` adds the jobs-panel row (idempoten
 | `ResearchSystem.OnTechForgotten` | Static event fired when a tech is forgotten. |
 | `ResearchPanel` | Full-screen UI. Icon grid. Cards show icon + name + progress bar. Card click toggles study. |
 | `ResearchDisplay` | Prefab component. Progress bars (green + blue as one continuous bar), threshold marker. |
+| `ResearchTask` | Task with `studyTargetId`. Navigates to lab, works in 10-tick loops. |
 
 ## Card visual states
 
@@ -84,7 +92,6 @@ Cost text colour:
 - **Green** — a scientist is currently at the bench adding progress to this tech (ResearchTask's `currentObjective` is a `ResearchObjective` — see `ResearchSystem.IsActivelyResearched`). Excludes the travel leg, so the text doesn't turn green until points are actually rising.
 - **Black** — prereqs met, not being actively worked.
 - **Grey** — prereqs not met.
-| `ResearchTask` | Task with `studyTargetId`. Navigates to lab, works in 10-tick loops. |
 
 ## Save data
 

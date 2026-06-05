@@ -358,6 +358,14 @@ public class ResearchSystem : MonoBehaviour {
         return unlockedIds.Contains(techNodeId);
     }
 
+    // True if the building is unlocked: either no tech gates it, or its gating tech is
+    // currently unlocked. Used by RecipePanel to hide a workstation's recipes until the
+    // building is reachable (researched or already placed).
+    public bool IsBuildingUnlocked(string buildingName) {
+        if (buildingName == null || !buildingToTechNode.TryGetValue(buildingName, out int techNodeId)) return true;
+        return unlockedIds.Contains(techNodeId);
+    }
+
     // Applies the gameplay effect of a technology (called on unlock).
     // Animal recipe filters query IsRecipeUnlocked live and RecipePanel rebuilds on open, so
     // recipe gating itself needs no action here. We still discover the recipe's output items

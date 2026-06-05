@@ -249,6 +249,70 @@ public class RecipeScoringTests {
         Assert.That(r1.Score(targets), Is.EqualTo(r2.Score(targets)));
     }
 
+    // ── Score: geometric-mean combination ──────────────────────────────
+    // Inputs and outputs each fold to a geometric mean, so multi-item recipes aren't
+    // crushed by raw product compounding. The core regression these guard: 2 inputs at
+    // ratio 0.5 must score 0.5 (geomean), not 0.25 (old product).
+    [Test]
+    public void Score_MultipleInputs_GeometricMean_NotProduct(){
+        SetGlobal(itemA, 50);
+        SetGlobal(itemB, 50);
+        var targets = new Dictionary<int, int> {
+            { itemA.id, 100 },
+            { itemB.id, 100 },
+        };
+        Recipe r = MakeRecipe(inputs: new[] { IQ(itemA, 10), IQ(itemB, 10) });
+        // GM(0.5, 0.5) = sqrt(0.25) = 0.5 — old multiplicative product would give 0.25.
+        Assert.That(r.Score(targets), Is.EqualTo(0.5f).Within(1e-6f));
+    }
+
+    [Test]
+    public void Score_MultipleOutputs_GeometricMean(){
+        // Two scarce outputs at ratio 0.5: GM_out = 0.5, GM_in = 1 (none) → score 1/0.5 = 2.
+        SetGlobal(itemA, 50);
+        SetGlobal(itemB, 50);
+        var targets = new Dictionary<int, int> {
+            { itemA.id, 100 },
+            { itemB.id, 100 },
+        };
+        Recipe r = MakeRecipe(outputs: new[] { IQ(itemA, 10), IQ(itemB, 10) });
+        Assert.That(r.Score(targets), Is.EqualTo(2f).Within(1e-6f));
+    }
+
+    [Test]
+    public void Score_EqualPerItemRatios_InputCountInvariant(){
+        // The "don't punish more inputs" contract: a 1-input and a 2-input recipe whose
+        // per-item ratios all equal 0.5 must score identically (both 0.5).
+        SetGlobal(itemA, 50);
+        SetGlobal(itemB, 50);
+        var targets = new Dictionary<int, int> {
+            { itemA.id, 100 },
+            { itemB.id, 100 },
+        };
+        Recipe oneInput = MakeRecipe(inputs: new[] { IQ(itemA, 10) });
+        Recipe twoInput = MakeRecipe(inputs: new[] { IQ(itemA, 10), IQ(itemB, 10) });
+        Assert.That(twoInput.Score(targets), Is.EqualTo(oneInput.Score(targets)).Within(1e-6f));
+    }
+
+    [Test]
+    public void Score_ZeroInputAndZeroOutput_NotNaN_ReturnsZero(){
+        // NaN-safety guard: an empty input (GM_in = 0) is checked before the empty-output
+        // +Infinity branch, so a recipe with both never produces 0/0 = NaN. gmIn==0 wins → 0.
+        SetGlobal(itemA, 0); // input empty
+        SetGlobal(itemB, 0); // output never produced
+        var targets = new Dictionary<int, int> {
+            { itemA.id, 100 },
+            { itemB.id, 100 },
+        };
+        Recipe r = MakeRecipe(
+            inputs:  new[] { IQ(itemA, 10) },
+            outputs: new[] { IQ(itemB, 10) }
+        );
+        float score = r.Score(targets);
+        Assert.That(float.IsNaN(score), Is.False);
+        Assert.That(score, Is.EqualTo(0f));
+    }
+
     // ── AllOutputsSatisfied ────────────────────────────────────────────
     [Test]
     public void AllOutputsSatisfied_NullTargets_ReturnsFalse(){

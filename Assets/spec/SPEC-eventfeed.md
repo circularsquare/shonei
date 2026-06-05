@@ -36,7 +36,8 @@ When adding a new post site: ask "is the player looking at chat when this happen
 
 - Scene MonoBehaviour singleton following the project's `public static XYZ instance { get; protected set; }` pattern. Attached to a root GameObject named `EventFeed` in `Main.unity`.
 - Persists across `ClearWorld` / save-load (only `_history` is cleared, not the singleton itself). This means static-event subscriptions (e.g. `ResearchSystem.OnTechForgotten += ...`) are safe — they're made once in `Awake` and torn down in `OnDestroy`.
-- The Instance becomes available during `Awake`. Subscribers should prefer `Start()` over `Awake()` to avoid Awake-order races — the null-guard on `EventFeed.instance` fails silently if the subscriber Awakes first, and the subscription is never made. TradingPanel currently subscribes in `Awake` because EventFeed reliably Awakes first in Main.unity, but new renderers should wire up in `Start`.
+- The instance becomes available during `Awake`. Subscribers should prefer `Start()` over `Awake()` to avoid Awake-order races: if the subscriber Awakes first, the null-guard on `EventFeed.instance` fails silently and the subscription is never made.
+- **Exception**: TradingPanel subscribes in `Awake` because EventFeed reliably Awakes first in Main.unity. New renderers should still wire up in `Start`.
 
 ## Bindings
 

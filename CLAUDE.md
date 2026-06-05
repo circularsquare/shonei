@@ -8,11 +8,11 @@ This is a big project — a Dream Project. Let's be ambitious and build scalable
 
 ## Working style
 
-I like to use plan mode! If you're about to make a code change that has real chances of going wrong and we're not in plan mode, assume I just forgot to set it and enter plan mode yourself.
-
 Please feel free to explain your thought process.
 
 If you think my query is based on incorrect assumptions or doesn't make sense to you, feel free to ask for clarification.
+
+**Bias toward acting on a clear best option.** Reserve `AskUserQuestion` for genuine forks where you can't tell which way I'd lean. If you already think one option is clearly better and expect I'd agree, just take it and tell me what you did — don't stop to ask. When it really is unclear, of course ask.
 
 Spawn a subagent when (a) you're about to touch a subsystem not already in your context — have it read the relevant SPEC + named files and report current-state-vs-spec, (b) you need to verify a specific claim (file:line, API signature, memory entry) before acting on it — brief it with "quote the exact line", since past audit subagents have hallucinated, or (c) you're estimating effort or comparing approaches — your first guess anchors you.
 
@@ -61,7 +61,7 @@ Comments:
 
 **Before modifying any code**, read `Assets/spec/SPEC.md` to orient yourself, then read the relevant sub-document for the system you're touching. Do not skip this step even for small changes — most pattern violations come from not reading the spec first.
 
-**Before any MCP / Unity Editor work** (scene mutations, UI building, `execute_code`, etc.), read `Assets/spec/SPEC-mcp.md`. It covers what's safe vs risky (live API mutations are fine; direct YAML writes aren't), UI style conventions (font sizes 12/14/16, black text, wood frame, sprite reuse map), and common gotchas (Play mode reverts, codedom C# 6 limits, inactive lookups).
+**Before any MCP / Unity Editor work** (scene mutations, UI building, `execute_code`, etc.), read `Assets/spec/SPEC-mcp.md`. It covers what's safe vs risky (live API mutations are fine; direct YAML writes aren't), UI style conventions (font size 16pt, black text, wood frame, sprite reuse map), and common gotchas (Play mode reverts, codedom C# 6 limits, inactive lookups).
 
 You can also reference log.txt and todo.txt for my thoughts on what has happened recently and what we should work on in the future. But don't edit these.
 
@@ -86,95 +86,33 @@ This applies to acting, not chatting. Don't gate every sentence on a doc lookup 
 
 **Silent failures:** Unity asset pipelines commonly fail with no error — atlas-not-packed, addressable-not-built, sprite-not-bound, importer-skipped. "No red console message" is not evidence of success. Confirm with a direct query after the action (e.g. `atlas.spriteCount`, `atlas.GetSprite(name) != null`, asset path resolves to expected type).
 
-## Core patterns (always follow these)
+## Core patterns
 
-### Data-driven content
-New items, buildings, recipes, jobs, plants, research nodes = **JSON changes only** (`Assets/Resources/*.json`). `Db.cs` loads everything at startup. No hardcoded game content in C#.
+Two invariants apply to almost any change — get them wrong and it's a silent data bug:
 
-### WorkOrderManager for all work dispatch
-All task assignment goes through `WorkOrderManager` — animals never scan the world for work. Work is pushed into WOM as prioritised `WorkOrder` objects. See SPEC-ai.md for the full dispatch sequence.
+- **Data-driven content**: new items / buildings / recipes / jobs / plants / research nodes = **JSON only** (`Assets/Resources/*.json`), loaded by `Db.cs` at startup. No hardcoded game content in C#.
+- **Fen in code, liang in JSON**: code quantities are **fen** (`int`, 100 fen = 1 liang); JSON is authored in liang (`float`). Convert with `(int)Math.Round(q * 100)` at the `ItemNameQuantity → ItemQuantity` boundary; display via `ItemStack.FormatQ()`.
 
-### Reserve before execute
-Tasks reserve resources (item stacks, building slots) in `Initialize()`, **before** any objectives run. Use `Task.ReserveStack()` / `FetchAndReserve()` — `Cleanup()` auto-unreserves. Return `false` from `Initialize()` if reservation fails.
-
-### Fen everywhere in code, liang in JSON
-All quantities in code are **fen** (`int`), **100 fen = 1 liang**. JSON is authored in liang (`float`). Conversion: `(int)Math.Round(q * 100)` at `ItemNameQuantity → ItemQuantity` sites. Display via `ItemStack.FormatQ()`.
-
-### Callbacks for rendering, not polling
-Tiles fire callbacks on change. Controllers subscribe for rendering updates. Don't poll model state from `Update()`.
-
-### GlobalInventory for world totals
-Use `Produce()` to add items (updates global inv). Use `MoveItemTo()` to transfer between inventories (no double-counting). `AddItem()` is private — never call it externally.
-
-### Group items are never physical
-Group/parent items (e.g. "wood") are wildcards for recipe inputs and building costs. Only leaf items exist in inventories. `LockGroupCostsAfterDelivery()` locks blueprints to a specific leaf on first delivery.
-
-### Task/Objective queue pattern
-Tasks decompose into an ordered queue of Objectives: `Initialize()` → build queue + reserve → `Start()` → objectives run sequentially → `Complete()`/`Fail()` → `Cleanup()`.
-
-### Structure creation rules
-Two ways to create structures:
-- **Gameplay**: `Blueprint.Complete()` → `StructController.Construct()`. Consumes blueprint inventory.
-- **Load/worldgen**: `Structure.Create(st, x, y)` + `StructController.Place(s)`. No cost side-effects.
-Both paths use `Structure.Create()` (shared factory in `Structure.cs`) for subclass dispatch. When adding a new Structure subclass, add its case there. Always call `Place()` after direct construction — without it the structure isn't tracked.
-
-### Save system: update the checklist
-When adding new saveable state, update the checklist comment at the top of `SaveSystem.cs`. Gather in `Gather*`, restore in `Restore*`/`ApplySaveData()`. Use `PostLoadInit` coroutine for anything that depends on animals being fully ready (frame 2+).
-
-### Exclusive panels
-`TradingPanel`, `RecipePanel`, `ResearchPanel`, and `GlobalHappinessPanel` are mutually exclusive via `UI.RegisterExclusive()` / `UI.OpenExclusive()`. New exclusive panels must follow this pattern.
-
-## Assembly structure
-
-Source code is split across four asmdefs:
-
-- `Assets/Shonei.Runtime.asmdef` — all gameplay code (Model, Controller, Components, UI, Lighting). Auto-referenced. Pulls in TextMeshPro, URP Universal+Core, NativeWebSocket.
-- `Assets/Editor/Shonei.Editor.asmdef` — editor-only utilities (sheet splitters, sprite postprocessors). References `Shonei.Runtime`.
-- `Assets/Tests/Editor/Shonei.EditMode.Tests.asmdef` — EditMode tests. References `Shonei.Runtime` + `Shonei.Editor`.
-- `Assets/Tests/PlayMode/Shonei.PlayMode.Tests.asmdef` — PlayMode tests. References `Shonei.Runtime`.
-
-Adding a new top-level Assets folder for source? It'll fall into `Shonei.Runtime` automatically (the asmdef sits at Assets root). Adding a new editor utility? Goes under `Assets/Editor/` and into `Shonei.Editor` automatically. New first-party engine module dependency (e.g. URP feature)? Add it to `Shonei.Runtime`'s `references` array — and check `read_console` for missing-type errors after recompile.
+The subsystem-specific patterns (work dispatch via `WorkOrderManager`, reserve-before-execute, callbacks-not-polling, GlobalInventory, group-vs-leaf items, the Task/Objective queue, structure creation, the save checklist, exclusive panels) live in the relevant SPEC sub-doc — read it before touching that system, per **Resources** above.
 
 ## Testing
 
-**EditMode tests** (`Assets/Tests/Editor/`) — one file per system (e.g. `ItemStackTests.cs`). Fast (ms each). Use for pure-logic invariants — fen/liang math, recipe scoring, inventory bookkeeping. Cannot use Unity lifecycle (`Start` doesn't fire); singletons must be wired via reflection helpers.
+Many impactful, easy-to-miss bugs aren't catchable by isolated tests — they surface in playtesting (AI feel, emergent interactions, visual/timing issues). Tests still help in plenty of cases (pure-logic invariants, save/load, regressions), but don't treat "run the tests" as a mandatory per-change step. Suggest them when a change plausibly broke something testable; otherwise lean on playtesting.
 
-**PlayMode tests** (`Assets/Tests/PlayMode/`) — load `Main.unity`, run actual game lifecycle. Slower (seconds each). Use for integration / snapshot tests where Animal AI, scene-loaded controllers, or the real save/load path matter. `TickSmokeTest.cs` is the canonical example: load Main → wait 3 frames → drive `World.Tick(1/60f)` × N → assert state.
+**Never auto-invoke `run_tests`** (`mcp__unity__*`) — it triggers a recompile / domain reload that interrupts in-flight editor work, and can't run while Unity is in Play Mode. Suggest it and wait for explicit confirmation.
 
-**Snapshot tests** (`Assets/Tests/PlayMode/SnapshotTests.cs` + `SnapshotRunner.cs`) — capture full world state as JSON, diff against a checked-in golden file. Catches regressions in *any* system that affects serialized state (worldgen, animal AI, tick dispatch, save format) without writing per-system assertions. Goldens live in `Assets/Tests/PlayMode/Scenarios/<name>.golden.json`. On mismatch, the actual is written to `Application.temporaryCachePath` for diffing.
+Also: run `read_console` after **non-trivial** code edits to catch compile errors before claiming done — but skip it for tiny low-risk edits (one-line filters, string tweaks, magic-number changes), where the `refresh_unity` round-trip isn't worth it.
 
-To add a new snapshot scenario:
-1. Add a `[UnityTest]` method to `SnapshotTests.cs` that calls `SnapshotRunner.RunDefaultWorld(unitySeed: <fixed>, ticks: <N>, name: <unique>)`.
-2. Run it once — golden is written and the test reports Inconclusive. Review the golden file, commit if good.
-3. Subsequent runs diff against the golden. To accept new state after intentional behavior changes, delete the golden and re-run.
-
-The runner pauses `Time.timeScale`, sets `WorldController.skipAutoLoad` so the user's most-recent save isn't picked up, and nulls singleton statics to keep state clean across consecutive runs in the same Unity session. If you add a new singleton that surfaces a "two instances of X" error during snapshot tests, add its type to `NullStaticInstances` in `SnapshotRunner.cs`.
-
-**Workflows via Unity MCP** (`mcp__unity__*`):
-- `read_console` — check warnings/errors after script edits. Run this after **non-trivial** code changes before claiming done. **Skip for tiny low-risk edits** (one-line filters, string-literal tweaks, magic-number changes, removing a line) — `refresh_unity` + `read_console` round-trips take real time and add little value when there's no plausible compile risk. Default to skipping unless the edit could reasonably break compile (new method, type signature change, reflection/framework API, etc.).
-- `run_tests` returns a job_id; poll with `get_test_job` (use `wait_timeout: 60` and `include_failed_tests: true`). Specify `mode: "EditMode"` or `mode: "PlayMode"`.
-- **Never auto-invoke `run_tests`.** It triggers a Unity recompile / domain reload and can interrupt in-flight editor work. Suggest it ("this touched save code — want me to run the EditMode tests?") and wait for explicit user confirmation. Tests can't run while Unity is already in Play Mode — wait, or ask the user to exit.
-
-**Headless CLI**: `Tools/run-tests.bat [EditMode|PlayMode|all]` runs tests without opening the editor. Useful for ad-hoc runs and future CI. Requires Unity to be closed (it locks `Library/`). Output: `TestResults/<platform>.xml` (gitignored). Override Unity path with `UNITY_PATH` env var.
-
-**Adding tests**:
-- One test class per system, named `SystemNameTests.cs`. Use existing files as the style reference.
-- **Keep them lean.** A bug fix gets ONE test that would have caught it. A new feature gets a small handful covering the contract — not an exhaustive matrix. Tests are read-mostly: pad them and you pay the cost forever.
-- Cover the *invariant* or *contract*, not every getter or trivial branch. Heavy `[TestCase]` parameterization beats many copy-paste `[Test]` methods.
-- For protected-set static singletons (`Db.itemByName`, `RecipePanel.instance`, etc.), use the `SetSingletonInstance` / `SetStaticProp` reflection helpers in existing files — copy the pattern, don't reinvent.
-- EditMode tests for methods that touch `World.instance.timer` or require a live `Animal`/`Inventory`: skip with a clearly-marked `// Deferred` comment block, OR write them as PlayMode tests. Don't fight the dependency in unit-test setup.
-
-**When a test fails**: diagnose the regression and fix the code. Don't change assertions to make them pass unless the test itself was wrong (rare; verify carefully).
+See `Assets/spec/SPEC-testing.md` for test types, the snapshot workflow, headless `run-tests.bat`, and conventions for adding tests.
 
 ## Anti-patterns (known past mistakes)
 
-- **MCP scene/prefab writes**: Do NOT write `.unity`/`.prefab` files via MCP when user may have unsaved editor work — MCP reads stale on-disk state, not Unity's in-memory state. Describe manual steps instead.
-- **`[Serializable]` on save data classes**: Don't add it — Newtonsoft.Json doesn't need it, and Unity's serializer will materialize default instances instead of null.
-- **Craft order job check**: Do NOT use `structType.job` for craft eligibility — that's the *construction* job (e.g. "hauler" for a sawmill). Use `Array.Exists(a.job.recipes, r => r != null && r.tile == buildingName)`.
-- **Stale WOM orders after world clear**: `WorkOrderManager.ClearAllOrders()` must be called at the start of `ClearWorld()`, before destroying any objects — otherwise `WorkOrder` references survive into the new session pointing at pre-load `ItemStack`/`Blueprint` objects.
-- **Static collections that accumulate across scene reloads**: when adding a new `static List<>` / `static HashSet<>` / `static Dictionary<>` in a singleton (especially `Db.cs`), reset it in the singleton's constructor — not just declare it once. Otherwise scene reloads (PlayMode tests, future "new game" feature) double-populate, breaking determinism. See the reset block in `Db.cs:72-100` for the pattern.
-- **Sprite Atlas V2 in Unity 2021.3**: V2 (`SpriteAtlasAsset`) creates the source file but the import pipeline never generates the runtime `SpriteAtlas`, so sprites never bind. Use V1 only: `new SpriteAtlas()` + `SpriteAtlasExtensions.Set*Settings` / `.Add` + `AssetDatabase.CreateAsset` + `SpriteAtlasUtility.PackAtlases`. Project's `EditorSettings.spritePackerMode` must be `AlwaysOnAtlas`. See `Assets/Editor/GameplayAtlasBuilder.cs` for the working pattern.
-- **Custom-UV sprite shaders break NormalsCapture's alpha mask**: NormalsCapture's override material samples `_MainTex` at the sprite's NATIVE (0..1) UVs — it does *not* know about any custom UV math your shader does (world-coord sampling, parallax shift, UV scroll, vertex displacement, etc.). When your visible shader transforms UVs but NormalsCapture sees the un-transformed mapping, the two disagree on where the sprite's alpha is. `LightFeature.cs` then renders ghost silhouettes shaped like the un-transformed alpha mask, visible whenever `lightmap` and `skyLightColor` diverge (most strongly at sunset/sunrise; near-invisible at noon). **Fix**: bake the transformed view into a `RenderTexture` via `Graphics.Blit` through a gen shader, then MPB-bind the RT as `_MainTex`. Both the visible pass and NormalsCapture now sample the same image. See `CloudLayer.cs` + `BackgroundLayer.cs` for the pattern, and SPEC-rendering.md §NormalsCapturePass for the full diagnosis.
+- **MCP scene/prefab writes**: Don't write `.unity`/`.prefab` via MCP when there may be unsaved editor work — MCP reads stale on-disk state, not Unity's in-memory state. Describe manual steps instead.
+- **`[Serializable]` on save data classes**: Don't add it — Newtonsoft doesn't need it, and Unity's serializer materializes default instances instead of null.
+- **Craft order job check**: Don't use `structType.job` for craft eligibility — that's the *construction* job (e.g. "hauler" for a sawmill). Use `Array.Exists(a.job.recipes, r => r != null && r.tile == buildingName)`.
+- **Stale WOM orders after world clear**: Call `WorkOrderManager.ClearAllOrders()` at the *start* of `ClearWorld()`, before destroying objects — else `WorkOrder` refs survive into the new session pointing at pre-load `ItemStack`/`Blueprint` objects.
+- **Static collections across scene reloads**: a new `static List`/`HashSet`/`Dictionary` in a singleton (esp. `Db.cs`) must be reset in the constructor, not just declared — otherwise scene reloads double-populate and break determinism. See the reset block in `Db.cs`'s constructor.
+- **Custom-UV sprite shaders break NormalsCapture's alpha mask** (ghost silhouettes at sunset). Fix + full diagnosis: SPEC-rendering.md §NormalsCapturePass (pattern in `CloudLayer.cs` / `BackgroundLayer.cs`).
 
 ## Session wrap-up checklist
 

@@ -28,7 +28,7 @@ public class HaulTask : Task {
         if (quantity <= 0) return false;
         // De minimis check before reserving: GetStorageForItem already accounts for resSpace,
         // so this is safe. Avoids leaking a space reservation that would linger until stale expiry.
-        if (quantity < MinHaulQuantity && quantity < available) return false; // de minimis — no reservation made yet
+        if (!MeetsHaulMinimum(quantity, available)) return false; // de minimis — no reservation made yet
         // Reserve destination space so other haulers don't target the same slots
         int spaceReserved = ReserveSpace(storageInv, item, quantity);
         if (spaceReserved <= 0) return false;
@@ -43,7 +43,7 @@ public class HaulTask : Task {
     public override void Complete() {
         // Flag only hauls that shrank mid-task (decay / reservation drain) — intentional
         // stack-clearing cleanups below MinHaulQuantity are expected and don't log.
-        if (objectives.Count == 0 && _iq != null && _iq.quantity < MinHaulQuantity && _iq.quantity < _intendedQuantity) {
+        if (objectives.Count == 0 && _iq != null && !MeetsHaulMinimum(_iq.quantity, _intendedQuantity)) {
             Debug.Log($"{animal.aName} ({animal.job.name}) tiny Haul: delivered {_iq.quantity} fen of {_iq.item.name} (intended {_intendedQuantity} — shrunk mid-task)");
         }
         base.Complete();

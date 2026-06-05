@@ -14,4 +14,7 @@ public class ResearchObjective : Objective {
         animal.state = Animal.AnimalState.Working;
         // AnimalStateManager.HandleWorking calls task.Complete() when research finishes.
     }
+    // Facing-view override — mirrors WorkObjective. A lab declaring workView:"back" turns
+    // its scientist to face the desk while studying. Null (default side view) otherwise.
+    public override string ViewOverride => (task as ResearchTask)?.Lab?.structType.workView;
 }

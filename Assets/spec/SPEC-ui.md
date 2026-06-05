@@ -88,9 +88,12 @@ Managed by `InventoryController` (`Assets/Controller/InventoryController.cs`).
 - ItemDisplay instances are created once in `AddItemDisplay()` during first `TickUpdate`, one per item in `Db.items`.
 - Tree structure: root items parent to `inventoryPanel.transform`, children parent to their parent ItemDisplay's transform.
 - **Discovery**: items are hidden until `globalInventory.Quantity > 0` (checked recursively via `HaveAnyOfChildren`). Once discovered, stays visible even if quantity drops to 0.
-- **Tree collapse**: `IsVisibleInTree` walks ancestors — if any parent ItemDisplay has `open == false`, the item is hidden. Groups start collapsed by default; flag `defaultOpen: true` in itemsDb.json to start a group expanded (e.g. `"food"`). Market mode always expands every group regardless of the flag. Per-group collapse state is persisted across saves for the global panel only via `WorldSaveData.inventoryTreeOpen` (stores only deltas vs `defaultOpen`); on load the dict is staged on `InventoryController.pendingGroupOpenOverrides` and consumed by `ItemDisplay.Start`. The StoragePanel allow tree is built once and reused across all `Show()` calls, so its collapse state persists within a session but isn't saved.
+- **Tree collapse**: `IsVisibleInTree` walks ancestors — if any parent ItemDisplay has `open == false`, the item is hidden.
+  - Groups start collapsed by default; flag `defaultOpen: true` in itemsDb.json to start a group expanded (e.g. `"food"`). Market mode always expands every group regardless of the flag.
+  - **Global panel** collapse state persists across saves via `WorldSaveData.inventoryTreeOpen` (stores only deltas vs `defaultOpen`); on load the dict is staged on `InventoryController.pendingGroupOpenOverrides` and consumed by `ItemDisplay.Start`.
+  - **StoragePanel** allow tree is built once and reused across all `Show()` calls, so its collapse state persists within a session but isn't saved.
 - **Targets**: stored in `InventoryController.targets[itemId]` (default 10000 fen = 100 liang). Adjusted via +/- buttons (doubles/halves). Used by `Recipe.Score()` for work order prioritization.
-- **Market display**: handled by TradingPanel's own ItemDisplay tree (see TradingPanel section). The global panel always shows global quantities.
+- **Market display**: the global panel always shows global quantities. Market inventory has its own tree in TradingPanel (see Overview).
 
 ## StoragePanel
 
@@ -112,7 +115,7 @@ Populated from `inv.itemStacks`. Refreshed every tick via `UpdateSlots()`.
 A second set of ItemDisplay instances (separate from the global panel's) with `DisplayMode.Storage`. Shows the full item hierarchy with allow/disallow toggles. Only discovered items are visible.
 
 - `allowDisplayGos` — private `Dictionary<int, GameObject>` keyed by item id (independent of global panel's `itemDisplayGos`)
-- **Built once, reused forever**: `BuildAllowTreeOnce()` instantiates one row per item in `Db.items` on first `Show()` and sets `_allowTreeBuilt = true`. Subsequent shows skip the build and just call `RefreshAllowTreeForInv(inv)` to rebind `targetInventory`, recompute visibility (`compat && discovered && parentOpen` walking via `IsVisibleInAllowTree`), and refresh allow-toggle sprites. This keeps click cost flat (~46 SetActive + LoadAllowed) instead of paying ~600–800 GameObject instantiations per click.
+- **Built once, reused forever**: `BuildAllowTreeOnce()` instantiates one row per item in `Db.items` on first `Show()` and sets `_allowTreeBuilt = true`. Subsequent shows skip the build and just call `RefreshAllowTreeForInv(inv)` to rebind `targetInventory`, recompute visibility (`compat && discovered && parentOpen` walking via `IsVisibleInAllowTree`), and refresh allow-toggle sprites. This keeps click cost flat (tens of SetActive + LoadAllowed calls) instead of paying hundreds of GameObject instantiations per click.
 - **Per-inventory filter at refresh time, not build time**: rows are built for every item regardless of class; `Inventory.ItemTypeCompatible` is applied in `RefreshAllowTreeForInv` so the same cached tree serves Default / Liquid / Book inventories.
 - `item` field is set directly at instantiation (bypassing `Start()` timing) so toggles display correctly on the first frame. `display.open` is also preempted to `DefaultOpenForGroup(item)` at build time so first-frame visibility is correct before `Start()` runs.
 

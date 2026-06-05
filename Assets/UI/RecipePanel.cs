@@ -171,6 +171,8 @@ public class RecipePanel : MonoBehaviour {
             if (recipe == null) continue;
             if (recipe.hidden) continue; // dig/mine and other non-conventional pseudo-recipes
             if (ResearchSystem.instance != null && !ResearchSystem.instance.IsRecipeUnlocked(recipe.id)) continue;
+            if (!IsWorkstationAvailable(recipe.tile)) continue; // hide workstations not yet researched/built
+            if (!InputsDiscovered(recipe)) continue;            // hide recipes whose inputs the player has never had
 
             string tile = recipe.tile ?? "(none)";
             Recipe display = recipe;
@@ -196,6 +198,7 @@ public class RecipePanel : MonoBehaviour {
         if (Db.processorRecipesByBuilding != null) {
             foreach (var kv in Db.processorRecipesByBuilding) {
                 string tile = kv.Key;
+                if (!IsWorkstationAvailable(tile)) continue; // hide processes until their building is reachable
                 procByTile[tile] = kv.Value;
                 if (!byTile.ContainsKey(tile)) { byTile[tile] = new List<Recipe>(); order.Add(tile); }
             }
@@ -258,6 +261,35 @@ public class RecipePanel : MonoBehaviour {
         var group = go.AddComponent<RecipeGroupDisplay>();
         group.Setup(tile, st, recipes, processes, recipeDisplayPrefab, IsGroupExpanded(tile));
         spawnedGroups.Add(group);
+    }
+
+    // --- Discovery / availability filters ---
+
+    // True if the recipe's workstation is reachable: research-unlocked OR currently placed
+    // in the world. Hides e.g. crucible/weaver recipes before that building exists. Unknown
+    // or null tiles (recipes not bound to a real building) are never hidden.
+    bool IsWorkstationAvailable(string tile) {
+        if (string.IsNullOrEmpty(tile)) return true;
+        if (Db.structTypeByName == null || !Db.structTypeByName.TryGetValue(tile, out StructType st) || st == null) return true;
+        if (StructController.instance != null) {
+            List<Structure> placed = StructController.instance.GetByType(st);
+            if (placed != null && placed.Count > 0) return true;
+        }
+        return ResearchSystem.instance == null || ResearchSystem.instance.IsBuildingUnlocked(st.name);
+    }
+
+    // True once every input item has been discovered (ever obtained). Hides variants for
+    // raw materials the player has never had — e.g. the oak-planks recipe before any oak
+    // shows up. discoveredItems walks the parent chain, so a group input ("wood") counts as
+    // discovered once any leaf (pine) appears. Empty-input recipes (pump/dig) pass vacuously.
+    bool InputsDiscovered(Recipe r) {
+        InventoryController ic = InventoryController.instance;
+        if (ic == null || ic.discoveredItems == null || r.inputs == null) return true;
+        foreach (ItemQuantity iq in r.inputs) {
+            if (iq?.item == null) continue;
+            if (ic.discoveredItems.TryGetValue(iq.item.id, out bool discovered) && !discovered) return false;
+        }
+        return true;
     }
 
     // --- Book recipe collapse ---

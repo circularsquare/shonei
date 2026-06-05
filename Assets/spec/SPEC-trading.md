@@ -244,9 +244,9 @@ Consequences:
 Merchants walk to the market tile at x=0 (the "portal"), then disappear for a
 transit period representing the journey to/from the distant city. Both market
 tasks take **two** transit legs: outbound (town → market) and return
-(market → town). For `HaulToMarket` the inventory transfer happens between the
-two legs (at the market); for `HaulFromMarket` it happens between the two legs
-as well (receive at market, then walk to home storage after return).
+(market → town). The inventory transfer happens at the market, between the two
+legs — `HaulToMarket` delivers there; `HaulFromMarket` receives there, then
+walks to home storage after the return leg.
 
 - `TravelingObjective(durationTicks)` hides the animal (`go.SetActive(false)`)
   and sets `AnimalState.Traveling`. `AnimalStateManager.HandleTraveling()` ticks
@@ -262,12 +262,12 @@ as well (receive at market, then walk to home storage after return).
   applies to both `HaulToMarket` (true once delivered, on leg 2) and
   `HaulFromMarket` (true once items received, on leg 2). On load
   `Animal.Start()` reconstructs the correct task via resume-mode constructors
-  on `HaulToMarketTask` / `HaulFromMarketTask`, which rebuild the tail of
-  objectives (the unfinished `TravelingObjective` at the canonical full
+  on `HaulToMarketTask` / `HaulFromMarketTask`. These rebuild the tail of
+  objectives: the unfinished `TravelingObjective` at the canonical full
   `MarketTransitTicks` duration, then deliver/receive + return-leg objectives
-  as appropriate), skipping the eep/food gates and the outbound pathing that
+  as appropriate. They skip the eep/food gates and the outbound pathing that
   already happened pre-save, and re-issue the market/storage space
-  reservations — reservations themselves are never persisted, so every task
+  reservations. Reservations themselves are never persisted, so every task
   restores its own on load. **Progress is tracked in
   one place**: `animal.workProgress` is the single source of truth. After
   `task.Start()` zeroes it (via `TravelingObjective.Start()`), Animal.Start
@@ -440,8 +440,18 @@ baseline (no save file, parse error, or a trader newly added to config). Only
 to this trader's item only — important when a nation has multiple traders) then
 re-places buy/sell orders at current prices. Called on fill and on each farming tick.
 
-**Config:** `traders.json` — one entry per `DynamicTrader`. Multiple entries can
-share the same `name` for a nation that trades multiple items.
+**Config:** `traders.json` — one entry per `DynamicTrader`, and the authoritative
+roster. Each entry is fully independent: its own `stock`, price curve, and order
+book entry. Traders never share stock — a fill is matched to a trader by
+`name`+`item` together, so the `name` ("nation") is essentially cosmetic. It only
+drives the `From` label on the order/fill and which trader `getTraderStock(name)`
+returns (the first match for that name). Grouping items under a nation is for
+player legibility, not mechanics. Item names must be **leaf** items (groups like
+`wood`/`tools` are never physical and can't be hauled).
+
+Current roster (one nation per theme): **fulan** — grains/fibre/textile;
+**nachria** — food & drink; **trapzon** — ore/metal/stone/glass; **corcyros** —
+stone tools; **lakta** — wood goods.
 
 **To add a new nation:** add an entry to `traders.json`.  
 **To add more items for a nation:** add another entry with the same `name`.  

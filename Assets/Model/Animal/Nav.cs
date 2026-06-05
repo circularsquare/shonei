@@ -364,15 +364,18 @@ public class Nav {
         return FindPathTo(t => {
             if (t.inv == null) return true; // empty tile: full stack worth of space
             int space = t.inv.GetMergeSpace(item);
-            return space > 0 && (space >= Task.MinHaulQuantity || space >= animalQuantity);
+            return space > 0 && Task.MeetsHaulMinimum(space, animalQuantity);
         }, r); }
     // Returns the best drop target: storage/liquid inv if within storageBonusTiles of nearest floor tile, else floor.
     // targetInv is null when dropping on floor.
     public (Path path, Inventory targetInv) FindPathToDropTarget(Item item, int animalQuantity, int storageBonusTiles = 10) {
         Path floorPath = FindPathToDrop(item, animalQuantity);
         float floorCost = floorPath != null ? floorPath.cost : float.MaxValue;
+        // Only consider a storage that either clears the whole carried load or takes a meaningful
+        // chunk (>= MinHaulQuantity), so a mouse doesn't trudge to a near-full crate just to dribble
+        // a few fen in and walk off with the rest. Matches FindPathToDrop's floor threshold above.
         var (storagePath, storageInv) = FindPathToInv(new[] { Inventory.InvType.Storage },
-            inv => inv.GetStorageForItem(item) > 0, r: Task.MediumFindRadius);
+            inv => Task.MeetsHaulMinimum(inv.GetStorageForItem(item), animalQuantity), r: Task.MediumFindRadius);
         // Storage preferred if its cost minus the bonus is still <= floor cost
         if (storageInv != null && storagePath.cost - storageBonusTiles <= floorCost)
             return (storagePath, storageInv);
@@ -466,7 +469,7 @@ public class Nav {
         Tile destTile = destPath.tile;
         int qty = Math.Min(sourceTile.inv.AvailableQuantity(item), destTile.inv.GetMergeSpace(item));
         if (qty <= 0) return null;
-        if (qty < Task.MinHaulQuantity && qty < sourceTile.inv.Quantity(item)) return null;
+        if (!Task.MeetsHaulMinimum(qty, sourceTile.inv.Quantity(item))) return null;
         return new HaulInfo(item, qty, sourceTile, destTile, sourceStack);
     }
 

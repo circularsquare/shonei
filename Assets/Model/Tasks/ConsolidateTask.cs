@@ -23,7 +23,7 @@ public class ConsolidateTask : Task {
         if (spaceReserved <= 0) return false;
         int quantity = Math.Min(h.quantity, spaceReserved);
         // Cleanup releases the space reservation we just made before bailing.
-        if (quantity < MinHaulQuantity && quantity < available) return false; // de minimis
+        if (!MeetsHaulMinimum(quantity, available)) return false; // de minimis
         _iq = new ItemQuantity(h.item, quantity);
         _intendedQuantity = quantity;
         FetchAndReserve(_iq, h.itemTile, h.itemStack, quantity);
@@ -31,7 +31,7 @@ public class ConsolidateTask : Task {
         return true;
     }
     public override void Complete() {
-        if (objectives.Count == 0 && _iq != null && _iq.quantity < MinHaulQuantity && _iq.quantity < _intendedQuantity) {
+        if (objectives.Count == 0 && _iq != null && !MeetsHaulMinimum(_iq.quantity, _intendedQuantity)) {
             Debug.Log($"{animal.aName} ({animal.job.name}) tiny Consolidate: moved {_iq.quantity} fen of {_iq.item.name} (intended {_intendedQuantity} — shrunk mid-task)");
         }
         base.Complete();

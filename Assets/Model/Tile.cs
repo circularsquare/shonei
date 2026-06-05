@@ -283,11 +283,36 @@ public enum BackgroundType {
 
 public class TileType {
     public int id {get; set;}
-    public string name {get; set;}
+    public string name {get; set;}                  // internal lookup key — never shown to the player.
+    public string displayName {get; set;}           // optional player-facing name; falls back to `name`. See DisplayName.
+    // Player-facing name (info panel). Lets a placed variant (e.g. "limestone_placed") read as
+    // its base material ("limestone"). Mirrors StructType.DisplayName.
+    public string DisplayName => string.IsNullOrEmpty(displayName) ? name : displayName;
     public bool solid {get; set;}
     // Optional logical family ("stone" for limestone/granite/slate, etc.) — used by
     // StructPlacement so that a building's `requiredTileName` can match by group.
     public string group {get; set;}
+    // Optional override: borrow another tile type's texture for rendering instead of `name`
+    // (cache + per-type arrays stay keyed by `name`). Usually unnecessary — the "_placed"
+    // convention (below) auto-borrows the base art. Set this only to point at some OTHER stem.
+    public string spriteName {get; set;}
+
+    // Suffix marking a player-built, non-harvestable variant of a base tile ("dirt" → "dirt_placed").
+    public const string PlacedSuffix = "_placed";
+
+    // Art stem for a tile name — the single source of truth for placed-variant art reuse, shared by
+    // TileSpriteCache (final tile render) AND StructType.LoadSprite (blueprint / build-ghost / menu
+    // icon), so all four agree. Resolution order: explicit `spriteName` override, else the base of a
+    // "<base>_placed" convention name, else the name itself. Static + null-guarded so it's safe to
+    // call before Db finishes loading.
+    public static string SpriteStem(string tileName) {
+        if (Db.tileTypeByName != null && Db.tileTypeByName.TryGetValue(tileName, out TileType tt)
+            && !string.IsNullOrEmpty(tt.spriteName))
+            return tt.spriteName;
+        if (tileName != null && tileName.Length > PlacedSuffix.Length && tileName.EndsWith(PlacedSuffix))
+            return tileName.Substring(0, tileName.Length - PlacedSuffix.Length);
+        return tileName;
+    }
     // Optional name of an overlay sprite sheet (e.g. "grass" for dirt). When non-null,
     // tiles of this type can have a per-side overlayMask whose bits are rendered as
     // edge art from Sprites/Tiles/Sheets/<overlay>.png. See Tile.overlayMask.

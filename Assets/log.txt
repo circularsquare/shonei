@@ -1,8 +1,16 @@
 meoww!!
 
+6/4
+- more proper research gating 
+- more tutorial / playertask work
+- solid side check for ladders 
+- tile placement fix, choose specific leaf 
+    - track which leaf material was used for construction, return on deconstruct
+- more trade goods
 6/2
 - more recipe panel improvements
 - tutorial tasks
+- backward facing animations for ladders and working
 6/1
 - added kiln
 5/30

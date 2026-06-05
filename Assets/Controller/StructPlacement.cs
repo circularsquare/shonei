@@ -38,8 +38,17 @@ public static class StructPlacement {
             int dir = mirrored ? +1 : -1;
             Tile wall = world.GetTileAt(tile.x + dir, tile.y);
             if (wall == null) return "needs wall on this side";
-            bool wallSolid = wall.type.solid || wall.structs[0] != null;
-            if (!wallSolid) return "needs wall on this side";
+            // A natural/built solid tile is always a valid mount. Otherwise the wall must be a
+            // building whose sprite has body on the face the ladder rests against — never a
+            // plant, never a visually-empty footprint tile (e.g. a windmill's blade tiles). The
+            // ladder rests on the wall's RIGHT face when !mirrored (dir=-1 → wall on its left).
+            if (!wall.type.solid) {
+                Structure s = wall.structs[0];
+                if (s == null) return "needs wall on this side";
+                if (s is Plant) return "can't ladder on a plant";
+                if (!s.structType.SideEdgeSolid(wall.x - s.x, wall.y - s.y, !mirrored, s.mirrored))
+                    return "no wall on this side";
+            }
             return null;
         }
 
@@ -60,6 +69,18 @@ public static class StructPlacement {
                 if (s != null && s.structType.preservesTile) return $"would disturb {s.structType.name}";
             }
         }
+        // Stone extraction is gated behind the Mining technology. Mining out a stone-group
+        // tile (limestone/granite/slate) — whether via the "mine tile" action (`empty`) or a
+        // tile-occupying structure like the mineshaft (`requiresSolidTilePlacement`) — requires
+        // Mining to be unlocked. Earth tiles (dirt/sand/clay) stay free so burrows/digging pits
+        // need no tech. The quarry is gated separately via `defaultLocked`, so it never reaches
+        // this path. `minesTile` mirrors the same predicate in Blueprint.Complete. Permissive when
+        // ResearchSystem is absent (e.g. unit-test contexts) — don't block what can't be checked.
+        bool minesTile = (st.isTile && st.name == "empty") || placementTileMustBeSolid;
+        if (minesTile && tile.type.group == "stone"
+            && ResearchSystem.instance != null && !ResearchSystem.instance.IsUnlockedByName("Mining"))
+            return "needs Mining technology";
+
         // requiredTileName matches either a specific tile name or the tile's group
         // (e.g. quarry's "stone" requirement accepts limestone/granite/slate).
         if (st.requiredTileName != null

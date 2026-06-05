@@ -66,6 +66,20 @@ public class WorldSaveData {
     // Onboarding progress: index of the current PlayerTask. Null on pre-feature saves →
     // onboarding is treated as already complete (returning players aren't re-shown tasks).
     public int? playerTaskIndex;
+    // Cumulative births this colony — gates the early-growth birth-rate boost (first 2 births).
+    // Null on pre-feature saves → restored as boost-already-spent so established colonies don't
+    // get the early boost re-applied.
+    public int? births;
+    // Decorative flower layout (position + variant). Persisted because flower eligibility
+    // depends on live grass/snow state that evolves via the shared RNG and doesn't reproduce
+    // across a reload — so re-deriving on load made flowers look different. Null on old saves
+    // → FlowerController falls back to a fresh worldgen scatter.
+    public FlowerSaveData[] flowers;
+}
+
+public class FlowerSaveData {
+    public int x, y;
+    public string type;   // FlowerType.name; resolved via Db.flowerTypeByName on restore
 }
 
 public class ResearchSaveData {
@@ -173,6 +187,14 @@ public class StructureSaveData {
     // these to re-link both posts after Phase 2 restores them independently.
     public int? partnerX;
     public int? partnerY;
+    // Index-aligned record of the leaf items + fen this structure was built from (a group cost
+    // like "wood" resolved to the delivered leaf "pine"). Drives the exact deconstruct refund and
+    // future wood-type tinting. null/absent on old saves and on non-blueprint structures (worldgen,
+    // mined tile, mineshaft-ladder follow-up) → deconstruct falls back to first-leaf of each cost.
+    // A leaf may repeat (two group costs can resolve to the same leaf), so this is a list — NOT a
+    // name→qty map. Item names (not ids) per the save convention, since ids aren't stable.
+    public string[] materialItems;
+    public int[]    materialFen;
     // Footprint at save time (anchored at Shape.nx × Shape.ny — accounts for variable-shape
     // structures). On load, RestoreStructure drops any entry whose saved size doesn't match
     // the current StructType definition — that's the detection mechanism for "this building

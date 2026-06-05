@@ -32,6 +32,15 @@ public class Structure {
     // Persisted via StructureSaveData.condition. Default 1.0 also covers old saves.
     public float condition = 1.0f;
 
+    // ── Build materials ────────────────────────────────────────────────
+    // The actual leaf items + fen this structure was built from (a group cost like "wood"
+    // resolved to the delivered leaf "pine"). Set on the blueprint-construction path, persisted
+    // via StructureSaveData.materialItems/materialFen, and read by Blueprint.Deconstruct to
+    // refund the exact leaf. Also the data source for future wood-type tinting.
+    // null = no record (legacy save, or a non-blueprint creation path: worldgen, mined tile,
+    // mineshaft-ladder follow-up) → deconstruct falls back to first-leaf of each cost.
+    public List<ItemQuantity> materials;
+
     // Opt-in gate: plants, nav-only structures (platform/stairs/ladder, via noMaintenance JSON flag),
     // and zero-cost structures are excluded from the maintenance system entirely.
     public bool NeedsMaintenance =>

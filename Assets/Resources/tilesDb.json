@@ -75,5 +75,22 @@
             { "name": "iron ore", "quantity": 1, "chance": 0.05 },
             { "name": "jade",     "quantity": 1, "chance": 0.03 }
         ]
+    },{
+        "id": 23,
+        "name": "limestone_placed",
+        "displayName": "limestone",
+        "solid": 1,
+        "nproducts": [
+            { "name": "limestone", "quantity": 10 }
+        ]
+    },{
+        "id": 24,
+        "name": "dirt_placed",
+        "displayName": "dirt",
+        "solid": 1,
+        "overlay": "grass",
+        "nproducts": [
+            { "name": "dirt", "quantity": 10 }
+        ]
     }
 ]

@@ -103,13 +103,8 @@ public class WorldController : MonoBehaviour {
             StartCoroutine(SaveSystem.instance.PostLoadInit());
         }
         World.OnItemFall += SpawnItemFallAnimation;
-
-        // Decorative flowers do a full-world scan + subscribe their per-tile
-        // callbacks here, after both worldgen and save-load paths have settled.
-        // Rng.worldSeed is authoritative on both paths (set by GenerateDefault
-        // or by SaveSystem.ApplySaveData), so the layout is reproducible.
-        LoadingScreen.SetPhase("Scattering flowers");
-        FlowerController.instance?.OnWorldReady(world, Rng.worldSeed);
+        // Decorative flowers are scattered/restored in SaveSystem.PostLoadInit (the common
+        // hook run by every world-creation path), alongside AnimalController.Load.
 
         // One more yield so the next frame's LateUpdate fires — that's where
         // TileMeshController rebuilds every dirty chunk for the first time

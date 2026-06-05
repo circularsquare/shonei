@@ -72,11 +72,11 @@ public class PlayerTaskController : MonoBehaviour {
     // ── Task list ───────────────────────────────────────────────────────
     void BuildTasks() {
         tasks = new List<PlayerTask> {
-            new PlayerTask("flag_trees", "Flag 3 trees to harvest",
-                () => new TaskProgress(CountFlaggedPlants(p => p.plantType.name.Contains("tree")), 3)),
+            new PlayerTask("flag_trees", "Flag 2 trees to harvest",
+                () => new TaskProgress(CountFlaggedPlants(p => YieldsWood(p.plantType)), 2)),
             new PlayerTask("flag_wheat", "Flag 3 wheat to harvest",
                 () => new TaskProgress(CountFlaggedPlants(p => p.plantType.name == "wheat"), 3)),
-            new PlayerTask("build_crates", "Build 3 crates",
+            new PlayerTask("build_crates", "Build 3 storage crates\nhold shift to place multiple",
                 () => new TaskProgress(CountStructures("crate"), 3)),
             new PlayerTask("configure_crates", "Set 1 crate to wood, 1 to wheat",
                 () => new TaskProgress(CountConfiguredCrates(), 2)),
@@ -88,7 +88,7 @@ public class PlayerTaskController : MonoBehaviour {
                 () => new TaskProgress(CountJob("woodworker"), 1)),
             new PlayerTask("build_drawer", "Build a drawer",
                 () => new TaskProgress(CountStructures("drawer"), 1)),
-            new PlayerTask("six_mice", "Have 6 mice",
+            new PlayerTask("six_mice", "Have 6 mice\nbuild housing + keep them happy",
                 () => new TaskProgress(CountMice(), 6)),
             new PlayerTask("build_laboratory", "Build a laboratory",
                 () => new TaskProgress(CountStructures("laboratory"), 1)),
@@ -121,10 +121,26 @@ public class PlayerTaskController : MonoBehaviour {
         return n;
     }
 
+    // A plant is a "tree" for the harvest task if it yields wood (or any wood child like
+    // pine/oak) on harvest — a semantic test that includes pine/oak trees but excludes the
+    // appletree (yields apples) and bamboo (own item), without hardcoding species names.
+    // Uses the group-wildcard helper so "wood" matches any descendant leaf.
+    static bool YieldsWood(PlantType pt) {
+        if (pt?.products == null) return false;
+        if (!Db.itemByName.TryGetValue("wood", out Item wood)) return false;
+        foreach (ItemQuantity p in pt.products)
+            if (p?.item != null && Inventory.MatchesItem(p.item, wood)) return true;
+        return false;
+    }
+
     int CountStructures(string structName) {
         if (StructController.instance == null) return 0;
         if (!Db.structTypeByName.TryGetValue(structName, out StructType st)) return 0;
-        return StructController.instance.GetByType(st).Count;
+        // GetByType returns null (not empty) when no instances exist yet; counting a
+        // not-yet-built structure would NRE every frame and freeze the card on the
+        // prior task's text. Guard like WorkOrderManager.cs:813.
+        List<Structure> list = StructController.instance.GetByType(st);
+        return list != null ? list.Count : 0;
     }
 
     // Requires two DISTINCT crates: one filtered for wood, a separate one for wheat.
@@ -137,6 +153,7 @@ public class PlayerTaskController : MonoBehaviour {
         if (!Db.itemByName.TryGetValue("wheat", out Item wheat)) return 0;
 
         List<Structure> crates = StructController.instance.GetByType(crateType);
+        if (crates == null) return 0; // null (not empty) when no crates exist yet — same footgun as CountStructures
         bool anyConfigured = false;
         foreach (Structure ws in crates) {
             if (!CrateAllows(ws, wood)) continue;

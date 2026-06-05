@@ -28,11 +28,11 @@ Any  → Falling (involuntary; interrupts current task) → Idle on landing
 | Temperature | Reduces efficiency when outside comfort range (default 10–25°C). Clothing expands the range by ±3°C. |
 | Efficiency | `eating.Efficiency() * eeping.Efficiency() * happiness.TemperatureEfficiency()` — scales move speed and work rate |
 
-**Needs tick wall-clock; only work ticks on efficiency.** Need depletion *and* recovery (hunger, sleep) run every tick in `Animal.HandleNeeds()`, independent of efficiency. The energy/efficiency throttle (`energy += efficiency; if (energy > 1) UpdateState()`) paces only *work* — craft/build/harvest/research progress, and the per-sleep-tick events in `HandleEeping` (reproduction roll, wake-up check). Sleep **recovery** must stay in `HandleNeeds`: driving it from the throttled path scales recovery with efficiency while depletion stays unthrottled, so a low-efficiency mouse (hungry + exhausted) loses eep faster than it regains it and never wakes — a death spiral that locks the whole colony. Do not move `eeping.Eep()` back into `HandleEeping`.
+**Needs tick wall-clock; only work ticks on efficiency.** Need depletion *and* recovery (hunger, sleep) run every tick in `Animal.HandleNeeds()`, independent of efficiency. The energy/efficiency throttle (`energy += efficiency; if (energy > 1) UpdateState()`) paces only *work* — craft/build/harvest/research progress, and the per-sleep-tick events in `HandleEeping` (reproduction roll, wake-up check). Sleep **recovery** must stay in `HandleNeeds`. Driving it from the throttled path would scale recovery with efficiency while depletion stays unthrottled. A low-efficiency mouse (hungry + exhausted) would then lose eep faster than it regains it and never wake — a death spiral that locks the whole colony. Do not move `eeping.Eep()` back into `HandleEeping`.
 
 **Colony rescue spawn.** `AnimalController.MaybeRescueSpawn()` (called after `RemoveDeadAnimals()`) prevents a starvation softlock: if `na < 4` and the current season is not Winter, the colony is topped back up to 4 — typically 1–2 mice after a death or two. New arrivals spawn at the first `isHousing` building it finds — or, if none exist, at the left surface edge (`x=1, y=surfaceY[1]`; `x=0` is the worldgen market column). A 120-frame cooldown gates the trigger so the same drop doesn't re-fire while the queued animals are still registering (Animal.Start runs the frame after AddAnimal). Winter is excluded so the player isn't handed a relief wave during the lean season; help comes in spring/summer/fall.
 
-**Starvation death.** A mouse whose `food` hits 0 starts a countdown: `Eating.starvingTicks` is incremented every tick `Eating.Update()` finds food at 0, and reset to 0 by `Eat()` or any tick with food remaining. Once it reaches `World.ticksInDay` — a full in-game day at zero food — `Eating.StarvedToDeath()` trips and `Animal.TickUpdate()` sets the transient `pendingDeath` flag (skipping the rest of that mouse's tick). `AnimalController.RemoveDeadAnimals()`, run once **after** the per-animal tick loop so `animals[]` is never compacted mid-iteration, sweeps for the flag and calls `HandleDeath`: it posts an EventFeed alert, drops the mouse's inventory + all four equip slots to the floor via `Animal.DropInventoryToFloor()` (recoverable by the player), fixes the job count, deselects the InfoPanel if it was showing the mouse, and tears the mouse down via `Animal.Destroy()` — which now also releases the home reservation and destroys the equip-slot inventories. A separate EventFeed warning fires the moment the countdown first starts (`starvingTicks == 1`). With the default `hungerRate` (0.4) it takes roughly **2 in-game days** from a full belly to death. `starvingTicks` is persisted in `AnimalSaveData` (0 on old saves = not starving).
+**Starvation death.** A mouse whose `food` hits 0 starts a countdown: `Eating.starvingTicks` is incremented every tick `Eating.Update()` finds food at 0, and reset to 0 by `Eat()` or any tick with food remaining. Once it reaches `World.ticksInDay` — a full in-game day at zero food — `Eating.StarvedToDeath()` trips and `Animal.TickUpdate()` sets the transient `pendingDeath` flag (skipping the rest of that mouse's tick). `AnimalController.RemoveDeadAnimals()`, run once **after** the per-animal tick loop so `animals[]` is never compacted mid-iteration, sweeps for the flag and calls `HandleDeath`: it posts an EventFeed alert, drops the mouse's inventory + all four equip slots to the floor via `Animal.DropInventoryToFloor()` (recoverable by the player), fixes the job count, deselects the InfoPanel if it was showing the mouse, and tears the mouse down via `Animal.Destroy()` — which now also releases the home reservation and destroys the equip-slot inventories. A separate EventFeed warning fires the moment the countdown first starts (`starvingTicks == 1`). With the default `hungerRate` it takes a couple in-game days from a full belly to death. `starvingTicks` is persisted in `AnimalSaveData` (0 on old saves = not starving).
 
 ### Happiness satisfactions
 
@@ -45,7 +45,7 @@ Any  → Falling (involuntary; interrupts current task) → Idle on landing
 | Leisure buildings | `StructType.leisureNeed` | fireplace → "fireplace" |
 | ChatTask (hardcoded) | — | "social" |
 
-Each satisfaction decays exponentially each SlowUpdate (`×0.9044`). Score = sum over satisfied needs (≥1.0 threshold) — `+1` each, except `"alcohol"` which is `+2` (a satisfied tipple is worth more than a tidy bench) — plus housing (bool) + temperature (−1/5°C to +2) + **colony food-storage bonus** (0..4, scales linearly with days-of-food up to 10 days; same value applied to every mouse). `Db.happinessMaxScore` = need count + 1 (housing) + 2 (temp max) + 4 (food storage) + 1 (alcohol's extra point, added when the need is registered) + ceil(maxFurnishingPerMouse).
+Each satisfaction decays exponentially each SlowUpdate (`×0.9044`). Score = sum over satisfied needs (≥1.0 threshold) — `+1` each, except `"alcohol"` which is `+2` (a satisfied tipple is worth more than a tidy bench) — plus housing (bool) + temperature (−1/5°C to +2) + **colony food-storage bonus** (0..4, scales linearly with days-of-food up to 10 days; same value applied to every mouse). `Db.happinessMaxScore` = need count + 1 (housing) + 2 (temp max) + 4 (food storage) + 1 (alcohol's extra point above, added when the need is registered) + ceil(maxFurnishingPerMouse).
 
 **Colony food-storage bonus.** `AnimalController.UpdateColonyStats` (every 10 ticks) recomputes `daysOfFoodInStorage = Σ (qty_fen/100 × foodValue) / (hungerRate × ticksInDay × na)` over `Db.edibleItems`, then sets `foodStorageHappinessBonus = clamp01(days/10) × 4`. `Happiness.SlowUpdate` reads the field and adds it to each mouse's score uniformly — it's a colony-level pressure, not per-mouse. The same `daysOfFoodInStorage` field drives the reproduction gate in `HandleEeping`: hard floor at 2 days (no births), then linear taper `× clamp(days/10)` on the per-sleep-tick birth chance up to full rate at 10 days.
 
@@ -101,23 +101,28 @@ urgency — the construct order it's standing on scores ≈0.70, no special flag
   BOUND — when work wins, the existing tier-by-tier `ChooseOrder(1→2→3-excl-craft→4)` sequence does
   the actual reserve-on-commit pick (possibly a different order). Urgency decides *whether* to work,
   not which order. `IsPickable` mirrors `ChooseOrder`'s filters exactly — keep in sync.
-- **craft** — `CraftUrgency()`: normalized best recipe score `craftWeight * s/(1+s)` (Recipe.Score is
-  unbounded multiplicative, so it's remapped to (0,1) before competing with tier urgencies). Internal
-  recipe-first station selection still via `ChooseCraftTask` (shares `ScoreCraftRecipes` with the
-  urgency calc).
-- **leisure** — `LeisureUrgency()`: time-of-day bias (evening 0.50 / day 0.12) × least-satisfied
-  available need's pull. Internal pick via `TryPickLeisure` (shares `GatherLeisureCandidates`).
-- **idle** — `IdleUrgency()`: always-available baseline (evening 0.35 / day 0.15). The floor that
-  low-value work/leisure must clear; when nothing presses, a mouse sometimes idles/chats.
+- **craft** — `CraftUrgency()`: best recipe score `s` (Recipe.Score, unbounded 0..+∞) mapped into a
+  fixed `[CraftFloor, CraftCeil]` band via `s/(1+s)`, so it competes on the same scale as tier
+  urgencies and a needed recipe can never sink below the idle floor. `Recipe.Score` is a ratio of
+  geometric means — `GM(input qty/target) / GM(output qty/target)` — so input count doesn't penalise
+  a recipe. Internal recipe-first station selection still via `ChooseCraftTask` (shares
+  `ScoreCraftRecipes` with the urgency calc).
+- **leisure** — `LeisureUrgency()`: time-of-day bias × least-satisfied available need's pull. Internal
+  pick via `TryPickLeisure` (shares `GatherLeisureCandidates`).
+- **idle** — `IdleUrgency()`: always-available time-of-day baseline — the floor that low-value
+  work/leisure must clear; when nothing presses, a mouse sometimes idles/chats.
 
-**Score jitter:** every category score is passed through `Animal.Jitter(s) = s + (1-s)·0.15·rand`
-(seeded `random`, save-reproducible) before ranking. The `(1-s)` headroom factor means urgent
-scores barely move (pressing decisions stay deterministic) while low scores get real variety — so a
-chill mouse varies its pick among comparable options instead of always taking the same one. Only
-shuffles near-ties; well-separated scores keep their order. A 0 score stays 0.
+**Score jitter:** every category score is passed through `Animal.Jitter(s) = s + (1-s)·N(0, stdev)`
+— two-directional Gaussian, seeded `random`, save-reproducible — before ranking. The `(1-s)` headroom
+factor means urgent scores barely move (pressing decisions stay deterministic) while low scores get
+real variety. The normal tail occasionally produces a large nudge, so a mouse rarely does something
+well off the obvious pick — and that tail is the probabilistic release valve that stops a busy mouse
+from being permanently locked out of leisure. A nudge can push a low score below 0; `ChooseTask` then
+skips that category for the tick (harmless). A 0 score stays 0.
 
-**TUNING:** the constants above (tier bases, proximity falloff, idle/leisure/equip weights) are
-first-guess values pending playtest — see the tuning block in `plans/urgency-system.md`.
+**Current numeric ranges/values for every category live in the landscape block at the top of
+`UrgencyConfig.cs`** (single source of truth — this section describes the *mechanism*, not the
+numbers, to avoid drift). Tuning rationale: `plans/urgency-system.md`.
 
 `ChooseOrder(animal, priority, exclude?)` (still used by the work category) only considers the single requested tier, optionally filters out a specific `OrderType`, filters to `res.Available()` orders, additionally skips haul orders where `stack.Available()` is false (stack fully reserved by in-flight tasks), distance-sorts remaining candidates, and on success calls `order.res.Reserve()` and assigns `task.workOrder = order`. Orders are **never removed when claimed** — they stay in the queue so they can be re-claimed after the task ends. WOM tasks are job-filtered via the `canDo` predicate on each `WorkOrder`.
 
@@ -161,7 +166,7 @@ Tasks reserve sources and destinations during `Initialize()` via `Task.ReserveSt
 | `ResearchTask` | WOM p4 | scientist | Navigate to a specific lab, work in loops. Optionally borrows the matching tech book (via `bookSlotInv`) before research and returns it after — book grants 3× research progress per tick while equipped (see SPEC-books.md). |
 | `ObtainTask` | survival | any | Fetch a specific item (food/equip) |
 | `EepTask` | survival | any | Navigate home and sleep |
-| `DropTask` | survival | any | Drop excess main inventory — prefers nearby storage/tank (10-tile bonus) over floor. On no-reachable-target, logs a warning and sets `animal.dropCooldownUntil = timer + 3f` so `ChooseTask` falls through to other branches instead of respawning `DropTask` every tick |
+| `DropTask` | survival | any | Drop excess main inventory — prefers nearby storage/tank (10-tile bonus) over floor. `DropObjective` (shared by Craft/Harvest output drops + book returns) **retries across targets until the item is fully offloaded** — tops off the nearest storage, then spills the remainder to the next storage/floor (floor is the guaranteed sink), so a near-full crate no longer leaves a partial load stuck in the carrier's inventory. On no-reachable-target, or a visit that deposits 0 (discrete item / full floor tile), it stops: logs a warning and sets `animal.dropCooldownUntil = timer + 3f` so `ChooseTask` falls through instead of respawning every tick. The stuck-remainder give-up uses `Complete` (not `Fail`) so chained/best-effort callers aren't torn down |
 | `GoTask` | survival | any | Navigate to a tile |
 | `ChatTask` | leisure | any | Walk to idle partner, both leisure 20 ticks, grants socialization happiness |
 | `LeisureTask` | leisure | any | Constructed with a `leisureNeed` string. `Initialize` delegates to `Nav.FindPathToLeisureSeat(filter)` — filter combines `leisureNeed` match + `Building.CanHostLeisureNow()` (disabled/broken/fuel/active-hour). Uses the standard Chebyshev-sort + first-fit-within-radius pattern (see §Path-cost radius gate), so it's consistent with `FindPathToStruct` etc. rather than a bespoke scan. Reserves the returned `seatRes[i]`. Leisure 15 ticks. On Complete grants `Happiness.NoteLeisure(need, structType.leisureGrant)` — `leisureGrant` lets cheap/always-on buildings (bench = 0.5) grant less than premium ones (fireplace = 1.0). |
@@ -364,7 +369,7 @@ Both reconciliation and auditing are handled by a single `ScanOrders(mode, silen
 
 ### De minimis haul threshold
 
-`Task.MinHaulQuantity = 20` (0.20 liang). `HaulTask` and `ConsolidateTask` skip a haul if the quantity is below this threshold **and** it would not drain the source stack entirely.
+`Task.MinHaulQuantity = 20` (0.20 liang). A move is skipped if it's below this threshold **and** wouldn't take the whole amount in play (drain the source stack / fit the entire carried load). This rule is centralised in `Task.MeetsHaulMinimum(amount, wholeAmount)` — every haul / consolidate / fuel / drop-target site (`HaulTask`, `ConsolidateTask`, `SupplyFuelTask`, `Nav.FindPathToDrop` / `FindPathToDropTarget` / `FindFloorConsolidation`) tests through it, so the threshold stays consistent. Use it rather than re-inlining the comparison.
 
 `Task.MinMarketHaulQuantity = 100` (1.0 liang). `HaulToMarketTask` and `HaulFromMarketTask` use this stricter threshold with **no exceptions** — not for stack-clearing or topping off. Merchants shouldn't make a trip for a trickle.
 

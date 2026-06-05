@@ -27,12 +27,13 @@ public abstract class Objective {
         return this.GetType().Name.Replace("Objective", "");
     }
     // Body pose the animal should strike while this objective is current, or null for the
-    // default state-driven animation (idle/walk/eep). Read by AnimationController each frame
-    // and mapped to an Animator int. Self-clears on objective transition — no explicit reset.
+    // default state-driven animation (idle/walk/eep). Mapped to an Animator int by
+    // AnimationController.UpdateState(), which runs on objective transition (Task.StartNextObjective),
+    // state change, and nav locomotion — NOT every frame. So an override only updates the
+    // paper-doll at those moments; it self-clears on the next objective transition.
     public virtual string PoseOverride => null;
     // Facing-view this objective forces ("back"/"front"), or null for nav/state-driven facing.
-    // Mirrors PoseOverride: read by AnimationController each frame, mapped via ViewNameToFacing.
-    // Self-clears on objective transition — no explicit reset.
+    // Mirrors PoseOverride: applied via ViewNameToFacing at the same UpdateState() moments.
     public virtual string ViewOverride => null;
     public override string ToString() {return GetObjectiveName();}
 }

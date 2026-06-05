@@ -46,6 +46,13 @@ public abstract class Task {
     // De minimis: skip hauls/drops below this unless it clears the source stack entirely.
     public const int MinHaulQuantity = 20; // 0.20 liang
 
+    // True if a move of `amount` is worth making: it's at least MinHaulQuantity, OR it takes the
+    // whole `wholeAmount` in play (clears a source stack / fits the entire carried load), so a
+    // legitimately small-but-complete move is never blocked as a trickle. Single source of truth
+    // for the de-minimis rule — every haul / consolidate / fuel / drop site tests through this.
+    public static bool MeetsHaulMinimum(int amount, int wholeAmount) =>
+        amount >= MinHaulQuantity || amount >= wholeAmount;
+
     // Strict minimum for market hauls — no exceptions for stack-clearing or topping off.
     // Merchants shouldn't make a trip for a trickle.
     public const int MinMarketHaulQuantity = 100;       // 1.0 liang (most items)
@@ -329,6 +336,12 @@ public abstract class Task {
         currentObjective = objectives.First.Value;
         objectives.RemoveFirst();
         currentObjective.Start();
+        // Refresh the paper-doll for the new objective's PoseOverride / ViewOverride. The
+        // animator is otherwise only driven on state-change / nav locomotion, so a stationary
+        // objective (construct, craft-at-workstation, research) that sets state=Working but
+        // doesn't move would never apply its pose/view without this. Fires after Start() so
+        // the objective has settled its state; null-safe if Start() failed/advanced the task.
+        animal.animationController?.UpdateState();
     }
     public void OnArrival(){
         currentObjective?.OnArrival();

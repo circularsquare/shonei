@@ -14,7 +14,18 @@ using TMPro;
 //
 //   HUD: add Button to AnimalController.happinessPanel, onClick -> GlobalHappinessPanel.instance.Toggle()
 public class GlobalHappinessPanel : MonoBehaviour {
-    public static GlobalHappinessPanel instance { get; private set; }
+    static GlobalHappinessPanel _instance;
+    // Lazily resolves the (possibly inactive) panel so callers can Toggle() it before it has
+    // ever been activated. Awake only runs on first activation, so without this the static
+    // stays null and the first open silently no-ops. FindObjectOfType(true) includes inactive
+    // objects; the result is cached on the backing field.
+    public static GlobalHappinessPanel instance {
+        get {
+            if (_instance == null) _instance = FindObjectOfType<GlobalHappinessPanel>(true);
+            return _instance;
+        }
+        private set { _instance = value; }
+    }
 
     [SerializeField] TextMeshProUGUI  headerText;
     [SerializeField] Transform        needContainer;
@@ -28,7 +39,8 @@ public class GlobalHappinessPanel : MonoBehaviour {
     const float RefreshInterval = 1f;
 
     void Awake() {
-        if (instance != null) Debug.LogError("Two GlobalHappinessPanels!");
+        // Check the backing field, not the lazy getter (which would resolve to this).
+        if (_instance != null && _instance != this) Debug.LogError("Two GlobalHappinessPanels!");
         instance = this;
         UI.RegisterExclusive(gameObject);
     }
@@ -128,9 +140,13 @@ public class GlobalHappinessPanel : MonoBehaviour {
         }
 
         if (headerText != null) {
+            // Pop cap = happiness-scaled ceiling; births also gated by housing slots and food.
+            // The "grow pop" line tells the player the three levers (answers the onboarding
+            // "Have 6 mice" question), with the per-factor detail in the rows below.
             headerText.text =
                 $"Colony Happiness: {totalScore / n:0.0} / {Db.happinessMaxScore}.0   ({n} mice)\n" +
-                $"pop capacity: {ac.populationCapacity}";
+                $"pop {n} / {ac.populationCapacity}\n" +
+                "grow pop: raise happiness, build housing, stock food";
         }
 
         // Update rows. Every row uses the same Refresh(averagePoints, detailText, tooltip)

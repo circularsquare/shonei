@@ -1463,6 +1463,8 @@ public static class WorldGen {
         int nx = world.nx;
         int spawnMinX = cfg.SpawnMinX;
         int spawnMaxX = cfg.SpawnMaxX;
+        int spawnCenter = (spawnMinX + spawnMaxX) / 2;
+        int clearRadius = cfg.StartClearRadius;
         float plantChance = cfg.PlantChance;
         int clusterMin = cfg.ClusterMin;
         int clusterMax = cfg.ClusterMax;
@@ -1477,7 +1479,10 @@ public static class WorldGen {
 
         for (int x = 0; x < nx; x++) {
             if (occupied[x]) continue;
-            // Skip spawn zone — leave room for the player
+            // Skip the starting area — keep the player's opening view to curated
+            // starter plants. The spawn-zone ±2 guard is a floor so lowering
+            // StartClearRadius can never drop scatter onto the curated starters.
+            if (Math.Abs(x - spawnCenter) <= clearRadius) continue;
             if (x >= spawnMinX - 2 && x <= spawnMaxX + 2) continue;
             // Must have solid dirt at surface and no water above
             if (!IsPlantEligible(world, surfaceY, x, dirt)) continue;
@@ -1508,11 +1513,74 @@ public static class WorldGen {
                 if (!IsPlantEligible(world, surfaceY, px, dirt)) continue;
 
                 Plant p = new Plant(Db.plantTypeByName[plantName], px, surfaceY[px]);
-                p.Mature();
+                // Random growth stage so a fresh world reads as established, not freshly sprouted.
+                // (Curated starter plants near spawn are placed mature in WorldController instead.)
+                p.Mature(rng.Next(0, p.plantType.maxStage + 1));
                 StructController.instance.Place(p);
                 occupied[px] = true;
             }
         }
+
+        EnsureRamieNearSpawn(world, surfaceY, rng, occupied, dirt, spawnCenter);
+    }
+
+    // Ramie is a key early fiber crop, so a fresh colony shouldn't depend on the
+    // scatter RNG happening to drop one within reach. If none landed inside the
+    // guarantee window, force a small cluster in the ring just outside the clean
+    // starting area (so it stays out of the immediate opening view).
+    static void EnsureRamieNearSpawn(World world, int[] surfaceY, System.Random rng,
+                                     bool[] occupied, TileType dirt, int spawnCenter) {
+        var cfg = config;
+        if (!Db.plantTypeByName.TryGetValue("ramie", out PlantType ramie)) {
+            Debug.LogError("EnsureRamieNearSpawn: no 'ramie' PlantType in plantsDb.json — cannot guarantee a starting ramie.");
+            return;
+        }
+        int nx = world.nx;
+        int lo = Math.Max(0, spawnCenter - cfg.RamieGuaranteeRadius);
+        int hi = Math.Min(nx - 1, spawnCenter + cfg.RamieGuaranteeRadius);
+
+        // Already a ramie in the window (curated starter or lucky scatter)? Done.
+        for (int x = lo; x <= hi; x++)
+            if (IsRamieAt(world, surfaceY, x)) return;
+
+        // Prefer the ring outside the clean zone so the forced cluster doesn't
+        // clutter the opening view; fall back to the whole window if the ring has
+        // no eligible dirt (all water/occupied), so we still ship a ramie.
+        List<int> candidates = new();
+        for (int x = lo; x <= hi; x++) {
+            if (Math.Abs(x - spawnCenter) <= cfg.StartClearRadius) continue;
+            if (occupied[x] || !IsPlantEligible(world, surfaceY, x, dirt)) continue;
+            candidates.Add(x);
+        }
+        if (candidates.Count == 0) {
+            for (int x = lo; x <= hi; x++) {
+                if (occupied[x] || !IsPlantEligible(world, surfaceY, x, dirt)) continue;
+                candidates.Add(x);
+            }
+        }
+        if (candidates.Count == 0) {
+            Debug.LogWarning($"EnsureRamieNearSpawn: no eligible surface dirt within {cfg.RamieGuaranteeRadius} of spawn center {spawnCenter} — starting ramie not placed.");
+            return;
+        }
+
+        int startX = candidates[rng.Next(candidates.Count)];
+        int size = rng.Next(cfg.ClusterMin, cfg.ClusterMax + 1);
+        for (int i = 0; i < size; i++) {
+            int px = startX + i;
+            if (px < 0 || px >= nx) continue;
+            if (occupied[px] || !IsPlantEligible(world, surfaceY, px, dirt)) continue;
+            Plant p = new Plant(ramie, px, surfaceY[px]);
+            p.Mature(rng.Next(0, ramie.maxStage + 1)); // random stage like the rest of the scatter
+            StructController.instance.Place(p);
+            occupied[px] = true;
+        }
+    }
+
+    // True iff the surface struct at column x is a mature/placed ramie plant.
+    static bool IsRamieAt(World world, int[] surfaceY, int x) {
+        int sy = surfaceY[x];
+        if (sy <= 0 || sy >= world.ny) return false;
+        return world.GetTileAt(x, sy).structs[0] is Plant p && p.plantType.name == "ramie";
     }
 
     static bool IsPlantEligible(World world, int[] surfaceY, int x, TileType dirt) {

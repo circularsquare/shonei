@@ -531,6 +531,10 @@ public class Db : MonoBehaviour {
     // works in the Editor but breaks in built players, where Resources/ is baked
     // into a binary blob (not a real folder on disk). Returns null and logs on
     // miss; callers should bail rather than try to recover.
+    // DTO for buildingEdgeMasks.json (baked by BuildingEdgeMaskBaker). Per-building bitmasks
+    // (bit dy*nx+dx) of which footprint tiles have a solid left / right edge.
+    class EdgeMaskEntry { public string name; public int left; public int right; }
+
     static string LoadJsonText(string resourceName) {
         TextAsset ta = Resources.Load<TextAsset>(resourceName);
         if (ta == null) {
@@ -590,7 +594,19 @@ public class Db : MonoBehaviour {
             structType.isPlant = false;
             structTypes[structType.id] = structType;
             structTypeByName.Add(structType.name, structType);
-        } 
+        }
+
+        // Baked side-ladder edge masks (Tools/Bake Building Edge Masks). Optional — loaded
+        // directly (not via LoadJsonText) so an un-baked project doesn't log an error; absent
+        // file leaves masks unset and SideEdgeSolid stays permissive.
+        TextAsset edgeMaskAsset = Resources.Load<TextAsset>("buildingEdgeMasks");
+        if (edgeMaskAsset != null) {
+            EdgeMaskEntry[] masks = JsonConvert.DeserializeObject<EdgeMaskEntry[]>(edgeMaskAsset.text);
+            if (masks != null)
+                foreach (EdgeMaskEntry m in masks)
+                    if (m != null && m.name != null && structTypeByName.TryGetValue(m.name, out StructType est))
+                        est.SetEdgeMasks(m.left, m.right);
+        }
 
         string jsonPlantTypes = LoadJsonText("plantsDb");
         if (jsonPlantTypes == null) return;
@@ -759,20 +775,42 @@ public class Recipe {
             outputs[i] = new ItemQuantity(noutputs[i]); // chance carried by the constructor
         }
     }
-    public float Score(Dictionary<int, int> targets){ // only takes into account global quantity / target. nothing about recipe ratios.
+    // Economic desirability of running this recipe, from global stock vs per-item targets only
+    // (nothing about recipe ratios). Each item contributes ratio = qty/target; a recipe is
+    // favoured when inputs are abundant (ratio > 1) and outputs are scarce (ratio < 1).
+    //
+    // Inputs and outputs are combined as separate GEOMETRIC MEANS — GM(inputs) / GM(outputs) —
+    // rather than one big product. The geomean is the natural average for multiplicative ratios
+    // (arithmetic mean in log-space), and crucially it normalises by item count: a 3-input and a
+    // 1-input recipe with the same per-item ratios score identically, so complex recipes aren't
+    // penalised by raw product compounding (3 inputs at 0.5 would otherwise collapse to 0.125).
+    //
+    // NaN-free by construction (a NaN here once soft-locked crafting — see the urgency-Infinity
+    // trap): a never-produced output (gmOut == 0) yields the +Infinity "produce this NOW" signal,
+    // and an empty input (gmIn == 0) yields 0, with gmIn checked first so 0/0 never arises.
+    public float Score(Dictionary<int, int> targets){
         if (targets == null) return 1;
-        float score = 1;
-        foreach (ItemQuantity iq in inputs){
-            if (!targets.TryGetValue(iq.item.id, out int target)) continue; // untracked id — skip (matches AllOutputsSatisfied)
-            if (target == 0) continue; // no target set — treat as neutral
-            score *= ((float)GlobalInventory.instance.Quantity(iq.item) / target);
+        float gmIn  = GeoMeanRatio(inputs, targets);
+        float gmOut = GeoMeanRatio(outputs, targets);
+        if (gmIn == 0f)  return 0f;                       // an input is empty — recipe unmakeable
+        if (gmOut == 0f) return float.PositiveInfinity;   // a never-produced output — make it now
+        return gmIn / gmOut;
+    }
+
+    // Geometric mean of qty/target over the tracked, non-zero-target items in `list`.
+    // Untracked ids and target==0 items are skipped (neutral — matches AllOutputsSatisfied);
+    // with no scored items the mean is 1 (neutral), so an unscored side doesn't shift Score.
+    private static float GeoMeanRatio(ItemQuantity[] list, Dictionary<int, int> targets){
+        float product = 1f;
+        int n = 0;
+        foreach (ItemQuantity iq in list){
+            if (!targets.TryGetValue(iq.item.id, out int target)) continue; // untracked — skip
+            if (target == 0) continue;                                      // no target — neutral
+            product *= (float)GlobalInventory.instance.Quantity(iq.item) / target;
+            n++;
         }
-        foreach (ItemQuantity iq in outputs){
-            if (!targets.TryGetValue(iq.item.id, out int target)) continue; // untracked id — skip (matches AllOutputsSatisfied)
-            if (target == 0) continue; // no target set — treat as neutral
-            score /= ((float)GlobalInventory.instance.Quantity(iq.item) / target);
-        }
-        return score;
+        if (n == 0) return 1f;
+        return UnityEngine.Mathf.Pow(product, 1f / n);
     }
 
     // Centralised gate for "can an animal currently pick / continue this recipe?":

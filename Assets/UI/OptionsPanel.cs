@@ -41,6 +41,9 @@ public class OptionsPanel : MonoBehaviour {
     [SerializeField] Toggle       lightingToggle;
     [SerializeField] Toggle       cloudLightingToggle;
 
+    [Header("Game")]
+    [SerializeField] Toggle autosaveToggle;
+
     [Header("Misc")]
     [SerializeField] Button closeButton;
 
@@ -287,6 +290,7 @@ public class OptionsPanel : MonoBehaviour {
         if (vsyncToggle    != null) vsyncToggle.onValueChanged.AddListener(OnVsync);
         if (lightingToggle != null) lightingToggle.onValueChanged.AddListener(OnLighting);
         if (cloudLightingToggle != null) cloudLightingToggle.onValueChanged.AddListener(OnCloudLighting);
+        if (autosaveToggle != null) autosaveToggle.onValueChanged.AddListener(OnAutosave);
         if (closeButton    != null) closeButton.onClick.AddListener(() => gameObject.SetActive(false));
     }
 
@@ -304,6 +308,7 @@ public class OptionsPanel : MonoBehaviour {
         if (vsyncToggle    != null) vsyncToggle.isOn     = s.vsyncEnabled;
         if (lightingToggle != null) lightingToggle.isOn  = s.lightingEnabled;
         if (cloudLightingToggle != null) cloudLightingToggle.isOn = s.cloudLightingEnabled;
+        if (autosaveToggle != null) autosaveToggle.isOn = s.autosaveEnabled;
         suppressCallbacks = false;
     }
 
@@ -323,6 +328,7 @@ public class OptionsPanel : MonoBehaviour {
     void OnVsync(bool v)     { if (!suppressCallbacks) SettingsManager.instance?.SetVsync(v); }
     void OnLighting(bool v)  { if (!suppressCallbacks) SettingsManager.instance?.SetLighting(v); }
     void OnCloudLighting(bool v) { if (!suppressCallbacks) SettingsManager.instance?.SetCloudLighting(v); }
+    void OnAutosave(bool v)  { if (!suppressCallbacks) SettingsManager.instance?.SetAutosave(v); }
 
     void OnFpsIndex(int i) {
         if (suppressCallbacks) return;

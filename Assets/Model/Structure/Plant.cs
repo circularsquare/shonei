@@ -20,6 +20,11 @@ public class Plant : Structure {
 
     public bool harvestable;
 
+    // Ticks spent at max stage with ripe fruit, for the unpicked-fruit rot timer (see Grow).
+    // Wall-clock — advances every tick regardless of growth comfort. Not persisted: a reload
+    // restarts the countdown, which is harmless for a cosmetic ~2-day timer.
+    private int ripeTicks;
+
     // Player-set flag: does this plant get harvested when ripe? Gates the WOM harvest order.
     // Persistent across regrowth cycles — Harvest() leaves it set, so flagged plants keep
     // being harvested each time they mature until the player explicitly unflags.
@@ -241,6 +246,18 @@ public class Plant : Structure {
     }
 
     public void Grow(int t){
+        // Unpicked fruit rots on a wall-clock timer that runs BEFORE the comfort gate, so the
+        // fruit drops on schedule even when the tree is too cold/dry to grow. Once ripe (max
+        // stage) ripeTicks accumulates every tick; past fruitRotTicks the fruit drops (no yield)
+        // and the tree rewinds to re-fruit. RewindFruitCycle zeroes ripeTicks; so does dropping
+        // below max stage by any other means.
+        if (plantType.isFruitTree && plantType.fruitRotTicks > 0 && growthStage >= plantType.maxStage) {
+            ripeTicks += t;
+            if (ripeTicks >= plantType.fruitRotTicks) { RewindFruitCycle(); return; }
+        } else {
+            ripeTicks = 0;
+        }
+
         // Gate 1: ambient temp + soil moisture must be in the plant's comfort range.
         // The plant occupies an air tile; moisture lives on the solid soil tile directly
         // below, so we pass that tile's moisture value. If there is no tile below
@@ -263,7 +280,7 @@ public class Plant : Structure {
             int cost = Mathf.RoundToInt(plantType.moistureDrawPerHour * 2f);
             if (cost > 0 && (soil == null || !soil.type.solid || soil.moisture < cost)) return;
 
-            int candidateHeight = 1 + candidateStage / 4;
+            int candidateHeight = HeightForStage(candidateStage);
             if (candidateHeight > height && !CanExtendTo(candidateHeight)) return;
 
             if (cost > 0) soil.moisture = (byte)(soil.moisture - cost);
@@ -289,18 +306,44 @@ public class Plant : Structure {
         // "snap left then back" jitter on every blob in the scene.
         if (growthStage != prevStage) UpdateSprite();
     }
-    // Worldgen shortcut: set a plant fully grown without paying the soil moisture
-    // advancement cost (fresh worlds don't guarantee a wet soil tile yet).
-    // Also claims any upper tiles — but unlike Grow, it SKIPS blocked tiles rather
-    // than failing, so a matured plant may end up shorter than maxHeight if the
-    // world geometry doesn't allow full extension.
-    public void Mature(){
-        int maxStage = plantType.maxStage;
-        age         = plantType.growthTime * maxStage / 3; // keep age coherent with stage
-        growthStage = maxStage;
-        harvestable = true;
+
+    // Rewind a fruit tree to its first fruitless mature stage — drops the fruit but keeps the
+    // tree standing, so only the final fruiting sub-cycle replays. Shared by Harvest (after
+    // computing yield) and the unpicked-fruit rot timer in Grow.
+    private void RewindFruitCycle(){
+        int target  = Mathf.Max(0, plantType.maxStage - plantType.fruitCycleStages);
+        growthStage = target;
+        age         = target * plantType.growthTime / 3;
+        ripeTicks   = 0;
+        UpdateSprite();
+    }
+    // Tile-height this plant occupies at a given growth stage. Table-driven plants read it
+    // from growthFrames (each entry lists one sprite per occupied tile); others use the
+    // 4-stages-per-tile formula. Single source of truth for the height the growth/extension
+    // logic claims and the save/load rebuild re-derives.
+    private int HeightForStage(int stage) {
+        if (plantType.hasGrowthTable) {
+            var frames = plantType.growthFrames;
+            stage = Mathf.Clamp(stage, 0, frames.Length - 1);
+            return Mathf.Max(1, frames[stage].Length);
+        }
+        return 1 + stage / 4;
+    }
+
+    // Worldgen shortcut: jump a plant straight to a given growth stage without paying the
+    // per-stage soil-moisture cost (fresh worlds don't guarantee wet soil yet). Claims any
+    // upper tiles for that stage — but unlike Grow it SKIPS blocked tiles rather than failing
+    // (via RebuildExtensionTiles), so the plant may end up shorter if geometry blocks it.
+    public void Mature(int stage){
+        stage       = Mathf.Clamp(stage, 0, plantType.maxStage);
+        growthStage = stage;
+        age         = plantType.growthTime * stage / 3; // keep age coherent with stage
+        harvestable = stage >= 3;                        // matches Grow's harvestable gate
         RebuildExtensionTiles();
     }
+
+    // Fully mature (max growth stage) — starter plants and any ready-to-harvest placement.
+    public void Mature() => Mature(plantType.maxStage);
 
     // True when the plant will not grow any taller — either it reached its max
     // growth stage, or it's frozen at the top of its current height band because
@@ -309,10 +352,12 @@ public class Plant : Structure {
     // the instant they first become harvestable.
     public bool IsDoneGrowing() {
         if (growthStage >= plantType.maxStage) return true;
-        // Frozen-blocked: at the top stage of the current band with the next tile
-        // up unavailable. Assumes one Grow tick crosses at most one height band —
-        // true while growthTime >> 3, which all plant data satisfies.
-        return growthStage == 4 * height - 1 && !CanExtendTo(height + 1);
+        // Frozen-blocked: the next stage wants a taller plant but the tile above is
+        // unavailable, so growth can't advance. Equivalent to the old `growthStage ==
+        // 4*height-1` band-top test for formula plants, and correct for table plants
+        // whose height steps don't fall on 4-stage boundaries.
+        int nextHeight = HeightForStage(growthStage + 1);
+        return nextHeight > height && !CanExtendTo(nextHeight);
     }
 
     public ItemQuantity[] Harvest(){
@@ -325,19 +370,48 @@ public class Plant : Structure {
         for (int i = 0; i < yields.Length; i++)
             yields[i] = new ItemQuantity(plantType.products[i].item, plantType.products[i].quantity * scale);
 
-        ReleaseAllExtensionTiles();
-        harvestable = false;
-        age         = 0; // autoreplant
-        growthStage = 0;
-        UpdateSprite();
+        if (plantType.isFruitTree) {
+            // Drop the fruit but stay standing; only the final fruiting sub-cycle replays. The
+            // WOM harvest order goes dormant (IsDoneGrowing false) until it regrows to maxStage.
+            // harvestable stays true — still a mature tree; dispatch is gated by IsDoneGrowing.
+            RewindFruitCycle();
+        } else {
+            ReleaseAllExtensionTiles();
+            harvestable = false;
+            age         = 0; // autoreplant
+            growthStage = 0;
+            UpdateSprite();
+        }
         return yields;
+    }
+
+    // Items dropped when this plant is REMOVED (chopped down), distinct from Harvest().
+    // A fully grown plant yields the full height-scaled removalProducts (what a harvest would
+    // drop, unless overridden — e.g. apple → apple wood). Wood trees (fractionalRemoval) also
+    // yield a penalised amount while immature: removalProducts × maxHeight × (growthStage/maxStage)
+    // × 0.5. Other plants yield nothing until fully grown.
+    public ItemQuantity[] RemovalYield(){
+        var products = plantType.removalProducts;
+        if (products == null || products.Length == 0) return Array.Empty<ItemQuantity>();
+        int maxStage = plantType.maxStage;
+        float scale;
+        if (growthStage >= maxStage)          scale = Mathf.Max(1, height);
+        else if (plantType.fractionalRemoval) scale = plantType.maxHeight * (growthStage / (float)maxStage) * 0.5f;
+        else                                  scale = 0f;
+        if (scale <= 0f) return Array.Empty<ItemQuantity>();
+        var yields = new List<ItemQuantity>(products.Length);
+        foreach (var p in products) {
+            int q = Mathf.RoundToInt(p.quantity * scale);
+            if (q > 0) yields.Add(new ItemQuantity(p.item, q));
+        }
+        return yields.ToArray();
     }
 
     // Called by SaveSystem after restoring age/growthStage/harvestable so the plant's
     // claim on tiles above the anchor is reestablished. Height is re-derived from
     // growthStage rather than persisted — single source of truth.
     public void RebuildExtensionTiles() {
-        int targetHeight = Mathf.Clamp(1 + growthStage / 4, 1, plantType.maxHeight);
+        int targetHeight = HeightForStage(growthStage);
         ReleaseAllExtensionTiles(); // defensive: clean any prior GOs
         for (int h = 1; h < targetHeight; h++) {
             // If a restore races against some other structure claiming the tile, log
@@ -437,6 +511,38 @@ public class Plant : Structure {
     // the anchor falls back to g0..g4 — so bamboo and single-tile crops are unchanged.
     public void UpdateSprite(){
         string n = plantType.name.Replace(" ", "");
+
+        // Data-driven growth table: each stage names the sprite cell for every occupied tile
+        // (anchor first), bypassing the 4-stages-per-tile cycling entirely. Lets fruit trees
+        // author a bespoke base→canopy→blossom→fruit sequence. Table plants may also ship a
+        // baked blob set — when they do, each frame cell routes through its static layer + a
+        // fresh set of blob SRs (same as the non-table blob-sway branch below), using the
+        // explicit per-tile cell names the frame already gives us.
+        if (plantType.hasGrowthTable) {
+            string[] frame = plantType.growthFrames[Mathf.Clamp(growthStage, 0, plantType.growthFrames.Length - 1)];
+
+            if (hasBlobSway) {
+                ClearBlobSrs();
+                string anchorCell = frame.Length > 0 ? frame[0] : null;
+                sr.sprite = LoadCellStatic(n, anchorCell) ?? LoadCellSprite(n, anchorCell) ?? LoadStageSprite(n, 0);
+                SpawnBlobsForTile(n, anchorCell, go.transform, sr.sortingOrder);
+
+                for (int i = 0; i < extensionSrs.Count; i++) {
+                    string cell = (i + 1 < frame.Length) ? frame[i + 1] : null;
+                    extensionSrs[i].sprite = LoadCellStatic(n, cell) ?? LoadCellSprite(n, cell) ?? LoadStageSprite(n, 4);
+                    SpawnBlobsForTile(n, cell, extensionGos[i].transform, extensionSrs[i].sortingOrder);
+                }
+            } else {
+                sr.sprite = LoadCellSprite(n, frame.Length > 0 ? frame[0] : null) ?? LoadStageSprite(n, 0);
+                for (int i = 0; i < extensionSrs.Count; i++) {
+                    string cell = (i + 1 < frame.Length) ? frame[i + 1] : null;
+                    extensionSrs[i].sprite = LoadCellSprite(n, cell) ?? LoadStageSprite(n, 4);
+                }
+            }
+            RefreshSwayMPB();
+            return;
+        }
+
         int topStageSpriteIdx = growthStage % 4;
 
         // Anchor: if the plant has extensions, anchor is a lower tile → index 4.
@@ -553,6 +659,23 @@ public class Plant : Structure {
         }
     }
 
+    // Loads a sprite by its exact split-cell name (e.g. "b4", "g0"). Returns null if the cell
+    // is missing/empty so the data-driven growth path can fall back. Resources.Load caches.
+    private static Sprite LoadCellSprite(string plantName, string cell) {
+        if (string.IsNullOrEmpty(cell)) return null;
+        Sprite s = Resources.Load<Sprite>("Sprites/Plants/Split/" + plantName + "/" + cell);
+        return (s != null && s.texture != null) ? s : null;
+    }
+
+    // Static-layer sprite for a blob-sway cell, by exact cell name ("b4", "g0").
+    // Symmetric to LoadCellSprite — used by the growth-table blob path where the
+    // frame supplies full cell names (so the prefix+stageIdx LoadStaticSprite
+    // doesn't fit). Returns null if absent so callers fall back to the full cell.
+    private static Sprite LoadCellStatic(string plantName, string cell) {
+        if (string.IsNullOrEmpty(cell)) return null;
+        return Resources.Load<Sprite>("Sprites/Plants/Split/" + plantName + "/" + cell + "_static");
+    }
+
     private static Sprite LoadStageSprite(string plantName, int stageIdx) {
         Sprite s = Resources.Load<Sprite>("Sprites/Plants/Split/" + plantName + "/g" + stageIdx);
         if (s == null || s.texture == null)
@@ -606,6 +729,29 @@ public class PlantType : StructType {
     public ItemNameQuantity[] nproducts {get; set;}
     public ItemQuantity[] products;
 
+    // Items dropped when this plant is REMOVED (chopped down), as opposed to harvested.
+    // Authored in liang like nproducts. Null in JSON → defaults to the harvest products,
+    // so "remove a mature plant" yields what a harvest would unless overridden (apple → wood).
+    public ItemNameQuantity[] nremovalProducts {get; set;}
+    public ItemQuantity[] removalProducts;
+
+    // When true, removing this plant before full growth still yields removalProducts,
+    // scaled down by growth (see Plant.RemovalYield). Wood trees set this; crops leave it
+    // false so an immature crop yields nothing on removal.
+    public bool fractionalRemoval {get; set;} = false;
+
+    // Fruit-tree harvest behaviour. 0 = normal: harvest fells the plant (reset to stage 0,
+    // release upper tiles). >0 = harvest rewinds this many growth stages and leaves the
+    // plant standing, so only the final fruiting sub-cycle replays. Rewind target is
+    // (maxStage - fruitCycleStages), which should be the first fruitless mature frame.
+    public int fruitCycleStages {get; set;} = 0;
+    public bool isFruitTree => fruitCycleStages > 0;
+
+    // Unpicked fruit rots: once ripe (max stage), a fruit tree left unharvested this many ticks
+    // drops its fruit (no yield) and rewinds to re-fruit, so it never sits ripe forever. Ticks,
+    // matching growthTime (World.ticksInDay = 240). 0 = never rots. Only meaningful when isFruitTree.
+    public int fruitRotTicks {get; set;} = 0;
+
     public override Sprite LoadSprite() {
         string n = name.Replace(" ", "");
         Sprite s = Resources.Load<Sprite>("Sprites/Plants/Split/" + n + "/g0");
@@ -624,9 +770,18 @@ public class PlantType : StructType {
     // height at harvest time, so a 3-tile bamboo drops 3× the per-tile yield in products.
     public int maxHeight {get; set;} = 1;
 
-    // Highest growth stage this plant type reaches: 4 stages per height tile.
-    // Single source of truth for the formula previously inlined in Plant.Grow/Mature.
-    public int maxStage => 4 * maxHeight - 1;
+    // Optional data-driven growth table. Each entry is one growth stage, listing the sprite
+    // cell for every occupied tile from the anchor (bottom) up — e.g. ["b4","g0"] is a 2-tile
+    // stage. When present it fully overrides the implicit "4 stages per tile, b{i}/g{i%4}"
+    // model: maxStage, per-stage height, and per-stage sprites all come from this table. Lets
+    // fruit trees author a bespoke sequence (base grows, then canopy, then flower, then fruit)
+    // on a fixed tile-height. Null → the legacy formula below. See Plant.HeightForStage / UpdateSprite.
+    public string[][] growthFrames {get; set;}
+    public bool hasGrowthTable => growthFrames != null && growthFrames.Length > 0;
+
+    // Highest growth stage this plant type reaches. Table-driven plants run the full table;
+    // others use 4 stages per height tile (single-tile plants cap at 3 exactly like before).
+    public int maxStage => hasGrowthTable ? growthFrames.Length - 1 : 4 * maxHeight - 1;
 
     // Relative weight used by WorldGen.ScatterPlants to pick which plant type seeds
     // each natural cluster. Sampled proportionally against all other plant types with
@@ -676,6 +831,10 @@ public class PlantType : StructType {
     new internal void OnDeserialized(StreamingContext context){
         costs = ncosts.Select(iq => new ItemQuantity(iq)).ToArray();
         products = nproducts.Select(iq => new ItemQuantity(iq)).ToArray();
+        // Removal yields default to the harvest products when not authored separately.
+        removalProducts = nremovalProducts != null
+            ? nremovalProducts.Select(iq => new ItemQuantity(iq)).ToArray()
+            : products;
         if (njob != null){
             job = Db.jobByName[njob];
         }

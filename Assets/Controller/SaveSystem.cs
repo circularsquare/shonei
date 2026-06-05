@@ -41,7 +41,7 @@ using Newtonsoft.Json;
 //   [x] Per-animal RNG seed (drives Animal.random — animal AI reproduces on reload)
 //   [x] Tile types, floor inventories (incl. wetUntil rain-soaked timer), background wall, overlay masks (grass on dirt), overlay health state (live/dying/dead), and snow cover
 //   [x] Per-column original surface heights (worldgen ground line, persisted so decoration depth gates survive column mining)
-//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, furnishingInvData + furnishingRemainingDays, processor state/progress/inputData/outputData, mirrored, rotation, shapeIndex, disabled, plantHarvestFlagged, quarry/digging pit capturedTileType, flywheel charge, elevator currentY + history buffers, bridge-post partnerX/Y, savedNx/savedNy footprint)
+//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, furnishingInvData + furnishingRemainingDays, processor state/progress/inputData/outputData, mirrored, rotation, shapeIndex, disabled, plantHarvestFlagged, quarry/digging pit capturedTileType, flywheel charge, elevator currentY + history buffers, bridge-post partnerX/Y, savedNx/savedNy footprint, build materials materialItems/materialFen)
 //   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored, rotation, shapeIndex, disabled, two-click x2/y2)
 //   [x] Animals (position, job, energy, food, starvation countdown, happiness, decoration happiness, socialization, fireplace warmth, inv, foodSlotInv, toolSlotInv, clothingSlotInv, bookSlotInv)
 //   [x] Mid-transit merchant task descriptor (travelTaskType + iq + storage tile + leg)
@@ -59,6 +59,8 @@ using Newtonsoft.Json;
 //   [x] Global inventory panel tree collapse state (deltas vs item.defaultOpen)
 //   [x] Panel collapse state for CollapsibleHeader-equipped panels (deltas vs default-open)
 //   [x] Onboarding PlayerTask progress (current task index; null on old saves → onboarding skipped)
+//   [x] Cumulative colony births (gates the early-growth birth-rate boost; null on old saves → boost spent)
+//   [x] Decorative flower layout (position + variant; restored directly instead of re-derived, which drifted across reload)
 // -----------------------------------------------------------------------
 
 public class SaveSystem : MonoBehaviour {
@@ -88,12 +90,52 @@ public class SaveSystem : MonoBehaviour {
         if (!System.IO.Directory.Exists(SaveDir)) System.IO.Directory.CreateDirectory(SaveDir);
     }
 
+    // ── Autosave ─────────────────────────────────────────────────────────────
+    // Periodically writes the world to a dedicated "autosave" slot (never clobbers a
+    // manual save). Save() is synchronous and stalls the frame on large worlds, so the
+    // routine shows savingOverlay first and yields a frame to let it paint before the
+    // freeze. Gated on SettingsManager.autosaveEnabled.
+    const string AutosaveSlot = "autosave";
+    const float  AutosaveIntervalSeconds = 300f; // 5 minutes of real time
+    [SerializeField] GameObject savingOverlay;    // centered "saving..." HUD; shown during a save
+    float autosaveTimer;
+    bool  autosaving;
+
+    void Update() {
+        // No world yet (main menu / mid-reset) or feature off → hold the clock at zero.
+        if (World.instance == null || SettingsManager.instance == null
+                || !SettingsManager.instance.autosaveEnabled) {
+            autosaveTimer = 0f;
+            return;
+        }
+        if (autosaving) return;
+        autosaveTimer += Time.unscaledDeltaTime; // real time — fires even while the game is paused
+        if (autosaveTimer >= AutosaveIntervalSeconds) {
+            autosaveTimer = 0f;
+            StartCoroutine(AutosaveRoutine());
+        }
+    }
+
+    IEnumerator AutosaveRoutine() {
+        autosaving = true;
+        if (savingOverlay != null) savingOverlay.SetActive(true);
+        // Let the overlay render before Save() blocks the main thread for the frame.
+        yield return null;
+        yield return new WaitForEndOfFrame();
+        Save(AutosaveSlot, setCurrent: false);
+        if (savingOverlay != null) savingOverlay.SetActive(false);
+        autosaving = false;
+    }
+
     // ── Save ─────────────────────────────────────────────────────────────────
 
-    public void Save(string slotName) {
+    // setCurrent=false leaves currentSlot untouched — used by autosave so writing the
+    // background "autosave" slot doesn't hijack the player's active named slot.
+    public void Save(string slotName, bool setCurrent = true) {
         string json = SerializeToJson();
         System.IO.File.WriteAllText(SlotPath(slotName), json);
-        currentSlot = slotName;
+        if (setCurrent) currentSlot = slotName;
+        autosaveTimer = 0f; // any save (manual or auto) restarts the autosave clock
         // Refresh the cache from the live animal count — avoids re-parsing the file we just wrote.
         if (AnimalController.instance != null)
             _animalCountCache[slotName] = AnimalController.instance.na;
@@ -127,6 +169,10 @@ public class SaveSystem : MonoBehaviour {
             }
         }
         data.tiles = tiles.ToArray();
+
+        // Decorative flower layout (position + variant). Persisted so reload reproduces the
+        // exact flowers instead of re-deriving from live grass/snow state (which drifts).
+        data.flowers = FlowerController.instance != null ? FlowerController.instance.GatherSave() : null;
 
         // Original ground-line per column (immutable from worldgen). Persisted so
         // the "natural surface" gate used by FlowerController / OverlayGrowthSystem
@@ -261,6 +307,9 @@ public class SaveSystem : MonoBehaviour {
         if (PlayerTaskController.instance != null)
             data.playerTaskIndex = PlayerTaskController.instance.currentIndex;
 
+        if (AnimalController.instance != null)
+            data.births = AnimalController.instance.births;
+
         if (MarketBuilding.instance?.storage?.targets != null) {
             var mt = new Dictionary<string, int>();
             foreach (var kv in MarketBuilding.instance.storage.targets)
@@ -314,6 +363,16 @@ public class SaveSystem : MonoBehaviour {
 
     StructureSaveData GatherStructure(Structure s) {
         var ssd = new StructureSaveData { x = s.x, y = s.y, typeName = s.structType.name, mirrored = s.mirrored, rotation = s.rotation, shapeIndex = s.shapeIndex, condition = s.condition, savedNx = s.Shape.nx, savedNy = s.Shape.ny };
+        // Build-materials record (the exact leaves consumed) — parallel name/fen arrays, omitted
+        // when absent. Restored by RestoreStructure; absent → first-leaf fallback on deconstruct.
+        if (s.materials != null && s.materials.Count > 0) {
+            ssd.materialItems = new string[s.materials.Count];
+            ssd.materialFen   = new int[s.materials.Count];
+            for (int i = 0; i < s.materials.Count; i++) {
+                ssd.materialItems[i] = s.materials[i].item.name;
+                ssd.materialFen[i]   = s.materials[i].quantity;
+            }
+        }
         if (s is Plant plant) {
             ssd.plantAge         = plant.age;
             ssd.plantGrowthStage = plant.growthStage;
@@ -503,6 +562,8 @@ public class SaveSystem : MonoBehaviour {
         InventoryController.instance?.inventoryHeader?.SetOpenSilent(true);
         AnimalController.instance?.jobsHeader?.SetOpenSilent(true);
         PlayerTaskController.instance?.ResetState(); // fresh world → onboarding starts at task 0
+        FlowerController.instance?.ResetState();     // clear any stale flower layout / pending restore
+        if (AnimalController.instance != null) AnimalController.instance.births = 0; // fresh colony → early-growth boost active
     }
 
     public void Load(string slotName) {
@@ -587,6 +648,8 @@ public class SaveSystem : MonoBehaviour {
                 // TEMPORARY: pre-split saves referenced a single "stone" tile type; map it to limestone.
                 // Remove once old saves are no longer in circulation.
                 string typeName = tsd.tileType == "stone" ? "limestone" : tsd.tileType;
+                // Renamed placed-tile variant (was "limestone_brick"). Remove once old saves are gone.
+                if (typeName == "limestone_brick") typeName = "limestone_placed";
                 if (!string.IsNullOrEmpty(typeName) && Db.tileTypeByName.ContainsKey(typeName))
                     tile.type = Db.tileTypeByName[typeName];
                 BackgroundType bt = (BackgroundType)tsd.backgroundWallType;
@@ -731,6 +794,10 @@ public class SaveSystem : MonoBehaviour {
         if (PlayerTaskController.instance != null)
             PlayerTaskController.instance.currentIndex = save.playerTaskIndex ?? int.MaxValue;
 
+        // Null (pre-feature save) → treat the early-growth boost as already spent.
+        if (AnimalController.instance != null)
+            AnimalController.instance.births = save.births ?? AnimalController.EarlyBirthBoostBirths;
+
         if (save.marketTargets != null && MarketBuilding.instance?.storage?.targets != null) {
             foreach (var kv in save.marketTargets)
                 if (Db.itemByName.TryGetValue(kv.Key, out Item item))
@@ -808,6 +875,11 @@ public class SaveSystem : MonoBehaviour {
             else
                 MouseController.instance?.ClampCamera(); // old saves: no PPU → still belt-and-braces clamp at current zoom
         }
+
+        // Stash the saved flower layout for FlowerController.OnWorldReady (runs just after this,
+        // from WorldController), which restores it directly instead of re-scanning. Null on old
+        // saves → it falls back to a fresh worldgen scatter.
+        FlowerController.instance?.StashRestore(save.flowers);
     }
 
     // Phase 5 helper — restores research progress and re-applies effects (building/job
@@ -881,6 +953,19 @@ public class SaveSystem : MonoBehaviour {
         structure = Structure.Create(st, ssd.x, ssd.y, ssd.mirrored, ssd.rotation, ssd.shapeIndex, partnerX, partnerY);
         if (structure == null) {
             Debug.LogError("Structure.Create returned null on load: " + ssd.typeName); return;
+        }
+
+        // Restore the build-materials record (exact leaves consumed). Resolve names via Db;
+        // skip unknown items (logged). Absent → materials stays null → first-leaf fallback.
+        if (ssd.materialItems != null && ssd.materialFen != null) {
+            var mats = new List<ItemQuantity>(ssd.materialItems.Length);
+            for (int i = 0; i < ssd.materialItems.Length && i < ssd.materialFen.Length; i++) {
+                if (Db.itemByName.TryGetValue(ssd.materialItems[i], out Item item))
+                    mats.Add(new ItemQuantity(item, ssd.materialFen[i]));
+                else
+                    Debug.LogError($"RestoreStructure: unknown material item '{ssd.materialItems[i]}' on {st.name} at ({ssd.x},{ssd.y})");
+            }
+            if (mats.Count > 0) structure.materials = mats;
         }
 
         // Condition: treat 0 (old saves — field absent) as "missing" → default to 1.0. Saved
@@ -1118,6 +1203,12 @@ public class SaveSystem : MonoBehaviour {
         // paused. This ensures water is visible immediately after every gen
         // path (initial, reset, load), including a pause-on-start.
         WaterController.instance?.UpdateSurfaceMask();
+        // Build the decorative flower layer from the now-restored world: restores the saved
+        // layout (stashed by ApplySaveData) or scatters fresh if none was saved. Here rather
+        // than the boot coroutine so it covers every world-creation path — initial gen, reset,
+        // and load — exactly like AnimalController.Load above. ResetSystemState cleared any
+        // stale stash, so the reset/gen paths see pendingRestore == null and scatter.
+        FlowerController.instance?.OnWorldReady(World.instance, Rng.worldSeed);
     }
 
     public void LoadDefault() {
