@@ -14,25 +14,20 @@ using UnityEngine;
 //      shift is uniform per line, so glyph shapes are untouched. Gated by FontConfig.pixelSnap.
 //      (Canvas.pixelPerfect does NOT snap TMP here — don't use it.)
 //
-// Per-regen order is "fix font first, else snap": if a text's font is wrong, setting it dirties
-// layout and re-fires TEXT_CHANGED next frame, so we bail and snap then, on the corrected mesh.
+// Per-regen order is "fix font first, else snap": if a label's font is wrong, we set it and
+// regenerate the mesh synchronously in the same frame (see Process) so it's born in the chosen
+// font with no flicker; the nested TEXT_CHANGED then re-enters with the font correct and snaps.
 // World-space text (chat bubbles) is left alone. Self-bootstraps — no scene wiring.
-//
-// NB: named for the snap, but now also owns the runtime font swap — a rename (e.g.
-// UITextRuntimeStyle) would read clearer.
-public class UITextPixelSnap : MonoBehaviour {
+public class UITextRuntimeStyle : MonoBehaviour {
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Bootstrap() {
-        if (FindObjectOfType<UITextPixelSnap>() != null) return;
-        new GameObject("UITextPixelSnap").AddComponent<UITextPixelSnap>();
+        if (FindObjectOfType<UITextRuntimeStyle>() != null) return;
+        new GameObject("UITextRuntimeStyle").AddComponent<UITextRuntimeStyle>();
     }
 
-    static UITextPixelSnap _instance;
+    static bool _applyingFont;          // re-entrancy guard for the inline regen in Process
     bool _lastSnapEnabled = true;
     int  _lastFontIndex   = -1;
-    bool _refreshScheduled;
-
-    void Awake() { _instance = this; }
 
     void OnEnable() {
         TMPro_EventManager.TEXT_CHANGED_EVENT.Add(OnTextChanged);
@@ -69,27 +64,20 @@ public class UITextPixelSnap : MonoBehaviour {
         var c = t.canvas;
         if (c == null || c.renderMode != RenderMode.ScreenSpaceOverlay) return;   // overlay UI only
         if (ApplyFont(t)) {
-            // A font actually changed — this is freshly-built/baked content (e.g. a panel's rows
-            // built on open) being swapped onto the chosen font. A lone swap can leave a transient
-            // two-font mix that garbles, so schedule a debounced strong refresh to clean the UI.
-            if (_instance != null) _instance.ScheduleRefresh();
+            // Font was wrong — this is freshly-built content (e.g. a panel's rows on open) born in
+            // the prefab-baked font. TEXT_CHANGED fires during the canvas pre-render pass, AFTER the
+            // (wrong-font) mesh is committed to the CanvasRenderer but BEFORE the GPU draws this
+            // frame, so regenerating synchronously here replaces it with the chosen font in-frame —
+            // killing the one-frame flicker AND any lingering two-font mix without a deferred pass.
+            // The guard stops the nested TEXT_CHANGED (from ForceMeshUpdate) from re-forcing.
+            if (!_applyingFont) {
+                _applyingFont = true;
+                t.ForceMeshUpdate();
+                _applyingFont = false;
+            }
             return;
         }
         Snap(t);
-    }
-
-    // Debounced: coalesces a burst of swaps (a whole panel's worth) into one strong refresh,
-    // a couple frames later (once the content has finished building).
-    void ScheduleRefresh() {
-        if (_refreshScheduled) return;
-        _refreshScheduled = true;
-        StartCoroutine(DelayedRefresh());
-    }
-    IEnumerator DelayedRefresh() {
-        yield return null;
-        yield return null;
-        _refreshScheduled = false;
-        RefreshAll();
     }
 
     // ── Runtime font choice ──────────────────────────────────────────────────
@@ -140,7 +128,7 @@ public class UITextPixelSnap : MonoBehaviour {
     // a single font resolves both. Heavy, but only runs on rare events (startup, font switch).
     void RefreshAll() {
         var font = ChosenFont();
-        if (font == null) { Debug.LogError("[UITextPixelSnap] No font to apply (registry + FontConfig both empty)."); return; }
+        if (font == null) { Debug.LogError("[UITextRuntimeStyle] No font to apply (registry + FontConfig both empty)."); return; }
         float size = ChosenSize();
 
         foreach (var o in Resources.FindObjectsOfTypeAll(typeof(TextMeshProUGUI))) {

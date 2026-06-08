@@ -28,7 +28,7 @@ using TMPro;
 //     uiScaleSlider  — Slider, min 1 max 2 (1 = native UI, 2 = doubled). Drives
 //                      the root CanvasScaler.scaleFactor via SettingsManager.uiScale.
 //     fontDropdown   — TMP_Dropdown; options auto-populated from UIFontOptions at Awake.
-//                      Drives SettingsManager.uiFontIndex (UITextPixelSnap swaps the UI font).
+//                      Drives SettingsManager.uiFontIndex (UITextRuntimeStyle swaps the UI font).
 //     closeButton    — Button (optional; an X in the corner)
 //     controlsText   — TMP_Text (optional); content is auto-filled at Awake.
 //                      Relies on m5x7's monospace metrics for column alignment.

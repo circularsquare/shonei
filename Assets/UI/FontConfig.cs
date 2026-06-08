@@ -28,7 +28,7 @@ public class FontConfig : ScriptableObject {
              "gray, and faded (alpha<1) text untouched.")]
     public Color primaryTextColor = Color.black;
 
-    [Tooltip("Snap UI text baselines to whole device pixels (UITextPixelSnap). Keeps a " +
+    [Tooltip("Snap UI text baselines to whole device pixels (UITextRuntimeStyle). Keeps a " +
              "pixel font crisp/uniform; matters less for a smooth vector font. Toggling " +
              "this takes effect live in Play mode — no Apply needed.")]
     public bool pixelSnap = true;

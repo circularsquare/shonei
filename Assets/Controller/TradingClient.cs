@@ -13,13 +13,28 @@ public class TradingClient : MonoBehaviour {
     bool hasLoggedConnectError = false;
     bool hasLoggedDisconnect = false;
     public const string playerName = "anita";
+
+    // ── Server target ──────────────────────────────────────────────────────
+    // Shipped builds always use production. In the editor the target is dev-
+    // selectable via Tools/Market Server (backed by EditorPrefs),
+    // defaulting to local so ordinary local testing needs no toggle. The URL is
+    // resolved fresh on each connect, so flipping the menu takes effect on the
+    // next (re)connection.
+    const string ProdWsHost  = "wss://market.anita.garden";  // Hetzner, behind Caddy TLS
+    const string LocalWsHost = "ws://127.0.0.1:8083";        // a server running on this machine
 #if UNITY_EDITOR
-    // Local dev: connect to a server running on this machine.
-    const string WsUrl = "ws://127.0.0.1:8083/ws?name=" + playerName;
-#else
-    // Shipped build: the live market server (Hetzner, behind Caddy TLS).
-    const string WsUrl = "wss://market.anita.garden/ws?name=" + playerName;
+    // Shared with DevServerMenu.cs. true = local, false = production.
+    public const string EditorPrefUseLocal = "shonei.market.useLocalServer";
 #endif
+
+    static string ResolveWsUrl() {
+        string host = ProdWsHost;
+#if UNITY_EDITOR
+        if (UnityEditor.EditorPrefs.GetBool(EditorPrefUseLocal, true)) host = LocalWsHost;
+#endif
+        return host + "/ws?name=" + playerName;
+    }
+
     const float ReconnectInterval = 20f;
 
     public event Action<bool>             OnConnectionChanged;
@@ -32,7 +47,13 @@ public class TradingClient : MonoBehaviour {
         if (isConnecting || isOnline) return;
         isConnecting = true;
 
-        ws = new WebSocket(WsUrl);
+        string url = ResolveWsUrl();
+        Debug.Log("[market] connecting to " + url);
+#if UNITY_EDITOR
+        if (!url.StartsWith(LocalWsHost))
+            Debug.LogWarning("[market] editor is connected to PRODUCTION — orders here hit the live market");
+#endif
+        ws = new WebSocket(url);
 
         ws.OnMessage += (bytes) => {
             string raw = Encoding.UTF8.GetString(bytes);

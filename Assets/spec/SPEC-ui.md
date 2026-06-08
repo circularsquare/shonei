@@ -386,7 +386,7 @@ The font's embedded material has `_Sharpness = 1.0` (hardens SDF edges — the s
 crispness win), and `faceInfo.lineHeight = 105.875` so line advance is exactly 14px at size 16
 (integer). NB: a font reimport would reset lineHeight/sharpness.
 
-**Pixel snap** (`UITextPixelSnap.cs`) — SDF renders each sub-pixel baseline phase with different
+**Pixel snap** (`UITextRuntimeStyle.cs`) — SDF renders each sub-pixel baseline phase with different
 blur, so identical labels at different fractional Y looked inconsistent ("messy"). This snaps each
 text **line's** baseline to the nearest whole device pixel by shifting that line's vertices
 uniformly — per-line (not per-vertex, so glyph shapes stay intact; per-line because line advance
@@ -406,10 +406,14 @@ Bilinear==Point, and flipping them risks sub-pixel blur there.
 Players pick a UI font in Options. `UIFontOptions.asset` (Resources) is the registry — entries
 of `{name, TMP_FontAsset, fontSize}` (each font needs its own size to match apparent size; e.g.
 m5x7@16 vs Figtree@11). `SettingsManager.uiFontIndex` (PlayerPrefs) is the selection; the
-OptionsPanel `fontDropdown` drives it; `UITextPixelSnap` applies it at runtime by stamping the
+OptionsPanel `fontDropdown` drives it; `UITextRuntimeStyle` applies it at runtime by stamping the
 chosen font/size onto every overlay label (existing + dynamically-spawned, via the TEXT_CHANGED
 hook), plus a strong full refresh (`RefreshAll`: re-font + `ForceMeshUpdate` + layout rebuild) at
-startup and on any swap (debounced).
+startup and on a font-choice change. New content born in the prefab-baked font is corrected
+**in-frame**: the TEXT_CHANGED hook re-fonts it and regenerates synchronously (inline
+`ForceMeshUpdate`). TEXT_CHANGED fires during the canvas pre-render pass — after the wrong-font
+mesh is committed but before the GPU draws — so the corrected mesh replaces it the same frame
+(no one-frame flicker, no deferred/debounced pass).
 
 **Hard-won lessons (don't relearn these):**
 - **Two TMP fonts coexisting in one canvas garbles** (mixed atlases) — the runtime swap MUST reach
@@ -418,19 +422,19 @@ startup and on any swap (debounced).
   runtime-cloned text and renders garbage. Bake via `TMP_FontAsset.TryAddCharacters(asciiSet)` +
   set `atlasPopulationMode = Static` (keep the asset GUID so refs survive).
 - Startup text can render with stale/invisible meshes; the `RefreshAll` passes fix it.
-
-**Known issue + planned fix:** opening a panel in a *non-default* font mode shows a one-frame
-flicker (rows are born in the prefab-baked font, then swapped). The clean fix — deferred to a
-follow-up — is to make the UI **font-agnostic**: strip explicit fonts off all TMP (use
-`TMP_Settings.defaultFontAsset`) and have the choice set the default, so content is *born* in the
-right font. That removes the flicker, the mixing-garble class, AND most of the swap machinery
-(per-regen swap, debounced refresh). See the plan in `plans/`.
+- **The flicker was killed by in-frame regen, NOT by going font-agnostic.** The font-agnostic plan
+  (strip all TMP to `font = null` → fall back to `TMP_Settings.defaultFontAsset` → content born in
+  the chosen font) is **infeasible in TMP 3.0.6 / Unity 2021.3**: `TMPro_UGUI_Private.LoadFontAsset`
+  coerces `m_fontAsset == null → defaultFontAsset` on every validate/awake/setter, so you cannot
+  *persist* a null font. Verified: `LoadPrefabContents` → set null → `SaveAsPrefabAsset` writes the
+  concrete default GUID, not `fileID: 0`. Only raw YAML `{fileID: 0}` writes can store null, and they
+  re-bake silently on any later prefab edit (fragile forever). Don't re-attempt this.
 
 ## Key Files
 
 | File | Role |
 |------|------|
-| `Assets/UI/UITextPixelSnap.cs` | Runtime UI text manager: applies the player font choice (font swap + strong refresh) AND per-line baseline pixel-snap (self-bootstraps). Name is stale — also owns the font swap. |
+| `Assets/UI/UITextRuntimeStyle.cs` | Runtime UI text manager: applies the player font choice (in-frame regen for new content + strong refresh on switch/startup) AND per-line baseline pixel-snap (self-bootstraps). |
 | `Assets/UI/UIFontOptions.cs` | Player-selectable font registry (`Assets/Resources/UIFontOptions.asset`) — `{name, font, size}` entries |
 | `Assets/UI/FontConfig.cs` + `Assets/Editor/FontConfigEditor.cs` | Editor-baked font/size/primary-color source of truth + "Apply to All" propagation + `pixelSnap` toggle |
 | `Assets/Components/SliderReleaseRelay.cs` | Fires once on slider pointer-up (UI-scale applies on release) |

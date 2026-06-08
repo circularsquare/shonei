@@ -47,6 +47,7 @@ VISUALS
 OPTIMIZATION  
 - plant sway mpb redesign
 - chunk tiles?
+- update unity??
 
 MOUSE AI
 - ponder inventory management
@@ -108,6 +109,3 @@ TODAY
 - server   
     - how to sometimes point trading at actual server and sometimes at local server?
     - sign up / login names
-    - make logs slower ? 
-    - delete old logs? (how fast does it fill up?)
-    - have it alert me somehowif somethings going wrong?

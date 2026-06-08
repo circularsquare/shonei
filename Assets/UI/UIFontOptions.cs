@@ -6,7 +6,7 @@ using UnityEngine;
 // Each entry pairs a TMP SDF font asset with the fontSize that makes it visually match the
 // others (a compact pixel font and a smooth vector font need different point sizes for the
 // same apparent size). Lives at Assets/Resources/UIFontOptions.asset so it loads by name at
-// runtime. The selected entry is SettingsManager.uiFontIndex; UITextPixelSnap stamps that
+// runtime. The selected entry is SettingsManager.uiFontIndex; UITextRuntimeStyle stamps that
 // entry's font+size onto every overlay UI label at runtime (existing and dynamically spawned).
 //
 // Entry 0 should be the project's shipped/baked default (so an unset preference matches what

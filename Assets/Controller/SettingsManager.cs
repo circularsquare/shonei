@@ -57,7 +57,7 @@ public class SettingsManager : MonoBehaviour {
     public const float UiScaleStep = 0.05f;
     public float uiScale        { get; private set; } = 1f;
     // Selected UI font (index into UIFontOptions.fonts). 0 = the shipped/baked default.
-    // Applied at runtime by UITextPixelSnap.
+    // Applied at runtime by UITextRuntimeStyle.
     public int   uiFontIndex    { get; private set; } = 0;
 
     // Fired after any setter writes a value. Subscribers re-pull whatever they
@@ -163,7 +163,7 @@ public class SettingsManager : MonoBehaviour {
         OnChanged?.Invoke();
     }
 
-    // Index into UIFontOptions.fonts. UITextPixelSnap re-reads this on OnChanged and swaps the
+    // Index into UIFontOptions.fonts. UITextRuntimeStyle re-reads this on OnChanged and swaps the
     // whole UI's font.
     public void SetUiFontIndex(int i) {
         i = Mathf.Max(0, i);

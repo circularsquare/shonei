@@ -1,5 +1,11 @@
 root = true
 
+# Normalize line endings to LF everywhere (matches .gitattributes eol=lf).
+# Without this, Windows editors re-save text files as CRLF and `git add`
+# warns on every staging. Honored by VSCode, Rider, and Visual Studio.
+[*]
+end_of_line = lf
+
 [*.cs]
 # Brace style - keep on same line
 csharp_new_line_before_open_brace = none
