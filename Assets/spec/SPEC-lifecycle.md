@@ -49,9 +49,23 @@ Phase 4 (`graph.Initialize`) and run identically through Phases 5–9.
 
 **Phase 7 is split across two frames** (full frame-by-frame mechanics in §Startup ordering): animals spawn in frame 1, `Animal.Start` finalises them in frame 2, then `PostLoadInit` runs. Anything that needs animals fully ready (cross-animal aggregates, colony stats) belongs in `PostLoadInit` — not directly in `ApplySaveData`.
 
+### Front-end menu scene
+
+The game boots into `Menu.unity` (build scene 0), **not** `Main`. `MenuController`
+shows a login/register form (account auth — see SPEC-trading "Accounts & login"),
+then a main menu (Play / New Game / Log Out / Quit) that `SceneManager.LoadScene("Main")`.
+The logged-in identity lives in the static `Session`, which survives the scene
+load. "New Game" sets `WorldController.bootNewGame` (a consumed-once static) to
+force generation; "Play" leaves it false → default load-most-recent-or-generate.
+The in-game save menu has a "main menu" button (`SaveMenuPanel.OnClickMainMenu`)
+that returns to `Menu.unity`. **Opening `Main.unity` directly in the editor still
+works** — no `Session`/boot flag → default behaviour + an editor-only dev identity
+for the market. `Tools/Scene` has Open Menu / Open Main / Play From Menu shortcuts.
+
 ### Startup ordering (frame by frame)
 
-All three paths (Initial / Reset / Load) follow the same two-frame handoff:
+(Within `Main` — `Menu` is a lightweight scene with no World.) All three paths
+(Initial / Reset / Load) follow the same two-frame handoff:
 
 ```
 Initial: GenerateDefault()         →  PostLoadInit (next frame)

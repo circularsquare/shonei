@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using TMPro;
 
@@ -61,6 +62,15 @@ public class SaveMenuPanel : MonoBehaviour {
         }, confirmLabel: "reset");
     }
 
+    // Returns to the front-end menu scene. Confirms first since unsaved progress
+    // since the last save is lost (the world isn't auto-persisted on scene change).
+    // The logged-in Session is static, so it survives the load — no re-login.
+    public void OnClickMainMenu() {
+        ConfirmationPopup.Show("main menu? unsaved progress lost", () => {
+            SceneManager.LoadScene("Menu");
+        }, confirmLabel: "menu");
+    }
+
     // -----------------------------------------------------------------------
     // Slot list
     // -----------------------------------------------------------------------
@@ -76,9 +86,9 @@ public class SaveMenuPanel : MonoBehaviour {
         }
         foreach (Transform child in slotList) Destroy(child.gameObject);
 
-        List<string> slots = SaveSystem.instance.GetSaveSlots();
+        List<string> slots = SaveStore.GetSaveSlots();
         foreach (string slot in slots) {
-            int miceCount = SaveSystem.instance.GetAnimalCount(slot);
+            int miceCount = SaveStore.GetAnimalCount(slot);
             GameObject go = Instantiate(slotEntryPrefab, slotList);
             go.name = "SlotEntry_" + slot;
             SaveSlotEntry entry = go.GetComponent<SaveSlotEntry>();
@@ -88,18 +98,18 @@ public class SaveMenuPanel : MonoBehaviour {
 
         if (saveButton != null) {
             string slot = SaveSystem.instance.currentSlot;
-            saveButton.interactable = !string.IsNullOrEmpty(slot) && SaveSystem.instance.SlotExists(slot);
+            saveButton.interactable = !string.IsNullOrEmpty(slot) && SaveStore.SlotExists(slot);
         }
     }
 
     // Returns "new save", "new save (2)", "new save (3)", etc. — first name with no file on disk.
     string GenerateNewSlotName() {
         string baseName = "new save";
-        if (!SaveSystem.instance.SlotExists(baseName)) return baseName;
+        if (!SaveStore.SlotExists(baseName)) return baseName;
         int n = 2;
         while (true) {
             string candidate = baseName + " (" + n + ")";
-            if (!SaveSystem.instance.SlotExists(candidate)) return candidate;
+            if (!SaveStore.SlotExists(candidate)) return candidate;
             n++;
         }
     }

@@ -69,25 +69,14 @@ public class SaveSystem : MonoBehaviour {
     // Name of the slot that was last loaded or saved. Null for a fresh/reset world.
     public string currentSlot { get; private set; }
 
-    // Cache of slot name → animal count, populated lazily by GetAnimalCount via a
-    // streaming JSON read and kept fresh by Save/DeleteSlot/RenameSlot. Avoids
-    // re-parsing multi-MB save files every time the save menu panel is opened.
-    Dictionary<string, int> _animalCountCache = new Dictionary<string, int>();
-
-    string SaveDir {
-        get {
-#if UNITY_EDITOR
-            return System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.dataPath, "../SaveData"));
-#else
-            return System.IO.Path.Combine(Application.persistentDataPath, "saves");
-#endif
-        }
-    }
+    // Filesystem slot ops (enumerate / metadata / delete / rename) live in the static
+    // SaveStore so the Menu scene can list saves without a live SaveSystem/World. This
+    // class keeps only currentSlot (world state) and the gather/restore logic.
 
     void Awake() {
         if (instance != null) { Debug.LogError("there should only be one SaveSystem"); }
         instance = this;
-        if (!System.IO.Directory.Exists(SaveDir)) System.IO.Directory.CreateDirectory(SaveDir);
+        SaveStore.EnsureDir();
     }
 
     // ── Autosave ─────────────────────────────────────────────────────────────
@@ -132,9 +121,9 @@ public class SaveSystem : MonoBehaviour {
     // that prefix is reserved for autosaves, so manual saves must not use it.
     void WriteRotatingAutosave() {
         // GetSaveSlots is newest-first, so autosaves sort newest→oldest; the oldest is last.
-        var autos = GetSaveSlots().Where(s => s.StartsWith(AutosavePrefix)).ToList();
+        var autos = SaveStore.GetSaveSlots().Where(s => s.StartsWith(AutosavePrefix)).ToList();
         while (autos.Count >= MaxAutosaves) {
-            DeleteSlot(autos[autos.Count - 1]);
+            SaveStore.DeleteSlot(autos[autos.Count - 1]);
             autos.RemoveAt(autos.Count - 1);
         }
         string name = AutosavePrefix + " " + System.DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss");
@@ -147,14 +136,11 @@ public class SaveSystem : MonoBehaviour {
     // background "autosave" slot doesn't hijack the player's active named slot.
     public void Save(string slotName, bool setCurrent = true) {
         string json = SerializeToJson();
-        System.IO.File.WriteAllText(SlotPath(slotName), json);
+        System.IO.File.WriteAllText(SaveStore.SlotPath(slotName), json);
         if (setCurrent) currentSlot = slotName;
         autosaveTimer = 0f; // any save (manual or auto) restarts the autosave clock
         // Refresh the cache from the live animal count — avoids re-parsing the file we just wrote.
-        if (AnimalController.instance != null)
-            _animalCountCache[slotName] = AnimalController.instance.na;
-        else
-            _animalCountCache.Remove(slotName);
+        SaveStore.SetAnimalCount(slotName, AnimalController.instance != null ? AnimalController.instance.na : -1);
         Debug.Log("Saved world to slot: " + slotName);
     }
 
@@ -581,7 +567,7 @@ public class SaveSystem : MonoBehaviour {
     }
 
     public void Load(string slotName) {
-        string path = SlotPath(slotName);
+        string path = SaveStore.SlotPath(slotName);
         if (!System.IO.File.Exists(path)) { Debug.LogError("Save slot not found: " + slotName); return; }
         string json = System.IO.File.ReadAllText(path);
         currentSlot = slotName;
@@ -1239,96 +1225,16 @@ public class SaveSystem : MonoBehaviour {
     // -----------------------------------------------------------------------
     // SLOTS
     // -----------------------------------------------------------------------
+    // Enumeration / metadata / delete live in SaveStore (filesystem only). The one
+    // slot op that touches world state is rename, which must follow currentSlot.
 
-    public List<string> GetSaveSlots() {
-        var slots = new List<string>();
-        if (!System.IO.Directory.Exists(SaveDir)) return slots;
-        var files = new System.IO.DirectoryInfo(SaveDir).GetFiles("*.json");
-        System.Array.Sort(files, (a, b) => b.LastWriteTime.CompareTo(a.LastWriteTime));
-        foreach (var fi in files)
-            slots.Add(System.IO.Path.GetFileNameWithoutExtension(fi.Name));
-        return slots;
-    }
-
-    // Returns the name of the most recently modified save slot, or null if none exist.
-    public string GetMostRecentSlot() {
-        if (!System.IO.Directory.Exists(SaveDir)) return null;
-        var files = new System.IO.DirectoryInfo(SaveDir).GetFiles("*.json");
-        if (files.Length == 0) return null;
-        System.IO.FileInfo newest = files[0];
-        for (int i = 1; i < files.Length; i++)
-            if (files[i].LastWriteTime > newest.LastWriteTime) newest = files[i];
-        return System.IO.Path.GetFileNameWithoutExtension(newest.Name);
-    }
-
-    public bool SlotExists(string slotName) => System.IO.File.Exists(SlotPath(slotName));
-
-    public void DeleteSlot(string slotName) {
-        string path = SlotPath(slotName);
-        if (!System.IO.File.Exists(path)) { Debug.LogError("DeleteSlot: slot not found: " + slotName); return; }
-        System.IO.File.Delete(path);
-        _animalCountCache.Remove(slotName);
-        Debug.Log("Deleted slot: " + slotName);
-    }
-
-    // Renames a save file on disk. Returns true on success.
+    // Renames a save file, and if it was the currently-loaded slot, follows the
+    // rename so a later save targets the same slot instead of triggering a spurious
+    // "overwrite?" confirmation (the old auto-generated name no longer matches
+    // currentSlot otherwise). Returns true on success.
     public bool RenameSlot(string oldName, string newName) {
-        string oldPath = SlotPath(oldName);
-        string newPath = SlotPath(newName);
-        if (!System.IO.File.Exists(oldPath)) { Debug.LogError("RenameSlot: source not found: " + oldName); return false; }
-        if (System.IO.File.Exists(newPath)) { Debug.LogError("RenameSlot: destination exists: " + newName); return false; }
-        System.IO.File.Move(oldPath, newPath);
-        if (_animalCountCache.TryGetValue(oldName, out int cached)) {
-            _animalCountCache.Remove(oldName);
-            _animalCountCache[newName] = cached;
-        }
-        // Renaming the currently-loaded slot follows the rename, so a later save targets
-        // the same slot instead of triggering a spurious "overwrite?" confirmation (the
-        // slot's old auto-generated name no longer matches currentSlot otherwise).
-        if (currentSlot == oldName) currentSlot = newName;
-        Debug.Log("Renamed slot \"" + oldName + "\" → \"" + newName + "\"");
-        return true;
+        bool ok = SaveStore.RenameSlot(oldName, newName);
+        if (ok && currentSlot == oldName) currentSlot = newName;
+        return ok;
     }
-
-    // Returns the animal count for a save slot. Results are cached in
-    // _animalCountCache so repeat lookups (e.g. re-opening the save menu) are free;
-    // the cache is kept fresh by Save / DeleteSlot / RenameSlot.
-    //
-    // On cache miss, streams the save file with JsonTextReader and counts the
-    // top-level objects in the `animals` array. This avoids materializing the
-    // rest of WorldSaveData (tiles, structures, blueprints, water/moisture grids,
-    // etc.) just to read one length — that full deserialize was responsible for
-    // the noticeable freeze when opening the save panel with several large saves.
-    public int GetAnimalCount(string slotName) {
-        if (_animalCountCache.TryGetValue(slotName, out int cached)) return cached;
-
-        string path = SlotPath(slotName);
-        if (!System.IO.File.Exists(path)) { Debug.LogError("GetAnimalCount: slot not found: " + slotName); return 0; }
-        int count = 0;
-        try {
-            using (var sr = new System.IO.StreamReader(path))
-            using (var reader = new JsonTextReader(sr)) {
-                while (reader.Read()) {
-                    if (reader.TokenType == JsonToken.PropertyName
-                        && (string)reader.Value == "animals") {
-                        if (!reader.Read() || reader.TokenType != JsonToken.StartArray) break;
-                        while (reader.Read() && reader.TokenType != JsonToken.EndArray) {
-                            if (reader.TokenType == JsonToken.StartObject) {
-                                count++;
-                                reader.Skip(); // jump to matching EndObject
-                            }
-                        }
-                        break; // animals array done — no need to read the rest of the file
-                    }
-                }
-            }
-        } catch (System.Exception e) {
-            Debug.LogError("GetAnimalCount: failed to parse \"" + slotName + "\": " + e.Message);
-            return 0;
-        }
-        _animalCountCache[slotName] = count;
-        return count;
-    }
-
-    string SlotPath(string slotName) => System.IO.Path.Combine(SaveDir, slotName + ".json");
 }

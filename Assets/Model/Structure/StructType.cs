@@ -308,6 +308,12 @@ public class StructType {
     // for most types; PowerShaft additionally derives its connectivity axis from rotation.
     public bool rotatable {get; set;}
 
+    // When true, this structure mounts against a solid vertical SIDE (terrain or a building
+    // wall) instead of resting on the ground — placement uses the side-attach branch in
+    // StructPlacement (shared with ladder_side) and skips the generic standability check.
+    // The player chooses which side via the mirror toggle (F). Used by ladder_side and bracket.
+    public bool sideMounted {get; set;}
+
     // ── Two-click placement (rope bridge) ─────────────────────────────
     // When `placementMethod == "twoClick"`, the player clicks two tiles to define
     // a span — the first click drops the post here, the second click drops the

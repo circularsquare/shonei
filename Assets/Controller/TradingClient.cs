@@ -12,27 +12,37 @@ public class TradingClient : MonoBehaviour {
     bool isConnecting = false;
     bool hasLoggedConnectError = false;
     bool hasLoggedDisconnect = false;
-    public const string playerName = "anita";
+    // The market identity for this session — the logged-in account's username
+    // (set by the menu via Session). In the editor with no login (running Main
+    // directly) it falls back to a dev name against the local insecure server.
+    public static string playerName =>
+        !string.IsNullOrEmpty(Session.Username) ? Session.Username : EditorFallbackName;
+#if UNITY_EDITOR
+    const string EditorFallbackName = "anita";
+#else
+    const string EditorFallbackName = "anonymous";
+#endif
 
     // ── Server target ──────────────────────────────────────────────────────
-    // Shipped builds always use production. In the editor the target is dev-
-    // selectable via Tools/Market Server (backed by EditorPrefs),
-    // defaulting to local so ordinary local testing needs no toggle. The URL is
-    // resolved fresh on each connect, so flipping the menu takes effect on the
-    // next (re)connection.
-    const string ProdWsHost  = "wss://market.anita.garden";  // Hetzner, behind Caddy TLS
-    const string LocalWsHost = "ws://127.0.0.1:8083";        // a server running on this machine
-#if UNITY_EDITOR
-    // Shared with DevServerMenu.cs. true = local, false = production.
-    public const string EditorPrefUseLocal = "shonei.market.useLocalServer";
-#endif
-
+    // Host (prod vs local) comes from MarketServer; identity is the auth token
+    // when logged in, else ?name= for the editor/insecure-local path. Resolved
+    // fresh each connect so a menu toggle or login takes effect on reconnect.
     static string ResolveWsUrl() {
-        string host = ProdWsHost;
+        string url = MarketServer.WsBase + "/ws";
+        if (!string.IsNullOrEmpty(Session.Token))
+            return url + "?token=" + Uri.EscapeDataString(Session.Token);
+        return url + "?name=" + Uri.EscapeDataString(playerName);
+    }
+
+    // Builds must authenticate before connecting; the editor may connect with the
+    // dev fallback name so running Main.unity standalone still reaches the market.
+    static bool ShouldConnect() {
+        if (Session.LoggedIn) return true;
 #if UNITY_EDITOR
-        if (UnityEditor.EditorPrefs.GetBool(EditorPrefUseLocal, true)) host = LocalWsHost;
+        return true;
+#else
+        return false;
 #endif
-        return host + "/ws?name=" + playerName;
     }
 
     const float ReconnectInterval = 20f;
@@ -45,12 +55,19 @@ public class TradingClient : MonoBehaviour {
 
     public async void Connect() {
         if (isConnecting || isOnline) return;
+        if (!ShouldConnect()) return;
+        // Don't burn reconnect attempts on a token we already know is expired —
+        // the player needs to re-login (handled by the menu on next launch).
+        if (Session.LoggedIn && !Session.IsTokenValid(Session.Token)) {
+            Debug.LogWarning("[market] session token expired — not connecting; re-login required");
+            return;
+        }
         isConnecting = true;
 
         string url = ResolveWsUrl();
-        Debug.Log("[market] connecting to " + url);
+        Debug.Log("[market] connecting as " + playerName + " to " + MarketServer.WsBase);
 #if UNITY_EDITOR
-        if (!url.StartsWith(LocalWsHost))
+        if (!MarketServer.UseLocal)
             Debug.LogWarning("[market] editor is connected to PRODUCTION — orders here hit the live market");
 #endif
         ws = new WebSocket(url);
@@ -135,7 +152,7 @@ public class TradingClient : MonoBehaviour {
     IEnumerator ReconnectLoop() {
         while (true) {
             yield return new WaitForSecondsRealtime(ReconnectInterval);
-            if (!isOnline && !isConnecting) Connect();
+            if (!isOnline && !isConnecting && ShouldConnect()) Connect();
         }
     }
 

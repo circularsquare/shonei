@@ -378,13 +378,16 @@ because everything is authored in canvas reference units. The slider snaps to `U
 (0.05 = 2.5%, so 75% = 1.5×) and applies on **release**, not during drag (`SliderReleaseRelay`
 on the slider GO): rescaling the canvas mid-drag would shove the handle out from under the cursor.
 
-**SDF font** — UI text uses `m5x7 SDF`, not the bitmap `m5x7`, so it stays sharp at non-integer
-scales (a bitmap atlas only renders crisply at integer multiples). `FontConfig.asset` is the
-source of truth (font + size + `primaryTextColor`); its "Apply to All" tool (`FontConfigEditor`)
-propagates to every TMP in scenes + prefabs, **including** TMP_InputField's `m_GlobalFontAsset`.
-The font's embedded material has `_Sharpness = 1.0` (hardens SDF edges — the single biggest
-crispness win), and `faceInfo.lineHeight = 105.875` so line advance is exactly 14px at size 16
-(integer). NB: a font reimport would reset lineHeight/sharpness.
+**SDF font** — every selectable UI font is an **SDF** asset (never a bitmap), so text stays sharp
+at non-integer scales (a bitmap atlas only renders crisply at integer multiples). The shipped
+default is **Figtree SDF @11** ("Smooth"); m5x7 SDF @16 ("Pixel") is the alternate (see the font
+switcher below, and `TMP_Settings.defaultFontAsset` = the shipped default). `FontConfig.asset` is
+the editor-side source of truth (font + size + `primaryTextColor`, currently Figtree @11); its
+"Apply to All" tool (`FontConfigEditor`) propagates to every TMP in scenes + prefabs, **including**
+TMP_InputField's `m_GlobalFontAsset`. Each SDF font's embedded material should have `_Sharpness =
+1.0` (hardens SDF edges — the single biggest crispness win); for the m5x7 SDF "Pixel" font,
+`faceInfo.lineHeight = 105.875` makes line advance exactly 14px at size 16. NB: a font reimport
+resets lineHeight/sharpness.
 
 **Pixel snap** (`UITextRuntimeStyle.cs`) — SDF renders each sub-pixel baseline phase with different
 blur, so identical labels at different fractional Y looked inconsistent ("messy"). This snaps each

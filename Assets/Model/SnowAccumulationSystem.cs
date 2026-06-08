@@ -51,7 +51,7 @@ public class SnowAccumulationSystem {
 
     // Reload-Domain-off support — see MaintenanceSystem.ResetStatics for the why.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetStatics() { instance = null; }
+    public static void ResetStatics() { instance = null; }
 
     const float AccumThresholdC      = 0f;        // strictly less than → can accumulate
     const float MeltStartC           = 0f;        // strictly greater than → starts melting (linearly ramped from here)

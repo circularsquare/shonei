@@ -8,7 +8,7 @@ and chat with other settlements.
 
 ```
 Unity Client (TradingClient.cs)
-        │  WebSocket  ws://127.0.0.1:8083/ws?name=<PlayerName>
+        │  WebSocket  wss://market.anita.garden/ws?token=<authToken>  (ws://127.0.0.1:8083 in dev)
         ▼
   Go Server  (~/projects/shonei-server/main.go)
     └── Hub  (goroutine, central coordinator)
@@ -20,8 +20,9 @@ Unity Client (TradingClient.cs)
 
 - Hub pattern: all clients communicate through the central Hub; clients never
   address each other directly.
-- Player name passed as a query param on connect (`?name=Mouse1`); the server
-  stamps it onto outgoing chat and order messages.
+- Identity comes from an auth token on connect (`?token=…`); the server resolves
+  it to the account username and stamps that onto outgoing chat/order messages.
+  See "Accounts & login" below. (Dev/local insecure mode still accepts `?name=`.)
 - Unity client auto-reconnects every 20 s when disconnected.
 - Server binds to `127.0.0.1:8083` (localhost only for now). Port 8082 is reserved for the MCP for Unity bridge, which Unity launches automatically.
 
@@ -310,10 +311,24 @@ Direction of travel is inferred from the animal's task:
 The display self-ticks from its own `Update` whenever the panel is visible; no
 wiring from TradingPanel is needed beyond the inspector reference.
 
-### Player name
+### Accounts & login
 
-`TradingClient.playerName` — hardcoded `"anita"` for now. Used to identify
-which side of a fill belongs to this player.
+Players have real accounts (username + password). The Go server (`auth.go`)
+exposes `POST /register` + `/login` (JSON) returning an HMAC-signed token; `/ws`
+authenticates `?token=` → username. Secret in `/opt/shonei/shonei.env` (secure
+mode = token required); locally with no secret it runs insecure and accepts
+`?name=` for the CLI test client. NPC trader names are reserved at registration.
+Tokens are **stateless** (30-day expiry) and **cannot be revoked before expiry** —
+logout only clears the client's cached token; rotating `SHONEI_SECRET` is the only
+revocation lever (invalidates *all* tokens at once). Fine for trusted friends; the
+plan notes the per-user token-version upgrade if it ever matters.
+
+Client: `Session` (static) holds the logged-in username + token across the
+Menu→Main scene load; `MarketServer` resolves the host (prod vs editor-local
+toggle); `AuthClient` does register/login; `MenuController`/`Menu.unity` is the
+login front-end. `TradingClient.playerName` is now `Session.Username` (with an
+editor-only dev fallback when running Main standalone) — used to identify which
+side of a fill is this player. Full roadmap: `plans/account-system.md`.
 
 ### Merchant job
 

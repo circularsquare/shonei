@@ -85,6 +85,15 @@ public class SunController : MonoBehaviour {
 
     static readonly int OverlayAmbientId = Shader.PropertyToID("_OverlayAmbient");
 
+    [Header("Standalone clock (menu / no-World scenes)")]
+    [Tooltip("When true and there is no World, advance the day cycle from real time so the sun animates in scenes without the game clock (the menu). In-game leave false — World drives time.")]
+    [SerializeField] bool useStandaloneClock = false;
+    [Tooltip("Real seconds for one full day/night cycle when useStandaloneClock is on.")]
+    [SerializeField] float standaloneSecondsPerDay = 120f;
+    [Tooltip("Hour of day (0-24) the standalone clock starts at on scene load.")]
+    [SerializeField] float standaloneStartHour = 9f;
+    float _standaloneClock;
+
     [Header("Debug (read-only in play mode)")]
     [SerializeField] float _twilightFraction;
     [SerializeField] float _brightness;
@@ -98,10 +107,15 @@ public class SunController : MonoBehaviour {
         } else {
             Debug.LogError("SunController: sunSource not assigned in inspector.");
         }
+        // Standalone (no-World) scenes start the day cycle at this hour.
+        _standaloneClock = Mathf.Repeat(standaloneStartHour / 24f, 1f) * Mathf.Max(1f, standaloneSecondsPerDay);
     }
 
     void Update() {
-        if (World.instance == null) return;
+        if (World.instance == null) {
+            if (!useStandaloneClock) return;
+            _standaloneClock += Time.deltaTime;  // no World (menu): drive the cycle from real time
+        }
         float phase = GetDayPhase();
         twilightFraction = _twilightFraction = CalcTwilightFraction(phase);
         brightness       = _brightness       = Brightness(phase);
@@ -142,8 +156,11 @@ public class SunController : MonoBehaviour {
     public static float horizonY01 => instance != null ? instance._horizonY01 : 0.4f;
 
     public static float GetDayPhase() {
-        if (World.instance == null) return 0f;
-        return World.instance.timer % World.ticksInDay / World.ticksInDay;
+        if (World.instance != null) return World.instance.timer % World.ticksInDay / World.ticksInDay;
+        // No World (e.g. the menu): advance from a real-time standalone clock if enabled.
+        if (instance != null && instance.useStandaloneClock)
+            return Mathf.Repeat(instance._standaloneClock / Mathf.Max(1f, instance.standaloneSecondsPerDay), 1f);
+        return 0f;
     }
 
     // Returns true if the current hour falls within [startHour, endHour).

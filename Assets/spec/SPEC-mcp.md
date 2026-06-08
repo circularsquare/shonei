@@ -141,10 +141,11 @@ should look at home next to ResearchPanel / TradingPanel / RecipePanel.
 
 ### Font
 
-- **Default font asset: `m5x7 SDF`** (TextMeshPro/Resources/Fonts &
-  Materials/m5x7 SDF.asset). SDF (not bitmap) so it stays crisp at non-integer UI
-  scales; `UITextRuntimeStyle` + material `_Sharpness=1.0` keep it sharp and uniform.
-  See SPEC-ui.md "UI scaling & text crispness" before touching font/scale/crispness.
+- **Default font asset: `Figtree SDF` @11** ("Smooth"; `TMP_Settings.defaultFontAsset`).
+  m5x7 SDF @16 ("Pixel") is the player-selectable alternate. Both are SDF (not bitmap) so
+  they stay crisp at non-integer UI scales; `UITextRuntimeStyle` + material `_Sharpness=1.0`
+  keep them sharp and uniform. See SPEC-ui.md "UI scaling & text crispness" + "In-game font
+  switcher" before touching font/scale/crispness.
 - **`fontSize = 16`. Period.** Anything smaller (12, 14) is illegible at
   this project's canvas scale. **Don't introduce visual hierarchy via bold
   or uppercase** — they don't render well in `m5x7`. Default to flat

@@ -3,6 +3,8 @@ meoww!!
 6/8
 - smooth font cleaning 
 - persistent trading server
+- main menu!
+    - with cloud background
 6/5
 - autosave 
 - more ui tweaks 

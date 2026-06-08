@@ -1,6 +1,7 @@
 using System.Collections;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 // Runtime UI text styling, driven off TMP's global TEXT_CHANGED event so existing AND
 // dynamically-spawned text stay in sync. Two jobs:
@@ -19,8 +20,24 @@ using UnityEngine;
 // font with no flicker; the nested TEXT_CHANGED then re-enters with the font correct and snaps.
 // World-space text (chat bubbles) is left alone. Self-bootstraps — no scene wiring.
 public class UITextRuntimeStyle : MonoBehaviour {
+    // The styler is a per-scene object: it subscribes to the scene's SettingsManager and
+    // styles that scene's text. It is NOT DontDestroyOnLoad, so a single-mode scene load
+    // destroys it — we re-create one in each newly loaded scene. AfterSceneLoad seeds the
+    // first scene; sceneLoaded covers every load after (e.g. Menu -> Main). Without this,
+    // loading the game from the menu left the game scene with no styler: text rendered in
+    // its authored font mix and the options font switch had no live listener.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Bootstrap() {
+        EnsureInstance();
+        // -= then += guarantees exactly one subscription even with Reload Domain off, where
+        // this static event subscription would otherwise persist and stack across play sessions.
+        SceneManager.sceneLoaded -= OnSceneLoadedStatic;
+        SceneManager.sceneLoaded += OnSceneLoadedStatic;
+    }
+
+    static void OnSceneLoadedStatic(Scene scene, LoadSceneMode mode) => EnsureInstance();
+
+    static void EnsureInstance() {
         if (FindObjectOfType<UITextRuntimeStyle>() != null) return;
         new GameObject("UITextRuntimeStyle").AddComponent<UITextRuntimeStyle>();
     }

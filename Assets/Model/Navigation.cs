@@ -58,7 +58,7 @@ public class Graph {
 
     // Reload-Domain-off support — see MaintenanceSystem.ResetStatics for the why.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetStatics() { instance = null; }
+    public static void ResetStatics() { instance = null; }
 
     private Dictionary<(int,int),  (Node,Node)> stairWaypoints = new Dictionary<(int,int),  (Node,Node)>();
     // Cliff chain keyed by bottom base (bx, by, dir). Value is the full waypoint column

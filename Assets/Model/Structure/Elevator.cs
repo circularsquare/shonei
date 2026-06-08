@@ -92,7 +92,7 @@ public class Elevator : Building, PowerSystem.IPowerConsumer {
     // Required so repeated Play presses don't carry stale tick values or orphaned
     // Elevator refs from the previous run into the new session.
     [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetStaticsForPlayMode() {
+    public static void ResetStaticsForPlayMode() {
         _all.Clear();
         currentTick = 0;
     }

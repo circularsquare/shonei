@@ -27,12 +27,15 @@ public static class StructPlacement {
 
         if (tile.GetBlueprintAt(st.depth) != null) return "already a blueprint here";
 
-        // Side ladder: hangs on a wall, no floor needed. Skips standability and the rest
-        // of the generic rule set — sideladder doesn't use requiredTileName, doors,
-        // tileRequirements, or shapes. Only requires (a) target tile is air-and-empty at
-        // its depth and (b) the wall tile on the mounted side is solid (tile or building).
+        // Side-mounted structures (ladder_side, bracket): hang on a wall, no floor needed.
+        // Skip standability and the rest of the generic rule set — they don't use
+        // requiredTileName, doors, tileRequirements, or shapes. Only require (a) the target
+        // tile is air-and-empty at its depth and (b) the wall tile on the mounted side is
+        // solid (terrain or a building face). Because the wall check only accepts terrain or
+        // a depth-0 building, a bracket can't mount on another bracket (depth 1) — cantilevers
+        // extend exactly one tile per level, no chaining.
         // dir convention: mirrored=true → wall on right (sprite flipped); mirrored=false → wall on left.
-        if (st.name == "ladder_side") {
+        if (st.sideMounted) {
             if (tile.type.id != 0) return "tile is not empty";
             if (tile.structs[st.depth] != null) return "footprint is blocked";
             int dir = mirrored ? +1 : -1;
@@ -45,7 +48,7 @@ public static class StructPlacement {
             if (!wall.type.solid) {
                 Structure s = wall.structs[0];
                 if (s == null) return "needs wall on this side";
-                if (s is Plant) return "can't ladder on a plant";
+                if (s is Plant) return "can't attach to a plant";
                 if (!s.structType.SideEdgeSolid(wall.x - s.x, wall.y - s.y, !mirrored, s.mirrored))
                     return "no wall on this side";
             }

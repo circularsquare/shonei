@@ -2,7 +2,7 @@
   "saveVersion": 1,
   "savedNx": 200,
   "savedNy": 120,
-  "timer": 4136.76,
+  "timer": 2266.8606,
   "worldSeed": 84885,
   "tiles": [
     {
@@ -5425,11 +5425,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 2162,
-            "decayCounter": 978240
+            "quantity": 1741,
+            "decayCounter": 499258
           }
         ],
-        "wetUntil": 4139.479
+        "wetUntil": 2241.54346
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -5871,24 +5871,6 @@
     },
     {
       "x": 14,
-      "y": 62,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 2162,
-            "decayCounter": 145666
-          }
-        ],
-        "wetUntil": 4139.479
-      },
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 14,
       "y": 61,
       "tileType": "dirt",
       "backgroundWallType": 0,
@@ -6331,11 +6313,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 1932,
-            "decayCounter": 798941
+            "quantity": 997,
+            "decayCounter": 799535
           }
         ],
-        "wetUntil": 4139.479
+        "wetUntil": 2241.54346
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -8025,42 +8007,6 @@
     },
     {
       "x": 19,
-      "y": 60,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 860,
-            "decayCounter": 592877
-          }
-        ],
-        "wetUntil": 4139.479
-      },
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 59,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 2353,
-            "decayCounter": 602558
-          }
-        ],
-        "wetUntil": 4139.479
-      },
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
       "y": 58,
       "tileType": "clay",
       "backgroundWallType": 0,
@@ -8474,42 +8420,6 @@
     },
     {
       "x": 20,
-      "y": 60,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 2358,
-            "decayCounter": 758130
-          }
-        ],
-        "wetUntil": 4139.479
-      },
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 59,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 2351,
-            "decayCounter": 522838
-          }
-        ],
-        "wetUntil": 4139.479
-      },
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
       "y": 58,
       "tileType": "clay",
       "backgroundWallType": 0,
@@ -8919,24 +8829,6 @@
       "y": 0,
       "tileType": "limestone",
       "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 60,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 2346,
-            "decayCounter": 840210
-          }
-        ],
-        "wetUntil": 4139.479
-      },
-      "backgroundWallType": 0,
       "hasBackgroundWall": false
     },
     {
@@ -9358,24 +9250,6 @@
       "y": 0,
       "tileType": "limestone",
       "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 22,
-      "y": 60,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 2344,
-            "decayCounter": 458957
-          }
-        ],
-        "wetUntil": 4139.479
-      },
-      "backgroundWallType": 0,
       "hasBackgroundWall": false
     },
     {
@@ -9807,12 +9681,12 @@
         "invType": "Floor",
         "stacks": [
           {
-            "itemName": "pine planks",
-            "quantity": 174,
-            "decayCounter": 412621
+            "itemName": "sawdust",
+            "quantity": 99,
+            "decayCounter": 92770
           }
         ],
-        "wetUntil": 4139.479
+        "wetUntil": 2230.00171
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -10247,11 +10121,11 @@
         "stacks": [
           {
             "itemName": "pine planks",
-            "quantity": 2356,
-            "decayCounter": 807918
+            "quantity": 1663,
+            "decayCounter": 899065
           }
         ],
-        "wetUntil": 4139.479
+        "wetUntil": 2241.54346
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -10686,11 +10560,11 @@
         "stacks": [
           {
             "itemName": "oak planks",
-            "quantity": 43,
-            "decayCounter": 730091
+            "quantity": 87,
+            "decayCounter": 998614
           }
         ],
-        "wetUntil": 4139.479
+        "wetUntil": 2241.54346
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -11126,10 +11000,10 @@
           {
             "itemName": "pine planks",
             "quantity": 2436,
-            "decayCounter": 175519
+            "decayCounter": 798487
           }
         ],
-        "wetUntil": 4139.479
+        "wetUntil": 2241.54346
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -11564,11 +11438,11 @@
         "stacks": [
           {
             "itemName": "oak",
-            "quantity": 48,
-            "decayCounter": 500955
+            "quantity": 123,
+            "decayCounter": 722288
           }
         ],
-        "wetUntil": 4139.479
+        "wetUntil": 2241.54346
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -11996,24 +11870,6 @@
     },
     {
       "x": 28,
-      "y": 60,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine planks",
-            "quantity": 2444,
-            "decayCounter": 315949
-          }
-        ],
-        "wetUntil": 4139.479
-      },
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 28,
       "y": 59,
       "tileType": "dirt",
       "backgroundWallType": 0,
@@ -12856,24 +12712,6 @@
     },
     {
       "x": 30,
-      "y": 60,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 1903,
-            "decayCounter": 445229
-          }
-        ],
-        "wetUntil": 4139.479
-      },
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 30,
       "y": 59,
       "tileType": "dirt",
       "backgroundWallType": 0,
@@ -13291,24 +13129,6 @@
       "y": 0,
       "tileType": "limestone",
       "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
-      "y": 60,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 1346,
-            "decayCounter": 346357
-          }
-        ],
-        "wetUntil": 4139.479
-      },
-      "backgroundWallType": 0,
       "hasBackgroundWall": false
     },
     {
@@ -14155,15 +13975,15 @@
     },
     {
       "x": 33,
-      "y": 61,
+      "y": 60,
       "tileType": "empty",
       "inv": {
         "invType": "Floor",
         "stacks": [
           {
-            "itemName": "apple",
-            "quantity": 248,
-            "decayCounter": 404134
+            "itemName": "wheat",
+            "quantity": 90,
+            "decayCounter": 701717
           }
         ],
         "wetUntil": 0.0
@@ -14590,6 +14410,24 @@
       "y": 0,
       "tileType": "limestone",
       "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 34,
+      "y": 60,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Floor",
+        "stacks": [
+          {
+            "itemName": "pine",
+            "quantity": 292,
+            "decayCounter": 928288
+          }
+        ],
+        "wetUntil": 0.0
+      },
+      "backgroundWallType": 0,
       "hasBackgroundWall": false
     },
     {
@@ -18416,24 +18254,6 @@
     },
     {
       "x": 43,
-      "y": 62,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "ramie",
-            "quantity": 459,
-            "decayCounter": 522973
-          }
-        ],
-        "wetUntil": 4139.479
-      },
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 43,
       "y": 61,
       "tileType": "dirt",
       "backgroundWallType": 0,
@@ -18869,24 +18689,6 @@
     },
     {
       "x": 44,
-      "y": 62,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 558,
-            "decayCounter": 421225
-          }
-        ],
-        "wetUntil": 4139.479
-      },
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 44,
       "y": 61,
       "tileType": "dirt",
       "backgroundWallType": 0,
@@ -19318,24 +19120,6 @@
       "y": 0,
       "tileType": "limestone",
       "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 45,
-      "y": 63,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 1139,
-            "decayCounter": 290133
-          }
-        ],
-        "wetUntil": 4139.479
-      },
-      "backgroundWallType": 0,
       "hasBackgroundWall": false
     },
     {
@@ -19778,24 +19562,6 @@
       "y": 0,
       "tileType": "limestone",
       "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 46,
-      "y": 64,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "ramie",
-            "quantity": 2223,
-            "decayCounter": 396276
-          }
-        ],
-        "wetUntil": 4139.479
-      },
-      "backgroundWallType": 0,
       "hasBackgroundWall": false
     },
     {
@@ -20256,11 +20022,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 1740,
-            "decayCounter": 746501
+            "quantity": 1864,
+            "decayCounter": 366139
           }
         ],
-        "wetUntil": 4139.479
+        "wetUntil": 2241.54346
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -20712,24 +20478,6 @@
       "y": 0,
       "tileType": "limestone",
       "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 48,
-      "y": 64,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 1843,
-            "decayCounter": 598008
-          }
-        ],
-        "wetUntil": 4139.479
-      },
-      "backgroundWallType": 0,
       "hasBackgroundWall": false
     },
     {
@@ -21190,11 +20938,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 1844,
-            "decayCounter": 716638
+            "quantity": 1963,
+            "decayCounter": 875952
           }
         ],
-        "wetUntil": 4139.479
+        "wetUntil": 2241.54346
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -21646,24 +21394,6 @@
       "y": 0,
       "tileType": "limestone",
       "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 50,
-      "y": 65,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 1848,
-            "decayCounter": 595743
-          }
-        ],
-        "wetUntil": 4139.479
-      },
-      "backgroundWallType": 0,
       "hasBackgroundWall": false
     },
     {
@@ -22131,11 +21861,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 1849,
-            "decayCounter": 640533
+            "quantity": 1966,
+            "decayCounter": 766196
           }
         ],
-        "wetUntil": 4139.479
+        "wetUntil": 2241.54346
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -22605,11 +22335,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 1534,
-            "decayCounter": 7082
+            "quantity": 1873,
+            "decayCounter": 175159
           }
         ],
-        "wetUntil": 4139.479
+        "wetUntil": 2241.54346
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -33252,7 +32982,8 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 14
+      "overlayMask": 14,
+      "overlayState": 1
     },
     {
       "x": 76,
@@ -85299,9 +85030,9 @@
       "x": 29,
       "y": 60,
       "typeName": "pinetree",
-      "plantAge": 221,
-      "plantGrowthStage": 2,
-      "plantHarvestable": false,
+      "plantAge": 643,
+      "plantGrowthStage": 6,
+      "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
       "processorState": 0,
@@ -85320,8 +85051,8 @@
       "x": 25,
       "y": 60,
       "typeName": "appletree",
-      "plantAge": 1200,
-      "plantGrowthStage": 8,
+      "plantAge": 1078,
+      "plantGrowthStage": 7,
       "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
@@ -85341,9 +85072,9 @@
       "x": 28,
       "y": 60,
       "typeName": "pinetree",
-      "plantAge": 190,
-      "plantGrowthStage": 1,
-      "plantHarvestable": false,
+      "plantAge": 615,
+      "plantGrowthStage": 6,
+      "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
       "processorState": 0,
@@ -85362,9 +85093,9 @@
       "x": 35,
       "y": 60,
       "typeName": "wheat",
-      "plantAge": 153,
-      "plantGrowthStage": 3,
-      "plantHarvestable": true,
+      "plantAge": 40,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
       "plantHarvestFlagged": true,
       "uses": 0,
       "processorState": 0,
@@ -85383,9 +85114,9 @@
       "x": 36,
       "y": 60,
       "typeName": "wheat",
-      "plantAge": 0,
-      "plantGrowthStage": 0,
-      "plantHarvestable": false,
+      "plantAge": 221,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
       "processorState": 0,
@@ -85404,9 +85135,9 @@
       "x": 37,
       "y": 60,
       "typeName": "wheat",
-      "plantAge": 35,
-      "plantGrowthStage": 0,
-      "plantHarvestable": false,
+      "plantAge": 159,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
       "processorState": 0,
@@ -85425,7 +85156,7 @@
       "x": 10,
       "y": 60,
       "typeName": "pinetree",
-      "plantAge": 4414,
+      "plantAge": 2608,
       "plantGrowthStage": 7,
       "plantHarvestable": true,
       "uses": 0,
@@ -85445,8 +85176,8 @@
       "x": 13,
       "y": 62,
       "typeName": "pinetree",
-      "plantAge": 326,
-      "plantGrowthStage": 3,
+      "plantAge": 732,
+      "plantGrowthStage": 7,
       "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
@@ -85466,7 +85197,7 @@
       "x": 14,
       "y": 62,
       "typeName": "appletree",
-      "plantAge": 1468,
+      "plantAge": 2116,
       "plantGrowthStage": 9,
       "plantHarvestable": true,
       "uses": 0,
@@ -85486,7 +85217,7 @@
       "x": 45,
       "y": 63,
       "typeName": "ramie",
-      "plantAge": 3503,
+      "plantAge": 1885,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "uses": 0,
@@ -85506,9 +85237,9 @@
       "x": 46,
       "y": 64,
       "typeName": "ramie",
-      "plantAge": 54,
-      "plantGrowthStage": 1,
-      "plantHarvestable": false,
+      "plantAge": 188,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
       "processorState": 0,
@@ -85547,7 +85278,7 @@
       "x": 60,
       "y": 63,
       "typeName": "appletree",
-      "plantAge": 1468,
+      "plantAge": 1558,
       "plantGrowthStage": 9,
       "plantHarvestable": true,
       "uses": 0,
@@ -85567,7 +85298,7 @@
       "x": 61,
       "y": 62,
       "typeName": "appletree",
-      "plantAge": 1468,
+      "plantAge": 1636,
       "plantGrowthStage": 9,
       "plantHarvestable": true,
       "uses": 0,
@@ -85587,7 +85318,7 @@
       "x": 70,
       "y": 65,
       "typeName": "bamboo",
-      "plantAge": 2711,
+      "plantAge": 1516,
       "plantGrowthStage": 11,
       "plantHarvestable": true,
       "uses": 0,
@@ -85607,7 +85338,7 @@
       "x": 75,
       "y": 61,
       "typeName": "appletree",
-      "plantAge": 1468,
+      "plantAge": 1738,
       "plantGrowthStage": 9,
       "plantHarvestable": true,
       "uses": 0,
@@ -85627,7 +85358,7 @@
       "x": 76,
       "y": 61,
       "typeName": "appletree",
-      "plantAge": 1468,
+      "plantAge": 1846,
       "plantGrowthStage": 9,
       "plantHarvestable": true,
       "uses": 0,
@@ -85647,7 +85378,7 @@
       "x": 99,
       "y": 60,
       "typeName": "appletree",
-      "plantAge": 1468,
+      "plantAge": 1409,
       "plantGrowthStage": 9,
       "plantHarvestable": true,
       "uses": 0,
@@ -85667,7 +85398,7 @@
       "x": 115,
       "y": 58,
       "typeName": "appletree",
-      "plantAge": 1468,
+      "plantAge": 2116,
       "plantGrowthStage": 9,
       "plantHarvestable": true,
       "uses": 0,
@@ -85687,7 +85418,7 @@
       "x": 116,
       "y": 56,
       "typeName": "appletree",
-      "plantAge": 1468,
+      "plantAge": 1738,
       "plantGrowthStage": 9,
       "plantHarvestable": true,
       "uses": 0,
@@ -85707,7 +85438,7 @@
       "x": 120,
       "y": 56,
       "typeName": "appletree",
-      "plantAge": 1468,
+      "plantAge": 1924,
       "plantGrowthStage": 9,
       "plantHarvestable": true,
       "uses": 0,
@@ -85727,7 +85458,7 @@
       "x": 121,
       "y": 56,
       "typeName": "appletree",
-      "plantAge": 1468,
+      "plantAge": 1738,
       "plantGrowthStage": 9,
       "plantHarvestable": true,
       "uses": 0,
@@ -85747,7 +85478,7 @@
       "x": 129,
       "y": 63,
       "typeName": "bamboo",
-      "plantAge": 2551,
+      "plantAge": 1356,
       "plantGrowthStage": 11,
       "plantHarvestable": true,
       "uses": 0,
@@ -85767,7 +85498,7 @@
       "x": 135,
       "y": 61,
       "typeName": "pinetree",
-      "plantAge": 4414,
+      "plantAge": 2608,
       "plantGrowthStage": 7,
       "plantHarvestable": true,
       "uses": 0,
@@ -85787,7 +85518,7 @@
       "x": 175,
       "y": 59,
       "typeName": "pinetree",
-      "plantAge": 4314,
+      "plantAge": 2508,
       "plantGrowthStage": 7,
       "plantHarvestable": true,
       "uses": 0,
@@ -85807,7 +85538,7 @@
       "x": 177,
       "y": 58,
       "typeName": "appletree",
-      "plantAge": 1468,
+      "plantAge": 1738,
       "plantGrowthStage": 9,
       "plantHarvestable": true,
       "uses": 0,
@@ -85836,8 +85567,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 9994,
-            "decayCounter": 72229
+            "quantity": 9946,
+            "decayCounter": 31355
           }
         ],
         "allowedItemIds": [
@@ -85855,7 +85586,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.7203675,
+      "condition": 0.849872,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 1,
@@ -85874,8 +85605,8 @@
         "stacks": [
           {
             "itemName": "wheat",
-            "quantity": 9401,
-            "decayCounter": 906455
+            "quantity": 9898,
+            "decayCounter": 405424
           }
         ],
         "allowedItemIds": [
@@ -85898,7 +85629,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.720645249,
+      "condition": 0.850149751,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 1,
@@ -85917,8 +85648,8 @@
         "stacks": [
           {
             "itemName": "pinecone",
-            "quantity": 4072,
-            "decayCounter": 70587
+            "quantity": 778,
+            "decayCounter": 942964
           }
         ],
         "allowedItemIds": [
@@ -85932,7 +85663,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.721200764,
+      "condition": 0.850705266,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 1,
@@ -85952,7 +85683,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.726130962,
+      "condition": 0.855635464,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 3,
@@ -85992,7 +85723,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.7330749,
+      "condition": 0.8625794,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 2,
@@ -86022,8 +85753,8 @@
       "x": 47,
       "y": 64,
       "typeName": "pinetree",
-      "plantAge": 680,
-      "plantGrowthStage": 6,
+      "plantAge": 406,
+      "plantGrowthStage": 4,
       "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
@@ -86052,8 +85783,8 @@
         "stacks": [
           {
             "itemName": "dirt",
-            "quantity": 9683,
-            "decayCounter": 354798
+            "quantity": 9841,
+            "decayCounter": 235485
           }
         ],
         "allowedItemIds": [
@@ -86067,7 +85798,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.7350192,
+      "condition": 0.8645237,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 1,
@@ -86087,7 +85818,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.7353664,
+      "condition": 0.8648709,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 3,
@@ -86097,8 +85828,8 @@
       "x": 48,
       "y": 64,
       "typeName": "pinetree",
-      "plantAge": 597,
-      "plantGrowthStage": 5,
+      "plantAge": 387,
+      "plantGrowthStage": 3,
       "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
@@ -86140,7 +85871,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.7383523,
+      "condition": 0.8678568,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 2,
@@ -86259,13 +85990,13 @@
         "stacks": [
           {
             "itemName": "sawdust",
-            "quantity": 1992,
-            "decayCounter": 526883
+            "quantity": 1069,
+            "decayCounter": 974853
           },
           {
-            "itemName": "sawdust",
-            "quantity": 780,
-            "decayCounter": 991978
+            "itemName": "apple",
+            "quantity": 591,
+            "decayCounter": 275396
           },
           {
             "itemName": "silver",
@@ -86274,8 +86005,8 @@
           },
           {
             "itemName": "ramie",
-            "quantity": 1986,
-            "decayCounter": 881073
+            "quantity": 1103,
+            "decayCounter": 206321
           }
         ],
         "allowedItemIds": [
@@ -86293,7 +86024,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.7886959,
+      "condition": 0.9182004,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 1,
@@ -86313,7 +86044,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.79126513,
+      "condition": 0.920769632,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 1,
@@ -86363,9 +86094,9 @@
       "x": 17,
       "y": 60,
       "typeName": "pinetree",
-      "plantAge": 113,
-      "plantGrowthStage": 1,
-      "plantHarvestable": false,
+      "plantAge": 525,
+      "plantGrowthStage": 5,
+      "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
       "processorState": 0,
@@ -86394,7 +86125,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.828623533,
+      "condition": 0.958128035,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 3,
@@ -86413,8 +86144,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 9926,
-            "decayCounter": 346043
+            "quantity": 1481,
+            "decayCounter": 956202
           }
         ],
         "allowedItemIds": [
@@ -86432,7 +86163,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.833414853,
+      "condition": 0.962919354,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 1,
@@ -86463,7 +86194,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.8528579,
+      "condition": 0.9823624,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "materialItems": [
@@ -86480,24 +86211,24 @@
   "animals": [
     {
       "aName": "Clover",
-      "x": 32.0,
-      "y": 60.0,
+      "x": 13.0,
+      "y": 62.0,
       "rngSeed": 2039525304,
       "jobName": "logger",
-      "energy": 0.92124325,
-      "food": 56.194,
+      "energy": 0.886407852,
+      "food": 57.89666,
       "starvingTicks": 0,
-      "eep": 95.8000641,
+      "eep": 84.20024,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 3.64651823,
+        "wheat": 3.24175429,
         "rice": 0.0,
-        "fruit": 0.4154033,
+        "fruit": 0.16471374,
         "fountain": 0.0,
         "fireplace": 0.0,
         "bench": 0.0,
-        "social": 1.55125892,
+        "social": 1.9664669,
         "reading": 0.0,
         "alcohol": 0.0
       },
@@ -86539,7 +86270,7 @@
           {
             "itemName": "",
             "quantity": 0,
-            "decayCounter": 432732
+            "decayCounter": 0
           }
         ],
         "wetUntil": 0.0
@@ -86578,14 +86309,14 @@
         "wetUntil": 0.0
       },
       "skillXp": [
-        8.55462,
+        7.72254467,
         0.0,
         0.8394451,
         0.0,
         0.0
       ],
       "skillLevel": [
-        2,
+        1,
         0,
         0,
         0,
@@ -86601,24 +86332,24 @@
     },
     {
       "aName": "Chestnut",
-      "x": 30.6670246,
-      "y": 60.0,
+      "x": 33.0,
+      "y": 61.0,
       "rngSeed": 546515739,
       "jobName": "hauler",
-      "energy": 0.8354815,
-      "food": 53.8942871,
+      "energy": 0.9474257,
+      "food": 17.7968712,
       "starvingTicks": 0,
-      "eep": 96.20006,
+      "eep": 95.00008,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 3.77412081,
+        "wheat": 1.82276642,
         "rice": 0.0,
-        "fruit": 0.2200476,
+        "fruit": 0.9143397,
         "fountain": 0.0,
         "fireplace": 0.0,
         "bench": 0.0,
-        "social": 0.610168636,
+        "social": 0.8382741,
         "reading": 0.0,
         "alcohol": 0.0
       },
@@ -86660,7 +86391,7 @@
           {
             "itemName": "",
             "quantity": 0,
-            "decayCounter": 214986
+            "decayCounter": 20832
           }
         ],
         "wetUntil": 0.0
@@ -86722,24 +86453,24 @@
     },
     {
       "aName": "Bramble",
-      "x": 33.0,
-      "y": 60.0,
+      "x": 44.43876,
+      "y": 62.97839,
       "rngSeed": 1423797902,
       "jobName": "farmer",
-      "energy": 0.623759747,
-      "food": 35.0940933,
+      "energy": 0.0260266066,
+      "food": 48.49678,
       "starvingTicks": 0,
-      "eep": 95.00008,
+      "eep": 88.00018,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 2.060998,
+        "wheat": 2.863526,
         "rice": 0.0,
-        "fruit": 0.8277784,
+        "fruit": 0.885821,
         "fountain": 0.0,
         "fireplace": 0.0,
         "bench": 0.0,
-        "social": 1.34688914,
+        "social": 1.07626772,
         "reading": 0.0,
         "alcohol": 0.0
       },
@@ -86779,9 +86510,9 @@
         "invType": "Equip",
         "stacks": [
           {
-            "itemName": "wheat",
-            "quantity": 100,
-            "decayCounter": 363776
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
           }
         ],
         "wetUntil": 0.0
@@ -86820,14 +86551,14 @@
         "wetUntil": 0.0
       },
       "skillXp": [
-        20.4825134,
+        14.2782974,
         0.0,
         0.0,
         0.0,
         0.0
       ],
       "skillLevel": [
-        2,
+        1,
         0,
         0,
         0,
@@ -86843,24 +86574,24 @@
     },
     {
       "aName": "Dewdrop",
-      "x": 42.0,
-      "y": 59.0,
+      "x": 35.4051781,
+      "y": 59.9999962,
       "rngSeed": 41951034,
       "jobName": "hauler",
-      "energy": 0.0213878155,
-      "food": 49.19863,
+      "energy": 0.888160646,
+      "food": 27.796751,
       "starvingTicks": 0,
-      "eep": 66.2005157,
+      "eep": 74.30101,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 3.52566886,
+        "wheat": 2.46697068,
         "rice": 0.0,
-        "fruit": 0.0170423277,
+        "fruit": 0.226313561,
         "fountain": 0.0,
         "fireplace": 0.0,
         "bench": 0.0,
-        "social": 1.36847925,
+        "social": 0.9897293,
         "reading": 0.0,
         "alcohol": 0.0
       },
@@ -86902,7 +86633,7 @@
           {
             "itemName": "",
             "quantity": 0,
-            "decayCounter": 263207
+            "decayCounter": 0
           }
         ],
         "wetUntil": 0.0
@@ -86964,24 +86695,24 @@
     },
     {
       "aName": "Yuyu",
-      "x": 33.0,
-      "y": 60.0,
+      "x": 33.89859,
+      "y": 60.9726067,
       "rngSeed": 1602868121,
       "jobName": "woodworker",
-      "energy": 0.6160239,
-      "food": 32.9981461,
+      "energy": 0.6841555,
+      "food": 29.1994934,
       "starvingTicks": 0,
-      "eep": 8.800373,
+      "eep": 59.8004265,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 3.578383,
+        "wheat": 1.738685,
         "rice": 0.0,
-        "fruit": 0.101488151,
+        "fruit": 0.0,
         "fountain": 0.0,
         "fireplace": 0.0,
         "bench": 0.0,
-        "social": 0.651180267,
+        "social": 1.41566586,
         "reading": 0.0,
         "alcohol": 0.0
       },
@@ -87023,7 +86754,7 @@
           {
             "itemName": "",
             "quantity": 0,
-            "decayCounter": 302012
+            "decayCounter": 0
           }
         ],
         "wetUntil": 0.0
@@ -87066,14 +86797,14 @@
         0.0,
         0.0,
         0.0,
-        13.1369772
+        4.79864264
       ],
       "skillLevel": [
         0,
         0,
         0,
         0,
-        1
+        0
       ],
       "isTraveling": false,
       "travelProgress": 0.0,
@@ -87082,248 +86813,6 @@
       "travelReturnLeg": false,
       "homeBuildingX": 40,
       "homeBuildingY": 60
-    },
-    {
-      "aName": "Dimple",
-      "x": 30.0,
-      "y": 60.0,
-      "rngSeed": 544652124,
-      "jobName": "none",
-      "energy": 0.07997954,
-      "food": 62.19776,
-      "starvingTicks": 0,
-      "eep": 95.20007,
-      "satisfactions": {
-        "soymilk": 0.0,
-        "dairy": 0.0,
-        "wheat": 3.88314223,
-        "rice": 0.0,
-        "fruit": 0.0135996556,
-        "fountain": 0.0,
-        "fireplace": 0.0,
-        "bench": 0.0,
-        "social": 2.703487,
-        "reading": 0.0,
-        "alcohol": 0.0
-      },
-      "warmth": 0.0,
-      "inv": {
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "foodSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 225090
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "toolSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "clothingSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "bookSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "skillXp": [
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        0.0
-      ],
-      "skillLevel": [
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      "isTraveling": false,
-      "travelProgress": 0.0,
-      "travelDuration": 0,
-      "travelItemQty": 0,
-      "travelReturnLeg": false,
-      "homeBuildingX": 40,
-      "homeBuildingY": 59
-    },
-    {
-      "aName": "Yun",
-      "x": 34.0,
-      "y": 60.0,
-      "rngSeed": 1624995710,
-      "jobName": "none",
-      "energy": 0.139171124,
-      "food": 64.5988541,
-      "starvingTicks": 0,
-      "eep": 96.00006,
-      "satisfactions": {
-        "soymilk": 0.0,
-        "dairy": 0.0,
-        "wheat": 3.5180738,
-        "rice": 0.0,
-        "fruit": 0.5147613,
-        "fountain": 0.0,
-        "fireplace": 0.0,
-        "bench": 0.0,
-        "social": 2.028266,
-        "reading": 0.0,
-        "alcohol": 0.0
-      },
-      "warmth": 0.0,
-      "inv": {
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "foodSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 254356
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "toolSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "clothingSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "bookSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "skillXp": [
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        0.0
-      ],
-      "skillLevel": [
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      "isTraveling": false,
-      "travelProgress": 0.0,
-      "travelDuration": 0,
-      "travelItemQty": 0,
-      "travelReturnLeg": false,
-      "homeBuildingX": 42,
-      "homeBuildingY": 61
     }
   ],
   "research": {
@@ -87347,10 +86836,7 @@
       "3": 0.0
     },
     "unlockedIds": [],
-    "studiedIds": [
-      2,
-      5
-    ],
+    "studiedIds": [],
     "unlockTimestamps": {},
     "unlockCounter": 0,
     "activeResearchId": 0
@@ -91256,15 +90742,15 @@
     0,
     0,
     0,
-    160,
-    160,
-    160,
-    160,
-    160,
-    160,
-    160,
-    160,
-    160,
+    148,
+    148,
+    148,
+    148,
+    148,
+    148,
+    147,
+    147,
+    148,
     0,
     0,
     0,
@@ -92625,10 +92111,10 @@
     0,
     0,
     0,
-    113,
-    114,
-    114,
-    114,
+    60,
+    60,
+    61,
+    61,
     0,
     0,
     0,
@@ -98129,17 +97615,17 @@
     0,
     0,
     0,
-    160,
-    160,
-    160,
-    160,
-    160,
-    160,
-    160,
-    160,
-    160,
-    160,
-    160,
+    153,
+    154,
+    153,
+    153,
+    153,
+    153,
+    153,
+    153,
+    153,
+    153,
+    153,
     0,
     0,
     0,
@@ -111357,9 +110843,9 @@
     0,
     0
   ],
-  "moistureLevels": "WmJiYmJiYmJiYmJiYmJaWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWlpiYmJiYlpaWlpaYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiWlpaWmJiYmJiYlpaWlBQUFpaWlBQRjxGRlBaYmJiYmJiYmJiYmJiYmJiYlpaUFBGRjw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDIyMjIyMjIyMjIyMjIyMjIyPEZQWlpiYmJiYlpiAAAAAAAAAAAAAAAAAGJiWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjxGUFpiYgAAAAAAYmJiYmIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABiYmJiAAAAAAAAYmJiWlpaYmJiWlpQRlBQWmIAAAAAAAAAAAAAAAAAAAAAYmJaWlBQRkY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RkZGPDIyMjIyMjIyMjIyMjIyMjxGUFpiYgAAAAAAYgAAAAAAAAAAAAAAAAAAAABiWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjxGUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABiYmIAAABiYlpQWlpiAAAAAAAAAAAAAAAAAAAAAAAAAGJiWlpQUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQUFBGPDIyMjIyMjIyMjIyPDw8RlBaYgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjxGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYlpiYgAAAAAAAAAAAAAAAAAAAAAAAAAAAABiYlpaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjw8PDwyMjIyMjIyMjIyMjxGUFpaWlBGPDIyMjIyMjIyPDxGRkZGRlAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMjIyMgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYmJaUEY8MjIyMjIyMjIyMjIyMjIyMjI8RkZGRjw8PDw8PDw8PDw8RlBaYmJiWlBGPDw8PDw8PDxGRlBQUFBQWgAAAAAAAAAAMjIAAAAAAAAAAAAAAEY8MjIyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADxGPAAAAAAAAAAAMjIyMgAAAAAAAAAAAAAAAAAAAGJaUEY8MjIyMjIyMjIyMjIyMjIyPEZQUFBQRkZGRkZGRkZGRkZQWmIAAABiWlBGRkZGRkZGRlBQWlpaWlpiAAAAAAAAAAAyMjIyAAAAAAAAAABaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAAAAPDwyMjwyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAAAAAAFBGPDIyMjIyMjIyMjIyMjIyMjxGUFpaWlpQUFBQUFBQUFBQUFBaAAAAAABaUFBQUFBQUFBQWlpiYmJiYgAAAAAAAAAyMjIyMjIyMjIAAAAAAGJaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8AAAAAAAAAAAAUEZGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RjwyMjIyMjIyMjIyMjIyMjI8RlBaYmJiYlpaWlpaWlpaWlpaWmIAAAAAAGJaWlpaWlpaWlpiYgAAAAAAAGJaAAAyMjIyMjIyMjIyMjIyMgAAAFBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDw8PDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGUAAAAAAAAFpaUFBQRjwyMjIyMjIyMjw8PDIyMjIyMjIyMjIyMjIyMjIyMjI8MjIyMjIyMjIyMjIyMjIyMjI8RlAAAAAAYmJiYmJiYmJiYmJiAAAAAAAAAGJiYmJiYmJiWgAAAAAAAAAAAFBGPDIyMjIyMjIyMjI8PDw8MjIARjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGRkZGPDwyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBaAAAAAAAAYmJaWlpQRjwyMjIyMjI8RkZGPDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABiWgAAAAAAMjI8RjwyMjIyMjIyMjIyPEZGRkY8MjI8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBQUFBGRjwyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWmIAAAAAAAAAAGJiYlpQRjwyMjIyPEZQUFBGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDIyMjIyMjIyMjIyMjI8RgAAAAA8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQRjwyMjIyMjI8MjIyMjIyMjIyMjxGUFBQUEY8MjIyPDw8PDw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWlpaWlBQRjw8PDw8PDwyMjIyMjIyMjIyPEZQWmJiAAAAAAAAAAAAAAAAWlBGPDIyMjxGUFpaWlBQRjw8MjIyMjIyMjIyMjIyMjIyMjI8RkZGPDIyMjIyMjIyMjIyPEZQWlpaUEYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAyPEY8MjIyMjIyMjIyMjIyMjIyMjI8RlBaWlpaUEY8MjxGRkZGRkY8PDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDxGUFpkZGRkWlpQRkZGRkZGRjwyMjIyMjIyMjI8RlBaAAAAAAAAAAAAAAAAAABiWlBGPDI8RlBaYmJiWlpQRkY8MjIyMjIyMjIyMjIyMjIyPEZQUFBGPDIyMjIyMjIyMjxGUFpiYmJaUEY8AAAAAAAAAAAAAAAAAAAAAAAAAAAAMjIyPDIyMjIyMjIyMjIyMjIyMjIyPEZQWmJiYmJaUEY8RlBQUFBQUEZGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDw8PDxGRlBaZAAAAABkZFpQUFBQUFBQRjwyMjIyMjIyPEZQWmIAAAAAAAAAAAAAAAAAAABQRjw8PDxGRlAAAABiYlpQUEY8MjIyMjIyMjIyMjIyPDxGUFpaWlBGPDIyMjIyMjI8RlBaYgAAAFBGPDIyMjIyMjIyMjIyMjIyMjIyMgAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQAAAAAFBGPEZQWlpaWlpaUFBGPDIyMjIyMjIyMjIyMjIyMjIyMjI8RkZGRkZGRlBQWmQAAAAAAAAAZFpaWlpaWlpQRjwyMjIyMjxGRlBQAAAAAAAAAAAAAAAAAAAyPEY8RkZGRlBGUAAAAAAAYlpaUEY8MjIyMjIyMjIyMjxGRlBaYmJiWlBGPDIyMjIyMjI8RlAAAAAARjwyMjw8PDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEYAAAAARjxGUFpiYmJiYmJaWlBGPDIyMjIyMjIyMjIyMjIyMjIyPEZQUFBQUFBQWlpkZAAAAAAAAAAAZGRkZGRkZFpQRjwyMjI8RlBQWlpiAAAAAAAAAAAAAAAyMjIyPEZQUFBQWlBaUAAAAAAAYmJaUEY8MjIyMjIyMjI8RlBQWmIAAABiWlBGPDIyMjIyMjI8RjwAAAA8MjI8RkZGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDIyMjI8MjxGUAAAAAAAAGJiWlBGPDIyMjIyMjIyMjIyMjIyMjxGUFpaWlpaWlpkZAAAAAAAAAAAAAAAAAAAAAAAZFpQRjwyPEZQWlpiYgAAAAAAAAAAADIyMjIyMjxGUFpaWlpkWmRaUEYAAAAAAFBGPDIyMjIyMjIyPEZQWlpiAAAAAABiWlBGPDIyMjIyMjI8MjIyMjIyPEZQUFBQRjwyMjIyMjIyMjI8PDw8PDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGAAAAAAAAAABaUEY8MjIyMjIyMjIyMjIyMjI8RlBaYmJiYmJiZAAAAAAAAAAAAAAAAAAAAAAAAAAAZFpQRjxGUFpiYgAAAAAAAAAAAAAyMjIyMjI8RlBaZGRkZABkAGRaUEYAAAA8RjwyMjIyMjIyMjxGUFpiYgAAAAAAAABiWlBGPDIyMjIyMjIyMjIyMjxGUFpaWlpQRjwyMjIyMjIyPEZGRkZGPDw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjwyAAAAAAAAAGJaUEY8MjIyMjIyMjIyMjIyMjI8RlAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABaUEY8MjxGUAAAAAAAAAAAAAAAMjIyMjIyPEZQWmQAAAAAAAAAZFpQRjwyMjI8MjIyMjIyMjI8RlBaYgAAAAAAAAAAAABiWlBGPDIyMjIyMjIyMjI8RlBaZGRkZFpQRjwyMjIyMjxGUFBQUFBGRkY8PDw8PDw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAFBGPDIyMjIyMjIyMjIyMjIyMjI8RgAAAAAAAAAAAAAAAAAAAAAAADIyMjI8RlBQUFBGPDIyMjxGAAAAAAAAAAAAADIyMjIyMjxGUFpkAAAAAAAAAAAAZFpQRjwyMjIyMjIyMjIyPEZQWmIAAAAAAAAAAAAAAABQRjwyMjIyMjIyMjIyPEZQWmQAAAAAZFpQRjwyMjI8RlBaWlpaWlBQUEZGRkZGRkY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAARjwyMjIyMjIyMjIyMjIyMjIyMjI8MjIAAAAAAAAAMjIAAAAAADIyMjIyPEZQWlpaUEY8MjIyMjwAAAAAAAAAAAAyMjIyMjIyMjxGUFoAAAAAAAAAAABiWlpQRjwyMjIyMjIyMjIyPEZQAAAAAAAAAAAAAAAAPEY8MjIyMjIyMjIyMjI8RlBaZAAAAAAAZFpQRjwyPEZQWmJiYmJiWlpaUFBQUFBQUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAA8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpkZGRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUAAAAAAAAAAAAABiYlpQRjwyMjIyMjIyMjxGUFoAAAAAAAAAAAAAADIyPDIyMjIyMjIyMjIyMjI8RlBaZGRkZGRaUEY8MjxGUFpiAAAAAABiYmJaWlpaWlpaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaZAAAAGRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyPDIyMjxGPDIAAAAAAAAAAAAAUEY8MjIyMjIyMjI8RlBaYgAAAAAAAGIAAAAyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWlpaWlBGPDIyMjxGUAAAAAAAAAAAAGJiYmJiYmJaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpkAAAAZGRaUEY8MjIyMjIyMjIyMjIyMjI8PDxGPDwyMjwyMjIyAAAAAAAAAABGPDIyMjIyMjIyMjxGUFoAAAAAAAAAAAAAPDIyMjIyMjIyMjIyMjIyMjIyMjI8RlBQUFBQRjwyMjIyMjxGAAAAAAAAAAAAAAAAAAAAAGJaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjI8PDw8PDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PDw8PDxGUFpkAAAAAGRaUEY8MjIyMjIyMjIyMjIyPEZGRlBGRjwyMjIyMjw8PEYAAAAAADwyMjIyMjIyMjI8RlBaYgAAAAAAAAAAAEZGPDwyMjIyMjIyMjIyMjIyMjIyMjI8RkZGRkY8MjIyMjIyMjwAAAAAAAAAAAAAAAAAAAAAAFBGPDIyMjIyMjIyMjIyMjIyMjI8PDw8PEZGRkZGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGRkZGRkZQWmQAAAAAZFpQRjwyMjIyMjIyMjIyMjxGUFBQWlBQRjwyMjI8RkZGUFBQUEZGPDw8MjIyMjIyMjI8RlAAAAAAAAAAAAAAUFBGRjwyMjIyMjIyMjIyMjIyMjIyMjI8PDw8PDIyMjIyMjIyMgAAAAAAAAAAAAAAAAAAAABiWlBGPDIyMjIyMjIyPDw8PDw8PEZGRkZGUFBQUFBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBQUFBQUFBaZAAAAABkWlBGPDIyMjIyMjIyMjI8RlBaWlpiWlpQRjwyPEZQUFBaWlpaUFBGRkY8MjIyMjIyMjI8RgAAAAAAAAAAAFpaWlBQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAAAAAAAAAABQRjwyMjIyMjIyMjxGRkZGRkZGUFBQUFBaWlpaWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWlpaWlpaWmIAAAAAAGRaUEY8MjIyMjIyMjIyPEZQWmJiYgBiYlpQRjxGUFpaWmJiYmJaWlBQUEY8MjIyMjIyMjI8AAAAAAAAAAAAYmJiWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAAAAAPEY8MjIyMjIyMjI8RlBQUFBQUFBaWlpaWmJiYmJiWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmJiYmJiYmJiAAAAAAAAWlBQRkY8MjIyMjIyMjI8RlBaAAAAAAAAWlBGRlBaYmJiAAAAAGJiWlpaUEY8MjIyMjIyMjIyAAAAAAAAAAAAAABiYlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAyPDIyMjIyMjIyMkZQWlpaWlpaWmJiYmJiAAAAAABiWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpkAAAAAAAAAAAAAAAAAGJaWlpQUEY8MjIyMjIyPEZQWmIAAAAAAABiWlBGRlAAAAAAAAAAAABiYmJaUEY8Mjw8PDIyMjIyMgAAAAAAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyUFpiYmJiYmJiAAAAAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFoAAAAAAAAAAAAAAAAAAGJiYlpaUEY8MjIyMjIyPEZQAAAAAAAAAABQRjw8RjwAAAAAAAAAAAAAAFBGPDI8RkZGPDwyMjIyPEZQAAAAAAAAAABGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjJaYgAAAAAAAAAAAAAAAAAAAAAAAEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBQUFpkAAAAAAAAAGIAAAAAYmJaUEY8MjIyMjIyPEY8AAAAAAAAAFpQRjw8MjIyMjIyMgAAAAAARjwyPEZQUFBGRjw8MjxGUFpiAAAAAAAAAFBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMmIAAAAAAAAAAAAAAAAAAAAAAAAAPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RkZQWlpaWlpiAAAAAFBaAAAAAAAAAFBGPDIyMjIyMjIyPDIAAAAAAAAAYlpQRjwyMjIyMjIyMjIyMjI8MjxGUFpaWlBQRkY8MjxGUAAAAAAAAABiWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PEZQUFpiYmJiYgAAAABiWmIAAAAAAAAARjwyMjIyMjI8PDw8PEYAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjI8RlBaYmJiWlpQUEY8RlBaYgAAAAAAAABiWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGUFpaYgAAAAAAAAAAAABiAAAAAAAAAAA8MjIyMjI8PEZGRkZGUFBaWgAAAABGPDIyMjIyMjIyMjIyMjIyPEZQWmIAAABiYlpaUEZGRlAAAAAAAAAAAABiWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PDIyMjIyMjIyMjIyMjIyMjwyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBaYmIAAAAAAAAAAAAAAAAAAAAAAAAAPDIyMjIyPEZGUFBQUFBaWmJiAAAAADwyMjIyMjIyMjIyMjIyMjIyPEZQAAAAAAAAYmJaUFBQUFAAAAAAAAAAAABiWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PEZGPDIyMjIyMjIyMjIyMjI8RjxGPDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWmIAAAAAAAAAAAAAAAAAAAAAAAAAAABGPDIyMjxGUFBaWlpaWmJiAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyPEY8AAAAAAAAAGJaWlpaWmIAAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGUFBGPDIyMjIyMjIyMjIyPEZQRlBGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmJiAAAAAAAAWlAAAAAAAAAAAAAAAAAAAFBGPDI8RlBaWmJiYmJiAAAAAAAAADIyMjIyMjIyMjIyMjIyMjIyMjIyPDIAAAAAAAAAAGJiYmJiAAAAAAAAAAAAAEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBaWlBGPDIyMjIyMjIyMjxGUFpQWlBQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpiAAAAAAAAAGRaWmIAAAAAAAAAAAAAAAAAWlBGPEZQWmJiAAAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAAAAAAAAAAAAyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWmJiWlBGPDIyMjIyMjI8RlBaZFpkWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaYgAAAAAAAAAAWlBQAAAAAAAAAAAAAAAAAABiWlBGUFpiAAAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAAAAAAAAAADwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmJiAABiWlBGPDIyMjIyPEZQWmQAZABkZFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmIAAAAAAAAAAEZQRkY8AAAAAAAAADIyAAAAAABQRjxGUAAAAAAAAAAAAAAARjw8PDw8PDw8PDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAAAAAEZGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpiAAAAAABQRjwyMjIyMjI8RlBaZAAAAAAAZFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQAAAAAAAAAABQRkZGPDwyMjIyMjIyMjIyAAAAAEY8MjxGPAAAAAAAAAAAAFpQRkZGRkZGRkZGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAWlpaWlBQUFBQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaYgAAAAAAAEY8MjIyMjIyMjxGUFpkAAAAAABkWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEYAAAAAAABkWlpQUFBGRjwyMjI8PDw8PDIAAAAAPDIyMjwyMjIAAAAAAAAAYlpQUFBQUFBQUFBQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAABiYmJiWlpaWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmIAAAAAAAAyPDIyMjIyMjIyMjxGUFpkZAAAAFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPAAAAAAAAGJiYlpaWlBQRjwyPEZGRkZGPDIAADIyMjIyMjIyMjIyAAAAAAAAYlpaWlpaWlpaWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAABiYmJiYlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQAAAAAAAAADIyMjIyMjIyMjIyMjxGUFpaUEZGUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAYmJiWlpQRjxGUFBQUFBGPDIyMjIyMjIyMjIyMjIyMgAAAAAAYmJiYmJiYmJiYlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEYAAAAAAAAyMjIyMjIyMjIyMjIyMjxGUFBGPDxGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAABiYlpQRlBaWlpaWlBGPDIyMjIyMjIyMjIyMjI8AAAAAAAAAAAAAAAAAAAAYlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPAAyADIyMjIyMjIyMjIyMjIyMjIyMjxGRjwyMjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAZFpQWmJiYmJiWlBGPDIyMjIyMjIyMjIyPEZQAAAAAAAAAAAAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAYlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDI8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAABiWlpiAAAAAABQRjwyMjIyMjIyMjIyMjxGUFoAAAAAAAAAAAAAAAAAADxGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDxGPEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAABkWgAAAAAAPEY8MjIyMjIyMjIyMjI8RlBaYgAAAAAAAAAAAAAyMjIyMjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjwAAAAAAAAAAABiWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PDw8RkZGRlBGUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAGRaUEZGRjw8PDIyMjIyMjIyMjIyMjI8RlAAAAAAAAAAAAAyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RkZQAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGRkZQUFBQWlBaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAZFpQUFBQRkY8MjIyMjIyMjIyMjIyMjI8RgAAAAAAAAAARjw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQUFpiAAAAAAAAAEY8MjIyMjw8PDIyMjIyMjIyMjIyMjIyMjIyMjxGUFBQUFpaWlpkWmRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAABiYlpaWlpQUEY8MjIyMjIyMjIyPDIyMjI8MgAAAAAAAABQRkY8PDw8MjIyMjIyMjIyMjI8PDw8PDw8MjIyMjIyMjxGUFpaYgAAAAAAAAAAPDIyMjI8RkZGPDIyMjIyMjIyMjIyMjIyMjI8RlBaWlpaZGRkZABkAGRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAYmJiYlpaUEY8PDw8PDIyMjxGPDIyMjIyMgAAAAAAAFpQUEZGRkY8MjIyMjIyMjIyPEZGRkZGRkY8MjIyMjI8RlBaYmIAAAAAAAAAADIyMjw8PEZQUFBGPDwyMjIyMjIyMjIyMjIyPEZQWmRkZGQAAAAAAAAAZFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAYmJaUEZGRkZGPDw8RlBGPDIyMjIyMjIyAAAAYlpaUFBQUEY8MjIyMjIyMjxGUFBQUFBQUEY8MjIyPEZQWloAAAAAAAAAAAAAMjI8RkZGUFpaWlBGRjwyMjIyMjIyMjIyMjxGUFpkAAAAAAAAAAAAAABkWlBGPDIyMjIyMjIyMjIyPDw8PDw8PDw8PDIyMjIyMjIyPDw8MjIyMjIyMjIyMjIyMjIyMjIyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAGRaUFBQUFBGRkZQWlBGPDIyMjIyMjIyAAAAYmJaWlpaUEY8PDw8PDw8RlBaWlpaWlpaUEY8MjxGUFpiYgAAAAAAAAAAPDw8PEZQUFBaYmJiWlBQRjwyMjIyMjIyMjIyMjxGUFoAAAAAAGRkZGRkZFpQRjwyMjIyMjIyPDwyMjJGRkZGRkZGRkZGPDwyMjIyPDxGRkY8PDw8PDIyPDw8PDIyMjw8PDxGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8AAAAAAAAAAAAYmJaWlpaWlBQUFpkWlBGPDIyMjIyPDwAAAAAAGJiYmJaUEZGRkZGRkZQWl5iYmJeXmJaUEY8PEZQWgAAAAAAMjI8PDxGRkZGUFpaWmIAAABiWlpQRjw8PDw8MjIyMjIyPDxGUAAAAEZQWlpaWlpaUEY8MjIyMjIyMjxGRjwyMlBQUFBQUFBQUFBGRjwyMjxGRlBQUEZGRkZGPDxGRkZGPDI8RkZGRlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyPEY8PDIyAAAAAAAAAGJiYmJiWlpaZABkWlBGPDIyMjxGRkYAAAAAAAAAAGJaUFBQUFBQUFBaAAAAAAAAAGJaUEZGUFpiAAAAADw8PEZGRlBQUFBaYmJiAAAAAABiYlpQRkZGRkY8PDw8PDxGRkZGRkZQUFpaUFBQUFBGPDw8PDw8PDw8RlBQRjw8WlpaWlpaWlpaWlBQRjw8RlBQWlpaUFBQUFBGRlBQUFBGPEZQUFBQWlBGPDw8MjIyMjIyMjIyMjIyMjIyMjxGUEZGPDIyMgAAAAAAAAAAAABkZGQAAABkWlBGPDw8RlBQUAAAAAAAAAAAAFpaWlpaWlpaWl4AAAAAAAAAAFpQRlBaYgAAAAAARkZGUFBQWlpaWmIAAAAAAAAAAAAAYlpQUFBQUEZGRkZGRlBQUFBQUFpaXmJaUEZGRjxGRkZGRkZGRkZQWlpQRkZiYmJiYmJiYmJiWlpQRkZQWlpkZGRaWlpaWlBQWlpaWlBGUFpaWlpiWlBGRkY8MjIyMjIyMjIyMjIyPDw8RlBaUFBGPDIyMgAAAAAAAAAAAGQAAAAAAABkWlBGRkZQWlpaWloAAAAAAAAAYmJiYmJiYmJiAAAAAAAAAAAAYlpQRlAAAAAAAABQUFBaWlpiYmJiAAAAAAAAAAAAAAAAYlpaWlpaUFBQUFBQWlpaWlpaXmIAAFpQUEZGRlBQUFBQUFBQUFpkZFpQUAAAAAAAAAAAAABeYlpQUFpiZAAAAGRiYlpaWlpeWmJiWlBaXl5eYmFaUlBQUEY8PDw8MjIyMjI8PDxGRkZQWmJaWlBGPDIyMjwAAAAAAAAAAAAAAAAAAGJaUEZQUFpiYmJiYl5iYgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYlpQRkYAAAAAAFpaWmJiYgAAAAAAAAAAAAAAAAAAAAAAYmJiYmJaWlpaWlpiYmJiYmIAAAAAYlpaUFBQWlpaWlpaWlpaZAAAZFpaAAAAAAAAAAAAAAAAYlpaYgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFxcWlpaUEZGRkY8PDw8PEZGRlBQUFpiAGJiWlBGPDw8RlBaXl4AAAAAAAAAAAAAAFBGUFpaYgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYlpQUAAAAAAAXmJiAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGJiYmJiYgAAAAAAAAAAAAAAYmJaWlpiYmJiYmJiYmIAAAAAYmIAAAAAAAAAAAAAAAAAWl4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABiYmJaUFBQUEZGRkZGUFBQWlpaXgAAAABiWlBGRkZQWmIAAAAAAAAAAAAAAAAAWlBaYmIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYlpaYgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGJiYgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAF5aWlpaUFBQUFBaWlpiXl4AAAAAAABaUEZQUFpiAAAAAAAAAAAAAAAAAABiWloAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYl4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAF5eXmJaWlpaWmJiYgAAAAAAAAAAAGJaUFpaYgAAAAAAAAAAAAAAAAAAAABaYgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGJiYmJiAAAAAAAAAAAAAAAAAGJaXmIAAAAAAAAAAAAAAAAAAAAAAGIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "moistureLevels": "WmBgYGBgYGBgYGBgYGBaWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWlpgYGBgYFpaWlpaYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgWlpaWmBgYGBgYFpaWlBQUFpaWlBQRjxGRlBaYGBgYGBgYGBgYGBgYGBgYFpaUFBGRjw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDIyMjIyMjIyMjIyMjIyMjIyPEZQWlpgYGBgYFpgAAAAAAAAAAAAAAAAAGBgWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjxGUFpgYAAAAAAAYGBgYGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgYGBgAAAAAAAAYGBgWlpaYGBgWlpQRlBQWmAAAAAAAAAAAAAAAAAAAAAAYGBaWlBQRkY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RkZGPDIyMjIyMjIyMjIyMjIyMjxGUFpgYAAAAAAAYAAAAAAAAAAAAAAAAAAAAABgWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjxGUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgYGAAAABgYFpQWlpgAAAAAAAAAAAAAAAAAAAAAAAAAGBgWlpQUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQUFBGPDIyMjIyMjIyMjIyPDw8RlBaYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjxGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYFpgYAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgYFpaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjw8PDwyMjIyMjIyMjIyMjxGUFpaWlBGPDIyMjIyMjIyPDxGRkZGRlAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMjIyMgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYGBaUEY8MjIyMjIyMjIyMjIyMjIyMjI8RkZGRjw8PDw8PDw8PDw8RlBaYGBgWlBGPDw8PDw8PDxGRlBQUFBQWgAAAAAAAAAAMjIAAAAAAAAAAAAAAEY8MjIyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADxGPAAAAAAAAAAAMjIyMgAAAAAAAAAAAAAAAAAAAGBaUEY8MjIyMjIyMjIyMjIyMjIyPEZQUFBQRkZGRkZGRkZGRkZQWmAAAABgWlBGRkZGRkZGRlBQWlpaWlpgAAAAAAAAAAAyMjIyAAAAAAAAAABaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAAAAPDwyMjwyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAAAAAAFBGPDIyMjIyMjIyMjIyMjIyMjxGUFpaWlpQUFBQUFBQUFBQUFBaAAAAAABaUFBQUFBQUFBQWlpgYGBgYAAAAAAAAAAyMjIyMjIyMjIAAAAAAGBaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8AAAAAAAAAAAAUEZGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RjwyMjIyMjIyMjIyMjIyMjI8RlBaYGBgYFpaWlpaWlpaWlpaWmAAAAAAAGBaWlpaWlpaWlpgYAAAAAAAAGBaAAAyMjIyMjIyMjIyMjIyMgAAAFBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDw8PDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGUAAAAAAAAFpaUFBQRjwyMjIyMjIyMjw8PDIyMjIyMjIyMjIyMjIyMjIyMjI8MjIyMjIyMjIyMjIyMjIyMjI8RlAAAAAAYGBgYGBgYGBgYGBgAAAAAAAAAGBgYGBgYGBgWgAAAAAAAAAAAFBGPDIyMjIyMjIyMjI8PDw8MjIARjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGRkZGPDwyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBaAAAAAAAAYGBaWlpQRjwyMjIyMjI8RkZGPDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgWgAAAAAAMjI8RjwyMjIyMjIyMjIyPEZGRkY8MjI8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBQUFBGRjwyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWmAAAAAAAAAAAGBgYFpQRjwyMjIyPEZQUFBGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDIyMjIyMjIyMjIyMjI8RgAAAAA8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQRjwyMjIyMjI8MjIyMjIyMjIyMjxGUFBQUEY8MjIyPDw8PDw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWlpaWlBQRjw8PDw8PDwyMjIyMjIyMjIyPEZQWmBgAAAAAAAAAAAAAAAAWlBGPDIyMjxGUFpaWlBQRjw8MjIyMjIyMjIyMjIyMjIyMjI8RkZGPDIyMjIyMjIyMjIyPEZQWlpaUEYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAyPEY8MjIyMjIyMjIyMjIyMjIyMjI8RlBaWlpaUEY8MjxGRkZGRkY8PDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDxGUFpkZGRkWlpQRkZGRkZGRjwyMjIyMjIyMjI8RlBaAAAAAAAAAAAAAAAAAABgWlBGPDI8RlBaYGBgWlpQRkY8MjIyMjIyMjIyMjIyMjIyPEZQUFBGPDIyMjIyMjIyMjxGUFpgYGBaUEY8AAAAAAAAAAAAAAAAAAAAAAAAAAAAMjIyPDIyMjIyMjIyMjIyMjIyMjIyPEZQWmBgYGBaUEY8RlBQUFBQUEZGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDw8PDxGRlBaZAAAAABkZFpQUFBQUFBQRjwyMjIyMjIyPEZQWmAAAAAAAAAAAAAAAAAAAABQRjw8PDxGRlAAAABgYFpQUEY8MjIyMjIyMjIyMjIyPDxGUFpaWlBGPDIyMjIyMjI8RlBaYAAAAFBGPDIyMjIyMjIyMjIyMjIyMjIyMgAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQAAAAAFBGPEZQWlpaWlpaUFBGPDIyMjIyMjIyMjIyMjIyMjIyMjI8RkZGRkZGRlBQWmQAAAAAAAAAZFpaWlpaWlpQRjwyMjIyMjxGRlBQAAAAAAAAAAAAAAAAAAAyPEY8RkZGRlBGUAAAAAAAYFpaUEY8MjIyMjIyMjIyMjxGRlBaYGBgWlBGPDIyMjIyMjI8RlAAAAAARjwyMjw8PDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEYAAAAARjxGUFpgYGBgYGBaWlBGPDIyMjIyMjIyMjIyMjIyMjIyPEZQUFBQUFBQWlpkZAAAAAAAAAAAZGRkZGRkZFpQRjwyMjI8RlBQWlpgAAAAAAAAAAAAAAAyMjIyPEZQUFBQWlBaUAAAAAAAYGBaUEY8MjIyMjIyMjI8RlBQWmAAAABgWlBGPDIyMjIyMjI8RjwAAAA8MjI8RkZGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDIyMjI8MjxGUAAAAAAAAGBgWlBGPDIyMjIyMjIyMjIyMjIyMjxGUFpaWlpaWlpkZAAAAAAAAAAAAAAAAAAAAAAAZFpQRjwyPEZQWlpgYAAAAAAAAAAAADIyMjIyMjxGUFpaWlpkWmRaUEYAAAAAAFBGPDIyMjIyMjIyPEZQWlpgAAAAAABgWlBGPDIyMjIyMjI8MjIyMjIyPEZQUFBQRjwyMjIyMjIyMjI8PDw8PDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGAAAAAAAAAABaUEY8MjIyMjIyMjIyMjIyMjI8RlBaYGBgYGBgZAAAAAAAAAAAAAAAAAAAAAAAAAAAZFpQRjxGUFpgYAAAAAAAAAAAAAAyMjIyMjI8RlBaZGRkZABkAGRaUEYAAAA8RjwyMjIyMjIyMjxGUFpgYAAAAAAAAABgWlBGPDIyMjIyMjIyMjIyMjxGUFpaWlpQRjwyMjIyMjIyPEZGRkZGPDw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjwyAAAAAAAAAGBaUEY8MjIyMjIyMjIyMjIyMjI8RlAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABaUEY8MjxGUAAAAAAAAAAAAAAAMjIyMjIyPEZQWmQAAAAAAAAAZFpQRjwyMjI8MjIyMjIyMjI8RlBaYAAAAAAAAAAAAABgWlBGPDIyMjIyMjIyMjI8RlBaZGRkZFpQRjwyMjIyMjxGUFBQUFBGRkY8PDw8PDw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAFBGPDIyMjIyMjIyMjIyMjIyMjI8RgAAAAAAAAAAAAAAAAAAAAAAADIyMjI8RlBQUFBGPDIyMjxGAAAAAAAAAAAAADIyMjIyMjxGUFpkAAAAAAAAAAAAZFpQRjwyMjIyMjIyMjIyPEZQWmAAAAAAAAAAAAAAAABQRjwyMjIyMjIyMjIyPEZQWmQAAAAAZFpQRjwyMjI8RlBaWlpaWlBQUEZGRkZGRkY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAARjwyMjIyMjIyMjIyMjIyMjIyMjI8MjIAAAAAAAAAMjIAAAAAADIyMjIyPEZQWlpaUEY8MjIyMjwAAAAAAAAAAAAyMjIyMjIyMjxGUFoAAAAAAAAAAABgWlpQRjwyMjIyMjIyMjIyPEZQAAAAAAAAAAAAAAAAPEY8MjIyMjIyMjIyMjI8RlBaZAAAAAAAZFpQRjwyPEZQWmBgYGBgWlpaUFBQUFBQUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAA8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpkZGRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUAAAAAAAAAAAAABgYFpQRjwyMjIyMjIyMjxGUFoAAAAAAAAAAAAAADIyPDIyMjIyMjIyMjIyMjI8RlBaZGRkZGRaUEY8MjxGUFpgAAAAAABgYGBaWlpaWlpaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaZAAAAGRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyPDIyMjxGPDIAAAAAAAAAAAAAUEY8MjIyMjIyMjI8RlBaYAAAAAAAAGAAAAAyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWlpaWlBGPDIyMjxGUAAAAAAAAAAAAGBgYGBgYGBaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpkAAAAZGRaUEY8MjIyMjIyMjIyMjIyMjI8PDxGPDwyMjwyMjIyAAAAAAAAAABGPDIyMjIyMjIyMjxGUFoAAAAAAAAAAAAAPDIyMjIyMjIyMjIyMjIyMjIyMjI8RlBQUFBQRjwyMjIyMjxGAAAAAAAAAAAAAAAAAAAAAGBaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjI8PDw8PDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PDw8PDxGUFpkAAAAAGRaUEY8MjIyMjIyMjIyMjIyPEZGRlBGRjwyMjIyMjw8PEYAAAAAADwyMjIyMjIyMjI8RlBaYAAAAAAAAAAAAEZGPDwyMjIyMjIyMjIyMjIyMjIyMjI8RkZGRkY8MjIyMjIyMjwAAAAAAAAAAAAAAAAAAAAAAFBGPDIyMjIyMjIyMjIyMjIyMjI8PDw8PEZGRkZGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGRkZGRkZQWmQAAAAAZFpQRjwyMjIyMjIyMjIyMjxGUFBQWlBQRjwyMjI8RkZGUFBQUEZGPDw8MjIyMjIyMjI8RlAAAAAAAAAAAAAAUFBGRjwyMjIyMjIyMjIyMjIyMjIyMjI8PDw8PDIyMjIyMjIyMgAAAAAAAAAAAAAAAAAAAABgWlBGPDIyMjIyMjIyPDw8PDw8PEZGRkZGUFBQUFBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBQUFBQUFBaZAAAAABkWlBGPDIyMjIyMjIyMjI8RlBaWlpgWlpQRjwyPEZQUFBaWlpaUFBGRkY8MjIyMjIyMjI8RgAAAAAAAAAAAFpaWlBQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAAAAAAAAAABQRjwyMjIyMjIyMjxGRkZGRkZGUFBQUFBaWlpaWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWlpaWlpaWmAAAAAAAGRaUEY8MjIyMjIyMjIyPEZQWmBgYABgYFpQRjxGUFpaWmBgYGBaWlBQUEY8MjIyMjIyMjI8AAAAAAAAAAAAYGBgWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAAAAAPEY8MjIyMjIyMjI8RlBQUFBQUFBaWlpaWmBgYGBgWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmBgYGBgYGBgAAAAAAAAWlBQRkY8MjIyMjIyMjI8RlBaAAAAAAAAWlBGRlBaYGBgAAAAAGBgWlpaUEY8MjIyMjIyMjIyAAAAAAAAAAAAAABgYFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAyPDIyMjIyMjIyMkZQWlpaWlpaWmBgYGBgAAAAAABgWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpkAAAAAAAAAAAAAAAAAGBaWlpQUEY8MjIyMjIyPEZQWmAAAAAAAABgWlBGRlAAAAAAAAAAAABgYGBaUEY8Mjw8PDIyMjIyMgAAAAAAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyUFpgYGBgYGBgAAAAAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFoAAAAAAAAAAAAAAAAAAGBgYFpaUEY8MjIyMjIyPEZQAAAAAAAAAABQRjw8RjwAAAAAAAAAAAAAAFBGPDI8RkZGPDwyMjIyPEZQAAAAAAAAAABGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjJaYAAAAAAAAAAAAAAAAAAAAAAAAEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBQUFpkAAAAAAAAAGAAAAAAYGBaUEY8MjIyMjIyPEY8AAAAAAAAAFpQRjw8MjIyMjIyMgAAAAAARjwyPEZQUFBGRjw8MjxGUFpgAAAAAAAAAFBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMmAAAAAAAAAAAAAAAAAAAAAAAAAAPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RkZQWlpaWlpgAAAAAFBaAAAAAAAAAFBGPDIyMjIyMjIyPDIAAAAAAAAAYFpQRjwyMjIyMjIyMjIyMjI8MjxGUFpaWlBQRkY8MjxGUAAAAAAAAABgWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PEZQUFpgYGBgYAAAAABgWmAAAAAAAAAARjwyMjIyMjI8PDw8PEYAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjI8RlBaYGBgWlpQUEY8RlBaYAAAAAAAAABgWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGUFpaYAAAAAAAAAAAAABgAAAAAAAAAAA8MjIyMjI8PEZGRkZGUFBaWgAAAABGPDIyMjIyMjIyMjIyMjIyPEZQWmAAAABgYFpaUEZGRlAAAAAAAAAAAABgWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PDIyMjIyMjIyMjIyMjIyMjwyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBaYGAAAAAAAAAAAAAAAAAAAAAAAAAAPDIyMjIyPEZGUFBQUFBaWmBgAAAAADwyMjIyMjIyMjIyMjIyMjIyPEZQAAAAAAAAYGBaUFBQUFAAAAAAAAAAAABgWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PEZGPDIyMjIyMjIyMjIyMjI8RjxGPDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWmAAAAAAAAAAAAAAAAAAAAAAAAAAAABGPDIyMjxGUFBaWlpaWmBgAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyPEY8AAAAAAAAAGBaWlpaWmAAAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGUFBGPDIyMjIyMjIyMjIyPEZQRlBGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmBgAAAAAAAAWlAAAAAAAAAAAAAAAAAAAFBGPDI8RlBaWmBgYGBgAAAAAAAAADIyMjIyMjIyMjIyMjIyMjIyMjIyPDIAAAAAAAAAAGBgYGBgAAAAAAAAAAAAAEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBaWlBGPDIyMjIyMjIyMjxGUFpQWlBQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpgAAAAAAAAAGRaWmAAAAAAAAAAAAAAAAAAWlBGPEZQWmBgAAAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAAAAAAAAAAAAyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWmBgWlBGPDIyMjIyMjI8RlBaZFpkWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaYAAAAAAAAAAAWlBQAAAAAAAAAAAAAAAAAABgWlBGUFpgAAAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAAAAAAAAAADwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmBgAABgWlBGPDIyMjIyPEZQWmQAZABkZFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmAAAAAAAAAAAEZQRkY8AAAAAAAAADIyAAAAAABQRjxGUAAAAAAAAAAAAAAARjw8PDw8PDw8PDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAAAAAEZGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpgAAAAAABQRjwyMjIyMjI8RlBaZAAAAAAAZFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQAAAAAAAAAABQRkZGPDwyMjIyMjIyMjIyAAAAAEY8MjxGPAAAAAAAAAAAAFpQRkZGRkZGRkZGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAWlpaWlBQUFBQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaYAAAAAAAAEY8MjIyMjIyMjxGUFpkAAAAAABkWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEYAAAAAAABkWlpQUFBGRjwyMjI8PDw8PDIAAAAAPDIyMjwyMjIAAAAAAAAAYFpQUFBQUFBQUFBQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAABgYGBgWlpaWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmAAAAAAAAAyPDIyMjIyMjIyMjxGUFpkZAAAAFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPAAAAAAAAGBgYFpaWlBQRjwyPEZGRkZGPDIAADIyMjIyMjIyMjIyAAAAAAAAYFpaWlpaWlpaWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAABgYGBgYFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQAAAAAAAAADIyMjIyMjIyMjIyMjxGUFpaUEZGUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAYGBgWlpQRjxGUFBQUFBGPDIyMjIyMjIyMjIyMjIyMgAAAAAAYGBgYGBgYGBgYFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEYAAAAAAAAyMjIyMjIyMjIyMjIyMjxGUFBGPDxGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAABgYFpQRlBaWlpaWlBGPDIyMjIyMjIyMjIyMjI8AAAAAAAAAAAAAAAAAAAAYFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPAAyADIyMjIyMjIyMjIyMjIyMjIyMjxGRjwyMjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAZFpQWmBgYGBgWlBGPDIyMjIyMjIyMjIyPEZQAAAAAAAAAAAAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAYFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDI8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAABgWlpgAAAAAABQRjwyMjIyMjIyMjIyMjxGUFoAAAAAAAAAAAAAAAAAADxGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDxGPEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAABkWgAAAAAAPEY8MjIyMjIyMjIyMjI8RlBaYAAAAAAAAAAAAAAyMjIyMjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjwAAAAAAAAAAABgWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PDw8RkZGRlBGUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAGRaUEZGRjw8PDIyMjIyMjIyMjIyMjI8RlAAAAAAAAAAAAAyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RkZQAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGRkZQUFBQWlBaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAZFpQUFBQRkY8MjIyMjIyMjIyMjIyMjI8RgAAAAAAAAAARjw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQUFpgAAAAAAAAAEY8MjIyMjw8PDIyMjIyMjIyMjIyMjIyMjIyMjxGUFBQUFpaWlpkWmRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAABgYFpaWlpQUEY8MjIyMjIyMjIyPDIyMjI8MgAAAAAAAABQRkY8PDw8MjIyMjIyMjIyMjI8PDw8PDw8MjIyMjIyMjxGUFpaYAAAAAAAAAAAPDIyMjI8RkZGPDIyMjIyMjIyMjIyMjIyMjI8RlBaWlpaZGRkZABkAGRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAYGBgYFpaUEY8PDw8PDIyMjxGPDIyMjIyMgAAAAAAAFpQUEZGRkY8MjIyMjIyMjIyPEZGRkZGRkY8MjIyMjI8RlBaYGAAAAAAAAAAADIyMjw8PEZQUFBGPDwyMjIyMjIyMjIyMjIyPEZQWmRkZGQAAAAAAAAAZFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAYGBaUEZGRkZGPDw8RlBGPDIyMjIyMjIyAAAAYFpaUFBQUEY8MjIyMjIyMjxGUFBQUFBQUEY8MjIyPEZQWloAAAAAAAAAAAAAMjI8RkZGUFpaWlBGRjwyMjIyMjIyMjIyMjxGUFpkAAAAAAAAAAAAAABkWlBGPDIyMjIyMjIyMjIyPDw8PDw8PDw8PDIyMjIyMjIyPDw8MjIyMjIyMjIyMjIyMjIyMjIyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAGRaUFBQUFBGRkZQWlBGPDIyMjIyMjIyAAAAYGBaWlpaUEY8PDw8PDw8RlBaWlpaWlpaUEY8MjxGUFpgYAAAAAAAAAAAPDw8PEZQUFBaYGBgWlBQRjwyMjIyMjIyMjIyMjxGUFoAAAAAAGRkZGRkZFpQRjwyMjIyMjIyPDwyMjJGRkZGRkZGRkZGPDwyMjIyPDxGRkY8PDw8PDIyPDw8PDIyMjw8PDxGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8AAAAAAAAAAAAYGBaWlpaWlBQUFpkWlBGPDIyMjIyPDwAAAAAAGBgYGBaUEZGRkZGRkZQWlhgYGBYWGBaUEY8PEZQWgAAAAAAMjI8PDxGRkZGUFpaWmAAAABgWlpQRjw8PDw8MjIyMjIyPDxGUAAAAEZQWlpaWlpaUEY8MjIyMjIyMjxGRjwyMlBQUFBQUFBQUFBGRjwyMjxGRlBQUEZGRkZGPDxGRkZGPDI8RkZGRlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyPEY8PDIyAAAAAAAAAGBgYGBgWlpaZABkWlBGPDIyMjxGRkYAAAAAAAAAAGBaUFBQUFBQUFBaAAAAAAAAAGBaUEZGUFpgAAAAADw8PEZGRlBQUFBaYGBgAAAAAABgYFpQRkZGRkY8PDw8PDxGRkZGRkZQUFpaUFBQUFBGPDw8PDw8PDw8RlBQRjw8WlpaWlpaWlpaWlBQRjw8RlBQWlpaUFBQUFBGRlBQUFBGPEZQUFBQWlBGPDw8MjIyMjIyMjIyMjIyMjIyMjxGUEZGPDIyMgAAAAAAAAAAAABkZGQAAABkWlBGPDw8RlBQUAAAAAAAAAAAAFpaWlpaWlpaWlgAAAAAAAAAAFpQRlBaYAAAAAAARkZGUFBQWlpaWmAAAAAAAAAAAAAAYFpQUFBQUEZGRkZGRlBQUFBQUFpaWGBaUEZGRjxGRkZGRkZGRkZQWlpQRkZgYGBgYGBgYGBgWlpQRkZQWlpkZGRaWlpaWlBQWlpaWlBGUFpaWlpgWlBGRkY8MjIyMjIyMjIyMjIyPDw8RlBaUFBGPDIyMgAAAAAAAAAAAGQAAAAAAABkWlBGRkZQWlpaWloAAAAAAAAAYGBgYGBgYGBgAAAAAAAAAAAAYFpQRlAAAAAAAABQUFBaWlpgYGBgAAAAAAAAAAAAAAAAYFpaWlpaUFBQUFBQWlpaWlpaWGAAAFpQUEZGRlBQUFBQUFBQUFpkZFpQUAAAAAAAAAAAAABYYFpQUFpgZAAAAGRgYFpYWlpUWGBgWlBaWFhUYGFaUlBQUEY8PDw8MjIyMjI8PDxGRkZQWmBaWlBGPDIyMjwAAAAAAAAAAAAAAAAAAGBaUEZQUFpgYGBgYFhgYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYFpQRkYAAAAAAFpaWmBgYAAAAAAAAAAAAAAAAAAAAAAAYGBgYGBaWlpaWlpgYGBgYGAAAAAAYFpaUFBQWlpaWlpaWlpaZAAAZFpaAAAAAAAAAAAAAAAAYFpaYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFxcWlpaUEZGRkY8PDw8PEZGRlBQUFpgAGBgWlBGPDw8RlBaWFgAAAAAAAAAAAAAAFBGUFpaYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYFpQUAAAAAAAWGBgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGBgYGBgYAAAAAAAAAAAAAAAYGBaWlpgYGBgYGBgYGAAAAAAYGAAAAAAAAAAAAAAAAAAVFgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgYGBaUFBQUEZGRkZGUFBQWlpaWAAAAABgWlBGRkZQWmAAAAAAAAAAAAAAAAAAWlBaYGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYFpaYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGBgYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFhaWlpaUFBQUFBaWlpgWFgAAAAAAABaUEZQUFpgAAAAAAAAAAAAAAAAAABgWloAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYFgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFhUWGBaWlpaWmBgYAAAAAAAAAAAAGBaUFpaYAAAAAAAAAAAAAAAAAAAAABaYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGBgYGBgAAAAAAAAAAAAAAAAAGBaWGAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
   "isRaining": false,
-  "humidity": 0.520116,
+  "humidity": 0.330483466,
   "globalItemTargets": {
     "sawdust": 10000,
     "acorn": 10000,
@@ -111384,8 +110870,8 @@
     "fiber",
     "ramie"
   ],
-  "cameraX": 31.8245544,
-  "cameraY": 62.8271179,
+  "cameraX": 31.8685436,
+  "cameraY": 61.5369568,
   "cameraPPU": 24,
   "inventoryTreeOpen": {
     "stone": true,
@@ -111398,8 +110884,8 @@
     "clothing": true,
     "book": true
   },
-  "playerTaskIndex": 10,
-  "births": 4,
+  "playerTaskIndex": 8,
+  "births": 2,
   "flowers": [
     {
       "x": 4,

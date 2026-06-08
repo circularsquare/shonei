@@ -94,7 +94,7 @@ public class RopeBridge {
     // list would otherwise leak entries from the editor session into the
     // first Play tick. See SpriteMaterialUtil for the broader pattern.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetStatics() { _all = new List<RopeBridge>(); }
+    public static void ResetStatics() { _all = new List<RopeBridge>(); }
 
 
     // Factory entry point. Refuses to double-create when either post already

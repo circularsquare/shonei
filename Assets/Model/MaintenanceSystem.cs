@@ -16,6 +16,10 @@ using UnityEngine;
 //   step = (1 - BreakThreshold) / (DaysToBreak * ticksInDay)
 //        = 0.5 / (30 * 240) ≈ 6.94e-5 per tick
 //
+// Structures sheltered from the sky (a roof or any overhead cover) decay at half this
+// rate — Structure.ShelteredDecayFactor, applied per-structure in Tick via IsSheltered.
+// baseStep stays the EXPOSED rate so existing outdoor structures keep their calibration.
+//
 // Two state tracks on the system, not the structure:
 //   registered  — structures currently holding a WOM Maintenance order (stops double-registers)
 //   broken      — structures currently below BreakThreshold (so we fire OnBroken/OnRepaired edges only)
@@ -45,7 +49,7 @@ public class MaintenanceSystem {
     // this, the second play press finds the previous session's instance still here
     // and the ctor's duplicate-detection LogError fires.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetStatics() { instance = null; }
+    public static void ResetStatics() { instance = null; }
 
     // Structures that currently have an active WOM Maintenance order registered.
     // We only register when condition first drops below RegisterThreshold, so this
@@ -64,13 +68,17 @@ public class MaintenanceSystem {
 
     // Called from World.Update() every 1 in-game second.
     public void Tick() {
-        float step = (1f - Structure.BreakThreshold) / (Structure.DaysToBreak * World.ticksInDay);
+        float baseStep = (1f - Structure.BreakThreshold) / (Structure.DaysToBreak * World.ticksInDay);
 
         List<Structure> structures = StructController.instance?.GetStructures();
         if (structures == null) return;
 
         foreach (Structure s in structures) {
             if (s == null || !s.NeedsMaintenance) continue;
+
+            // Open to the sky weathers at the full rate; a roof or other overhead cover
+            // halves it. baseStep is the exposed rate, so this only ever slows decay.
+            float step = IsSheltered(s) ? baseStep * Structure.ShelteredDecayFactor : baseStep;
 
             float before = s.condition;
             float after = Mathf.Max(0f, before - step);
@@ -140,5 +148,18 @@ public class MaintenanceSystem {
 
     void OnUnbroken(Structure s) {
         s.RefreshTint();
+    }
+
+    // A structure is sheltered when its entire top row is covered from the sky — a roof,
+    // platform, or any solidTop/blocksRain structure overhead. Mirrors Windmill.HasOpenSky:
+    // both read World.IsExposedAbove, the per-tile blocker the whole sim already shares
+    // (windmill output, snow, soil moisture, item wet-decay).
+    static bool IsSheltered(Structure s) {
+        World world = World.instance;
+        if (world == null) return false;
+        int topY = s.y + s.Shape.ny - 1;
+        for (int dx = 0; dx < s.Shape.nx; dx++)
+            if (world.IsExposedAbove(s.x + dx, topY)) return false;
+        return true;
     }
 }

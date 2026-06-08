@@ -2,7 +2,7 @@
   "saveVersion": 1,
   "savedNx": 200,
   "savedNy": 120,
-  "timer": 4436.831,
+  "timer": 2622.29077,
   "worldSeed": 84885,
   "tiles": [
     {
@@ -426,8 +426,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 1,
@@ -841,8 +840,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 2,
@@ -1256,8 +1254,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 3,
@@ -2085,8 +2082,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 5,
@@ -2500,8 +2496,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 6,
@@ -2915,8 +2910,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 7,
@@ -3330,8 +3324,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 8,
@@ -3745,8 +3738,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 9,
@@ -4160,8 +4152,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 9,
-      "overlayState": 1
+      "overlayMask": 9
     },
     {
       "x": 10,
@@ -4582,8 +4573,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 11,
@@ -5004,8 +4994,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 9,
-      "overlayState": 1
+      "overlayMask": 9
     },
     {
       "x": 12,
@@ -5436,11 +5425,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 1944,
-            "decayCounter": 461772
+            "quantity": 2195,
+            "decayCounter": 799256
           }
         ],
-        "wetUntil": 4263.193
+        "wetUntil": 2592.68335
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -5451,8 +5440,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 9,
-      "overlayState": 1
+      "overlayMask": 9
     },
     {
       "x": 13,
@@ -5890,11 +5878,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 1945,
-            "decayCounter": 712599
+            "quantity": 2194,
+            "decayCounter": 115304
           }
         ],
-        "wetUntil": 4263.193
+        "wetUntil": 2592.68335
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -5905,8 +5893,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 10,
-      "overlayState": 1
+      "overlayMask": 10
     },
     {
       "x": 14,
@@ -6333,24 +6320,6 @@
       "y": 0,
       "tileType": "limestone",
       "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 15,
-      "y": 61,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 1737,
-            "decayCounter": 158472
-          }
-        ],
-        "wetUntil": 4263.193
-      },
-      "backgroundWallType": 0,
       "hasBackgroundWall": false
     },
     {
@@ -6787,8 +6756,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 16,
@@ -7209,8 +7177,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 17,
@@ -8040,42 +8007,6 @@
     },
     {
       "x": 19,
-      "y": 60,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 773,
-            "decayCounter": 112836
-          }
-        ],
-        "wetUntil": 4263.193
-      },
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 59,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 2116,
-            "decayCounter": 341698
-          }
-        ],
-        "wetUntil": 4263.193
-      },
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
       "y": 58,
       "tileType": "clay",
       "backgroundWallType": 0,
@@ -8489,42 +8420,6 @@
     },
     {
       "x": 20,
-      "y": 60,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 2121,
-            "decayCounter": 984568
-          }
-        ],
-        "wetUntil": 4263.193
-      },
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 59,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 2114,
-            "decayCounter": 68574
-          }
-        ],
-        "wetUntil": 4263.193
-      },
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
       "y": 58,
       "tileType": "clay",
       "backgroundWallType": 0,
@@ -8934,24 +8829,6 @@
       "y": 0,
       "tileType": "limestone",
       "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 60,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 2110,
-            "decayCounter": 851088
-          }
-        ],
-        "wetUntil": 4263.193
-      },
-      "backgroundWallType": 0,
       "hasBackgroundWall": false
     },
     {
@@ -8960,8 +8837,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 21,
@@ -9385,11 +9261,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 2061,
-            "decayCounter": 931425
+            "quantity": 2452,
+            "decayCounter": 493786
           }
         ],
-        "wetUntil": 4263.193
+        "wetUntil": 2592.68335
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -9400,8 +9276,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 22,
@@ -9818,30 +9693,11 @@
     },
     {
       "x": 23,
-      "y": 60,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "apple",
-            "quantity": 505,
-            "decayCounter": 479649
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 23,
       "y": 59,
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 23,
@@ -10265,11 +10121,11 @@
         "stacks": [
           {
             "itemName": "pine planks",
-            "quantity": 2282,
-            "decayCounter": 65553
+            "quantity": 2473,
+            "decayCounter": 189839
           }
         ],
-        "wetUntil": 4263.193
+        "wetUntil": 2592.68335
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -10280,8 +10136,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 24,
@@ -10705,11 +10560,11 @@
         "stacks": [
           {
             "itemName": "oak planks",
-            "quantity": 39,
-            "decayCounter": 1638
+            "quantity": 78,
+            "decayCounter": 240875
           }
         ],
-        "wetUntil": 4263.193
+        "wetUntil": 2592.68335
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -10720,8 +10575,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 25,
@@ -11145,11 +10999,11 @@
         "stacks": [
           {
             "itemName": "pine planks",
-            "quantity": 2500,
-            "decayCounter": 839625
+            "quantity": 2492,
+            "decayCounter": 96679
           }
         ],
-        "wetUntil": 4263.193
+        "wetUntil": 2592.68335
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -11160,8 +11014,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 26,
@@ -11585,11 +11438,11 @@
         "stacks": [
           {
             "itemName": "oak",
-            "quantity": 43,
-            "decayCounter": 329493
+            "quantity": 107,
+            "decayCounter": 70801
           }
         ],
-        "wetUntil": 4263.193
+        "wetUntil": 2592.68335
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -11600,8 +11453,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 27,
@@ -12025,11 +11877,11 @@
         "stacks": [
           {
             "itemName": "pine planks",
-            "quantity": 2478,
-            "decayCounter": 542371
+            "quantity": 745,
+            "decayCounter": 421146
           }
         ],
-        "wetUntil": 4263.193
+        "wetUntil": 2592.68335
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -12040,8 +11892,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 28,
@@ -12462,8 +12313,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 29,
@@ -12880,30 +12730,11 @@
     },
     {
       "x": 30,
-      "y": 60,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 1493,
-            "decayCounter": 616058
-          }
-        ],
-        "wetUntil": 4263.193
-      },
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 30,
       "y": 59,
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 30,
@@ -13320,30 +13151,11 @@
     },
     {
       "x": 31,
-      "y": 60,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 988,
-            "decayCounter": 389897
-          }
-        ],
-        "wetUntil": 4263.193
-      },
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 31,
       "y": 59,
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 31,
@@ -13760,12 +13572,29 @@
     },
     {
       "x": 32,
+      "y": 60,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Floor",
+        "stacks": [
+          {
+            "itemName": "pine",
+            "quantity": 846,
+            "decayCounter": 886429
+          }
+        ],
+        "wetUntil": 0.0
+      },
+      "backgroundWallType": 0,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 32,
       "y": 59,
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 32,
@@ -14186,8 +14015,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 33,
@@ -14608,8 +14436,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 34,
@@ -15030,8 +14857,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 35,
@@ -15452,8 +15278,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 36,
@@ -15874,8 +15699,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 37,
@@ -16296,8 +16120,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 10,
-      "overlayState": 1
+      "overlayMask": 10
     },
     {
       "x": 38,
@@ -16729,8 +16552,7 @@
       "tileType": "dirt",
       "backgroundWallType": 2,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 39,
@@ -17144,8 +16966,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 9,
-      "overlayState": 1
+      "overlayMask": 9
     },
     {
       "x": 40,
@@ -17153,8 +16974,7 @@
       "tileType": "dirt",
       "backgroundWallType": 2,
       "hasBackgroundWall": false,
-      "overlayMask": 1,
-      "overlayState": 1
+      "overlayMask": 1
     },
     {
       "x": 40,
@@ -17575,8 +17395,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 41,
@@ -18004,8 +17823,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 9,
-      "overlayState": 1
+      "overlayMask": 9
     },
     {
       "x": 42,
@@ -18432,24 +18250,6 @@
       "y": 0,
       "tileType": "limestone",
       "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 43,
-      "y": 62,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "ramie",
-            "quantity": 343,
-            "decayCounter": 327526
-          }
-        ],
-        "wetUntil": 4263.193
-      },
-      "backgroundWallType": 0,
       "hasBackgroundWall": false
     },
     {
@@ -18889,24 +18689,6 @@
     },
     {
       "x": 44,
-      "y": 62,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 502,
-            "decayCounter": 572124
-          }
-        ],
-        "wetUntil": 4263.193
-      },
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 44,
       "y": 61,
       "tileType": "dirt",
       "backgroundWallType": 0,
@@ -19342,30 +19124,11 @@
     },
     {
       "x": 45,
-      "y": 63,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 1025,
-            "decayCounter": 912401
-          }
-        ],
-        "wetUntil": 4263.193
-      },
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 45,
       "y": 62,
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 9,
-      "overlayState": 1
+      "overlayMask": 9
     },
     {
       "x": 45,
@@ -19810,11 +19573,11 @@
         "stacks": [
           {
             "itemName": "ramie",
-            "quantity": 1947,
-            "decayCounter": 389116
+            "quantity": 802,
+            "decayCounter": 215133
           }
         ],
-        "wetUntil": 4263.193
+        "wetUntil": 2592.68335
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -20277,11 +20040,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 2297,
-            "decayCounter": 435850
+            "quantity": 1066,
+            "decayCounter": 869710
           }
         ],
-        "wetUntil": 4263.193
+        "wetUntil": 2592.68335
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -20292,8 +20055,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 47,
@@ -20738,30 +20500,11 @@
     },
     {
       "x": 48,
-      "y": 64,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 2368,
-            "decayCounter": 323366
-          }
-        ],
-        "wetUntil": 4263.193
-      },
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 48,
       "y": 63,
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 48,
@@ -21213,11 +20956,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 2369,
-            "decayCounter": 296099
+            "quantity": 1717,
+            "decayCounter": 229636
           }
         ],
-        "wetUntil": 4263.193
+        "wetUntil": 2592.68335
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -21228,8 +20971,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 49,
@@ -21674,30 +21416,11 @@
     },
     {
       "x": 50,
-      "y": 65,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 2372,
-            "decayCounter": 625123
-          }
-        ],
-        "wetUntil": 4263.193
-      },
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 50,
       "y": 64,
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 9,
-      "overlayState": 1
+      "overlayMask": 9
     },
     {
       "x": 50,
@@ -22156,11 +21879,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 2373,
-            "decayCounter": 563388
+            "quantity": 1720,
+            "decayCounter": 508571
           }
         ],
-        "wetUntil": 4263.193
+        "wetUntil": 2592.68335
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -22630,11 +22353,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 2374,
-            "decayCounter": 843717
+            "quantity": 1639,
+            "decayCounter": 365182
           }
         ],
-        "wetUntil": 4263.193
+        "wetUntil": 2592.68335
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -22645,8 +22368,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 52,
@@ -23098,30 +22820,11 @@
     },
     {
       "x": 53,
-      "y": 65,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 2375,
-            "decayCounter": 90604
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 53,
       "y": 64,
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 53,
@@ -23573,30 +23276,11 @@
     },
     {
       "x": 54,
-      "y": 65,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 536,
-            "decayCounter": 53323
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 54,
       "y": 64,
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 10,
-      "overlayState": 1
+      "overlayMask": 10
     },
     {
       "x": 54,
@@ -24052,8 +23736,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 55,
@@ -24502,8 +24185,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 56,
@@ -24952,8 +24634,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 10,
-      "overlayState": 1
+      "overlayMask": 10
     },
     {
       "x": 57,
@@ -25402,8 +25083,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 58,
@@ -25845,8 +25525,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 59,
@@ -26288,8 +25967,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 10,
-      "overlayState": 1
+      "overlayMask": 10
     },
     {
       "x": 60,
@@ -26731,8 +26409,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 10,
-      "overlayState": 1
+      "overlayMask": 10
     },
     {
       "x": 61,
@@ -27595,8 +27272,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 63,
@@ -28445,8 +28121,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 65,
@@ -28874,8 +28549,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 9,
-      "overlayState": 1
+      "overlayMask": 9
     },
     {
       "x": 66,
@@ -29310,8 +28984,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 9,
-      "overlayState": 1
+      "overlayMask": 9
     },
     {
       "x": 67,
@@ -29319,8 +28992,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 1,
-      "overlayState": 1
+      "overlayMask": 1
     },
     {
       "x": 67,
@@ -29762,8 +29434,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 9,
-      "overlayState": 1
+      "overlayMask": 9
     },
     {
       "x": 68,
@@ -30219,8 +29890,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 11,
-      "overlayState": 1
+      "overlayMask": 11
     },
     {
       "x": 69,
@@ -30683,8 +30353,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 70,
@@ -31140,8 +30809,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 10,
-      "overlayState": 1
+      "overlayMask": 10
     },
     {
       "x": 71,
@@ -31597,8 +31265,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 10,
-      "overlayState": 1
+      "overlayMask": 10
     },
     {
       "x": 72,
@@ -32047,8 +31714,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 10,
-      "overlayState": 1
+      "overlayMask": 10
     },
     {
       "x": 73,
@@ -32063,8 +31729,7 @@
       "tileType": "dirt",
       "backgroundWallType": 2,
       "hasBackgroundWall": false,
-      "overlayMask": 4,
-      "overlayState": 1
+      "overlayMask": 4
     },
     {
       "x": 73,
@@ -32492,8 +32157,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 10,
-      "overlayState": 1
+      "overlayMask": 10
     },
     {
       "x": 74,
@@ -32922,8 +32586,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 12,
-      "overlayState": 1
+      "overlayMask": 12
     },
     {
       "x": 75,
@@ -33337,8 +33000,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 14,
-      "overlayState": 1
+      "overlayMask": 14
     },
     {
       "x": 76,
@@ -33353,8 +33015,7 @@
       "tileType": "dirt",
       "backgroundWallType": 2,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 76,
@@ -38200,8 +37861,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 1,
-      "overlayState": 1
+      "overlayMask": 1
     },
     {
       "x": 88,
@@ -39092,8 +38752,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 10,
-      "overlayState": 1
+      "overlayMask": 10
     },
     {
       "x": 90,
@@ -39978,8 +39637,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 10,
-      "overlayState": 1
+      "overlayMask": 10
     },
     {
       "x": 92,
@@ -40842,8 +40500,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 94,
@@ -41264,8 +40921,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 95,
@@ -41686,8 +41342,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 96,
@@ -41702,8 +41357,7 @@
       "tileType": "dirt",
       "backgroundWallType": 2,
       "hasBackgroundWall": false,
-      "overlayMask": 2,
-      "overlayState": 1
+      "overlayMask": 2
     },
     {
       "x": 96,
@@ -42110,8 +41764,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 97,
@@ -42119,8 +41772,7 @@
       "tileType": "dirt",
       "backgroundWallType": 2,
       "hasBackgroundWall": false,
-      "overlayMask": 4,
-      "overlayState": 1
+      "overlayMask": 4
     },
     {
       "x": 97,
@@ -42534,8 +42186,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 98,
@@ -42543,8 +42194,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 6,
-      "overlayState": 1
+      "overlayMask": 6
     },
     {
       "x": 98,
@@ -42958,8 +42608,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 12,
-      "overlayState": 1
+      "overlayMask": 12
     },
     {
       "x": 99,
@@ -42981,8 +42630,7 @@
       "tileType": "dirt",
       "backgroundWallType": 2,
       "hasBackgroundWall": false,
-      "overlayMask": 9,
-      "overlayState": 1
+      "overlayMask": 9
     },
     {
       "x": 99,
@@ -43368,8 +43016,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 12,
-      "overlayState": 1
+      "overlayMask": 12
     },
     {
       "x": 100,
@@ -43391,8 +43038,7 @@
       "tileType": "dirt",
       "backgroundWallType": 2,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 100,
@@ -43778,8 +43424,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 14,
-      "overlayState": 1
+      "overlayMask": 14
     },
     {
       "x": 101,
@@ -43794,8 +43439,7 @@
       "tileType": "dirt",
       "backgroundWallType": 2,
       "hasBackgroundWall": false,
-      "overlayMask": 9,
-      "overlayState": 1
+      "overlayMask": 9
     },
     {
       "x": 101,
@@ -44195,8 +43839,7 @@
       "tileType": "dirt",
       "backgroundWallType": 2,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 102,
@@ -44603,8 +44246,7 @@
       "tileType": "dirt",
       "backgroundWallType": 2,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 103,
@@ -45011,8 +44653,7 @@
       "tileType": "dirt",
       "backgroundWallType": 2,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 104,
@@ -45405,8 +45046,7 @@
       "tileType": "dirt",
       "backgroundWallType": 2,
       "hasBackgroundWall": false,
-      "overlayMask": 9,
-      "overlayState": 1
+      "overlayMask": 9
     },
     {
       "x": 105,
@@ -45806,8 +45446,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 9,
-      "overlayState": 1
+      "overlayMask": 9
     },
     {
       "x": 106,
@@ -45815,8 +45454,7 @@
       "tileType": "dirt",
       "backgroundWallType": 2,
       "hasBackgroundWall": false,
-      "overlayMask": 1,
-      "overlayState": 1
+      "overlayMask": 1
     },
     {
       "x": 106,
@@ -46223,8 +45861,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 107,
@@ -46638,8 +46275,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 108,
@@ -47053,8 +46689,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 109,
@@ -47882,8 +47517,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 111,
@@ -48297,8 +47931,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 112,
@@ -49126,8 +48759,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 10,
-      "overlayState": 1
+      "overlayMask": 10
     },
     {
       "x": 114,
@@ -49541,8 +49173,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 10,
-      "overlayState": 1
+      "overlayMask": 10
     },
     {
       "x": 115,
@@ -49550,8 +49181,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 2,
-      "overlayState": 1
+      "overlayMask": 2
     },
     {
       "x": 115,
@@ -49951,8 +49581,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 116,
@@ -50345,8 +49974,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 117,
@@ -50739,8 +50367,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 118,
@@ -51133,8 +50760,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 119,
@@ -51527,8 +51153,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 120,
@@ -51921,8 +51546,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 121,
@@ -52708,8 +52332,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 9,
-      "overlayState": 1
+      "overlayMask": 9
     },
     {
       "x": 123,
@@ -53109,8 +52732,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 9,
-      "overlayState": 1
+      "overlayMask": 9
     },
     {
       "x": 124,
@@ -53118,8 +52740,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 1,
-      "overlayState": 1
+      "overlayMask": 1
     },
     {
       "x": 124,
@@ -53947,8 +53568,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 9,
-      "overlayState": 1
+      "overlayMask": 9
     },
     {
       "x": 126,
@@ -54376,8 +53996,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 9,
-      "overlayState": 1
+      "overlayMask": 9
     },
     {
       "x": 127,
@@ -54812,8 +54431,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 9,
-      "overlayState": 1
+      "overlayMask": 9
     },
     {
       "x": 128,
@@ -55270,8 +54888,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 2,
-      "overlayState": 1
+      "overlayMask": 2
     },
     {
       "x": 129,
@@ -55279,8 +54896,7 @@
       "tileType": "dirt",
       "backgroundWallType": 2,
       "hasBackgroundWall": false,
-      "overlayMask": 6,
-      "overlayState": 1
+      "overlayMask": 6
     },
     {
       "x": 129,
@@ -55701,8 +55317,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 14,
-      "overlayState": 1
+      "overlayMask": 14
     },
     {
       "x": 130,
@@ -57783,8 +57398,7 @@
       "tileType": "dirt",
       "backgroundWallType": 2,
       "hasBackgroundWall": false,
-      "overlayMask": 1,
-      "overlayState": 1
+      "overlayMask": 1
     },
     {
       "x": 135,
@@ -57792,8 +57406,7 @@
       "tileType": "dirt",
       "backgroundWallType": 2,
       "hasBackgroundWall": false,
-      "overlayMask": 1,
-      "overlayState": 1
+      "overlayMask": 1
     },
     {
       "x": 135,
@@ -58635,8 +58248,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 10,
-      "overlayState": 1
+      "overlayMask": 10
     },
     {
       "x": 137,
@@ -59064,8 +58676,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 138,
@@ -59486,8 +59097,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 139,
@@ -60329,8 +59939,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 141,
@@ -60744,8 +60353,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 142,
@@ -61159,8 +60767,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 143,
@@ -61574,8 +61181,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 10,
-      "overlayState": 1
+      "overlayMask": 10
     },
     {
       "x": 144,
@@ -61989,8 +61595,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 10,
-      "overlayState": 1
+      "overlayMask": 10
     },
     {
       "x": 145,
@@ -62797,8 +62402,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 147,
@@ -63198,8 +62802,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 10,
-      "overlayState": 1
+      "overlayMask": 10
     },
     {
       "x": 148,
@@ -63599,8 +63202,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 10,
-      "overlayState": 1
+      "overlayMask": 10
     },
     {
       "x": 149,
@@ -65940,8 +65542,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 155,
@@ -66341,8 +65942,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 9,
-      "overlayState": 1
+      "overlayMask": 9
     },
     {
       "x": 156,
@@ -66749,8 +66349,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 9,
-      "overlayState": 1
+      "overlayMask": 9
     },
     {
       "x": 157,
@@ -67164,8 +66763,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 9,
-      "overlayState": 1
+      "overlayMask": 9
     },
     {
       "x": 158,
@@ -67586,8 +67184,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 159,
@@ -68008,8 +67605,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 160,
@@ -68430,8 +68026,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 161,
@@ -68852,8 +68447,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 162,
@@ -69702,8 +69296,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 164,
@@ -70131,8 +69724,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 165,
@@ -70560,8 +70152,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 166,
@@ -70989,8 +70580,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 167,
@@ -71418,8 +71008,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 10,
-      "overlayState": 1
+      "overlayMask": 10
     },
     {
       "x": 168,
@@ -71847,8 +71436,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 169,
@@ -72269,8 +71857,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 170,
@@ -72691,8 +72278,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 171,
@@ -73113,8 +72699,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 172,
@@ -73535,8 +73120,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 173,
@@ -73558,8 +73142,7 @@
       "tileType": "dirt",
       "backgroundWallType": 2,
       "hasBackgroundWall": false,
-      "overlayMask": 4,
-      "overlayState": 1
+      "overlayMask": 4
     },
     {
       "x": 173,
@@ -73981,8 +73564,7 @@
       "tileType": "dirt",
       "backgroundWallType": 2,
       "hasBackgroundWall": false,
-      "overlayMask": 4,
-      "overlayState": 1
+      "overlayMask": 4
     },
     {
       "x": 174,
@@ -74382,8 +73964,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 175,
@@ -74398,8 +73979,7 @@
       "tileType": "dirt",
       "backgroundWallType": 2,
       "hasBackgroundWall": false,
-      "overlayMask": 4,
-      "overlayState": 1
+      "overlayMask": 4
     },
     {
       "x": 175,
@@ -74799,8 +74379,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 10,
-      "overlayState": 1
+      "overlayMask": 10
     },
     {
       "x": 176,
@@ -74822,8 +74401,7 @@
       "tileType": "dirt",
       "backgroundWallType": 2,
       "hasBackgroundWall": false,
-      "overlayMask": 5,
-      "overlayState": 1
+      "overlayMask": 5
     },
     {
       "x": 176,
@@ -75216,8 +74794,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 177,
@@ -75232,8 +74809,7 @@
       "tileType": "dirt",
       "backgroundWallType": 2,
       "hasBackgroundWall": false,
-      "overlayMask": 4,
-      "overlayState": 1
+      "overlayMask": 4
     },
     {
       "x": 177,
@@ -75626,8 +75202,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 178,
@@ -75649,8 +75224,7 @@
       "tileType": "dirt",
       "backgroundWallType": 2,
       "hasBackgroundWall": false,
-      "overlayMask": 1,
-      "overlayState": 1
+      "overlayMask": 1
     },
     {
       "x": 178,
@@ -76044,8 +75618,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 1,
-      "overlayState": 1
+      "overlayMask": 1
     },
     {
       "x": 179,
@@ -76459,8 +76032,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 9,
-      "overlayState": 1
+      "overlayMask": 9
     },
     {
       "x": 180,
@@ -78618,8 +78190,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 185,
@@ -79047,8 +78618,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 186,
@@ -79476,8 +79046,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 187,
@@ -79905,8 +79474,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 188,
@@ -80334,8 +79902,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 189,
@@ -80763,8 +80330,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 190,
@@ -81192,8 +80758,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 191,
@@ -81621,8 +81186,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 192,
@@ -82050,8 +81614,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 10,
-      "overlayState": 1
+      "overlayMask": 10
     },
     {
       "x": 193,
@@ -82479,8 +82042,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 194,
@@ -83727,8 +83289,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 8,
-      "overlayState": 1
+      "overlayMask": 8
     },
     {
       "x": 197,
@@ -84149,8 +83710,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 9,
-      "overlayState": 1
+      "overlayMask": 9
     },
     {
       "x": 198,
@@ -84578,8 +84138,7 @@
       "tileType": "dirt",
       "backgroundWallType": 0,
       "hasBackgroundWall": false,
-      "overlayMask": 10,
-      "overlayState": 1
+      "overlayMask": 10
     },
     {
       "x": 199,
@@ -84587,8 +84146,7 @@
       "tileType": "dirt",
       "backgroundWallType": 2,
       "hasBackgroundWall": false,
-      "overlayMask": 2,
-      "overlayState": 1
+      "overlayMask": 2
     },
     {
       "x": 199,
@@ -84596,8 +84154,7 @@
       "tileType": "dirt",
       "backgroundWallType": 2,
       "hasBackgroundWall": false,
-      "overlayMask": 2,
-      "overlayState": 1
+      "overlayMask": 2
     },
     {
       "x": 199,
@@ -84605,8 +84162,7 @@
       "tileType": "dirt",
       "backgroundWallType": 2,
       "hasBackgroundWall": false,
-      "overlayMask": 2,
-      "overlayState": 1
+      "overlayMask": 2
     },
     {
       "x": 199,
@@ -85491,9 +85047,9 @@
       "x": 29,
       "y": 60,
       "typeName": "pinetree",
-      "plantAge": 517,
-      "plantGrowthStage": 5,
-      "plantHarvestable": true,
+      "plantAge": 165,
+      "plantGrowthStage": 1,
+      "plantHarvestable": false,
       "plantHarvestFlagged": true,
       "uses": 0,
       "processorState": 0,
@@ -85512,7 +85068,7 @@
       "x": 25,
       "y": 60,
       "typeName": "appletree",
-      "plantAge": 1180,
+      "plantAge": 1055,
       "plantGrowthStage": 7,
       "plantHarvestable": true,
       "plantHarvestFlagged": true,
@@ -85533,9 +85089,9 @@
       "x": 28,
       "y": 60,
       "typeName": "pinetree",
-      "plantAge": 486,
-      "plantGrowthStage": 4,
-      "plantHarvestable": true,
+      "plantAge": 125,
+      "plantGrowthStage": 1,
+      "plantHarvestable": false,
       "plantHarvestFlagged": true,
       "uses": 0,
       "processorState": 0,
@@ -85554,8 +85110,8 @@
       "x": 35,
       "y": 60,
       "typeName": "wheat",
-      "plantAge": 2,
-      "plantGrowthStage": 0,
+      "plantAge": 60,
+      "plantGrowthStage": 1,
       "plantHarvestable": false,
       "plantHarvestFlagged": true,
       "uses": 0,
@@ -85575,9 +85131,9 @@
       "x": 36,
       "y": 60,
       "typeName": "wheat",
-      "plantAge": 21,
-      "plantGrowthStage": 0,
-      "plantHarvestable": false,
+      "plantAge": 142,
+      "plantGrowthStage": 3,
+      "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
       "processorState": 0,
@@ -85596,8 +85152,8 @@
       "x": 37,
       "y": 60,
       "typeName": "wheat",
-      "plantAge": 49,
-      "plantGrowthStage": 1,
+      "plantAge": 109,
+      "plantGrowthStage": 2,
       "plantHarvestable": false,
       "plantHarvestFlagged": true,
       "uses": 0,
@@ -85617,7 +85173,7 @@
       "x": 10,
       "y": 60,
       "typeName": "pinetree",
-      "plantAge": 4710,
+      "plantAge": 2905,
       "plantGrowthStage": 7,
       "plantHarvestable": true,
       "uses": 0,
@@ -85637,9 +85193,9 @@
       "x": 13,
       "y": 62,
       "typeName": "pinetree",
-      "plantAge": 622,
-      "plantGrowthStage": 6,
-      "plantHarvestable": true,
+      "plantAge": 294,
+      "plantGrowthStage": 2,
+      "plantHarvestable": false,
       "plantHarvestFlagged": true,
       "uses": 0,
       "processorState": 0,
@@ -85658,8 +85214,8 @@
       "x": 14,
       "y": 62,
       "typeName": "appletree",
-      "plantAge": 1764,
-      "plantGrowthStage": 9,
+      "plantAge": 1170,
+      "plantGrowthStage": 7,
       "plantHarvestable": true,
       "uses": 0,
       "processorState": 0,
@@ -85678,7 +85234,7 @@
       "x": 45,
       "y": 63,
       "typeName": "ramie",
-      "plantAge": 3503,
+      "plantAge": 2241,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "uses": 0,
@@ -85698,8 +85254,8 @@
       "x": 46,
       "y": 64,
       "typeName": "ramie",
-      "plantAge": 54,
-      "plantGrowthStage": 1,
+      "plantAge": 34,
+      "plantGrowthStage": 0,
       "plantHarvestable": false,
       "plantHarvestFlagged": true,
       "uses": 0,
@@ -85719,7 +85275,7 @@
       "x": 59,
       "y": 63,
       "typeName": "appletree",
-      "plantAge": 1764,
+      "plantAge": 1765,
       "plantGrowthStage": 9,
       "plantHarvestable": true,
       "uses": 0,
@@ -85739,8 +85295,8 @@
       "x": 60,
       "y": 63,
       "typeName": "appletree",
-      "plantAge": 1764,
-      "plantGrowthStage": 9,
+      "plantAge": 1170,
+      "plantGrowthStage": 7,
       "plantHarvestable": true,
       "uses": 0,
       "processorState": 0,
@@ -85759,8 +85315,8 @@
       "x": 61,
       "y": 62,
       "typeName": "appletree",
-      "plantAge": 1764,
-      "plantGrowthStage": 9,
+      "plantAge": 1170,
+      "plantGrowthStage": 7,
       "plantHarvestable": true,
       "uses": 0,
       "processorState": 0,
@@ -85779,7 +85335,7 @@
       "x": 70,
       "y": 65,
       "typeName": "bamboo",
-      "plantAge": 2711,
+      "plantAge": 1872,
       "plantGrowthStage": 11,
       "plantHarvestable": true,
       "uses": 0,
@@ -85799,8 +85355,8 @@
       "x": 75,
       "y": 61,
       "typeName": "appletree",
-      "plantAge": 1764,
-      "plantGrowthStage": 9,
+      "plantAge": 1170,
+      "plantGrowthStage": 7,
       "plantHarvestable": true,
       "uses": 0,
       "processorState": 0,
@@ -85819,8 +85375,8 @@
       "x": 76,
       "y": 61,
       "typeName": "appletree",
-      "plantAge": 1748,
-      "plantGrowthStage": 9,
+      "plantAge": 1118,
+      "plantGrowthStage": 7,
       "plantHarvestable": true,
       "uses": 0,
       "processorState": 0,
@@ -85839,7 +85395,7 @@
       "x": 99,
       "y": 60,
       "typeName": "appletree",
-      "plantAge": 1764,
+      "plantAge": 1706,
       "plantGrowthStage": 9,
       "plantHarvestable": true,
       "uses": 0,
@@ -85859,8 +85415,8 @@
       "x": 115,
       "y": 58,
       "typeName": "appletree",
-      "plantAge": 1764,
-      "plantGrowthStage": 9,
+      "plantAge": 1170,
+      "plantGrowthStage": 7,
       "plantHarvestable": true,
       "uses": 0,
       "processorState": 0,
@@ -85879,8 +85435,8 @@
       "x": 116,
       "y": 56,
       "typeName": "appletree",
-      "plantAge": 1764,
-      "plantGrowthStage": 9,
+      "plantAge": 1170,
+      "plantGrowthStage": 7,
       "plantHarvestable": true,
       "uses": 0,
       "processorState": 0,
@@ -85899,8 +85455,8 @@
       "x": 120,
       "y": 56,
       "typeName": "appletree",
-      "plantAge": 1764,
-      "plantGrowthStage": 9,
+      "plantAge": 1170,
+      "plantGrowthStage": 7,
       "plantHarvestable": true,
       "uses": 0,
       "processorState": 0,
@@ -85919,8 +85475,8 @@
       "x": 121,
       "y": 56,
       "typeName": "appletree",
-      "plantAge": 1764,
-      "plantGrowthStage": 9,
+      "plantAge": 1170,
+      "plantGrowthStage": 7,
       "plantHarvestable": true,
       "uses": 0,
       "processorState": 0,
@@ -85939,7 +85495,7 @@
       "x": 129,
       "y": 63,
       "typeName": "bamboo",
-      "plantAge": 2551,
+      "plantAge": 1712,
       "plantGrowthStage": 11,
       "plantHarvestable": true,
       "uses": 0,
@@ -85959,7 +85515,7 @@
       "x": 135,
       "y": 61,
       "typeName": "pinetree",
-      "plantAge": 4710,
+      "plantAge": 2905,
       "plantGrowthStage": 7,
       "plantHarvestable": true,
       "uses": 0,
@@ -85979,7 +85535,7 @@
       "x": 175,
       "y": 59,
       "typeName": "pinetree",
-      "plantAge": 4610,
+      "plantAge": 2805,
       "plantGrowthStage": 7,
       "plantHarvestable": true,
       "uses": 0,
@@ -85999,8 +85555,8 @@
       "x": 177,
       "y": 58,
       "typeName": "appletree",
-      "plantAge": 1764,
-      "plantGrowthStage": 9,
+      "plantAge": 1170,
+      "plantGrowthStage": 7,
       "plantHarvestable": true,
       "uses": 0,
       "processorState": 0,
@@ -86028,8 +85584,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 9875,
-            "decayCounter": 516613
+            "quantity": 9986,
+            "decayCounter": 783603
           }
         ],
         "allowedItemIds": [
@@ -86047,7 +85603,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.6998134,
+      "condition": 0.825151563,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 1,
@@ -86066,8 +85622,8 @@
         "stacks": [
           {
             "itemName": "wheat",
-            "quantity": 8205,
-            "decayCounter": 200682
+            "quantity": 9855,
+            "decayCounter": 626808
           }
         ],
         "allowedItemIds": [
@@ -86090,7 +85646,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.7000912,
+      "condition": 0.8254293,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 1,
@@ -86109,8 +85665,8 @@
         "stacks": [
           {
             "itemName": "pinecone",
-            "quantity": 3939,
-            "decayCounter": 773543
+            "quantity": 2178,
+            "decayCounter": 668657
           }
         ],
         "allowedItemIds": [
@@ -86124,7 +85680,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.7006467,
+      "condition": 0.825984836,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 1,
@@ -86144,7 +85700,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.7055769,
+      "condition": 0.830915034,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 3,
@@ -86184,7 +85740,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.712520838,
+      "condition": 0.837859,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 2,
@@ -86214,9 +85770,9 @@
       "x": 47,
       "y": 64,
       "typeName": "pinetree",
-      "plantAge": 238,
-      "plantGrowthStage": 2,
-      "plantHarvestable": false,
+      "plantAge": 703,
+      "plantGrowthStage": 7,
+      "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
       "processorState": 0,
@@ -86244,8 +85800,8 @@
         "stacks": [
           {
             "itemName": "dirt",
-            "quantity": 9658,
-            "decayCounter": 487510
+            "quantity": 9811,
+            "decayCounter": 395516
           }
         ],
         "allowedItemIds": [
@@ -86259,7 +85815,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.714465141,
+      "condition": 0.8398033,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 1,
@@ -86279,7 +85835,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.714812338,
+      "condition": 0.8401505,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 3,
@@ -86289,9 +85845,9 @@
       "x": 48,
       "y": 64,
       "typeName": "pinetree",
-      "plantAge": 154,
-      "plantGrowthStage": 1,
-      "plantHarvestable": false,
+      "plantAge": 684,
+      "plantGrowthStage": 6,
+      "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
       "processorState": 0,
@@ -86332,7 +85888,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.717798233,
+      "condition": 0.84313637,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 2,
@@ -86451,13 +86007,13 @@
         "stacks": [
           {
             "itemName": "sawdust",
-            "quantity": 1997,
-            "decayCounter": 99386
+            "quantity": 1649,
+            "decayCounter": 697352
           },
           {
-            "itemName": "sawdust",
-            "quantity": 845,
-            "decayCounter": 135890
+            "itemName": "apple",
+            "quantity": 265,
+            "decayCounter": 712973
           },
           {
             "itemName": "silver",
@@ -86466,8 +86022,8 @@
           },
           {
             "itemName": "ramie",
-            "quantity": 1975,
-            "decayCounter": 417134
+            "quantity": 1977,
+            "decayCounter": 978624
           }
         ],
         "allowedItemIds": [
@@ -86485,7 +86041,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.7681418,
+      "condition": 0.893479943,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 1,
@@ -86505,7 +86061,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.770711064,
+      "condition": 0.8960492,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 1,
@@ -86555,9 +86111,9 @@
       "x": 17,
       "y": 60,
       "typeName": "pinetree",
-      "plantAge": 409,
-      "plantGrowthStage": 4,
-      "plantHarvestable": true,
+      "plantAge": 70,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
       "plantHarvestFlagged": true,
       "uses": 0,
       "processorState": 0,
@@ -86586,7 +86142,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.808069468,
+      "condition": 0.9334076,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 3,
@@ -86605,8 +86161,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 9644,
-            "decayCounter": 592253
+            "quantity": 9967,
+            "decayCounter": 191564
           }
         ],
         "allowedItemIds": [
@@ -86624,7 +86180,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.8128608,
+      "condition": 0.9381989,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 1,
@@ -86655,7 +86211,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.8323038,
+      "condition": 0.957641959,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "materialItems": [
@@ -86672,24 +86228,24 @@
   "animals": [
     {
       "aName": "Clover",
-      "x": 31.9165039,
+      "x": 39.7495537,
       "y": 60.0,
       "rngSeed": 2039525304,
       "jobName": "logger",
-      "energy": 0.670530438,
-      "food": 65.79363,
+      "energy": 0.8081726,
+      "food": 75.89614,
       "starvingTicks": 0,
-      "eep": 91.8001251,
+      "eep": 62.00054,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 4.701703,
+        "wheat": 5.0,
         "rice": 0.0,
-        "fruit": 0.09234108,
+        "fruit": 0.02849765,
         "fountain": 0.0,
         "fireplace": 0.0,
         "bench": 0.0,
-        "social": 2.39079285,
+        "social": 3.315316,
         "reading": 0.0,
         "alcohol": 0.0
       },
@@ -86731,7 +86287,7 @@
           {
             "itemName": "",
             "quantity": 0,
-            "decayCounter": 550780
+            "decayCounter": 109368
           }
         ],
         "wetUntil": 0.0
@@ -86770,14 +86326,14 @@
         "wetUntil": 0.0
       },
       "skillXp": [
-        11.17524,
+        12.4099321,
         0.0,
         0.8394451,
         0.0,
         0.0
       ],
       "skillLevel": [
-        2,
+        1,
         0,
         0,
         0,
@@ -86793,24 +86349,24 @@
     },
     {
       "aName": "Chestnut",
-      "x": 41.24207,
-      "y": 61.3271561,
+      "x": 23.3003349,
+      "y": 60.0,
       "rngSeed": 546515739,
       "jobName": "hauler",
-      "energy": 0.180279255,
-      "food": 53.893898,
+      "energy": 0.31413877,
+      "food": 55.996315,
       "starvingTicks": 0,
-      "eep": 85.60022,
+      "eep": 65.40053,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 3.70130587,
+        "wheat": 3.47360826,
         "rice": 0.0,
-        "fruit": 0.0489149466,
+        "fruit": 0.4965716,
         "fountain": 0.0,
         "fireplace": 0.0,
         "bench": 0.0,
-        "social": 1.9853102,
+        "social": 0.58218956,
         "reading": 0.0,
         "alcohol": 0.0
       },
@@ -86819,8 +86375,8 @@
         "invType": "Animal",
         "stacks": [
           {
-            "itemName": "ramie",
-            "quantity": 21,
+            "itemName": "sawdust",
+            "quantity": 100,
             "decayCounter": 0
           },
           {
@@ -86852,7 +86408,7 @@
           {
             "itemName": "",
             "quantity": 0,
-            "decayCounter": 293106
+            "decayCounter": 199674
           }
         ],
         "wetUntil": 0.0
@@ -86914,24 +86470,24 @@
     },
     {
       "aName": "Bramble",
-      "x": 33.0,
+      "x": 30.7405663,
       "y": 60.0,
       "rngSeed": 1423797902,
       "jobName": "farmer",
-      "energy": 0.643023968,
-      "food": 50.09369,
+      "energy": 0.3765092,
+      "food": 40.6962433,
       "starvingTicks": 0,
-      "eep": 90.80014,
+      "eep": 61.40054,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 3.25558758,
+        "wheat": 3.14430666,
         "rice": 0.0,
-        "fruit": 0.574905753,
+        "fruit": 0.0358765349,
         "fountain": 0.0,
         "fireplace": 0.0,
         "bench": 0.0,
-        "social": 2.35023,
+        "social": 1.73131883,
         "reading": 0.0,
         "alcohol": 0.0
       },
@@ -86940,8 +86496,8 @@
         "invType": "Animal",
         "stacks": [
           {
-            "itemName": "",
-            "quantity": 0,
+            "itemName": "apple",
+            "quantity": 600,
             "decayCounter": 0
           },
           {
@@ -86973,7 +86529,7 @@
           {
             "itemName": "",
             "quantity": 0,
-            "decayCounter": 462728
+            "decayCounter": 233524
           }
         ],
         "wetUntil": 0.0
@@ -87012,7 +86568,7 @@
         "wetUntil": 0.0
       },
       "skillXp": [
-        23.1016579,
+        0.00310325623,
         0.0,
         0.0,
         0.0,
@@ -87035,24 +86591,24 @@
     },
     {
       "aName": "Dewdrop",
-      "x": 45.2520752,
-      "y": 63.91639,
+      "x": 24.3682842,
+      "y": 60.0,
       "rngSeed": 41951034,
       "jobName": "hauler",
-      "energy": 0.9892848,
-      "food": 22.9982471,
+      "energy": 0.07549286,
+      "food": 40.79626,
       "starvingTicks": 0,
-      "eep": 48.60049,
+      "eep": 19.2003784,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 2.10819983,
+        "wheat": 3.42939258,
         "rice": 0.0,
-        "fruit": 0.421770245,
+        "fruit": 0.168915123,
         "fountain": 0.0,
         "fireplace": 0.0,
         "bench": 0.0,
-        "social": 1.07207227,
+        "social": 1.31483769,
         "reading": 0.0,
         "alcohol": 0.0
       },
@@ -87061,8 +86617,8 @@
         "invType": "Animal",
         "stacks": [
           {
-            "itemName": "pinecone",
-            "quantity": 242,
+            "itemName": "pine",
+            "quantity": 216,
             "decayCounter": 0
           },
           {
@@ -87094,7 +86650,7 @@
           {
             "itemName": "",
             "quantity": 0,
-            "decayCounter": 349658
+            "decayCounter": 177072
           }
         ],
         "wetUntil": 0.0
@@ -87156,24 +86712,24 @@
     },
     {
       "aName": "Yuyu",
-      "x": 25.4333649,
+      "x": 26.138937,
       "y": 60.0,
       "rngSeed": 1602868121,
       "jobName": "woodworker",
-      "energy": 0.131120086,
-      "food": 49.1998825,
+      "energy": 0.9831165,
+      "food": 42.59908,
       "starvingTicks": 0,
-      "eep": 76.800354,
+      "eep": 38.00045,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 3.75550246,
+        "wheat": 3.63519788,
         "rice": 0.0,
-        "fruit": 0.05599779,
+        "fruit": 0.0,
         "fountain": 0.0,
         "fireplace": 0.0,
         "bench": 0.0,
-        "social": 0.189211026,
+        "social": 1.41820288,
         "reading": 0.0,
         "alcohol": 0.0
       },
@@ -87182,8 +86738,8 @@
         "invType": "Animal",
         "stacks": [
           {
-            "itemName": "pine planks",
-            "quantity": 79,
+            "itemName": "pine",
+            "quantity": 100,
             "decayCounter": 0
           },
           {
@@ -87215,7 +86771,7 @@
           {
             "itemName": "",
             "quantity": 0,
-            "decayCounter": 391640
+            "decayCounter": 145611
           }
         ],
         "wetUntil": 0.0
@@ -87258,7 +86814,7 @@
         0.0,
         0.0,
         0.0,
-        14.2323208
+        0.1661074
       ],
       "skillLevel": [
         0,
@@ -87276,25 +86832,25 @@
       "homeBuildingY": 60
     },
     {
-      "aName": "Dimple",
-      "x": 30.0,
-      "y": 60.0,
-      "rngSeed": 544652124,
+      "aName": "Tangtang",
+      "x": 42.0,
+      "y": 61.0,
+      "rngSeed": 129872728,
       "jobName": "none",
-      "energy": 0.333785057,
-      "food": 62.1973038,
+      "energy": 0.09552479,
+      "food": 55.1996765,
       "starvingTicks": 0,
-      "eep": 84.20024,
+      "eep": 59.6005249,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 3.863024,
+        "wheat": 1.3460319,
         "rice": 0.0,
-        "fruit": 0.00302310241,
+        "fruit": 0.0,
         "fountain": 0.0,
         "fireplace": 0.0,
         "bench": 0.0,
-        "social": 4.73186445,
+        "social": 1.36552691,
         "reading": 0.0,
         "alcohol": 0.0
       },
@@ -87336,128 +86892,7 @@
           {
             "itemName": "",
             "quantity": 0,
-            "decayCounter": 292794
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "toolSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "clothingSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "bookSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "skillXp": [
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        0.0
-      ],
-      "skillLevel": [
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      "isTraveling": false,
-      "travelProgress": 0.0,
-      "travelDuration": 0,
-      "travelItemQty": 0,
-      "travelReturnLeg": false,
-      "homeBuildingX": 40,
-      "homeBuildingY": 59
-    },
-    {
-      "aName": "Yun",
-      "x": 33.37809,
-      "y": 60.0,
-      "rngSeed": 1624995710,
-      "jobName": "none",
-      "energy": 0.320772052,
-      "food": 64.59842,
-      "starvingTicks": 0,
-      "eep": 84.40024,
-      "satisfactions": {
-        "soymilk": 0.0,
-        "dairy": 0.0,
-        "wheat": 4.09005928,
-        "rice": 0.0,
-        "fruit": 0.114427626,
-        "fountain": 0.0,
-        "fireplace": 0.0,
-        "bench": 0.0,
-        "social": 2.85733581,
-        "reading": 0.0,
-        "alcohol": 0.0
-      },
-      "warmth": 0.0,
-      "inv": {
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "foodSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 332476
+            "decayCounter": 26040
           }
         ],
         "wetUntil": 0.0
@@ -87539,10 +86974,7 @@
       "3": 0.0
     },
     "unlockedIds": [],
-    "studiedIds": [
-      2,
-      5
-    ],
+    "studiedIds": [],
     "unlockTimestamps": {},
     "unlockCounter": 0,
     "activeResearchId": 0
@@ -91448,15 +90880,15 @@
     0,
     0,
     0,
-    158,
-    158,
-    158,
-    158,
-    158,
-    158,
-    158,
-    158,
-    158,
+    146,
+    146,
+    146,
+    146,
+    146,
+    146,
+    145,
+    145,
+    146,
     0,
     0,
     0,
@@ -92817,10 +92249,10 @@
     0,
     0,
     0,
-    111,
-    111,
-    111,
-    111,
+    57,
+    58,
+    58,
+    58,
     0,
     0,
     0,
@@ -98321,17 +97753,17 @@
     0,
     0,
     0,
-    158,
-    158,
-    158,
-    158,
-    158,
-    158,
-    158,
-    158,
-    158,
-    158,
-    158,
+    151,
+    152,
+    151,
+    151,
+    151,
+    151,
+    151,
+    151,
+    151,
+    151,
+    151,
     0,
     0,
     0,
@@ -99367,7 +98799,7 @@
     0,
     0,
     157,
-    158,
+    157,
     157,
     0,
     0,
@@ -111549,9 +110981,9 @@
     0,
     0
   ],
-  "moistureLevels": "Wk9NTU1NTU1NTU1NTU9aWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWlpPTU1NT1paWlpaT01NTU1NTU1NTU1NTU1NTU1NTU1NTU1PWlpaWk9NTU1NT1paWlBQUFpaWlBQRjxGRlBaT01NTU1NTU1NTU1NTU1NT1paUFBGRjw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDIyMjIyMjIyMjIyMjIyMjIyPEZQWlpPTU1NT1pPAAAAAAAAAAAAAAAAAE9PWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjxGUFpPTwAAAAAAT09PT08AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABPT09PAAAAAAAAT09PWlpaT09PWlpQRlBQWk8AAAAAAAAAAAAAAAAAAAAAT09aWlBQRkY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RkZGPDIyMjIyMjIyMjIyMjIyMjxGUFpPTwAAAAAATwAAAAAAAAAAAAAAAAAAAABPWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjxGUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABPT08AAABPT1pQWlpPAAAAAAAAAAAAAAAAAAAAAAAAAE9PWlpQUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQUFBGPDIyMjIyMjIyMjIyPDw8RlBaTwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjxGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAT1pPTwAAAAAAAAAAAAAAAAAAAAAAAAAAAABPT1paUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjw8PDwyMjIyMjIyMjIyMjxGUFpaWlBGPDIyMjIyMjIyPDxGRkZGRlAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMjIyMgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAT09aUEY8MjIyMjIyMjIyMjIyMjIyMjI8RkZGRjw8PDw8PDw8PDw8RlBaT09PWlBGPDw8PDw8PDxGRlBQUFBQWgAAAAAAAAAAMjIAAAAAAAAAAAAAAEY8MjIyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADxGPAAAAAAAAAAAMjIyMgAAAAAAAAAAAAAAAAAAAE9aUEY8MjIyMjIyMjIyMjIyMjIyPEZQUFBQRkZGRkZGRkZGRkZQWk8AAABPWlBGRkZGRkZGRlBQWlpaWlpPAAAAAAAAAAAyMjIyAAAAAAAAAABaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAAAAPDwyMjwyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAAAAAAFBGPDIyMjIyMjIyMjIyMjIyMjxGUFpaWlpQUFBQUFBQUFBQUFBaAAAAAABaUFBQUFBQUFBQWlpPT09PTwAAAAAAAAAyMjIyMjIyMjIAAAAAAE9aUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8AAAAAAAAAAAAUEZGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RjwyMjIyMjIyMjIyMjIyMjI8RlBaT09PT1paWlpaWlpaWlpaWk8AAAAAAE9aWlpaWlpaWlpPTwAAAAAAAE9aAAAyMjIyMjIyMjIyMjIyMgAAAFBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDw8PDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGUAAAAAAAAFpaUFBQRjwyMjIyMjIyMjw8PDIyMjIyMjIyMjIyMjIyMjIyMjI8MjIyMjIyMjIyMjIyMjIyMjI8RlAAAAAAT09PT09PT09PT09PAAAAAAAAAE9PT09PT09PWgAAAAAAAAAAAFBGPDIyMjIyMjIyMjI8PDw8MjIARjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGRkZGPDwyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBaAAAAAAAAT09aWlpQRjwyMjIyMjI8RkZGPDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABPWgAAAAAAMjI8RjwyMjIyMjIyMjIyPEZGRkY8MjI8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBQUFBGRjwyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWk8AAAAAAAAAAE9PT1pQRjwyMjIyPEZQUFBGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDIyMjIyMjIyMjIyMjI8RgAAAAA8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQRjwyMjIyMjI8MjIyMjIyMjIyMjxGUFBQUEY8MjIyPDw8PDw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWlpaWlBQRjw8PDw8PDwyMjIyMjIyMjIyPEZQWk9PAAAAAAAAAAAAAAAAWlBGPDIyMjxGUFpaWlBQRjw8MjIyMjIyMjIyMjIyMjIyMjI8RkZGPDIyMjIyMjIyMjIyPEZQWlpaUEYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAyPEY8MjIyMjIyMjIyMjIyMjIyMjI8RlBaWlpaUEY8MjxGRkZGRkY8PDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDxGUFpkZGRkWlpQRkZGRkZGRjwyMjIyMjIyMjI8RlBaAAAAAAAAAAAAAAAAAABPWlBGPDI8RlBaT09PWlpQRkY8MjIyMjIyMjIyMjIyMjIyPEZQUFBGPDIyMjIyMjIyMjxGUFpPT09aUEY8AAAAAAAAAAAAAAAAAAAAAAAAAAAAMjIyPDIyMjIyMjIyMjIyMjIyMjIyPEZQWk9PT09aUEY8RlBQUFBQUEZGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDw8PDxGRlBaZAAAAABkZFpQUFBQUFBQRjwyMjIyMjIyPEZQWk8AAAAAAAAAAAAAAAAAAABQRjw8PDxGRlAAAABPT1pQUEY8MjIyMjIyMjIyMjIyPDxGUFpaWlBGPDIyMjIyMjI8RlBaTwAAAFBGPDIyMjIyMjIyMjIyMjIyMjIyMgAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQAAAAAFBGPEZQWlpaWlpaUFBGPDIyMjIyMjIyMjIyMjIyMjIyMjI8RkZGRkZGRlBQWmQAAAAAAAAAZFpaWlpaWlpQRjwyMjIyMjxGRlBQAAAAAAAAAAAAAAAAAAAyPEY8RkZGRlBGUAAAAAAAT1paUEY8MjIyMjIyMjIyMjxGRlBaT09PWlBGPDIyMjIyMjI8RlAAAAAARjwyMjw8PDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEYAAAAARjxGUFpPT09PT09aWlBGPDIyMjIyMjIyMjIyMjIyMjIyPEZQUFBQUFBQWlpkZAAAAAAAAAAAZGRkZGRkZFpQRjwyMjI8RlBQWlpPAAAAAAAAAAAAAAAyMjIyPEZQUFBQWlBaUAAAAAAAT09aUEY8MjIyMjIyMjI8RlBQWk8AAABPWlBGPDIyMjIyMjI8RjwAAAA8MjI8RkZGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDIyMjI8MjxGUAAAAAAAAE9PWlBGPDIyMjIyMjIyMjIyMjIyMjxGUFpaWlpaWlpkZAAAAAAAAAAAAAAAAAAAAAAAZFpQRjwyPEZQWlpPTwAAAAAAAAAAADIyMjIyMjxGUFpaWlpkWmRaUEYAAAAAAFBGPDIyMjIyMjIyPEZQWlpPAAAAAABPWlBGPDIyMjIyMjI8MjIyMjIyPEZQUFBQRjwyMjIyMjIyMjI8PDw8PDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGAAAAAAAAAABaUEY8MjIyMjIyMjIyMjIyMjI8RlBaT09PT09ZZAAAAAAAAAAAAAAAAAAAAAAAAAAAZFpQRjxGUFpPTwAAAAAAAAAAAAAyMjIyMjI8RlBaZGRkZABkAGRaUEYAAAA8RjwyMjIyMjIyMjxGUFpPTwAAAAAAAABPWlBGPDIyMjIyMjIyMjIyMjxGUFpaWlpQRjwyMjIyMjIyPEZGRkZGPDw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjwyAAAAAAAAAE9aUEY8MjIyMjIyMjIyMjIyMjI8RlAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABaUEY8MjxGUAAAAAAAAAAAAAAAMjIyMjIyPEZQWmQAAAAAAAAAZFpQRjwyMjI8MjIyMjIyMjI8RlBaTwAAAAAAAAAAAABPWlBGPDIyMjIyMjIyMjI8RlBaZGRkZFpQRjwyMjIyMjxGUFBQUFBGRkY8PDw8PDw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAFBGPDIyMjIyMjIyMjIyMjIyMjI8RgAAAAAAAAAAAAAAAAAAAAAAADIyMjI8RlBQUFBGPDIyMjxGAAAAAAAAAAAAADIyMjIyMjxGUFpkAAAAAAAAAAAAZFpQRjwyMjIyMjIyMjIyPEZQWk8AAAAAAAAAAAAAAABQRjwyMjIyMjIyMjIyPEZQWmQAAAAAZFpQRjwyMjI8RlBaWlpaWlBQUEZGRkZGRkY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAARjwyMjIyMjIyMjIyMjIyMjIyMjI8MjIAAAAAAAAAMjIAAAAAADIyMjIyPEZQWlpaUEY8MjIyMjwAAAAAAAAAAAAyMjIyMjIyMjxGUFoAAAAAAAAAAABZWlpQRjwyMjIyMjIyMjIyPEZQAAAAAAAAAAAAAAAAPEY8MjIyMjIyMjIyMjI8RlBaZAAAAAAAZFpQRjwyPEZQWk9PT09PWlpaUFBQUFBQUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAA8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpkZGRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUAAAAAAAAAAAAABPT1pQRjwyMjIyMjIyMjxGUFoAAAAAAAAAAAAAADIyPDIyMjIyMjIyMjIyMjI8RlBaZGRkZGRaUEY8MjxGUFpPAAAAAABPT09aWlpaWlpaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaZAAAAGRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyPDIyMjxGPDIAAAAAAAAAAAAAUEY8MjIyMjIyMjI8RlBaTwAAAAAAAE0AAAAyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWlpaWlBGPDIyMjxGUAAAAAAAAAAAAE9PT09PT09aUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpkAAAAZGRaUEY8MjIyMjIyMjIyMjIyMjI8PDxGPDwyMjwyMjIyAAAAAAAAAABGPDIyMjIyMjIyMjxGUFoAAAAAAAAAAAAAPDIyMjIyMjIyMjIyMjIyMjIyMjI8RlBQUFBQRjwyMjIyMjxGAAAAAAAAAAAAAAAAAAAAAE9aUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjI8PDw8PDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PDw8PDxGUFpkAAAAAGRaUEY8MjIyMjIyMjIyMjIyPEZGRlBGRjwyMjIyMjw8PEYAAAAAADwyMjIyMjIyMjI8RlBaTwAAAAAAAAAAAEZGPDwyMjIyMjIyMjIyMjIyMjIyMjI8RkZGRkY8MjIyMjIyMjwAAAAAAAAAAAAAAAAAAAAAAFBGPDIyMjIyMjIyMjIyMjIyMjI8PDw8PEZGRkZGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGRkZGRkZQWmQAAAAAZFpQRjwyMjIyMjIyMjIyMjxGUFBQWlBQRjwyMjI8RkZGUFBQUEZGPDw8MjIyMjIyMjI8RlAAAAAAAAAAAAAAUFBGRjwyMjIyMjIyMjIyMjIyMjIyMjI8PDw8PDIyMjIyMjIyMgAAAAAAAAAAAAAAAAAAAABPWlBGPDIyMjIyMjIyPDw8PDw8PEZGRkZGUFBQUFBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBQUFBQUFBaZAAAAABkWlBGPDIyMjIyMjIyMjI8RlBaWlpPWlpQRjwyPEZQUFBaWlpaUFBGRkY8MjIyMjIyMjI8RgAAAAAAAAAAAFpaWlBQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAAAAAAAAAABQRjwyMjIyMjIyMjxGRkZGRkZGUFBQUFBaWlpaWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWlpaWlpaWk8AAAAAAGRaUEY8MjIyMjIyMjIyPEZQWk9PTwBPT1pQRjxGUFpaWk9PT09aWlBQUEY8MjIyMjIyMjI8AAAAAAAAAAAAT09PWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAAAAAPEY8MjIyMjIyMjI8RlBQUFBQUFBaWlpaWk9PT09PWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWk9PT09PT09PAAAAAAAAWlBQRkY8MjIyMjIyMjI8RlBaAAAAAAAAWlBGRlBaT09PAAAAAE9PWlpaUEY8MjIyMjIyMjIyAAAAAAAAAAAAAABPT1pQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAyPDIyMjIyMjIyMkZQWlpaWlpaWk9PT09PAAAAAABPWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpkAAAAAAAAAAAAAAAAAE9aWlpQUEY8MjIyMjIyPEZQWk8AAAAAAABPWlBGRlAAAAAAAAAAAABPT09aUEY8Mjw8PDIyMjIyMgAAAAAAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyUFpPT09PT09PAAAAAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFoAAAAAAAAAAAAAAAAAAE9PT1paUEY8MjIyMjIyPEZQAAAAAAAAAABQRjw8RjwAAAAAAAAAAAAAAFBGPDI8RkZGPDwyMjIyPEZQAAAAAAAAAABGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjJaTwAAAAAAAAAAAAAAAAAAAAAAAEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBQUFpkAAAAAAAAAE0AAAAAT09aUEY8MjIyMjIyPEY8AAAAAAAAAFpQRjw8MjIyMjIyMgAAAAAARjwyPEZQUFBGRjw8MjxGUFpPAAAAAAAAAFBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMk8AAAAAAAAAAAAAAAAAAAAAAAAAPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RkZQWlpaWlpPAAAAAFBaAAAAAAAAAFBGPDIyMjIyMjIyPDIAAAAAAAAAT1pQRjwyMjIyMjIyMjIyMjI8MjxGUFpaWlBQRkY8MjxGUAAAAAAAAABPWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PEZQUFpPT09PTwAAAABPWk8AAAAAAAAARjwyMjIyMjI8PDw8PEYAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjI8RlBaT09PWlpQUEY8RlBaTwAAAAAAAABPWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGUFpaTwAAAAAAAAAAAABPAAAAAAAAAAA8MjIyMjI8PEZGRkZGUFBaWgAAAABGPDIyMjIyMjIyMjIyMjIyPEZQWk8AAABPT1paUEZGRlAAAAAAAAAAAABPWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PDIyMjIyMjIyMjIyMjIyMjwyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBaT08AAAAAAAAAAAAAAAAAAAAAAAAAPDIyMjIyPEZGUFBQUFBaWk9PAAAAADwyMjIyMjIyMjIyMjIyMjIyPEZQAAAAAAAAT09aUFBQUFAAAAAAAAAAAABPWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PEZGPDIyMjIyMjIyMjIyMjI8RjxGPDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWk8AAAAAAAAAAAAAAAAAAAAAAAAAAABGPDIyMjxGUFBaWlpaWk9PAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyPEY8AAAAAAAAAE9aWlpaWk8AAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGUFBGPDIyMjIyMjIyMjIyPEZQRlBGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWk9PAAAAAAAAWlAAAAAAAAAAAAAAAAAAAFBGPDI8RlBaWk9PT09PAAAAAAAAADIyMjIyMjIyMjIyMjIyMjIyMjIyPDIAAAAAAAAAAE9PT09PAAAAAAAAAAAAAEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBaWlBGPDIyMjIyMjIyMjxGUFpQWlBQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpPAAAAAAAAAGRaWk8AAAAAAAAAAAAAAAAAWlBGPEZQWk9PAAAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAAAAAAAAAAAAyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWk9PWlBGPDIyMjIyMjI8RlBaZFpkWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaTwAAAAAAAAAAWlBQAAAAAAAAAAAAAAAAAABPWlBGUFpPAAAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAAAAAAAAAADwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWk9PAABPWlBGPDIyMjIyPEZQWmQAZABkZFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWk8AAAAAAAAAAEZQRkY8AAAAAAAAADIyAAAAAABQRjxGUAAAAAAAAAAAAAAARjw8PDw8PDw8PDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAAAAAEZGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpPAAAAAABQRjwyMjIyMjI8RlBaZAAAAAAAZFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQAAAAAAAAAABQRkZGPDwyMjIyMjIyMjIyAAAAAEY8MjxGPAAAAAAAAAAAAFpQRkZGRkZGRkZGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAWlpaWlBQUFBQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaTwAAAAAAAEY8MjIyMjIyMjxGUFpkAAAAAABkWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEYAAAAAAABkWlpQUFBGRjwyMjI8PDw8PDIAAAAAPDIyMjwyMjIAAAAAAAAAT1pQUFBQUFBQUFBQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAABPT09PWlpaWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWk8AAAAAAAAyPDIyMjIyMjIyMjxGUFpkZAAAAFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPAAAAAAAAFlPT1paWlBQRjwyPEZGRkZGPDIAADIyMjIyMjIyMjIyAAAAAAAAT1paWlpaWlpaWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAABPT09PT1pQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQAAAAAAAAADIyMjIyMjIyMjIyMjxGUFpaUEZGUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAT09PWlpQRjxGUFBQUFBGPDIyMjIyMjIyMjIyMjIyMgAAAAAAT09PT09PT09PT1pQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEYAAAAAAAAyMjIyMjIyMjIyMjIyMjxGUFBGPDxGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAABPT1pQRlBaWlpaWlBGPDIyMjIyMjIyMjIyMjI8AAAAAAAAAAAAAAAAAAAAT1pQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPAAyADIyMjIyMjIyMjIyMjIyMjIyMjxGRjwyMjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAZFpQWk9PT09PWlBGPDIyMjIyMjIyMjIyPEZQAAAAAAAAAAAAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAT1pQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDI8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAABZWlpPAAAAAABQRjwyMjIyMjIyMjIyMjxGUFoAAAAAAAAAAAAAAAAAADxGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDxGPEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAABkWgAAAAAAPEY8MjIyMjIyMjIyMjI8RlBaTwAAAAAAAAAAAAAyMjIyMjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjwAAAAAAAAAAABPWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PDw8RkZGRlBGUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAGRaUEZGRjw8PDIyMjIyMjIyMjIyMjI8RlAAAAAAAAAAAAAyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RkZQAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGRkZQUFBQWlBaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAZFpQUFBQRkY8MjIyMjIyMjIyMjIyMjI8RgAAAAAAAAAARjw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQUFpPAAAAAAAAAEY8MjIyMjw8PDIyMjIyMjIyMjIyMjIyMjIyMjxGUFBQUFpaWlpkWmRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAABZT1paWlpQUEY8MjIyMjIyMjIyPDIyMjI8MgAAAAAAAABQRkY8PDw8MjIyMjIyMjIyMjI8PDw8PDw8MjIyMjIyMjxGUFpaTwAAAAAAAAAAPDIyMjI8RkZGPDIyMjIyMjIyMjIyMjIyMjI8RlBaWlpaZGRkZABkAGRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAT09PT1paUEY8PDw8PDIyMjxGPDIyMjIyMgAAAAAAAFpQUEZGRkY8MjIyMjIyMjIyPEZGRkZGRkY8MjIyMjI8RlBaT08AAAAAAAAAADIyMjw8PEZQUFBGPDwyMjIyMjIyMjIyMjIyPEZQWmRkZGQAAAAAAAAAZFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAT09aUEZGRkZGPDw8RlBGPDIyMjIyMjIyAAAAT1paUFBQUEY8MjIyMjIyMjxGUFBQUFBQUEY8MjIyPEZQWloAAAAAAAAAAAAAMjI8RkZGUFpaWlBGRjwyMjIyMjIyMjIyMjxGUFpkAAAAAAAAAAAAAABkWlBGPDIyMjIyMjIyMjIyPDw8PDw8PDw8PDIyMjIyMjIyPDw8MjIyMjIyMjIyMjIyMjIyMjIyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAGRaUFBQUFBGRkZQWlBGPDIyMjIyMjIyAAAAT09aWlpaUEY8PDw8PDw8RlBaWlpaWlpaUEY8MjxGUFpPTwAAAAAAAAAAPDw8PEZQUFBaT09PWlBQRjwyMjIyMjIyMjIyMjxGUFoAAAAAAGRkZGRkZFpQRjwyMjIyMjIyPDwyMjJGRkZGRkZGRkZGPDwyMjIyPDxGRkY8PDw8PDIyPDw8PDIyMjw8PDxGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8AAAAAAAAAAAAWU9aWlpaWlBQUFpkWlBGPDIyMjIyPDwAAAAAAE9PT09aUEZGRkZGRkZQWjFPT08xMU9aUEY8PEZQWgAAAAAAMjI8PDxGRkZGUFpaWk8AAABPWlpQRjw8PDw8MjIyMjIyPDxGUAAAAEZQWlpaWlpaUEY8MjIyMjIyMjxGRjwyMlBQUFBQUFBQUFBGRjwyMjxGRlBQUEZGRkZGPDxGRkZGPDI8RkZGRlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyPEY8PDIyAAAAAAAAAE9PT09PWlpaZABkWlBGPDIyMjxGRkYAAAAAAAAAAE9aUFBQUFBQUFBaAAAAAAAAAE9aUEZGUFpPAAAAADw8PEZGRlBQUFBaT09PAAAAAABPT1pQRkZGRkY8PDw8PDxGRkZGRkZQUFpaUFBQUFBGPDw8PDw8PDw8RlBQRjw8WlpaWlpaWlpaWlBQRjw8RlBQWlpaUFBQUFBGRlBQUFBGPEZQUFBQWlBGPDw8MjIyMjIyMjIyMjIyMjIyMjxGUEZGPDIyMgAAAAAAAAAAAABkZGQAAABkWlBGPDw8RlBQUAAAAAAAAAAAAFpaWlpaWlpaWjEAAAAAAAAAAFpQRlBaTwAAAAAARkZGUFBQWlpaWk8AAAAAAAAAAAAAT1pQUFBQUEZGRkZGRlBQUFBQUFpaMU9aUEZGRjxGRkZGRkZGRkZQWlpQRkZPT09PT09PT09PWlpQRkZQWlpkZGRaWlpaWlBQWlpaWlBGUFpaWlpPWlBGRkY8MjIyMjIyMjIyMjIyPDw8RlBaUFBGPDIyMgAAAAAAAAAAAGQAAAAAAABkWlBGRkZQWlpaWloAAAAAAAAAT09PT09PT09PAAAAAAAAAAAAT1pQRlAAAAAAAABQUFBaWlpPT09PAAAAAAAAAAAAAAAAT1paWlpaUFBQUFBQWlpaWlpaMU8AAFpQUEZGRlBQUFBQUFBQUFpkZFpQUAAAAAAAAAAAAAAxT1pQUFpZZAAAAGRZT1otWloqJ09PWlBaKiwrT2FaUlBQUEY8PDw8MjIyMjI8PDxGRkZQWk9aWlBGPDIyMjwAAAAAAAAAAAAAAAAAAFlaUEZQUFpPT09PTy9NTQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAT1pQRkYAAAAAAFpaWk9PTwAAAAAAAAAAAAAAAAAAAAAAT09PT09aWlpaWlpPT09PT08AAAAAT1paUFBQWlpaWlpaWlpaZAAAZFpaAAAAAAAAAAAAAAAAT1paTwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFxcWlpaUEZGRkY8PDw8PEZGRlBQUFpPAE9PWlBGPDw8RlBaMRsAAAAAAAAAAAAAAFBGUFpaTwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAT1pQUAAAAAAAMU9PAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE9PT09PTwAAAAAAAAAAAAAAT09aWlpPT09PT09PT08AAAAAT08AAAAAAAAAAAAAAAAAJzEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABPT09aUFBQUEZGRkZGUFBQWlpaMQAAAABPWlBGRkZQWk8AAAAAAAAAAAAAAAAAWlBaT08AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAT1paTwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE9PTwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADFaWlpaUFBQUFBaWlpPMTEAAAAAAABaUEZQUFpPAAAAAAAAAAAAAAAAAABPWloAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAATzEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADEpK09aWlpaWk9PTwAAAAAAAAAAAE9aUFpaTwAAAAAAAAAAAAAAAAAAAABaTwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE9PT09PAAAAAAAAAAAAAAAAAE9aMU8AAAAAAAAAAAAAAAAAAAAAAE8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "moistureLevels": "WmBgYGBgYGBgYGBgYGBaWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWlpgYGBgYFpaWlpaYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgWlpaWmBgYGBgYFpaWlBQUFpaWlBQRjxGRlBaYGBgYGBgYGBgYGBgYGBgYFpaUFBGRjw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDIyMjIyMjIyMjIyMjIyMjIyPEZQWlpgYGBgYFpgAAAAAAAAAAAAAAAAAGBgWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjxGUFpgYAAAAAAAYGBgYGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgYGBgAAAAAAAAYGBgWlpaYGBgWlpQRlBQWmAAAAAAAAAAAAAAAAAAAAAAYGBaWlBQRkY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RkZGPDIyMjIyMjIyMjIyMjIyMjxGUFpgYAAAAAAAYAAAAAAAAAAAAAAAAAAAAABgWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjxGUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgYGAAAABgYFpQWlpgAAAAAAAAAAAAAAAAAAAAAAAAAGBgWlpQUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQUFBGPDIyMjIyMjIyMjIyPDw8RlBaYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjxGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYFpgYAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgYFpaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjw8PDwyMjIyMjIyMjIyMjxGUFpaWlBGPDIyMjIyMjIyPDxGRkZGRlAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMjIyMgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYGBaUEY8MjIyMjIyMjIyMjIyMjIyMjI8RkZGRjw8PDw8PDw8PDw8RlBaYGBgWlBGPDw8PDw8PDxGRlBQUFBQWgAAAAAAAAAAMjIAAAAAAAAAAAAAAEY8MjIyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADxGPAAAAAAAAAAAMjIyMgAAAAAAAAAAAAAAAAAAAGBaUEY8MjIyMjIyMjIyMjIyMjIyPEZQUFBQRkZGRkZGRkZGRkZQWmAAAABgWlBGRkZGRkZGRlBQWlpaWlpgAAAAAAAAAAAyMjIyAAAAAAAAAABaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAAAAPDwyMjwyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAAAAAAFBGPDIyMjIyMjIyMjIyMjIyMjxGUFpaWlpQUFBQUFBQUFBQUFBaAAAAAABaUFBQUFBQUFBQWlpgYGBgYAAAAAAAAAAyMjIyMjIyMjIAAAAAAGBaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8AAAAAAAAAAAAUEZGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RjwyMjIyMjIyMjIyMjIyMjI8RlBaYGBgYFpaWlpaWlpaWlpaWmAAAAAAAGBaWlpaWlpaWlpgYAAAAAAAAGBaAAAyMjIyMjIyMjIyMjIyMgAAAFBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDw8PDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGUAAAAAAAAFpaUFBQRjwyMjIyMjIyMjw8PDIyMjIyMjIyMjIyMjIyMjIyMjI8MjIyMjIyMjIyMjIyMjIyMjI8RlAAAAAAYGBgYGBgYGBgYGBgAAAAAAAAAGBgYGBgYGBgWgAAAAAAAAAAAFBGPDIyMjIyMjIyMjI8PDw8MjIARjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGRkZGPDwyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBaAAAAAAAAYGBaWlpQRjwyMjIyMjI8RkZGPDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgWgAAAAAAMjI8RjwyMjIyMjIyMjIyPEZGRkY8MjI8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBQUFBGRjwyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWmAAAAAAAAAAAGBgYFpQRjwyMjIyPEZQUFBGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDIyMjIyMjIyMjIyMjI8RgAAAAA8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQRjwyMjIyMjI8MjIyMjIyMjIyMjxGUFBQUEY8MjIyPDw8PDw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWlpaWlBQRjw8PDw8PDwyMjIyMjIyMjIyPEZQWmBgAAAAAAAAAAAAAAAAWlBGPDIyMjxGUFpaWlBQRjw8MjIyMjIyMjIyMjIyMjIyMjI8RkZGPDIyMjIyMjIyMjIyPEZQWlpaUEYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAyPEY8MjIyMjIyMjIyMjIyMjIyMjI8RlBaWlpaUEY8MjxGRkZGRkY8PDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDxGUFpkZGRkWlpQRkZGRkZGRjwyMjIyMjIyMjI8RlBaAAAAAAAAAAAAAAAAAABgWlBGPDI8RlBaYGBgWlpQRkY8MjIyMjIyMjIyMjIyMjIyPEZQUFBGPDIyMjIyMjIyMjxGUFpgYGBaUEY8AAAAAAAAAAAAAAAAAAAAAAAAAAAAMjIyPDIyMjIyMjIyMjIyMjIyMjIyPEZQWmBgYGBaUEY8RlBQUFBQUEZGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDw8PDxGRlBaZAAAAABkZFpQUFBQUFBQRjwyMjIyMjIyPEZQWmAAAAAAAAAAAAAAAAAAAABQRjw8PDxGRlAAAABgYFpQUEY8MjIyMjIyMjIyMjIyPDxGUFpaWlBGPDIyMjIyMjI8RlBaYAAAAFBGPDIyMjIyMjIyMjIyMjIyMjIyMgAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQAAAAAFBGPEZQWlpaWlpaUFBGPDIyMjIyMjIyMjIyMjIyMjIyMjI8RkZGRkZGRlBQWmQAAAAAAAAAZFpaWlpaWlpQRjwyMjIyMjxGRlBQAAAAAAAAAAAAAAAAAAAyPEY8RkZGRlBGUAAAAAAAYFpaUEY8MjIyMjIyMjIyMjxGRlBaYGBgWlBGPDIyMjIyMjI8RlAAAAAARjwyMjw8PDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEYAAAAARjxGUFpgYGBgYGBaWlBGPDIyMjIyMjIyMjIyMjIyMjIyPEZQUFBQUFBQWlpkZAAAAAAAAAAAZGRkZGRkZFpQRjwyMjI8RlBQWlpgAAAAAAAAAAAAAAAyMjIyPEZQUFBQWlBaUAAAAAAAYGBaUEY8MjIyMjIyMjI8RlBQWmAAAABgWlBGPDIyMjIyMjI8RjwAAAA8MjI8RkZGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDIyMjI8MjxGUAAAAAAAAGBgWlBGPDIyMjIyMjIyMjIyMjIyMjxGUFpaWlpaWlpkZAAAAAAAAAAAAAAAAAAAAAAAZFpQRjwyPEZQWlpgYAAAAAAAAAAAADIyMjIyMjxGUFpaWlpkWmRaUEYAAAAAAFBGPDIyMjIyMjIyPEZQWlpgAAAAAABgWlBGPDIyMjIyMjI8MjIyMjIyPEZQUFBQRjwyMjIyMjIyMjI8PDw8PDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGAAAAAAAAAABaUEY8MjIyMjIyMjIyMjIyMjI8RlBaYGBgYGBgZAAAAAAAAAAAAAAAAAAAAAAAAAAAZFpQRjxGUFpgYAAAAAAAAAAAAAAyMjIyMjI8RlBaZGRkZABkAGRaUEYAAAA8RjwyMjIyMjIyMjxGUFpgYAAAAAAAAABgWlBGPDIyMjIyMjIyMjIyMjxGUFpaWlpQRjwyMjIyMjIyPEZGRkZGPDw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjwyAAAAAAAAAGBaUEY8MjIyMjIyMjIyMjIyMjI8RlAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABaUEY8MjxGUAAAAAAAAAAAAAAAMjIyMjIyPEZQWmQAAAAAAAAAZFpQRjwyMjI8MjIyMjIyMjI8RlBaYAAAAAAAAAAAAABgWlBGPDIyMjIyMjIyMjI8RlBaZGRkZFpQRjwyMjIyMjxGUFBQUFBGRkY8PDw8PDw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAFBGPDIyMjIyMjIyMjIyMjIyMjI8RgAAAAAAAAAAAAAAAAAAAAAAADIyMjI8RlBQUFBGPDIyMjxGAAAAAAAAAAAAADIyMjIyMjxGUFpkAAAAAAAAAAAAZFpQRjwyMjIyMjIyMjIyPEZQWmAAAAAAAAAAAAAAAABQRjwyMjIyMjIyMjIyPEZQWmQAAAAAZFpQRjwyMjI8RlBaWlpaWlBQUEZGRkZGRkY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAARjwyMjIyMjIyMjIyMjIyMjIyMjI8MjIAAAAAAAAAMjIAAAAAADIyMjIyPEZQWlpaUEY8MjIyMjwAAAAAAAAAAAAyMjIyMjIyMjxGUFoAAAAAAAAAAABgWlpQRjwyMjIyMjIyMjIyPEZQAAAAAAAAAAAAAAAAPEY8MjIyMjIyMjIyMjI8RlBaZAAAAAAAZFpQRjwyPEZQWmBgYGBgWlpaUFBQUFBQUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAA8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpkZGRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUAAAAAAAAAAAAABgYFpQRjwyMjIyMjIyMjxGUFoAAAAAAAAAAAAAADIyPDIyMjIyMjIyMjIyMjI8RlBaZGRkZGRaUEY8MjxGUFpgAAAAAABgYGBaWlpaWlpaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaZAAAAGRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyPDIyMjxGPDIAAAAAAAAAAAAAUEY8MjIyMjIyMjI8RlBaYAAAAAAAAGAAAAAyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWlpaWlBGPDIyMjxGUAAAAAAAAAAAAGBgYGBgYGBaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpkAAAAZGRaUEY8MjIyMjIyMjIyMjIyMjI8PDxGPDwyMjwyMjIyAAAAAAAAAABGPDIyMjIyMjIyMjxGUFoAAAAAAAAAAAAAPDIyMjIyMjIyMjIyMjIyMjIyMjI8RlBQUFBQRjwyMjIyMjxGAAAAAAAAAAAAAAAAAAAAAGBaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjI8PDw8PDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PDw8PDxGUFpkAAAAAGRaUEY8MjIyMjIyMjIyMjIyPEZGRlBGRjwyMjIyMjw8PEYAAAAAADwyMjIyMjIyMjI8RlBaYAAAAAAAAAAAAEZGPDwyMjIyMjIyMjIyMjIyMjIyMjI8RkZGRkY8MjIyMjIyMjwAAAAAAAAAAAAAAAAAAAAAAFBGPDIyMjIyMjIyMjIyMjIyMjI8PDw8PEZGRkZGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGRkZGRkZQWmQAAAAAZFpQRjwyMjIyMjIyMjIyMjxGUFBQWlBQRjwyMjI8RkZGUFBQUEZGPDw8MjIyMjIyMjI8RlAAAAAAAAAAAAAAUFBGRjwyMjIyMjIyMjIyMjIyMjIyMjI8PDw8PDIyMjIyMjIyMgAAAAAAAAAAAAAAAAAAAABgWlBGPDIyMjIyMjIyPDw8PDw8PEZGRkZGUFBQUFBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBQUFBQUFBaZAAAAABkWlBGPDIyMjIyMjIyMjI8RlBaWlpgWlpQRjwyPEZQUFBaWlpaUFBGRkY8MjIyMjIyMjI8RgAAAAAAAAAAAFpaWlBQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAAAAAAAAAABQRjwyMjIyMjIyMjxGRkZGRkZGUFBQUFBaWlpaWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWlpaWlpaWmAAAAAAAGRaUEY8MjIyMjIyMjIyPEZQWmBgYABgYFpQRjxGUFpaWmBgYGBaWlBQUEY8MjIyMjIyMjI8AAAAAAAAAAAAYGBgWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAAAAAPEY8MjIyMjIyMjI8RlBQUFBQUFBaWlpaWmBgYGBgWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmBgYGBgYGBgAAAAAAAAWlBQRkY8MjIyMjIyMjI8RlBaAAAAAAAAWlBGRlBaYGBgAAAAAGBgWlpaUEY8MjIyMjIyMjIyAAAAAAAAAAAAAABgYFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAyPDIyMjIyMjIyMkZQWlpaWlpaWmBgYGBgAAAAAABgWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpkAAAAAAAAAAAAAAAAAGBaWlpQUEY8MjIyMjIyPEZQWmAAAAAAAABgWlBGRlAAAAAAAAAAAABgYGBaUEY8Mjw8PDIyMjIyMgAAAAAAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyUFpgYGBgYGBgAAAAAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFoAAAAAAAAAAAAAAAAAAGBgYFpaUEY8MjIyMjIyPEZQAAAAAAAAAABQRjw8RjwAAAAAAAAAAAAAAFBGPDI8RkZGPDwyMjIyPEZQAAAAAAAAAABGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjJaYAAAAAAAAAAAAAAAAAAAAAAAAEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBQUFpkAAAAAAAAAGAAAAAAYGBaUEY8MjIyMjIyPEY8AAAAAAAAAFpQRjw8MjIyMjIyMgAAAAAARjwyPEZQUFBGRjw8MjxGUFpgAAAAAAAAAFBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMmAAAAAAAAAAAAAAAAAAAAAAAAAAPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RkZQWlpaWlpgAAAAAFBaAAAAAAAAAFBGPDIyMjIyMjIyPDIAAAAAAAAAYFpQRjwyMjIyMjIyMjIyMjI8MjxGUFpaWlBQRkY8MjxGUAAAAAAAAABgWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PEZQUFpgYGBgYAAAAABgWmAAAAAAAAAARjwyMjIyMjI8PDw8PEYAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjI8RlBaYGBgWlpQUEY8RlBaYAAAAAAAAABgWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGUFpaYAAAAAAAAAAAAABgAAAAAAAAAAA8MjIyMjI8PEZGRkZGUFBaWgAAAABGPDIyMjIyMjIyMjIyMjIyPEZQWmAAAABgYFpaUEZGRlAAAAAAAAAAAABgWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PDIyMjIyMjIyMjIyMjIyMjwyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBaYGAAAAAAAAAAAAAAAAAAAAAAAAAAPDIyMjIyPEZGUFBQUFBaWmBgAAAAADwyMjIyMjIyMjIyMjIyMjIyPEZQAAAAAAAAYGBaUFBQUFAAAAAAAAAAAABgWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PEZGPDIyMjIyMjIyMjIyMjI8RjxGPDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWmAAAAAAAAAAAAAAAAAAAAAAAAAAAABGPDIyMjxGUFBaWlpaWmBgAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyPEY8AAAAAAAAAGBaWlpaWmAAAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGUFBGPDIyMjIyMjIyMjIyPEZQRlBGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmBgAAAAAAAAWlAAAAAAAAAAAAAAAAAAAFBGPDI8RlBaWmBgYGBgAAAAAAAAADIyMjIyMjIyMjIyMjIyMjIyMjIyPDIAAAAAAAAAAGBgYGBgAAAAAAAAAAAAAEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBaWlBGPDIyMjIyMjIyMjxGUFpQWlBQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpgAAAAAAAAAGRaWmAAAAAAAAAAAAAAAAAAWlBGPEZQWmBgAAAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAAAAAAAAAAAAyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWmBgWlBGPDIyMjIyMjI8RlBaZFpkWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaYAAAAAAAAAAAWlBQAAAAAAAAAAAAAAAAAABgWlBGUFpgAAAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAAAAAAAAAADwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmBgAABgWlBGPDIyMjIyPEZQWmQAZABkZFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmAAAAAAAAAAAEZQRkY8AAAAAAAAADIyAAAAAABQRjxGUAAAAAAAAAAAAAAARjw8PDw8PDw8PDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAAAAAEZGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpgAAAAAABQRjwyMjIyMjI8RlBaZAAAAAAAZFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQAAAAAAAAAABQRkZGPDwyMjIyMjIyMjIyAAAAAEY8MjxGPAAAAAAAAAAAAFpQRkZGRkZGRkZGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAWlpaWlBQUFBQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaYAAAAAAAAEY8MjIyMjIyMjxGUFpkAAAAAABkWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEYAAAAAAABkWlpQUFBGRjwyMjI8PDw8PDIAAAAAPDIyMjwyMjIAAAAAAAAAYFpQUFBQUFBQUFBQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAABgYGBgWlpaWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWmAAAAAAAAAyPDIyMjIyMjIyMjxGUFpkZAAAAFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPAAAAAAAAGBgYFpaWlBQRjwyPEZGRkZGPDIAADIyMjIyMjIyMjIyAAAAAAAAYFpaWlpaWlpaWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAABgYGBgYFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQAAAAAAAAADIyMjIyMjIyMjIyMjxGUFpaUEZGUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAYGBgWlpQRjxGUFBQUFBGPDIyMjIyMjIyMjIyMjIyMgAAAAAAYGBgYGBgYGBgYFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEYAAAAAAAAyMjIyMjIyMjIyMjIyMjxGUFBGPDxGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAABgYFpQRlBaWlpaWlBGPDIyMjIyMjIyMjIyMjI8AAAAAAAAAAAAAAAAAAAAYFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPAAyADIyMjIyMjIyMjIyMjIyMjIyMjxGRjwyMjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAZFpQWmBgYGBgWlBGPDIyMjIyMjIyMjIyPEZQAAAAAAAAAAAAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAYFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDI8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAABgWlpgAAAAAABQRjwyMjIyMjIyMjIyMjxGUFoAAAAAAAAAAAAAAAAAADxGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDxGPEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAABkWgAAAAAAPEY8MjIyMjIyMjIyMjI8RlBaYAAAAAAAAAAAAAAyMjIyMjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjwAAAAAAAAAAABgWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PDw8RkZGRlBGUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAGRaUEZGRjw8PDIyMjIyMjIyMjIyMjI8RlAAAAAAAAAAAAAyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RkZQAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGRkZQUFBQWlBaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAZFpQUFBQRkY8MjIyMjIyMjIyMjIyMjI8RgAAAAAAAAAARjw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQUFpgAAAAAAAAAEY8MjIyMjw8PDIyMjIyMjIyMjIyMjIyMjIyMjxGUFBQUFpaWlpkWmRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAABgYFpaWlpQUEY8MjIyMjIyMjIyPDIyMjI8MgAAAAAAAABQRkY8PDw8MjIyMjIyMjIyMjI8PDw8PDw8MjIyMjIyMjxGUFpaYAAAAAAAAAAAPDIyMjI8RkZGPDIyMjIyMjIyMjIyMjIyMjI8RlBaWlpaZGRkZABkAGRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAYGBgYFpaUEY8PDw8PDIyMjxGPDIyMjIyMgAAAAAAAFpQUEZGRkY8MjIyMjIyMjIyPEZGRkZGRkY8MjIyMjI8RlBaYGAAAAAAAAAAADIyMjw8PEZQUFBGPDwyMjIyMjIyMjIyMjIyPEZQWmRkZGQAAAAAAAAAZFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAYGBaUEZGRkZGPDw8RlBGPDIyMjIyMjIyAAAAYFpaUFBQUEY8MjIyMjIyMjxGUFBQUFBQUEY8MjIyPEZQWloAAAAAAAAAAAAAMjI8RkZGUFpaWlBGRjwyMjIyMjIyMjIyMjxGUFpkAAAAAAAAAAAAAABkWlBGPDIyMjIyMjIyMjIyPDw8PDw8PDw8PDIyMjIyMjIyPDw8MjIyMjIyMjIyMjIyMjIyMjIyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAGRaUFBQUFBGRkZQWlBGPDIyMjIyMjIyAAAAYGBaWlpaUEY8PDw8PDw8RlBaWlpaWlpaUEY8MjxGUFpgYAAAAAAAAAAAPDw8PEZQUFBaYGBgWlBQRjwyMjIyMjIyMjIyMjxGUFoAAAAAAGRkZGRkZFpQRjwyMjIyMjIyPDwyMjJGRkZGRkZGRkZGPDwyMjIyPDxGRkY8PDw8PDIyPDw8PDIyMjw8PDxGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8AAAAAAAAAAAAYGBaWlpaWlBQUFpkWlBGPDIyMjIyPDwAAAAAAGBgYGBaUEZGRkZGRkZQWlJgYGBSUmBaUEY8PEZQWgAAAAAAMjI8PDxGRkZGUFpaWmAAAABgWlpQRjw8PDw8MjIyMjIyPDxGUAAAAEZQWlpaWlpaUEY8MjIyMjIyMjxGRjwyMlBQUFBQUFBQUFBGRjwyMjxGRlBQUEZGRkZGPDxGRkZGPDI8RkZGRlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyPEY8PDIyAAAAAAAAAGBgYGBgWlpaZABkWlBGPDIyMjxGRkYAAAAAAAAAAGBaUFBQUFBQUFBaAAAAAAAAAGBaUEZGUFpgAAAAADw8PEZGRlBQUFBaYGBgAAAAAABgYFpQRkZGRkY8PDw8PDxGRkZGRkZQUFpaUFBQUFBGPDw8PDw8PDw8RlBQRjw8WlpaWlpaWlpaWlBQRjw8RlBQWlpaUFBQUFBGRlBQUFBGPEZQUFBQWlBGPDw8MjIyMjIyMjIyMjIyMjIyMjxGUEZGPDIyMgAAAAAAAAAAAABkZGQAAABkWlBGPDw8RlBQUAAAAAAAAAAAAFpaWlpaWlpaWk4AAAAAAAAAAFpQRlBaYAAAAAAARkZGUFBQWlpaWmAAAAAAAAAAAAAAYFpQUFBQUEZGRkZGRlBQUFBQUFpaUmBaUEZGRjxGRkZGRkZGRkZQWlpQRkZgYGBgYGBgYGBgWlpQRkZQWlpkZGRaWlpaWlBQWlpaWlBGUFpaWlpgWlBGRkY8MjIyMjIyMjIyMjIyPDw8RlBaUFBGPDIyMgAAAAAAAAAAAGQAAAAAAABkWlBGRkZQWlpaWloAAAAAAAAAYGBgYGBgYGBgAAAAAAAAAAAAYFpQRlAAAAAAAABQUFBaWlpgYGBgAAAAAAAAAAAAAAAAYFpaWlpaUFBQUFBQWlpaWlpaUmAAAFpQUEZGRlBQUFBQUFBQUFpkZFpQUAAAAAAAAAAAAABSYFpQUFpgZAAAAGRgYFpJWlpIT2BgWlBaRENIYGFaUlBQUEY8PDw8MjIyMjI8PDxGRkZQWmBaWlBGPDIyMjwAAAAAAAAAAAAAAAAAAGBaUEZQUFpgYGBgYE9gYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYFpQRkYAAAAAAFpaWmBgYAAAAAAAAAAAAAAAAAAAAAAAYGBgYGBaWlpaWlpgYGBgYGAAAAAAYFpaUFBQWlpaWlpaWlpaZAAAZFpaAAAAAAAAAAAAAAAAYFpaYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFxcWlpaUEZGRkY8PDw8PEZGRlBQUFpgAGBgWlBGPDw8RlBaTjcAAAAAAAAAAAAAAFBGUFpaYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYFpQUAAAAAAAUmBgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGBgYGBgYAAAAAAAAAAAAAAAYGBaWlpgYGBgYGBgYGAAAAAAYGAAAAAAAAAAAAAAAAAASU4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgYGBaUFBQUEZGRkZGUFBQWlpaTgAAAABgWlBGRkZQWmAAAAAAAAAAAAAAAAAAWlBaYGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYFpaYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGBgYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE5aWlpaUFBQUFBaWlpgUk4AAAAAAABaUEZQUFpgAAAAAAAAAAAAAAAAAABgWloAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYFIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEdGTmBaWlpaWmBgYAAAAAAAAAAAAGBaUFpaYAAAAAAAAAAAAAAAAAAAAABaYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGBgYGBgAAAAAAAAAAAAAAAAAGBaUmAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
   "isRaining": false,
-  "humidity": 0.413295716,
+  "humidity": 0.462998778,
   "globalItemTargets": {
     "sawdust": 10000,
     "acorn": 10000,
@@ -111576,8 +111008,8 @@
     "fiber",
     "ramie"
   ],
-  "cameraX": 31.8245544,
-  "cameraY": 62.8271179,
+  "cameraX": 30.5113716,
+  "cameraY": 63.5399246,
   "cameraPPU": 24,
   "inventoryTreeOpen": {
     "stone": true,
@@ -111591,7 +111023,7 @@
     "book": true
   },
   "playerTaskIndex": 10,
-  "births": 4,
+  "births": 3,
   "flowers": [
     {
       "x": 4,

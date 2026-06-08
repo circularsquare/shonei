@@ -5,16 +5,19 @@ using UnityEngine;
 using UnityEngine.UI;
 using Debug = UnityEngine.Debug;
 
-// Lightweight per-phase load-time reporter. Surfaces a fullscreen overlay
-// during the play-mode startup sequence so you can see which phase the load
-// is currently sitting in. On phase transitions, only logs a console line
-// if the completed phase took longer than SlowPhaseMs — fast phases stay
-// silent so the console isn't spammed on normal loads.
+// Fullscreen overlay shown during the play-mode startup sequence. Two modes:
 //
-// Call sites are sprinkled through the startup sequence so the user can spot
-// the slow link by reading the console after entering play mode. See
-// WorldController.Start, SaveSystem.Load / .PostLoadInit, TileMeshController
-// for the instrumented boundaries.
+//   • Simplified (default): just "loading..." and a fill bar that advances as the
+//     load progresses. This is what players should see.
+//   • Detailed (dev): a per-phase timing breakdown — which phase the load is sitting
+//     in and how long each took — for spotting the slow link by reading the overlay
+//     or the console. Toggle via the Detailed flag.
+//
+// Simplified is the default everywhere (players and editor). Press Ctrl+D during a load
+// to switch to the detailed breakdown — a dev escape hatch that needs no build flag.
+//
+// Call sites are sprinkled through the startup sequence — see WorldController.Start,
+// SaveSystem.Load / .PostLoadInit, TileMeshController for the instrumented boundaries.
 //
 // Usage:
 //   LoadingScreen.Begin("Allocating world…");
@@ -23,31 +26,56 @@ using Debug = UnityEngine.Debug;
 //   ... work ...
 //   LoadingScreen.End();
 //
-// Begin auto-creates the overlay GameObject + Canvas on first call; End hides
-// it. All static state is cleared on SubsystemRegistration so Reload-Domain-off
-// play sessions don't leak destroyed Unity refs.
+// Begin auto-creates the overlay GameObject + Canvas on first call; End hides it. All
+// static state is cleared on SubsystemRegistration so Reload-Domain-off play sessions
+// don't leak destroyed Unity refs.
 public class LoadingScreen : MonoBehaviour {
     const long SlowPhaseMs = 1000; // only log phases that exceed this threshold
 
+    // false → simplified player screen; true → per-phase dev breakdown. Reset to false at
+    // the start of every load (see Begin); Ctrl+D opts into detailed for the current load
+    // only (see Update), so it never lingers into the next one.
+    public static bool Detailed = false;
+
     static LoadingScreen instance;
 
-    Canvas    canvas;
-    TMP_Text  label;
+    Canvas canvas;
+
+    // ── Detailed (dev) UI ──
+    GameObject detailedGroup;
+    TMP_Text   label;
+    // Mini history shown on the overlay — the last few completed phases, so the chain
+    // is visible in real time without alt-tabbing to the Console.
+    readonly StringBuilder historyText = new();
+
+    // ── Simplified (player) UI ──
+    GameObject    simpleGroup;
+    RectTransform barFillRt;
+    float         trackInnerWidth;
+
     Stopwatch totalSw;
     Stopwatch phaseSw;
     string    currentPhase;
-    // Mini history shown on the overlay — keeps the last few completed phases
-    // visible so the user can see the chain in real time without alt-tabbing
-    // to the Console.
-    readonly StringBuilder historyText = new();
+
+    // Load progress 0..1. targetProgress advances a fraction of the remaining distance
+    // on each phase (robust without knowing the exact phase count); the displayed
+    // progress eases toward it in Update, and End snaps both to 100%.
+    float progress;
+    float targetProgress;
 
     public static void Begin(string firstPhase) {
         Ensure();
+        Detailed = false; // every load starts simplified; Ctrl+D opts in for this load only
         instance.totalSw      = Stopwatch.StartNew();
         instance.phaseSw      = Stopwatch.StartNew();
         instance.currentPhase = firstPhase;
         instance.historyText.Clear();
+        instance.progress       = 0f;
+        instance.targetProgress = 0f;
+        instance.detailedGroup.SetActive(Detailed);
+        instance.simpleGroup.SetActive(!Detailed);
         instance.RefreshLabel();
+        instance.ApplyBar();
         instance.canvas.enabled = true;
     }
 
@@ -56,13 +84,16 @@ public class LoadingScreen : MonoBehaviour {
         long phaseMs = instance.phaseSw.ElapsedMilliseconds;
         long totalMs = instance.totalSw.ElapsedMilliseconds;
         if (phaseMs > SlowPhaseMs) Debug.Log($"[Load] slow phase: {instance.currentPhase} — {phaseMs} ms (total {totalMs} ms)");
-        // Keep the last 6 completed phases on screen.
+        // Keep the last 6 completed phases on screen (detailed mode).
         // m5x7 only ships basic ASCII glyphs — anything beyond a-z/0-9/common
         // punctuation falls back and emits a console warning. Stick to plain ASCII.
         instance.historyText.AppendLine($"<color=#888>- {instance.currentPhase}  ({phaseMs} ms)</color>");
         TrimHistory();
         instance.currentPhase = phase;
         instance.phaseSw.Restart();
+        // Ease the bar toward full by a fraction of what's left — always moves forward
+        // and approaches 1 without a known phase total; End fills the rest.
+        instance.targetProgress = Mathf.Lerp(instance.targetProgress, 1f, 0.4f);
         instance.RefreshLabel();
     }
 
@@ -71,20 +102,44 @@ public class LoadingScreen : MonoBehaviour {
         long phaseMs = instance.phaseSw.ElapsedMilliseconds;
         long totalMs = instance.totalSw.ElapsedMilliseconds;
         if (phaseMs > SlowPhaseMs) Debug.Log($"[Load] slow phase: {instance.currentPhase} — {phaseMs} ms (total {totalMs} ms)");
+        instance.progress = instance.targetProgress = 1f;
+        instance.ApplyBar();
         instance.canvas.enabled = false;
         instance.totalSw = null;
     }
 
     void RefreshLabel() {
+        if (!Detailed || label == null) return;
         long phaseMs = phaseSw?.ElapsedMilliseconds ?? 0;
         long totalMs = totalSw?.ElapsedMilliseconds ?? 0;
         label.text = $"{historyText}\n<b>{currentPhase}</b>  ({phaseMs} ms)\n\n<size=18><color=#888>{totalMs} ms total</color></size>";
     }
 
-    // Per-frame label refresh so the elapsed-time counter ticks visibly even
-    // when no SetPhase call lands for a while. Cheap — just a string format.
+    // Size the fill bar to the current progress (left-anchored, so its width = the
+    // filled fraction of the track's inner width).
+    void ApplyBar() {
+        if (barFillRt == null) return;
+        barFillRt.sizeDelta = new Vector2(trackInnerWidth * Mathf.Clamp01(progress), barFillRt.sizeDelta.y);
+    }
+
+    // Per-frame: tick the detailed timer, and ease the fill bar toward its target so it
+    // animates between phases on frames that actually render (the load yields a few).
     void Update() {
-        if (totalSw != null && canvas.enabled) RefreshLabel();
+        if (totalSw == null || !canvas.enabled) return;
+        // Ctrl+D reveals the detailed dev breakdown mid-load (and back).
+        if (Input.GetKeyDown(KeyCode.D) && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)))
+            SetDetailed(!Detailed);
+        if (Detailed) { RefreshLabel(); return; }
+        progress = Mathf.MoveTowards(progress, targetProgress, Time.unscaledDeltaTime * 2.5f);
+        ApplyBar();
+    }
+
+    void SetDetailed(bool on) {
+        Detailed = on;
+        detailedGroup.SetActive(on);
+        simpleGroup.SetActive(!on);
+        RefreshLabel();
+        ApplyBar();
     }
 
     static void TrimHistory() {
@@ -128,21 +183,87 @@ public class LoadingScreen : MonoBehaviour {
         bgRt.offsetMax = Vector2.zero;
         bg.raycastTarget = false;
 
-        // Label — centred.
+        BuildDetailedUI();
+        BuildSimpleUI();
+    }
+
+    // The per-phase timing readout (dev mode) — one centred rich-text label.
+    void BuildDetailedUI() {
+        detailedGroup = new GameObject("Detailed", typeof(RectTransform));
+        detailedGroup.transform.SetParent(transform, false);
+        Stretch(detailedGroup);
+
         var labelGO = new GameObject("Label");
-        labelGO.transform.SetParent(transform, false);
+        labelGO.transform.SetParent(detailedGroup.transform, false);
         label = labelGO.AddComponent<TextMeshProUGUI>();
         label.fontSize = 22;
         label.color = Color.white;
         label.alignment = TextAlignmentOptions.Center;
         label.richText = true;
-        label.text = "Loading…";
+        label.text = "loading...";
         label.raycastTarget = false;
         var lRt = label.rectTransform;
         lRt.anchorMin = new Vector2(0.5f, 0.5f);
         lRt.anchorMax = new Vector2(0.5f, 0.5f);
         lRt.sizeDelta = new Vector2(800, 400);
         lRt.anchoredPosition = Vector2.zero;
+    }
+
+    // The player-facing screen — "loading..." over a fill bar.
+    void BuildSimpleUI() {
+        simpleGroup = new GameObject("Simple", typeof(RectTransform));
+        simpleGroup.transform.SetParent(transform, false);
+        Stretch(simpleGroup);
+
+        // "loading..." text, just above the bar.
+        var textGO = new GameObject("Label");
+        textGO.transform.SetParent(simpleGroup.transform, false);
+        var t = textGO.AddComponent<TextMeshProUGUI>();
+        t.fontSize = 24;
+        t.color = Color.white;
+        t.alignment = TextAlignmentOptions.Center;
+        t.text = "loading...";
+        t.raycastTarget = false;
+        var tRt = t.rectTransform;
+        tRt.anchorMin = tRt.anchorMax = new Vector2(0.5f, 0.5f);
+        tRt.sizeDelta = new Vector2(400, 40);
+        tRt.anchoredPosition = new Vector2(0, 18);
+
+        // Bar track.
+        const float trackWidth = 360f, trackHeight = 16f, pad = 3f;
+        trackInnerWidth = trackWidth - pad * 2f;
+        var trackGO = new GameObject("BarTrack");
+        trackGO.transform.SetParent(simpleGroup.transform, false);
+        var track = trackGO.AddComponent<Image>();
+        track.sprite = Resources.Load<Sprite>("Sprites/Misc/slider_bg");
+        track.type = Image.Type.Sliced;
+        track.raycastTarget = false;
+        var trRt = track.rectTransform;
+        trRt.anchorMin = trRt.anchorMax = new Vector2(0.5f, 0.5f);
+        trRt.sizeDelta = new Vector2(trackWidth, trackHeight);
+        trRt.anchoredPosition = new Vector2(0, -12);
+
+        // Bar fill — left-anchored; ApplyBar drives its width from progress.
+        var fillGO = new GameObject("BarFill");
+        fillGO.transform.SetParent(trackGO.transform, false);
+        var fill = fillGO.AddComponent<Image>();
+        fill.sprite = Resources.Load<Sprite>("Sprites/Misc/slider_fill");
+        fill.type = Image.Type.Sliced;
+        fill.raycastTarget = false;
+        barFillRt = fill.rectTransform;
+        barFillRt.anchorMin = barFillRt.anchorMax = new Vector2(0f, 0.5f);
+        barFillRt.pivot = new Vector2(0f, 0.5f);
+        barFillRt.sizeDelta = new Vector2(0f, trackHeight - pad * 2f);
+        barFillRt.anchoredPosition = new Vector2(pad, 0f);
+    }
+
+    // Anchor a child RectTransform to fill its parent.
+    static void Stretch(GameObject go) {
+        var rt = (RectTransform)go.transform;
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = Vector2.zero;
+        rt.offsetMax = Vector2.zero;
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]

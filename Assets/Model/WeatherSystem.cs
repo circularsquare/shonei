@@ -46,7 +46,7 @@ public class WeatherSystem {
 
     // Reload-Domain-off support — see MaintenanceSystem.ResetStatics for the why.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetStatics() { instance = null; }
+    public static void ResetStatics() { instance = null; }
 
     public bool isRaining { get; private set; }
 

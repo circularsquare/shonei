@@ -9,7 +9,7 @@ using UnityEditor;
 // Tools/Market Server/{Use Local, Use Production}. The active option carries a
 // checkmark; default (no pref set) is Local.
 static class DevServerMenu {
-    const string Key       = TradingClient.EditorPrefUseLocal;
+    const string Key       = MarketServer.EditorPrefUseLocal;
     const string LocalItem = "Tools/Market Server/Use Local (127.0.0.1)";
     const string ProdItem  = "Tools/Market Server/Use Production";
 

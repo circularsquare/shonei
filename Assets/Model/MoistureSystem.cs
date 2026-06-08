@@ -26,7 +26,7 @@ public class MoistureSystem {
 
     // Reload-Domain-off support — see MaintenanceSystem.ResetStatics for the why.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetStatics() { instance = null; }
+    public static void ResetStatics() { instance = null; }
 
     public const byte  MoistureMax                = 100;
     public const int   TicksPerInGameHour         = 10;     // 1 s ticks per in-game hour (from ticksInDay=240 / 24)

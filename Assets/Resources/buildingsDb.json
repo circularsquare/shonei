@@ -45,8 +45,33 @@
         ],
         "depth": 2,
         "noMaintenance": true,
+        "sideMounted": true,
         "category": "structures",
         "defaultLocked": true
+    },{
+        "id": 147,
+        "name": "bracket",
+        "description": "support hung off the side of a wall. build on top to extend outward",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 3 }
+        ],
+        "depth": 1,
+        "solidTop": true,
+        "sideMounted": true,
+        "category": "structures"
+    },{
+        "id": 148,
+        "name": "roof",
+        "description": "slanted roof. rest on a solid top to keep what's below dry",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 3 }
+        ],
+        "depth": 2,
+        "blocksRain": true,
+        "noMaintenance": true,
+        "category": "structures"
     },{
         "id": 5,
         "name": "rope bridge post",

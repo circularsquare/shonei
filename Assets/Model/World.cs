@@ -83,6 +83,32 @@ public class World : MonoBehaviour {
         PowerSystem.Create();
     }
 
+    // Reload Domain is off, so plain-C# singletons (unlike MonoBehaviours, whose destroyed
+    // instance reads == null) do NOT clear when this scene unloads — their static `instance`
+    // survives into the next play of the Main scene. Re-entering the game a second time in
+    // one session (menu -> game -> menu -> game) would then hit each "there should only be
+    // one ..." check on recreation, and the stale instances (MarketBuilding still wrapping
+    // destroyed GameObjects) cascade into MissingReferenceExceptions. Clear them here, on the
+    // world's teardown, mirroring their SubsystemRegistration resets. Anything created in
+    // Awake (or world gen, for the market) is reset here.
+    void OnDestroy() {
+        Graph.ResetStatics();
+        WeatherSystem.ResetStatics();
+        MaintenanceSystem.ResetStatics();
+        MoistureSystem.ResetStatics();
+        OverlayGrowthSystem.ResetStatics();
+        SnowAccumulationSystem.ResetStatics();
+        PowerSystem.ResetStatics();
+        GlobalInventory.ResetStatics();
+        MarketBuilding.ResetStatics();
+        // Static structure registries that a normal ClearWorld empties via each structure's
+        // Destroy() — but Destroy() doesn't run on a scene unload, so they'd otherwise carry
+        // orphaned structures (with destroyed visuals) into the next world.
+        Elevator.ResetStaticsForPlayMode();
+        RopeBridge.ResetStatics();
+        if (instance == this) instance = null;
+    }
+
     // Allocates (or re-allocates) tiles[,] and graph.nodes[,] at the given size,
     // sets nx/ny, and fires OnWorldAllocated. Safe to call multiple times — the
     // old arrays become garbage. No-op when the requested size already matches

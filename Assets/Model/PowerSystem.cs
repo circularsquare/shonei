@@ -31,7 +31,7 @@ public class PowerSystem {
 
     // Reload-Domain-off support — see MaintenanceSystem.ResetStatics for the why.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetStatics() { instance = null; }
+    public static void ResetStatics() { instance = null; }
 
     // Axis a shaft tile carries, or that a port couples to.
     //   Horizontal — connects on x; Vertical — connects on y; Both — turning shaft / either-axis port.

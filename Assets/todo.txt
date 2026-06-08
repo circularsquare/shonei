@@ -64,6 +64,9 @@ UI
 - tab styling, add building icons?
 - recipe list / enabling disabling globally and locally for crafting buildings info panel
 
+SERVER 
+- use stateful sessions instead of stateless tokens? 
+
 CODE CLEANUP
 
 BUGS
@@ -88,6 +91,7 @@ todoship
 
 
 - review building descriptions
+- review info question marks
 
 - info on "have 6 mice" (how?) (explain pop cap in happiness table, and also in playertask explain building housing?)
 
@@ -106,6 +110,9 @@ clarify which side of burrow sprite is out
     
 
 TODAY
-- server   
-    - how to sometimes point trading at actual server and sometimes at local server?
-    - sign up / login names
+
+- account tied saves...
+
+- add clouds and background to shonei main menu?
+    - toggleable
+unpause shortly after entering world (so that stuff like inv display can load) then repause? idk

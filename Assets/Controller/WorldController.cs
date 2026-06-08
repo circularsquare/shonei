@@ -17,6 +17,15 @@ public class WorldController : MonoBehaviour {
     // deterministic, save-independent starting state. Default false (production).
     public static bool skipAutoLoad = false;
 
+    // Boot intent set by the menu scene (MenuController) before loading Main.
+    // bootNewGame forces a fresh world even if saves exist (the "New Game"
+    // button). bootSlot names a specific slot to load (the "Load save" screen),
+    // taking precedence over both bootNewGame and auto-load-most-recent. All are
+    // consumed-and-cleared in Start, so opening Main.unity directly in the editor
+    // still falls through to default behaviour (auto-load most recent, else generate).
+    public static bool   bootNewGame = false;
+    public static string bootSlot    = null;
+
     // ── Worldgen debug hooks ───────────────────────────────────────────────
     // Used by WorldGenConfigEditor's regen buttons. pendingSeedOverride is a
     // one-shot consumed by the next GenerateDefault; lastGeneratedSeed is
@@ -106,7 +115,17 @@ public class WorldController : MonoBehaviour {
         LoadingScreen.SetPhase("Waiting for other Start()s");
         yield return null; // wait one frame so all other Start()s finish before we generate the world
 
-        string mostRecent = skipAutoLoad ? null : SaveSystem.instance.GetMostRecentSlot();
+        string mostRecent;
+        if (bootSlot != null) {
+            mostRecent = bootSlot;     // explicit slot picked on the Load-save screen
+            bootSlot   = null;         // consume the one-shot
+            bootNewGame = false;       // a chosen slot wins over any stale new-game flag
+        } else if (bootNewGame) {
+            bootNewGame = false;       // consume the one-shot
+            mostRecent = null;         // force generation below
+        } else {
+            mostRecent = skipAutoLoad ? null : SaveStore.GetMostRecentSlot();
+        }
         if (mostRecent != null) {
             LoadingScreen.SetPhase($"Loading save: {mostRecent}");
             SaveSystem.instance.Load(mostRecent);

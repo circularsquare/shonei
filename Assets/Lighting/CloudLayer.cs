@@ -67,6 +67,10 @@ public class CloudLayer : SkyLayerBase {
     [Range(0f, 1f)] public float worldLockingY = 0.25f;
     [Tooltip("Rate at which the underlying noise field morphs over time (noise-units / second on the time axis of a 3D value noise). 0 = static field (only wind moves it); ~0.05 = clouds visibly form / dissolve over tens of seconds, like real cumulus evolving in place. Independent of wind drift, which just slides the field horizontally.")]
     public float cloudEvolutionRate = 0.05f;
+    [Tooltip("Use a fixed wind value instead of reading WeatherSystem — for scenes without weather (the menu).")]
+    public bool useConstantWind = false;
+    [Tooltip("Wind value used when useConstantWind is on (same range as WeatherSystem.wind).")]
+    public float constantWind = 0.5f;
 
     [Header("Tint")]
     public Color baseColorClear = Color.white;
@@ -363,7 +367,8 @@ public class CloudLayer : SkyLayerBase {
         // for positive (rightward) wind to drift clouds rightward,
         // noiseOffset.x must DECREASE so anchorX − noiseOffset.x grows
         // and content slides right in the sprite.
-        float wind = WeatherSystem.instance != null ? WeatherSystem.instance.wind : 0f;
+        float wind = useConstantWind ? constantWind
+                   : (WeatherSystem.instance != null ? WeatherSystem.instance.wind : 0f);
         windOffsetX -= wind * windDriftScale * Time.deltaTime;
         // Cloud evolution along the noise field's third axis — slow
         // morph in place.

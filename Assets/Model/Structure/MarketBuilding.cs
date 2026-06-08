@@ -8,7 +8,7 @@ public class MarketBuilding : Building {
 
     // Reload-Domain-off support — see MaintenanceSystem.ResetStatics for the why.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetStatics() { instance = null; }
+    public static void ResetStatics() { instance = null; }
 
     public MarketBuilding(StructType st, int x, int y, bool mirrored = false)
         : base(st, x, y, mirrored) {
