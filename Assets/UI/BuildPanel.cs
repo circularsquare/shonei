@@ -453,6 +453,12 @@ public class BuildPanel : MonoBehaviour {
             existingBp.Destroy(); // sets cancelled, removes from bp list, WOM cleanup, unlocks storage if decon
             return true;
         }
+        // Clear a harvest flag before deconstructing the plant — one action per click, so the
+        // first remove un-flags and only a second remove fells the plant.
+        if (tile.plant != null && tile.plant.harvestFlagged) {
+            tile.plant.SetHarvestFlagged(false);
+            return true;
+        }
         if (System.Array.Exists(tile.structs, s => s != null)) {
             Blueprint.CreateDeconstructBlueprint(tile);
             return true;

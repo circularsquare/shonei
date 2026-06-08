@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -24,6 +25,10 @@ using TMPro;
 //     cloudLightingToggle — Toggle (when off, clouds use flat shading — skips
 //                          height-field normal + Lambertian band selection in
 //                          CloudFieldGen Pass 0)
+//     uiScaleSlider  — Slider, min 1 max 2 (1 = native UI, 2 = doubled). Drives
+//                      the root CanvasScaler.scaleFactor via SettingsManager.uiScale.
+//     fontDropdown   — TMP_Dropdown; options auto-populated from UIFontOptions at Awake.
+//                      Drives SettingsManager.uiFontIndex (UITextPixelSnap swaps the UI font).
 //     closeButton    — Button (optional; an X in the corner)
 //     controlsText   — TMP_Text (optional); content is auto-filled at Awake.
 //                      Relies on m5x7's monospace metrics for column alignment.
@@ -41,8 +46,12 @@ public class OptionsPanel : MonoBehaviour {
     [SerializeField] Toggle       lightingToggle;
     [SerializeField] Toggle       cloudLightingToggle;
 
+    [Header("Interface")]
+    [SerializeField] Slider uiScaleSlider;   // range 1–2 (1 = native UI, 2 = doubled)
+    [SerializeField] TMP_Dropdown fontDropdown;  // options populated from UIFontOptions at Awake
+
     [Header("Game")]
-    [SerializeField] Toggle autosaveToggle;
+    [SerializeField] TMP_Dropdown autosaveDropdown;
 
     [Header("Misc")]
     [SerializeField] Button closeButton;
@@ -88,6 +97,10 @@ public class OptionsPanel : MonoBehaviour {
 
     // Dropdown index → fps value. 0 = unlimited (no cap).
     static readonly int[] FpsOptions = { 30, 60, 120, 144, 0 };
+
+    // Autosave dropdown index → interval in minutes. 0 = off. Labels are populated in WireUp.
+    static readonly int[]    AutosaveOptions = { 0, 1, 5, 10, 30 };
+    static readonly string[] AutosaveLabels  = { "off", "1 min", "5 min", "10 min", "30 min" };
 
     // Set during RefreshFromSettings to suppress the onValueChanged callbacks
     // we'd otherwise fire just by writing the slider/toggle values.
@@ -290,7 +303,27 @@ public class OptionsPanel : MonoBehaviour {
         if (vsyncToggle    != null) vsyncToggle.onValueChanged.AddListener(OnVsync);
         if (lightingToggle != null) lightingToggle.onValueChanged.AddListener(OnLighting);
         if (cloudLightingToggle != null) cloudLightingToggle.onValueChanged.AddListener(OnCloudLighting);
-        if (autosaveToggle != null) autosaveToggle.onValueChanged.AddListener(OnAutosave);
+        // UI scale applies on slider release, not per-value: rescaling the canvas
+        // mid-drag would move the handle out from under the cursor.
+        if (uiScaleSlider != null) {
+            var relay = uiScaleSlider.GetComponent<SliderReleaseRelay>();
+            if (relay != null) relay.OnRelease += OnUiScaleReleased;
+            else Debug.LogError("[OptionsPanel] uiScaleSlider needs a SliderReleaseRelay component.");
+        }
+        if (autosaveDropdown != null) {
+            autosaveDropdown.ClearOptions();
+            autosaveDropdown.AddOptions(new List<string>(AutosaveLabels));
+            autosaveDropdown.onValueChanged.AddListener(OnAutosaveIndex);
+        }
+        if (fontDropdown != null) {
+            fontDropdown.ClearOptions();
+            var names = new List<string>();
+            var opt = UIFontOptions.instance;
+            if (opt != null && opt.fonts != null) foreach (var e in opt.fonts) names.Add(e.name);
+            if (names.Count == 0) names.Add("Default");
+            fontDropdown.AddOptions(names);
+            fontDropdown.onValueChanged.AddListener(OnFontIndex);
+        }
         if (closeButton    != null) closeButton.onClick.AddListener(() => gameObject.SetActive(false));
     }
 
@@ -308,7 +341,10 @@ public class OptionsPanel : MonoBehaviour {
         if (vsyncToggle    != null) vsyncToggle.isOn     = s.vsyncEnabled;
         if (lightingToggle != null) lightingToggle.isOn  = s.lightingEnabled;
         if (cloudLightingToggle != null) cloudLightingToggle.isOn = s.cloudLightingEnabled;
-        if (autosaveToggle != null) autosaveToggle.isOn = s.autosaveEnabled;
+        if (uiScaleSlider  != null) uiScaleSlider.value     = s.uiScale;
+        if (autosaveDropdown != null) autosaveDropdown.value = AutosaveValueToIndex(s.autosaveIntervalMinutes);
+        if (fontDropdown != null && fontDropdown.options.Count > 0)
+            fontDropdown.value = Mathf.Clamp(s.uiFontIndex, 0, fontDropdown.options.Count - 1);
         suppressCallbacks = false;
     }
 
@@ -320,6 +356,14 @@ public class OptionsPanel : MonoBehaviour {
         return FpsOptions.Length - 1;
     }
 
+    static int AutosaveValueToIndex(int minutes) {
+        for (int i = 0; i < AutosaveOptions.Length; i++)
+            if (AutosaveOptions[i] == minutes) return i;
+        // Unreachable in normal use (the setter only stores listed values); show "off" defensively.
+        Debug.Log($"[OptionsPanel] No autosave option matches stored minutes={minutes}; showing off.");
+        return 0;
+    }
+
     // ── Callbacks ────────────────────────────────────────────────────────────
 
     void OnMaster(float v)   { if (!suppressCallbacks) SettingsManager.instance?.SetMasterVolume(v); }
@@ -328,7 +372,22 @@ public class OptionsPanel : MonoBehaviour {
     void OnVsync(bool v)     { if (!suppressCallbacks) SettingsManager.instance?.SetVsync(v); }
     void OnLighting(bool v)  { if (!suppressCallbacks) SettingsManager.instance?.SetLighting(v); }
     void OnCloudLighting(bool v) { if (!suppressCallbacks) SettingsManager.instance?.SetCloudLighting(v); }
-    void OnAutosave(bool v)  { if (!suppressCallbacks) SettingsManager.instance?.SetAutosave(v); }
+    void OnUiScaleReleased(float v) {
+        var s = SettingsManager.instance;
+        if (s == null) return;
+        s.SetUiScale(v);                                              // snaps to nearest 2.5%
+        if (uiScaleSlider != null) uiScaleSlider.SetValueWithoutNotify(s.uiScale); // snap the handle to match
+    }
+
+    void OnFontIndex(int i) { if (!suppressCallbacks) SettingsManager.instance?.SetUiFontIndex(i); }
+    void OnAutosaveIndex(int i) {
+        if (suppressCallbacks) return;
+        if (i < 0 || i >= AutosaveOptions.Length) {
+            Debug.LogError($"[OptionsPanel] Autosave dropdown index out of range: {i}");
+            return;
+        }
+        SettingsManager.instance?.SetAutosaveIntervalMinutes(AutosaveOptions[i]);
+    }
 
     void OnFpsIndex(int i) {
         if (suppressCallbacks) return;

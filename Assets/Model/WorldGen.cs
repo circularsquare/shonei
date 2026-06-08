@@ -343,7 +343,7 @@ public static class WorldGen {
 
         // Pass 2: 1-tile erosion at every sky/cave boundary. A wall tile that
         // is cardinally adjacent to a no-wall tile is cleared. The wall
-        // participates in lighting (NormalsCaptureBackground), so a wall sat
+        // participates in lighting (ChunkedBackgroundNormalsCapture), so a wall sat
         // directly behind the topmost solid row visibly dims the surface;
         // pulling the wall back one tile keeps surface and cave-edge tiles
         // reading at full sky/ambient brightness. Snapshot first, then clear,

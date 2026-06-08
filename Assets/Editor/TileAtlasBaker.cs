@@ -29,6 +29,11 @@ public static class TileAtlasBaker {
     const string SheetsDir        = "Assets/Resources/Sprites/Tiles/Sheets";
     const string FlatDir          = "Assets/Resources/Sprites/Tiles";
     const string SnowOverlayName  = "snow"; // hardcoded by TileMeshController
+    // Background-wall atlases — NOT tile types (not in Db.tileTypes), so the body
+    // bake enumerates them explicitly. Must match BackgroundTileMeshController.Registry.
+    // Body-only consumers (the flat-lit background renderer never binds _normal), but
+    // BakeType writes both {name}_body + {name}_normal harmlessly.
+    static readonly string[] BackgroundAtlasNames = { "stoneback", "dirtback" };
 
     // ── Entry points ────────────────────────────────────────────────────
 
@@ -57,6 +62,16 @@ public static class TileAtlasBaker {
             if (tt == null || !tt.solid) continue;
             if (!force && IsBodyUpToDate(tt.name)) { bodySkipped++; continue; }
             BakeType(tt.name);
+            bodyBaked++;
+        }
+
+        // Background-wall body atlases (skip names whose source art the artist hasn't
+        // drawn yet — a missing stem would otherwise bake a magenta fallback asset).
+        foreach (var name in BackgroundAtlasNames) {
+            if (Resources.Load<Texture2D>($"Sprites/Tiles/Sheets/{name}") == null
+                && Resources.Load<Texture2D>($"Sprites/Tiles/{name}") == null) continue;
+            if (!force && IsBodyUpToDate(name)) { bodySkipped++; continue; }
+            BakeType(name);
             bodyBaked++;
         }
 

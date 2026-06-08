@@ -78,6 +78,13 @@ public class SunController : MonoBehaviour {
     [Tooltip("Ambient brightness at noon (the ceiling of the ramp). Should be ≥ Min.")]
     [SerializeField] [Range(0f, 1f)] float ambientBrightnessMax = 1.0f;
 
+    [Tooltip("How strongly night ambient dims Unlit selection / harvest overlays. " +
+             "0 = always full bright (old behaviour), 1 = full ambient, 0.5 = half strength. " +
+             "Broadcast as the _OverlayAmbient shader global; see UnlitOverlayAmbient.shader.")]
+    [SerializeField] [Range(0f, 1f)] float overlayAmbientStrength = 0.5f;
+
+    static readonly int OverlayAmbientId = Shader.PropertyToID("_OverlayAmbient");
+
     [Header("Debug (read-only in play mode)")]
     [SerializeField] float _twilightFraction;
     [SerializeField] float _brightness;
@@ -101,6 +108,15 @@ public class SunController : MonoBehaviour {
         UpdateSun();
         skyColor     = SkyColor();
         horizonColor = HorizonColor();
+
+        // Broadcast the half-strength ambient tint for Unlit-layer overlays
+        // (selection / harvest highlights). They render after the lighting
+        // composite at full bright; this lets their bright colors settle toward
+        // the night ambient so they stop glaring in the dark, while staying
+        // full-bright by day (where ambient ≈ white). UnlitOverlayAmbient.shader
+        // multiplies RGB by this global.
+        Shader.SetGlobalColor(OverlayAmbientId,
+            Color.Lerp(Color.white, GetAmbientColor(), overlayAmbientStrength));
     }
 
     // ── Public API ────────────────────────────────────────────────────────────

@@ -29,7 +29,7 @@ public class WaterController : MonoBehaviour {
     // Inspector-assigned so the shader is force-included in builds (see LightFeature
     // for rationale — Shader.Find() works in editor but doesn't survive build stripping).
     [SerializeField] Shader waterShader;
-    // Solid 0.9-alpha base layer that sits behind BackgroundTile. Occludes the
+    // Solid 0.9-alpha base layer that sits behind the background wall. Occludes the
     // parallax sky painting while letting the cave wall draw on top so cave pools
     // keep their see-through look. See SPEC-rendering.md §Water Rendering.
     [SerializeField] Shader waterUnderlayShader;
@@ -214,9 +214,9 @@ public class WaterController : MonoBehaviour {
         LightReceiverUtil.SetSortBucket(sr);
 
         // Underlay sprite — same geometry, same Water Unity layer, same shared
-        // surface mask. Sorts at -15 (behind BackgroundTile at -10) so the cave
+        // surface mask. Sorts at -15 (behind the background wall at -10) so the cave
         // wall draws on top, preserving the underground see-through. Above ground
-        // (no BackgroundTile pixels) the 0.9-alpha base occludes the parallax
+        // (no background-wall pixels) the 0.9-alpha base occludes the parallax
         // sky painting that the front 0.5-alpha layer would otherwise let through.
         // No shimmer/sparkles — those come from the front Water.shader only,
         // avoiding the doubled-sparkle blowout that two stacked shimmer layers

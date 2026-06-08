@@ -34,21 +34,23 @@ public class FontConfigEditor : Editor {
             return;
         }
 
-        int sceneCount = 0;
+        int sceneCount = 0, sceneColor = 0;
         var open = Resources.FindObjectsOfTypeAll(typeof(TMP_Text));
         foreach (var o in open) {
             var t = (TMP_Text)o;
             // Skip prefab assets (scene check) and disabled-but-not-destroyed objects in
             // closed scenes. The prefab pass below handles prefab assets directly.
             if (!t.gameObject.scene.IsValid() || !t.gameObject.scene.isLoaded) continue;
-            if (FontConfig.Apply(t)) {
+            bool ch = FontConfig.Apply(t);
+            if (FontConfig.ApplyPrimaryColor(t)) { ch = true; sceneColor++; }
+            if (ch) {
                 EditorUtility.SetDirty(t);
                 sceneCount++;
             }
         }
         if (sceneCount > 0) EditorSceneManager.SaveOpenScenes();
 
-        int prefabCount = 0;
+        int prefabCount = 0, prefabColor = 0;
         string[] guids = AssetDatabase.FindAssets("t:Prefab");
         foreach (var guid in guids) {
             string path = AssetDatabase.GUIDToAssetPath(guid);
@@ -61,6 +63,7 @@ public class FontConfigEditor : Editor {
                 var tmps = root.GetComponentsInChildren<TMP_Text>(true);
                 foreach (var t in tmps) {
                     if (FontConfig.Apply(t)) { changed = true; prefabCount++; }
+                    if (FontConfig.ApplyPrimaryColor(t)) { changed = true; prefabColor++; }
                 }
                 if (changed) PrefabUtility.SaveAsPrefabAsset(root, path);
             } finally {
@@ -68,6 +71,7 @@ public class FontConfigEditor : Editor {
             }
         }
 
-        Debug.Log($"FontConfig applied: {sceneCount} scene components, {prefabCount} prefab components.");
+        Debug.Log($"FontConfig applied: {sceneCount} scene components ({sceneColor} recolored), " +
+                  $"{prefabCount} prefab font/size + {prefabColor} prefab recolored.");
     }
 }

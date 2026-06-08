@@ -15,6 +15,7 @@
 //   work    per tier = TierBase + proximity(≤0.15 at dist 0, halves every 8 tiles) + finish(+0.10,
 //           Construct only):   p1 0.55–0.70   p2 0.45–0.60 (construct 0.55–0.70)   p3 0.30–0.45   p4 0.25–0.40
 //   craft   0.16 → 0.60  (banded; floor clears daytime idle so a needed craft is never soft-locked)
+//   drop    0.60 → 0.90  (scales with carried main-inv fullness; below hunger/sleep peaks, above work)
 //   equip   0 or 0.45    (only when the tool/clothing slot is empty)
 //   leisure 0 → 0.60 (evening) / 0 → 0.15 (day)   (bias × least-satisfied need pull)
 //   idle    0.15 (day) / 0.35 (evening)           — the floor low work/leisure must clear
@@ -49,6 +50,15 @@ public static class UrgencyConfig {
     // soft-locked out; ceil is the asymptote a scarce-output recipe approaches.
     public const float CraftFloor = 0.16f;
     public const float CraftCeil  = 0.60f;
+
+    // ── Drop carried inventory ───────────────────────────────────────
+    // Urgency to dump stale main-inventory carry-over, scaled by how full the main inv is:
+    //   DropFloor + (DropCeil - DropFloor) * occupiedStacks/totalStacks.
+    // The band sits below the hunger/sleep peaks (~1.0) so a starving or exhausted mouse eats /
+    // sleeps before offloading, but above the work tiers (≤0.70) so a laden idle mouse still drops
+    // promptly instead of crawling around with a full pack while there's other work to do.
+    public const float DropFloor = 0.60f;
+    public const float DropCeil  = 0.90f;
 
     // ── Hunger curve (Eating.HungerUrgency) ──────────────────────────
     public const float HungerConcavity = 0.6f;     // <1 = steep right after the seek threshold (seek early)

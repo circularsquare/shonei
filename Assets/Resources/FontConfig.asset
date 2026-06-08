@@ -12,5 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9df742f1784be5f45847679f63a16308, type: 3}
   m_Name: FontConfig
   m_EditorClassIdentifier: 
-  font: {fileID: 11400000, guid: 35d708990aaf29e45adabe16f109f44d, type: 2}
-  fontSize: 16
+  font: {fileID: 11400000, guid: 079e71660f0a27649932cfe01cac6d27, type: 2}
+  fontSize: 11
+  primaryTextColor: {r: 0, g: 0, b: 0, a: 1}
+  pixelSnap: 1

@@ -426,23 +426,27 @@ public class Blueprint {
                 if (req.mustHaveWater && t.water == 0) return true;
                 if (req.mustBeSolidTile && !t.type.solid) return true;
             }
-            // fall through to the bottom-row support check — tileRequirements is additive, not a replacement
+            // When the type declares explicit mustBeStandable reqs, those REPLACE the generic
+            // bottom-row check below (the author named exactly which columns bear weight, e.g.
+            // the pump). Otherwise the reqs are additive and the generic check still runs.
         }
 
-        // Support is checked along the bottom row of the footprint — only the base of the
-        // column needs to rest on something solid; the rest stacks above.
-        // edgeSupported types check only the leftmost and rightmost end tiles — the middle
-        // is allowed to hang (matches the placement rule in StructPlacement.CanPlaceHere).
-        int bottomNx = structType.HasShapes ? Shape.nx : structType.nx;
-        if (structType.edgeSupported) {
-            Node leftNode  = World.instance.graph.nodes[tile.x, tile.y];
-            Node rightNode = World.instance.graph.nodes[tile.x + bottomNx - 1, tile.y];
-            if (leftNode  != null && !leftNode.standable)  return true;
-            if (rightNode != null && !rightNode.standable) return true;
-        } else {
-            for (int i = 0; i < bottomNx; i++) {
-                Node node = World.instance.graph.nodes[tile.x + i, tile.y];
-                if (node != null && !node.standable) return true;
+        // Generic bottom-row support — every column's base must rest on something solid (the
+        // rest of the column stacks above). edgeSupported types check only the two end columns,
+        // the middle may hang (tarp). Skipped entirely for types with explicit standable reqs.
+        // Mirrors the placement rule in StructPlacement.GetPlacementFailReason.
+        if (!structType.hasStandableRequirement) {
+            int bottomNx = structType.HasShapes ? Shape.nx : structType.nx;
+            if (structType.edgeSupported) {
+                Node leftNode  = World.instance.graph.nodes[tile.x, tile.y];
+                Node rightNode = World.instance.graph.nodes[tile.x + bottomNx - 1, tile.y];
+                if (leftNode  != null && !leftNode.standable)  return true;
+                if (rightNode != null && !rightNode.standable) return true;
+            } else {
+                for (int i = 0; i < bottomNx; i++) {
+                    Node node = World.instance.graph.nodes[tile.x + i, tile.y];
+                    if (node != null && !node.standable) return true;
+                }
             }
         }
         // Two-click placements (rope bridges) own a second tile that the anchor
@@ -692,6 +696,23 @@ public class Blueprint {
         ClearBlueprintFromTiles();
         GameObject.Destroy(go);
         if (InfoPanel.instance?.obj == tile) InfoPanel.instance.RebuildSelection();
+    }
+
+    // Instantly finishes this blueprint with no worker — backs the Ctrl+Shift+F dev shortcut
+    // (hover in MouseController, selected Blueprint tab in InfoPanel). Dispatches by state:
+    // Deconstructing tears the structure down, anything else builds it. The pendingOutput a
+    // worker would normally receive (deconstruct refund, or mining yield on Complete) is dropped
+    // onto the floor at the anchor tile instead, since there's no worker to hand it to. Overflow
+    // that won't fit on nearby floor is discarded (ProduceAtTile logs the shortfall).
+    public void InstantFinish() {
+        Tile dropTile = tile;
+        if (state == BlueprintState.Deconstructing)
+            Deconstruct();
+        else
+            Complete();
+        if (pendingOutput != null && dropTile != null)
+            foreach (ItemQuantity iq in pendingOutput)
+                World.instance.ProduceAtTile(iq.item, iq.quantity, dropTile);
     }
 
     // Returns true if this is a deconstruct blueprint on a storage building and the storage still has items.

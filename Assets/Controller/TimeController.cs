@@ -25,6 +25,19 @@ public class TimeController : MonoBehaviour {
     const int backgroundFps = 30;
     bool _isFocused = true;
 
+    // ── Speed-button "lit" indicator ─────────────────────────────────────────
+    // The three speed buttons (0x / 1x / 2x) wired in the scene. Optional refs —
+    // if unassigned the indicator simply no-ops. The active speed's button stays
+    // at full brightness while the others are dimmed, so the current setting reads
+    // as "lit". Driven through Button.colors (not Image.color directly) because the
+    // Button's own ColorTint transition would otherwise overwrite a raw color set.
+    [Header("Speed buttons (optional — lit indicator)")]
+    [SerializeField] Button pauseButton;   // 0x
+    [SerializeField] Button normalButton;  // 1x
+    [SerializeField] Button fastButton;    // 2x
+    static readonly Color LitTint   = Color.white;
+    static readonly Color UnlitTint = new Color(0.6f, 0.6f, 0.6f, 1f);
+
     void Awake() {
         if (instance != null) { Debug.LogError("there should only be one TimeController"); }
         instance = this;
@@ -40,6 +53,7 @@ public class TimeController : MonoBehaviour {
         } else {
             Debug.LogError("[TimeController] SettingsManager.instance missing — fps cap and vsync will use defaults.");
         }
+        RefreshSpeedButtons(); // light the button for whatever speed we start at
     }
 
     void OnDestroy() {
@@ -86,6 +100,25 @@ public class TimeController : MonoBehaviour {
         Time.fixedDeltaTime = 0.02f * scale;
         if (scale > 0f) lastSpeed = scale;
         ApplyTargetFrameRate();
+        RefreshSpeedButtons();
+    }
+
+    // Lights the button matching the current Time.timeScale and dims the others. Exact-equals
+    // compares are safe — SetSpeed only ever assigns 0/1/2 (and lastSpeed, itself one of those).
+    void RefreshSpeedButtons() {
+        float s = Time.timeScale;
+        SetButtonLit(pauseButton,  s == 0f);
+        SetButtonLit(normalButton, s == 1f);
+        SetButtonLit(fastButton,   s == 2f);
+    }
+
+    static void SetButtonLit(Button b, bool lit) {
+        if (b == null) return;
+        Color tint = lit ? LitTint : UnlitTint;
+        var c = b.colors;
+        c.normalColor   = tint;
+        c.selectedColor = tint; // so keyboard/controller focus doesn't override the lit state
+        b.colors = c;
     }
 
     public void Pause()       { SetSpeed(0f); }

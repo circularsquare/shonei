@@ -1,9 +1,11 @@
 using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
+using System.Text;
 using SysPath = System.IO.Path;
 using SysFile = System.IO.File;
 using SysDir  = System.IO.Directory;
+using static EditorUtilities;
 
 // Bakes per-blob sprites + sway metadata for plants that ship a
 // `{plantName}_blobs.png` companion sheet next to the base `{plantName}.png`.
@@ -53,9 +55,16 @@ using SysDir  = System.IO.Directory;
 // Output:  Assets/Resources/Sprites/Plants/Split/{plantName}/{plantName}_blobs_baked.png
 //          Assets/Resources/Sprites/Plants/Split/{plantName}/sway_meta.json
 //
+// Up-to-date check:
+//   The `_blobs` sheet's importer userData carries `plantBlobCacheKey=<md5>` after
+//   a successful bake. The key hashes the mtimes of all three source sheets (base +
+//   `_blobs` + optional `_trunk`) plus CellSize, so any art edit — or adding/removing
+//   the trunk companion — invalidates it. The batch pass honours the cache; the
+//   single-asset right-click always forces. Mirrors PlantSheetSplitter's cache shape.
+//
 // Usage:
-//   Tools → Split Plant Blob Sheets + Normals  — process every *_blobs.png + normals
-//   Right-click *_blobs.png → Split Plant Blob Sheet
+//   Batch bake runs as part of Tools → Split Plant Sheets + Normals (cache-aware).
+//   Right-click *_blobs.png → Split Plant Blob Sheet  — re-bake one plant (force).
 public static class PlantBlobBaker {
     const int    CellSize     = 16;
     const string BlobsSuffix  = "_blobs";
@@ -64,6 +73,7 @@ public static class PlantBlobBaker {
     const string SheetsFolder = "Assets/Resources/Sprites/Plants/Sheets";
     const string SplitFolder  = "Assets/Resources/Sprites/Plants/Split";
     const string MetaFileName = "sway_meta.json";
+    const string CacheKey     = "plantBlobCacheKey";   // userData stamp on the _blobs sheet
 
     // One 16x16 layer destined for a slot in the packed sheet.
     struct SheetLayer {
@@ -77,23 +87,25 @@ public static class PlantBlobBaker {
         = new Dictionary<string, SpriteMetaData[]>();
 
     // ── menu entries ─────────────────────────────────────────────────────────
-    // (no standalone menu item — invoked by the "Split Plant Blob Sheets +
-    //  Normals" combo below; the split-only entry was removed.)
-    internal static void BakeAll() {
+    // No standalone menu item — the batch bake is invoked by PlantSheetSplitter's
+    // "Split Plant Sheets + Normals" combo (a plant's base sheet and its blob set
+    // are one editing unit, so they re-process together). Cache-aware: only plants
+    // whose source sheets changed are re-baked.
+    internal static void BakeAll(bool force = false) {
         var sheets   = new List<string>();
-        int plantCnt = 0;
+        int plantCnt = 0, skipped = 0;
         string[] guids = AssetDatabase.FindAssets("t:Texture2D", new[] { SheetsFolder });
         foreach (string guid in guids) {
             string path = AssetDatabase.GUIDToAssetPath(guid);
             string fn   = SysPath.GetFileNameWithoutExtension(path);
             if (!fn.EndsWith(BlobsSuffix)) continue;
             string plantName = fn.Substring(0, fn.Length - BlobsSuffix.Length);
-            BakePlant(plantName, sheets);
-            plantCnt++;
+            if (BakePlant(plantName, sheets, force)) plantCnt++;
+            else                                     skipped++;
         }
         AssetDatabase.Refresh();
         ApplySheetImportSettings(sheets);
-        Debug.Log($"[PlantBlobBaker] Processed {plantCnt} plant(s), wrote {sheets.Count} sheet(s).");
+        Debug.Log($"[PlantBlobBaker] Processed {plantCnt} plant(s), skipped {skipped} up-to-date, wrote {sheets.Count} sheet(s).{(force ? " (force)" : "")}");
     }
 
     [MenuItem("Assets/Split Plant Blob Sheet", validate = true)]
@@ -116,36 +128,25 @@ public static class PlantBlobBaker {
             string fn   = SysPath.GetFileNameWithoutExtension(path);
             if (!path.StartsWith(SheetsFolder) || !fn.EndsWith(BlobsSuffix)) continue;
             string plantName = fn.Substring(0, fn.Length - BlobsSuffix.Length);
-            BakePlant(plantName, sheets);
+            BakePlant(plantName, sheets, force: true);
         }
         AssetDatabase.Refresh();
         ApplySheetImportSettings(sheets);
         Debug.Log($"[PlantBlobBaker] Wrote {sheets.Count} sheet(s).");
     }
 
-    // Convenience combo — bake then generate normal maps for the new sheets.
-    // Mirrors PlantSheetSplitter's `Split + Generate Normal Maps` pattern so
-    // the typical artist workflow is one click. NormalMapGen.GenerateAll walks
-    // Assets/Resources/Sprites/Plants and picks up each `_blobs_baked` sheet
-    // automatically — Multiple-mode sheets are processed per-slice, so every
-    // blob gets its own bevelled normals in one shared `_n` sheet.
-    [MenuItem("Tools/Split Plant Blob Sheets + Normals", priority = 102)]
-    static void BakeAllThenGenerateNormals() {
-        BakeAll();
-        SpriteNormalMapGenerator.GenerateAll();
-    }
-
     // ── core ─────────────────────────────────────────────────────────────────
-    static void BakePlant(string plantName, List<string> sheets) {
+    // Returns true if the plant was re-baked, false if skipped (up-to-date).
+    static bool BakePlant(string plantName, List<string> sheets, bool force) {
         string basePath  = SysPath.Combine(SheetsFolder, plantName + ".png").Replace('\\', '/');
         string maskPath  = SysPath.Combine(SheetsFolder, plantName + BlobsSuffix + ".png").Replace('\\', '/');
         string trunkPath = SysPath.Combine(SheetsFolder, plantName + TrunkSuffix + ".png").Replace('\\', '/');
 
         if (!SysFile.Exists(basePath)) {
             Debug.LogWarning($"[PlantBlobBaker] Missing base sheet {basePath} — skipping {plantName}");
-            return;
+            return false;
         }
-        if (!SysFile.Exists(maskPath)) return;
+        if (!SysFile.Exists(maskPath)) return false;
         bool hasTrunk = SysFile.Exists(trunkPath);
 
         TextureImporter baseImp  = AssetImporter.GetAtPath(basePath)  as TextureImporter;
@@ -153,8 +154,10 @@ public static class PlantBlobBaker {
         TextureImporter trunkImp = hasTrunk ? AssetImporter.GetAtPath(trunkPath) as TextureImporter : null;
         if (baseImp == null || maskImp == null || (hasTrunk && trunkImp == null)) {
             Debug.LogWarning($"[PlantBlobBaker] Missing importer for {plantName}");
-            return;
+            return false;
         }
+
+        if (!force && IsUpToDate(plantName, basePath, maskPath, trunkPath, maskImp)) return false;
 
         // Temporarily flip isReadable for sheets that aren't normally CPU-readable.
         // Restored in finally so the project state goes back to baseline.
@@ -165,28 +168,29 @@ public static class PlantBlobBaker {
         if (!maskRW)              { maskImp.isReadable  = true; maskImp.SaveAndReimport();  }
         if (hasTrunk && !trunkRW) { trunkImp.isReadable = true; trunkImp.SaveAndReimport(); }
 
+        bool bakeOk = false;
         try {
             Texture2D baseTex  = AssetDatabase.LoadAssetAtPath<Texture2D>(basePath);
             Texture2D maskTex  = AssetDatabase.LoadAssetAtPath<Texture2D>(maskPath);
             Texture2D trunkTex = hasTrunk ? AssetDatabase.LoadAssetAtPath<Texture2D>(trunkPath) : null;
             if (baseTex == null || maskTex == null || (hasTrunk && trunkTex == null)) {
                 Debug.LogWarning($"[PlantBlobBaker] Could not load textures for {plantName}");
-                return;
+                return false;
             }
             if (baseTex.width != maskTex.width || baseTex.height != maskTex.height) {
                 Debug.LogError($"[PlantBlobBaker] {plantName}: base {baseTex.width}x{baseTex.height} vs mask {maskTex.width}x{maskTex.height} — must match");
-                return;
+                return false;
             }
             if (hasTrunk && (trunkTex.width != baseTex.width || trunkTex.height != baseTex.height)) {
                 Debug.LogError($"[PlantBlobBaker] {plantName}: trunk {trunkTex.width}x{trunkTex.height} doesn't match base {baseTex.width}x{baseTex.height}");
-                return;
+                return false;
             }
 
             int numCols = baseTex.width  / CellSize;
             int numRows = baseTex.height / CellSize;
             if (numCols <= 0 || numRows <= 0) {
                 Debug.LogWarning($"[PlantBlobBaker] {basePath} smaller than one cell ({CellSize}px) — skipping");
-                return;
+                return false;
             }
             if (numRows > 2) {
                 Debug.LogWarning($"[PlantBlobBaker] {basePath} has {numRows} rows — only rows 0 (b*) and 1 (g*) baked.");
@@ -234,11 +238,43 @@ public static class PlantBlobBaker {
             var meta = new PlantSwayMeta { cells = allCells.ToArray() };
             string metaPath = SysPath.Combine(outDir, MetaFileName).Replace('\\', '/');
             SysFile.WriteAllText(metaPath, JsonUtility.ToJson(meta, prettyPrint: true));
+            bakeOk = true;
         } finally {
+            // Stamp the cache key on the _blobs importer before restoring its
+            // readable flag, so the trailing reimport persists it. When the mask
+            // was already readable (no toggle), add one explicit reimport.
+            if (bakeOk) SetUserDataFlag(maskImp, CacheKey, ComputeCacheKey(basePath, maskPath, trunkPath));
             if (!baseRW)              { baseImp.isReadable  = false; baseImp.SaveAndReimport();  }
             if (!maskRW)              { maskImp.isReadable  = false; maskImp.SaveAndReimport();  }
+            else if (bakeOk)          { maskImp.SaveAndReimport(); }
             if (hasTrunk && !trunkRW) { trunkImp.isReadable = false; trunkImp.SaveAndReimport(); }
         }
+        return bakeOk;
+    }
+
+    // ── up-to-date check ───────────────────────────────────────────────────────
+    // A cached bake is invalidated by any change to the base / `_blobs` / `_trunk`
+    // source mtimes, by CellSize (so a code change re-bakes everything), or by a
+    // missing `sway_meta.json` (user deleted the output). A missing packed sheet
+    // alone is NOT detected — force-rebake (right-click the `_blobs` sheet) to recover.
+    static bool IsUpToDate(string plantName, string basePath, string maskPath, string trunkPath, TextureImporter maskImp) {
+        string stored = GetUserDataValue(maskImp, CacheKey);
+        if (string.IsNullOrEmpty(stored)) return false;
+        if (stored != ComputeCacheKey(basePath, maskPath, trunkPath)) return false;
+        string metaPath = SysPath.Combine(SplitFolder, plantName, MetaFileName).Replace('\\', '/');
+        return SysFile.Exists(metaPath);
+    }
+
+    static string ComputeCacheKey(string basePath, string maskPath, string trunkPath) {
+        var sb = new StringBuilder();
+        sb.Append(SysFile.GetLastWriteTimeUtc(basePath).Ticks);
+        sb.Append('|').Append(SysFile.GetLastWriteTimeUtc(maskPath).Ticks);
+        // Distinguish "trunk present" from "trunk absent" so adding/removing the
+        // companion invalidates the key even if the other two sheets are untouched.
+        if (SysFile.Exists(trunkPath)) sb.Append('|').Append(SysFile.GetLastWriteTimeUtc(trunkPath).Ticks);
+        else                           sb.Append("|notrunk");
+        sb.Append('|').Append(CellSize);
+        return Md5(sb.ToString());
     }
 
     // Bakes one 16x16 cell: appends a static-layer sub-sprite plus one sub-sprite

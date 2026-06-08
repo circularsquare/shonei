@@ -47,12 +47,9 @@ public class Plant : Structure {
     // each other. Not persisted; re-derived on load.
     private float plantPhase;
 
-    // True when this plant has a baked blob-sway set (PlantBlobBaker output).
-    // When enabled, each tile's main SR shows the static-layer sprite and we
-    // spawn one child SR per blob; PlantController.Update walks the per-blob
-    // list each frame and translates them by sin(t + φ) * amplitude * wind,
-    // pixel-snapped. Plants without a baked set stay on the existing shader-
-    // sway path entirely.
+    // True when this plant ships a baked blob-sway set (PlantBlobBaker output) —
+    // static-layer main SR + one child SR per blob, swayed by transform. Gates the
+    // blob path throughout this class; false keeps the plant on the vertex-sway shader.
     private bool hasBlobSway;
 
     // Per-blob runtime state for swaying plants. One entry per child blob SR
@@ -69,10 +66,8 @@ public class Plant : Structure {
     private readonly List<GameObject>  blobGos     = new List<GameObject>();
 
     // ── sway tunables ────────────────────────────────────────────────────────
-    // Max amplitude in pixels — peak displacement at |wind| = 1. Displacement
-    // is continuous (no integer rounding), so motion can sit at any fractional
-    // pixel value; point-filtered sprites resolve sub-pixel transforms into
-    // pixel-snapped rendering automatically.
+    // Max displacement in pixels at |wind| = 1. Continuous (sub-pixel); point
+    // filtering resolves the fractional transform to crisp pixels.
     private const float SwayAmplitudePx = 1f;
     // Radians per second — one cycle every ~4 seconds. Matches the feel of
     // the previous baked-frame loop.
@@ -81,20 +76,6 @@ public class Plant : Structure {
 
     private GameObject     overlayGo;
     private SpriteRenderer overlaySr;
-
-    // Shared unlit material for overlays. SpriteRenderer.AddComponent defaults to lit —
-    // which renders black when the GameObject is on the Unlit layer (no light input).
-    private static Material _unlitOverlayMaterial;
-    private static Material GetUnlitOverlayMaterial() {
-        if (_unlitOverlayMaterial != null) return _unlitOverlayMaterial;
-        Shader shader = Shader.Find("Universal Render Pipeline/2D/Sprite-Unlit-Default");
-        if (shader == null) {
-            Debug.LogError("Plant: URP Sprite-Unlit-Default shader not found — harvest overlay will render black");
-            return null;
-        }
-        _unlitOverlayMaterial = new Material(shader) { name = "HarvestOverlayUnlit" };
-        return _unlitOverlayMaterial;
-    }
 
     // Cached sprite + layer — avoid per-Plant-ctor Resources.Load and LayerMask.NameToLayer.
     // Sentinel bools so "missing" logs once even though the cached value stays null.
@@ -146,12 +127,9 @@ public class Plant : Structure {
         TryEnableBlobSway();
     }
 
-    // If the plant ships a baked blob-sway set (sway_meta + per-blob sprites
-    // from PlantBlobBaker), flip the plant onto the blob-sway path: swap the
-    // anchor SR to the non-sway lit material, register with PlantController
-    // for the per-frame Update loop, and run UpdateSprite once so the static
-    // layer + child blob SRs are wired up immediately. Plants without baked
-    // sway stay on the existing shader-sway path entirely.
+    // Flip the plant onto the blob-sway path if it ships a baked set (sway_meta +
+    // per-blob sprites). The anchor SR moves to the non-sway lit material because
+    // blob plants drive motion via child transforms, not the vertex shader.
     private void TryEnableBlobSway() {
         string n = plantType.name.Replace(" ", "");
         if (PlantSwayMetaCache.Get(n) == null) return;
@@ -179,30 +157,28 @@ public class Plant : Structure {
     private void RefreshSwayMPB() {
         int height = 1 + extensionSrs.Count;
         string plantName = plantType.name.Replace(" ", "");
+        // Blob plants render rigid at the tile level (motion is per-blob transforms),
+        // so gate _PlantSway OFF on these SRs — else NormalsCapture re-applies the
+        // whole-plant bend to their normals (its vert shifts when _PlantSway > 0.5)
+        // and the shading sways as one chunk while the trunk stays put. swayAmount 0
+        // also undoes the one ctor RefreshSwayMPB call that runs pre-TryEnableBlobSway.
+        float swayAmount = hasBlobSway ? 0f : 1f;
         if (sr != null)
-            LightReceiverUtil.SetPlantSwayMPB(sr, tile.y, height, plantPhase, HasSwayMaskCompanion(plantName, sr.sprite));
+            LightReceiverUtil.SetPlantSwayMPB(sr, tile.y, height, plantPhase, HasSwayMaskCompanion(plantName, sr.sprite), swayAmount);
         for (int i = 0; i < extensionSrs.Count; i++) {
             var ex = extensionSrs[i];
             if (ex != null)
-                LightReceiverUtil.SetPlantSwayMPB(ex, tile.y, height, plantPhase, HasSwayMaskCompanion(plantName, ex.sprite));
+                LightReceiverUtil.SetPlantSwayMPB(ex, tile.y, height, plantPhase, HasSwayMaskCompanion(plantName, ex.sprite), swayAmount);
         }
     }
 
-    // Returns true iff a `{texturename}_sway.png` companion exists for the
-    // sprite's source texture. The `_SwayMask` secondary texture itself is
-    // wired by SpriteNormalMapGenerator's editor-time post-pass and bound by
-    // Unity at render time. We can't query secondary textures at runtime in
-    // this Unity version, so we use companion-file presence as a proxy:
-    // user must run Tools → Generate All Normal Maps after authoring
-    // a `_sway.png` so the secondary binding is created (same workflow as
-    // `_n.png` / `_e.png`). Resources.Load caches results internally so the
-    // repeated lookups during growth ticks are cheap.
+    // Whether the sprite's texture has a `{texturename}_sway.png` companion —
+    // used as a runtime proxy for "a `_SwayMask` secondary texture is bound"
+    // (we can't query secondary textures directly in this Unity version).
     //
-    // Currently HARDCODED to false so all plants stay in vertex-mode (Phase
-    // 1/2 height-weighted bend). Mask-mode (Phase 3) shipped but the visual
-    // wasn't right for trees yet — re-enable by removing the early return
-    // and revisiting authoring. Shader/splitter/wiring infrastructure is
-    // all preserved.
+    // Currently HARDCODED to false so all plants stay in vertex-mode (height-
+    // weighted bend). Mask-mode (Phase 3) shipped but didn't look right for
+    // trees — re-enable by deleting the early return. Infrastructure preserved.
     private static bool HasSwayMaskCompanion(string plantName, Sprite s) {
         return false;
         // if (s == null || s.texture == null) return false;
@@ -213,11 +189,13 @@ public class Plant : Structure {
         overlayGo = new GameObject("harvest_overlay");
         overlayGo.transform.SetParent(go.transform, false);
         overlayGo.transform.localPosition = Vector3.zero;
-        // Unlit layer → renders full-bright via UnlitOverlayCamera, skips LightFeature. See SPEC-rendering.md.
+        // Unlit layer → drawn after the lighting composite by UnlitOverlayCamera.
+        // The overlay-ambient material dims it toward night ambient so the harvest
+        // flag stops glaring in the dark (see UnlitOverlayAmbient.shader). See SPEC-rendering.md.
         int unlitLayer = GetUnlitLayer();
         if (unlitLayer >= 0) overlayGo.layer = unlitLayer;
         overlaySr = overlayGo.AddComponent<SpriteRenderer>();
-        Material unlitMat = GetUnlitOverlayMaterial();
+        Material unlitMat = SpriteMaterialUtil.OverlayAmbientMaterial;
         if (unlitMat != null) overlaySr.sharedMaterial = unlitMat;
         overlaySr.sprite = GetHarvestOverlaySprite();
         overlaySr.sortingOrder = sr.sortingOrder + 1;

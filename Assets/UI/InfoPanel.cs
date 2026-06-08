@@ -67,6 +67,14 @@ public class InfoPanel : MonoBehaviour {
             tileHighlight.transform.localScale = Vector3.one;
         }
 
+        // Swap the scene-authored plain unlit material on both selection highlights
+        // for the overlay-ambient one, so they dim toward night ambient instead of
+        // glaring full-bright in the dark (see UnlitOverlayAmbient.shader). Both GOs
+        // are on the Unlit layer, so this only changes their tint, not which camera
+        // draws them.
+        ApplyOverlayAmbientMaterial(tileHighlight);
+        ApplyOverlayAmbientMaterial(animalHighlight);
+
         Deselect();
     }
 
@@ -264,6 +272,16 @@ public class InfoPanel : MonoBehaviour {
 
     // ── Highlights ──
 
+    // Routes an Unlit-layer highlight GO's SpriteRenderer through the
+    // overlay-ambient material so it dims toward night ambient. No-op if the GO
+    // or its SpriteRenderer is missing.
+    private static void ApplyOverlayAmbientMaterial(GameObject highlight) {
+        if (highlight == null) return;
+        var sr = highlight.GetComponent<SpriteRenderer>();
+        var mat = SpriteMaterialUtil.OverlayAmbientMaterial;
+        if (sr != null && mat != null) sr.sharedMaterial = mat;
+    }
+
     private void UpdateHighlights(Animal animal, Tile tile) {
         if (animalHighlight != null)
             animalHighlight.SetActive(animal != null);
@@ -285,22 +303,30 @@ public class InfoPanel : MonoBehaviour {
         HandleDebugKeys();
     }
 
-    // Ctrl+Shift+D on a Structure tab → instant deconstruct (skips the worker
-    // step entirely). Reuses the canonical CreateDeconstructBlueprint →
-    // Deconstruct path so WOM cleanup, tile fall checks, and InfoPanel rebuild
-    // all run as normal. Bypasses material refunds and the storage-empty gate
-    // by design — this is a dev/test shortcut, not a player tool.
+    // Dev/test shortcuts on the active tab — both skip the worker step and reuse the
+    // canonical blueprint paths so WOM cleanup, tile fall checks, and InfoPanel rebuild
+    // all run as normal.
+    //   Ctrl+Shift+D on a Structure tab → instant deconstruct. Bypasses material refunds
+    //     and the storage-empty gate by design (spawns + finishes a deconstruct bp).
+    //   Ctrl+Shift+F on a Blueprint tab → instant finish (build, or tear down + drop the
+    //     deconstruct yield on the floor). Symmetric to the hover-based Ctrl+Shift+F in
+    //     MouseController; InstantFinish does the state dispatch + floor drop.
     void HandleDebugKeys() {
-        if (!Input.GetKeyDown(KeyCode.D)) return;
         bool ctrl  = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
         bool shift = Input.GetKey(KeyCode.LeftShift)   || Input.GetKey(KeyCode.RightShift);
         if (!ctrl || !shift) return;
         if (activeTabIndex < 0 || activeTabIndex >= tabs.Count) return;
         TabEntry tab = tabs[activeTabIndex];
-        if (tab.type != TabType.Structure) return;
-        Structure s = (Structure)tab.data;
-        Debug.Log($"[debug] instant-deconstruct {s.structType.name} at ({s.x}, {s.y})");
-        Blueprint bp = Blueprint.CreateDeconstructBlueprint(s.tile, s);
-        bp?.Deconstruct();
+
+        if (Input.GetKeyDown(KeyCode.D) && tab.type == TabType.Structure) {
+            Structure s = (Structure)tab.data;
+            Debug.Log($"[debug] instant-deconstruct {s.structType.name} at ({s.x}, {s.y})");
+            Blueprint bp = Blueprint.CreateDeconstructBlueprint(s.tile, s);
+            bp?.Deconstruct();
+        } else if (Input.GetKeyDown(KeyCode.F) && tab.type == TabType.Blueprint) {
+            Blueprint bp = (Blueprint)tab.data;
+            Debug.Log($"[debug] instant-finish {bp.structType.name} at ({bp.x}, {bp.y})");
+            bp.InstantFinish();
+        }
     }
 }

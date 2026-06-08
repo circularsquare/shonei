@@ -5,6 +5,12 @@ using TMPro;
 // Reusable tooltip system. Attach to the Canvas (or any persistent parent).
 // Call TooltipSystem.Show(title, body) / Hide() from anywhere.
 // The tooltip panel is built in code — no prefab needed.
+//
+// DRAW ORDER: this GameObject must be the LAST sibling under its UI canvas so it renders
+// on top of every panel. Stacking is by hierarchy order (Unity's native, canonical way) —
+// don't add an override-sorting Canvas, and don't re-front it per-show in code (that would
+// fight any other "always on top" element for the top slot). If something ever needs to
+// sit above the tooltip, order the two explicitly in the hierarchy.
 
 public class TooltipSystem : MonoBehaviour {
     public static TooltipSystem instance { get; protected set; }
@@ -45,7 +51,7 @@ public class TooltipSystem : MonoBehaviour {
         bodyGo.transform.SetParent(panelGo.transform, false);
         bodyText           = bodyGo.AddComponent<TextMeshProUGUI>();
         bodyText.fontSize  = 16;
-        bodyText.color     = new Color(0.20f, 0.20f, 0.20f);
+        bodyText.color     = Color.black;
         bodyText.alignment = TextAlignmentOptions.TopLeft;
         bodyText.raycastTarget = false;
         bodyLe = bodyGo.AddComponent<LayoutElement>();

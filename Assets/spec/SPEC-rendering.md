@@ -6,8 +6,8 @@
 
 | sortingOrder | What |
 |---|---|
-| -15 | Water underlay sprite (`WaterController`, `WaterUnderlay.shader`) — solid 0.9-alpha base on the `Water` layer sitting *behind* `BackgroundTile`. Occludes the parallax sky painting where water exists, while letting the cave wall draw on top so underground pools keep their see-through to dirt. Reuses the same `_SurfaceTex` and `_TintTex` as the front water sprite. No shimmer/sparkles — those come from the front layer only. |
-| -10 | Background tile (`BackgroundTile`) |
+| -15 | Water underlay sprite (`WaterController`, `WaterUnderlay.shader`) — solid 0.9-alpha base on the `Water` layer sitting *behind* the background walls. Occludes the parallax sky painting where water exists, while letting the cave wall draw on top so underground pools keep their see-through to dirt. Reuses the same `_SurfaceTex` and `_TintTex` as the front water sprite. No shimmer/sparkles — those come from the front layer only. |
+| -10 / -11 | Background walls (`BackgroundTileMeshController`) — chunked meshes per bg-type on the `Background` layer; stone at -10, dirt at -11 (lower-id type sorts on top, wins the soft-edge contest). See §Background wall rendering. |
 | -5 | Water overlay sprite (`WaterController`) — sits behind tiles so the bleed-into-solid-neighbour pixels (see Water Rendering §) only show through the tile sprite's transparent bevel gaps. Above the background wall so cave water still reads against dirt. |
 | 0..−4 | Tile bodies (chunked mesh per chunk × type — see §Tile body rendering). Within a chunk, all tiles of one type share one `MeshRenderer` at `sortingOrder = −rank(type)`, ranks 0..k−1 ascending by tile-type id (dirt 0, sand −1, limestone −2, granite −3, slate −4). Lower-id wins the soft-edge contest — its overhang draws on top of higher-id Main extensions. |
 | 1 | Roads (depth-3 structures) |
@@ -162,7 +162,7 @@ Single-tile GameObjects scattered across tiles, split into per-zone families ("f
   - **Underground**: tile is `y ≤ surfaceY[x] − undergroundMinDepth` (default 5).
   - Variants only spawn into their declared `placement` zone; the variant-pick step filters before drawing.
 - **Per-zone density**: `surfaceGrassDensity` (default `0.18`) and `undergroundDensity` (default `0.04`) are independent inspector tunables so the surface meadow and the cave floor decorate at separate rates without sharing a global throttle.
-- **Per-tile decision**: separate non-overlapping bytes of the 32-bit hash drive each independent random property — bits 0-7 = density gate, bits 8-15 = weighted variant pick (filtered to the zone's variants), bits 16-23 = sub-pixel x offset (snapped to 1/16 tile at PPU=16), bit 24 = horizontal mirror. *Don't reuse bits across properties* — overlapping the density-gate slice with the xOffset slice caused a systematic mean −4 px bias on every flower (tiles that passed the gate had biased upper bits in the same byte the xOffset was reading).
+- **Per-tile decision**: separate non-overlapping bytes of the 32-bit hash drive each independent random property — bits 0-7 = density gate, bits 8-15 = weighted variant pick (filtered to the zone's variants), bits 16-23 = sub-pixel x offset (snapped to 1/16 tile at PPU=16), bit 24 = horizontal mirror. The x offset is **cancelled to centered if it would shift toward a solid same-level neighbour** (`IsSolidTile(t.x±1, t.y)`) — that neighbour's grass overhangs the column boundary, and a centered 16×16 sprite never overlaps, so only the shift-into-solid case needs suppressing. *Don't reuse bits across properties* — overlapping the density-gate slice with the xOffset slice caused a systematic mean −4 px bias on every flower (tiles that passed the gate had biased upper bits in the same byte the xOffset was reading).
 - **Structural lifecycle (no grass/snow reactivity)**: `OnWorldReady` subscribes only `cbTileTypeChanged` + `cbStructChanged` (each re-checks this tile AND the tile below). A flower is **removed** only when its host tile is destroyed — mined to non-solid or built over (`RemoveIfInvalid` / `IsValidFlowerHost`, the structural half of `GetZone`). It is NOT added or removed by grass spread / death / snow: that drift is RNG-driven and was the source of cross-reload divergence, so decorations are now a frozen, persisted layer. The scatter/restore itself runs once per world-creation from `SaveSystem.PostLoadInit` (the common hook for initial gen / reset / load, alongside `AnimalController.Load`), and the layer is cleared via `FlowerController.ResetState` in `ResetSystemState`. Consequence: a fresh world is decorated from worldgen-seeded grass and does NOT gain more flowers as grass spreads later.
 - **Wind sway**: decorations share `Custom/PlantSprite` with Plant.cs. `LightReceiverUtil.SetPlantSwayMPB(sr, baseY, height, phase, useMask, swayAmount, roleIsHead, headCenterY, maskTexture)` writes the per-renderer sway MPB. `swayAmount=0` clears the `_PlantSway` gate so the vertex stage skips the math entirely; `swayAmount=1` is full sway (the plant default); intermediate values linearly attenuate amplitude (multiplied into `SwayAmplitude()` inside `Sway.hlsl`). `WindShaderController`'s global `_Wind` still drives motion direction.
 - **Rigid-head split** (flowers only): when a flower variant has a detectable head, FlowerController spawns it as TWO child SRs sharing one sprite and an auto-generated `_SwayMask` texture (`FlowerType.LoadHeadMask`, runtime). One SR is a "stem" (`_UseMask=1`, `_RoleIsHead=0`) — the fragment stage discards mask>0.5 pixels and the vertex stage keeps the corner-weighted bend (linearly interpolated across the quad). The other is a "head" (`_RoleIsHead=1`) — vertex stage shifts every vertex by `amplitude × (_HeadCenterY / _PlantHeight)` (a **linear** weight, not the `pow(t, 1.5)` cantilever the stem corners use) so the head's rigid shift matches the stem-top's *visible* displacement at the joint; using true cantilever here makes the head trail behind the stem-top instead of sitting on it. Fragment stage discards mask<0.5 pixels. Head sorts one above stem so the head wins where the bent stem-top overlaps the translated head.
@@ -182,6 +182,41 @@ Snow is rendered through the **chunked tile renderer** as a separate layer at so
 - **Stacks, doesn't replace**: critical departure from grass. The body's `bodyCardinals` is **not** augmented with the snow's U bit, so the body keeps drawing its real top-edge bevel piece. The snow quad stacks on top at sortingOrder 2 — so the artist authors snow.png with transparency / vertical positioning that lets the body's bevel still read through (e.g. drawing snow in the upper region of the U-edge slot, or with semi-transparent flake pixels). This is a deliberate visual choice: unlike grass-on-dirt where the dirt edge has no business showing through, snow-on-anything wants to feel deposited on top of the tile, not built into it.
 - **Normal map**: matches the body's normal data — the snow chunk's `_NormalArr` is the body type's normal-map array, addressed by the same `mask8` keying as the body. Edge bevels don't pick up the snow sprite's silhouette gradients.
 - **Coexistence with grass**: accumulation **snapshots** the live `overlayMask` and `overlayState` into `tile.preSnowOverlayMask`/`State` and clears the live mask so snow renders cleanly on top. `OverlayGrowthSystem` skips snowed tiles, so the snapshot doesn't drift while snow sits there. On melt, the snapshot is restored verbatim — same grass returns. (Earlier the system killed the grass outright; preservation feels closer to real-world snow insulation and saves the player from losing established grass cover every winter.)
+
+### Background wall rendering
+
+The back wall behind the foreground tiles renders through a **chunked-mesh autotiler** —
+[BackgroundTileMeshController.cs](../Controller/BackgroundTileMeshController.cs), a trimmed
+parallel of `TileMeshController` (§Tile body rendering). It replaced an earlier full-screen
+mask sprite + shader that `step()`-picked between flat wall textures and so showed a hard
+straight-line cutoff between wall types and against sky.
+
+- **Per-tile data**: `Tile.backgroundType` (enum `None / Stone / Dirt`), fixed at worldgen
+  (`WorldGen.SetBackgrounds`), effectively immutable after mining. `cbBackgroundChanged` fires
+  only during gen/load, so the dirty+rebuild machinery is near-idle at runtime.
+- **Autotiling**: identical to the foreground body bake, with "solid" → "has a bg wall". Per
+  side, a background cMask + lower-id-wins contest: off-map = buried (wall continues), sky
+  (`None`) = exposed (draws the atlas air-edge piece), same type = buried (seamless Main),
+  different type = buried but the lower-id type **wins** (draws its air-edge art overhanging
+  the other, resolved by sortingOrder). `bgCardinals = bgSolid & ~bgWin`, trimMask always 0.
+  This gives soft edges both against sky AND at dirt↔stone seams for free — the old `*top`
+  textures are subsumed by the atlas's Top pieces.
+- **Atlases**: one 32×32 9-piece atlas per bg type (`Sprites/Tiles/Sheets/stoneback.png`,
+  `dirtback.png`), baked into `{name}_body` Texture2DArrays by the **same** `TileSpriteCache` /
+  `TileAtlasBaker` pipeline (the cache is name-keyed, not coupled to `Db.tileTypes`). Background
+  names are enumerated explicitly in `TileAtlasBaker.BackgroundAtlasNames` + the
+  `BackgroundTileMeshController.Registry`. Body-only — the `_normal` asset is produced but never
+  bound (v1 background is flat-lit).
+- **Rendering**: meshes on the `Background` Unity layer, Default sorting layer, order -10 (stone)
+  / -11 (dirt). The **visible** pass reuses the foreground `Custom/ChunkedTileSprite` material
+  (it samples only `_MainTexArr`). The **normals capture** uses a dedicated flat override,
+  `Hidden/ChunkedBackgroundNormalsCapture`, which writes a flat camera-facing normal + alpha 0.5
+  (lit-only) — matching what the retired sprite captured. LightFeature draws the `Background`
+  layer with this override as the backmost tier (§NormalsCapturePass), and excludes
+  `backgroundLayer` from the generic lit/shadow tier masks so it isn't double-drawn.
+- **v1 scope**: flat-lit (no per-pixel relief). Normal-mapped bevels for the walls are the
+  obvious upgrade — bake a normal array per bg atlas (the bake already emits one) and bind it +
+  swap the override for one that samples it.
 
 ### Blueprint visuals
 
@@ -280,6 +315,8 @@ SpriteRenderer sr = SpriteMaterialUtil.AddSpriteRenderer(go);
 
 (in [LightReceiver.cs](../Lighting/LightReceiver.cs)) — assigns `Resources/Materials/Sprite.mat` (the dual-pass `Custom/Sprite` shader). When adding a new `AddComponent<SpriteRenderer>()` site for a lit sprite, use this helper. **Exception**: explicitly *unlit* overlays (blueprint frames, plant harvest overlays, tile highlights) keep their explicit `Sprite-Unlit-Default` assignment — they should NOT participate in NormalsCapture.
 
+> **Build-stripping trap (Shader.Find vs Resources .mat).** A custom shader reached only via `Shader.Find("Custom/…")` at runtime works in the editor (all shaders loaded) but is **stripped from builds** — the build pipeline only includes shaders reachable from an included `Material` asset (or *Always Included Shaders*). The symptom is a build-only "shader not found" LogError. Back every runtime material with a `.mat` in `Resources/` and load it via `Resources.Load<Material>(...)`, like `SpriteMaterialUtil`'s `LitSpriteMaterial` / `PlantSpriteMaterial` / `OverlayAmbientMaterial`. Remaining raw `Shader.Find` site to watch: [Blueprint.cs](../Model/Structure/Blueprint.cs) uses it for a built-in URP shader (`Universal Render Pipeline/2D/Sprite-Unlit-Default`) — usually included via the URP asset, but if blueprint frames ever render black *only in builds*, this is why.
+
 **3. Camera stacking.** Universal Renderer requires explicit camera stacking — multiple Base cameras with depth-based "Don't Clear" stacking (which the 2D Renderer tolerated) does not work; each Base camera does its own FinalBlit and the latest one overwrites. See the stack layout below.
 
 **4. Transparency sort axis.** `WorldController.Start` sets `GraphicsSettings.transparencySortMode = CustomAxis` with axis `(0, 1, 0)`. The 2D Renderer set this on its own asset; the Universal Renderer asset has no equivalent field, and URP hides the project-level Graphics setting from the Inspector when an SRP is active — so we set it from code at startup. Almost every sprite has an explicit `sortingOrder` so this is mostly belt-and-braces, but it prevents undefined draw order between sprites sharing a sortingOrder.
@@ -329,9 +366,12 @@ then runs that bucket's tier draws with `FilteringSettings.renderingLayerMask
 `SortBucketUtil.SetBucketFor(sr)`. The override shaders read `_SortBucket`
 from the global — no per-sprite MPB.
 
+**Single draw (before Loop A):**
+
+1. Background walls (`backgroundLayer`) — `Hidden/ChunkedBackgroundNormalsCapture` override, flat normal + alpha = 0.5 (lit-only). The chunked background walls (§Background wall rendering); drawn earliest so every other tier overwrites it. Like the tile-chunk draw it carries its own per-chunk `_SortBucket` MPB, so it sits outside the bucket loops. `backgroundLayer` is excluded from the generic lit/shadow tier masks so it's only drawn here.
+
 **Loop A (per bucket)** — tiers drawn before the chunked tile draw:
 
-1. Background (`backgroundLayer`) — `NormalsCaptureBackground` override, alpha = 0.5 (lit-only). Drawn earliest so tiles/sprites overwrite.
 2. `directionalOnlyLayers` — alpha = 0.3.
 3. `litLayers & ~shadowCasterLayers & ~directionalOnlyLayers` — alpha = 0.5.
 
@@ -344,7 +384,7 @@ from the global — no per-sprite MPB.
 5. `litLayers & shadowCasterLayers & ~directionalOnlyLayers & ~tileChunkLayer` — alpha = `lerp(0.80, 1.0, _NormalMap.a)` (standard sprite-renderer shadow casters, drawn last so animals/structures overwrite tile pixels where they overlap).
 6. `waterLayer` — `NormalsCaptureWater` override, alpha = 0.5 (lit-only).
 
-**Why two loops instead of one:** the original single-loop refactor put the chunked draw *outside* the loop (before all tiers), which let bucket-0 background overwrite chunked-tile pixels. That turned their alpha from `0.80–1.0` (shadow-caster, gets underground darkening) to `0.5` (lit-only, skips darkening). The visible symptom was uppermost underground tiles with background sprite behind them showing as unexpectedly-lit. Two-loop preserves the original tier order while keeping the bucket iteration.
+**Why two loops instead of one:** the original single-loop refactor put the chunked draw *outside* the loop (before all tiers), which let bucket-0 background overwrite chunked-tile pixels. That turned their alpha from `0.80–1.0` (shadow-caster, gets underground darkening) to `0.5` (lit-only, skips darkening). The visible symptom was uppermost underground tiles with background wall behind them showing as unexpectedly-lit. Two-loop preserves the original tier order while keeping the bucket iteration.
 
 **Sort-aware lighting** (B-channel branching in `LightCircle.shader`): per-pixel `sortDelta = receiverBucket − lightBucket` decides. **Both `receiverBucket` (in the RT) and `lightBucket` (from `LightSource.sortBucket`) MUST use the same `SortBucketUtil` scale** — a scale mismatch flips the sign of `sortDelta` and lights everything backwards. Recover-from-this-mistake checklist: confirm `LightSource.sortBucket` returns `SortBucketUtil.BucketToNormalized(GetBucket(_effectiveSort))` and `TileMeshController` writes the same to its chunked MPB.
 - **In-front** (`sortDelta > 0`): `effectiveHeight = −lightHeight`, zero ambient floor — forward-facing interior normals go dark (z-dot with toLight flips sign) while edge normals pointing sideways toward the light's XY still get lit. Clean silhouette block without killing rim lighting.
@@ -380,6 +420,8 @@ Three cameras render as a URP **Camera Stack**: SkyCamera is the Base, Main and 
 | `UnlitOverlayCamera` | **Overlay** | n/a | Unlit only | Renders after composite — sprites on the **Unlit** layer appear at full brightness, unaffected by lighting. Has `MatchCameraZoom` component to sync `assetsPPU` from Main Camera. LightFeature pipeline is skipped for this camera entirely. |
 
 **Unlit layer pattern**: any sprite that should always appear at full brightness (tile highlights, selection overlays, debug markers) goes on the `Unlit` layer. Keep it excluded from `litLayers`, `shadowCasterLayers`, and `directionalOnlyLayers` in the LightFeature Inspector. **Also assign `Sprite-Unlit-Default`** as the material — the project's default lit material (`Custom/Sprite`, see URP setup above) participates in NormalsCapture and is wrong for the Unlit layer. For runtime-created overlays, either instantiate a prefab that carries the material (preferred — see `Plant.CreateHarvestOverlay` / `BuildIndicator`) or cache a material via `Shader.Find("Universal Render Pipeline/2D/Sprite-Unlit-Default")`. Do NOT route Unlit-layer sprites through `SpriteMaterialUtil.AddSpriteRenderer` — that helper assigns the lit dual-pass material.
+
+**Half-ambient overlays** (`Custom/UnlitOverlayAmbient` via `SpriteMaterialUtil.OverlayAmbientMaterial`): selection / harvest highlights that should *dim toward night ambient* rather than glaring full-bright in the dark use this material instead of `Sprite-Unlit-Default`. It's a plain unlit sprite that multiplies RGB by a global `_OverlayAmbient` — broadcast each frame by `SunController` as `lerp(white, GetAmbientColor(), overlayAmbientStrength)` (default 0.5 = half strength; at noon ambient ≈ white so it's a no-op). The global is seeded white in `SpriteMaterialUtil.ResetStatics` so overlays never flash black before `SunController` runs. Stays on the Unlit layer (no NormalsCapture — single `UniversalForward` pass, no `Universal2D`), so the tint is the *only* lighting. Current users: `Plant` harvest overlay, `InfoPanel` tile + animal highlights, `InventoryController` storage-selection highlights. Sprites that must stay truly full-bright at night (blueprint frames, debug markers) keep `Sprite-Unlit-Default`.
 
 **Sky camera ambient**: `LightPass` detects `SkyCamera` and clears the light RT to **full ambient** (skipping the `LightAmbientFill` blit). This prevents sky light spatial falloff from affecting Sky-layer sprites. Sky-layer sprites still receive sun via the directional light pass.
 
@@ -799,7 +841,7 @@ Plants animate against wind via one of two paths:
    - `{plantName}_blobs.png` — same cell grid as base sheet. Each unique colour = one blob region. Pure black or white = "static blob" (covers trunk but never sways — useful for anchor leaves at the trunk).
    - `{plantName}_trunk.png` (optional) — persistent trunk silhouette visible *through* the foliage. Bake reads it as the fallback layer behind blob pixels, so when a leaf shifts off its rest position, the trunk shows through the gap instead of sky.
 
-   **Bake** (`Tools → Split Plant Blob Sheets + Normals`):
+   **Bake** (runs as part of `Tools → Split Plant Sheets + Normals`, or right-click a `_blobs.png` → Split Plant Blob Sheet):
    - Reads base + `_blobs` + optional `_trunk` sheets, walks the same cell grid as the splitter.
    - Packs every cell's static + per-blob layers into **one Multiple-mode sprite sheet per plant**, `{plantName}_blobs_baked.png`, sliced into named 16×16 sub-sprites: `{cellName}_static` (trunk + non-foliage) and `{cellName}_b{i}` (one slice per blob colour, transparent outside). All slices use Center pivot + PPU=16 so a child blob SR at `localPosition = 0` lands exactly on its rest cell. One sheet + one importer config per plant (vs the old ~100+ loose 16×16 PNGs) keeps the asset count and git churn tiny.
    - `PlantBlobSpriteCache` (`PlantSwayData.cs`) loads the sheet once per plant via `Resources.LoadAll<Sprite>` into a name→Sprite dict; `Plant.cs` looks slices up by name. Splitter outputs (`g{stage}`/`b{stage}`/`_sway`) stay as loose files and load via the old `Resources.Load` path.

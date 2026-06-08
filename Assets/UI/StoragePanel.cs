@@ -183,6 +183,16 @@ public class StoragePanel : MonoBehaviour {
         _allowTreeBuilt = true;
     }
 
+    // Build the allow tree ahead of the first storage click so the player doesn't hit a
+    // one-frame freeze (~600–800 ItemDisplay instantiations, one per Db.items entry) the
+    // first time they open a storage. Idempotent — BuildAllowTreeOnce's _allowTreeBuilt
+    // guard makes repeat calls free. Called from SaveSystem.PostLoadInit once Db and the
+    // panel's serialized refs exist; safe while the panel GameObject is inactive (rows are
+    // instantiated inactive regardless).
+    public void PreloadAllowTree() {
+        BuildAllowTreeOnce();
+    }
+
     // Per-Show rebind: walks every cached row and updates targetInventory, visibility,
     // and allow-toggle sprite. Also serves as the per-tick refresh from UpdateDisplay
     // (picks up newly-discovered items and any external allow/disallow changes).

@@ -449,16 +449,12 @@ public class Animal : MonoBehaviour{
     // helper (FindFood / ChooseCraftTask / TryPickLeisure / …) — urgency only orders the attempts,
     // it does not flatten those subsystems' internal scoring.
     //
-    // Drop stays a hard pre-step (policy: idle mice keep main inv empty, food/tools in equip slots).
-    // It has its own cooldown fallback so a boxed-in mouse doesn't loop forever.
+    // Dropping carried main-inv items (policy: idle mice keep main inv empty, food/tools in equip
+    // slots) is itself a scored category (DropUrgency), not a hard pre-step — so a starving or
+    // exhausted mouse eats / sleeps before crawling off to offload. It still carries its own cooldown
+    // fallback (DropObjective sets it on a boxed-in give-up) so it doesn't loop forever.
     public void ChooseTask() {
         if (task != null){ return; }
-
-        // Hard pre-step: drop carried items. Not urgency-ranked — see method comment.
-        if (!inv.IsEmpty() && World.instance.timer >= dropCooldownUntil) {
-            task = new DropTask(this);
-            if (task.Start()) return;
-        }
 
         // Score every category, jittering each score (see Jitter). Helpers that no-op when nothing
         // applies (full slot, no orders) get urgency 0 so they're never attempted. Idle is the floor.
@@ -474,6 +470,7 @@ public class Animal : MonoBehaviour{
         float clothingU = clothingSlotInv.itemStacks[0].item == null ? UrgencyConfig.EquipUrgency : 0f;
         candidates.Add((Jitter(equipU), FindEquipment));
         candidates.Add((Jitter(clothingU), FindClothing));
+        candidates.Add((Jitter(DropUrgency()), TryStartDrop));
 
         var wom = WorkOrderManager.instance;
         if (wom != null) {
@@ -533,6 +530,31 @@ public class Animal : MonoBehaviour{
     private bool TryStartSleep() {
         task = new EepTask(this);
         return task.Start();
+    }
+
+    // 0..1 urgency to dump stale main-inventory carry-over (idle mice keep main inv empty;
+    // food/tools live in equip slots). Scales with how many of the main inv's stacks are
+    // occupied — a single stack pulls at DropFloor, a full pack at DropCeil — so the more a
+    // mouse is carrying, the harder it wants to offload. The band sits below the hunger/sleep
+    // peaks so a starving/exhausted mouse acts on those first (fixing the "crawl off to drop
+    // while starving" behaviour), and above the work tiers so a laden idle mouse still drops
+    // promptly. Returns 0 when the inv is empty or the boxed-in cooldown hasn't elapsed, so the
+    // category sits out of the ranking on those ticks.
+    private float DropUrgency() {
+        if (inv.IsEmpty() || World.instance.timer < dropCooldownUntil) return 0f;
+        int occupied = 0;
+        foreach (ItemStack s in inv.itemStacks)
+            if (s != null && s.quantity > 0) occupied++;
+        float fullness = (float)occupied / inv.itemStacks.Length;
+        return UrgencyConfig.DropFloor
+             + (UrgencyConfig.DropCeil - UrgencyConfig.DropFloor) * fullness;
+    }
+
+    private bool TryStartDrop() {
+        task = new DropTask(this);
+        if (task.Start()) return true;
+        task = null;
+        return false;
     }
 
     // Scores all of this animal's recipes globally, then finds the nearest building for the

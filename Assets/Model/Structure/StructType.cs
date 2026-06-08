@@ -190,6 +190,12 @@ public class StructType {
     // (b) StructController.Construct() mines the tile to empty after placement (alongside the
     // existing `requiredTileName` mining trigger). Used by mineshaft.
     public bool requiresSolidTilePlacement;
+    // Cached: true if `tileRequirements` declares `mustBeStandable` on any tile. Signals that the
+    // author controls support explicitly (which columns must rest on something solid) — so the
+    // generic bottom-row support check in StructPlacement / Blueprint.IsSuspended is skipped and
+    // these reqs alone decide it. Used by the pump (only the building tile needs support; the
+    // spout tile overhangs water). Without an explicit req, buildings default to all-columns-supported.
+    public bool hasStandableRequirement;
     // Skip the `tile.type = empty` swap in StructController.Construct(). The footprint
     // tiles keep their original type — grass continues, snow accumulates, water still
     // blocked, tile-graph solidity unchanged — and the structure renders in front of
@@ -384,7 +390,8 @@ public class StructType {
         if (tileRequirements != null) {
             for (int i = 0; i < tileRequirements.Length; i++) {
                 TileRequirement r = tileRequirements[i];
-                if (r.dx == 0 && r.dy == 0 && r.mustBeSolidTile) { requiresSolidTilePlacement = true; break; }
+                if (r.dx == 0 && r.dy == 0 && r.mustBeSolidTile) requiresSolidTilePlacement = true;
+                if (r.mustBeStandable) hasStandableRequirement = true;
             }
         }
     }

@@ -91,26 +91,26 @@ public class SaveSystem : MonoBehaviour {
     }
 
     // ── Autosave ─────────────────────────────────────────────────────────────
-    // Periodically writes the world to a dedicated "autosave" slot (never clobbers a
-    // manual save). Save() is synchronous and stalls the frame on large worlds, so the
-    // routine shows savingOverlay first and yields a frame to let it paint before the
-    // freeze. Gated on SettingsManager.autosaveEnabled.
-    const string AutosaveSlot = "autosave";
-    const float  AutosaveIntervalSeconds = 300f; // 5 minutes of real time
+    // Periodically writes the world to a rotating set of "autosave" slots (never clobbers a
+    // manual save). Interval is SettingsManager.autosaveIntervalMinutes (0 = off), re-read
+    // live. Save() is synchronous and stalls the frame on large worlds, so the routine shows
+    // savingOverlay first and yields a frame to let it paint before the freeze.
+    const int    MaxAutosaves   = 3;          // keep at most this many; oldest is deleted first
+    const string AutosavePrefix = "autosave"; // reserved slot-name prefix for rotation
     [SerializeField] GameObject savingOverlay; // centered "saving..." box (scene object), shown during a save
     float autosaveTimer;
     bool  autosaving;
 
     void Update() {
         // No world yet (main menu / mid-reset) or feature off → hold the clock at zero.
-        if (World.instance == null || SettingsManager.instance == null
-                || !SettingsManager.instance.autosaveEnabled) {
+        var sm = SettingsManager.instance;
+        if (World.instance == null || sm == null || !sm.autosaveEnabled) {
             autosaveTimer = 0f;
             return;
         }
         if (autosaving) return;
         autosaveTimer += Time.unscaledDeltaTime; // real time — fires even while the game is paused
-        if (autosaveTimer >= AutosaveIntervalSeconds) {
+        if (autosaveTimer >= sm.autosaveIntervalMinutes * 60f) {
             autosaveTimer = 0f;
             StartCoroutine(AutosaveRoutine());
         }
@@ -122,9 +122,23 @@ public class SaveSystem : MonoBehaviour {
         // Let the overlay render before Save() blocks the main thread for the frame.
         yield return null;
         yield return new WaitForEndOfFrame();
-        Save(AutosaveSlot, setCurrent: false);
+        WriteRotatingAutosave();
         if (savingOverlay != null) savingOverlay.SetActive(false);
         autosaving = false;
+    }
+
+    // Writes a fresh timestamped autosave, first deleting the oldest while ≥ MaxAutosaves
+    // exist so we keep at most MaxAutosaves. Only ever touches slots under AutosavePrefix —
+    // that prefix is reserved for autosaves, so manual saves must not use it.
+    void WriteRotatingAutosave() {
+        // GetSaveSlots is newest-first, so autosaves sort newest→oldest; the oldest is last.
+        var autos = GetSaveSlots().Where(s => s.StartsWith(AutosavePrefix)).ToList();
+        while (autos.Count >= MaxAutosaves) {
+            DeleteSlot(autos[autos.Count - 1]);
+            autos.RemoveAt(autos.Count - 1);
+        }
+        string name = AutosavePrefix + " " + System.DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss");
+        Save(name, setCurrent: false);
     }
 
     // ── Save ─────────────────────────────────────────────────────────────────
@@ -742,7 +756,6 @@ public class SaveSystem : MonoBehaviour {
         // Derived spatial caches that depend on final tile + structure geometry.
         // Order matches WorldController.GenerateDefault for symmetry between paths.
         SkyExposure.InitializeWorld(world);
-        BackgroundTile.InitializeWorld(world);
         // Pair up loaded rope-bridge posts and materialise each bridge's waypoint
         // chain + visuals BEFORE graph.Initialize so the resulting edges are
         // present in the first RebuildComponents sweep — otherwise mice can't
@@ -1209,6 +1222,10 @@ public class SaveSystem : MonoBehaviour {
         // and load — exactly like AnimalController.Load above. ResetSystemState cleared any
         // stale stash, so the reset/gen paths see pendingRestore == null and scatter.
         FlowerController.instance?.OnWorldReady(World.instance, Rng.worldSeed);
+        // Warm the storage allow-tree now (off the loading screen) instead of on the player's
+        // first storage click, which would otherwise instantiate one ItemDisplay per item and
+        // hitch a frame. Idempotent across world-creation paths via the panel's build guard.
+        StoragePanel.instance?.PreloadAllowTree();
     }
 
     public void LoadDefault() {
@@ -1265,6 +1282,10 @@ public class SaveSystem : MonoBehaviour {
             _animalCountCache.Remove(oldName);
             _animalCountCache[newName] = cached;
         }
+        // Renaming the currently-loaded slot follows the rename, so a later save targets
+        // the same slot instead of triggering a spurious "overwrite?" confirmation (the
+        // slot's old auto-generated name no longer matches currentSlot otherwise).
+        if (currentSlot == oldName) currentSlot = newName;
         Debug.Log("Renamed slot \"" + oldName + "\" → \"" + newName + "\"");
         return true;
     }

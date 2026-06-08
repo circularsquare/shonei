@@ -280,8 +280,8 @@ The build bar (`BuildCategoryBar` in Main.unity) holds both category buttons and
 |------|---------|----------|
 | `Select` | Default; Escape returns here | LMB = click/drag-select inventories; shows InfoPanel |
 | `Build` | Category → structure button | LMB = place blueprint of current `BuildPanel.structType` |
-| `Remove` | "Remove" button | LMB = cancel blueprint / mark structure for deconstruct |
-| `Harvest` | "Harvest" button | LMB click or drag calls `Plant.SetHarvestFlagged(true)` on all plants under the cursor/rect, which registers a harvest WOM order for each. Worldgen plants start unflagged; plants finished from a player-placed blueprint come out flagged automatically (via `Plant.OnPlaced`). Paint-only in V1 — unflagging (which would call `SetHarvestFlagged(false)` → `WOM.UnregisterHarvest`) requires a dedicated tool (follow-up). |
+| `Remove` | "Remove" button | LMB undoes one thing per click, in priority order (`BuildPanel.Remove`): cancel a blueprint here (construct or deconstruct) → clear a plant's harvest flag → else mark a structure for deconstruct (background-first via `CreateDeconstructBlueprint`). |
+| `Harvest` | "Harvest" button | LMB click or drag calls `Plant.SetHarvestFlagged(true)` on all plants under the cursor/rect, which registers a harvest WOM order for each. Worldgen plants start unflagged; plants finished from a player-placed blueprint come out flagged automatically (via `Plant.OnPlaced`). Paint-only — to *un*flag, use the Remove tool (clears the flag before it would deconstruct the plant). |
 
 Harvest and Select both use the shared `_dragStartScreenPos` / `_isDragging` / `DragThresholdPixels` drag-rect machinery (tracked via a single nullable `_dragStartedInMode` so a mode change mid-drag can't commit into the wrong handler). Screen→world rect math is shared via `GetDragWorldBounds`. The visual indicator for a flagged plant is a child GameObject under `Plant.go` with its own `SpriteRenderer` (sprite at `Resources/Sprites/Misc/harvestselect`), toggled visible by `Plant.SetHarvestFlagged`.
 
@@ -367,10 +367,73 @@ The block falls through (no `return`); `MouseController` still processes its own
 - Build mode with `structType == null` ⇒ the click has no tool meaning. `SetModeSelect()`, then seed `_dragStartScreenPos` / `_dragStartedInMode = Select` so the same mouse-down can drag-select on release without lifting first.
 - Build mode with `structType` set, `Harvest`, and `Remove` modes are unchanged — clicks always run their tool action; if a panel is open it also closes via the `UI.Update` block above.
 
+## UI scaling & text crispness
+
+The whole UI scales via one knob and stays crisp at any scale. Four pieces work together:
+
+**UI scale slider** — `SettingsManager.uiScale` (1.0–2.0, default 1.0) is applied as the root
+`CanvasScaler.scaleFactor` (Constant Pixel Size mode) by `UI.ApplyUiScale` on
+`SettingsManager.OnChanged`. One knob scales every widget/font/icon — no per-element work,
+because everything is authored in canvas reference units. The slider snaps to `UiScaleStep`
+(0.05 = 2.5%, so 75% = 1.5×) and applies on **release**, not during drag (`SliderReleaseRelay`
+on the slider GO): rescaling the canvas mid-drag would shove the handle out from under the cursor.
+
+**SDF font** — UI text uses `m5x7 SDF`, not the bitmap `m5x7`, so it stays sharp at non-integer
+scales (a bitmap atlas only renders crisply at integer multiples). `FontConfig.asset` is the
+source of truth (font + size + `primaryTextColor`); its "Apply to All" tool (`FontConfigEditor`)
+propagates to every TMP in scenes + prefabs, **including** TMP_InputField's `m_GlobalFontAsset`.
+The font's embedded material has `_Sharpness = 1.0` (hardens SDF edges — the single biggest
+crispness win), and `faceInfo.lineHeight = 105.875` so line advance is exactly 14px at size 16
+(integer). NB: a font reimport would reset lineHeight/sharpness.
+
+**Pixel snap** (`UITextPixelSnap.cs`) — SDF renders each sub-pixel baseline phase with different
+blur, so identical labels at different fractional Y looked inconsistent ("messy"). This snaps each
+text **line's** baseline to the nearest whole device pixel by shifting that line's vertices
+uniformly — per-line (not per-vertex, so glyph shapes stay intact; per-line because line advance
+isn't a whole number of device px at non-integer scale). Event-driven on TMP's `TEXT_CHANGED`
+(static text costs nothing), overlay-canvas only (world text untouched), self-bootstraps via
+`RuntimeInitializeOnLoadMethod`. **`Canvas.pixelPerfect` does NOT work here** — it doesn't snap
+TMP vertices (verified); don't reach for it.
+
+**Icon filtering** — pixel-art icons can't go SDF, so at non-integer scale Point filtering makes
+them uneven. The `ItemIcons` atlas is **Bilinear** (smooth at any scale; UI-only). Sliced
+frames/buttons (`UIChrome` atlas) stay **Point** — Bilinear bleeds across 9-slice seams. Shared
+world atlases (Buildings, Plants…) stay Point: the world renders at integer scale where
+Bilinear==Point, and flipping them risks sub-pixel blur there.
+
+## In-game font switcher
+
+Players pick a UI font in Options. `UIFontOptions.asset` (Resources) is the registry — entries
+of `{name, TMP_FontAsset, fontSize}` (each font needs its own size to match apparent size; e.g.
+m5x7@16 vs Figtree@11). `SettingsManager.uiFontIndex` (PlayerPrefs) is the selection; the
+OptionsPanel `fontDropdown` drives it; `UITextPixelSnap` applies it at runtime by stamping the
+chosen font/size onto every overlay label (existing + dynamically-spawned, via the TEXT_CHANGED
+hook), plus a strong full refresh (`RefreshAll`: re-font + `ForceMeshUpdate` + layout rebuild) at
+startup and on any swap (debounced).
+
+**Hard-won lessons (don't relearn these):**
+- **Two TMP fonts coexisting in one canvas garbles** (mixed atlases) — the runtime swap MUST reach
+  100% of labels or the partial mix corrupts. This was the root of a long garble chase.
+- **Selectable fonts must be Static SDF assets, not Dynamic** — a Dynamic atlas is unstable for
+  runtime-cloned text and renders garbage. Bake via `TMP_FontAsset.TryAddCharacters(asciiSet)` +
+  set `atlasPopulationMode = Static` (keep the asset GUID so refs survive).
+- Startup text can render with stale/invisible meshes; the `RefreshAll` passes fix it.
+
+**Known issue + planned fix:** opening a panel in a *non-default* font mode shows a one-frame
+flicker (rows are born in the prefab-baked font, then swapped). The clean fix — deferred to a
+follow-up — is to make the UI **font-agnostic**: strip explicit fonts off all TMP (use
+`TMP_Settings.defaultFontAsset`) and have the choice set the default, so content is *born* in the
+right font. That removes the flicker, the mixing-garble class, AND most of the swap machinery
+(per-regen swap, debounced refresh). See the plan in `plans/`.
+
 ## Key Files
 
 | File | Role |
 |------|------|
+| `Assets/UI/UITextPixelSnap.cs` | Runtime UI text manager: applies the player font choice (font swap + strong refresh) AND per-line baseline pixel-snap (self-bootstraps). Name is stale — also owns the font swap. |
+| `Assets/UI/UIFontOptions.cs` | Player-selectable font registry (`Assets/Resources/UIFontOptions.asset`) — `{name, font, size}` entries |
+| `Assets/UI/FontConfig.cs` + `Assets/Editor/FontConfigEditor.cs` | Editor-baked font/size/primary-color source of truth + "Apply to All" propagation + `pixelSnap` toggle |
+| `Assets/Components/SliderReleaseRelay.cs` | Fires once on slider pointer-up (UI-scale applies on release) |
 | `Assets/Controller/InventoryController.cs` | Global panel, selection routing, discovery, targets |
 | `Assets/Components/CollapsibleHeader.cs` | Reusable header row that collapses/expands later siblings; used by inventory + jobs panels |
 | `Assets/UI/ItemDisplay.cs` | Row prefab component (tree collapse, targets, allow toggle) |

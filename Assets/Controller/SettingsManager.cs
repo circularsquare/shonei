@@ -27,7 +27,9 @@ public class SettingsManager : MonoBehaviour {
     const string K_Vsync      = "settings.vsync";       // 0 / 1
     const string K_Lighting   = "settings.lighting";    // 0 / 1
     const string K_CloudLight = "settings.cloudLighting"; // 0 / 1
-    const string K_Autosave   = "settings.autosave";    // 0 / 1
+    const string K_AutosaveMins = "settings.autosaveMinutes"; // 0 = off
+    const string K_UiScale    = "settings.uiScale";     // CanvasScaler factor, 1–2
+    const string K_UiFontIndex = "settings.uiFontIndex"; // index into UIFontOptions
 
     // ── Values ───────────────────────────────────────────────────────────────
     public float masterVolume   { get; private set; } = 1f;
@@ -41,8 +43,22 @@ public class SettingsManager : MonoBehaviour {
     // ~80% of the cloud blob-loop work; useful for measuring the cost of the
     // cloud lighting pass on weaker GPUs.
     public bool  cloudLightingEnabled{ get; private set; } = true;
-    // When on, SaveSystem writes the world to the "autosave" slot every few minutes.
-    public bool  autosaveEnabled { get; private set; } = true;
+    // Autosave interval in minutes; 0 = off. SaveSystem reads this each Update to pace the
+    // periodic write to a rotating "autosave" slot.
+    public int   autosaveIntervalMinutes { get; private set; } = 5;
+    public bool  autosaveEnabled => autosaveIntervalMinutes > 0;
+    // Whole-UI zoom, applied as the root CanvasScaler's scaleFactor (Constant Pixel
+    // Size mode). 1 = native pixel UI (today), 2 = doubled. Scales every UI widget,
+    // font, and icon uniformly. UI text is SDF m5x7 so it stays sharp at intermediate
+    // scales. UiMin/UiMax bound the range; values snap to UiScaleStep (0.05 = 2.5% in
+    // the 50–100% slider framing, so 75% = 1.50). Keep these in sync with the slider.
+    public const float UiScaleMin  = 1f;
+    public const float UiScaleMax  = 2f;
+    public const float UiScaleStep = 0.05f;
+    public float uiScale        { get; private set; } = 1f;
+    // Selected UI font (index into UIFontOptions.fonts). 0 = the shipped/baked default.
+    // Applied at runtime by UITextPixelSnap.
+    public int   uiFontIndex    { get; private set; } = 0;
 
     // Fired after any setter writes a value. Subscribers re-pull whatever they
     // care about. Cheap because the panel only emits on user input, not per-frame.
@@ -66,7 +82,9 @@ public class SettingsManager : MonoBehaviour {
         vsyncEnabled    = PlayerPrefs.GetInt(K_Vsync, 0) != 0;
         lightingEnabled = PlayerPrefs.GetInt(K_Lighting, 1) != 0;
         cloudLightingEnabled = PlayerPrefs.GetInt(K_CloudLight, 1) != 0;
-        autosaveEnabled = PlayerPrefs.GetInt(K_Autosave, 1) != 0;
+        autosaveIntervalMinutes = Mathf.Max(0, PlayerPrefs.GetInt(K_AutosaveMins, 5));
+        uiScale         = Mathf.Clamp(PlayerPrefs.GetFloat(K_UiScale, 1f), UiScaleMin, UiScaleMax);
+        uiFontIndex     = Mathf.Max(0, PlayerPrefs.GetInt(K_UiFontIndex, 0));
     }
 
     // ── Setters ──────────────────────────────────────────────────────────────
@@ -126,10 +144,32 @@ public class SettingsManager : MonoBehaviour {
         OnChanged?.Invoke();
     }
 
-    public void SetAutosave(bool enabled) {
-        if (enabled == autosaveEnabled) return;
-        autosaveEnabled = enabled;
-        PlayerPrefs.SetInt(K_Autosave, enabled ? 1 : 0);
+    // minutes: 0 = off, otherwise the autosave period. SaveSystem re-reads this live.
+    public void SetAutosaveIntervalMinutes(int minutes) {
+        minutes = Mathf.Max(0, minutes);
+        if (minutes == autosaveIntervalMinutes) return;
+        autosaveIntervalMinutes = minutes;
+        PlayerPrefs.SetInt(K_AutosaveMins, minutes);
+        OnChanged?.Invoke();
+    }
+
+    // Whole-UI zoom factor (CanvasScaler.scaleFactor). UI.cs applies it on change.
+    public void SetUiScale(float v) {
+        v = Mathf.Round(v / UiScaleStep) * UiScaleStep;   // snap to 2.5% increments
+        v = Mathf.Clamp(v, UiScaleMin, UiScaleMax);
+        if (Mathf.Approximately(v, uiScale)) return;
+        uiScale = v;
+        PlayerPrefs.SetFloat(K_UiScale, v);
+        OnChanged?.Invoke();
+    }
+
+    // Index into UIFontOptions.fonts. UITextPixelSnap re-reads this on OnChanged and swaps the
+    // whole UI's font.
+    public void SetUiFontIndex(int i) {
+        i = Mathf.Max(0, i);
+        if (i == uiFontIndex) return;
+        uiFontIndex = i;
+        PlayerPrefs.SetInt(K_UiFontIndex, i);
         OnChanged?.Invoke();
     }
 

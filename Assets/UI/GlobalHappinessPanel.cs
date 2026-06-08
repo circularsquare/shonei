@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 using TMPro;
 
 // Full-screen exclusive panel showing colony-wide happiness breakdown.
@@ -9,6 +10,10 @@ using TMPro;
 //   headerText    -- TextMeshProUGUI  (colony average + pop capacity)
 //   needContainer -- Transform        (VerticalLayoutGroup -- rows are spawned here)
 //   needRowPrefab -- HappinessNeedRow prefab
+//   closeButton   -- Button           (the X in the top-right corner; close wired in Awake)
+//
+//   A "?" InfoButton sits left of the X with a Tooltippable explaining pop cap (scene-authored,
+//   parallel to RecipePanel / ResearchPanel).
 //
 //   RectTransform: Anchor Min=(0,0) Max=(1,1), Left/Right/Top/Bottom = 20
 //
@@ -30,6 +35,7 @@ public class GlobalHappinessPanel : MonoBehaviour {
     [SerializeField] TextMeshProUGUI  headerText;
     [SerializeField] Transform        needContainer;
     [SerializeField] HappinessNeedRow needRowPrefab;
+    [SerializeField] Button           closeButton; // optional X in the corner
 
     // Rows are spawned once and reused. Order: Db.happinessNeedsSorted, then housing, then temperature.
     readonly List<HappinessNeedRow> rows = new List<HappinessNeedRow>();
@@ -43,6 +49,7 @@ public class GlobalHappinessPanel : MonoBehaviour {
         if (_instance != null && _instance != this) Debug.LogError("Two GlobalHappinessPanels!");
         instance = this;
         UI.RegisterExclusive(gameObject);
+        if (closeButton != null) closeButton.onClick.AddListener(() => gameObject.SetActive(false));
     }
 
     void OnEnable() {

@@ -278,6 +278,13 @@ public class FlowerController : MonoBehaviour {
         float xOffset = (((int)((h >> 16) & 0xFFu) - 128) / 256f) * 0.6f;
         xOffset = Mathf.Round(xOffset * 16f) / 16f;
 
+        // Don't jitter toward a solid same-level neighbour: that tile's grass overhangs into
+        // this column, and the shifted sprite would clip it. A centered flower (offset 0) never
+        // overlaps — the 16x16 sprite stays within its own tile — so we only cancel a shift that
+        // points into a solid neighbour. A shift the other way (toward open air) is left alone.
+        if (xOffset > 0f && IsSolidTile(t.x + 1, t.y)) xOffset = 0f;
+        else if (xOffset < 0f && IsSolidTile(t.x - 1, t.y)) xOffset = 0f;
+
         // World position: anchored to the air tile above the solid tile. With sprite
         // pivot=Center on a 16x16 PNG the sprite bottom sits flush on the tile top (spans
         // [y+0.5, y+1.5]); baseY = t.y + 0.5 so the cantilever weight ramps bottom→top.
@@ -398,6 +405,13 @@ public class FlowerController : MonoBehaviour {
     public void ResetState() {
         DespawnAll();
         pendingRestore = null;
+    }
+
+    // True if the tile at (x, y) exists and is solid. Used to keep decoration jitter from
+    // shifting a flower into a solid neighbour whose grass overhangs the column boundary.
+    bool IsSolidTile(int x, int y) {
+        Tile n = world.GetTileAt(x, y);
+        return n != null && n.type != null && n.type.solid;
     }
 
     // ── Determinism helpers ─────────────────────────────────────────────

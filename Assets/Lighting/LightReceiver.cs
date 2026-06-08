@@ -109,7 +109,11 @@ public static class SpriteMaterialUtil {
     static bool _probedLit;
     static Material _cachedPlant;
     static bool _probedPlant;
+    static Material _cachedOverlayAmbient;
+    static bool _probedOverlayAmbient;
     static Texture2D _flatNormalTex;
+
+    static readonly int OverlayAmbientId = Shader.PropertyToID("_OverlayAmbient");
 
     // Reload-Domain-off support: cached Material refs survive across play sessions
     // but the underlying Unity objects don't. Without this, _probedLit stays true,
@@ -119,7 +123,13 @@ public static class SpriteMaterialUtil {
     static void ResetStatics() {
         _cachedLit = null; _probedLit = false;
         _cachedPlant = null; _probedPlant = false;
+        _cachedOverlayAmbient = null; _probedOverlayAmbient = false;
         _flatNormalTex = null;
+        // Seed the overlay-ambient global white before any Unlit overlay renders.
+        // The shader global defaults to 0 (black) on domain reload, and SunController
+        // only sets the real value once a world exists — without this seed, overlays
+        // flash black on the first frames / in worldless scenes.
+        Shader.SetGlobalColor(OverlayAmbientId, Color.white);
     }
 
     // Loaded once from Resources/Materials/Sprite.mat. Null = asset missing;
@@ -149,6 +159,27 @@ public static class SpriteMaterialUtil {
                 Debug.LogError("SpriteMaterialUtil: Resources/Materials/PlantSprite.mat not found. " +
                                "Plants will render without wind sway.");
             return _cachedPlant;
+        }
+    }
+
+    // Unlit overlay material carrying the global half-ambient tint (see
+    // UnlitOverlayAmbient.shader + SunController's _OverlayAmbient broadcast).
+    // Use for selection / highlight / harvest overlays on the Unlit layer that
+    // should dim toward the night ambient instead of glaring full-bright in the
+    // dark. Loaded from Resources/Materials/UnlitOverlayAmbient.mat — NOT via
+    // Shader.Find: the build pipeline strips shaders not referenced by an
+    // included Material asset, so Shader.Find works in-editor but returns null
+    // in a build. The .mat keeps the shader reachable (same pattern as the lit
+    // and plant materials above).
+    public static Material OverlayAmbientMaterial {
+        get {
+            if (_probedOverlayAmbient) return _cachedOverlayAmbient;
+            _cachedOverlayAmbient = Resources.Load<Material>("Materials/UnlitOverlayAmbient");
+            _probedOverlayAmbient = true;
+            if (_cachedOverlayAmbient == null)
+                Debug.LogError("SpriteMaterialUtil: Resources/Materials/UnlitOverlayAmbient.mat not found — " +
+                               "unlit overlays will keep their default material and won't dim at night.");
+            return _cachedOverlayAmbient;
         }
     }
 

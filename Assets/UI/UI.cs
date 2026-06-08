@@ -14,6 +14,11 @@ public class UI : MonoBehaviour {
 
     [SerializeField] GameObject chatWindow;
 
+    // Root CanvasScaler (Constant Pixel Size). Its scaleFactor is the single knob
+    // that zooms the whole UI — sizes, fonts, icons. Driven by SettingsManager.uiScale.
+    // Auto-resolved from this GameObject if left unwired.
+    [SerializeField] CanvasScaler uiScaler;
+
     // Cached root Canvas components for F1 hide-UI toggle. Populated lazily on first press.
     // We toggle Canvas.enabled rather than GameObject.SetActive so panel hierarchies keep
     // their internal state (selections, open/collapsed groups, etc.) untouched.
@@ -51,6 +56,25 @@ public class UI : MonoBehaviour {
             Debug.LogError("there should only be one ui controller");}
         instance = this;
         if (chatWindow != null) chatWindow.SetActive(true);
+
+        if (uiScaler == null) uiScaler = GetComponent<CanvasScaler>();
+        if (uiScaler == null) Debug.LogError("[UI] No CanvasScaler found — UI scale setting won't apply.");
+        if (SettingsManager.instance != null) {
+            SettingsManager.instance.OnChanged += ApplyUiScale;
+            ApplyUiScale();
+        }
+    }
+
+    void OnDestroy() {
+        if (SettingsManager.instance != null)
+            SettingsManager.instance.OnChanged -= ApplyUiScale;
+    }
+
+    // Push SettingsManager.uiScale into the root CanvasScaler. Constant Pixel Size
+    // mode multiplies every UI rect/font/icon by this factor, so it's a single knob.
+    void ApplyUiScale() {
+        if (uiScaler == null || SettingsManager.instance == null) return;
+        uiScaler.scaleFactor = SettingsManager.instance.uiScale;
     }
     void StartLate(){
         if (world == null){

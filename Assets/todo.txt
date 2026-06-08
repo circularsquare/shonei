@@ -32,6 +32,11 @@ CONTENT
     - copper / tin / bronze ingot
     - foundry
 
+- structures 
+    - flare out supports / side platforms
+    - hanging ropes? for building down off cliffsides
+    - walls? gates?
+
 VISUALS
 - lighting 
     - improve undergroundwall sprite 
@@ -79,52 +84,30 @@ test kiln
 finish foundry
 tools
 todoship
-add flare out supports
+
 
 - review building descriptions
 
-GAMEPLAY SYSTEMS (housing/pop/happiness, placement, save)
 - info on "have 6 mice" (how?) (explain pop cap in happiness table, and also in playertask explain building housing?)
-- recondense happiness toggle with top bar happiness + pop cap panel
-- autosave every 5m option?
 
-INPUT & VISUALS (MouseController, animation, sprites)
-- mouse over bottom part of screen pans screen, annoying, in the cracks between the build icons
-    - should make the containing buildCategoryBar capture mouse hover i guess?
-- sometimes after clicking to construct, the drag select rectanglel hangs on the screen for a while... investigate why tahts happening (why we are interpreting that as a drag at all) and also lets just strictly clear the drag window if our mouse is not down
-- enable mice facing back for sawmill, workshop, weaver, tailor, laboratory
-    - and construction, if the mouse is on the same tile as one of the building tiles
-- make harvest indicator more visible (this one i just need to do)
-- preload the storage config components so that the game doesn't slightly freeze when you first click on a storage
-
-
-
-OTHER
-- backgroud tiles... make it have 4 sided edge
-have instant construct work on deconstructs (and give the material) 
-have instant construct apply on already placed blueprints, if they are selected
-
-
-- pretty  up happiness panel
+- pretty up happiness panel
 - recipe panel is almost empty at game start. a bit awkward.
     - maybe have one recipe selected by default 
     - get rid of some empty space
-
-- add time indication
+    - also why do i see oak planks recipe? no oak wood in this game i think.
 
 - figure out weird maximize window behavior on build
 
 clarify which side of burrow sprite is out
     - more thickness on roof? maybe make grass higher 
-- add visual top on ladder 
 
-- crate top not being lit? 
-- mice should leave house after waking up 
-- flowers dont overlap with solid tiles
+- ui scaling....
+    
 
-- ui scaling........
-    - find a font that scales
-- disallow odd sized window? 
-
-- make remove remove harvest flag
 TODAY
+- server   
+    - how to sometimes point trading at actual server and sometimes at local server?
+    - sign up / login names
+    - make logs slower ? 
+    - delete old logs? (how fast does it fill up?)
+    - have it alert me somehowif somethings going wrong?

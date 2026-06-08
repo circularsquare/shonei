@@ -76,7 +76,7 @@ Material:
     - _ScaleX: 1
     - _ScaleY: 1
     - _ShaderFlags: 0
-    - _Sharpness: 0
+    - _Sharpness: 1
     - _SpecularPower: 2
     - _Stencil: 0
     - _StencilComp: 8
@@ -179,7 +179,7 @@ MonoBehaviour:
     m_PointSize: 121
     m_Scale: 1
     m_UnitsPerEM: 1024
-    m_LineHeight: 106.58399
+    m_LineHeight: 105.875
     m_AscentLine: 80.58789
     m_CapLine: 53
     m_MeanLine: 38

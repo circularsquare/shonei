@@ -1,5 +1,14 @@
 meoww!!
 
+6/8
+- smooth font cleaning 
+- persistent trading server
+6/5
+- autosave 
+- more ui tweaks 
+- blob sway improvements / editor tool improvements
+- inserted drop task into prio system
+- ui scaling! variable font size 
 6/4
 - more proper research gating 
 - more tutorial / playertask work

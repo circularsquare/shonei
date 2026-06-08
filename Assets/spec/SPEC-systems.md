@@ -434,7 +434,7 @@ Lookup order for the suffixed sprite (first match wins): (1) slice named `{stem}
 
 **Build preview**: `MouseController` composes the cursor-following ghost from per-tile preview SRs (pooled across builds) so a height-3 platform appears as `_b` + `_m` + `_t` before placement, matching what will be built.
 
-**Placement**: `StructPlacement.CanPlaceHere` iterates the full visual footprint (matching the multi-tile claim above) when checking for blocking structs / blueprints / plants at the chosen depth. Standability/support is anchored to the bottom row only — only the base of the column needs to rest on something solid.
+**Placement**: `StructPlacement.CanPlaceHere` iterates the full visual footprint (matching the multi-tile claim above) when checking for blocking structs / blueprints / plants at the chosen depth. Standability/support is anchored to the bottom row only — the upper rows of a tall footprint stack above. By default **every** column of that bottom row must rest on something solid; `edgeSupported` relaxes this to the two end columns, and a `mustBeStandable` tileRequirement overrides it per-tile (see SPEC-data `edgeSupported` / `tileRequirements`).
 
 **Save/load**: `shapeIndex` is persisted on both `StructureSaveData` and `BlueprintSaveData`; defaults to 0 for old saves and non-shape types.
 

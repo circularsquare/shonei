@@ -113,10 +113,16 @@ public static class StructPlacement {
         }
 
         // Standability check on the bottom row.
-        // Default: one "body" tile must be supported (left end if !mirrored, right end if mirrored).
-        // edgeSupported: BOTH ends of the footprint must be supported, with the middle free to
-        // hang in mid-air (e.g. tarps strung between two posts).
-        if (st.name != "empty" && st.requiredTileName == null && !placementTileMustBeSolid) {
+        //  - Default: EVERY column of the footprint's bottom row must be supported (solid ground
+        //    or a built/queued solidTop structure beneath). Matches Blueprint.IsSuspended.
+        //  - edgeSupported: only the two end columns must be supported, the middle may hang in
+        //    mid-air (tarp). Rope-bridge posts are 1×1 twoClick placements validated per-post,
+        //    so "both ends supported" already holds for them via this same all-columns rule.
+        //  - hasStandableRequirement: the type names exactly which tiles need support via
+        //    mustBeStandable tileRequirements (pump → just the building tile, spout overhangs
+        //    water), so the generic check is skipped and those reqs (below) decide it.
+        if (st.name != "empty" && st.requiredTileName == null && !placementTileMustBeSolid
+                && !st.hasStandableRequirement) {
             if (st.edgeSupported) {
                 int leftX  = tile.x;
                 int rightX = tile.x + fnx - 1;
@@ -126,9 +132,10 @@ public static class StructPlacement {
                             || SupportedByBlueprintBelow(rightX, tile.y);
                 if (!leftOk || !rightOk) return "both ends need support";
             } else {
-                int bodyDx = mirrored ? fnx - 1 : 0;
-                if (!world.graph.nodes[tile.x + bodyDx, tile.y].standable
-                    && !SupportedByBlueprintBelow(tile.x + bodyDx, tile.y)) return "needs solid ground below";
+                for (int dx = 0; dx < fnx; dx++) {
+                    if (!world.graph.nodes[tile.x + dx, tile.y].standable
+                        && !SupportedByBlueprintBelow(tile.x + dx, tile.y)) return "needs solid ground below";
+                }
             }
         }
 

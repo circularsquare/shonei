@@ -86,8 +86,24 @@ Practical workflow:
 - **Play mode reverts scene changes.** Always `manage_editor stop` first if
   you're about to mutate scene state. `MarkSceneDirty` also throws in Play
   mode.
-- **`refresh_unity` after script edits** — domain reload may need a kick.
-  Then `read_console` to confirm clean compile before relying on new types.
+- **MCP commands are gated on Unity's editor loop, which stalls when Unity is
+  unfocused.** Every call (even read-only) runs on the main thread via
+  `EditorApplication.update`, throttled to a crawl when the editor window isn't
+  focused. A call that hangs or returns `Command processing timed out after
+  30000 ms` usually means Unity is starved, not that anything failed — don't
+  hammer retries; ask the user to focus Unity (one click flushes the queued
+  command). For long/unattended runs the loop only ticks if **Unity** (not
+  VSCode) is foreground; Edit/Write and `refresh_unity` still work with Unity
+  focused, so leaving Unity focused is the correct unattended setup.
+- **A recompile tears down the bridge; auto-resume can fail for good.** Script
+  compilation triggers a domain reload that kills the bridge, which retries on a
+  ~49s backoff (0,1,3,5,10,30s) — but if Unity stays unfocused through that
+  window the resume exhausts and the bridge stays down until a focus + recompile
+  (user must restart MCP). So: batch script edits, fire one `refresh_unity
+  compile=request`, then poll `editor_state` with backoff (don't spray MCP calls
+  into the reload gap), then `read_console` before relying on new types.
+  (Play-mode toggles are safe — this project disables Reload Domain, so
+  entering/exiting Play doesn't reload.)
 - **CodeDom string interp** (`$"..."`) works fine, but multiline interpolations
   with `:format` specifiers can confuse it — prefer `string.Format` or
   `.ToString("0.00")` for safety.
@@ -115,7 +131,9 @@ should look at home next to ResearchPanel / TradingPanel / RecipePanel.
 ### Canvas / pixel scale
 
 - Reference resolution: **960 × 540** (16:9 half-1080p)
-- Canvas Scaler: Scale With Screen Size, **160 reference pixels per unit**
+- Canvas Scaler: **Constant Pixel Size**, **160 reference pixels per unit**. The
+  user-facing UI scale is the scaler's `scaleFactor`, driven by a settings slider
+  (`SettingsManager.uiScale`) — see SPEC-ui.md "UI scaling & text crispness".
 - Pixel Perfect Camera: assets at **16 PPU** (1 art-pixel = 10 canvas-pixels
   at 1× scale). Sprite import uses Point filtering.
 - Implication: prefer integer sizes that play well with this scale. Multiples
@@ -124,8 +142,9 @@ should look at home next to ResearchPanel / TradingPanel / RecipePanel.
 ### Font
 
 - **Default font asset: `m5x7 SDF`** (TextMeshPro/Resources/Fonts &
-  Materials/m5x7 SDF.asset). Pixel font; only renders crisply at specific
-  sizes.
+  Materials/m5x7 SDF.asset). SDF (not bitmap) so it stays crisp at non-integer UI
+  scales; `UITextPixelSnap` + material `_Sharpness=1.0` keep it sharp and uniform.
+  See SPEC-ui.md "UI scaling & text crispness" before touching font/scale/crispness.
 - **`fontSize = 16`. Period.** Anything smaller (12, 14) is illegible at
   this project's canvas scale. **Don't introduce visual hierarchy via bold
   or uppercase** — they don't render well in `m5x7`. Default to flat

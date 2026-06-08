@@ -140,7 +140,7 @@ public class Tile {
     // snow == true; reset to (0, Live) on type change to non-solid.
     public byte preSnowOverlayMask;
     public OverlayState preSnowOverlayState;
-    // Background wall behind the tile (rendered by BackgroundTile.cs).
+    // Background wall behind the tile (rendered by BackgroundTileMeshController).
     // Type is fixed at world-gen and never changes after mining: wall type
     // mirrors the worldgen dirt mask (wavy boundary) so cave-roof walls match
     // what the tile would have been. `hasBackground` is a derived getter for

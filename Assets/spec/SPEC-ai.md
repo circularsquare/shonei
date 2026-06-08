@@ -51,6 +51,8 @@ Each satisfaction decays exponentially each SlowUpdate (`×0.9044`). Score = sum
 
 **Population capacity** = `floor(avgHappiness / Db.happinessMaxScore × AnimalController.MaxPopulationCap)`. `MaxPopulationCap` (default 40) is the cap when every mouse has every happiness need fully satisfied. The formula auto-rescales when needs are added or removed.
 
+**Colony wipeout.** When every mouse starves (`na == 0`), `AnimalController.MaybeOfferRescue` shows a `ConfirmationPopup` offering 4 newcomers — it does **not** auto-spawn (the player may want to accept the loss). Shown once per session; the `rescuePromptShown` flag is runtime-only and re-armed by `ClearWorld`, so reloading re-offers it. Two guards stop false triggers during the startup/load window (the world grid exists several frames before mice are loaded/seeded): `colonyReady` (set in `Load()`, the post-load hook on every world-creation path; reset by `ClearWorld`) suppresses the prompt until the colony is finalized, and `pendingAnimals == 0` (mice queued via `AddAnimal` but not yet registered through `Animal.Start → RegisterReady`) covers the in-flight arrival lag. A genuinely empty *loaded* colony (a saved 0-mouse world) still prompts.
+
 Adding a new food or building happiness source: JSON changes auto-register the need, and both UI panels discover it from `Db.happinessNeedsSorted`. Also update `Db.happinessNeedsDisplayOrder` (the manual ordering array in `Db.cs`) to place it in the correct display group — if omitted, it appears alphabetically at the end.
 
 **Special**: `warmth` is separate from satisfactions — it's a cold-tolerance buff granted by fireplace leisure, not a happiness need.
@@ -79,10 +81,8 @@ the goal is smooth, need-scaled behaviour — a slightly-hungry mouse finishes n
 starving one drops everything to eat, and urgent work can beat evening leisure instead of being
 skipped by an unlucky roll. Design + tuning rationale: `plans/urgency-system.md`.
 
-**Hard pre-step (not urgency-ranked):** drop carried inventory if non-empty (policy: idle mice keep
-main inv empty, food/tools in equip slots). Has a `dropCooldownUntil` fallback so a boxed-in mouse
-doesn't loop. (A mouse that just delivered a blueprint's last material finishes the build via plain
-urgency — the construct order it's standing on scores ≈0.70, no special flag needed.)
+(A mouse that just delivered a blueprint's last material finishes the build via plain urgency — the
+construct order it's standing on scores ≈0.70, no special flag needed.)
 
 **Categories and their urgency sources:**
 - **eat** — `Eating.HungerUrgency()`: two-regime curve. 0 at/above `seekFoodThreshold` (0.6); a
@@ -96,6 +96,13 @@ urgency — the construct order it's standing on scores ≈0.70, no special flag
 - **equip / clothing** — fixed urgency (0.45, same for both) only when the slot is empty (else 0).
   Above the idle ceiling so a tool-less mouse gears up over loitering. Rarely fires (usually nothing
   to equip).
+- **drop** — `DropUrgency()`: dump stale main-inventory carry-over (policy: idle mice keep main inv
+  empty, food/tools in equip slots). `DropFloor + (DropCeil-DropFloor) × occupiedStacks/totalStacks`,
+  so it scales with how laden the mouse is — one stack ≈ floor (0.60), full pack = ceil (0.90). The
+  band sits *below* the hunger/sleep peaks (~1.0) so a starving/exhausted mouse acts on those first
+  (no more crawling off to drop while starving), and *above* the work tiers (≤0.70) so a laden idle
+  mouse still offloads promptly. 0 when the inv is empty or the boxed-in `dropCooldownUntil` (set by
+  `DropObjective` on a give-up) hasn't elapsed. Internal target selection via `DropTask`/`DropObjective`.
 - **work** — `WorkOrderManager.BestWorkUrgency(animal)`: max over the animal's pickable orders
   (excl. craft) of `tierBase[priority] + proximityBonus + finishBonus`. Side-effect-free; an UPPER
   BOUND — when work wins, the existing tier-by-tier `ChooseOrder(1→2→3-excl-craft→4)` sequence does
@@ -166,7 +173,7 @@ Tasks reserve sources and destinations during `Initialize()` via `Task.ReserveSt
 | `ResearchTask` | WOM p4 | scientist | Navigate to a specific lab, work in loops. Optionally borrows the matching tech book (via `bookSlotInv`) before research and returns it after — book grants 3× research progress per tick while equipped (see SPEC-books.md). |
 | `ObtainTask` | survival | any | Fetch a specific item (food/equip) |
 | `EepTask` | survival | any | Navigate home and sleep |
-| `DropTask` | survival | any | Drop excess main inventory — prefers nearby storage/tank (10-tile bonus) over floor. `DropObjective` (shared by Craft/Harvest output drops + book returns) **retries across targets until the item is fully offloaded** — tops off the nearest storage, then spills the remainder to the next storage/floor (floor is the guaranteed sink), so a near-full crate no longer leaves a partial load stuck in the carrier's inventory. On no-reachable-target, or a visit that deposits 0 (discrete item / full floor tile), it stops: logs a warning and sets `animal.dropCooldownUntil = timer + 3f` so `ChooseTask` falls through instead of respawning every tick. The stuck-remainder give-up uses `Complete` (not `Fail`) so chained/best-effort callers aren't torn down |
+| `DropTask` | drop category | any | Drop excess main inventory — prefers nearby storage/tank (10-tile bonus) over floor. `DropObjective` (shared by Craft/Harvest output drops + book returns) **retries across targets until the item is fully offloaded** — tops off the nearest storage, then spills the remainder to the next storage/floor (floor is the guaranteed sink), so a near-full crate no longer leaves a partial load stuck in the carrier's inventory. On no-reachable-target, or a visit that deposits 0 (discrete item / full floor tile), it stops: logs a warning and sets `animal.dropCooldownUntil = timer + 3f` so `ChooseTask` falls through instead of respawning every tick. The stuck-remainder give-up uses `Complete` (not `Fail`) so chained/best-effort callers aren't torn down |
 | `GoTask` | survival | any | Navigate to a tile |
 | `ChatTask` | leisure | any | Walk to idle partner, both leisure 20 ticks, grants socialization happiness |
 | `LeisureTask` | leisure | any | Constructed with a `leisureNeed` string. `Initialize` delegates to `Nav.FindPathToLeisureSeat(filter)` — filter combines `leisureNeed` match + `Building.CanHostLeisureNow()` (disabled/broken/fuel/active-hour). Uses the standard Chebyshev-sort + first-fit-within-radius pattern (see §Path-cost radius gate), so it's consistent with `FindPathToStruct` etc. rather than a bespoke scan. Reserves the returned `seatRes[i]`. Leisure 15 ticks. On Complete grants `Happiness.NoteLeisure(need, structType.leisureGrant)` — `leisureGrant` lets cheap/always-on buildings (bench = 0.5) grant less than premium ones (fireplace = 1.0). |
@@ -197,7 +204,7 @@ Doored buildings (housing today; future production with interiors) declare an `i
 **`insideBuilding`** on `Animal` tracks the current logical container. It is a derived property — `TileHere()?.interiorBuilding` — never cached, so it cannot go stale when the animal is displaced by a fall / snap / elevator / load. `Tile.interiorBuilding` is the tile-level back-ref set and cleared by `Structure`'s interior-node setup/teardown; a mouse is "inside" exactly while it stands on an interior tile. Two consequences pivot on this flag:
 
 - **Fall gate** — [AnimalStateManager.UpdateMovement](../Model/Animal/AnimalStateManager.cs) skips its "tile not standable → Fall" trigger when `insideBuilding != null`. The interior waypoint logically supports the mouse even though the underlying tile may be non-standable — critical for `preservesTile` buildings (burrow) whose interior tiles are solid dirt.
-- **Path start** — `Animal.PathStartNode()` returns the nearest interior waypoint when `insideBuilding != null`, else `TileHere()?.node`. **All Nav `FindPath*` / `Navigate` callers use `PathStartNode()`**, not `TileHere().node` — using the raw tile node would orphan path requests from inside-the-building mice (solid-dirt nodes have no edges). Same helper is used by idle wander (`PickRandomNavNeighbour`) so an idle mouse inside the burrow steps out via the door edge instead of getting stuck.
+- **Path start** — `Animal.PathStartNode()` returns the nearest interior waypoint when `insideBuilding != null`, else `TileHere()?.node`. **All Nav `FindPath*` / `Navigate` callers use `PathStartNode()`**, not `TileHere().node` — using the raw tile node would orphan path requests from inside-the-building mice (solid-dirt nodes have no edges). The idle random walk (`PickRandomNavNeighbour`) starts from the same helper but only considers *tile-node* neighbours and **skips waypoints** — so a mouse inside a doored burrow, whose only exit edge is the door waypoint, can't wander out that way. `HandleIdle` covers this with a separate `WanderOutOfHomeChance` (30%/idle-tick) full pathfind to a tile outside the home, which *does* traverse the door waypoint; without it the unemployed (no job pulling them out) stay clustered inside.
 
 **Placement gate** — `StructPlacement.CanPlaceHere` requires every door's approach tile to be `standable` at build time. Prevents players from placing a doored building (especially burrow) facing solid dirt or empty air and finding it unenterable post-build.
 

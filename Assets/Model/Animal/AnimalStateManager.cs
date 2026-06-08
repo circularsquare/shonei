@@ -13,6 +13,10 @@ using AnimalState = Animal.AnimalState;
 public class AnimalStateManager {
     private Animal animal;
 
+    // Per-idle-tick chance for a mouse idling inside its home to head back outside. Keeps the
+    // unemployed (who have no work pulling them out) from clustering in their burrow all day.
+    private const double WanderOutOfHomeChance = 0.30;
+
     public AnimalStateManager(Animal animal) {
         this.animal = animal;
     }
@@ -57,6 +61,23 @@ public class AnimalStateManager {
             // JobSwapper, which makes individual attempts less likely to find a match.
             if (animal.tickCounter % 2 == 1) {
                 JobSwapper.TrySwap(animal);
+            }
+            // A mouse that woke inside its burrow would otherwise sit there: the neighbour-only
+            // random walk below can't traverse the door waypoint to leave, so it's effectively
+            // trapped (this strands the unemployed in particular — no job pulls them out). Give
+            // it a per-tick chance to path to a tile outside the house; once out, the normal idle
+            // wander takes over. Pathing (not the neighbour walk) is what lets it cross the door.
+            Building home = animal.homeBuilding;
+            if (home != null && animal.insideBuilding == home
+                    && animal.random.NextDouble() < WanderOutOfHomeChance) {
+                Path outPath = animal.nav.FindPathTo(
+                    t => t.node.standable && t.interiorBuilding != home,
+                    r: Task.MediumFindRadius);
+                if (outPath != null) {
+                    animal.task = new GoTask(animal, outPath.tile);
+                    if (!animal.task.Start()) animal.task = null;
+                }
+                return;
             }
             // Don't loiter on ladder-only footing (a rung in mid-air) — looks wrong and
             // strands mice after a mid-climb job switch or load. Head for the nearest stable

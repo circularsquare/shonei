@@ -70,8 +70,9 @@ public class LightFeature : ScriptableRendererFeature {
     [Tooltip("Water layer — rendered into the normals RT using NormalsCaptureWater, which samples " +
              "_WaterSurfaceTex for transparency. Water is lit-only (torch + sun) but casts no shadows.")]
     public LayerMask waterLayer = 0; // set to the 'Water' layer in the inspector
-    [Tooltip("Background layer — rendered into the normals RT using NormalsCaptureBackground, " +
-             "which clips transparent top pixels so they read as sky. Lit-only (no shadow cast).")]
+    [Tooltip("Background layer — the chunked background walls (BackgroundTileMeshController). " +
+             "Drawn into the normals RT with ChunkedBackgroundNormalsCapture (flat normal, " +
+             "lit-only alpha 0.5, no shadow cast).")]
     public LayerMask backgroundLayer = 0; // set to the 'Background' layer in the inspector
     [Tooltip("Chunked tile layer — drawn with ChunkedNormalsCapture, which samples Texture2DArray " +
              "slices using per-vertex slice indices (see TileMeshController). Excluded from the " +
@@ -88,8 +89,8 @@ public class LightFeature : ScriptableRendererFeature {
     [Header("Shaders (assign in inspector — required for builds)")]
     [SerializeField] Shader normalsCaptureShader;
     [SerializeField] Shader normalsCaptureWaterShader;
-    [SerializeField] Shader normalsCaptureBackgroundShader;
     [SerializeField] Shader chunkedNormalsCaptureShader;
+    [SerializeField] Shader chunkedBackgroundNormalsCaptureShader;
     [SerializeField] Shader lightCircleShader;
     [SerializeField] Shader lightSunShader;
     [SerializeField] Shader lightCompositeShader;
@@ -101,7 +102,7 @@ public class LightFeature : ScriptableRendererFeature {
 
     public override void Create() {
         penetrationDepth = lightPenetrationDepth;
-        capturePass = new NormalsCapturePass(normalsCaptureShader, normalsCaptureWaterShader, normalsCaptureBackgroundShader, chunkedNormalsCaptureShader) {
+        capturePass = new NormalsCapturePass(normalsCaptureShader, normalsCaptureWaterShader, chunkedNormalsCaptureShader, chunkedBackgroundNormalsCaptureShader) {
             renderPassEvent = RenderPassEvent.BeforeRenderingTransparents
         };
         lightPass = new LightPass(lightCircleShader, lightSunShader, lightCompositeShader, lightAmbientFillShader, emissionWriterShader) {
@@ -154,50 +155,53 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
 
     static readonly int CapturedNormalsId = Shader.PropertyToID("_CapturedNormalsRT");
     // Global shader property — set per bucket iteration in Execute so the
-    // override-material shaders (NormalsCapture, NormalsCaptureWater,
-    // NormalsCaptureBgTile) write the right sort bucket into the RT's B
-    // channel. Replaces the per-sprite _SortBucket MPB.
+    // override-material shaders (NormalsCapture, NormalsCaptureWater) write the
+    // right sort bucket into the RT's B channel. Replaces the per-sprite _SortBucket
+    // MPB. (Both chunked overrides instead read _SortBucket from a per-chunk MPB.)
     static readonly int SortBucketGlobalId = Shader.PropertyToID("_SortBucket");
     readonly Material mat;
     readonly Material waterMat;
-    readonly Material backgroundMat;
     readonly Material chunkedMat;
-    int litMask         = ~0;
-    int shadowMask      = ~0;
-    int dirOnlyMask     = 0;
-    int waterMask       = 0;
-    int backgroundMask  = 0;
-    int tileChunkMask   = 0;
+    readonly Material bgChunkedMat;
+    int litMask           = ~0;
+    int shadowMask        = ~0;
+    int dirOnlyMask       = 0;
+    int waterMask         = 0;
+    int backgroundMask    = 0;
+    int tileChunkMask     = 0;
 
-    public NormalsCapturePass(Shader normalsCapture, Shader normalsCaptureWater, Shader normalsCaptureBackground, Shader chunkedNormalsCapture) {
-        if (normalsCapture == null || normalsCaptureWater == null || normalsCaptureBackground == null) {
+    public NormalsCapturePass(Shader normalsCapture, Shader normalsCaptureWater, Shader chunkedNormalsCapture, Shader chunkedBackgroundNormalsCapture) {
+        if (normalsCapture == null || normalsCaptureWater == null) {
             Debug.LogError("LightFeature: NormalsCapture shader fields are unassigned — assign them in the URP Universal Renderer asset's LightFeature inspector. Lighting will be disabled.");
             return;
         }
         mat           = CoreUtils.CreateEngineMaterial(normalsCapture);
         waterMat      = CoreUtils.CreateEngineMaterial(normalsCaptureWater);
-        backgroundMat = CoreUtils.CreateEngineMaterial(normalsCaptureBackground);
         // Chunked tile capture is optional — if the shader isn't assigned the
         // pass simply skips chunked-tile drawing. Useful while migrating to
         // the chunked renderer (renderer asset hasn't been wired yet).
         if (chunkedNormalsCapture != null)
             chunkedMat = CoreUtils.CreateEngineMaterial(chunkedNormalsCapture);
+        // Background chunked capture — optional/null-guarded like chunkedMat, so the
+        // pass simply skips background-chunk drawing until the shader is wired.
+        if (chunkedBackgroundNormalsCapture != null)
+            bgChunkedMat = CoreUtils.CreateEngineMaterial(chunkedBackgroundNormalsCapture);
     }
 
     public void Setup(int litMask, int shadowMask, int dirOnlyMask, int waterMask, int backgroundMask, int tileChunkMask) {
-        this.litMask        = litMask;
-        this.shadowMask     = shadowMask;
-        this.dirOnlyMask    = dirOnlyMask;
-        this.waterMask      = waterMask;
-        this.backgroundMask = backgroundMask;
-        this.tileChunkMask  = tileChunkMask;
+        this.litMask          = litMask;
+        this.shadowMask       = shadowMask;
+        this.dirOnlyMask      = dirOnlyMask;
+        this.waterMask        = waterMask;
+        this.backgroundMask   = backgroundMask;
+        this.tileChunkMask    = tileChunkMask;
     }
 
     public void Dispose() {
         CoreUtils.Destroy(mat);
         CoreUtils.Destroy(waterMat);
-        CoreUtils.Destroy(backgroundMat);
         CoreUtils.Destroy(chunkedMat);
+        CoreUtils.Destroy(bgChunkedMat);
     }
 
     public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData rd) {
@@ -267,10 +271,30 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
         // bucket loop's global _SortBucket wouldn't reach them anyway).
         //
         // Each bucket sets _SortBucket as a global; the override shaders
-        // (NormalsCapture / NormalsCaptureBackground / NormalsCaptureWater)
-        // read it from the global, no per-sprite MPB needed.
-        int litOnlyMask = litMask & ~shadowMask & ~dirOnlyMask;
-        int shadowOnlyMask = litMask & shadowMask & ~dirOnlyMask & ~tileChunkMask;
+        // (NormalsCapture / NormalsCaptureWater) read it from the global, no
+        // per-sprite MPB needed.
+        // Both chunk layers are drawn by their own dedicated array-sampling overrides,
+        // never the generic sprite override (which samples _MainTex, not _MainTexArr) —
+        // exclude them from the generic lit/shadow tiers so they aren't double-drawn wrong.
+        // Background walls reuse the Background layer (chunked meshes replaced the old mask
+        // sprite), so exclude backgroundMask here and draw it with bgChunkedMat below.
+        int litOnlyMask = litMask & ~shadowMask & ~dirOnlyMask & ~backgroundMask;
+        int shadowOnlyMask = litMask & shadowMask & ~dirOnlyMask & ~tileChunkMask & ~backgroundMask;
+
+        // ── Chunked background walls (single draw, BEFORE every other tier) ──
+        // Background is the backmost tier — drawn first so dirOnly/litOnly/tile/shadow/
+        // water all overwrite it where they overlap (the same slot the old background
+        // sprite held: clouds etc. must win over it). The chunked meshes live on the
+        // Background layer and carry their own _SortBucket per chunk via MPB, so this
+        // draws once outside the bucket loops, with the flat lit-only (alpha 0.5) override.
+        if (backgroundMask != 0 && bgChunkedMat != null) {
+            var ds = CreateDrawingSettings(
+                new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
+            ds.overrideMaterial          = bgChunkedMat;
+            ds.overrideMaterialPassIndex = 0; // single pass
+            var fs = new FilteringSettings(RenderQueueRange.all, backgroundMask);
+            context.DrawRenderers(rd.cullResults, ref ds, ref fs);
+        }
 
         // ── Loop A: tiers that draw BEFORE chunked tiles ────────────────────
         for (int b = 0; b < SortBucketUtil.BucketCount; b++) {
@@ -280,16 +304,8 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
 
             uint bucketMask = 1u << b;
 
-            // Background (pass 1, lit-only).
-            if (backgroundMask != 0 && backgroundMat != null) {
-                var ds = CreateDrawingSettings(
-                    new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
-                ds.overrideMaterial          = backgroundMat;
-                ds.overrideMaterialPassIndex = 1;
-                var fs = new FilteringSettings(RenderQueueRange.all, backgroundMask);
-                fs.renderingLayerMask = bucketMask;
-                context.DrawRenderers(rd.cullResults, ref ds, ref fs);
-            }
+            // (Background walls are drawn once above the loop with bgChunkedMat — the
+            // old per-bucket NormalsCaptureBackground sprite draw is retired.)
 
             // Directional-only (pass 2, alpha=0.3).
             if (dirOnlyMask != 0) {

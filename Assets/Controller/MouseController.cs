@@ -127,9 +127,10 @@ public class MouseController : MonoBehaviour {
         if (Input.GetKeyDown(KeyCode.Q) && mouseMode == MouseMode.Build)
             BuildPanel.instance?.CycleShape(-1);
         // Ctrl+Shift+F has two modes depending on what the cursor is over:
-        //  (a) hovering an existing blueprint → instant-complete that blueprint.
+        //  (a) hovering an existing blueprint → instant-finish it (build, or tear down +
+        //      drop the deconstruct yield on the floor if it's a deconstruct bp).
         //  (b) elsewhere → toggle the one-shot arm for the NEXT blueprint placed.
-        // Symmetric to InfoPanel's Ctrl+Shift+D instant-deconstruct. Not gated on Build mode.
+        // InfoPanel handles the same Ctrl+Shift+F on the selected Blueprint tab. Not gated on Build mode.
         if (Input.GetKeyDown(KeyCode.F)
                 && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
                 && (Input.GetKey(KeyCode.LeftShift)   || Input.GetKey(KeyCode.RightShift))) {
@@ -141,8 +142,8 @@ public class MouseController : MonoBehaviour {
                 hoveredBp = hoverTile?.GetAnyBlueprint();
             }
             if (hoveredBp != null) {
-                Debug.Log($"[debug] instant-complete {hoveredBp.structType.name} at ({hoveredBp.tile.x}, {hoveredBp.tile.y})");
-                hoveredBp.Complete();
+                Debug.Log($"[debug] instant-finish {hoveredBp.structType.name} at ({hoveredBp.tile.x}, {hoveredBp.tile.y})");
+                hoveredBp.InstantFinish();
             } else {
                 BuildPanel.instantBuildNext = !BuildPanel.instantBuildNext;
                 Debug.Log($"[debug] instant-build next blueprint: {(BuildPanel.instantBuildNext ? "ARMED" : "disarmed")}");
@@ -435,6 +436,17 @@ public class MouseController : MonoBehaviour {
             } else {
                 FlagHarvestAt(tileAt);
             }
+            _isDragging = false;
+            _dragStartedInMode = null;
+        }
+
+        // Safety net: the two up-handlers above are gated on the CURRENT mouseMode, so a drag
+        // whose mode changed between press and release (e.g. clicking a build tool mid-drag)
+        // slips past both and leaves the selection rect stuck on screen. Once LMB is no longer
+        // held, force the drag state clear so the rectangle can never linger. Runs after the
+        // up-handlers, so a normal same-mode release still commits its selection first.
+        if (!Input.GetMouseButton(0) && (_isDragging || _dragStartedInMode.HasValue)) {
+            if (dragRectTransform != null) dragRectTransform.gameObject.SetActive(false);
             _isDragging = false;
             _dragStartedInMode = null;
         }

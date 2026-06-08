@@ -35,6 +35,11 @@ public class WorldController : MonoBehaviour {
     // ProjectSettings/TagManager.asset, and must be assigned on
     // LightFeature.tileChunkLayer + included in the camera's culling mask.
     public const string ChunkLayerName = "TileChunk";
+    // Chunked BACKGROUND-wall meshes reuse the existing 'Background' Unity layer (the old
+    // BackgroundTile mask sprite is retired) — it's already in the camera culling mask and
+    // wired as LightFeature.backgroundLayer, so no extra layer is needed. Meshes sit on the
+    // Default sorting layer at order -10/-11, exactly where the old background sprite was.
+    public const string BackgroundChunkLayerName = "Background";
 
     // FRAME 0: runs up to the first yield, pausing to let all other Start()s finish.
     // FRAME 1: resumes and calls GenerateDefault() (or waits for save/reset to do so).
@@ -76,6 +81,14 @@ public class WorldController : MonoBehaviour {
         // (pathfinding graph, floor-item sort).
         var tmc = gameObject.AddComponent<TileMeshController>();
         tmc.Initialize(world, tilesTransform, chunkedTileMaterial, ChunkLayerName);
+
+        // Chunked background-wall renderer — parallels TileMeshController for the back
+        // wall (sortingOrder -10/-11), giving Stone/Dirt walls autotiled 9-slice soft
+        // edges instead of the old hard-cutoff full-screen mask. Reuses the same chunked
+        // material (its visible pass samples only _MainTexArr). Stays dormant until its
+        // atlases exist, so it's safe to run ahead of the art being drawn.
+        var bgtmc = gameObject.AddComponent<BackgroundTileMeshController>();
+        bgtmc.Initialize(world, tilesTransform, chunkedTileMaterial, BackgroundChunkLayerName);
 
         // Decorative flowers — scattered across grass-topped tiles. No save
         // state of its own (deterministic from world seed). Subscribes per-tile
@@ -186,7 +199,7 @@ public class WorldController : MonoBehaviour {
             AnimalController.instance.animals[i]?.Destroy();
             AnimalController.instance.animals[i] = null;
         }
-        AnimalController.instance.na = 0;
+        AnimalController.instance.ResetColonyState();
         AnimalController.instance.ResetJobCounts();
         AnimalController.instance.ClearTileOccupancy();
         AnimalController.instance.ResetTickAccumulator();
@@ -295,11 +308,11 @@ public class WorldController : MonoBehaviour {
         // un-evaluated.)
 
         // Background walls are now set inside WorldGen.Generate (before
-        // RemoveFloatingChunks, which reads backgroundType). SkyExposure +
-        // BackgroundTile init still happen here since they need the world to
-        // be fully populated (plants, market) before snapshotting.
+        // RemoveFloatingChunks, which reads backgroundType). SkyExposure init
+        // still happens here since it needs the world fully populated (plants,
+        // market) before snapshotting. The wall itself renders via
+        // BackgroundTileMeshController (created in Start, subscribes its own callbacks).
         SkyExposure.InitializeWorld(world);
-        BackgroundTile.InitializeWorld(world);
 
         world.timer = World.ticksInDay * 0.3f;
         world.graph.Initialize();

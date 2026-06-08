@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b98b9525446bcf345af223ebd330b0cb, type: 3}
+  m_Name: UIFontOptions
+  m_EditorClassIdentifier: 
+  fonts:
+  - name: Smooth
+    font: {fileID: 11400000, guid: 079e71660f0a27649932cfe01cac6d27, type: 2}
+    size: 11
+  - name: Pixel
+    font: {fileID: 11400000, guid: 34e7641b5e31cde40bd848d4b73e1622, type: 2}
+    size: 16

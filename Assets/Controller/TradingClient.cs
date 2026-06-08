@@ -13,7 +13,13 @@ public class TradingClient : MonoBehaviour {
     bool hasLoggedConnectError = false;
     bool hasLoggedDisconnect = false;
     public const string playerName = "anita";
+#if UNITY_EDITOR
+    // Local dev: connect to a server running on this machine.
     const string WsUrl = "ws://127.0.0.1:8083/ws?name=" + playerName;
+#else
+    // Shipped build: the live market server (Hetzner, behind Caddy TLS).
+    const string WsUrl = "wss://market.anita.garden/ws?name=" + playerName;
+#endif
     const float ReconnectInterval = 20f;
 
     public event Action<bool>             OnConnectionChanged;

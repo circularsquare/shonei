@@ -68,11 +68,23 @@ public class AnimalController : MonoBehaviour{
     public const float MaxFoodStorageBonus = 4f;
     public const float FoodStorageBonusFullDays = 10f;
 
-    // Last frame on which MaybeRescueSpawn fired. AddAnimal queues animals that
-    // register on the next frame (Animal.Start), so na lags by a frame — without
-    // a cooldown the same low-population trigger fires again before the new mice
-    // count. 120 frames (~2s at 60fps) safely covers registration.
-    private int rescueLastFrame = -1000;
+    // Mice are queued by AddAnimal but only counted in `na` once Animal.Start runs
+    // RegisterReady (next frame). pendingAnimals bridges that gap so MaybeOfferRescue
+    // doesn't mistake the registration lag — after a rescue wave, the initial worldgen
+    // seed, a save load, or a birth — for an under-populated colony and spawn a
+    // spurious second wave. Zeroed by ResetColonyState (WorldController.ClearWorld).
+    private int pendingAnimals = 0;
+
+    // Set once the colony-wiped "spawn newcomers?" prompt has been shown this session,
+    // so we don't nag every frame the colony sits empty. Runtime-only (not saved) and
+    // cleared by ResetColonyState, so reloading a save re-arms the prompt.
+    private bool rescuePromptShown = false;
+
+    // False during the startup/load window — the world grid (and World.instance) exists
+    // several frames before the colony's mice are loaded/seeded, so na == 0 alone can't
+    // tell "wiped out" from "not loaded yet". Set true in Load() (the post-load hook run
+    // by every world-creation path) once na is finalized; cleared by ResetColonyState.
+    private bool colonyReady = false;
 
 
     // FRAME 0 — before any Start(). Sets instance and allocates arrays.
@@ -120,7 +132,10 @@ public class AnimalController : MonoBehaviour{
     // Advances animal ticks by `dt` seconds. Production calls Tick(Time.deltaTime).
     // Tests / snapshot harness call with a fixed dt for deterministic stepping.
     public void Tick(float dt) {
-        if (na == 0) return;
+        // No early-out on na == 0: the per-animal loop and RemoveDeadAnimals are
+        // already no-ops when empty, and we MUST keep running so MaybeOfferRescue can
+        // prompt to repopulate a fully wiped colony and UpdateColonyStats can clear the
+        // stale top-bar readout.
         // Lazy init: job counts UI needs world to exist (frame 1+)
         if (!jobCountsInitialized && WorldController.instance?.world != null) {
             world = WorldController.instance.world;
@@ -138,9 +153,8 @@ public class AnimalController : MonoBehaviour{
         // Remove any mice that starved to death this tick. Done here — after the
         // tick loop — so animals[] is never compacted mid-iteration.
         RemoveDeadAnimals();
-        // Anti-softlock: if the colony has collapsed to ≤3 mice, spawn a relief
-        // wave (skipped in winter — newcomers wait for the next thaw).
-        MaybeRescueSpawn();
+        // If the colony just wiped out, offer the player a fresh wave (once per session).
+        MaybeOfferRescue();
         // Colony-wide bookkeeping: once per full second boundary
         if (Mathf.Floor(prevTickAccumulator) < Mathf.Floor(tickAccumulator)) {
             colonyTickCounter++;
@@ -171,16 +185,29 @@ public class AnimalController : MonoBehaviour{
         // once fully initialized, preventing ticks on half-constructed animals.
         jobCounts[Db.jobs[0]] += 1;
         UpdateJobCount(Db.jobs[0]);
+        pendingAnimals += 1; // cleared in RegisterReady once Animal.Start runs
         return animal;
     }
 
     // Called from Animal.Start() once the animal is fully initialized.
     // Adds it to the tickable animals array.
     public void RegisterReady(Animal animal) {
+        if (pendingAnimals > 0) pendingAnimals -= 1;
         // Golden ratio spread gives excellent distribution for any animal count
         animal.tickOffset = (animal.id * 0.618034f) % 1f;
         animals[na] = animal;
         na += 1;
+    }
+
+    // Clears all per-world colony bookkeeping so a fresh world (gen / reset / load)
+    // starts clean. Call AFTER WorldController.ClearWorld has destroyed the live
+    // animals — this zeroes the count. Clearing colonyReady/rescuePromptShown here is
+    // what re-arms the wipeout prompt on every reload.
+    public void ResetColonyState() {
+        na = 0;
+        pendingAnimals = 0;
+        rescuePromptShown = false;
+        colonyReady = false;
     }
 
     // Compacts animals[] in place, removing any flagged pendingDeath (set by
@@ -197,8 +224,13 @@ public class AnimalController : MonoBehaviour{
             }
             animals[write++] = a;
         }
+        bool anyDied = write < na;
         for (int i = write; i < na; i++) animals[i] = null;
         na = write;
+        // Refresh the top-bar readout the moment someone dies — otherwise the pop count
+        // lags by up to 10 ticks (the UpdateColonyStats cadence), and a colony that just
+        // emptied keeps showing its last non-zero population.
+        if (anyDied) UpdateColonyStats();
     }
 
     // Tears down one mouse that has died. Order matters: drop its goods to the
@@ -217,39 +249,47 @@ public class AnimalController : MonoBehaviour{
         a.Destroy();
     }
 
-    // Rescues the colony from a starvation softlock. When the population falls
-    // below 4 (mice can no longer reproduce reliably and one more death wipes the
-    // run), top us back up to 4. Skipped in winter so the player isn't handed a
-    // relief wave during the lean season; help comes in spring/summer/fall.
+    // When the colony has been wiped out (every mouse starved), offer the player a
+    // fresh wave rather than auto-spawning — they may want to watch the empty colony
+    // or accept the loss. Shown once per session; reloading a save re-arms it (the
+    // flag is runtime-only and ClearWorld resets it). On decline the popup just
+    // closes and we never re-prompt this session.
     //
-    // Spawn site: any existing housing building, or — failing that — the left
-    // surface edge (x=1; x=0 is the worldgen market column).
-    private void MaybeRescueSpawn() {
-        int needed = 4 - na;
-        if (needed <= 0) return;
-        if (Time.frameCount - rescueLastFrame < 120) return;
-        if (World.instance == null || WeatherSystem.instance == null) return;
-        if (WeatherSystem.instance.GetSeason() == "Winter") return;
+    // Gated on colonyReady (suppresses the whole startup/load window) and on
+    // pendingAnimals == 0 (mice queued via AddAnimal but not yet registered), so only a
+    // genuine post-load empty colony — wiped out in play, or a saved 0-mouse colony —
+    // trips the prompt.
+    private void MaybeOfferRescue() {
+        if (!colonyReady || rescuePromptShown) return;
+        if (na != 0 || pendingAnimals != 0) return;
 
+        rescuePromptShown = true;
+        ConfirmationPopup.Show("all mice gone. spawn 4 newcomers?", SpawnRescueWave);
+    }
+
+    // Spawns a fresh wave of 4 mice. Spawn site: any existing housing building, or —
+    // failing that — the central spawn zone where mice originally arrive (near the
+    // starter plants). The old left-edge fallback (x=1) was often cut off from the
+    // rest of the colony by terrain, stranding the newcomers.
+    private void SpawnRescueWave() {
+        const int count = 4;
         float sx, sy;
         Building home = FindAnyHousing();
         if (home != null) {
             sx = home.x;
             sy = home.y;
         } else {
-            int[] surf = World.instance.surfaceY;
-            const int leftX = 1;
-            if (surf == null || surf.Length <= leftX) {
-                Debug.LogError("MaybeRescueSpawn: surfaceY unavailable, skipping rescue");
+            int[] surf = World.instance?.surfaceY;
+            int spawnX = (WorldGen.config.SpawnMinX + WorldGen.config.SpawnMaxX) / 2;
+            if (surf == null || surf.Length <= spawnX) {
+                Debug.LogError("SpawnRescueWave: surfaceY unavailable, skipping rescue");
                 return;
             }
-            sx = leftX;
-            sy = surf[leftX];
+            sx = spawnX;
+            sy = surf[spawnX];
         }
-        for (int i = 0; i < needed; i++) AddAnimal(sx, sy);
-        string noun = needed == 1 ? "mouse" : "mice";
-        EventFeed.instance?.Post($"<color=#66ff66>{needed} {noun} arrived at the colony.</color>");
-        rescueLastFrame = Time.frameCount;
+        for (int i = 0; i < count; i++) AddAnimal(sx, sy);
+        EventFeed.instance?.Post($"<color=#66ff66>{count} mice arrived at the colony.</color>");
     }
 
     private Building FindAnyHousing() {
@@ -284,6 +324,7 @@ public class AnimalController : MonoBehaviour{
     public void Load() {
         for (int a = 0; a < na; a++) animals[a].SlowUpdate(); // init happiness immediately on load
         UpdateColonyStats();
+        colonyReady = true; // colony finalized — MaybeOfferRescue may now fire on a wipeout
     }
 
     // Settles a freshly-loaded animal onto the nearest standable graph node. Save data
@@ -421,7 +462,16 @@ public class AnimalController : MonoBehaviour{
         }
     }
     void UpdateColonyStats(){
-        if (na == 0) return;
+        if (happinessDisplay == null && happinessReadoutText != null)
+            happinessDisplay = happinessReadoutText.GetComponent<TMPro.TextMeshProUGUI>();
+        // Empty colony: render a zeroed readout rather than leaving the last non-zero
+        // population frozen on the top bar (the bug where a wiped colony showed "pop 4/3").
+        if (na == 0) {
+            avgHappiness = 0f;
+            populationCapacity = 0;
+            if (happinessDisplay != null) happinessDisplay.text = "pop 0";
+            return;
+        }
         avgHappiness = 0f;
         for (int a = 0; a < na; a++) avgHappiness += animals[a].happiness.score;
         avgHappiness /= na;
@@ -434,13 +484,11 @@ public class AnimalController : MonoBehaviour{
 
         // Linear rescale from avgHappiness ∈ [0, happinessMaxScore] to [0, MaxPopulationCap].
         // Falls back to the legacy ×2.5 constant if Db hasn't finished loading (shouldn't
-        // happen in practice since UpdateColonyStats is gated on na > 0).
+        // happen in practice — by here na > 0, so Db is loaded).
         int maxScore = Db.happinessMaxScore;
         populationCapacity = maxScore > 0
             ? Mathf.FloorToInt(avgHappiness / maxScore * MaxPopulationCap)
             : Mathf.FloorToInt(avgHappiness * 2.5f);
-        if (happinessDisplay == null)
-            happinessDisplay = happinessReadoutText.GetComponent<TMPro.TextMeshProUGUI>();
         if (happinessDisplay != null)
             happinessDisplay.text = $"happiness {avgHappiness:0.0}  pop {na}/{populationCapacity}";
     }

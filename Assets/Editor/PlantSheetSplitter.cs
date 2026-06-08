@@ -244,10 +244,14 @@ public static class PlantSheetSplitter {
         return Md5(sb.ToString());
     }
 
-    // ── combo: split plant sheets then generate normal maps ──────────────────
+    // ── combo: split plant sheets, bake blob-sway sets, then generate normals ──
+    // A plant's base growth sheet and its `_blobs` sway set are one editing unit
+    // (the blob bake's static layer falls back to the split g/b sprites), so both
+    // re-process here. Both steps are cache-aware — only changed plants re-run.
     [MenuItem("Tools/Split Plant Sheets + Normals", priority = 101)]
     static void SplitThenGenerateNormals() {
         SplitAll();
+        PlantBlobBaker.BakeAll();
         SpriteNormalMapGenerator.GenerateAll();
     }
 

@@ -1952,9 +1952,9 @@ TextureImporter:
       b3_static: -8437935687700032516
       b4_b8: 2486635287775314339
       g1_b0: -6656723394421129079
-      b1_b1: -9053328115257093415
-      g2_static: 7045560384285983176
       b3_b9: 1280303910569322400
+      g2_static: 7045560384285983176
+      b1_b1: -9053328115257093415
       b2_b4: 824607521333911473
       g3_b0: 3442881320245771446
       b2_b3: 5440092538968804552
@@ -2002,6 +2002,6 @@ TextureImporter:
   spritePackingTag: 
   pSDRemoveMatte: 0
   pSDShowRemoveMatteOption: 0
-  userData: normalsCacheKey=MjN1ykTTQSnfbrleTwzWfQ==
+  userData: normalsCacheKey=OMlUkBz5oOXL6frTOFKk8w==
   assetBundleName: 
   assetBundleVariant: 

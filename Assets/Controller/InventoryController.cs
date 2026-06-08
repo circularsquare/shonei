@@ -290,6 +290,12 @@ public class InventoryController : MonoBehaviour {
         if (tileHighlightPrefab == null) return;
         while (_highlightPool.Count < selectedInventories.Count) {
             GameObject go = Instantiate(tileHighlightPrefab);
+            // Swap the prefab's plain unlit material for the overlay-ambient one so
+            // these storage-selection highlights dim toward night ambient instead of
+            // glaring full-bright in the dark (see UnlitOverlayAmbient.shader).
+            var hlSr = go.GetComponent<SpriteRenderer>();
+            var ovMat = SpriteMaterialUtil.OverlayAmbientMaterial;
+            if (hlSr != null && ovMat != null) hlSr.sharedMaterial = ovMat;
             go.SetActive(false);
             _highlightPool.Add(go);
         }
