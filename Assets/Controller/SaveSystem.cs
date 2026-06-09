@@ -66,6 +66,11 @@ using Newtonsoft.Json;
 public class SaveSystem : MonoBehaviour {
     public static SaveSystem instance { get; protected set; }
 
+    // On-disk schema version (see SAVE FORMAT VERSION above). Stamped into every
+    // save and surfaced in the cloud-save metadata so an older client refuses to
+    // download a newer-schema blob.
+    public const int SaveVersion = 1;
+
     // Name of the slot that was last loaded or saved. Null for a fresh/reset world.
     public string currentSlot { get; private set; }
 
@@ -139,8 +144,14 @@ public class SaveSystem : MonoBehaviour {
         System.IO.File.WriteAllText(SaveStore.SlotPath(slotName), json);
         if (setCurrent) currentSlot = slotName;
         autosaveTimer = 0f; // any save (manual or auto) restarts the autosave clock
+        int animals = AnimalController.instance != null ? AnimalController.instance.na : -1;
         // Refresh the cache from the live animal count — avoids re-parsing the file we just wrote.
-        SaveStore.SetAnimalCount(slotName, AnimalController.instance != null ? AnimalController.instance.na : -1);
+        SaveStore.SetAnimalCount(slotName, animals);
+        // Mirror to the account's cloud store (async, best-effort — the local write above
+        // is authoritative). No-op when logged out. Reuses the JSON we just serialized.
+        if (Session.LoggedIn)
+            SaveSync.QueueUpload(slotName, json, System.DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                                 animals < 0 ? 0 : animals, SaveVersion);
         Debug.Log("Saved world to slot: " + slotName);
     }
 
@@ -155,7 +166,7 @@ public class SaveSystem : MonoBehaviour {
     WorldSaveData GatherSaveData() {
         World world = World.instance;
         WorldSaveData data = new WorldSaveData();
-        data.saveVersion = 1;
+        data.saveVersion = SaveVersion;
         data.savedNx = world.nx;
         data.savedNy = world.ny;
         data.timer = world.timer;
@@ -874,6 +885,12 @@ public class SaveSystem : MonoBehaviour {
             else
                 MouseController.instance?.ClampCamera(); // old saves: no PPU → still belt-and-braces clamp at current zoom
         }
+
+        // Populate the global inventory panel now. A loaded world may open paused, in which
+        // case the tick-driven refresh never fires and the panel would stay empty until the
+        // first unpause. RefreshDisplay also builds the ItemDisplay tree, consuming the
+        // pendingGroupOpenOverrides staged above. Pure presentation; no game logic depends on it.
+        InventoryController.instance?.RefreshDisplay();
 
         // Stash the saved flower layout for FlowerController.OnWorldReady (runs just after this,
         // from WorldController), which restores it directly instead of re-scanning. Null on old

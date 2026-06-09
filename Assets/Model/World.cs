@@ -47,8 +47,8 @@ public class World : MonoBehaviour {
     public const float fallSecondsPerTile = 0.4f;
     public const float fallGravity = 2f / (fallSecondsPerTile * fallSecondsPerTile); // 12.5 tiles/s²
 
-    public static int ticksInDay = 240;
-    public static int daysInYear = 24; // year is 7200s = 120 min
+    public static int ticksInDay = 480; // 480 s = 8 min day (doubled from 240)
+    public static int daysInYear = 24;  // year is 11520 s = 192 min
 
     // Default world size for a fresh game. Save loads may override via ReallocateGrid
     // when their savedNx/Ny differ. Constants so other systems can reference the
@@ -189,8 +189,8 @@ public class World : MonoBehaviour {
             StructController.instance?.TickUpdate();
             InfoPanel.instance.UpdateInfo();
         }
-        float hourPeriod = ticksInDay / 24f;     // 10 seconds = 1 in-game hour
-        float subHourPeriod = hourPeriod / 3f;    // ~3.3 s = wind/humidity OU step
+        float hourPeriod = ticksInDay / 24f;     // 20 seconds = 1 in-game hour
+        float subHourPeriod = hourPeriod / 3f;    // ~6.7 s = wind/humidity OU step
         if (Math.Floor((timer + dt) / subHourPeriod) - Math.Floor(timer / subHourPeriod) > 0)
             WeatherSystem.instance?.StepWindHumidity();
         if (Math.Floor((timer + dt) / hourPeriod) - Math.Floor(timer / hourPeriod) > 0)

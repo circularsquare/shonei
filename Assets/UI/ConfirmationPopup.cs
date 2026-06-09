@@ -22,6 +22,7 @@ public class ConfirmationPopup : MonoBehaviour {
     public Button          cancelButton;
 
     System.Action _onConfirm;
+    System.Action _onCancel;
     bool _listenersAdded;
     bool _showRequested;
 
@@ -33,8 +34,10 @@ public class ConfirmationPopup : MonoBehaviour {
     }
 
     // Show a confirmation dialog. onConfirm is called only if the user clicks Confirm.
-    // confirmLabel defaults to "yes"; pass a custom string for context-specific labels.
-    public static void Show(string message, System.Action onConfirm, string confirmLabel = "yes") {
+    // onCancel (optional) is called if the user clicks Cancel — use it when Cancel means
+    // "do the other thing" rather than "do nothing". confirmLabel defaults to "yes".
+    public static void Show(string message, System.Action onConfirm, string confirmLabel = "yes",
+                            System.Action onCancel = null) {
         if (instance == null) {
             // FindObjectOfType(true) searches inactive objects — allows leaving popup inactive in editor.
             instance = FindObjectOfType<ConfirmationPopup>(true);
@@ -46,6 +49,7 @@ public class ConfirmationPopup : MonoBehaviour {
             instance._listenersAdded = true;
         }
         instance._onConfirm = onConfirm;
+        instance._onCancel = onCancel;
         instance.messageText.text = message;
         instance.confirmButton.GetComponentInChildren<TextMeshProUGUI>().text = confirmLabel;
         instance._showRequested = true;
@@ -60,5 +64,6 @@ public class ConfirmationPopup : MonoBehaviour {
 
     void OnCancel() {
         gameObject.SetActive(false);
+        _onCancel?.Invoke();
     }
 }

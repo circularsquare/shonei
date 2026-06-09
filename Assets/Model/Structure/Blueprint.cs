@@ -71,6 +71,13 @@ public class Blueprint {
     public int shapeIndex = 0;
     public Shape Shape => structType.GetShape(shapeIndex);
 
+    // Sort order for the translucent ghost body. Sits just below the animal band
+    // (mice are SortingGroup 50 + id%15, so 50..64) so blueprints read in front of
+    // most structures (buildings 10, platforms 15, ladders 40) but tuck behind mice.
+    // Plants (60) / torches (64) still draw in front — acceptable. The always-on-top
+    // frame overlay is unaffected (separate Unlit camera). See SPEC-rendering §Sorting orders.
+    private const int GhostSortingOrder = 49;
+
     // Two-click placement (rope bridge): nullable second endpoint coords. When
     // set, the blueprint claims BOTH posts' tiles (at structType.depth), scales
     // its cost linearly with horizontal delta, and on Complete materialises
@@ -173,10 +180,18 @@ public class Blueprint {
             World.instance.graph.RebuildComponents();
         }
 
-        if (structType.constructionCost == 0f){
-            constructionCost = 2f; // default
+        // constructionCost = ticks of one builder's labor (10 ticks ~ 1 in-game hour). Default 2.
+        // For variable-size structures (constructionCostPerTile), the authored value is per-tile and
+        // we multiply by the placed footprint's tile count — shape tile count for shape-aware types,
+        // span length for two-click placements. Mirrors the material-cost scaling just below.
+        float baseCost = structType.constructionCost == 0f ? 2f : structType.constructionCost;
+        if (structType.constructionCostPerTile) {
+            int tiles = shapeAware ? shape.TileCount
+                      : IsTwoClick ? Math.Max(1, (int)Catenary.HorizontalDelta(x, x2.Value))
+                      : Math.Max(1, structType.nx * Mathf.Max(1, structType.ny));
+            constructionCost = baseCost * tiles;
         } else {
-            constructionCost = structType.constructionCost;
+            constructionCost = baseCost;
         }
 
         go = new GameObject();
@@ -192,7 +207,7 @@ public class Blueprint {
         // resolves the anchor sprite + optional vertical extensions; custom-visual types
         // (tarp) take their own branch in Build that spawns cloth/posts/etc. instead.
         // The translucent blueprint tint is applied uniformly to every spawned SR.
-        var refs = StructureVisualBuilder.Build(go, structType, shape, mirrored, rotation, 100, new Color(0.8f, 0.9f, 1f, 0.5f));
+        var refs = StructureVisualBuilder.Build(go, structType, shape, mirrored, rotation, GhostSortingOrder, new Color(0.8f, 0.9f, 1f, 0.5f));
         sprite = refs.mainSr.sprite;  // null for custom-visual types — fine; nothing external reads this
 
         // Two-click placement: spawn a SECOND ghost at the partner tile, mirrored
@@ -205,7 +220,7 @@ public class Blueprint {
             GameObject partnerGo = new GameObject("blueprint_partner");
             partnerGo.transform.SetParent(go.transform, false);
             partnerGo.transform.localPosition = new Vector3(x2.Value - x, y2.Value - y, 0f);
-            StructureVisualBuilder.Build(partnerGo, structType, shape, !mirrored, rotation, 100,
+            StructureVisualBuilder.Build(partnerGo, structType, shape, !mirrored, rotation, GhostSortingOrder,
                                          new Color(0.8f, 0.9f, 1f, 0.5f));
         }
 
@@ -416,6 +431,12 @@ public class Blueprint {
             || structType.requiredTileName != null
             || structType.requiresSolidTilePlacement)
             return false;
+
+        // Side-mounted structures (ladder_side, bracket) lean on a wall, not a floor, so they
+        // bypass the bottom-row support check entirely. Support is the mounting wall, validated
+        // by the SAME predicate placement uses — suspended only if that wall is gone.
+        if (structType.sideMounted)
+            return !StructPlacement.SideMountWallPresent(tile, mirrored);
 
         if (structType.tileRequirements != null) {
             foreach (TileRequirement req in structType.tileRequirements) {
@@ -818,7 +839,7 @@ public class Blueprint {
             }
         }
         if (state == BlueprintState.Constructing || state == BlueprintState.Deconstructing){
-            progress += " (" + constructionProgress.ToString("F2") + "/" + constructionCost.ToString() + ")";
+            progress += " (" + constructionProgress.ToString("F0") + "/" + constructionCost.ToString() + ")";
         }
         return progress;
     }

@@ -30,6 +30,7 @@ public class SettingsManager : MonoBehaviour {
     const string K_AutosaveMins = "settings.autosaveMinutes"; // 0 = off
     const string K_UiScale    = "settings.uiScale";     // CanvasScaler factor, 1–2
     const string K_UiFontIndex = "settings.uiFontIndex"; // index into UIFontOptions
+    const string K_HideBackground = "settings.hideBackground"; // 0 / 1
 
     // ── Values ───────────────────────────────────────────────────────────────
     public float masterVolume   { get; private set; } = 1f;
@@ -59,6 +60,9 @@ public class SettingsManager : MonoBehaviour {
     // Selected UI font (index into UIFontOptions.fonts). 0 = the shipped/baked default.
     // Applied at runtime by UITextRuntimeStyle.
     public int   uiFontIndex    { get; private set; } = 0;
+    // Hide the decorative sky background (all SkyLayerBase layers — clouds, hills, gradient,
+    // stars, haze), leaving the camera's flat clear color. Applied by BackgroundVisibility.
+    public bool  hideBackground { get; private set; } = false;
 
     // Fired after any setter writes a value. Subscribers re-pull whatever they
     // care about. Cheap because the panel only emits on user input, not per-frame.
@@ -85,6 +89,7 @@ public class SettingsManager : MonoBehaviour {
         autosaveIntervalMinutes = Mathf.Max(0, PlayerPrefs.GetInt(K_AutosaveMins, 5));
         uiScale         = Mathf.Clamp(PlayerPrefs.GetFloat(K_UiScale, 1f), UiScaleMin, UiScaleMax);
         uiFontIndex     = Mathf.Max(0, PlayerPrefs.GetInt(K_UiFontIndex, 0));
+        hideBackground  = PlayerPrefs.GetInt(K_HideBackground, 0) != 0;
     }
 
     // ── Setters ──────────────────────────────────────────────────────────────
@@ -170,6 +175,14 @@ public class SettingsManager : MonoBehaviour {
         if (i == uiFontIndex) return;
         uiFontIndex = i;
         PlayerPrefs.SetInt(K_UiFontIndex, i);
+        OnChanged?.Invoke();
+    }
+
+    // Hide/show the decorative sky background. BackgroundVisibility re-reads on OnChanged.
+    public void SetHideBackground(bool enabled) {
+        if (enabled == hideBackground) return;
+        hideBackground = enabled;
+        PlayerPrefs.SetInt(K_HideBackground, enabled ? 1 : 0);
         OnChanged?.Invoke();
     }
 

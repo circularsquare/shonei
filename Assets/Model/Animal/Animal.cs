@@ -1013,7 +1013,12 @@ public class Animal : MonoBehaviour{
         return bestRecipe;
     }
 
-    const float MaxCraftSeconds = 20f;
+    // Single source of truth for the per-task work-stint cap: an animal works at most this many
+    // ticks (1 tick ~ 1s) on one task before it completes and re-evaluates — eat, sleep, switch to
+    // a closer/better task. Craft derives its batch size from this budget (below); construction
+    // counts ticks against it directly (see AnimalStateManager.HandleWorking). Harvest, research,
+    // and maintenance already finish a stint well under this.
+    public const int MaxWorkStintTicks = 25;
 
     public int CalculateWorkPossible(Recipe recipe){
         // looks at inputs in gInv, and first available storage you can find in animal range, at least 1.
@@ -1027,7 +1032,7 @@ public class Animal : MonoBehaviour{
             skill = s;
         float workEff = ModifierSystem.GetWorkMultiplier(this, skill);
         int numRounds = workEff > 0f
-            ? Math.Max((int)(MaxCraftSeconds * workEff / recipe.workload), 1)
+            ? Math.Max((int)(MaxWorkStintTicks * workEff / recipe.workload), 1)
             : 1;
         int n;
         foreach (ItemQuantity input in recipe.inputs){

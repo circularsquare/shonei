@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -53,8 +55,10 @@ public class MenuController : MonoBehaviour {
         if (mainPanel)  mainPanel.SetActive(loggedIn);
         if (loadPanel)  loadPanel.SetActive(false);
         if (loggedIn && loggedInLabel) loggedInLabel.text = Session.Username;
-        // Nothing to continue if there are no saves — New Game generates a fresh world instead.
-        if (loggedIn && continueButton) continueButton.interactable = SaveStore.GetSaveSlots().Count > 0;
+        // Enable Continue if there's anything to continue: a local save, or (logged in) a
+        // possible cloud save — Continue resolves the freshest of the two at click time.
+        if (loggedIn && continueButton)
+            continueButton.interactable = SaveStore.GetSaveSlots().Count > 0 || Session.LoggedIn;
     }
 
     // ── Login panel handlers ───────────────────────────────────────────────
@@ -87,10 +91,69 @@ public class MenuController : MonoBehaviour {
 
     // ── Main menu handlers ─────────────────────────────────────────────────
 
-    // Continue: load the most recent save (WorldController.Start's default — no boot
-    // flag needed). Disabled when no saves exist, so this always has something to load.
-    public void OnClickContinue() { LoadGame(newGame: false); }
+    // Continue: load the freshest save across local + cloud. Compares the newest local
+    // file against the newest cloud save (by savedAt — a convenience heuristic; the Load
+    // screen's rev-based badges are the precise path). Downloads the cloud copy first if
+    // it wins. Offline / logged-out falls straight back to the most-recent local save.
+    public void OnClickContinue() {
+        if (busy) return;
+        busy = true;
+        StartCoroutine(ContinueRoutine());
+    }
     public void OnClickNewGame()  { LoadGame(newGame: true); }
+
+    IEnumerator ContinueRoutine() {
+        string localRecent = SaveStore.GetMostRecentSlot();
+        long   localMtime  = localRecent != null ? SaveStore.GetSlotModifiedUnix(localRecent) : 0;
+
+        SaveSync.CloudMeta best = null;
+        if (Session.LoggedIn) {
+            SetStatus("checking cloud...");
+            List<SaveSync.CloudMeta> cloud = null;
+            yield return SaveSync.FetchCloudList((ok, list, err) => { if (ok) cloud = list; });
+            if (cloud != null)
+                foreach (var m in cloud) {
+                    if (m.deleted || m.saveVersion > SaveSystem.SaveVersion) continue; // can't load
+                    if (best == null || m.savedAt > best.savedAt) best = m;
+                }
+        }
+        SetStatus("");
+        busy = false;
+
+        // Cloud wins only if strictly newer than the local recent (or there's no local).
+        if (best != null && best.savedAt > localMtime) {
+            SetStatus("downloading...");
+            yield return DownloadThenBoot(best);
+        } else if (localRecent != null) {
+            LoadGame(newGame: false); // WorldController.Start loads the most-recent local
+        } else {
+            LoadGame(newGame: true);  // nothing anywhere → fresh world
+        }
+    }
+
+    // Materialize a cloud save to disk, record its synced rev, then boot it.
+    IEnumerator DownloadThenBoot(SaveSync.CloudMeta meta) {
+        bool ok = false; string json = null, error = null;
+        yield return SaveSync.Download(meta.slot, (s, j, e) => { ok = s; json = j; error = e; });
+        if (!ok) {
+            Debug.LogError("MenuController: Continue cloud download failed: " + error);
+            SetStatus("");
+            // Fall back to whatever is local rather than stranding the player.
+            if (SaveStore.GetMostRecentSlot() != null) LoadGame(newGame: false);
+            else LoadGame(newGame: true);
+            yield break;
+        }
+        try {
+            SaveStore.EnsureDir();
+            System.IO.File.WriteAllText(SaveStore.SlotPath(meta.slot), json);
+            SaveSyncIndex.Set(meta.slot, meta.savedAt, meta.rev);
+            SaveStore.SetAnimalCount(meta.slot, -1);
+        } catch (System.Exception e) {
+            Debug.LogError("MenuController: failed to materialize cloud save: " + e.Message);
+        }
+        WorldController.bootSlot = meta.slot;
+        SceneManager.LoadScene("Main");
+    }
 
     // Open the Load-save screen (pick a specific slot instead of the most recent).
     public void OnClickLoad() {

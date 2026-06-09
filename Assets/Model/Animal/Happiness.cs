@@ -9,7 +9,7 @@ public class Happiness {
     public const float satisfiedThreshold = 1.0f;
     public const float wantThreshold = 1.2f;
     public const float satisfactionCap = 5.0f;
-    public const float decayPerTick = 0.005f; // proportion of current amount that decays per tick
+    public const float decayPerTick = 0.0025f; // proportion of current amount that decays per tick
     public const float activityGrant = 2.0f;
     public const float socialTickGrant = 0.2f; // social satisfaction per tick while chatting
     public const float readingTickGrant = 0.2f; // reading satisfaction per tick while reading a book
@@ -23,9 +23,9 @@ public class Happiness {
 
     // Warmth: decaying cold tolerance buff from sitting by a fireplace.
     // Widens comfortTempLow by up to warmth * 1C (max 5C at cap).
-    // Decays ~2 days: 0.94^48 ~ 0.046 (24 SlowUpdates/day x 2 days).
+    // Decays ~2 days: 0.9695^96 ~ 0.05 (48 SlowUpdates/day x 2 days).
     public float warmth = 0f;
-    private const float warmthDecayFactor10 = 0.94f;
+    private const float warmthDecayFactor10 = 0.9695f;
 
     // Comfortable temperature range (C). Updated by UpdateComfortRange().
     public float comfortTempLow  = 10f;

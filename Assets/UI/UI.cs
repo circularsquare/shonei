@@ -39,6 +39,12 @@ public class UI : MonoBehaviour {
     }
 
     public static void RegisterExclusive(GameObject panel) {
+        // Prune entries destroyed by a prior scene unload. exclusivePanels is static and only
+        // reset on play-mode entry (ResetStaticsForPlayMode), NOT on scene reload — so going
+        // Menu -> Main -> Menu -> Main leaves the previous Main's destroyed panels in the list.
+        // Every exclusive panel re-registers in its Awake on each load, so pruning here keeps
+        // the list to live panels and stops OpenExclusive throwing on a dead `p.activeSelf`.
+        exclusivePanels.RemoveAll(p => p == null);
         if (!exclusivePanels.Contains(panel))
             exclusivePanels.Add(panel);
     }
@@ -46,7 +52,7 @@ public class UI : MonoBehaviour {
     // Close all other exclusive panels, then open this one.
     public static void OpenExclusive(GameObject panel) {
         foreach (var p in exclusivePanels)
-            if (p != panel && p.activeSelf)
+            if (p != null && p != panel && p.activeSelf)
                 p.SetActive(false);
         panel.SetActive(true);
     }
@@ -117,7 +123,7 @@ public class UI : MonoBehaviour {
             }
             else {
                 foreach (var p in exclusivePanels)
-                    if (p.activeSelf) { p.SetActive(false); break; }
+                    if (p != null && p.activeSelf) { p.SetActive(false); break; }
             }
         }
 
@@ -145,7 +151,7 @@ public class UI : MonoBehaviour {
             }
             // 3. any open exclusive panel (TradingPanel / RecipePanel / ResearchPanel / GlobalHappinessPanel)
             foreach (var p in exclusivePanels) {
-                if (p.activeSelf) { p.SetActive(false); return; }
+                if (p != null && p.activeSelf) { p.SetActive(false); return; }
             }
             // 4. fall back to leaving non-Select mouse mode
             var mc = MouseController.instance;

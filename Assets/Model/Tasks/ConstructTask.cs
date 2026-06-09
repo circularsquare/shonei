@@ -14,6 +14,10 @@ using System.Linq;
 public class ConstructTask : Task {
     public Blueprint blueprint;
     public bool deconstructing;
+    // Ticks of construction this task has put in. When it reaches Animal.MaxWorkStintTicks the
+    // builder yields (see AnimalStateManager.HandleWorking) so it re-evaluates needs/priorities;
+    // a fresh ConstructTask resumes against the blueprint's persisted progress.
+    public int ticksWorked;
     public ConstructTask(Animal animal, Blueprint bp, bool deconstructing = false) : base(animal){
         this.blueprint = bp;
         this.deconstructing = deconstructing;

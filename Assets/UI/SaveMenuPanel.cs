@@ -23,10 +23,19 @@ public class SaveMenuPanel : MonoBehaviour {
     public GameObject slotEntryPrefab; // prefab with SaveSlotEntry component
     public Button     saveButton;      // optional — interactable only when a slot is currently loaded
 
+    // Live row references, so the cloud-sync badges can be refreshed in place when an
+    // upload completes (SaveSync.OnStateChanged) without rebuilding the whole list.
+    readonly List<SaveSlotEntry> entries = new List<SaveSlotEntry>();
+
     void Start() {
         if (instance != null) { Debug.LogError("there should only be one SaveMenuPanel"); }
         instance = this;
     }
+
+    // Subscribe to sync-state changes only while the panel is open (it's inactive by
+    // default and toggled), so closed panels do no work.
+    void OnEnable()  { SaveSync.OnStateChanged += RefreshSyncBadges; }
+    void OnDisable() { SaveSync.OnStateChanged -= RefreshSyncBadges; }
 
     public void Toggle() {
         bool opening = !gameObject.activeSelf;
@@ -85,6 +94,7 @@ public class SaveMenuPanel : MonoBehaviour {
             return;
         }
         foreach (Transform child in slotList) Destroy(child.gameObject);
+        entries.Clear();
 
         List<string> slots = SaveStore.GetSaveSlots();
         foreach (string slot in slots) {
@@ -94,11 +104,23 @@ public class SaveMenuPanel : MonoBehaviour {
             SaveSlotEntry entry = go.GetComponent<SaveSlotEntry>();
             if (entry == null) { Debug.LogError("SaveMenuPanel: slotEntryPrefab missing SaveSlotEntry component"); continue; }
             entry.Init(slot, miceCount, startRenaming: slot == startRenamingSlot);
+            entries.Add(entry);
         }
+        RefreshSyncBadges();
 
         if (saveButton != null) {
             string slot = SaveSystem.instance.currentSlot;
             saveButton.interactable = !string.IsNullOrEmpty(slot) && SaveStore.SlotExists(slot);
+        }
+    }
+
+    // Re-paint the per-row cloud-sync badge (synced / syncing / local / offline). Cheap and
+    // network-free (reads the local marker), so it's safe to call on every sync-state change
+    // — a manual save shows "syncing" then flips to "synced" once the upload lands.
+    void RefreshSyncBadges() {
+        foreach (SaveSlotEntry e in entries) {
+            if (e == null) continue; // destroyed mid-rebuild
+            e.SetSyncBadge(SaveSync.LocalBadge(e.SlotName, SaveStore.GetSlotModifiedUnix(e.SlotName)));
         }
     }
 

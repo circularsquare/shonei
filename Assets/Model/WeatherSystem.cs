@@ -78,11 +78,12 @@ public class WeatherSystem {
     const float windReversion = 0.00333f;
     const float windShock     = 0.0577f;
 
-    // Exponential smoothing rate (per real second). 0.45 → ~95% of the way
-    // to a new target after ~7 s of real time, comfortably faster than the
-    // sub-hourly step interval (~3.3 s real with ticksInDay=240) so wind
-    // isn't perpetually mid-transition, but slow enough to feel weather-y.
-    const float windSmoothingRate = 0.45f;
+    // Exponential smoothing rate (per real second). Halved 0.45→0.225 when
+    // ticksInDay doubled (240→480): the rate is per real second but the OU
+    // step interval scales with the day, so halving keeps wind chasing its
+    // target by the same ~78%/step as the old 240-day — gently continuous,
+    // never plateauing, and not perpetually lagging either.
+    const float windSmoothingRate = 0.225f;
 
     // Ambient temperature in Celsius, driven by yearly + daily sine waves.
     // Yearly: peaks midsummer (day 7.5) at ~30°C high, troughs midwinter (day 17.5) at ~5°C high.
@@ -149,7 +150,10 @@ public class WeatherSystem {
     // (≈0.8/day vs ≈1.1/day before). If you want lazier coverage WITHOUT
     // touching rain episode count, give CloudLayer its own separate low-pass
     // and leave this on the fast signal instead.
-    const float humiditySmoothingRate = 0.08f;
+    // Halved 0.08→0.04 when ticksInDay doubled (240→480): this rate is per real
+    // second, so halving keeps the smoothing window the same fraction of the
+    // now-2x-longer day — preserving the damped variance and thus rain fraction.
+    const float humiditySmoothingRate = 0.04f;
 
     const float lerpDuration = 4f;
 

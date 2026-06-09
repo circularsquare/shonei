@@ -38,20 +38,7 @@ public static class StructPlacement {
         if (st.sideMounted) {
             if (tile.type.id != 0) return "tile is not empty";
             if (tile.structs[st.depth] != null) return "footprint is blocked";
-            int dir = mirrored ? +1 : -1;
-            Tile wall = world.GetTileAt(tile.x + dir, tile.y);
-            if (wall == null) return "needs wall on this side";
-            // A natural/built solid tile is always a valid mount. Otherwise the wall must be a
-            // building whose sprite has body on the face the ladder rests against — never a
-            // plant, never a visually-empty footprint tile (e.g. a windmill's blade tiles). The
-            // ladder rests on the wall's RIGHT face when !mirrored (dir=-1 → wall on its left).
-            if (!wall.type.solid) {
-                Structure s = wall.structs[0];
-                if (s == null) return "needs wall on this side";
-                if (s is Plant) return "can't attach to a plant";
-                if (!s.structType.SideEdgeSolid(wall.x - s.x, wall.y - s.y, !mirrored, s.mirrored))
-                    return "no wall on this side";
-            }
+            if (!SideMountWallPresent(tile, mirrored)) return "needs a wall on this side";
             return null;
         }
 
@@ -240,6 +227,23 @@ public static class StructPlacement {
             if (t.GetBlueprintAt(st.depth) != null) return "rope path blocked by blueprint";
         }
         return null;
+    }
+
+    // True if a side-mounted structure (ladder_side, bracket) has a solid wall to lean on
+    // its mounted side — a natural/built solid tile, or a building whose sprite has body on
+    // the facing edge (never a plant, never a visually-empty footprint tile). This is the
+    // SINGLE source of truth for side-mount support: both placement (above) and
+    // Blueprint.IsSuspended call it, so a side-mounted blueprint is always completeable under
+    // the same rule it was placed with. dir: mirrored=true → wall on right; mirrored=false → wall on left.
+    public static bool SideMountWallPresent(Tile tile, bool mirrored) {
+        World world = World.instance;
+        int dir = mirrored ? +1 : -1;
+        Tile wall = world.GetTileAt(tile.x + dir, tile.y);
+        if (wall == null) return false;
+        if (wall.type.solid) return true;
+        Structure s = wall.structs[0];
+        if (s == null || s is Plant) return false;
+        return s.structType.SideEdgeSolid(wall.x - s.x, wall.y - s.y, !mirrored, s.mirrored);
     }
 
     // Returns true if any blueprint on the tile below (x, y-1) would provide solid-top support once built.

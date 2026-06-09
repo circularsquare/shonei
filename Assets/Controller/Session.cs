@@ -14,6 +14,12 @@ public static class Session {
     public static string Token    { get; private set; }
     public static bool   LoggedIn => !string.IsNullOrEmpty(Token);
 
+    // Folder/key segment identifying the active account for per-account LOCAL storage
+    // (SaveStore.SaveDir, SaveSyncIndex markers). The logged-in username, or ".guest"
+    // when logged out — the leading dot can't collide with a real username (the server's
+    // usernameRe forbids '.'), so the guest space can never alias an account's folder.
+    public static string StorageScope => LoggedIn ? Username : ".guest";
+
     const string PrefToken = "session.token";
     const string PrefUser  = "session.username";
 

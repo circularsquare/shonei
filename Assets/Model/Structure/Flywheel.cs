@@ -26,10 +26,10 @@ public class Flywheel : Building, PowerSystem.IPowerStorage {
     // each) during a wind stall.
     public const float MaxRate = 3f;
 
-    // Exponential decay applied each tick. 0.97 ≈ 23-tick half-life ≈ ~2.3 in-game hours
-    // (240 ticks/day, 10 ticks/hour). Tuned so a flywheel charged from windmill gusts can
+    // Exponential decay applied each tick. 0.985 ≈ 46-tick half-life ≈ ~2.3 in-game hours
+    // (480 ticks/day, 20 ticks/hour). Tuned so a flywheel charged from windmill gusts can
     // carry through a calm period of similar length but isn't a long-term battery.
-    public const float DecayFactor = 0.97f;
+    public const float DecayFactor = 0.985f;
 
     // Current stored energy in [0, Capacity]. Persisted via SaveSystem.GatherStructure.
     public float charge;

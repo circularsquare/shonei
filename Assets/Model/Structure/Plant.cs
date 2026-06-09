@@ -199,7 +199,23 @@ public class Plant : Structure {
         if (unlitMat != null) overlaySr.sharedMaterial = unlitMat;
         overlaySr.sprite = GetHarvestOverlaySprite();
         overlaySr.sortingOrder = sr.sortingOrder + 1;
+        overlaySr.drawMode = SpriteDrawMode.Sliced; // 9-sliced so the flag stretches to the plant's footprint
+        RefreshHarvestOverlaySize();
         overlayGo.SetActive(false);
+    }
+
+    // Stretches the harvest flag overlay to cover the plant's full footprint (anchor +
+    // every extension tile) so multi-tile plants show the flag across their top. The
+    // sprite is 9-sliced, so the border holds crisp while the centre stretches. Called
+    // on creation and whenever the plant's tile-height changes.
+    private void RefreshHarvestOverlaySize() {
+        if (overlaySr == null) return;
+        int h = 1 + extensionSrs.Count;
+        int w = Mathf.Max(1, structType.nx);
+        overlaySr.size = new Vector2(w, h);
+        // Sliced sprite keeps its centre pivot — recentre on the full footprint so it
+        // spans the anchor tile (y) through the top tile (y + h - 1).
+        overlayGo.transform.localPosition = new Vector3((w - 1) / 2f, (h - 1) / 2f, 0f);
     }
 
     // Player just finished planting via a blueprint → auto-flag for harvest so the crop
@@ -446,6 +462,7 @@ public class Plant : Structure {
         extensionGos.Add(extGo);
         extensionSrs.Add(extSr);
         RefreshTintableSrs();
+        RefreshHarvestOverlaySize(); // plant grew a tile — stretch the flag to match
         // Plant just got taller — every existing SR's _PlantHeight is now stale.
         RefreshSwayMPB();
     }
@@ -463,6 +480,7 @@ public class Plant : Structure {
         extensionSrs.Clear();
         height = 1;
         RefreshTintableSrs();
+        RefreshHarvestOverlaySize(); // collapsed back to anchor — shrink the flag
         // Anchor's _PlantHeight needs to drop back to 1 — otherwise a harvested
         // bamboo that just regrew its anchor would still sway as if 3 tiles tall.
         RefreshSwayMPB();

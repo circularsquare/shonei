@@ -9,8 +9,8 @@
             { "name": "pine", "quantity": 20 },
             { "name": "acorn", "quantity": 2 }
         ],
-        "growthTime": 300,
-        "harvestTime": 14.0,
+        "growthTime": 600,
+        "harvestTime": 28.0,
         "njob": "logger",
         "capacity": 1,
         "tempMin": 0,  "tempMax": 28,
@@ -28,8 +28,8 @@
             { "name": "pine", "quantity": 20 },
             { "name": "pinecone", "quantity": 2 }
         ],
-        "growthTime": 300,
-        "harvestTime": 14.0,
+        "growthTime": 600,
+        "harvestTime": 28.0,
         "njob": "logger",
         "capacity": 1,
         "tempMin": 0,  "tempMax": 28,
@@ -46,8 +46,8 @@
         "nproducts": [
             { "name": "wheat", "quantity": 8 }
         ],
-        "growthTime": 135,
-        "harvestTime": 6.0,
+        "growthTime": 270,
+        "harvestTime": 12.0,
         "njob": "farmer",
         "capacity": 1,
         "tempMin": 5,  "tempMax": 30,
@@ -61,8 +61,8 @@
         "nproducts": [
             { "name": "rice", "quantity": 6 }
         ],
-        "growthTime": 90,
-        "harvestTime": 6.0,
+        "growthTime": 180,
+        "harvestTime": 12.0,
         "njob": "farmer",
         "capacity": 1,
         "tempMin": 12, "tempMax": 35,
@@ -76,8 +76,8 @@
         "nproducts": [
             { "name": "soybeans", "quantity": 6 }
         ],
-        "growthTime": 120,
-        "harvestTime": 6.0,
+        "growthTime": 240,
+        "harvestTime": 12.0,
         "njob": "farmer",
         "capacity": 1,
         "tempMin": 10, "tempMax": 30,
@@ -97,14 +97,14 @@
         ],
         "fractionalRemoval": true,
         "fruitCycleStages": 2,
-        "fruitRotTicks": 480,
+        "fruitRotTicks": 960,
         "growthFrames": [
             ["b0"], ["b1"], ["b2"], ["b3"],
             ["b4","g0"], ["b4","g1"], ["b4","g2"], ["b4","g3"],
             ["b5","g5"], ["b6","g6"]
         ],
-        "growthTime": 450,
-        "harvestTime": 3.0,
+        "growthTime": 900,
+        "harvestTime": 6.0,
         "njob": "farmer",
         "capacity": 1,
         "tempMin": 0,  "tempMax": 28,
@@ -120,8 +120,8 @@
         "nproducts": [
             { "name": "ramie", "quantity": 6 }
         ],
-        "growthTime": 105,
-        "harvestTime": 6.0,
+        "growthTime": 210,
+        "harvestTime": 12.0,
         "njob": "farmer",
         "capacity": 1,
         "tempMin": 10, "tempMax": 30,
@@ -136,8 +136,8 @@
         "nproducts": [
             { "name": "bamboo", "quantity": 8 }
         ],
-        "growthTime": 120,
-        "harvestTime": 8.0,
+        "growthTime": 240,
+        "harvestTime": 16.0,
         "njob": "farmer",
         "capacity": 1,
         "tempMin": 15, "tempMax": 30,

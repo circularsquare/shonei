@@ -65,12 +65,16 @@ public class CloudLayer : SkyLayerBase {
     [Range(0f, 1f)] public float worldLockingX = 0.25f;
     [Tooltip("Vertical parallax. 0 = sky-locked (sprite tracks camera y exactly, clouds glued to viewport vertically); 1 = world-locked (sprite stays at bandCenterY, clouds appear to move 100% as much as foreground vertically). 0.25 = 25% parallax. Under SkyCamera zoom-dampening the apparent ratio drifts slightly off this value when the main camera is zoomed out — tune to taste.")]
     [Range(0f, 1f)] public float worldLockingY = 0.25f;
-    [Tooltip("Rate at which the underlying noise field morphs over time (noise-units / second on the time axis of a 3D value noise). 0 = static field (only wind moves it); ~0.05 = clouds visibly form / dissolve over tens of seconds, like real cumulus evolving in place. Independent of wind drift, which just slides the field horizontally.")]
-    public float cloudEvolutionRate = 0.05f;
+    [Tooltip("Rate at which the underlying noise field morphs over time (noise-units / second on the time axis of a 3D value noise). 0 = static field (only wind moves it); ~0.025 = clouds visibly form / dissolve over tens of seconds, like real cumulus evolving in place. Independent of wind drift, which just slides the field horizontally.")]
+    public float cloudEvolutionRate = 0.025f;
     [Tooltip("Use a fixed wind value instead of reading WeatherSystem — for scenes without weather (the menu).")]
     public bool useConstantWind = false;
     [Tooltip("Wind value used when useConstantWind is on (same range as WeatherSystem.wind).")]
     public float constantWind = 0.5f;
+    [Tooltip("Use a fixed humidity instead of reading WeatherSystem — for weather-less scenes (the menu), where it otherwise falls back to WeatherSystem.humidityMean. Drives both coverage threshold and tint.")]
+    public bool useConstantHumidity = false;
+    [Tooltip("Humidity used when useConstantHumidity is on (same 0..1 range as WeatherSystem.humidity). Lower = sparser, whiter clouds.")]
+    [Range(0f, 1f)] public float constantHumidity = 0.5f;
 
     [Header("Tint")]
     public Color baseColorClear = Color.white;
@@ -379,8 +383,8 @@ public class CloudLayer : SkyLayerBase {
         // Humidity-driven full-sprite tint. Multiplied by _MainTex.rgb in
         // the sprite shader. Stays pure baseColorClear below
         // tintLerpStartHumidity, then lerps to baseColorStorm.
-        float humidity = WeatherSystem.instance != null
-            ? WeatherSystem.instance.humidity : WeatherSystem.humidityMean;
+        float humidity = useConstantHumidity ? constantHumidity
+            : (WeatherSystem.instance != null ? WeatherSystem.instance.humidity : WeatherSystem.humidityMean);
         float tintT = Mathf.InverseLerp(tintLerpStartHumidity, 1f, humidity);
         sr.color = Color.Lerp(baseColorClear, baseColorStorm, tintT);
 

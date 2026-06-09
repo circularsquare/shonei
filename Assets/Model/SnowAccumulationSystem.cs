@@ -56,7 +56,7 @@ public class SnowAccumulationSystem {
     const float AccumThresholdC      = 0f;        // strictly less than → can accumulate
     const float MeltStartC           = 0f;        // strictly greater than → starts melting (linearly ramped from here)
     const float MeltFullC            = 20f;       // at and above → 100% melt chance per tick
-    const float AccumChancePerSecond = 1f / 10f;  // base chance at snowAmount=1; scaled by current intensity
+    const float AccumChancePerSecond = 1f / 20f;  // base chance at snowAmount=1; scaled by current intensity
 
     public static SnowAccumulationSystem Create() {
         instance = new SnowAccumulationSystem();

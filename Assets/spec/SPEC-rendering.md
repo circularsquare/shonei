@@ -28,8 +28,8 @@
 | 64 | Light-source buildings (torch, fireplace) — per-type override via `StructType.sortingOrder`, sits above animals/plants so `LightSource` (auto-detect) front-lights them |
 | 65 | Falling items (mid-air animation) |
 | 70 | Floor items resting on solid dirt (or fallback when no surface is detected below) |
-| 100 | Blueprints |
-| 101 | Blueprint frame overlay (unlit, sliced) |
+| 49 | Blueprint ghost body — just below the animal band (50..64) so blueprints read in front of most structures (buildings, platforms, ladders) but tuck behind mice. Plants (60) / torches (64) still draw in front. Constant `Blueprint.GhostSortingOrder`. |
+| 101 | Blueprint frame overlay (unlit, sliced) — drawn by the separate Unlit overlay camera, so it stays on top of the world (incl. mice) regardless of the ghost body's order. |
 | 200 | Build preview (mouse cursor ghost) |
 
 **Floor-item sort is surface-aware.** `Inventory` (Floor type) picks its sortingOrder based on the tile directly below at (x, y−1): platform-with-`solidTop` → 17, building-with-`solidTop` → 12, anything else → 70 (surface +2, so rotating-wheel overlays at parent+1 don't collide with the pile). The pile re-sorts whenever a structure is placed/destroyed under it (via `Structure` constructor + `Destroy`) or the supporting tile's type changes (`WorldController.OnTileTypeChanged`). Helpers: `Inventory.ComputeFloorSortingOrder()`, `Inventory.RefreshFloorSortingOrder()`, and the static `Inventory.RefreshFloorAt(x, y)`.

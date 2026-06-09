@@ -33,7 +33,7 @@ public class LeisureTask : Task {
         seatTile = path.tile;
 
         objectives.AddLast(new GoObjective(this, path.tile));
-        objectives.AddLast(new LeisureObjective(this, 15));
+        objectives.AddLast(new LeisureObjective(this, 25));
         return true;
     }
 

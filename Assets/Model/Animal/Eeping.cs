@@ -5,12 +5,12 @@ public class Eeping {
     public float maxEep = 100f;
     public float eep = 90f;
     // In steady state a mouse sleeps tireRate/eepRate of the day — the tireRate ticked during
-    // sleep cancels out, so the fraction is purely the ratio. Home: 0.2/1 = 20%. Outside:
-    // 0.2/0.7 ~ 29%. Raising tireRate also lowers the energy a mouse reaches before bed (it
+    // sleep cancels out, so the fraction is purely the ratio. Home: 0.1/0.5 = 20%. Outside:
+    // 0.1/0.35 ~ 29%. Raising tireRate also lowers the energy a mouse reaches before bed (it
     // depletes faster across the day), so it's the knob that makes mice actually get tired.
-    public static float tireRate = 0.2f;
-    public static float eepRate = 1f;          // home recovery
-    public static float outsideEepRate = 0.7f; // slower when caught out
+    public static float tireRate = 0.1f;
+    public static float eepRate = 0.5f;          // home recovery
+    public static float outsideEepRate = 0.35f; // slower when caught out
 
     // Sleep thresholds. exhaustedSleepThreshold is the daytime baseline — mice this tired
     // sleep regardless of time. At bedtime, BedtimeUrgency (0→1 across the bedtime window)

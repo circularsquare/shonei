@@ -103,7 +103,11 @@ public class TradingPanel : MonoBehaviour {
         // Graph stays hidden until a query returns real history (see OnClickQuery).
         priceGraphPanel?.Hide();
 
-        gameObject.SetActive(false);
+        // Do NOT SetActive(false) here. This GameObject is authored inactive in the scene,
+        // so Start() doesn't run until the panel's first activation (first Toggle →
+        // OpenExclusive). Hiding here would fire on that first open and immediately re-close
+        // the panel — the "click the market button twice" bug. The scene's authored-inactive
+        // state is what hides it at load; keep the GameObject inactive in the scene.
     }
 
     void Update() {

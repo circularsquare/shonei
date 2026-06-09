@@ -16,11 +16,13 @@ public class SaveSlotEntry : MonoBehaviour {
     [Header("Prefab Refs")]
     public TMP_InputField  nameInput;
     public TextMeshProUGUI miceLabel;
+    public TextMeshProUGUI syncLabel;   // cloud-sync badge; only the menu sets it (in-game: blank)
     public Button          saveButton;
     public Button          loadButton;
     public Button          deleteButton;
 
     string _slotName;
+    public string SlotName => _slotName;
     System.Action<string> _onLoad;    // null → default in-game Load (SaveSystem.instance.Load)
     System.Action         _onChanged; // list-rebuild hook after a delete; null → SaveMenuPanel.Refresh
 
@@ -59,6 +61,19 @@ public class SaveSlotEntry : MonoBehaviour {
         }
     }
 
+    // Sets the cloud-sync badge from a full status (menu's MenuLoadPanel — network-aware).
+    // A cloud-only row has no local file to rename, so its name field is locked.
+    public void SetSyncStatus(SaveSync.SyncStatus status) {
+        SetSyncBadge(SaveSync.StatusText(status));
+        if (status == SaveSync.SyncStatus.CloudOnly && nameInput != null)
+            nameInput.interactable = false;
+    }
+
+    // Sets the badge text directly (in-game SaveMenuPanel uses the network-free LocalBadge).
+    public void SetSyncBadge(string text) {
+        if (syncLabel != null) syncLabel.text = text;
+    }
+
     void OnRename(string newName) {
         newName = newName.Trim();
         if (string.IsNullOrEmpty(newName)) { nameInput.text = _slotName; return; }
@@ -68,13 +83,33 @@ public class SaveSlotEntry : MonoBehaviour {
             nameInput.text = _slotName;
             return;
         }
+        string oldName = _slotName;
         // In-game, route through SaveSystem so the rename follows currentSlot; in the
         // menu there's no SaveSystem, so go straight to the filesystem store.
         bool ok = SaveSystem.instance != null
-            ? SaveSystem.instance.RenameSlot(_slotName, newName)
-            : SaveStore.RenameSlot(_slotName, newName);
-        if (ok) _slotName = newName;
+            ? SaveSystem.instance.RenameSlot(oldName, newName)
+            : SaveStore.RenameSlot(oldName, newName);
+        if (ok) { _slotName = newName; PropagateRenameToCloud(oldName, newName); }
         else nameInput.text = _slotName;
+    }
+
+    // Keep the account's cloud copy consistent with a local rename: re-upload the file
+    // under its new name and tombstone the old name. No-op when logged out. The new
+    // slot's cloud copy lands on the next pump tick; the old name is tombstoned so it
+    // doesn't linger as a stale "cloud only" row.
+    void PropagateRenameToCloud(string oldName, string newName) {
+        if (!Session.LoggedIn) return;
+        SaveSyncIndex.Rename(oldName, newName);
+        try {
+            string json = System.IO.File.ReadAllText(SaveStore.SlotPath(newName));
+            SaveSync.QueueUpload(newName, json, System.DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                                 SaveStore.GetAnimalCount(newName), SaveSystem.SaveVersion);
+        } catch (System.Exception e) {
+            Debug.LogError("SaveSlotEntry: cloud re-upload on rename failed: " + e.Message);
+        }
+        SaveSyncRunner.Run(SaveSync.DeleteRemote(oldName, (cloudOk, err) => {
+            if (!cloudOk) Debug.LogWarning("SaveSlotEntry: cloud delete of old name failed: " + err);
+        }));
     }
 
     void OnSave() {
@@ -108,7 +143,16 @@ public class SaveSlotEntry : MonoBehaviour {
         ConfirmationPopup.Show(
             "really delete \"" + nameAtDeletion + "\"?",
             () => {
-                SaveStore.DeleteSlot(nameAtDeletion);
+                // Cloud-only rows have no local file — skip the local delete (it would
+                // just LogError) but still tombstone the cloud copy below.
+                if (SaveStore.SlotExists(nameAtDeletion)) SaveStore.DeleteSlot(nameAtDeletion);
+                // Propagate to the cloud as a tombstone so the delete sticks even if
+                // another machine is offline (it can't resurrect a tombstoned slot).
+                // Detached on the runner so it survives the list rebuild below.
+                if (Session.LoggedIn)
+                    SaveSyncRunner.Run(SaveSync.DeleteRemote(nameAtDeletion, (cloudOk, err) => {
+                        if (!cloudOk) Debug.LogWarning("SaveSlotEntry: cloud delete failed: " + err);
+                    }));
                 if (_onChanged != null) _onChanged();
                 else if (SaveMenuPanel.instance != null) SaveMenuPanel.instance.Refresh();
                 else Debug.LogError("SaveSlotEntry: no refresh hook and SaveMenuPanel.instance is null on delete");

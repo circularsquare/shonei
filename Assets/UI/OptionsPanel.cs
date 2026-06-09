@@ -25,6 +25,8 @@ using TMPro;
 //     cloudLightingToggle — Toggle (when off, clouds use flat shading — skips
 //                          height-field normal + Lambertian band selection in
 //                          CloudFieldGen Pass 0)
+//     hideBackgroundToggle — Toggle (when on, hides all decorative sky layers —
+//                          clouds, hills, gradient, stars, haze — via BackgroundVisibility)
 //     uiScaleSlider  — Slider, min 1 max 2 (1 = native UI, 2 = doubled). Drives
 //                      the root CanvasScaler.scaleFactor via SettingsManager.uiScale.
 //     fontDropdown   — TMP_Dropdown; options auto-populated from UIFontOptions at Awake.
@@ -45,6 +47,7 @@ public class OptionsPanel : MonoBehaviour {
     [SerializeField] Toggle       vsyncToggle;
     [SerializeField] Toggle       lightingToggle;
     [SerializeField] Toggle       cloudLightingToggle;
+    [SerializeField] Toggle       hideBackgroundToggle; // hides all decorative sky layers (clouds, hills, gradient, stars, haze)
 
     [Header("Interface")]
     [SerializeField] Slider uiScaleSlider;   // range 1–2 (1 = native UI, 2 = doubled)
@@ -303,6 +306,7 @@ public class OptionsPanel : MonoBehaviour {
         if (vsyncToggle    != null) vsyncToggle.onValueChanged.AddListener(OnVsync);
         if (lightingToggle != null) lightingToggle.onValueChanged.AddListener(OnLighting);
         if (cloudLightingToggle != null) cloudLightingToggle.onValueChanged.AddListener(OnCloudLighting);
+        if (hideBackgroundToggle != null) hideBackgroundToggle.onValueChanged.AddListener(OnHideBackground);
         // UI scale applies on slider release, not per-value: rescaling the canvas
         // mid-drag would move the handle out from under the cursor.
         if (uiScaleSlider != null) {
@@ -341,6 +345,7 @@ public class OptionsPanel : MonoBehaviour {
         if (vsyncToggle    != null) vsyncToggle.isOn     = s.vsyncEnabled;
         if (lightingToggle != null) lightingToggle.isOn  = s.lightingEnabled;
         if (cloudLightingToggle != null) cloudLightingToggle.isOn = s.cloudLightingEnabled;
+        if (hideBackgroundToggle != null) hideBackgroundToggle.isOn = s.hideBackground;
         if (uiScaleSlider  != null) uiScaleSlider.value     = s.uiScale;
         if (autosaveDropdown != null) autosaveDropdown.value = AutosaveValueToIndex(s.autosaveIntervalMinutes);
         if (fontDropdown != null && fontDropdown.options.Count > 0)
@@ -372,6 +377,7 @@ public class OptionsPanel : MonoBehaviour {
     void OnVsync(bool v)     { if (!suppressCallbacks) SettingsManager.instance?.SetVsync(v); }
     void OnLighting(bool v)  { if (!suppressCallbacks) SettingsManager.instance?.SetLighting(v); }
     void OnCloudLighting(bool v) { if (!suppressCallbacks) SettingsManager.instance?.SetCloudLighting(v); }
+    void OnHideBackground(bool v) { if (!suppressCallbacks) SettingsManager.instance?.SetHideBackground(v); }
     void OnUiScaleReleased(float v) {
         var s = SettingsManager.instance;
         if (s == null) return;

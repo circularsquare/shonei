@@ -36,8 +36,8 @@ public class UnlockEntry {
 public class ResearchSystem : MonoBehaviour {
     public static ResearchSystem instance { get; protected set; }
 
-    const float DecayRate        = 0.008f; // progress lost per tick (all nodes with any progress)
-    const float ScientistRate    = 0.04f;  // progress gained per workefficiency of a scientist each tick
+    const float DecayRate        = 0.004f; // progress lost per tick (all nodes with any progress)
+    const float ScientistRate    = 0.02f;  // progress gained per workefficiency of a scientist each tick
     const float ConstructionGain = 0.75f;  // flat progress granted when a gated building is constructed
 
     public Dictionary<int, float> progress = new Dictionary<int, float>();

@@ -379,6 +379,11 @@ public class WorldController : MonoBehaviour {
             if (a != null && a.happiness != null)
                 a.happiness.satisfactions["social"] = 2.5f;
         }
+
+        // Fresh worlds open paused (GenerateDefault), so the tick-driven inventory
+        // refresh never fires. Populate the global inventory panel now that the
+        // starter items have been produced above.
+        InventoryController.instance?.RefreshDisplay();
     }
 
     // Tile-data side effects of a type change — the visible geometry refresh

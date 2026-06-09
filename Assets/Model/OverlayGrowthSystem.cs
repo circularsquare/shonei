@@ -37,7 +37,7 @@ using UnityEngine;
 //
 // Each eligible side rolls independently against GrowChancePerSecondPerSide.
 // Tunable: at ~1/120 per side per second the expected wait per side is roughly
-// half an in-game day (240 ticks/day, 1 tick/sec). Crank up while testing
+// half an in-game day (480 ticks/day, 1 tick/sec). Crank up while testing
 // visuals, crank back down for production. Future seasonal/temperature variants
 // and moss-on-stone slot in here as additional rule blocks keyed by overlay name.
 public class OverlayGrowthSystem {
@@ -52,8 +52,8 @@ public class OverlayGrowthSystem {
     const float GrowableTempMin            = 5f;        // strictly greater than this (°C) — growth + recovery gate
     const float DyingTempMax               = 2f;        // strictly less than this triggers Dying (or moisture==0)
     const float DeadTempMax                = -1f;       // strictly less than this triggers Dead (overrides Dying)
-    const float GrowChancePerSecondPerSide = 1f / 120f; // ~½ in-game day expected wait per side
-    const float DeathChancePerSecond       = 0.1f;      // per-tick chance to advance toward Dying or Dead while conditions warrant it
+    const float GrowChancePerSecondPerSide = 1f / 240f; // ~½ in-game day expected wait per side
+    const float DeathChancePerSecond       = 0.05f;     // per-tick chance to advance toward Dying or Dead while conditions warrant it
 
     // Bits we're allowed to flip ON: L, R, U (not D — no underside grass).
     // Layout matches Tile.overlayMask: 0=L 1=R 2=D 3=U.

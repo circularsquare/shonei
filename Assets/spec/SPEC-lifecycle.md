@@ -2,7 +2,7 @@
 
 ## Save / Load / Reset
 
-World state is serialized to JSON via Newtonsoft.Json and stored in `Application.persistentDataPath/saves/<slot>.json`. The entry point is `SaveSystem` (MonoBehaviour singleton).
+World state is serialized to JSON via Newtonsoft.Json and stored in `Application.persistentDataPath/saves/<account>/<slot>.json` (editor: `<project>/SaveData/<account>/`). The entry point is `SaveSystem` (MonoBehaviour singleton). **Local saves are per-account**: `<account>` is `Session.StorageScope` — the logged-in username, or `.guest` when logged out — so accounts sharing a machine don't see each other's local saves. All slot I/O routes through `SaveStore` (the single chokepoint for the account-scoped path). When logged in, each save also mirrors to the account's cloud store (async, local stays authoritative) — see SPEC-trading "Account-owned cloud saves".
 
 ### Save data classes (`WorldSaveData.cs`)
 
@@ -151,7 +151,39 @@ Old saves with `worldSeed = 0` and `rngSeed = 0` deserialize cleanly — they si
 
 | Constant | Value | Used by |
 |----------|-------|---------|
-| `ticksInDay` | 240 | Day/night length, research rate |
+| `ticksInDay` | 480 | Day/night length, research rate (1 tick = 1 s → 8 min day) |
 | `daysInYear` | 24 | Calendar |
+
+### Scaling day length (checklist)
+
+`ticksInDay` is the only day-length knob (1 tick = 1 real second). Scaling it by
+factor **k** stretches every *day-anchored* quantity automatically, but *per-tick*
+rates and *tick-count durations* do NOT scale — they must be adjusted by hand or
+per-day balance drifts. When changing `ticksInDay` by k:
+
+1. **Day-anchored — leave alone** (formula already contains `ticksInDay`/`daysInYear`):
+   sun/seasons, weather OU steps (72/day), fuel burn (liang/day), item decay (per-year),
+   maintenance (`DaysToBreak`), furnishing lifetime, processor `processDays`, market
+   transit, starvation timer, birth chance, `MoistureSystem.TicksPerInGameHour` (derived).
+   Editing these *double-scales* — a bug.
+2. **Per-tick rates — divide by k** (raw per-second, no `ticksInDay` in the formula):
+   `Eating.hungerRate` **and** its `defaultHungerRate` copy in AnimalController;
+   `Eeping.tireRate/eepRate/outsideEepRate`; `Happiness.decayPerTick`; `Happiness.warmthDecayFactor10`
+   and `Flywheel.DecayFactor` (k-th root — they're per-SlowUpdate/per-tick decay factors);
+   `ResearchSystem.DecayRate/ScientistRate`; `SkillSet.XpPerWorkTick`; OverlayGrowth grow/death
+   chances; Snow `AccumChancePerSecond`; WeatherSystem `humiditySmoothingRate`/`windSmoothingRate`
+   (per-real-second smoothing — divide to hold rain fraction + wind feel);
+   `CloudLayer.cloudEvolutionRate` (visual).
+3. **Tick-count durations — multiply by k**: plantsDb `growthTime`/`harvestTime`/`fruitRotTicks`;
+   recipesDb `workload`; chat/leisure objective durations; `Animal.MaxWorkStintTicks`.
+4. **Wall-clock — never touch** (`unscaledTime`/`WaitForSecondsRealtime`): autosave, network
+   reconnect/poll, chat-row fade, render throttles, fps caps, audio fades.
+5. **Verify**: recompile clean; playtest the hunger↔food loop, one-sleep-per-night, rain
+   frequency (~0.8/day), and research/leveling pace per day.
+
+Two gotchas: (a) a per-tick rate may live at **two sites** — a per-instance field plus a
+hardcoded colony-stat copy — so grep the value, don't trust one hit; (b) `public` fields on
+scene MonoBehaviours (`CloudLayer.cloudEvolutionRate`) are **serialized in the scene**, so the
+C# default is masked — set it on the live component and save the scene, not just the code default.
 
 Fall physics constants (`fallSecondsPerTile`, `fallGravity`) live in SPEC-systems.md §Item Falling.

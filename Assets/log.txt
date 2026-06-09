@@ -1,5 +1,11 @@
 meoww!!
 
+6/9
+- brackets and roofs
+    - unsheltered above buildings get 1.5x faster decay
+- kinda balanced construction times, scalable construction times
+- cloud save files!
+- doubled day length to 8m
 6/8
 - smooth font cleaning 
 - persistent trading server

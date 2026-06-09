@@ -6,7 +6,7 @@
 public class Eating {
     public float maxFood = 100f;
     public float food = 90f;
-    public float hungerRate = 0.4f;
+    public float hungerRate = 0.2f;
     public float timeSinceLastAte = 9999f;
 
     // Consecutive ticks spent at food == 0. Incremented by Update() while empty,

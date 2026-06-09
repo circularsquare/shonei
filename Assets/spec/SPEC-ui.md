@@ -303,11 +303,15 @@ Each panel's `Toggle()` calls `UI.OpenExclusive(gameObject)` when opening, and `
 narrowed to a fixed `LeftWidth` column in code) and a **detail pane on the right**.
 
 **Left list** — recipes are grouped by workstation (`Recipe.tile`) into collapsible
-`RecipeGroupDisplay`s (header: building icon + `name (N)`; click toggles). A group lazily
-spawns compact `RecipeListRow`s only when first expanded — so a collapsed panel costs ~one
+`RecipeGroupDisplay`s (header: building icon + `name (N)`; click toggles). Both the group
+and its rows are editor-authored prefabs (`Resources/Prefabs/RecipeGroup` +
+`RecipeListRow`, wired to `RecipePanel.recipeGroupPrefab` / `recipeRowPrefab`, Resources
+fallback if unwired) — tweak header layout / icon size / row style in the editor, not code.
+A group lazily instantiates rows only when first expanded — so a collapsed panel costs ~one
 header per workstation, not a card per recipe. Each row is `[output icon][name][inline
-On/Off icon]` + a behind-highlight; clicking the row body selects it, the On/Off icon
-toggles allow in place. A thin `Sprites/Misc/divider` separates each group.
+On/Off icon]` + a behind-highlight; `Setup` just binds the payload. Clicking the row body
+selects it, the On/Off icon toggles allow in place. A thin `Sprites/Misc/divider` separates
+each group.
 
 **Detail pane** — on select, a fresh `RecipeDisplay` card (the prefab) is instantiated into
 the detail container showing inputs/outputs (live have-amounts), job, a conditions line
@@ -315,6 +319,17 @@ the detail container showing inputs/outputs (live have-amounts), job, a conditio
 `RecipeDisplay.Setup` assumes a clean card. The detail container is an editor-authored
 scene object wired to `RecipePanel.detailPane` (tweak its size/position/background in the
 editor); if unwired, `BuildLayout` builds one in code as a fallback.
+
+**Early-game toolbar gates** — two toolbar buttons hide themselves until there's a reason
+to use them (each drives a `CanvasGroup`, kept active so it can re-show; both auto-add the
+required `CanvasGroup`). Absent buttons here are by design, not a bug:
+- `RecipeToggle` → `RecipeButtonGate`: shown once `RecipePanel.CountCraftingStations() >=
+  minStations` (default 1). A station is a workstation with a visible recipe that *has
+  inputs* — so input-less utility recipes (pump, dig) don't count. `CountCraftingStations`
+  reuses `Rebuild`'s render filters (keep them in lockstep).
+- `ResearchToggle` → `BuildingBuiltGate` (`buildingName="laboratory"`): shown once that
+  building is *built* (`GetByType` count > 0; blueprints under construction don't count).
+  `BuildingBuiltGate` is generic — reuse it to gate any button on a building existing.
 
 **Allow dispatch** is unified on `RecipePanel.IsEntryAllowed/ToggleEntryAllowed(recipe,
 process)` (used by both rows and the detail card), routing craft → `disabledRecipes` (id),

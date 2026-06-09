@@ -4,7 +4,7 @@
         "job": "woodworker",
         "tile": "sawmill",
         "description": "cut pine into pine planks",
-        "workload": 2.0,
+        "workload": 4.0,
         "ninputs": [
             { "name": "pine", "quantity": 1 }
         ],
@@ -17,7 +17,7 @@
         "job": "woodworker",
         "tile": "sawmill",
         "description": "cut oak into oak planks",
-        "workload": 2.0,
+        "workload": 4.0,
         "ninputs": [
             { "name": "oak", "quantity": 1 }
         ],
@@ -30,7 +30,7 @@
         "job": "woodworker",
         "tile": "sawmill",
         "description": "cut maple into maple planks",
-        "workload": 2.0,
+        "workload": 4.0,
         "ninputs": [
             { "name": "maple", "quantity": 1 }
         ],
@@ -43,7 +43,7 @@
         "job": "woodworker",
         "tile": "workshop",
         "description": "craft stone tools",
-        "workload": 5.0,
+        "workload": 10.0,
         "ninputs": [
             { "name": "planks", "quantity": 1 },
             { "name": "stone",  "quantity": 2 }
@@ -56,7 +56,7 @@
         "job": "woodworker",
         "tile": "workshop",
         "description": "craft copper tools",
-        "workload": 5.0,
+        "workload": 10.0,
         "ninputs": [
             { "name": "planks", "quantity": 1 },
             { "name": "copper bar", "quantity": 1 }
@@ -69,7 +69,7 @@
         "job": "woodworker",
         "tile": "workshop",
         "description": "craft bronze tools",
-        "workload": 5.0,
+        "workload": 10.0,
         "ninputs": [
             { "name": "planks", "quantity": 1 },
             { "name": "bronze bar", "quantity": 1 }
@@ -82,7 +82,7 @@
         "job": "smith",
         "tile": "furnace",
         "description": "alloy copper and tin into bronze",
-        "workload": 3.0,
+        "workload": 6.0,
         "research": "Furnace",
         "researchPoints": 0.02,
         "ninputs": [
@@ -98,7 +98,7 @@
         "job": "smith",
         "tile": "furnace",
         "description": "fuse sand into glass",
-        "workload": 4.0,
+        "workload": 8.0,
         "research": "Glassmaking",
         "researchPoints": 0.02,
         "ninputs": [
@@ -113,7 +113,7 @@
         "job": "smith",
         "tile": "furnace",
         "description": "smelt malachite",
-        "workload": 3.0,
+        "workload": 6.0,
         "research": "Furnace",
         "researchPoints": 0.02,
         "ninputs": [
@@ -128,7 +128,7 @@
         "job": "smith",
         "tile": "furnace",
         "description": "smelt cassiterite",
-        "workload": 3.0,
+        "workload": 6.0,
         "research": "Furnace",
         "researchPoints": 0.02,
         "ninputs": [
@@ -143,7 +143,7 @@
         "job": "digger",
         "tile": "digging pit",
         "description": "dig",
-        "workload": 4.0,
+        "workload": 8.0,
         "hidden": true,
         "ninputs": [
         ],
@@ -154,7 +154,7 @@
         "job": "cook",
         "tile": "mill",
         "description": "grind soybeans into soymilk",
-        "workload": 3.0,
+        "workload": 6.0,
         "research": "Soymilk",
         "researchPoints": 0.02,
         "ninputs": [
@@ -169,7 +169,7 @@
         "job": "hauler",
         "tile": "pump",
         "description": "pump water",
-        "workload": 2.0,
+        "workload": 4.0,
         "ninputs": [],
         "noutputs": [
             { "name": "water", "quantity": 1.0 }
@@ -179,7 +179,7 @@
         "job": "miner",
         "tile": "quarry",
         "description": "mine stone",
-        "workload": 6.0,
+        "workload": 12.0,
         "hidden": true,
         "research": "Quarry",
         "researchPoints": 0.02,
@@ -192,7 +192,7 @@
         "job": "cook",
         "tile": "press",
         "description": "coagulate soymilk into tofu",
-        "workload": 5.0,
+        "workload": 10.0,
         "research": "Tofu",
         "researchPoints": 0.02,
         "ninputs": [
@@ -207,7 +207,7 @@
         "job": "clothier",
         "tile": "weaver",
         "description": "weave ramie into ramie cloth",
-        "workload": 3.0,
+        "workload": 6.0,
         "research": "Weaving",
         "researchPoints": 0.02,
         "ninputs": [
@@ -221,7 +221,7 @@
         "job": "clothier",
         "tile": "tailor",
         "description": "sew ramie cloth into ramie shirt",
-        "workload": 5.0,
+        "workload": 10.0,
         "research": "Tailoring",
         "researchPoints": 0.02,
         "ninputs": [
@@ -235,7 +235,7 @@
         "job": "woodworker",
         "tile": "paper mill",
         "description": "process wood and water into paper",
-        "workload": 3.0,
+        "workload": 6.0,
         "research": "Papermaking",
         "researchPoints": 0.02,
         "ninputs": [
@@ -250,7 +250,7 @@
         "job": "scribe",
         "tile": "scriptorium",
         "description": "write a fiction book",
-        "workload": 20.0,
+        "workload": 40.0,
         "maxRoundsPerTask": 1,
         "ninputs": [
             { "name": "paper", "quantity": 1 }
@@ -263,7 +263,7 @@
         "job": "cook",
         "tile": "brewery",
         "description": "ferment rice into yeast",
-        "workload": 4.0,
+        "workload": 8.0,
         "research": "Fermentation",
         "researchPoints": 0.02,
         "ninputs": [
@@ -277,7 +277,7 @@
         "job": "runner",
         "tile": "wheel",
         "description": "run on wheel",
-        "workload": 5.0,
+        "workload": 10.0,
         "hidden": true,
         "ninputs": [],
         "noutputs": []
@@ -286,7 +286,7 @@
         "job": "woodworker",
         "tile": "workshop",
         "description": "make a stool",
-        "workload": 5.0,
+        "workload": 10.0,
         "ninputs": [
             { "name": "planks", "quantity": 2 }
         ],
@@ -298,7 +298,7 @@
         "job": "smith",
         "tile": "crucible",
         "description": "smelt malachite (crude)",
-        "workload": 6.0,
+        "workload": 12.0,
         "research": "Furnace",
         "researchPoints": 0.02,
         "ninputs": [
@@ -313,7 +313,7 @@
         "job": "smith",
         "tile": "crucible",
         "description": "smelt cassiterite (crude)",
-        "workload": 6.0,
+        "workload": 12.0,
         "research": "Furnace",
         "researchPoints": 0.02,
         "ninputs": [
@@ -328,7 +328,7 @@
         "job": "smith",
         "tile": "crucible",
         "description": "fire a clay mold",
-        "workload": 3.0,
+        "workload": 6.0,
         "ninputs": [
             { "name": "clay", "quantity": 1 }
         ],
@@ -340,7 +340,7 @@
         "job": "smith",
         "tile": "crucible",
         "description": "fuse sand into glass",
-        "workload": 4.0,
+        "workload": 8.0,
         "research": "Glassmaking",
         "researchPoints": 0.02,
         "ninputs": [
@@ -355,7 +355,7 @@
         "job": "smith",
         "tile": "crucible",
         "description": "smelt malachite (wood)",
-        "workload": 6.0,
+        "workload": 12.0,
         "research": "Furnace",
         "researchPoints": 0.02,
         "ninputs": [
@@ -370,7 +370,7 @@
         "job": "smith",
         "tile": "crucible",
         "description": "smelt cassiterite (wood)",
-        "workload": 6.0,
+        "workload": 12.0,
         "research": "Furnace",
         "researchPoints": 0.02,
         "ninputs": [
@@ -385,7 +385,7 @@
         "job": "smith",
         "tile": "crucible",
         "description": "fuse sand into glass (wood-fired)",
-        "workload": 4.0,
+        "workload": 8.0,
         "research": "Glassmaking",
         "researchPoints": 0.02,
         "ninputs": [

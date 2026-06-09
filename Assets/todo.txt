@@ -13,6 +13,7 @@ CONTENT
     - buckets
     - plants die if temp / moisture are bad?
     - irrigation?
+    - well?
 - research
     - additional levels display?
 - power 
@@ -33,9 +34,9 @@ CONTENT
     - foundry
 
 - structures 
-    - flare out supports / side platforms
     - hanging ropes? for building down off cliffsides
-    - walls? gates?
+    - walls? gates? 
+        - rooms? 
 
 VISUALS
 - lighting 
@@ -65,7 +66,14 @@ UI
 - recipe list / enabling disabling globally and locally for crafting buildings info panel
 
 SERVER 
-- use stateful sessions instead of stateless tokens? 
+- account system plan
+    - use stateful sessions instead of stateless tokens? 
+    - tombstones? how do these work? 
+    - relogin on token expiry? 
+    - for choosing between conflict, say when last saved for cloud or local
+    - how do backups work? are we currently backing up everything? probably just need to backup world saves, not market data.
+        - how long are they kept for?
+
 
 CODE CLEANUP
 
@@ -89,17 +97,14 @@ finish foundry
 tools
 todoship
 
-
 - review building descriptions
 - review info question marks
 
 - info on "have 6 mice" (how?) (explain pop cap in happiness table, and also in playertask explain building housing?)
 
 - pretty up happiness panel
-- recipe panel is almost empty at game start. a bit awkward.
-    - maybe have one recipe selected by default 
-    - get rid of some empty space
-    - also why do i see oak planks recipe? no oak wood in this game i think.
+- pretty up recipe panel
+    - get rid of empty space 
 
 - figure out weird maximize window behavior on build
 
@@ -107,12 +112,10 @@ clarify which side of burrow sprite is out
     - more thickness on roof? maybe make grass higher 
 
 - ui scaling....
+- test on laptop
     
 
 TODAY
 
-- account tied saves...
-
-- add clouds and background to shonei main menu?
-    - toggleable
-unpause shortly after entering world (so that stuff like inv display can load) then repause? idk
+- on new world, automatically make a save name ? 
+    - maybe ask what you'd liek to call it

@@ -509,8 +509,8 @@ public class AnimalController : MonoBehaviour{
         }
         // hungerRate is a per-Animal field (default 0.4); colony-wide stat uses the
         // default value rather than averaging across animals — mice all share the rate today.
-        const float defaultHungerRate = 0.4f;
-        float perMousePerDay = defaultHungerRate * World.ticksInDay; // 0.4 × 240 = 96 by default
+        const float defaultHungerRate = 0.2f;
+        float perMousePerDay = defaultHungerRate * World.ticksInDay; // 0.2 × 480 = 96 by default
         if (perMousePerDay <= 0f) return 0f;
         return totalHunger / (perMousePerDay * na);
     }

@@ -99,6 +99,12 @@ public class Shape {
     // un-mirrored shape-local coordinates (0 ≤ dx < nx, 0 ≤ dy < ny); mirroring is applied
     // at lookup time. Null = no internal floor (the default).
     public StandableOffset[] standableOffsets {get; set;}
+
+    // Optional sprite-name override for this variant (a 1×1 visual swap). When set, the
+    // structure loads "Sprites/Buildings/{sprite}" instead of the StructType's base name —
+    // so one build-menu entry can offer several looks (e.g. roof / roof2) cycled with Q/E,
+    // no second StructType. Resolved in StructureVisuals.ResolveAnchorSprite. Null = base name.
+    public string sprite {get; set;}
 }
 
 public class StructType {
@@ -113,6 +119,11 @@ public class StructType {
     public ItemNameQuantity[] ncosts {get; set;}
     public ItemQuantity[] costs;
     public float constructionCost {get; set;}
+    // When true, constructionCost is authored PER TILE: the blueprint multiplies it by the
+    // placed footprint's tile count (shape tile count for shape-aware structures, span length
+    // for two-click placements). Lets a variable-size structure (elevator, rope bridge) cost
+    // proportionally more to build the bigger it is. Default false = constructionCost is a flat total.
+    public bool constructionCostPerTile {get; set;}
     public bool isTile {get; set;}
     public bool isPlant;
     public int depth {get; set;} // 0=building, 1=platform, 2=foreground, 3=road

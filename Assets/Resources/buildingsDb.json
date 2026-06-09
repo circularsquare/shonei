@@ -1,6 +1,8 @@
 [
     {
         "id": 1,
+        "constructionCost": 4,
+        "constructionCostPerTile": true,
         "name": "platform",
         "nx": 1, "ny": 1,
         "ncosts": [
@@ -17,6 +19,7 @@
         ]
     },{
         "id": 2,
+        "constructionCost": 4,
         "name": "stairs",
         "nx": 1, "ny": 1,
         "ncosts": [
@@ -27,6 +30,7 @@
         "category": "structures"
     },{
         "id": 3,
+        "constructionCost": 4,
         "name": "ladder",
         "nx": 1, "ny": 1,
         "ncosts": [
@@ -37,6 +41,7 @@
         "category": "structures"
     },{
         "id": 6,
+        "constructionCost": 4,
         "name": "ladder_side",
         "description": "ladder hung against the side of a wall or building. place by hovering near the edge of a tile",
         "nx": 1, "ny": 1,
@@ -50,6 +55,7 @@
         "defaultLocked": true
     },{
         "id": 147,
+        "constructionCost": 4,
         "name": "bracket",
         "description": "support hung off the side of a wall. build on top to extend outward",
         "nx": 1, "ny": 1,
@@ -62,6 +68,7 @@
         "category": "structures"
     },{
         "id": 148,
+        "constructionCost": 5,
         "name": "roof",
         "description": "slanted roof. rest on a solid top to keep what's below dry",
         "nx": 1, "ny": 1,
@@ -71,9 +78,15 @@
         "depth": 2,
         "blocksRain": true,
         "noMaintenance": true,
-        "category": "structures"
+        "category": "structures",
+        "shapes": [
+            { "nx": 1, "ny": 1 },
+            { "nx": 1, "ny": 1, "sprite": "roof2" }
+        ]
     },{
         "id": 5,
+        "constructionCost": 3,
+        "constructionCostPerTile": true,
         "name": "rope bridge post",
         "displayName": "rope bridge",
         "description": "one post of a rope bridge. cost scales with length",
@@ -91,6 +104,7 @@
         "sagFraction": 0.15
     },{
         "id": 4,
+        "constructionCost": 5,
         "name": "road",
         "description": "increases movement speed",
         "nx": 1, "ny": 1,
@@ -102,6 +116,7 @@
         "defaultLocked": true
     },{
         "id": 20,
+        "constructionCost": 50,
         "name": "house",
         "description": "houses 4 mice",
         "nx": 2, "ny": 2,
@@ -129,6 +144,7 @@
         "doors":   [{ "dx": 1, "dy": 0, "side": "right" }]
     },{
         "id": 26,
+        "constructionCost": 18,
         "name": "shack",
         "description": "houses 1 mouse",
         "nx": 2, "ny": 1,
@@ -150,6 +166,7 @@
         "interiorTiles": [{ "dx": 1, "dy": 0 }, { "dx": 0, "dy": 0 }]
     },{
         "id": 30,
+        "constructionCost": 30,
         "name": "burrow",
         "description": "houses 2 mice. dug into a dirt bank",
         "nx": 3, "ny": 1,
@@ -180,6 +197,7 @@
         ]
     },{
         "id": 21,
+        "constructionCost": 16,
         "name": "drawer",
         "description": "stores 4 stacks of 20 liang",
         "nx": 1, "ny": 1,
@@ -195,6 +213,7 @@
         "category": "storage"
     },{
         "id": 22,
+        "constructionCost": 12,
         "name": "crate",
         "description": "stores 1 stack of 100 liang",
         "nx": 1, "ny": 1,
@@ -209,6 +228,7 @@
         "category": "storage"
     },{
         "id": 23,
+        "constructionCost": 16,
         "name": "tank",
         "description": "stores liquids",
         "nx": 1, "ny": 1,
@@ -223,6 +243,7 @@
         "category": "storage"
     },{
         "id": 25,
+        "constructionCost": 20,
         "name": "bookshelf",
         "description": "stores up to 10 books",
         "nx": 1, "ny": 1,
@@ -240,6 +261,7 @@
         "defaultLocked": true
     },{
         "id": 24,
+        "constructionCost": 5,
         "name": "market",
         "description": "",
         "nx": 3, "ny": 1,
@@ -253,6 +275,7 @@
         "defaultLocked": true
     },{
         "id": 40,
+        "constructionCost": 8,
         "name": "torch",
         "description": "requires wood to burn",
         "nx": 1, "ny": 1,
@@ -271,6 +294,7 @@
         "category": "structures"
     },{
         "id": 41,
+        "constructionCost": 20,
         "name": "fountain",
         "description": "decorative. requires stocking with water to function",
         "nx": 1, "ny": 1,
@@ -290,6 +314,7 @@
         "defaultLocked": true
     },{
         "id": 42,
+        "constructionCost": 20,
         "name": "clock",
         "description": "tells the time of day",
         "nx": 1, "ny": 1,
@@ -302,6 +327,7 @@
         "defaultLocked": true
     },{
         "id": 43,
+        "constructionCost": 25,
         "name": "fireplace",
         "description": "mice who sit here gain warmth and happiness",
         "nx": 3, "ny": 1,
@@ -331,6 +357,8 @@
         "category": "structures"
     },{
         "id": 45,
+        "constructionCost": 3,
+        "constructionCostPerTile": true,
         "name": "tarp",
         "description": "shelters area below from rain",
         "nx": 3, "ny": 1,
@@ -356,6 +384,7 @@
         "defaultLocked": true
     },{
         "id": 44,
+        "constructionCost": 8,
         "name": "bench",
         "description": "",
         "nx": 1, "ny": 1,
@@ -377,8 +406,9 @@
         "defaultLocked": true
     },{
         "id": 80,
+        "constructionCost": 8,
         "name": "empty",
-        "description": "dig",
+        "description": "excavate a tile. gives a small fraction of the resources of a digging pit or quarry",
         "nx": 1, "ny": 1,
         "ncosts": [
         ],
@@ -390,6 +420,7 @@
         "category": "tiles"
     },{
         "id": 81,
+        "constructionCost": 5,
         "name": "dirt_placed",
         "displayName": "dirt",
         "description": "block of dirt. can't be dug by a digging pit",
@@ -402,6 +433,7 @@
         "category": "tiles"
     },{
         "id": 82,
+        "constructionCost": 6,
         "name": "limestone_placed",
         "displayName": "limestone",
         "description": "block of limestone. can't be quarried",
@@ -414,8 +446,9 @@
         "category": "tiles"
     },{
         "id": 83,
+        "constructionCost": 15,
         "name": "mineshaft",
-        "description": "mines a tile and places a ladder",
+        "description": "excavates a tile and places a ladder",
         "nx": 1, "ny": 1,
         "ncosts": [
             { "name": "wood", "quantity": 10 }
@@ -430,6 +463,7 @@
         "category": "structures"
     },{
         "id": 101,
+        "constructionCost": 30,
         "name": "sawmill",
         "description": "process wood into planks",
         "nx": 2, "ny": 1,
@@ -449,6 +483,7 @@
         "category": "production"
     },{
         "id": 102,
+        "constructionCost": 30,
         "name": "workshop",
         "defaultLocked": true,
         "description": "craft tools and furniture",
@@ -469,6 +504,7 @@
         "category": "production"
     },{
         "id": 103,
+        "constructionCost": 50,
         "name": "furnace",
         "description": "smelts and processes materials",
         "nx": 2, "ny": 2,
@@ -487,6 +523,7 @@
         "category": "production"
     },{
         "id": 104,
+        "constructionCost": 25,
         "name": "press",
         "description": "press soymilk curds into tofu. faster when powered",
         "nx": 1, "ny": 1,
@@ -503,6 +540,7 @@
         "defaultLocked": true
     },{
         "id": 109,
+        "constructionCost": 25,
         "name": "mill",
         "description": "grind soybeans into soymilk. faster when powered",
         "nx": 1, "ny": 1,
@@ -518,6 +556,7 @@
         "defaultLocked": true
     },{
         "id": 105,
+        "constructionCost": 25,
         "name": "pump",
         "description": "pumps water from an adjacent water tile. faster when powered",
         "nx": 2, "ny": 1,
@@ -539,6 +578,7 @@
         "defaultLocked": true
     },{
         "id": 106,
+        "constructionCost": 25,
         "name": "paper mill",
         "description": "process wood and water into paper",
         "nx": 1, "ny": 1,
@@ -555,6 +595,7 @@
         "defaultLocked": true
     },{
         "id": 107,
+        "constructionCost": 30,
         "name": "scriptorium",
         "description": "write books",
         "nx": 1, "ny": 1,
@@ -570,6 +611,7 @@
         "defaultLocked": true
     },{
         "id": 108,
+        "constructionCost": 40,
         "name": "brewery",
         "description": "craft yeast and ferment rice into rice wine",
         "nx": 2, "ny": 1,
@@ -587,6 +629,7 @@
         "defaultLocked": true
     },{
         "id": 110,
+        "constructionCost": 15,
         "name": "digging pit",
         "description": "dig for dirt, sand, or clay",
         "nx": 1, "ny": 1,
@@ -614,6 +657,7 @@
         "category": "production"
     },{
         "id": 111,
+        "constructionCost": 25,
         "name": "quarry",
         "description": "dig for stone",
         "nx": 1, "ny": 1,
@@ -631,6 +675,7 @@
         "depleteAt": 100
     },{
         "id": 112,
+        "constructionCost": 25,
         "name": "crucible",
         "description": "primitive metal smelter",
         "nx": 1, "ny": 1,
@@ -644,6 +689,7 @@
         "defaultLocked": true
     },{
         "id": 120,
+        "constructionCost": 30,
         "name": "laboratory",
         "description": "scientists conduct research here",
         "nx": 1, "ny": 1,
@@ -657,6 +703,7 @@
         "category": "production"
     },{
         "id": 130,
+        "constructionCost": 25,
         "name": "weaver",
         "description": "weave fiber into cloth",
         "nx": 1, "ny": 1,
@@ -673,6 +720,7 @@
         "defaultLocked": true
     },{
         "id": 131,
+        "constructionCost": 25,
         "name": "tailor",
         "description": "sew cloth into clothing",
         "nx": 1, "ny": 1,
@@ -689,6 +737,7 @@
         "defaultLocked": true
     },{
         "id": 140,
+        "constructionCost": 40,
         "name": "wheel",
         "description": "a runner generates mechanical power here",
         "nx": 2, "ny": 2,
@@ -707,6 +756,7 @@
         "defaultLocked": true
     },{
         "id": 141,
+        "constructionCost": 80,
         "name": "windmill",
         "description": "harvests wind into mechanical power. needs open sky above",
         "nx": 2, "ny": 4,
@@ -724,6 +774,7 @@
         "defaultLocked": true
     },{
         "id": 145,
+        "constructionCost": 40,
         "name": "flywheel",
         "description": "stores mechanical power",
         "nx": 2, "ny": 2,
@@ -736,6 +787,8 @@
         "defaultLocked": true
     },{
         "id": 146,
+        "constructionCost": 30,
+        "constructionCostPerTile": true,
         "name": "elevator",
         "description": "carries one mouse at a time between the bottom and top of its chassis. press E/Q while placing to grow/shrink. needs mechanical power.",
         "nx": 1, "ny": 3,
@@ -760,6 +813,7 @@
         "defaultLocked": true
     },{
         "id": 142,
+        "constructionCost": 5,
         "name": "power shaft",
         "description": "mechanical power shaft. press R to rotate",
         "nx": 1, "ny": 1,
@@ -773,6 +827,7 @@
         "defaultLocked": true
     },{
         "id": 144,
+        "constructionCost": 5,
         "name": "power shaft turn",
         "description": "turning power shaft",
         "nx": 1, "ny": 1,
@@ -786,6 +841,7 @@
         "defaultLocked": true
     },{
         "id": 143,
+        "constructionCost": 8,
         "name": "power shaft 4",
         "description": "4-way power junction",
         "nx": 1, "ny": 1,

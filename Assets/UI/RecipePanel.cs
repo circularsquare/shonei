@@ -22,6 +22,9 @@ public class RecipePanel : MonoBehaviour {
     [Header("UI Refs")]
     public Transform      recipeListContent;
     public RecipeDisplay  recipeDisplayPrefab;
+    // Left-list group + row prefabs. Auto-load from Resources/Prefabs if left unwired.
+    public RecipeGroupDisplay recipeGroupPrefab;
+    public RecipeListRow      recipeRowPrefab;
     public ScrollRect     scrollRect;
     public Button         closeButton; // optional X in the corner
 
@@ -150,6 +153,10 @@ public class RecipePanel : MonoBehaviour {
     void Rebuild() {
         if (recipeListContent == null) { Debug.LogError("RecipePanel: recipeListContent not assigned"); return; }
         if (recipeDisplayPrefab == null) { Debug.LogError("RecipePanel: recipeDisplayPrefab not assigned"); return; }
+        if (recipeGroupPrefab == null) recipeGroupPrefab = Resources.Load<RecipeGroupDisplay>("Prefabs/RecipeGroup");
+        if (recipeGroupPrefab == null) { Debug.LogError("RecipePanel: recipeGroupPrefab not assigned and not found in Resources/Prefabs"); return; }
+        if (recipeRowPrefab == null) recipeRowPrefab = Resources.Load<RecipeListRow>("Prefabs/RecipeListRow");
+        if (recipeRowPrefab == null) { Debug.LogError("RecipePanel: recipeRowPrefab not assigned and not found in Resources/Prefabs"); return; }
 
         // Clears spawned GameObjects only — NOT expandedGroups (it must survive Rebuild
         // so Phase-5 save restore is honoured on the next OnEnable).
@@ -241,34 +248,38 @@ public class RecipePanel : MonoBehaviour {
     void SpawnGroup(string tile, List<Recipe> recipes, List<ProcessorRecipe> processes) {
         StructType st = (Db.structTypeByName != null && Db.structTypeByName.TryGetValue(tile, out var t)) ? t : null;
 
-        var go = new GameObject("RecipeGroup_" + tile, typeof(RectTransform));
-        go.transform.SetParent(recipeListContent, false);
-        var rt = go.GetComponent<RectTransform>();
-        rt.sizeDelta = new Vector2(LeftWidth, 0f);
-
-        var vlg = go.AddComponent<VerticalLayoutGroup>();
-        vlg.spacing                = 2f;
-        vlg.childAlignment         = TextAnchor.UpperLeft;
-        vlg.childControlWidth      = true;
-        vlg.childControlHeight     = true;
-        vlg.childForceExpandWidth  = true;
-        vlg.childForceExpandHeight = false;
-
-        var fitter = go.AddComponent<ContentSizeFitter>();
-        fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
-        fitter.verticalFit   = ContentSizeFitter.FitMode.PreferredSize;
-
-        var group = go.AddComponent<RecipeGroupDisplay>();
-        group.Setup(tile, st, recipes, processes, recipeDisplayPrefab, IsGroupExpanded(tile));
+        var group = Instantiate(recipeGroupPrefab, recipeListContent, false);
+        group.name = "RecipeGroup_" + tile;
+        group.Setup(tile, st, recipes, processes, recipeRowPrefab, IsGroupExpanded(tile));
         spawnedGroups.Add(group);
     }
 
     // --- Discovery / availability filters ---
 
+    // Number of workstation groups that offer real crafting — a visible recipe that has
+    // inputs. Excludes input-less utility "recipes" (pump water, dig) that would otherwise
+    // count a lone pump as a station. Mirrors Rebuild()'s render filters (keep in lockstep)
+    // but builds no GameObjects, so it's cheap to poll. Used by RecipeButtonGate to hide the
+    // toolbar button until at least one crafting station exists. Static so it works before
+    // the panel GameObject (inactive by default) has ever been opened — instance may be null.
+    public static int CountCraftingStations() {
+        if (Db.recipes == null) return 0;
+        var tiles = new HashSet<string>();
+        foreach (Recipe recipe in Db.recipes) {
+            if (recipe == null || recipe.hidden) continue;
+            if (recipe.inputs == null || recipe.inputs.Length == 0) continue; // skip pump/dig utility recipes
+            if (ResearchSystem.instance != null && !ResearchSystem.instance.IsRecipeUnlocked(recipe.id)) continue;
+            if (!IsWorkstationAvailable(recipe.tile)) continue;
+            if (!InputsDiscovered(recipe)) continue;
+            tiles.Add(recipe.tile ?? "(none)");
+        }
+        return tiles.Count;
+    }
+
     // True if the recipe's workstation is reachable: research-unlocked OR currently placed
     // in the world. Hides e.g. crucible/weaver recipes before that building exists. Unknown
     // or null tiles (recipes not bound to a real building) are never hidden.
-    bool IsWorkstationAvailable(string tile) {
+    static bool IsWorkstationAvailable(string tile) {
         if (string.IsNullOrEmpty(tile)) return true;
         if (Db.structTypeByName == null || !Db.structTypeByName.TryGetValue(tile, out StructType st) || st == null) return true;
         if (StructController.instance != null) {
@@ -282,7 +293,7 @@ public class RecipePanel : MonoBehaviour {
     // raw materials the player has never had — e.g. the oak-planks recipe before any oak
     // shows up. discoveredItems walks the parent chain, so a group input ("wood") counts as
     // discovered once any leaf (pine) appears. Empty-input recipes (pump/dig) pass vacuously.
-    bool InputsDiscovered(Recipe r) {
+    static bool InputsDiscovered(Recipe r) {
         InventoryController ic = InventoryController.instance;
         if (ic == null || ic.discoveredItems == null || r.inputs == null) return true;
         foreach (ItemQuantity iq in r.inputs) {

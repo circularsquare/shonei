@@ -191,7 +191,7 @@ public class AnimalStateManager {
             Plant plant = harvestTask.tile.plant;
             if (plant == null || !plant.harvestable) { harvestTask.Fail(); return; }
             animal.workProgress += workEfficiency;
-            animal.skills.GainXp(Skill.Farming, baseWorkEff * 0.1f);
+            animal.skills.GainXp(Skill.Farming, baseWorkEff * SkillSet.XpPerWorkTick);
             if (animal.workProgress < plant.plantType.harvestTime) { return; }
             animal.workProgress -= plant.plantType.harvestTime;
             animal.Produce(plant.Harvest());
@@ -224,14 +224,21 @@ public class AnimalStateManager {
                     constructTask.Fail(); return;
                 }
             }
-            animal.skills.GainXp(Skill.Construction, baseWorkEff * 0.1f);
+            animal.skills.GainXp(Skill.Construction, baseWorkEff * SkillSet.XpPerWorkTick);
             if (blueprint.ReceiveConstruction(progressAmount)){
                 var output = blueprint.pendingOutput;
                 constructTask.Complete();
                 if (output != null)
                     foreach (var iq in output)
                         animal.Produce(iq.item, iq.quantity);
+                return;
             }
+            // Yield after a capped work stint so the builder re-evaluates needs and priorities
+            // (eat, sleep, a closer/better task) instead of grinding a long build in one sitting.
+            // Partial progress persists on the blueprint and the construct order stays registered,
+            // so a fresh ConstructTask resumes where this one left off. Mirrors the craft time cap.
+            if (++constructTask.ticksWorked >= Animal.MaxWorkStintTicks)
+                constructTask.Complete();
             return;
         } else if (animal.task is CraftTask craftTask) {
             Recipe recipe = craftTask.recipe;
@@ -250,7 +257,7 @@ public class AnimalStateManager {
                 workEfficiency *= wsBuilding.structType.powerBoost;
             }
             animal.workProgress += workEfficiency;
-            if (taskSkill.HasValue) animal.skills.GainXp(taskSkill.Value, baseWorkEff * 0.1f);
+            if (taskSkill.HasValue) animal.skills.GainXp(taskSkill.Value, baseWorkEff * SkillSet.XpPerWorkTick);
             while (animal.workProgress >= recipe.workload) {
                 animal.workProgress -= recipe.workload;
                 if (animal.CanProduce(recipe, wsBuilding)) {
@@ -322,7 +329,7 @@ public class AnimalStateManager {
             float before = target.condition;
             float newCondition = Mathf.Min(maintTask.targetCondition, before + delta);
             target.condition = newCondition;
-            animal.skills.GainXp(Skill.Construction, baseWorkEff * 0.1f);
+            animal.skills.GainXp(Skill.Construction, baseWorkEff * SkillSet.XpPerWorkTick);
 
             // On completion: consume materials from the mender's inventory, fire repaired callback,
             // and refresh tint if we crossed the break threshold upward.
@@ -352,7 +359,7 @@ public class AnimalStateManager {
             return;
         } else if (animal.task is ResearchTask rt) {
             animal.workProgress += workEfficiency;
-            animal.skills.GainXp(Skill.Science, baseWorkEff * 0.1f);
+            animal.skills.GainXp(Skill.Science, baseWorkEff * SkillSet.XpPerWorkTick);
             // 3× research progress bonus when the matching tech book is equipped.
             // Multiplies the research-progress contribution only — workProgress (the study-cycle
             // counter) is unchanged so cycle length stays consistent regardless of book presence.

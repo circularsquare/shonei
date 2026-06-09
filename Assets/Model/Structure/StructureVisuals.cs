@@ -35,7 +35,13 @@ public static class StructureVisuals {
     // without re-checking nullness. Centralises the fallback path so Blueprint and Structure
     // can't drift on the missing-sprite handling.
     public static Sprite ResolveAnchorSprite(StructType st, Shape shape, out bool wasFallback) {
-        Sprite s = st.HasShapes ? LoadShapeSprite(st, shape, 0) : st.LoadSprite();
+        Sprite s;
+        // A shape may name its own sprite (1×1 visual variant, e.g. roof2) — wins over the
+        // StructType's base name so Q/E can swap looks without a second StructType.
+        if (shape != null && !string.IsNullOrEmpty(shape.sprite))
+            s = Resources.Load<Sprite>("Sprites/Buildings/" + shape.sprite.Replace(" ", ""));
+        else
+            s = st.HasShapes ? LoadShapeSprite(st, shape, 0) : st.LoadSprite();
         wasFallback = s == null;
         return s ?? Resources.Load<Sprite>("Sprites/Buildings/default");
     }

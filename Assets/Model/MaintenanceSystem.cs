@@ -11,14 +11,14 @@ using UnityEngine;
 // cross-check thresholds, fire callbacks, and register WOM Maintenance orders
 // when a structure first slips below RegisterThreshold.
 //
-// Decay rate is calibrated so a pristine structure reaches BreakThreshold (0.5)
-// in roughly DaysToBreak (30) in-game days, and fully bottoms out in ~60 days.
-//   step = (1 - BreakThreshold) / (DaysToBreak * ticksInDay)
-//        = 0.5 / (30 * 240) ≈ 6.94e-5 per tick
+// Decay rate is calibrated so a SHELTERED (covered) structure reaches BreakThreshold (0.5)
+// in roughly DaysToBreak (30) in-game days.
+//   baseStep = (1 - BreakThreshold) / (DaysToBreak * ticksInDay)
+//            = 0.5 / (30 * 240) ≈ 6.94e-5 per tick   (the sheltered rate)
 //
-// Structures sheltered from the sky (a roof or any overhead cover) decay at half this
-// rate — Structure.ShelteredDecayFactor, applied per-structure in Tick via IsSheltered.
-// baseStep stays the EXPOSED rate so existing outdoor structures keep their calibration.
+// Structures open to the sky (no roof / overhead cover) decay 1.5× faster —
+// Structure.ExposedDecayFactor, applied per-structure in Tick via IsSheltered. The roof
+// incentive: a covered structure lasts 1.5× as long as an exposed one.
 //
 // Two state tracks on the system, not the structure:
 //   registered  — structures currently holding a WOM Maintenance order (stops double-registers)
@@ -76,9 +76,9 @@ public class MaintenanceSystem {
         foreach (Structure s in structures) {
             if (s == null || !s.NeedsMaintenance) continue;
 
-            // Open to the sky weathers at the full rate; a roof or other overhead cover
-            // halves it. baseStep is the exposed rate, so this only ever slows decay.
-            float step = IsSheltered(s) ? baseStep * Structure.ShelteredDecayFactor : baseStep;
+            // baseStep is the SHELTERED rate (a covered structure breaks in DaysToBreak days).
+            // Open to the sky weathers 1.5× faster — the incentive to roof things over.
+            float step = IsSheltered(s) ? baseStep : baseStep * Structure.ExposedDecayFactor;
 
             float before = s.condition;
             float after = Mathf.Max(0f, before - step);

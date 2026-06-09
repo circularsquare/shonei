@@ -56,7 +56,7 @@ public class ChatTask : Task {
             objectives.AddLast(new GoObjective(this, myTile));
         }
 
-        objectives.AddLast(new ChatObjective(this, partner, 10));
+        objectives.AddLast(new ChatObjective(this, partner, 15));
         return true;
     }
 

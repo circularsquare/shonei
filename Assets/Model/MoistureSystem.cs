@@ -29,7 +29,7 @@ public class MoistureSystem {
     public static void ResetStatics() { instance = null; }
 
     public const byte  MoistureMax                = 100;
-    public const int   TicksPerInGameHour         = 10;     // 1 s ticks per in-game hour (from ticksInDay=240 / 24)
+    public static int  TicksPerInGameHour => World.ticksInDay / 24;  // in-game-hour length in ticks; derived so it can't drift from ticksInDay
     private const int  MoistureRainGainPerHour    = 100;    // at rainAmount=1; subdivided into per-second slices
     private const int  MoistureEvaporationPerHour = 1;      // non-capped soil only
     private const float MoistureDiffusionPerHour  = 0.05f;  // fraction of neighbour gap pulled per in-game hour (5%)

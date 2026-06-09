@@ -330,6 +330,41 @@ login front-end. `TradingClient.playerName` is now `Session.Username` (with an
 editor-only dev fallback when running Main standalone) — used to identify which
 side of a fill is this player. Full roadmap: `plans/account-system.md`.
 
+### Account-owned cloud saves
+
+Saves belong to the logged-in account, mirrored to the server. **The local file
+stays authoritative** — `SaveSystem.Save` writes synchronously as before, then (if
+`Session.LoggedIn`) hands the already-serialized JSON to `SaveSync.QueueUpload` for
+an async, best-effort background upload. The network is never on the save's critical
+path; offline just means a stale mirror.
+
+Server (`saves.go`, token-authed HTTP, decoupled from the trading WS): `GET /saves`
+(metadata only, from `<slot>.meta.json` sidecars), `GET/PUT/DELETE /save?slot=`. Blobs
+are stored **gzipped + opaque** (server never decompresses; client gzips/gunzips —
+served as `application/octet-stream`, NOT `Content-Encoding`, since UnityWebRequest
+can't be relied on to auto-inflate). Auth is `Authorization: Bearer <token>` reusing
+`verifyToken`. Per-account quota + server-side autosave rotation (`MaxCloudAutosaves`)
+— the latter because per-machine-timestamped autosave names mean client rotation can't
+bound cross-device growth. `DELETE` writes a **tombstone** (rev-bumped meta, blob
+removed) so a stale offline device can't resurrect a deleted slot.
+
+Client: `SaveSync` (static: upload pump + list/download/delete coroutines) runs its
+pump on `SaveSyncRunner` (DontDestroyOnLoad — must outlive the Menu↔Main load, since a
+final save fires as the player returns to the menu and `SaveSystem` is Main-only).
+`SaveSyncIndex` holds per-slot markers `{uploadedAt, cloudRev}` + a stable machine GUID,
+stored OUTSIDE `SaveDir` (`SaveStore` filters dot-prefixed files so it's never a phantom
+slot). **Local saves are themselves per-account** (`SaveStore.SaveDir` = `<root>/<account>`,
+`account` = `Session.StorageScope`), so the sync markers are keyed per account too
+(`SaveSyncIndex.ScopedKey` = `<account>/<slot>`) — two accounts on one machine keep
+independent local slot sets *and* sync lineages. Conflict status is **rev-based** (server-assigned `rev`, not wall clocks);
+`savedAt` is display/tiebreak only. `MenuLoadPanel` async-merges local + cloud into
+one badged row per slot (`SaveSync.SyncStatus`: synced/local/cloud/cloud-newer/conflict/
+update-needed); cloud picks download to disk then boot the normal load path. Continue is
+cloud-aware. A save whose `saveVersion` exceeds this build is refused on download. The
+**in-game** `SaveMenuPanel` shows a simpler **network-free** per-row badge
+(`SaveSync.LocalBadge`: synced/syncing/local/offline) from the local marker only —
+cross-device status is a menu concern — refreshed live via `OnStateChanged`.
+
 ### Merchant job
 
 Dedicated `"merchant"` job in jobsDb. Merchant mice only perform `HaulToMarketTask` and `HaulFromMarketTask`; they do not take craft/harvest jobs. They are the only mice allowed to path to the market building.

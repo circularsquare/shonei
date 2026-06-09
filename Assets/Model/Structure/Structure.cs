@@ -18,8 +18,8 @@ public class Structure {
     public const float MaxRepairPerTask   = 0.40f;  // cap on condition restored in one mender visit
     public const float RepairWorkPerTick  = 0.05f;  // base condition gained per tick while working
     public const float RepairCostFraction = 0.25f;  // full 0→1 repair = ¼ of construction cost
-    public const int   DaysToBreak        = 30;     // in-game days from 1.0 → BreakThreshold (0.5)
-    public const float ShelteredDecayFactor = 0.5f; // overhead cover (roof) → half decay rate; see MaintenanceSystem
+    public const int   DaysToBreak        = 30;     // in-game days from 1.0 → BreakThreshold (0.5), when sheltered
+    public const float ExposedDecayFactor = 1.5f;   // no overhead cover → 1.5× the sheltered decay rate; see MaintenanceSystem
 
     public GameObject go;
     public int x;

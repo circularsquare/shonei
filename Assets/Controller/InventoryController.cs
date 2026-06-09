@@ -103,14 +103,27 @@ public class InventoryController : MonoBehaviour {
     }
 
     public void TickUpdate(){
+        // Simulation side: decay + reservation expiry. Gated behind the sim tick
+        // (and thus paused with timeScale). The display refresh below is NOT —
+        // see RefreshDisplay.
+        foreach (Inventory inv in inventories){
+            inv.TickUpdate();
+        }
+        RefreshDisplay();
+    }
+
+    // Pure UI refresh: lazily builds the ItemDisplay tree on first call, then repaints
+    // global quantities plus any open storage / market panels. Carries NO simulation
+    // side effects (no decay, no reservation expiry), so it's safe to call while paused.
+    // World gen and save load both end paused, and the tick-driven TickUpdate never fires
+    // while dt==0 — so those paths call this directly to populate the panel up front.
+    public void RefreshDisplay(){
         if (world == null){
+            if (WorldController.instance == null) return; // not in a game scene yet
             world = WorldController.instance.world;
             foreach (Item item in Db.items){
                 AddItemDisplay(item);
             }
-        }
-        foreach (Inventory inv in inventories){
-            inv.TickUpdate();
         }
         UpdateItemsDisplay();
         if (storagePanel != null && storagePanel.gameObject.activeSelf)

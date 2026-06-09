@@ -4,7 +4,7 @@
 // XP thresholds double each level: 10 → 20 → 40 → 80 → ...
 // Each level grants +5% work speed for that skill domain.
 //
-// XP is earned during work at a rate of 0.1 per base efficiency unit per tick.
+// XP is earned during work at SkillSet.XpPerWorkTick per base efficiency unit per tick.
 // "Base efficiency" = hunger×sleep × tool bonus (does NOT include the skill bonus
 // itself, so skill level doesn't accelerate its own XP gain).
 
@@ -24,6 +24,12 @@ public class SkillSet {
 
     // Work speed bonus per level (additive): +5% per level.
     public const float BonusPerLevel = 0.05f;
+
+    // XP earned per base-efficiency unit per tick of work. Halved 0.1→0.05 when
+    // ticksInDay doubled (240→480) so leveling tracks in-game days, not real
+    // seconds — consistent with research/hunger. Single source for the GainXp
+    // call sites in AnimalStateManager (was a scattered 0.1f literal at each).
+    public const float XpPerWorkTick = 0.05f;
 
     private float[] xp    = new float[Count];
     private int[]   level = new int[Count];
