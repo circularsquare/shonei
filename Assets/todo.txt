@@ -27,6 +27,7 @@ CONTENT
     - grind to get skill dust 
 - forgaging tech 
     - get random plants from grass?
+    - see cool-plants plan
 - potions 
     - alembic for brewing
 - tea
@@ -47,6 +48,8 @@ CONTENT
     - hanging ropes? for building down off cliffsides
     - walls? gates? 
         - rooms? 
+- long term player goals 
+    - town tiers?
 
 VISUALS
 - lighting 
@@ -73,7 +76,7 @@ MOUSE AI
 UI
 - make item icons more coherent / similar
 - tab styling, add building icons?
-- recipe list / enabling disabling globally and locally for crafting buildings info panel
+- move more stuff to eventfeed
 
 SERVER 
 - account system plan
@@ -116,16 +119,20 @@ todoship
 - pretty up recipe panel
     - get rid of empty space 
 
-- figure out weird maximize window behavior on build
-
 clarify which side of burrow sprite is out
-    - more thickness on roof? maybe make grass higher 
+    - more thickness on roof? 
 
 - ui scaling....
+    - is everything scaling right?
+    - are icons scaling right?
 - test on laptop
+
+- make some debug info only on debug mode 
+    - test
     
+- require a path to left edge of world for world gen?
+
+- slow down snow melt?
+- random (+ seasonal) price / stock movements
 
 TODAY
-
-- on new world, automatically make a save name ? 
-    - maybe ask what you'd liek to call it

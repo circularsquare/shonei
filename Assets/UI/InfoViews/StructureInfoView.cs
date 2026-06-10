@@ -60,6 +60,9 @@ public class StructureInfoView : MonoBehaviour {
             deconstructButton.onClick.AddListener(OnClickDeconstruct);
         if (cancelButton != null)
             cancelButton.onClick.AddListener(OnClickCancel);
+        // Self-wire the inline-help hover handler onto the text blob (no scene step needed).
+        if (text != null && text.GetComponent<InfoTextHover>() == null)
+            text.gameObject.AddComponent<InfoTextHover>();
     }
 
     // Show info for a completed structure (building, plant, or base structure).
@@ -106,6 +109,7 @@ public class StructureInfoView : MonoBehaviour {
                 sb.Append($"\n <color=#d04040><b>BROKEN</b></color> condition: {pct}%");
             else
                 sb.Append($"\n condition: {pct}%");
+            sb.Append(Help.Icon("condition"));
         }
 
         if (structure is Plant plant) {
@@ -218,9 +222,11 @@ public class StructureInfoView : MonoBehaviour {
         // happening and no in-game cue. The half-alpha tint from RefreshColor is the visual hint.
         else if (blueprint.IsSuspended())
             sb.Append("\n <color=#d04040>suspended: conditions not met</color>");
-        var bpOrder = WorkOrderManager.instance?.FindOrderForBlueprint(blueprint);
-        if (bpOrder != null)
-            sb.Append("\n wo: " + bpOrder.type + " " + bpOrder.res.reserved + "/" + bpOrder.res.capacity);
+        if (DebugMode.Enabled) {
+            var bpOrder = WorkOrderManager.instance?.FindOrderForBlueprint(blueprint);
+            if (bpOrder != null)
+                sb.Append("\n wo: " + bpOrder.type + " " + bpOrder.res.reserved + "/" + bpOrder.res.capacity);
+        }
 
         text.text = sb.ToString();
 
@@ -348,6 +354,7 @@ public class StructureInfoView : MonoBehaviour {
         Tile soil = World.instance.GetTileAt(plant.tile.x, plant.tile.y - 1);
         string nowMoistStr = soil != null ? $"{soil.moisture}/{MoistureSystem.MoistureMax}" : "?";
         sb.Append($"\n moisture: {nowMoistStr}  comfort: {FormatBound(pt.moistureMin, 0, "")}-{FormatBound(pt.moistureMax, 0, "")}");
+        sb.Append(Help.Icon("plantcomfort"));
     }
 
     static string FormatBound(float? v, int decimals, string suffix) {
@@ -360,7 +367,7 @@ public class StructureInfoView : MonoBehaviour {
     // Appends work orders keyed by tile (harvest, research). Mirrors AppendBuildingOrders'
     // [inactive] suffix so a target-gated or unripe harvest order is visible as such.
     static void AppendTileOrders(System.Text.StringBuilder sb, Tile tile) {
-        if (WorkOrderManager.instance == null) return;
+        if (!DebugMode.Enabled || WorkOrderManager.instance == null) return;
         var found = new List<string>();
         foreach (var o in WorkOrderManager.instance.FindOrdersForTile(tile)) {
             string active = o.isActive != null && !o.isActive() ? " [inactive]" : "";
@@ -373,7 +380,7 @@ public class StructureInfoView : MonoBehaviour {
     // Appends work orders keyed by building (craft).
     // When effectiveCapacity < capacity, shows three-part "reserved/effective/max".
     static void AppendBuildingOrders(System.Text.StringBuilder sb, Building building) {
-        if (WorkOrderManager.instance == null) return;
+        if (!DebugMode.Enabled || WorkOrderManager.instance == null) return;
         var found = new List<string>();
         foreach (var o in WorkOrderManager.instance.FindOrdersForBuilding(building)) {
             string active = o.isActive != null && !o.isActive() ? " [inactive]" : "";
@@ -496,7 +503,7 @@ public class StructureInfoView : MonoBehaviour {
 
     // Appends work orders keyed by inventory (market hauls).
     static void AppendInvOrders(System.Text.StringBuilder sb, Inventory inv) {
-        if (WorkOrderManager.instance == null) return;
+        if (!DebugMode.Enabled || WorkOrderManager.instance == null) return;
         var found = new List<string>();
         foreach (var o in WorkOrderManager.instance.FindOrdersForInv(inv))
             found.Add($"{o.type} {o.res.reserved}/{o.res.capacity}");

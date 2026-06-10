@@ -221,6 +221,55 @@ public static class SaveSync {
         }
     }
 
+    // ── Cached account cloud listing (menu prefetch) ───────────────────────────
+
+    // The menu warms this once when it appears so the Continue button and the Load list
+    // don't each pay a fresh /saves round-trip — and, critically, so a FAILED fetch is
+    // distinguishable from a genuinely empty account. The old Continue flow conflated both
+    // as "nothing to load" and silently started a new world; with explicit Failed state the
+    // caller can keep the player on the menu instead. State changes fire OnCloudListChanged.
+    public enum CloudListState { None, Fetching, Ready, Failed }
+    public static CloudListState CloudState { get; private set; }
+    public static List<CloudMeta> CachedCloud { get; private set; }
+    public static event Action OnCloudListChanged;
+
+    static string cloudCacheScope; // account the cache was fetched for; a scope change invalidates it
+
+    // Kick off (or refresh) the cached cloud listing for the logged-in account. Coroutine:
+    // yield it to be sure the result is in hand. Reuses an in-flight fetch (waits for it)
+    // and a Ready cache (returns immediately) unless force is set. Logged out → None.
+    public static IEnumerator WarmCloudList(bool force = false) {
+        if (!Session.LoggedIn) {
+            CachedCloud = null; cloudCacheScope = null;
+            SetCloudState(CloudListState.None);
+            yield break;
+        }
+        // Account switched since the last fetch — the cache belongs to a different account.
+        if (cloudCacheScope != Session.StorageScope) {
+            CachedCloud = null; cloudCacheScope = Session.StorageScope;
+            SetCloudState(CloudListState.None);
+        }
+        // A prefetch is already running — wait for it rather than firing a duplicate.
+        if (CloudState == CloudListState.Fetching) {
+            while (CloudState == CloudListState.Fetching) yield return null;
+            if (!force) yield break;
+        }
+        if (!force && CloudState == CloudListState.Ready) yield break;
+
+        SetCloudState(CloudListState.Fetching);
+        bool ok = false; List<CloudMeta> list = null;
+        yield return FetchCloudList((s, l, e) => { ok = s; list = l; });
+        // Guard against an account switch that happened while the request was in flight.
+        if (cloudCacheScope != Session.StorageScope) yield break;
+        if (ok) { CachedCloud = list; SetCloudState(CloudListState.Ready); }
+        else    { SetCloudState(CloudListState.Failed); }
+    }
+
+    static void SetCloudState(CloudListState s) {
+        CloudState = s;
+        OnCloudListChanged?.Invoke();
+    }
+
     // ── List / download / delete (caller-driven, like AuthClient) ──────────────
 
     // GET /saves → the account's live (non-tombstoned) slot metadata. done(ok, list, error).

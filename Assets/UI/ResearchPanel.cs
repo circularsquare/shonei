@@ -48,6 +48,18 @@ public class ResearchPanel : MonoBehaviour {
     void Start() {
         if (debugUnlockAllButton != null)
             debugUnlockAllButton.onClick.AddListener(OnClickUnlockAll);
+        DebugMode.Changed += RefreshDebugControls;
+        RefreshDebugControls();
+    }
+
+    void OnDestroy() {
+        DebugMode.Changed -= RefreshDebugControls;
+    }
+
+    // The "unlock all" button is a dev cheat — only visible in debug mode (Ctrl+D).
+    void RefreshDebugControls() {
+        if (debugUnlockAllButton != null)
+            debugUnlockAllButton.gameObject.SetActive(DebugMode.Enabled);
     }
 
     void Update() {

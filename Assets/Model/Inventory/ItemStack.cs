@@ -247,12 +247,13 @@ public class ItemStack {
     }
 
     public override string ToString(){
+        // Reservation amounts (resAmount/resSpace) are dev internals — debug mode only.
         if (item != null){
-            string resStr = resAmount > 0 ? " (r" + FormatQ(resAmount, item) + ")" : "";
-            string spcStr = resSpace > 0 ? " (s" + FormatQ(resSpace, item) + ")" : "";
+            string resStr = DebugMode.Enabled && resAmount > 0 ? " (r" + FormatQ(resAmount, item) + ")" : "";
+            string spcStr = DebugMode.Enabled && resSpace > 0 ? " (s" + FormatQ(resSpace, item) + ")" : "";
             return item.name + " x " + FormatQ(quantity, item) + resStr + spcStr + "\n";
         }
-        if (resSpace > 0 && resSpaceItem != null){
+        if (DebugMode.Enabled && resSpace > 0 && resSpaceItem != null){
             return "(reserved for " + resSpaceItem.name + " s" + FormatQ(resSpace, resSpaceItem) + ")\n";
         }
         return "";

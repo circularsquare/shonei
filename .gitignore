@@ -60,6 +60,9 @@ ExportedObj/
 # Unity3D generated file on crash reports
 sysinfo.txt
 
+# Local world saves — synced via the cloud now, not git.
+/SaveData/
+
 # Builds
 *.apk
 *.aab

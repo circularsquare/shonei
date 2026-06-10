@@ -20,6 +20,10 @@ public class TooltipSystem : MonoBehaviour {
     TextMeshProUGUI bodyText;
     LayoutElement bodyLe;
 
+    // Body wraps once its natural single-line width would exceed this. Short tooltips still
+    // hug their text; only long bodies get held to this width and flow to multiple lines.
+    const float MaxBodyWidth = 350f;
+
     void Awake() {
         if (instance != null) { Debug.LogError("two TooltipSystems!"); return; }
         instance = this;
@@ -104,7 +108,12 @@ public class TooltipSystem : MonoBehaviour {
         if (instance == null) return;
         instance.titleText.text        = title;
         instance.bodyText.text         = body;
-        instance.bodyLe.preferredWidth = -1f; // auto-size; body text uses explicit \n breaks
+        // Cap width: measure the body's unconstrained width, then hold it to MaxBodyWidth so
+        // long bodies wrap instead of stretching the panel across the screen. Short bodies
+        // keep their natural width (and any explicit \n breaks).
+        instance.bodyText.enableWordWrapping = true;
+        float naturalWidth = instance.bodyText.GetPreferredValues(body, Mathf.Infinity, Mathf.Infinity).x;
+        instance.bodyLe.preferredWidth = Mathf.Min(naturalWidth, MaxBodyWidth);
         instance.tooltipPanel.gameObject.SetActive(true);
         // Force TMP to rebuild its mesh first so its preferred-size reports reflect the
         // new text BEFORE we rebuild the layout — otherwise ContentSizeFitter sees the

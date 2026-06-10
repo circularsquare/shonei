@@ -1,5 +1,7 @@
 meoww!!
 
+6/10
+- itch deployment!
 6/9
 - brackets and roofs
     - unsheltered above buildings get 1.5x faster decay

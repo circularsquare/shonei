@@ -18,6 +18,7 @@ public class MenuLoadPanel : MonoBehaviour {
     [Header("Inspector Refs")]
     [SerializeField] Transform  slotList;        // VerticalLayoutGroup content inside the ScrollRect
     [SerializeField] GameObject slotEntryPrefab; // SaveSlot.prefab — same row as the in-game save menu
+    [SerializeField] GameObject loadingIndicator; // "loading saves..." shown while the cloud list is being fetched (optional)
 
     void Awake() {
         if (instance != null) { Debug.LogError("there should only be one MenuLoadPanel"); }
@@ -37,11 +38,19 @@ public class MenuLoadPanel : MonoBehaviour {
             yield break;
         }
         foreach (Transform child in slotList) Destroy(child.gameObject);
+        SetLoading(false);
 
-        // Pull the account's cloud saves (best-effort — offline just yields local-only rows).
-        List<SaveSync.CloudMeta> cloud = null;
-        if (Session.LoggedIn)
-            yield return SaveSync.FetchCloudList((ok, list, err) => { if (ok) cloud = list; });
+        // Cloud saves come from the menu's prefetched cache — usually already Ready, so the
+        // list builds with no wait. If the prefetch is still running (or hasn't started),
+        // show a loading indicator and wait for it. A failed fetch yields local-only rows.
+        if (Session.LoggedIn && SaveSync.CloudState != SaveSync.CloudListState.Ready
+                             && SaveSync.CloudState != SaveSync.CloudListState.Failed) {
+            SetLoading(true);
+            yield return SaveSync.WarmCloudList();
+            SetLoading(false);
+        }
+        List<SaveSync.CloudMeta> cloud =
+            SaveSync.CloudState == SaveSync.CloudListState.Ready ? SaveSync.CachedCloud : null;
 
         var cloudByName = new Dictionary<string, SaveSync.CloudMeta>();
         if (cloud != null)
@@ -80,6 +89,10 @@ public class MenuLoadPanel : MonoBehaviour {
                        onChanged: Refresh, showSave: false);
             entry.SetSyncStatus(status);
         }
+    }
+
+    void SetLoading(bool on) {
+        if (loadingIndicator != null) loadingIndicator.SetActive(on);
     }
 
     // Route a chosen slot to the right load path based on its sync state. Cloud copies

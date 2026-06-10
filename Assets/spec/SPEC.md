@@ -107,6 +107,7 @@ A new top-level `Assets/` source folder falls into `Shonei.Runtime` automaticall
 | [SPEC-mcp.md](SPEC-mcp.md) | Unity Editor work via MCP — when it's safe, common gotchas (Play mode, codedom, inactive lookups), UI style conventions (font sizes, sprites, spacing, color), workflow recipes |
 | [SPEC-checklists.md](SPEC-checklists.md) | Content-authoring checklists — buildings, recipes, items, jobs, plants, Structure subclasses. Read the relevant section before editing JSON or adding subclasses. |
 | [SPEC-testing.md](SPEC-testing.md) | Test types (EditMode/PlayMode/Snapshot), the snapshot golden workflow, headless `run-tests.bat`, conventions for adding tests. |
+| [SPEC-deployment.md](SPEC-deployment.md) | Shipping the game — client build+publish to itch.io (`build-and-publish.ps1`), server deploy to Hetzner, version flow, known gaps + future work. |
 
 ---
 

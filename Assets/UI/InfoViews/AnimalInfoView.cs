@@ -15,6 +15,12 @@ public class AnimalInfoView : MonoBehaviour {
 
     public Animal SelectedAnimal => animal;
 
+    // Self-wire the inline-help hover handler onto the text blob (no scene step needed).
+    void Awake() {
+        if (text != null && text.GetComponent<InfoTextHover>() == null)
+            text.gameObject.AddComponent<InfoTextHover>();
+    }
+
     public void Show(Animal animal) {
         this.animal = animal;
         gameObject.SetActive(true);
@@ -90,12 +96,15 @@ public class AnimalInfoView : MonoBehaviour {
             "\n [top]  " + FormatSlot(ani.clothingSlotInv) +
             "\n [book] " + FormatSlot(ani.bookSlotInv) +
             "\n inv: " + ani.inv.ToString();
-        t += "\n task: " + (ani.task?.ToString() ?? "none");
-        t += "\n obj: " + (ani.task?.currentObjective?.ToString() ?? "none");
-        if (ani.task is CraftTask craftTask)
-            t += "\n recipe: " + craftTask.recipe?.description;
-        t += "\n location: " + ani.go.transform.position.ToString() +
-            "\n eff: " + ani.efficiency.ToString("F2") +
+        // Task/objective/recipe/location are dev internals — debug mode only.
+        if (DebugMode.Enabled) {
+            t += "\n task: " + (ani.task?.ToString() ?? "none");
+            t += "\n obj: " + (ani.task?.currentObjective?.ToString() ?? "none");
+            if (ani.task is CraftTask craftTask)
+                t += "\n recipe: " + craftTask.recipe?.description;
+            t += "\n location: " + ani.go.transform.position.ToString();
+        }
+        t += "\n eff: " + ani.efficiency.ToString("F2") + Help.Icon("eff") +
             "\n full: " + ani.eating.Fullness().ToString("F2") +
             "\n eep: " + ani.eeping.Eepness().ToString("F2") +
             FormatHappiness(ani.happiness);

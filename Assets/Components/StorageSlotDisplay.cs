@@ -10,7 +10,7 @@ public class StorageSlotDisplay : MonoBehaviour {
         if (stack.item == null || stack.quantity == 0)
             text.text = $"empty: 0/{ItemStack.FormatQ(stackSize)}";
         else {
-            string spc = stack.resSpace > 0 ? $" (s{ItemStack.FormatQ(stack.resSpace, stack.item)})" : "";
+            string spc = DebugMode.Enabled && stack.resSpace > 0 ? $" (s{ItemStack.FormatQ(stack.resSpace, stack.item)})" : "";
             // Capacity shown in the item's own unit: for a discrete item FormatQ(stackSize, item)
             // floors stackSize/unitFen — the whole-unit count the slot can actually hold.
             text.text = $"{stack.item.name}: {ItemStack.FormatQ(stack.quantity, stack.item)}/{ItemStack.FormatQ(stackSize, stack.item)}{spc}";
@@ -22,7 +22,7 @@ public class StorageSlotDisplay : MonoBehaviour {
         if (item == null)
             text.text = $"empty: 0/{ItemStack.FormatQ(totalCapacity)}";
         else {
-            string spc = totalResSpace > 0 ? $" (s{ItemStack.FormatQ(totalResSpace, item)})" : "";
+            string spc = DebugMode.Enabled && totalResSpace > 0 ? $" (s{ItemStack.FormatQ(totalResSpace, item)})" : "";
             // Aggregate capacity in unit count. FormatQ floors totalCapacity/unitFen — exact when
             // stacks share a size; may very slightly over-count across many small stacks (display-only).
             text.text = $"{item.name}: {ItemStack.FormatQ(totalQty, item)}/{ItemStack.FormatQ(totalCapacity, item)}{spc}";

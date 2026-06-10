@@ -55,6 +55,10 @@ public class InfoPanel : MonoBehaviour {
             Debug.LogError("there should only be one " + this.GetType().ToString()); }
         instance = this;
 
+        // Refresh the active view when debug mode toggles, so dev info appears/hides
+        // immediately even while paused (no tick is driving UpdateInfo then).
+        DebugMode.Changed += UpdateInfo;
+
         // tileHighlight is a world-space SpriteRenderer; if the scene authors it under any
         // Canvas (the project's main UI canvas uses CanvasScaler "Scale With Screen Size",
         // whose resolution-driven localScale propagates to all descendants), the highlight
@@ -290,6 +294,10 @@ public class InfoPanel : MonoBehaviour {
             if (tile != null)
                 tileHighlight.transform.position = new Vector3(tile.x, tile.y, -1);
         }
+    }
+
+    void OnDestroy() {
+        DebugMode.Changed -= UpdateInfo;
     }
 
     // ── Update ──

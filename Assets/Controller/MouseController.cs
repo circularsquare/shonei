@@ -149,11 +149,14 @@ public class MouseController : MonoBehaviour {
                 Debug.Log($"[debug] instant-build next blueprint: {(BuildPanel.instantBuildNext ? "ARMED" : "disarmed")}");
             }
         }
-        // Ctrl+D = audit dump. Excludes Shift so it doesn't double-fire with
-        // InfoPanel's Ctrl+Shift+D instant-deconstruct shortcut.
+        // Ctrl+D = toggle debug mode (reveals dev-only info in the InfoPanel /
+        // research panel) and dump an audit log. Excludes Shift so it doesn't
+        // double-fire with InfoPanel's Ctrl+Shift+D instant-deconstruct shortcut.
         if (Input.GetKeyDown(KeyCode.D)
                 && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
                 && !(Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))) {
+            DebugMode.Toggle();
+            Debug.Log($"[debug] debug mode {(DebugMode.Enabled ? "ON" : "off")}");
             WorkOrderManager.instance?.AuditOrders();
             InventoryController.instance?.ValidateGlobalInventory();
             Debug.Log($"World seed: {Rng.worldSeed}");

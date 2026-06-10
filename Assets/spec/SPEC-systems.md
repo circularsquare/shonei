@@ -214,7 +214,7 @@ JSON fields on StructType:
 
 `isBuilding: true` on StructType makes StructController use the `Building` class for any depth (e.g. foreground torches at depth 2). `tile.building` (= `structs[0] as Building`) is still depth-0 specific; fuel buildings at other depths are accessed directly via task/WOM references.
 
-- Items decay over time (Floor fastest; Animal/Market never; Equip at normal rate)
+- Items decay over time. `Inventory.Decay()` multiplier by InvType: Floor 5×; Storage/Equip 1× (default); Market/Animal/Blueprint/Reservoir/Furnishing 0× (Furnishing slots track their own per-slot lifetime instead). Wet doubles the multiplier (see rain bullet below).
 - **Rain-soaked floor invs** decay at 2× their already-fast Floor rate. `WeatherSystem.OnHourElapsed` sweeps every tile while raining (rain only — gated on `isRaining && temperature ≥ snowThresholdC`); any tile carrying a Floor inv that is `World.IsExposedAbove` gets its `Inventory.wetUntil` refreshed to `World.timer + ticksInDay/4`. `Inventory.Decay` doubles its multiplier while `wetUntil > World.timer`. The wet timer doesn't dry early — once a pile has been soaked, it stays at 2× decay for the full quarter-day even if a roof goes up before then. `wetUntil` is persisted on `InventorySaveData`.
 - **Discrete items** (`Item.discrete = true`, e.g. tools, stools): stored/moved in whole-**unit** multiples. A unit is `Item.unitFen` fen — `unitWeight` liang (JSON-authored, default 1) × 100. Tools weigh 1 liang/unit (`unitFen` 100); a stool weighs 3 (`unitFen` 300), so a fixed-fen slot holds proportionally fewer — weight and bulk are deliberately one number.
   - **Capacity**: `ItemStack.EffectiveCapacity` floors a stack's raw `stackSize` down to a whole-unit multiple (trailing remainder is dead space); `AddItem` / `FreeSpace` / `HasSpaceForItem` all use it.
@@ -660,7 +660,16 @@ Beyond the universal cracked-material tint, specific building types have additio
 - Maintenance WOM orders are **not** persisted. `WorkOrderManager.Reconcile` registers them from world state at load via `ScanOrders`, same mechanism as every other order type.
 - `MaintenanceSystem.RebuildFromWorld()` runs in `SaveSystem` Phase 6 (after Reconcile) to rebuild the internal `registered`/`broken` sets from restored condition values. Tint refresh for every structure follows in the same block.
 
-### Audit (`Ctrl+D`)
+### Audit + debug mode (`Ctrl+D`)
+
+`Ctrl+D` does two things: dumps an audit log (below) **and** toggles `DebugMode.Enabled`
+(`Assets/Controller/DebugMode.cs`). Dev-only readouts gate on that flag and stay hidden
+in normal play: InfoPanel `wo:` work-order lines (StructureInfoView, TileInfoView), animal
+task/objective/recipe/location (AnimalInfoView), tile standable/neighbors, item-stack
+reservation amounts `(rN)`/`(sN)` (`ItemStack.ToString`, TileInfoView, StorageSlotDisplay),
+and the research "unlock all" button. **New dev-only InfoPanel info must gate on `DebugMode.Enabled`.** UI built
+once (buttons) subscribes to `DebugMode.Changed`; per-tick text just reads the flag. Distinct
+from the F3 graphics-stats overlay (`GpuStatsHUD`) — that's GPU/render perf, this is gameplay info.
 
 `ScanOrders` includes bi-directional Maintenance coverage:
 - **Direction 1**: every structure with `WantsMaintenance` must have a Maintenance order registered.

@@ -92,7 +92,7 @@
     },{
         "id": 12,
         "name": "Writing",
-        "description": "Record knowledge in books.",
+        "description": "Record knowledge in books. A scientist carrying the matching tech book researches 3x faster.",
         "prereqs": [11],
         "cost": 5,
         "unlocks": [
@@ -152,7 +152,7 @@
     },{
         "id": 17,
         "name": "Tools",
-        "description": "Craft stone tools at a workshop.",
+        "description": "Craft stone tools at a workshop. Better tools work faster: stone +10%, copper +20%, bronze +30%.",
         "prereqs": [],
         "cost": 3,
         "unlocks": [

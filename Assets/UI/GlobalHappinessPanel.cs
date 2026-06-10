@@ -36,6 +36,10 @@ public class GlobalHappinessPanel : MonoBehaviour {
     [SerializeField] Transform        needContainer;
     [SerializeField] HappinessNeedRow needRowPrefab;
     [SerializeField] Button           closeButton; // optional X in the corner
+    // The "?" InfoButton's Tooltippable. Assigned in the inspector so Refresh can rewrite
+    // its body with live colony numbers each tick. Left null → keeps its scene-authored
+    // static text (graceful no-op).
+    [SerializeField] Tooltippable     populationInfoTip;
 
     // Rows are spawned once and reused. Order: Db.happinessNeedsSorted, then housing, then temperature.
     readonly List<HappinessNeedRow> rows = new List<HappinessNeedRow>();
@@ -154,6 +158,17 @@ public class GlobalHappinessPanel : MonoBehaviour {
                 $"Colony Happiness: {totalScore / n:0.0} / {Db.happinessMaxScore}.0   ({n} mice)\n" +
                 $"pop {n} / {ac.populationCapacity}\n" +
                 "grow pop: raise happiness, build housing, stock food";
+        }
+
+        // Live "?" tooltip: state the two reproduction gates with current numbers, not the
+        // formula. avgHappiness/totalHousingCapacity/populationCapacity come from the same
+        // AnimalController stats that drive the header so the cap shown here matches it.
+        if (populationInfoTip != null) {
+            populationInfoTip.title = "Population";
+            populationInfoTip.body =
+                "Mice reproduce only with enough housing and happiness.\n" +
+                $"pop {n} / {ac.totalHousingCapacity} beds\n" +
+                $"happiness {ac.avgHappiness:0.0} supports up to {ac.populationCapacity} mice";
         }
 
         // Update rows. Every row uses the same Refresh(averagePoints, detailText, tooltip)

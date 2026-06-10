@@ -23,6 +23,8 @@ P2 - polish + getting them in the door
 - title screen + quit + resolution/windowed working in a build
     - low prio, boots straight into a world right now which is fine
 
+/code-review and /security-review?
+
 OUT OF SCOPE - resist
 - all of todo.txt CONTENT (metallurgy, upsizing, bunnies, trains, herbs...)
 - the point is to STOP adding and ship the depth that already exists

@@ -9,6 +9,12 @@ public class TileInfoView : MonoBehaviour {
 
     private Tile tile;
 
+    // Self-wire the inline-help hover handler onto the text blob (no scene step needed).
+    void Awake() {
+        if (text != null && text.GetComponent<InfoTextHover>() == null)
+            text.gameObject.AddComponent<InfoTextHover>();
+    }
+
     public void Show(Tile tile) {
         this.tile = tile;
         gameObject.SetActive(true);
@@ -25,7 +31,8 @@ public class TileInfoView : MonoBehaviour {
 
         var sb = new System.Text.StringBuilder();
         sb.Append("location: " + tile.x + ", " + tile.y);
-        sb.Append("\nstandable: " + tile.node.standable + "  neighbors: " + tile.node.neighbors.Count);
+        if (DebugMode.Enabled)
+            sb.Append("\nstandable: " + tile.node.standable + "  neighbors: " + tile.node.neighbors.Count);
 
         if (tile.type.id != 0) {
             sb.Append("\ntile: " + tile.type.DisplayName + "  solid: " + tile.type.solid);
@@ -41,12 +48,12 @@ public class TileInfoView : MonoBehaviour {
         // Floor inventory
         if (tile.inv != null) {
             sb.Append("\ninv:");
-            if (tile.inv.IsWet()) sb.Append(" wet");
+            if (tile.inv.IsWet()) sb.Append(" wet" + Help.Icon("wet"));
             foreach (var stack in tile.inv.itemStacks) {
                 if (stack.item != null) {
-                    string resStr = stack.resAmount > 0 ? " (r" + ItemStack.FormatQ(stack.resAmount, stack.item) + ")" : "";
-                    string spcStr = stack.resSpace > 0 ? " (s" + ItemStack.FormatQ(stack.resSpace, stack.item) + ")" : "";
-                    var stackOrder = WorkOrderManager.instance?.FindOrderForStack(stack);
+                    string resStr = DebugMode.Enabled && stack.resAmount > 0 ? " (r" + ItemStack.FormatQ(stack.resAmount, stack.item) + ")" : "";
+                    string spcStr = DebugMode.Enabled && stack.resSpace > 0 ? " (s" + ItemStack.FormatQ(stack.resSpace, stack.item) + ")" : "";
+                    var stackOrder = DebugMode.Enabled ? WorkOrderManager.instance?.FindOrderForStack(stack) : null;
                     string woStr = stackOrder == null ? "" :
                         stackOrder.type == WorkOrderManager.OrderType.Haul && stackOrder.priority == 1
                             ? $" [wo:Haul! {stackOrder.res.reserved}/{stackOrder.res.capacity}]"
@@ -54,6 +61,8 @@ public class TileInfoView : MonoBehaviour {
                     sb.Append("\n  " + stack.item.name + " x " + ItemStack.FormatQ(stack.quantity, stack.item) + resStr + spcStr + woStr);
                 }
             }
+            // Floor-decay help, right after the contents (only when something is actually here).
+            if (!tile.inv.IsEmpty()) sb.Append(Help.Icon("floordecay"));
         }
 
         text.text = sb.ToString();

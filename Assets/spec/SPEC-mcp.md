@@ -51,8 +51,11 @@ Practical workflow:
    is enough.
 2. Use `manage_editor stop` before scene-mutating `execute_code` if Unity is
    in Play mode (Play-mode changes revert; `MarkSceneDirty` also fails).
-3. Don't `manage_scene save` without an explicit ask. Let the user save when
-   they like the result.
+3. Saving the scene (`manage_scene save`) and switching scenes is fine at your
+   discretion — do it when a task needs it (e.g. swapping to the scene that owns
+   the objects you must edit). GitHub history is the restore path and is kept
+   reasonably current. Still avoid the **risky** direct YAML `.unity`/`.prefab`
+   *file* writes below — those are a different operation from an in-editor save.
 4. After **non-trivial** Edit/Write to a `.cs` file, `read_console` before
    moving on — compile errors lock the MCP bridge. **Skip for tiny low-risk
    edits** (one-line filters, string-literal tweaks, magic-number changes, line
@@ -338,8 +341,9 @@ that quietly didn't.
   "needs custom asset" — not silently shipped.
 
 ### Saving
-- **Don't** call `manage_scene save`. Ever, unless the user explicitly
-  asks. The user saves when they're satisfied with the result.
+- Saving (`manage_scene save`) and switching scenes is fine at your discretion
+  when the task needs it — GitHub history is the restore path. No need to ask
+  first. (Still don't do risky direct YAML `.unity`/`.prefab` file writes.)
 
 ### Visual review
 - For cosmetic / layout changes, **ask the user for a screenshot** before
