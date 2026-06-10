@@ -2,7 +2,7 @@
   "saveVersion": 1,
   "savedNx": 200,
   "savedNy": 120,
-  "timer": 4503.615,
+  "timer": 4217.16553,
   "worldSeed": 84885,
   "tiles": [
     {
@@ -5425,11 +5425,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 1485,
-            "decayCounter": 901676
+            "quantity": 2380,
+            "decayCounter": 527670
           }
         ],
-        "wetUntil": 4485.39648
+        "wetUntil": 3944.90381
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -5878,11 +5878,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 1487,
-            "decayCounter": 53406
+            "quantity": 2383,
+            "decayCounter": 405343
           }
         ],
-        "wetUntil": 4485.39648
+        "wetUntil": 0.0
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -6331,11 +6331,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 424,
-            "decayCounter": 248070
+            "quantity": 456,
+            "decayCounter": 244417
           }
         ],
-        "wetUntil": 4485.39648
+        "wetUntil": 0.0
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -7191,6 +7191,2087 @@
     },
     {
       "x": 17,
+      "y": 59,
+      "tileType": "dirt",
+      "backgroundWallType": 0,
+      "hasBackgroundWall": false,
+      "overlayMask": 8
+    },
+    {
+      "x": 17,
+      "y": 58,
+      "tileType": "dirt",
+      "backgroundWallType": 2,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 57,
+      "tileType": "dirt",
+      "backgroundWallType": 2,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 56,
+      "tileType": "dirt",
+      "backgroundWallType": 2,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 55,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 54,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 53,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 52,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 51,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 50,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 49,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 48,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 47,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 46,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 45,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 44,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 43,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 42,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 41,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 40,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 39,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 38,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 37,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 36,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 35,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 34,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 33,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 32,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 31,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 30,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 29,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 28,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 27,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 26,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 25,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 24,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 23,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 22,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 21,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 20,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 19,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 18,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 17,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 16,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 15,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 14,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 13,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 12,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 11,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 10,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 9,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 8,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 7,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 6,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 5,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 4,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 3,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 2,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 1,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 17,
+      "y": 0,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 58,
+      "tileType": "clay",
+      "backgroundWallType": 0,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 57,
+      "tileType": "dirt",
+      "backgroundWallType": 2,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 56,
+      "tileType": "dirt",
+      "backgroundWallType": 2,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 55,
+      "tileType": "dirt",
+      "backgroundWallType": 2,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 54,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 53,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 52,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 51,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 50,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 49,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 48,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 47,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 46,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 45,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 44,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 43,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 42,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 41,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 40,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 39,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 38,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 37,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 36,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 35,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 34,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 33,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 32,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 31,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 30,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 29,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 28,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 27,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 26,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 25,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 24,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 23,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 22,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 21,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 20,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 19,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 18,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 17,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 16,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 15,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 14,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 13,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 12,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 11,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 10,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 9,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 8,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 7,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 6,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 5,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 4,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 3,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 2,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 1,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 18,
+      "y": 0,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 58,
+      "tileType": "clay",
+      "backgroundWallType": 0,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 57,
+      "tileType": "clay",
+      "backgroundWallType": 2,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 56,
+      "tileType": "dirt",
+      "backgroundWallType": 2,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 55,
+      "tileType": "dirt",
+      "backgroundWallType": 2,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 54,
+      "tileType": "dirt",
+      "backgroundWallType": 2,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 53,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 52,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 51,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 50,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 49,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 48,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 47,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 46,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 45,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 44,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 43,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 42,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 41,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 40,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 39,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 38,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 37,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 36,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 35,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 34,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 33,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 32,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 31,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 30,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 29,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 28,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 27,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 26,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 25,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 24,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 23,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 22,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 21,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 20,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 19,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 18,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 17,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 16,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 15,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 14,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 13,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 12,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 11,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 10,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 9,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 8,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 7,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 6,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 5,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 4,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 3,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 2,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 1,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 19,
+      "y": 0,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 58,
+      "tileType": "clay",
+      "backgroundWallType": 0,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 57,
+      "tileType": "clay",
+      "backgroundWallType": 2,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 56,
+      "tileType": "dirt",
+      "backgroundWallType": 2,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 55,
+      "tileType": "dirt",
+      "backgroundWallType": 2,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 54,
+      "tileType": "dirt",
+      "backgroundWallType": 2,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 53,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 52,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 51,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 50,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 49,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 48,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 47,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 46,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 45,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 44,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 43,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 42,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 41,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 40,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 39,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 38,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 37,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 36,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 35,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 34,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 33,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 32,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 31,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 30,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 29,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 28,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 27,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 26,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 25,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 24,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 23,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 22,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 21,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 20,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 19,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 18,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 17,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 16,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 15,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 14,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 13,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 12,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 11,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 10,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 9,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 8,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 7,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 6,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 5,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 4,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 3,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 2,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 1,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 20,
+      "y": 0,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 59,
+      "tileType": "dirt",
+      "backgroundWallType": 0,
+      "hasBackgroundWall": false,
+      "overlayMask": 8
+    },
+    {
+      "x": 21,
+      "y": 58,
+      "tileType": "dirt",
+      "backgroundWallType": 2,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 57,
+      "tileType": "dirt",
+      "backgroundWallType": 2,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 56,
+      "tileType": "dirt",
+      "backgroundWallType": 2,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 55,
+      "tileType": "dirt",
+      "backgroundWallType": 2,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 54,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 53,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 52,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 51,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 50,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 49,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 48,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 47,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 46,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 45,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 44,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 43,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 42,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 41,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 40,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 39,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 38,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 37,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 36,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 35,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 34,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 33,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 32,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 31,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 30,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 29,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 28,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 27,
+      "tileType": "granite",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 26,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 25,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 24,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 23,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 22,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 21,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 20,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 19,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 18,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 17,
+      "tileType": "empty",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 16,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 15,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 14,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 13,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 12,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 11,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 10,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 9,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 8,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 7,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 6,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 5,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 4,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 3,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 2,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 1,
+      "tileType": "slate",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 21,
+      "y": 0,
+      "tileType": "limestone",
+      "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 22,
       "y": 60,
       "tileType": "empty",
       "inv": {
@@ -7198,2097 +9279,16 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 624,
-            "decayCounter": 508806
+            "quantity": 254,
+            "decayCounter": 277646
           }
         ],
-        "wetUntil": 4485.39648
+        "wetUntil": 0.0
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
     },
     {
-      "x": 17,
-      "y": 59,
-      "tileType": "dirt",
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false,
-      "overlayMask": 8
-    },
-    {
-      "x": 17,
-      "y": 58,
-      "tileType": "dirt",
-      "backgroundWallType": 2,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 57,
-      "tileType": "dirt",
-      "backgroundWallType": 2,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 56,
-      "tileType": "dirt",
-      "backgroundWallType": 2,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 55,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 54,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 53,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 52,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 51,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 50,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 49,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 48,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 47,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 46,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 45,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 44,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 43,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 42,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 41,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 40,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 39,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 38,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 37,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 36,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 35,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 34,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 33,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 32,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 31,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 30,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 29,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 28,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 27,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 26,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 25,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 24,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 23,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 22,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 21,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 20,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 19,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 18,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 17,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 16,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 15,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 14,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 13,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 12,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 11,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 10,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 9,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 8,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 7,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 6,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 5,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 4,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 3,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 2,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 1,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 17,
-      "y": 0,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 58,
-      "tileType": "clay",
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 57,
-      "tileType": "dirt",
-      "backgroundWallType": 2,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 56,
-      "tileType": "dirt",
-      "backgroundWallType": 2,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 55,
-      "tileType": "dirt",
-      "backgroundWallType": 2,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 54,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 53,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 52,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 51,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 50,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 49,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 48,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 47,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 46,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 45,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 44,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 43,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 42,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 41,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 40,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 39,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 38,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 37,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 36,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 35,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 34,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 33,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 32,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 31,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 30,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 29,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 28,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 27,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 26,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 25,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 24,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 23,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 22,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 21,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 20,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 19,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 18,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 17,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 16,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 15,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 14,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 13,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 12,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 11,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 10,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 9,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 8,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 7,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 6,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 5,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 4,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 3,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 2,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 1,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 18,
-      "y": 0,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 58,
-      "tileType": "clay",
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 57,
-      "tileType": "clay",
-      "backgroundWallType": 2,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 56,
-      "tileType": "dirt",
-      "backgroundWallType": 2,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 55,
-      "tileType": "dirt",
-      "backgroundWallType": 2,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 54,
-      "tileType": "dirt",
-      "backgroundWallType": 2,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 53,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 52,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 51,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 50,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 49,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 48,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 47,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 46,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 45,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 44,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 43,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 42,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 41,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 40,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 39,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 38,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 37,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 36,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 35,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 34,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 33,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 32,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 31,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 30,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 29,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 28,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 27,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 26,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 25,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 24,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 23,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 22,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 21,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 20,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 19,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 18,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 17,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 16,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 15,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 14,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 13,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 12,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 11,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 10,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 9,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 8,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 7,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 6,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 5,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 4,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 3,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 2,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 1,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 19,
-      "y": 0,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 58,
-      "tileType": "clay",
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 57,
-      "tileType": "clay",
-      "backgroundWallType": 2,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 56,
-      "tileType": "dirt",
-      "backgroundWallType": 2,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 55,
-      "tileType": "dirt",
-      "backgroundWallType": 2,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 54,
-      "tileType": "dirt",
-      "backgroundWallType": 2,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 53,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 52,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 51,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 50,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 49,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 48,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 47,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 46,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 45,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 44,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 43,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 42,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 41,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 40,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 39,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 38,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 37,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 36,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 35,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 34,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 33,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 32,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 31,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 30,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 29,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 28,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 27,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 26,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 25,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 24,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 23,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 22,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 21,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 20,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 19,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 18,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 17,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 16,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 15,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 14,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 13,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 12,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 11,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 10,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 9,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 8,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 7,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 6,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 5,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 4,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 3,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 2,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 1,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 20,
-      "y": 0,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 59,
-      "tileType": "dirt",
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false,
-      "overlayMask": 8
-    },
-    {
-      "x": 21,
-      "y": 58,
-      "tileType": "dirt",
-      "backgroundWallType": 2,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 57,
-      "tileType": "dirt",
-      "backgroundWallType": 2,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 56,
-      "tileType": "dirt",
-      "backgroundWallType": 2,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 55,
-      "tileType": "dirt",
-      "backgroundWallType": 2,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 54,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 53,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 52,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 51,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 50,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 49,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 48,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 47,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 46,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 45,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 44,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 43,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 42,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 41,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 40,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 39,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 38,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 37,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 36,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 35,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 34,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 33,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 32,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 31,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 30,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 29,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 28,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 27,
-      "tileType": "granite",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 26,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 25,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 24,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 23,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 22,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 21,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 20,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 19,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 18,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 17,
-      "tileType": "empty",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 16,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 15,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 14,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 13,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 12,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 11,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 10,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 9,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 8,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 7,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 6,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 5,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 4,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 3,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 2,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 1,
-      "tileType": "slate",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 21,
-      "y": 0,
-      "tileType": "limestone",
-      "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
       "x": 22,
       "y": 59,
       "tileType": "dirt",
@@ -9707,6 +9707,24 @@
       "y": 0,
       "tileType": "limestone",
       "backgroundWallType": 1,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 23,
+      "y": 60,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Floor",
+        "stacks": [
+          {
+            "itemName": "pine",
+            "quantity": 2468,
+            "decayCounter": 347861
+          }
+        ],
+        "wetUntil": 0.0
+      },
+      "backgroundWallType": 0,
       "hasBackgroundWall": false
     },
     {
@@ -10138,12 +10156,12 @@
         "invType": "Floor",
         "stacks": [
           {
-            "itemName": "pine planks",
-            "quantity": 2234,
-            "decayCounter": 503877
+            "itemName": "pine",
+            "quantity": 2113,
+            "decayCounter": 568847
           }
         ],
-        "wetUntil": 4485.39648
+        "wetUntil": 0.0
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -10578,11 +10596,11 @@
         "stacks": [
           {
             "itemName": "sawdust",
-            "quantity": 814,
-            "decayCounter": 91818
+            "quantity": 969,
+            "decayCounter": 524585
           }
         ],
-        "wetUntil": 4485.39648
+        "wetUntil": 3944.90381
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -11016,9 +11034,9 @@
         "invType": "Floor",
         "stacks": [
           {
-            "itemName": "apple",
-            "quantity": 97,
-            "decayCounter": 262599
+            "itemName": "pine planks",
+            "quantity": 1925,
+            "decayCounter": 26135
           }
         ],
         "wetUntil": 0.0
@@ -11456,8 +11474,8 @@
         "stacks": [
           {
             "itemName": "oak",
-            "quantity": 61,
-            "decayCounter": 822916
+            "quantity": 71,
+            "decayCounter": 549245
           }
         ],
         "wetUntil": 3020.09253
@@ -13572,24 +13590,6 @@
     },
     {
       "x": 32,
-      "y": 61,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "sawdust",
-            "quantity": 194,
-            "decayCounter": 315793
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 32,
       "y": 59,
       "tileType": "dirt",
       "backgroundWallType": 0,
@@ -14007,42 +14007,6 @@
       "y": 0,
       "tileType": "limestone",
       "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 61,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine planks",
-            "quantity": 251,
-            "decayCounter": 779394
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "backgroundWallType": 0,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 33,
-      "y": 60,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "wheat",
-            "quantity": 447,
-            "decayCounter": 286701
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "backgroundWallType": 0,
       "hasBackgroundWall": false
     },
     {
@@ -18725,6 +18689,24 @@
     },
     {
       "x": 44,
+      "y": 62,
+      "tileType": "empty",
+      "inv": {
+        "invType": "Floor",
+        "stacks": [
+          {
+            "itemName": "ramie",
+            "quantity": 817,
+            "decayCounter": 915540
+          }
+        ],
+        "wetUntil": 3944.90381
+      },
+      "backgroundWallType": 0,
+      "hasBackgroundWall": false
+    },
+    {
+      "x": 44,
       "y": 61,
       "tileType": "dirt",
       "backgroundWallType": 0,
@@ -19167,11 +19149,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 680,
-            "decayCounter": 969740
+            "quantity": 537,
+            "decayCounter": 611812
           }
         ],
-        "wetUntil": 4485.39648
+        "wetUntil": 3944.90381
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -19627,11 +19609,11 @@
         "stacks": [
           {
             "itemName": "ramie",
-            "quantity": 2015,
-            "decayCounter": 459314
+            "quantity": 2384,
+            "decayCounter": 243811
           }
         ],
-        "wetUntil": 4485.39648
+        "wetUntil": 3944.90381
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -20094,11 +20076,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 1804,
-            "decayCounter": 163822
+            "quantity": 1660,
+            "decayCounter": 473884
           }
         ],
-        "wetUntil": 4485.39648
+        "wetUntil": 3944.90381
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -20561,11 +20543,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 1827,
-            "decayCounter": 543627
+            "quantity": 1659,
+            "decayCounter": 798572
           }
         ],
-        "wetUntil": 4485.39648
+        "wetUntil": 3944.90381
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -21028,11 +21010,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 1828,
-            "decayCounter": 189283
+            "quantity": 1659,
+            "decayCounter": 189122
           }
         ],
-        "wetUntil": 4485.39648
+        "wetUntil": 3944.90381
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -21484,24 +21466,6 @@
       "y": 0,
       "tileType": "limestone",
       "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 50,
-      "y": 65,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 1833,
-            "decayCounter": 720964
-          }
-        ],
-        "wetUntil": 4485.39648
-      },
-      "backgroundWallType": 0,
       "hasBackgroundWall": false
     },
     {
@@ -21969,11 +21933,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 1833,
-            "decayCounter": 352958
+            "quantity": 1107,
+            "decayCounter": 316990
           }
         ],
-        "wetUntil": 4485.39648
+        "wetUntil": 3944.90381
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -22443,11 +22407,11 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 1834,
-            "decayCounter": 532681
+            "quantity": 1055,
+            "decayCounter": 364744
           }
         ],
-        "wetUntil": 4485.39648
+        "wetUntil": 3944.90381
       },
       "backgroundWallType": 0,
       "hasBackgroundWall": false
@@ -23362,24 +23326,6 @@
       "y": 0,
       "tileType": "limestone",
       "backgroundWallType": 1,
-      "hasBackgroundWall": false
-    },
-    {
-      "x": 54,
-      "y": 65,
-      "tileType": "empty",
-      "inv": {
-        "invType": "Floor",
-        "stacks": [
-          {
-            "itemName": "pine",
-            "quantity": 23,
-            "decayCounter": 372699
-          }
-        ],
-        "wetUntil": 4485.39648
-      },
-      "backgroundWallType": 0,
       "hasBackgroundWall": false
     },
     {
@@ -85155,9 +85101,9 @@
       "x": 29,
       "y": 60,
       "typeName": "pinetree",
-      "plantAge": 1151,
-      "plantGrowthStage": 5,
-      "plantHarvestable": true,
+      "plantAge": 46,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
       "plantHarvestFlagged": true,
       "uses": 0,
       "processorState": 0,
@@ -85176,8 +85122,8 @@
       "x": 25,
       "y": 60,
       "typeName": "appletree",
-      "plantAge": 1804,
-      "plantGrowthStage": 6,
+      "plantAge": 2138,
+      "plantGrowthStage": 7,
       "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
@@ -85197,9 +85143,9 @@
       "x": 28,
       "y": 60,
       "typeName": "pinetree",
-      "plantAge": 1117,
-      "plantGrowthStage": 5,
-      "plantHarvestable": true,
+      "plantAge": 105,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
       "plantHarvestFlagged": true,
       "uses": 0,
       "processorState": 0,
@@ -85218,7 +85164,7 @@
       "x": 35,
       "y": 60,
       "typeName": "wheat",
-      "plantAge": 29,
+      "plantAge": 19,
       "plantGrowthStage": 0,
       "plantHarvestable": false,
       "plantHarvestFlagged": true,
@@ -85239,7 +85185,7 @@
       "x": 36,
       "y": 60,
       "typeName": "wheat",
-      "plantAge": 12,
+      "plantAge": 2,
       "plantGrowthStage": 0,
       "plantHarvestable": false,
       "plantHarvestFlagged": true,
@@ -85260,7 +85206,7 @@
       "x": 37,
       "y": 60,
       "typeName": "wheat",
-      "plantAge": 300,
+      "plantAge": 278,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "plantHarvestFlagged": true,
@@ -85281,7 +85227,7 @@
       "x": 10,
       "y": 60,
       "typeName": "pinetree",
-      "plantAge": 4601,
+      "plantAge": 4321,
       "plantGrowthStage": 7,
       "plantHarvestable": true,
       "uses": 0,
@@ -85301,9 +85247,9 @@
       "x": 13,
       "y": 62,
       "typeName": "pinetree",
-      "plantAge": 1255,
-      "plantGrowthStage": 6,
-      "plantHarvestable": true,
+      "plantAge": 155,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
       "plantHarvestFlagged": true,
       "uses": 0,
       "processorState": 0,
@@ -85322,8 +85268,8 @@
       "x": 14,
       "y": 62,
       "typeName": "appletree",
-      "plantAge": 1961,
-      "plantGrowthStage": 6,
+      "plantAge": 2226,
+      "plantGrowthStage": 7,
       "plantHarvestable": true,
       "uses": 0,
       "processorState": 0,
@@ -85342,7 +85288,7 @@
       "x": 45,
       "y": 63,
       "typeName": "ramie",
-      "plantAge": 4109,
+      "plantAge": 3829,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "uses": 0,
@@ -85362,7 +85308,7 @@
       "x": 46,
       "y": 64,
       "typeName": "ramie",
-      "plantAge": 268,
+      "plantAge": 219,
       "plantGrowthStage": 3,
       "plantHarvestable": true,
       "plantHarvestFlagged": true,
@@ -85383,8 +85329,8 @@
       "x": 59,
       "y": 63,
       "typeName": "appletree",
-      "plantAge": 1961,
-      "plantGrowthStage": 6,
+      "plantAge": 3181,
+      "plantGrowthStage": 9,
       "plantHarvestable": true,
       "uses": 0,
       "processorState": 0,
@@ -85403,8 +85349,8 @@
       "x": 60,
       "y": 63,
       "typeName": "appletree",
-      "plantAge": 1961,
-      "plantGrowthStage": 6,
+      "plantAge": 3271,
+      "plantGrowthStage": 9,
       "plantHarvestable": true,
       "uses": 0,
       "processorState": 0,
@@ -85423,8 +85369,8 @@
       "x": 61,
       "y": 62,
       "typeName": "appletree",
-      "plantAge": 1961,
-      "plantGrowthStage": 6,
+      "plantAge": 3349,
+      "plantGrowthStage": 9,
       "plantHarvestable": true,
       "uses": 0,
       "processorState": 0,
@@ -85443,7 +85389,7 @@
       "x": 70,
       "y": 65,
       "typeName": "bamboo",
-      "plantAge": 3506,
+      "plantAge": 3364,
       "plantGrowthStage": 11,
       "plantHarvestable": true,
       "uses": 0,
@@ -85463,8 +85409,8 @@
       "x": 75,
       "y": 61,
       "typeName": "appletree",
-      "plantAge": 1961,
-      "plantGrowthStage": 6,
+      "plantAge": 3451,
+      "plantGrowthStage": 9,
       "plantHarvestable": true,
       "uses": 0,
       "processorState": 0,
@@ -85483,8 +85429,8 @@
       "x": 76,
       "y": 61,
       "typeName": "appletree",
-      "plantAge": 1961,
-      "plantGrowthStage": 6,
+      "plantAge": 3290,
+      "plantGrowthStage": 9,
       "plantHarvestable": true,
       "uses": 0,
       "processorState": 0,
@@ -85503,8 +85449,8 @@
       "x": 99,
       "y": 60,
       "typeName": "appletree",
-      "plantAge": 1961,
-      "plantGrowthStage": 6,
+      "plantAge": 3065,
+      "plantGrowthStage": 9,
       "plantHarvestable": true,
       "uses": 0,
       "processorState": 0,
@@ -85523,8 +85469,8 @@
       "x": 115,
       "y": 58,
       "typeName": "appletree",
-      "plantAge": 1961,
-      "plantGrowthStage": 6,
+      "plantAge": 2226,
+      "plantGrowthStage": 7,
       "plantHarvestable": true,
       "uses": 0,
       "processorState": 0,
@@ -85543,8 +85489,8 @@
       "x": 116,
       "y": 56,
       "typeName": "appletree",
-      "plantAge": 1961,
-      "plantGrowthStage": 6,
+      "plantAge": 3451,
+      "plantGrowthStage": 9,
       "plantHarvestable": true,
       "uses": 0,
       "processorState": 0,
@@ -85563,8 +85509,8 @@
       "x": 120,
       "y": 56,
       "typeName": "appletree",
-      "plantAge": 1961,
-      "plantGrowthStage": 6,
+      "plantAge": 2134,
+      "plantGrowthStage": 7,
       "plantHarvestable": true,
       "uses": 0,
       "processorState": 0,
@@ -85583,8 +85529,8 @@
       "x": 121,
       "y": 56,
       "typeName": "appletree",
-      "plantAge": 1961,
-      "plantGrowthStage": 6,
+      "plantAge": 3451,
+      "plantGrowthStage": 9,
       "plantHarvestable": true,
       "uses": 0,
       "processorState": 0,
@@ -85603,7 +85549,7 @@
       "x": 129,
       "y": 63,
       "typeName": "bamboo",
-      "plantAge": 3346,
+      "plantAge": 3204,
       "plantGrowthStage": 11,
       "plantHarvestable": true,
       "uses": 0,
@@ -85623,7 +85569,7 @@
       "x": 135,
       "y": 61,
       "typeName": "pinetree",
-      "plantAge": 4601,
+      "plantAge": 4321,
       "plantGrowthStage": 7,
       "plantHarvestable": true,
       "uses": 0,
@@ -85643,7 +85589,7 @@
       "x": 175,
       "y": 59,
       "typeName": "pinetree",
-      "plantAge": 4501,
+      "plantAge": 4221,
       "plantGrowthStage": 7,
       "plantHarvestable": true,
       "uses": 0,
@@ -85663,8 +85609,8 @@
       "x": 177,
       "y": 58,
       "typeName": "appletree",
-      "plantAge": 1961,
-      "plantGrowthStage": 6,
+      "plantAge": 3451,
+      "plantGrowthStage": 9,
       "plantHarvestable": true,
       "uses": 0,
       "processorState": 0,
@@ -85692,8 +85638,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 9873,
-            "decayCounter": 138401
+            "quantity": 9879,
+            "decayCounter": 605439
           }
         ],
         "allowedItemIds": [
@@ -85711,7 +85657,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.7388358,
+      "condition": 0.769275546,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 1,
@@ -85730,8 +85676,8 @@
         "stacks": [
           {
             "itemName": "wheat",
-            "quantity": 9988,
-            "decayCounter": 701049
+            "quantity": 8810,
+            "decayCounter": 794228
           }
         ],
         "allowedItemIds": [
@@ -85754,7 +85700,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.739113569,
+      "condition": 0.7695533,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 1,
@@ -85773,8 +85719,8 @@
         "stacks": [
           {
             "itemName": "pinecone",
-            "quantity": 2623,
-            "decayCounter": 853468
+            "quantity": 3329,
+            "decayCounter": 726505
           }
         ],
         "allowedItemIds": [
@@ -85788,7 +85734,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.7396691,
+      "condition": 0.7701088,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 1,
@@ -85808,7 +85754,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.7445993,
+      "condition": 0.775039,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 3,
@@ -85848,7 +85794,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.700300932,
+      "condition": 0.7459878,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 2,
@@ -85878,8 +85824,8 @@
       "x": 47,
       "y": 64,
       "typeName": "pinetree",
-      "plantAge": 881,
-      "plantGrowthStage": 4,
+      "plantAge": 1331,
+      "plantGrowthStage": 6,
       "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
@@ -85908,8 +85854,8 @@
         "stacks": [
           {
             "itemName": "dirt",
-            "quantity": 9690,
-            "decayCounter": 610363
+            "quantity": 9727,
+            "decayCounter": 310735
           }
         ],
         "allowedItemIds": [
@@ -85923,7 +85869,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.702245235,
+      "condition": 0.7479321,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 1,
@@ -85943,7 +85889,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.702592432,
+      "condition": 0.7482793,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 3,
@@ -85953,8 +85899,8 @@
       "x": 48,
       "y": 64,
       "typeName": "pinetree",
-      "plantAge": 852,
-      "plantGrowthStage": 4,
+      "plantAge": 1307,
+      "plantGrowthStage": 6,
       "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
@@ -85996,7 +85942,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.7415175,
+      "condition": 0.772061765,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 2,
@@ -86115,13 +86061,13 @@
         "stacks": [
           {
             "itemName": "sawdust",
-            "quantity": 1983,
-            "decayCounter": 78106
+            "quantity": 1987,
+            "decayCounter": 43136
           },
           {
-            "itemName": "ramie",
-            "quantity": 1987,
-            "decayCounter": 348389
+            "itemName": "apple",
+            "quantity": 143,
+            "decayCounter": 228003
           },
           {
             "itemName": "silver",
@@ -86130,8 +86076,8 @@
           },
           {
             "itemName": "ramie",
-            "quantity": 1987,
-            "decayCounter": 822664
+            "quantity": 1982,
+            "decayCounter": 573814
           }
         ],
         "allowedItemIds": [
@@ -86149,7 +86095,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.8071642,
+      "condition": 0.8376039,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 1,
@@ -86169,7 +86115,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.758491158,
+      "condition": 0.804178,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 1,
@@ -86219,9 +86165,9 @@
       "x": 17,
       "y": 60,
       "typeName": "pinetree",
-      "plantAge": 1060,
-      "plantGrowthStage": 5,
-      "plantHarvestable": true,
+      "plantAge": 34,
+      "plantGrowthStage": 0,
+      "plantHarvestable": false,
       "plantHarvestFlagged": true,
       "uses": 0,
       "processorState": 0,
@@ -86250,7 +86196,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.847091854,
+      "condition": 0.8775316,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 3,
@@ -86269,8 +86215,8 @@
         "stacks": [
           {
             "itemName": "pine",
-            "quantity": 9684,
-            "decayCounter": 742429
+            "quantity": 9994,
+            "decayCounter": 762956
           }
         ],
         "allowedItemIds": [
@@ -86288,7 +86234,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.8006409,
+      "condition": 0.8463277,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "savedNx": 1,
@@ -86307,8 +86253,8 @@
         "stacks": [
           {
             "itemName": "pine planks",
-            "quantity": 9990,
-            "decayCounter": 994656
+            "quantity": 9988,
+            "decayCounter": 664602
           }
         ],
         "allowedItemIds": [
@@ -86325,7 +86271,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.860121369,
+      "condition": 0.8905611,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "materialItems": [
@@ -86350,8 +86296,8 @@
         "stacks": [
           {
             "itemName": "oak planks",
-            "quantity": 63,
-            "decayCounter": 410407
+            "quantity": 65,
+            "decayCounter": 34816
           }
         ],
         "allowedItemIds": [
@@ -86368,7 +86314,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.881121159,
+      "condition": 0.926808,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "materialItems": [
@@ -86420,7 +86366,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.9232769,
+      "condition": 0.953716636,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "materialItems": [
@@ -86436,8 +86382,8 @@
       "x": 16,
       "y": 60,
       "typeName": "pinetree",
-      "plantAge": 1359,
-      "plantGrowthStage": 6,
+      "plantAge": 1079,
+      "plantGrowthStage": 5,
       "plantHarvestable": true,
       "plantHarvestFlagged": true,
       "uses": 0,
@@ -86484,7 +86430,7 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.888517857,
+      "condition": 0.9342047,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "materialItems": [
@@ -86510,12 +86456,12 @@
       "rotation": 0,
       "shapeIndex": 0,
       "disabled": false,
-      "condition": 0.892164469,
+      "condition": 0.937538743,
       "flywheelCharge": 0.0,
       "elevatorCurrentY": 0.0,
       "materialItems": [
-        "pine planks",
-        "pine"
+        "oak planks",
+        "oak"
       ],
       "materialFen": [
         2000,
@@ -86523,87 +86469,6 @@
       ],
       "savedNx": 2,
       "savedNy": 2
-    },
-    {
-      "x": 9,
-      "y": 59,
-      "typeName": "wheat",
-      "plantAge": 210,
-      "plantGrowthStage": 2,
-      "plantHarvestable": false,
-      "plantHarvestFlagged": true,
-      "uses": 0,
-      "processorState": 0,
-      "processorProgress": 0.0,
-      "mirrored": false,
-      "rotation": 0,
-      "shapeIndex": 0,
-      "disabled": false,
-      "condition": 1.0,
-      "flywheelCharge": 0.0,
-      "elevatorCurrentY": 0.0,
-      "materialItems": [
-        "wheat"
-      ],
-      "materialFen": [
-        100
-      ],
-      "savedNx": 1,
-      "savedNy": 1
-    },
-    {
-      "x": 8,
-      "y": 59,
-      "typeName": "wheat",
-      "plantAge": 198,
-      "plantGrowthStage": 2,
-      "plantHarvestable": false,
-      "plantHarvestFlagged": true,
-      "uses": 0,
-      "processorState": 0,
-      "processorProgress": 0.0,
-      "mirrored": false,
-      "rotation": 0,
-      "shapeIndex": 0,
-      "disabled": false,
-      "condition": 1.0,
-      "flywheelCharge": 0.0,
-      "elevatorCurrentY": 0.0,
-      "materialItems": [
-        "wheat"
-      ],
-      "materialFen": [
-        100
-      ],
-      "savedNx": 1,
-      "savedNy": 1
-    },
-    {
-      "x": 7,
-      "y": 59,
-      "typeName": "wheat",
-      "plantAge": 194,
-      "plantGrowthStage": 2,
-      "plantHarvestable": false,
-      "plantHarvestFlagged": true,
-      "uses": 0,
-      "processorState": 0,
-      "processorProgress": 0.0,
-      "mirrored": false,
-      "rotation": 0,
-      "shapeIndex": 0,
-      "disabled": false,
-      "condition": 1.0,
-      "flywheelCharge": 0.0,
-      "elevatorCurrentY": 0.0,
-      "materialItems": [
-        "wheat"
-      ],
-      "materialFen": [
-        100
-      ],
-      "savedNx": 1,
-      "savedNy": 1
     }
   ],
   "blueprints": [
@@ -86639,24 +86504,24 @@
   "animals": [
     {
       "aName": "Clover",
-      "x": 31.0,
-      "y": 60.0,
+      "x": 34.0,
+      "y": 61.0,
       "rngSeed": 2039525304,
       "jobName": "logger",
-      "energy": 0.518728256,
-      "food": 74.4959,
+      "energy": 0.721199155,
+      "food": 72.4966,
       "starvingTicks": 0,
-      "eep": 86.6002045,
+      "eep": 66.80051,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 4.35941267,
+        "wheat": 4.876397,
         "rice": 0.0,
-        "fruit": 0.125704318,
+        "fruit": 0.07457496,
         "fountain": 0.0,
         "fireplace": 0.0,
         "bench": 0.0,
-        "social": 1.31750011,
+        "social": 1.29401255,
         "reading": 0.0,
         "alcohol": 0.0
       },
@@ -86698,7 +86563,7 @@
           {
             "itemName": "",
             "quantity": 0,
-            "decayCounter": 67704
+            "decayCounter": 101790
           }
         ],
         "wetUntil": 0.0
@@ -86737,7 +86602,7 @@
         "wetUntil": 0.0
       },
       "skillXp": [
-        3.566716,
+        0.807793438,
         0.0,
         1.03944516,
         0.0,
@@ -86760,24 +86625,24 @@
     },
     {
       "aName": "Chestnut",
-      "x": 40.4573822,
-      "y": 61.0008125,
+      "x": 33.0,
+      "y": 60.0,
       "rngSeed": 546515739,
       "jobName": "hauler",
-      "energy": 0.530367851,
-      "food": 58.94941,
+      "energy": 0.325940371,
+      "food": 73.7999,
       "starvingTicks": 0,
-      "eep": 46.80081,
+      "eep": 87.8001862,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 3.97479963,
+        "wheat": 4.89278555,
         "rice": 0.0,
-        "fruit": 0.120774627,
+        "fruit": 0.0395564735,
         "fountain": 0.0,
         "fireplace": 0.0,
         "bench": 0.0,
-        "social": 1.03532946,
+        "social": 3.059994,
         "reading": 0.0,
         "alcohol": 0.0
       },
@@ -86786,8 +86651,8 @@
         "invType": "Animal",
         "stacks": [
           {
-            "itemName": "pine",
-            "quantity": 119,
+            "itemName": "",
+            "quantity": 0,
             "decayCounter": 0
           },
           {
@@ -86819,7 +86684,7 @@
           {
             "itemName": "",
             "quantity": 0,
-            "decayCounter": 85932
+            "decayCounter": 119001
           }
         ],
         "wetUntil": 0.0
@@ -86860,7 +86725,7 @@
       "skillXp": [
         0.0,
         0.0,
-        7.668869,
+        7.143493,
         0.0,
         0.451808423
       ],
@@ -86881,24 +86746,24 @@
     },
     {
       "aName": "Bramble",
-      "x": 41.2382355,
-      "y": 61.7211075,
+      "x": 33.34637,
+      "y": 60.0,
       "rngSeed": 1423797902,
       "jobName": "farmer",
-      "energy": 0.9635502,
-      "food": 49.09447,
+      "energy": 0.936583042,
+      "food": 53.2969131,
       "starvingTicks": 0,
-      "eep": 89.2001648,
+      "eep": 66.70051,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 3.71974039,
+        "wheat": 3.40000033,
         "rice": 0.0,
-        "fruit": 0.07245695,
+        "fruit": 0.05733803,
         "fountain": 0.0,
         "fireplace": 0.0,
         "bench": 0.0,
-        "social": 0.157750681,
+        "social": 1.29236758,
         "reading": 0.0,
         "alcohol": 0.0
       },
@@ -86907,8 +86772,8 @@
         "invType": "Animal",
         "stacks": [
           {
-            "itemName": "",
-            "quantity": 0,
+            "itemName": "wheat",
+            "quantity": 800,
             "decayCounter": 0
           },
           {
@@ -86940,7 +86805,7 @@
           {
             "itemName": "",
             "quantity": 0,
-            "decayCounter": 72494
+            "decayCounter": 80438
           }
         ],
         "wetUntil": 0.0
@@ -86979,9 +86844,9 @@
         "wetUntil": 0.0
       },
       "skillXp": [
-        19.990818,
+        13.4677553,
         0.0,
-        0.426973939,
+        0.0,
         0.0,
         0.0
       ],
@@ -87002,24 +86867,24 @@
     },
     {
       "aName": "Dewdrop",
-      "x": 37.7122421,
-      "y": 60.00002,
+      "x": 31.61348,
+      "y": 60.0,
       "rngSeed": 41951034,
       "jobName": "hauler",
-      "energy": 0.379893064,
-      "food": 43.3999672,
+      "energy": 0.7014322,
+      "food": 50.9998322,
       "starvingTicks": 0,
-      "eep": 49.4007721,
+      "eep": 69.90046,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 3.44070482,
+        "wheat": 3.77124238,
         "rice": 0.0,
-        "fruit": 0.103709243,
+        "fruit": 0.006965953,
         "fountain": 0.0,
         "fireplace": 0.0,
         "bench": 0.0,
-        "social": 1.00411379,
+        "social": 0.994583845,
         "reading": 0.0,
         "alcohol": 0.0
       },
@@ -87028,13 +86893,134 @@
         "invType": "Animal",
         "stacks": [
           {
-            "itemName": "ramie",
-            "quantity": 20,
+            "itemName": "pine",
+            "quantity": 116,
             "decayCounter": 0
           },
           {
             "itemName": "",
             "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ],
+        "wetUntil": 0.0
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 97779
+          }
+        ],
+        "wetUntil": 0.0
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ],
+        "wetUntil": 0.0
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ],
+        "wetUntil": 0.0
+      },
+      "bookSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ],
+        "wetUntil": 0.0
+      },
+      "skillXp": [
+        0.0,
+        0.0,
+        5.588362,
+        0.0,
+        0.0
+      ],
+      "skillLevel": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "isTraveling": false,
+      "travelProgress": 0.0,
+      "travelDuration": 0,
+      "travelItemQty": 0,
+      "travelReturnLeg": false,
+      "homeBuildingX": 40,
+      "homeBuildingY": 59
+    },
+    {
+      "aName": "Yuyu",
+      "x": 25.3381176,
+      "y": 60.0,
+      "rngSeed": 1602868121,
+      "jobName": "woodworker",
+      "energy": 0.1995709,
+      "food": 51.0476952,
+      "starvingTicks": 0,
+      "eep": 30.6010323,
+      "satisfactions": {
+        "soymilk": 0.0,
+        "dairy": 0.0,
+        "wheat": 4.11261,
+        "rice": 0.0,
+        "fruit": 0.07480272,
+        "fountain": 0.0,
+        "fireplace": 0.0,
+        "bench": 0.0,
+        "social": 0.001443367,
+        "reading": 0.0,
+        "alcohol": 0.0
+      },
+      "warmth": 0.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "sawdust",
+            "quantity": 100,
             "decayCounter": 0
           },
           {
@@ -87102,137 +87088,16 @@
       "skillXp": [
         0.0,
         0.0,
-        5.3252,
         0.0,
-        0.0
+        0.0,
+        19.8652534
       ],
       "skillLevel": [
         0,
         0,
         0,
         0,
-        0
-      ],
-      "isTraveling": false,
-      "travelProgress": 0.0,
-      "travelDuration": 0,
-      "travelItemQty": 0,
-      "travelReturnLeg": false,
-      "homeBuildingX": 40,
-      "homeBuildingY": 59
-    },
-    {
-      "aName": "Yuyu",
-      "x": 24.4327488,
-      "y": 60.0,
-      "rngSeed": 1602868121,
-      "jobName": "woodworker",
-      "energy": 0.2175498,
-      "food": 52.79959,
-      "starvingTicks": 0,
-      "eep": 44.8008423,
-      "satisfactions": {
-        "soymilk": 0.0,
-        "dairy": 0.0,
-        "wheat": 4.14632845,
-        "rice": 0.0,
-        "fruit": 0.0253240261,
-        "fountain": 0.0,
-        "fireplace": 0.0,
-        "bench": 0.0,
-        "social": 0.804015934,
-        "reading": 0.0,
-        "alcohol": 0.0
-      },
-      "warmth": 0.0,
-      "inv": {
-        "invType": "Animal",
-        "stacks": [
-          {
-            "itemName": "pine planks",
-            "quantity": 100,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          },
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "foodSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 62496
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "toolSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "clothingSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "bookSlotInv": {
-        "invType": "Equip",
-        "stacks": [
-          {
-            "itemName": "",
-            "quantity": 0,
-            "decayCounter": 0
-          }
-        ],
-        "wetUntil": 0.0
-      },
-      "skillXp": [
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        1.73726988
-      ],
-      "skillLevel": [
-        0,
-        0,
-        0,
-        0,
-        2
+        1
       ],
       "isTraveling": false,
       "travelProgress": 0.0,
@@ -87244,24 +87109,24 @@
     },
     {
       "aName": "Taotao",
-      "x": 34.0,
+      "x": 32.0,
       "y": 60.0,
       "rngSeed": 631071159,
       "jobName": "none",
-      "energy": 0.5313575,
-      "food": 77.59958,
+      "energy": 0.8979783,
+      "food": 67.80146,
       "starvingTicks": 0,
-      "eep": 87.1002,
+      "eep": 67.0005,
       "satisfactions": {
         "soymilk": 0.0,
         "dairy": 0.0,
-        "wheat": 4.613312,
+        "wheat": 3.96346021,
         "rice": 0.0,
-        "fruit": 0.09707913,
+        "fruit": 0.0,
         "fountain": 0.0,
         "fireplace": 0.0,
         "bench": 0.0,
-        "social": 2.4194262,
+        "social": 2.608106,
         "reading": 0.0,
         "alcohol": 0.0
       },
@@ -87303,7 +87168,7 @@
           {
             "itemName": "",
             "quantity": 0,
-            "decayCounter": 67808
+            "decayCounter": 65100
           }
         ],
         "wetUntil": 0.0
@@ -87362,6 +87227,246 @@
       "travelReturnLeg": false,
       "homeBuildingX": 40,
       "homeBuildingY": 59
+    },
+    {
+      "aName": "Shan",
+      "x": 33.0,
+      "y": 62.0,
+      "rngSeed": 1084150858,
+      "jobName": "none",
+      "energy": 0.05347514,
+      "food": 67.60144,
+      "starvingTicks": 0,
+      "eep": 67.1005,
+      "satisfactions": {
+        "soymilk": 0.0,
+        "dairy": 0.0,
+        "wheat": 3.12464356,
+        "rice": 0.0,
+        "fruit": 0.0,
+        "fountain": 0.0,
+        "fireplace": 0.0,
+        "bench": 0.0,
+        "social": 1.341749,
+        "reading": 0.0,
+        "alcohol": 0.0
+      },
+      "warmth": 0.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ],
+        "wetUntil": 0.0
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 33852
+          }
+        ],
+        "wetUntil": 0.0
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ],
+        "wetUntil": 0.0
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ],
+        "wetUntil": 0.0
+      },
+      "bookSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ],
+        "wetUntil": 0.0
+      },
+      "skillXp": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "skillLevel": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "isTraveling": false,
+      "travelProgress": 0.0,
+      "travelDuration": 0,
+      "travelItemQty": 0,
+      "travelReturnLeg": false,
+      "homeBuildingX": 42,
+      "homeBuildingY": 61
+    },
+    {
+      "aName": "Maomao",
+      "x": 34.0,
+      "y": 60.0,
+      "rngSeed": 1368434277,
+      "jobName": "none",
+      "energy": 0.814009666,
+      "food": 73.6008,
+      "starvingTicks": 0,
+      "eep": 66.80051,
+      "satisfactions": {
+        "soymilk": 0.0,
+        "dairy": 0.0,
+        "wheat": 1.66819644,
+        "rice": 0.0,
+        "fruit": 0.0,
+        "fountain": 0.0,
+        "fireplace": 0.0,
+        "bench": 0.0,
+        "social": 4.196366,
+        "reading": 0.0,
+        "alcohol": 0.0
+      },
+      "warmth": 0.0,
+      "inv": {
+        "invType": "Animal",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          },
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ],
+        "wetUntil": 0.0
+      },
+      "foodSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 7812
+          }
+        ],
+        "wetUntil": 0.0
+      },
+      "toolSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ],
+        "wetUntil": 0.0
+      },
+      "clothingSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ],
+        "wetUntil": 0.0
+      },
+      "bookSlotInv": {
+        "invType": "Equip",
+        "stacks": [
+          {
+            "itemName": "",
+            "quantity": 0,
+            "decayCounter": 0
+          }
+        ],
+        "wetUntil": 0.0
+      },
+      "skillXp": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "skillLevel": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "isTraveling": false,
+      "travelProgress": 0.0,
+      "travelDuration": 0,
+      "travelItemQty": 0,
+      "travelReturnLeg": false
     }
   ],
   "research": {
@@ -92660,10 +92765,10 @@
     0,
     0,
     0,
-    133,
-    133,
-    133,
-    134,
+    92,
+    92,
+    92,
+    93,
     0,
     0,
     0,
@@ -99209,8 +99314,8 @@
     0,
     0,
     0,
-    159,
-    159,
+    158,
+    158,
     159,
     0,
     0,
@@ -111392,9 +111497,9 @@
     0,
     0
   ],
-  "moistureLevels": "Wl1dXV1dXV1dXV1dXV1aWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWlpdXV1dXVpaWlpaXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dWlpaWl1dXV1dXVpaWlBQUFpaWlBQRjxGRlBaXV1dXV1dXV1dXV1dXV1dXVpaUFBGRjw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDIyMjIyMjIyMjIyMjIyMjIyPEZQWlpdXV1dXVpdAAAAAAAAAAAAAAAAAF1dWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjxGUFpdXQAAAAAAXV1dXV0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABdXV1dAAAAAAAAXV1dWlpaXV1dWlpQRlBQWl0AAAAAAAAAAAAAAAAAAAAAXV1aWlBQRkY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RkZGPDIyMjIyMjIyMjIyMjIyMjxGUFpdXQAAAAAAXQAAAAAAAAAAAAAAAAAAAABdWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjxGUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABdXV0AAABdXVpQWlpdAAAAAAAAAAAAAAAAAAAAAAAAAF1dWlpQUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQUFBGPDIyMjIyMjIyMjIyPDw8RlBaXQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjxGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAXVpdXQAAAAAAAAAAAAAAAAAAAAAAAAAAAABdXVpaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjw8PDwyMjIyMjIyMjIyMjxGUFpaWlBGPDIyMjIyMjIyPDxGRkZGRlAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMjIyMgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAXV1aUEY8MjIyMjIyMjIyMjIyMjIyMjI8RkZGRjw8PDw8PDw8PDw8RlBaXV1dWlBGPDw8PDw8PDxGRlBQUFBQWgAAAAAAAAAAMjIAAAAAAAAAAAAAAEY8MjIyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADxGPAAAAAAAAAAAMjIyMgAAAAAAAAAAAAAAAAAAAF1aUEY8MjIyMjIyMjIyMjIyMjIyPEZQUFBQRkZGRkZGRkZGRkZQWl0AAABdWlBGRkZGRkZGRlBQWlpaWlpdAAAAAAAAAAAyMjIyAAAAAAAAAABaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAAAAPDwyMjwyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAAAAAAFBGPDIyMjIyMjIyMjIyMjIyMjxGUFpaWlpQUFBQUFBQUFBQUFBaAAAAAABaUFBQUFBQUFBQWlpdXV1dXQAAAAAAAAAyMjIyMjIyMjIAAAAAAF1aUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8AAAAAAAAAAAAUEZGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RjwyMjIyMjIyMjIyMjIyMjI8RlBaXV1dXVpaWlpaWlpaWlpaWl0AAAAAAF1aWlpaWlpaWlpdXQAAAAAAAF1aAAAyMjIyMjIyMjIyMjIyMgAAAFBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDw8PDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGUAAAAAAAAFpaUFBQRjwyMjIyMjIyMjw8PDIyMjIyMjIyMjIyMjIyMjIyMjI8MjIyMjIyMjIyMjIyMjIyMjI8RlAAAAAAXV1dXV1dXV1dXV1dAAAAAAAAAF1dXV1dXV1dWgAAAAAAAAAAAFBGPDIyMjIyMjIyMjI8PDw8MjIARjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGRkZGPDwyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBaAAAAAAAAXV1aWlpQRjwyMjIyMjI8RkZGPDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABdWgAAAAAAMjI8RjwyMjIyMjIyMjIyPEZGRkY8MjI8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBQUFBGRjwyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWl0AAAAAAAAAAF1dXVpQRjwyMjIyPEZQUFBGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDIyMjIyMjIyMjIyMjI8RgAAAAA8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQRjwyMjIyMjI8MjIyMjIyMjIyMjxGUFBQUEY8MjIyPDw8PDw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWlpaWlBQRjw8PDw8PDwyMjIyMjIyMjIyPEZQWl1dAAAAAAAAAAAAAAAAWlBGPDIyMjxGUFpaWlBQRjw8MjIyMjIyMjIyMjIyMjIyMjI8RkZGPDIyMjIyMjIyMjIyPEZQWlpaUEYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAyPEY8MjIyMjIyMjIyMjIyMjIyMjI8RlBaWlpaUEY8MjxGRkZGRkY8PDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDxGUFpkZGRkWlpQRkZGRkZGRjwyMjIyMjIyMjI8RlBaAAAAAAAAAAAAAAAAAABdWlBGPDI8RlBaXV1dWlpQRkY8MjIyMjIyMjIyMjIyMjIyPEZQUFBGPDIyMjIyMjIyMjxGUFpdXV1aUEY8AAAAAAAAAAAAAAAAAAAAAAAAAAAAMjIyPDIyMjIyMjIyMjIyMjIyMjIyPEZQWl1dXV1aUEY8RlBQUFBQUEZGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDw8PDxGRlBaZAAAAABkZFpQUFBQUFBQRjwyMjIyMjIyPEZQWl0AAAAAAAAAAAAAAAAAAABQRjw8PDxGRlAAAABdXVpQUEY8MjIyMjIyMjIyMjIyPDxGUFpaWlBGPDIyMjIyMjI8RlBaXQAAAFBGPDIyMjIyMjIyMjIyMjIyMjIyMgAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQAAAAAFBGPEZQWlpaWlpaUFBGPDIyMjIyMjIyMjIyMjIyMjIyMjI8RkZGRkZGRlBQWmQAAAAAAAAAZFpaWlpaWlpQRjwyMjIyMjxGRlBQAAAAAAAAAAAAAAAAAAAyPEY8RkZGRlBGUAAAAAAAXVpaUEY8MjIyMjIyMjIyMjxGRlBaXV1dWlBGPDIyMjIyMjI8RlAAAAAARjwyMjw8PDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEYAAAAARjxGUFpdXV1dXV1aWlBGPDIyMjIyMjIyMjIyMjIyMjIyPEZQUFBQUFBQWlpkZAAAAAAAAAAAZGRkZGRkZFpQRjwyMjI8RlBQWlpdAAAAAAAAAAAAAAAyMjIyPEZQUFBQWlBaUAAAAAAAXV1aUEY8MjIyMjIyMjI8RlBQWl0AAABdWlBGPDIyMjIyMjI8RjwAAAA8MjI8RkZGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDIyMjI8MjxGUAAAAAAAAF1dWlBGPDIyMjIyMjIyMjIyMjIyMjxGUFpaWlpaWlpkZAAAAAAAAAAAAAAAAAAAAAAAZFpQRjwyPEZQWlpdXQAAAAAAAAAAADIyMjIyMjxGUFpaWlpkWmRaUEYAAAAAAFBGPDIyMjIyMjIyPEZQWlpdAAAAAABdWlBGPDIyMjIyMjI8MjIyMjIyPEZQUFBQRjwyMjIyMjIyMjI8PDw8PDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGAAAAAAAAAABaUEY8MjIyMjIyMjIyMjIyMjI8RlBaXV1dXV1dZAAAAAAAAAAAAAAAAAAAAAAAAAAAZFpQRjxGUFpdXQAAAAAAAAAAAAAyMjIyMjI8RlBaZGRkZABkAGRaUEYAAAA8RjwyMjIyMjIyMjxGUFpdXQAAAAAAAABdWlBGPDIyMjIyMjIyMjIyMjxGUFpaWlpQRjwyMjIyMjIyPEZGRkZGPDw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjwyAAAAAAAAAF1aUEY8MjIyMjIyMjIyMjIyMjI8RlAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABaUEY8MjxGUAAAAAAAAAAAAAAAMjIyMjIyPEZQWmQAAAAAAAAAZFpQRjwyMjI8MjIyMjIyMjI8RlBaXQAAAAAAAAAAAABdWlBGPDIyMjIyMjIyMjI8RlBaZGRkZFpQRjwyMjIyMjxGUFBQUFBGRkY8PDw8PDw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAFBGPDIyMjIyMjIyMjIyMjIyMjI8RgAAAAAAAAAAAAAAAAAAAAAAADIyMjI8RlBQUFBGPDIyMjxGAAAAAAAAAAAAADIyMjIyMjxGUFpkAAAAAAAAAAAAZFpQRjwyMjIyMjIyMjIyPEZQWl0AAAAAAAAAAAAAAABQRjwyMjIyMjIyMjIyPEZQWmQAAAAAZFpQRjwyMjI8RlBaWlpaWlBQUEZGRkZGRkY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAARjwyMjIyMjIyMjIyMjIyMjIyMjI8MjIAAAAAAAAAMjIAAAAAADIyMjIyPEZQWlpaUEY8MjIyMjwAAAAAAAAAAAAyMjIyMjIyMjxGUFoAAAAAAAAAAABdWlpQRjwyMjIyMjIyMjIyPEZQAAAAAAAAAAAAAAAAPEY8MjIyMjIyMjIyMjI8RlBaZAAAAAAAZFpQRjwyPEZQWl1dXV1dWlpaUFBQUFBQUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAA8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpkZGRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUAAAAAAAAAAAAABdXVpQRjwyMjIyMjIyMjxGUFoAAAAAAAAAAAAAADIyPDIyMjIyMjIyMjIyMjI8RlBaZGRkZGRaUEY8MjxGUFpdAAAAAABdXV1aWlpaWlpaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaZAAAAGRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyPDIyMjxGPDIAAAAAAAAAAAAAUEY8MjIyMjIyMjI8RlBaXQAAAAAAAF0AAAAyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWlpaWlBGPDIyMjxGUAAAAAAAAAAAAF1dXV1dXV1aUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpkAAAAZGRaUEY8MjIyMjIyMjIyMjIyMjI8PDxGPDwyMjwyMjIyAAAAAAAAAABGPDIyMjIyMjIyMjxGUFoAAAAAAAAAAAAAPDIyMjIyMjIyMjIyMjIyMjIyMjI8RlBQUFBQRjwyMjIyMjxGAAAAAAAAAAAAAAAAAAAAAF1aUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjI8PDw8PDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PDw8PDxGUFpkAAAAAGRaUEY8MjIyMjIyMjIyMjIyPEZGRlBGRjwyMjIyMjw8PEYAAAAAADwyMjIyMjIyMjI8RlBaXQAAAAAAAAAAAEZGPDwyMjIyMjIyMjIyMjIyMjIyMjI8RkZGRkY8MjIyMjIyMjwAAAAAAAAAAAAAAAAAAAAAAFBGPDIyMjIyMjIyMjIyMjIyMjI8PDw8PEZGRkZGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGRkZGRkZQWmQAAAAAZFpQRjwyMjIyMjIyMjIyMjxGUFBQWlBQRjwyMjI8RkZGUFBQUEZGPDw8MjIyMjIyMjI8RlAAAAAAAAAAAAAAUFBGRjwyMjIyMjIyMjIyMjIyMjIyMjI8PDw8PDIyMjIyMjIyMgAAAAAAAAAAAAAAAAAAAABdWlBGPDIyMjIyMjIyPDw8PDw8PEZGRkZGUFBQUFBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBQUFBQUFBaZAAAAABkWlBGPDIyMjIyMjIyMjI8RlBaWlpdWlpQRjwyPEZQUFBaWlpaUFBGRkY8MjIyMjIyMjI8RgAAAAAAAAAAAFpaWlBQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAAAAAAAAAABQRjwyMjIyMjIyMjxGRkZGRkZGUFBQUFBaWlpaWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWlpaWlpaWl0AAAAAAGRaUEY8MjIyMjIyMjIyPEZQWl1dXQBdXVpQRjxGUFpaWl1dXV1aWlBQUEY8MjIyMjIyMjI8AAAAAAAAAAAAXV1dWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAAAAAPEY8MjIyMjIyMjI8RlBQUFBQUFBaWlpaWl1dXV1dWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWl1dXV1dXV1dAAAAAAAAWlBQRkY8MjIyMjIyMjI8RlBaAAAAAAAAWlBGRlBaXV1dAAAAAF1dWlpaUEY8MjIyMjIyMjIyAAAAAAAAAAAAAABdXVpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAyPDIyMjIyMjIyMkZQWlpaWlpaWl1dXV1dAAAAAABdWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpkAAAAAAAAAAAAAAAAAF1aWlpQUEY8MjIyMjIyPEZQWl0AAAAAAABdWlBGRlAAAAAAAAAAAABdXV1aUEY8Mjw8PDIyMjIyMgAAAAAAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyUFpdXV1dXV1dAAAAAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFoAAAAAAAAAAAAAAAAAAF1dXVpaUEY8MjIyMjIyPEZQAAAAAAAAAABQRjw8RjwAAAAAAAAAAAAAAFBGPDI8RkZGPDwyMjIyPEZQAAAAAAAAAABGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjJaXQAAAAAAAAAAAAAAAAAAAAAAAEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBQUFpkAAAAAAAAAF0AAAAAXV1aUEY8MjIyMjIyPEY8AAAAAAAAAFpQRjw8MjIyMjIyMgAAAAAARjwyPEZQUFBGRjw8MjxGUFpdAAAAAAAAAFBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMl0AAAAAAAAAAAAAAAAAAAAAAAAAPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RkZQWlpaWlpdAAAAAFBaAAAAAAAAAFBGPDIyMjIyMjIyPDIAAAAAAAAAXVpQRjwyMjIyMjIyMjIyMjI8MjxGUFpaWlBQRkY8MjxGUAAAAAAAAABdWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PEZQUFpdXV1dXQAAAABdWl0AAAAAAAAARjwyMjIyMjI8PDw8PEYAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjI8RlBaXV1dWlpQUEY8RlBaXQAAAAAAAABdWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGUFpaXQAAAAAAAAAAAABdAAAAAAAAAAA8MjIyMjI8PEZGRkZGUFBaWgAAAABGPDIyMjIyMjIyMjIyMjIyPEZQWl0AAABdXVpaUEZGRlAAAAAAAAAAAABdWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PDIyMjIyMjIyMjIyMjIyMjwyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBaXV0AAAAAAAAAAAAAAAAAAAAAAAAAPDIyMjIyPEZGUFBQUFBaWl1dAAAAADwyMjIyMjIyMjIyMjIyMjIyPEZQAAAAAAAAXV1aUFBQUFAAAAAAAAAAAABdWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PEZGPDIyMjIyMjIyMjIyMjI8RjxGPDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWl0AAAAAAAAAAAAAAAAAAAAAAAAAAABGPDIyMjxGUFBaWlpaWl1dAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyPEY8AAAAAAAAAF1aWlpaWl0AAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGUFBGPDIyMjIyMjIyMjIyPEZQRlBGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWl1dAAAAAAAAWlAAAAAAAAAAAAAAAAAAAFBGPDI8RlBaWl1dXV1dAAAAAAAAADIyMjIyMjIyMjIyMjIyMjIyMjIyPDIAAAAAAAAAAF1dXV1dAAAAAAAAAAAAAEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBaWlBGPDIyMjIyMjIyMjxGUFpQWlBQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpdAAAAAAAAAGRaWl0AAAAAAAAAAAAAAAAAWlBGPEZQWl1dAAAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAAAAAAAAAAAAyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWl1dWlBGPDIyMjIyMjI8RlBaZFpkWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaXQAAAAAAAAAAWlBQAAAAAAAAAAAAAAAAAABdWlBGUFpdAAAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAAAAAAAAAADwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWl1dAABdWlBGPDIyMjIyPEZQWmQAZABkZFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWl0AAAAAAAAAAEZQRkY8AAAAAAAAADIyAAAAAABQRjxGUAAAAAAAAAAAAAAARjw8PDw8PDw8PDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAAAAAEZGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpdAAAAAABQRjwyMjIyMjI8RlBaZAAAAAAAZFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQAAAAAAAAAABQRkZGPDwyMjIyMjIyMjIyAAAAAEY8MjxGPAAAAAAAAAAAAFpQRkZGRkZGRkZGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAWlpaWlBQUFBQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaXQAAAAAAAEY8MjIyMjIyMjxGUFpkAAAAAABkWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEYAAAAAAABkWlpQUFBGRjwyMjI8PDw8PDIAAAAAPDIyMjwyMjIAAAAAAAAAXVpQUFBQUFBQUFBQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAABdXV1dWlpaWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWl0AAAAAAAAyPDIyMjIyMjIyMjxGUFpkZAAAAFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPAAAAAAAAF1dXVpaWlBQRjwyPEZGRkZGPDIAADIyMjIyMjIyMjIyAAAAAAAAXVpaWlpaWlpaWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAABdXV1dXVpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQAAAAAAAAADIyMjIyMjIyMjIyMjxGUFpaUEZGUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAXV1dWlpQRjxGUFBQUFBGPDIyMjIyMjIyMjIyMjIyMgAAAAAAXV1dXV1dXV1dXVpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEYAAAAAAAAyMjIyMjIyMjIyMjIyMjxGUFBGPDxGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAABdXVpQRlBaWlpaWlBGPDIyMjIyMjIyMjIyMjI8AAAAAAAAAAAAAAAAAAAAXVpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPAAyADIyMjIyMjIyMjIyMjIyMjIyMjxGRjwyMjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAZFpQWl1dXV1dWlBGPDIyMjIyMjIyMjIyPEZQAAAAAAAAAAAAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAXVpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDI8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAABdWlpdAAAAAABQRjwyMjIyMjIyMjIyMjxGUFoAAAAAAAAAAAAAAAAAADxGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDxGPEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAABkWgAAAAAAPEY8MjIyMjIyMjIyMjI8RlBaXQAAAAAAAAAAAAAyMjIyMjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjwAAAAAAAAAAABdWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PDw8RkZGRlBGUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAGRaUEZGRjw8PDIyMjIyMjIyMjIyMjI8RlAAAAAAAAAAAAAyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RkZQAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGRkZQUFBQWlBaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAZFpQUFBQRkY8MjIyMjIyMjIyMjIyMjI8RgAAAAAAAAAARjw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQUFpdAAAAAAAAAEY8MjIyMjw8PDIyMjIyMjIyMjIyMjIyMjIyMjxGUFBQUFpaWlpkWmRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAABdXVpaWlpQUEY8MjIyMjIyMjIyPDIyMjI8MgAAAAAAAABQRkY8PDw8MjIyMjIyMjIyMjI8PDw8PDw8MjIyMjIyMjxGUFpaXQAAAAAAAAAAPDIyMjI8RkZGPDIyMjIyMjIyMjIyMjIyMjI8RlBaWlpaZGRkZABkAGRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAXV1dXVpaUEY8PDw8PDIyMjxGPDIyMjIyMgAAAAAAAFpQUEZGRkY8MjIyMjIyMjIyPEZGRkZGRkY8MjIyMjI8RlBaXV0AAAAAAAAAADIyMjw8PEZQUFBGPDwyMjIyMjIyMjIyMjIyPEZQWmRkZGQAAAAAAAAAZFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAXV1aUEZGRkZGPDw8RlBGPDIyMjIyMjIyAAAAXVpaUFBQUEY8MjIyMjIyMjxGUFBQUFBQUEY8MjIyPEZQWloAAAAAAAAAAAAAMjI8RkZGUFpaWlBGRjwyMjIyMjIyMjIyMjxGUFpkAAAAAAAAAAAAAABkWlBGPDIyMjIyMjIyMjIyPDw8PDw8PDw8PDIyMjIyMjIyPDw8MjIyMjIyMjIyMjIyMjIyMjIyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAGRaUFBQUFBGRkZQWlBGPDIyMjIyMjIyAAAAXV1aWlpaUEY8PDw8PDw8RlBaWlpaWlpaUEY8MjxGUFpdXQAAAAAAAAAAPDw8PEZQUFBaXV1dWlBQRjwyMjIyMjIyMjIyMjxGUFoAAAAAAGRkZGRkZFpQRjwyMjIyMjIyPDwyMjJGRkZGRkZGRkZGPDwyMjIyPDxGRkY8PDw8PDIyPDw8PDIyMjw8PDxGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8AAAAAAAAAAAAXV1aWlpaWlBQUFpkWlBGPDIyMjIyPDwAAAAAAF1dXV1aUEZGRkZGRkZQWlBdXV1QUF1aUEY8PEZQWgAAAAAAMjI8PDxGRkZGUFpaWl0AAABdWlpQRjw8PDw8MjIyMjIyPDxGUAAAAEZQWlpaWlpaUEY8MjIyMjIyMjxGRjwyMlBQUFBQUFBQUFBGRjwyMjxGRlBQUEZGRkZGPDxGRkZGPDI8RkZGRlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyPEY8PDIyAAAAAAAAAF1dXV1dWlpaZABkWlBGPDIyMjxGRkYAAAAAAAAAAF1aUFBQUFBQUFBaAAAAAAAAAF1aUEZGUFpdAAAAADw8PEZGRlBQUFBaXV1dAAAAAABdXVpQRkZGRkY8PDw8PDxGRkZGRkZQUFpaUFBQUFBGPDw8PDw8PDw8RlBQRjw8WlpaWlpaWlpaWlBQRjw8RlBQWlpaUFBQUFBGRlBQUFBGPEZQUFBQWlBGPDw8MjIyMjIyMjIyMjIyMjIyMjxGUEZGPDIyMgAAAAAAAAAAAABkZGQAAABkWlBGPDw8RlBQUAAAAAAAAAAAAFpaWlpaWlpaWk4AAAAAAAAAAFpQRlBaXQAAAAAARkZGUFBQWlpaWl0AAAAAAAAAAAAAXVpQUFBQUEZGRkZGRlBQUFBQUFpaUF1aUEZGRjxGRkZGRkZGRkZQWlpQRkZdXV1dXV1dSkdIWlpQRkZQWlpkZGRaWlpaWlBQWlpaWlBGUFpaWlpdWlBGRkY8MjIyMjIyMjIyMjIyPDw8RlBaUFBGPDIyMgAAAAAAAAAAAGQAAAAAAABkWlBGRkZQWlpaWloAAAAAAAAAXV1dXV1dXV1dAAAAAAAAAAAAXVpQRlAAAAAAAABQUFBaWlpdXV1dAAAAAAAAAAAAAAAAXVpaWlpaUFBQUFBQWlpaWlpaUF0AAFpQUEZGRlBQUFBQUFBQUFpkZFpQUAAAAAAAAAAAAABQXVpQUFpRZAAAAGRdXVpLWlpLUF1dWlBaS0lKXWFaUlBQUEY8PDw8MjIyMjI8PDxGRkZQWl1aWlBGPDIyMjwAAAAAAAAAAAAAAAAAAF1aUEZQUFpdXV1dXVBdXQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAXVpQRkYAAAAAAFpaWl1dXQAAAAAAAAAAAAAAAAAAAAAAXV1dXV1aWlpaWlpdXV1dXV0AAAAAXVpaUFBQWlpaWlpaWlpaZAAAZFpaAAAAAAAAAAAAAAAAXVpaXQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFxcWlpaUEZGRkY8PDw8PEZGRlBQUFpdAF1dWlBGPDw8RlBaTk4AAAAAAAAAAAAAAFBGUFpaXQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAXVpQUAAAAAAAUF1dAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAF1dXV1dXQAAAAAAAAAAAAAAXV1aWlpdXV1dXV1dXV0AAAAAXV0AAAAAAAAAAAAAAAAAS04AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABdXV1aUFBQUEZGRkZGUFBQWlpaTgAAAABdWlBGRkZQWl0AAAAAAAAAAAAAAAAAWlBaXV0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAXVpaXQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAF1dXQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE5aWlpaUFBQUFBaWlpdUE4AAAAAAABaUEZQUFpdAAAAAAAAAAAAAAAAAABdWloAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAXVAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAElLTV1aWlpaWl1dXQAAAAAAAAAAAF1aUFpaXQAAAAAAAAAAAAAAAAAAAABaXQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAF1dXV1dAAAAAAAAAAAAAAAAAF1aUF0AAAAAAAAAAAAAAAAAAAAAAF0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAF0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "moistureLevels": "WlVVVVVVVVVVVVVVVVVaWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWlpVVVVVVVpaWlpaVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVWlpaWlVVVVVVVVpaWlBQUFpaWlBQRjxGRlBaVVVVVVVVVVVVVVVVVVVVVVpaUFBGRjw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDIyMjIyMjIyMjIyMjIyMjIyPEZQWlpVVVVVVVpVAAAAAAAAAAAAAAAAAFVVWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjxGUFpVVQAAAAAAVVVVVVUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABVVVVVAAAAAAAAVVVVWlpaVVVVWlpQRlBQWlUAAAAAAAAAAAAAAAAAAAAAVVVaWlBQRkY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RkZGPDIyMjIyMjIyMjIyMjIyMjxGUFpVVQAAAAAAVQAAAAAAAAAAAAAAAAAAAABVWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjxGUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABVVVUAAABVVVpQWlpVAAAAAAAAAAAAAAAAAAAAAAAAAFVVWlpQUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQUFBGPDIyMjIyMjIyMjIyPDw8RlBaVQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjxGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVVpVVQAAAAAAAAAAAAAAAAAAAAAAAAAAAABVVVpaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjw8PDwyMjIyMjIyMjIyMjxGUFpaWlBGPDIyMjIyMjIyPDxGRkZGRlAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMjIyMgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVVVaUEY8MjIyMjIyMjIyMjIyMjIyMjI8RkZGRjw8PDw8PDw8PDw8RlBaVVVVWlBGPDw8PDw8PDxGRlBQUFBQWgAAAAAAAAAAMjIAAAAAAAAAAAAAAEY8MjIyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADxGPAAAAAAAAAAAMjIyMgAAAAAAAAAAAAAAAAAAAFVaUEY8MjIyMjIyMjIyMjIyMjIyPEZQUFBQRkZGRkZGRkZGRkZQWlUAAABVWlBGRkZGRkZGRlBQWlpaWlpVAAAAAAAAAAAyMjIyAAAAAAAAAABaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAAAAPDwyMjwyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAAAAAAFBGPDIyMjIyMjIyMjIyMjIyMjxGUFpaWlpQUFBQUFBQUFBQUFBaAAAAAABaUFBQUFBQUFBQWlpVVVVVVQAAAAAAAAAyMjIyMjIyMjIAAAAAAFVaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8AAAAAAAAAAAAUEZGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RjwyMjIyMjIyMjIyMjIyMjI8RlBaVVVVVVpaWlpaWlpaWlpaWlUAAAAAAFVaWlpaWlpaWlpVVQAAAAAAAFVaAAAyMjIyMjIyMjIyMjIyMgAAAFBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDw8PDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGUAAAAAAAAFpaUFBQRjwyMjIyMjIyMjw8PDIyMjIyMjIyMjIyMjIyMjIyMjI8MjIyMjIyMjIyMjIyMjIyMjI8RlAAAAAAVVVVVVVVVVVVVVVVAAAAAAAAAFVVVVVVVVVVWgAAAAAAAAAAAFBGPDIyMjIyMjIyMjI8PDw8MjIARjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGRkZGPDwyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBaAAAAAAAAVVVaWlpQRjwyMjIyMjI8RkZGPDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABVWgAAAAAAMjI8RjwyMjIyMjIyMjIyPEZGRkY8MjI8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBQUFBGRjwyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWlUAAAAAAAAAAFVVVVpQRjwyMjIyPEZQUFBGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDIyMjIyMjIyMjIyMjI8RgAAAAA8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQRjwyMjIyMjI8MjIyMjIyMjIyMjxGUFBQUEY8MjIyPDw8PDw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWlpaWlBQRjw8PDw8PDwyMjIyMjIyMjIyPEZQWlVVAAAAAAAAAAAAAAAAWlBGPDIyMjxGUFpaWlBQRjw8MjIyMjIyMjIyMjIyMjIyMjI8RkZGPDIyMjIyMjIyMjIyPEZQWlpaUEYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAyPEY8MjIyMjIyMjIyMjIyMjIyMjI8RlBaWlpaUEY8MjxGRkZGRkY8PDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDxGUFpkZGRkWlpQRkZGRkZGRjwyMjIyMjIyMjI8RlBaAAAAAAAAAAAAAAAAAABVWlBGPDI8RlBaVVVVWlpQRkY8MjIyMjIyMjIyMjIyMjIyPEZQUFBGPDIyMjIyMjIyMjxGUFpVVVVaUEY8AAAAAAAAAAAAAAAAAAAAAAAAAAAAMjIyPDIyMjIyMjIyMjIyMjIyMjIyPEZQWlVVVVVaUEY8RlBQUFBQUEZGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDw8PDxGRlBaZAAAAABkZFpQUFBQUFBQRjwyMjIyMjIyPEZQWlUAAAAAAAAAAAAAAAAAAABQRjw8PDxGRlAAAABVVVpQUEY8MjIyMjIyMjIyMjIyPDxGUFpaWlBGPDIyMjIyMjI8RlBaVQAAAFBGPDIyMjIyMjIyMjIyMjIyMjIyMgAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQAAAAAFBGPEZQWlpaWlpaUFBGPDIyMjIyMjIyMjIyMjIyMjIyMjI8RkZGRkZGRlBQWmQAAAAAAAAAZFpaWlpaWlpQRjwyMjIyMjxGRlBQAAAAAAAAAAAAAAAAAAAyPEY8RkZGRlBGUAAAAAAAVVpaUEY8MjIyMjIyMjIyMjxGRlBaVVVVWlBGPDIyMjIyMjI8RlAAAAAARjwyMjw8PDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEYAAAAARjxGUFpVVVVVVVVaWlBGPDIyMjIyMjIyMjIyMjIyMjIyPEZQUFBQUFBQWlpkZAAAAAAAAAAAZGRkZGRkZFpQRjwyMjI8RlBQWlpVAAAAAAAAAAAAAAAyMjIyPEZQUFBQWlBaUAAAAAAAVVVaUEY8MjIyMjIyMjI8RlBQWlUAAABVWlBGPDIyMjIyMjI8RjwAAAA8MjI8RkZGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDIyMjI8MjxGUAAAAAAAAFVVWlBGPDIyMjIyMjIyMjIyMjIyMjxGUFpaWlpaWlpkZAAAAAAAAAAAAAAAAAAAAAAAZFpQRjwyPEZQWlpVVQAAAAAAAAAAADIyMjIyMjxGUFpaWlpkWmRaUEYAAAAAAFBGPDIyMjIyMjIyPEZQWlpVAAAAAABVWlBGPDIyMjIyMjI8MjIyMjIyPEZQUFBQRjwyMjIyMjIyMjI8PDw8PDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGAAAAAAAAAABaUEY8MjIyMjIyMjIyMjIyMjI8RlBaVVVVVVVZZAAAAAAAAAAAAAAAAAAAAAAAAAAAZFpQRjxGUFpVVQAAAAAAAAAAAAAyMjIyMjI8RlBaZGRkZABkAGRaUEYAAAA8RjwyMjIyMjIyMjxGUFpVVQAAAAAAAABVWlBGPDIyMjIyMjIyMjIyMjxGUFpaWlpQRjwyMjIyMjIyPEZGRkZGPDw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjwyAAAAAAAAAFVaUEY8MjIyMjIyMjIyMjIyMjI8RlAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABaUEY8MjxGUAAAAAAAAAAAAAAAMjIyMjIyPEZQWmQAAAAAAAAAZFpQRjwyMjI8MjIyMjIyMjI8RlBaVQAAAAAAAAAAAABVWlBGPDIyMjIyMjIyMjI8RlBaZGRkZFpQRjwyMjIyMjxGUFBQUFBGRkY8PDw8PDw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAFBGPDIyMjIyMjIyMjIyMjIyMjI8RgAAAAAAAAAAAAAAAAAAAAAAADIyMjI8RlBQUFBGPDIyMjxGAAAAAAAAAAAAADIyMjIyMjxGUFpkAAAAAAAAAAAAZFpQRjwyMjIyMjIyMjIyPEZQWlUAAAAAAAAAAAAAAABQRjwyMjIyMjIyMjIyPEZQWmQAAAAAZFpQRjwyMjI8RlBaWlpaWlBQUEZGRkZGRkY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAARjwyMjIyMjIyMjIyMjIyMjIyMjI8MjIAAAAAAAAAMjIAAAAAADIyMjIyPEZQWlpaUEY8MjIyMjwAAAAAAAAAAAAyMjIyMjIyMjxGUFoAAAAAAAAAAABZWlpQRjwyMjIyMjIyMjIyPEZQAAAAAAAAAAAAAAAAPEY8MjIyMjIyMjIyMjI8RlBaZAAAAAAAZFpQRjwyPEZQWlVVVVVVWlpaUFBQUFBQUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAA8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpkZGRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUAAAAAAAAAAAAABVVVpQRjwyMjIyMjIyMjxGUFoAAAAAAAAAAAAAADIyPDIyMjIyMjIyMjIyMjI8RlBaZGRkZGRaUEY8MjxGUFpVAAAAAABVVVVaWlpaWlpaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaZAAAAGRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyPDIyMjxGPDIAAAAAAAAAAAAAUEY8MjIyMjIyMjI8RlBaVQAAAAAAAFUAAAAyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWlpaWlBGPDIyMjxGUAAAAAAAAAAAAFVVVVVVVVVaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpkAAAAZGRaUEY8MjIyMjIyMjIyMjIyMjI8PDxGPDwyMjwyMjIyAAAAAAAAAABGPDIyMjIyMjIyMjxGUFoAAAAAAAAAAAAAPDIyMjIyMjIyMjIyMjIyMjIyMjI8RlBQUFBQRjwyMjIyMjxGAAAAAAAAAAAAAAAAAAAAAFVaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjI8PDw8PDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PDw8PDxGUFpkAAAAAGRaUEY8MjIyMjIyMjIyMjIyPEZGRlBGRjwyMjIyMjw8PEYAAAAAADwyMjIyMjIyMjI8RlBaVQAAAAAAAAAAAEZGPDwyMjIyMjIyMjIyMjIyMjIyMjI8RkZGRkY8MjIyMjIyMjwAAAAAAAAAAAAAAAAAAAAAAFBGPDIyMjIyMjIyMjIyMjIyMjI8PDw8PEZGRkZGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGRkZGRkZQWmQAAAAAZFpQRjwyMjIyMjIyMjIyMjxGUFBQWlBQRjwyMjI8RkZGUFBQUEZGPDw8MjIyMjIyMjI8RlAAAAAAAAAAAAAAUFBGRjwyMjIyMjIyMjIyMjIyMjIyMjI8PDw8PDIyMjIyMjIyMgAAAAAAAAAAAAAAAAAAAABVWlBGPDIyMjIyMjIyPDw8PDw8PEZGRkZGUFBQUFBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBQUFBQUFBaZAAAAABkWlBGPDIyMjIyMjIyMjI8RlBaWlpVWlpQRjwyPEZQUFBaWlpaUFBGRkY8MjIyMjIyMjI8RgAAAAAAAAAAAFpaWlBQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAAAAAAAAAABQRjwyMjIyMjIyMjxGRkZGRkZGUFBQUFBaWlpaWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWlpaWlpaWlUAAAAAAGRaUEY8MjIyMjIyMjIyPEZQWlVVVQBVVVpQRjxGUFpaWlVVVVVaWlBQUEY8MjIyMjIyMjI8AAAAAAAAAAAAVVVVWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAAAAAPEY8MjIyMjIyMjI8RlBQUFBQUFBaWlpaWlVVVVVVWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWlVVVVVVVVVVAAAAAAAAWlBQRkY8MjIyMjIyMjI8RlBaAAAAAAAAWlBGRlBaVVVVAAAAAFVVWlpaUEY8MjIyMjIyMjIyAAAAAAAAAAAAAABVVVpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAyPDIyMjIyMjIyMkZQWlpaWlpaWlVVVVVVAAAAAABVWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpkAAAAAAAAAAAAAAAAAFVaWlpQUEY8MjIyMjIyPEZQWlUAAAAAAABVWlBGRlAAAAAAAAAAAABVVVVaUEY8Mjw8PDIyMjIyMgAAAAAAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyUFpVVVVVVVVVAAAAAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFoAAAAAAAAAAAAAAAAAAFVVVVpaUEY8MjIyMjIyPEZQAAAAAAAAAABQRjw8RjwAAAAAAAAAAAAAAFBGPDI8RkZGPDwyMjIyPEZQAAAAAAAAAABGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjJaVQAAAAAAAAAAAAAAAAAAAAAAAEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBQUFpkAAAAAAAAAFUAAAAAVVVaUEY8MjIyMjIyPEY8AAAAAAAAAFpQRjw8MjIyMjIyMgAAAAAARjwyPEZQUFBGRjw8MjxGUFpVAAAAAAAAAFBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMlUAAAAAAAAAAAAAAAAAAAAAAAAAPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RkZQWlpaWlpVAAAAAFBaAAAAAAAAAFBGPDIyMjIyMjIyPDIAAAAAAAAAVVpQRjwyMjIyMjIyMjIyMjI8MjxGUFpaWlBQRkY8MjxGUAAAAAAAAABVWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PEZQUFpVVVVVVQAAAABVWlUAAAAAAAAARjwyMjIyMjI8PDw8PEYAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjI8RlBaVVVVWlpQUEY8RlBaVQAAAAAAAABVWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGUFpaVQAAAAAAAAAAAABVAAAAAAAAAAA8MjIyMjI8PEZGRkZGUFBaWgAAAABGPDIyMjIyMjIyMjIyMjIyPEZQWlUAAABVVVpaUEZGRlAAAAAAAAAAAABVWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PDIyMjIyMjIyMjIyMjIyMjwyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBaVVUAAAAAAAAAAAAAAAAAAAAAAAAAPDIyMjIyPEZGUFBQUFBaWlVVAAAAADwyMjIyMjIyMjIyMjIyMjIyPEZQAAAAAAAAVVVaUFBQUFAAAAAAAAAAAABVWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PEZGPDIyMjIyMjIyMjIyMjI8RjxGPDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWlUAAAAAAAAAAAAAAAAAAAAAAAAAAABGPDIyMjxGUFBaWlpaWlVVAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyPEY8AAAAAAAAAFVaWlpaWlUAAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGUFBGPDIyMjIyMjIyMjIyPEZQRlBGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWlVVAAAAAAAAWlAAAAAAAAAAAAAAAAAAAFBGPDI8RlBaWlVVVVVVAAAAAAAAADIyMjIyMjIyMjIyMjIyMjIyMjIyPDIAAAAAAAAAAFVVVVVVAAAAAAAAAAAAAEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFBaWlBGPDIyMjIyMjIyMjxGUFpQWlBQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpVAAAAAAAAAGRaWlUAAAAAAAAAAAAAAAAAWlBGPEZQWlVVAAAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAAAAAAAAAAAAyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaWlVVWlBGPDIyMjIyMjI8RlBaZFpkWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaVQAAAAAAAAAAWlBQAAAAAAAAAAAAAAAAAABVWlBGUFpVAAAAAAAAAAAAAAAAMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAAAAAAAAAADwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWlVVAABVWlBGPDIyMjIyPEZQWmQAZABkZFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWlUAAAAAAAAAAEZQRkY8AAAAAAAAADIyAAAAAABQRjxGUAAAAAAAAAAAAAAARjw8PDw8PDw8PDwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAAAAAEZGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjxGUFpVAAAAAABQRjwyMjIyMjI8RlBaZAAAAAAAZFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQAAAAAAAAAABQRkZGPDwyMjIyMjIyMjIyAAAAAEY8MjxGPAAAAAAAAAAAAFpQRkZGRkZGRkZGRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAWlpaWlBQUFBQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RlBaVQAAAAAAAEY8MjIyMjIyMjxGUFpkAAAAAABkWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEYAAAAAAABkWlpQUFBGRjwyMjI8PDw8PDIAAAAAPDIyMjwyMjIAAAAAAAAAVVpQUFBQUFBQUFBQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAABVVVVVWlpaWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQWlUAAAAAAAAyPDIyMjIyMjIyMjxGUFpkZAAAAFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPAAAAAAAAFlVVVpaWlBQRjwyPEZGRkZGPDIAADIyMjIyMjIyMjIyAAAAAAAAVVpaWlpaWlpaWlpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAABVVVVVVVpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQAAAAAAAAADIyMjIyMjIyMjIyMjxGUFpaUEZGUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAVVVVWlpQRjxGUFBQUFBGPDIyMjIyMjIyMjIyMjIyMgAAAAAAVVVVVVVVVVVVVVpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEYAAAAAAAAyMjIyMjIyMjIyMjIyMjxGUFBGPDxGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAABVVVpQRlBaWlpaWlBGPDIyMjIyMjIyMjIyMjI8AAAAAAAAAAAAAAAAAAAAVVpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPAAyADIyMjIyMjIyMjIyMjIyMjIyMjxGRjwyMjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAAAAAAAAAZFpQWlVVVVVVWlBGPDIyMjIyMjIyMjIyPEZQAAAAAAAAAAAAAAAAAAAAUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAVVpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPDI8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAABZWlpVAAAAAABQRjwyMjIyMjIyMjIyMjxGUFoAAAAAAAAAAAAAAAAAADxGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAAAAAAAAWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjw8PDxGPEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAABkWgAAAAAAPEY8MjIyMjIyMjIyMjI8RlBaVQAAAAAAAAAAAAAyMjIyMjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjwAAAAAAAAAAABVWlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8PDw8RkZGRlBGUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIAAAAAAGRaUEZGRjw8PDIyMjIyMjIyMjIyMjI8RlAAAAAAAAAAAAAyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8RkZQAAAAAAAAAABQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZGRkZQUFBQWlBaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAAAAZFpQUFBQRkY8MjIyMjIyMjIyMjIyMjI8RgAAAAAAAAAARjw8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyPEZQUFpVAAAAAAAAAEY8MjIyMjw8PDIyMjIyMjIyMjIyMjIyMjIyMjxGUFBQUFpaWlpkWmRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgAAAABZVVpaWlpQUEY8MjIyMjIyMjIyPDIyMjI8MgAAAAAAAABQRkY8PDw8MjIyMjIyMjIyMjI8PDw8PDw8MjIyMjIyMjxGUFpaVQAAAAAAAAAAPDIyMjI8RkZGPDIyMjIyMjIyMjIyMjIyMjI8RlBaWlpaZGRkZABkAGRaUEY8MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAVVVVVVpaUEY8PDw8PDIyMjxGPDIyMjIyMgAAAAAAAFpQUEZGRkY8MjIyMjIyMjIyPEZGRkZGRkY8MjIyMjI8RlBaVVUAAAAAAAAAADIyMjw8PEZQUFBGPDwyMjIyMjIyMjIyMjIyPEZQWmRkZGQAAAAAAAAAZFpQRjwyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAVVVaUEZGRkZGPDw8RlBGPDIyMjIyMjIyAAAAVVpaUFBQUEY8MjIyMjIyMjxGUFBQUFBQUEY8MjIyPEZQWloAAAAAAAAAAAAAMjI8RkZGUFpaWlBGRjwyMjIyMjIyMjIyMjxGUFpkAAAAAAAAAAAAAABkWlBGPDIyMjIyMjIyMjIyPDw8PDw8PDw8PDIyMjIyMjIyPDw8MjIyMjIyMjIyMjIyMjIyMjIyPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyAAAAAAAAAAAAAGRaUFBQUFBGRkZQWlBGPDIyMjIyMjIyAAAAVVVaWlpaUEY8PDw8PDw8RlBaWlpaWlpaUEY8MjxGUFpVVQAAAAAAAAAAPDw8PEZQUFBaVVVVWlBQRjwyMjIyMjIyMjIyMjxGUFoAAAAAAGRkZGRkZFpQRjwyMjIyMjIyPDwyMjJGRkZGRkZGRkZGPDwyMjIyPDxGRkY8PDw8PDIyPDw8PDIyMjw8PDxGPDIyMjIyMjIyMjIyMjIyMjIyMjIyMjI8AAAAAAAAAAAAWVVaWlpaWlBQUFpkWlBGPDIyMjIyPDwAAAAAAFVVVVVaUEZGRkZGRkZQWkBVVVVAQFVaUEY8PEZQWgAAAAAAMjI8PDxGRkZGUFpaWlUAAABVWlpQRjw8PDw8MjIyMjIyPDxGUAAAAEZQWlpaWlpaUEY8MjIyMjIyMjxGRjwyMlBQUFBQUFBQUFBGRjwyMjxGRlBQUEZGRkZGPDxGRkZGPDI8RkZGRlBGPDIyMjIyMjIyMjIyMjIyMjIyMjIyPEY8PDIyAAAAAAAAAFVVVVVVWlpaZABkWlBGPDIyMjxGRkYAAAAAAAAAAFVaUFBQUFBQUFBaAAAAAAAAAFVaUEZGUFpVAAAAADw8PEZGRlBQUFBaVVVVAAAAAABVVVpQRkZGRkY8PDw8PDxGRkZGRkZQUFpaUFBQUFBGPDw8PDw8PDw8RlBQRjw8WlpaWlpaWlpaWlBQRjw8RlBQWlpaUFBQUFBGRlBQUFBGPEZQUFBQWlBGPDw8MjIyMjIyMjIyMjIyMjIyMjxGUEZGPDIyMgAAAAAAAAAAAABkZGQAAABkWlBGPDw8RlBQUAAAAAAAAAAAAFpaWlpaWlpaWj8AAAAAAAAAAFpQRlBaVQAAAAAARkZGUFBQWlpaWlUAAAAAAAAAAAAAVVpQUFBQUEZGRkZGRlBQUFBQUFpaQFVaUEZGRjxGRkZGRkZGRkZQWlpQRkZVVVVVVVVVVVVVWlpQRkZQWlpkZGRaWlpaWlBQWlpaWlBGUFpaWlpVWlBGRkY8MjIyMjIyMjIyMjIyPDw8RlBaUFBGPDIyMgAAAAAAAAAAAGQAAAAAAABkWlBGRkZQWlpaWloAAAAAAAAAVVVVVVVVVVVVAAAAAAAAAAAAVVpQRlAAAAAAAABQUFBaWlpVVVVVAAAAAAAAAAAAAAAAVVpaWlpaUFBQUFBQWlpaWlpaQFUAAFpQUEZGRlBQUFBQUFBQUFpkZFpQUAAAAAAAAAAAAABAVVpQUFpCZAAAAGRZVVo7Wlo8P1VVWlBaNjY1VWFaUlBQUEY8PDw8MjIyMjI8PDxGRkZQWlVaWlBGPDIyMjwAAAAAAAAAAAAAAAAAAFlaUEZQUFpVVVVVVUBVVQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVVpQRkYAAAAAAFpaWlVVVQAAAAAAAAAAAAAAAAAAAAAAVVVVVVVaWlpaWlpVVVVVVVUAAAAAVVpaUFBQWlpaWlpaWlpaZAAAZFpaAAAAAAAAAAAAAAAAVVpaVQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFxcWlpaUEZGRkY8PDw8PEZGRlBQUFpVAFVVWlBGPDw8RlBaPzcAAAAAAAAAAAAAAFBGUFpaVQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVVpQUAAAAAAAQFVVAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFVVVVVVVQAAAAAAAAAAAAAAVVVaWlpVVVVVVVVVVVUAAAAAVVUAAAAAAAAAAAAAAAAAPz8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABVVVVaUFBQUEZGRkZGUFBQWlpaPwAAAABVWlBGRkZQWlUAAAAAAAAAAAAAAAAAWlBaVVUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVVpaVQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFVVVQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD9aWlpaUFBQUFBaWlpVQD8AAAAAAABaUEZQUFpVAAAAAAAAAAAAAAAAAABVWloAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADQ8PlVaWlpaWlVVVQAAAAAAAAAAAFVaUFpaVQAAAAAAAAAAAAAAAAAAAABaVQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFVVVVVVAAAAAAAAAAAAAAAAAFVaQFUAAAAAAAAAAAAAAAAAAAAAAFUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
   "isRaining": false,
-  "humidity": 0.532096148,
+  "humidity": 0.360750258,
   "globalItemTargets": {
     "sawdust": 10000,
     "acorn": 10000,
@@ -111419,8 +111524,8 @@
     "fiber",
     "ramie"
   ],
-  "cameraX": 13.291667,
-  "cameraY": 60.2765579,
+  "cameraX": 28.03125,
+  "cameraY": 62.6891479,
   "cameraPPU": 24,
   "inventoryTreeOpen": {
     "stone": true,
@@ -111434,7 +111539,7 @@
     "book": true
   },
   "playerTaskIndex": 10,
-  "births": 3,
+  "births": 5,
   "flowers": [
     {
       "x": 4,

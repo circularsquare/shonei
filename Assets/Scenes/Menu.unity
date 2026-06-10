@@ -4155,7 +4155,7 @@ MonoBehaviour:
   windDriftScale: 0.5
   worldLockingX: 0.1
   worldLockingY: 0.1
-  cloudEvolutionRate: 0.004
+  cloudEvolutionRate: 0.025
   useConstantWind: 1
   constantWind: 0.25
   useConstantHumidity: 1

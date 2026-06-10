@@ -23,6 +23,16 @@ CONTENT
 - house furnishing
     - glass
     - torch?
+- gems!
+    - grind to get skill dust 
+- forgaging tech 
+    - get random plants from grass?
+- potions 
+    - alembic for brewing
+- tea
+    - cauldron for cooking (also for cooking other stuff i guess)
+    - plant likes cold... maybe have temperature drop slightly at higher altitude?
+        - tea seed, tea leaf, roast to make into tea 
 
 - upsizing
     - workshops
