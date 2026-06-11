@@ -32,6 +32,14 @@ public class SettingsManager : MonoBehaviour {
     const string K_UiFontIndex = "settings.uiFontIndex"; // index into UIFontOptions
     const string K_HideBackground = "settings.hideBackground"; // 0 / 1
 
+    // Every settings-owned PlayerPrefs key. ResetToDefaults() clears exactly these — NOT
+    // PlayerPrefs.DeleteAll(), which would also nuke the login token (Session) and the
+    // save-sync machine GUID (SaveSyncIndex). Add new settings keys here too.
+    static readonly string[] AllKeys = {
+        K_MasterVol, K_SfxVol, K_AmbientVol, K_TargetFps, K_Vsync, K_Lighting,
+        K_CloudLight, K_AutosaveMins, K_UiScale, K_UiFontIndex, K_HideBackground,
+    };
+
     // ── Values ───────────────────────────────────────────────────────────────
     public float masterVolume   { get; private set; } = 1f;
     public float sfxVolume      { get; private set; } = 1f;
@@ -87,7 +95,15 @@ public class SettingsManager : MonoBehaviour {
         lightingEnabled = PlayerPrefs.GetInt(K_Lighting, 1) != 0;
         cloudLightingEnabled = PlayerPrefs.GetInt(K_CloudLight, 1) != 0;
         autosaveIntervalMinutes = Mathf.Max(0, PlayerPrefs.GetInt(K_AutosaveMins, 5));
-        uiScale         = Mathf.Clamp(PlayerPrefs.GetFloat(K_UiScale, 1f), UiScaleMin, UiScaleMax);
+        // First launch: no saved UI scale yet → pick a sensible default from screen height
+        // (small screens get native UI, large ones get a zoomed UI) and persist it once, so
+        // later launches honour whatever the user set. Existing users keep their saved value.
+        if (!PlayerPrefs.HasKey(K_UiScale)) {
+            uiScale = DefaultUiScaleForScreen(Screen.height);
+            PlayerPrefs.SetFloat(K_UiScale, uiScale);
+        } else {
+            uiScale = Mathf.Clamp(PlayerPrefs.GetFloat(K_UiScale, 1f), UiScaleMin, UiScaleMax);
+        }
         uiFontIndex     = Mathf.Max(0, PlayerPrefs.GetInt(K_UiFontIndex, 0));
         hideBackground  = PlayerPrefs.GetInt(K_HideBackground, 0) != 0;
     }
@@ -158,6 +174,15 @@ public class SettingsManager : MonoBehaviour {
         OnChanged?.Invoke();
     }
 
+    // First-launch UI scale chosen from the display's pixel height. Three tiers mapped to
+    // slider travel: short screens get the native UI (bottom), mid screens a half-zoom (middle),
+    // tall screens the full zoom (top). Picked once in Load(), then user choice takes over.
+    static float DefaultUiScaleForScreen(int screenHeight) {
+        if (screenHeight <= 900)  return UiScaleMin;                  // bottom: native UI
+        if (screenHeight <= 1400) return (UiScaleMin + UiScaleMax) / 2f; // middle: half zoom
+        return UiScaleMax;                                           // top: full zoom
+    }
+
     // Whole-UI zoom factor (CanvasScaler.scaleFactor). UI.cs applies it on change.
     public void SetUiScale(float v) {
         v = Mathf.Round(v / UiScaleStep) * UiScaleStep;   // snap to 2.5% increments
@@ -183,6 +208,16 @@ public class SettingsManager : MonoBehaviour {
         if (enabled == hideBackground) return;
         hideBackground = enabled;
         PlayerPrefs.SetInt(K_HideBackground, enabled ? 1 : 0);
+        OnChanged?.Invoke();
+    }
+
+    // Wipe every settings key and re-load, so each value falls back to its built-in default
+    // (uiScale re-derives from the current screen, as on a fresh install). Fires OnChanged
+    // once so all subscribers — CanvasScaler, audio, lighting, the open OptionsPanel — re-pull.
+    // Leaves non-settings prefs (login token, machine GUID) untouched. See AllKeys.
+    public void ResetToDefaults() {
+        foreach (var k in AllKeys) PlayerPrefs.DeleteKey(k);
+        Load();
         OnChanged?.Invoke();
     }
 

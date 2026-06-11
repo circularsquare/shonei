@@ -148,6 +148,10 @@ public class WorldGenConfig : ScriptableObject {
     [Range(0, 80)] public int WormMinSeparation = 25;
     [Tooltip("Worm walks reflect off (spawn zone ± this many tiles).")]
     [Range(0, 10)] public int WormSpawnBuffer = 2;
+    [Tooltip("Allow worms to start left of the spawn zone. Off by default: left-side " +
+             "worms can carve a chasm across the surface corridor to the x=0 market, " +
+             "breaking market access. Keeping worms on the right keeps that path clear.")]
+    public bool AllowWormsLeftOfSpawn = false;
     [Range(10, 400)] public int WormMinSteps = 100;
     [Range(10, 400)] public int WormMaxSteps = 150;
     [Tooltip("Carve radius. 1 = 3x3 area.")]

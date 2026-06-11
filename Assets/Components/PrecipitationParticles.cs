@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 // Abstract base for falling-precipitation particle effects (rain, snow, …).
@@ -49,6 +50,36 @@ public abstract class PrecipitationParticles : MonoBehaviour {
 
     Vector2 prevMin, prevMax;                                 // last frame's visible-rect corners (world units)
     bool    hasPrevRect;
+
+    // ── World-load flush ────────────────────────────────────────────────────
+    // Every live emitter, so a save load / world reset can flush in-flight
+    // particles. Emission stops the moment WeatherSystem snaps to the loaded
+    // state, but particles already falling keep going for their full lifetime —
+    // so loading into clear weather would still rain the previous session's
+    // drops for ~a second. Registered in OnEnable, dropped in OnDisable so the
+    // list never holds destroyed components.
+    static readonly List<PrecipitationParticles> active = new List<PrecipitationParticles>();
+
+    // Reload-Domain-off support: statics survive between play sessions, so the
+    // list would carry stale entries without an explicit reset.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics() { active.Clear(); }
+
+    // Flush in-flight particles on every live emitter. Called by
+    // WorldController.ClearWorld so a freshly loaded save doesn't keep raining
+    // the previous session's drops.
+    public static void ClearAll() {
+        foreach (PrecipitationParticles p in active) p.ClearParticles();
+    }
+
+    // Clears this emitter's particle system. Override to also flush sibling
+    // systems (e.g. rain splashes).
+    protected virtual void ClearParticles() {
+        ps.Clear();
+    }
+
+    protected virtual void OnEnable()  { active.Add(this); }      // ps already assigned in Awake (runs first)
+    protected virtual void OnDisable() { active.Remove(this); }
 
     // Subclass hook: returns 0..1 intensity from the appropriate WeatherSystem
     // channel. 0 → no emission, no fill, no collisions.

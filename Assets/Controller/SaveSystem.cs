@@ -41,7 +41,7 @@ using Newtonsoft.Json;
 //   [x] Per-animal RNG seed (drives Animal.random — animal AI reproduces on reload)
 //   [x] Tile types, floor inventories (incl. wetUntil rain-soaked timer), background wall, overlay masks (grass on dirt), overlay health state (live/dying/dead), and snow cover
 //   [x] Per-column original surface heights (worldgen ground line, persisted so decoration depth gates survive column mining)
-//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, furnishingInvData + furnishingRemainingDays, processor state/progress/inputData/outputData, mirrored, rotation, shapeIndex, disabled, plantHarvestFlagged, quarry/digging pit capturedTileType, flywheel charge, elevator currentY + history buffers, bridge-post partnerX/Y, savedNx/savedNy footprint, build materials materialItems/materialFen)
+//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, furnishingInvData + furnishingRemainingDays, processor state/progress/inputData/outputData, mirrored, rotation, shapeIndex, disabled, plantHarvestFlagged, quarry/digging pit capturedTileType, digging pit digDir, flywheel charge, elevator currentY + history buffers, bridge-post partnerX/Y, savedNx/savedNy footprint, build materials materialItems/materialFen)
 //   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored, rotation, shapeIndex, disabled, two-click x2/y2)
 //   [x] Animals (position, job, energy, food, starvation countdown, happiness, decoration happiness, socialization, fireplace warmth, inv, foodSlotInv, toolSlotInv, clothingSlotInv, bookSlotInv)
 //   [x] Mid-transit merchant task descriptor (travelTaskType + iq + storage tile + leg)
@@ -51,7 +51,7 @@ using Newtonsoft.Json;
 //   [x] Disabled processes (Recipes panel — paused fermentation etc., by building name)
 //   [x] Water levels
 //   [x] Moisture levels
-//   [x] Is raining + atmospheric humidity (drives rain via threshold)
+//   [x] Is raining + atmospheric humidity (drives rain via threshold) + temperature noise anomaly
 //   [x] Global item targets
 //   [x] Discovered items (so once-seen items stay visible even after going extinct)
 //   [x] Market targets (via MarketBuilding.instance)
@@ -82,6 +82,22 @@ public class SaveSystem : MonoBehaviour {
         if (instance != null) { Debug.LogError("there should only be one SaveSystem"); }
         instance = this;
         SaveStore.EnsureDir();
+    }
+
+    void Start() {
+        // Surface a mid-session token lapse: cloud sync has stopped (the pump halts on
+        // 401) and only a re-login at the menu restarts it. Without this the only
+        // signal is the save menu's badge quietly reading "offline". Subscribed in
+        // Start (not Awake) per SPEC-eventfeed.md.
+        SaveSync.OnAuthExpired += HandleAuthExpired;
+    }
+
+    void OnDestroy() {
+        SaveSync.OnAuthExpired -= HandleAuthExpired;
+    }
+
+    static void HandleAuthExpired() {
+        EventFeed.instance?.Post("<color=#cc3333>session expired - saves not syncing - log in at main menu</color>");
     }
 
     // ── Autosave ─────────────────────────────────────────────────────────────
@@ -248,6 +264,8 @@ public class SaveSystem : MonoBehaviour {
             };
         }
 
+        data.buildingsEverBuilt = AnimalController.instance?.BuiltTypesSnapshot();
+
         var rp = RecipePanel.instance;
         if (rp != null) {
             var disabled = new int[rp.DisabledCount];
@@ -261,8 +279,9 @@ public class SaveSystem : MonoBehaviour {
             if (disabledProc.Length > 0) data.disabledProcesses = disabledProc;
         }
 
-        data.isRaining = WeatherSystem.instance?.isRaining ?? false;
-        data.humidity  = WeatherSystem.instance?.humidity  ?? 0f;
+        data.isRaining   = WeatherSystem.instance?.isRaining   ?? false;
+        data.humidity    = WeatherSystem.instance?.humidity    ?? 0f;
+        data.tempAnomaly = WeatherSystem.instance?.tempAnomaly ?? 0f;
 
         var ic = InventoryController.instance;
         if (ic?.targets != null) {
@@ -421,8 +440,10 @@ public class SaveSystem : MonoBehaviour {
         }
         if (s is Quarry q && q.capturedTile != null)
             ssd.capturedTileType = q.capturedTile.name;
-        if (s is DiggingPit dp && dp.capturedTile != null)
-            ssd.capturedTileType = dp.capturedTile.name;
+        if (s is DiggingPit dp) {
+            if (dp.capturedTile != null) ssd.capturedTileType = dp.capturedTile.name;
+            ssd.digDir = (int)dp.digDir;   // persist direction even if the substrate didn't capture
+        }
         if (s is Flywheel fw)
             ssd.flywheelCharge = fw.charge;
         if (s is Elevator el) {
@@ -825,7 +846,12 @@ public class SaveSystem : MonoBehaviour {
 
         RestoreResearch(save.research);
 
-        WeatherSystem.instance?.RestoreState(save.isRaining, save.humidity);
+        // One-way building gate on jobs (woodworker/scientist). Seeds from the persisted set and
+        // from the structures in this save, so it must read save.structures (not live structures);
+        // runs before the lazy AddJobCounts so building-gated rows show on the first loaded frame.
+        AnimalController.instance?.RestoreBuiltTypes(save.buildingsEverBuilt, save.structures);
+
+        WeatherSystem.instance?.RestoreState(save.isRaining, save.humidity, save.tempAnomaly);
 
         // Original ground-line per column. Persisted from worldgen as of the
         // surfaceY-in-save-data change; old saves (and any save where the field
@@ -1009,17 +1035,17 @@ public class SaveSystem : MonoBehaviour {
             else
                 Debug.LogError($"RestoreStructure: unknown capturedTileType '{ssd.capturedTileType}' for quarry at ({ssd.x},{ssd.y})");
         }
-        if (structure is DiggingPit drp && !string.IsNullOrEmpty(ssd.capturedTileType)) {
-            if (Db.tileTypeByName.TryGetValue(ssd.capturedTileType, out TileType tt)) {
-                drp.capturedTile = tt;
-                // OnPlaced is skipped on the load path, so build the dish visual
-                // here once capturedTile + workstation.uses are both restored.
-                // ssd.uses was applied above (the Building branch); workNode was
-                // wired in the Structure ctor; we just need to render.
-                drp.RebuildDishVisual();
-            }
-            else
+        if (structure is DiggingPit drp) {
+            // OnPlaced (which picks the dig direction and wires the door) is skipped on
+            // load, so restore digDir verbatim and let RestoreOnLoad wire the single
+            // door + rebuild the dish. ssd.uses was applied above (the Building branch);
+            // workNode was repointed in the Structure ctor. Door wiring is independent of
+            // the substrate, so a pit whose tile fails to resolve stays reachable, not orphaned.
+            TileType tt = null;
+            if (!string.IsNullOrEmpty(ssd.capturedTileType)
+                && !Db.tileTypeByName.TryGetValue(ssd.capturedTileType, out tt))
                 Debug.LogError($"RestoreStructure: unknown capturedTileType '{ssd.capturedTileType}' for digging pit at ({ssd.x},{ssd.y})");
+            drp.RestoreOnLoad((DigDir)(ssd.digDir ?? 0), tt);
         }
         if (structure is Flywheel fw)
             fw.charge = Mathf.Clamp(ssd.flywheelCharge, 0f, Flywheel.Capacity);

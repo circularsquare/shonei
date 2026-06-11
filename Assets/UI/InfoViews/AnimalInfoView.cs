@@ -69,7 +69,9 @@ public class AnimalInfoView : MonoBehaviour {
             float val = h.GetSatisfaction(need);
             bool sat = val >= Happiness.satisfiedThreshold;
             string extra = need == "fireplace" ? $"  warmth: {h.warmth:0.0}" : "";
-            sb.AppendLine($"  {need + ":",-11} {OX(sat)}  ({val:0.0}){extra}");
+            // Raw satisfaction value is a dev debug aid — Ctrl+D only; players see just o/x.
+            string valStr = DebugMode.Enabled ? $"  ({val:0.0})" : "";
+            sb.AppendLine($"  {need + ":",-11} {OX(sat)}{valStr}{extra}");
         }
         sb.AppendLine($"  {"housing:",-11} {OX(h.house)}");
         sb.AppendLine($"  {"furnishing:",-11} +{h.furnishingScore:0.0}");

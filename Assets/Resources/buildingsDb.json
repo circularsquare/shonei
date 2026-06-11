@@ -289,7 +289,10 @@
         "fuelCapacity": 5,
         "fuelBurnRate": 1.0,
         "isLightSource": true,
+        "lightIntensity": 0.88,
+        "lightInnerRadius": 1,
         "lightOuterRadius": 9,
+        "lightCenterFlatten": 0.6,
         "sortingOrder": 40,
         "category": "structures"
     },{
@@ -332,8 +335,7 @@
         "description": "mice who sit here gain warmth and happiness",
         "nx": 3, "ny": 1,
         "ncosts": [
-            { "name": "wood", "quantity": 10 },
-            { "name": "stone", "quantity": 4 }
+            { "name": "wood", "quantity": 10 }
         ],
         "depth": 0,
         "isBuilding": true,
@@ -346,7 +348,10 @@
         "fuelCapacity": 10,
         "fuelBurnRate": 4.0,
         "isLightSource": true,
-        "lightIntensity": 0.85,
+        "lightIntensity": 0.9,
+        "lightInnerRadius": 0,
+        "lightOuterRadius": 10,
+        "lightCenterFlatten": 1,
         "sortingOrder": 40,
         "socialWhenShared": true,
         "activeStartHour": 16,
@@ -645,11 +650,6 @@
         "depleteAt": 100,
         "interiorTiles": [
             { "dx": 0, "dy": 0 }
-        ],
-        "doors": [
-            { "dx": 0, "dy": 0, "side": "top" },
-            { "dx": 0, "dy": 0, "side": "left" },
-            { "dx": 0, "dy": 0, "side": "right" }
         ],
         "tileRequirements": [
             { "dx": 0, "dy": 1, "mustNotBePlant": true }

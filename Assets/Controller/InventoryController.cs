@@ -184,12 +184,7 @@ public class InventoryController : MonoBehaviour {
         if (itemDisplayGo == null) return;
         itemDisplayGo.SetActive(IsVisibleInTree(item));
 
-        ItemDisplay itemDisplayComp = itemDisplayGo.GetComponent<ItemDisplay>();
-        if (itemDisplayComp.itemText != null) itemDisplayComp.itemText.text = item.name;
-        if (itemDisplayComp.quantityText != null)
-            itemDisplayComp.quantityText.text = ItemStack.FormatQ(globalInventory.Quantity(item), item);
-
-        itemDisplayComp.SetTargetDisplay(targets[item.id]);
+        itemDisplayGo.GetComponent<ItemDisplay>().Refresh();
 
         if (item.parent != null){
             UpdateItemDisplay(item.parent);

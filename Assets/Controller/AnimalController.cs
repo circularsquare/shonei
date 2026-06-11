@@ -39,6 +39,11 @@ public class AnimalController : MonoBehaviour{
     private float prevTickAccumulator = 0f;
     private bool jobCountsInitialized = false;
 
+    // Building type names that have ever been constructed this colony (gameplay path). Drives the
+    // one-way building gate on jobs (Job.unlockedByBuilding) — see IsJobVisible / RegisterBuildingBuilt.
+    // Persisted via WorldSaveData.buildingsEverBuilt; demolishing a building never removes its entry.
+    private readonly HashSet<string> builtTypes = new HashSet<string>();
+
     public float avgHappiness = 0f;
     public int totalHousingCapacity = 0;
     public int populationCapacity = 0;
@@ -208,6 +213,7 @@ public class AnimalController : MonoBehaviour{
         pendingAnimals = 0;
         rescuePromptShown = false;
         colonyReady = false;
+        builtTypes.Clear();
     }
 
     // Compacts animals[] in place, removing any flagged pendingDeath (set by
@@ -412,11 +418,12 @@ public class AnimalController : MonoBehaviour{
         }
     }
 
-    // True if this job should appear in the jobs panel right now.
-    // Unlocked by default unless the job is flagged defaultLocked AND its gating
-    // tech is not currently unlocked.
+    // True if this job should appear in the jobs panel right now. Ungated jobs always show.
+    // A defaultLocked job is revealed by EITHER its one-way building gate (the gating building
+    // has ever been built) OR its gating tech being currently unlocked.
     bool IsJobVisible(Job job){
         if (!job.defaultLocked) return true;
+        if (job.unlockedByBuilding != null) return builtTypes.Contains(job.unlockedByBuilding);
         ResearchSystem rs = ResearchSystem.instance;
         return rs != null && rs.IsJobUnlocked(job.name);
     }
@@ -427,6 +434,15 @@ public class AnimalController : MonoBehaviour{
         GameObject textDisplayGo = Instantiate(JobDisplay, jobsPanel.transform);
         textDisplayGo.GetComponent<TMPro.TextMeshProUGUI>().text = job.name + ": " + (GetJobCount(job)).ToString();
         textDisplayGo.name = "JobCount_" + job.name;
+
+        // The "none" job (id 0) is just the leftover mice with no assignment — there's
+        // nothing to add/remove, so hide its +/- buttons.
+        if (job.id == 0){
+            Transform addBtn = textDisplayGo.transform.Find("Button_Add");
+            Transform subBtn = textDisplayGo.transform.Find("Button_Subtract");
+            if (addBtn != null) addBtn.gameObject.SetActive(false);
+            if (subBtn != null) subBtn.gameObject.SetActive(false);
+        }
     }
 
     // Called from ResearchSystem.ApplyEffect when a tech unlocks a job.
@@ -437,6 +453,41 @@ public class AnimalController : MonoBehaviour{
         if (job == null) { Debug.LogWarning($"UnlockJob: unknown job '{jobName}'"); return; }
         if (!jobCountsInitialized) return;
         AddJobRow(job);
+    }
+
+    // Called from Blueprint.Complete each time a building finishes construction (gameplay path,
+    // not load/worldgen). Records the type permanently and reveals any job whose one-way building
+    // gate it satisfies. Idempotent — the first build of each type does the work; repeats no-op.
+    public void RegisterBuildingBuilt(string buildingName){
+        if (string.IsNullOrEmpty(buildingName)) return;
+        if (!builtTypes.Add(buildingName)) return; // already recorded
+        foreach (Job job in Db.jobs)
+            if (job != null && job.unlockedByBuilding == buildingName)
+                UnlockJob(job.name);
+    }
+
+    // Rebuilds builtTypes on load. Seeds from the persisted set, then unions in every structure
+    // present in the save — so old saves (no buildingsEverBuilt field) still reveal a building-gated
+    // job when its building is already standing. Both sources only add; the one-way invariant holds.
+    public void RestoreBuiltTypes(string[] saved, StructureSaveData[] structures){
+        builtTypes.Clear();
+        if (saved != null)
+            foreach (string n in saved) if (!string.IsNullOrEmpty(n)) builtTypes.Add(n);
+        if (structures != null)
+            foreach (StructureSaveData s in structures) if (s != null && !string.IsNullOrEmpty(s.typeName)) builtTypes.Add(s.typeName);
+        // Reveal satisfied building-gated job rows, mirroring how ResearchSystem.ReapplyAllEffects
+        // re-adds tech-gated rows on load. No-op before the panel exists (AddJobCounts picks them up).
+        foreach (Job job in Db.jobs)
+            if (job != null && job.unlockedByBuilding != null && builtTypes.Contains(job.unlockedByBuilding))
+                UnlockJob(job.name);
+    }
+
+    // Snapshot for save. Empty when nothing gate-relevant has been built (compact-when-empty).
+    public string[] BuiltTypesSnapshot(){
+        if (builtTypes.Count == 0) return null;
+        string[] arr = new string[builtTypes.Count];
+        builtTypes.CopyTo(arr);
+        return arr;
     }
 
     // Called from ResearchSystem.RevertEffect when a tech is forgotten.

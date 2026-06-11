@@ -21,7 +21,7 @@ public class StoragePanel : MonoBehaviour {
     // entire lifetime — rebinding to the current inv on each Show() instead of rebuilding.
     // Db.items is stable (loaded once from JSON at startup), so cached rows never need
     // structural invalidation. Click cost drops from ~600–800 GO instantiations to ~46
-    // SetActive + LoadAllowed calls. See SPEC-ui §StoragePanel for the contract.
+    // SetActive + Refresh calls. See SPEC-ui §StoragePanel for the contract.
     private Dictionary<int, GameObject> allowDisplayGos = new Dictionary<int, GameObject>();
     private bool _allowTreeBuilt = false;
     private List<GameObject> slotGos = new List<GameObject>();
@@ -150,7 +150,11 @@ public class StoragePanel : MonoBehaviour {
     // so parent rows always exist by the time a child needs to look up its parent.
     private void BuildAllowTreeOnce() {
         if (_allowTreeBuilt) return;
-        RectTransform panelRoot = allowContainer.GetComponent<RectTransform>();
+        // Rebuild from the whole panel root (not allowContainer) on collapse/expand: the
+        // outer wood-frame's ContentSizeFitter wraps the tree, so it's an ancestor that must
+        // re-measure too. Rebuilding only allowContainer leaves the frame a frame behind —
+        // the visible "size catches up late" lag. Matches what Show() rebuilds. See LayoutUtil.
+        RectTransform panelRoot = GetComponent<RectTransform>();
 
         foreach (Item item in Db.items) {
             if (item == null) continue;
@@ -210,7 +214,7 @@ public class StoragePanel : MonoBehaviour {
             bool visible = compat && isDiscovered && IsVisibleInAllowTree(item);
             if (go.activeSelf != visible) go.SetActive(visible);
 
-            display.LoadAllowed();
+            display.Refresh();
         }
     }
 

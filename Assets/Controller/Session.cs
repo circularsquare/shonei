@@ -15,10 +15,12 @@ public static class Session {
     public static bool   LoggedIn => !string.IsNullOrEmpty(Token);
 
     // Folder/key segment identifying the active account for per-account LOCAL storage
-    // (SaveStore.SaveDir, SaveSyncIndex markers). The logged-in username, or ".guest"
-    // when logged out — the leading dot can't collide with a real username (the server's
-    // usernameRe forbids '.'), so the guest space can never alias an account's folder.
-    public static string StorageScope => LoggedIn ? Username : ".guest";
+    // (SaveStore.SaveDir, SaveSyncIndex markers). The username, or ".guest" when none —
+    // the leading dot can't collide with a real username (the server's usernameRe
+    // forbids '.'), so the guest space can never alias an account's folder.
+    // Keyed off Username rather than LoggedIn so a mid-game token expiry
+    // (ExpireToken) doesn't silently relocate subsequent saves to the guest folder.
+    public static string StorageScope => string.IsNullOrEmpty(Username) ? ".guest" : Username;
 
     const string PrefToken = "session.token";
     const string PrefUser  = "session.username";
@@ -49,6 +51,23 @@ public static class Session {
             PlayerPrefs.SetString(PrefToken, token);
             PlayerPrefs.Save();
         }
+    }
+
+    // Username from the remembered login, for pre-filling the login form even after
+    // the token itself has lapsed. Empty when nothing is remembered.
+    public static string RememberedUsername => PlayerPrefs.GetString(PrefUser, "");
+
+    // True when a login is persisted to PlayerPrefs ("remember me" was on).
+    public static bool IsRemembered => !string.IsNullOrEmpty(PlayerPrefs.GetString(PrefToken, ""));
+
+    // The server rejected our token (401 mid-session: TTL lapsed or secret rotated).
+    // Drops the token but KEEPS the username, so local storage stays scoped to the
+    // account (see StorageScope) and the login form can pre-fill. Distinct from
+    // Logout, which is the player explicitly walking away from the account.
+    public static void ExpireToken() {
+        Token = null;
+        PlayerPrefs.DeleteKey(PrefToken);
+        PlayerPrefs.Save();
     }
 
     public static void Logout() {

@@ -330,6 +330,17 @@ login front-end. `TradingClient.playerName` is now `Session.Username` (with an
 editor-only dev fallback when running Main standalone) — used to identify which
 side of a fill is this player. Full roadmap: `plans/account-system.md`.
 
+**Sliding renewal + expiry.** `POST /refresh` (bearer auth) trades a still-valid
+token for a fresh full-TTL one; the menu calls it silently at startup
+(`MenuController.SilentRefresh`), so a player active at least once per TTL never
+re-types a password. Refresh failure is a deliberate no-op (the old token keeps
+working) — only a real 401 from the save/WS paths kills a session. On a mid-game
+401 `SaveSync` calls `Session.ExpireToken()` (drops the token, KEEPS the username
+so `StorageScope` doesn't flip to `.guest` mid-session) and raises `OnAuthExpired`
+→ in-game `EventFeed` alert (via `SaveSystem`), menu bounce-to-login
+(`MenuController`). The login form pre-fills the last username; an expired
+remembered token also lands there via `Session.LoadRemembered`'s validity check.
+
 ### Account-owned cloud saves
 
 Saves belong to the logged-in account, mirrored to the server. **The local file
@@ -360,7 +371,13 @@ independent local slot sets *and* sync lineages. Conflict status is **rev-based*
 `savedAt` is display/tiebreak only. `MenuLoadPanel` async-merges local + cloud into
 one badged row per slot (`SaveSync.SyncStatus`: synced/local/cloud/cloud-newer/conflict/
 update-needed); cloud picks download to disk then boot the normal load path. Continue is
-cloud-aware. A save whose `saveVersion` exceeds this build is refused on download. The
+cloud-aware. A conflict row prompts three-way **cloud / local / both**
+(`MenuLoadPanel.KeepBoth`): "both" sets the local divergence aside as
+`"<slot> local <date>"` (rename, sync marker removed — independent lineage) and adopts
+the cloud copy under the original name, so the cloud rev lineage stays put and nothing
+is lost; the list refreshes instead of booting. The third button is
+`ConfirmationPopup.altButton` — assigned only in Menu.unity (Main's popup stays
+two-button; `Show` degrades gracefully when alt is unassigned). A save whose `saveVersion` exceeds this build is refused on download. The
 **in-game** `SaveMenuPanel` shows a simpler **network-free** per-row badge
 (`SaveSync.LocalBadge`: synced/syncing/local/offline) from the local marker only —
 cross-device status is a menu concern — refreshed live via `OnStateChanged`.
@@ -473,9 +490,43 @@ the `/4` spread means a refined good's `defaultPrice` must clear ~4× the player
 input cost before exporting it turns a profit. (See `shonei-server/CLAUDE.md`,
 which is authoritative for server mechanics.)
 
-**Stock dynamics:** `startFarming()` ticks every 10 s, adjusting stock toward
-`defaultStock`. Low stock → gains; excess stock → losses. Max gain/loss per tick
-configurable per trader.
+**Stock is the single source of truth** (`bots.go`). Price is a pure function of
+real `stock`; nothing sets price (or stock) directly. Each farming tick (10 s)
+stock is shifted by two additive forces, plus fills — so the quote only moves
+because supply moved, and never jumps discontinuously:
+- **Mean-reversion speed (`FarmingRateScale`, all traders):** only this fraction
+  (0.125) of the full `stockDelta` is applied each tick; the sub-fen remainder is
+  carried in `farmAccum` so the slow pull isn't lost to integer rounding (which
+  would leave a dead zone near target). At 0.125 a +100% supply shock decays back
+  to ~+10% over **~2 h** of real time for a typical trader (was ~15 min at 1.0).
+  One knob for reversion speed; `traders.json` gain/loss stay as relative rates.
+- **Seasonal swing (crops only):** shifts the *farming target* stock reverts
+  toward (`currentTarget = defaultStock × (1 + offset)`). The offset is an
+  asymmetric sawtooth — a linear ramp-up from −20% to +40% across a quarter-year
+  harvest window (stock accumulates → cheaper), then a slow linear decline back
+  to −20% over the rest of the year. Period = one player year at 1×
+  (`SeasonalYearSeconds = ticksInDay 480 × daysInYear 24 = 11520 s`); **only the
+  frequency is shared with player time** — the phase is wall-clock-anchored,
+  deliberately *not* aligned to any player's in-game season. Per-crop
+  `harvest_phase` (in `traders.json`) staggers crops so they don't all glut at once.
+  Note: because the seasonal swing is tracked through the (now slow) farming pull,
+  realized stock **lags and undershoots** the target swing — e.g. a grain trader
+  realizes ~+30%/−3% against the +40%/−20% target (`TestSeasonalSwingDamping`).
+- **Noise (all traders):** a small random supply shock added to stock each tick
+  (`N(0, NoiseKickFactor × maxStockGain)`, ~1% of stock per tick). Farming's
+  mean-reversion accumulates it into a *stationary* spread of ~10% of the
+  no-noise stock — an Ornstein-Uhlenbeck process (same idea as the wind OU). The
+  kick→spread amplification depends on the reversion speed, so `NoiseKickFactor`
+  is **tuned by simulation** (`TestNoiseStationarySpread`), not derived — retune
+  there if the farming rate **or** `FarmingRateScale` changes.
+- A bot re-quotes every tick (stock moves every tick now). Bot re-quotes don't
+  broadcast (only fills do), so this adds no client traffic.
+
+**Stock dynamics:** `startFarming()` ticks every 10 s, shifting stock toward the
+(seasonal) target. Low stock → gains; excess stock → losses. Max gain/loss per
+tick configurable per trader. The same farming pull is what damps the noise into
+its ~10% stationary spread, so changing the gain/loss rates also changes the
+noise spread (retune `NoiseKickFactor`).
 
 **Stock persistence:** because price is derived purely from stock, the server
 persists every trader's current `stock` to `traderstock.json` (gitignored) on

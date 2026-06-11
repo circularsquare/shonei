@@ -107,6 +107,11 @@ Practical workflow:
   into the reload gap), then `read_console` before relying on new types.
   (Play-mode toggles are safe — this project disables Reload Domain, so
   entering/exiting Play doesn't reload.)
+- **Cached instance IDs go stale across a domain reload.** Numeric `GetInstanceID()` values
+  captured before a recompile may resolve to `null` (or the wrong object) afterward. In
+  multi-step flows that span a compile, re-resolve objects by name/component each call
+  (`Resources.FindObjectsOfTypeAll(type)` filtered to `scene.IsValid()`, then `Find("child")`)
+  rather than reusing IDs from an earlier call.
 - **CodeDom string interp** (`$"..."`) works fine, but multiline interpolations
   with `:format` specifiers can confuse it — prefer `string.Format` or
   `.ToString("0.00")` for safety.
@@ -138,7 +143,9 @@ should look at home next to ResearchPanel / TradingPanel / RecipePanel.
   user-facing UI scale is the scaler's `scaleFactor`, driven by a settings slider
   (`SettingsManager.uiScale`) — see SPEC-ui.md "UI scaling & text crispness".
 - Pixel Perfect Camera: assets at **16 PPU** (1 art-pixel = 10 canvas-pixels
-  at 1× scale). Sprite import uses Point filtering.
+  at 1× scale). World sprites use Point filtering; UI sprites (ItemIcons +
+  UIChrome atlases, Researches/Skills icons) use **Bilinear** because the UI
+  scale factor is non-integer — see SPEC-rendering.md "Sprite atlasing".
 - Implication: prefer integer sizes that play well with this scale. Multiples
   of 8 are usually safe; 16 is the cleanest "art tile" unit.
 

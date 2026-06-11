@@ -53,14 +53,30 @@ Phase 4 (`graph.Initialize`) and run identically through Phases 5–9.
 
 The game boots into `Menu.unity` (build scene 0), **not** `Main`. `MenuController`
 shows a login/register form (account auth — see SPEC-trading "Accounts & login"),
-then a main menu (Play / New Game / Log Out / Quit) that `SceneManager.LoadScene("Main")`.
+then a main menu (Continue / New Game / Load / Log Out / Quit) that `SceneManager.LoadScene("Main")`.
 The logged-in identity lives in the static `Session`, which survives the scene
 load. "New Game" sets `WorldController.bootNewGame` (a consumed-once static) to
-force generation; "Play" leaves it false → default load-most-recent-or-generate.
-The in-game save menu has a "main menu" button (`SaveMenuPanel.OnClickMainMenu`)
-that returns to `Menu.unity`. **Opening `Main.unity` directly in the editor still
-works** — no `Session`/boot flag → default behaviour + an editor-only dev identity
-for the market. `Tools/Scene` has Open Menu / Open Main / Play From Menu shortcuts.
+force generation; "Continue" loads the freshest save (see below); the Load screen's
+`bootSlot` names an explicit slot. The in-game save menu has a "main menu" button
+(`SaveMenuPanel.OnClickMainMenu`) that returns to `Menu.unity`.
+
+**Continue resolution & cloud prefetch.** When the menu appears (logged in) it warms a
+cached cloud listing — `SaveSync.WarmCloudList()`, state `None/Fetching/Ready/Failed`,
+exposed via `CloudState`/`CachedCloud` + `OnCloudListChanged`. Continue is enabled only
+when there's a *known* save (a local slot, or a confirmed loadable cloud entry); it stays
+disabled while the list is still fetching. At click time Continue compares the newest local
+save's mtime against the freshest cloud save and loads the winner (downloading the cloud
+copy to disk first if it wins). **Load-bearing:** a *failed* cloud fetch is NOT the same as
+"no saves" — if the fetch failed and there's no local save, Continue keeps the player on the
+menu rather than silently generating a new world (the original cloud-save bug conflated the
+two). New-world-on-Continue happens only when we positively know there is nothing anywhere.
+
+**Play always starts in Menu (editor).** `SceneMenu.cs` (`[InitializeOnLoad]`) sets
+`EditorSceneManager.playModeStartScene` to `Menu.unity`, so pressing Play from any open
+scene routes through the real login/Continue flow instead of booting Main into a save-less
+generated world. Toggle off via `Tools/Scene/Start Play in Menu` to iterate on Main directly
+(EditorPrefs-persisted). `Tools/Scene` also has Open Menu / Open Main shortcuts.
+Opening `Main.unity` directly still works for inspection; only *Play* is rerouted.
 
 ### Startup ordering (frame by frame)
 

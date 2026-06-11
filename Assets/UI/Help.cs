@@ -51,8 +51,7 @@ public static class Help {
         { "wet", new Entry("Wet",
             "Wet items decay twice as fast.") },
         { "plantcomfort", new Entry("Comfort",
-            "Plants grow only while temperature and soil moisture are both in range. " +
-            "Outside it, growth pauses.") },
+            "Plants grow only while temperature and soil moisture are in comfortable range.") },
     };
 
     // Inline markup appended after a stat line in an InfoView text blob. Renders the shared

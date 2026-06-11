@@ -30,10 +30,31 @@ public class MenuController : MonoBehaviour {
     void Start() {
         Session.LoadRemembered();
         RefreshPanels();
+        // A 401 from the save-sync pump while the menu is up (e.g. a retrying upload
+        // on a dead token) must bounce the UI back to the login form.
+        SaveSync.OnAuthExpired += RefreshPanels;
+        if (Session.LoggedIn) StartCoroutine(SilentRefresh());
     }
 
     void OnDestroy() {
         SaveSync.OnCloudListChanged -= RefreshContinueButton;
+        SaveSync.OnAuthExpired -= RefreshPanels;
+    }
+
+    // Sliding session renewal: trade the remembered (still-valid) token for a fresh
+    // full-TTL one whenever the menu loads, so an active player never re-types their
+    // password — only a 30+ day absence lands back on the login form. Failure is a
+    // deliberate no-op: the current token keeps working, and a server-side rejection
+    // (secret rotation, editor local/prod toggle mid-remember) must NOT log the
+    // player out here — the WS/save 401 paths surface real auth failures.
+    IEnumerator SilentRefresh() {
+        string old = Session.Token;
+        yield return AuthClient.Refresh(old, (ok, name, token, err) => {
+            // Guard: the player may have logged out (or re-logged) while this was in flight.
+            if (!ok || Session.Token != old) return;
+            // Don't persist a token the player chose not to remember.
+            Session.SetLogin(name, token, remember: Session.IsRemembered);
+        });
     }
 
     // Tab cycles focus between the username and password fields while the login form
@@ -59,6 +80,14 @@ public class MenuController : MonoBehaviour {
         if (mainPanel)  mainPanel.SetActive(loggedIn);
         if (loadPanel)  loadPanel.SetActive(false);
         if (loggedIn && loggedInLabel) loggedInLabel.text = Session.Username;
+
+        // Pre-fill the username on the login form: a lapsed session keeps its name
+        // (Session.ExpireToken), and a remembered-but-expired login keeps the pref —
+        // either way only the password needs typing again.
+        if (!loggedIn && usernameInput != null && string.IsNullOrEmpty(usernameInput.text)) {
+            usernameInput.text = !string.IsNullOrEmpty(Session.Username)
+                ? Session.Username : Session.RememberedUsername;
+        }
 
         RefreshContinueButton();
         // Warm the cloud listing as soon as the menu shows so the Continue button can be

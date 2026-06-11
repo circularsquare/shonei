@@ -26,6 +26,7 @@ Shader "Hidden/LightCircle" {
             float  _LightHeight;       // Z offset above sprite plane for NdotL angle
             float  _LightSortBucket;   // this light's bucket value (SortBucketUtil scheme; see LightSource.sortBucket)
             float  _AmbientNormal;     // minimum NdotL floor (softens back-face darkness)
+            float  _CenterFlatten;     // 0 = raw NdotL hot-spot; 1 = flat center that still respects normals (see LightSource.centerFlatten)
             // Global ramp params (set once per frame by LightPass).
             // _SortRampRange         = sort-delta range (in normalized bucket units) over
             //                         which the effective height ramps, on the behind side,
@@ -120,7 +121,20 @@ Shader "Hidden/LightCircle" {
                 float ambientFloor = _AmbientNormal;
 
                 float3 toLight = normalize(float3(_LightWorldPos.xy - IN.worldPos.xy, -effectiveHeight));
-                float  ndotl   = max(ambientFloor, dot(normal, toLight));
+                // Center-flatten (respects normals, removes the distance hot-spot): divide the
+                // raw NdotL by the flat-surface response (-toLight.z — what a flat camera-facing
+                // patch gets at this distance) so a flat surface reads uniformly across the disc
+                // instead of peaking under the light. Normals still modulate: faces toward the
+                // light brighten up to hiCeil, recesses/away-facing normals darken. The ceiling
+                // scales with _CenterFlatten so flattening also re-opens the highlight range that
+                // a flat clamp would otherwise remove — restoring normal "pop" without a separate
+                // knob. At _CenterFlatten = 0 both collapse (divisor 1, ceiling 1) → raw NdotL.
+                // The 0.2 floor on flatRef keeps the divide stable far out and in the in-front
+                // silhouette-block branch (where -toLight.z < 0).
+                float flatRef = max(0.2, -toLight.z);
+                float hiCeil  = lerp(1.0, 1.3, _CenterFlatten);   // highlight headroom grows with flatten
+                float ndotl   = min(hiCeil, dot(normal, toLight) / lerp(1.0, flatRef, _CenterFlatten));
+                ndotl = max(ambientFloor, ndotl);
 
                 return float4(saturate(_LightColor.rgb * (_Intensity * falloff * ndotl)), 1.0);
             }

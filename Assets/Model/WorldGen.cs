@@ -762,6 +762,14 @@ public static class WorldGen {
             candidates.Remove(startX);
         }
 
+        // Default: DROP any worm that rolled a left-of-spawn start rather than relocating
+        // it — so excluding the left genuinely thins the worm count instead of packing the
+        // same number onto the right. (A left-start worm carves downward from the surface
+        // and can chasm the corridor to the x=0 market; see SPEC-worldgen.) Left starts are
+        // already a minority of eligible columns, so this trims the count only modestly.
+        if (!cfg.AllowWormsLeftOfSpawn)
+            starts.RemoveAll(s => s < leftBound);
+
         // Walk each worm. Initial xDir is forced outward if the start sits right at
         // the spawn buffer so the first step doesn't immediately bounce.
         int wormMinSteps = cfg.WormMinSteps;

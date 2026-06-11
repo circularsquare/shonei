@@ -11,7 +11,7 @@
 | -5 | Water overlay sprite (`WaterController`) — sits behind tiles so the bleed-into-solid-neighbour pixels (see Water Rendering §) only show through the tile sprite's transparent bevel gaps. Above the background wall so cave water still reads against dirt. |
 | 0..−4 | Tile bodies (chunked mesh per chunk × type — see §Tile body rendering). Within a chunk, all tiles of one type share one `MeshRenderer` at `sortingOrder = −rank(type)`, ranks 0..k−1 ascending by tile-type id (dirt 0, sand −1, limestone −2, granite −3, slate −4). Lower-id wins the soft-edge contest — its overhang draws on top of higher-id Main extensions. |
 | 1 | Roads (depth-3 structures) |
-| 2 | Tile snow cover (`SnowAccumulationSystem`). Sits above the tile body so accumulated snow covers the underlying ground; on roaded tiles snow draws on top, reading as a snow-covered road. Mutually exclusive at runtime with the grass overlay (snow accumulation snapshots and clears the overlay mask), so the ordering between snow (2) and overlay (11) doesn't visually matter. |
+| 2 | Tile snow cover (`SnowAccumulationSystem` flag; meshed by `TileMeshController.BuildSnowGeometry` from the `snow` overlay atlas). Sits above the tile body so accumulated snow covers the underlying ground; on roaded tiles snow draws on top, reading as a snow-covered road. The per-tile inverted-cardinal mask decorates the **top plus any exposed (open-air) left/right face** — so a cliff-edge block shows snow clinging to its open side, not just a flat top line; bottom is never decorated (the snow atlas has no underside art). Exposed-side snow re-bakes via `OnTileTypeChanged`'s 3×3 mark when a neighbour is mined. Mutually exclusive at runtime with the grass overlay (snow accumulation snapshots and clears the overlay mask), so the ordering between snow (2) and overlay (11) doesn't visually matter. |
 | 5 | Power shafts (depth-4 structures) — render behind buildings so shafts read as wall-mounted plumbing |
 | parent − 1 | Power port stubs (`PortStubVisuals` child SR, one below the parent building). Also: flywheel wheel — rendered behind the housing so the spokes peek through. |
 | 10 | Buildings (depth-0 structures) |
@@ -22,13 +22,12 @@
 | 15 | Platforms (depth-1 structures); also clock hand |
 | 17 | Floor items resting on a platform's solid top (computed — platform +2) |
 | parent + 1 | Items in storage display (drawer stacks, crate placeholder, tank fill, bookshelf fill) — `Inventory` ctor takes `parentSortingOrder` from the owning `Building` (e.g. drawer at 10 → stacks at 11). Falls back to 30 when no parent is supplied (test fixtures only). |
-| 40 | Foreground structures (depth-2: stairs, ladders) |
+| 40 | Foreground structures (depth-2: stairs, ladders, torches, fireplaces) |
 | 50 | Animal paper-doll parts + clothing — all share order 50. The root `SortingGroup` (order `50 + id%15`) sorts each mouse as a unit; parts layer within the mouse by Z offset in the clips. Per-part `sortingOrder` is safe *if kept in 48–99* (bucket 4) — SRP Batcher batches by shader so reordering same-atlas parts within the group doesn't add SetPass; leaving the 48–99 band would move a part to another lighting bucket. |
 | 60 | Plants |
-| 64 | Light-source buildings (torch, fireplace) — per-type override via `StructType.sortingOrder`, sits above animals/plants so `LightSource` (auto-detect) front-lights them |
 | 65 | Falling items (mid-air animation) |
 | 70 | Floor items resting on solid dirt (or fallback when no surface is detected below) |
-| 49 | Blueprint ghost body — just below the animal band (50..64) so blueprints read in front of most structures (buildings, platforms, ladders) but tuck behind mice. Plants (60) / torches (64) still draw in front. Constant `Blueprint.GhostSortingOrder`. |
+| 49 | Blueprint ghost body — just below the animal band so blueprints read in front of most structures (buildings, platforms, ladders, torches at 40) but tuck behind mice. Plants (60) still draw in front. Constant `Blueprint.GhostSortingOrder`. |
 | 101 | Blueprint frame overlay (unlit, sliced) — drawn by the separate Unlit overlay camera, so it stays on top of the world (incl. mice) regardless of the ghost body's order. |
 | 200 | Build preview (mouse cursor ghost) |
 
@@ -48,7 +47,7 @@ Structures render in five depth layers per tile. Each tile holds `Structure[] st
 
 Slot index ≠ visual layering. Power shafts live in slot 4 (the highest array index) but render at sortingOrder 5 — *behind* buildings/platforms/foreground but in front of roads. The dedicated slot lets shafts coexist on the same tile as a building, ladder, road, etc.
 
-Depth-based sortingOrder is the default; individual `StructType`s can override via the JSON `sortingOrder` field (e.g. torch=64, fireplace=64). Plant overrides to 60 in its constructor.
+Depth-based sortingOrder is the default; individual `StructType`s can override via the JSON `sortingOrder` field. Plant overrides to 60 in its constructor.
 
 `tile.building` is a convenience property: `structs[0] as Building` (Plant extends Building, so both are accessible through it). Multiple layers can coexist on the same tile. `GetBlueprintAt(int depth)` / `SetBlueprintAt(int depth, Blueprint bp)` directly index into `blueprints[]`.
 
@@ -241,33 +240,37 @@ includes a menu item to set this.
 
 **Atlases** (all V1, under `Assets/SpriteAtlases/`):
 
-| Atlas | Packables | Notes |
-|-------|-----------|-------|
-| `Animals.spriteatlas` | `Resources/Sprites/Animals/` (recursive) | Mouse paper-doll parts + Clothing. Densest unbatched cluster before atlasing. |
-| `Buildings.spriteatlas` | `Resources/Sprites/Buildings/` (recursive) | Includes `furnishings/`. |
-| `Plants.spriteatlas` | `Resources/Sprites/Plants/Decorative/` + `Plants/Split/` | Excludes `Plants/Sheets/` (editor-input only — split into Plants/Split by `PlantSheetSplitter`). |
-| `FloorItems.spriteatlas` | `Resources/Sprites/Items/split/` (filtered) | Excludes `icon.png` files (owned by `ItemIcons` atlas to avoid double-claim). |
-| `ItemIcons.spriteatlas` | `Resources/Sprites/Items/split/*/icon.png` | UI inventory/recipe icons. |
-| `UIChrome.spriteatlas` | `Resources/Sprites/Misc/` | Buttons, frames, scrollbars, dividers, status indicators. |
+| Atlas | Packables | Filter | Notes |
+|-------|-----------|--------|-------|
+| `Animals.spriteatlas` | `Resources/Sprites/Animals/` (recursive) | Point | Mouse paper-doll parts + Clothing. Densest unbatched cluster before atlasing. |
+| `Buildings.spriteatlas` | `Resources/Sprites/Buildings/` (recursive) | Point | Includes `furnishings/`. |
+| `Plants.spriteatlas` | `Resources/Sprites/Plants/Decorative/` + `Plants/Split/` | Point | Excludes `Plants/Sheets/` (editor-input only — split into Plants/Split by `PlantSheetSplitter`). |
+| `FloorItems.spriteatlas` | `Resources/Sprites/Items/split/` (filtered) | Point | Excludes `icon.png` files (owned by `ItemIcons` atlas to avoid double-claim). |
+| `ItemIcons.spriteatlas` | `Resources/Sprites/Items/split/*/icon.png` | Bilinear | UI inventory/recipe icons. |
+| `UIChrome.spriteatlas` | `Resources/Sprites/Misc/` minus world overlays | Bilinear | Buttons, frames, scrollbars, dividers, status indicators. |
+| `WorldOverlays.spriteatlas` | World-rendered `Misc/` names (explicit list in builder) | Point | tileselect, harvestselect, blueprint frames, cursor, whiteborder, … — SpriteRenderer overlays that must stay crisp. |
 
 All atlases share standard settings: padding 2, no rotation, no tight
-packing, point filter, uncompressed RGBA, max texture 4096. Pixel-art
-friendly.
+packing, uncompressed RGBA, max texture 4096. **Filter mode is per render
+context**: world atlases sample Point (pixel-art crispness); UI atlases
+sample Bilinear because the UI scales by a non-integer settings factor
+(`SettingsManager.uiScale`), where Point shimmers/drops pixels. The builder
+also syncs each source texture's *importer* filterMode to its atlas (and
+Bilinear for un-atlased UI icons in `Sprites/Researches/` + `Sprites/Skills/`)
+so editor previews and unpacked fallbacks match.
 
 **Builder script** (`Assets/Editor/GameplayAtlasBuilder.cs`): single source
-of truth for atlas creation. Menu items:
+of truth for atlas creation. One menu item — `Tools → Rebuild Atlases` —
+rebuilds everything; `AlwaysOnAtlas` packer mode is auto-enforced on editor
+load (`[InitializeOnLoad]`). Adding a new sprite under a source folder gets
+picked up automatically on the next rebuild.
 
-- `Tools → Atlases → Build Animals` / `Build Buildings` / `Build Plants` /
-  `Build FloorItems` / `Build ItemIcons` — creates or refreshes the named
-  atlas. Folder-based packables, so adding a new sprite under the source
-  folder gets picked up automatically on the next pack.
-- `Tools → Atlases → Set Sprite Packer Mode V1` — sets the project's
-  packer mode to `AlwaysOnAtlas` (run once per fresh clone).
-
-To add a new atlas: add one menu method calling `BuildAtlas(name, LoadFolders(...))`
-(or `LoadSpritesUnderFiltered` / `LoadSpritesUnderMatching` for per-file
-filtering). All atlases share the same `StandardPacking` / `StandardTexture`
-/ `StandardPlatform` settings.
+To add a new atlas: add an entry to the `builds` roster in `RebuildAll`
+(use `LoadSpritesUnderFiltered` / `LoadSpritesUnderMatching` for per-file
+filtering). Ordering invariants inside `RebuildAll`: importer syncs run
+**before** any packing, and `PackAtlases` is the **last** asset operation —
+a `SaveAndReimport` or `AssetDatabase.Refresh` after packing silently
+invalidates packed data (`spriteCount` drops to 0, no console error).
 
 **Sprite shader compatibility** (`Sprite.shader`): for SRP Batcher to
 engage on sprites, `_RendererColor` must sit **outside** `UnityPerMaterial`

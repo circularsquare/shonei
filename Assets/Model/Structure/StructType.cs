@@ -303,6 +303,10 @@ public class StructType {
     public bool isLightSource {get; set;}
     public float lightIntensity {get; set;}
     public float lightOuterRadius {get; set;}
+    public float lightInnerRadius {get; set;} = 4f; // flat-bright core radius; falloff ramps innerRadius → outerRadius
+    // 0 = raw NdotL hot-spot under the light; 1 = flat-center fill that still respects normals.
+    // Maps to LightSource.centerFlatten. See LightCircle.shader.
+    public float lightCenterFlatten {get; set;} = 0f;
 
     // ── Mechanical power ──────────────────────────────────────────────
     // powerBoost > 1.0 turns this StructType into a power consumer at runtime: when the

@@ -10,6 +10,7 @@ using System.Linq;
 //   Global  — targets visible, toggle hidden (used in the always-visible global inventory panel)
 //   Storage — toggle visible, targets hidden (used in the StoragePanel allow sub-panel)
 //   Market  — targets visible, toggle hidden (used when market overwrites the global panel)
+// Refresh() is the single per-mode content repaint; the tree owners decide visibility, then call it.
 public class ItemDisplay : MonoBehaviour {
     public enum DisplayMode { Global, Storage, Market }
     // Allow state for the tri-state toggle in Storage mode.
@@ -108,6 +109,40 @@ public class ItemDisplay : MonoBehaviour {
         if (targetDownGo != null) targetDownGo.SetActive(showTargets);
         if (targetTextGo != null) targetTextGo.SetActive(showTargets);
         if (toggleGo != null)     toggleGo.SetActive(showToggle);
+    }
+
+    // Single per-mode content repaint. The three tree owners (InventoryController,
+    // StoragePanel, TradingPanel) keep ownership of row *visibility* — their
+    // discovery / class-compat / collapse rules genuinely differ — but all content
+    // refresh dispatches through here, so a new mode extends this switch instead of
+    // growing a fourth bespoke caller-side repaint.
+    public void Refresh() {
+        if (item == null) return; // pre-Start placeholder; all three builders set item eagerly
+        switch (displayMode) {
+            case DisplayMode.Storage:
+                LoadAllowed();
+                break;
+            case DisplayMode.Market: {
+                Inventory market = ResolveMarketInventory();
+                if (market == null) return;
+                if (itemText != null) itemText.text = item.name;
+                if (quantityText != null)
+                    quantityText.text = ItemStack.FormatQ(market.Quantity(item), item);
+                // Groups don't hold meaningful market targets — only leaf items do.
+                if (!item.IsGroup) {
+                    int target = market.targets != null && market.targets.ContainsKey(item)
+                        ? market.targets[item] : 0;
+                    SetTargetDisplay(target);
+                }
+                break;
+            }
+            default: // Global
+                if (itemText != null) itemText.text = item.name;
+                if (quantityText != null)
+                    quantityText.text = ItemStack.FormatQ(GlobalInventory.instance.Quantity(item), item);
+                SetTargetDisplay(InventoryController.instance.targets[item.id]);
+                break;
+        }
     }
 
     private GameObject LookupDisplayGo(int itemId) {
@@ -237,7 +272,7 @@ public class ItemDisplay : MonoBehaviour {
     }
 
     // Refreshes the allow button sprite to reflect the current tri-state across all selected inventories.
-    public void LoadAllowed(){
+    private void LoadAllowed(){
         if (item == null) return; // Start() hasn't run yet
         // _allowImage may not be cached yet if StoragePanel sets item before Start() runs; try to fetch it now
         if (_allowImage == null && toggleGo != null) _allowImage = toggleGo.GetComponent<Image>();

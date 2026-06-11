@@ -24,7 +24,9 @@ using UnityEngine;
 //
 // Accumulation (only fires when conditions hold):
 //   • currently snowing (WeatherSystem.snowAmount > 0)
-//   • temperature < AccumThresholdC (0 °C)
+//   • temperature < AccumThresholdC (0 °C). Note this is colder than the 2 °C
+//     snowfall threshold, so in the 0–2 °C band flakes fall but don't stick —
+//     accumulation only happens around the coldest days of the year (≈ day 21).
 //   • Rng roll: AccumChancePerSecond × snowAmount  → at full snowfall, ~1/10 per
 //     second per tile; light flurries proportionally slower
 //
@@ -34,11 +36,17 @@ using UnityEngine;
 // OverlayGrowthSystem once temps and moisture allow.)
 //
 // Melt (only fires when tile.snow is already true):
-//   • temperature > MeltStartC          → linear ramp
-//   • chance = clamp01((temp - MeltStartC) / (MeltFullC - MeltStartC))
-//   • at MeltFullC (20 °C) and above: 100% chance per second → ~1 second to clear
-//   • at 5 °C: 25% chance per second → ~3 second mean time-to-clear
-//   • at 10 °C: 50% chance per second → ~1.5 second mean time-to-clear
+//   • temperature > MeltStartC          → quadratic ramp
+//   • chance = clamp01( ((temp - MeltStartC) / (MeltFullC - MeltStartC))^2 )
+//   • squaring keeps melt near-zero just above freezing and accelerates it as
+//     the day warms, so snow can survive a cold winter day and only clears once
+//     the afternoon climbs well above freezing. Mean time-to-clear = 1/chance:
+//   • at MeltStartC (1 °C) and below: no melt — snow persists indefinitely
+//   • at 2 °C:  0.25% chance per second → ~400 s mean time-to-clear (~20 in-game hr)
+//   • at 3 °C:  1% per second           → ~100 s
+//   • at 5 °C:  4% per second           → ~25 s
+//   • at 11 °C: 25% per second          → ~4 s
+//   • at MeltFullC (21 °C) and above:   100% per second → ~1 s to clear
 //
 // ── Future extensions ─────────────────────────────────────────────────────
 // • Snow depth (byte) instead of binary, so visuals can show light dusting
@@ -54,9 +62,9 @@ public class SnowAccumulationSystem {
     public static void ResetStatics() { instance = null; }
 
     const float AccumThresholdC      = 0f;        // strictly less than → can accumulate
-    const float MeltStartC           = 0f;        // strictly greater than → starts melting (linearly ramped from here)
-    const float MeltFullC            = 20f;       // at and above → 100% melt chance per tick
-    const float AccumChancePerSecond = 1f / 20f;  // base chance at snowAmount=1; scaled by current intensity
+    const float MeltStartC           = 1f;        // strictly greater than → starts melting (quadratically ramped from here)
+    const float MeltFullC            = 21f;       // at and above → 100% melt chance per tick
+    const float AccumChancePerSecond = 1f / 10f;  // base chance at snowAmount=1; scaled by current intensity
 
     public static SnowAccumulationSystem Create() {
         instance = new SnowAccumulationSystem();
@@ -72,8 +80,11 @@ public class SnowAccumulationSystem {
         float temp        = weather.temperature;
         float snowAmount  = weather.snowAmount;
         bool  canAccum    = snowAmount > 0f && temp < AccumThresholdC;
+        // Quadratic ramp: square the normalized (MeltStartC→MeltFullC) fraction so
+        // melt stays near-zero just above freezing and only ramps up as it warms.
+        float meltRamp    = (temp - MeltStartC) / (MeltFullC - MeltStartC);
         float meltChance  = temp > MeltStartC
-            ? Mathf.Clamp01((temp - MeltStartC) / (MeltFullC - MeltStartC))
+            ? Mathf.Clamp01(meltRamp * meltRamp)
             : 0f;
         // Whole-grid early-exit only if neither direction is possible. Both can
         // be false simultaneously (e.g. exactly 0 °C with no snow falling) — in

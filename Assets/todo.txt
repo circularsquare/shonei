@@ -48,8 +48,11 @@ CONTENT
     - hanging ropes? for building down off cliffsides
     - walls? gates? 
         - rooms? 
-- long term player goals 
+- long term player goals (fable flagged as important)
     - town tiers?
+
+OFFLINE PROGRESS 
+- see offline progress plan
 
 VISUALS
 - lighting 
@@ -57,6 +60,7 @@ VISUALS
     - procedurally generate rocks with normalmaps?
 - wind sway on tarp?
 - update all plants to have blob swaying
+- gradual snow buildup
 
 OPTIMIZATION  
 - plant sway mpb redesign
@@ -111,9 +115,6 @@ tools
 todoship
 
 - review building descriptions
-- review info question marks
-
-- info on "have 6 mice" (how?) (explain pop cap in happiness table, and also in playertask explain building housing?)
 
 - pretty up happiness panel
 - pretty up recipe panel
@@ -127,12 +128,10 @@ clarify which side of burrow sprite is out
     - are icons scaling right?
 - test on laptop
 
-- make some debug info only on debug mode 
-    - test
-    
-- require a path to left edge of world for world gen?
+- method to gather stones from groudn? 
+    - gain limestone randomly from dirt? 
+- be able to mine quarry / digging pit from the side rather than just from the top?
 
-- slow down snow melt?
-- random (+ seasonal) price / stock movements
+- weaken debug light
 
 TODAY

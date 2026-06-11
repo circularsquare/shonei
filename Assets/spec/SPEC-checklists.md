@@ -66,7 +66,7 @@ This is the workflow:
 
 - [ ] **`recipes` array lists every recipe this job can operate.** This is the actual eligibility gate — animals only see recipes their job allows.
 - [ ] **`defaultSkill` propagates to recipes that don't set their own `skill`** ([Db.cs](../Model/Db.cs)). Picking the wrong default silently mislabels XP for every recipe under this job.
-- [ ] **`defaultLocked: true`** needs an unlock entry on some research node, or the job stays hidden forever.
+- [ ] **`defaultLocked: true`** needs a gate or the job stays hidden forever: either a `{"type":"job"}` unlock entry on some research node (tech gate), or an `unlockedByBuilding` building name (one-way build gate). `ValidateJobUnlocks` errors at load if neither is present.
 - [ ] Animals can be assigned to this job somewhere in UI, or it's dead.
 
 ## Adding a new plant (`plantsDb.json`)

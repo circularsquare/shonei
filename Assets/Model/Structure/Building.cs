@@ -194,6 +194,8 @@ public class Building : Structure {
                 var ls = go.AddComponent<LightSource>();
                 ls.baseIntensity = st.lightIntensity;
                 ls.outerRadius   = st.lightOuterRadius;
+                ls.innerRadius   = st.lightInnerRadius;
+                ls.centerFlatten   = st.lightCenterFlatten;
                 ls.reservoir = reservoir;
                 ls.building  = this; // gates burn + emission on this.disabled
                 ls.sunModulated    = true;

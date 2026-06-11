@@ -85,10 +85,35 @@ public class WeatherSystem {
     // never plateauing, and not perpetually lagging either.
     const float windSmoothingRate = 0.225f;
 
-    // Ambient temperature in Celsius, driven by yearly + daily sine waves.
-    // Yearly: peaks midsummer (day 7.5) at ~30°C high, troughs midwinter (day 17.5) at ~5°C high.
-    // Daily: peaks at 2pm, amplitude ±4°C around the daily mean.
+    // ── Temperature-noise OU constants ─────────────────────────────────────
+    // Stepped twice per in-game day (World.Tick). reversion 0.3/step → an
+    // autocorrelation timescale ~1/0.3 ≈ 3 steps ≈ 1.5 days, so warm/cold spells
+    // linger rather than flickering. tempShock is the Uniform(±) half-width; with
+    // reversion it gives stationary variance V = shock²/(6·reversion) ≈ 4 →
+    // std ≈ 2°C. The gentle smoothing below leaves that variance essentially
+    // unchanged (sim-verified), so no shock inflation is needed.
+    const float tempReversion     = 0.3f;
+    const float tempShock         = 2.67f;
+    const float tempSmoothingRate = 0.01f;  // per timer-second; ~0.2-day ease toward target
+
+    // Ambient temperature in Celsius = yearly sine + daily sine + a random
+    // anomaly (see below). Yearly: peaks midsummer (~28°C high), troughs
+    // midwinter (~4°C high). Daily: peaks at 2pm, amplitude ±2.5°C around the mean.
     public float temperature { get; private set; }
+
+    // ── Temperature noise (day-to-day weather variability) ──────────────────
+    // A mean-reverting OU random walk layered on top of the deterministic sines
+    // so otherwise-identical days differ by a few degrees — cold snaps and warm
+    // spells. `targetTempAnomaly` takes an OU step twice per in-game day (driven
+    // from World.Tick); `tempAnomaly` eases toward it each frame so the applied
+    // offset moves continuously rather than jumping at the step. Calibrated for
+    // ~2°C stationary std (typical ±2–4°C, occasional ±6°C). Mean is 0, so this
+    // adds variability without shifting the climate's average. Same two-layer
+    // shape as wind/humidity. The smoothed offset is persisted, so a save/reload
+    // mid cold-snap resumes continuously; on load targetTempAnomaly is re-seeded
+    // to it and the walk carries on. Old saves load 0 (a valid neutral state).
+    public float tempAnomaly { get; private set; }
+    float targetTempAnomaly;
 
     // ── Humidity (rain driver) ─────────────────────────────────────────────
     // Smoothed atmospheric humidity in [0, 1]. `targetHumidity` is the OU
@@ -159,6 +184,9 @@ public class WeatherSystem {
 
     // Called by World.Update() every frame.
     public void Tick(float dt) {
+        // Ease the temperature anomaly toward its OU target before recomputing
+        // temperature, so this frame's reading reflects the smoothed offset.
+        tempAnomaly = Mathf.Lerp(tempAnomaly, targetTempAnomaly, 1f - Mathf.Exp(-dt * tempSmoothingRate));
         UpdateTemperature();
         // Precipitation intensity rises smoothly with humidity across a band
         // centred on rainThreshold — particles fade in before isRaining flips
@@ -201,6 +229,14 @@ public class WeatherSystem {
         // cadence so rain start/stop isn't snapped to hour boundaries.
         bool nowRaining = humidity > rainThreshold;
         if (nowRaining != isRaining) SetRain(nowRaining);
+    }
+
+    // Called by World.Tick twice per in-game day. One OU step of the temperature
+    // anomaly: mean-revert toward 0, then add a uniform shock. The smoothed
+    // `tempAnomaly` (eased each frame in Tick) is what actually offsets temperature.
+    public void StepTemperatureAnomaly() {
+        targetTempAnomaly += -tempReversion * targetTempAnomaly
+                             + Rng.Range(-tempShock, tempShock);
     }
 
     // Called by World.Update() once per in-game hour. Hourly physical effects
@@ -256,8 +292,12 @@ public class WeatherSystem {
     // synthesize a plausible value from the rain flag so the cloud field
     // doesn't disagree with the rain state on the first frame: above-threshold
     // if it was raining, mean otherwise. The walk will take over from there.
-    public void RestoreState(bool rain, float savedHumidity) {
+    public void RestoreState(bool rain, float savedHumidity, float savedTempAnomaly = 0f) {
         isRaining = rain;
+        // Seed the noise offset (and its OU target) before recomputing temperature
+        // so the restored reading includes the persisted anomaly. 0 on old saves.
+        tempAnomaly       = savedTempAnomaly;
+        targetTempAnomaly = savedTempAnomaly;
         UpdateTemperature();
         if (savedHumidity > 0f) {
             humidity = savedHumidity;
@@ -319,9 +359,10 @@ public class WeatherSystem {
         return "Winter";
     }
 
-    // Recalculates temperature from the current world timer.
-    // temperature = 13.5 + 12.5*sin(yearly) + 4*sin(daily)
-    //   yearly peaks at midsummer (day 7.5/20), daily peaks at 2pm (hour 14/24).
+    // Recalculates temperature from the current world timer plus the smoothed
+    // random anomaly.
+    // temperature = 13.5 + 12*sin(yearly) + 2.5*sin(daily) + tempAnomaly
+    //   yearly peaks at midsummer, daily peaks at 2pm (hour 14/24).
     void UpdateTemperature() {
         float timer = World.instance.timer;
         float yearLength = World.ticksInDay * World.daysInYear;
@@ -332,7 +373,7 @@ public class WeatherSystem {
         float yearly = Mathf.Sin(twoPi * yearFrac - Mathf.PI / 4f);   // peaks at day 7.5
         float daily  = Mathf.Sin(twoPi * dayFrac  - 2f * Mathf.PI / 3f); // peaks at hour 14
 
-        temperature = 13.5f + 12.5f * yearly + 3f * daily;
+        temperature = 13.5f + 12f * yearly + 2.5f * daily + tempAnomaly;
     }
 
     void SetRain(bool rain) {

@@ -625,6 +625,9 @@ public class Blueprint {
         // Passive research gain from constructing a tech-gated building.
         // No-op for ungated structures (floors, walls, etc.).
         ResearchSystem.instance?.AddConstructionProgress(structType.name);
+        // One-way building gate: reveals jobs like woodworker (sawmill) / scientist (laboratory).
+        // No-op unless some job's unlockedByBuilding matches this type.
+        AnimalController.instance?.RegisterBuildingBuilt(structType.name);
         ClearBlueprintFromTiles();
         GameObject.Destroy(go);
         if (InfoPanel.instance?.obj == tile) {

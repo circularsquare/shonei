@@ -20,6 +20,11 @@ public class RainParticles : PrecipitationParticles {
 
     protected override float GetIntensity() => WeatherSystem.instance?.rainAmount ?? 0f;
 
+    protected override void ClearParticles() {
+        base.ClearParticles();
+        if (splashPS != null) splashPS.Clear();
+    }
+
     protected override void Update() {
         base.Update();
 

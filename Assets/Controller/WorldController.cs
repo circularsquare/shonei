@@ -195,6 +195,7 @@ public class WorldController : MonoBehaviour {
         if (defaultSetupCoroutine != null) { StopCoroutine(defaultSetupCoroutine); defaultSetupCoroutine = null; }
         WorkOrderManager.instance?.ClearAllOrders();
         EventFeed.instance?.Clear();
+        PrecipitationParticles.ClearAll();   // flush in-flight rain/snow so the new save doesn't keep raining
         isClearing = true;
         // Null all tile.inv refs before destroying structures — prevents Structure.Destroy()
         // → FallIfUnstandable() from spawning stale fall animations during the clear.

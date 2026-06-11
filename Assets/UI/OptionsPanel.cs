@@ -58,6 +58,7 @@ public class OptionsPanel : MonoBehaviour {
 
     [Header("Misc")]
     [SerializeField] Button closeButton;
+    [SerializeField] Button resetDefaultsButton; // wipes all settings back to defaults (not login / save data)
 
     [Header("Controls")]
     [SerializeField] TMP_Text controlsText;
@@ -329,6 +330,15 @@ public class OptionsPanel : MonoBehaviour {
             fontDropdown.onValueChanged.AddListener(OnFontIndex);
         }
         if (closeButton    != null) closeButton.onClick.AddListener(() => gameObject.SetActive(false));
+        if (resetDefaultsButton != null) resetDefaultsButton.onClick.AddListener(OnResetDefaults);
+    }
+
+    // Restore every setting to its built-in default, then re-sync the visible controls.
+    // OnChanged (fired by ResetToDefaults) already re-applies scale/audio/lighting live;
+    // RefreshFromSettings just snaps this panel's sliders/toggles/dropdowns to match.
+    void OnResetDefaults() {
+        SettingsManager.instance?.ResetToDefaults();
+        RefreshFromSettings();
     }
 
     void RefreshFromSettings() {

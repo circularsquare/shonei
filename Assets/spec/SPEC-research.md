@@ -56,7 +56,12 @@ Every animal-side recipe pick site routes through `Recipe.IsEligibleForPicking()
 
 ## Job gating
 
-Jobs flagged `defaultLocked: true` in `jobsDb.json` are hidden until a tech with `{"type":"job","target":"<name>"}` is unlocked. `IsJobUnlocked(name)` returns true when ungated or gating tech is currently unlocked. Reverse index `jobToTechNode` built in `Start()`.
+Jobs flagged `defaultLocked: true` in `jobsDb.json` are hidden until **either** of two gates is satisfied. A defaultLocked job needs at least one (validated by `ValidateJobUnlocks`):
+
+- **Tech gate** (two-way): a tech with a `{"type":"job","target":"<name>"}` unlock. `IsJobUnlocked(name)` returns true when ungated or the gating tech is currently unlocked; re-locks on forget. Reverse index `jobToTechNode` built in `Start()`. Examples: miner, clothier, scribe, smith, cook, runner.
+- **Building gate** (one-way): the job's `unlockedByBuilding` field names a building type whose first construction permanently reveals the job. Lives in `AnimalController` (`builtTypes` set, `RegisterBuildingBuilt` from `Blueprint.Complete`), independent of research. Demolishing the building never re-hides the job. Persisted via `WorldSaveData.buildingsEverBuilt`; `RestoreBuiltTypes` re-derives from the save's structures on load so old saves migrate cleanly. Examples: woodworker (sawmill), scientist (laboratory).
+
+`AnimalController.IsJobVisible` checks the building gate first (if `unlockedByBuilding` is set), else the tech gate.
 
 ## Contextual placement gates
 

@@ -549,6 +549,7 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
                 mpb.SetVector("_LightWorldPos", (Vector4)lp);
                 mpb.SetFloat("_LightHeight",    src.lightHeight);
                 mpb.SetFloat("_LightSortBucket", src.sortBucket);
+                mpb.SetFloat("_CenterFlatten",   src.centerFlatten);
 
                 float d = r * 2f;
                 var matrix = Matrix4x4.TRS(

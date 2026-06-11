@@ -65,9 +65,11 @@ public class HappinessNeedRow : MonoBehaviour {
     //                avg for value needs). Pass "" for rows with no underlying value.
     // tooltipBody:   hover-tooltip body. Live-updated; pass "" to leave the tooltip empty.
     public void Refresh(float averagePoints, string detailText = "", string tooltipBody = "") {
-        avgHappinessText.text = averagePoints.ToString("0.0");
+        avgHappinessText.text = $"{averagePoints:0.0}/{maxPoints:0.0}";
         fillBar.SetFill(Mathf.Clamp01(averagePoints / maxPoints));
-        satisfactionText.text = detailText;
+        // Raw satisfaction average is a dev debug aid — hidden from players, shown in Ctrl+D
+        // debug mode. Refresh runs every tick, so it picks up the toggle within a second.
+        satisfactionText.text = DebugMode.Enabled ? detailText : "";
         if (tooltippable != null) tooltippable.body = tooltipBody;
     }
 }

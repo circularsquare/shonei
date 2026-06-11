@@ -107,16 +107,22 @@ public class MenuLoadPanel : MonoBehaviour {
                 StartCoroutine(DownloadThenBoot(slot, meta));
                 return;
             case SaveSync.SyncStatus.CloudNewer:
-                ConfirmationPopup.Show("cloud copy is newer. load it?\ncancel keeps local",
+                // No "both" here: cloud-newer means local hasn't diverged, so there's
+                // nothing unique to preserve.
+                ConfirmationPopup.Show("cloud copy is newer\nload which?",
                     onConfirm: () => StartCoroutine(DownloadThenBoot(slot, meta)),
                     confirmLabel: "cloud",
-                    onCancel: () => Boot(slot));
+                    onCancel: () => Boot(slot),
+                    cancelLabel: "local");
                 return;
             case SaveSync.SyncStatus.Conflict:
-                ConfirmationPopup.Show("save differs across devices. load cloud?\ncancel loads local",
+                ConfirmationPopup.Show("save differs across devices\nload which?",
                     onConfirm: () => StartCoroutine(DownloadThenBoot(slot, meta)),
                     confirmLabel: "cloud",
-                    onCancel: () => Boot(slot));
+                    onCancel: () => Boot(slot),
+                    cancelLabel: "local",
+                    altLabel: "both",
+                    onAlt: () => StartCoroutine(KeepBoth(slot, meta)));
                 return;
             default: // Synced / LocalOnly / LocalNewer → local is fine
                 Boot(slot);
@@ -145,6 +151,46 @@ public class MenuLoadPanel : MonoBehaviour {
             yield break;
         }
         Boot(slot);
+    }
+
+    // Conflict "keep both": preserve the local divergence as its own slot, then adopt
+    // the cloud copy under the original name — the cloud rev lineage stays where the
+    // server expects it. The set-aside local copy has no cloud counterpart until it's
+    // next played and saved, at which point it uploads as a new slot. Doesn't boot:
+    // the list refreshes showing both rows so the player picks one deliberately.
+    IEnumerator KeepBoth(string slot, SaveSync.CloudMeta meta) {
+        // Download FIRST — if the cloud copy can't be fetched, nothing local is touched.
+        bool ok = false;
+        string json = null, error = null;
+        yield return SaveSync.Download(slot, (s, j, e) => { ok = s; json = j; error = e; });
+        if (!ok) {
+            Debug.LogError("MenuLoadPanel: keep-both download of \"" + slot + "\" failed: " + error);
+            ConfirmationPopup.Show("couldn't download \"" + slot + "\"", null);
+            yield break;
+        }
+
+        // Set the local divergence aside under a dated name. Truncate long bases so the
+        // suffixed name stays well under the server's slot-name cap when it later uploads.
+        string baseName = slot.Length > 40 ? slot.Substring(0, 40) : slot;
+        string copyName = SaveStore.UniqueSlotName(
+            baseName + " local " + System.DateTime.Now.ToString("yyyy-MM-dd"));
+        if (!SaveStore.RenameSlot(slot, copyName)) {
+            ConfirmationPopup.Show("couldn't set aside local copy", null);
+            yield break;
+        }
+        // The copy is an independent lineage — it must not inherit the slot's sync
+        // marker (and any stale marker under its name belongs to a long-gone slot).
+        SaveSyncIndex.Remove(copyName);
+
+        try {
+            System.IO.File.WriteAllText(SaveStore.SlotPath(slot), json);
+            SaveStore.SetAnimalCount(slot, -1);
+            // Marker from the file's actual mtime so the row badges "synced", not "unsynced".
+            SaveSyncIndex.Set(slot, SaveStore.GetSlotModifiedUnix(slot), meta.rev);
+        } catch (System.Exception e) {
+            Debug.LogError("MenuLoadPanel: keep-both failed to materialize \"" + slot + "\": " + e.Message);
+        }
+        Refresh();
     }
 
     // Hand the chosen slot to the Main scene; WorldController.Start consumes bootSlot

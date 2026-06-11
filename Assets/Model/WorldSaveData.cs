@@ -41,6 +41,9 @@ public class WorldSaveData {
     // and cloud cover. 0 on old saves; RestoreState synthesizes a plausible value
     // from isRaining in that case so cloud cover doesn't disagree with rain state.
     public float humidity;
+    // Smoothed temperature noise offset (`WeatherSystem.tempAnomaly`), in °C. 0 on
+    // old saves (a valid neutral state); RestoreState re-seeds the OU target from it.
+    public float tempAnomaly;
     // Global item targets set by the player via ItemDisplay UI (item name → target qty in fen).
     // Only non-default entries (≠ 10000) are stored; absent entries load as default (10000).
     public Dictionary<string, int> globalItemTargets;
@@ -75,6 +78,11 @@ public class WorldSaveData {
     // across a reload — so re-deriving on load made flowers look different. Null on old saves
     // → FlowerController falls back to a fresh worldgen scatter.
     public FlowerSaveData[] flowers;
+    // Building type names ever constructed this colony — drives the one-way building gate on jobs
+    // (Job.unlockedByBuilding, e.g. sawmill → woodworker). Persisted so a job stays revealed after
+    // its building is demolished. Null/absent on old saves → RestoreBuiltTypes re-derives from the
+    // structures currently in the save, so a standing sawmill still reveals woodworker.
+    public string[] buildingsEverBuilt;
 }
 
 public class FlowerSaveData {
@@ -169,6 +177,10 @@ public class StructureSaveData {
     // to produce the substrate's primary product (dirt / sand / clay). null on
     // other structures and on old saves.
     public string capturedTileType;
+    // Digging pit only: the open face it digs toward (0=Up, 1=Left, 2=Right), chosen
+    // at construction and never recomputed. Nullable so old saves (field absent) and
+    // non-pits restore as Up — the original dig-from-the-top behaviour. See DiggingPit.DigDir.
+    public int? digDir;
     // Flywheel only: stored mechanical-power energy. 0 on non-flywheels / old saves.
     // Without this, flywheels would reset to empty on every load and surrender any
     // energy buffered during the play session.

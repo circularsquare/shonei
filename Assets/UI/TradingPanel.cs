@@ -86,7 +86,10 @@ public class TradingPanel : MonoBehaviour {
             itemInput.onSubmit.AddListener(_ => OnClickQuery());
             itemInput.onValueChanged.AddListener(_ => RefreshIconSelection());
         }
-        if (chatInput != null) chatInput.onSubmit.AddListener(_ => OnClickSendChat());
+        // chatInput.onSubmit is wired to OnClickSendChat in the Inspector (persistent), NOT here:
+        // the chat bar lives in the always-active ChatPanel, but this Start() only runs once the
+        // (authored-inactive) TradingPanel is first opened — so a code listener would leave Enter
+        // dead until then. itemInput below is fine code-wired: it only matters while the panel's open.
         if (orderQty != null) orderQty.contentType = TMP_InputField.ContentType.IntegerNumber;
 
         var client = TradingClient.instance;
@@ -272,7 +275,7 @@ public class TradingPanel : MonoBehaviour {
             if (kvp.Value.activeSelf != shouldBeActive) {
                 kvp.Value.SetActive(shouldBeActive);
             }
-            UpdateMarketItemDisplay(display, display.item);
+            display.Refresh();
         }
     }
 
@@ -284,18 +287,6 @@ public class TradingPanel : MonoBehaviour {
         ItemDisplay parentDisplay = parentGo.GetComponent<ItemDisplay>();
         if (parentDisplay == null) return true;
         return parentDisplay.open && IsVisibleInMarketTree(item.parent);
-    }
-
-    void UpdateMarketItemDisplay(ItemDisplay display, Item item) {
-        int qty = currentMarket.Quantity(item);
-        if (display.itemText != null) display.itemText.text = item.name;
-        if (display.quantityText != null)
-            display.quantityText.text = ItemStack.FormatQ(qty, item);
-        // Groups don't get meaningful targets in market mode — only leaf items do.
-        if (item.IsGroup) return;
-        int target = currentMarket.targets != null && currentMarket.targets.ContainsKey(item)
-            ? currentMarket.targets[item] : 0;
-        display.SetTargetDisplay(target);
     }
 
     // ── Item icon grid ─────────────────────────────────────────────
@@ -810,8 +801,8 @@ public class TradingPanel : MonoBehaviour {
         var labelGo = new GameObject("Label", typeof(RectTransform));
         labelGo.transform.SetParent(row.transform, false);
         var tmp = labelGo.AddComponent<TextMeshProUGUI>();
-        tmp.text     = text;
-        tmp.fontSize = 16;
+        tmp.text = text;
+        FontConfig.Apply(tmp);
         var labelLe = labelGo.AddComponent<LayoutElement>();
         labelLe.flexibleWidth = 1;
 
@@ -830,7 +821,7 @@ public class TradingPanel : MonoBehaviour {
         var xGo = new GameObject("X", typeof(RectTransform));
         xGo.transform.SetParent(btnGo.transform, false);
         var xTmp = xGo.AddComponent<TextMeshProUGUI>();
-        xTmp.text      = "×";
+        xTmp.text      = "x";  // ASCII only — the m5x7 font option has no non-ASCII glyphs
         xTmp.fontSize  = 12;
         xTmp.alignment = TextAlignmentOptions.Center;
         var xRect = xGo.GetComponent<RectTransform>();
@@ -844,8 +835,8 @@ public class TradingPanel : MonoBehaviour {
         var go  = new GameObject("Row", typeof(RectTransform));
         go.transform.SetParent(parent, false);
         var tmp = go.AddComponent<TextMeshProUGUI>();
-        tmp.text     = text;
-        tmp.fontSize = 16;
+        tmp.text = text;
+        FontConfig.Apply(tmp);
         var le = go.AddComponent<LayoutElement>();
         le.preferredHeight = 14;
         le.minHeight       = 14;

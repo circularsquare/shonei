@@ -72,6 +72,15 @@ public static class SaveStore {
 
     public static bool SlotExists(string slotName) => System.IO.File.Exists(SlotPath(slotName));
 
+    // First free slot name: "<desired>", then "<desired> 2", "<desired> 3", ...
+    public static string UniqueSlotName(string desired) {
+        if (!SlotExists(desired)) return desired;
+        for (int i = 2; ; i++) {
+            string candidate = desired + " " + i;
+            if (!SlotExists(candidate)) return candidate;
+        }
+    }
+
     // Last-modified time of a slot's file as unix seconds, or 0 if it doesn't exist.
     // Used by cloud-sync status (compared against this machine's last-upload time —
     // both come from this machine's clock, so the comparison is skew-free).

@@ -734,7 +734,12 @@ public class Job {
     public string name {get; set;}
     public string jobType {get; set;}
     public string defaultSkill {get; set;} // optional; skill domain used for recipes of this job (e.g. "woodworking")
-    public bool defaultLocked {get; set;} // true = hidden from jobs panel until unlocked via research
+    public bool defaultLocked {get; set;} // true = hidden from jobs panel until unlocked
+    // Optional one-way building gate: building type name whose first construction permanently
+    // reveals this job (e.g. "sawmill" → woodworker). Independent of the tech gate — a
+    // defaultLocked job is unlocked by EITHER its gating tech OR this building being built.
+    // One-way: demolishing the building does not re-hide the job. null = no building gate.
+    public string unlockedByBuilding {get; set;}
     public int nRecipes = 0;
     public static int maxRecipes = 100;
     public Recipe[] recipes = new Recipe[maxRecipes]; // max 100 recipes per job

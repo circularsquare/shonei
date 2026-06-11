@@ -218,8 +218,9 @@ public class TileMeshController : MonoBehaviour {
     }
 
     // Snow flag change → snow redraws. Only self — neighbours' snow visuals
-    // don't depend on this tile's snow flag (they care about solidity above,
-    // which doesn't move when the snow flag flips).
+    // don't depend on this tile's snow flag (they care about their own neighbour
+    // solidity, which doesn't move when the snow flag flips). A neighbour's
+    // exposed-side snow re-bakes via OnTileTypeChanged's 3×3 mark instead.
     void OnTileSnowChanged(Tile t) {
         MarkSnowChunkDirty(t.x, t.y);
     }
@@ -442,10 +443,6 @@ public class TileMeshController : MonoBehaviour {
         int typeId = indexToTypeId[typeIdx];
         string typeName = indexToTypeName[typeIdx];
 
-        // U-bit only. Inverted-cardinal mask convention (passed to GetOverlay) is
-        // "which sides are NOT decorated", so 0b0111 means only U (top) is.
-        const int InvertedCardinalsTopOnly = 0b0111;
-
         for (int y = y0; y < y1; y++) {
             for (int x = x0; x < x1; x++) {
                 Tile t = world.GetTileAt(x, y);
@@ -469,7 +466,19 @@ public class TileMeshController : MonoBehaviour {
                 if (IsSolidAt(x - 1, y + 1)) nMask |= 64;
                 if (IsSolidAt(x + 1, y + 1)) nMask |= 128;
 
-                int snowSlice = TileSpriteCache.GetOverlaySlice("snow", InvertedCardinalsTopOnly, x, y);
+                // Snow caps the top and wraps onto any exposed vertical face, so a
+                // cliff-edge block shows snow clinging to its open side rather than
+                // just a flat top line. Bottom is never decorated — snow doesn't
+                // hang from an underside (and the atlas has no bottom-edge art).
+                // Decorated bits (LRDU): U always (a snow tile has open sky above);
+                // L/R only where that neighbour is open air. GetOverlaySlice wants
+                // the inverted mask (bit SET = NOT decorated), so invert at the end.
+                int decorated = 0b1000;                    // U (top)
+                if (!IsSolidAt(x - 1, y)) decorated |= 1;   // L exposed
+                if (!IsSolidAt(x + 1, y)) decorated |= 2;   // R exposed
+                int snowCardinals = (~decorated) & 0xF;
+
+                int snowSlice = TileSpriteCache.GetOverlaySlice("snow", snowCardinals, x, y);
                 int nSlice    = TileSpriteCache.GetNormalMapSlice(typeName, nMask, x, y);
                 EmitQuad(x - x0, y - y0, snowSlice, nSlice);
             }

@@ -168,6 +168,9 @@ public static class SaveSync {
                     break;
                 case UploadResult.AuthExpired:
                     authStopped = true;
+                    // Drop the dead token (keeps username + storage scope) so the menu
+                    // lands on the login form instead of a stale "logged in" state.
+                    Session.ExpireToken();
                     SetState(SyncState.Error);
                     OnAuthExpired?.Invoke();
                     break;

@@ -3,11 +3,11 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-// Full-screen exclusive panel showing colony-wide happiness breakdown.
+// Centered exclusive panel showing colony-wide happiness breakdown.
 // Opened by clicking the happiness HUD element.
 //
 // Unity setup:
-//   headerText    -- TextMeshProUGUI  (colony average + pop capacity)
+//   headerText    -- TextMeshProUGUI  (population / avg happiness / pop cap / available housing)
 //   needContainer -- Transform        (VerticalLayoutGroup -- rows are spawned here)
 //   needRowPrefab -- HappinessNeedRow prefab
 //   closeButton   -- Button           (the X in the top-right corner; close wired in Awake)
@@ -15,7 +15,12 @@ using TMPro;
 //   A "?" InfoButton sits left of the X with a Tooltippable explaining pop cap (scene-authored,
 //   parallel to RecipePanel / ResearchPanel).
 //
-//   RectTransform: Anchor Min=(0,0) Max=(1,1), Left/Right/Top/Bottom = 20
+//   Layout: the panel root is a VerticalLayoutGroup that stacks headerText above the scroll
+//   view. headerText's LayoutElement.preferredHeight is -1 (content-driven) so the header
+//   auto-sizes to its line count; the scroll view's LayoutElement.flexibleHeight=1 absorbs the
+//   difference. So adding/removing a header line reflows automatically -- do NOT pin the header
+//   height or hand-position the scroll, or that breaks. The X + "?" buttons use
+//   LayoutElement.ignoreLayout=true to stay corner-anchored outside the stack.
 //
 //   HUD: the top-bar readout Button (AnimalController.happinessButton) calls instance.Toggle() in code.
 public class GlobalHappinessPanel : MonoBehaviour {
@@ -151,23 +156,23 @@ public class GlobalHappinessPanel : MonoBehaviour {
         }
 
         if (headerText != null) {
-            // Pop cap = happiness-scaled ceiling; births also gated by housing slots and food.
-            // The "grow pop" line tells the player the three levers (answers the onboarding
-            // "Have 6 mice" question), with the per-factor detail in the rows below.
+            // populationCapacity = happiness-scaled ceiling; totalHousingCapacity = beds.
+            // Births are gated by both, so both caps are surfaced as separate lines. The
+            // reproduction levers themselves live in the "?" tooltip, not here.
             headerText.text =
-                $"Colony Happiness: {totalScore / n:0.0} / {Db.happinessMaxScore}.0   ({n} mice)\n" +
-                $"pop {n} / {ac.populationCapacity}\n" +
-                "grow pop: raise happiness, build housing, stock food";
+                $"colony population {n}\n" +
+                $"average happiness: {totalScore / n:0.0} points\n" +
+                $"happiness population cap: {ac.populationCapacity} mice\n" +
+                $"available housing: {ac.totalHousingCapacity}";
         }
 
         // Live "?" tooltip: state the two reproduction gates with current numbers, not the
-        // formula. avgHappiness/totalHousingCapacity/populationCapacity come from the same
-        // AnimalController stats that drive the header so the cap shown here matches it.
+        // formula. avgHappiness/populationCapacity come from the same AnimalController stats
+        // that drive the header so the cap shown here matches it.
         if (populationInfoTip != null) {
             populationInfoTip.title = "Population";
             populationInfoTip.body =
                 "Mice reproduce only with enough housing and happiness.\n" +
-                $"pop {n} / {ac.totalHousingCapacity} beds\n" +
                 $"happiness {ac.avgHappiness:0.0} supports up to {ac.populationCapacity} mice";
         }
 

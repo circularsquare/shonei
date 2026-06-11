@@ -159,9 +159,10 @@ public class ResearchSystem : MonoBehaviour {
     void BuildJobLockIndex()      { BuildLockIndex<string>("job",      jobToTechNode,      (target, _) => (true, target)); }
     void BuildBuildingLockIndex() { BuildLockIndex<string>("building", buildingToTechNode, (target, _) => (true, target)); }
 
-    // Called from Start() — after Db.Awake has populated jobByName.
-    // Flags typos (tech pointing at a non-existent job name) and orphans
-    // (defaultLocked jobs with no gating tech).
+    // Called from Start() — after Db.Awake has populated jobByName / structTypeByName.
+    // Central validator for all job-unlock wiring (tech gates AND one-way building gates):
+    // flags typos, orphans (locked but nothing unlocks it), and dead gates (unlock wiring on a
+    // job that isn't defaultLocked, so the gate never bites).
     void ValidateJobUnlocks() {
         foreach (var kv in jobToTechNode) {
             if (Db.GetJobByName(kv.Key) == null) {
@@ -170,9 +171,17 @@ public class ResearchSystem : MonoBehaviour {
             }
         }
         foreach (Job j in Db.jobs) {
-            if (j == null || !j.defaultLocked) continue;
-            if (!jobToTechNode.ContainsKey(j.name))
-                Debug.LogError($"Job '{j.name}' is defaultLocked but no tech unlocks it — it will never appear in the jobs panel.");
+            if (j == null) continue;
+            bool techGated     = jobToTechNode.ContainsKey(j.name);
+            bool buildingGated = !string.IsNullOrEmpty(j.unlockedByBuilding);
+            if (buildingGated && !Db.structTypeByName.ContainsKey(j.unlockedByBuilding))
+                Debug.LogError($"Job '{j.name}' unlockedByBuilding references unknown building '{j.unlockedByBuilding}'.");
+            // Orphan: locked but nothing (tech or building) unlocks it — would stay hidden forever.
+            if (j.defaultLocked && !techGated && !buildingGated)
+                Debug.LogError($"Job '{j.name}' is defaultLocked but nothing unlocks it (no tech, no building gate) — it will never appear in the jobs panel.");
+            // Dead gate: unlock wiring exists but the job isn't locked, so it shows from the start.
+            if (!j.defaultLocked && (techGated || buildingGated))
+                Debug.LogError($"Job '{j.name}' has an unlock gate (tech or building) but isn't defaultLocked — the gate is a no-op.");
         }
     }
 

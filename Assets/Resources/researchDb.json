@@ -35,7 +35,8 @@
         "prereqs": [5, 15],
         "cost": 5,
         "unlocks": [
-            { "type": "recipe",   "target": "13" }
+            { "type": "recipe",   "target": "13" },
+            { "type": "job",      "target": "cook" }
         ]
     },{
         "id": 7,
@@ -147,7 +148,8 @@
             { "type": "building", "target": "power shaft" },
             { "type": "building", "target": "power shaft turn" },
             { "type": "building", "target": "power shaft 4" },
-            { "type": "building", "target": "mill" }
+            { "type": "building", "target": "mill" },
+            { "type": "job",      "target": "runner" }
         ]
     },{
         "id": 17,

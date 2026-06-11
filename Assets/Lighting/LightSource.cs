@@ -19,6 +19,11 @@ public class LightSource : MonoBehaviour {
     public float innerRadius = 4f;
     [Tooltip("Z height above the sprite plane — controls how steep the NdotL angle is")]
     public float lightHeight = 0.4f;
+    [Tooltip("0 = raw point-light NdotL (bright hot-spot directly under the light). 1 = flatten the " +
+             "center: a flat surface reads uniformly across the disc while normals still shade it — " +
+             "recesses darken, faces toward the light brighten (the highlight headroom grows with " +
+             "this value, so normals keep their pop). See LightCircle.shader.")]
+    [Range(0f, 1f)] public float centerFlatten = 0f;
 
     [Header("Directional (sun)")]
     public bool isDirectional = false;

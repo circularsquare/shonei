@@ -195,6 +195,9 @@ public class World : MonoBehaviour {
             WeatherSystem.instance?.StepWindHumidity();
         if (Math.Floor((timer + dt) / hourPeriod) - Math.Floor(timer / hourPeriod) > 0)
             WeatherSystem.instance?.OnHourElapsed();
+        float tempNoisePeriod = ticksInDay / 2f;  // 240 s = temperature OU step (2x/day)
+        if (Math.Floor((timer + dt) / tempNoisePeriod) - Math.Floor(timer / tempNoisePeriod) > 0)
+            WeatherSystem.instance?.StepTemperatureAnomaly();
         WeatherSystem.instance?.Tick(dt);
 #if UNITY_EDITOR
         // Editor-only leak canary: every 30s, flag any ItemStack whose resAmount/resSpace
@@ -219,6 +222,53 @@ public class World : MonoBehaviour {
         int xi = Mathf.FloorToInt(x + 0.5f);
         int yi = Mathf.FloorToInt(y + 0.5f);
         return GetTileAt(xi, yi);
+    }
+
+    // ── Main settlement nav component ─────────────────────────────────────────
+    // The connected nav-graph component that the most animals currently occupy —
+    // a robust proxy for "the reachable colony" (a sealed cave pocket holds no
+    // mice, so it never wins). DiggingPit uses it to orient its dig toward a face
+    // the workforce can actually reach rather than into an inaccessible void.
+    //
+    // Cached on a coarse frame cadence since it drifts slowly; callers that bake
+    // the value into a PERMANENT decision (e.g. a pit's persisted dig direction)
+    // MUST pass forceFresh — a stale read there would freeze in the wrong answer
+    // right after the player changes connectivity. The scan is O(animals) ≤ 1000.
+    int mainSettlementComponent = -1;
+    int mainSettlementFrame = -1;
+    const int SettlementRefreshFrames = 120; // ~2s at 60fps; intentionally loose
+
+    public int MainSettlementComponent(bool forceFresh = false) {
+        if (forceFresh || mainSettlementFrame < 0
+            || Time.frameCount - mainSettlementFrame >= SettlementRefreshFrames) {
+            mainSettlementComponent = ComputeMainSettlementComponent();
+            mainSettlementFrame = Time.frameCount;
+        }
+        return mainSettlementComponent;
+    }
+
+    // Tallies animals by the nav component under their pathing-start node and
+    // returns the most-occupied one. Skips dead slots, mid-air/null nodes, and
+    // unresolved (componentId < 0) nodes. Returns -1 when no animal sits on a
+    // resolved component (none spawned, all falling, graph not yet built) — the
+    // caller treats -1 as "settlement unknown". Highest-count wins; ties break to
+    // the lowest componentId so the result is iteration-order independent.
+    int ComputeMainSettlementComponent() {
+        if (animalController == null) return -1;
+        Dictionary<int, int> counts = new();
+        for (int i = 0; i < animalController.na; i++) {
+            Animal a = animalController.animals[i];
+            if (a == null) continue;
+            Node n = a.PathStartNode();
+            if (n == null || n.componentId < 0) continue;
+            counts[n.componentId] = counts.TryGetValue(n.componentId, out int cur) ? cur + 1 : 1;
+        }
+        int best = -1, bestCount = -1;
+        foreach (var kv in counts)
+            if (kv.Value > bestCount || (kv.Value == bestCount && kv.Key < best)) {
+                best = kv.Key; bestCount = kv.Value;
+            }
+        return best;
     }
 
     // Recomputes the surface-height-per-column array from the current tile

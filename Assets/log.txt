@@ -1,7 +1,14 @@
 meoww!!
 
+6/11
+- ui work
+- job gates 
+- temperature anomaly random walk
+- digging pit / quarry mine from side
 6/10
-- itch deployment!
+- itch deployment! (v0.1.0)
+- better tooltips 
+- price fluctuation
 6/9
 - brackets and roofs
     - unsheltered above buildings get 1.5x faster decay

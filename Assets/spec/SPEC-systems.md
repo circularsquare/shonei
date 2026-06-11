@@ -454,6 +454,14 @@ A structure built into a solid tile (today only burrow, with `requiredTileName: 
 
 The flag is generic — any future "hole into a bank" building can opt in by pairing it with `requiredTileName` or `requiresSolidTilePlacement`. Schema is documented in SPEC-data.md.
 
+### Digging pit — directional dig (`DiggingPit`)
+
+The digging pit (`preservesTile`, `requiredTileName: "earth"`) renders a receding "earth dish" and digs toward whichever orthogonally-adjacent tile is **open**, so it works in horizontal tunnels, not just from the surface. Direction (`DigDir` Up/Left/Right, `Up == 0`) is chosen **once** in `OnPlaced` and persisted (`StructureSaveData.digDir`, nullable → `Up` for old saves); it is **never** recomputed, including on load.
+
+- **Choice** (`ChooseDigDirection`): a face is a candidate if its neighbour is non-solid and its approach node is standable; among candidates, prefer one **reachable from the main settlement** (`World.MainSettlementComponent` — the nav component most mice occupy, so a sealed cave pocket never wins). Priority up > single side > both-sides (cosmetic left-tiebreak). No reachable face → fall back to any open face + warn; fully enclosed → `Up` + error. Runs on the **live** path only, where the graph is still pre-pit (the door isn't wired yet) so component ids are clean. Calls `MainSettlementComponent(forceFresh: true)` — the cached value must not bake a permanent decision.
+- **Single door, self-wired**: the JSON declares **no** doors. `DiggingPit` wires exactly one door (the chosen face) via the shared `Structure.WireDoorEdge`/`SuppressDoorRim` helpers, from `OnPlaced` (live) and `RestoreOnLoad` (load) — never the ctor (which runs before the direction is known and would bridge a cave-side approach through the interior node, defeating the reachability check). Rim-suppression teardown is automatic via the base `edgeSuppressTiles` list cleared in `Structure.Destroy`. Up-dug pits additionally open clear L/R faces once mined past 60% (`UpdateSideAccess`); side-dug pits use only their one door.
+- **Dish + workspot** orient to `digDir`: the carve clears the bite toward the open face (parameterized by axis, not array-rotation, so `BakeMaskedNormalMap` lights it under the real sun); the workspot descends for Up, or stands ~0.4 tile to the side of the receding bite-peak for L/R.
+
 ## Side-ladders (`ladder_side`)
 
 A side-ladder hangs on a wall in the air tile beside it (no floor needed). `dir = mirrored ? +1 : -1` puts the wall on the opposite side from the sprite's lean.
@@ -471,11 +479,12 @@ A side-ladder hangs on a wall in the air tile beside it (no floor needed). `dir 
 
 `Assets/Model/WeatherSystem.cs` — singleton, created by `World.Awake()`. Ticked every frame by `World.Update()`.
 
-**Temperature** is a global ambient value in Celsius, driven by two additive sine waves:
-- **Yearly**: peaks midsummer (day 9/24), troughs midwinter. Amplitude ±12.5°C around 13.5°C mean.
-- **Daily**: peaks at 2pm, amplitude ±4°C.
-- Formula: `T = 13.5 + 12.5·sin(yearly) + 4·sin(daily)`
-- Range: ~−3°C (midwinter night) to ~30°C (midsummer afternoon).
+**Temperature** is a global ambient value in Celsius = two additive sine waves + a random anomaly:
+- **Yearly**: peaks midsummer (day 9/24), troughs midwinter. Amplitude ±12°C around 13.5°C mean.
+- **Daily**: peaks at 2pm, amplitude ±2.5°C.
+- **Noise** (`tempAnomaly`): a mean-reverting OU random walk stepped twice per in-game day (`StepTemperatureAnomaly`, dispatched from `World.Tick`) and eased toward its target each frame so the offset moves continuously. Calibrated for ~2°C stationary std — warm/cold spells last ~1.5 days, typical ±2–4°C, rare ±6°C. Mean 0, so it adds day-to-day variability without shifting the climate average. The smoothed offset is persisted on `WorldSaveData.tempAnomaly` (unlike the wind/humidity walks) so a save/reload mid cold-snap resumes continuously; `RestoreState` re-seeds the OU target from it, and old saves load 0.
+- Formula: `T = 13.5 + 12·sin(yearly) + 2.5·sin(daily) + tempAnomaly`
+- Deterministic range ~−1°C (midwinter night) to ~28°C (midsummer afternoon); the noise widens cold snaps to ~−7°C and hot spells to ~34°C.
 
 **Seasons** (time 0 = first day of spring, `daysInYear = 24`): Spring 0–5, Summer 6–11, Fall 12–17, Winter 18–23. `GetSeason()` returns the name, `GetDayOfYear()` returns the fractional day.
 
@@ -494,7 +503,7 @@ A side-ladder hangs on a wall in the air tile beside it (no floor needed). `dir 
 
 **Snow vs rain**: a temperature gate inside `WeatherSystem` splits "isRaining" into two channels. Above `snowThresholdC = 2°C` the active channel is `rainAmount`; below, it's `snowAmount`. Both lerp on the same `MoveTowards` step. `RainReplenish` / `RainFillTanks` skip while snowing (snow doesn't fill puddles or tanks today; melt-driven water is a future feature). Light multipliers (`GetSunMultiplier`, `GetAmbientMultiplier`) use `max(rainAmount, snowAmount)` so an overcast snow scene dims identically to an overcast rain scene.
 
-**Snow accumulation**: `SnowAccumulationSystem` ticks once per in-game second from `World.Tick`. Per tile rules: if `tile.snow == false`, when `temperature < 0°C` and `WeatherSystem.snowAmount > 0`, roll `(1/10) × snowAmount` per second to flip `tile.snow = true`. Eligibility: `tile.type.solid` and `World.IsExposedAbove(x, y)`. Roads/buildings are not gated — sortingOrder layering in the renderer handles the visuals (snow draws above roads as a wintry road-cover; buildings draw above snow on their anchor tile, hiding it). **Grass preservation**: accumulation snapshots the live `overlayMask` and `overlayState` into `tile.preSnowOverlayMask`/`State` and clears the live mask so snow renders cleanly on top; `OverlayGrowthSystem` skips snowed tiles entirely so the snapshot doesn't drift. On melt, the snapshot is restored verbatim — same grass returns. Melt rolls when `tile.snow == true`: chance per second = `clamp01((temp − 0°C) / 20°C)`, so 0% at 0°C, 100% at and above 20°C, linear ramp between (e.g. 25% at 5°C, 50% at 10°C). Mining a snowy tile clears `tile.snow` and the grass snapshot automatically (the `Tile.type` setter, mirror of the grass `_overlayMask` reset). Save format: nullable `bool? snow`, `byte? preSnowOverlayMask`, `byte? preSnowOverlayState` on `TileSaveData` — absent on snow-free tiles or when there was no grass to preserve, keeping golden diffs minimal.
+**Snow accumulation**: `SnowAccumulationSystem` ticks once per in-game second from `World.Tick`. Per tile rules: if `tile.snow == false`, when `temperature < 0°C` and `WeatherSystem.snowAmount > 0`, roll `(1/10) × snowAmount` per second to flip `tile.snow = true`. Eligibility: `tile.type.solid` and `World.IsExposedAbove(x, y)`. Roads/buildings are not gated — sortingOrder layering in the renderer handles the visuals (snow draws above roads as a wintry road-cover; buildings draw above snow on their anchor tile, hiding it). **Grass preservation**: accumulation snapshots the live `overlayMask` and `overlayState` into `tile.preSnowOverlayMask`/`State` and clears the live mask so snow renders cleanly on top; `OverlayGrowthSystem` skips snowed tiles entirely so the snapshot doesn't drift. On melt, the snapshot is restored verbatim — same grass returns. Melt rolls when `tile.snow == true`: chance per second = `clamp01(((temp − 1°C) / 20°C)²)` — a quadratic ramp from `MeltStartC = 1°C` (no melt at/below) to `MeltFullC = 21°C` (100%/s). Squaring keeps melt near-zero just above freezing and accelerates with warmth, so snow survives a cold winter day and only clears once the afternoon warms well above freezing (mean-time-to-clear ≈ 1/chance: ~400s at 2°C, ~25s at 5°C, ~4s at 11°C). Because accumulation needs `temp < 0°C` but snow *falls* below `snowThresholdC = 2°C`, the 0–2°C band has snowfall that never sticks — meaningful accumulation happens only around the coldest days (≈ day 21), so the temperature noise above is what makes winter snow more than a rare event. Mining a snowy tile clears `tile.snow` and the grass snapshot automatically (the `Tile.type` setter, mirror of the grass `_overlayMask` reset). Save format: nullable `bool? snow`, `byte? preSnowOverlayMask`, `byte? preSnowOverlayState` on `TileSaveData` — absent on snow-free tiles or when there was no grass to preserve, keeping golden diffs minimal.
 
 **Sky exposure**: `World.IsExposedAbove(x, y)` is the shared primitive. Returns true if no solid tile and no `solidTop`-or-`blocksRain` structure layer exists on any tile above `(x, y)`. Reused by rain-catch, windmills, the moisture rain-uptake gate, and snow accumulation.
 
@@ -665,9 +674,10 @@ Beyond the universal cracked-material tint, specific building types have additio
 `Ctrl+D` does two things: dumps an audit log (below) **and** toggles `DebugMode.Enabled`
 (`Assets/Controller/DebugMode.cs`). Dev-only readouts gate on that flag and stay hidden
 in normal play: InfoPanel `wo:` work-order lines (StructureInfoView, TileInfoView), animal
-task/objective/recipe/location (AnimalInfoView), tile standable/neighbors, item-stack
-reservation amounts `(rN)`/`(sN)` (`ItemStack.ToString`, TileInfoView, StorageSlotDisplay),
-and the research "unlock all" button. **New dev-only InfoPanel info must gate on `DebugMode.Enabled`.** UI built
+task/objective/recipe/location and per-need happiness satisfaction values `(0.0)` (AnimalInfoView),
+tile standable/neighbors, item-stack reservation amounts `(rN)`/`(sN)` (`ItemStack.ToString`,
+TileInfoView, StorageSlotDisplay), the GlobalHappinessPanel row raw-satisfaction column
+(HappinessNeedRow), and the research "unlock all" button. **New dev-only InfoPanel info must gate on `DebugMode.Enabled`.** UI built
 once (buttons) subscribes to `DebugMode.Changed`; per-tick text just reads the flag. Distinct
 from the F3 graphics-stats overlay (`GpuStatsHUD`) — that's GPU/render perf, this is gameplay info.
 

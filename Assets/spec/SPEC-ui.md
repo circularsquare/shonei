@@ -72,6 +72,10 @@ Set at instantiation time (defaults fall back to InventoryController for backwar
 - `targetInventory` — `Inventory` for allow/disallow operations. Default: `InventoryController.selectedInventory`.
 - `getDisplayGo` — `Func<int, GameObject>` for looking up sibling ItemDisplays in the tree. Default: `InventoryController.itemDisplayGos`.
 
+### Refresh contract
+
+`ItemDisplay.Refresh()` is the **single per-mode content repaint** (Global: name + global qty + global target; Market: name + market qty + leaf-only market target; Storage: allow-toggle sprite). The three tree owners (InventoryController, StoragePanel, TradingPanel) keep ownership of row *visibility* — their discovery / class-compat / collapse rules differ — and call `Refresh()` per row. Don't add caller-side content repaint for a new mode; extend the switch in `Refresh()`.
+
 ### Serialized inspector references
 
 - `itemText` — TMP text for the item name (left-aligned)
@@ -247,9 +251,11 @@ than a canvas flush) before measuring; runs on every hover, so left untouched.
 Opened by clicking the top-bar happiness readout — a `Button` on `UI/TopBar` wired **in code** via `AnimalController.happinessButton` → `GlobalHappinessPanel.instance.Toggle()`. `instance` is a lazy getter that resolves the (inactive) panel via `FindObjectOfType(true)`, so the first click works before the panel has ever activated (without it, `Awake` hasn't run and `instance` is null → silent no-op). The readout is the single entry point — the old standalone `HappinessToggle` button was removed.
 
 **Layout** (set up in editor):
-- `headerText` TMP — colony average score, `pop n/cap`, and a one-line "grow pop" hint (raise happiness / build housing / stock food) so players know how to lift the cap
+- `headerText` TMP — colony population, average happiness, happiness population cap, and available housing (beds). The "grow pop" levers live in the "?" tooltip, not the header.
 - `needContainer` Transform (VerticalLayoutGroup) — `HappinessNeedRow` instances spawned here lazily on first open
 - `needRowPrefab` — `HappinessNeedRow` prefab
+
+The panel root is a `VerticalLayoutGroup` stacking `headerText` over the scroll view. The header is **content-driven** (`LayoutElement.preferredHeight = -1`, so the VLG reads TMP's height) and the scroll has `flexibleHeight = 1` to absorb the difference — so adding/removing a header line reflows automatically. Don't pin the header height or hand-position the scroll (that reintroduces overlap). The X + "?" buttons use `LayoutElement.ignoreLayout = true` to stay corner-anchored outside the stack.
 
 Rows are spawned lazily on first open (in `OnEnable`) from `Db.happinessNeedsSorted` (one per satisfaction need, plus housing, furnishing, temperature, and the colony food-storage row). Adding a new need to JSON auto-adds a row — no code changes needed (but update `Db.happinessNeedsDisplayOrder` for correct ordering). Refreshes every 1 s while open. Closes on click-outside.
 
@@ -260,7 +266,7 @@ Rows are spawned lazily on first open (in `OnEnable`) from `Db.happinessNeedsSor
 **Contract (every row follows this exactly):**
 
 1. `Configure(name, points)` — called **once** at spawn. Sets the name AND sizes the fill bar to `BarWidthPerPoint × points`. The row stores `maxPoints`; this enforces the bar-width-encodes-point-value invariant structurally (callers cannot pass mismatched fill + width at refresh time).
-2. `Refresh(averagePoints, detailText = "")` — called **every tick**. `averagePoints ∈ [0, maxPoints]` is the row's avg happiness contribution; the row displays it in the middle text and fills the bar to `averagePoints / maxPoints`. `detailText` is an optional raw underlying value shown to the right (e.g. raw satisfaction avg for the wheat row); pass `""` for rows that don't expose one.
+2. `Refresh(averagePoints, detailText = "")` — called **every tick**. `averagePoints ∈ [0, maxPoints]` is the row's avg happiness contribution; the row displays it as `avg/max` in the middle text (`AvgHappiness` column, prefW 36 to fit `x.x/y.y` in m5x7 @16) and fills the bar to `averagePoints / maxPoints`. `detailText` is an optional raw underlying value (e.g. raw satisfaction avg for the wheat row), shown in the right column **only in Ctrl+D debug mode** — it reads confusing to players, so it's dev-gated. Pass `""` for rows that don't expose one.
 
 `points` per row type: value/bool needs = 1, temperature = 2, furnishing = `Db.maxFurnishingPerMouse`, food storage = `AnimalController.MaxFoodStorageBonus`. The panel's `SpawnRow(key, points)` helper is the single place these values are declared.
 
@@ -448,10 +454,35 @@ mesh is committed but before the GPU draws — so the corrected mesh replaces it
   concrete default GUID, not `fileID: 0`. Only raw YAML `{fileID: 0}` writes can store null, and they
   re-bake silently on any later prefab edit (fragile forever). Don't re-attempt this.
 
+## Help hoverables
+
+Standardized "?" help icons sharing one sprite (`helpicon.png` → TMP sprite asset
+`Assets/Resources/Sprites/misc/HelpIcons.asset`, glyph named `help`). Two surfaces:
+
+- **Panel-header "?"** — a GameObject named `InfoButton`: a `TextMeshProUGUI` whose text is
+  `<sprite name="help">` (with `spriteAsset = HelpIcons`) plus a `Tooltippable`, anchored
+  top-right. Copy is the Tooltippable's title/body (static in-scene, or set live in code — see
+  `GlobalHappinessPanel.populationInfoTip`). To add one, clone an existing `InfoButton`.
+- **Inline (InfoView text blobs)** — the mouse/building/tile views render one TMP string, so
+  help sits inline: `Help.Icon("key")` emits `<link="help:key"><sprite name="help"></link>`
+  after a stat line. `InfoTextHover` (auto-added to each InfoView's text in its `Awake`)
+  hit-tests the hovered link via `FindIntersectingLink` and drives `TooltipSystem`. Copy lives
+  in the `Help` registry. To add one: add a `Help` entry + an `Icon("key")` call in the view.
+
+The help sprite asset is assigned **per-component** (InfoTextHover sets `text.spriteAsset`;
+InfoButtons set it directly) — it is deliberately **not** TMP's project-wide default sprite
+asset. `helpicon.png` is 13×13 with a 1px transparent margin (for bilinear edge sampling), but
+the TMP glyph's `m_GlyphRect` is `(1,1,11,11)` — it captures only the centered 11px disc, so
+metrics stay 11px and placement is unchanged. If you re-export `helpicon.png`, keep the glyphRect
+tracking the disc bounds (margin offset, disc size), not the full texture. Tooltip bodies cap at `TooltipSystem.MaxBodyWidth` (350px) and word-wrap; short ones
+still hug their text.
+
 ## Key Files
 
 | File | Role |
 |------|------|
+| `Assets/UI/Help.cs` | Help-tooltip copy registry + `Icon(key)` inline markup + cached help sprite asset |
+| `Assets/UI/InfoTextHover.cs` | Hit-tests inline help `<link>`s in an InfoView text blob → TooltipSystem |
 | `Assets/UI/UITextRuntimeStyle.cs` | Runtime UI text manager: applies the player font choice (in-frame regen for new content + strong refresh on switch/startup) AND per-line baseline pixel-snap (self-bootstraps). |
 | `Assets/UI/UIFontOptions.cs` | Player-selectable font registry (`Assets/Resources/UIFontOptions.asset`) — `{name, font, size}` entries |
 | `Assets/UI/FontConfig.cs` + `Assets/Editor/FontConfigEditor.cs` | Editor-baked font/size/primary-color source of truth + "Apply to All" propagation + `pixelSnap` toggle |

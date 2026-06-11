@@ -42,24 +42,30 @@
         "name": "woodworker",
         "jobType": "crafter",
         "defaultSkill": "woodworking",
-        "skillWeights": { "woodworking": 0.8 }
+        "skillWeights": { "woodworking": 0.8 },
+        "defaultLocked": true,
+        "unlockedByBuilding": "sawmill"
     },{
         "id": 12,
         "name": "scientist",
         "jobType": "researcher",
         "defaultSkill": "science",
-        "skillWeights": { "science": 0.8 }
+        "skillWeights": { "science": 0.8 },
+        "defaultLocked": true,
+        "unlockedByBuilding": "laboratory"
     },{
         "id": 13,
         "name": "smith",
         "jobType": "crafter",
         "defaultSkill": "woodworking",
-        "skillWeights": { "woodworking": 0.8 }
+        "skillWeights": { "woodworking": 0.8 },
+        "defaultLocked": true
     },{
         "id": 14,
         "name": "cook",
         "jobType": "crafter",
-        "defaultSkill": "cooking"
+        "defaultSkill": "cooking",
+        "defaultLocked": true
     },{
         "id": 15,
         "name": "clothier",
@@ -79,6 +85,7 @@
     },{
         "id": 18,
         "name": "runner",
-        "jobType": "none"
+        "jobType": "none",
+        "defaultLocked": true
     }
 ]

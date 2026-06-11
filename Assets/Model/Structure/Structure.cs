@@ -521,49 +521,7 @@ public class Structure {
                         Debug.LogError($"{st.name} at ({x},{y}): door at ({door.dx},{door.dy}) has no matching interiorTile entry");
                         continue;
                     }
-                    int approachX = doorWorldX, approachY = doorWorldY;
-                    switch (side) {
-                        case "left":   approachX -= 1; break;
-                        case "right":  approachX += 1; break;
-                        case "top":    approachY += 1; break;
-                        case "bottom": approachY -= 1; break;
-                        default:
-                            Debug.LogError($"{st.name} at ({x},{y}): unknown door side '{side}'"); continue;
-                    }
-                    Tile approach = World.instance.GetTileAt(approachX, approachY);
-                    if (approach == null) {
-                        Debug.LogError($"{st.name} at ({x},{y}): door approach tile ({approachX},{approachY}) is out of bounds");
-                        continue;
-                    }
-                    interiorAtDoor.AddNeighbor(approach.node, reciprocal: true);
-                    // Remember the first door's approach tile for Animal.FindHome's homeTile hint.
-                    if (doorApproachTile == null) doorApproachTile = approach;
-                    // Rim suppression: for `preservesTile` buildings (burrow), the door tile is
-                    // still drawn as a solid dirt body underneath the building sprite. Without
-                    // this, the dirt's 2px air-side rim shows where the door opens. Suppress
-                    // that side's rim so the entrance reads as a clean carved hole.
-                    if (st.preservesTile) {
-                        Tile doorTile = World.instance.GetTileAt(doorWorldX, doorWorldY);
-                        if (doorTile != null) {
-                            byte bit = side switch {
-                                "left"   => (byte)1,
-                                "right"  => (byte)2,
-                                "bottom" => (byte)4,
-                                "top"    => (byte)8,
-                                _        => (byte)0,
-                            };
-                            if (bit != 0) {
-                                doorTile.bodyEdgeSuppressMask |= bit;
-                                doorTile.NotifyBodyDirty();
-                                if (edgeSuppressTiles == null) {
-                                    edgeSuppressTiles = new List<Tile>();
-                                    edgeSuppressBits  = new List<byte>();
-                                }
-                                edgeSuppressTiles.Add(doorTile);
-                                edgeSuppressBits.Add(bit);
-                            }
-                        }
-                    }
+                    WireDoorEdge(interiorAtDoor, doorWorldX, doorWorldY, side);
                 }
             }
         }
@@ -585,6 +543,58 @@ public class Structure {
                 }
             }
         }
+    }
+
+    // Wires one door edge: connects an interior node to the approach tile on `side`
+    // (already mirror-resolved), records the first as doorApproachTile (FindHome's
+    // homeTile hint), and for preservesTile buildings suppresses the door tile's
+    // air-side rim so the entrance reads as a clean hole. Shared by the ctor's
+    // JSON-door loop and by DiggingPit, which picks its single door's side at
+    // runtime from neighbour openness rather than from JSON.
+    protected void WireDoorEdge(Node interiorNode, int doorWorldX, int doorWorldY, string side) {
+        int approachX = doorWorldX, approachY = doorWorldY;
+        switch (side) {
+            case "left":   approachX -= 1; break;
+            case "right":  approachX += 1; break;
+            case "top":    approachY += 1; break;
+            case "bottom": approachY -= 1; break;
+            default:
+                Debug.LogError($"{structType.name} at ({x},{y}): unknown door side '{side}'"); return;
+        }
+        Tile approach = World.instance.GetTileAt(approachX, approachY);
+        if (approach == null) {
+            Debug.LogError($"{structType.name} at ({x},{y}): door approach tile ({approachX},{approachY}) is out of bounds");
+            return;
+        }
+        interiorNode.AddNeighbor(approach.node, reciprocal: true);
+        if (doorApproachTile == null) doorApproachTile = approach;
+        if (structType.preservesTile) {
+            Tile doorTile = World.instance.GetTileAt(doorWorldX, doorWorldY);
+            if (doorTile != null) {
+                byte bit = side switch {
+                    "left"   => (byte)1,
+                    "right"  => (byte)2,
+                    "bottom" => (byte)4,
+                    "top"    => (byte)8,
+                    _        => (byte)0,
+                };
+                if (bit != 0) SuppressDoorRim(doorTile, bit);
+            }
+        }
+    }
+
+    // ORs a rim-suppression bit into a tile and records it so Structure.Destroy can
+    // clear it. Kept as a matched pair with that teardown loop so set and clear can't
+    // drift — any code path that suppresses a rim goes through here.
+    protected void SuppressDoorRim(Tile tile, byte bit) {
+        tile.bodyEdgeSuppressMask |= bit;
+        tile.NotifyBodyDirty();
+        if (edgeSuppressTiles == null) {
+            edgeSuppressTiles = new List<Tile>();
+            edgeSuppressBits  = new List<byte>();
+        }
+        edgeSuppressTiles.Add(tile);
+        edgeSuppressBits.Add(bit);
     }
 
     // Shared factory: dispatches to the correct subclass based on StructType properties.
