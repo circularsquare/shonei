@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.Profiling;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.Rendering.RenderGraphModule;
 
 // ScriptableRendererFeature — add this to your Universal Renderer Data asset.
 // Unified lighting pass: ambient + torches use Max blend, sun is additive on top.
@@ -18,6 +19,11 @@ using UnityEngine.Rendering.Universal;
 //      additively into the light RT — flame pixels saturate to white so the
 //      composite multiply preserves their painted color regardless of time of day.
 //   6. Multiply-blit light RT onto scene: final = scene × lightmap.
+//
+// RenderGraph (URP 17 / Unity 6): both passes implement RecordRenderGraph via
+// AddUnsafePass — they do manual render-target binding, interleaved global shader
+// state, and many small draws, which is exactly what the unsafe pass escape hatch
+// is for. The legacy OnCameraSetup/Execute path no longer runs under RenderGraph.
 public class LightFeature : ScriptableRendererFeature {
     [Tooltip("Minimum NdotL floor applied to all lights — prevents back-faces from going fully black.")]
     [Range(0f, 1f)] public float ambientNormal = 0.15f; // ! set this in inspector
@@ -113,6 +119,9 @@ public class LightFeature : ScriptableRendererFeature {
         lightPass = new LightPass(lightCircleShader, lightSunShader, lightCompositeShader, lightAmbientFillShader, emissionWriterShader) {
             renderPassEvent = RenderPassEvent.AfterRenderingTransparents
         };
+        // LightPass declares a RenderGraph read dependency on the normals RT that
+        // capturePass produces, so it needs a reference to that pass.
+        lightPass.SetCapturePass(capturePass);
     }
 
     public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData) {
@@ -132,7 +141,7 @@ public class LightFeature : ScriptableRendererFeature {
         if ((cullingMask & (litLayers | directionalOnlyLayers | waterLayer | backgroundLayer | tileChunkLayer)) == 0) return;
         capturePass.Setup(litLayers, shadowCasterLayers, directionalOnlyLayers, waterLayer, backgroundLayer, tileChunkLayer, flatNormals);
         renderer.EnqueuePass(capturePass);
-        lightPass.Setup(renderer.cameraColorTarget, ambientNormal, deepAmbientColor, skyLightBlend, sortRampRange, behindFarHeightFactor, emissionStrength, tileChunkLayer);
+        lightPass.Setup(ambientNormal, deepAmbientColor, skyLightBlend, sortRampRange, behindFarHeightFactor, emissionStrength, tileChunkLayer);
         renderer.EnqueuePass(lightPass);
     }
 
@@ -150,10 +159,10 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
     // Profiler markers — sampled by Components/GpuStatsHUD.cs. Keep the names
     // stable; the HUD references them by literal string.
     //
-    // MarkerName is the CPU-side dispatch marker (ProfilerMarker.Auto in
-    // Execute). s_gpuSampler is a CustomSampler created with collectGpuData=true
-    // — this is REQUIRED for GPU timing to actually be captured. The plain
-    // cmd.BeginSample(string) overload does NOT request GPU data; only the
+    // MarkerName is the CPU-side dispatch marker (ProfilerMarker.Auto, now around
+    // RecordRenderGraph). s_gpuSampler is a CustomSampler created with
+    // collectGpuData=true — REQUIRED for GPU timing to actually be captured. The
+    // plain cmd.BeginSample(string) overload does NOT request GPU data; only the
     // CustomSampler overload does. Read via
     // Sampler.Get(name).GetRecorder().gpuElapsedNanoseconds.
     public const string MarkerName    = "Shonei.NormalsCapturePass";
@@ -162,12 +171,21 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
     static readonly CustomSampler  s_gpuSampler = CustomSampler.Create(GpuSampleName, true);
 
     static readonly int CapturedNormalsId = Shader.PropertyToID("_CapturedNormalsRT");
-    // Global shader property — set per bucket iteration in Execute so the
+    // Global shader property — set per bucket iteration in the render func so the
     // override-material shaders (NormalsCapture, NormalsCaptureWater) write the
     // right sort bucket into the RT's B channel. Replaces the per-sprite _SortBucket
     // MPB. (Both chunked overrides instead read _SortBucket from a per-chunk MPB.)
     static readonly int SortBucketGlobalId = Shader.PropertyToID("_SortBucket");
     static readonly int FlatNormalsId      = Shader.PropertyToID("_FlatNormals");
+
+    // Camera-facing-normal + directional-only-tier clear for non-world cameras.
+    //   rg = 0.5 → decoded normal (0,0,-1) camera-facing.
+    //   b  = 0   → bucket 0 (unused; non-world cams skip point lights).
+    //   a  = 0.3 → directional-only tier. LightComposite uses alpha > 0.25 to pick
+    //              "multiply by lightmap" vs the bright daytime _SkyLightColor;
+    //              without it the sky wouldn't darken at night.
+    static readonly Color NonWorldClear = new Color(0.5f, 0.5f, 0f, 0.3f);
+
     readonly Material mat;
     readonly Material waterMat;
     readonly Material chunkedMat;
@@ -179,6 +197,11 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
     int backgroundMask    = 0;
     int tileChunkMask     = 0;
     float flatNormals     = 0f;   // 1 = write flat camera-facing normals (flat-lighting mode)
+
+    // The normals RT this pass produced this frame. LightPass reads it (declares a
+    // RenderGraph read dependency) and it is also bound as the global
+    // _CapturedNormalsRT for every lighting shader via SetGlobalTextureAfterPass.
+    public TextureHandle NormalsHandle { get; private set; }
 
     public NormalsCapturePass(Shader normalsCapture, Shader normalsCaptureWater, Shader chunkedNormalsCapture, Shader chunkedBackgroundNormalsCapture) {
         if (normalsCapture == null || normalsCaptureWater == null) {
@@ -215,194 +238,157 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
         CoreUtils.Destroy(bgChunkedMat);
     }
 
-    public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData rd) {
-        var desc = rd.cameraData.cameraTargetDescriptor;
-        desc.depthBufferBits = 0;
-        // Must use a format with an alpha channel — the lighting tier system encodes
-        // shadow/lit/dirOnly information in alpha (1.0/0.5/0.3). The camera's default
-        // HDR format (B10G11R11) has no alpha, so all tier checks silently return 1.0.
-        desc.colorFormat = RenderTextureFormat.ARGB32;
-        cmd.GetTemporaryRT(CapturedNormalsId, desc, FilterMode.Point);
+    // Per-frame data captured at record time and consumed in the render func. RG pools
+    // and reuses PassData instances, so every field is reset/reassigned each frame; the
+    // RendererListHandle arrays are allocated once (readonly) and reused.
+    class PassData {
+        public TextureHandle normals;
+        public bool isWorldCam;
+        public Color clearColor;
+        public float flatNormals;
+        public bool hasBackground, hasDirOnly, hasLitOnly, hasChunked, hasShadow, hasWater;
+        public RendererListHandle background, chunked;
+        public readonly RendererListHandle[] dirOnly = new RendererListHandle[SortBucketUtil.BucketCount];
+        public readonly RendererListHandle[] litOnly = new RendererListHandle[SortBucketUtil.BucketCount];
+        public readonly RendererListHandle[] shadow  = new RendererListHandle[SortBucketUtil.BucketCount];
+        public readonly RendererListHandle[] water   = new RendererListHandle[SortBucketUtil.BucketCount];
+        public readonly float[] bucketNorm = new float[SortBucketUtil.BucketCount];
     }
 
-    public override void Execute(ScriptableRenderContext context, ref RenderingData rd) {
+    // One RendererList per tier draw (replaces a legacy context.DrawRenderers call).
+    // renderingLayerMask == uint.MaxValue means "all buckets" — used by the background
+    // and chunked-tile draws, which don't loop per bucket.
+    static RendererListHandle MakeList(RenderGraph rg, CullingResults cull, Camera cam,
+                                       Material overrideMat, int passIndex, int layerMask, uint renderingLayerMask) {
+        var sort = new SortingSettings(cam) { criteria = SortingCriteria.CommonTransparent };
+        var draw = new DrawingSettings(new ShaderTagId("Universal2D"), sort) {
+            overrideMaterial = overrideMat, overrideMaterialPassIndex = passIndex
+        };
+        var filter = new FilteringSettings(RenderQueueRange.all, layerMask) { renderingLayerMask = renderingLayerMask };
+        return rg.CreateRendererList(new RendererListParams(cull, draw, filter));
+    }
+
+    public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData) {
         if (mat == null) return;
         using var _ = s_marker.Auto();
-        var cmd = CommandBufferPool.Get("NormalsCapture");
-        // GPU-side sample bracket. BeginSample is recorded into the GPU
-        // command stream; EndSample fires after all subsequent DrawRenderers
-        // calls (they're submitted into the same stream by the SRP context),
-        // so the captured GPU time covers clear + all draws.
-        // MUST use the CustomSampler overload — the string overload does
-        // not request GPU timing.
-        cmd.BeginSample(s_gpuSampler);
-        cmd.SetRenderTarget(CapturedNormalsId);
-        // Drives the generic NormalsCapture override's flat-normal branch. Set once
-        // up front so it applies to every DrawRenderers below; the chunked tile /
-        // background / water overrides don't declare it, so terrain keeps its depth.
-        cmd.SetGlobalFloat(FlatNormalsId, flatNormals);
+        var renderingData = frameData.Get<UniversalRenderingData>();
+        var cameraData    = frameData.Get<UniversalCameraData>();
+        var cam  = cameraData.camera;
+        var cull = renderingData.cullResults;
 
-        // Skip per-sprite normal capture on non-world cameras (SkyCamera and
-        // future overlay/minimap cams). They only need directional sun
-        // lighting; with the right cleared values, LightSun and LightComposite
-        // produce the same result as the previous per-sprite-with-flat-normal-
-        // map path, but we skip the entire DrawRenderers workload.
-        //
-        // Clear color encodes flat camera-facing normal + directional-only
-        // tier:
-        //   rg = 0.5  → decoded normal xy = 0 → reconstructed = (0, 0, -1)
-        //                 (camera-facing) — matches what cloud/hill normal
-        //                 maps were producing anyway.
-        //   b  = 0    → bucket 0 (unused; non-world cams skip point lights).
-        //   a  = 0.3  → directional-only tier. Critical: LightComposite uses
-        //                 alpha > 0.25 to decide "multiply by lightmap" vs
-        //                 "use bright daytime _SkyLightColor fallback".
-        //                 Without this, the sky would not darken at night.
-        bool isWorldCam = (rd.cameraData.camera.cullingMask & tileChunkMask) != 0;
-        Color clearColor = isWorldCam ? Color.clear : new Color(0.5f, 0.5f, 0f, 0.3f);
-        cmd.ClearRenderTarget(false, true, clearColor);
-        context.ExecuteCommandBuffer(cmd);
-        cmd.Clear();
+        // ARGB32 — the lighting tier system encodes shadow/lit/dirOnly in alpha
+        // (1.0/0.5/0.3); the camera's default HDR format has no alpha. depthBufferBits 0
+        // because the normals RT is colour-only. CreateRenderGraphTexture is internal to
+        // URP, so build the descriptor and use the public renderGraph.CreateTexture.
+        var rtDesc = cameraData.cameraTargetDescriptor;
+        rtDesc.depthBufferBits = 0;
+        rtDesc.colorFormat = RenderTextureFormat.ARGB32;
+        NormalsHandle = renderGraph.CreateTexture(new TextureDesc(rtDesc) {
+            name = "_CapturedNormalsRT", filterMode = FilterMode.Point, clearBuffer = false
+        });
 
-        if (!isWorldCam) {
-            cmd.EndSample(s_gpuSampler);
-            context.ExecuteCommandBuffer(cmd);
-            CommandBufferPool.Release(cmd);
-            return;
-        }
+        bool isWorldCam = (cam.cullingMask & tileChunkMask) != 0;
 
-        // ── Per-bucket sprite draws ─────────────────────────────────────────
-        // Preserve the original tier order: background → dirOnly → litOnly →
-        // tileChunk → shadow → water. Later draws overwrite earlier ones in
-        // the normals RT; tiles must overwrite background (so a tile pixel
-        // gets shadow-caster alpha + tile normals, not lit-only alpha + flat
-        // normals), and shadow casters must overwrite tiles (so an animal
-        // standing on a tile shows its own normals/bucket).
-        //
-        // Implementation: two bucket loops with the chunked tile draw between
-        // them. The first loop runs background/dirOnly/litOnly per bucket;
-        // the second runs shadow/water per bucket. Chunked tiles draw once
-        // outside any loop (they carry _SortBucket per-chunk via MPB — the
-        // bucket loop's global _SortBucket wouldn't reach them anyway).
-        //
-        // Each bucket sets _SortBucket as a global; the override shaders
-        // (NormalsCapture / NormalsCaptureWater) read it from the global, no
-        // per-sprite MPB needed.
-        // Both chunk layers are drawn by their own dedicated array-sampling overrides,
-        // never the generic sprite override (which samples _MainTex, not _MainTexArr) —
-        // exclude them from the generic lit/shadow tiers so they aren't double-drawn wrong.
-        // Background walls reuse the Background layer (chunked meshes replaced the old mask
-        // sprite), so exclude backgroundMask here and draw it with bgChunkedMat below.
-        int litOnlyMask = litMask & ~shadowMask & ~dirOnlyMask & ~backgroundMask;
-        int shadowOnlyMask = litMask & shadowMask & ~dirOnlyMask & ~tileChunkMask & ~backgroundMask;
+        using (var builder = renderGraph.AddUnsafePass<PassData>(MarkerName, out var data)) {
+            data.normals       = NormalsHandle;
+            data.isWorldCam    = isWorldCam;
+            data.clearColor    = isWorldCam ? Color.clear : NonWorldClear;
+            data.flatNormals   = flatNormals;
+            data.hasBackground = data.hasDirOnly = data.hasLitOnly = false;
+            data.hasChunked    = data.hasShadow  = data.hasWater   = false;
+            for (int b = 0; b < SortBucketUtil.BucketCount; b++)
+                data.bucketNorm[b] = SortBucketUtil.BucketToNormalized(b);
 
-        // ── Chunked background walls (single draw, BEFORE every other tier) ──
-        // Background is the backmost tier — drawn first so dirOnly/litOnly/tile/shadow/
-        // water all overwrite it where they overlap (the same slot the old background
-        // sprite held: clouds etc. must win over it). The chunked meshes live on the
-        // Background layer and carry their own _SortBucket per chunk via MPB, so this
-        // draws once outside the bucket loops, with the flat lit-only (alpha 0.5) override.
-        if (backgroundMask != 0 && bgChunkedMat != null) {
-            var ds = CreateDrawingSettings(
-                new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
-            ds.overrideMaterial          = bgChunkedMat;
-            ds.overrideMaterialPassIndex = 0; // single pass
-            var fs = new FilteringSettings(RenderQueueRange.all, backgroundMask);
-            context.DrawRenderers(rd.cullResults, ref ds, ref fs);
-        }
+            builder.UseTexture(data.normals, AccessFlags.Write);
+            builder.AllowGlobalStateModification(true);
+            // Bind as the global _CapturedNormalsRT for the light shaders (the old
+            // GetTemporaryRT nameID did this implicitly). Also keeps the producing pass
+            // alive across RenderGraph culling.
+            builder.SetGlobalTextureAfterPass(data.normals, CapturedNormalsId);
 
-        // ── Loop A: tiers that draw BEFORE chunked tiles ────────────────────
-        for (int b = 0; b < SortBucketUtil.BucketCount; b++) {
-            cmd.SetGlobalFloat(SortBucketGlobalId, SortBucketUtil.BucketToNormalized(b));
-            context.ExecuteCommandBuffer(cmd);
-            cmd.Clear();
+            // Build the RendererLists. Tier order is load-bearing — later draws overwrite
+            // earlier ones in the normals RT: background → dirOnly → litOnly → chunked
+            // tiles → shadow casters → water. Chunked tiles sit between the two bucket
+            // groups: their shadow-caster alpha must overwrite lit-only alpha, but
+            // animals (shadow casters) must overwrite tiles where they overlap.
+            // Chunk layers use dedicated array-sampling overrides, so exclude them from
+            // the generic lit/shadow tiers; background reuses the Background layer.
+            if (isWorldCam) {
+                int litOnlyMask    = litMask & ~shadowMask & ~dirOnlyMask & ~backgroundMask;
+                int shadowOnlyMask = litMask & shadowMask & ~dirOnlyMask & ~tileChunkMask & ~backgroundMask;
 
-            uint bucketMask = 1u << b;
-
-            // (Background walls are drawn once above the loop with bgChunkedMat — the
-            // old per-bucket NormalsCaptureBackground sprite draw is retired.)
-
-            // Directional-only (pass 2, alpha=0.3).
-            if (dirOnlyMask != 0) {
-                var ds = CreateDrawingSettings(
-                    new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
-                ds.overrideMaterial          = mat;
-                ds.overrideMaterialPassIndex = 2;
-                var fs = new FilteringSettings(RenderQueueRange.all, dirOnlyMask);
-                fs.renderingLayerMask = bucketMask;
-                context.DrawRenderers(rd.cullResults, ref ds, ref fs);
+                if (backgroundMask != 0 && bgChunkedMat != null) {
+                    data.background = MakeList(renderGraph, cull, cam, bgChunkedMat, 0, backgroundMask, uint.MaxValue);
+                    data.hasBackground = true;
+                    builder.UseRendererList(data.background);
+                }
+                if (dirOnlyMask != 0) {
+                    data.hasDirOnly = true;
+                    for (int b = 0; b < SortBucketUtil.BucketCount; b++) {
+                        data.dirOnly[b] = MakeList(renderGraph, cull, cam, mat, 2, dirOnlyMask, 1u << b);
+                        builder.UseRendererList(data.dirOnly[b]);
+                    }
+                }
+                if (litOnlyMask != 0) {
+                    data.hasLitOnly = true;
+                    for (int b = 0; b < SortBucketUtil.BucketCount; b++) {
+                        data.litOnly[b] = MakeList(renderGraph, cull, cam, mat, 1, litOnlyMask, 1u << b);
+                        builder.UseRendererList(data.litOnly[b]);
+                    }
+                }
+                if (tileChunkMask != 0 && chunkedMat != null) {
+                    data.chunked = MakeList(renderGraph, cull, cam, chunkedMat, 0, tileChunkMask, uint.MaxValue);
+                    data.hasChunked = true;
+                    builder.UseRendererList(data.chunked);
+                }
+                if (shadowOnlyMask != 0) {
+                    data.hasShadow = true;
+                    for (int b = 0; b < SortBucketUtil.BucketCount; b++) {
+                        data.shadow[b] = MakeList(renderGraph, cull, cam, mat, 0, shadowOnlyMask, 1u << b);
+                        builder.UseRendererList(data.shadow[b]);
+                    }
+                }
+                if (waterMask != 0 && waterMat != null) {
+                    data.hasWater = true;
+                    for (int b = 0; b < SortBucketUtil.BucketCount; b++) {
+                        data.water[b] = MakeList(renderGraph, cull, cam, waterMat, 1, waterMask, 1u << b);
+                        builder.UseRendererList(data.water[b]);
+                    }
+                }
             }
 
-            // Lit-only (pass 1, alpha=0.5). dirOnly excluded — drawn above.
-            if (litOnlyMask != 0) {
-                var ds = CreateDrawingSettings(
-                    new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
-                ds.overrideMaterial          = mat;
-                ds.overrideMaterialPassIndex = 1;
-                var fs = new FilteringSettings(RenderQueueRange.all, litOnlyMask);
-                fs.renderingLayerMask = bucketMask;
-                context.DrawRenderers(rd.cullResults, ref ds, ref fs);
-            }
+            builder.SetRenderFunc((PassData d, UnsafeGraphContext context) => {
+                var cmd = CommandBufferHelpers.GetNativeCommandBuffer(context.cmd);
+                cmd.BeginSample(s_gpuSampler);
+                cmd.SetRenderTarget(d.normals);
+                // Drives the generic override's flat-normal branch; the chunked / water
+                // overrides don't declare _FlatNormals, so terrain keeps its depth.
+                cmd.SetGlobalFloat(FlatNormalsId, d.flatNormals);
+                cmd.ClearRenderTarget(false, true, d.clearColor);
+
+                // Non-world cameras (SkyCamera etc.) only need the cleared tier values —
+                // skip the whole per-sprite DrawRenderers workload.
+                if (d.isWorldCam) {
+                    if (d.hasBackground) cmd.DrawRendererList(d.background);
+                    // Loop A: tiers before chunked tiles. _SortBucket global set per bucket;
+                    // the override shaders read it (no per-sprite MPB).
+                    for (int b = 0; b < SortBucketUtil.BucketCount; b++) {
+                        cmd.SetGlobalFloat(SortBucketGlobalId, d.bucketNorm[b]);
+                        if (d.hasDirOnly) cmd.DrawRendererList(d.dirOnly[b]);
+                        if (d.hasLitOnly) cmd.DrawRendererList(d.litOnly[b]);
+                    }
+                    // Chunked tiles between the loops (carry _SortBucket per chunk via MPB).
+                    if (d.hasChunked) cmd.DrawRendererList(d.chunked);
+                    // Loop B: tiers after chunked tiles.
+                    for (int b = 0; b < SortBucketUtil.BucketCount; b++) {
+                        cmd.SetGlobalFloat(SortBucketGlobalId, d.bucketNorm[b]);
+                        if (d.hasShadow) cmd.DrawRendererList(d.shadow[b]);
+                        if (d.hasWater)  cmd.DrawRendererList(d.water[b]);
+                    }
+                }
+                cmd.EndSample(s_gpuSampler);
+            });
         }
-
-        // ── Chunked tile meshes (single draw, between the two bucket loops) ─
-        // Chunked tiles carry their own _SortBucket via per-chunk MPB
-        // (TileMeshController) — necessary because each chunk binds its own
-        // Texture2DArray slices and that MPB is unavoidable. Position-wise
-        // they sit AFTER background/litOnly (so their shadow-caster alpha
-        // overwrites the lit-only alpha at overlap pixels — otherwise
-        // underground tiles with background behind them would lose their
-        // edge-depth darkening) and BEFORE shadow casters (so animals
-        // standing on tiles win the overlap).
-        if (tileChunkMask != 0 && chunkedMat != null) {
-            var ds = CreateDrawingSettings(
-                new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
-            ds.overrideMaterial          = chunkedMat;
-            ds.overrideMaterialPassIndex = 0; // chunked shader has a single pass — shadow caster
-            var fs = new FilteringSettings(RenderQueueRange.all, tileChunkMask);
-            context.DrawRenderers(rd.cullResults, ref ds, ref fs);
-        }
-
-        // ── Loop B: tiers that draw AFTER chunked tiles ─────────────────────
-        for (int b = 0; b < SortBucketUtil.BucketCount; b++) {
-            cmd.SetGlobalFloat(SortBucketGlobalId, SortBucketUtil.BucketToNormalized(b));
-            context.ExecuteCommandBuffer(cmd);
-            cmd.Clear();
-
-            uint bucketMask = 1u << b;
-
-            // Shadow casters (pass 0, alpha=1.0). tileChunk excluded — drawn
-            // between the loops. Animals/structures overwrite tile pixels
-            // where they overlap.
-            {
-                var ds = CreateDrawingSettings(
-                    new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
-                ds.overrideMaterial          = mat;
-                ds.overrideMaterialPassIndex = 0;
-                var fs = new FilteringSettings(RenderQueueRange.all, shadowOnlyMask);
-                fs.renderingLayerMask = bucketMask;
-                context.DrawRenderers(rd.cullResults, ref ds, ref fs);
-            }
-
-            // Water (pass 1, alpha=0.5).
-            if (waterMask != 0 && waterMat != null) {
-                var ds = CreateDrawingSettings(
-                    new ShaderTagId("Universal2D"), ref rd, SortingCriteria.CommonTransparent);
-                ds.overrideMaterial          = waterMat;
-                ds.overrideMaterialPassIndex = 1;
-                var fs = new FilteringSettings(RenderQueueRange.all, waterMask);
-                fs.renderingLayerMask = bucketMask;
-                context.DrawRenderers(rd.cullResults, ref ds, ref fs);
-            }
-        }
-
-        cmd.EndSample(s_gpuSampler);
-        context.ExecuteCommandBuffer(cmd);
-        CommandBufferPool.Release(cmd);
-    }
-
-    public override void OnCameraCleanup(CommandBuffer cmd) {
-        cmd.ReleaseTemporaryRT(CapturedNormalsId);
     }
 }
 
@@ -417,7 +403,6 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
     static readonly ProfilerMarker s_marker     = new(MarkerName);
     static readonly CustomSampler  s_gpuSampler = CustomSampler.Create(GpuSampleName, true);
 
-    static readonly int LightRTId = Shader.PropertyToID("_CustomLightRT");
     float ambientNormal;
     float skyLightBlend;
     float sortRampRange;
@@ -425,7 +410,7 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
     float emissionStrength = 1f;
     int   tileChunkMask;
     Color deepAmbientColor;
-    RenderTargetIdentifier colorBuffer;
+    NormalsCapturePass capture;               // for the normals RT handle (set by LightFeature.Create)
     readonly Material circleMat;
     readonly Material sunMat;
     readonly Material compositeMat;
@@ -457,8 +442,7 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         CoreUtils.Destroy(circleMesh);
     }
 
-    public void Setup(RenderTargetIdentifier colorBuffer, float ambientNormal, Color deepAmbientColor, float skyLightBlend, float sortRampRange, float behindFarHeightFactor, float emissionStrength, int tileChunkMask) {
-        this.colorBuffer           = colorBuffer;
+    public void Setup(float ambientNormal, Color deepAmbientColor, float skyLightBlend, float sortRampRange, float behindFarHeightFactor, float emissionStrength, int tileChunkMask) {
         this.ambientNormal         = ambientNormal;
         this.deepAmbientColor      = deepAmbientColor;
         this.skyLightBlend         = skyLightBlend;
@@ -468,184 +452,195 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         this.tileChunkMask         = tileChunkMask;
     }
 
-    public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData rd) {
-        var desc = rd.cameraData.cameraTargetDescriptor;
-        desc.depthBufferBits = 0;
-        cmd.GetTemporaryRT(LightRTId, desc, FilterMode.Bilinear);
-        // Required: binds the RT so ClearRenderTarget in Execute targets it.
-        ConfigureTarget(LightRTId);
+    // Set by LightFeature.Create. RecordRenderGraph reads capture.NormalsHandle to
+    // declare a read dependency so RenderGraph runs the capture pass first.
+    public void SetCapturePass(NormalsCapturePass capture) {
+        this.capture = capture;
     }
 
-    public override void Execute(ScriptableRenderContext context, ref RenderingData rd) {
+    class PassData {
+        public TextureHandle lightRT, camColor, normals;
+        public Material circleMat, sunMat, compositeMat, ambientFillMat, emissionMat;
+        public Mesh circleMesh;
+        public MaterialPropertyBlock mpb;
+        public float ambientNormal, skyLightBlend, sortRampRange, behindFarHeightFactor, emissionStrength;
+        public Color deepAmbientColor;
+        public int tileChunkMask;
+        public Camera cam;
+        public Matrix4x4 view, proj;
+        public bool isWorldCam;
+    }
+
+    public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData) {
         if (circleMat == null || sunMat == null || compositeMat == null) return;
         using var _ = s_marker.Auto();
-        var cmd = CommandBufferPool.Get("CustomLighting");
-        cmd.BeginSample(s_gpuSampler);
+        var resourceData = frameData.Get<UniversalResourceData>();
+        var cameraData   = frameData.Get<UniversalCameraData>();
+        var cam = cameraData.camera;
 
-        var view = rd.cameraData.GetViewMatrix();
-        var proj = GL.GetGPUProjectionMatrix(rd.cameraData.GetProjectionMatrix(), renderIntoTexture: false);
-        cmd.SetViewMatrix(view);
-        cmd.SetProjectionMatrix(proj);
+        // Light RT: full camera-target format, colour-only, bilinear. Created via the
+        // public renderGraph.CreateTexture (CreateRenderGraphTexture is URP-internal).
+        var rtDesc = cameraData.cameraTargetDescriptor;
+        rtDesc.depthBufferBits = 0;
+        var lightRT = renderGraph.CreateTexture(new TextureDesc(rtDesc) {
+            name = "_CustomLightRT", filterMode = FilterMode.Bilinear, clearBuffer = false
+        });
 
-        // ── 1. Per-camera globals ────────────────────────────────────────────
-        // These are read by multiple shaders (LightSun, LightAmbientFill,
-        // LightComposite, LightCircle) and must be set for EVERY camera
-        // before any drawing. Keeping them in one block prevents the bug
-        // where the sky camera silently inherits stale Main Camera values.
-        var cam = rd.cameraData.camera;
-        float orthoH  = cam.orthographicSize * 2f;
-        float orthoW  = orthoH * cam.aspect;
-        float camMinX = cam.transform.position.x - orthoW * 0.5f;
-        float camMinY = cam.transform.position.y - orthoH * 0.5f;
+        using (var builder = renderGraph.AddUnsafePass<PassData>(MarkerName, out var data)) {
+            data.lightRT       = lightRT;
+            data.camColor      = resourceData.activeColorTexture;
+            data.normals       = capture != null ? capture.NormalsHandle : default;
+            data.circleMat     = circleMat;
+            data.sunMat        = sunMat;
+            data.compositeMat  = compositeMat;
+            data.ambientFillMat = ambientFillMat;
+            data.emissionMat   = emissionMat;
+            data.circleMesh    = circleMesh;
+            data.mpb           = mpb;
+            data.ambientNormal = ambientNormal;
+            data.skyLightBlend = skyLightBlend;
+            data.sortRampRange = sortRampRange;
+            data.behindFarHeightFactor = behindFarHeightFactor;
+            data.emissionStrength = emissionStrength;
+            data.deepAmbientColor = deepAmbientColor;
+            data.tileChunkMask = tileChunkMask;
+            data.cam           = cam;
+            data.view          = cameraData.GetViewMatrix();
+            data.proj          = GL.GetGPUProjectionMatrix(cameraData.GetProjectionMatrix(), renderIntoTexture: false);
+            data.isWorldCam    = (cam.cullingMask & tileChunkMask) != 0;
 
-        Color deepAmbient = deepAmbientColor;
+            builder.UseTexture(data.lightRT, AccessFlags.ReadWrite);
+            // Composite multiplies the lightmap into the scene via a hardware DstColor
+            // blend, so we WRITE the camera colour (the blend reads the existing
+            // framebuffer content — no scene-copy texture needed). ReadWrite preserves it.
+            builder.UseTexture(data.camColor, AccessFlags.ReadWrite);
+            // Read dependency on the normals RT so RenderGraph runs the capture pass first.
+            if (data.normals.IsValid()) builder.UseTexture(data.normals, AccessFlags.Read);
+            builder.AllowGlobalStateModification(true);
 
-        // ── World-aligned vs sky-style lighting ─────────────────────────────
-        // A "world camera" renders the chunked tile layer — by definition the
-        // only camera whose frustum aligns with the world tile grid that built
-        // _SkyExposureTex. Everything else (SkyCamera, future overlay/parallax
-        // cameras, minimap previews, …) gets uniform sky-style lighting: no
-        // spatial exposure, no torches, no emission. This is a fail-safe
-        // default — a new camera "just works" without inheriting Main-camera
-        // assumptions and ghosting the terrain onto its render. Opt in by
-        // adding the TileChunk layer to the camera's culling mask.
-        bool isWorldCam = (cam.cullingMask & tileChunkMask) != 0;
+            builder.SetRenderFunc((PassData d, UnsafeGraphContext context) => {
+                var cmd = CommandBufferHelpers.GetNativeCommandBuffer(context.cmd);
+                cmd.BeginSample(s_gpuSampler);
 
-        cmd.SetGlobalVector("_CamWorldBounds", new Vector4(camMinX, camMinY, orthoW, orthoH));
-        cmd.SetGlobalVector("_WorldToUV",      new Vector2(1f / orthoW, 1f / orthoH));
-        cmd.SetGlobalFloat("_AmbientNormal",   ambientNormal);
-        cmd.SetGlobalColor("_DeepAmbient",     deepAmbient);
-        // Ramp params consumed by LightCircle.shader for sort-aware effective height.
-        cmd.SetGlobalFloat("_SortRampRange",         sortRampRange);
-        cmd.SetGlobalFloat("_BehindFarHeightFactor", behindFarHeightFactor);
-        // Read by LightSun.shader. Bypass on non-world cameras because their
-        // _CamWorldBounds maps screen UV to world positions that don't
-        // correspond to what they actually draw — sampling exposure would
-        // ghost the world tile-grid silhouette onto sky/background content.
-        cmd.SetGlobalFloat("_SkyExposureBypass", isWorldCam ? 0f : 1f);
+                // TextureHandle implicitly converts to both Texture and
+                // RenderTargetIdentifier, so resolve once to concrete identifiers to
+                // avoid ambiguous (CS0121) cmd.Blit/SetRenderTarget overload resolution.
+                RenderTargetIdentifier lightTarget = d.lightRT;
+                RenderTargetIdentifier colorTarget = d.camColor;
 
-        // ── 2. Ambient setup (camera-specific) ──────────────────────────────
-        // World cam: deep ambient floor + spatial sky-light fill via _SkyExposureTex
-        //   → underground stays dark, surface gets full ambient.
-        // Non-world cam: uniform clear to the time-of-day ambient color — no
-        //   spatial modulation, since the camera's content (clouds, sky,
-        //   parallax background) is not anchored to the world tile grid.
+                cmd.SetViewMatrix(d.view);
+                cmd.SetProjectionMatrix(d.proj);
 
-        if (isWorldCam) {
-            Color skyLight = SunController.GetAmbientColor();
-            cmd.ClearRenderTarget(false, true, deepAmbient);
-            cmd.SetGlobalColor("_AmbientColor", skyLight);
-            cmd.Blit(null, LightRTId, ambientFillMat);
-        } else {
-            cmd.ClearRenderTarget(false, true, SunController.GetAmbientColor());
+                var lcam = d.cam;
+                float orthoH  = lcam.orthographicSize * 2f;
+                float orthoW  = orthoH * lcam.aspect;
+                float camMinX = lcam.transform.position.x - orthoW * 0.5f;
+                float camMinY = lcam.transform.position.y - orthoH * 0.5f;
+                Color deepAmbient = d.deepAmbientColor;
+                bool isWorldCam = d.isWorldCam;
+
+                // ── 1. Per-camera globals (read by LightSun/AmbientFill/Composite/Circle) ──
+                cmd.SetGlobalVector("_CamWorldBounds", new Vector4(camMinX, camMinY, orthoW, orthoH));
+                cmd.SetGlobalVector("_WorldToUV",      new Vector2(1f / orthoW, 1f / orthoH));
+                cmd.SetGlobalFloat("_AmbientNormal",   d.ambientNormal);
+                cmd.SetGlobalColor("_DeepAmbient",     deepAmbient);
+                cmd.SetGlobalFloat("_SortRampRange",         d.sortRampRange);
+                cmd.SetGlobalFloat("_BehindFarHeightFactor", d.behindFarHeightFactor);
+                // Bypass sky-exposure on non-world cameras — their _CamWorldBounds maps
+                // screen UV to world positions that don't match what they draw.
+                cmd.SetGlobalFloat("_SkyExposureBypass", isWorldCam ? 0f : 1f);
+
+                // ── 2. Ambient setup ─────────────────────────────────────────────────
+                cmd.SetRenderTarget(lightTarget);
+                if (isWorldCam) {
+                    // Deep ambient floor + spatial sky-light fill via _SkyExposureTex.
+                    Color skyLight = SunController.GetAmbientColor();
+                    cmd.ClearRenderTarget(false, true, deepAmbient);
+                    cmd.SetGlobalColor("_AmbientColor", skyLight);
+                    cmd.Blit(null, lightTarget, d.ambientFillMat);
+                } else {
+                    // Uniform clear to the time-of-day ambient color (no spatial modulation).
+                    cmd.ClearRenderTarget(false, true, SunController.GetAmbientColor());
+                }
+
+                // ── 3. Point lights (world cam only; AABB-culled per light) ──────────
+                if (isWorldCam) {
+                    float camMaxX = camMinX + orthoW;
+                    float camMaxY = camMinY + orthoH;
+                    foreach (var src in LightSource.all) {
+                        if (src == null || src.isDirectional) continue;
+                        Vector3 lp = src.transform.position;
+                        float r = src.outerRadius;
+                        if (lp.x + r < camMinX || lp.x - r > camMaxX
+                         || lp.y + r < camMinY || lp.y - r > camMaxY) continue;
+
+                        d.mpb.SetColor("_LightColor",    src.lightColor);
+                        d.mpb.SetFloat("_Intensity",     src.intensity);
+                        d.mpb.SetFloat("_InnerFraction",
+                            src.outerRadius > 0f ? src.innerRadius / src.outerRadius : 0f);
+                        d.mpb.SetVector("_LightWorldPos", (Vector4)lp);
+                        d.mpb.SetFloat("_LightHeight",    src.lightHeight);
+                        d.mpb.SetFloat("_LightSortBucket", src.sortBucket);
+                        d.mpb.SetFloat("_CenterFlatten",   src.centerFlatten);
+
+                        float diam = r * 2f;
+                        var matrix = Matrix4x4.TRS(
+                            new Vector3(lp.x, lp.y, 0f), Quaternion.identity, new Vector3(diam, diam, 1f));
+                        cmd.DrawMesh(d.circleMesh, matrix, d.circleMat, 0, 0, d.mpb);
+                    }
+                }
+
+                // ── 4. Directional lights (sun) ──────────────────────────────────────
+                // Blit (not DrawMesh) — DrawMesh silently fails to write the temp RT for
+                // some cameras (e.g. SkyCamera without PixelPerfectCamera).
+                Color sunSkyContrib = Color.black;
+                foreach (var src in LightSource.all) {
+                    if (src == null || !src.isDirectional || src.intensity <= 0f) continue;
+                    Vector3 sunDir = SunController.GetSunDirection();
+                    cmd.SetGlobalColor("_SunColor",     src.lightColor);
+                    cmd.SetGlobalFloat("_SunIntensity", src.intensity);
+                    cmd.SetGlobalVector("_SunDir",      sunDir);
+                    cmd.SetGlobalFloat("_SunHeight",    src.lightHeight);
+                    cmd.Blit(null, lightTarget, d.sunMat);
+
+                    // Replicate the sun shader's flat-normal NdotL for sky pixels.
+                    Vector3 sunDir3 = new Vector3(sunDir.x, sunDir.y, -src.lightHeight).normalized;
+                    float ndotlFlat = Mathf.Max(d.ambientNormal, -sunDir3.z);
+                    sunSkyContrib += src.lightColor * (src.intensity * ndotlFlat);
+                }
+
+                // ── 5. Emission contribution to lightmap (world cam only) ────────────
+                // Iterates the explicit emitter registry — only ~N draws/frame, vs one
+                // shader invocation per visible lit sprite.
+                if (isWorldCam && d.emissionMat != null && d.emissionStrength > 0f) {
+                    cmd.SetGlobalFloat("_EmissionStrength", d.emissionStrength);
+                    cmd.SetRenderTarget(lightTarget);
+                    foreach (var src in LightSource.emitters) {
+                        if (src == null) continue;
+                        var rr = src.EmissionReceiver;
+                        if (rr == null || !rr.enabled || !rr.gameObject.activeInHierarchy) continue;
+                        cmd.SetGlobalFloat("_EmissionScale", src.CurrentEmissionScale);
+                        cmd.SetGlobalFloat("_SortBucket",
+                            SortBucketUtil.BucketToNormalized(SortBucketUtil.GetBucket(rr.sortingOrder)));
+                        cmd.DrawRenderer(rr, d.emissionMat, 0, 0);
+                    }
+                }
+
+                // ── 6. Composite — multiply-blit light RT onto the scene ─────────────
+                // Sky pixels (normals alpha < 0.25) bypass the lightmap and use this
+                // precomputed color: time-of-day ambient + sun (no exposure, no points).
+                Color skyLightColor = SunController.GetAmbientColor() + sunSkyContrib;
+                skyLightColor.r = Mathf.Clamp01(skyLightColor.r);
+                skyLightColor.g = Mathf.Clamp01(skyLightColor.g);
+                skyLightColor.b = Mathf.Clamp01(skyLightColor.b);
+                skyLightColor.a = 1f;
+                d.compositeMat.SetColor("_SkyLightColor", skyLightColor);
+                d.compositeMat.SetFloat("_SkyLightBlend", d.skyLightBlend);
+                cmd.Blit(lightTarget, colorTarget, d.compositeMat);
+
+                cmd.EndSample(s_gpuSampler);
+            });
         }
-
-        // ── 3. Point lights (torches, lanterns, etc.) ────────────────────────
-        // World cam only — torches/lanterns live on world tile positions, so
-        // non-world cameras (which draw parallax/sky content) ignore them.
-        // Lights are culled per-light against the camera AABB so off-screen
-        // torches don't issue draw calls. The cull uses outerRadius as the
-        // buffer — a light just off-screen still illuminates on-screen pixels
-        // as long as its reach extends into view.
-        if (isWorldCam) {
-            float camMaxX = camMinX + orthoW;
-            float camMaxY = camMinY + orthoH;
-            foreach (var src in LightSource.all) {
-                if (src == null || src.isDirectional) continue;
-                Vector3 lp = src.transform.position;
-                float r = src.outerRadius;
-                if (lp.x + r < camMinX || lp.x - r > camMaxX
-                 || lp.y + r < camMinY || lp.y - r > camMaxY) continue;
-
-                mpb.SetColor("_LightColor",    src.lightColor);
-                mpb.SetFloat("_Intensity",     src.intensity);
-                mpb.SetFloat("_InnerFraction",
-                    src.outerRadius > 0f ? src.innerRadius / src.outerRadius : 0f);
-                mpb.SetVector("_LightWorldPos", (Vector4)lp);
-                mpb.SetFloat("_LightHeight",    src.lightHeight);
-                mpb.SetFloat("_LightSortBucket", src.sortBucket);
-                mpb.SetFloat("_CenterFlatten",   src.centerFlatten);
-
-                float d = r * 2f;
-                var matrix = Matrix4x4.TRS(
-                    new Vector3(lp.x, lp.y, 0f),
-                    Quaternion.identity,
-                    new Vector3(d, d, 1f));
-
-                cmd.DrawMesh(circleMesh, matrix, circleMat, 0, 0, mpb);
-            }
-        }
-
-        // ── 4. Directional lights (sun) — NdotL × shadow march ──────────────
-        // Accumulate flat-normal sun contribution for the sky-pixel uniform.
-        // Sky pixels use a camera-facing normal (0,0,-1), so NdotL = sunHeight/mag.
-        Color sunSkyContrib = Color.black;
-        foreach (var src in LightSource.all) {
-            if (src == null || !src.isDirectional || src.intensity <= 0f) continue;
-            Vector3 sunDir = SunController.GetSunDirection();
-            cmd.SetGlobalColor("_SunColor",     src.lightColor);
-            cmd.SetGlobalFloat("_SunIntensity", src.intensity);
-            cmd.SetGlobalVector("_SunDir",      sunDir);
-            cmd.SetGlobalFloat("_SunHeight",    src.lightHeight);
-            // Blit instead of DrawMesh — DrawMesh silently fails to write to
-            // the temp RT for some cameras (e.g. SkyCamera without PixelPerfectCamera).
-            cmd.Blit(null, LightRTId, sunMat);
-
-            // Replicate sun shader's flat-normal NdotL for sky pixels.
-            Vector3 sunDir3 = new Vector3(sunDir.x, sunDir.y, -src.lightHeight).normalized;
-            float ndotlFlat = Mathf.Max(ambientNormal, -sunDir3.z); // dot((0,0,-1), sunDir3)
-            sunSkyContrib += src.lightColor * (src.intensity * ndotlFlat);
-        }
-
-        // ── 5. Emission contribution to lightmap ─────────────────────────────
-        // Sprites with an `_EmissionMap` secondary texture (wired by
-        // SpriteNormalMapGenerator from a `{stem}_f.png` companion) write
-        // white-by-mask additively into the lightmap. After composite, those
-        // pixels keep their painted color verbatim — torches/fireplaces glow
-        // regardless of time-of-day or distance from a real LightSource.
-        //
-        // Iterates the explicit emitter registry (LightSource.emitters)
-        // instead of DrawRenderers over the entire litMask — only ~N draws per
-        // frame where N = active emitters, vs. one shader invocation per visible
-        // lit sprite. World cam only — emitters live at world tile positions.
-        //
-        // `_EmissionScale` and `_SortBucket` are set as globals per-emitter
-        // (replacing the older per-renderer MPB scheme). Globals don't break
-        // SRP Batcher; the emission pass draws one emitter at a time so
-        // there's no batching concern here anyway.
-        if (isWorldCam && emissionMat != null && emissionStrength > 0f) {
-            cmd.SetGlobalFloat("_EmissionStrength", emissionStrength);
-            cmd.SetRenderTarget(LightRTId);
-            foreach (var src in LightSource.emitters) {
-                if (src == null) continue;
-                var r = src.EmissionReceiver;
-                if (r == null || !r.enabled || !r.gameObject.activeInHierarchy) continue;
-                cmd.SetGlobalFloat("_EmissionScale", src.CurrentEmissionScale);
-                cmd.SetGlobalFloat("_SortBucket",
-                    SortBucketUtil.BucketToNormalized(SortBucketUtil.GetBucket(r.sortingOrder)));
-                cmd.DrawRenderer(r, emissionMat, 0, 0);
-            }
-        }
-
-        // ── 6. Composite — multiply-blit light RT onto the scene ─────────────
-        // Sky pixels bypass the lightmap entirely and use this precomputed color:
-        // time-of-day ambient + sun (no sky-exposure modulation, no point lights).
-        Color skyLightColor = SunController.GetAmbientColor() + sunSkyContrib;
-        skyLightColor.r = Mathf.Clamp01(skyLightColor.r);
-        skyLightColor.g = Mathf.Clamp01(skyLightColor.g);
-        skyLightColor.b = Mathf.Clamp01(skyLightColor.b);
-        skyLightColor.a = 1f;
-        compositeMat.SetColor("_SkyLightColor", skyLightColor);
-        compositeMat.SetFloat("_SkyLightBlend", skyLightBlend);
-        cmd.Blit(LightRTId, colorBuffer, compositeMat);
-
-        cmd.EndSample(s_gpuSampler);
-        context.ExecuteCommandBuffer(cmd);
-        CommandBufferPool.Release(cmd);
-    }
-
-    public override void OnCameraCleanup(CommandBuffer cmd) {
-        cmd.ReleaseTemporaryRT(LightRTId);
     }
 
     // Axis-aligned regular octagon, apothem 0.5, fan-triangulated from center.

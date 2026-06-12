@@ -19,7 +19,7 @@ editor**, run `Tools/build-and-publish.ps1` from the project root.
 
 Flags: `-WindowsOnly` (skip Mac), `-SkipPush` (build only), `-UnityExe <path>`.
 
-Prereqs: Unity 2021.3.16f1 installed; editor closed; `butler login` done once
+Prereqs: Unity 6000.3.17f1 installed; editor closed; `butler login` done once
 (butler ships with the itch app; the script auto-locates it under broth/, so a
 butler self-update won't break the pipeline). Operational detail in the
 `project_client_build_publish` memory.

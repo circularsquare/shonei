@@ -82,8 +82,9 @@
         "job": "smith",
         "tile": "furnace",
         "description": "alloy copper and tin into bronze",
+        "hidden": true,
         "workload": 6.0,
-        "research": "Furnace",
+        "research": "Metallurgy",
         "researchPoints": 0.02,
         "ninputs": [
             { "name": "coal", "quantity": 1 },
@@ -98,6 +99,7 @@
         "job": "smith",
         "tile": "furnace",
         "description": "fuse sand into glass",
+        "hidden": true,
         "workload": 8.0,
         "research": "Glassmaking",
         "researchPoints": 0.02,
@@ -113,8 +115,9 @@
         "job": "smith",
         "tile": "furnace",
         "description": "smelt malachite",
+        "hidden": true,
         "workload": 6.0,
-        "research": "Furnace",
+        "research": "Metallurgy",
         "researchPoints": 0.02,
         "ninputs": [
             { "name": "coal", "quantity": 1 },
@@ -128,8 +131,9 @@
         "job": "smith",
         "tile": "furnace",
         "description": "smelt cassiterite",
+        "hidden": true,
         "workload": 6.0,
-        "research": "Furnace",
+        "research": "Metallurgy",
         "researchPoints": 0.02,
         "ninputs": [
             { "name": "coal", "quantity": 1 },
@@ -299,7 +303,7 @@
         "tile": "crucible",
         "description": "smelt malachite (crude)",
         "workload": 12.0,
-        "research": "Furnace",
+        "research": "Metallurgy",
         "researchPoints": 0.02,
         "ninputs": [
             { "name": "coal", "quantity": 1 },
@@ -314,7 +318,7 @@
         "tile": "crucible",
         "description": "smelt cassiterite (crude)",
         "workload": 12.0,
-        "research": "Furnace",
+        "research": "Metallurgy",
         "researchPoints": 0.02,
         "ninputs": [
             { "name": "coal", "quantity": 1 },
@@ -356,7 +360,7 @@
         "tile": "crucible",
         "description": "smelt malachite (wood)",
         "workload": 12.0,
-        "research": "Furnace",
+        "research": "Metallurgy",
         "researchPoints": 0.02,
         "ninputs": [
             { "name": "wood", "quantity": 3 },
@@ -371,7 +375,7 @@
         "tile": "crucible",
         "description": "smelt cassiterite (wood)",
         "workload": 12.0,
-        "research": "Furnace",
+        "research": "Metallurgy",
         "researchPoints": 0.02,
         "ninputs": [
             { "name": "wood", "quantity": 3 },

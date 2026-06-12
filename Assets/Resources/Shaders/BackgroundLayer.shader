@@ -28,7 +28,7 @@ Shader "Hidden/BackgroundLayer" {
     Properties {
         [PerRendererData] _MainTex ("Sprite Texture", 2D) = "white" {}
         [HideInInspector] _Color         ("Tint",          Color) = (1,1,1,1)
-        [HideInInspector] _RendererColor ("RendererColor", Color) = (1,1,1,1)
+        [HideInInspector] [PerRendererData] _RendererColor ("RendererColor", Color) = (1,1,1,1)
     }
 
     SubShader {
@@ -48,8 +48,12 @@ Shader "Hidden/BackgroundLayer" {
 
         CBUFFER_START(UnityPerMaterial)
             float4 _Color;
-            half4  _RendererColor;
         CBUFFER_END
+        // Outside CBUFFER — SpriteRenderer auto-injects this per-renderer via MPB.
+        // Inside UnityPerMaterial it reads as uninitialized (0,0,0,0) under URP 17's
+        // SRP batcher, so frag's `tex * _RendererColor` went fully transparent (the
+        // whole layer vanished after the Unity 6 upgrade). Matches Sprite.shader.
+        half4 _RendererColor;
 
         struct Attributes {
             float3 positionOS : POSITION;

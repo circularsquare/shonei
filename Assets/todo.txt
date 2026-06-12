@@ -131,16 +131,11 @@ todoship
 - pretty up recipe panel
     - get rid of empty space 
 
-clarify which side of burrow sprite is out
-    - more thickness on roof? 
-
 - ui scaling....
     - is everything scaling right?
-    - are icons scaling right?
 - test on laptop
 
-- be able to mine quarry / digging pit from the side rather than just from the top?
-
+- test quarry side mining
 
 - rice icon 
 - explain mining, where is mala from 
@@ -148,13 +143,12 @@ clarify which side of burrow sprite is out
 - test tile placement edges
 
 
-- do mice uselessly equip tools? who equips firsst?
-    - mining require tools?
+- mining tools plan
+    - deequipping items with durability..
 - hide untested buildings (furnace)
     - does metal haev a use?
     - does glass have a use?
 - main menu collapsible changelog and dev disclaimer, or button
-
 
 - more tutorial steps?
     - sort out tools
@@ -163,7 +157,8 @@ clarify which side of burrow sprite is out
 
 why is it using 38% gpu with all lighting off?
 
-- make main menu look better, welcome back etc.
+3 sibling shaders with the same latent _RendererColor-in-CBUFFER pattern (ChunkedTileSprite, PlantSprite, CrackedSprite) — render fine now, but CrackedSprite (damage cracks) is a latent risk.
+Verify/remove URP_COMPATIBILITY_MODE define; bump MCP 9.6.8 → 9.7.0.
 
 
 TODAY

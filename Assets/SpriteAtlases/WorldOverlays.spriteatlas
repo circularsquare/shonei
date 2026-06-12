@@ -21,7 +21,7 @@ SpriteAtlas:
       crunchedCompression: 0
       sRGB: 1
     platformSettings:
-    - serializedVersion: 3
+    - serializedVersion: 4
       m_BuildTarget: DefaultTexturePlatform
       m_MaxTextureSize: 4096
       m_ResizeAlgorithm: 0
@@ -31,6 +31,7 @@ SpriteAtlas:
       m_CrunchedCompression: 0
       m_AllowsAlphaSplitting: 0
       m_Overridden: 0
+      m_IgnorePlatformSupport: 0
       m_AndroidETC2FallbackOverride: 0
       m_ForceMaximumCompressionQuality_BC6H_BC7: 0
     packingSettings:
@@ -56,9 +57,37 @@ SpriteAtlas:
     bindAsDefault: 1
     isAtlasV2: 0
     cachedData: {fileID: 0}
+    packedSpriteRenderDataKeys:
+    - f4f7e2703eea0154391a345ce3c8d6ff: 21300000
+    - ffe49bb111dc5fc469b0a92cf424b0b3: 21300000
+    - 06f10d82acb5399458db7fc8a96bc766: 21300000
+    - bbd529630bc7e0c429ebace33a127624: 21300000
+    - bfc5bc89d745c924598bdfd0721fe32f: 21300000
+    - 5bd6e01b5bf8eaf40a46b6bf35868b2e: 21300000
+    - e9c01b6d74b65c34893046126af67bc1: 21300000
+    - 868e458deeb4f2e46878075549671154: 21300000
+    - 2222afef374b14c42882bf4dbbaf493a: 21300000
   m_MasterAtlas: {fileID: 0}
-  m_PackedSprites: []
-  m_PackedSpriteNamesToIndex: []
+  m_PackedSprites:
+  - {fileID: 21300000, guid: f4f7e2703eea0154391a345ce3c8d6ff, type: 3}
+  - {fileID: 21300000, guid: ffe49bb111dc5fc469b0a92cf424b0b3, type: 3}
+  - {fileID: 21300000, guid: 06f10d82acb5399458db7fc8a96bc766, type: 3}
+  - {fileID: 21300000, guid: bbd529630bc7e0c429ebace33a127624, type: 3}
+  - {fileID: 21300000, guid: bfc5bc89d745c924598bdfd0721fe32f, type: 3}
+  - {fileID: 21300000, guid: 5bd6e01b5bf8eaf40a46b6bf35868b2e, type: 3}
+  - {fileID: 21300000, guid: e9c01b6d74b65c34893046126af67bc1, type: 3}
+  - {fileID: 21300000, guid: 868e458deeb4f2e46878075549671154, type: 3}
+  - {fileID: 21300000, guid: 2222afef374b14c42882bf4dbbaf493a, type: 3}
+  m_PackedSpriteNamesToIndex:
+  - selectframe
+  - mycelium
+  - blueprintframe
+  - tileselect
+  - whiteborder
+  - harvestselect
+  - tree
+  - bpdeconstructframe
+  - mousearrow
   m_RenderDataMap: {}
   m_Tag: WorldOverlays
   m_IsVariant: 0

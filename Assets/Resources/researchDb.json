@@ -103,12 +103,11 @@
         ]
     },{
         "id": 13,
-        "name": "Furnace",
+        "name": "Metallurgy",
         "description": "Smelt ores and refine metals.",
         "prereqs": [2],
         "cost": 10,
         "unlocks": [
-            { "type": "building", "target": "furnace" },
             { "type": "building", "target": "crucible" },
             { "type": "job",      "target": "smith" },
             { "type": "recipe",   "target": "2" }

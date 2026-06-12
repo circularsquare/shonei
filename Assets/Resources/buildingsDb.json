@@ -526,7 +526,8 @@
         "capacity": 1,
         "isWorkstation": true,
         "solidTop": true,
-        "category": "production"
+        "category": "production",
+        "defaultLocked": true
     },{
         "id": 104,
         "constructionCost": 25,

@@ -11,7 +11,8 @@
     },{
         "id": 2,
         "name": "merchant",
-        "jobType": "none"
+        "jobType": "none",
+        "usesTools": false
     },{
         "id": 3,
         "name": "logger",
@@ -86,6 +87,7 @@
         "id": 18,
         "name": "runner",
         "jobType": "none",
+        "usesTools": false,
         "defaultLocked": true
     }
 ]

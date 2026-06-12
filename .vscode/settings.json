@@ -52,5 +52,5 @@
         "Temp/": true
     },
     "dotnet.preferCSharpExtension": true,
-    "dotnet.defaultSolution": "shonei.sln"
+    "dotnet.defaultSolution": "shonei.slnx"
 }

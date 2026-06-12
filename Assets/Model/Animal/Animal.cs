@@ -467,7 +467,7 @@ public class Animal : MonoBehaviour{
         candidates.Add((Jitter(eeping.SleepUrgency(BedtimeUrgency())), TryStartSleep));
         // Equip/clothing: fixed pull, only when the slot is actually empty (else the helper would
         // rank then no-op — see validation note in the plan).
-        float equipU = toolSlotInv.itemStacks[0].item == null ? UrgencyConfig.EquipUrgency : 0f;
+        float equipU = (job.usesTools && toolSlotInv.itemStacks[0].item == null) ? UrgencyConfig.EquipUrgency : 0f;
         float clothingU = clothingSlotInv.itemStacks[0].item == null ? UrgencyConfig.EquipUrgency : 0f;
         candidates.Add((Jitter(equipU), FindEquipment));
         candidates.Add((Jitter(clothingU), FindClothing));
@@ -616,6 +616,7 @@ public class Animal : MonoBehaviour{
 
     // Picks up one tool into toolSlotInv if the slot is empty.
     private bool FindEquipment() {
+        if (!job.usesTools) return false;                          // job gains no tool benefit; don't seek one
         if (toolSlotInv.itemStacks[0].item != null) return false; // already holding a tool
         foreach (Item equipment in Db.equipmentItems) {
             task = new ObtainTask(this, equipment, 100, toolSlotInv);

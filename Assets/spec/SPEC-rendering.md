@@ -328,6 +328,8 @@ SpriteRenderer sr = SpriteMaterialUtil.AddSpriteRenderer(go);
 
 Three passes: **NormalsCapturePass** captures sprite normals + lighting tier into a temp RT; **LightPass** writes the light map (ambient + point lights + sun); **Composite** multiplies the light map onto the scene.
 
+> **RenderGraph (URP 17 / Unity 6.3+):** both passes are implemented via `RenderGraph.AddUnsafePass` in `RecordRenderGraph` (the legacy `OnCameraSetup`/`Execute` path no longer runs under RenderGraph). The unsafe pass gives a native `CommandBuffer` (`CommandBufferHelpers.GetNativeCommandBuffer(ctx.cmd)`) so the per-bucket draw / blit / DrawMesh logic ports almost verbatim — the only translations are: temp RTs → `renderGraph.CreateTexture(new TextureDesc(rtDesc){…})`; `context.DrawRenderers` → a `RendererListHandle` per (tier, bucket) + `cmd.DrawRendererList`; camera color → `frameData.Get<UniversalResourceData>().activeColorTexture`; `_CapturedNormalsRT` shared via `builder.SetGlobalTextureAfterPass`. Where this doc says `.Execute` below, read it as "the AddUnsafePass render func." Composite relies on a hardware `Blend DstColor Zero` multiply (it does NOT read the scene as a texture), so reading+writing the camera color in one unsafe pass is fine. Migration notes: `plans/rendergraph-lighting-migration.md`.
+
 **LightFeature skips cameras** where `cullingMask == 0` or where `(cullingMask & (litLayers | directionalOnlyLayers | waterLayer | backgroundLayer | tileChunkLayer)) == 0` — cameras that see no sprites participating in the normals RT. The `UnlitOverlayCamera` (see §Sky / background) hits this check because the Unlit layer is excluded from all five masks.
 
 #### NormalsCapturePass (BeforeRenderingTransparents)

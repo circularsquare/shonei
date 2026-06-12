@@ -190,6 +190,7 @@ Fields:
 | `name` | string | lookup key; matched against `recipe.job` |
 | `jobType` | string | category: `"logistics"`, `"none"`, `"gatherer"`, `"crafter"`, `"researcher"` |
 | `defaultSkill` | string? | skill domain awarded to all recipes of this job unless overridden; null for hauler/merchant |
+| `usesTools` | bool? | whether animals on this job actively seek a tool to equip (default `true`). Tools only multiply work that routes through `ModifierSystem.GetWorkMultiplier` (gathering, crafting, research, construction), so purely-logistical jobs (hauler, merchant, runner) set `false`. A mouse reassigned off a tool-using job keeps any tool it already holds — the gate only stops the active seek (`Animal.FindEquipment`). |
 | `defaultLocked` | bool? | hidden from the jobs panel until a gate is satisfied — a tech with a matching `{"type":"job"}` entry, or `unlockedByBuilding` |
 | `unlockedByBuilding` | string? | one-way building gate: building type name whose first construction permanently reveals this job (independent of research). See SPEC-research §Job gating |
 | `skillWeights` | `{skill: float}`? | affinity weights used by auto job-swapping |

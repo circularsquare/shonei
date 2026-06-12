@@ -95,7 +95,6 @@ public class BackgroundLayer : SkyLayerBase {
 
 
     SpriteRenderer sr;
-    Material mat;
     Material bgGenMat;
     MaterialPropertyBlock mpb;
     // Dummy 64×64 Texture2D used only to back Sprite.Create — `bgRT` is
@@ -152,14 +151,6 @@ public class BackgroundLayer : SkyLayerBase {
                                    new Vector2(0.5f, 0.5f), 64f,
                                    extrude: 0, meshType: SpriteMeshType.FullRect);
 
-        Shader sh = Resources.Load<Shader>("Shaders/BackgroundLayer");
-        if (sh == null) {
-            Debug.LogError("BackgroundLayer: missing shader Resources/Shaders/BackgroundLayer.shader — disabling.");
-            enabled = false;
-            return;
-        }
-        mat = new Material(sh) { hideFlags = HideFlags.HideAndDontSave };
-
         Shader genSh = Resources.Load<Shader>("Shaders/BackgroundLayerGen");
         if (genSh == null) {
             Debug.LogError("BackgroundLayer: missing shader Resources/Shaders/BackgroundLayerGen.shader — disabling.");
@@ -171,11 +162,19 @@ public class BackgroundLayer : SkyLayerBase {
         var srGo = new GameObject("BackgroundLayerSprite");
         srGo.transform.SetParent(transform, worldPositionStays: false);
         srGo.layer = gameObject.layer;
-        sr = srGo.AddComponent<SpriteRenderer>();
+        // Route through SpriteMaterialUtil → Resources/Materials/Sprite.mat
+        // (Custom/Sprite) — the same lit-sprite material the cloud / star /
+        // haze layers use, and which their identical MPB _MainTex=RT bind
+        // (below) relies on. A bespoke Hidden/BackgroundLayer shader used to
+        // back this SR, but under URP 17 (Unity 6) its SpriteRenderer MPB
+        // _MainTex override silently stopped taking effect — the sprite
+        // sampled its transparent dummy texture, so the whole layer rendered
+        // invisible. Custom/Sprite honours the per-renderer _MainTex bind.
+        // The parallax bake still lives in bgGenMat (Hidden/BackgroundLayerGen).
+        sr = SpriteMaterialUtil.AddSpriteRenderer(srGo);
         sr.sprite = sprite;
         sr.sortingLayerName = "Background";
         sr.sortingOrder = sortingOrder;
-        sr.material = mat;
 
         // MPB-bind the parallax-baked RT as _MainTex (overriding the
         // sprite-auto-bound spriteTex), and a flat-normal 1×1 as
@@ -214,7 +213,8 @@ public class BackgroundLayer : SkyLayerBase {
 
     void OnDestroy() {
         if (bgRT != null)     { bgRT.Release(); bgRT = null; }
-        if (mat != null)      Destroy(mat);
+        // Note: sr.sharedMaterial is the shared Resources/Materials/Sprite.mat
+        // (assigned via SpriteMaterialUtil) — do NOT destroy it here.
         if (bgGenMat != null) Destroy(bgGenMat);
         if (spriteTex != null) Destroy(spriteTex);
     }

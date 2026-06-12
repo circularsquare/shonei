@@ -4,6 +4,7 @@ meoww!!
 - more graphics settings (cloud detail, flat lighting, particle)
 - more sounds (research, wind)
 - building interior lighting for burrow
+- updated unity to 6.3!
 6/11
 - ui work
 - job gates 

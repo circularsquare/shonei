@@ -734,6 +734,12 @@ public class Job {
     public string name {get; set;}
     public string jobType {get; set;}
     public string defaultSkill {get; set;} // optional; skill domain used for recipes of this job (e.g. "woodworking")
+    // Whether animals on this job actively seek out a tool to equip. Tools only speed up work that
+    // routes through ModifierSystem.GetWorkMultiplier (gathering, crafting, research, construction),
+    // so purely-logistical jobs (hauler, merchant, runner) gain nothing and shouldn't hunt for one.
+    // A mouse reassigned off a tool-using job KEEPS any tool it already holds — this gate only stops
+    // the active seek. Defaults true; set false in jobsDb.json for jobs with no tool benefit.
+    public bool usesTools {get; set;} = true;
     public bool defaultLocked {get; set;} // true = hidden from jobs panel until unlocked
     // Optional one-way building gate: building type name whose first construction permanently
     // reveals this job (e.g. "sawmill" → woodworker). Independent of the tech gate — a
