@@ -110,7 +110,10 @@ public class Plant : Structure {
         sprite = plantType.LoadSprite() ?? Resources.Load<Sprite>("Sprites/Plants/default");
         sr.sprite = sprite;
         sr.sortingOrder = 60;
-        LightReceiverUtil.SetSortBucket(sr);
+        // Light at the buildings bucket (not the creatures bucket its 60 sortingOrder implies)
+        // so torches front-light plants like a building. Visual draw order stays at 60. Only
+        // mice keep the creature back-lit treatment. See SortBucketUtil.SetExplicitBucket.
+        SortBucketUtil.SetExplicitBucket(sr, SortBucketUtil.BuildingsBucket);
 
         // Anchor SR was spawned by StructureVisualBuilder with the standard lit
         // material; swap to the plant-sway variant so wind-vertex displacement
@@ -458,7 +461,7 @@ public class Plant : Structure {
             if (lit != null) extSr.sharedMaterial = lit;
         }
         extSr.sortingOrder = sr.sortingOrder;
-        LightReceiverUtil.SetSortBucket(extSr);
+        SortBucketUtil.SetExplicitBucket(extSr, SortBucketUtil.BuildingsBucket); // light as building, not creature (see anchor SR)
         extensionGos.Add(extGo);
         extensionSrs.Add(extSr);
         RefreshTintableSrs();
@@ -611,7 +614,7 @@ public class Plant : Structure {
             SpriteRenderer blobSr = SpriteMaterialUtil.AddSpriteRenderer(g);
             blobSr.sprite       = blobSprite;
             blobSr.sortingOrder = tileSortingOrder + 1;
-            LightReceiverUtil.SetSortBucket(blobSr);
+            SortBucketUtil.SetExplicitBucket(blobSr, SortBucketUtil.BuildingsBucket); // light as building, not creature (see anchor SR)
 
             blobGos.Add(g);
             blobs.Add(new BlobRuntime {

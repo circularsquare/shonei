@@ -1,10 +1,15 @@
 meoww!!
 
+6/12
+- more graphics settings (cloud detail, flat lighting, particle)
+- more sounds (research, wind)
+- building interior lighting for burrow
 6/11
 - ui work
 - job gates 
 - temperature anomaly random walk
 - digging pit / quarry mine from side
+- changed lighting to add flat center region for point sourcesn 
 6/10
 - itch deployment! (v0.1.0)
 - better tooltips 

@@ -392,6 +392,12 @@ public class Structure {
             fireGO.SetActive(false);
         }
 
+        // Enclosed buildings (burrow, dug-in housing) render on the Interior layer so they
+        // receive sun + ambient only — torchlight from above doesn't bleed into the buried
+        // interior. Applied after all child SRs (main, extensions, fire) exist. Mice standing
+        // inside get the same treatment dynamically (Animal.RefreshInteriorRendering).
+        if (structType.enclosed) InteriorLayer.SetSpriteLayers(go, InteriorLayer.Interior);
+
         // Scan sprite for water-marker pixels. Registration happens in StructController.Place().
         waterPixelOffsets = WaterController.ScanWaterPixels(sprite);
 

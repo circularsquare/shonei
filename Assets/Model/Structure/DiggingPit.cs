@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 // DiggingPit produces the substrate it was built on (dirt, sand, or clay).
@@ -96,6 +97,8 @@ public class DiggingPit : Building {
     // `dirt × 1` recipe quantity), plus a 10% bonus clay nodule when digging dirt or sand —
     // alluvial pockets in real soils occasionally turn up clay even outside formal clay
     // beds. Clay substrate skips the bonus since it's already producing clay as primary.
+    // Dirt also turns up a 5% limestone nodule — the early, tool-free stone source that
+    // bootstraps the tool chain before stone tiles can be mined.
     // Null on bad state → AnimalStateManager falls back to the recipe's (empty) outputs.
     public ItemQuantity[] GetExtractionOutputs() {
         if (capturedTile == null) {
@@ -106,13 +109,22 @@ public class DiggingPit : Building {
             Debug.LogError($"DiggingPit at {x},{y}: tile '{capturedTile.name}' has no nproducts defined");
             return null;
         }
-        var primary = new ItemQuantity(capturedTile.products[0].item, ItemStack.LiangToFen(1f));
+        var outputs = new List<ItemQuantity> {
+            new ItemQuantity(capturedTile.products[0].item, ItemStack.LiangToFen(1f))  // primary substrate
+        };
+        // Alluvial clay pockets when digging loose earth (dirt or sand).
         if (capturedTile.name == "dirt" || capturedTile.name == "sand") {
-            var bonus = new ItemQuantity(Db.itemByName["clay"], ItemStack.LiangToFen(1f));
-            bonus.chance = 0.10f;
-            return new[] { primary, bonus };
+            var clay = new ItemQuantity(Db.itemByName["clay"], ItemStack.LiangToFen(1f));
+            clay.chance = 0.10f;
+            outputs.Add(clay);
         }
-        return new[] { primary };
+        // Occasional limestone nodule from soil — early tool-free stone source.
+        if (capturedTile.name == "dirt") {
+            var limestone = new ItemQuantity(Db.itemByName["limestone"], ItemStack.LiangToFen(1f));
+            limestone.chance = 0.05f;
+            outputs.Add(limestone);
+        }
+        return outputs.ToArray();
     }
 
     public override void OnPlaced() {

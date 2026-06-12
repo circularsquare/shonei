@@ -571,10 +571,13 @@ public class Blueprint {
         // still yields its materials (burrow). The first two consume a single anchor tile. The
         // preserve path walks the full footprint so multi-tile excavators (burrow: 3× dirt) yield
         // one tile's worth of products per footprint tile.
-        bool minesTile = (structType.isTile && structType.name == "empty") || structType.requiresSolidTilePlacement;
+        // `extractsTileOverTime` (quarry, digging pit) opts out entirely — those structures mine the
+        // tile's material gradually through work, so dumping it all on completion would double up.
+        bool minesTile = !structType.extractsTileOverTime
+            && ((structType.isTile && structType.name == "empty") || structType.requiresSolidTilePlacement);
         if (minesTile && tile.type.products != null) {
             pendingOutput = new List<ItemQuantity>(tile.type.products);
-        } else if (structType.preservesTile) {
+        } else if (structType.preservesTile && !structType.extractsTileOverTime) {
             int fnx = structType.HasShapes ? Shape.nx : structType.nx;
             int fny = structType.HasShapes ? Shape.ny : Mathf.Max(1, structType.ny);
             pendingOutput = new List<ItemQuantity>();

@@ -154,7 +154,7 @@ public class LightSource : MonoBehaviour {
         // LightSource in practice; one-frame lag would be invisible
         // anyway because torchFactor changes smoothly over twilight.)
         if (sunModulated && !isDirectional)
-            intensity = isLit ? baseIntensity * SunController.torchFactor : 0f;
+            intensity = isLit ? baseIntensity * EnvDarkness() : 0f;
         // Fire child visibility tracks emission scale — fire appears/disappears
         // in sync with the emission glow, including smooth twilight fade.
         if (building?.fireGO != null)
@@ -173,11 +173,22 @@ public class LightSource : MonoBehaviour {
 
         bool inWindow = IsInActiveWindow();
         // Only burn fuel while in the active time window and torch is emitting light.
-        if (inWindow && SunController.torchFactor > 0f)
+        if (inWindow && EnvDarkness() > 0f)
             reservoir.Burn(Time.deltaTime, ref _fuelAccumulator);
         isLit = inWindow && reservoir.HasFuel();
     }
 
     private bool IsInActiveWindow() => SunController.IsHourInRange(activeStartHour, activeEndHour);
+
+    // How dark it is where this light sits, 0 (full daylight) → 1 (full night). Normally just
+    // the outside time-of-day ramp (SunController.torchFactor). But a light against a solid
+    // background wall (in a cave or dug-out interior) is in permanent shade, so it reads fully
+    // dark regardless of the time outside — letting players light caves by day. backgroundType is
+    // fixed at worldgen and persists through digging, so a torch in a tunnel qualifies.
+    private float EnvDarkness() {
+        if (building != null && building.tile != null && building.tile.hasBackground)
+            return 1f;
+        return SunController.torchFactor;
+    }
 
 }

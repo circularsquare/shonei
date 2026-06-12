@@ -21,10 +21,17 @@ using TMPro;
 //     ambientSlider  — Slider, range 0-1
 //     fpsDropdown    — TMP_Dropdown, options exactly: "30", "60", "120", "144", "Unlimited"
 //     vsyncToggle    — Toggle
-//     lightingToggle — Toggle
+//     flatLightingToggle — Toggle (on = flat lighting: dynamic sprites get uniform,
+//                          un-shaded lighting; off = full shaded lighting). Drives
+//                          SettingsManager.flatLighting.
 //     cloudLightingToggle — Toggle (when off, clouds use flat shading — skips
 //                          height-field normal + Lambertian band selection in
 //                          CloudFieldGen Pass 0)
+//     cloudDetailSlider — Slider, min 0.2 max 1 (1 = full blob count / current look,
+//                          lower = fewer, larger blobs → cheaper cloud GPU). Drives
+//                          SettingsManager.cloudDetail.
+//     particleDensitySlider — Slider, min 0 max 1 (0 = no rain/snow, 1 = full). Drives
+//                          SettingsManager.particleDensity (cuts precip overdraw + collision CPU).
 //     hideBackgroundToggle — Toggle (when on, hides all decorative sky layers —
 //                          clouds, hills, gradient, stars, haze — via BackgroundVisibility)
 //     uiScaleSlider  — Slider, min 1 max 2 (1 = native UI, 2 = doubled). Drives
@@ -45,8 +52,10 @@ public class OptionsPanel : MonoBehaviour {
     [Header("Graphics")]
     [SerializeField] TMP_Dropdown fpsDropdown;
     [SerializeField] Toggle       vsyncToggle;
-    [SerializeField] Toggle       lightingToggle;
+    [SerializeField] Toggle       flatLightingToggle; // on = flat (un-shaded) lighting; off = full shaded
     [SerializeField] Toggle       cloudLightingToggle;
+    [SerializeField] Slider       cloudDetailSlider;    // range 0.2–1 (1 = full blob count); drives SettingsManager.cloudDetail
+    [SerializeField] Slider       particleDensitySlider; // range 0–1 (0 = no rain/snow); drives SettingsManager.particleDensity
     [SerializeField] Toggle       hideBackgroundToggle; // hides all decorative sky layers (clouds, hills, gradient, stars, haze)
 
     [Header("Interface")]
@@ -305,8 +314,10 @@ public class OptionsPanel : MonoBehaviour {
         if (ambientSlider  != null) ambientSlider.onValueChanged.AddListener(OnAmbient);
         if (fpsDropdown    != null) fpsDropdown.onValueChanged.AddListener(OnFpsIndex);
         if (vsyncToggle    != null) vsyncToggle.onValueChanged.AddListener(OnVsync);
-        if (lightingToggle != null) lightingToggle.onValueChanged.AddListener(OnLighting);
+        if (flatLightingToggle != null) flatLightingToggle.onValueChanged.AddListener(OnFlatLighting);
         if (cloudLightingToggle != null) cloudLightingToggle.onValueChanged.AddListener(OnCloudLighting);
+        if (cloudDetailSlider != null) cloudDetailSlider.onValueChanged.AddListener(OnCloudDetail);
+        if (particleDensitySlider != null) particleDensitySlider.onValueChanged.AddListener(OnParticleDensity);
         if (hideBackgroundToggle != null) hideBackgroundToggle.onValueChanged.AddListener(OnHideBackground);
         // UI scale applies on slider release, not per-value: rescaling the canvas
         // mid-drag would move the handle out from under the cursor.
@@ -353,8 +364,10 @@ public class OptionsPanel : MonoBehaviour {
         if (ambientSlider  != null) ambientSlider.value  = s.ambientVolume;
         if (fpsDropdown    != null) fpsDropdown.value    = FpsValueToIndex(s.targetFps);
         if (vsyncToggle    != null) vsyncToggle.isOn     = s.vsyncEnabled;
-        if (lightingToggle != null) lightingToggle.isOn  = s.lightingEnabled;
+        if (flatLightingToggle != null) flatLightingToggle.isOn = s.flatLighting;
         if (cloudLightingToggle != null) cloudLightingToggle.isOn = s.cloudLightingEnabled;
+        if (cloudDetailSlider != null) cloudDetailSlider.value = s.cloudDetail;
+        if (particleDensitySlider != null) particleDensitySlider.value = s.particleDensity;
         if (hideBackgroundToggle != null) hideBackgroundToggle.isOn = s.hideBackground;
         if (uiScaleSlider  != null) uiScaleSlider.value     = s.uiScale;
         if (autosaveDropdown != null) autosaveDropdown.value = AutosaveValueToIndex(s.autosaveIntervalMinutes);
@@ -385,8 +398,10 @@ public class OptionsPanel : MonoBehaviour {
     void OnSfx(float v)      { if (!suppressCallbacks) SettingsManager.instance?.SetSfxVolume(v); }
     void OnAmbient(float v)  { if (!suppressCallbacks) SettingsManager.instance?.SetAmbientVolume(v); }
     void OnVsync(bool v)     { if (!suppressCallbacks) SettingsManager.instance?.SetVsync(v); }
-    void OnLighting(bool v)  { if (!suppressCallbacks) SettingsManager.instance?.SetLighting(v); }
+    void OnFlatLighting(bool v) { if (!suppressCallbacks) SettingsManager.instance?.SetFlatLighting(v); }
     void OnCloudLighting(bool v) { if (!suppressCallbacks) SettingsManager.instance?.SetCloudLighting(v); }
+    void OnCloudDetail(float v)  { if (!suppressCallbacks) SettingsManager.instance?.SetCloudDetail(v); }
+    void OnParticleDensity(float v) { if (!suppressCallbacks) SettingsManager.instance?.SetParticleDensity(v); }
     void OnHideBackground(bool v) { if (!suppressCallbacks) SettingsManager.instance?.SetHideBackground(v); }
     void OnUiScaleReleased(float v) {
         var s = SettingsManager.instance;

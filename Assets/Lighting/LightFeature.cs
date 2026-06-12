@@ -28,8 +28,13 @@ public class LightFeature : ScriptableRendererFeature {
     // [Range(0f, 1f)] public float shadowDarkness = 0.6f;
 
     [Header("Underground")]
-    [Tooltip("How far light penetrates into solid material, in tiles. Controls both sub-tile edge darkening and sky-light falloff.")]
-    [Range(0.5f, 4f)] public float lightPenetrationDepth = 1f;
+    [Tooltip("How far light (incl. point lights) reaches into solid material, in tiles. Beyond this depth, " +
+             "tile/building pixels are forced to deepAmbientColor — erasing point-light contribution. Controls " +
+             "sub-tile edge darkening + sky-light falloff. 0 = only the exposed surface lit; whole interior = deepAmbient.\n\n" +
+             "CHANGES DON'T SHOW until you run Tools > Bake Tile Edges (Force) and reload the world — the edge " +
+             "depth is baked into the tile Texture2DArrays, and the plain (non-Force) bake skips on source-art mtime, " +
+             "so it won't pick up a penetration change.")]
+    [Range(0f, 4f)] public float lightPenetrationDepth = 1f;
     [Tooltip("Constant ambient light in deep interiors. Not affected by time of day.")]
     public Color deepAmbientColor = new Color(0.04f, 0.04f, 0.06f, 1f);
 
@@ -112,17 +117,20 @@ public class LightFeature : ScriptableRendererFeature {
 
     public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData) {
         if (!Application.isPlaying) return;
-        // User-toggled lighting off → skip both passes. Sprites then render at
-        // their raw URP color (no normals capture, no shadow modulation, no
-        // composite multiply). Tolerate missing SettingsManager (defaults to on).
-        if (SettingsManager.instance != null && !SettingsManager.instance.lightingEnabled) return;
+        // Flat-lighting mode (SettingsManager.flatLighting): the full pipeline still
+        // runs — occlusion, deep ambient, and the composite multiply stay intact — but
+        // the generic normals-capture override writes flat camera-facing normals, so
+        // dynamic sprites (animals/plants/buildings) get uniform, un-shaded lighting.
+        // Terrain tiles keep their depth (separate chunked shader). Tolerate a missing
+        // SettingsManager (defaults to shaded).
+        float flatNormals = (SettingsManager.instance != null && SettingsManager.instance.flatLighting) ? 1f : 0f;
         // Skip cameras that see no sprites participating in the normals RT pipeline
         // (lit, directional-only, or water). The Unlit overlay camera hits this check
         // because its culling mask only contains layers excluded from all three masks.
         var cullingMask = renderingData.cameraData.camera.cullingMask;
         if (cullingMask == 0) return;
         if ((cullingMask & (litLayers | directionalOnlyLayers | waterLayer | backgroundLayer | tileChunkLayer)) == 0) return;
-        capturePass.Setup(litLayers, shadowCasterLayers, directionalOnlyLayers, waterLayer, backgroundLayer, tileChunkLayer);
+        capturePass.Setup(litLayers, shadowCasterLayers, directionalOnlyLayers, waterLayer, backgroundLayer, tileChunkLayer, flatNormals);
         renderer.EnqueuePass(capturePass);
         lightPass.Setup(renderer.cameraColorTarget, ambientNormal, deepAmbientColor, skyLightBlend, sortRampRange, behindFarHeightFactor, emissionStrength, tileChunkLayer);
         renderer.EnqueuePass(lightPass);
@@ -159,6 +167,7 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
     // right sort bucket into the RT's B channel. Replaces the per-sprite _SortBucket
     // MPB. (Both chunked overrides instead read _SortBucket from a per-chunk MPB.)
     static readonly int SortBucketGlobalId = Shader.PropertyToID("_SortBucket");
+    static readonly int FlatNormalsId      = Shader.PropertyToID("_FlatNormals");
     readonly Material mat;
     readonly Material waterMat;
     readonly Material chunkedMat;
@@ -169,6 +178,7 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
     int waterMask         = 0;
     int backgroundMask    = 0;
     int tileChunkMask     = 0;
+    float flatNormals     = 0f;   // 1 = write flat camera-facing normals (flat-lighting mode)
 
     public NormalsCapturePass(Shader normalsCapture, Shader normalsCaptureWater, Shader chunkedNormalsCapture, Shader chunkedBackgroundNormalsCapture) {
         if (normalsCapture == null || normalsCaptureWater == null) {
@@ -188,13 +198,14 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
             bgChunkedMat = CoreUtils.CreateEngineMaterial(chunkedBackgroundNormalsCapture);
     }
 
-    public void Setup(int litMask, int shadowMask, int dirOnlyMask, int waterMask, int backgroundMask, int tileChunkMask) {
+    public void Setup(int litMask, int shadowMask, int dirOnlyMask, int waterMask, int backgroundMask, int tileChunkMask, float flatNormals) {
         this.litMask          = litMask;
         this.shadowMask       = shadowMask;
         this.dirOnlyMask      = dirOnlyMask;
         this.waterMask        = waterMask;
         this.backgroundMask   = backgroundMask;
         this.tileChunkMask    = tileChunkMask;
+        this.flatNormals      = flatNormals;
     }
 
     public void Dispose() {
@@ -226,6 +237,10 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
         // not request GPU timing.
         cmd.BeginSample(s_gpuSampler);
         cmd.SetRenderTarget(CapturedNormalsId);
+        // Drives the generic NormalsCapture override's flat-normal branch. Set once
+        // up front so it applies to every DrawRenderers below; the chunked tile /
+        // background / water overrides don't declare it, so terrain keeps its depth.
+        cmd.SetGlobalFloat(FlatNormalsId, flatNormals);
 
         // Skip per-sprite normal capture on non-world cameras (SkyCamera and
         // future overlay/minimap cams). They only need directional sun

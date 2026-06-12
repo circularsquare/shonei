@@ -332,6 +332,9 @@ public class SaveSystem : MonoBehaviour {
         var jobsHeader = AnimalController.instance?.jobsHeader;
         if (jobsHeader != null && !string.IsNullOrEmpty(jobsHeader.saveKey) && !jobsHeader.open)
             panelDeltas[jobsHeader.saveKey] = false;
+        var tasksHeader = PlayerTaskCard.instance?.header;
+        if (tasksHeader != null && !string.IsNullOrEmpty(tasksHeader.saveKey) && !tasksHeader.open)
+            panelDeltas[tasksHeader.saveKey] = false;
         if (panelDeltas.Count > 0) data.panelsOpen = panelDeltas;
 
         if (PlayerTaskController.instance != null)
@@ -818,6 +821,10 @@ public class SaveSystem : MonoBehaviour {
             if (jh != null && !string.IsNullOrEmpty(jh.saveKey)
                     && save.panelsOpen.TryGetValue(jh.saveKey, out bool jobsOpen))
                 jh.SetOpenSilent(jobsOpen);
+            var th = PlayerTaskCard.instance?.header;
+            if (th != null && !string.IsNullOrEmpty(th.saveKey)
+                    && save.panelsOpen.TryGetValue(th.saveKey, out bool tasksOpen))
+                th.SetOpenSilent(tasksOpen);
         }
 
         // Restore onboarding progress. Null (pre-feature save) → skip onboarding entirely so

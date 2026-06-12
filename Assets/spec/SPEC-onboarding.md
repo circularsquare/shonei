@@ -11,8 +11,16 @@ the mouse-AI `Task`/`Objective` system — a PlayerTask is player-facing guidanc
 - `Assets/Controller/PlayerTaskController.cs` — `PlayerTask` (id + title + `Progress()`
   probe), `TaskProgress` struct, and the controller: the ordered task list (`BuildTasks`),
   `currentIndex`, `Current`, `Advance()`, and the detection probes.
-- `Assets/UI/PlayerTaskCard.cs` — the view. A scene object under the `UI` canvas
-  (Frame = woodframe Image, child TMP label). Self-wires children by name in `Awake`.
+- `Assets/UI/PlayerTaskCard.cs` — the view. A scene object under the `UI` canvas.
+  `Frame` (woodframe Image) is a **bottom-anchored** `VerticalLayoutGroup` + `ContentSizeFitter`
+  holding a collapsible `Header` (sibling 0: dropdown arrow + "task" label, `CollapsibleHeader`)
+  and a `Content` TMP (sibling 1: title + progress). Self-wires children by name in `Awake`
+  (static `instance` + `header`). Clicking the header toggles `Content` off, so the Frame shrinks
+  to just the header — which stays pinned at the bottom corner because the card grows *upward*
+  from a bottom pivot. Clicking `Content` (not the header) still bubbles to `OnPointerClick` to
+  skip the "complete!" celebration. The "task" word lives in the header, so `SetText` writes the
+  body only (no prefix). Collapse state persists via `CollapsibleHeader.saveKey = "tasks"`
+  (SaveSystem gathers/restores it alongside the inventory/jobs headers — see SPEC-lifecycle.md).
 
 ## Load-bearing decisions (don't break these)
 

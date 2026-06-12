@@ -382,10 +382,11 @@ public class BuildPanel : MonoBehaviour {
                 string whyFirst = StructPlacement.GetPlacementFailReason(structType, tile, mirrored, shapeIndex);
                 if (whyFirst != null) {
                     EventFeed.instance?.Post($"<color=#cc3333>{whyFirst}</color>", EventFeed.Category.Alert);
+                    SoundManager.instance?.PlaySFX("blueprint_reject", 0.5f);
                     return false;
                 }
                 firstEndpoint = tile;
-                SoundManager.instance?.PlaySFX("click");
+                SoundManager.instance?.PlaySFX("click"); // intermediate confirm, not a placement yet
                 return false;  // don't exit Build mode yet
             }
             // Second click.
@@ -395,6 +396,7 @@ public class BuildPanel : MonoBehaviour {
                 // Invalid second point: clear firstEndpoint so the first-post
                 // ghost goes away. The reason is surfaced as a toast via EventFeed.
                 EventFeed.instance?.Post($"<color=#cc3333>{whyTwo}</color>", EventFeed.Category.Alert);
+                SoundManager.instance?.PlaySFX("blueprint_reject", 0.7f);
                 firstEndpoint = null;
                 return false;
             }
@@ -419,6 +421,7 @@ public class BuildPanel : MonoBehaviour {
         string why = StructPlacement.GetPlacementFailReason(effSt, tile, effMirrored, shapeIndex);
         if (why != null) {
             EventFeed.instance?.Post($"<color=#cc3333>{why}</color>", EventFeed.Category.Alert);
+            SoundManager.instance?.PlaySFX("blueprint_reject", 0.7f);
             return false;
         }
         Blueprint blueprint = new Blueprint(effSt, tile.x, tile.y, effMirrored, rotation: rotation, shapeIndex: shapeIndex);
@@ -451,16 +454,19 @@ public class BuildPanel : MonoBehaviour {
                     existingBp.inv.MoveItemTo(refundTile.EnsureFloorInventory(), cost.item, existingBp.inv.Quantity(cost.item));
             }
             existingBp.Destroy(); // sets cancelled, removes from bp list, WOM cleanup, unlocks storage if decon
+            SoundManager.instance?.PlaySFX("click");
             return true;
         }
         // Clear a harvest flag before deconstructing the plant — one action per click, so the
         // first remove un-flags and only a second remove fells the plant.
         if (tile.plant != null && tile.plant.harvestFlagged) {
             tile.plant.SetHarvestFlagged(false);
+            SoundManager.instance?.PlaySFX("click");
             return true;
         }
         if (System.Array.Exists(tile.structs, s => s != null)) {
             Blueprint.CreateDeconstructBlueprint(tile);
+            SoundManager.instance?.PlaySFX("click");
             return true;
         }
         return false;

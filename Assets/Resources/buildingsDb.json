@@ -170,6 +170,7 @@
         "name": "burrow",
         "description": "houses 2 mice. dug into a dirt bank",
         "nx": 3, "ny": 1,
+        "enclosed": true,
         "ncosts": [
             { "name": "wood", "quantity": 8 }
         ],
@@ -646,6 +647,7 @@
         "isWorkstation": true,
         "requiredTileName": "earth",
         "preservesTile": true,
+        "extractsTileOverTime": true,
         "solidTop": true,
         "depleteAt": 100,
         "interiorTiles": [
@@ -669,6 +671,7 @@
         "capacity": 1,
         "isWorkstation": true,
         "requiredTileName": "stone",
+        "extractsTileOverTime": true,
         "solidTop": true,
         "category": "production",
         "defaultLocked": true,

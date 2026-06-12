@@ -270,6 +270,7 @@ public class Animal : MonoBehaviour{
         // Register initial tile occupancy
         _currentTile = TileHere();
         AnimalController.instance.RegisterAnimalOnTile(_currentTile);
+        RefreshInteriorRendering();   // initial layer state (e.g. a mouse loaded inside a burrow)
         // Add to the tickable animals array now that we're fully initialized.
         // This is deferred from AddAnimal() so TickUpdate/UpdateColonyStats never
         // iterate over an animal whose Start() hasn't run yet.
@@ -1200,7 +1201,21 @@ public class Animal : MonoBehaviour{
             AnimalController.instance.UnregisterAnimalFromTile(_currentTile);
             AnimalController.instance.RegisterAnimalOnTile(newTile);
             _currentTile = newTile;
+            RefreshInteriorRendering();
         }
+    }
+
+    // Tracks whether this mouse's sprites are currently on the Interior (directional-only)
+    // layer. A mouse standing inside an enclosed building (burrow) renders sun + ambient
+    // only, so torchlight from above doesn't bleed onto it underground. Driven by the
+    // existing insideBuilding property — flips only on the tile-change boundary.
+    private bool _interiorRendered;
+    private void RefreshInteriorRendering() {
+        Building ib = insideBuilding;   // property: tile lookup, never stale
+        bool wantInterior = ib != null && ib.structType.enclosed;
+        if (wantInterior == _interiorRendered) return;
+        _interiorRendered = wantInterior;
+        InteriorLayer.SetSpriteLayers(go, wantInterior ? InteriorLayer.Interior : InteriorLayer.Default);
     }
 
     // True when the animal is physically inside its assigned home. For legacy 1×1 housing

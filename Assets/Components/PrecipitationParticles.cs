@@ -171,7 +171,10 @@ public abstract class PrecipitationParticles : MonoBehaviour {
 
         var   emission      = ps.emission;
         float viewportWidth = 2f * halfW;
-        float desiredRate   = densityPerUnitWidth * (viewportWidth + windDriftAbs) * intensity;
+        // Player "particle density" setting scales emission (0 = off). Fewer drops →
+        // less GPU overdraw AND a shorter per-frame collision sweep (CheckCollisions).
+        float densityMul    = SettingsManager.instance != null ? SettingsManager.instance.particleDensity : 1f;
+        float desiredRate   = densityPerUnitWidth * (viewportWidth + windDriftAbs) * intensity * densityMul;
         float maxSafeRate   = main.maxParticles * 0.85f / Mathf.Max(0.0001f, lifetime);
         float rate          = Mathf.Min(desiredRate, maxSafeRate);
         emission.rateOverTime = rate;

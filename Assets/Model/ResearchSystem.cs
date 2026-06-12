@@ -74,6 +74,7 @@ public class ResearchSystem : MonoBehaviour {
     public int                     unlockCounter;
 
     public static event Action<ResearchNodeData> OnTechForgotten;
+    public static event Action<ResearchNodeData> OnTechUnlocked;
 
     void Awake() {
         if (instance != null) { Debug.LogError("two ResearchSystems!"); }
@@ -202,6 +203,7 @@ public class ResearchSystem : MonoBehaviour {
                 unlockedIds.Add(node.id);
                 unlockTimestamps[node.id] = ++unlockCounter;
                 ApplyEffect(node);
+                OnTechUnlocked?.Invoke(node);
             } else if (unlocked && p < node.cost * 0.75f) {
                 unlockedIds.Remove(node.id);
                 RevertEffect(node);

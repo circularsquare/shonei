@@ -14,7 +14,8 @@
         "group": "earth",
         "overlay": "grass",
         "nproducts": [
-            { "name": "dirt", "quantity": 10 }
+            { "name": "dirt", "quantity": 9 },
+            { "name": "limestone", "quantity": 1 }
         ]
     },{
         "id": 3,

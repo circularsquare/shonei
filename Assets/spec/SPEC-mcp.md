@@ -89,6 +89,23 @@ Practical workflow:
 - **Play mode reverts scene changes.** Always `manage_editor stop` first if
   you're about to mutate scene state. `MarkSceneDirty` also throws in Play
   mode.
+- **Prefab-instance property edits silently revert on domain reload unless
+  recorded.** Many scene UI panels are *prefab instances* (OptionsPanel lives at
+  `Resources/Prefabs/OptionsPanel.prefab`, etc.). A direct property set on a
+  prefab-*child* — `tmp.text = …`, `img.color = …`, `slider.minValue = …` —
+  changes it in memory and even serializes into the scene, but it is NOT added to
+  the instance's override (`m_Modifications`) list. So the next recompile /
+  domain reload re-syncs that property from the prefab and your edit vanishes —
+  while `manage_scene save` reported success the whole time (a genuinely
+  confusing "saved but undone later" failure; diagnosed 2026-06 after OptionsPanel
+  label renames reverted three times). **Fix:** after the edit call
+  `PrefabUtility.RecordPrefabInstancePropertyModifications(component)`, then verify
+  it took — `PrefabUtility.GetPropertyModifications(go)` should list a
+  `propertyPath` (e.g. `m_text`) for it, or grep the saved `.unity` for the value.
+  Or edit the prefab asset itself. Note: *structural* overrides — added
+  GameObjects, renames, `SerializedObject` reference wiring — record themselves;
+  only **direct property setters on existing prefab-children** need the explicit
+  Record call (which is why a panel's new rows/wiring stick but a relabel doesn't).
 - **MCP commands are gated on Unity's editor loop, which stalls when Unity is
   unfocused.** Every call (even read-only) runs on the main thread via
   `EditorApplication.update`, throttled to a crawl when the editor window isn't

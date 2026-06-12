@@ -28,6 +28,7 @@ CONTENT
 - forgaging tech 
     - get random plants from grass?
     - see cool-plants plan
+    - gather stone from ground?
 - potions 
     - alembic for brewing
 - tea
@@ -51,16 +52,25 @@ CONTENT
 - long term player goals (fable flagged as important)
     - town tiers?
 
+- gate mining on tools?
+    - 
+
+
 OFFLINE PROGRESS 
-- see offline progress plan
+- (see offline progress plan)
 
 VISUALS
 - lighting 
     - improve undergroundwall sprite 
-    - procedurally generate rocks with normalmaps?
+        - procedurally generate rocks with normalmaps?
+    - interior lighting
+        - what to do here? currently not receiving any point light
 - wind sway on tarp?
 - update all plants to have blob swaying
 - gradual snow buildup
+- more sounds (see sounds spec)
+- add side torches 
+- 
 
 OPTIMIZATION  
 - plant sway mpb redesign
@@ -78,9 +88,10 @@ MOUSE AI
 - general way of estimating what needs will become an issue before starting a long task 
 
 UI
-- make item icons more coherent / similar
+- improve item icons
 - tab styling, add building icons?
-- move more stuff to eventfeed
+- estimate food production
+
 
 SERVER 
 - account system plan
@@ -128,10 +139,29 @@ clarify which side of burrow sprite is out
     - are icons scaling right?
 - test on laptop
 
-- method to gather stones from groudn? 
-    - gain limestone randomly from dirt? 
 - be able to mine quarry / digging pit from the side rather than just from the top?
 
-- weaken debug light
+
+- rice icon 
+- explain mining, where is mala from 
+
+- test tile placement edges
+
+
+- do mice uselessly equip tools? who equips firsst?
+    - mining require tools?
+- hide untested buildings (furnace)
+    - does metal haev a use?
+    - does glass have a use?
+- main menu collapsible changelog and dev disclaimer, or button
+
+
+- more tutorial steps?
+    - sort out tools
+
+- send screenshot to fable for general advice
+
+why is it using 38% gpu with all lighting off?
+
 
 TODAY

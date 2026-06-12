@@ -74,6 +74,14 @@ public class WorldController : MonoBehaviour {
         GraphicsSettings.transparencySortMode = TransparencySortMode.CustomAxis;
         GraphicsSettings.transparencySortAxis = new Vector3(0f, 1f, 0f);
 
+        // Make the world camera render the Interior layer (enclosed buildings + mice inside
+        // them). Done in code, not baked into the scene, so it persists every run without a
+        // scene save; the camera object survives world reloads, so once at startup is enough.
+        // The Interior layer sits in the lighting pipeline's directional-only tier (sun +
+        // ambient, no point lights). See InteriorLayer / LightFeature.directionalOnlyLayers.
+        if (Camera.main != null && InteriorLayer.Interior >= 0)
+            Camera.main.cullingMask |= 1 << InteriorLayer.Interior;
+
         world = this.gameObject.AddComponent<World>(); // add world (allocates Tile grid + graph nodes)
 
         tilesTransform = transform.Find("Tiles");

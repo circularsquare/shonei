@@ -68,7 +68,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Active: 1
   ambientNormal: 0.114
-  lightPenetrationDepth: 1
+  lightPenetrationDepth: 0.5
   deepAmbientColor: {r: 0.3, g: 0.3, b: 0.3, a: 1}
   skyLightBlend: 0
   emissionStrength: 0.55
@@ -82,7 +82,7 @@ MonoBehaviour:
     m_Bits: 15
   directionalOnlyLayers:
     serializedVersion: 2
-    m_Bits: 64
+    m_Bits: 1088
   waterLayer:
     serializedVersion: 2
     m_Bits: 16
@@ -94,7 +94,6 @@ MonoBehaviour:
     m_Bits: 512
   normalsCaptureShader: {fileID: 4800000, guid: a703ad12e33eac74f874afeb7afdbc89, type: 3}
   normalsCaptureWaterShader: {fileID: 4800000, guid: 1122f56d97c699247a23963352203731, type: 3}
-  normalsCaptureBackgroundShader: {fileID: 4800000, guid: 062e68a8ed14e8a44ad5959a95502c0e, type: 3}
   chunkedNormalsCaptureShader: {fileID: 4800000, guid: 789ab5153e972264a89895fdd431d47c, type: 3}
   chunkedBackgroundNormalsCaptureShader: {fileID: 4800000, guid: 0b17ea7be5bca0b4e831d5e2a7afd378, type: 3}
   lightCircleShader: {fileID: 4800000, guid: 945060703addc864d81ea4cc65ee8f8e, type: 3}

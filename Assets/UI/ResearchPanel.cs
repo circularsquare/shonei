@@ -109,6 +109,7 @@ public class ResearchPanel : MonoBehaviour {
 
     void OnClickToggleStudy(ResearchNodeData node) {
         ResearchSystem.instance?.ToggleStudy(node.id);
+        SoundManager.instance?.PlaySFX("research_select");
         Refresh();
     }
 

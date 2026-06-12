@@ -216,6 +216,12 @@ public class StructType {
     // Authors set this on structures with `requiredTileName` or `requiresSolidTilePlacement`
     // that should preserve the underlying tile visually + physically.
     public bool preservesTile {get; set;}
+    // Suppress the one-time mining yield at construction (Blueprint.Complete skips the
+    // pendingOutput capture). For structures that extract the underlying tile's material
+    // GRADUALLY through work instead — quarry, digging pit — where dumping the tile's full
+    // products on completion would double up on what the worker mines out over time. The
+    // burrow, by contrast, leaves this false: its dirt really is dug out at construction.
+    public bool extractsTileOverTime {get; set;}
     // Optional name of an additional Structure to place on the tile after Construct() completes.
     // Resolved via Db.structTypeByName at construction time. Used by structures that bundle a
     // follow-up structure with their placement (mineshaft → ladder). Null = no extra placement.
@@ -300,6 +306,12 @@ public class StructType {
     // lightIntensity is the baseIntensity passed to LightSource (default 0.80).
     // lightOuterRadius is the radial reach in world units (default 10). Smaller =
     // tighter lit area and ~quadratic GPU savings on the light-circle pass.
+    // Enclosed interior building (burrow, dug-in housing): its sprites — and any mouse
+    // standing inside — render on the Interior layer (sun + ambient only, no point/torch
+    // light), so torchlight from above doesn't bleed into the buried interior. The mouse
+    // swap is driven by Animal.insideBuilding. See InteriorLayer / LightFeature.
+    public bool enclosed {get; set;}
+
     public bool isLightSource {get; set;}
     public float lightIntensity {get; set;}
     public float lightOuterRadius {get; set;}

@@ -25,8 +25,10 @@ public class SettingsManager : MonoBehaviour {
     const string K_AmbientVol = "settings.ambientVolume";
     const string K_TargetFps  = "settings.targetFps";   // 0 = unlimited
     const string K_Vsync      = "settings.vsync";       // 0 / 1
-    const string K_Lighting   = "settings.lighting";    // 0 / 1
+    const string K_FlatLighting = "settings.flatLighting"; // 0 = shaded, 1 = flat
     const string K_CloudLight = "settings.cloudLighting"; // 0 / 1
+    const string K_CloudDetail = "settings.cloudDetail"; // 0.2–1 fraction of full blob count
+    const string K_ParticleDensity = "settings.particleDensity"; // 0–1 fraction of full precipitation (0 = off)
     const string K_AutosaveMins = "settings.autosaveMinutes"; // 0 = off
     const string K_UiScale    = "settings.uiScale";     // CanvasScaler factor, 1–2
     const string K_UiFontIndex = "settings.uiFontIndex"; // index into UIFontOptions
@@ -36,8 +38,8 @@ public class SettingsManager : MonoBehaviour {
     // PlayerPrefs.DeleteAll(), which would also nuke the login token (Session) and the
     // save-sync machine GUID (SaveSyncIndex). Add new settings keys here too.
     static readonly string[] AllKeys = {
-        K_MasterVol, K_SfxVol, K_AmbientVol, K_TargetFps, K_Vsync, K_Lighting,
-        K_CloudLight, K_AutosaveMins, K_UiScale, K_UiFontIndex, K_HideBackground,
+        K_MasterVol, K_SfxVol, K_AmbientVol, K_TargetFps, K_Vsync, K_FlatLighting,
+        K_CloudLight, K_CloudDetail, K_ParticleDensity, K_AutosaveMins, K_UiScale, K_UiFontIndex, K_HideBackground,
     };
 
     // ── Values ───────────────────────────────────────────────────────────────
@@ -46,12 +48,31 @@ public class SettingsManager : MonoBehaviour {
     public float ambientVolume  { get; private set; } = 1f;
     public int   targetFps      { get; private set; } = 60;
     public bool  vsyncEnabled   { get; private set; } = false;
-    public bool  lightingEnabled{ get; private set; } = true;
+    // Flat lighting: when on, dynamic sprites (animals/plants/buildings) are captured
+    // with flat camera-facing normals → uniform, un-shaded lighting (point lights still
+    // light a radial circle). Terrain tiles keep their depth, and deep-interior / sky
+    // occlusion is unaffected (that's LightPass, not the normals). A cheaper, better-
+    // looking floor than fully-off lighting. Default off = full shaded lighting.
+    public bool  flatLighting  { get; private set; } = false;
     // When off, CloudFieldGen Pass 0 skips the 5-tap height-field normal +
     // Lambertian band selection and outputs a flat-colour silhouette. Saves
     // ~80% of the cloud blob-loop work; useful for measuring the cost of the
     // cloud lighting pass on weaker GPUs.
     public bool  cloudLightingEnabled{ get; private set; } = true;
+    // Cloud detail: the fraction of the full blob count CloudLayer spawns. The
+    // cloud-gen shader loops over every blob for every pixel (no spatial culling),
+    // so blob count is a near-linear multiplier on cloud GPU cost. Lowering this
+    // spawns fewer, proportionally larger blobs (cell size + radii scale by
+    // 1/sqrt(detail)), preserving coverage while shortening the per-pixel loop —
+    // a quality/perf knob for weaker GPUs, complementary to cloudLightingEnabled.
+    // 1 = full detail (current look); 0.2 = ~5x fewer blobs, chunkier clouds.
+    public const float CloudDetailMin = 0.2f;
+    public const float CloudDetailMax = 1f;
+    public float cloudDetail   { get; private set; } = 1f;
+    // Precipitation density: fraction of full rain/snow emission rate (0 = no particles).
+    // PrecipitationParticles scales its emission by this each frame; lowering it cuts both
+    // GPU overdraw and the per-frame CPU collision sweep (fewer live particles). 0 disables.
+    public float particleDensity { get; private set; } = 1f;
     // Autosave interval in minutes; 0 = off. SaveSystem reads this each Update to pace the
     // periodic write to a rotating "autosave" slot.
     public int   autosaveIntervalMinutes { get; private set; } = 5;
@@ -92,8 +113,10 @@ public class SettingsManager : MonoBehaviour {
         ambientVolume   = Mathf.Clamp01(PlayerPrefs.GetFloat(K_AmbientVol, 1f));
         targetFps       = Mathf.Max(0, PlayerPrefs.GetInt(K_TargetFps, 60));
         vsyncEnabled    = PlayerPrefs.GetInt(K_Vsync, 0) != 0;
-        lightingEnabled = PlayerPrefs.GetInt(K_Lighting, 1) != 0;
+        flatLighting    = PlayerPrefs.GetInt(K_FlatLighting, 0) != 0;
         cloudLightingEnabled = PlayerPrefs.GetInt(K_CloudLight, 1) != 0;
+        cloudDetail     = Mathf.Clamp(PlayerPrefs.GetFloat(K_CloudDetail, 1f), CloudDetailMin, CloudDetailMax);
+        particleDensity = Mathf.Clamp01(PlayerPrefs.GetFloat(K_ParticleDensity, 1f));
         autosaveIntervalMinutes = Mathf.Max(0, PlayerPrefs.GetInt(K_AutosaveMins, 5));
         // First launch: no saved UI scale yet → pick a sensible default from screen height
         // (small screens get native UI, large ones get a zoomed UI) and persist it once, so
@@ -151,10 +174,10 @@ public class SettingsManager : MonoBehaviour {
         OnChanged?.Invoke();
     }
 
-    public void SetLighting(bool enabled) {
-        if (enabled == lightingEnabled) return;
-        lightingEnabled = enabled;
-        PlayerPrefs.SetInt(K_Lighting, enabled ? 1 : 0);
+    public void SetFlatLighting(bool flat) {
+        if (flat == flatLighting) return;
+        flatLighting = flat;
+        PlayerPrefs.SetInt(K_FlatLighting, flat ? 1 : 0);
         OnChanged?.Invoke();
     }
 
@@ -162,6 +185,24 @@ public class SettingsManager : MonoBehaviour {
         if (enabled == cloudLightingEnabled) return;
         cloudLightingEnabled = enabled;
         PlayerPrefs.SetInt(K_CloudLight, enabled ? 1 : 0);
+        OnChanged?.Invoke();
+    }
+
+    // Fraction of full cloud blob count (0.2–1). CloudLayer re-reads this each bake.
+    public void SetCloudDetail(float v) {
+        v = Mathf.Clamp(v, CloudDetailMin, CloudDetailMax);
+        if (Mathf.Approximately(v, cloudDetail)) return;
+        cloudDetail = v;
+        PlayerPrefs.SetFloat(K_CloudDetail, v);
+        OnChanged?.Invoke();
+    }
+
+    // Fraction of full precipitation emission (0–1; 0 = off). PrecipitationParticles re-reads live.
+    public void SetParticleDensity(float v) {
+        v = Mathf.Clamp01(v);
+        if (Mathf.Approximately(v, particleDensity)) return;
+        particleDensity = v;
+        PlayerPrefs.SetFloat(K_ParticleDensity, v);
         OnChanged?.Invoke();
     }
 

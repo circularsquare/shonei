@@ -238,12 +238,24 @@ public class CloudLayer : SkyLayerBase {
         bakedWindOffsetX = offset;
     }
 
+    // Cloud-detail coarsening multiplier (applied to cellSize + blob radii).
+    // The cloud-gen shader loops over every blob per pixel, so cloud GPU cost
+    // scales ~linearly with blob count. SettingsManager.cloudDetail is the
+    // fraction of full blob count the player wants; since blob count ∝ 1/cellSize²,
+    // scaling cellSize AND radii by 1/sqrt(detail) yields ≈ detail× the blobs
+    // while preserving coverage (N·r² stays constant). detail=1 → ×1 (no change).
+    float BlobScale() {
+        float detail = SettingsManager.instance != null ? SettingsManager.instance.cloudDetail : 1f;
+        detail = Mathf.Clamp(detail, SettingsManager.CloudDetailMin, SettingsManager.CloudDetailMax);
+        return 1f / Mathf.Sqrt(detail);
+    }
+
     // Width is driven by the camera viewport so off-screen pixels aren't
-    // generated. Pad by blobRadiusMax so partial-blob bodies at viewport
-    // edges still spawn without popping at the seam.
+    // generated. Pad by the (detail-scaled) max blob radius so partial-blob
+    // bodies at viewport edges still spawn without popping at the seam.
     int ComputeNeededWidth() {
         float viewW = bgCam.orthographicSize * bgCam.aspect * 2f;
-        return Mathf.CeilToInt((viewW + 2f * blobRadiusMax) * pixelsPerUnit);
+        return Mathf.CeilToInt((viewW + 2f * blobRadiusMax * BlobScale()) * pixelsPerUnit);
     }
 
     // Height covers the cloud band centred on bandCenterY. Sprite is
@@ -252,7 +264,7 @@ public class CloudLayer : SkyLayerBase {
     // bandHalfHeight*bandBottomScale down, never further). Pad for blob
     // radii poking past the band edge.
     int ComputeNeededHeight() {
-        return Mathf.CeilToInt((2f * bandHalfHeight + 2f * blobRadiusMax) * pixelsPerUnit);
+        return Mathf.CeilToInt((2f * bandHalfHeight + 2f * blobRadiusMax * BlobScale()) * pixelsPerUnit);
     }
 
     // (Re)create the procedural RTs + dummy-backed sprite at the requested
@@ -528,16 +540,22 @@ public class CloudLayer : SkyLayerBase {
         // right-skewed curve so most cells get ~0 head start and a few roll high.
         float jk     = Mathf.Max(0.01f, densityJitterSkew);
         float jkNorm = 1f / (Mathf.Exp(jk) - 1f);
+        // Cloud-detail coarsening: scale cell size AND blob radii together so
+        // lower detail = fewer, proportionally larger blobs (coverage preserved,
+        // shorter per-pixel shader loop). scale=1 at full detail. See BlobScale.
+        float scale  = BlobScale();
         // Hard floor (matches the [Min] on blobCellSize): a near-zero cell
         // size makes the col/row grid span millions of cells per bake and
         // hangs the editor. Guards code paths that bypass the inspector.
-        float cellSz = Mathf.Max(0.2f, blobCellSize);
+        float cellSz = Mathf.Max(0.2f, blobCellSize * scale);
+        float rMin   = blobRadiusMin * scale;
+        float rMax   = blobRadiusMax * scale;
 
         // Noise-space x range covered by the viewport: a sprite-local x
         // of -halfW..+halfW maps to noise-anchor x of -halfW+nOff.x..+halfW+nOff.x.
         // Pad by blobRadiusMax so partially-visible blobs at the edges
         // still spawn (their bodies poke into the viewport from outside).
-        float pad = blobRadiusMax;
+        float pad = rMax;
         int colMin = Mathf.FloorToInt((-halfW - pad + noiseOffset.x) / cellSz);
         int colMax = Mathf.CeilToInt ((+halfW + pad + noiseOffset.x) / cellSz);
 
@@ -625,8 +643,8 @@ public class CloudLayer : SkyLayerBase {
                 if (excess <= 0f) continue;
 
                 // Density → max radius: how-far-above-threshold maps into
-                // [blobRadiusMin, blobRadiusMax], saturating at excessForMaxSize.
-                float maxR = Mathf.Lerp(blobRadiusMin, blobRadiusMax,
+                // [rMin, rMax] (detail-scaled), saturating at excessForMaxSize.
+                float maxR = Mathf.Lerp(rMin, rMax,
                                         Mathf.Clamp01(excess / Mathf.Max(0.001f, excessForMaxSize)));
 
                 // Radius fade-in over fadeRange, shaped by fadeExponent.

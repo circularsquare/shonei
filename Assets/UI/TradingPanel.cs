@@ -745,6 +745,7 @@ public class TradingPanel : MonoBehaviour {
     }
 
     void DisplayFill(Fill fill) {
+        SoundManager.instance?.PlaySFX("trade_fill", 0.5f);
         Db.itemByName.TryGetValue(fill.item, out Item item); // item may be null — FormatQ tolerates it
         EventFeed.instance?.Post(
             $"<color=#55aa55>[fill] {fill.buyer} bought {ItemStack.FormatQ(fill.quantity, item)} {fill.item} from {fill.seller} @ {fill.price / 100f:0.##}</color>",

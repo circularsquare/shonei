@@ -126,25 +126,37 @@ public class MouseController : MonoBehaviour {
             BuildPanel.instance?.CycleShape(+1);
         if (Input.GetKeyDown(KeyCode.Q) && mouseMode == MouseMode.Build)
             BuildPanel.instance?.CycleShape(-1);
-        // Ctrl+Shift+F has two modes depending on what the cursor is over:
+        // Ctrl+Shift+F acts on whatever the cursor is over, in priority order:
         //  (a) hovering an existing blueprint → instant-finish it (build, or tear down +
         //      drop the deconstruct yield on the floor if it's a deconstruct bp).
-        //  (b) elsewhere → toggle the one-shot arm for the NEXT blueprint placed.
+        //  (b) a building on the tile has a fuel reservoir → instant-fill it to capacity
+        //      (spawns the fuel for free, so e.g. a freshly-finished torch lights up at once).
+        //  (c) nothing actionable on the tile → toggle the one-shot arm for the NEXT blueprint placed.
+        // (a) and (b) compose: finishing a torch blueprint then fills its reservoir in the same press.
         // InfoPanel handles the same Ctrl+Shift+F on the selected Blueprint tab. Not gated on Build mode.
         if (Input.GetKeyDown(KeyCode.F)
                 && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
                 && (Input.GetKey(KeyCode.LeftShift)   || Input.GetKey(KeyCode.RightShift))) {
+            Tile hoverTile = null;
             Blueprint hoveredBp = null;
             WorldController wc = WorldController.instance;
             if (!EventSystem.current.IsPointerOverGameObject() && wc != null && wc.world != null) {
                 Vector3 mouseWorld = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-                Tile hoverTile = wc.world.GetTileAt(mouseWorld.x, mouseWorld.y);
+                hoverTile = wc.world.GetTileAt(mouseWorld.x, mouseWorld.y);
                 hoveredBp = hoverTile?.GetAnyBlueprint();
             }
             if (hoveredBp != null) {
                 Debug.Log($"[debug] instant-finish {hoveredBp.structType.name} at ({hoveredBp.tile.x}, {hoveredBp.tile.y})");
                 hoveredBp.InstantFinish();
-            } else {
+            }
+            // Fill any reservoir on the tile — re-queries after InstantFinish so a just-built
+            // torch/furnace/fountain is topped up too.
+            Reservoir reservoir = hoverTile?.building?.reservoir;
+            if (reservoir != null) {
+                int added = reservoir.FillToCapacity();
+                Debug.Log($"[debug] instant-fill {hoverTile.building.structType.name} reservoir at ({hoverTile.x}, {hoverTile.y}): +{added} fen {reservoir.fuelItem?.name}");
+            }
+            if (hoveredBp == null && reservoir == null) {
                 BuildPanel.instantBuildNext = !BuildPanel.instantBuildNext;
                 Debug.Log($"[debug] instant-build next blueprint: {(BuildPanel.instantBuildNext ? "ARMED" : "disarmed")}");
             }
@@ -456,7 +468,10 @@ public class MouseController : MonoBehaviour {
     }
 
     private void FlagHarvestAt(Tile t) {
-        if (t?.plant != null) t.plant.SetHarvestFlagged(true);
+        if (t?.plant != null) {
+            t.plant.SetHarvestFlagged(true);
+            SoundManager.instance?.PlaySFX("click");
+        }
     }
 
     // Tears down the previous preview root and creates a fresh one for the given
@@ -583,10 +598,15 @@ public class MouseController : MonoBehaviour {
 
     private void CommitHarvestDrag(Vector3 startScreen, Vector3 endScreen) {
         var (minX, maxX, minY, maxY) = GetDragWorldBounds(startScreen, endScreen);
+        bool flaggedAny = false;
         foreach (Plant p in PlantController.instance.Plants) {
-            if (p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY)
+            if (p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY) {
                 p.SetHarvestFlagged(true);
+                flaggedAny = true;
+            }
         }
+        // One sound per drag-commit, not per plant — a wide drag would otherwise machine-gun.
+        if (flaggedAny) SoundManager.instance?.PlaySFX("click");
     }
 
     // Converts a screen-space drag to world-space min/max bounds via the main camera.

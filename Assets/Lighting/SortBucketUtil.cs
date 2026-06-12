@@ -55,4 +55,19 @@ public static class SortBucketUtil {
         int bucket = GetBucket(sr.sortingOrder);
         sr.renderingLayerMask = 1u << bucket;
     }
+
+    // Buildings bucket index (sortingOrder 9..16 in the layout above). Plants light at this
+    // bucket so torches front-light them like a building rather than back-lighting them like
+    // a creature — see SetExplicitBucket.
+    public const int BuildingsBucket = 2;
+
+    // Force a specific lighting bucket on a renderer, decoupled from its sortingOrder. The
+    // bucket only affects sort-aware point lighting (which receivers a light counts as "in
+    // front" vs "behind"); the visual draw order stays driven by sortingOrder. Plants keep
+    // their tall sortingOrder (60, drawn over mice) but light at BuildingsBucket so a nearby
+    // torch front-lights them instead of treating them as a creature to back-light.
+    public static void SetExplicitBucket(SpriteRenderer sr, int bucket){
+        if (sr == null) { Debug.LogError("SortBucketUtil.SetExplicitBucket: null SpriteRenderer"); return; }
+        sr.renderingLayerMask = 1u << bucket;
+    }
 }

@@ -55,6 +55,14 @@ Shader "Hidden/NormalsCapture" {
         // read as "sort 0" (ground level), which is safe for most fallbacks.
         float _SortBucket;
 
+        // Flat-lighting toggle — global, set by LightFeature from
+        // SettingsManager.flatLighting. When >0.5 the fragment skips the
+        // _NormalMap sample + tangent→world transform and writes a flat
+        // camera-facing normal, so the light shaders give this sprite uniform
+        // (un-shaded) lighting. Only the generic sprite override reads this;
+        // chunked tiles use a different shader, so terrain keeps its depth.
+        float _FlatNormals;
+
         struct Attributes {
             float3 positionOS : POSITION;
             float2 uv         : TEXCOORD0;
@@ -110,6 +118,17 @@ Shader "Hidden/NormalsCapture" {
             // For non-tiles: standard sprite alpha transparency.
             float spriteAlpha = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, sampleUV).a;
             clip(spriteAlpha - 0.1);
+
+            // Flat-lighting mode: skip the normal-map sample + tangent→world
+            // transform and write a flat camera-facing normal ((0,0,-1) → packed
+            // 0.5,0.5). The light shaders then give this sprite uniform lighting
+            // (point lights still light it radially; sky-exposure/deep-ambient
+            // occlusion is unaffected — that lives in LightPass). The shadow-caster
+            // edge-depth (ns.a) doesn't apply here: tiles use a separate chunked
+            // shader, and non-tile sprites already have edge-depth = 1.0.
+            if (_FlatNormals > 0.5) {
+                return float4(0.5, 0.5, _SortBucket, shadowAlpha);
+            }
 
             // Tangent-space normal, RGBA32 packed 0–1.
             float4 ns = SAMPLE_TEXTURE2D(_NormalMap, sampler_NormalMap, sampleUV);

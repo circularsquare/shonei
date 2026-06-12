@@ -72,6 +72,17 @@ public class Reservoir {
         return consumed;
     }
 
+    // Debug instant-fill: tops the reservoir up to capacity, spawning the fuel into existence
+    // (mirrors Blueprint.InstantFinish spawning the building for free). Returns fen added.
+    public int FillToCapacity() {
+        int need = capacity - Quantity();
+        if (need <= 0) return 0;
+        // fuelItem may be a group (e.g. "wood") — only leaves can exist as physical stacks,
+        // so resolve to the first leaf (e.g. "pine") before spawning.
+        inv.Produce(fuelItem.FirstLeaf(), need);
+        return need;
+    }
+
     // Drops remaining contents onto the floor at the given tile. Used during building deconstruct
     // so items aren't silently lost.
     public void DropToFloor(Tile here) {
