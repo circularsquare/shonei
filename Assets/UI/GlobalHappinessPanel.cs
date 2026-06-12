@@ -160,7 +160,7 @@ public class GlobalHappinessPanel : MonoBehaviour {
             // Births are gated by both, so both caps are surfaced as separate lines. The
             // reproduction levers themselves live in the "?" tooltip, not here.
             headerText.text =
-                $"colony population {n}\n" +
+                $"{World.instance.SettlementDisplayName} population {n}\n" +
                 $"average happiness: {totalScore / n:0.0} points\n" +
                 $"happiness population cap: {ac.populationCapacity} mice\n" +
                 $"available housing: {ac.totalHousingCapacity}";

@@ -260,6 +260,7 @@ public class WorldController : MonoBehaviour {
         }
 
         world.timer = 0;
+        world.settlementName = null; // fresh world re-prompts; load overwrites this in ApplySaveData
         InfoPanel.instance.ShowInfo(null);
         isClearing = false;
     }
@@ -370,6 +371,13 @@ public class WorldController : MonoBehaviour {
         // worldgen) can inspect the layout before the simulation starts moving.
         // TimeController may not exist yet on the very first frame — null-safe.
         TimeController.instance?.Pause();
+
+        // Fresh world → prompt for a settlement name over the paused world. Guarded on an
+        // empty name so only genuinely new worlds prompt; the load path runs ApplySaveData
+        // (which restores the saved name) and never calls GenerateDefault. Skipping leaves
+        // the name null → SettlementDisplayName falls back to "new town".
+        if (string.IsNullOrEmpty(World.instance.settlementName))
+            SettlementNamePopup.Show();
     }
 
     // FRAME 2 — one frame after GenerateDefault(). By this point:

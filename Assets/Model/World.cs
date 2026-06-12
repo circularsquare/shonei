@@ -31,6 +31,37 @@ public class World : MonoBehaviour {
     public static World instance { get; protected set; }
     public float timer = 0f;
 
+    // Player-chosen settlement name. Null/empty when the player skipped the naming
+    // prompt on world creation; SettlementDisplayName falls back to DefaultSettlementName.
+    // Sanitized to a filesystem-safe charset on input (see SanitizeSettlementName) so it
+    // can be embedded directly in autosave slot names without breaking the save store /
+    // cloud slot regex. Cleared on world teardown so a fresh world re-prompts.
+    public string settlementName;
+    public const string DefaultSettlementName = "new town";
+    public string SettlementDisplayName => string.IsNullOrEmpty(settlementName) ? DefaultSettlementName : settlementName;
+
+    // Settlement names double as autosave slot-name fragments, so they must stay within
+    // the save store's filesystem-safe charset ([A-Za-z0-9 _-], see SaveStore / server
+    // slotRe) and short enough that "autosave <name> <timestamp>" fits the 64-char slot
+    // cap. Strips disallowed chars, collapses whitespace, trims, and caps length. Returns
+    // null for empty/blank input so callers fall back to DefaultSettlementName.
+    public const int MaxSettlementNameLength = 24;
+    public static string SanitizeSettlementName(string raw) {
+        if (string.IsNullOrEmpty(raw)) return null;
+        var sb = new System.Text.StringBuilder(raw.Length);
+        bool lastSpace = false;
+        foreach (char c in raw) {
+            bool ok = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
+                   || (c >= '0' && c <= '9') || c == '_' || c == '-';
+            if (ok) { sb.Append(c); lastSpace = false; }
+            else if (char.IsWhiteSpace(c) && !lastSpace && sb.Length > 0) { sb.Append(' '); lastSpace = true; }
+            // else: disallowed char — drop it
+        }
+        string s = sb.ToString().Trim();
+        if (s.Length > MaxSettlementNameLength) s = s.Substring(0, MaxSettlementNameLength).Trim();
+        return s.Length == 0 ? null : s;
+    }
+
     // Fired just before items are moved; controllers subscribe to play fall animations.
     // Args: srcX, srcY, dstX, dstY, representative item
     public static event Action<int, int, int, int, Item> OnItemFall;

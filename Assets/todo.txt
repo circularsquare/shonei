@@ -163,5 +163,7 @@ clarify which side of burrow sprite is out
 
 why is it using 38% gpu with all lighting off?
 
+- make main menu look better, welcome back etc.
+
 
 TODAY

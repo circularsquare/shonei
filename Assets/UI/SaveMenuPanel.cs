@@ -124,9 +124,11 @@ public class SaveMenuPanel : MonoBehaviour {
         }
     }
 
-    // Returns "new save", "new save (2)", "new save (3)", etc. — first name with no file on disk.
+    // Returns "<settlement>", "<settlement> (2)", etc. — first name with no file on disk.
+    // Defaults the base to the settlement name (already slot-safe; "new town" when unnamed)
+    // so manual saves are pre-titled after the colony rather than a generic "new save".
     string GenerateNewSlotName() {
-        string baseName = "new save";
+        string baseName = World.instance != null ? World.instance.SettlementDisplayName : "new save";
         if (!SaveStore.SlotExists(baseName)) return baseName;
         int n = 2;
         while (true) {

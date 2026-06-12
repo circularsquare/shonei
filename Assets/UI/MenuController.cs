@@ -24,6 +24,7 @@ public class MenuController : MonoBehaviour {
     [SerializeField] TextMeshProUGUI loggedInLabel;     // "logged in as <name>"
     [SerializeField] Button          continueButton;    // disabled when no saves exist
     [SerializeField] GameObject      loadPanel;          // the Load-save screen (MenuLoadPanel)
+    [SerializeField] GameObject      changelogPanel;     // overlay shown over the main menu
 
     bool busy;
 
@@ -79,7 +80,8 @@ public class MenuController : MonoBehaviour {
         if (loginPanel) loginPanel.SetActive(!loggedIn);
         if (mainPanel)  mainPanel.SetActive(loggedIn);
         if (loadPanel)  loadPanel.SetActive(false);
-        if (loggedIn && loggedInLabel) loggedInLabel.text = Session.Username;
+        if (changelogPanel) changelogPanel.SetActive(false);
+        if (loggedIn && loggedInLabel) loggedInLabel.text = "logged in as " + Session.Username;
 
         // Pre-fill the username on the login form: a lapsed session keeps its name
         // (Session.ExpireToken), and a remembered-but-expired login keeps the pref —
@@ -234,6 +236,10 @@ public class MenuController : MonoBehaviour {
         if (loadPanel) loadPanel.SetActive(false);
         if (mainPanel) mainPanel.SetActive(true);
     }
+
+    // Changelog: a simple overlay shown on top of the main menu (mainPanel stays up behind it).
+    public void OnClickChangelog()         { if (changelogPanel) changelogPanel.SetActive(true); }
+    public void OnClickBackFromChangelog() { if (changelogPanel) changelogPanel.SetActive(false); }
 
     public void OnClickLogout() {
         Session.Logout();

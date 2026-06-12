@@ -20,6 +20,10 @@ public class WorldSaveData {
     // RNG seed used to drive Rng (gameplay randomness). 0 on old saves → reproducibility
     // for those starts from 0 on load, which is fine — they had no reproducibility before.
     public int worldSeed;
+    // Player-chosen settlement name. Null when skipped at creation or on old saves →
+    // display falls back to World.DefaultSettlementName ("new town"). NullValueHandling
+    // is Ignore, so a skipped name simply isn't written.
+    public string settlementName;
     public TileSaveData[] tiles;             // tile types and floor inventories only
     // Per-column original-surface heights from worldgen. Persisted because the
     // value is immutable after generation: it's the natural ground line that

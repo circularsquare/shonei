@@ -109,13 +109,23 @@ public class UITextRuntimeStyle : MonoBehaviour {
     // Stamp the chosen font/size onto one label. Returns true if it changed something (which
     // queues a regen). TMP's setters no-op when the value is unchanged, so this is cheap.
     static bool ApplyFont(TextMeshProUGUI t) {
+        if (t.GetComponent<TextStyleExempt>() != null) return false;   // hard override: keep authored font/size
         var font = ChosenFont();
         if (font == null) return false;
         float size = ChosenSize();
         bool changed = false;
-        if (t.font != font)                         { t.font = font;     changed = true; }
-        if (!Mathf.Approximately(t.fontSize, size)) { t.fontSize = size; changed = true; }
+        if (t.font != font)                  { t.font = font;     changed = true; }
+        if (!IsAllowedSize(t.fontSize, size)) { t.fontSize = size; changed = true; }
         return changed;
+    }
+
+    // The uniform size, OR any integer multiple of it — so an intentional 2x/3x title (32/48
+    // when the base is 16) survives the restamp instead of being crushed to the body size.
+    // Non-multiples (a stray 14, 20, etc.) are still normalized to the uniform size.
+    static bool IsAllowedSize(float fontSize, float baseSize) {
+        if (baseSize <= 0f) return true;
+        float k = fontSize / baseSize;
+        return Mathf.Round(k) >= 1f && Mathf.Abs(k - Mathf.Round(k)) < 0.01f;
     }
 
     static UIFontOptions.Entry ChosenEntry() {
@@ -153,8 +163,10 @@ public class UITextRuntimeStyle : MonoBehaviour {
             if (!t.gameObject.scene.IsValid() || t.hideFlags != HideFlags.None) continue;
             var canvas = t.GetComponentInParent<Canvas>(true);   // cached .canvas is null while inactive
             if (canvas == null || canvas.renderMode != RenderMode.ScreenSpaceOverlay) continue;
-            if (t.font != font)                         t.font = font;
-            if (!Mathf.Approximately(t.fontSize, size)) t.fontSize = size;
+            if (t.GetComponent<TextStyleExempt>() == null) {     // exempt labels keep authored font/size
+                if (t.font != font)                   t.font = font;
+                if (!IsAllowedSize(t.fontSize, size)) t.fontSize = size;
+            }
             t.ForceMeshUpdate(true, false);                      // clean regen even if inactive
         }
         // Input fields re-apply m_GlobalFontAsset to their child text, so keep it in sync too.

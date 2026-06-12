@@ -147,7 +147,12 @@ public class SaveSystem : MonoBehaviour {
             SaveStore.DeleteSlot(autos[autos.Count - 1]);
             autos.RemoveAt(autos.Count - 1);
         }
-        string name = AutosavePrefix + " " + System.DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss");
+        // Keep AutosavePrefix at the FRONT — both client rotation above and the server's
+        // pruneAutosaves (saves.go) identify autosaves by this prefix. The settlement name is
+        // embedded after it so the slot reads as "autosave <town> <timestamp>" in the load list.
+        // settlementName is pre-sanitized to the slot-safe charset, so it never breaks SlotPath.
+        string town = World.instance != null ? World.instance.SettlementDisplayName : World.DefaultSettlementName;
+        string name = AutosavePrefix + " " + town + " " + System.DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss");
         Save(name, setCurrent: false);
     }
 
@@ -187,6 +192,7 @@ public class SaveSystem : MonoBehaviour {
         data.savedNy = world.ny;
         data.timer = world.timer;
         data.worldSeed = Rng.worldSeed;
+        data.settlementName = world.settlementName; // null when skipped → not written (NullValueHandling.Ignore)
 
         var tiles = new List<TileSaveData>();
         for (int x = 0; x < world.nx; x++) {
@@ -647,6 +653,7 @@ public class SaveSystem : MonoBehaviour {
         // Tile types, water, walls, world timer. Pure data on the world grid; nothing
         // downstream queries observe these directly yet.
         world.timer = save.timer;
+        world.settlementName = save.settlementName; // null on old/skipped saves → SettlementDisplayName falls back
         // Reseed Rng from the persisted world seed before any phase that consumes Rng
         // (animal AI, weather rolls, recipe scoring, name draws). save.worldSeed = 0 on
         // pre-seed saves; Rng.Init(0) gives those a deterministic-from-zero stream from now on.
