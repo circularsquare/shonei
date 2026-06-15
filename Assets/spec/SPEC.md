@@ -32,7 +32,7 @@ Assets/
 ├── Controller/    Game-system MonoBehaviours (rendering, world lifecycle, input, WOM, save)
 ├── Model/         Pure C# game logic (no MonoBehaviours)
 │   ├── Animal/        Animal + state machine + Nav + needs (Eating, Eeping, Happiness, Skills)
-│   ├── Structure/     Structure base + Building/Plant subclasses (Windmill, Quarry, PumpBuilding, Flywheel, MouseWheel, MarketBuilding, PowerShaft, …) + Blueprint + StructType + StructureVisuals
+│   ├── Structure/     Structure base + Building/Plant subclasses (Windmill, ExtractionBuilding, PumpBuilding, Flywheel, MouseWheel, MarketBuilding, PowerShaft, …) + Blueprint + StructType + StructureVisuals
 │   └── Inventory/     Inventory, GlobalInventory, ItemStack, Item
 ├── Components/    Single-purpose MonoBehaviours: UI widgets (FillBar, ItemIcon) and building-attached visuals (RotatingPart, PortStubVisuals)
 ├── UI/            Panels, displays, tooltip system, InfoViews/ for the tabbed InfoPanel

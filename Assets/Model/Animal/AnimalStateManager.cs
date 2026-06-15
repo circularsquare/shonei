@@ -262,17 +262,13 @@ public class AnimalStateManager {
                 animal.workProgress -= recipe.workload;
                 if (animal.CanProduce(recipe, wsBuilding)) {
                     // Consume inputs and produce outputs, rolling chance for each output.
-                    // Quarry and digging pit route outputs through their captured-tile's
-                    // products instead of the recipe's (empty) outputs — see Quarry.cs /
-                    // DiggingPit.cs.
+                    // Extraction buildings (quarry / digging pit) route outputs through
+                    // their captured tile's distribution instead of the recipe's (empty)
+                    // outputs — see ExtractionBuilding.cs.
                     foreach (ItemQuantity iq in recipe.inputs) animal.Consume(iq.item, iq.quantity);
                     ItemQuantity[] outputs = recipe.outputs;
-                    if (craftTask.workplace?.building is Quarry quarry) {
-                        var extra = quarry.GetExtractionOutputs();
-                        if (extra != null) outputs = extra;
-                    }
-                    if (craftTask.workplace?.building is DiggingPit diggingPit) {
-                        var extra = diggingPit.GetExtractionOutputs();
+                    if (craftTask.workplace?.building is ExtractionBuilding extractor) {
+                        var extra = extractor.GetExtractionOutputs();
                         if (extra != null) outputs = extra;
                     }
                     foreach (ItemQuantity output in outputs) {

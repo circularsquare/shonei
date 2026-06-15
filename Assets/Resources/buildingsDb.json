@@ -4,6 +4,7 @@
         "constructionCost": 4,
         "constructionCostPerTile": true,
         "name": "platform",
+        "description": "can press q/e to change height",
         "nx": 1, "ny": 1,
         "ncosts": [
             { "name": "wood", "quantity": 3 }
@@ -57,7 +58,7 @@
         "id": 147,
         "constructionCost": 4,
         "name": "bracket",
-        "description": "support hung off the side of a wall. build on top to extend outward",
+        "description": "support hung off the side of a wall.",
         "nx": 1, "ny": 1,
         "ncosts": [
             { "name": "wood", "quantity": 3 }
@@ -65,12 +66,13 @@
         "depth": 1,
         "solidTop": true,
         "sideMounted": true,
-        "category": "structures"
+        "category": "structures",
+        "defaultLocked": true
     },{
         "id": 148,
         "constructionCost": 5,
         "name": "roof",
-        "description": "slanted roof. rest on a solid top to keep what's below dry",
+        "description": "",
         "nx": 1, "ny": 1,
         "ncosts": [
             { "name": "wood", "quantity": 3 }
@@ -79,6 +81,7 @@
         "blocksRain": true,
         "noMaintenance": true,
         "category": "structures",
+        "defaultLocked": true,
         "shapes": [
             { "nx": 1, "ny": 1 },
             { "nx": 1, "ny": 1, "sprite": "roof2" }
@@ -89,7 +92,7 @@
         "constructionCostPerTile": true,
         "name": "rope bridge post",
         "displayName": "rope bridge",
-        "description": "one post of a rope bridge. cost scales with length",
+        "description": "click in two places to connect them. cost scales with length.",
         "nx": 1, "ny": 1,
         "ncosts": [
             { "name": "wood", "quantity": 0.5 },
@@ -118,14 +121,14 @@
         "id": 20,
         "constructionCost": 50,
         "name": "house",
-        "description": "houses 4 mice",
+        "description": "houses 3 mice",
         "nx": 2, "ny": 2,
         "ncosts": [
             { "name": "planks", "quantity": 20 },
             { "name": "wood", "quantity": 5 }
         ],
         "njob": "hauler",
-        "capacity": 4,
+        "capacity": 3,
         "depth": 0,
         "solidTop": true,
         "category": "housing",
@@ -146,7 +149,7 @@
         "id": 26,
         "constructionCost": 18,
         "name": "shack",
-        "description": "houses 1 mouse",
+        "description": "houses 1 mouse. no room for furnishing.",
         "nx": 2, "ny": 1,
         "ncosts": [
             { "name": "wood", "quantity": 4 }
@@ -278,7 +281,7 @@
         "id": 40,
         "constructionCost": 8,
         "name": "torch",
-        "description": "requires wood to burn",
+        "description": "consumes wood to light",
         "nx": 1, "ny": 1,
         "ncosts": [
             { "name": "wood", "quantity": 5 }
@@ -392,7 +395,7 @@
         "id": 44,
         "constructionCost": 8,
         "name": "bench",
-        "description": "",
+        "description": "place to sit",
         "nx": 1, "ny": 1,
         "ncosts": [
             { "name": "planks", "quantity": 3 },
@@ -412,9 +415,9 @@
         "defaultLocked": true
     },{
         "id": 80,
-        "constructionCost": 8,
+        "constructionCost": 20,
         "name": "empty",
-        "description": "excavate a tile. gives a small fraction of the resources of a digging pit or quarry",
+        "description": "excavate a tile. gives a small fraction of a digging pit or quarry's yield",
         "nx": 1, "ny": 1,
         "ncosts": [
         ],
@@ -429,7 +432,7 @@
         "constructionCost": 5,
         "name": "dirt_placed",
         "displayName": "dirt",
-        "description": "block of dirt. can't be dug by a digging pit",
+        "description": "block of dirt.",
         "nx": 1, "ny": 1,
         "ncosts": [
             { "name": "dirt", "quantity": 10 }
@@ -442,7 +445,7 @@
         "constructionCost": 6,
         "name": "limestone_placed",
         "displayName": "limestone",
-        "description": "block of limestone. can't be quarried",
+        "description": "block of limestone.",
         "nx": 1, "ny": 1,
         "ncosts": [
             { "name": "limestone", "quantity": 10 }
@@ -512,7 +515,7 @@
         "id": 103,
         "constructionCost": 50,
         "name": "furnace",
-        "description": "smelts and processes materials",
+        "description": "smelt and processes materials",
         "nx": 2, "ny": 2,
         "storageTileX": 1,
         "ncosts": [
@@ -565,7 +568,7 @@
         "id": 105,
         "constructionCost": 25,
         "name": "pump",
-        "description": "pumps water from an adjacent water tile. faster when powered",
+        "description": "pumps water below. faster when powered",
         "nx": 2, "ny": 1,
         "ncosts": [
             { "name": "wood", "quantity": 6 },
@@ -638,7 +641,7 @@
         "id": 110,
         "constructionCost": 15,
         "name": "digging pit",
-        "description": "dig for dirt, sand, or clay",
+        "description": "dig for dirt, sand, or clay. also yields some stone.",
         "nx": 1, "ny": 1,
         "ncosts": [
             { "name": "wood", "quantity": 5 }
@@ -794,7 +797,7 @@
         "constructionCost": 30,
         "constructionCostPerTile": true,
         "name": "elevator",
-        "description": "carries one mouse at a time between the bottom and top of its chassis. press E/Q while placing to grow/shrink. needs mechanical power.",
+        "description": "carries mice up and down. press E/Q while placing to change size. needs mechanical power.",
         "nx": 1, "ny": 3,
         "ncosts": [
             { "name": "planks", "quantity": 6 },

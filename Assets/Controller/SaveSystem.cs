@@ -37,6 +37,7 @@ using Newtonsoft.Json;
 // -----------------------------------------------------------------------
 // Current saveable state checklist:
 //   [x] World timer
+//   [x] Game version stamp (Application.version; warns on load when the save came from a different build)
 //   [x] World RNG seed (drives Rng — gameplay randomness reproduces on reload)
 //   [x] Per-animal RNG seed (drives Animal.random — animal AI reproduces on reload)
 //   [x] Tile types, floor inventories (incl. wetUntil rain-soaked timer), background wall, overlay masks (grass on dirt), overlay health state (live/dying/dead), and snow cover
@@ -73,6 +74,11 @@ public class SaveSystem : MonoBehaviour {
 
     // Name of the slot that was last loaded or saved. Null for a fresh/reset world.
     public string currentSlot { get; private set; }
+
+    // Player-facing warning stashed when a just-loaded save was written by a different
+    // game version. Posted by PostLoadInit (one frame later, once the EventFeed UI is
+    // live and load-time spam has settled), then cleared. Null = versions matched.
+    string pendingVersionWarning;
 
     // Filesystem slot ops (enumerate / metadata / delete / rename) live in the static
     // SaveStore so the Menu scene can list saves without a live SaveSystem/World. This
@@ -188,6 +194,7 @@ public class SaveSystem : MonoBehaviour {
         World world = World.instance;
         WorldSaveData data = new WorldSaveData();
         data.saveVersion = SaveVersion;
+        data.gameVersion = Application.version;
         data.savedNx = world.nx;
         data.savedNy = world.ny;
         data.timer = world.timer;
@@ -447,12 +454,10 @@ public class SaveSystem : MonoBehaviour {
             }
             if (b.disabled) ssd.disabled = true;
         }
-        if (s is Quarry q && q.capturedTile != null)
-            ssd.capturedTileType = q.capturedTile.name;
-        if (s is DiggingPit dp) {
-            if (dp.capturedTile != null) ssd.capturedTileType = dp.capturedTile.name;
+        if (s is ExtractionBuilding eb && eb.capturedTile != null)
+            ssd.capturedTileType = eb.capturedTile.name;
+        if (s is DiggingPit dp)
             ssd.digDir = (int)dp.digDir;   // persist direction even if the substrate didn't capture
-        }
         if (s is Flywheel fw)
             ssd.flywheelCharge = fw.charge;
         if (s is Elevator el) {
@@ -593,6 +598,10 @@ public class SaveSystem : MonoBehaviour {
     // When adding a new system with saveable state, add its reset here AND
     // add Gather*/Restore* methods for the load path (see checklist above).
     void ResetSystemState() {
+        // Collapse any transient menus left open before the load (save menu, build subpanel,
+        // exclusive panels, build-mode cursor) — same effect as the player Esc-ing out of
+        // everything. Runs for both Load and LoadDefault so any world entry lands on a clean HUD.
+        UI.instance?.EscapeAll();
         InventoryController.instance?.ResetState();
         WeatherSystem.instance?.RestoreState(false, 0f);
         RecipePanel.instance?.ClearDisabled();
@@ -640,7 +649,18 @@ public class SaveSystem : MonoBehaviour {
 
         ResetSystemState();
         ApplySaveData(data);
+        CheckGameVersion(data.gameVersion);
         StartCoroutine(PostLoadInit());
+    }
+
+    // Stash a heads-up when the loaded save's game version differs from this build.
+    // Saves aren't version-compatible during early development, so a mismatch means the
+    // world may load wrong — this is a soft warning (we still load), not a hard block.
+    // Empty/null savedVersion = a pre-versioning save, which predates v0.1.0.
+    void CheckGameVersion(string savedVersion) {
+        if (savedVersion == Application.version) return;
+        string from = string.IsNullOrEmpty(savedVersion) ? "an older version" : "v" + savedVersion;
+        pendingVersionWarning = $"<color=#cc9933>save from {from} - may not load correctly on v{Application.version}</color>";
     }
 
     // ApplySaveData runs in a fixed phase order — see SPEC-lifecycle.md "Load phase ordering".
@@ -1043,23 +1063,20 @@ public class SaveSystem : MonoBehaviour {
             if (b.workstation != null) b.workstation.uses = ssd.uses;
             b.disabled = ssd.disabled;
         }
-        if (structure is Quarry qr && !string.IsNullOrEmpty(ssd.capturedTileType)) {
+        if (structure is ExtractionBuilding eb && !string.IsNullOrEmpty(ssd.capturedTileType)) {
             if (Db.tileTypeByName.TryGetValue(ssd.capturedTileType, out TileType tt))
-                qr.capturedTile = tt;
+                eb.capturedTile = tt;
             else
-                Debug.LogError($"RestoreStructure: unknown capturedTileType '{ssd.capturedTileType}' for quarry at ({ssd.x},{ssd.y})");
+                Debug.LogError($"RestoreStructure: unknown capturedTileType '{ssd.capturedTileType}' for {structure.structType.name} at ({ssd.x},{ssd.y})");
         }
         if (structure is DiggingPit drp) {
             // OnPlaced (which picks the dig direction and wires the door) is skipped on
             // load, so restore digDir verbatim and let RestoreOnLoad wire the single
-            // door + rebuild the dish. ssd.uses was applied above (the Building branch);
+            // door + rebuild the dish. capturedTile was restored just above (the shared
+            // ExtractionBuilding branch); ssd.uses was applied in the Building branch;
             // workNode was repointed in the Structure ctor. Door wiring is independent of
             // the substrate, so a pit whose tile fails to resolve stays reachable, not orphaned.
-            TileType tt = null;
-            if (!string.IsNullOrEmpty(ssd.capturedTileType)
-                && !Db.tileTypeByName.TryGetValue(ssd.capturedTileType, out tt))
-                Debug.LogError($"RestoreStructure: unknown capturedTileType '{ssd.capturedTileType}' for digging pit at ({ssd.x},{ssd.y})");
-            drp.RestoreOnLoad((DigDir)(ssd.digDir ?? 0), tt);
+            drp.RestoreOnLoad((DigDir)(ssd.digDir ?? 0));
         }
         if (structure is Flywheel fw)
             fw.charge = Mathf.Clamp(ssd.flywheelCharge, 0f, Flywheel.Capacity);
@@ -1269,6 +1286,29 @@ public class SaveSystem : MonoBehaviour {
         // first storage click, which would otherwise instantiate one ItemDisplay per item and
         // hitch a frame. Idempotent across world-creation paths via the panel's build guard.
         StoragePanel.instance?.PreloadAllowTree();
+
+        MaybePromptSettlementName();
+
+        // Warn (once) if this save came from a different build — deferred to here so the
+        // EventFeed UI is live and the load-time reconcile spam has already settled.
+        if (pendingVersionWarning != null) {
+            EventFeed.instance?.Post(pendingVersionWarning);
+            pendingVersionWarning = null;
+        }
+    }
+
+    // Opens the settlement-naming prompt on any world that never had a name chosen. This is the
+    // single trigger site for all world-creation paths: fresh gen and reset both clear the name,
+    // and old saves predate the field so they load as null — all of which read as "new town" and
+    // should get the chance to name. Pauses first so the prompt sits over a still world; the
+    // new-world / reset paths are already paused by GenerateDefault, making the pause a no-op
+    // there. Skipping leaves the name null, so the player is offered again on the next load.
+    void MaybePromptSettlementName() {
+        World world = World.instance;
+        if (world == null) return;
+        if (!string.IsNullOrEmpty(world.settlementName)) return;
+        TimeController.instance?.Pause();
+        SettlementNamePopup.Show();
     }
 
     public void LoadDefault() {

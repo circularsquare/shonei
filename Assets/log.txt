@@ -1,5 +1,12 @@
 meoww!!
 
+6/15
+- minor adjustments
+    - easier moisture 
+    - architecture tech
+    - slower food consumption when sleeping
+    - more ui gating on undiscovered things. happiness fields, equip slots
+- 
 6/12
 - more graphics settings (cloud detail, flat lighting, particle)
 - more sounds (research, wind)

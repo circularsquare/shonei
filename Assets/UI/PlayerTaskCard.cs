@@ -23,7 +23,8 @@ using UnityEngine.EventSystems;
 public class PlayerTaskCard : MonoBehaviour, IPointerClickHandler {
     public static PlayerTaskCard instance { get; private set; }
 
-    const float CelebrateSeconds = 3f; // how long "complete!" shows before advancing
+    const float CelebrateSeconds       = 3f;  // how long a task's "complete!" shows before advancing
+    const float FinaleCelebrateSeconds = 30f; // the final "all complete!" lingers longer (click to dismiss early)
 
     GameObject       frame;   // visible woodframe; toggled off when there's no current task
     TextMeshProUGUI  label;   // the Content row (title + progress); excludes the header label
@@ -85,9 +86,13 @@ public class PlayerTaskCard : MonoBehaviour, IPointerClickHandler {
 
         TaskProgress p = t.Progress();
         if (p.Complete) {
+            // Final task gets a longer, distinct "all complete!" send-off; every other
+            // task shows the brief per-task celebration. Either way a click dismisses early.
+            bool finale    = c.OnLastTask;
             celebrating    = true;
-            celebrateUntil = Time.unscaledTime + CelebrateSeconds;
-            SetText(t.title + "\n<color=#3B7D3B>complete!</color>");
+            celebrateUntil = Time.unscaledTime + (finale ? FinaleCelebrateSeconds : CelebrateSeconds);
+            SetText(finale ? "<color=#3B7D3B>tutorial tasks all complete!</color>"
+                           : t.title + "\n<color=#3B7D3B>complete!</color>");
             return;
         }
         int shown = Mathf.Min(p.current, p.target); // cap display so over-flagging shows 3/3, not 5/3

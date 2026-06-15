@@ -160,11 +160,14 @@ Each widget: icon (hover → skill name tooltip) + "lv{n}" label + progress bar.
 
 Sprites loaded from `Resources/Sprites/Skills/{skillname}` with `Sprites/Skills/default` fallback.
 
+A `ComfortBar` (`tempBar`, between the text blob and SkillsContainer) shows the mouse's temperature comfort: green band = the clothing/warmth-widened `comfortTempLow..comfortTempHigh`, marker = ambient temp. The numeric "warmth" readout was dropped — warmth's effect is now visible as the widened green band.
+
 ### StructureInfoView controls
 - **Enable/Disable** toggle — sets `Building.disabled`. Only shown when `disabled` actually gates behaviour: workstations (craft/research via `isActive`), reservoir buildings (fuel supply via `isActive`, plus `LightSource.Update` skips burn and forces `isLit=false` while disabled — so light goes dark and fuel stops draining), and leisure buildings (animals skip disabled ones in `LeisureTask.Initialize`). Hidden for storage-only, beds, decorative, plants, and base structures.
 - **Priority +/-** (blueprints only) — adjusts `Blueprint.priority`.
 - **Worker slots +/-** (multi-slot workstations only) — adjusts `Reservable.effectiveCapacity`. Priority and worker values render on dedicated TMP labels next to their buttons, not in the main text.
 - **Harvest flag toggle** (plants only) — calls `Plant.SetHarvestFlagged`, which registers or unregisters the harvest WOM order and toggles the overlay sprite. Label flips between "flag for harvest" / "unflag harvest".
+- **Comfort bars** (plants only) — temperature + soil-moisture shown as two `ComfortBar` widgets (`TempBar`/`MoistureBar` rows) instead of text. Yellow track = stalled range, green overlay = comfortable band, circle marker = current value; hover shows exact range + value + the growth-effect note. `ShowPlantComfort` drives them per refresh; `SetComfortVisible(false)` hides them for buildings/blueprints/base structures.
 - **Target-gated dormancy alert** (plants only) — when a flagged plant is ripe but every product is at/above its global target, the panel shows red "will not harvest: outputs above target". Mirrors the WOM order's `isActive` gate; the order also surfaces with `[inactive]` next to its `wo: Harvest 0/1` row (via `AppendTileOrders`'s shared `[inactive]` suffix, same as `AppendBuildingOrders`).
 
 ### SelectionContext
@@ -448,8 +451,9 @@ mesh is committed but before the GPU draws — so the corrected mesh replaces it
 - Startup text can render with stale/invisible meshes; the `RefreshAll` passes fix it.
 - **The flicker was killed by in-frame regen, NOT by going font-agnostic.** The font-agnostic plan
   (strip all TMP to `font = null` → fall back to `TMP_Settings.defaultFontAsset` → content born in
-  the chosen font) is **infeasible in TMP 3.0.6 / Unity 2021.3**: `TMPro_UGUI_Private.LoadFontAsset`
-  coerces `m_fontAsset == null → defaultFontAsset` on every validate/awake/setter, so you cannot
+  the chosen font) was found **infeasible under TMP 3.0.6 / Unity 2021.3** (TMP is now bundled in
+  `com.unity.ugui` 2.0; whether 6.3's TMP changed this is unverified): `TMPro_UGUI_Private.LoadFontAsset`
+  coerced `m_fontAsset == null → defaultFontAsset` on every validate/awake/setter, so you could not
   *persist* a null font. Verified: `LoadPrefabContents` → set null → `SaveAsPrefabAsset` writes the
   concrete default GUID, not `fileID: 0`. Only raw YAML `{fileID: 0}` writes can store null, and they
   re-bake silently on any later prefab edit (fragile forever). Don't re-attempt this.
@@ -499,6 +503,7 @@ still hug their text.
 | `Assets/UI/InfoViews/AnimalInfoView.cs` | Single animal info display (spawns SkillDisplay widgets) |
 | `Assets/Components/SkillDisplay.cs` | Skill icon + level + XP bar widget (anchor-based fill, Tooltippable on icon + bar hitbox) |
 | `Assets/Components/FillBar.cs` | Reusable fill bar (0–1 fraction → fillAmount); used by HappinessNeedRow |
+| `Assets/Components/ComfortBar.cs` | Range bar: comfortable band (green) vs stalled (yellow) over a fixed domain + circle marker for current value + hover readout; used by StructureInfoView (plant temp/moisture) and AnimalInfoView (mouse temp) |
 | `Assets/UI/GlobalHappinessPanel.cs` | Exclusive panel: colony happiness overview + per-need breakdown |
 | `Assets/UI/HappinessNeedRow.cs` | One need row: name, count, fill bar, avg value |
 | `Assets/UI/InfoViews/TileInfoView.cs` | Tile-only info (coords, water, floor inv) |

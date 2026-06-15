@@ -54,6 +54,7 @@ All messages use an envelope wrapper:
 | `order` | All clients | Order placement broadcast | `from`, `item`, `side`, `price`, `quantity` |
 | `chat` | All clients | Chat message | `from`, `text` |
 | `price_history_response` | Requester only | Downsampled price history | `item`, `rangeSec`, `bucketSec`, `startSec`, `endSec`, `samples[]` |
+| `online_count` | All clients | Connected-player count; pushed on every connect/disconnect. Bots trade direct against the exchange (no socket), so they're not counted. | `count` |
 
 `buys[]` is sorted highest price first (best bid at index 0).
 `sells[]` is sorted lowest price first (best ask at index 0).
@@ -150,6 +151,7 @@ Singleton (`TradingClient.instance`). Attach to a persistent GameObject.
 | `OnMarketResponse` | Server sends order book snapshot |
 | `OnFill` | A trade executes (broadcast to all) |
 | `OnChat` | Chat message received |
+| `OnOnlineCount` | Player count received (`OnlinePlayerCount` / `hasOnlineCount` cache it; both reset on disconnect) |
 
 **Public methods:**
 
@@ -175,9 +177,7 @@ Singleton. Subscribes to TradingClient events in `Start()`, unsubscribes in
 | `sellsList` | Transform | Scroll content for sell-side book rows |
 | `orderPrice` | TMP_InputField | Price input for order entry |
 | `orderQty` | TMP_InputField | Quantity input for order entry |
-| `chatScroll` | ScrollRect | Wraps chatList; used for auto-scroll to bottom |
-| `chatList` | Transform | VLG content for chat + fill messages |
-| `chatInput` | TMP_InputField | Chat message input |
+| `chatInput` | TMP_InputField | Chat message input (the log itself lives on `ChatLog` — see below) |
 | `onlineIndicator` | GameObject | Image + TMP child showing online/offline |
 | `itemIconGrid` | Transform | GridLayoutGroup container; populated once in `Start()` with one `ItemIcon` per leaf item in `Db.itemsFlat`. Clicking an icon sets `itemInput.text` and triggers `OnClickQuery()`. Groups are skipped — trading is leaf-only. |
 | `itemIconPrefab` | GameObject | `Resources/Prefabs/ItemIcon.prefab`. |
@@ -203,7 +203,7 @@ Singleton. Subscribes to TradingClient events in `Start()`, unsubscribes in
 - `/day [n]` — jump world clock to day `n` of the current year.
 - `/wind [v]` — snap wind to value `v` (positive = right). Both `wind` and `targetWind` are set so the OU walk doesn't immediately pull it back.
 
-**Chat/fill display:** the chat list is a *view* over `EventFeed` — TradingPanel subscribes to `EventFeed.OnEntry` in `Awake` and renders every entry as a chat row (capped at 20 visible rows). Market errors, `/give` feedback, server chat, and trade fills all flow through `EventFeed.Post(...)` rather than writing to the chat list directly. Inline `<color=...>` tags on the posted text still drive per-message coloring (green for fills and `/give` success, red for errors). See SPEC-eventfeed for the dispatcher contract.
+**Chat/fill display:** the chat log lives on `ChatLog` (on the always-active `ChatPanel`), **not** this panel — so it renders even when the trading panel is closed. `ChatLog` both *sources* server chat + fills into `EventFeed` and *renders* every non-Alert entry as a chat row (capped at 20). TradingPanel keeps only `chatInput` (command entry) and `RefreshMarketOnFill` (refreshes the holdings tree on a fill while open). Market errors, `/give` feedback, server chat, and fills all flow through `EventFeed.Post(...)`; inline `<color=...>` tags drive per-message coloring. See SPEC-eventfeed for the dispatcher contract and ChatLog details.
 
 **Indicator sprites:** loaded from `Resources/Sprites/Misc/indicator/green` and
 `Resources/Sprites/Misc/indicator/red`.

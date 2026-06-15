@@ -11,23 +11,23 @@
 | -5 | Water overlay sprite (`WaterController`) — sits behind tiles so the bleed-into-solid-neighbour pixels (see Water Rendering §) only show through the tile sprite's transparent bevel gaps. Above the background wall so cave water still reads against dirt. |
 | 0..−4 | Tile bodies (chunked mesh per chunk × type — see §Tile body rendering). Within a chunk, all tiles of one type share one `MeshRenderer` at `sortingOrder = −rank(type)`, ranks 0..k−1 ascending by tile-type id (dirt 0, sand −1, limestone −2, granite −3, slate −4). Lower-id wins the soft-edge contest — its overhang draws on top of higher-id Main extensions. |
 | 1 | Roads (depth-3 structures) |
-| 2 | Tile snow cover (`SnowAccumulationSystem` flag; meshed by `TileMeshController.BuildSnowGeometry` from the `snow` overlay atlas). Sits above the tile body so accumulated snow covers the underlying ground; on roaded tiles snow draws on top, reading as a snow-covered road. The per-tile inverted-cardinal mask decorates the **top plus any exposed (open-air) left/right face** — so a cliff-edge block shows snow clinging to its open side, not just a flat top line; bottom is never decorated (the snow atlas has no underside art). Exposed-side snow re-bakes via `OnTileTypeChanged`'s 3×3 mark when a neighbour is mined. Mutually exclusive at runtime with the grass overlay (snow accumulation snapshots and clears the overlay mask), so the ordering between snow (2) and overlay (11) doesn't visually matter. |
+| 2 | Tile snow cover (`SnowAccumulationSystem` flag; meshed by `TileMeshController.BuildSnowGeometry` from the `snow` overlay atlas). Sits above the tile body so accumulated snow covers the underlying ground; on roaded tiles snow draws on top, reading as a snow-covered road. The per-tile inverted-cardinal mask decorates the **top plus any exposed (open-air) left/right face** — so a cliff-edge block shows snow clinging to its open side, not just a flat top line; bottom is never decorated (the snow atlas has no underside art). Exposed-side snow re-bakes via `OnTileTypeChanged`'s 3×3 mark when a neighbour is mined. Mutually exclusive at runtime with the grass overlay (snow accumulation snapshots and clears the overlay mask), so the ordering between snow (2) and overlay (80) doesn't visually matter. |
 | 5 | Power shafts (depth-4 structures) — render behind buildings so shafts read as wall-mounted plumbing |
 | parent − 1 | Power port stubs (`PortStubVisuals` child SR, one below the parent building). Also: flywheel wheel — rendered behind the housing so the spokes peek through. |
 | 10 | Buildings (depth-0 structures) |
-| 11 | Tile overlays (grass on dirt, future moss on stone). Sits one above buildings so grass tufts bevelling up out of a dirt tile read in front of building bottoms placed on or beside that tile. Roads still suppress overlay rendering on the same tile (sprite cleared in `OnTileOverlayChanged`), preserving the mutual-exclusion behaviour despite the layer difference. |
-| 12 | Decorative flowers (`FlowerController`). Sit one above grass overlay so they always read in front of the tuft they grow out of. Single-tile GameObjects with `Custom/PlantSprite` so they share the plant wind-sway pipeline (vertex-mode cantilever). Mutually exclusive with anything that occupies `structs[0]` on the air tile above — eligibility check fails if a building or plant is in the way. |
+| 12 | Decorative flowers (`FlowerController`). Sit one above buildings (10); since grass moved to 80 the flower base now draws *behind* the grass tuft it grows from (accepted — reads as the flower emerging from the grass). Single-tile GameObjects with `Custom/PlantSprite` so they share the plant wind-sway pipeline (vertex-mode cantilever). Mutually exclusive with anything that occupies `structs[0]` on the air tile above — eligibility check fails if a building or plant is in the way. |
 | parent + 1 | Rotating wheel children sorted in front of the base (`RotatingPart` child SR — windmill blades). Per-building: the building decides whether its wheel sorts in front or behind by setting `wsr.sortingOrder` relative to its own `sr.sortingOrder` (windmill = +1, flywheel = −1). |
 | 12 | Floor items resting on a building's solid top (computed by `Inventory.ComputeFloorSortingOrder` — building +2 so wheel/blade overlays at parent+1 sit between the building and the pile) |
 | 15 | Platforms (depth-1 structures); also clock hand |
-| 17 | Floor items resting on a platform's solid top (computed — platform +2) |
+| 16 | Plants (`Plant`, overrides the depth-0 default in its ctor). Sits in front of buildings/flowers/platforms (but behind the grass overlay at 80, which now draws over the plant base), inside the 9..17 buildings bucket so it front-lights like a building (torch-lit, not creature back-lit) via the natural `sortingOrder→bucket` mapping. Below the creature band (48+) so a mouse overlapping a plant draws in front. Blob-sway children draw at +1 = 17 (top of the bucket). |
+| 17 | Floor items resting on a platform's solid top (computed — platform +2). Shares the buildings bucket with plant blobs after the 9..17 widening — both sit on/near a structure top, so building-bucket lighting is appropriate. |
 | parent + 1 | Items in storage display (drawer stacks, crate placeholder, tank fill, bookshelf fill) — `Inventory` ctor takes `parentSortingOrder` from the owning `Building` (e.g. drawer at 10 → stacks at 11). Falls back to 30 when no parent is supplied (test fixtures only). |
 | 40 | Foreground structures (depth-2: stairs, ladders, torches, fireplaces) |
 | 50 | Animal paper-doll parts + clothing — all share order 50. The root `SortingGroup` (order `50 + id%15`) sorts each mouse as a unit; parts layer within the mouse by Z offset in the clips. Per-part `sortingOrder` is safe *if kept in 48–99* (bucket 4) — SRP Batcher batches by shader so reordering same-atlas parts within the group doesn't add SetPass; leaving the 48–99 band would move a part to another lighting bucket. |
-| 60 | Plants |
 | 65 | Falling items (mid-air animation) |
 | 70 | Floor items resting on solid dirt (or fallback when no surface is detected below) |
-| 49 | Blueprint ghost body — just below the animal band so blueprints read in front of most structures (buildings, platforms, ladders, torches at 40) but tuck behind mice. Plants (60) still draw in front. Constant `Blueprint.GhostSortingOrder`. |
+| 80 | Tile overlays (grass on dirt, future moss on stone). Sits in FRONT of mice (50..64) and floor items on dirt (70) so a tuft bevelling up out of a dirt tile occludes the feet / item base resting on it, rather than the actor floating in front of the grass. Consequently grass now draws in front of plants (16), flowers (12), platforms (15), and foreground structs (40) too — accepted: the tuft only occupies the bottom ~4px strip, reading as the element emerging from the grass. **Lighting bucket is pinned to 1 (Tiles plane, same as the dirt body it grows from), NOT derived from the 80 draw order** — the normals-RT B channel is the light-shaping depth plane, and grass physically lives in the ground plane; deriving bucket 4 from 80 back-lit grass from the wrong side (see `TileMeshController.OverlayLightingBucket` + `LightCircle.shader`). Roads still suppress overlay rendering on the same tile (sprite cleared in `OnTileOverlayChanged`). |
+| 49 | Blueprint ghost body — just below the animal band so blueprints read in front of most structures (buildings, platforms, ladders, torches at 40, plants at 16) but tuck behind mice. Constant `Blueprint.GhostSortingOrder`. |
 | 101 | Blueprint frame overlay (unlit, sliced) — drawn by the separate Unlit overlay camera, so it stays on top of the world (incl. mice) regardless of the ghost body's order. |
 | 200 | Build preview (mouse cursor ghost) |
 
@@ -47,7 +47,7 @@ Structures render in five depth layers per tile. Each tile holds `Structure[] st
 
 Slot index ≠ visual layering. Power shafts live in slot 4 (the highest array index) but render at sortingOrder 5 — *behind* buildings/platforms/foreground but in front of roads. The dedicated slot lets shafts coexist on the same tile as a building, ladder, road, etc.
 
-Depth-based sortingOrder is the default; individual `StructType`s can override via the JSON `sortingOrder` field. Plant overrides to 60 in its constructor.
+Depth-based sortingOrder is the default; individual `StructType`s can override via the JSON `sortingOrder` field. Plant overrides to 16 in its constructor (in front of buildings/platforms, behind mice).
 
 `tile.building` is a convenience property: `structs[0] as Building` (Plant extends Building, so both are accessible through it). Multiple layers can coexist on the same tile. `GetBlueprintAt(int depth)` / `SetBlueprintAt(int depth, Blueprint bp)` directly index into `blueprints[]`.
 
@@ -167,7 +167,7 @@ Single-tile GameObjects scattered across tiles, split into per-zone families ("f
 - **Rigid-head split** (flowers only): when a flower variant has a detectable head, FlowerController spawns it as TWO child SRs sharing one sprite and an auto-generated `_SwayMask` texture (`FlowerType.LoadHeadMask`, runtime). One SR is a "stem" (`_UseMask=1`, `_RoleIsHead=0`) — the fragment stage discards mask>0.5 pixels and the vertex stage keeps the corner-weighted bend (linearly interpolated across the quad). The other is a "head" (`_RoleIsHead=1`) — vertex stage shifts every vertex by `amplitude × (_HeadCenterY / _PlantHeight)` (a **linear** weight, not the `pow(t, 1.5)` cantilever the stem corners use) so the head's rigid shift matches the stem-top's *visible* displacement at the joint; using true cantilever here makes the head trail behind the stem-top instead of sitting on it. Fragment stage discards mask<0.5 pixels. Head sorts one above stem so the head wins where the bent stem-top overlaps the translated head.
 - **Auto head-mask generator** (runtime, lazy): the first time a FlowerType is asked for its mask, `FlowerType.LoadHeadMask` reads the source PNG pixels (Read/Write enabled by [DecorativeSpritePostprocessor.cs](../Editor/DecorativeSpritePostprocessor.cs)) and classifies each opaque pixel by HSV: hue ∈ [60°, 170°] AND saturation > 0.15 AND value ∈ [0.10, 0.95] is treated as stem (mask=0); everything else is head (mask=1). The head centroid's pixel-Y / PPU becomes `headCenterY` (world units relative to sprite-bottom). If less than 4 % of opaque pixels classify as head the variant falls back to single-SR uniform bend — keeps all-green flora (moss, fern-like decorations) out of the two-SR path. Mushrooms / moss with `windEffect=0` skip the mask check entirely. No editor step required.
 - **Bend anchor (`_PlantBaseY`)** for flowers sits at `t.y + 0.5` (sprite bottom, since GO is at `t.y + 1` with center pivot). Combined with `_PlantHeight=1`, the cantilever weight ramps from 0 at the bottom of the sprite to 1 at the top — the natural bend a viewer expects. Earlier versions parked baseY at the GO position (sprite *center*), which capped the top-of-sprite shift (at the `pow(t, 1.5)` cantilever weight evaluated at `t = 0.5`) to roughly a third of full amplitude and made flowers feel undersway.
-- **Sorting order**: `12` — see §"Sorting orders". Above the grass overlay (11), below platforms (15) / animals / plants / floor items.
+- **Sorting order**: `12` — see §"Sorting orders". Above buildings (10), below platforms (15) / plants (16) / animals; and below the grass overlay (80), so the flower base reads as emerging from the tuft.
 - **Future upgrade path**: if decorations become harvestable, the natural step is to look up a matching `PlantType` by name on player click and replace the decorative GameObject with a real `Plant` instance. The FlowerType / Plant data-model split lets the visual layer continue to back the decoration for un-clicked instances.
 - **Building over a flower**: placing a structure in the air tile above a decoration despawns it — `cbStructChanged` fires `RemoveIfInvalid` on the tile below, whose `IsValidFlowerHost` now sees an occupied tile above. Mining the host tile likewise removes it. (Snow-visibility is deliberately NOT handled — a flower on a tile that later snows over stays visible; revisit if it reads wrong.)
 
@@ -227,28 +227,36 @@ Deconstruct blueprints **hide their own main sprite** and instead apply a multip
 
 ## Sprite atlasing & SRP Batcher
 
-Gameplay sprites are packed into Unity Sprite Atlases (**V1** — V2's
-runtime asset isn't generated in Unity 2021.3, see CLAUDE.md anti-patterns)
-so the SRP Batcher can keep state across consecutive draws. Without
-atlasing, every unique sprite texture forces a SetPass since `_MainTex`
-is `[PerRendererData]` and sits in the batching key. With atlasing, all
-sprites in a given atlas page share `_MainTex` → SRP Batcher merges them.
+Gameplay sprites are packed into Unity Sprite Atlases (**V2**, via the
+`SpriteAtlasV2` packer mode) so the SRP Batcher can keep state across
+consecutive draws. Without atlasing, every unique sprite texture forces a
+SetPass since `_MainTex` is `[PerRendererData]` and sits in the batching key.
+With atlasing, all sprites in a given atlas page share `_MainTex` → SRP
+Batcher merges them.
+
+> **V1 → V2 history (2026-06):** ran V1 (`AlwaysOnAtlas`) on Unity 2021.3
+> because V2 didn't generate a runtime atlas there. The Unity 6 move *silently
+> broke* V1 packing — `sprite.packed` went False everywhere, sprites rendered
+> un-atlased. Migrated to V2 (the supported path in U6). **Verify after any
+> atlas change in Play mode** (V2 packs lazily on Play/build, not at edit-rest):
+> load atlased sprites and confirm `sprite.packed == true` and they bind a
+> shared `sactx-…` page, not the individual source texture.
 
 **Project setting**: `Edit → Project Settings → Editor → Sprite Packer →
-Mode = AlwaysOnAtlas` (V1, always-on in editor). The builder script
-includes a menu item to set this.
+Mode = Sprite Atlas V2` — auto-enforced on editor load by the builder
+(`[InitializeOnLoad]`).
 
-**Atlases** (all V1, under `Assets/SpriteAtlases/`):
+**Atlases** (all V2, under `Assets/SpriteAtlases/`):
 
 | Atlas | Packables | Filter | Notes |
 |-------|-----------|--------|-------|
-| `Animals.spriteatlas` | `Resources/Sprites/Animals/` (recursive) | Point | Mouse paper-doll parts + Clothing. Densest unbatched cluster before atlasing. |
-| `Buildings.spriteatlas` | `Resources/Sprites/Buildings/` (recursive) | Point | Includes `furnishings/`. |
-| `Plants.spriteatlas` | `Resources/Sprites/Plants/Decorative/` + `Plants/Split/` | Point | Excludes `Plants/Sheets/` (editor-input only — split into Plants/Split by `PlantSheetSplitter`). |
-| `FloorItems.spriteatlas` | `Resources/Sprites/Items/split/` (filtered) | Point | Excludes `icon.png` files (owned by `ItemIcons` atlas to avoid double-claim). |
-| `ItemIcons.spriteatlas` | `Resources/Sprites/Items/split/*/icon.png` | Bilinear | UI inventory/recipe icons. |
-| `UIChrome.spriteatlas` | `Resources/Sprites/Misc/` minus world overlays | Bilinear | Buttons, frames, scrollbars, dividers, status indicators. |
-| `WorldOverlays.spriteatlas` | World-rendered `Misc/` names (explicit list in builder) | Point | tileselect, harvestselect, blueprint frames, cursor, whiteborder, … — SpriteRenderer overlays that must stay crisp. |
+| `Animals.spriteatlasv2` | `Resources/Sprites/Animals/` (recursive) | Point | Mouse paper-doll parts + Clothing. Densest unbatched cluster before atlasing. |
+| `Buildings.spriteatlasv2` | `Resources/Sprites/Buildings/` (recursive) | Point | Includes `furnishings/`. |
+| `Plants.spriteatlasv2` | `Resources/Sprites/Plants/Decorative/` + `Plants/Split/` | Point | Excludes `Plants/Sheets/` (editor-input only — split into Plants/Split by `PlantSheetSplitter`). |
+| `FloorItems.spriteatlasv2` | `Resources/Sprites/Items/split/` (filtered) | Point | Excludes `icon.png` files (owned by `ItemIcons` atlas to avoid double-claim). |
+| `ItemIcons.spriteatlasv2` | `Resources/Sprites/Items/split/*/icon.png` | Bilinear | UI inventory/recipe icons. |
+| `UIChrome.spriteatlasv2` | `Resources/Sprites/Misc/` minus world overlays | Bilinear | Buttons, frames, scrollbars, dividers, status indicators. |
+| `WorldOverlays.spriteatlasv2` | World-rendered `Misc/` names (explicit list in builder) | Point | tileselect, harvestselect, blueprint frames, cursor, whiteborder, … — SpriteRenderer overlays that must stay crisp. |
 
 All atlases share standard settings: padding 2, no rotation, no tight
 packing, uncompressed RGBA, max texture 4096. **Filter mode is per render
@@ -261,7 +269,7 @@ so editor previews and unpacked fallbacks match.
 
 **Builder script** (`Assets/Editor/GameplayAtlasBuilder.cs`): single source
 of truth for atlas creation. One menu item — `Tools → Rebuild Atlases` —
-rebuilds everything; `AlwaysOnAtlas` packer mode is auto-enforced on editor
+rebuilds everything; `SpriteAtlasV2` packer mode is auto-enforced on editor
 load (`[InitializeOnLoad]`). Adding a new sprite under a source folder gets
 picked up automatically on the next rebuild.
 
@@ -279,6 +287,15 @@ renderer's color into `_RendererColor` via MaterialPropertyBlock, and Unity's
 rule is: any MPB write to a property declared inside `UnityPerMaterial`
 disqualifies the renderer from SRP Batching entirely. Keeping `_RendererColor`
 in CBUFFER opted every SpriteRenderer out of batching silently.
+
+Under Unity 6 / URP 17 the stakes are higher than lost batching: on the
+(since-retired) `Hidden/BackgroundLayer` shader, `_RendererColor` declared
+inside `UnityPerMaterial` read as uninitialized `(0,0,0,0)` — `tex *
+_RendererColor` = fully transparent, sprite silently invisible. Three sibling
+shaders still carry the in-CBUFFER pattern and happen to render fine
+(`ChunkedTileSprite`, `PlantSprite`, `CrackedSprite` — tracked in todo.txt);
+treat any new shader's `_RendererColor` placement as correctness-critical,
+not just a perf nicety.
 
 **Current health metric** (see [project-srp-batcher-metric memory] for
 the formula): srpHealth = 1 − SetPass / Draws. Pre-atlas baseline ~0.08;
@@ -335,6 +352,8 @@ Three passes: **NormalsCapturePass** captures sprite normals + lighting tier int
 #### NormalsCapturePass (BeforeRenderingTransparents)
 
 Draws sprites with `Hidden/NormalsCapture` override into `_CapturedNormalsRT` (format **ARGB32** — must have alpha; camera's default HDR format has none).
+
+**Non-world cameras skip per-sprite capture** (URP 17 / RenderGraph rewrite): for the SkyCamera the pass only clears the RT to the tier defaults — none of the per-sprite/tier draws below run (`if (d.isWorldCam)` in the render func). Sky-layer sprites are lit purely by the composite's full-ambient clear + sun + sky branch, so MPB-binding a `_NormalMap` on a Sky-layer sprite has no effect (CloudLayer/HazeLayer still do, vestigially).
 
 **Flat-lighting mode** (`SettingsManager.flatLighting`, exposed in OptionsPanel as "flat lighting"; replaces the old all-or-nothing lighting on/off): `LightFeature` sets the global `_FlatNormals = 1`, and the generic `Hidden/NormalsCapture` override's frag then skips the `_NormalMap` sample + tangent→world transform and writes a flat camera-facing normal (packed `0.5, 0.5`) while keeping the sort bucket + tier alpha. The light shaders read that flat normal → dynamic sprites (animals/plants/buildings) get **uniform, un-shaded** lighting (point lights still light a radial circle). Terrain keeps its depth — chunked tiles / water / background use *different* override shaders that don't read `_FlatNormals`. **Occlusion is fully preserved**: deep-interior / sky darkening lives in `LightPass` (sky-exposure + `deepAmbient`) and the tile edge-depth alpha, none of which depend on the per-sprite normals. So flat mode is a cheaper, better-looking floor than fully-off lighting (which skipped the whole feature → no composite multiply → fullbright). Perf win is modest (saves the per-fragment normal-map sample, not draw calls; measured split is ~⅓ NormalsCapture / ⅔ LightPass, and flat mode doesn't reduce LightPass's point-light fill) — its real value is the look.
 
@@ -448,7 +467,7 @@ The recovery pattern is **enforced by inheritance from [`SkyLayerBase`](../Light
 
 StarField's `BuildContents` rebuilds its `stars` List deterministically from the `seed` field so the new starfield lands in identical positions after reload. BackgroundTile (outside the SkyLayerBase hierarchy because it's externally Init-driven by SaveSystem rather than Start-driven) re-bootstraps from `World.instance` inside its own `LateUpdate` if its `world` ref has been lost.
 
-The shared 1×1 flat-normal texture used by BackgroundLayer + HazeLayer (so NormalsCapture sees a uniform camera-facing normal under each layer) lives at [`SpriteMaterialUtil.FlatNormalTex`](../Lighting/LightReceiver.cs) — lazy-init, `HideAndDontSave`, reset by the same `[RuntimeInitializeOnLoadMethod]` hook that resets the rest of `SpriteMaterialUtil`.
+The shared 1×1 flat-normal texture (uniform camera-facing normal for the old per-sprite NormalsCapture) lives at [`SpriteMaterialUtil.FlatNormalTex`](../Lighting/LightReceiver.cs) — lazy-init, `HideAndDontSave`, reset by the same `[RuntimeInitializeOnLoadMethod]` hook that resets the rest of `SpriteMaterialUtil`. Only HazeLayer still binds it (BackgroundLayer dropped its bind post-Unity-6); since the URP 17 LightFeature skips per-sprite capture on the SkyCamera, remaining sky-layer `_NormalMap` binds are vestigial.
 
 #### Sky color stops, gradient, and stars
 
@@ -574,7 +593,9 @@ See [[project-cloud-field-system]] and [[project-sky-camera-quirks]] in memory f
 2. `bgRT` is MPB-bound as `_MainTex` on the SpriteRenderer. Both the visible main pass AND the NormalsCapture override sample the same RT at native UVs — alpha masks agree, no sunset-time ghost mountains.
 3. `bgRT` resizes to match `cam.pixelWidth/Height` so each RT pixel maps 1:1 to a screen pixel.
 
-**Lighting integration**: a flat 1×1 normal map (0.5, 0.5, 1.0) is MPB-bound as `_NormalMap` so NormalsCapture sees a uniform camera-facing normal across the background. LightSun then contributes a constant brightness (background dims uniformly with day/night via the lightmap composite) without per-pixel spurious sun shading.
+> **Footgun — MPB `_MainTex` bind must come AFTER the resize+bake (bind last in `DoLateUpdate`).** The per-frame heavy block does `bgRT.Release(); Destroy(bgRT); bgRT = MakeBgRT(...)` and then `Graphics.Blit`s into `bgRT`. If you bind `_MainTex = bgRT` *before* that block (as the original code did), the bind points at the old, now-destroyed RT; at render the SR falls back to Unity's internal no-texture default and draws **fully invisible**. This is a **silent** failure — no console error. The only diagnostic that reveals it is the **Frame Debugger**: the sprite's draw lists `_MainTex = __native_internal_*` instead of the bgRT's dimensions. (Cost the project a full debug session post-Unity-6 upgrade.) `CloudLayer` gets this right by binding inside its heavy block after the resize/create. v1 background sprites bind no `_NormalMap` — the rewritten `LightFeature` skips per-sprite NormalsCapture on the SkyCamera (see §NormalsCapturePass `if (d.isWorldCam)`), so a flat normal would be dead weight.
+
+**Lighting integration**: day/night dimming comes from the LightComposite multiply (SkyCamera's light RT is cleared to full ambient + sun). No `_NormalMap` is bound — the URP 17 / RenderGraph `LightFeature` skips per-sprite NormalsCapture on non-world cameras (see §NormalsCapturePass), so per-sprite normals never reach the lighting path on the SkyCamera. (Pre-Unity-6 this layer bound a flat 1×1 normal for the old per-sprite capture; CloudLayer/HazeLayer still bind theirs — harmless but now vestigial on the SkyCamera.)
 
 **Cloud shadow overlay**: the gen shader samples a 2-octave FBM at **hill-parallaxed coordinates** (`worldXY − _ParallaxOffset`, so shadows move with the hills as the camera pans rather than at full world-locked parallax), shifted by `_CloudWindOffsetX` / `_CloudEvolutionOffset` (broadcast by `CloudLayer.LateUpdate` via `Shader.SetGlobalFloat`), thresholded against `_CloudThreshold` (the cloud spawn threshold — so shadow coverage roughly matches cloud coverage at the current humidity), smoothstep-softened, and multiplied into the output RGB as a darkening factor. The sampling x is divided by `shadowAspect` so shadow blobs stretch horizontally (wind-elongated cloud-shadow shape). Shadows drift in lockstep with the clouds above and stay glued to the hills they fall on. Multiplied by `col.a` so darkening only applies where the painting actually has pixels (no shadows in the transparent sky band). Knobs: `shadowStrength` (intensity), `shadowNoiseScale` (blob size), `shadowAspect` (horizontal stretch), `shadowSoftness` (edge fuzziness). Set `shadowStrength = 0` to disable.
 
@@ -588,7 +609,7 @@ See [[project-cloud-field-system]] and [[project-sky-camera-quirks]] in memory f
 - `sortingOrder` — render order.
 
 **Future hooks**:
-- Real normal map for the background painting (currently flat). Would let the sun's actual direction tilt the mountains' shading. Drop-in: add a `Texture2D normalMap` field, MPB-bind it instead of the flat 1×1.
+- Real normal map for the background painting (sun-direction shading on the mountains). No longer a drop-in: the URP 17 LightFeature skips per-sprite NormalsCapture on the SkyCamera, so an MPB-bound normal map would be ignored — the shading would have to happen in the gen shader (sample the normal map + NdotL against `_SunDir` during the bake, like the cloud gen shader does).
 - Day/night colour-tint pulled from `SunController` (e.g., warm at dusk, blue at night) — currently `tint` is a static inspector value.
 
 ### Sky exposure (`SkyExposure.cs`)

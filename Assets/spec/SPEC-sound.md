@@ -97,7 +97,7 @@ Wired and live. Canonical clip names (files in `Resources/Audio/SFX/`):
 | `blueprint_reject` (×0.5) | placement rejected (3 fail paths) | `BuildPanel.PlaceBlueprint` |
 | `research_select` | toggle-study a research node | `ResearchPanel.OnClickToggleStudy` |
 | `research_complete` | a node passively completes | binding → `ResearchSystem.OnTechUnlocked` |
-| `trade_fill` (×0.5) | a market order fills | `TradingPanel.DisplayFill` |
+| `trade_fill` (×0.5) | a market order fills | `ChatLog.DisplayFill` |
 
 The deliberate choice: **most player actions share one `click`** — placing,
 cancelling, designating, harvesting. Only genuinely distinct *outcomes* get their

@@ -7,7 +7,8 @@
 # --userversion; the in-game VersionLabel reads the same value via Application.version.
 #
 # Prereqs:
-#   - Unity 2021.3.16f1 installed (path auto-detected; override with -UnityExe).
+#   - The Unity editor matching ProjectSettings/ProjectVersion.txt installed via
+#     Unity Hub (path auto-detected from that version; override with -UnityExe).
 #   - The editor must be CLOSED — batchmode can't open a project Unity already holds.
 #   - butler installed + logged in (`butler login`). Ships with the itch app.
 #
@@ -34,10 +35,17 @@ $WinPushDir  = Join-Path $BuildsDir "win"
 $MacPushDir  = Join-Path $BuildsDir "mac"
 
 # ── Resolve Unity + version ─────────────────────────────────────────
+# Pin the editor to whatever ProjectVersion.txt says so the build always uses the
+# version the project was authored against. Using a mismatched editor (e.g. the old
+# 2021 install against a Unity-6 project) makes the package manager fail to resolve
+# the manifest's Unity-6 package versions.
 if (-not $UnityExe) {
-    $UnityExe = "C:\Program Files\Unity\Hub\Editor\2021.3.16f1\Editor\Unity.exe"
+    $verFile = Join-Path $ProjectPath "ProjectSettings\ProjectVersion.txt"
+    $editorVer = (Select-String -Path $verFile -Pattern '^m_EditorVersion:\s*(.+)$').Matches[0].Groups[1].Value.Trim()
+    if (-not $editorVer) { throw "Could not read m_EditorVersion from $verFile." }
+    $UnityExe = "C:\Program Files\Unity\Hub\Editor\$editorVer\Editor\Unity.exe"
 }
-if (-not (Test-Path $UnityExe)) { throw "Unity not found at $UnityExe -- pass -UnityExe <path>." }
+if (-not (Test-Path $UnityExe)) { throw "Unity not found at $UnityExe -- install that version via Unity Hub or pass -UnityExe <path>." }
 
 $settings    = Join-Path $ProjectPath "ProjectSettings\ProjectSettings.asset"
 $versionLine = Select-String -Path $settings -Pattern '^\s*bundleVersion:\s*(.+)$'

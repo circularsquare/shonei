@@ -25,6 +25,16 @@ public class Plant : Structure {
     // restarts the countdown, which is harmless for a cosmetic ~2-day timer.
     private int ripeTicks;
 
+    // Growth-rate multiplier applied when soil moisture is OUTSIDE the plant's comfort
+    // range. Out-of-range slows growth to this fraction instead of freezing it (which used
+    // to permanently stall fresh-world crops during a dry spell). See Grow's gate 1b.
+    private const float DroughtGrowthRate = 0.3f;
+
+    // Fractional growth-progress carry for the soft moisture gate. When growing at
+    // DroughtGrowthRate, each tick contributes <1 to age; the remainder accumulates here
+    // until it sums to a whole tick. Not persisted — losing <1 tick on reload is harmless.
+    private float slowGrowthCarry;
+
     // Player-set flag: does this plant get harvested when ripe? Gates the WOM harvest order.
     // Persistent across regrowth cycles — Harvest() leaves it set, so flagged plants keep
     // being harvested each time they mature until the player explicitly unflags.
@@ -109,11 +119,13 @@ public class Plant : Structure {
 
         sprite = plantType.LoadSprite() ?? Resources.Load<Sprite>("Sprites/Plants/default");
         sr.sprite = sprite;
-        sr.sortingOrder = 60;
-        // Light at the buildings bucket (not the creatures bucket its 60 sortingOrder implies)
-        // so torches front-light plants like a building. Visual draw order stays at 60. Only
-        // mice keep the creature back-lit treatment. See SortBucketUtil.SetExplicitBucket.
-        SortBucketUtil.SetExplicitBucket(sr, SortBucketUtil.BuildingsBucket);
+        sr.sortingOrder = 16;
+        // Draw in front of buildings (10), grass overlay (11), flowers (12), and platforms
+        // (15), but well below the creature band (48+) so a mouse overlapping a plant draws in
+        // front. 16 sits inside the 9..17 "buildings" bucket, so the natural sortingOrder→bucket
+        // mapping also front-lights the plant like a building (torch-lit, not creature back-lit)
+        // — no explicit bucket override needed.
+        SortBucketUtil.SetBucketFor(sr);
 
         // Anchor SR was spawned by StructureVisualBuilder with the standard lit
         // material; swap to the plant-sway variant so wind-vertex displacement
@@ -255,26 +267,37 @@ public class Plant : Structure {
             ripeTicks = 0;
         }
 
-        // Gate 1: ambient temp + soil moisture must be in the plant's comfort range.
         // The plant occupies an air tile; moisture lives on the solid soil tile directly
-        // below, so we pass that tile's moisture value. If there is no tile below
-        // (world bottom edge) the soil is treated as missing → moisture check skipped.
-        // Out-of-range simply freezes growth for the tick — no withering, no stress damage.
+        // below, so we read that tile. If there is no tile below (world bottom edge) the
+        // soil is treated as missing → moisture check skipped.
         Tile soil = World.instance.GetTileAt(tile.x, tile.y - 1);
-        if (!plantType.IsComfortableAt(soil, WeatherSystem.instance)) return;
+
+        // Gate 1a: temperature is a HARD gate — out of comfort range freezes growth for
+        // the tick (no withering, no stress damage).
+        if (!plantType.IsTempComfortableAt(WeatherSystem.instance)) return;
+
+        // Gate 1b: moisture is a SOFT gate — out of comfort range slows growth to
+        // DroughtGrowthRate rather than freezing it, so a fresh world that hasn't rained
+        // yet still inches its crops along instead of stalling forever. Sub-tick progress
+        // accumulates in slowGrowthCarry until it sums to a whole tick (age is integral).
+        float rate = plantType.IsMoistureComfortableAt(soil) ? 1f : DroughtGrowthRate;
+        slowGrowthCarry += t * rate;
+        int effectiveT   = (int)slowGrowthCarry;
+        slowGrowthCarry -= effectiveT;
+        if (effectiveT <= 0) return;
 
         // Gate 2: crossing into a new growth stage. max stage = 4 * maxHeight - 1
         // (4 per tile; single-tile plants cap at 3 exactly like before).
-        // A crossing always costs 2 × moistureDrawPerHour from the soil. If the
-        // crossing also lands us in a new height band (stage / 4 increased), we
-        // additionally require every new tile above to be free. Either gate failing
-        // freezes age + stage for the tick so they stay coherent.
+        // A crossing always costs stageMoistureCost from the soil. If the crossing also
+        // lands us in a new height band (stage / 4 increased), we additionally require
+        // every new tile above to be free. Either gate failing freezes age + stage for
+        // the tick so they stay coherent.
         int maxStage       = plantType.maxStage;
-        int candidateAge   = age + t;
+        int candidateAge   = age + effectiveT;
         int candidateStage = Math.Min(candidateAge * 3 / plantType.growthTime, maxStage);
         int prevStage      = growthStage;
         if (candidateStage > growthStage) {
-            int cost = Mathf.RoundToInt(plantType.moistureDrawPerHour * 2f);
+            int cost = plantType.stageMoistureCost;
             if (cost > 0 && (soil == null || !soil.type.solid || soil.moisture < cost)) return;
 
             int candidateHeight = HeightForStage(candidateStage);
@@ -461,7 +484,7 @@ public class Plant : Structure {
             if (lit != null) extSr.sharedMaterial = lit;
         }
         extSr.sortingOrder = sr.sortingOrder;
-        SortBucketUtil.SetExplicitBucket(extSr, SortBucketUtil.BuildingsBucket); // light as building, not creature (see anchor SR)
+        SortBucketUtil.SetBucketFor(extSr); // shares the anchor's buildings-bucket order/lighting
         extensionGos.Add(extGo);
         extensionSrs.Add(extSr);
         RefreshTintableSrs();
@@ -613,8 +636,8 @@ public class Plant : Structure {
 
             SpriteRenderer blobSr = SpriteMaterialUtil.AddSpriteRenderer(g);
             blobSr.sprite       = blobSprite;
-            blobSr.sortingOrder = tileSortingOrder + 1;
-            SortBucketUtil.SetExplicitBucket(blobSr, SortBucketUtil.BuildingsBucket); // light as building, not creature (see anchor SR)
+            blobSr.sortingOrder = tileSortingOrder + 1; // 17 — top of the buildings bucket
+            SortBucketUtil.SetBucketFor(blobSr);
 
             blobGos.Add(g);
             blobs.Add(new BlobRuntime {
@@ -791,37 +814,44 @@ public class PlantType : StructType {
 
     // ── Comfort range ────────────────────────────────────────────
     // Nullable so old JSON entries without these fields still deserialize — a null bound
-    // is treated as "no limit" in IsComfortableAt. Temps are °C (global ambient from
-    // WeatherSystem); moisture is the tile's 0–100 soil-wetness percent (Tile.moisture).
+    // is treated as "no limit" in IsTempComfortableAt / IsMoistureComfortableAt. Temps are
+    // °C (global ambient from WeatherSystem); moisture is the tile's 0–100 soil-wetness percent.
     public float? tempMin     {get; set;}
     public float? tempMax     {get; set;}
     public int?   moistureMin {get; set;}
     public int?   moistureMax {get; set;}
 
-    // Passive soil moisture draw per in-game hour from the tile below. The plant also
-    // pays 2× this amount from soil to cross into each new growth stage (see Plant.Grow)
-    // — the advancement cost is where moisture shortage actually gates growth; the
-    // passive draw just drains the soil over time. Default 4; overridable per plant.
-    public float moistureDrawPerHour {get; set;} = 2f;
+    // Passive soil moisture draw per in-game hour from the tile below. Drains the soil
+    // over time independent of growth. Default 1; overridable per plant.
+    public float moistureDrawPerHour {get; set;} = 1f;
 
-    // Returns true when the current ambient temperature AND the soil moisture are both
-    // within this plant's authored comfort range. `soilTile` is the solid tile directly
-    // below the plant (where moisture physically lives) — null if the plant is at the
-    // world's bottom edge or the tile-below lookup missed, in which case the moisture
-    // side is treated as "no data" (check skipped, not failed).
-    // WeatherSystem can be null during very-early startup / tests; treat as in-range so
-    // plants don't stall before the first tick wires things up.
-    public bool IsComfortableAt(Tile soilTile, WeatherSystem weather) {
-        if (weather != null) {
-            float t = weather.temperature;
-            if (tempMin.HasValue && t < tempMin.Value) return false;
-            if (tempMax.HasValue && t > tempMax.Value) return false;
-        }
-        if (soilTile != null) {
-            int m = soilTile.moisture;
-            if (moistureMin.HasValue && m < moistureMin.Value) return false;
-            if (moistureMax.HasValue && m > moistureMax.Value) return false;
-        }
+    // Moisture deducted from the soil tile below each time the plant crosses into a new
+    // growth stage. This advancement cost is where moisture shortage actually gates growth.
+    // Decoupled from moistureDrawPerHour so the two can be tuned independently. Default 4.
+    public int stageMoistureCost {get; set;} = 4;
+
+    // Temperature comfort — true when ambient temp is within the authored range.
+    // A HARD gate in Plant.Grow: out of range freezes growth entirely. Null bound =
+    // no limit. WeatherSystem can be null during very-early startup / tests; treat as
+    // in-range so plants don't stall before the first tick wires things up.
+    public bool IsTempComfortableAt(WeatherSystem weather) {
+        if (weather == null) return true;
+        float t = weather.temperature;
+        if (tempMin.HasValue && t < tempMin.Value) return false;
+        if (tempMax.HasValue && t > tempMax.Value) return false;
+        return true;
+    }
+
+    // Soil-moisture comfort — true when the soil tile's wetness is within range.
+    // A SOFT gate in Plant.Grow: out of range only slows growth (DroughtGrowthRate),
+    // it doesn't freeze it. `soilTile` is the solid tile directly below the plant
+    // (where moisture physically lives) — null (world bottom edge or lookup miss) is
+    // treated as "no data" → comfortable. Null bound = no limit.
+    public bool IsMoistureComfortableAt(Tile soilTile) {
+        if (soilTile == null) return true;
+        int m = soilTile.moisture;
+        if (moistureMin.HasValue && m < moistureMin.Value) return false;
+        if (moistureMax.HasValue && m > moistureMax.Value) return false;
         return true;
     }
 

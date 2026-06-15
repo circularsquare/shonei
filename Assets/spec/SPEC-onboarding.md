@@ -35,8 +35,11 @@ the mouse-AI `Task`/`Objective` system — a PlayerTask is player-facing guidanc
   `World.Awake` — it is NOT placed in the scene, so the card (which IS a scene object)
   reads it through the static `instance`, never a serialized ref.
 - **Completion flow**: current task complete → card shows `<title>` + `complete!` (green)
-  for 3s → `Advance()` steps `currentIndex`. Progress display is capped at target
-  (`Mathf.Min`), so over-completing shows `3/3`, not `5/3`.
+  for 3s → `Advance()` steps `currentIndex`. The **final** task instead shows
+  `tutorial tasks all complete!` for 30s (`FinaleCelebrateSeconds`, via
+  `PlayerTaskController.OnLastTask`). Either celebration is dismissible early by clicking
+  the card. Progress display is capped at target (`Mathf.Min`), so over-completing shows
+  `3/3`, not `5/3`.
 - **`GetByType` returns null (not empty)** when no instances of a structure exist yet —
   probes must null-guard or they NRE every tick and freeze the card.
 
@@ -57,12 +60,24 @@ a second hint line. Detection: a cheap query or poll — reuse the existing prob
 `CountConfiguredCrates`). `id` is the stable save key — don't reorder semantics without
 considering saved `playerTaskIndex`.
 
-## Current arc (12 tasks)
+## Current arc (17 tasks)
 
-flag 2 trees → flag 3 wheat → build 3 crates → configure crates (wood/wheat) → house all
-mice → build sawmill → assign woodworker → build drawer → have 6 mice → build laboratory →
-assign scientist → **research Tools**.
+press space to unpause → flag 2 trees → flag 3 wheat → build 3 crates → configure crates
+(wood/wheat) → house all mice → build sawmill → assign woodworker → build drawer → stockpile
+2 days of food → have 6 mice → build laboratory → assign scientist → research Tools → build
+workshop → build digging pit (or quarry) → gather 3 stone → **craft stone tools**.
 
-The **Tools** tech (researchDb) is the finale: a cheap, no-prereq tech that gates the
-`workshop` building (`defaultLocked`) + the stone-tools recipe (recipe-unlock target). See
-SPEC-research.md for the gating mechanism.
+- **Step 1 must teach unpause**: a fresh world pauses after worldgen, and most steps need mice
+  to *act* (build/haul), which only happens while running. `CountStructures` counts only
+  *completed* structures, so without unpausing the player soft-locks on the first build step.
+  Probe is `Time.timeScale > 0`.
+- **Food stockpile** reuses `AnimalController.ComputeDaysOfFoodInStorage()` (don't re-derive) —
+  Infinity (no mice) counts as satisfied.
+- **Tools finale**: researching Tools unlocks the `workshop` (`defaultLocked`) + the stone-tools
+  recipe, and the closing steps actually exercise them — build the workshop, get stone (digging
+  pit yields it as a rare drop; the quarry is Mining-locked so the pit is the tutorial path),
+  then craft. See SPEC-research.md for the gating mechanism.
+
+Note: progress is saved as an **int index** (`playerTaskIndex`), not keyed by `id` — inserting
+or reordering tasks shifts what a mid-onboarding save resumes on. Low-stakes for early-game
+onboarding, but be aware when editing the list mid-development.

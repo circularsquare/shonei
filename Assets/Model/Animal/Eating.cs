@@ -70,8 +70,9 @@ public Eating(){ }
     public void SlowUpdate(float t = 10f){
         timeSinceLastAte += t;
     }
-    public void Update(float t = 1f){
-        food -= hungerRate * t;
+    public const float sleepingHungerMult = 0.5f; // food drains at half rate while asleep
+    public void Update(float t = 1f, bool sleeping = false){
+        food -= hungerRate * t * (sleeping ? sleepingHungerMult : 1f);
         if (food <= 0f){
             food = 0f;
             starvingTicks++; // counts ticks at empty — a full day of these is fatal

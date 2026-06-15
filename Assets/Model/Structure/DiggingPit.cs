@@ -1,15 +1,11 @@
-using System.Collections.Generic;
 using UnityEngine;
 
-// DiggingPit produces the substrate it was built on (dirt, sand, or clay).
-// The original tile type is captured at placement time — before StructController
-// replaces the tile with empty — and resolved to the substrate's primary product
-// each craft cycle via GetExtractionOutputs.
-//
-// The digging pit recipe in recipesDb.json deliberately has empty noutputs; the
-// craft hook in AnimalStateManager routes pit output through this class instead.
-// Persisted across save/load by name (see SaveSystem.GatherStructure /
-// RestoreStructure), reusing the same `capturedTileType` field as Quarry.
+// DiggingPit digs out the substrate it was built on (dirt, sand, or clay).
+// Capture/extraction mechanics live in the ExtractionBuilding base; this class
+// adds the dig-direction door wiring and the receding-dish visuals. The earth
+// tiles' distributions (1 liang substrate per craft + alluvial clay nodules on
+// dirt/sand + a bootstrap limestone nodule on dirt — the early, tool-free stone
+// source) are authored in tilesDb.json nExtractionProducts.
 //
 // ── Dig direction ───────────────────────────────────────────────────────
 // The pit digs toward whichever orthogonally-adjacent tile is OPEN, so it works
@@ -46,9 +42,7 @@ using UnityEngine;
 // the original dig-from-the-top behaviour.
 public enum DigDir { Up = 0, Left = 1, Right = 2 }
 
-public class DiggingPit : Building {
-    public TileType capturedTile;
-
+public class DiggingPit : ExtractionBuilding {
     // Chosen once at construction (live) or restored from save (load); never
     // recomputed. Orients the dish bite, the workspot, and the single wired door.
     public DigDir digDir = DigDir.Up;
@@ -81,51 +75,6 @@ public class DiggingPit : Building {
     bool sideDoorsWired;
 
     public DiggingPit(StructType st, int x, int y, bool mirrored = false) : base(st, x, y, mirrored) { }
-
-    // Called by StructController.Construct before the underlying tile is emptied.
-    // Invalid inputs log an error and leave capturedTile null so the fallback
-    // path (recipe.outputs) kicks in — guarantees we never silently produce nothing.
-    public void CaptureOriginalTile(TileType t) {
-        if (t == null || !t.solid) {
-            Debug.LogError($"DiggingPit.CaptureOriginalTile: invalid tile at {x},{y} (null or non-solid)");
-            return;
-        }
-        capturedTile = t;
-    }
-
-    // Returns the substrate's primary product at 1 liang per craft (matches the original
-    // `dirt × 1` recipe quantity), plus a 10% bonus clay nodule when digging dirt or sand —
-    // alluvial pockets in real soils occasionally turn up clay even outside formal clay
-    // beds. Clay substrate skips the bonus since it's already producing clay as primary.
-    // Dirt also turns up a 5% limestone nodule — the early, tool-free stone source that
-    // bootstraps the tool chain before stone tiles can be mined.
-    // Null on bad state → AnimalStateManager falls back to the recipe's (empty) outputs.
-    public ItemQuantity[] GetExtractionOutputs() {
-        if (capturedTile == null) {
-            Debug.LogError($"DiggingPit at {x},{y} has no capturedTile — falling back to recipe outputs");
-            return null;
-        }
-        if (capturedTile.products == null || capturedTile.products.Length == 0) {
-            Debug.LogError($"DiggingPit at {x},{y}: tile '{capturedTile.name}' has no nproducts defined");
-            return null;
-        }
-        var outputs = new List<ItemQuantity> {
-            new ItemQuantity(capturedTile.products[0].item, ItemStack.LiangToFen(1f))  // primary substrate
-        };
-        // Alluvial clay pockets when digging loose earth (dirt or sand).
-        if (capturedTile.name == "dirt" || capturedTile.name == "sand") {
-            var clay = new ItemQuantity(Db.itemByName["clay"], ItemStack.LiangToFen(1f));
-            clay.chance = 0.10f;
-            outputs.Add(clay);
-        }
-        // Occasional limestone nodule from soil — early tool-free stone source.
-        if (capturedTile.name == "dirt") {
-            var limestone = new ItemQuantity(Db.itemByName["limestone"], ItemStack.LiangToFen(1f));
-            limestone.chance = 0.05f;
-            outputs.Add(limestone);
-        }
-        return outputs.ToArray();
-    }
 
     public override void OnPlaced() {
         base.OnPlaced();
@@ -202,12 +151,12 @@ public class DiggingPit : Building {
     }
 
     // Load entry point. OnPlaced is skipped on the load path, so SaveSystem calls
-    // this to restore the persisted direction, wire the single door (graph topology
-    // — independent of capturedTile, so a pit whose substrate failed to resolve is
+    // this — after restoring capturedTile via the shared ExtractionBuilding branch —
+    // to restore the persisted direction, wire the single door (graph topology —
+    // independent of capturedTile, so a pit whose substrate failed to resolve is
     // still reachable rather than orphaned), and rebuild the dish if it can.
-    public void RestoreOnLoad(DigDir dir, TileType tile) {
+    public void RestoreOnLoad(DigDir dir) {
         digDir = dir;
-        capturedTile = tile;          // may be null if the saved substrate didn't resolve
         EnsurePrimaryDoor();
         if (capturedTile != null) RebuildDishVisual();
     }

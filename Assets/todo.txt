@@ -41,8 +41,7 @@ CONTENT
 
 - lots of herbs (see cool plants plan)
 - metallurgy 
-    - furnace upsize
-    - copper / tin / bronze ingot
+    - copper / tin / bronze ingots
     - foundry
 
 - structures 
@@ -52,8 +51,8 @@ CONTENT
 - long term player goals (fable flagged as important)
     - town tiers?
 
-- gate mining on tools?
-    - 
+- mining tools plan
+    - deequipping items with durability..
 
 
 OFFLINE PROGRESS 
@@ -70,7 +69,7 @@ VISUALS
 - gradual snow buildup
 - more sounds (see sounds spec)
 - add side torches 
-- 
+- move atlas to v2? probably works on unity 6.3
 
 OPTIMIZATION  
 - plant sway mpb redesign
@@ -91,16 +90,7 @@ UI
 - improve item icons
 - tab styling, add building icons?
 - estimate food production
-
-
-SERVER 
-- account system plan
-    - use stateful sessions instead of stateless tokens? 
-    - tombstones? how do these work? 
-    - relogin on token expiry? 
-    - for choosing between conflict, say when last saved for cloud or local
-    - how do backups work? are we currently backing up everything? probably just need to backup world saves, not market data.
-        - how long are they kept for?
+- add more info for happiness panel?
 
 
 CODE CLEANUP
@@ -113,52 +103,30 @@ upsize more workshop buildings
     press 
     paper mill
     scriptorium
-    brewery
-    dirt pit
-    quarry
+    brewery 
     laboratory
     weaver
     tailor
-    furnace (taller, 2x2m)
 test kiln
-finish foundry
-tools
+
 todoship
 
-- review building descriptions
-
-- pretty up happiness panel
-- pretty up recipe panel
-    - get rid of empty space 
-
-- ui scaling....
-    - is everything scaling right?
-- test on laptop
-
-- test quarry side mining
-
-- rice icon 
-- explain mining, where is mala from 
-
-- test tile placement edges
-
-
-- mining tools plan
-    - deequipping items with durability..
-- hide untested buildings (furnace)
-    - does metal haev a use?
-    - does glass have a use?
-- main menu collapsible changelog and dev disclaimer, or button
-
-- more tutorial steps?
-    - sort out tools
-
+- does metal haev a use?
+- does glass have a use?
 - send screenshot to fable for general advice
 
 why is it using 38% gpu with all lighting off?
 
-3 sibling shaders with the same latent _RendererColor-in-CBUFFER pattern (ChunkedTileSprite, PlantSprite, CrackedSprite) — render fine now, but CrackedSprite (damage cracks) is a latent risk.
-Verify/remove URP_COMPATIBILITY_MODE define; bump MCP 9.6.8 → 9.7.0.
-
-
 TODAY
+
+
+
+
+
+
+
+DEPLOYING
+server
+    - in powershell in shonei-server: .\deploy\deploy.ps1
+game 
+    - in shonei with unity editor closed: .\Tools\build-and-publish.ps1

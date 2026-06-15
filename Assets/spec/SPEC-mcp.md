@@ -106,6 +106,16 @@ Practical workflow:
   GameObjects, renames, `SerializedObject` reference wiring — record themselves;
   only **direct property setters on existing prefab-children** need the explicit
   Record call (which is why a panel's new rows/wiring stick but a relabel doesn't).
+- **Edit the prefab, not the instance.** For anything that lives as a prefab
+  (OptionsPanel, SaveSlot, ItemDisplay, …), make structural/content changes on the
+  **prefab asset** — open the prefab stage, or `PrefabUtility.LoadPrefabContents` →
+  edit → `SaveAsPrefabAsset`. Rows/widgets/settings added to a *scene instance* live
+  only in that scene and silently diverge from the prefab (and from other scenes'
+  instances): that's the recurring "this setting is only in Main / new rows land in
+  the wrong place" bug. If you've already built on an instance, `ApplyPrefabInstance`
+  it back to the asset, then keep working on the prefab. (Note: the root RectTransform's
+  size/anchors/position stay instance-level and don't apply — `RevertPropertyOverride`
+  the specific property on each instance if you want them to inherit the prefab.)
 - **MCP commands are gated on Unity's editor loop, which stalls when Unity is
   unfocused.** Every call (even read-only) runs on the main thread via
   `EditorApplication.update`, throttled to a crawl when the editor window isn't

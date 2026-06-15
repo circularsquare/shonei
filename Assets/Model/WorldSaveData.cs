@@ -9,6 +9,11 @@ public class WorldSaveData {
     // can't be inferred from nullable-field presence alone. Null on pre-versioning
     // saves → treated as v0. Bump rule documented in SaveSystem.cs header.
     public int? saveVersion;
+    // Game version (Application.version, e.g. "0.1.0") that wrote this save. Distinct
+    // from saveVersion: that's the on-disk schema; this is the human build number. Used
+    // only to warn the player on load when it differs from the running build (saves
+    // aren't version-compatible during early development). Null on pre-versioning saves.
+    public string gameVersion;
     // World dimensions at save time. Nullable so old saves stay readable; null is
     // assumed to mean the legacy 100×80 baseline (the only size that ever shipped
     // before versioning was added). SaveSystem.LoadFromJson refuses to load a save
@@ -176,10 +181,9 @@ public class StructureSaveData {
     // saves (field absent) deserialize as 0 which the restore path treats as "missing → default
     // to 1.0" so pre-maintenance saves don't load every structure as broken.
     public float condition;
-    // Quarry / digging pit: name of the tile the structure was placed on. Quarry
-    // uses it to pick the per-stone extraction distribution; digging pit uses it
-    // to produce the substrate's primary product (dirt / sand / clay). null on
-    // other structures and on old saves.
+    // ExtractionBuilding (quarry / digging pit): name of the tile the structure was
+    // placed on, picking the per-tile extraction distribution (tilesDb
+    // nExtractionProducts). null on other structures and on old saves.
     public string capturedTileType;
     // Digging pit only: the open face it digs toward (0=Up, 1=Left, 2=Right), chosen
     // at construction and never recomputed. Nullable so old saves (field absent) and

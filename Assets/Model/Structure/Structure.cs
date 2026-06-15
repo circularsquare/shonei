@@ -647,7 +647,7 @@ public class Structure {
         if (st.depth == 0 || st.isBuilding) {
             if (st.name == "pump")     return new PumpBuilding(st, x, y, mirrored);
             if (st.name == "market")   return new MarketBuilding(st, x, y, mirrored);
-            if (st.name == "quarry")   return new Quarry(st, x, y, mirrored);
+            if (st.name == "quarry")   return new ExtractionBuilding(st, x, y, mirrored);
             if (st.name == "digging pit") return new DiggingPit(st, x, y, mirrored);
             if (st.name == "wheel")    return new MouseWheel(st, x, y, mirrored);
             if (st.name == "windmill") return new Windmill(st, x, y, mirrored);

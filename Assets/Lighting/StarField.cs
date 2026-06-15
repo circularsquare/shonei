@@ -45,7 +45,8 @@ public class StarField : SkyLayerBase {
     [Range(0f, 0.5f)] [SerializeField] float rampWidth = 0.05f;
 
     readonly List<Star> stars = new();
-    float rotationRad;  // accumulated rotation angle (radians)
+    float rotationRad;       // accumulated rotation angle (radians)
+    bool  starsRendering = true; // SR.enabled state; toggled off while fully invisible (daytime)
 
     struct Star {
         public Transform tr;
@@ -112,6 +113,22 @@ public class StarField : SkyLayerBase {
         // `from` and `to`, NOT a 0..1 weight. Build the smoothstep manually.)
         float u = Mathf.Clamp01((nightThreshold + rampWidth - SunController.twilightFraction) / rampWidth);
         float nightFactor = u * u * (3f - 2f * u);
+
+        // Fully invisible during the day (nightFactor == 0). Disable the SRs so we stop
+        // submitting 100 transparent quads, and skip the per-star transform/colour work
+        // until twilight. Only toggle on the day↔twilight transition, not every frame.
+        if (nightFactor <= 0f) {
+            if (starsRendering) {
+                for (int i = 0; i < stars.Count; i++) stars[i].sr.enabled = false;
+                starsRendering = false;
+            }
+            return;
+        }
+        if (!starsRendering) {
+            for (int i = 0; i < stars.Count; i++) stars[i].sr.enabled = true;
+            starsRendering = true;
+        }
+
         float t = Time.time * twinkleSpeed;
 
         // Rotate the whole field around the screen centre. Apply the rotation

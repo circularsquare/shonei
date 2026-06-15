@@ -26,6 +26,13 @@ public class UI : MonoBehaviour {
     bool[]   _wasEnabled; // pre-hide snapshot so restore doesn't resurrect canvases that were already off (e.g. LoadingScreen post-End, closed exclusive panels)
     bool _uiHidden;
 
+    // Uniform mouse-wheel scroll speed for every content ScrollRect under the UI canvas.
+    // Per-instance authoring drifted badly (values ranged 1–16 across panels) and Unity's
+    // default of 1 feels sluggish, so we snap them all to one value at startup — tune here,
+    // not per-scene, and new ScrollRects conform automatically. Dropdown option lists
+    // (TMP_Dropdown templates) are skipped: they're short and a high sensitivity overshoots.
+    public const float ScrollSensitivity = 8f;
+
     // Exclusive panels — at most one may be visible at a time.
     // Call RegisterExclusive() in Awake/Start; call OpenExclusive() instead of SetActive(true).
     static readonly List<GameObject> exclusivePanels = new List<GameObject>();
@@ -61,6 +68,7 @@ public class UI : MonoBehaviour {
         if (instance != null) {
             Debug.LogError("there should only be one ui controller");}
         instance = this;
+        NormalizeScrollSpeed();
         if (chatWindow != null) chatWindow.SetActive(true);
 
         if (uiScaler == null) uiScaler = GetComponent<CanvasScaler>();
@@ -68,6 +76,15 @@ public class UI : MonoBehaviour {
         if (SettingsManager.instance != null) {
             SettingsManager.instance.OnChanged += ApplyUiScale;
             ApplyUiScale();
+        }
+    }
+
+    // See ScrollSensitivity. One-time sweep over the whole UI hierarchy at startup,
+    // skipping ScrollRects that belong to a dropdown's option list.
+    void NormalizeScrollSpeed() {
+        foreach (var sr in GetComponentsInChildren<ScrollRect>(true)) {
+            if (sr.GetComponentInParent<TMP_Dropdown>(true) != null) continue;
+            sr.scrollSensitivity = ScrollSensitivity;
         }
     }
 
@@ -132,32 +149,53 @@ public class UI : MonoBehaviour {
         // two layers in the same frame — e.g. closing a build subpanel AND leaving Build
         // mode would feel like Esc "skipped" a step.
         if (Input.GetKeyDown(KeyCode.Escape)) {
-            // 0. UI hidden via F1 — restore it first. The whole HUD is invisible, so the
-            // other Esc layers can't be seen or acted on anyway; bringing the UI back is
-            // the only sensible response to an Esc press in this state.
-            if (_uiHidden) {
-                ToggleUIVisible();
-                return;
-            }
-            // 1. save menu (most modal — full-screen overlay)
-            if (SaveMenuPanel.instance != null && SaveMenuPanel.instance.gameObject.activeSelf) {
-                SaveMenuPanel.instance.gameObject.SetActive(false);
-                return;
-            }
-            // 2. open build category subpanel
-            if (BuildPanel.instance != null && BuildPanel.instance.IsSubPanelOpen) {
-                BuildPanel.instance.CloseSubPanel();
-                return;
-            }
-            // 3. any open exclusive panel (TradingPanel / RecipePanel / ResearchPanel / GlobalHappinessPanel)
-            foreach (var p in exclusivePanels) {
-                if (p != null && p.activeSelf) { p.SetActive(false); return; }
-            }
-            // 4. fall back to leaving non-Select mouse mode
-            var mc = MouseController.instance;
-            if (mc != null && mc.mouseMode != MouseController.MouseMode.Select)
-                mc.SetModeSelect();
+            DismissTopLayer();
         }
+    }
+
+    // Closes the single highest-priority open UI layer and returns true if it acted, or
+    // false when nothing was left to dismiss. One press = one layer (see the Esc comment
+    // above). EscapeAll() loops this to collapse everything at once.
+    bool DismissTopLayer() {
+        // 0. UI hidden via F1 — restore it first. The whole HUD is invisible, so the
+        // other Esc layers can't be seen or acted on anyway; bringing the UI back is
+        // the only sensible response to an Esc press in this state.
+        if (_uiHidden) {
+            ToggleUIVisible();
+            return true;
+        }
+        // 1. save menu (most modal — full-screen overlay)
+        if (SaveMenuPanel.instance != null && SaveMenuPanel.instance.gameObject.activeSelf) {
+            SaveMenuPanel.instance.gameObject.SetActive(false);
+            return true;
+        }
+        // 2. open build category subpanel
+        if (BuildPanel.instance != null && BuildPanel.instance.IsSubPanelOpen) {
+            BuildPanel.instance.CloseSubPanel();
+            return true;
+        }
+        // 3. any open exclusive panel (TradingPanel / RecipePanel / ResearchPanel / GlobalHappinessPanel)
+        foreach (var p in exclusivePanels) {
+            if (p != null && p.activeSelf) { p.SetActive(false); return true; }
+        }
+        // 4. fall back to leaving non-Select mouse mode
+        var mc = MouseController.instance;
+        if (mc != null && mc.mouseMode != MouseController.MouseMode.Select) {
+            mc.SetModeSelect();
+            return true;
+        }
+        return false;
+    }
+
+    // Collapses every open transient UI layer at once — the effect of pressing Esc
+    // repeatedly until nothing remains. Called on world load so a freshly-loaded world
+    // starts with a clean HUD (no leftover save menu, build subpanel, exclusive panel,
+    // or build-mode cursor carried over from before the load).
+    public void EscapeAll() {
+        // Bounded: each DismissTopLayer closes exactly one of a fixed handful of layers,
+        // so this terminates well before the cap. The limit only guards against a layer
+        // that re-opens itself spinning forever.
+        for (int i = 0; i < 16 && DismissTopLayer(); i++) { }
     }
 
     // True if the keyboard focus is currently on a text input field, so global

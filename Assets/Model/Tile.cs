@@ -319,7 +319,7 @@ public class TileType {
     public string overlay {get; set;}
     public ItemNameQuantity[] nproducts {get; set;}         // tile-break drops (authored in liang)
     public ItemQuantity[] products;                         // fen, populated on deserialize
-    // Quarry / extraction-building yields, distinct from tile-break drops.
+    // Extraction-building (quarry / digging pit) yields, distinct from tile-break drops.
     // Tile breaking = "clear the area"; extraction = "deliberate resource harvesting".
     public ItemNameQuantity[] nExtractionProducts {get; set;}
     public ItemQuantity[] extractionProducts;

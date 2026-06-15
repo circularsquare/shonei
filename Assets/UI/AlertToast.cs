@@ -70,7 +70,7 @@ public class AlertToast : MonoBehaviour {
             rows.RemoveAt(0);
         }
 
-        // Row construction follows TradingPanel.AddChat's pattern so visual style
+        // Row construction follows ChatLog.AddChat's pattern so visual style
         // stays consistent across the two EventFeed renderers (same default font
         // from TMP Settings, same 16pt, same wrap behaviour).
         GameObject go = new GameObject("ToastRow", typeof(RectTransform));

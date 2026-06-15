@@ -2,7 +2,7 @@
     {
         "id": 2,
         "name": "Mining",
-        "description": "Extract stone and ores.",
+        "description": "learn how to mine stone. ores are rare drops from stone.",
         "prereqs": [],
         "cost": 3,
         "unlocks": [
@@ -12,7 +12,7 @@
     },{
         "id": 4,
         "name": "Timekeeping",
-        "description": "Track the passage of day and night.",
+        "description": "track the passage of day and night.",
         "prereqs": [15],
         "cost": 5,
         "unlocks": [
@@ -21,8 +21,8 @@
     },{
         "id": 5,
         "name": "Pumps",
-        "description": "Draw water from ponds.",
-        "prereqs": [],
+        "description": "draw water from lakes.",
+        "prereqs": [15],
         "cost": 5,
         "unlocks": [
             { "type": "building", "target": "pump" },
@@ -31,7 +31,7 @@
     },{
         "id": 6,
         "name": "Soymilk",
-        "description": "Grind soybeans into soymilk.",
+        "description": "grind soybeans into soymilk.",
         "prereqs": [5, 15],
         "cost": 5,
         "unlocks": [
@@ -41,7 +41,7 @@
     },{
         "id": 7,
         "name": "Tofu",
-        "description": "Press coagulated soymilk into tofu.",
+        "description": "press soymilk into tofu.",
         "prereqs": [6],
         "cost": 5,
         "unlocks": [
@@ -51,17 +51,16 @@
     },{
         "id": 8,
         "name": "Roads",
-        "description": "Pave roads so mice travel faster.",
+        "description": "pave roads so mice travel faster.",
         "prereqs": [],
         "cost": 3,
         "unlocks": [
-            { "type": "building", "target": "road" },
-            { "type": "building", "target": "bench" }
+            { "type": "building", "target": "road" }
         ]
     },{
         "id": 9,
         "name": "Weaving",
-        "description": "Weave plant fibres into cloth.",
+        "description": "weave plant fibres into cloth.",
         "prereqs": [],
         "cost": 5,
         "unlocks": [
@@ -73,7 +72,7 @@
     },{
         "id": 10,
         "name": "Tailoring",
-        "description": "Sew cloth into clothing.",
+        "description": "sew cloth into clothing.",
         "prereqs": [9],
         "cost": 5,
         "unlocks": [
@@ -83,7 +82,7 @@
     },{
         "id": 11,
         "name": "Papermaking",
-        "description": "Process wood pulp and water into paper.",
+        "description": "process wood and water into paper.",
         "prereqs": [],
         "cost": 3,
         "unlocks": [
@@ -93,7 +92,7 @@
     },{
         "id": 12,
         "name": "Writing",
-        "description": "Record knowledge in books. A scientist carrying the matching tech book researches 3x faster.",
+        "description": "record knowledge in books. a scientist carrying the matching tech book researches 3x faster.",
         "prereqs": [11],
         "cost": 5,
         "unlocks": [
@@ -104,7 +103,7 @@
     },{
         "id": 13,
         "name": "Metallurgy",
-        "description": "Smelt ores and refine metals.",
+        "description": "smelt ores and refine metals.",
         "prereqs": [2],
         "cost": 10,
         "unlocks": [
@@ -115,7 +114,7 @@
     },{
         "id": 14,
         "name": "Glassmaking",
-        "description": "Fuse sand into glass.",
+        "description": "fuse sand into glass.",
         "prereqs": [13],
         "cost": 5,
         "unlocks": [
@@ -126,7 +125,7 @@
     },{
         "id": 16,
         "name": "Fermentation",
-        "description": "Brew rice into yeast and rice wine.",
+        "description": "brew rice into yeast and rice wine.",
         "prereqs": [],
         "cost": 5,
         "unlocks": [
@@ -136,7 +135,7 @@
     },{
         "id": 15,
         "name": "Mechanics",
-        "description": "Harness mechanical power with wheels, shafts, and flywheels.",
+        "description": "harness mechanical power with wheels, shafts, and flywheels.",
         "prereqs": [],
         "cost": 10,
         "unlocks": [
@@ -153,12 +152,23 @@
     },{
         "id": 17,
         "name": "Tools",
-        "description": "Craft stone tools at a workshop. Better tools work faster: stone +10%, copper +20%, bronze +30%.",
+        "description": "craft stone tools at a workshop.",
         "prereqs": [],
         "cost": 3,
         "unlocks": [
             { "type": "building", "target": "workshop" },
             { "type": "recipe",   "target": "1" }
+        ]
+    },{
+        "id": 18,
+        "name": "Architecture",
+        "description": "shelter with roofs and mount brackets on walls.",
+        "prereqs": [],
+        "cost": 5,
+        "unlocks": [
+            { "type": "building", "target": "roof" },
+            { "type": "building", "target": "bracket" },
+            { "type": "building", "target": "bench" }
         ]
     }
 ]

@@ -22,6 +22,10 @@ public class StructureInfoView : MonoBehaviour {
     [SerializeField] Button harvestFlagButton;
     [SerializeField] TextMeshProUGUI harvestFlagLabel;
 
+    [Header("Comfort Bars (plants only)")]
+    [SerializeField] ComfortBar tempBar;       // temperature range bar; hidden for non-plants
+    [SerializeField] ComfortBar moistureBar;   // soil-moisture range bar; hidden for non-plants
+
     [Header("Blueprint Priority")]
     [SerializeField] Button priorityUpButton;
     [SerializeField] Button priorityDownButton;
@@ -88,6 +92,7 @@ public class StructureInfoView : MonoBehaviour {
         SetDeconstructVisible(false);
         SetCancelVisible(false);
         SetHarvestFlagVisible(false);
+        SetComfortVisible(false);
     }
 
     public void Refresh() {
@@ -117,7 +122,7 @@ public class StructureInfoView : MonoBehaviour {
             sb.Append($"\n stage: {plant.growthStage}/{maxStage}");
             if (plant.plantType.maxHeight > 1)
                 sb.Append($"  height: {plant.height}/{plant.plantType.maxHeight}");
-            AppendPlantComfort(sb, plant);
+            ShowPlantComfort(plant);
             // Surface the target-gated dormancy from RegisterHarvest's isActive — without this
             // the player sees a flagged, ripe crop sitting un-harvested with no in-game cue.
             if (plant.harvestFlagged && plant.IsDoneGrowing()
@@ -125,8 +130,15 @@ public class StructureInfoView : MonoBehaviour {
                 sb.Append("\n <color=#d04040>will not harvest: outputs above target</color>");
             AppendTileOrders(sb, plant.tile);
         } else if (structure is Building bldg) {
-            if (bldg.structType.depleteAt > 0 && bldg.workstation != null)
+            if (bldg.structType.depleteAt > 0 && bldg.workstation != null) {
                 sb.Append("\n uses: " + bldg.workstation.uses + "/" + bldg.structType.depleteAt);
+                // Extraction buildings (quarry / digging pit) hang their per-dig yield list off
+                // a help hover on the uses line, rather than spelling it out inline.
+                if (bldg is ExtractionBuilding eb && eb.capturedTile?.extractionProducts != null) {
+                    Help.SetDynamic("mining", "Yields", BuildExtractionYields(eb.capturedTile.extractionProducts));
+                    sb.Append(Help.Icon("mining"));
+                }
+            }
             if (bldg.reservoir != null) {
                 int fuelQty = bldg.reservoir.Quantity();
                 sb.Append($"\n fuel: {ItemStack.FormatQ(fuelQty)}/{ItemStack.FormatQ(bldg.reservoir.capacity)} {bldg.reservoir.fuelItem.name}");
@@ -173,6 +185,9 @@ public class StructureInfoView : MonoBehaviour {
         }
         bool isPlant = structure is Plant;
         SetHarvestFlagVisible(isPlant);
+        // Set comfort visibility once (not toggle off→on) — toggling SetActive each tick
+        // fires Tooltippable.OnDisable, which hid the bar's tooltip ~1 tick after hover.
+        SetComfortVisible(isPlant);
         if (isPlant && harvestFlagLabel != null) {
             Plant p = (Plant)structure;
             harvestFlagLabel.text = p.harvestFlagged ? "unflag harvest" : "flag for harvest";
@@ -203,6 +218,7 @@ public class StructureInfoView : MonoBehaviour {
 
     void RefreshBlueprint() {
         var sb = new System.Text.StringBuilder();
+        SetComfortVisible(false);
         sb.Append("blueprint: " + blueprint.structType.name);
         sb.Append("\n progress: " + blueprint.GetProgress());
         if (blueprint.structType.job != null)
@@ -341,27 +357,42 @@ public class StructureInfoView : MonoBehaviour {
 
     // ── Work order display helpers (moved from InfoPanel) ──
 
-    // Appends "temp: nowC  comfort: lo-hi C" and the equivalent moisture line for a plant.
-    // Moisture is read from the soil tile directly below the plant (matches growth logic).
-    // Null comfort bounds render as "?" so authors see at a glance that that side is unbounded.
-    // ASCII-only: the m5x7 font doesn't cover °, en/em-dash.
-    static void AppendPlantComfort(System.Text.StringBuilder sb, Plant plant) {
+    // Drives the temperature + moisture comfort bars for a plant and reveals them.
+    // Temp "now" is the global ambient (WeatherSystem); moisture "now" is the soil tile
+    // directly below the plant (matches growth logic) — null if there's no tile below,
+    // which hides that bar's marker. Comfortable bounds come straight from PlantType
+    // (null = unbounded; the bar runs its green band to the domain edge).
+    void ShowPlantComfort(Plant plant) {
         PlantType pt = plant.plantType;
-        float? nowT = WeatherSystem.instance?.temperature;
-        string nowTempStr = nowT.HasValue ? $"{nowT.Value:F1}C" : "?";
-        sb.Append($"\n temp: {nowTempStr}  comfort: {FormatBound(pt.tempMin, 0, "C")}-{FormatBound(pt.tempMax, 0, "C")}");
-
-        Tile soil = World.instance.GetTileAt(plant.tile.x, plant.tile.y - 1);
-        string nowMoistStr = soil != null ? $"{soil.moisture}/{MoistureSystem.MoistureMax}" : "?";
-        sb.Append($"\n moisture: {nowMoistStr}  comfort: {FormatBound(pt.moistureMin, 0, "")}-{FormatBound(pt.moistureMax, 0, "")}");
-        sb.Append(Help.Icon("plantcomfort"));
+        if (tempBar != null)
+            tempBar.Set(pt.tempMin, pt.tempMax, WeatherSystem.instance?.temperature);
+        if (moistureBar != null) {
+            Tile soil = World.instance.GetTileAt(plant.tile.x, plant.tile.y - 1);
+            moistureBar.Set(pt.moistureMin, pt.moistureMax, soil != null ? (float?)soil.moisture : null);
+        }
     }
 
-    static string FormatBound(float? v, int decimals, string suffix) {
-        return v.HasValue ? v.Value.ToString("F" + decimals) + suffix : "?";
+    void SetComfortVisible(bool visible) {
+        if (tempBar != null) tempBar.gameObject.SetActive(visible);
+        if (moistureBar != null) moistureBar.gameObject.SetActive(visible);
     }
-    static string FormatBound(int? v, int decimals, string suffix) {
-        return v.HasValue ? v.Value.ToString() + suffix : "?";
+
+    // Per-dig yield distribution for extraction buildings (quarry / digging pit), built
+    // from the captured tile's data so JSON rebalances show up without a copy edit. One
+    // item per line for the help tooltip, e.g. "limestone\ngypsum 10%\nmalachite 4%".
+    // Quantity is shown only when it differs from the usual 1 liang; chance only when < 100%.
+    static string BuildExtractionYields(ItemQuantity[] yields) {
+        var sb = new System.Text.StringBuilder();
+        for (int i = 0; i < yields.Length; i++) {
+            ItemQuantity iq = yields[i];
+            if (i > 0) sb.Append("\n");
+            sb.Append(iq.item.name);
+            if (iq.quantity != ItemStack.LiangToFen(1f))
+                sb.Append(" x " + ItemStack.FormatQ(iq.quantity, iq.item));
+            if (iq.chance < 1f)
+                sb.Append(" " + Mathf.RoundToInt(iq.chance * 100f) + "%");
+        }
+        return sb.ToString();
     }
 
     // Appends work orders keyed by tile (harvest, research). Mirrors AppendBuildingOrders'

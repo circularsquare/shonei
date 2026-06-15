@@ -19,7 +19,7 @@ If you're adding a building, recipe, item, job, plant, research node, exclusive 
 - [ ] **Placement constraints** go in `tileRequirements`, not freeform fields. (Water under windmill, dirt-bank for burrow, etc.)
 - [ ] **`requiredTileName` matches tile name OR group** (e.g. `"stone"` accepts limestone, granite, slate via `TileType.group`).
 - [ ] **Paired-field gotchas**: `isHousing` needs `capacity`; `isDecoration` needs `decorationNeed`; `isLeisure` needs `leisureNeed`. Missing the partner = building works but grants no slots / happiness.
-- [ ] **If it's a `Structure` subclass** (Windmill, Quarry, …): see "Adding a new Structure subclass" below.
+- [ ] **If it's a `Structure` subclass** (Windmill, ExtractionBuilding, …): see "Adding a new Structure subclass" below.
 - [ ] **If it has recipes**: see "Adding a new recipe" below — `recipe.tile` must exactly match this building's `name`.
 
 ## Upsizing an existing building (1×1 → multi-tile)
@@ -91,11 +91,7 @@ This is the workflow:
 - [ ] **If `AttachAnimations` is overridden**: don't reference subclass-side fields from it — it runs during `base()` before subclass ctor body.
 - [ ] **Any new `dx` field** (interior tile, door, ladder, workSpot, furnishing offset, …): apply `nx-1-dx` on mirror lookup. Convention used throughout — see [StructType.cs](../Model/Structure/StructType.cs).
 - [ ] **If the subclass adds saveable state**: see "Adding new save data" below.
-- [ ] **Substrate-capture pattern** (your building's behaviour depends on the tile it was built on): mirror `Quarry` / `DiggingPit`.
-  - Add a `TileType capturedTile` field.
-  - Capture it via `StructController.Construct` before the tile is mined: add an `if (s is YourType y) y.CaptureOriginalTile(tile.type)` next to the existing Quarry/DiggingPit lines.
-  - Expose `GetExtractionOutputs()` if you want to override the recipe's outputs, and hook into the override site in `AnimalStateManager.HandleWorking`.
-  - Reuse the existing `WorldSaveData.capturedTileType` save field (gather + restore alongside the existing entries).
+- [ ] **Substrate-capture pattern** (your building's behaviour depends on the tile it was built on): subclass `ExtractionBuilding` — it provides `capturedTile`, `CaptureOriginalTile` (called from `StructController.Construct` before the tile is mined), `GetExtractionOutputs()` (the captured tile's tilesDb `nExtractionProducts`, hooked into `AnimalStateManager.HandleWorking`), the `WorldSaveData.capturedTileType` save round-trip, and the InfoPanel "yields:" line. The quarry is a plain `ExtractionBuilding`; `DiggingPit` shows how to layer extra behaviour on top.
   - Recipes with dynamic outputs should leave `noutputs: []` in JSON — the override path supplies them, and a null return falls back to the static list as a safety net.
 
 ## Adding a new exclusive UI panel

@@ -3,7 +3,7 @@ using UnityEngine;
 // Soil moisture simulation — pure C# singleton, created from World.Awake() alongside
 // WeatherSystem / MaintenanceSystem. Owns Tile.moisture (byte 0–100) on SOLID tiles only;
 // air tiles stay 0. Plants read moisture from the solid tile directly below them (see
-// PlantType.IsComfortableAt). Water levels stay on WaterController; this system reads
+// PlantType.IsMoistureComfortableAt). Water levels stay on WaterController; this system reads
 // AND (during seep) decrements tile.water to account for liquid absorbed into soil.
 //
 // Dispatch cadences (all driven from World.Update + WeatherSystem.OnHourElapsed):

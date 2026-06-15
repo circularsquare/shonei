@@ -299,7 +299,7 @@ public class Animal : MonoBehaviour{
     }
 
     private void HandleNeeds() {
-        eating.Update();
+        eating.Update(1f, state == AnimalState.Eeping);
         eeping.Update();
         // Sleep recovery is wall-clock — ticked here every tick, NOT from HandleEeping.
         // HandleEeping only runs when the energy/efficiency throttle fires UpdateState, so

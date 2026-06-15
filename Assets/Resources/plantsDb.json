@@ -25,11 +25,11 @@
             { "name": "pinecone", "quantity": 1 }
         ],
         "nproducts": [
-            { "name": "pine", "quantity": 20 },
+            { "name": "pine", "quantity": 18 },
             { "name": "pinecone", "quantity": 2 }
         ],
         "growthTime": 600,
-        "harvestTime": 28.0,
+        "harvestTime": 24.0,
         "njob": "logger",
         "capacity": 1,
         "tempMin": 0,  "tempMax": 28,
@@ -122,6 +122,7 @@
         ],
         "growthTime": 210,
         "harvestTime": 12.0,
+        "description": "fiber crop, used for cloth and rope",
         "njob": "farmer",
         "capacity": 1,
         "tempMin": 10, "tempMax": 30,

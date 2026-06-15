@@ -2436,14 +2436,6 @@ PrefabInstance:
       value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: 6341128054194125705, guid: e02642e6aedf7f44aa1185ddc6a904d8, type: 3}
-      propertyPath: m_SizeDelta.x
-      value: 240
-      objectReference: {fileID: 0}
-    - target: {fileID: 6341128054194125705, guid: e02642e6aedf7f44aa1185ddc6a904d8, type: 3}
-      propertyPath: m_SizeDelta.y
-      value: 220
-      objectReference: {fileID: 0}
-    - target: {fileID: 6341128054194125705, guid: e02642e6aedf7f44aa1185ddc6a904d8, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
       objectReference: {fileID: 0}
@@ -5088,8 +5080,8 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'this game is in early development - saves break every update. bug reports:
-    anitaxinchen@gmail.com'
+  m_text: this game is in early development. saves break every update. you can send
+    bug reports to anitaxinchen@gmail.com :)
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 079e71660f0a27649932cfe01cac6d27, type: 2}
   m_sharedMaterial: {fileID: -6111456659657969569, guid: 079e71660f0a27649932cfe01cac6d27, type: 2}
@@ -7012,6 +7004,7 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 209338651}
+  - {fileID: 112516816}
   - {fileID: 428168382}
   - {fileID: 142973734}
   - {fileID: 1309925717}
@@ -7019,7 +7012,6 @@ RectTransform:
   - {fileID: 414524895}
   - {fileID: 429806505}
   - {fileID: 1354666028}
-  - {fileID: 112516816}
   - {fileID: 1492715873}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}

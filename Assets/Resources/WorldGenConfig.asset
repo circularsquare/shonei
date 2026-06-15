@@ -104,4 +104,4 @@ MonoBehaviour:
   PlantChance: 0.12
   ClusterMin: 1
   ClusterMax: 3
-  StartingMoisture: 50
+  StartingMoisture: 90

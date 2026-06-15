@@ -138,8 +138,7 @@ public class StructController : MonoBehaviour {
         // Capture the original tile type BEFORE it's replaced below — quarry and
         // digging pit both produce their substrate's material per cycle, so they
         // need the tile they were built on remembered.
-        if (structure is Quarry q) q.CaptureOriginalTile(tile.type);
-        if (structure is DiggingPit dp) dp.CaptureOriginalTile(tile.type);
+        if (structure is ExtractionBuilding eb) eb.CaptureOriginalTile(tile.type);
 
         // Mining trigger. Two paths converge here:
         //   - `requiredTileName != null` (quarry / digging pit): the structure replaces a specific tile group.

@@ -72,8 +72,23 @@ public class TileMeshController : MonoBehaviour {
     const float QUAD_HALF = 0.625f;
 
     // Per-layer sortingOrders. Body uses -typeIdx (computed per-mesh).
-    const int OverlaySortingOrder = 11;
-    const int SnowSortingOrder    = 2;
+    // Overlay (grass) draws in FRONT of mice (50..64) and floor items on dirt
+    // (70) so a tuft bevelling up out of the dirt occludes the feet / item base
+    // resting on it, rather than the actor floating in front of the grass.
+    //
+    // But its LIGHTING bucket is pinned separately to OverlayLightingBucket, NOT
+    // derived from the 80 draw order. The normals-RT B channel carries the sort
+    // bucket (LightCircle.shader), which is the *depth plane* used for front-vs-
+    // behind light shaping — and grass physically lives in the ground plane even
+    // though we draw it on top. Letting it derive bucket 4 from the 80 order made
+    // ground-level lights treat grass as in front of them → back-lit/silhouette
+    // shading (lit from the wrong side). Bucket 1 = the Tiles plane, so grass
+    // light-shapes identically to the dirt body it grows from (the old bucket-2
+    // value was just an artifact of grass's former sortingOrder 11 landing in the
+    // 9..17 buildings band). Don't collapse this back into GetBucket(sortingOrder).
+    const int OverlaySortingOrder   = 80;
+    const int OverlayLightingBucket = 1;  // Tiles plane — matches the dirt body; see note above
+    const int SnowSortingOrder      = 2;
 
     public void Initialize(World world, Transform chunksRoot, Material chunkedMaterial, string layerName) {
         if (instance != null && instance != this) {
@@ -420,7 +435,8 @@ public class TileMeshController : MonoBehaviour {
             $"OverlayChunk_{indexToTypeName[typeIdx]}_{((OverlayState)stateIdx)}",
             OverlaySortingOrder,
             TileSpriteCache.GetOverlayArray(overlayName),
-            TileSpriteCache.GetNormalMapArray(indexToTypeName[typeIdx]));
+            TileSpriteCache.GetNormalMapArray(indexToTypeName[typeIdx]),
+            OverlayLightingBucket);  // light as ground plane despite the 80 draw order
     }
 
     static string OverlayAtlasName(string baseName, int stateIdx) {
@@ -537,8 +553,14 @@ public class TileMeshController : MonoBehaviour {
         mesh.bounds = ChunkBounds();
     }
 
+    // lightingBucket < 0 → derive the bucket from sortingOrder (body/snow, where
+    // draw order and light depth-plane agree). Pass a bucket explicitly to
+    // decouple them — the overlay draws far in front (80) but must light as the
+    // ground plane (see OverlayLightingBucket note). The bucket is written into
+    // the normals-RT B channel and drives front-vs-behind shaping in LightCircle.
     ChunkLayer NewChunkLayer(int cx, int cy, string namePrefix, int sortingOrder,
-                              Texture2DArray mainArray, Texture2DArray normalArray) {
+                              Texture2DArray mainArray, Texture2DArray normalArray,
+                              int lightingBucket = -1) {
         GameObject go = new GameObject($"{namePrefix}_{cx}_{cy}");
         go.transform.SetParent(chunksRoot, false);
         go.transform.localPosition = new Vector3(cx * ChunkSize, cy * ChunkSize, 0);
@@ -565,7 +587,8 @@ public class TileMeshController : MonoBehaviour {
         var mpb = new MaterialPropertyBlock();
         mpb.SetTexture(MainTexArrayId, mainArray);
         mpb.SetTexture(NormalArrayId,  normalArray);
-        mpb.SetFloat(SortBucketId, SortBucketUtil.BucketToNormalized(SortBucketUtil.GetBucket(sortingOrder)));
+        int bucket = lightingBucket >= 0 ? lightingBucket : SortBucketUtil.GetBucket(sortingOrder);
+        mpb.SetFloat(SortBucketId, SortBucketUtil.BucketToNormalized(bucket));
         mr.SetPropertyBlock(mpb);
 
         return new ChunkLayer { go = go, mf = mf, mr = mr, mesh = mesh };

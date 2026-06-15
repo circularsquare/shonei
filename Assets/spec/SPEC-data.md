@@ -212,7 +212,8 @@ Fields:
 | `tempMax` | float? | °C upper bound for growth |
 | `moistureMin` | int? | 0–100 soil-moisture lower bound (reads `Tile.moisture`) |
 | `moistureMax` | int? | 0–100 soil-moisture upper bound |
-| `moistureDrawPerHour` | float? | passive draw from the soil tile below each in-game hour (default 2). Crossing into a new growth stage additionally costs `2 × this` from the same tile — see gating below |
+| `moistureDrawPerHour` | float? | passive draw from the soil tile below each in-game hour (default 1) |
+| `stageMoistureCost` | int? | moisture deducted from the soil tile below each time the plant crosses into a new growth stage (default 4). Decoupled from `moistureDrawPerHour`; this is where moisture shortage actually gates growth — see gating below |
 | `maxHeight` | int? | max tile-height this plant can reach (default 1). Multi-tile plants extend upward as growth stage crosses 4-stage thresholds (stage 4 → 2 tall, stage 8 → 3 tall); max stage = `4 × maxHeight − 1`. Yield at harvest scales linearly with the plant's current height. |
 | `genWeight` | float? | relative weight for `WorldGen.ScatterPlants` to pick this plant type for natural clusters. Unnormalized — sampled proportionally against every other plant type with `genWeight > 0`. Default 0 = never spawns naturally (crops planted only by the player, legacy types). |
 
@@ -233,7 +234,7 @@ Fields:
 | `group` | string? | logical family (e.g. `"stone"` for limestone/granite/slate, `"earth"` for dirt/sand/clay). `StructPlacement` treats `requiredTileName` as a match on either the tile's name or its group, so quarry's `requiredTileName: "stone"` accepts any stone variant and digging pit's `"earth"` accepts dirt/sand/clay. **Watch out**: name-only matches (e.g. burrow's `requiredTileName: "dirt"`) skip the group, so a burrow only digs into the dirt tile even though dirt is in the `"earth"` group. |
 | `overlay` | string? | name of an overlay sprite sheet that tiles of this type can carry per-side decoration from. `dirt → "grass"` today; future moss-on-stone would set this on stone variants. Loads from `Resources/Sprites/Tiles/Sheets/<overlay>.png` (32×32 atlas, transparent Main interior). See SPEC-rendering "Tile overlays" for the rendering trick. |
 | `nproducts` | `[{name, quantity}]`? | items dropped on tile break (semantically: "clear the area"). Simple flat drops, no chance. |
-| `nExtractionProducts` | `[{name, quantity, chance?}]`? | items produced each cycle by an extraction building (`Quarry`) placed on this tile. Distinct from `nproducts` because extraction is deliberate harvesting, not mining clearance. Consumed via `Quarry.GetExtractionOutputs` → `AnimalStateManager` craft loop. (`DiggingPit` uses a different mechanism — it reads `nproducts[0]` and emits one liang of the substrate per craft, plus chance bonus nodules (10% clay on dirt/sand, 5% limestone on dirt); see `DiggingPit.GetExtractionOutputs` and SPEC-systems §Digging pit.) |
+| `nExtractionProducts` | `[{name, quantity, chance?}]`? | items produced each craft cycle by an extraction building (quarry / digging pit) placed on this tile — by convention 1 liang of the base material plus chance-rolled rare finds. Distinct from `nproducts` because extraction is deliberate harvesting, not mining clearance. Consumed via `ExtractionBuilding.GetExtractionOutputs` → `AnimalStateManager` craft loop, and surfaced as the InfoPanel "yields" help hover on the uses line. Every tile an extraction building can target (groups `stone` and `earth`) must define it. |
 
 ## `researchDb.json` — Technologies
 

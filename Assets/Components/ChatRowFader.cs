@@ -2,7 +2,7 @@ using UnityEngine;
 
 // ChatRowFader — fades a stale chat-log row out, then reveals it again on demand.
 //
-// Attached to every runtime-built ChatRow by TradingPanel.AddChat. A row stays
+// Attached to every runtime-built ChatRow by ChatLog.AddChat. A row stays
 // fully opaque for StableSeconds, then fades to transparent over FadeSeconds so
 // old messages stop cluttering the HUD. The fade never destroys the row —
 // focusing the chat input snaps every row back to full opacity so the player can
@@ -30,8 +30,8 @@ public class ChatRowFader : MonoBehaviour {
 
     // The whole backlog is revealed while the player is typing in chat.
     bool ChatInputFocused() {
-        TradingPanel tp = TradingPanel.instance;
-        return tp != null && tp.chatInput != null && tp.chatInput.isFocused;
+        ChatLog cl = ChatLog.instance;
+        return cl != null && cl.chatInput != null && cl.chatInput.isFocused;
     }
 
     // 1 while fresh, ramping down to 0 across the fade window once stale.

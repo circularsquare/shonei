@@ -103,15 +103,18 @@ public class GpuStatsHUD : MonoBehaviour {
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void AutoInstantiate() {
-        // Defensive: domain-reload-off play mode + scene reloads can leave
-        // the static `instance` ref stale (pointing to a destroyed object)
-        // OR leave alive duplicates from a prior session. Search the scene
-        // first, adopt one, destroy the rest. Only create if none exist.
-        var existing = FindObjectsOfType<GpuStatsHUD>();
-        if (existing.Length > 0) {
-            instance = existing[0];
-            for (int i = 1; i < existing.Length; i++) Destroy(existing[i].gameObject);
-            return;
+        // Resources.FindObjectsOfTypeAll — NOT FindObjectsOfType — is load-bearing
+        // here. Editing code while in Play mode triggers a domain reload that
+        // detaches this DontDestroyOnLoad GameObject from its scene: it stays
+        // alive (and keeps ticking Update/OnGUI) but with scene.IsValid()==false.
+        // FindObjectsOfType skips such scene-less orphans, so the old dedup/cleanup
+        // never saw them — they accumulated across sessions and any left visible
+        // became an un-toggleable ghost HUD. FindObjectsOfTypeAll sees them.
+        // GpuStatsHUD only ever exists as a runtime instance (never on a prefab/
+        // asset), so every hit is a real instance — safe to sweep them all and
+        // start each session from one guaranteed-fresh, hidden HUD.
+        foreach (var stale in Resources.FindObjectsOfTypeAll<GpuStatsHUD>()) {
+            Destroy(stale.gameObject);
         }
         var go = new GameObject("[GpuStatsHUD]");
         go.hideFlags = HideFlags.DontSave;
@@ -122,13 +125,15 @@ public class GpuStatsHUD : MonoBehaviour {
 #if UNITY_EDITOR
     // Editor-only: wipe every HUD instance on Play-mode exit so the next
     // Play session starts with a guaranteed-clean slate. Belt-and-braces
-    // with AutoInstantiate's adoption logic — if either path fails the
-    // other should still produce exactly one HUD.
+    // with AutoInstantiate's sweep — if either path fails the other should
+    // still produce exactly one HUD. FindObjectsOfTypeAll (not
+    // FindObjectsOfType) so scene-less orphans left by an in-Play domain
+    // reload are caught too — see AutoInstantiate for why.
     [UnityEditor.InitializeOnLoadMethod]
     static void HookPlayModeExit() {
         UnityEditor.EditorApplication.playModeStateChanged += state => {
             if (state != UnityEditor.PlayModeStateChange.ExitingPlayMode) return;
-            foreach (var hud in FindObjectsOfType<GpuStatsHUD>()) {
+            foreach (var hud in Resources.FindObjectsOfTypeAll<GpuStatsHUD>()) {
                 DestroyImmediate(hud.gameObject);
             }
             instance = null;

@@ -9,11 +9,10 @@ using TMPro;
 // Unity setup:
 //   nodeListContent — Transform        (scroll view Content object)
 //                     Add GridLayoutGroup to it with:
-//                       Cell Size  = (80, 90)
-//                       Spacing    = (6, 6)
+//                       Cell Size  = (48, 48)
+//                       Spacing    = (10, 10)
 //                       Start Axis = Horizontal
 //                       Constraint = Flexible
-//                     Add ContentSizeFitter with Vertical Fit = Preferred Size
 //   cardPrefab      — ResearchDisplay prefab
 //
 //   ResearchToggle button -> ResearchPanel.instance.Toggle()
@@ -136,7 +135,7 @@ public class ResearchPanel : MonoBehaviour {
                 visible.Add(FormatUnlock(e));
             }
             if (visible.Count > 0) {
-                sb.Append("Unlocks: ");
+                sb.Append("unlocks: ");
                 sb.AppendLine(string.Join(", ", visible));
             }
         }
@@ -145,11 +144,11 @@ public class ResearchPanel : MonoBehaviour {
         bool studied = rs.IsStudied(node.id);
 
         if (rs.IsUnlocked(node.id))
-            sb.Append($"Known. ({p:0.0} / {node.cost:0})");
+            sb.Append($"known. ({p:0.0} / {node.cost:0})");
         else if (!rs.PrereqsMet(node))
-            sb.Append("Prerequisites not met.");
+            sb.Append("prerequisites not met.");
         else
-            sb.Append($"Progress: {p:0.0} / {node.cost:0}");
+            sb.Append($"progress: {p:0.0} / {node.cost:0}");
 
         if (studied)
             sb.Append(" [studying]");

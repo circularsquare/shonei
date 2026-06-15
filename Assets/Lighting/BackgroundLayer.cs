@@ -39,11 +39,12 @@ using UnityEngine;
 //   0.1 = canonical distant background.
 //
 // ── Lighting integration ───────────────────────────────────────────────
-// MPB-binds a flat 1×1 normal map so NormalsCapture sees a uniform
-// camera-facing normal for every painted-mountain pixel — LightSun
-// then contributes a constant brightness across the visible painting
-// instead of spurious per-pixel sun shading. The day/night cycle dims
-// the background via the LightComposite multiply.
+// The day/night cycle dims the background via the LightComposite
+// multiply (SkyCamera's light RT is cleared to full ambient + sun).
+// No _NormalMap is bound: the URP 17 LightFeature skips per-sprite
+// NormalsCapture on non-world cameras, so per-sprite normals never
+// reach the lighting path on the SkyCamera. (Pre-Unity-6 this bound a
+// flat 1×1 normal for the old per-sprite capture.)
 //
 // ── Texture import settings ────────────────────────────────────────────
 // User texture: Wrap Mode = Repeat on the U (horizontal) axis at a
@@ -109,7 +110,6 @@ public class BackgroundLayer : SkyLayerBase {
     RenderTexture bgRT;
 
     static readonly int MainTexId           = Shader.PropertyToID("_MainTex");
-    static readonly int NormalMapId         = Shader.PropertyToID("_NormalMap");
     static readonly int ViewportSizeId      = Shader.PropertyToID("_ViewportSize");
     static readonly int CameraPosId         = Shader.PropertyToID("_CameraPos");
     static readonly int BandCenterYId       = Shader.PropertyToID("_BandCenterY");
@@ -177,14 +177,18 @@ public class BackgroundLayer : SkyLayerBase {
         sr.sortingOrder = sortingOrder;
 
         // MPB-bind the parallax-baked RT as _MainTex (overriding the
-        // sprite-auto-bound spriteTex), and a flat-normal 1×1 as
-        // _NormalMap. The flat normal makes NormalsCapture see a uniform
-        // camera-facing normal everywhere, so LightSun adds constant
-        // brightness rather than per-pixel varying sun shading.
+        // sprite-auto-bound spriteTex). NO _NormalMap bind: the rewritten
+        // (URP 17 / Unity 6) LightFeature skips per-sprite NormalsCapture on
+        // the SkyCamera entirely (sky sprites are lit via the composite's sky
+        // branch + full-ambient clear, not individual normal capture — see
+        // LightFeature.NormalsCapturePass `if (d.isWorldCam)`). So the flat
+        // normal this used to bind for that capture is now dead weight —
+        // dropped. (It is harmless either way: CloudLayer/HazeLayer still bind
+        // a _NormalMap and render fine. The Unity-6 invisibility bug was NOT
+        // this — it was the _MainTex rebind timing; see DoLateUpdate.)
         mpb = new MaterialPropertyBlock();
         sr.GetPropertyBlock(mpb);
-        mpb.SetTexture(MainTexId,   bgRT);
-        mpb.SetTexture(NormalMapId, SpriteMaterialUtil.FlatNormalTex);
+        mpb.SetTexture(MainTexId, bgRT);
         sr.SetPropertyBlock(mpb);
 
         sr.transform.position = new Vector3(bgCam.transform.position.x, bgCam.transform.position.y, renderZ);
@@ -251,15 +255,6 @@ public class BackgroundLayer : SkyLayerBase {
         float extW  = viewW + 2f * panBuffer;
         float extH  = viewH + 2f * panBuffer;
         sr.transform.localScale = new Vector3(extW, extH, 1f);
-
-        // Per-frame MPB rebind. Editor events (sprite reimport, material
-        // refresh, OnValidate paths) can silently clear the SpriteRenderer's
-        // MaterialPropertyBlock — at which point _MainTex falls back to the
-        // dummy spriteTex. Negligible cost.
-        sr.GetPropertyBlock(mpb);
-        mpb.SetTexture(MainTexId,   bgRT);
-        mpb.SetTexture(NormalMapId, SpriteMaterialUtil.FlatNormalTex);
-        sr.SetPropertyBlock(mpb);
 
         // Per-frame: sortingOrder + tint (cheap, may change at runtime).
         sr.sortingOrder = sortingOrder;
@@ -334,5 +329,22 @@ public class BackgroundLayer : SkyLayerBase {
         float spriteX = camPos.x - worldLockingX * (camPos.x - bakedCamX);
         float spriteY = camPos.y - worldLockingY * (camPos.y - bakedCamY);
         sr.transform.position = new Vector3(spriteX, spriteY, renderZ);
+
+        // ── MPB _MainTex rebind — MUST be last ──────────────────────────────
+        // Bind AFTER the heavy block's resize + bake, not before. The resize
+        // does `bgRT.Release(); Destroy(bgRT); bgRT = MakeBgRT(...)`, so a bind
+        // placed earlier in the frame ends up pointing at the OLD, now-destroyed
+        // RT; at render the sprite then samples Unity's internal no-texture
+        // default and draws fully invisible. This was a SILENT failure — no
+        // console error; the only evidence was the Frame Debugger showing the
+        // hills draw with `_MainTex = __native_internal_*` instead of bgRT.
+        // (The old code bound at the top of DoLateUpdate and deferred the
+        // rebind "to next frame" — which never made it valid at render.)
+        // Binding here also defeats the asset-reimport MPB clear. Mirrors
+        // CloudLayer, which binds after its own resize/create. Only _MainTex
+        // is bound — see BuildContents for why _NormalMap is deliberately not.
+        sr.GetPropertyBlock(mpb);
+        mpb.SetTexture(MainTexId, bgRT);
+        sr.SetPropertyBlock(mpb);
     }
 }

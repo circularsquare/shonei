@@ -50,9 +50,17 @@ public static class Help {
             "Items on the ground spoil 5x faster than in storage.") },
         { "wet", new Entry("Wet",
             "Wet items decay twice as fast.") },
-        { "plantcomfort", new Entry("Comfort",
-            "Plants grow only while temperature and soil moisture are in comfortable range.") },
     };
+
+    // Transient per-selection copy, set live by an InfoView right before it emits the
+    // matching Help.Icon(key) — for tooltips whose text is data-driven (e.g. an
+    // extraction building's per-tile yields) rather than static. Checked ahead of the
+    // static table in TryGet, so a dynamic entry overrides a static one of the same key.
+    static readonly Dictionary<string, Entry> dynamicEntries = new Dictionary<string, Entry>();
+
+    public static void SetDynamic(string key, string title, string body) {
+        dynamicEntries[key] = new Entry(title, body);
+    }
 
     // Inline markup appended after a stat line in an InfoView text blob. Renders the shared
     // help sprite inside a <link> so InfoTextHover can detect the hover. Leading space
@@ -69,7 +77,7 @@ public static class Help {
         if (string.IsNullOrEmpty(linkId) || !linkId.StartsWith(LinkPrefix)) return false;
         string key = linkId.Substring(LinkPrefix.Length);
         Entry e;
-        if (entries.TryGetValue(key, out e)) {
+        if (dynamicEntries.TryGetValue(key, out e) || entries.TryGetValue(key, out e)) {
             title = e.title;
             body = e.body;
             return true;

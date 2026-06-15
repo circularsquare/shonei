@@ -39,7 +39,7 @@ Shader "Custom/PlantSprite" {
     Properties {
         [PerRendererData] _MainTex ("Sprite Texture", 2D) = "white" {}
         [HideInInspector] _Color         ("Tint", Color) = (1,1,1,1)
-        [HideInInspector] _RendererColor ("RendererColor", Color) = (1,1,1,1)
+        [HideInInspector] [PerRendererData] _RendererColor ("RendererColor", Color) = (1,1,1,1)
         // Default white so unmasked plants would behave as full-sway in
         // mask-mode; in practice _UseMask gates the sample so this is only
         // a safety net when the secondary texture is missing.
@@ -65,8 +65,10 @@ Shader "Custom/PlantSprite" {
 
         CBUFFER_START(UnityPerMaterial)
             float4 _Color;
-            half4  _RendererColor;
         CBUFFER_END
+        // MPB-injected by SpriteRenderer per draw — must stay outside
+        // UnityPerMaterial or it breaks SRP Batcher eligibility.
+        half4 _RendererColor;
 
         struct Attributes {
             float3 positionOS : POSITION;

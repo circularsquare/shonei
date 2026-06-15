@@ -161,7 +161,7 @@ public class OptionsPanel : MonoBehaviour {
         if (woodSprite    == null) Debug.LogError("[OptionsPanel] Missing Sprites/Misc/woodframe");
 
         AddDivider(host.transform, dividerSprite, uiLayer);
-        AddSectionLabel(host.transform, "Controls", font, uiLayer);
+        AddSectionLabel(host.transform, "controls", font, uiLayer);
 
         foreach (var row in ControlsRows) {
             if (row.keys == null) {
@@ -336,7 +336,7 @@ public class OptionsPanel : MonoBehaviour {
             var names = new List<string>();
             var opt = UIFontOptions.instance;
             if (opt != null && opt.fonts != null) foreach (var e in opt.fonts) names.Add(e.name);
-            if (names.Count == 0) names.Add("Default");
+            if (names.Count == 0) names.Add("default");
             fontDropdown.AddOptions(names);
             fontDropdown.onValueChanged.AddListener(OnFontIndex);
         }

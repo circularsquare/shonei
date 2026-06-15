@@ -257,5 +257,5 @@ public class WorldGenConfig : ScriptableObject {
     // ── Moisture ──────────────────────────────────────────────────────
     [Header("Moisture")]
     [Tooltip("Baseline soil dampness on every solid tile at gen time. Surface dries via MoistureSystem; underground holds.")]
-    [Range(0, 255)] public byte StartingMoisture = 50;
+    [Range(0, 255)] public byte StartingMoisture = 90;
 }

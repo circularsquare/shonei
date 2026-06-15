@@ -174,7 +174,10 @@ public static class StructPlacement {
                 // more specific message even when both flags are set on the same req.
                 if (req.mustNotBePlant && t.structs[0] is Plant) return "plant resting on this tile";
                 if (req.mustBeEmpty && t.structs[0] != null) return "something resting on this tile";
-                if (req.mustBeSolidTile && !t.type.solid) return "needs solid tile";
+                // A requirement on a tile below the origin (dy < 0, e.g. fireplace) reads as
+                // "below"; one on the placement tile itself (dy == 0, e.g. mineshaft sunk into
+                // the tile) keeps the bare phrasing.
+                if (req.mustBeSolidTile && !t.type.solid) return req.dy < 0 ? "needs solid tiles below" : "needs solid tile";
                 if (req.mustBeOpenSkyAbove && !world.IsExposedAbove(t.x, t.y)) return "needs open sky above";
                 if (req.requiredTileName != null
                     && t.type.name  != req.requiredTileName

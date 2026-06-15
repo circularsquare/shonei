@@ -59,6 +59,12 @@ public class SoundManager : MonoBehaviour {
     const float windThreshold     = 0.3f;
     const float windFullMagnitude = 0.9f;
 
+    // Wind ambient is currently disabled — it read as intrusive for a constant bed.
+    // Kept fully wired up (volume baseline, weather curve, source) so it's a one-flag
+    // revert: set this true to bring it back. Gated in code rather than zeroing the
+    // serialized windVolume so it stays off regardless of the scene-saved baseline.
+    const bool windAmbientEnabled = false;
+
     void Awake() {
         if (instance != null && instance != this) {
             Destroy(gameObject);
@@ -163,6 +169,11 @@ public class SoundManager : MonoBehaviour {
     // --- Ambient (wind) ---
 
     void UpdateWindAmbient() {
+        if (!windAmbientEnabled) {
+            if (windSource.isPlaying) windSource.Stop(); // in case it was mid-loop when disabled
+            return;
+        }
+
         // Only audible on breezier stretches: silent below windThreshold, swelling to
         // full at windFullMagnitude. Driven by |wind| — direction doesn't matter, only
         // strength. (wind drifts via an OU random walk, ~±0.4 typical; gusts go higher.)

@@ -72,7 +72,7 @@ Design plans for non-trivial in-progress features live in `C:\Users\anita\.claud
 ## Folder conventions
 
 - `Assets/Model/` — pure C# game logic. Large standalone systems get their own file (Animal, World, Structure, etc.).
-- `Assets/Model/Structure/` — the `Structure` base class plus all its subclasses (`Building`, `Plant`, `Windmill`, `Quarry`, `PumpBuilding`, `Flywheel`, `MouseWheel`, `MarketBuilding`, `PowerShaft`, …) and tightly-coupled support types (`Blueprint`, `StructType`, `StructureVisuals`). New Building/Structure subclasses go here, NOT in Components.
+- `Assets/Model/Structure/` — the `Structure` base class plus all its subclasses (`Building`, `Plant`, `Windmill`, `ExtractionBuilding`, `PumpBuilding`, `Flywheel`, `MouseWheel`, `MarketBuilding`, `PowerShaft`, …) and tightly-coupled support types (`Blueprint`, `StructType`, `StructureVisuals`). New Building/Structure subclasses go here, NOT in Components.
 - `Assets/Components/` — single-purpose MonoBehaviours only: UI widgets (`FillBar`, `ItemIcon`, `StorageSlotDisplay`, …) and building-attached visuals (`ClockHand`, `RotatingPart`, `PortStubVisuals`, …). If your class is a `Structure`/`Building` subclass it belongs in `Model/Structure/` instead, even if it's small.
 
 ## C# / Unity IDE warnings

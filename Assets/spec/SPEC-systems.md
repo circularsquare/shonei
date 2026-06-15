@@ -351,17 +351,19 @@ Distinct from liquid `tile.water` — moisture represents damp **soil**. Lives o
 **Per in-game hour** (10 s real-time, via `MoistureSystem.HourlyUpdate()`, called from `WeatherSystem.OnHourElapsed()`). Single snapshot-and-sweep so no step biases by sweep direction, followed by a plant-iteration pass:
 - **Soil-to-soil diffusion** (all solid tiles): pull `round(diff × MoistureDiffusionPerHour)` toward the wettest solid neighbour's snapshot value, where `diff = maxNeighbour − cur`. One-way (never lowers). Currently `MoistureDiffusionPerHour = 0.05` (5%/h). Approximates capillary spread — a water-adjacent stone wall's moisture slowly propagates inward, a rained-on surface row slowly wets the column below.
 - **Evaporation** (same "not capped" gate as rain): `−MoistureEvaporationPerHour` (currently 1). Not temperature-scaled. Clamped ≥ 0. Capped soil (under buildings / stone / platforms) holds baseline without drying, so cave farms / deep nurseries / covered growhouses stay viable without irrigation.
-- **Plant passive draw**: each live plant pulls `round(plantType.moistureDrawPerHour)` from the soil tile directly below (clamped ≥ 0; no penalty when undersupplied — only the advancement cost gates growth). Default 2; overridable per `plantsDb.json` entry via the `moistureDrawPerHour` field.
+- **Plant passive draw**: each live plant pulls `round(plantType.moistureDrawPerHour)` from the soil tile directly below (clamped ≥ 0; no penalty when undersupplied — only the advancement cost gates growth). Default 1; overridable per `plantsDb.json` entry via the `moistureDrawPerHour` field.
 
-**Worldgen seed**: `WorldGen.SeedMoisture` sets every solid tile to `StartingMoisture = 50` at world generation so plants can grow from turn 1. Surface soil then drifts from this baseline under rain/decay; underground holds unless a water neighbour bumps it higher.
+**Worldgen seed**: `WorldGen.SeedMoisture` sets every solid tile to `StartingMoisture = 90` at world generation so plants can grow from turn 1 (set high so a fresh world that hasn't rained yet still supports crops). Surface soil then drifts from this baseline under rain/decay; underground holds unless a water neighbour bumps it higher.
 
 ## Plant Growth
 
 Plants advance through discrete growth stages, stored as `growthStage` on `Plant`. Ticked once per in-game second by `PlantController.TickUpdate → Plant.Grow(1)`.
 
 **Gates on every tick**:
-1. **Comfort**: `plantType.IsComfortableAt(soilTile, weather)` — ambient temp AND the moisture of the tile directly below the plant must fall within the JSON-authored `[tempMin, tempMax]` / `[moistureMin, moistureMax]` ranges. Out-of-range returns early, freezing both age and stage.
-2. **Stage advancement** (only when the tick would push `growthStage` higher): costs `2 × plantType.moistureDrawPerHour` from the soil tile below. Can't afford → freeze.
+1. **Comfort** — two sub-gates, both reading the JSON-authored ranges:
+   - **Temperature** (`plantType.IsTempComfortableAt(weather)`): a HARD gate. Ambient temp outside `[tempMin, tempMax]` returns early, freezing both age and stage.
+   - **Moisture** (`plantType.IsMoistureComfortableAt(soilTile)`): a SOFT gate. When the soil tile below is outside `[moistureMin, moistureMax]`, growth isn't frozen — the tick's age increment is scaled by `DroughtGrowthRate` (0.3). Sub-tick progress accumulates in `slowGrowthCarry` (not persisted) until it sums to a whole tick. This stops fresh-world crops permanently stalling during a dry spell.
+2. **Stage advancement** (only when the tick would push `growthStage` higher): costs `plantType.stageMoistureCost` (default 4) from the soil tile below. Can't afford → freeze.
 3. **Height extension** (only when advancement lands in a new height band): every new tile above must be non-solid with `structs[0] == null`. Any blocker → freeze.
 
 **Height mechanic** (multi-tile plants with `maxHeight > 1`):
@@ -374,7 +376,7 @@ Plants advance through discrete growth stages, stored as `growthStage` on `Plant
 
 **`Mature()` shortcut** (worldgen): sets age + stage directly to max, calls `RebuildExtensionTiles()` which claims as many upper tiles as the geometry allows. Skips the moisture advancement cost (fresh soil isn't guaranteed wet yet) and silently tops-out below `maxHeight` if the world above the anchor is blocked.
 
-**Plant growth gate**: a plant occupies an air tile; `Plant.Grow()` reads moisture from the **solid tile directly below** and calls `plantType.IsComfortableAt(soilTile, weather)`. Returns early (skips the age increment) if `WeatherSystem.temperature` or `soilTile.moisture` is outside the plant's authored `[tempMin,tempMax]` / `[moistureMin,moistureMax]`. Null bounds = "no limit" on that side, so a plant with no ranges grows unconditionally (back-compat for content authored before this system). If there is no tile below (world bottom edge), the moisture check is skipped — not failed.
+**Plant growth gate**: a plant occupies an air tile; `Plant.Grow()` reads moisture from the **solid tile directly below**. Temperature outside `[tempMin,tempMax]` freezes growth (hard gate); soil moisture outside `[moistureMin,moistureMax]` slows it to `DroughtGrowthRate` rather than freezing (soft gate — see Gates list above). Null bounds = "no limit" on that side, so a plant with no ranges grows unconditionally (back-compat for content authored before this system). If there is no tile below (world bottom edge), the moisture check is skipped — not failed.
 
 **Save/load**: `WorldSaveData.moistureLevels` — flat `byte[]`, index `y * nx + x`. Omitted (null) when every tile is 0, mirroring `waterLevels`. Restored in Phase 1 of `ApplySaveData` alongside water.
 
@@ -384,11 +386,11 @@ Plants advance through discrete growth stages, stored as `growthStage` on `Plant
 
 ### Plant slowdown estimation
 
-When balancing a plant's `[moistureMin, moistureMax]` comfort window against `growthTime`, model soil moisture as a four-phase cycle (dry drain → dry floor → rain ramp → rain cap) driven by the rain Markov chain in `WeatherSystem`. Compute `happyFraction` = hours-inside-comfort-window per cycle / total cycle hours; effective grow time ≈ `growthTime / happyFraction`.
+When balancing a plant's `[moistureMin, moistureMax]` comfort window against `growthTime`, model soil moisture as a four-phase cycle (dry drain → dry floor → rain ramp → rain cap) driven by the rain Markov chain in `WeatherSystem`. Compute `happyFraction` = hours-inside-comfort-window per cycle / total cycle hours. Since the moisture gate is now soft (out-of-window grows at `DroughtGrowthRate = 0.3`, not 0), effective speed ≈ `happyFraction + 0.3 × (1 − happyFraction)`, and effective grow time ≈ `growthTime / that`.
 
-**Key takeaway**: an `mHi < 100` cap forfeits the entire "rain cap" phase as unhappy, which dominates the slowdown. As of 2026-04-28 every default plant sets `moistureMax = 100` for this reason; only `moistureMin` is varied to differentiate species. Trees `[10, 100]` come out ~0.7× speed; a `[20, 80]` plant ~0.32× speed.
+**Key takeaway**: an `mHi < 100` cap forfeits the "rain cap" phase to the slow 0.3× rate, which still dominates the slowdown. As of 2026-04-28 every default plant sets `moistureMax = 100` for this reason; only `moistureMin` is varied to differentiate species. With the soft floor, trees `[10, 100]` (happy ~0.7) come out ~0.79× speed; a `[20, 80]` plant (happy ~0.32) ~0.52× speed — the 0.3× floor compresses the spread between species relative to the old hard gate.
 
-Caveats: steady-state only (first cycle on a fresh world is worse — `StartingMoisture = 50` and weather starts clear); temperature gate is independent and multiplies on top; the stage-crossing cost (`2 × moistureDrawPerHour`) is effectively free vs. the comfort gate as long as `mLo ≥ 2 × moistureDrawPerHour`.
+Caveats: steady-state only (first cycle on a fresh world starts easier now — `StartingMoisture = 90` — though weather starts clear); temperature gate is independent (hard) and multiplies on top; the stage-crossing cost (`stageMoistureCost`, default 4) is effectively free vs. the comfort gate as long as `mLo ≥ stageMoistureCost`.
 
 ## Fermentation processors
 
@@ -461,7 +463,7 @@ The digging pit (`preservesTile`, `requiredTileName: "earth"`) renders a recedin
 - **Choice** (`ChooseDigDirection`): a face is a candidate if its neighbour is non-solid and its approach node is standable; among candidates, prefer one **reachable from the main settlement** (`World.MainSettlementComponent` — the nav component most mice occupy, so a sealed cave pocket never wins). Priority up > single side > both-sides (cosmetic left-tiebreak). No reachable face → fall back to any open face + warn; fully enclosed → `Up` + error. Runs on the **live** path only, where the graph is still pre-pit (the door isn't wired yet) so component ids are clean. Calls `MainSettlementComponent(forceFresh: true)` — the cached value must not bake a permanent decision.
 - **Single door, self-wired**: the JSON declares **no** doors. `DiggingPit` wires exactly one door (the chosen face) via the shared `Structure.WireDoorEdge`/`SuppressDoorRim` helpers, from `OnPlaced` (live) and `RestoreOnLoad` (load) — never the ctor (which runs before the direction is known and would bridge a cave-side approach through the interior node, defeating the reachability check). Rim-suppression teardown is automatic via the base `edgeSuppressTiles` list cleared in `Structure.Destroy`. Up-dug pits additionally open clear L/R faces once mined past 60% (`UpdateSideAccess`); side-dug pits use only their one door.
 - **Dish + workspot** orient to `digDir`: the carve clears the bite toward the open face (parameterized by axis, not array-rotation, so `BakeMaskedNormalMap` lights it under the real sun); the workspot descends for Up, or stands ~0.4 tile to the side of the receding bite-peak for L/R.
-- **Yield** (`GetExtractionOutputs`): one liang of the captured substrate per craft (dirt/sand/clay), plus chance bonus nodules rolled per-output in the `AnimalStateManager` craft loop — **10% clay** on dirt or sand (alluvial pockets), and **5% limestone** on dirt only. The limestone is a deliberate **early, tool-free source of stone**: it (and the 1 limestone dropped when a dirt tile is mined directly — see `tilesDb` dirt `nproducts`) lets the stone-tools chain bootstrap before any stone tile can be mined. See plan `mining-tools`.
+- **Yield** (`ExtractionBuilding.GetExtractionOutputs`): the captured tile's `nExtractionProducts` from tilesDb — one liang of the substrate per craft (dirt/sand/clay), plus chance bonus nodules rolled per-output in the `AnimalStateManager` craft loop — **10% clay** on dirt or sand (alluvial pockets), and **5% limestone** on dirt only. The limestone is a deliberate **early, tool-free source of stone**: it (and the 1 limestone dropped when a dirt tile is mined directly — see `tilesDb` dirt `nproducts`) lets the stone-tools chain bootstrap before any stone tile can be mined. See plan `mining-tools`.
 
 ## Side-ladders (`ladder_side`)
 

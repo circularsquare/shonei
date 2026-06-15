@@ -9,6 +9,12 @@ public class TradingClient : MonoBehaviour {
 
     WebSocket ws;
     public bool isOnline { get; private set; } = false;
+    // Latest player count the server reported (it pushes one on every connect /
+    // disconnect). hasOnlineCount stays false until the first report arrives, so
+    // a consumer can tell "not known yet" from a genuine count. Both reset on
+    // disconnect — a stale count shouldn't outlive the connection it came from.
+    public int  OnlinePlayerCount { get; private set; }
+    public bool hasOnlineCount    { get; private set; }
     bool isConnecting = false;
     bool hasLoggedConnectError = false;
     bool hasLoggedDisconnect = false;
@@ -52,6 +58,7 @@ public class TradingClient : MonoBehaviour {
     public event Action<Fill>             OnFill;
     public event Action<ChatMsg>          OnChat;
     public event Action<PriceHistoryData> OnPriceHistory;
+    public event Action<int>              OnOnlineCount;
 
     public async void Connect() {
         if (isConnecting || isOnline) return;
@@ -110,6 +117,11 @@ public class TradingClient : MonoBehaviour {
             case "price_history_response":
                 OnPriceHistory?.Invoke(JsonUtility.FromJson<PriceHistoryEnvelope>(raw).payload);
                 break;
+            case "online_count":
+                OnlinePlayerCount = JsonUtility.FromJson<OnlineCountEnvelope>(raw).payload.count;
+                hasOnlineCount    = true;
+                OnOnlineCount?.Invoke(OnlinePlayerCount);
+                break;
         }
     }
 
@@ -146,6 +158,7 @@ public class TradingClient : MonoBehaviour {
 
     void SetOnline(bool online) {
         isOnline = online;
+        if (!online) { hasOnlineCount = false; OnlinePlayerCount = 0; }
         OnConnectionChanged?.Invoke(online);
     }
 
@@ -238,6 +251,8 @@ public class TradingClient : MonoBehaviour {
 [Serializable] public class ChatMsg     { public string from; public string text; }
 [Serializable] class ChatPayload        { public string text; }
 [Serializable] class PriceHistoryEnvelope { public string type; public PriceHistoryData payload; }
+[Serializable] class OnlineCountEnvelope   { public string type; public OnlineCount payload; }
+[Serializable] public class OnlineCount    { public int count; }
 // One bid/ask snapshot. Prices are in fen; 0 means no order rested on that side.
 // t is unix seconds — a large jump in t between samples marks server downtime.
 [Serializable] public class PriceSample      { public long t; public int bid; public int ask; }

@@ -333,8 +333,11 @@ public class InventoryController : MonoBehaviour {
     public void ResetState() {
         selectedInventories.Clear();
         RefreshHighlights();
+        // Re-seed from each item's DefaultTargetFen (same source of truth as Start) so per-item
+        // JSON defaults — byproducts at 10 liang, books at 1 — survive a world reset. Hardcoding
+        // 10000 here silently flattened every non-book target to 100 liang on a new world.
         foreach (var key in targets.Keys.ToList())
-            targets[key] = Db.items[key].itemClass == ItemClass.Book ? 100 : 10000;
+            targets[key] = Db.items[key].DefaultTargetFen;
         foreach (var key in discoveredItems.Keys.ToList())
             discoveredItems[key] = false;
         SeedStartDiscovered();

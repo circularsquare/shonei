@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.U2D;
 
 // ── Gameplay Atlas Builder ─────────────────────────────────────────────
-// Single source of truth for SpriteAtlas (V1) setup. All atlases share
+// Single source of truth for SpriteAtlas (V2) setup. All atlases share
 // the same packing + platform settings so SRP Batcher sees atlas pages
 // as interchangeable — same shader, same material, same compression.
 // Filter mode is per render context: world atlases sample Point (pixel-art
@@ -13,18 +13,20 @@ using UnityEngine.U2D;
 // settings factor, so Point shimmers/drops pixels there). Re-runnable:
 // pressing the menu item again refreshes the atlas from its source folders.
 //
-// **Why V1 and not V2:** Unity 2021.3's V2 sprite atlas pipeline is
-// incomplete — V2 atlases create the `SpriteAtlasAsset` source but never
-// generate the runtime `SpriteAtlas` asset, so sprites don't bind. V1 is
-// the supported path in this Unity version. V2 was tried and reverted.
+// **V2, not V1.** The Unity 6 move silently broke V1 `AlwaysOnAtlas` packing —
+// sprites stopped binding to atlas pages at runtime (sprite.packed==false
+// everywhere, rendering as if un-atlased). V2 is the supported path in U6.
+// Authoring differs from V1: build a `SpriteAtlasAsset` source (Add packables
+// + `SpriteAtlasAsset.Save` to `.spriteatlasv2`), then apply packing/texture/
+// platform settings on the imported `SpriteAtlasImporter` — the matching
+// setters on `SpriteAtlasAsset` itself are [Obsolete]. V2 packs on entering
+// Play mode / build (not at edit-rest), so verify with sprite.packed in Play.
 //
-// Background: see plans/gpu-perf-pass.md §"Phase 4b — Sprite atlasing".
-// Sprite.shader's _MainTex is [PerRendererData], so SRP Batcher keys on
-// per-sprite texture. Atlasing forces same-bucket sprites onto a shared
-// _MainTex so the batcher can keep state across them.
-// AlwaysOnAtlas packer mode is enforced on editor load so the V1 atlases below
-// actually generate runtime data. Used to be a one-shot menu item; promoted to
-// auto-enforcement so it can never drift back to V2.
+// Background: see plans/sprite-atlas-v2-migration.md and gpu-perf-pass.md
+// §"Phase 4b — Sprite atlasing". Sprite.shader's _MainTex is [PerRendererData],
+// so SRP Batcher keys on per-sprite texture. Atlasing forces same-bucket
+// sprites onto a shared _MainTex so the batcher can keep state across them.
+// SpriteAtlasV2 packer mode is enforced on editor load.
 [InitializeOnLoad]
 public static class GameplayAtlasBuilder
 {
@@ -32,8 +34,8 @@ public static class GameplayAtlasBuilder
 
     static GameplayAtlasBuilder()
     {
-        if (EditorSettings.spritePackerMode != SpritePackerMode.AlwaysOnAtlas)
-            EditorSettings.spritePackerMode = SpritePackerMode.AlwaysOnAtlas;
+        if (EditorSettings.spritePackerMode != SpritePackerMode.SpriteAtlasV2)
+            EditorSettings.spritePackerMode = SpritePackerMode.SpriteAtlasV2;
     }
 
     // ── Menu items ──────────────────────────────────────────────────────
@@ -117,49 +119,68 @@ public static class GameplayAtlasBuilder
         foreach (var b in builds)
             created.Add(CreateAtlasAsset(b.name, b.packables, b.filter));
 
-        // Packing is the LAST operation: SaveAssets/Refresh after a pack
-        // silently invalidates the packed data (spriteCount drops to 0, no
-        // error; AlwaysOnAtlas would re-pack on Play, but the builder's own
-        // logs and any post-build spriteCount checks would lie meanwhile).
         Refresh();
-        SpriteAtlasUtility.PackAtlases(created.ToArray(), EditorUserBuildSettings.activeBuildTarget);
+
+        // Force an editor-side pack so the spriteCount log below is meaningful.
+        // V2 also packs automatically on entering Play mode / build; this just
+        // surfaces problems now instead of waiting for Play.
+        var packable = created.FindAll(a => a != null);
+        if (packable.Count > 0)
+            SpriteAtlasUtility.PackAtlases(packable.ToArray(), EditorUserBuildSettings.activeBuildTarget);
 
         for (int i = 0; i < created.Count; i++)
         {
             var atlas = created[i];
-            if (atlas.spriteCount == 0)
-                Debug.LogError($"[GameplayAtlasBuilder] {atlas.name} packed 0 sprites ({builds[i].packables.Length} packables) — atlas is not usable.");
+            int packCount = builds[i].packables.Length;
+            if (atlas == null)
+                Debug.LogError($"[GameplayAtlasBuilder] {builds[i].name} failed to import ({packCount} packables).");
+            else if (atlas.spriteCount == 0)
+                Debug.LogWarning($"[GameplayAtlasBuilder] {builds[i].name}: {packCount} packables added but spriteCount=0 after pack — verify in Play mode (V2 packs lazily). If still 0 in Play, atlas is broken.");
             else
-                Debug.Log($"[GameplayAtlasBuilder] Built {atlas.name} ({builds[i].packables.Length} packables, atlas.spriteCount={atlas.spriteCount}, filter={builds[i].filter}).");
+                Debug.Log($"[GameplayAtlasBuilder] Built {builds[i].name} ({packCount} packables, spriteCount={atlas.spriteCount}, filter={builds[i].filter}).");
         }
     }
 
     // ── Core ────────────────────────────────────────────────────────────
 
-    // V1 atlas creation: instantiate SpriteAtlas, configure via the
-    // SpriteAtlasExtensions API, save via CreateAsset. Packing happens once
-    // for all atlases at the end of RebuildAll — see the comment there.
+    // V2 atlas creation: author a SpriteAtlasAsset source (Add + Save to
+    // .spriteatlasv2), import it, then apply packing/texture/platform settings
+    // on the resulting SpriteAtlasImporter — the matching SpriteAtlasAsset
+    // setters are [Obsolete] under V2. Unlike V1 there's no shared global pack
+    // state to invalidate, so configuring each atlas fully in sequence is safe.
+    // Returns the imported runtime SpriteAtlas (may report spriteCount 0 until
+    // packed on Play/build — expected for V2; see RebuildAll's log handling).
     static SpriteAtlas CreateAtlasAsset(string name, Object[] packables, FilterMode filter)
     {
-        string path = $"{AtlasFolder}/{name}.spriteatlas";
+        string path = $"{AtlasFolder}/{name}.spriteatlasv2";
         if (AssetDatabase.LoadAssetAtPath<Object>(path) != null)
         {
             AssetDatabase.DeleteAsset(path);
         }
 
+        // Author + save the V2 source asset, then import it.
+        var asset = new SpriteAtlasAsset();
+        asset.Add(packables);
+        SpriteAtlasAsset.Save(asset, path);
+        AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+
+        // V2 settings live on the importer, not the asset.
+        var importer = AssetImporter.GetAtPath(path) as SpriteAtlasImporter;
+        if (importer == null)
+        {
+            Debug.LogError($"[GameplayAtlasBuilder] No SpriteAtlasImporter for {path} — atlas not configured.");
+            return null;
+        }
+
         var textureSettings = StandardTexture;
         textureSettings.filterMode = filter;
+        importer.packingSettings = StandardPacking;
+        importer.textureSettings = textureSettings;
+        importer.SetPlatformSettings(StandardPlatform);
+        importer.includeInBuild = true;
+        importer.SaveAndReimport();
 
-        var atlas = new SpriteAtlas();
-        atlas.name = name;
-        atlas.SetPackingSettings(StandardPacking);
-        atlas.SetTextureSettings(textureSettings);
-        atlas.SetPlatformSettings(StandardPlatform);
-        atlas.Add(packables);
-
-        AssetDatabase.CreateAsset(atlas, path);
-        AssetDatabase.SaveAssets();
-        return atlas;
+        return AssetDatabase.LoadAssetAtPath<SpriteAtlas>(path);
     }
 
     // Keep source importers' filterMode matching their atlas so editor previews

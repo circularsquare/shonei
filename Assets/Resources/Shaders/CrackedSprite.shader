@@ -25,7 +25,7 @@ Shader "Custom/CrackedSprite" {
         _CrackScale    ("Crack Scale (world)", Float) = 0.5
         _BrokenTint    ("Broken Tint",    Color) = (0.75, 0.75, 0.75, 1)
         [HideInInspector] _Color         ("Tint", Color) = (1,1,1,1)
-        [HideInInspector] _RendererColor ("RendererColor", Color) = (1,1,1,1)
+        [HideInInspector] [PerRendererData] _RendererColor ("RendererColor", Color) = (1,1,1,1)
     }
 
     SubShader {
@@ -59,8 +59,10 @@ Shader "Custom/CrackedSprite" {
                 float  _CrackScale;
                 float4 _BrokenTint;
                 float4 _Color;
-                half4  _RendererColor;
             CBUFFER_END
+            // MPB-injected by SpriteRenderer per draw — must stay outside
+            // UnityPerMaterial or it breaks SRP Batcher eligibility.
+            half4 _RendererColor;
 
             struct Attributes {
                 float3 positionOS : POSITION;
@@ -118,8 +120,10 @@ Shader "Custom/CrackedSprite" {
                 float  _CrackScale;
                 float4 _BrokenTint;
                 float4 _Color;
-                half4  _RendererColor;
             CBUFFER_END
+            // MPB-injected by SpriteRenderer per draw — must stay outside
+            // UnityPerMaterial or it breaks SRP Batcher eligibility.
+            half4 _RendererColor;
 
             struct Attributes {
                 float3 positionOS : POSITION;

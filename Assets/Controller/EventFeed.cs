@@ -7,8 +7,9 @@ using UnityEngine;
 // Systems call Post() to surface player-facing events (research forgot,
 // market errors, trade fills, chat, etc). UIs subscribe to OnEntry to render.
 //
-// Decoupled from any specific UI: TradingPanel currently renders entries
-// into its chat list, but a future toast/overlay UI can subscribe the same way.
+// Decoupled from any specific UI: ChatLog (on the always-on ChatPanel) renders
+// entries into the HUD chat log and AlertToast renders Alerts as toasts; any
+// future overlay can subscribe the same way.
 //
 // History is capped at HistoryCap entries and cleared by WorldController.ClearWorld
 // so a freshly loaded save doesn't show stale alerts from the previous session.

@@ -55,7 +55,9 @@ public class TradingPanel : MonoBehaviour {
     private Dictionary<int, GameObject> iconHighlights = new Dictionary<int, GameObject>(); // per-item selection backdrop
 
     [Header("Chat")]
-    public Transform      chatList;
+    // The chat log itself (rows + server chat/fill → feed) lives on the always-on
+    // ChatLog component on ChatPanel. This panel keeps only the input field, for
+    // command entry (OnClickSendChat) and the "/" focus shortcut (OpenChatInput).
     public TMP_InputField chatInput;
 
     [Header("Merchant Journey")]
@@ -95,11 +97,9 @@ public class TradingPanel : MonoBehaviour {
         var client = TradingClient.instance;
         if (client != null) {
             client.OnMarketResponse += DisplayMarketBook;
-            client.OnFill           += DisplayFill;
-            client.OnChat           += DisplayChat;
+            client.OnFill           += RefreshMarketOnFill;
             client.OnPriceHistory   += OnPriceHistory;
         }
-        if (EventFeed.instance != null) EventFeed.instance.OnEntry += HandleFeedEntry;
 
         PopulateItemIconGrid();
 
@@ -138,11 +138,9 @@ public class TradingPanel : MonoBehaviour {
         var client = TradingClient.instance;
         if (client != null) {
             client.OnMarketResponse -= DisplayMarketBook;
-            client.OnFill           -= DisplayFill;
-            client.OnChat           -= DisplayChat;
+            client.OnFill           -= RefreshMarketOnFill;
             client.OnPriceHistory   -= OnPriceHistory;
         }
-        if (EventFeed.instance != null) EventFeed.instance.OnEntry -= HandleFeedEntry;
     }
 
     // toggle panel active — attempts reconnection in background if offline,
@@ -439,7 +437,7 @@ public class TradingPanel : MonoBehaviour {
     }
 
     public void OnClickPlaceOrder() {
-        if (!_orderSideSet) { ShowAlert("Select Buy or Sell."); return; }
+        if (!_orderSideSet) { ShowAlert("Select buy or sell."); return; }
         string itemName = ItemName();
         if (itemName.Length == 0) { ShowAlert("Enter an item name."); return; }
 
@@ -456,7 +454,7 @@ public class TradingPanel : MonoBehaviour {
         }
         int qtyFen = qtyLiang * 100;
 
-        if (!Db.itemByName.ContainsKey(itemName)) { ShowAlert($"Unknown item: {itemName}"); return; }
+        if (!Db.itemByName.ContainsKey(itemName)) { ShowAlert($"unknown item: {itemName}"); return; }
         Item item   = Db.itemByName[itemName];
         Item silver = Db.itemByName["silver"];
         Inventory market = TradingClient.FindMarketInventory();
@@ -740,25 +738,11 @@ public class TradingPanel : MonoBehaviour {
             EventFeed.instance?.Post($"<color=#cc3333>Could not fit {ItemStack.FormatQ(leftover, item)} {itemName} - market full.</color>", EventFeed.Category.Info);
     }
 
-    void DisplayChat(ChatMsg msg) {
-        EventFeed.instance?.Post($"{msg.from}: {msg.text}", EventFeed.Category.Chat);
-    }
-
-    void DisplayFill(Fill fill) {
-        SoundManager.instance?.PlaySFX("trade_fill", 0.5f);
-        Db.itemByName.TryGetValue(fill.item, out Item item); // item may be null — FormatQ tolerates it
-        EventFeed.instance?.Post(
-            $"<color=#55aa55>[fill] {fill.buyer} bought {ItemStack.FormatQ(fill.quantity, item)} {fill.item} from {fill.seller} @ {fill.price / 100f:0.##}</color>",
-            EventFeed.Category.Fill);
+    // A fill changed the market inventory; refresh the holdings tree while the
+    // panel is open. The fill's feed message + SFX live on ChatLog (always-on),
+    // so they fire even when this panel is closed.
+    void RefreshMarketOnFill(Fill fill) {
         UpdateMarketTree();
-    }
-
-    // Renders an entry posted to the EventFeed as a chat row.
-    // Alert-category entries are owned by AlertToast (transient overlay above chat) and
-    // are intentionally skipped here so error messages don't double-render.
-    void HandleFeedEntry(EventFeed.Entry e) {
-        if (e.category == EventFeed.Category.Alert) return;
-        AddChat(e.text);
     }
 
     // -------------------------------------------------------------------------
@@ -767,24 +751,6 @@ public class TradingPanel : MonoBehaviour {
 
     string ItemName() {
         return itemInput != null ? itemInput.text.Trim() : "";
-    }
-
-    void AddChat(string text) {
-        if (chatList == null) return;
-        var go  = new GameObject("ChatRow", typeof(RectTransform));
-        go.transform.SetParent(chatList, false);
-        var tmp = go.AddComponent<TextMeshProUGUI>();
-        tmp.text               = text;
-        tmp.fontSize           = 16;
-        tmp.enableWordWrapping = true;
-        tmp.color              = Color.white;
-        tmp.richText           = true;
-        var csf = go.AddComponent<ContentSizeFitter>();
-        csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-        go.AddComponent<ChatRowFader>();   // stale rows fade out; chat-input focus reveals them again
-        if (chatList.childCount > 20)
-            Destroy(chatList.GetChild(0).gameObject);
-        LayoutUtil.RebuildImmediate(chatList as RectTransform);
     }
 
     void AddCancelRow(string text, Transform parent, long orderId) {

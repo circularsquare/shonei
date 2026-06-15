@@ -170,7 +170,7 @@ public class GlobalHappinessPanel : MonoBehaviour {
         // formula. avgHappiness/populationCapacity come from the same AnimalController stats
         // that drive the header so the cap shown here matches it.
         if (populationInfoTip != null) {
-            populationInfoTip.title = "Population";
+            populationInfoTip.title = "population";
             populationInfoTip.body =
                 "Mice reproduce only with enough housing and happiness.\n" +
                 $"happiness {ac.avgHappiness:0.0} supports up to {ac.populationCapacity} mice";

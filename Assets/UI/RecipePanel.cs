@@ -59,6 +59,7 @@ public class RecipePanel : MonoBehaviour {
     RecipeListRow selectedRow;
     bool          layoutBuilt;
     const float   LeftWidth = 250f; // left list column width; detail pane starts just past it
+    const float   HeaderHeight = 28f; // top zone reserved for the scene-authored "recipes" title + divider
 
     void Awake() {
         if (instance != null) { Debug.LogError("two RecipePanels!"); }
@@ -106,7 +107,7 @@ public class RecipePanel : MonoBehaviour {
             scrollRT.anchorMin = new Vector2(0f, 0f);
             scrollRT.anchorMax = new Vector2(0f, 1f);
             scrollRT.offsetMin = new Vector2(2f, 2f);
-            scrollRT.offsetMax = new Vector2(2f + LeftWidth, -2f);
+            scrollRT.offsetMax = new Vector2(2f + LeftWidth, -HeaderHeight); // leave room for the title + divider
         }
 
         // Detail container: an editor-authored DetailPane (wired in the scene, tweakable)

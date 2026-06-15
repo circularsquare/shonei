@@ -153,6 +153,34 @@ public class WorldController : MonoBehaviour {
         LoadingScreen.SetPhase("Building chunk meshes (first rebuild)");
         yield return null;
         LoadingScreen.End();
+
+        // Greet the player once the world is up. Runs after the last ClearWorld
+        // (which wipes the EventFeed), so the message survives. Start() only runs
+        // on a fresh entry into Main, so this fires once per session — not on
+        // every in-game save-load.
+        StartCoroutine(ShowWelcomeGreeting());
+    }
+
+    // Seconds to wait for the market server's player count before greeting the
+    // player anyway. The server pushes the count just after connect; if we're
+    // offline or it's slow, we greet without a count rather than stall.
+    const float WelcomeCountTimeout = 3f;
+
+    // Posts the one-time "welcome" message to the EventFeed (rendered by the
+    // always-on AlertToast, so it shows without the player opening any panel).
+    IEnumerator ShowWelcomeGreeting() {
+        TradingClient tc = TradingClient.instance;
+        float deadline = Time.unscaledTime + WelcomeCountTimeout;
+        while (tc != null && !tc.hasOnlineCount && Time.unscaledTime < deadline)
+            yield return null;
+
+        // Only mention the count when someone else is around — telling a solo
+        // player "1 player online" reads as lonely, not welcoming. >1 is always
+        // plural, so no singular case to handle.
+        string msg = "Welcome to Shonei!";
+        if (tc != null && tc.hasOnlineCount && tc.OnlinePlayerCount > 1)
+            msg += $" {tc.OnlinePlayerCount} players online";
+        EventFeed.instance?.Post(msg, EventFeed.Category.Alert);
     }
 
     void OnDestroy() {
@@ -371,13 +399,8 @@ public class WorldController : MonoBehaviour {
         // worldgen) can inspect the layout before the simulation starts moving.
         // TimeController may not exist yet on the very first frame — null-safe.
         TimeController.instance?.Pause();
-
-        // Fresh world → prompt for a settlement name over the paused world. Guarded on an
-        // empty name so only genuinely new worlds prompt; the load path runs ApplySaveData
-        // (which restores the saved name) and never calls GenerateDefault. Skipping leaves
-        // the name null → SettlementDisplayName falls back to "new town".
-        if (string.IsNullOrEmpty(World.instance.settlementName))
-            SettlementNamePopup.Show();
+        // The settlement-name prompt fires from SaveSystem.PostLoadInit (the common hook for
+        // gen / reset / load) so old saves that predate naming get prompted too — not here.
     }
 
     // FRAME 2 — one frame after GenerateDefault(). By this point:
