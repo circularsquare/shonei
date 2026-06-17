@@ -26,8 +26,8 @@ and for direct workstation acceleration.
 | Building            | Role     | Footprint | Notes |
 |---------------------|----------|-----------|-------|
 | `power shaft`       | transmission | 1×1   | depth 4 (own slot, renders behind buildings); rotatable (R) — rotation 0/2 = horizontal, 1/3 = vertical |
-| `power shaft turn`  | transmission | 1×1   | depth 4; turning shaft, axis always Both. Rotatable (R) for which corner; flippable (F) |
-| `power shaft 4`     | transmission | 1×1   | depth 4; 4-way junction, axis always Both. Connectivity-identical to `turn` — the difference is purely visual (sprite shows shaft stubs on all four sides). |
+| `power shaft turn`  | transmission | 1×1   | depth 4; corner shaft — mates on exactly **two adjacent sides** (one horizontal, one vertical). Rotatable (R) to pick the corner; flippable (F). NOT a 4-way: the run only continues on its two open sides. |
+| `power shaft 4`     | transmission | 1×1   | depth 4; 4-way junction — mates on all four sides. Rotationally symmetric (not `rotatable`). The functional opposite of `turn`, not a re-skin of it. |
 | `wheel`             | producer     | 2×2   | workstation, "runner" job; 1.0 power while a runner is *in WorkObjective at the wheel* (not just dispatched — the wheel stays still and silent during the walk-in). Declares `workSpotX: 0.5, workSpotY: 0.25, workPose: "walk"` so the runner stands centred between the bottom tiles slightly above ground and plays the walk animation while producing — see SPEC-systems.md §Workspot waypoints. |
 | `windmill`          | producer     | 2×4   | passive; output = `Mathf.Abs(WeatherSystem.wind) × MaxOutput`; needs open sky above the top row, re-checked each tick |
 | `flywheel`          | storage      | 2×2   | charges from network surplus, discharges into deficits, exponential decay each tick |
@@ -56,20 +56,32 @@ normal allocator-rotation gaps.
 
 ## Connectivity rules
 
-Two shaft tiles share a network iff they're orthogonally adjacent **and** their
-axes are compatible:
+Shaft-to-shaft connectivity is modelled **per-side**, not per-axis, so a corner
+shaft can be directional. Each shaft exposes the cardinal sides it mates on
+(`PowerShaft.openSides`, a `PowerSystem.Side` flags enum). Two orthogonally
+adjacent shafts share a network iff **each opens the side facing the other**
+(a mutual handshake — the BFS checks both ends):
 
-- horizontal shaft ↔ horizontal shaft, along x
-- vertical shaft ↔ vertical shaft, along y
-- turning shaft (`Both`) connects on either axis
+- `power shaft` (straight): opens the two ends of its axis. `rotation` 0/2 →
+  `Left + Right`; 1/3 → `Up + Down`.
+- `power shaft 4`: opens all four sides; rotation / mirror irrelevant.
+- `power shaft turn`: opens exactly two adjacent sides. The base sprite
+  (rotation 0, unmirrored) joins **Up + Left**. Mirroring flips `Left ↔ Right`
+  first (matching `SpriteRenderer.flipX`), then each rotation step rotates the
+  open sides 90° **clockwise** (matching the parent transform's `-90°/step`
+  spin): unmirrored UL → UR → DR → DL for rotation 0→3.
 
-A `power shaft` is horizontal or vertical depending on its rotation:
-- `rotation` 0 or 2 → horizontal axis
-- `rotation` 1 or 3 → vertical axis
+So a corner only continues the run on its two open sides — it is genuinely
+different from a 4-way, where the older "turn ≡ 4-way, rotation cosmetic" model
+was wrong (a turn placed next to any shaft would join it as if omnidirectional).
 
-`power shaft turn` and `power shaft 4` are always axis `Both` regardless of
-rotation. For `turn` the rotation chooses which corner the bend visually faces;
-`power shaft 4` is rotationally symmetric, so it isn't `rotatable: true`.
+**Axis vs. Side.** `PowerSystem.Axis` (Horizontal / Vertical / Both) still exists
+but is now used **only for producer/consumer port coupling** — a port asks "does
+the shaft at my target tile carry my axis?". `PowerShaft.axis` is *derived* from
+`openSides`: it carries the horizontal axis if any L/R side is open, vertical if
+any U/D side is open. A corner opens one of each, so it presents `Both` to ports
+(a corner legitimately accepts an axle on either face) even though it only
+continues the *shaft run* on its two specific sides.
 
 Producers and consumers attach via `PowerPort(dx, dy, axis)` — a relative offset
 from the building anchor and the axis the shaft tile at that offset must carry.
@@ -258,6 +270,22 @@ recomputes networks and allocations.
   behind buildings/platforms/foreground but in front of roads — so they read as
   wall-mounted plumbing. Multiple shafts on a single tile are still rejected by
   the per-depth `t.structs[depth]` check in `StructPlacement`.
+- **Shaft-connection support.** A shaft normally needs solid ground / a
+  `solidTop` structure below (the generic standability rule). It *also* counts as
+  supported if it would **connect to an existing shaft** — an orthogonal
+  neighbour whose facing side mates with ours (the same per-side handshake the
+  connectivity BFS uses), per `PowerShaft.ConnectsToShaft`. A connected run is
+  treated as a rigid self-bearing axle, so e.g. a vertical shaft stacks on the
+  vertical / `power shaft 4` / corner-open-on-top below it. Because the check is
+  directional, a *horizontal* shaft can't be supported by a shaft above/below it
+  (its open sides face left/right, not down), and a `turn` only supports / is
+  supported through its two open sides — not all four. Since shafts aren't
+  `solidTop`, this never lets a shaft bear *other* structures. The rule is enforced in two mirrored places (placement counts
+  queued shaft *blueprints* so a whole run can be planned at once;
+  `Blueprint.IsSuspended` counts only *built* shafts so the run constructs
+  outward from a grounded anchor — same asymmetry as `SupportedByBlueprintBelow`).
+  `StructController.Construct` re-checks all four orthogonal neighbours when a
+  shaft completes, un-suspending adjacent shaft blueprints.
 - **Windmill** declares `mustBeOpenSkyAbove: true` per top-row tile in its
   `tileRequirements` JSON. Each requirement runs `World.IsExposedAbove(t.x, t.y)`
   (no solid ground or solidTop structures above the requirement tile). The check

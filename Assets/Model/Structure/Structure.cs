@@ -572,6 +572,13 @@ public class Structure {
                 }
             }
         }
+
+        // Preserved-tile structures dug out fully at construction (burrow) keep their footprint
+        // SOLID but render their tile bodies behind the facade — see BuildPreservedTileBackdrop.
+        // Built AFTER door wiring so the door tile's bodyEdgeSuppressMask is already set and the
+        // backdrop hides that edge too. Runs in the ctor → applies on live + load (OnPlaced is
+        // skipped on load).
+        if (structType.preservesTile && !structType.extractsTileOverTime) BuildPreservedTileBackdrop();
     }
 
     // Wires one door edge: connects an interior node to the approach tile on `side`
@@ -651,6 +658,115 @@ public class Structure {
         }
     }
 
+    // Preserved-tile structures dug out fully at construction (burrow) keep their footprint
+    // SOLID (graph + neighbour lighting treat it as earth), but the raised tile-body draw order
+    // (78..74) would render the dirt in FRONT of the facade and bury it. The chunked mesh can't
+    // sort a single tile differently, so for each footprint cell we flag bodyDrawnByStructure
+    // (the chunk skips that cell's body, but neighbours + the grass/snow overlay still treat it
+    // as normal solid terrain) and re-draw the cell's body as a child sprite at the OLD low
+    // order — behind the facade, with the overlay still drawing over the top at order 80.
+    // Gradual-extraction types (digging pit, quarry) are excluded: they draw their own receding
+    // dish via bodyRenderSuppressed.
+    void BuildPreservedTileBackdrop() {
+        const int backdropOrder = 0;   // dirt's pre-reorder body order: behind the facade (10), Tiles bucket (≤8)
+        World world = World.instance;
+        for (int dy = 0; dy < structType.ny; dy++) {
+            for (int dx = 0; dx < structType.nx; dx++) {
+                int tx = x + dx, ty = y + dy;
+                Tile t = world.GetTileAt(tx, ty);
+                if (t == null || !t.type.solid) continue;
+                t.bodyDrawnByStructure = true;
+                t.NotifyBodyDirty();
+
+                // Cardinal (4-bit) picks the body slice; 8-bit picks the normal map. Solid
+                // neighbours (incl. this structure's other footprint cells) read as buried, so
+                // the dirt between cells is seamless and only true air edges get a rim.
+                int cMask = 0, mask8 = 0;
+                if (SolidBody(world, tx - 1, ty    )) { cMask |= 1; mask8 |= 1; }
+                if (SolidBody(world, tx + 1, ty    )) { cMask |= 2; mask8 |= 2; }
+                if (SolidBody(world, tx,     ty - 1)) { cMask |= 4; mask8 |= 4; }
+                if (SolidBody(world, tx,     ty + 1)) { cMask |= 8; mask8 |= 8; }
+                if (SolidBody(world, tx - 1, ty - 1)) mask8 |= 16;
+                if (SolidBody(world, tx + 1, ty - 1)) mask8 |= 32;
+                if (SolidBody(world, tx - 1, ty + 1)) mask8 |= 64;
+                if (SolidBody(world, tx + 1, ty + 1)) mask8 |= 128;
+                // Door-facing side(s) (flagged by SuppressDoorRim in bodyEdgeSuppressMask) must
+                // read as an actual OPENING, not a dirt wall. Bury the side first so the body is
+                // flat Main with no cliff rim, then carve the outer strip to transparent (below)
+                // so the burrow mouth is open. Other sides keep their normal solidity edge.
+                byte doorSides = (byte)(t.bodyEdgeSuppressMask & 0xF);
+                cMask |= doorSides;
+
+                Sprite body = TileSpriteCache.Get(t.type.name, cMask, tx, ty);
+                if (body == null) continue;
+                if (doorSides != 0 && body.texture != null) {
+                    body = CarveDoorEdges(body, doorSides, out Texture2D carvedTex);
+                    RegisterBackdropDisposable(carvedTex);
+                    RegisterBackdropDisposable(body);
+                }
+                GameObject bgo = new GameObject("tilebackdrop");
+                bgo.transform.SetParent(go.transform, false);
+                // Set WORLD position to the tile centre — the GO origin is the building's
+                // (possibly centred) anchor, not tile (x,y), so a local (dx,dy) would be off.
+                bgo.transform.position = new Vector3(tx, ty, 0f);
+                SpriteRenderer bsr = SpriteMaterialUtil.AddSpriteRenderer(bgo);
+                bsr.sprite       = body;
+                bsr.sortingOrder = backdropOrder;
+                LightReceiverUtil.SetSortBucket(bsr); // order ≤ 8 → Tiles bucket, like the chunk body
+                Texture2D nrm = TileSpriteCache.GetNormalMap(t.type.name, mask8, tx, ty);
+                if (nrm != null) {
+                    var mpb = new MaterialPropertyBlock();
+                    bsr.GetPropertyBlock(mpb);
+                    mpb.SetTexture(Shader.PropertyToID("_NormalMap"), nrm);
+                    bsr.SetPropertyBlock(mpb);
+                }
+            }
+        }
+    }
+
+    static bool SolidBody(World w, int tx, int ty) {
+        if (tx < 0 || ty < 0 || tx >= w.nx || ty >= w.ny) return true; // off-map reads solid, matching the chunk bake
+        Tile t = w.GetTileAt(tx, ty);
+        return t != null && t.type.solid;
+    }
+
+    // Returns a copy of `src` with the outer DoorStripPx of each flagged side cleared to
+    // transparent, so a burrow door reads as an open mouth rather than dirt up to the edge.
+    // Bits: 1=left 2=right 4=bottom(down) 8=top(up) — matches bodyEdgeSuppressMask. GetPixels32
+    // is bottom-up (y=0 = bottom), so "top" is the high rows. The new texture is returned via
+    // outTex so the caller can register both it and the Sprite for disposal.
+    const int DoorStripPx = 4; // texture px cleared inward from each door edge (tune for opening width)
+    static Sprite CarveDoorEdges(Sprite src, byte sides, out Texture2D outTex) {
+        int w = src.texture.width, h = src.texture.height;
+        Color32[] px = src.texture.GetPixels32();
+        Color32 clear = new Color32(0, 0, 0, 0);
+        for (int r = 0; r < h; r++) {
+            for (int c = 0; c < w; c++) {
+                bool cut =
+                    ((sides & 1) != 0 && c < DoorStripPx)          ||   // left
+                    ((sides & 2) != 0 && c >= w - DoorStripPx)     ||   // right
+                    ((sides & 4) != 0 && r < DoorStripPx)          ||   // bottom
+                    ((sides & 8) != 0 && r >= h - DoorStripPx);         // top
+                if (cut) px[r * w + c] = clear;
+            }
+        }
+        outTex = new Texture2D(w, h, TextureFormat.RGBA32, false) {
+            filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp
+        };
+        outTex.SetPixels32(px);
+        outTex.Apply();
+        return Sprite.Create(outTex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 16f);
+    }
+
+    // Carved backdrop textures/sprites we allocate (door tiles) — destroyed in Destroy so they
+    // don't leak (unlike the child GOs, which die with `go`).
+    List<UnityEngine.Object> _backdropDisposables;
+    void RegisterBackdropDisposable(UnityEngine.Object o) {
+        if (o == null) return;
+        if (_backdropDisposables == null) _backdropDisposables = new List<UnityEngine.Object>();
+        _backdropDisposables.Add(o);
+    }
+
     // partnerX / partnerY are only consulted by two-click placement types (today,
     // "rope bridge post"). Other StructTypes ignore them. Default -1 keeps every
     // existing caller (worldgen, AnimalStateManager's quarry-depletion path,
@@ -708,6 +824,26 @@ public class Structure {
             }
             edgeSuppressTiles = null;
             edgeSuppressBits  = null;
+        }
+        // Restore chunk body rendering for footprint cells whose body we took over in the ctor
+        // (burrow). The backdrop SRs are children of `go` and die with it; we just clear the flag
+        // so the chunk redraws the cell normally. Gated as in the ctor so digging-pit/quarry
+        // cells (which clear their own bodyRenderSuppressed) aren't touched here.
+        if (structType.preservesTile && !structType.extractsTileOverTime) {
+            for (int dy = 0; dy < structType.ny; dy++) {
+                for (int dx = 0; dx < structType.nx; dx++) {
+                    Tile t = World.instance?.GetTileAt(x + dx, y + dy);
+                    if (t == null || !t.bodyDrawnByStructure) continue;
+                    t.bodyDrawnByStructure = false;
+                    t.NotifyBodyDirty();
+                }
+            }
+        }
+        // Free carved backdrop textures/sprites (door tiles); the child GOs die with `go`.
+        if (_backdropDisposables != null) {
+            for (int i = 0; i < _backdropDisposables.Count; i++)
+                if (_backdropDisposables[i] != null) UnityEngine.Object.Destroy(_backdropDisposables[i]);
+            _backdropDisposables = null;
         }
         // Tear down all interior waypoints. Edges to neighboring interior nodes and
         // to the door-approach tile node would otherwise dangle and pull A* into

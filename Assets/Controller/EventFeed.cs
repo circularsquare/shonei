@@ -34,10 +34,12 @@ public class EventFeed : MonoBehaviour {
     void Awake() {
         if (instance != null) { Debug.LogError("two EventFeeds!"); }
         instance = this;
+        ResearchSystem.OnTechUnlocked  += HandleTechUnlocked;
         ResearchSystem.OnTechForgotten += HandleTechForgotten;
     }
 
     void OnDestroy() {
+        ResearchSystem.OnTechUnlocked  -= HandleTechUnlocked;
         ResearchSystem.OnTechForgotten -= HandleTechForgotten;
         if (instance == this) instance = null;
     }
@@ -57,6 +59,12 @@ public class EventFeed : MonoBehaviour {
     }
 
     // ── Bindings ──────────────────────────────────────────────
+
+    // Research completing has a sound (SoundManager) but no UI moment of its own —
+    // surface it as a toast so passive completions (often while AFK) are noticed.
+    private void HandleTechUnlocked(ResearchNodeData node) {
+        Post($"<color=#66ccff>[research] Done: {node.name}</color>", Category.Alert);
+    }
 
     private void HandleTechForgotten(ResearchNodeData node) {
         Post($"<color=#ffaa55>[research] Forgot: {node.name}</color>", Category.Alert);

@@ -74,7 +74,7 @@ public static class StructureVisualBuilder {
             mainSr.drawMode = SpriteDrawMode.Sliced;
             mainSr.size     = new Vector2(st.nx, Mathf.Max(1, st.ny));
         }
-        LightReceiverUtil.SetSortBucket(mainSr);
+        ApplyBucket(mainSr, st);
 
         SpriteRenderer[] extensions;
         bool shapeAware = st.HasShapes;
@@ -91,7 +91,7 @@ public static class StructureVisualBuilder {
                 extSr.sortingOrder = baseSortingOrder;
                 extSr.flipX        = mirrored;
                 extSr.color        = tint;
-                LightReceiverUtil.SetSortBucket(extSr);
+                ApplyBucket(extSr, st);
                 extensions[i] = extSr;
             }
         } else {
@@ -128,6 +128,16 @@ public static class StructureVisualBuilder {
             customSrs             = customs,
             tintableSrs           = BuildTintable(mainSr, null, customs),
         };
+    }
+
+    // Sets the lighting/sort bucket: derive from sortingOrder, unless the StructType pins an
+    // explicit lightingBucket. The pin must run AFTER SetSortBucket because SetBucketFor
+    // OVERWRITES renderingLayerMask. Used by ground-plane structures (roads) that draw at a
+    // high sortingOrder but light as the ground plane — see StructType.lightingBucket.
+    static void ApplyBucket(SpriteRenderer sr, StructType st) {
+        LightReceiverUtil.SetSortBucket(sr);
+        if (st.lightingBucket >= 0)
+            sr.renderingLayerMask = 1u << st.lightingBucket;
     }
 
     static SpriteRenderer[] BuildTintable(SpriteRenderer mainSr,

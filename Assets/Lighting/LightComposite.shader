@@ -58,7 +58,12 @@ Shader "Hidden/LightComposite" {
 
                 // No sprite here (empty sky/background) — use precomputed
                 // sun + ambient color (no sky-exposure, no point lights).
-                if (normsAlpha < 0.25) {
+                // Threshold is low (0.05, not the tier floor 0.25) so faint / low-opacity
+                // sprite pixels still composite as lit sprites rather than dropping to sky.
+                // A pixel captured at the lit-only tier (0.5) blended by its own opacity reads
+                // as ~opacity*0.5 here, so 0.05 keeps fire lit down to ~0.1 opacity. Hard-edged
+                // pixel-art sprites are either ~0 or full, so this only matters for soft art (fire).
+                if (normsAlpha < 0.05) {
                     return lerp(float4(1, 1, 1, 1), _SkyLightColor, _SkyLightBlend);
                 }
 

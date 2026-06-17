@@ -53,14 +53,14 @@ public class SaveMenuPanel : MonoBehaviour {
         if (SaveSystem.instance == null) { Debug.LogError("SaveMenuPanel: SaveSystem.instance is null"); return; }
         string slot = SaveSystem.instance.currentSlot;
         if (string.IsNullOrEmpty(slot)) { Debug.LogError("SaveMenuPanel: OnClickSave called with no current slot"); return; }
-        SaveSystem.instance.Save(slot);
+        if (!SaveSystem.instance.Save(slot)) return; // failed save already toasted
         RefreshSlotList();
     }
 
     public void OnClickNewSave() {
         if (SaveSystem.instance == null) { Debug.LogError("SaveMenuPanel: SaveSystem.instance is null"); return; }
         string name = GenerateNewSlotName();
-        SaveSystem.instance.Save(name);
+        if (!SaveSystem.instance.Save(name)) return; // toast already shown; don't add a phantom row
         RefreshSlotList(startRenamingSlot: name);
     }
 
@@ -124,17 +124,13 @@ public class SaveMenuPanel : MonoBehaviour {
         }
     }
 
-    // Returns "<settlement>", "<settlement> (2)", etc. — first name with no file on disk.
+    // Returns "<settlement>", "<settlement> 2", etc. — first name with no file on disk.
     // Defaults the base to the settlement name (already slot-safe; "new town" when unnamed)
     // so manual saves are pre-titled after the colony rather than a generic "new save".
+    // Dedups via the space form (not "(2)"): parentheses are outside the cloud slotRe
+    // charset, so a "(2)" name would save locally but silently fail to sync.
     string GenerateNewSlotName() {
         string baseName = World.instance != null ? World.instance.SettlementDisplayName : "new save";
-        if (!SaveStore.SlotExists(baseName)) return baseName;
-        int n = 2;
-        while (true) {
-            string candidate = baseName + " (" + n + ")";
-            if (!SaveStore.SlotExists(candidate)) return candidate;
-            n++;
-        }
+        return SaveStore.UniqueSlotName(baseName);
     }
 }

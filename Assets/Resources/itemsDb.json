@@ -13,6 +13,7 @@
         "id": 5,
         "name": "wood",
         "decayRate": 0.08,
+        "fuelValue": 1,
         "children": [
             {
                 "id": 6,
@@ -83,6 +84,7 @@
             },{
                 "id": 32,
                 "name": "coal",
+                "fuelValue": 3,
                 "children": null
             }
         ]

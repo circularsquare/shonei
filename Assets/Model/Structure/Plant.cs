@@ -825,8 +825,9 @@ public class PlantType : StructType {
     public int?   moistureMax {get; set;}
 
     // Passive soil moisture draw per in-game hour from the tile below. Drains the soil
-    // over time independent of growth. Default 1; overridable per plant.
-    public float moistureDrawPerHour {get; set;} = 1f;
+    // over time independent of growth. Default 2 (crops dry out fast enough that hand-
+    // watering by an assigned farmer matters); overridable per plant.
+    public float moistureDrawPerHour {get; set;} = 2f;
 
     // Moisture deducted from the soil tile below each time the plant crosses into a new
     // growth stage. This advancement cost is where moisture shortage actually gates growth.

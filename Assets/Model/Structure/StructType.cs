@@ -131,6 +131,12 @@ public class StructType {
     // Used for e.g. torches/fireplaces that need to sort above plants (60) and animals (48-57) so
     // LightSource's auto-detected sort bucket front-lights those receivers. Also changes draw order.
     public int sortingOrder {get; set;} = -1;
+    // Optional lighting-bucket override (0..5; -1 = derive from sortingOrder). Decouples the
+    // light-shaping depth plane from draw order — for ground-plane structures (e.g. roads) that
+    // draw at a high sortingOrder so the raised tile body (78..74) doesn't bury them, yet must
+    // still light as the Tiles plane (bucket 1), not as creatures. See SortBucketUtil + the
+    // GroundPlaneLightingBucket note in TileMeshController.
+    public int lightingBucket {get; set;} = -1;
     // ── Logistics job (NOT the operator job!) ─────────────────────────
     // `njob` (JSON) → `job` (resolved Job ref): the job responsible for the structure's
     // BUILD/SUPPLY/DECONSTRUCT lifecycle work — not who operates it once built. Specifically:
@@ -339,6 +345,18 @@ public class StructType {
     public float fireOffsetX {get; set;}
     public float fireOffsetY {get; set;}
     public float fireFps {get; set;}
+    //   emberRate : rising-spark emission rate (sparks/sec at full glow) for EmberManager.
+    //               0 = no embers (default). Sparks only appear while the fire is lit (night),
+    //               scaled by emission glow and the player's particle-density setting.
+    //   emberOffsetX/Y : spawn point of the embers relative to the fire child's transform
+    //               (tile units), set to the flame's painted centre so sparks rise from the
+    //               flame. X is mirror-flipped with the fire sprite's flipX (side torches).
+    //   emberSpreadMult : multiplies the horizontal spawn spread — wide fires (the
+    //               fireplace) scatter sparks across a broader strip than a torch. Default 1.
+    public float emberRate {get; set;}
+    public float emberOffsetX {get; set;}
+    public float emberOffsetY {get; set;}
+    public float emberSpreadMult {get; set;} = 1f;
 
     // ── Mechanical power ──────────────────────────────────────────────
     // powerBoost > 1.0 turns this StructType into a power consumer at runtime: when the

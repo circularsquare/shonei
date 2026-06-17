@@ -12,8 +12,9 @@
 // when you retune; it's the one place the whole picture lives.
 //   eat     0 → 1.0      (dominates below 0.3 fullness; curve in Eating.HungerUrgency)
 //   sleep   0 → 1.0      (gentle; time-shifted threshold — in Eeping.SleepUrgency, not here)
-//   work    per tier = TierBase + proximity(≤0.15 at dist 0, halves every 8 tiles) + finish(+0.10,
-//           Construct only):   p1 0.55–0.70   p2 0.45–0.60 (construct 0.55–0.70)   p3 0.30–0.45   p4 0.25–0.40
+//   work    per tier = TierBase + proximity(≤0.15 at dist 0, halves every 8 tiles) + bonuses
+//           (Construct finish +0.10; Water thirst +0–0.10 by dryness):   p1 0.55–0.70
+//           p2 0.45–0.60 (construct 0.55–0.70)   p3 0.30–0.45 (water +0–0.10 thirst)   p4 0.25–0.40
 //   craft   0.16 → 0.60  (banded; floor clears daytime idle so a needed craft is never soft-locked)
 //   drop    0.60 → 0.90  (scales with carried main-inv fullness; below hunger/sleep peaks, above work)
 //   equip   0 or 0.45    (only when the tool/clothing slot is empty)
@@ -37,11 +38,12 @@
 public static class UrgencyConfig {
 
     // ── Work orders ──────────────────────────────────────────────────
-    // Per-order urgency = TierBase[priority-1] + proximityBonus(distance) + finishBonus(type).
+    // Per-order urgency = TierBase[priority-1] + proximityBonus(distance) + per-type bonus.
     public static readonly float[] TierBase = { 0.55f, 0.45f, 0.30f, 0.25f }; // index = priority-1
     public const float ProxWeight = 0.15f;   // max proximity bonus, at distance 0
     public const float ProxFalloff = 8f;     // tiles at which the proximity bonus halves
     public const float FinishBonus = 0.10f;  // "finish what's started" bump for Construct orders
+    public const float WaterMaxThirstBonus = 0.10f; // max extra urgency for a bone-dry crop; scales 0→this by how far soil is below moistureMin
 
     // ── Craft ────────────────────────────────────────────────────────
     // Recipe.Score is unbounded (0..+∞), so craft urgency maps it into a fixed band:

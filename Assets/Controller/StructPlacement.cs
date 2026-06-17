@@ -12,8 +12,8 @@ using UnityEngine;
 // only allocated when placement fails, so success paths (every-frame ghost preview)
 // stay allocation-free.
 public static class StructPlacement {
-    public static bool CanPlaceHere(StructType st, Tile tile, bool mirrored = false, int shapeIndex = 0) {
-        return GetPlacementFailReason(st, tile, mirrored, shapeIndex) == null;
+    public static bool CanPlaceHere(StructType st, Tile tile, bool mirrored = false, int shapeIndex = 0, int rotation = 0) {
+        return GetPlacementFailReason(st, tile, mirrored, shapeIndex, rotation) == null;
     }
 
     public static bool CanPlaceTwoPoint(StructType st, Tile a, Tile b) {
@@ -22,7 +22,7 @@ public static class StructPlacement {
 
     // Returns null when placement is OK; otherwise a short, lowercase, player-facing
     // reason string. Only allocates on rejection.
-    public static string GetPlacementFailReason(StructType st, Tile tile, bool mirrored = false, int shapeIndex = 0) {
+    public static string GetPlacementFailReason(StructType st, Tile tile, bool mirrored = false, int shapeIndex = 0, int rotation = 0) {
         World world = World.instance;
 
         if (tile.GetBlueprintAt(st.depth) != null) return "already a blueprint here";
@@ -111,8 +111,19 @@ public static class StructPlacement {
         //  - hasStandableRequirement: the type names exactly which tiles need support via
         //    mustBeStandable tileRequirements (pump → just the building tile, spout overhangs
         //    water), so the generic check is skipped and those reqs (below) decide it.
+        // Power shafts get an extra support path: a shaft that hooks onto an existing shaft
+        // (axis-compatible neighbour) is self-bearing, like a rigid axle cantilevering off the
+        // run. So a vertical shaft stacks on the vertical / turn / 4-way shaft below it, etc.
+        // This only relaxes the shaft's OWN support requirement — shafts aren't solidTop, so
+        // they still don't bear other structures above. Falls through to the solid-ground /
+        // solid-top rules below when it doesn't connect. Counts queued shaft blueprints so a
+        // whole run can be planned in one pass (Blueprint.IsSuspended keeps it suspended until a
+        // real shaft anchors it).
+        bool shaftConnected = PowerShaft.IsShaft(st)
+                && PowerShaft.ConnectsToShaft(st, tile, rotation, mirrored, includeBlueprints: true);
+
         if (st.name != "empty" && st.requiredTileName == null && !placementTileMustBeSolid
-                && !st.hasStandableRequirement) {
+                && !st.hasStandableRequirement && !shaftConnected) {
             if (st.edgeSupported) {
                 int leftX  = tile.x;
                 int rightX = tile.x + fnx - 1;

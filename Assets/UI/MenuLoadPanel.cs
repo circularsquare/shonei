@@ -174,7 +174,7 @@ public class MenuLoadPanel : MonoBehaviour {
         string baseName = slot.Length > 40 ? slot.Substring(0, 40) : slot;
         string copyName = SaveStore.UniqueSlotName(
             baseName + " local " + System.DateTime.Now.ToString("yyyy-MM-dd"));
-        if (!SaveStore.RenameSlot(slot, copyName)) {
+        if (!SaveStore.RenameSlot(slot, copyName, out _)) {
             ConfirmationPopup.Show("couldn't set aside local copy", null);
             yield break;
         }

@@ -307,10 +307,13 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
             builder.SetGlobalTextureAfterPass(data.normals, CapturedNormalsId);
 
             // Build the RendererLists. Tier order is load-bearing — later draws overwrite
-            // earlier ones in the normals RT: background → dirOnly → litOnly → chunked
-            // tiles → shadow casters → water. Chunked tiles sit between the two bucket
-            // groups: their shadow-caster alpha must overwrite lit-only alpha, but
-            // animals (shadow casters) must overwrite tiles where they overlap.
+            // earlier ones in the normals RT: background → dirOnly → litOnly → shadow
+            // casters → water → chunked tiles. Chunked tiles (bodies/grass/snow) draw LAST
+            // because they sit at sortingOrder 74-81 — in front of mice + water in the
+            // color pass — so their normals must win on overlap too (else a mouse behind a
+            // tile gets its shape shaded into the dirt). They still draw after background,
+            // so background's lit-only alpha is overwritten by the chunked shadow-caster
+            // alpha and underground edge-depth darkening survives.
             // Chunk layers use dedicated array-sampling overrides, so exclude them from
             // the generic lit/shadow tiers; background reuses the Background layer.
             if (isWorldCam) {
@@ -336,11 +339,6 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
                         builder.UseRendererList(data.litOnly[b]);
                     }
                 }
-                if (tileChunkMask != 0 && chunkedMat != null) {
-                    data.chunked = MakeList(renderGraph, cull, cam, chunkedMat, 0, tileChunkMask, uint.MaxValue);
-                    data.hasChunked = true;
-                    builder.UseRendererList(data.chunked);
-                }
                 if (shadowOnlyMask != 0) {
                     data.hasShadow = true;
                     for (int b = 0; b < SortBucketUtil.BucketCount; b++) {
@@ -354,6 +352,12 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
                         data.water[b] = MakeList(renderGraph, cull, cam, waterMat, 1, waterMask, 1u << b);
                         builder.UseRendererList(data.water[b]);
                     }
+                }
+                // Chunked tiles built last so the draw-order list mirrors the render func.
+                if (tileChunkMask != 0 && chunkedMat != null) {
+                    data.chunked = MakeList(renderGraph, cull, cam, chunkedMat, 0, tileChunkMask, uint.MaxValue);
+                    data.hasChunked = true;
+                    builder.UseRendererList(data.chunked);
                 }
             }
 
@@ -370,21 +374,25 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
                 // skip the whole per-sprite DrawRenderers workload.
                 if (d.isWorldCam) {
                     if (d.hasBackground) cmd.DrawRendererList(d.background);
-                    // Loop A: tiers before chunked tiles. _SortBucket global set per bucket;
+                    // Loop A: dirOnly + litOnly tiers. _SortBucket global set per bucket;
                     // the override shaders read it (no per-sprite MPB).
                     for (int b = 0; b < SortBucketUtil.BucketCount; b++) {
                         cmd.SetGlobalFloat(SortBucketGlobalId, d.bucketNorm[b]);
                         if (d.hasDirOnly) cmd.DrawRendererList(d.dirOnly[b]);
                         if (d.hasLitOnly) cmd.DrawRendererList(d.litOnly[b]);
                     }
-                    // Chunked tiles between the loops (carry _SortBucket per chunk via MPB).
-                    if (d.hasChunked) cmd.DrawRendererList(d.chunked);
-                    // Loop B: tiers after chunked tiles.
+                    // Loop B: shadow casters + water.
                     for (int b = 0; b < SortBucketUtil.BucketCount; b++) {
                         cmd.SetGlobalFloat(SortBucketGlobalId, d.bucketNorm[b]);
                         if (d.hasShadow) cmd.DrawRendererList(d.shadow[b]);
                         if (d.hasWater)  cmd.DrawRendererList(d.water[b]);
                     }
+                    // Chunked tiles LAST (carry _SortBucket per chunk via MPB, so the
+                    // bucket-loop global above doesn't reach them). Tile bodies/grass/snow
+                    // sort at 74-81 — in front of mice + water in the color pass — so their
+                    // normals must overwrite those sprites on overlap. Still after the
+                    // background draw, so underground edge-depth darkening holds.
+                    if (d.hasChunked) cmd.DrawRendererList(d.chunked);
                 }
                 cmd.EndSample(s_gpuSampler);
             });

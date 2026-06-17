@@ -119,8 +119,7 @@
         "cost": 5,
         "unlocks": [
             { "type": "recipe", "target": "3" },
-            { "type": "recipe", "target": "73" },
-            { "type": "recipe", "target": "76" }
+            { "type": "recipe", "target": "73" }
         ]
     },{
         "id": 16,

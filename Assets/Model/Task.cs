@@ -81,6 +81,13 @@ public abstract class Task {
     // roads/water/ladders weight it — tune by feel.)
     protected const float ConsumeLeafHalfDist = 5f;
 
+    // Score bonus for a leaf already present in a single-type destination slot (fuel reservoir /
+    // processor buffer). Bounded, not infinite: we keep topping up with the existing leaf unless
+    // another is >4× more attractive (surplus × nearness), in which case we let the slot drain and
+    // switch on the next from-empty fill. Prevents perpetual "can't deposit a different leaf" aborts
+    // when a slot holds one type, while still self-correcting when stocks become wildly imbalanced.
+    protected const float ExistingLeafBonus = 4f;
+
     // Resolves a consumption item to the concrete leaf a mouse should fetch and consume.
     // Leaf items return unchanged. A group item (wildcard, e.g. "wood") resolves to the in-stock,
     // reachable leaf descendant maximising surplus (qty/target, capped) discounted by walk distance
@@ -90,7 +97,12 @@ public abstract class Task {
     // to the group unchanged if no leaf is reachable — the caller's own FindPathItemStack then
     // fails as before. Replaces the old max-global-quantity PickSupplyLeaf (which ignored both
     // targets and distance).
-    protected Item ResolveConsumeLeaf(Item item) {
+    //
+    // preferLeaf: when the destination already holds a concrete leaf (single-type slot), pass it to
+    // bias selection ×ExistingLeafBonus toward continuity. If another leaf still wins, this returns
+    // it and the caller's space-reservation fails (can't mix in a single stack) — i.e. no top-up
+    // this cycle, by design (see ExistingLeafBonus).
+    protected Item ResolveConsumeLeaf(Item item, Item preferLeaf = null) {
         if (!item.IsGroup) return item;
         Item best = null;
         float bestScore = -1f;
@@ -101,6 +113,7 @@ public abstract class Task {
             int target = (targets != null && targets.TryGetValue(leaf.id, out int t)) ? t : 100;
             float score = Recipe.SurplusRatio(GlobalInventory.instance.Quantity(leaf), target)
                           * Mathf.Pow(2f, -path.cost / ConsumeLeafHalfDist);
+            if (leaf == preferLeaf) score *= ExistingLeafBonus;
             if (score > bestScore) { bestScore = score; best = leaf; }
         }
         return best ?? item;

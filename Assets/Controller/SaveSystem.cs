@@ -167,9 +167,27 @@ public class SaveSystem : MonoBehaviour {
 
     // setCurrent=false leaves currentSlot untouched — used by autosave so writing the
     // background "autosave" slot doesn't hijack the player's active named slot.
-    public void Save(string slotName, bool setCurrent = true) {
-        string json = SerializeToJson();
-        System.IO.File.WriteAllText(SaveStore.SlotPath(slotName), json);
+    //
+    // Returns false (after toasting the player) if serialization or the disk write fails —
+    // an OS-invalid slot name, a locked file, a full disk, etc. Callers must not treat a
+    // false return as success (skip the "now renaming"/list-refresh follow-ups), so a save
+    // that didn't land never looks like it did.
+    public bool Save(string slotName, bool setCurrent = true) {
+        string json;
+        try {
+            json = SerializeToJson();
+        } catch (System.Exception e) {
+            Debug.LogError("Save: failed to serialize world for slot \"" + slotName + "\": " + e);
+            EventFeed.instance?.Post("<color=#cc3333>save failed - could not serialize world</color>");
+            return false;
+        }
+        try {
+            System.IO.File.WriteAllText(SaveStore.SlotPath(slotName), json);
+        } catch (System.Exception e) {
+            Debug.LogError("Save: failed to write slot \"" + slotName + "\": " + e);
+            EventFeed.instance?.Post("<color=#cc3333>save failed: " + e.Message + "</color>");
+            return false;
+        }
         if (setCurrent) currentSlot = slotName;
         autosaveTimer = 0f; // any save (manual or auto) restarts the autosave clock
         int animals = AnimalController.instance != null ? AnimalController.instance.na : -1;
@@ -181,6 +199,7 @@ public class SaveSystem : MonoBehaviour {
             SaveSync.QueueUpload(slotName, json, System.DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                                  animals < 0 ? 0 : animals, SaveVersion);
         Debug.Log("Saved world to slot: " + slotName);
+        return true;
     }
 
     // Serialize the current world state to JSON without touching the filesystem.
@@ -1347,8 +1366,8 @@ public class SaveSystem : MonoBehaviour {
     // rename so a later save targets the same slot instead of triggering a spurious
     // "overwrite?" confirmation (the old auto-generated name no longer matches
     // currentSlot otherwise). Returns true on success.
-    public bool RenameSlot(string oldName, string newName) {
-        bool ok = SaveStore.RenameSlot(oldName, newName);
+    public bool RenameSlot(string oldName, string newName, out string error) {
+        bool ok = SaveStore.RenameSlot(oldName, newName, out error);
         if (ok && currentSlot == oldName) currentSlot = newName;
         return ok;
     }

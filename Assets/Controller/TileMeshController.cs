@@ -76,7 +76,7 @@ public class TileMeshController : MonoBehaviour {
     // (70) so a tuft bevelling up out of the dirt occludes the feet / item base
     // resting on it, rather than the actor floating in front of the grass.
     //
-    // But its LIGHTING bucket is pinned separately to OverlayLightingBucket, NOT
+    // But its LIGHTING bucket is pinned separately to GroundPlaneLightingBucket, NOT
     // derived from the 80 draw order. The normals-RT B channel carries the sort
     // bucket (LightCircle.shader), which is the *depth plane* used for front-vs-
     // behind light shaping — and grass physically lives in the ground plane even
@@ -87,8 +87,13 @@ public class TileMeshController : MonoBehaviour {
     // value was just an artifact of grass's former sortingOrder 11 landing in the
     // 9..17 buildings band). Don't collapse this back into GetBucket(sortingOrder).
     const int OverlaySortingOrder   = 80;
-    const int OverlayLightingBucket = 1;  // Tiles plane — matches the dirt body; see note above
-    const int SnowSortingOrder      = 2;
+    const int GroundPlaneLightingBucket = 1;  // Tiles plane — body, snow, and the grass overlay all light here even when drawn at a high sortingOrder (see note above)
+    // Ground-plane draw order: snow on top, then grass (80), then tile bodies (78..74) — all in
+    // FRONT of water (72) and mice (48..64) so solid terrain occludes them and submerged actors
+    // read as blued. They're pinned to bucket 1 above so they still light as ground, not as
+    // creatures. See SPEC-rendering.md §Water Rendering (the submersion reorder).
+    const int SnowSortingOrder      = 81;
+    const int BodyBaseSortingOrder  = 78;  // dirt; band is BodyBaseSortingOrder - typeIdx (78..74)
 
     public void Initialize(World world, Transform chunksRoot, Material chunkedMaterial, string layerName) {
         if (instance != null && instance != this) {
@@ -320,7 +325,10 @@ public class TileMeshController : MonoBehaviour {
                 // substrate sprite over the cell — skip the full body quad so
                 // the dug-out region reads as an open hole. Solidity is
                 // unchanged, so neighbours still bake against this as solid.
-                if (t.bodyRenderSuppressed) continue;
+                // bodyDrawnByStructure (burrow) likewise skips the chunk body, but the cell
+                // stays SOLID to neighbours + keeps its overlay — the structure re-draws this
+                // body itself at a lower order so it sits behind the facade.
+                if (t.bodyRenderSuppressed || t.bodyDrawnByStructure) continue;
 
                 // Two independent masks. The silhouette contest (bodySolid/bodyWin)
                 // treats a bodyRenderSuppressed neighbour as open air, so this tile
@@ -361,15 +369,18 @@ public class TileMeshController : MonoBehaviour {
     }
 
     ChunkLayer NewBodyChunkLayer(int cx, int cy, int typeIdx) {
-        // -typeIdx matches the soft-edge contest's per-type rank: lowest-id
-        // solid type sorts highest, so its overhang covers higher-id types'
-        // Main extension at boundaries.
-        int sortingOrder = -typeIdx;
+        // BodyBaseSortingOrder - typeIdx matches the soft-edge contest's per-type rank:
+        // lowest-id solid type sorts highest, so its overhang covers higher-id types' Main
+        // extension at boundaries. The base offset puts the whole band (78..74) in front of
+        // water/mice; lighting is pinned to the ground plane so the draw-order bump doesn't
+        // relight the dirt as a creature.
+        int sortingOrder = BodyBaseSortingOrder - typeIdx;
         return NewChunkLayer(cx, cy,
             $"BodyChunk_{indexToTypeName[typeIdx]}",
             sortingOrder,
             TileSpriteCache.GetBodyArray(indexToTypeName[typeIdx]),
-            TileSpriteCache.GetNormalMapArray(indexToTypeName[typeIdx]));
+            TileSpriteCache.GetNormalMapArray(indexToTypeName[typeIdx]),
+            GroundPlaneLightingBucket);
     }
 
     // ── Overlay ────────────────────────────────────────────────────────
@@ -436,7 +447,7 @@ public class TileMeshController : MonoBehaviour {
             OverlaySortingOrder,
             TileSpriteCache.GetOverlayArray(overlayName),
             TileSpriteCache.GetNormalMapArray(indexToTypeName[typeIdx]),
-            OverlayLightingBucket);  // light as ground plane despite the 80 draw order
+            GroundPlaneLightingBucket);  // light as ground plane despite the 80 draw order
     }
 
     static string OverlayAtlasName(string baseName, int stateIdx) {
@@ -506,7 +517,8 @@ public class TileMeshController : MonoBehaviour {
             $"SnowChunk_{indexToTypeName[typeIdx]}",
             SnowSortingOrder,
             TileSpriteCache.GetOverlayArray("snow"),
-            TileSpriteCache.GetNormalMapArray(indexToTypeName[typeIdx]));
+            TileSpriteCache.GetNormalMapArray(indexToTypeName[typeIdx]),
+            GroundPlaneLightingBucket);  // draws at 81 but lights as ground, like the overlay
     }
 
     // ── Generic mesh / chunk plumbing ───────────────────────────────────
@@ -556,7 +568,7 @@ public class TileMeshController : MonoBehaviour {
     // lightingBucket < 0 → derive the bucket from sortingOrder (body/snow, where
     // draw order and light depth-plane agree). Pass a bucket explicitly to
     // decouple them — the overlay draws far in front (80) but must light as the
-    // ground plane (see OverlayLightingBucket note). The bucket is written into
+    // ground plane (see GroundPlaneLightingBucket note). The bucket is written into
     // the normals-RT B channel and drives front-vs-behind shaping in LightCircle.
     ChunkLayer NewChunkLayer(int cx, int cy, string namePrefix, int sortingOrder,
                               Texture2DArray mainArray, Texture2DArray normalArray,

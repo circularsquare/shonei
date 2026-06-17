@@ -92,6 +92,9 @@ public class RecipeDisplay : MonoBehaviour {
         string unlock = ResearchSystem.instance != null ? ResearchSystem.instance.GetUnlockResearchName(recipe.id) : null;
         if (!string.IsNullOrEmpty(unlock)) parts.Add("needs " + unlock);
         if (recipe.workload > 0f) parts.Add("work " + Mathf.RoundToInt(recipe.workload));
+        // Fuel is no longer a literal input (any fuelValue>0 item satisfies fuelCost), so it
+        // won't show in the inputs rows — surface it here instead, in coal-equivalent energy.
+        if (recipe.fuelCost > 0f) parts.Add("fuel " + Mathf.RoundToInt(recipe.fuelCost));
         if (parts.Count == 0) return;
 
         var go = new GameObject("Conditions", typeof(RectTransform));

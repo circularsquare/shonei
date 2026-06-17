@@ -22,6 +22,7 @@ public class Item {
     public bool defaultOpen {get; set;} // group items only: start expanded in inventory trees by default (e.g. "food"). Groups without this start collapsed.
     public float decayRate{get; set;}
     public float foodValue {get; set;}  // 0 = not edible; >0 = nutrition restored per unit eaten
+    public float fuelValue {get; set;}   // 0 = not fuel; >0 = burnable energy per liang (cascades group→leaf). See SPEC-data §Fuel
     public string happinessNeed {get; set;} // which happiness satisfaction eating this food grants (e.g. "wheat", "fruit"); null = none
     public bool discrete {get; set;}    // true = stored/moved in whole-unit (unitFen) multiples only
     // Weight of one whole unit, in liang (JSON-authored). Only meaningful when discrete; 0 = unset

@@ -235,8 +235,26 @@ public class StructController : MonoBehaviour {
                 bp.RegisterOrdersIfUnsuspended();
             }
         }
+
+        // ── Refresh suspended shaft blueprints beside a new shaft ─────────
+        // Shafts gain support by connecting to an existing shaft (PowerShaft.ConnectsToShaft),
+        // so building one may un-suspend a shaft blueprint on ANY orthogonal side — not just the
+        // tile above the footprint handled by the loop above. Re-evaluate all four neighbours.
+        // (RegisterOrdersIfUnsuspended is idempotent, so the overlap with the 'above' tile is
+        // harmless.)
+        if (PowerShaft.IsShaft(st)) {
+            foreach ((int dx, int dy) in ShaftNeighbourOffsets) {
+                Tile n = world.GetTileAt(tile.x + dx, tile.y + dy);
+                Blueprint bp = n?.GetBlueprintAt(st.depth);
+                if (bp == null) continue;
+                bp.RefreshColor();
+                bp.RegisterOrdersIfUnsuspended();
+            }
+        }
         return true;
     }
+
+    static readonly (int dx, int dy)[] ShaftNeighbourOffsets = { (-1, 0), (1, 0), (0, -1), (0, 1) };
 
     public void AddBlueprint(Blueprint bp) { blueprints.Add(bp); }
     public void RemoveBlueprint(Blueprint bp) { blueprints.Remove(bp); }

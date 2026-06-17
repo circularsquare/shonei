@@ -84,10 +84,10 @@
         "description": "alloy copper and tin into bronze",
         "hidden": true,
         "workload": 6.0,
+        "fuelCost": 3,
         "research": "Metallurgy",
         "researchPoints": 0.02,
         "ninputs": [
-            { "name": "coal", "quantity": 1 },
             { "name": "copper bar", "quantity": 1 },
             { "name": "tin bar", "quantity": 1 }
         ],
@@ -101,10 +101,10 @@
         "description": "smelt glass",
         "hidden": true,
         "workload": 8.0,
+        "fuelCost": 3,
         "research": "Glassmaking",
         "researchPoints": 0.02,
         "ninputs": [
-            { "name": "coal", "quantity": 1 },
             { "name": "sand", "quantity": 2 }
         ],
         "noutputs": [
@@ -117,10 +117,10 @@
         "description": "smelt malachite",
         "hidden": true,
         "workload": 6.0,
+        "fuelCost": 3,
         "research": "Metallurgy",
         "researchPoints": 0.02,
         "ninputs": [
-            { "name": "coal", "quantity": 1 },
             { "name": "malachite", "quantity": 2 }
         ],
         "noutputs": [
@@ -133,10 +133,10 @@
         "description": "smelt cassiterite",
         "hidden": true,
         "workload": 6.0,
+        "fuelCost": 3,
         "research": "Metallurgy",
         "researchPoints": 0.02,
         "ninputs": [
-            { "name": "coal", "quantity": 1 },
             { "name": "cassiterite", "quantity": 2 }
         ],
         "noutputs": [
@@ -303,10 +303,10 @@
         "tile": "crucible",
         "description": "smelt malachite",
         "workload": 12.0,
+        "fuelCost": 3,
         "research": "Metallurgy",
         "researchPoints": 0.02,
         "ninputs": [
-            { "name": "coal", "quantity": 1 },
             { "name": "malachite", "quantity": 3 }
         ],
         "noutputs": [
@@ -318,10 +318,10 @@
         "tile": "crucible",
         "description": "smelt cassiterite",
         "workload": 12.0,
+        "fuelCost": 3,
         "research": "Metallurgy",
         "researchPoints": 0.02,
         "ninputs": [
-            { "name": "coal", "quantity": 1 },
             { "name": "cassiterite", "quantity": 3 }
         ],
         "noutputs": [
@@ -345,55 +345,10 @@
         "tile": "crucible",
         "description": "smelt glass",
         "workload": 8.0,
+        "fuelCost": 3,
         "research": "Glassmaking",
         "researchPoints": 0.02,
         "ninputs": [
-            { "name": "coal", "quantity": 1 },
-            { "name": "sand", "quantity": 2 }
-        ],
-        "noutputs": [
-            { "name": "glass", "quantity": 2 }
-        ]
-    },{
-        "id": 74,
-        "job": "smith",
-        "tile": "crucible",
-        "description": "smelt malachite (wood-fired)",
-        "workload": 12.0,
-        "research": "Metallurgy",
-        "researchPoints": 0.02,
-        "ninputs": [
-            { "name": "wood", "quantity": 3 },
-            { "name": "malachite", "quantity": 3 }
-        ],
-        "noutputs": [
-            { "name": "copper bar", "quantity": 1 }
-        ]
-    },{
-        "id": 75,
-        "job": "smith",
-        "tile": "crucible",
-        "description": "smelt cassiterite (wood-fired)",
-        "workload": 12.0,
-        "research": "Metallurgy",
-        "researchPoints": 0.02,
-        "ninputs": [
-            { "name": "wood", "quantity": 3 },
-            { "name": "cassiterite", "quantity": 3 }
-        ],
-        "noutputs": [
-            { "name": "tin bar", "quantity": 1 }
-        ]
-    },{
-        "id": 76,
-        "job": "smith",
-        "tile": "crucible",
-        "description": "smelt glass (wood-fired)",
-        "workload": 8.0,
-        "research": "Glassmaking",
-        "researchPoints": 0.02,
-        "ninputs": [
-            { "name": "wood", "quantity": 3 },
             { "name": "sand", "quantity": 2 }
         ],
         "noutputs": [

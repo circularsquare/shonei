@@ -232,6 +232,7 @@ public class WorldController : MonoBehaviour {
         WorkOrderManager.instance?.ClearAllOrders();
         EventFeed.instance?.Clear();
         PrecipitationParticles.ClearAll();   // flush in-flight rain/snow so the new save doesn't keep raining
+        EmberManager.instance?.Clear();      // flush in-flight fire embers so they don't linger into the new world
         isClearing = true;
         // Null all tile.inv refs before destroying structures — prevents Structure.Destroy()
         // → FallIfUnstandable() from spawning stale fall animations during the clear.

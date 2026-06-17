@@ -34,6 +34,13 @@ public class Tile {
     // excavation buildings (digging pit) that draw their own receding-substrate
     // sprite over the cell. Fire NotifyBodyDirty() after mutating.
     public bool bodyRenderSuppressed;
+    // When true, the chunk skips this cell's own body quad (like bodyRenderSuppressed), but —
+    // unlike bodyRenderSuppressed — neighbours and the grass/snow overlay still treat the cell
+    // as normal SOLID terrain (neighbours bake buried, no jagged edge toward it; the overlay
+    // still renders on top). Set by structures that re-draw the cell's body themselves at a
+    // lower sort order so they sit in FRONT of it — the burrow, whose dirt bank shows behind
+    // the facade with grass still growing over the top. Fire NotifyBodyDirty() after mutating.
+    public bool bodyDrawnByStructure;
     // When true, neighbours treat this cell as open AIR for their normal-map
     // (lighting) bake, so their edges facing it light as exposed cliff faces
     // rather than buried seams. Separate from bodyRenderSuppressed: an excavation

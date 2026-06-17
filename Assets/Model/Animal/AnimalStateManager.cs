@@ -273,11 +273,16 @@ public class AnimalStateManager {
             while (animal.workProgress >= recipe.workload) {
                 animal.workProgress -= recipe.workload;
                 if (animal.CanProduce(recipe, wsBuilding)) {
+                    // Out of fuel mid-batch (rare — rounds were sized to fetched fuel): stop
+                    // cleanly rather than producing a free unfuelled round. Complete, not Fail,
+                    // so it's treated like running out of inputs, not an error.
+                    if (!craftTask.HasFuelForRound()) { craftTask.Complete(); return; }
                     // Consume inputs and produce outputs, rolling chance for each output.
                     // Extraction buildings (quarry / digging pit) route outputs through
                     // their captured tile's distribution instead of the recipe's (empty)
                     // outputs — see ExtractionBuilding.cs.
                     foreach (ItemQuantity iq in recipe.inputs) animal.Consume(iq.item, iq.quantity);
+                    if (craftTask.FuelItem != null) animal.Consume(craftTask.FuelItem, craftTask.FuelPerRoundFen);
                     ItemQuantity[] outputs = recipe.outputs;
                     if (craftTask.workplace?.building is ExtractionBuilding extractor) {
                         var extra = extractor.GetExtractionOutputs();

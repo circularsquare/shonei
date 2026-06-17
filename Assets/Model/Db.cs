@@ -706,6 +706,7 @@ public class Db : MonoBehaviour {
                 if (!child.discrete) child.discrete = item.discrete;
                 if (child.unitWeight == 0f) child.unitWeight = item.unitWeight;
                 if (child.itemClass == ItemClass.Default) child.itemClass = item.itemClass;
+                if (child.fuelValue == 0f) child.fuelValue = item.fuelValue;
                 // Furnishing fields cascade so authors can tag a single group (e.g. "cloth")
                 // and every leaf descendant becomes a valid furnishing without per-leaf JSON.
                 if (child.furnishingSlot == null)     child.furnishingSlot = item.furnishingSlot;
@@ -762,6 +763,10 @@ public class Recipe {
     public string description {get; set;} // optional (maybe make the getter return something other than null?)
     public string tile {get; set;} // actually is a tile or a building...
     public float workload {get; set;}
+    // Abstract fuel energy this recipe burns per round, satisfied by ANY item with fuelValue>0
+    // (coal, wood, …) at potency-scaled quantity — not a specific fuel item. 0 = no fuel needed.
+    // See SPEC-data §Fuel and GlobalInventory.CanCraft/PickFuel.
+    public float fuelCost { get; set; }
     public string research   { get; set; }   // optional: research name to advance per cycle
     public float  researchPoints { get; set; }  // progress added to that research per cycle
     public string skill      { get; set; }   // optional: overrides job.defaultSkill for this recipe (e.g. "mining")
@@ -784,6 +789,14 @@ public class Recipe {
         }
         for (int i = 0; i < noutputs.Length; i++){
             outputs[i] = new ItemQuantity(noutputs[i]); // chance carried by the constructor
+        }
+        // Migration guard: a recipe must not BOTH declare a fuelCost AND list a literal fuel
+        // item (fuelValue>0, e.g. coal) in its inputs — that double-charges fuel. Catches a
+        // half-finished retrofit. (Items load + cascade before recipes, so fuelValue is set.)
+        if (fuelCost > 0f){
+            foreach (ItemQuantity iq in inputs)
+                if (iq.item != null && iq.item.fuelValue > 0f)
+                    Debug.LogError($"Recipe {id} ('{description}') has fuelCost {fuelCost} AND fuel input '{iq.item.name}' (fuelValue {iq.item.fuelValue}) — double-charges fuel. Remove the fuel item from ninputs.");
         }
     }
     // Ratios above this are clamped to it. Stops one hugely-over-target item from dominating

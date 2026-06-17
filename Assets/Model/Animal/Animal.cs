@@ -591,7 +591,7 @@ public class Animal : MonoBehaviour{
         foreach (var r in job.recipes) {
             if (r == null) continue;
             if (!r.IsEligibleForPicking()) continue;
-            if (!ginv.SufficientResources(r.inputs)) continue;
+            if (!ginv.CanCraft(r)) continue;   // inputs in stock AND fuel energy (if recipe burns fuel)
             if (r.AllOutputsSatisfied(targets)) continue;
             scored.Add((r, r.Score(targets)));
         }
@@ -928,7 +928,7 @@ public class Animal : MonoBehaviour{
         foreach (Recipe recipe in job.recipes){
             if (recipe == null) continue;
             if (!recipe.IsEligibleForPicking()) continue;
-            if (ginv.SufficientResources(recipe.inputs)){
+            if (ginv.CanCraft(recipe)){
                 if (!Db.structTypeByName.ContainsKey(recipe.tile) ||
                     !nav.CanReachBuilding(Db.structTypeByName[recipe.tile])) continue;
                 eligibleRecipes.Add(recipe);
@@ -970,7 +970,7 @@ public class Animal : MonoBehaviour{
             if (recipe == null) continue;
             if (!recipe.IsEligibleForPicking()) continue;
             if (!OutputsHaveClassStorage(recipe)) continue;
-            if (ginv.SufficientResources(recipe.inputs)){
+            if (ginv.CanCraft(recipe)){
                 if (!Db.structTypeByName.ContainsKey(recipe.tile) ||
                     !nav.CanReachBuilding(Db.structTypeByName[recipe.tile])) continue;
                 // Gate out fully-satisfied recipes, mirroring PickRecipeForBuilding/ScoreCraftRecipes.
@@ -1009,7 +1009,7 @@ public class Animal : MonoBehaviour{
             if (recipe == null) continue;
             if (recipe.tile != building.structType.name) continue;
             if (!recipe.IsEligibleForPicking()) continue;
-            if (!ginv.SufficientResources(recipe.inputs)) continue;
+            if (!ginv.CanCraft(recipe)) continue;
             if (recipe.AllOutputsSatisfied(targets)) continue;
             if (!OutputsHaveClassStorage(recipe)) continue;
             float score = recipe.Score(targets);
@@ -1049,6 +1049,14 @@ public class Animal : MonoBehaviour{
         int n;
         foreach (ItemQuantity input in recipe.inputs){
             n = InventoryController.instance.TotalAvailableQuantity(input.item) / input.quantity;
+            if (n < numRounds) { numRounds = n; }
+        }
+        // Fuel isn't in recipe.inputs, so the loop above doesn't bound it — cap by total fuel
+        // energy. Coarse (sums all fuel types; CraftTask commits to one), but the fetch path
+        // trims further if the picked type alone can't cover the rounds. The CanCraft gate
+        // already guaranteed ≥1 round's worth before we got here.
+        if (recipe.fuelCost > 0f){
+            n = (int)(ginv.TotalFuelEnergy() / recipe.fuelCost);
             if (n < numRounds) { numRounds = n; }
         }
         // Target cap: never overshoot the player's per-output target. See Recipe.CapRoundsByTarget.

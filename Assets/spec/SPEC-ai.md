@@ -135,11 +135,13 @@ numbers, to avoid drift). Tuning rationale: `plans/urgency-system.md`.
 
 **Recipe-first craft selection (`Animal.ChooseCraftTask`):**
 Craft tasks are separated from `ChooseOrder` p3 so that recipe economic score — not building proximity — drives which workstation an animal visits. The algorithm:
-1. Score all of the animal's recipes (filtered by `IsAllowed` and `SufficientResources`) using `Recipe.Score(targets)`.
+1. Score all of the animal's recipes (filtered by `IsAllowed` and `GlobalInventory.CanCraft`) using `Recipe.Score(targets)`.
 2. Sort descending by score.
 3. For each recipe, call `wom.FindCraftOrder(recipe.tile, animal)` — returns the nearest available craft `WorkOrder` for that building type, without reserving.
 4. Try `new CraftTask(animal, building, recipe).Start()`. On success, reserve the order and return the task.
 5. Fall through to the next recipe if no building is available or pathfinding fails.
+
+**Fuel in craft dispatch:** a recipe's `fuelCost` (abstract energy) is gated by `CanCraft` = `SufficientResources(inputs) && HasFuelEnergy(fuelCost)` at all four selection sites (`ScoreCraftRecipes`, `PickRecipe`, `PickRecipeRandom`, `PickRecipeForBuilding`). `CraftTask.Initialize` then commits to one concrete fuel leaf via `GlobalInventory.PickFuel` (the in-stock fuel with the highest `qty/target` surplus — so per-item targets steer the fuel mix with no extra UI) and appends it to `_inputsToFetch` in **fen** (`round(fuelCost×100/fuelValue)`), so reserve/fetch/round-trim/consume all treat fuel like a normal input. Picking one fuel per task; re-picks only on a new task. See [[fuel-system]] plan.
 
 `CraftTask` accepts an optional `preChosenRecipe` parameter. When set, `Initialize()` uses it directly instead of calling `PickRecipeForBuilding` — avoiding redundant re-evaluation. `PickRecipeForBuilding` remains as a fallback for any caller that creates `CraftTask` without a pre-chosen recipe.
 

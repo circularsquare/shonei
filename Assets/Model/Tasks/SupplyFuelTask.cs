@@ -19,8 +19,9 @@ public class SupplyFuelTask : Task {
         if (needed <= 0) return false;
         Path standPath = animal.nav.PathToOrAdjacent(building.tile);
         if (!animal.nav.WithinRadius(standPath, MediumFindRadius)) return false;
-        // A group fuel item (e.g. "wood") resolves to a concrete leaf — surplus × nearness.
-        Item fuelLeaf = ResolveConsumeLeaf(fuel.fuelItem);
+        // A group fuel item (e.g. "wood") resolves to a concrete leaf — surplus × nearness, biased
+        // toward the leaf already in the (single-type) reservoir so we top up rather than stall.
+        Item fuelLeaf = ResolveConsumeLeaf(fuel.fuelItem, fuel.inv.HeldLeafMatching(fuel.fuelItem));
         (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(fuelLeaf);
         if (itemPath == null) return false;
         int available = stack.quantity - stack.resAmount;

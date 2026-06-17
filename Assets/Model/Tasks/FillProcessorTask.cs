@@ -35,7 +35,9 @@ public class FillProcessorTask : Task {
             // the fetch then commits to a concrete leaf (surplus × nearness) for the new delivery.
             int missing = input.quantity - proc.inputBuffer.Quantity(input.item);
             if (missing <= 0) continue;
-            Item inputLeaf = ResolveConsumeLeaf(input.item);
+            // Bias toward the leaf already buffered for this input so a partial fill tops up in
+            // kind rather than committing to a type that won't fit the occupied slot.
+            Item inputLeaf = ResolveConsumeLeaf(input.item, proc.inputBuffer.HeldLeafMatching(input.item));
             (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(inputLeaf);
             if (itemPath == null) continue;
             int available = stack.quantity - stack.resAmount;

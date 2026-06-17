@@ -16,7 +16,7 @@ CONTENT
     - irrigation?
     - well?
 - research
-    - additional levels display?
+    - additional levels?
 - power 
     - small internal power storage for power consumers? (hidden if contain 0 power)
 - thermometer/glass 
@@ -58,6 +58,7 @@ CONTENT
 SERVER
 - offline progress (see offline progress plan)
 - account recovery, email storage (see account system plan)
+- security things (see accoutn security hardening)
 
 VISUALS
 - lighting 
@@ -69,8 +70,6 @@ VISUALS
 - update all plants to have blob swaying
 - gradual snow buildup
 - more sounds (see sounds spec)
-- add side torches 
-    - torch animation
 
 OPTIMIZATION  
 - chunk tiles?
@@ -107,17 +106,21 @@ upsize more workshop buildings
     tailor
 test kiln
 
-- does metal haev a use?
-- does glass have a use?
-- send screenshot to fable for general advice
 
 why is it using 38% gpu with all lighting off?
 
-vertical power shaft should support other power shafts
+- metal
+
 
 TODAY
 - fire animation
+- fire particles
+vertical power shaft should support other power shafts
 
+- test fuel system 
+- test item target change
+    - set sawdust target to 1
+    - set pine target really high and cut down apple trees?
 
 
 

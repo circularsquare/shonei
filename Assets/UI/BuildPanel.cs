@@ -311,7 +311,7 @@ public class BuildPanel : MonoBehaviour {
     }
 
     public bool CanPlaceHere(StructType st, Tile tile) {
-        return StructPlacement.CanPlaceHere(st, tile, mirrored, shapeIndex);
+        return StructPlacement.CanPlaceHere(st, tile, mirrored, shapeIndex, rotation);
     }
 
     // Cursor-position-driven side-variant resolution. When the active build type declares a
@@ -418,7 +418,7 @@ public class BuildPanel : MonoBehaviour {
             return true;
         }
 
-        string why = StructPlacement.GetPlacementFailReason(effSt, tile, effMirrored, shapeIndex);
+        string why = StructPlacement.GetPlacementFailReason(effSt, tile, effMirrored, shapeIndex, rotation);
         if (why != null) {
             EventFeed.instance?.Post($"<color=#cc3333>{why}</color>", EventFeed.Category.Alert);
             SoundManager.instance?.PlaySFX("blueprint_reject", 0.7f);

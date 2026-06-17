@@ -115,6 +115,8 @@
         "ncosts": [
         ],
         "depth": 3,
+        "sortingOrder": 80,
+        "lightingBucket": 1,
         "pathCostReduction": 0.1,
         "category": "structures",
         "defaultLocked": true
@@ -301,9 +303,12 @@
         "lightFlicker": 0.06,
         "sortingOrder": 40,
         "sideVariant": "torch_side",
-        "fireFps": 7,
+        "fireFps": 4.2,
         "fireOffsetX": 0,
         "fireOffsetY": 0,
+        "emberRate": 1.5,
+        "emberOffsetX": -0.03,
+        "emberOffsetY": -0.23,
         "category": "structures"
     },{
         "id": 149,
@@ -328,9 +333,12 @@
         "lightFlicker": 0.06,
         "sortingOrder": 40,
         "sideMounted": true,
-        "fireFps": 7,
+        "fireFps": 4.2,
         "fireOffsetX": 0,
         "fireOffsetY": 0,
+        "emberRate": 1.5,
+        "emberOffsetX": -0.34,
+        "emberOffsetY": 0.08,
         "category": "structures",
         "defaultLocked": true
     },{
@@ -391,8 +399,13 @@
         "lightOuterRadius": 10,
         "lightCenterFlatten": 1,
         "lightFlicker": 0.07,
+        "fireFps": 4.2,
         "sortingOrder": 40,
         "socialWhenShared": true,
+        "emberRate": 3.5,
+        "emberOffsetX": 0,
+        "emberOffsetY": -0.23,
+        "emberSpreadMult": 2.0,
         "activeStartHour": 16,
         "activeEndHour": 6,
         "tileRequirements": [

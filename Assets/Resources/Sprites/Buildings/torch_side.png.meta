@@ -160,13 +160,11 @@ TextureImporter:
     secondaryTextures:
     - texture: {fileID: 2800000, guid: 3158b210366d4d64a8c501614a958ae3, type: 3}
       name: _NormalMap
-    - texture: {fileID: 2800000, guid: 556449dbf8fba0c439dd5b6350c6d25d, type: 3}
-      name: _EmissionMap
     spriteCustomMetadata:
       entries: []
     nameFileIdTable: {}
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
-  userData: normalsCacheKey=l4mqo8LhnEehLNyWCO3GrA==
+  userData: normalsCacheKey=Zrko+1m9kXM5TB/drk55+g==
   assetBundleName: 
   assetBundleVariant: 

@@ -2,6 +2,10 @@ meoww!!
 
 6/17
 - recipe selection adjustments, caps on input and output influence
+- power shaft placement check
+- fuel system
+- changed water sortingjn to submerge buildings and mice
+- fire animation / particles
 6/15
 - minor adjustments
     - easier moisture 

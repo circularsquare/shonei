@@ -35,7 +35,15 @@ public class PowerSystem {
 
     // Axis a shaft tile carries, or that a port couples to.
     //   Horizontal — connects on x; Vertical — connects on y; Both — turning shaft / either-axis port.
+    // Used for producer/consumer PORT coupling. Shaft-to-shaft connectivity goes through `Side`
+    // below, which is directional (a corner only continues its run on two specific sides).
     public enum Axis { Horizontal, Vertical, Both }
+
+    // The cardinal sides a shaft mates on. Per-side rather than per-axis so a turn shaft can be
+    // directional (open on, say, Up + Left only). PowerShaft.openSides is the source of truth;
+    // the BFS connects two adjacent shafts iff each opens the side facing the other.
+    [System.Flags]
+    public enum Side { None = 0, Left = 1, Right = 2, Up = 4, Down = 8 }
 
     // A connection point on a producer/consumer building. dx/dy are tile offsets
     // from the building anchor (NOT mirrored — subclasses decide whether to flip
@@ -368,15 +376,13 @@ public class PowerSystem {
             queue.Enqueue(root);
             while (queue.Count > 0) {
                 Structure cur = queue.Dequeue();
-                Axis curAxis = AxisOf(cur);
-                if (curAxis == Axis.Horizontal || curAxis == Axis.Both) {
-                    TryEnqueueNeighbour(cur.x - 1, cur.y, Axis.Horizontal, queue, id);
-                    TryEnqueueNeighbour(cur.x + 1, cur.y, Axis.Horizontal, queue, id);
-                }
-                if (curAxis == Axis.Vertical || curAxis == Axis.Both) {
-                    TryEnqueueNeighbour(cur.x, cur.y - 1, Axis.Vertical, queue, id);
-                    TryEnqueueNeighbour(cur.x, cur.y + 1, Axis.Vertical, queue, id);
-                }
+                Side sides = SidesOf(cur);
+                // Connection is mutual: this shaft must open toward the neighbour, and the
+                // neighbour must open the facing side back (checked in TryEnqueueNeighbour).
+                if ((sides & Side.Left)  != 0) TryEnqueueNeighbour(cur.x - 1, cur.y, Side.Right, queue, id);
+                if ((sides & Side.Right) != 0) TryEnqueueNeighbour(cur.x + 1, cur.y, Side.Left,  queue, id);
+                if ((sides & Side.Down)  != 0) TryEnqueueNeighbour(cur.x, cur.y - 1, Side.Up,    queue, id);
+                if ((sides & Side.Up)    != 0) TryEnqueueNeighbour(cur.x, cur.y + 1, Side.Down,  queue, id);
             }
         }
 
@@ -588,18 +594,26 @@ public class PowerSystem {
         onTopologyRebuilt?.Invoke();
     }
 
-    void TryEnqueueNeighbour(int nx, int ny, Axis required, Queue<Structure> queue, int id) {
+    // Enqueue the shaft at (nx,ny) into network `id` if it exists, is unvisited, and opens the
+    // side facing back toward the current shaft (`neighbourMustOpen`). The caller already checked
+    // that the current shaft opens toward this neighbour, so the mate is mutual.
+    void TryEnqueueNeighbour(int nx, int ny, Side neighbourMustOpen, Queue<Structure> queue, int id) {
         if (!byTile.TryGetValue((nx, ny), out Structure neighbour)) return;
         if (shaftNet.ContainsKey(neighbour)) return;
-        Axis na = AxisOf(neighbour);
-        if (na != required && na != Axis.Both) return;
+        if ((SidesOf(neighbour) & neighbourMustOpen) == 0) return;
         shaftNet[neighbour] = id;
         queue.Enqueue(neighbour);
     }
 
+    static Side SidesOf(Structure shaft) {
+        // PowerShaft holds the kind. Cast is safe because only PowerShaft instances are added to
+        // `shafts`; the all-four fallback is unreachable but harmless.
+        return (shaft as PowerShaft)?.openSides ?? (Side.Left | Side.Right | Side.Up | Side.Down);
+    }
+
     static Axis AxisOf(Structure shaft) {
         // PowerShaft holds the kind. Cast is safe because only PowerShaft instances
-        // are added to `shafts`.
+        // are added to `shafts`. Used for port coupling (see PowerShaft.axis).
         return (shaft as PowerShaft)?.axis ?? Axis.Both;
     }
 

@@ -36,6 +36,33 @@ public static class SaveStore {
 
     public static string SlotPath(string slotName) => System.IO.Path.Combine(SaveDir, slotName + ".json");
 
+    // Max slot-name length; mirrors the cloud server's slotRe cap (saves.go).
+    public const int MaxSlotNameLength = 64;
+
+    // Validates a slot name against the charset that round-trips everywhere: the cloud
+    // server's slotRe (saves.go) = ^[A-Za-z0-9 _-]{1,64}$. A name outside this can't sync
+    // to the cloud, and characters like '?' / ':' / '/' also break the local filesystem on
+    // some platforms — so the UI checks this before any save or rename and tells the player
+    // exactly what's wrong. `error` is a concise player-facing reason on failure (else null).
+    public static bool IsValidSlotName(string name, out string error) {
+        error = null;
+        if (string.IsNullOrEmpty(name)) { error = "name can't be empty"; return false; }
+        if (name.Length > MaxSlotNameLength) { error = "name too long (max " + MaxSlotNameLength + ")"; return false; }
+        foreach (char c in name) {
+            bool ok = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
+                   || (c >= '0' && c <= '9') || c == ' ' || c == '_' || c == '-';
+            if (!ok) {
+                // Echo printable-ASCII offenders (the common case: ? . / :); for anything
+                // else (control/non-ASCII, which m5x7 can't render) fall back to a generic note.
+                error = (c >= 32 && c <= 126)
+                    ? "name can't use '" + c + "'"
+                    : "name has an unsupported character";
+                return false;
+            }
+        }
+        return true;
+    }
+
     // Files in SaveDir that are not player save slots. A leading dot marks bookkeeping
     // (e.g. a dot-prefixed sync/index file); excluded from every slot enumeration so it
     // never surfaces as a phantom slot in the load lists or as GetMostRecentSlot's pick.
@@ -101,12 +128,25 @@ public static class SaveStore {
     // Renames a save file on disk. Returns true on success. Does NOT touch
     // SaveSystem.currentSlot — that "follow the rename" concern is world state and
     // lives in SaveSystem.RenameSlot, which wraps this.
-    public static bool RenameSlot(string oldName, string newName) {
+    // On failure, `error` is set to a short reason the caller can surface to the player
+    // (null on success). The store stays UI-free — it never toasts itself, since the
+    // front-end Menu scene uses it with no EventFeed; the caller decides how to show it.
+    public static bool RenameSlot(string oldName, string newName, out string error) {
+        error = null;
         string oldPath = SlotPath(oldName);
         string newPath = SlotPath(newName);
-        if (!System.IO.File.Exists(oldPath)) { Debug.LogError("RenameSlot: source not found: " + oldName); return false; }
-        if (System.IO.File.Exists(newPath)) { Debug.LogError("RenameSlot: destination exists: " + newName); return false; }
-        System.IO.File.Move(oldPath, newPath);
+        if (!System.IO.File.Exists(oldPath)) { error = "save not found"; Debug.LogError("RenameSlot: source not found: " + oldName); return false; }
+        if (System.IO.File.Exists(newPath)) { error = "name already in use"; Debug.LogError("RenameSlot: destination exists: " + newName); return false; }
+        // File.Move throws on an OS-invalid name (e.g. "?" or ":" on Windows), a locked
+        // file, or a full disk. Catch it so the rename surfaces as a player-facing toast
+        // instead of an unhandled IOException that aborts silently.
+        try {
+            System.IO.File.Move(oldPath, newPath);
+        } catch (System.Exception e) {
+            error = e.Message;
+            Debug.LogError("RenameSlot: move \"" + oldName + "\" -> \"" + newName + "\" failed: " + e);
+            return false;
+        }
         if (animalCountCache.TryGetValue(oldPath, out int cached)) {
             animalCountCache.Remove(oldPath);
             animalCountCache[newPath] = cached;

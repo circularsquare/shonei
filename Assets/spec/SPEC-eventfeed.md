@@ -44,6 +44,7 @@ EventFeed owns its bindings inline in `EventFeed.cs` — no separate Bindings cl
 
 | Source event | Category | Color |
 |---|---|---|
+| `ResearchSystem.OnTechUnlocked` | `Alert` | `#66ccff` (light blue) |
 | `ResearchSystem.OnTechForgotten` | `Alert` | `#ffaa55` (orange) |
 
 Split into `EventFeedBindings.cs` once this table grows past ~5 rows or bindings pick up policy (throttling, deduping, filtering).

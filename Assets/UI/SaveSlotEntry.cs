@@ -78,19 +78,33 @@ public class SaveSlotEntry : MonoBehaviour {
         newName = newName.Trim();
         if (string.IsNullOrEmpty(newName)) { nameInput.text = _slotName; return; }
         if (newName == _slotName) return;
+        // Reject illegal characters up front with a specific message (e.g. "name can't use
+        // '?'"), so the player learns what's wrong instead of hitting a cryptic IOException.
+        if (!SaveStore.IsValidSlotName(newName, out string nameErr)) {
+            EventFeed.instance?.Post("<color=#cc3333>" + nameErr + "</color>");
+            nameInput.text = _slotName;
+            return;
+        }
         if (SaveStore.SlotExists(newName)) {
-            Debug.LogWarning("SaveSlotEntry: \"" + newName + "\" already exists; reverting.");
+            EventFeed.instance?.Post("<color=#cc3333>\"" + newName + "\" already exists</color>");
             nameInput.text = _slotName;
             return;
         }
         string oldName = _slotName;
         // In-game, route through SaveSystem so the rename follows currentSlot; in the
         // menu there's no SaveSystem, so go straight to the filesystem store.
+        string error;
         bool ok = SaveSystem.instance != null
-            ? SaveSystem.instance.RenameSlot(oldName, newName)
-            : SaveStore.RenameSlot(oldName, newName);
+            ? SaveSystem.instance.RenameSlot(oldName, newName, out error)
+            : SaveStore.RenameSlot(oldName, newName, out error);
         if (ok) { _slotName = newName; PropagateRenameToCloud(oldName, newName); }
-        else nameInput.text = _slotName;
+        else {
+            // Surface the failure (e.g. an illegal character in the name) instead of
+            // silently snapping the text back. EventFeed is null in the Menu scene, where
+            // the reverted name field is the only available signal.
+            EventFeed.instance?.Post("<color=#cc3333>rename failed: " + error + "</color>");
+            nameInput.text = _slotName;
+        }
     }
 
     // Keep the account's cloud copy consistent with a local rename: re-upload the file
@@ -125,7 +139,7 @@ public class SaveSlotEntry : MonoBehaviour {
     }
 
     void DoSave() {
-        SaveSystem.instance.Save(_slotName);
+        if (!SaveSystem.instance.Save(_slotName)) return; // failed save already toasted
         if (miceLabel != null) miceLabel.text = "mice: " + SaveStore.GetAnimalCount(_slotName);
     }
 

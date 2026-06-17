@@ -19,6 +19,13 @@ public class CraftTask : Task {
     public int roundsRemaining;
     private List<(Item item, int perRound)> _inputsToFetch;
     private int _fetchInputIndex;
+    // Fuel committed for this task: one concrete leaf chosen at Initialize (recipe.fuelCost>0).
+    // perRound is in FEN — round(fuelCost×100/fuelValue) — to avoid rounding-waste. It rides
+    // _inputsToFetch like a normal input, so reserve/fetch/trim/Complete handle it for free;
+    // these accessors let the work tick consume it (AnimalStateManager). null = recipe has no fuel.
+    public Item FuelItem { get; private set; }
+    public int  FuelPerRoundFen { get; private set; }
+    public bool HasFuelForRound() => FuelItem == null || animal.inv.Quantity(FuelItem) >= FuelPerRoundFen;
     private readonly Building _building; // always set — assigned by WOM via RegisterWorkstation
     private readonly Recipe _preChosenRecipe; // set by ChooseCraftTask; null → PickRecipeForBuilding fallback
 
@@ -52,6 +59,18 @@ public class CraftTask : Task {
             Item fetchItem = ResolveConsumeLeaf(iq.item);
             if (!animal.inv.ContainsItem(new ItemQuantity(fetchItem, iq.quantity), roundsRemaining))
                 _inputsToFetch.Add((fetchItem, iq.quantity));
+        }
+        // Fuel: commit to one concrete fuel leaf (target-aware surplus pick) and append it as a
+        // synthetic fetch entry so it reserves/fetches/trims exactly like a real input. CanCraft
+        // already confirmed enough fuel energy exists globally; PickFuel can still come back null
+        // if it was consumed between gate and here — bail like any unmakeable recipe.
+        if (recipe.fuelCost > 0f) {
+            Item fuel = GlobalInventory.instance.PickFuel();
+            if (fuel == null) { return false; }
+            FuelItem = fuel;
+            FuelPerRoundFen = Mathf.RoundToInt(recipe.fuelCost * 100f / fuel.fuelValue);
+            if (!animal.inv.ContainsItem(new ItemQuantity(fuel, FuelPerRoundFen), roundsRemaining))
+                _inputsToFetch.Add((fuel, FuelPerRoundFen));
         }
         _fetchInputIndex = 0;
 

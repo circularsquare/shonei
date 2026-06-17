@@ -102,6 +102,52 @@ public class GlobalInventory {
         return true;
     }
 
+    // ── Fuel (generic) ──────────────────────────────────────────────────────
+    // Any item with fuelValue>0 IS fuel; fuelValue is burnable energy per liang. Recipes burn
+    // an abstract `fuelCost` (energy) rather than a specific fuel item, so one recipe accepts
+    // coal OR wood OR charcoal at potency-scaled quantity. See SPEC-data §Fuel.
+
+    // Total burnable energy across every in-stock fuel leaf. qty is in fen (100 fen = 1 liang),
+    // fuelValue is per liang, so energy = qty/100 × fuelValue. Groups skipped (leaves carry stock).
+    public float TotalFuelEnergy(){
+        float energy = 0f;
+        foreach (Item it in Db.itemsFlat){
+            if (it == null || it.children != null || it.fuelValue <= 0f) continue;
+            energy += Quantity(it) / 100f * it.fuelValue;
+        }
+        return energy;
+    }
+
+    // Is there at least `fuelCost` energy available to burn? fuelCost ≤ 0 → no fuel needed.
+    public bool HasFuelEnergy(float fuelCost) => fuelCost <= 0f || TotalFuelEnergy() >= fuelCost;
+
+    // Recipe-aware craftability gate: inputs in stock AND enough fuel energy. SufficientResources
+    // takes a raw ItemQuantity[] with no recipe handle, so fuel can't fold into it — every
+    // craft-selection site must call this instead (see Animal.PickRecipe*/ScoreCraftRecipes).
+    public bool CanCraft(Recipe recipe) =>
+        SufficientResources(recipe.inputs) && HasFuelEnergy(recipe.fuelCost);
+
+    // Picks WHICH fuel to burn: the in-stock fuel leaf we hold most surplus of relative to its
+    // target — symmetric to recipe selection (which produces what we hold least of), so the
+    // player steers the fuel mix via the same per-item target sliders (raise coal's target →
+    // coal is "kept", wood burns first). target ≤ 0 → burn freely (sentinel +∞: want none
+    // stockpiled). Untracked fuel defaults to target 100, matching Task.ResolveConsumeLeaf.
+    // Returns null if no fuel is in stock anywhere.
+    public Item PickFuel(){
+        var targets = InventoryController.instance?.targets;
+        Item best = null;
+        float bestScore = -1f;
+        foreach (Item it in Db.itemsFlat){
+            if (it == null || it.children != null || it.fuelValue <= 0f) continue;
+            int qty = Quantity(it);
+            if (qty <= 0) continue;
+            int target = (targets != null && targets.TryGetValue(it.id, out int t)) ? t : 100;
+            float score = target <= 0 ? float.PositiveInfinity : qty / (float)target;
+            if (score > bestScore){ bestScore = score; best = it; }
+        }
+        return best;
+    }
+
     public void RegisterCbInventoryChanged(Action<GlobalInventory> callback){
         cbInventoryChanged += callback;}
     public void UnregisterCbInventoryChanged(Action<GlobalInventory> callback){

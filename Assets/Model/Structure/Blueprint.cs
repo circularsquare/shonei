@@ -456,7 +456,15 @@ public class Blueprint {
         // rest of the column stacks above). edgeSupported types check only the two end columns,
         // the middle may hang (tarp). Skipped entirely for types with explicit standable reqs.
         // Mirrors the placement rule in StructPlacement.GetPlacementFailReason.
-        if (!structType.hasStandableRequirement) {
+        // Power shafts can also be supported by connecting to a built shaft (see
+        // StructPlacement / PowerShaft.ConnectsToShaft). includeBlueprints is false here so the
+        // run builds outward from a real, load-bearing shaft — a shaft hooked only onto another
+        // *blueprint* stays suspended until that neighbour is actually built. (StructController
+        // re-checks adjacent shaft blueprints whenever a shaft completes.)
+        bool shaftConnected = PowerShaft.IsShaft(structType)
+                && PowerShaft.ConnectsToShaft(structType, tile, rotation, mirrored, includeBlueprints: false);
+
+        if (!structType.hasStandableRequirement && !shaftConnected) {
             int bottomNx = structType.HasShapes ? Shape.nx : structType.nx;
             if (structType.edgeSupported) {
                 Node leftNode  = World.instance.graph.nodes[tile.x, tile.y];

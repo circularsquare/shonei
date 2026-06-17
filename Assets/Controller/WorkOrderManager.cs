@@ -53,6 +53,9 @@ public class WorkOrderManager : MonoBehaviour {
         // (plant.harvestFlagged gates the order's existence instead — Plant.SetHarvestFlagged registers /
         // unregisters as the flag flips, so unflagged plants carry no order at all).
         public Func<bool> isActive;
+        // Optional dynamic urgency contribution (added on top of TierBase + proximity), recomputed
+        // each ChooseTask. Null = 0. Used by Water orders to scale urgency with soil dryness.
+        public Func<float> urgencyBonus;
         public Building building;            // nullable; for Craft orders (dedup & cleanup)
         public Structure structure;          // nullable; for Maintenance orders (dedup & cleanup — any Structure, not just Building)
     }
@@ -85,8 +88,11 @@ public class WorkOrderManager : MonoBehaviour {
                 if (!IsPickable(o, animal, exclude: OrderType.Craft)) continue;
                 float dist = o.getDistance?.Invoke(animal) ?? 0f;
                 float prox = UrgencyConfig.ProxWeight / (1f + dist / UrgencyConfig.ProxFalloff);
+                // Construct "finish what's started" bump, plus any dynamic per-order bonus
+                // (Water scales 0→WaterMaxThirstBonus with how far the soil is below comfort).
                 float finish = o.type == OrderType.Construct ? UrgencyConfig.FinishBonus : 0f;
-                float u = Mathf.Clamp01(UrgencyConfig.TierBase[p - 1] + prox + finish);
+                float dyn = o.urgencyBonus?.Invoke() ?? 0f;
+                float u = Mathf.Clamp01(UrgencyConfig.TierBase[p - 1] + prox + finish + dyn);
                 if (u > best) best = u;
             }
         }
@@ -423,6 +429,7 @@ public class WorkOrderManager : MonoBehaviour {
             canDo = a => a.job.name == "farmer",
             isActive = () => PlantThirsty(plant)
                 && GlobalInventory.instance != null && GlobalInventory.instance.Quantity(waterId) > 0,
+            urgencyBonus = () => WaterThirstUrgency(plant),
             getDistance = a => Mathf.Abs(tile.x - a.x) + Mathf.Abs(tile.y - a.y)
         });
         return true;
@@ -736,6 +743,19 @@ public class WorkOrderManager : MonoBehaviour {
         Tile soil = World.instance.GetTileAt(p.tile.x, p.tile.y - 1);
         if (soil == null || !soil.type.solid) return false;
         return soil.moisture <= p.plantType.moistureMin.Value;
+    }
+
+    // Extra watering urgency (0 → WaterMaxThirstBonus) scaling with how far the soil sits below
+    // the plant's comfort floor — a bone-dry crop pulls harder than one just dipping under
+    // moistureMin. 0 at the floor, full bonus at bone-dry. Added to the order's base urgency.
+    private static float WaterThirstUrgency(Plant p) {
+        if (!WaterNeedsOrder(p)) return 0f;
+        Tile soil = World.instance.GetTileAt(p.tile.x, p.tile.y - 1);
+        if (soil == null || !soil.type.solid) return 0f;
+        int floor = p.plantType.moistureMin.Value;
+        if (floor <= 0) return 0f;
+        float severity = Mathf.Clamp01((floor - soil.moisture) / (float)floor); // 0 at floor → 1 at bone-dry
+        return severity * UrgencyConfig.WaterMaxThirstBonus;
     }
 
     // Group items are never physical (see SPEC-trading: "Market targets are leaf-only").

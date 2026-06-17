@@ -59,6 +59,24 @@ public class WaterController : MonoBehaviour {
     // the old ones before creating new ones at the new world scale.
     private GameObject _waterSpriteGo;
     private GameObject _underlaySpriteGo;
+
+    // Decorative-zone liquid (tanks, fountains, brewery) renders on its OWN sprite, separate
+    // from natural/sim water, so the two can sort differently: natural water sorts in FRONT of
+    // mice (submersion tint), but container liquid sorts BEHIND mice (a mouse in front of a tank
+    // occludes it) while still in front of the building's painted backdrop. Shares _tintTex.
+    private Texture2D  _decorTex;
+    private byte[]     _decorBytes;
+    private Material   _decorMat;
+    private GameObject _decorSpriteGo;
+
+    // Sort orders (front→back): tiles 78..74 > natural water > mice 48..64 > decorative water
+    // > buildings ≤17. All water pinned to one lighting bucket so the raised draw orders don't
+    // change water's flat NormalsCaptureWater shading. See SPEC-rendering.md §Water Rendering.
+    const int WaterSortingOrder         = 72;
+    const int DecorWaterSortingOrder    = 20;
+    const int WaterUnderlaySortingOrder = -15;
+    const int WaterLightingBucket       = 0;
+
     // True once the size-dependent resources have been built. Used to gate the
     // OnWorldAllocated handler so we don't double-build on the very first
     // allocation (Start handles that path); the handler only fires on
@@ -149,6 +167,11 @@ public class WaterController : MonoBehaviour {
         _surfaceTex.filterMode = FilterMode.Point;
         _surfaceBytes = new byte[_texW * _texH];
 
+        // Decorative-zone mask — same dims, rendered by its own sprite/material (see field comment).
+        _decorTex   = new Texture2D(_texW, _texH, TextureFormat.R8, false);
+        _decorTex.filterMode = FilterMode.Point;
+        _decorBytes = new byte[_texW * _texH];
+
         // RGBA32 per-tile tint: 20 KB for a 100×50 world. Point filter is critical —
         // bilinear would bleed colors across tile borders.
         _tintTex = new Texture2D(world.nx, world.ny, TextureFormat.RGBA32, false);
@@ -167,6 +190,17 @@ public class WaterController : MonoBehaviour {
         _waterMat.SetVector("_WorldPixelSize", new Vector4(_texW, _texH, 0, 0));
         _waterMat.SetTexture("_SurfaceTex", _surfaceTex);
         _waterMat.SetTexture("_TintTex",    _tintTex);
+
+        // Decorative-zone water material — same shader/colours as the front water, but bound to
+        // _decorTex and drawn by its own sprite at a lower sort order (behind mice, in front of
+        // buildings). Shares _tintTex so per-liquid tints flow to it too.
+        _decorMat = new Material(waterShader);
+        _decorMat.SetColor("_WaterColorDark",  waterColorDark);
+        _decorMat.SetColor("_WaterColorLight", waterColorLight);
+        _decorMat.SetColor("_SurfaceColor",    surfaceColor);
+        _decorMat.SetVector("_WorldPixelSize", new Vector4(_texW, _texH, 0, 0));
+        _decorMat.SetTexture("_SurfaceTex", _decorTex);
+        _decorMat.SetTexture("_TintTex",    _tintTex);
 
         if (waterUnderlayShader == null) {
             Debug.LogError("WaterController: waterUnderlayShader unassigned in Inspector — assign Water/WaterUnderlay (Assets/Lighting/WaterUnderlay.shader)");
@@ -202,16 +236,16 @@ public class WaterController : MonoBehaviour {
         SpriteRenderer sr = _waterSpriteGo.AddComponent<SpriteRenderer>();
         sr.sprite      = waterSprite;
         sr.material    = _waterMat;
-        // Render behind tiles (0) but in front of the background wall (-10).
-        // Putting water at the back lets the solid tile body hide the bleed
-        // pixels we write into solid neighbours (see UpdateSurfaceMask) — the
-        // bleed only shows through the tile sprite's transparent bevel gaps,
-        // which is exactly the gap-fill effect we want. Decorative water
-        // zones (fountains, tanks) rely on their main building sprite having
-        // the water region authored as transparent so the shimmer reads
-        // through.
-        sr.sortingOrder = -5;
+        // Natural/sim water sorts in FRONT of mice and buildings (submersion tint) but BEHIND
+        // tile bodies (78..74), so the solid tile still hides the bleed pixels we write into
+        // solid neighbours (see UpdateSurfaceMask) — the bleed only shows through the tile
+        // sprite's transparent bevel gaps. Still in front of the background wall (-10) so cave
+        // water reads against dirt. Container liquids (tanks/fountains) are NOT here — they're
+        // on _decorSpriteGo (behind mice). Bucket is pinned so the raised order doesn't change
+        // water's flat NormalsCaptureWater shading.
+        sr.sortingOrder = WaterSortingOrder;
         LightReceiverUtil.SetSortBucket(sr);
+        sr.renderingLayerMask = 1u << WaterLightingBucket;
 
         // Underlay sprite — same geometry, same Water Unity layer, same shared
         // surface mask. Sorts at -15 (behind the background wall at -10) so the cave
@@ -228,8 +262,22 @@ public class WaterController : MonoBehaviour {
         SpriteRenderer underSr = _underlaySpriteGo.AddComponent<SpriteRenderer>();
         underSr.sprite       = waterSprite; // share the 1×1 white sprite
         underSr.material     = _underlayMat;
-        underSr.sortingOrder = -15;
+        underSr.sortingOrder = WaterUnderlaySortingOrder;
         LightReceiverUtil.SetSortBucket(underSr);
+
+        // Decorative-zone water sprite — same world-spanning geometry + Water layer as the front
+        // sprite, but sorts at DecorWaterSortingOrder (in front of buildings ≤17, behind mice) and
+        // reads _decorTex. No underlay: each zone's painted opaque backdrop is its own occluder.
+        _decorSpriteGo = new GameObject("WaterSpriteDecor");
+        _decorSpriteGo.transform.position   = _waterSpriteGo.transform.position;
+        _decorSpriteGo.transform.localScale = _waterSpriteGo.transform.localScale;
+        if (waterLayer >= 0) _decorSpriteGo.layer = waterLayer;
+        SpriteRenderer decorSr = _decorSpriteGo.AddComponent<SpriteRenderer>();
+        decorSr.sprite       = waterSprite;
+        decorSr.material     = _decorMat;
+        decorSr.sortingOrder = DecorWaterSortingOrder;
+        LightReceiverUtil.SetSortBucket(decorSr);
+        decorSr.renderingLayerMask = 1u << WaterLightingBucket;
 
         _worldResourcesBuilt = true;
     }
@@ -239,12 +287,16 @@ public class WaterController : MonoBehaviour {
     // Destroy — letting GC handle them leaks GPU memory.
     void DisposeWorldSizedResources() {
         if (_surfaceTex != null)        { Destroy(_surfaceTex); _surfaceTex = null; }
+        if (_decorTex != null)          { Destroy(_decorTex); _decorTex = null; }
         if (_tintTex != null)           { Destroy(_tintTex); _tintTex = null; }
         if (_waterMat != null)          { Destroy(_waterMat); _waterMat = null; }
+        if (_decorMat != null)          { Destroy(_decorMat); _decorMat = null; }
         if (_underlayMat != null)       { Destroy(_underlayMat); _underlayMat = null; }
         if (_waterSpriteGo != null)     { Destroy(_waterSpriteGo); _waterSpriteGo = null; }
         if (_underlaySpriteGo != null)  { Destroy(_underlaySpriteGo); _underlaySpriteGo = null; }
+        if (_decorSpriteGo != null)     { Destroy(_decorSpriteGo); _decorSpriteGo = null; }
         _surfaceBytes      = null;
+        _decorBytes        = null;
         _tintBytes         = null;
         _waterPixelHeights = null;
         _tileIsSolid       = null;
@@ -465,6 +517,8 @@ public class WaterController : MonoBehaviour {
 
         // Wipe everything to transparent — tiles with no water stay 0 automatically.
         System.Array.Clear(_surfaceBytes, 0, _surfaceBytes.Length);
+        // Decorative-zone mask is rebuilt from scratch each tick too.
+        System.Array.Clear(_decorBytes, 0, _decorBytes.Length);
         // Clear per-tile tint — any tile a decorative zone doesn't stamp stays alpha=0
         // and falls through to the shader's default water color.
         System.Array.Clear(_tintBytes, 0, _tintBytes.Length);
@@ -529,7 +583,8 @@ public class WaterController : MonoBehaviour {
             }
         }
 
-        // Overlay decorative liquid zones. Each building with a {name}_w.png
+        // Decorative liquid zones — written into the SEPARATE _decorBytes mask (its own sprite,
+        // behind mice) rather than _surfaceBytes. Each building with a {name}_w.png
         // companion answers TryGetDisplayLiquid with how full its zone draws
         // (0..1, bottom-up), its tint colour, and whether the top row
         // shimmers. Only the bottom fraction of zone pixels render; the top
@@ -564,7 +619,7 @@ public class WaterController : MonoBehaviour {
                 if (ly >= fillThreshold) continue;
                 Vector2Int px = worldPixels[i];
                 if ((uint)px.x >= (uint)_texW || (uint)px.y >= (uint)_texH) continue;
-                _surfaceBytes[px.y * _texW + px.x] = (ly == surfaceThreshold) ? (byte)255 : (byte)127;
+                _decorBytes[px.y * _texW + px.x] = (ly == surfaceThreshold) ? (byte)255 : (byte)127;
             }
 
             // Stamp per-tile tint once per tile covered by this zone. Tanks are 1×1 so
@@ -588,11 +643,15 @@ public class WaterController : MonoBehaviour {
 
         _surfaceTex.LoadRawTextureData(_surfaceBytes);
         _surfaceTex.Apply(false); // false = skip mipmap update
+        _decorTex.LoadRawTextureData(_decorBytes);
+        _decorTex.Apply(false);
         _tintTex.LoadRawTextureData(_tintBytes);
         _tintTex.Apply(false);
 
         // Expose to NormalsCaptureWater so the lighting pipeline can correctly
-        // discard transparent water pixels when writing to the normals RT.
+        // discard transparent water pixels when writing to the normals RT. Only the natural
+        // mask is published — decorative-zone water (a thin film over an opaque building
+        // backdrop) takes the building's lighting rather than the flat-water path.
         Shader.SetGlobalTexture("_WaterSurfaceTex", _surfaceTex);
     }
 
