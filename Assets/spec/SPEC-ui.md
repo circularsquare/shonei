@@ -258,7 +258,9 @@ Opened by clicking the top-bar happiness readout — a `Button` on `UI/TopBar` w
 - `needContainer` Transform (VerticalLayoutGroup) — `HappinessNeedRow` instances spawned here lazily on first open
 - `needRowPrefab` — `HappinessNeedRow` prefab
 
-The panel root is a `VerticalLayoutGroup` stacking `headerText` over the scroll view. The header is **content-driven** (`LayoutElement.preferredHeight = -1`, so the VLG reads TMP's height) and the scroll has `flexibleHeight = 1` to absorb the difference — so adding/removing a header line reflows automatically. Don't pin the header height or hand-position the scroll (that reintroduces overlap). The X + "?" buttons use `LayoutElement.ignoreLayout = true` to stay corner-anchored outside the stack.
+The panel root is a `VerticalLayoutGroup` stacking, top→bottom: `headerText`, the scroll view, a `FoodChartLabel` TMP, and the `FoodChart` (`BarChartGraph`). The header is **content-driven** (`LayoutElement.preferredHeight = -1`, so the VLG reads TMP's height — note it's ~4 lines / 53px at runtime vs the 1-line placeholder in edit mode) and the scroll has `flexibleHeight = 1` to absorb the difference — so adding/removing a header line reflows automatically. Don't pin the header height or hand-position the scroll (that reintroduces overlap). The X + "?" buttons use `LayoutElement.ignoreLayout = true` to stay corner-anchored outside the stack.
+
+**Scroll-content setup (load-bearing):** the scroll content `HappinessList` is **top-stretch anchored** (`anchorMin (0,1)`, `anchorMax (1,1)`, `pivot (0,1)`) with a **`ContentSizeFitter` (vertical = PreferredSize)** so its height tracks the spawned rows. Without these the content height is pinned to the viewport and the `ScrollRect` never sees overflow → rows past the fold are unreachable and drags snap back (the rows just happened to fit while the panel was tall). Any scrollable list needs this pair.
 
 Rows are spawned lazily on first open (in `OnEnable`) from `Db.happinessNeedsSorted` (one per satisfaction need, plus housing, furnishing, temperature, and the colony food-storage row). Adding a new need to JSON auto-adds a row — no code changes needed (but update `Db.happinessNeedsDisplayOrder` for correct ordering). Refreshes every 1 s while open. Closes on click-outside.
 
@@ -278,6 +280,10 @@ Rows are spawned lazily on first open (in `OnEnable`) from `Db.happinessNeedsSor
 ### FillBar
 
 `Assets/Components/FillBar.cs` — reusable horizontal fill bar. Single `SetFill(float 0–1)` method, drives `fillImage.fillAmount`. Prefab: root Image (background) + child "Fill" Image (type = Filled, method = Horizontal, origin = Left).
+
+### Food chart
+
+`FoodChart` is a `BarChartGraph` (a `RawImage` below the needs scroll) wired to the panel's `foodChart` field. Each `Refresh` feeds it the `food_produced` (up) and `food_consumed` (down) series from `StatsTracker` — a diverging per-day bar chart with per-bar hover tooltips. `BarChartGraph` is generic and reusable for any metric; the chart/stat machinery lives in **SPEC-stats.md**. The `avg_social` stat is already tracked (sampled) as a worked example, not yet charted.
 
 ## Build Bar & Mouse Modes
 

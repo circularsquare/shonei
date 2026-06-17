@@ -948,13 +948,17 @@ Post-pass for fire sprites: each `_f.png` is wired as its own `_EmissionMap` (se
 
 ### Fire sprites
 
-Fire art (torch flame, fireplace fire) lives in a **separate child GameObject**, not baked into the base building sprite. This lets fire disappear entirely when the light is off.
+Fire art (torch flame, fireplace fire) lives in a **separate child GameObject**, not baked into the base building sprite. This lets fire disappear entirely when the light is off. The flame sheet is authored at the host's tile size and rendered as a full-tile overlay (see Positioning) so it shares the body's pixel rounding exactly.
 
-**Setup** (`Structure.cs` constructor): if `Resources/Sprites/Buildings/{name}_f` exists, a child `"fire"` GO is created with its own `SpriteRenderer` at the same `sortingOrder` as the parent. Starts inactive.
+**Setup** (`Structure.cs` constructor): loads the flame sheet `Resources/Sprites/Buildings/{st.fireSprite ?? name+"_f"}` via `LoadAll`. If it has any frames, a child `"fire"` GO is created with its own `SpriteRenderer` at the parent's `sortingOrder`. Starts inactive. JSON fields: `fireSprite`, `fireOffsetX/Y` (tile units), `fireFps`.
 
-**Toggle** (`LightSource.cs` Update): `building.fireGO.SetActive(_lastEmissionScale > 0.05f)`. Fire visibility tracks the emission scale — appears/disappears in sync with the twilight emission fade rather than popping on/off abruptly. Hidden when: daytime, out of fuel, building disabled or broken.
+**Positioning (full-tile overlay).** The flame sheet is authored at the **host's tile size** (16×16 frames) with the flame painted at the wick position, so the fire child renders as a plain overlay on the building — identical sprite size, centre pivot, and transform as the body, at `localPosition (fireOffsetX, fireOffsetY)` with `flipX = mirrored`. This guarantees the flame shares the body's **exact pixel-snap rounding at every zoom**. A smaller flame sprite at a transform offset rounds independently and drifts by a pixel under the pixel-perfect camera at max zoom — which is why position is baked into the art, not applied as a sub-tile offset. `fireOffsetX/Y` remain for whole-pixel nudges (safe at the even tile size; default 0). Consequence: each host needs its own tile-sized flame sheet (floor `torch_f`, side `torch_side_f`) since the flame sits at a different spot — author once small, then composite into each host's frame. `flipX` mirrors the overlay with the host exactly like the body sprite.
 
-**Emission**: `LightSource` retargets `_EmissionScale` MPB writes to `building.fireSR` when present (falls back to parent SR for non-fire emissive buildings). Combined with the `_EmissionMap` self-reference from the generator, fire pixels stay full brightness through `LightComposite`'s multiply.
+**Animation**: a multi-frame sliced sheet gets a `FrameAnimator` on the fire GO (`baseFps = st.fireFps`, default 7). The start frame is phase-offset per instance from a position hash (`FrameAnimator.startFrame`) so a row of torches doesn't flicker in lockstep — deterministic, save-safe. Slice flame strips into N equal frames (importer Multiple mode, named `{stem}_0..n-1`) and rebuild the Buildings atlas (Tools → Rebuild Atlases). Single-frame sheets just render static.
+
+**Toggle** (`LightSource.cs` Update): `building.fireGO.SetActive(CurrentEmissionScale > 0.05f)`. Fire visibility tracks the emission scale — appears/disappears in sync with the twilight emission fade. Hidden when: daytime, out of fuel, building disabled or broken.
+
+**Emission**: `LightSource` retargets emission to `building.fireSR` when present (falls back to parent SR for non-fire emissive buildings). The flame's **own texture is bound as `_EmissionMap`** via MPB (`Structure.cs`), so painted flame pixels glow white-masked (colour preserved through `LightComposite`'s multiply). This self-reference is **atlas-safe** — the SR's UVs and the bound texture share one atlas page, so each animation frame samples its own pixels. A *separate* `_e` emission sheet would NOT work for an atlased fire child (different page/UVs); paint the glow you want directly into the `_f` art.
 
 ---
 

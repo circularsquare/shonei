@@ -320,6 +320,26 @@ public class StructType {
     // Maps to LightSource.centerFlatten. See LightCircle.shader.
     public float lightCenterFlatten {get; set;} = 0f;
 
+    // Subtle intensity flicker for fire lights (torches, fireplaces). Amplitude as a fraction of
+    // intensity — 0 = steady, 0.06 = ±6%. Applied in LightSource.Update via a cheap per-instance
+    // Perlin sample (phase from position so neighbours don't pulse in unison). 0 by default.
+    public float lightFlicker {get; set;}
+
+    // ── Fire art ──────────────────────────────────────────────────────
+    // Toggleable flame child sprite (Structure ctor) for light-emitting buildings. The art is a
+    // small flame, positioned at the wick end via the offset below rather than baked into the
+    // building sprite — so one shared sheet serves both the floor and wall-mounted torch.
+    //   fireSprite : flame sheet name (default "{name}_f"). Set to share a sheet, e.g. the side
+    //                torch points at "torch_f". A multi-frame sliced sheet animates (FrameAnimator);
+    //                the sheet self-references as its own emission map (atlas-safe — see Structure.cs).
+    //   fireOffsetX/Y : flame child local offset in tile units from the structure origin (tile
+    //                centre). X is mirror-flipped so a wall torch's flame tracks the leaning arm.
+    //   fireFps    : animation speed for a multi-frame sheet (default 7).
+    public string fireSprite {get; set;}
+    public float fireOffsetX {get; set;}
+    public float fireOffsetY {get; set;}
+    public float fireFps {get; set;}
+
     // ── Mechanical power ──────────────────────────────────────────────
     // powerBoost > 1.0 turns this StructType into a power consumer at runtime: when the
     // built instance has its (single) port connected to a powered network, the operator's
@@ -340,6 +360,12 @@ public class StructType {
     // StructPlacement (shared with ladder_side) and skips the generic standability check.
     // The player chooses which side via the mirror toggle (F). Used by ladder_side and bracket.
     public bool sideMounted {get; set;}
+
+    // Name of the side-mounted variant this build tool resolves to when the cursor hovers near
+    // a tile edge during placement (e.g. "ladder" → "ladder_side", "torch" → "torch_side").
+    // The tool still shows/charges THIS type; only the placed structure swaps. Null = no side
+    // variant (always placed centred). Resolved via Db.structTypeByName in BuildPanel.ResolveSideVariant.
+    public string sideVariant {get; set;}
 
     // ── Two-click placement (rope bridge) ─────────────────────────────
     // When `placementMethod == "twoClick"`, the player clicks two tiles to define

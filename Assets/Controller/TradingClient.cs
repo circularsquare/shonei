@@ -18,6 +18,11 @@ public class TradingClient : MonoBehaviour {
     bool isConnecting = false;
     bool hasLoggedConnectError = false;
     bool hasLoggedDisconnect = false;
+    // Set when the server kicks us because the same account logged in elsewhere
+    // (newest-login-wins). Suppresses the auto-reconnect loop — otherwise we'd
+    // immediately reconnect and kick the new session back, ping-ponging forever.
+    // Only a fresh world entry (new TradingClient) clears it.
+    bool kicked = false;
     // The market identity for this session — the logged-in account's username
     // (set by the menu via Session). In the editor with no login (running Main
     // directly) it falls back to a dev name against the local insecure server.
@@ -62,6 +67,7 @@ public class TradingClient : MonoBehaviour {
 
     public async void Connect() {
         if (isConnecting || isOnline) return;
+        if (kicked) return;  // taken over by another device — don't fight it back online
         if (!ShouldConnect()) return;
         // Don't burn reconnect attempts on a token we already know is expired —
         // the player needs to re-login (handled by the menu on next launch).
@@ -122,6 +128,21 @@ public class TradingClient : MonoBehaviour {
                 hasOnlineCount    = true;
                 OnOnlineCount?.Invoke(OnlinePlayerCount);
                 break;
+            case "kick":
+                // Same account signed in elsewhere; the server is closing this socket.
+                // Latch `kicked` so ReconnectLoop stands down (no kick-war), then surface it.
+                kicked = true;
+                string kickText = JsonUtility.FromJson<NoticeEnvelope>(raw).payload.text;
+                EventFeed.instance?.Post(
+                    $"<color=#cc3333>{(string.IsNullOrEmpty(kickText) ? "signed out: account opened on another device" : kickText)}</color>",
+                    EventFeed.Category.Alert);
+                break;
+            case "notice":
+                // Informational one-off (e.g. "you displaced an existing session"). No behaviour change.
+                string noticeText = JsonUtility.FromJson<NoticeEnvelope>(raw).payload.text;
+                if (!string.IsNullOrEmpty(noticeText))
+                    EventFeed.instance?.Post($"<color=#cc9933>{noticeText}</color>", EventFeed.Category.Info);
+                break;
         }
     }
 
@@ -165,7 +186,7 @@ public class TradingClient : MonoBehaviour {
     IEnumerator ReconnectLoop() {
         while (true) {
             yield return new WaitForSecondsRealtime(ReconnectInterval);
-            if (!isOnline && !isConnecting && ShouldConnect()) Connect();
+            if (!isOnline && !isConnecting && !kicked && ShouldConnect()) Connect();
         }
     }
 
@@ -253,6 +274,10 @@ public class TradingClient : MonoBehaviour {
 [Serializable] class PriceHistoryEnvelope { public string type; public PriceHistoryData payload; }
 [Serializable] class OnlineCountEnvelope   { public string type; public OnlineCount payload; }
 [Serializable] public class OnlineCount    { public int count; }
+// Server-pushed text shown to a single client: "kick" (account opened elsewhere,
+// socket closing) and "notice" (informational) both carry this payload.
+[Serializable] class NoticeEnvelope        { public string type; public Notice   payload; }
+[Serializable] public class Notice         { public string text; }
 // One bid/ask snapshot. Prices are in fen; 0 means no order rested on that side.
 // t is unix seconds — a large jump in t between samples marks server downtime.
 [Serializable] public class PriceSample      { public long t; public int bid; public int ask; }

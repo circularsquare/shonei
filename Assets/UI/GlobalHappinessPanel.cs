@@ -11,6 +11,7 @@ using TMPro;
 //   needContainer -- Transform        (VerticalLayoutGroup -- rows are spawned here)
 //   needRowPrefab -- HappinessNeedRow prefab
 //   closeButton   -- Button           (the X in the top-right corner; close wired in Awake)
+//   foodChart     -- BarChartGraph    (optional; RawImage showing food points produced per day)
 //
 //   A "?" InfoButton sits left of the X with a Tooltippable explaining pop cap (scene-authored,
 //   parallel to RecipePanel / ResearchPanel).
@@ -46,6 +47,11 @@ public class GlobalHappinessPanel : MonoBehaviour {
     // static text (graceful no-op).
     [SerializeField] Tooltippable     populationInfoTip;
 
+    // Historic food-production bar chart (scene-authored RawImage + BarChartGraph). Fed each
+    // Refresh from StatsTracker's "food_produced" series. Left null → no chart (graceful no-op).
+    [SerializeField] BarChartGraph    foodChart;
+    const int FoodChartDays = 15; // bars shown, including the in-progress day
+
     // Rows are spawned once and reused. Order: Db.happinessNeedsSorted, then housing, then temperature.
     readonly List<HappinessNeedRow> rows = new List<HappinessNeedRow>();
     readonly List<string> rowKeys = new List<string>(); // parallel to rows — need key or "housing"/"temperature"
@@ -65,6 +71,7 @@ public class GlobalHappinessPanel : MonoBehaviour {
         // SpawnRows on first open rather than Start() — OnEnable fires before Start on first activation,
         // so rows must exist before Refresh() runs or data shows as 0 until the next periodic refresh.
         if (rows.Count == 0) SpawnRows();
+        if (foodChart != null) foodChart.SetLabels("food points", "produced", "eaten");
         Refresh();
     }
 
@@ -122,6 +129,19 @@ public class GlobalHappinessPanel : MonoBehaviour {
 
     void Refresh() {
         refreshTimer = 0f;
+
+        // Food-production chart — independent of animal state, so update it before the
+        // no-animals early-out. Last bar is the in-progress day (drawn as live).
+        if (foodChart != null && StatsTracker.instance != null) {
+            var produced = StatsTracker.instance.Get("food_produced");
+            var consumed = StatsTracker.instance.Get("food_consumed");
+            if (produced != null) {
+                float[] up   = produced.GetSeries(FoodChartDays, includeCurrentDay: true);
+                float[] down = consumed != null ? consumed.GetSeries(FoodChartDays, includeCurrentDay: true) : null;
+                foodChart.SetData(up, down, FoodChartDays, lastIsLive: true);
+            }
+        }
+
         var ac = AnimalController.instance;
         if (ac == null || ac.na == 0) {
             if (headerText != null) headerText.text = "No animals.";

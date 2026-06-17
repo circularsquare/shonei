@@ -786,38 +786,85 @@ public class Recipe {
             outputs[i] = new ItemQuantity(noutputs[i]); // chance carried by the constructor
         }
     }
+    // Ratios above this are clamped to it. Stops one hugely-over-target item from dominating
+    // the input geomean, and gives target==0 ("keep none") a finite "fully disposable" value
+    // instead of dividing by zero.
+    public const float MaxSurplusRatio = 20f;
+
+    // How over-target a holding is, in [0, MaxSurplusRatio]. The shared scalar behind both
+    // recipe scoring (below) and consumption leaf-selection (Task.ResolveConsumeLeaf).
+    //   target == 0 → CAP if we hold any (fully disposable — consume/produce-against first), else 0
+    //   target  > 0 → min(CAP, qty/target)
+    // NaN-free: the target==0 branch means we never evaluate 0/0.
+    public static float SurplusRatio(int qty, int target){
+        if (target == 0) return qty > 0 ? MaxSurplusRatio : 0f;
+        return UnityEngine.Mathf.Min(MaxSurplusRatio, qty / (float)target);
+    }
+
     // Economic desirability of running this recipe, from global stock vs per-item targets only
-    // (nothing about recipe ratios). Each item contributes ratio = qty/target; a recipe is
-    // favoured when inputs are abundant (ratio > 1) and outputs are scarce (ratio < 1).
+    // (nothing about recipe ratios). Favoured when inputs are abundant and outputs are scarce:
+    // Score = GM(input surplus) / GM(output scarcity).
     //
-    // Inputs and outputs are combined as separate GEOMETRIC MEANS — GM(inputs) / GM(outputs) —
-    // rather than one big product. The geomean is the natural average for multiplicative ratios
-    // (arithmetic mean in log-space), and crucially it normalises by item count: a 3-input and a
-    // 1-input recipe with the same per-item ratios score identically, so complex recipes aren't
-    // penalised by raw product compounding (3 inputs at 0.5 would otherwise collapse to 0.125).
+    // Each side is a separate GEOMETRIC MEAN rather than one big product. The geomean is the
+    // natural average for multiplicative ratios (arithmetic mean in log-space), and normalises by
+    // item count: a 3-input and a 1-input recipe with the same per-item ratios score identically,
+    // so complex recipes aren't penalised by raw product compounding.
     //
     // NaN-free by construction (a NaN here once soft-locked crafting — see the urgency-Infinity
-    // trap): a never-produced output (gmOut == 0) yields the +Infinity "produce this NOW" signal,
-    // and an empty input (gmIn == 0) yields 0, with gmIn checked first so 0/0 never arises.
+    // trap): a never-produced scarce output (gmOut == 0) yields the +Infinity "produce this NOW"
+    // signal, and an empty input (gmIn == 0) yields 0, with gmIn checked first so 0/0 never arises.
     public float Score(Dictionary<int, int> targets){
         if (targets == null) return 1;
-        float gmIn  = GeoMeanRatio(inputs, targets);
-        float gmOut = GeoMeanRatio(outputs, targets);
+        float gmIn  = GeoMeanInputs(inputs, targets);
+        float gmOut = GeoMeanOutputs(outputs, targets);
         if (gmIn == 0f)  return 0f;                       // an input is empty — recipe unmakeable
         if (gmOut == 0f) return float.PositiveInfinity;   // a never-produced output — make it now
         return gmIn / gmOut;
     }
 
-    // Geometric mean of qty/target over the tracked, non-zero-target items in `list`.
-    // Untracked ids and target==0 items are skipped (neutral — matches AllOutputsSatisfied);
-    // with no scored items the mean is 1 (neutral), so an unscored side doesn't shift Score.
-    private static float GeoMeanRatio(ItemQuantity[] list, Dictionary<int, int> targets){
+    // Input side: abundance favours the recipe. Each input contributes its SurplusRatio (capped).
+    // A GROUP input (wildcard, e.g. "wood") resolves to the MAX surplus over its leaf descendants
+    // — the most over-target acceptable type — mirroring the leaf that Task.ResolveConsumeLeaf
+    // will actually consume, so scoring and execution agree on per-leaf surplus. Untracked ids are
+    // skipped (neutral); an all-empty group contributes 0 → gmIn 0 → recipe unmakeable.
+    private static float GeoMeanInputs(ItemQuantity[] list, Dictionary<int, int> targets){
+        float product = 1f;
+        int n = 0;
+        foreach (ItemQuantity iq in list){
+            float ratio;
+            if (iq.item.IsGroup){
+                ratio = 0f;
+                bool anyLeaf = false;
+                foreach (Item leaf in iq.item.LeafDescendants()){
+                    if (!targets.TryGetValue(leaf.id, out int lt)) continue;
+                    anyLeaf = true;
+                    ratio = UnityEngine.Mathf.Max(ratio, SurplusRatio(GlobalInventory.instance.Quantity(leaf), lt));
+                }
+                if (!anyLeaf) continue; // no tracked leaf — skip
+            } else {
+                if (!targets.TryGetValue(iq.item.id, out int t)) continue; // untracked — skip
+                ratio = SurplusRatio(GlobalInventory.instance.Quantity(iq.item), t);
+            }
+            product *= ratio;
+            n++;
+        }
+        if (n == 0) return 1f;
+        return UnityEngine.Mathf.Pow(product, 1f / n);
+    }
+
+    // Output side: scarcity favours the recipe. Only SCARCE outputs (qty < target) count — a
+    // surplus output (qty >= target) is skipped so an over-target byproduct (e.g. sawdust) can't
+    // drag the score down and suppress a needed primary. target==0 → qty>=0 → always skipped
+    // (subsumes the old "skip target==0" rule). Untracked ids skipped. Outputs are always leaves
+    // (ValidateNoGroupOutputs). A scarce output at qty 0 gives ratio 0 → gmOut 0 → Score +Infinity.
+    private static float GeoMeanOutputs(ItemQuantity[] list, Dictionary<int, int> targets){
         float product = 1f;
         int n = 0;
         foreach (ItemQuantity iq in list){
             if (!targets.TryGetValue(iq.item.id, out int target)) continue; // untracked — skip
-            if (target == 0) continue;                                      // no target — neutral
-            product *= (float)GlobalInventory.instance.Quantity(iq.item) / target;
+            int qty = GlobalInventory.instance.Quantity(iq.item);
+            if (qty >= target) continue;                                    // surplus — neutral
+            product *= qty / (float)target;
             n++;
         }
         if (n == 0) return 1f;

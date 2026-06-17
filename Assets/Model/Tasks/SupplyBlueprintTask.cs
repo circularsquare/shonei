@@ -32,11 +32,11 @@ public class SupplyBlueprintTask : Task {
             Item costItem = blueprint.costs[i].item;
             iq = new ItemQuantity(costItem, needed);
             if (!animal.inv.ContainsItem(iq)) {
-                // For group-item costs (e.g. "wood"), commit to the specific leaf with the most
-                // global inventory before pathfinding. This prevents the animal from collecting a
-                // mix of leaf types that would then lock the blueprint to whichever leaf happens to
-                // be delivered first — potentially a scarce one (e.g. 2 oak over 20 pine).
-                Item supplyItem = PickSupplyLeaf(costItem);
+                // For group-item costs (e.g. "wood"), commit to a single concrete leaf before
+                // pathfinding (the most over-target type, nearest preferred — see ResolveConsumeLeaf).
+                // This prevents the animal from collecting a mix of leaf types that would then lock
+                // the blueprint to whichever leaf happens to be delivered first.
+                Item supplyItem = ResolveConsumeLeaf(costItem);
                 (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(supplyItem);
                 if (itemPath == null) continue; // can't find this item — try next cost slot
                 iq = new ItemQuantity(supplyItem, needed);

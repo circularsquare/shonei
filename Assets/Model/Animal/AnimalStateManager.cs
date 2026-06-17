@@ -197,6 +197,18 @@ public class AnimalStateManager {
             animal.Produce(plant.Harvest());
             harvestTask.Complete();
             return;
+        } else if (animal.task is WaterPlantTask waterTask) {
+            Plant plant = waterTask.tile.plant;
+            if (plant == null) { waterTask.Fail(); return; }
+            Tile soil = World.instance.GetTileAt(waterTask.tile.x, waterTask.tile.y - 1);
+            if (soil == null || !soil.type.solid) { waterTask.Fail(); return; }
+            animal.workProgress += workEfficiency;
+            animal.skills.GainXp(Skill.Farming, baseWorkEff * SkillSet.XpPerWorkTick);
+            if (animal.workProgress < WaterPlantTask.WaterTime) return;
+            animal.workProgress -= WaterPlantTask.WaterTime;
+            waterTask.PourWater(soil);
+            waterTask.Complete();
+            return;
         } else if (animal.task is ConstructTask constructTask){
             Blueprint blueprint = constructTask.blueprint;
             if (blueprint == null || blueprint.cancelled) {constructTask.Fail(); return;}

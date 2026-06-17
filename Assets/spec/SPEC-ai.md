@@ -164,6 +164,7 @@ Tasks reserve sources and destinations during `Initialize()` via `Task.ReserveSt
 | Task | Source | Job | Description |
 |------|--------|-----|-------------|
 | `CraftTask` | WOM p3 | recipe's job | Navigate to station, fetch inputs, work, drop outputs |
+| `WaterPlantTask` | WOM p3 | farmer | Navigate to a water stack, fetch water, walk to a thirsty plant, pour onto the soil below (converts water item → moisture at the pump/seep rate; see SPEC-systems §Farmer watering). One plant per trip; order is per-plant, gated to soil at/below `moistureMin` AND colony-has-water. |
 | `HarvestTask` | WOM p2 | plant's `njob` | Navigate to plant, harvest when ready, drop products. Harvest orders only exist while `plant.harvestFlagged` is true. The flag is set by the player via the Harvest tool in the build bar, and also auto-set in `Plant.OnPlaced` so any plant the player blueprinted comes out flagged on completion (worldgen / save-load skip OnPlaced and keep their authored flag). `Plant.SetHarvestFlagged` registers / unregisters the order; `isActive = () => plant.IsDoneGrowing()` gates dormancy across grow cycles (and holds multi-tile plants until full height). |
 | `HaulTask` | WOM p1/p3 | hauler | Fetch floor stack → Go to storage tile → DeliverToInventoryObjective into `building.storage` |
 | `HaulToMarketTask` | WOM p3 | merchant | Haul items from storage to the market building to meet targets |
@@ -184,7 +185,7 @@ Tasks reserve sources and destinations during `Initialize()` via `Task.ReserveSt
 | `MaintenanceTask` | WOM p2 | mender | Fetch repair materials (¼ × build cost, scaled by repair amount) → walk to work tile → `MaintenanceObjective` ticks up `condition` by 0.05 × efficiency per tick, capped at +40 % per visit. Grants Construction XP. See SPEC-systems.md §Maintenance System. |
 
 **Objectives (atomic steps):**
-`GoObjective`, `FetchObjective`, `DeliverObjective`, `DeliverToBlueprintObjective`, `DeliverToInventoryObjective`, `ReceiveFromInventoryObjective`, `WorkObjective`, `HarvestObjective`, `ConstructObjective`, `EepObjective`, `DropObjective`, `ResearchObjective`, `LeisureObjective`, `MaintenanceObjective`, `UnequipObjective`
+`GoObjective`, `FetchObjective`, `DeliverObjective`, `DeliverToBlueprintObjective`, `DeliverToInventoryObjective`, `ReceiveFromInventoryObjective`, `WorkObjective`, `HarvestObjective`, `WaterObjective`, `ConstructObjective`, `EepObjective`, `DropObjective`, `ResearchObjective`, `LeisureObjective`, `MaintenanceObjective`, `UnequipObjective`
 
 **`FetchObjective` behaviour:**
 - Navigates to a source tile and picks up `iq.quantity` of an item into the animal's inventory (or an equip slot if `targetInv` is set).
@@ -306,7 +307,7 @@ Player-adjustable workstation slot count flows: `Building.workstation.workerLimi
 |----------|-------------|
 | 1 | Haul unblocking a pending deconstruct |
 | 2 | Construct, SupplyBlueprint, Deconstruct, Harvest, Maintenance |
-| 3 | Haul (floor items + storage evictions), HaulToMarket, Craft |
+| 3 | Haul (floor items + storage evictions), HaulToMarket, Craft, Water |
 | 4 | Research, HaulFromMarket |
 
 ### Registration rules
@@ -322,6 +323,7 @@ Orders are created once when the need first arises and removed only when the nee
 | `Haul` (p3 eviction) | Item disallowed while stack non-empty (via `RegisterStorageEvictionHaul`; `HaulTask` only, no consolidation fallback) | Stack empties; item re-allowed; storage destroyed |
 | `Haul` (p1) | `PromoteHaulsFor(bp)` for items blocking a deconstruct | Parent blueprint resolved |
 | `Harvest` | Plant placed (`isActive` suppresses between grow cycles AND when every product item is at/above its global target — same gate as recipe `AllOutputsSatisfied`, via shared `Recipe.AllItemsSatisfied` static helper) | Plant destroyed |
+| `Water` | Plant with a `moistureMin` placed (`isActive` suppresses unless soil is at/below `moistureMin` AND the colony holds water) | Plant destroyed (`RemoveForTile`) |
 | `HaulToMarket` | `UpdateMarketOrders` sees item below target | `UpdateMarketOrders` sees target met |
 | `HaulFromMarket` | `UpdateMarketOrders` sees item above target | `UpdateMarketOrders` sees excess cleared |
 | `Research` | Lab placed | Lab deconstructed |

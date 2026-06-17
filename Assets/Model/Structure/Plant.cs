@@ -239,6 +239,9 @@ public class Plant : Structure {
     // load restores the persisted flag — so starter and saved plants are unaffected.
     public override void OnPlaced() {
         SetHarvestFlagged(true);
+        // Standing watering order — self-guards on a moisture-comfort floor and dedups. Worldgen
+        // (Place, no OnPlaced) and save-load register theirs via WorkOrderManager.Reconcile instead.
+        WorkOrderManager.instance?.RegisterWater(this);
     }
 
     // Plants only carry a harvest order while flagged — flipping the flag registers or

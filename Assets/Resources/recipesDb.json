@@ -183,7 +183,7 @@
         "job": "miner",
         "tile": "quarry",
         "description": "mine stone",
-        "workload": 12.0,
+        "workload": 24.0,
         "hidden": true,
         "research": "Quarry",
         "researchPoints": 0.02,

@@ -32,7 +32,7 @@ using UnityEngine;
 public class WorkOrderManager : MonoBehaviour {
     public static WorkOrderManager instance { get; private set; }
 
-    public enum OrderType { Haul, Harvest, Construct, SupplyBlueprint, Deconstruct, HaulToMarket, HaulFromMarket, Research, Craft, SupplyBuilding, Maintenance, SupplyFurnishing, FillProcessor, TapProcessor }
+    public enum OrderType { Haul, Harvest, Construct, SupplyBlueprint, Deconstruct, HaulToMarket, HaulFromMarket, Research, Craft, SupplyBuilding, Maintenance, SupplyFurnishing, FillProcessor, TapProcessor, Water }
 
     public class WorkOrder {
         public OrderType type;
@@ -405,6 +405,29 @@ public class WorkOrderManager : MonoBehaviour {
         return orders[1].RemoveAll(o => o.type == OrderType.Harvest && o.tile == plant.tile) > 0;
     }
 
+    // Registers a standing Water order for a plant with a moisture-comfort floor. The order
+    // persists for the plant's life (cleaned up by RemoveForTile on destroy, like a dormant
+    // harvest order); isActive gates it to when the plant's soil sits at/below its comfort floor
+    // AND the colony holds water — so a farmer waters only thirsty crops, only when there's
+    // water to carry. Priority 3 keeps it below Harvest (p2). Returns true if a new order was inserted.
+    public bool RegisterWater(Plant plant) {
+        if (!WaterNeedsOrder(plant)) return false;
+        if (orders[2].Exists(o => o.type == OrderType.Water && o.tile == plant.tile)) return false;
+        Tile tile = plant.tile;
+        int waterId = Db.itemByName["water"].id;
+        Add(new WorkOrder {
+            type = OrderType.Water,
+            priority = 3,
+            factory = a => new WaterPlantTask(a, tile),
+            tile = tile,
+            canDo = a => a.job.name == "farmer",
+            isActive = () => PlantThirsty(plant)
+                && GlobalInventory.instance != null && GlobalInventory.instance.Quantity(waterId) > 0,
+            getDistance = a => Mathf.Abs(tile.x - a.x) + Mathf.Abs(tile.y - a.y)
+        });
+        return true;
+    }
+
     // Registers a Research order for a specific lab building if it's unreserved and no order exists for it.
     // Returns true if a new order was inserted.
     public bool RegisterResearch(Building lab) {
@@ -701,6 +724,20 @@ public class WorkOrderManager : MonoBehaviour {
     private static bool StackNeedsHaulOrder(ItemStack stack) =>
         stack != null && stack.item != null && stack.quantity > 0;
 
+    // True if a plant should carry a standing Water order: it declares a moisture-comfort floor.
+    // (Plants with no moistureMin never read as "below comfort", so a Water order would be inert.)
+    private static bool WaterNeedsOrder(Plant p) =>
+        p != null && p.tile != null && p.plantType.moistureMin.HasValue;
+
+    // True when the plant's soil tile is at/below its moisture-comfort floor — the gate for
+    // dispatching a watering task. Cheap (one tile lookup); called from the Water order's isActive.
+    private static bool PlantThirsty(Plant p) {
+        if (!WaterNeedsOrder(p)) return false;
+        Tile soil = World.instance.GetTileAt(p.tile.x, p.tile.y - 1);
+        if (soil == null || !soil.type.solid) return false;
+        return soil.moisture <= p.plantType.moistureMin.Value;
+    }
+
     // Group items are never physical (see SPEC-trading: "Market targets are leaf-only").
     // Filter out group keys so their 0-default targets don't spuriously trigger haul orders.
     private static bool MarketNeedsHaulTo(Inventory inv) =>
@@ -728,6 +765,23 @@ public class WorkOrderManager : MonoBehaviour {
                     if (!silent) Debug.LogWarning($"WOM reconcile: registered missing harvest order for flagged {p.plantType.name} at ({p.x},{p.y})");
                 } else {
                     Debug.LogError($"WOM audit: flagged plant at ({p.x},{p.y}) has no harvest order");
+                }
+            }
+        }
+
+        // ── Water ──
+        // Every plant with a moisture-comfort floor carries a standing Water order (gated by
+        // isActive to actual thirst + water availability), mirroring the Harvest scan. OnPlaced
+        // registers it on the gameplay path; this covers worldgen + save-load.
+        foreach (Plant p in PlantController.instance.Plants) {
+            if (!WaterNeedsOrder(p)) continue;
+            bool has = orders[2].Exists(o => o.type == OrderType.Water && o.tile == p.tile);
+            if (!has) {
+                if (repair) {
+                    RegisterWater(p);
+                    if (!silent) Debug.LogWarning($"WOM reconcile: registered missing water order for {p.plantType.name} at ({p.x},{p.y})");
+                } else {
+                    Debug.LogError($"WOM audit: plant with moisture floor at ({p.x},{p.y}) has no water order");
                 }
             }
         }
@@ -927,6 +981,14 @@ public class WorkOrderManager : MonoBehaviour {
                 Plant p = o.tile?.plant;
                 if (p == null) Debug.LogError($"WOM audit: harvest order at ({o.tile?.x},{o.tile?.y}) has no plant");
                 else if (!p.harvestFlagged) Debug.LogError($"WOM audit: harvest order at ({o.tile?.x},{o.tile?.y}) references unflagged plant");
+            }
+
+            // Water: every Water order must reference a tile with a plant that has a moisture floor.
+            foreach (WorkOrder o in orders[2]) {
+                if (o.type != OrderType.Water) continue;
+                Plant p = o.tile?.plant;
+                if (p == null) Debug.LogError($"WOM audit: water order at ({o.tile?.x},{o.tile?.y}) has no plant");
+                else if (!p.plantType.moistureMin.HasValue) Debug.LogError($"WOM audit: water order at ({o.tile?.x},{o.tile?.y}) references plant with no moisture floor");
             }
 
             // Blueprints: every blueprint order must reference a live blueprint

@@ -39,6 +39,7 @@
         ],
         "depth": 2,
         "noMaintenance": true,
+        "sideVariant": "ladder_side",
         "category": "structures"
     },{
         "id": 6,
@@ -234,7 +235,7 @@
         "id": 23,
         "constructionCost": 16,
         "name": "tank",
-        "description": "stores liquids",
+        "description": "stores liquids. also gathers rainwater if water is allowed in",
         "nx": 1, "ny": 1,
         "ncosts": [
             { "name": "wood", "quantity": 4 },
@@ -297,8 +298,41 @@
         "lightInnerRadius": 1,
         "lightOuterRadius": 9,
         "lightCenterFlatten": 0.6,
+        "lightFlicker": 0.06,
         "sortingOrder": 40,
+        "sideVariant": "torch_side",
+        "fireFps": 7,
+        "fireOffsetX": 0,
+        "fireOffsetY": 0,
         "category": "structures"
+    },{
+        "id": 149,
+        "constructionCost": 8,
+        "name": "torch_side",
+        "description": "torch hung against the side of a wall or building. place by hovering near the edge of a tile",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 5 }
+        ],
+        "depth": 2,
+        "isBuilding": true,
+        "hasFuelInv": true,
+        "fuelItemName": "wood",
+        "fuelCapacity": 5,
+        "fuelBurnRate": 1.0,
+        "isLightSource": true,
+        "lightIntensity": 0.88,
+        "lightInnerRadius": 1,
+        "lightOuterRadius": 9,
+        "lightCenterFlatten": 0.6,
+        "lightFlicker": 0.06,
+        "sortingOrder": 40,
+        "sideMounted": true,
+        "fireFps": 7,
+        "fireOffsetX": 0,
+        "fireOffsetY": 0,
+        "category": "structures",
+        "defaultLocked": true
     },{
         "id": 41,
         "constructionCost": 20,
@@ -356,6 +390,7 @@
         "lightInnerRadius": 0,
         "lightOuterRadius": 10,
         "lightCenterFlatten": 1,
+        "lightFlicker": 0.07,
         "sortingOrder": 40,
         "socialWhenShared": true,
         "activeStartHour": 16,

@@ -370,25 +370,48 @@ public class Structure {
         for (int dx = 0; dx < claimNx; dx++)
             Inventory.RefreshFloorAt(x + dx, y + claimNy);
 
-        // Fire art companion — toggleable child GO for flame/fire visuals.
-        // LightSource.Update toggles this based on isLit + emission intensity.
-        Sprite fireSprite = Resources.Load<Sprite>("Sprites/Buildings/" + st.name.Replace(" ", "") + "_f");
-        if (fireSprite != null) {
+        // Fire art companion — toggleable child GO for flame/fire visuals, toggled by
+        // LightSource.Update based on isLit + emission intensity. The flame sheet is authored at the
+        // host's tile size with the flame at the wick position (see overlay note below); a multi-frame
+        // sheet animates. fireSprite overrides the default "{name}_f" lookup if a host wants to share.
+        string flameName = !string.IsNullOrEmpty(st.fireSprite) ? st.fireSprite : st.name.Replace(" ", "") + "_f";
+        Sprite[] fireFrames = Resources.LoadAll<Sprite>("Sprites/Buildings/" + flameName);
+        if (fireFrames != null && fireFrames.Length > 0) {
             fireGO = new GameObject("fire");
             fireGO.transform.SetParent(go.transform, false);
             fireSR = SpriteMaterialUtil.AddSpriteRenderer(fireGO);
-            fireSR.sprite = fireSprite;
-            fireSR.sortingOrder = sr.sortingOrder;
+            fireSR.sprite = fireFrames[0];
+            // +1 so the flame draws in front of the body/stick (equal order is an ambiguous tie).
+            // Stays within the same lighting bucket (Mid 18..47 for a depth-2 torch), so emission
+            // and sort-aware shaping are unaffected — see SortBucketUtil.
+            fireSR.sortingOrder = sr.sortingOrder + 1;
             fireSR.flipX = mirrored;
             LightReceiverUtil.SetSortBucket(fireSR);
-            // Bind fire texture as _EmissionMap via MPB — secondary textures from
-            // the sprite importer may not survive DrawRenderers with an override
-            // material (EmissionWriter). Explicit MPB binding ensures it's always
-            // available as a per-renderer property.
+            // The flame sheet is authored at the host's full tile size (16x16) with the flame painted
+            // at the wick position, so it renders as a plain overlay on the building — identical sprite
+            // size, centre pivot, and transform as the body. That guarantees the flame shares the body's
+            // exact pixel-snap rounding at every zoom; a smaller offset sprite rounds independently and
+            // drifts by a pixel under pixel-perfect snapping. flipX mirrors it with the host like the
+            // body. fireOffsetX/Y stay available for whole-pixel nudges (safe at the even tile size).
+            fireGO.transform.localPosition = new Vector3(st.fireOffsetX, st.fireOffsetY, 0f);
+            // Bind the flame's own texture as _EmissionMap via MPB so its painted pixels glow
+            // (white-masked → colour preserved). Self-reference is atlas-safe: the SR's UVs and
+            // the bound texture are the same atlas page, so each frame samples its own pixels.
+            // (A separate emission sheet wouldn't survive atlasing here — different page/UVs.)
             var mpb = new MaterialPropertyBlock();
             fireSR.GetPropertyBlock(mpb);
-            mpb.SetTexture(Shader.PropertyToID("_EmissionMap"), fireSprite.texture);
+            mpb.SetTexture(Shader.PropertyToID("_EmissionMap"), fireFrames[0].texture);
             fireSR.SetPropertyBlock(mpb);
+            // Animate multi-frame sheets; phase-offset the start frame per instance (position
+            // hash, deterministic + save-safe) so a row of torches doesn't flicker in lockstep.
+            if (fireFrames.Length > 1) {
+                FrameAnimator anim = fireGO.AddComponent<FrameAnimator>();
+                anim.frames = fireFrames;
+                anim.baseFps = st.fireFps > 0f ? st.fireFps : 7f;
+                anim.startFrame = ((x * 31 + y) % fireFrames.Length + fireFrames.Length) % fireFrames.Length;
+                anim.randomWalk = true; // fire flickers via a ±1 random walk, not a fixed cycle
+
+            }
             fireGO.SetActive(false);
         }
 

@@ -49,7 +49,7 @@ public class MaintenanceTask : Task {
             if (needed <= 0) continue;
 
             Item costItem = cost.item;
-            Item supplyItem = PickSupplyLeaf(costItem);
+            Item supplyItem = ResolveConsumeLeaf(costItem); // group cost → concrete leaf (surplus × nearness)
             (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(supplyItem);
             if (itemPath == null || stack == null) return false;
             int available = stack.quantity - stack.resAmount;

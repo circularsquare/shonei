@@ -314,24 +314,24 @@ public class BuildPanel : MonoBehaviour {
         return StructPlacement.CanPlaceHere(st, tile, mirrored, shapeIndex);
     }
 
-    // Cursor-position-driven ladder variant resolution. When the player is in ladder build
-    // mode, hovering near the left/right edge of a tile switches the placement to the
-    // sideladder StructType (mounted to the adjacent wall surface). The cost panel and
-    // hotkeys keep reading the selected `structType` (ladder); only what gets *placed*
-    // switches. Returns the resolved (StructType, mirrored, anchor) — the resolved
-    // StructType stays "ladder" (centred) when the cursor is in the middle of a tile or
-    // when ladder isn't selected at all.
+    // Cursor-position-driven side-variant resolution. When the active build type declares a
+    // `sideVariant` (ladder → ladder_side, torch → torch_side), hovering near the left/right
+    // edge of a tile switches the placement to that side-mounted StructType (mounted to the
+    // adjacent wall surface). The cost panel and hotkeys keep reading the selected `structType`
+    // (the centred base); only what gets *placed* switches. Returns the resolved
+    // (StructType, mirrored, anchor) — the resolved StructType stays the base (centred) when
+    // the cursor is in the middle of a tile or when the active type has no side variant.
     //
-    // dir/mirror convention for sideladder: mirrored=true → wall on right of the ladder's
-    // tile; mirrored=false → wall on left. See Tile.HasSideLadder.
-    public static void ResolveLadderVariant(Vector2 world, Tile tileAt, StructType activeSt,
-                                            out StructType resolvedSt, out bool resolvedMirrored,
-                                            out Tile resolvedAnchor) {
+    // dir/mirror convention for side mounts: mirrored=true → wall on right of the mount's
+    // tile; mirrored=false → wall on left. See Tile.HasSideLadder / Tile.GetSideMount.
+    public static void ResolveSideVariant(Vector2 world, Tile tileAt, StructType activeSt,
+                                          out StructType resolvedSt, out bool resolvedMirrored,
+                                          out Tile resolvedAnchor) {
         resolvedSt = activeSt;
         resolvedMirrored = BuildPanel.instance != null && BuildPanel.instance.mirrored;
         resolvedAnchor = tileAt;
-        if (activeSt == null || activeSt.name != "ladder" || tileAt == null) return;
-        StructType sideSt = Db.structTypeByName.TryGetValue("ladder_side", out var ss) ? ss : null;
+        if (activeSt == null || tileAt == null || string.IsNullOrEmpty(activeSt.sideVariant)) return;
+        StructType sideSt = Db.structTypeByName.TryGetValue(activeSt.sideVariant, out var ss) ? ss : null;
         if (sideSt == null) return;
 
         // Tiles are center-pivot — tile (tx, _) spans world.x ∈ [tx-0.5, tx+0.5).
@@ -344,7 +344,7 @@ public class BuildPanel : MonoBehaviour {
         World w = World.instance;
 
         if (frac < EDGE) {
-            // Cursor near left edge. Ladder mounts onto the wall to the left of its own tile.
+            // Cursor near left edge. Mount hangs onto the wall to the left of its own tile.
             if (hereSolid) {
                 Tile air = w.GetTileAt(tileAt.x - 1, tileAt.y);
                 if (air == null) return;

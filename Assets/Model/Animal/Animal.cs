@@ -318,11 +318,13 @@ public class Animal : MonoBehaviour{
                     foodSlotInv.Produce(slotFood, -100);
                     eating.Eat(slotFood.foodValue);
                     happiness.NoteAte(slotFood, 1f);
+                    StatsTracker.instance?.NoteConsumed(slotFood, 100);
                 } else {
                     // Partial meal — consume remainder, scale nutrition, partial happiness credit
                     foodSlotInv.Produce(slotFood, -qty);
                     eating.Eat(slotFood.foodValue * qty / 100f);
                     happiness.NoteAte(slotFood, qty / 100f);
+                    StatsTracker.instance?.NoteConsumed(slotFood, qty);
                 }
             }
         }
@@ -868,7 +870,10 @@ public class Animal : MonoBehaviour{
             Debug.LogError("called produce with negative quantity, use consume instead");
             Consume(item, -quantity); return;
         }
-        int leftover = inv.Produce(item, quantity); 
+        // Colony production tally (food-points-per-day chart, etc.). The single chokepoint
+        // for harvest, craft, and construction output — and never hit during save-load.
+        StatsTracker.instance?.NoteProduced(item, quantity);
+        int leftover = inv.Produce(item, quantity);
         if (leftover > 0){
             Debug.LogError(aName + " produced without space in inventory");
             Path dropPath = nav.FindPathToDrop(item, leftover);
@@ -968,6 +973,11 @@ public class Animal : MonoBehaviour{
             if (ginv.SufficientResources(recipe.inputs)){
                 if (!Db.structTypeByName.ContainsKey(recipe.tile) ||
                     !nav.CanReachBuilding(Db.structTypeByName[recipe.tile])) continue;
+                // Gate out fully-satisfied recipes, mirroring PickRecipeForBuilding/ScoreCraftRecipes.
+                // Must precede the Score/maxScore compare: a satisfied recipe could otherwise enter
+                // the score==maxScore reservoir-tie branch. (Score no longer self-suppresses on
+                // over-target outputs — surplus outputs are skipped — so this gate is load-bearing.)
+                if (recipe.AllOutputsSatisfied(targets)) continue;
                 float score = recipe.Score(targets);
                 if (score > maxScore){
                     maxScore = score;

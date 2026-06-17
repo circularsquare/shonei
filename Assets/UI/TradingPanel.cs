@@ -524,10 +524,31 @@ public class TradingPanel : MonoBehaviour {
             case "/wind": CmdWind(parts); break;
             case "/generate":   CmdGenerate(parts);   break;
             case "/regenerate": CmdRegenerate(parts); break;
+            case "/online": CmdOnline(); break;
             default:
                 EventFeed.instance?.Post($"<color=#cc3333>Unknown command: {cmd}</color>", EventFeed.Category.Info);
                 break;
         }
+    }
+
+    // /online — report how many players the server currently sees connected.
+    // The count is pushed by the server on every connect/disconnect; we just read
+    // the latest value TradingClient cached. hasOnlineCount distinguishes "not
+    // reported yet" (just connected) from a genuine count.
+    void CmdOnline() {
+        var client = TradingClient.instance;
+        if (client == null || !client.isOnline) {
+            EventFeed.instance?.Post("<color=#cc3333>not connected to server 3:</color>", EventFeed.Category.Info);
+            return;
+        }
+        if (!client.hasOnlineCount) {
+            EventFeed.instance?.Post("<color=#aaaaaa>online count not in yet, try again in a sec</color>", EventFeed.Category.Info);
+            return;
+        }
+        int n = client.OnlinePlayerCount;
+        EventFeed.instance?.Post(
+            $"<color=#aaffaa>{n} {(n == 1 ? "player" : "players")} online</color>",
+            EventFeed.Category.Info);
     }
 
     // /rain                 — toggle weather between rain and clear.

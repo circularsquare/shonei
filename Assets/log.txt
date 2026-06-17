@@ -1,12 +1,16 @@
 meoww!!
 
+6/17
+- recipe selection adjustments, caps on input and output influence
 6/15
 - minor adjustments
     - easier moisture 
     - architecture tech
     - slower food consumption when sleeping
     - more ui gating on undiscovered things. happiness fields, equip slots
-- 
+- ship 0.1.0!
+- food production plot
+- safety server throttles
 6/12
 - more graphics settings (cloud detail, flat lighting, particle)
 - more sounds (research, wind)

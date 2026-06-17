@@ -419,6 +419,16 @@ public class Inventory{
         }
         return amount;
     }
+    // The concrete leaf currently stored here that descends from `group` (qty > 0), or null if
+    // none. Used by fuel/processor top-up to bias the next delivery toward the leaf already in the
+    // (single-type) slot — see Task.ResolveConsumeLeaf's preferLeaf. If `group` is itself a leaf,
+    // returns it when held. Returns the first match; reservoir/buffer slots hold one type anyway.
+    public Item HeldLeafMatching(Item group){
+        foreach (ItemStack stack in itemStacks)
+            if (stack != null && stack.item != null && stack.quantity > 0 && MatchesItem(stack.item, group))
+                return stack.item;
+        return null;
+    }
     public bool ContainsAvailableItem(Item item){
         if (item == null){ return !IsEmpty(); }
         foreach (ItemStack stack in itemStacks){

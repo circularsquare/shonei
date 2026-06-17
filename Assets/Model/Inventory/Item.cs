@@ -106,6 +106,17 @@ public class Item {
         return it;
     }
 
+    // Enumerates every leaf descendant (depth-first, JSON child order); yields `this` when already
+    // a leaf. Deterministic order — recipe scoring (Recipe.GeoMeanInputs) and consumption
+    // leaf-selection (Task.ResolveConsumeLeaf) both walk a group's leaves through this, so they
+    // agree, and ties resolve to the first leaf in this stable order.
+    public System.Collections.Generic.IEnumerable<Item> LeafDescendants(){
+        if (children == null || children.Length == 0){ yield return this; yield break; }
+        foreach (Item child in children)
+            foreach (Item leaf in child.LeafDescendants())
+                yield return leaf;
+    }
+
     public bool IsDiscovered(){
         if (InventoryController.instance != null){
             return InventoryController.instance.discoveredItems[id];

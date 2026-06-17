@@ -145,6 +145,7 @@ The main game clock lives in `World.Tick(float dt)` (World.cs). `World.Update()`
 | 1 second | `AnimalController.TickUpdate()`, `PlantController.TickUpdate()`, `ResearchSystem.TickUpdate()` |
 | 10 seconds | `WorkOrderManager.Reconcile()` — safety net re-scan (see SPEC-ai.md) |
 | 0.2 seconds | `InventoryController.TickUpdate()` (item display refresh), `InfoPanel.UpdateInfo()` |
+| in-game hour (20 s) / day (480 s) | `StatsTracker.OnSampleTick()` samples pull-stats each hour; `OnDayElapsed()` finalizes each daily stat's day on the day boundary — see SPEC-stats.md |
 
 All game logic is intended to be tick-driven. Movement and fall physics are the only things that run per-frame (in `Animal.Update()` → `AnimalStateManager.UpdateMovement(deltaTime)`), because smooth sub-tile animation requires it.
 

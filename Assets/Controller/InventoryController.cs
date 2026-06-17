@@ -51,11 +51,14 @@ public class InventoryController : MonoBehaviour {
         discoveredItems = Db.itemsFlat.ToDictionary(i => i.id, i => false);
         SeedStartDiscovered();
         itemDisplayGos = Db.itemsFlat.ToDictionary(i => i.id, i => default(GameObject));
-        // Per-item default target seeded from Item.DefaultTargetFen. Books default to 1 liang
+        // Per-leaf default target seeded from Item.DefaultTargetFen. Books default to 1 liang
         // (one copy is plenty; scribes skip a book recipe once any exists). Byproducts like
         // acorn/sawdust default to 10 liang so multi-product plant harvest gating can trigger.
         // Everything else defaults to 100 liang. SaveSystem reapplies persisted overrides on load.
-        targets = Db.itemsFlat.ToDictionary(i => i.id, i => i.DefaultTargetFen);
+        // Leaf items only — group items (e.g. "wood", "food") hold no target; a group input is
+        // resolved to a concrete leaf at scoring/consumption time (Recipe.GeoMeanInputs,
+        // Task.ResolveConsumeLeaf), so a separate group target would be a confusing parallel knob.
+        targets = Db.itemsFlat.Where(i => !i.IsGroup).ToDictionary(i => i.id, i => i.DefaultTargetFen);
 
         if (inventoryHeader != null) inventoryHeader.onToggled += OnHeaderToggled;
 

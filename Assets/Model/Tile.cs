@@ -236,6 +236,20 @@ public class Tile {
         return s != null && s.structType.name == "ladder_side";
     }
 
+    // Direction-scoped lookup for ANY side-mounted structure leaning on a wall to its `dir`
+    // side (side ladder, bracket, side torch). dir = +1 → wall on right (mirrored=true);
+    // dir = -1 → wall on left (mirrored=false). Scans all depths since side-mounts vary by
+    // depth (ladder/torch at 2, bracket at 1). Used by Blueprint to drop a mount whose wall
+    // was mined out. Returns the structure or null.
+    public Structure GetSideMount(int dir){
+        for (int d = 0; d < NumDepths; d++){
+            Structure s = structs[d];
+            if (s == null || !s.structType.sideMounted) continue;
+            if (dir > 0 ? s.mirrored : !s.mirrored) return s;
+        }
+        return null;
+    }
+
     public Blueprint GetAnyBlueprint(){
         foreach (var bp in blueprints) if (bp != null) return bp;
         return null;

@@ -18,13 +18,22 @@ public class FrameAnimator : MonoBehaviour {
     public Func<bool> isActive;          // null = always active
     public Func<float> speedMultiplier;  // null = constant 1.0
     public float baseFps = 8f;
+    public int startFrame = 0;           // initial frame — lets callers phase-offset instances
+    public bool randomWalk = false;      // coin-flip ±1 through frames each step (fire flicker), not a fixed cycle
 
     SpriteRenderer sr;
     float frameTime;  // accumulated frames-elapsed since the last sprite swap (0..1)
     int frame;
+    // Own RNG for randomWalk — isolated from UnityEngine.Random so visual flicker can't
+    // perturb the simulation's shared random stream (determinism). Seeded per instance.
+    System.Random rng;
 
     void Start() {
         sr = GetComponent<SpriteRenderer>();
+        if (frames != null && frames.Length > 0 && sr != null) {
+            frame = ((startFrame % frames.Length) + frames.Length) % frames.Length;
+            sr.sprite = frames[frame];
+        }
     }
 
     void Update() {
@@ -35,7 +44,15 @@ public class FrameAnimator : MonoBehaviour {
         frameTime += Time.deltaTime * baseFps * mult;
         if (frameTime >= 1f) {
             int adv = (int)frameTime;
-            frame = (frame + adv) % frames.Length;
+            if (randomWalk) {
+                if (rng == null) rng = new System.Random(GetInstanceID());
+                int dir = rng.Next(2) == 0 ? -1 : 1;        // coin flip: step back or forward
+                int next = frame + dir;
+                if (next < 0 || next >= frames.Length) next = frame - dir; // reflect at the ends
+                frame = next;
+            } else {
+                frame = (frame + adv) % frames.Length;
+            }
             frameTime -= adv;
             sr.sprite = frames[frame];
         }

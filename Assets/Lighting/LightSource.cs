@@ -57,6 +57,12 @@ public class LightSource : MonoBehaviour {
     // When true, SunController modulates intensity by time of day (torches, fireplaces).
     [HideInInspector] public bool sunModulated = false;
 
+    // Subtle fire flicker. flickerAmount is the intensity wobble as a fraction (0 = steady,
+    // 0.06 = ±6%); flickerPhase offsets this light's noise lane so neighbours don't pulse in sync.
+    [HideInInspector] public float flickerAmount = 0f;
+    [HideInInspector] public float flickerPhase  = 0f;
+    private const float FlickerSpeed = 3f; // noise lanes/sec — how fast the wobble evolves
+
     // Optional time gate: fuel only burns and light only shows within [activeStartHour, activeEndHour).
     // Hours 0–24; end < start wraps midnight (e.g. 16→6 = 4pm–6am). -1 = always active.
     [HideInInspector] public float activeStartHour = -1f;
@@ -155,6 +161,11 @@ public class LightSource : MonoBehaviour {
         // anyway because torchFactor changes smoothly over twilight.)
         if (sunModulated && !isDirectional)
             intensity = isLit ? baseIntensity * EnvDarkness() : 0f;
+        // Subtle organic flicker on top of the (time-of-day-scaled) intensity. One Perlin sample
+        // along a per-instance lane (flickerPhase) — visual only, and the light pass already
+        // redraws every frame, so this adds no rendering cost (just one cheap noise lookup).
+        if (flickerAmount > 0f && isLit && !isDirectional)
+            intensity *= 1f + flickerAmount * (Mathf.PerlinNoise(flickerPhase, Time.time * FlickerSpeed) - 0.5f) * 2f;
         // Fire child visibility tracks emission scale — fire appears/disappears
         // in sync with the emission glow, including smooth twilight fade.
         if (building?.fireGO != null)

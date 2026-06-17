@@ -112,6 +112,7 @@ public class World : MonoBehaviour {
         OverlayGrowthSystem.Create();
         SnowAccumulationSystem.Create();
         PowerSystem.Create();
+        StatsTracker.Create();
     }
 
     // Reload Domain is off, so plain-C# singletons (unlike MonoBehaviours, whose destroyed
@@ -130,6 +131,7 @@ public class World : MonoBehaviour {
         OverlayGrowthSystem.ResetStatics();
         SnowAccumulationSystem.ResetStatics();
         PowerSystem.ResetStatics();
+        StatsTracker.ResetStatics();
         GlobalInventory.ResetStatics();
         MarketBuilding.ResetStatics();
         // Static structure registries that a normal ClearWorld empties via each structure's
@@ -224,8 +226,14 @@ public class World : MonoBehaviour {
         float subHourPeriod = hourPeriod / 3f;    // ~6.7 s = wind/humidity OU step
         if (Math.Floor((timer + dt) / subHourPeriod) - Math.Floor(timer / subHourPeriod) > 0)
             WeatherSystem.instance?.StepWindHumidity();
-        if (Math.Floor((timer + dt) / hourPeriod) - Math.Floor(timer / hourPeriod) > 0)
+        if (Math.Floor((timer + dt) / hourPeriod) - Math.Floor(timer / hourPeriod) > 0) {
             WeatherSystem.instance?.OnHourElapsed();
+            // Daily-stats sampling cadence (pulls sampler-backed stats, e.g. avg social).
+            StatsTracker.instance?.OnSampleTick();
+        }
+        // Daily-stats day boundary: finalize each stat's in-progress day into history.
+        if (Math.Floor((timer + dt) / ticksInDay) - Math.Floor(timer / ticksInDay) > 0)
+            StatsTracker.instance?.OnDayElapsed();
         float tempNoisePeriod = ticksInDay / 2f;  // 240 s = temperature OU step (2x/day)
         if (Math.Floor((timer + dt) / tempNoisePeriod) - Math.Floor(timer / tempNoisePeriod) > 0)
             WeatherSystem.instance?.StepTemperatureAnomaly();

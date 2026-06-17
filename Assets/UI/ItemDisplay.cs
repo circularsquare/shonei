@@ -101,9 +101,11 @@ public class ItemDisplay : MonoBehaviour {
     // Configures which UI elements are visible based on the display mode.
     public void SetDisplayMode(DisplayMode mode) {
         displayMode = mode;
-        // Market mode hides targets on group items — only leaf items hold meaningful market targets
-        // (group targets never drove haul behaviour correctly, and haul orders key on leaves anyway).
-        bool showTargets = mode == DisplayMode.Global || (mode == DisplayMode.Market && item != null && !item.IsGroup);
+        // Both Global and Market hide targets on group items — only leaf items hold a target now
+        // (a group input resolves to a concrete leaf at scoring/consumption time; there is no group
+        // target). A null item (pre-Start placeholder) is treated as a leaf so the widget shows.
+        bool isGroupRow = item != null && item.IsGroup;
+        bool showTargets = !isGroupRow && (mode == DisplayMode.Global || mode == DisplayMode.Market);
         bool showToggle  = mode == DisplayMode.Storage;
         if (targetUpGo != null)   targetUpGo.SetActive(showTargets);
         if (targetDownGo != null) targetDownGo.SetActive(showTargets);
@@ -140,7 +142,8 @@ public class ItemDisplay : MonoBehaviour {
                 if (itemText != null) itemText.text = item.name;
                 if (quantityText != null)
                     quantityText.text = ItemStack.FormatQ(GlobalInventory.instance.Quantity(item), item);
-                SetTargetDisplay(InventoryController.instance.targets[item.id]);
+                // Groups hold no target (and their widget is hidden) — only leaves index `targets`.
+                if (!item.IsGroup) SetTargetDisplay(InventoryController.instance.targets[item.id]);
                 break;
         }
     }
@@ -207,6 +210,7 @@ public class ItemDisplay : MonoBehaviour {
 
     private void AdjustTarget(int deltaFen) {
         if (displayMode == DisplayMode.Storage) return;
+        if (item != null && item.IsGroup) return; // groups hold no target (widget is hidden) — defensive
         Inventory market = ResolveMarketInventory();
         int newFen;
         if (market != null) {
@@ -230,6 +234,7 @@ public class ItemDisplay : MonoBehaviour {
     public void OnTargetEndEdit(string s) {
         if (displayMode == DisplayMode.Storage) return;
         if (item == null) return;
+        if (item.IsGroup) return; // groups hold no target (widget is hidden) — defensive
         if (!ItemStack.TryParseQ(s, item, out int fen)) {
             RefreshAfterTargetChange();
             return;

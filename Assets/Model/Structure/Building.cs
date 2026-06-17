@@ -207,6 +207,8 @@ public class Building : Structure {
                 ls.outerRadius   = st.lightOuterRadius;
                 ls.innerRadius   = st.lightInnerRadius;
                 ls.centerFlatten   = st.lightCenterFlatten;
+                ls.flickerAmount   = st.lightFlicker;
+                ls.flickerPhase    = x * 0.37f + y * 0.71f; // decorrelate neighbours, deterministic
                 ls.reservoir = reservoir;
                 ls.building  = this; // gates burn + emission on this.disabled
                 ls.sunModulated    = true;

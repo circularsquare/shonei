@@ -78,6 +78,35 @@ public class PlayerTaskController : MonoBehaviour {
         currentIndex = 0;
     }
 
+    // ── Save key (by id, not index) ──────────────────────────────────────
+    // Onboarding progress is persisted by the current task's stable `id`, never its list
+    // position — so inserting/reordering tasks can't make an old save resume on the wrong one
+    // (it silently did when keyed by index; see SPEC-onboarding "Save" for the history).
+
+    // Sentinel persisted once every task is done — distinguishes "finished onboarding" from
+    // "on a specific task" so a completed run isn't re-shown after the list grows.
+    public const string CompletedSaveId = "(complete)";
+
+    // The value to persist for the current onboarding position. Null while uninitialized
+    // (mid-boot, currentIndex == -1) so the save writes nothing and the restore falls through
+    // to its null handling.
+    public string SaveId() {
+        if (tasks == null || currentIndex < 0) return null;
+        if (currentIndex >= tasks.Count) return CompletedSaveId;
+        return tasks[currentIndex].id;
+    }
+
+    // Restore the onboarding position from a saved id. Unknown id (the task was removed since
+    // the save was written) → treat onboarding as complete, so a returning player isn't wedged
+    // on a task that no longer exists.
+    public void RestoreFromId(string id) {
+        if (id == CompletedSaveId) { currentIndex = int.MaxValue; return; }
+        int idx = tasks != null ? tasks.FindIndex(t => t.id == id) : -1;
+        if (idx >= 0) { currentIndex = idx; return; }
+        Debug.LogWarning($"[PlayerTask] saved task id '{id}' not in current list — treating onboarding as complete");
+        currentIndex = int.MaxValue;
+    }
+
     // ── Task list ───────────────────────────────────────────────────────
     void BuildTasks() {
         tasks = new List<PlayerTask> {

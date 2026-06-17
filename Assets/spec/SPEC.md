@@ -108,6 +108,7 @@ A new top-level `Assets/` source folder falls into `Shonei.Runtime` automaticall
 | [SPEC-checklists.md](SPEC-checklists.md) | Content-authoring checklists — buildings, recipes, items, jobs, plants, Structure subclasses. Read the relevant section before editing JSON or adding subclasses. |
 | [SPEC-testing.md](SPEC-testing.md) | Test types (EditMode/PlayMode/Snapshot), the snapshot golden workflow, headless `run-tests.bat`, conventions for adding tests. |
 | [SPEC-deployment.md](SPEC-deployment.md) | Shipping the game — client build+publish to itch.io (`build-and-publish.ps1`), server deploy to Hetzner, version flow, known gaps + future work. |
+| [SPEC-stats.md](SPEC-stats.md) | Historic colony statistics — `DailyStat`/`StatsTracker` per-day metrics (food produced/eaten, etc.), the `BarChartGraph` widget, how to add a tracked/graphed metric, save/load. |
 
 ---
 
@@ -127,4 +128,5 @@ When adding new content, read these files first and match their pattern:
 | New save data | `ResearchSaveData` | `WorldSaveData.cs` + `SaveSystem.cs` checklist |
 | New item sprite | Existing sheets | `Sprites/Items/Sheets/` → Tools → Split Item Sheets + Normals |
 | New lit object | Existing sprite setup | Must be on a `litLayers` layer — see SPEC-rendering.md |
+| New tracked/graphed stat | `food_produced` (push Sum) / `avg_social` (pull Average) | `Assets/Model/Stats/StatsTracker.cs` + `BarChartGraph` — see SPEC-stats.md |
 

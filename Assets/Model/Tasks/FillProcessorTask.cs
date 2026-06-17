@@ -31,17 +31,20 @@ public class FillProcessorTask : Task {
         // the rest (which is why the order re-arms to Empty on an incomplete Complete).
         var deliveries = new List<ItemQuantity>();
         foreach (ItemQuantity input in proc.inputs) {
+            // missing is measured against the group (input.item) so any already-buffered leaf counts;
+            // the fetch then commits to a concrete leaf (surplus × nearness) for the new delivery.
             int missing = input.quantity - proc.inputBuffer.Quantity(input.item);
             if (missing <= 0) continue;
-            (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(input.item);
+            Item inputLeaf = ResolveConsumeLeaf(input.item);
+            (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(inputLeaf);
             if (itemPath == null) continue;
             int available = stack.quantity - stack.resAmount;
             int qty = Math.Min(missing, available);
             if (qty <= 0) continue;
-            int spaceReserved = ReserveSpace(proc.inputBuffer, input.item, qty);
+            int spaceReserved = ReserveSpace(proc.inputBuffer, inputLeaf, qty);
             if (spaceReserved <= 0) continue;
             qty = Math.Min(qty, spaceReserved);
-            ItemQuantity iq = new ItemQuantity(input.item, qty);
+            ItemQuantity iq = new ItemQuantity(inputLeaf, qty);
             FetchAndReserve(iq, itemPath.tile, stack);
             deliveries.Add(iq);
         }

@@ -75,24 +75,35 @@ public abstract class Task {
     protected static int MinMarketHaul(Item item) =>
         item.name == "silver" ? MinMarketHaulQuantitySilver : MinMarketHaulQuantity;
 
-    // Returns the leaf of a group item with the highest global-inventory count.
-    // If item is already a leaf, returns it unchanged. Used to commit to a single
-    // leaf before a supply/repair haul so the destination doesn't get locked to a
-    // scarce variant just because it happened to be delivered first.
-    protected static Item PickSupplyLeaf(Item item) {
-        if (item.children == null || item.children.Length == 0) return item;
+    // Path-cost units over which a leaf's surplus halves in ResolveConsumeLeaf. With the
+    // exponential discount 2^(-cost/HalfDist) this is exactly the crossover: a leaf with 2× the
+    // surplus is worth walking ~HalfDist extra cost-units for. (cost ≈ tiles on flat ground;
+    // roads/water/ladders weight it — tune by feel.)
+    protected const float ConsumeLeafHalfDist = 5f;
+
+    // Resolves a consumption item to the concrete leaf a mouse should fetch and consume.
+    // Leaf items return unchanged. A group item (wildcard, e.g. "wood") resolves to the in-stock,
+    // reachable leaf descendant maximising surplus (qty/target, capped) discounted by walk distance
+    // — so mice drain the type they hold most over target, preferring nearby stock, and scoring
+    // (Recipe.GeoMeanInputs, which uses the max-surplus leaf, distance-free) agrees with what gets
+    // consumed. Ties resolve to the first leaf in LeafDescendants order (deterministic). Falls back
+    // to the group unchanged if no leaf is reachable — the caller's own FindPathItemStack then
+    // fails as before. Replaces the old max-global-quantity PickSupplyLeaf (which ignored both
+    // targets and distance).
+    protected Item ResolveConsumeLeaf(Item item) {
+        if (!item.IsGroup) return item;
         Item best = null;
-        int bestQty = -1;
-        CollectBestLeaf(item, ref best, ref bestQty);
-        return best ?? item; // fallback to group if tree is somehow empty (shouldn't happen)
-    }
-    private static void CollectBestLeaf(Item item, ref Item best, ref int bestQty) {
-        if (item.children == null || item.children.Length == 0) {
-            int qty = GlobalInventory.instance.Quantity(item);
-            if (qty > bestQty) { bestQty = qty; best = item; }
-            return;
+        float bestScore = -1f;
+        var targets = InventoryController.instance?.targets;
+        foreach (Item leaf in item.LeafDescendants()) {
+            var (path, stack) = animal.nav.FindPathItemStack(leaf);
+            if (path == null || stack == null) continue; // not in stock / not reachable
+            int target = (targets != null && targets.TryGetValue(leaf.id, out int t)) ? t : 100;
+            float score = Recipe.SurplusRatio(GlobalInventory.instance.Quantity(leaf), target)
+                          * Mathf.Pow(2f, -path.cost / ConsumeLeafHalfDist);
+            if (score > bestScore) { bestScore = score; best = leaf; }
         }
-        foreach (Item child in item.children) CollectBestLeaf(child, ref best, ref bestQty);
+        return best ?? item;
     }
 
     // check whether a task is possible. create objectives, make reservations

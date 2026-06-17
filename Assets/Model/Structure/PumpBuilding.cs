@@ -15,7 +15,9 @@ public class PumpBuilding : Building, PowerSystem.IPowerConsumer {
     // Water units drained from the source tile per completed craft round.
     // WaterMax=160 = one full tile. Final intended value: WaterMax/5 = 32 (1/5 tile per round).
     // Raised to WaterMax temporarily for easier testing.
-    private const int WaterDrainPerRound = WaterController.WaterMax/32;
+    // Public so MoistureSystem can derive the farmer watering exchange rate from the same
+    // number (1 round → this many tile-water → 1 liang water item). See MoistureSystem conversion.
+    public const int WaterDrainPerRound = WaterController.WaterMax/32;
 
     public PumpBuilding(StructType st, int x, int y, bool mirrored = false) : base(st, x, y, mirrored) { }
 

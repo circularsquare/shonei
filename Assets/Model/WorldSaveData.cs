@@ -75,8 +75,13 @@ public class WorldSaveData {
     // Per-panel collapse state, keyed by CollapsibleHeader.saveKey ("inventory", "jobs").
     // Only deltas vs default-open (true) are stored. Null on old saves → panels start open.
     public Dictionary<string, bool> panelsOpen;
-    // Onboarding progress: index of the current PlayerTask. Null on pre-feature saves →
-    // onboarding is treated as already complete (returning players aren't re-shown tasks).
+    // Onboarding progress: stable PlayerTask.id of the current task (or PlayerTaskController.
+    // CompletedSaveId once all tasks are done). Keyed by id — NOT index — so inserting or
+    // reordering tasks never desyncs a mid-onboarding save. Null on saves predating this field.
+    public string playerTaskId;
+    // LEGACY onboarding key: the current task's *index*. Superseded by playerTaskId (index-keyed
+    // saves silently resumed on the wrong task when the list changed). Still read for back-compat
+    // with pre-playerTaskId saves; no longer written. Null on pre-feature saves → onboarding done.
     public int? playerTaskIndex;
     // Cumulative births this colony — gates the early-growth birth-rate boost (first 2 births).
     // Null on pre-feature saves → restored as boost-already-spent so established colonies don't
@@ -92,6 +97,18 @@ public class WorldSaveData {
     // its building is demolished. Null/absent on old saves → RestoreBuiltTypes re-derives from the
     // structures currently in the save, so a standing sawmill still reveals woodworker.
     public string[] buildingsEverBuilt;
+    // Historic colony statistics (food points produced per day, etc.), one entry per
+    // tracked DailyStat keyed by id. Null/absent on old saves → stats start empty.
+    public StatSaveData[] stats;
+}
+
+// One DailyStat's persisted state — finalized daily history plus the in-progress
+// day's accumulator (so saving mid-day doesn't lose the current day's tally).
+public class StatSaveData {
+    public string  id;            // matches DailyStat.id; unknown ids are ignored on load
+    public float[] history;       // finalized daily values, oldest → newest
+    public float   currentSum;    // in-progress day: running sum (Sum) / sample total (Average)
+    public int     currentCount;  // in-progress day: sample count (used by Average)
 }
 
 public class FlowerSaveData {

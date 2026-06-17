@@ -59,9 +59,10 @@ using Newtonsoft.Json;
 //   [x] Camera position and zoom (PPU)
 //   [x] Global inventory panel tree collapse state (deltas vs item.defaultOpen)
 //   [x] Panel collapse state for CollapsibleHeader-equipped panels (deltas vs default-open)
-//   [x] Onboarding PlayerTask progress (current task index; null on old saves → onboarding skipped)
+//   [x] Onboarding PlayerTask progress (current task *id*, not index; legacy index read for back-compat; null → onboarding skipped)
 //   [x] Cumulative colony births (gates the early-growth birth-rate boost; null on old saves → boost spent)
 //   [x] Decorative flower layout (position + variant; restored directly instead of re-derived, which drifted across reload)
+//   [x] Historic colony statistics (DailyStat history + in-progress day; food produced per day, avg social, …)
 // -----------------------------------------------------------------------
 
 public class SaveSystem : MonoBehaviour {
@@ -214,6 +215,9 @@ public class SaveSystem : MonoBehaviour {
         // exact flowers instead of re-deriving from live grass/snow state (which drifts).
         data.flowers = FlowerController.instance != null ? FlowerController.instance.GatherSave() : null;
 
+        // Historic colony statistics (food produced per day, etc.).
+        data.stats = StatsTracker.instance != null ? StatsTracker.instance.GatherSave() : null;
+
         // Original ground-line per column (immutable from worldgen). Persisted so
         // the "natural surface" gate used by FlowerController / OverlayGrowthSystem
         // survives across saves even when the player has mined the top off a column.
@@ -351,7 +355,7 @@ public class SaveSystem : MonoBehaviour {
         if (panelDeltas.Count > 0) data.panelsOpen = panelDeltas;
 
         if (PlayerTaskController.instance != null)
-            data.playerTaskIndex = PlayerTaskController.instance.currentIndex;
+            data.playerTaskId = PlayerTaskController.instance.SaveId();
 
         if (AnimalController.instance != null)
             data.births = AnimalController.instance.births;
@@ -613,6 +617,7 @@ public class SaveSystem : MonoBehaviour {
         AnimalController.instance?.jobsHeader?.SetOpenSilent(true);
         PlayerTaskController.instance?.ResetState(); // fresh world → onboarding starts at task 0
         FlowerController.instance?.ResetState();     // clear any stale flower layout / pending restore
+        StatsTracker.instance?.ClearAll();           // fresh world → empty stat history
         if (AnimalController.instance != null) AnimalController.instance.births = 0; // fresh colony → early-growth boost active
     }
 
@@ -819,7 +824,9 @@ public class SaveSystem : MonoBehaviour {
         // registered against default zero-targets when this phase ran after Reconcile.
         if (save.globalItemTargets != null && InventoryController.instance != null) {
             foreach (var kv in save.globalItemTargets)
-                if (Db.itemByName.TryGetValue(kv.Key, out Item item))
+                // Skip group entries from older saves — `targets` is leaf-only now, and writing a
+                // group id would resurrect a key the rest of the system no longer expects.
+                if (Db.itemByName.TryGetValue(kv.Key, out Item item) && !item.IsGroup)
                     InventoryController.instance.targets[item.id] = kv.Value;
         }
 
@@ -854,10 +861,17 @@ public class SaveSystem : MonoBehaviour {
                 th.SetOpenSilent(tasksOpen);
         }
 
-        // Restore onboarding progress. Null (pre-feature save) → skip onboarding entirely so
-        // returning players aren't re-shown tasks they've effectively already completed.
-        if (PlayerTaskController.instance != null)
-            PlayerTaskController.instance.currentIndex = save.playerTaskIndex ?? int.MaxValue;
+        // Restore onboarding progress, preferring the id-based key. Three save vintages:
+        //   playerTaskId present → resolve id → index (immune to list reordering).
+        //   only legacy playerTaskIndex → resume by raw index (best-effort; can desync if the
+        //     list changed since the save, the bug that motivated the id key — see SPEC-onboarding).
+        //   neither (pre-feature save) → skip onboarding so returning players aren't re-shown tasks.
+        if (PlayerTaskController.instance != null) {
+            if (save.playerTaskId != null)
+                PlayerTaskController.instance.RestoreFromId(save.playerTaskId);
+            else
+                PlayerTaskController.instance.currentIndex = save.playerTaskIndex ?? int.MaxValue;
+        }
 
         // Null (pre-feature save) → treat the early-growth boost as already spent.
         if (AnimalController.instance != null)
@@ -879,6 +893,10 @@ public class SaveSystem : MonoBehaviour {
             rp.SetDisabledProcesses(save.disabledProcesses);
 
         RestoreResearch(save.research);
+
+        // Historic colony statistics. Matched by id; unknown ids ignored, registered
+        // stats with no saved entry stay empty (save-safe across stat set changes).
+        StatsTracker.instance?.RestoreSave(save.stats);
 
         // One-way building gate on jobs (woodworker/scientist). Seeds from the persisted set and
         // from the structures in this save, so it must read save.structures (not live structures);

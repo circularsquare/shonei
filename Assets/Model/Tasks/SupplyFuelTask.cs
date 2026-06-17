@@ -19,17 +19,19 @@ public class SupplyFuelTask : Task {
         if (needed <= 0) return false;
         Path standPath = animal.nav.PathToOrAdjacent(building.tile);
         if (!animal.nav.WithinRadius(standPath, MediumFindRadius)) return false;
-        (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(fuel.fuelItem);
+        // A group fuel item (e.g. "wood") resolves to a concrete leaf — surplus × nearness.
+        Item fuelLeaf = ResolveConsumeLeaf(fuel.fuelItem);
+        (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(fuelLeaf);
         if (itemPath == null) return false;
         int available = stack.quantity - stack.resAmount;
         int qty = Math.Min(needed, available);
         if (qty <= 0) return false;
         // Reserve destination space on fuel inventory
-        int spaceReserved = ReserveSpace(fuel.inv, fuel.fuelItem, qty);
+        int spaceReserved = ReserveSpace(fuel.inv, fuelLeaf, qty);
         if (spaceReserved <= 0) return false;
         qty = Math.Min(qty, spaceReserved);
         if (!MeetsHaulMinimum(qty, available)) return false; // de minimis
-        ItemQuantity iq = new ItemQuantity(fuel.fuelItem, qty);
+        ItemQuantity iq = new ItemQuantity(fuelLeaf, qty);
         FetchAndReserve(iq, itemPath.tile, stack);
         objectives.AddLast(new GoObjective(this, standPath.tile));
         objectives.AddLast(new DeliverToInventoryObjective(this, iq, fuel.inv));

@@ -289,14 +289,14 @@ public class MouseController : MonoBehaviour {
             anchorTile = WorldController.instance.world.GetTileAt(tileAt.x - offsetX, tileAt.y);
         }
 
-        // Ladder variant resolution: hovering near the edge of a tile swaps the
-        // placement to a sideladder (mounted on the adjacent wall). The player's
-        // selected build mode stays "ladder" — only the ghost/blueprint variant changes.
-        // For non-ladder modes this is a no-op and `st` / `anchorTile` keep their defaults.
+        // Side-variant resolution: for a build type with a `sideVariant` (ladder, torch),
+        // hovering near the edge of a tile swaps the placement to its side-mounted variant
+        // (mounted on the adjacent wall). The player's selected build mode stays the base type
+        // — only the ghost/blueprint variant changes. A no-op for types without a side variant.
         StructType placeSt = st;
         bool placeMirrored = BuildPanel.instance != null && BuildPanel.instance.mirrored;
-        if (mouseMode == MouseMode.Build && st != null && st.name == "ladder") {
-            BuildPanel.ResolveLadderVariant(currPosition, tileAt, st, out placeSt, out placeMirrored, out anchorTile);
+        if (mouseMode == MouseMode.Build && st != null && st.sideVariant != null) {
+            BuildPanel.ResolveSideVariant(currPosition, tileAt, st, out placeSt, out placeMirrored, out anchorTile);
         }
 
         if (tileAt == null){ buildPreview.SetActive(false); }

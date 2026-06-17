@@ -622,9 +622,10 @@ public class Blueprint {
         } else {
             StructController.instance.Construct(structType, tile, mirrored, rotation, shapeIndex, materials: mats);
         }
-        // A tile mined to empty drops any side-ladder that was leaning on the now-removed wall;
-        // its wood is routed to the mining mouse (via pendingOutput → animal.Produce fallbacks).
-        if (minesTile) DestroyDependentSideLadders();
+        // A tile mined to empty drops any side-mount (side ladder, bracket, side torch) that was
+        // leaning on the now-removed wall; its materials route to the mining mouse (via
+        // pendingOutput → animal.Produce fallbacks).
+        if (minesTile) DestroyDependentSideMounts();
         // Passive research gain from constructing a tech-gated building.
         // No-op for ungated structures (floors, walls, etc.).
         ResearchSystem.instance?.AddConstructionProgress(structType.name);
@@ -640,11 +641,12 @@ public class Blueprint {
         }
     }
 
-    // Side-ladders mount against a wall (a solid tile or a building's body). When this completion
-    // mines a footprint tile to empty, any side-ladder leaning on it has lost its wall — destroy it
-    // instantly and route its half-cost wood to the mining mouse via pendingOutput (animal.Produce
-    // already falls back to a floor drop, then vanishing-with-log, if the mouse can't hold it).
-    void DestroyDependentSideLadders() {
+    // Side-mounts (side ladders, brackets, side torches) hang against a wall (a solid tile or a
+    // building's body). When this completion mines a footprint tile to empty, any side-mount leaning
+    // on it has lost its wall — destroy it instantly and route its half-cost materials to the mining
+    // mouse via pendingOutput (animal.Produce already falls back to a floor drop, then
+    // vanishing-with-log, if the mouse can't hold it).
+    void DestroyDependentSideMounts() {
         World w = World.instance;
         int fnx = structType.HasShapes ? Shape.nx : structType.nx;
         int fny = structType.HasShapes ? Shape.ny : Mathf.Max(1, structType.ny);
@@ -655,29 +657,29 @@ public class Blueprint {
                 if (wall == null || wall.type.solid) continue;          // still a wall → nothing lost
                 Structure wb = wall.structs[0];
                 if (wb != null && !(wb is Plant)) continue;             // a building still provides a wall
-                // Ladder to the RIGHT of the wall leans on its left face (mirrored=false → HasSideLadder(-1));
-                // ladder to the LEFT leans on its right face (mirrored=true → HasSideLadder(+1)).
-                anyDestroyed |= TryDestroyLadder(w.GetTileAt(wall.x + 1, wall.y), -1);
-                anyDestroyed |= TryDestroyLadder(w.GetTileAt(wall.x - 1, wall.y), +1);
+                // Mount to the RIGHT of the wall leans on its left face (mirrored=false → dir -1);
+                // mount to the LEFT leans on its right face (mirrored=true → dir +1).
+                anyDestroyed |= TryDestroySideMount(w.GetTileAt(wall.x + 1, wall.y), -1);
+                anyDestroyed |= TryDestroySideMount(w.GetTileAt(wall.x - 1, wall.y), +1);
             }
         if (anyDestroyed) w.graph.RebuildComponents();
     }
 
-    bool TryDestroyLadder(Tile ladderTile, int wallDir) {
-        if (ladderTile == null || !ladderTile.HasSideLadder(wallDir)) return false;
-        Structure ladder = ladderTile.structs[2];
-        if (ladder == null) return false;
+    bool TryDestroySideMount(Tile mountTile, int wallDir) {
+        if (mountTile == null) return false;
+        Structure mount = mountTile.GetSideMount(wallDir);
+        if (mount == null) return false;
         // Half-cost refund (mirrors Deconstruct), group cost resolved to a concrete leaf.
         if (pendingOutput == null) pendingOutput = new List<ItemQuantity>();
-        foreach (ItemQuantity cost in ladder.structType.costs) {
+        foreach (ItemQuantity cost in mount.structType.costs) {
             int amt = Mathf.FloorToInt(cost.quantity / 2f);
             if (amt <= 0) continue;
             pendingOutput.Add(new ItemQuantity(cost.item.FirstLeaf(), amt));
         }
-        ladder.Destroy();
-        World.instance.graph.UpdateNeighbors(ladderTile.x, ladderTile.y);
-        World.instance.graph.UpdateNeighbors(ladderTile.x, ladderTile.y + 1);
-        World.instance.graph.UpdateNeighbors(ladderTile.x, ladderTile.y - 1);
+        mount.Destroy();
+        World.instance.graph.UpdateNeighbors(mountTile.x, mountTile.y);
+        World.instance.graph.UpdateNeighbors(mountTile.x, mountTile.y + 1);
+        World.instance.graph.UpdateNeighbors(mountTile.x, mountTile.y - 1);
         return true;
     }
 

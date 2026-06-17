@@ -42,11 +42,16 @@ public class CraftTask : Task {
             roundsRemaining = recipe.maxRoundsPerTask;
         if (roundsRemaining == 0) { return false; }
 
-        // Build the fetch list in forward order (skipping what's already in animal inv)
+        // Build the fetch list in forward order (skipping what's already in animal inv).
+        // A group input (e.g. "wood") commits to a concrete leaf now (surplus × nearness), so the
+        // fetch, reservation, and shortfall-retry in Complete all target the same type; if that leaf
+        // can't cover every round we trim rounds rather than mixing types mid-session. Consumption
+        // at work time resolves the recipe's group input against whatever leaf we carried.
         _inputsToFetch = new List<(Item, int)>();
         foreach (ItemQuantity iq in recipe.inputs) {
-            if (!animal.inv.ContainsItem(iq, roundsRemaining))
-                _inputsToFetch.Add((iq.item, iq.quantity));
+            Item fetchItem = ResolveConsumeLeaf(iq.item);
+            if (!animal.inv.ContainsItem(new ItemQuantity(fetchItem, iq.quantity), roundsRemaining))
+                _inputsToFetch.Add((fetchItem, iq.quantity));
         }
         _fetchInputIndex = 0;
 

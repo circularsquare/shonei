@@ -164,8 +164,11 @@ public class Processor {
         foreach (ItemStack s in inputBuffer.itemStacks)
             if (s.item != null && s.quantity > 0)
                 inputBuffer.Produce(s.item, -s.quantity);
-        foreach (ItemQuantity oq in outputs)
+        foreach (ItemQuantity oq in outputs) {
+            // Fermented output bypasses Animal.Produce, so tally it here too (food chart, etc.).
+            StatsTracker.instance?.NoteProduced(oq.item, oq.quantity);
             output.Produce(oq.item, oq.quantity);
+        }
         state = State.Tapped;
     }
 

@@ -11,8 +11,8 @@ using UnityEngine;
 //   Per 1 s    (in-game s.) — RainUptakePerSecond() : adds a 1/TicksPerInGameHour slice
 //                             of the hourly rain rate to non-capped soil.
 //                           — SeepPerSecond() : water→soil neighbour absorption. Drains
-//                             actual water from the source tile (1 water → 20 moisture,
-//                             billed via per-soil debt so water drains at sub-unit rate).
+//                             actual water from the source tile (1 water → MoistureSeepGainPerWater
+//                             moisture, billed via per-soil debt so water drains at sub-unit rate).
 //   Per 10 s   (in-game hr) — HourlyUpdate() : single snapshot-and-sweep that does
 //                             • soil-to-soil diffusion (capillary spread) on every solid tile
 //                             • evaporation on non-capped soil only
@@ -40,10 +40,10 @@ public class MoistureSystem {
     //   • MoistureSeepGainPerWater — moisture yield per 1 unit of water drained. Decoupled
     //     from the absorption rate via a per-tile debt accumulator (`_seepDebt`): each tick's
     //     absorbed moisture credits to the soil's debt, and only every whole GainPerWater of
-    //     debt cashes out as 1 water from the source. With GainPerWater > MoisturePerSec the
-    //     source drains at a sub-unit-per-second rate (e.g. 20/10 = 1 water per 2 s/soil).
+    //     debt cashes out as 1 water from the source. At GainPerWater == MoisturePerSec the
+    //     source drains at ~1 water per second per soil tile.
     private const int  MoistureSeepMoisturePerSec = 10;
-    private const int  MoistureSeepGainPerWater   = 20;
+    public  const int  MoistureSeepGainPerWater   = 10;
 
     private byte[] _moistureSnapshot;                       // reused per HourlyUpdate; lazy-init
     private int[]  _seepDebt;                               // per-tile absorbed-but-unpaid moisture; flushes to water in whole GainPerWater chunks
@@ -53,13 +53,38 @@ public class MoistureSystem {
         return instance;
     }
 
+    // ── Water-item ⇄ soil-moisture conversion ────────────────────────────────
+    // Lets the farmer watering system (WaterPlantTask) hand-pour water onto soil at the
+    // SAME exchange rate the world physics already uses, so a bottled "water" item is worth
+    // exactly the moisture it would have produced had that water seeped in from a tile:
+    //
+    //   1 pump round  drains PumpBuilding.WaterDrainPerRound tile-water and yields
+    //                 WaterFenPerPumpRound fen of the "water" item (recipesDb id 12: 1 liang).
+    //   1 tile-water  seeps into soil as MoistureSeepGainPerWater moisture.
+    //
+    // ⟹ 1 fen of water item ≡ (WaterDrainPerRound × MoistureSeepGainPerWater / WaterFenPerPumpRound) moisture.
+    //
+    // Deriving from those source constants (rather than a hardcoded number) means the
+    // watering economy can never silently drift from the pump/seep economy when either is retuned.
+    public const int WaterFenPerPumpRound = 100;   // 1 liang/round — recipesDb id 12 "pump water" output
+
+    // Moisture produced by pouring `fen` of the water item onto soil.
+    public static int MoistureForWaterFen(int fen) =>
+        fen * PumpBuilding.WaterDrainPerRound * MoistureSeepGainPerWater / WaterFenPerPumpRound;
+
+    // Fen of the water item needed to add `moisture` to soil (rounded up — never under-fetch).
+    public static int WaterFenForMoisture(int moisture) {
+        int denom = PumpBuilding.WaterDrainPerRound * MoistureSeepGainPerWater;
+        return (moisture * WaterFenPerPumpRound + denom - 1) / denom;
+    }
+
     // Per-second water→soil seep. Each solid tile with headroom pulls from its wettest
     // 4-orthogonal water neighbour and absorbs up to MoistureSeepMoisturePerSec moisture.
     // Payment is debt-amortised via _seepDebt: each tick's absorbed moisture credits to
     // the soil's debt; only every whole MoistureSeepGainPerWater of accumulated debt
-    // cashes out as 1 water drained from the source. This lets water drain at sub-unit-
-    // per-second rate (yield/rate = 2 today → ~1 water per 2 s per soil) without giving
-    // the soil free moisture in the long run. If the source runs dry mid-cycle we cap
+    // cashes out as 1 water drained from the source. The debt machinery lets water drain
+    // at a sub-unit-per-second rate when yield > rate (yield == rate today → ~1 water per
+    // second per soil) without giving the soil free moisture in the long run. If the source runs dry mid-cycle we cap
     // absorption so leftover debt stays below one whole water unit — no free overrun.
     // Sweep-direction bias is accepted (minor).
     public void SeepPerSecond() {

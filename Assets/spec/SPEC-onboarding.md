@@ -45,10 +45,16 @@ the mouse-AI `Task`/`Objective` system — a PlayerTask is player-facing guidanc
 
 ## Save (see SPEC-lifecycle.md)
 
-`WorldSaveData.playerTaskIndex` (`int?`). Gathered/restored/reset in `SaveSystem`:
-- Restored value → resume mid-onboarding across reloads.
-- **null** (pre-feature save) → onboarding treated as already done (`currentIndex` set past
-  the end), so returning players aren't re-shown tasks.
+Keyed by the current task's stable **`id`**, not its list position — so inserting or reordering
+tasks never desyncs a mid-onboarding save. `WorldSaveData.playerTaskId` (`string`), via
+`PlayerTaskController.SaveId()` / `RestoreFromId()`. Gathered/restored/reset in `SaveSystem`:
+- `SaveId()` → current task's `id`, or `CompletedSaveId` (`"(complete)"`) once all tasks are done.
+- `RestoreFromId(id)` → resolves `id` → index; `CompletedSaveId` → onboarding done; **unknown id**
+  (task removed since the save) → onboarding done (so the player isn't wedged on a vanished task).
+- **`playerTaskId` null** but legacy `playerTaskIndex` present → resume by raw index (best-effort
+  back-compat; *this* path can still desync — see the history note below).
+- **both null** (pre-feature save) → onboarding treated as already done, so returning players
+  aren't re-shown tasks.
 - `ResetSystemState` → `currentIndex = 0` (fresh world starts onboarding).
 
 ## Adding / changing a task
@@ -57,10 +63,11 @@ Append a `new PlayerTask(id, title, () => new TaskProgress(current, target))` in
 `BuildTasks()`. Title: concise, ASCII-only (m5x7 has no non-ASCII glyphs), `\n` allowed for
 a second hint line. Detection: a cheap query or poll — reuse the existing probe helpers
 (`CountStructures`, `CountJob`, `CountMice`, `HousingProgress`, `YieldsWood`,
-`CountConfiguredCrates`). `id` is the stable save key — don't reorder semantics without
-considering saved `playerTaskIndex`.
+`CountConfiguredCrates`). `id` is the stable save key, so inserting/reordering tasks is now
+safe — but **keep ids unique and don't rename an existing task's `id`** (a rename reads as a
+removed task → returning players on it are bumped to "onboarding done").
 
-## Current arc (17 tasks)
+## Current arc (18 tasks)
 
 press space to unpause → flag 2 trees → flag 3 wheat → build 3 crates → configure crates
 (wood/wheat) → house all mice → build sawmill → assign woodworker → build drawer → stockpile
@@ -78,6 +85,16 @@ workshop → build digging pit (or quarry) → gather 3 stone → **craft stone 
   pit yields it as a rare drop; the quarry is Mining-locked so the pit is the tutorial path),
   then craft. See SPEC-research.md for the gating mechanism.
 
-Note: progress is saved as an **int index** (`playerTaskIndex`), not keyed by `id` — inserting
-or reordering tasks shifts what a mid-onboarding save resumes on. Low-stakes for early-game
-onboarding, but be aware when editing the list mid-development.
+### History: the index-key skip bug (fixed)
+
+Onboarding *used* to be saved as a raw **int index** (`playerTaskIndex`). Because the list grows
+during development, an older save resumed on whatever task now occupied that slot. Concretely:
+`0.1.0` inserted `unpause` (front) + `food_stockpile` (before `six_mice`), shifting `six_mice`
+from index 8 → 10. A pre-`0.1.0` save sitting at old index 11 reloaded onto new index 11
+(`build_laboratory`) — **silently skipping `six_mice`**, which then showed as completed despite
+the colony never having 6 mice. The probe was never the bug; the index key was.
+
+Fixed by keying on the stable `id` (above). If you ever see a task report complete without its
+condition being met — or a returning player land on the wrong step — suspect the save key first,
+not the probe. Legacy index-keyed saves still take the best-effort `playerTaskIndex` path and can
+exhibit the old skew once; they self-heal on the next save (written with `playerTaskId`).
