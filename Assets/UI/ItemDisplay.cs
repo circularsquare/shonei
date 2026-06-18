@@ -31,7 +31,8 @@ public class ItemDisplay : MonoBehaviour {
     private Image _allowImage;
     [SerializeField] GameObject targetUpGo;
     [SerializeField] GameObject targetDownGo;
-    [SerializeField] GameObject targetTextGo;
+    [SerializeField] GameObject targetTextGo;   // the TargetGroup container (hosts Quantity + Slash + TargetInput)
+    [SerializeField] GameObject slashGo;        // the "/" between quantity and target — leaf rows only
     [System.NonSerialized] public bool open = true;
     [SerializeField] Sprite spriteOpen;
     [SerializeField] Sprite spriteCollapsed;
@@ -104,12 +105,20 @@ public class ItemDisplay : MonoBehaviour {
         // Both Global and Market hide targets on group items — only leaf items hold a target now
         // (a group input resolves to a concrete leaf at scoring/consumption time; there is no group
         // target). A null item (pre-Start placeholder) is treated as a leaf so the widget shows.
-        bool isGroupRow = item != null && item.IsGroup;
-        bool showTargets = !isGroupRow && (mode == DisplayMode.Global || mode == DisplayMode.Market);
-        bool showToggle  = mode == DisplayMode.Storage;
-        if (targetUpGo != null)   targetUpGo.SetActive(showTargets);
-        if (targetDownGo != null) targetDownGo.SetActive(showTargets);
-        if (targetTextGo != null) targetTextGo.SetActive(showTargets);
+        bool isGroupRow      = item != null && item.IsGroup;
+        bool inGlobalOrMarket = mode == DisplayMode.Global || mode == DisplayMode.Market;
+        // TargetGroup hosts Quantity + Slash + TargetInput. Keep the whole group visible in
+        // Global/Market so the Quantity COUNT shows for BOTH leaves and groups (a group shows
+        // its summed leaf total, e.g. "200" for wood). Storage mode hides it (no qty there).
+        // The leaf-only target widgets (slash + editable target + steppers) hide for group rows,
+        // so a group reads as a bare count with no dangling "/target".
+        bool showLeafTarget = !isGroupRow && inGlobalOrMarket;
+        bool showToggle     = mode == DisplayMode.Storage;
+        if (targetTextGo != null) targetTextGo.SetActive(inGlobalOrMarket);
+        if (slashGo != null)      slashGo.SetActive(showLeafTarget);
+        if (targetInput != null)  targetInput.gameObject.SetActive(showLeafTarget);
+        if (targetUpGo != null)   targetUpGo.SetActive(showLeafTarget);
+        if (targetDownGo != null) targetDownGo.SetActive(showLeafTarget);
         if (toggleGo != null)     toggleGo.SetActive(showToggle);
     }
 

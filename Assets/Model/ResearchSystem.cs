@@ -188,10 +188,16 @@ public class ResearchSystem : MonoBehaviour {
 
     // Called from World.Update every second.
     public void TickUpdate() {
+        float decayedTotal = 0f;
         foreach (var node in nodes) {
-            if (progress.TryGetValue(node.id, out float p) && p > 0f)
-                progress[node.id] = Mathf.Max(0f, p - DecayRate);
+            if (progress.TryGetValue(node.id, out float p) && p > 0f) {
+                float np = Mathf.Max(0f, p - DecayRate);
+                decayedTotal += p - np;
+                progress[node.id] = np;
+            }
         }
+        // Feed the research chart's downward (decay) bar with the actual progress lost.
+        if (decayedTotal > 0f) StatsTracker.instance?.Record("research_decayed", decayedTotal);
         CheckTransitions();
     }
 
@@ -317,8 +323,11 @@ public class ResearchSystem : MonoBehaviour {
     public void AddScientistProgress(float workEfficiency, int targetId) {
         if (targetId < 0) return;
         if (!nodeById.TryGetValue(targetId, out var node)) return;
-        float gained = workEfficiency * ScientistRate;
-        progress[targetId] = Mathf.Min(GetProgress(targetId) + gained, GetCap(node));
+        float before = GetProgress(targetId);
+        progress[targetId] = Mathf.Min(before + workEfficiency * ScientistRate, GetCap(node));
+        // Record the actual (clamped) gain for the research chart's scientist series.
+        float applied = progress[targetId] - before;
+        if (applied > 0f) StatsTracker.instance?.Record("research_gained", applied);
         CheckTransitions();
     }
 
@@ -332,7 +341,10 @@ public class ResearchSystem : MonoBehaviour {
     public void AddConstructionProgress(string buildingName, float scale = 1f) {
         if (!buildingToTechNode.TryGetValue(buildingName, out int id)) return;
         if (!nodeById.TryGetValue(id, out var node)) return;
-        progress[id] = Mathf.Min(GetProgress(id) + ConstructionGain * scale, GetCap(node));
+        float before = GetProgress(id);
+        progress[id] = Mathf.Min(before + ConstructionGain * scale, GetCap(node));
+        float applied = progress[id] - before;
+        if (applied > 0f) StatsTracker.instance?.Record("research_passive", applied);
         CheckTransitions();
     }
 
@@ -340,7 +352,10 @@ public class ResearchSystem : MonoBehaviour {
     public void AddPassiveProgress(string researchName, float amount) {
         foreach (var node in nodes) {
             if (node.name == researchName) {
-                progress[node.id] = Mathf.Min(GetProgress(node.id) + amount, GetCap(node));
+                float before = GetProgress(node.id);
+                progress[node.id] = Mathf.Min(before + amount, GetCap(node));
+                float applied = progress[node.id] - before;
+                if (applied > 0f) StatsTracker.instance?.Record("research_passive", applied);
                 CheckTransitions();
                 return;
             }

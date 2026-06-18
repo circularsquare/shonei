@@ -66,9 +66,9 @@ Fields:
 | `workPose` | string? | body pose the worker strikes while crafting at this building (mirrors `leisurePose`). Read by `WorkObjective.PoseOverride`. The special value `"walk"` reuses the existing walk animator state instead of needing a new pose layer — used by the wheel runner so the mouse cycles its legs while producing power. Other names map via `AnimationController.PoseToInt`. null = default Working state. |
 | `workView` | string? | facing-view the worker strikes while working here (`"back"`/`"front"`). Read by `WorkObjective.ViewOverride` (workstations, crafting) and `ResearchObjective.ViewOverride` (labs), mapped by `AnimationController.ViewNameToFacing`; swaps the paper-doll to the back/front sprite set. null = default side facing. e.g. crucible/sawmill/laboratory = `"back"`. (Construction back-facing is separate — positional, in `ConstructObjective`, not this field.) See SPEC-rendering.md §Facing direction. |
 | `hasFuelInv` | bool? | building has an internal fuel reservoir |
-| `fuelItemName` | string? | item consumed by reservoir (group or leaf) |
+| `fuelItemName` | string? | OPTIONAL restriction on what the reservoir burns (group or leaf). Absent = accept any fuel (`fuelValue>0`), picked at refuel by `PickFuel`. See SPEC-systems §Fuel Inventory. |
 | `fuelCapacity` | float? | max fuel in liang |
-| `fuelBurnRate` | float? | consumption rate in liang/day |
+| `fuelBurnRate` | float? | consumption rate in **energy/day**, divided by the stocked fuel's `fuelValue` at burn (wood=1 → unchanged; coal=3 lasts 3× longer) |
 | `isLightSource` | bool? | building emits a point light (requires `hasFuelInv`; the reservoir powers it). Burns + emits only while dark (`SunController.torchFactor > 0`) and lit. See SPEC-rendering.md §Fire sprites. |
 | `lightIntensity` | float? | base point-light intensity (`LightSource.baseIntensity`, default 0.80). |
 | `lightOuterRadius` | float? | light reach in world units (default 10). Smaller = tighter + cheaper. |
@@ -112,6 +112,7 @@ ID ranges:
 | 250–259 | fiber group (ramie) |
 | 260–269 | cloth group (ramie cloth) |
 | 270–279 | clothing group (ramie shirt) |
+| 400–409 | herbs group + leaves (herbs=400, goji=401, mugwort=402, chrysanthemum=403, moonlily=404) — foraged via `WildHerbSystem`. Note: items live below the `Item[500]` cap, so this range must stay < 500. |
 
 **Item tree / group items**: Items with `children` are *group items* — they act as wildcards in recipe inputs and building costs (e.g. a building costing `"wood"` accepts any of oak/maple/pine). Group items are **never physically produced or stored**; only leaf items (those without `children`) exist in inventories. `Db.ValidateNoGroupOutputs()` logs errors at startup if a group item appears in any recipe output, plant product, or tile drop. Default wood is `pine`; default stone is `limestone`.
 
@@ -227,8 +228,12 @@ Fields:
 | `moistureMax` | int? | 0–100 soil-moisture upper bound |
 | `moistureDrawPerHour` | float? | passive draw from the soil tile below each in-game hour (default 1) |
 | `stageMoistureCost` | int? | moisture deducted from the soil tile below each time the plant crosses into a new growth stage (default 4). Decoupled from `moistureDrawPerHour`; this is where moisture shortage actually gates growth — see gating below |
-| `maxHeight` | int? | max tile-height this plant can reach (default 1). Multi-tile plants extend upward as growth stage crosses 4-stage thresholds (stage 4 → 2 tall, stage 8 → 3 tall); max stage = `4 × maxHeight − 1`. Yield at harvest scales linearly with the plant's current height. |
-| `genWeight` | float? | relative weight for `WorldGen.ScatterPlants` to pick this plant type for natural clusters. Unnormalized — sampled proportionally against every other plant type with `genWeight > 0`. Default 0 = never spawns naturally (crops planted only by the player, legacy types). |
+| `maxHeight` | int? | max tile-height this plant can reach (default 1). Multi-tile plants extend upward as growth stage crosses `growthStages`-stage thresholds; max stage = `growthStages × maxHeight − 1`. Yield at harvest scales linearly with the plant's current height. |
+| `growthStages` | int? | growth-stage sprites per tile — the plant renders `g0..g{growthStages−1}`; default 4. Drives `maxStage`, the per-tile height step, and stage-sprite cycling. Herbs use 3 (g0/g1/g2). Ignored when `growthFrames` is present (table length wins). |
+| `seasons` | string[]? | seasons this plant grows in (`"Spring"`/`"Summer"`/`"Fall"`/`"Winter"`, matching `WeatherSystem.GetSeason()`). Null/empty = year-round. A HARD growth gate like temperature: out-of-season freezes growth. `WildHerbSystem` also reads it to gate seasonal spawning + die-back. |
+| `genWeight` | float? | relative weight for `WorldGen.ScatterPlants` (non-wild) **and** `WildHerbSystem` (wild) to pick this plant type. Unnormalized. Default 0 = never spawns naturally. |
+| `maxWild` | int? | per-world live-population cap for a WILD herb (>0 marks the type wild). Wild types are world-spawned not player-planted, foraging *destroys* them instead of replanting, and `ScatterPlants` skips them — `WildHerbSystem` owns their lifecycle. Default 0 = normal crop/tree. |
+| `placement` | string? | wild-herb terrain kind: `"meadow"` (surface dirt, default) or `"water"` (a lily — floats on the surface of a sky-exposed pond, no wind sway, no soil-moisture coupling; set `stageMoistureCost: 0`). |
 
 For the gameplay mechanics behind these fields (comfort gating, per-hour moisture draw, stage-advance cost, height extension), see SPEC-systems.md §Plant Growth.
 

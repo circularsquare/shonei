@@ -60,9 +60,19 @@ Each row represents one item type in the tree. The same prefab is used in both t
 
 | DisplayMode | Targets (+/-) | Target text | Allow toggle | Used by |
 |-------------|---------------|-------------|--------------|---------|
-| `Global` | Visible | Visible | Hidden | Global panel |
+| `Global` | Leaf rows only | Leaf rows only | Hidden | Global panel |
 | `Storage` | Hidden | Hidden | Visible | StoragePanel allow tree |
-| `Market` | Visible | Visible | Hidden | TradingPanel market inventory tree |
+| `Market` | Leaf rows only | Leaf rows only | Hidden | TradingPanel market inventory tree |
+
+Group items hold no target (a group input resolves to a concrete leaf at scoring/consumption time
+— see SPEC-ai § recipe scoring), so the target widget is hidden on **group** rows in both Global and
+Market modes; only leaf rows show it. The +/- handlers also early-return on group items defensively.
+
+**Group rows still show their summed quantity.** The `Quantity` text lives inside the `TargetGroup`
+container (alongside `Slash` + `TargetInput`). `SetDisplayMode` keeps `TargetGroup` (`targetTextGo`)
+visible in Global/Market for both leaves and groups, and hides only the leaf-target bits
+(`slashGo` + `targetInput` + steppers) on group rows — so a group reads as a bare count (e.g. "200")
+with no dangling "/target". `GlobalInventory.Quantity` sums leaf descendants for the group total.
 
 ### Per-panel configuration fields
 
@@ -74,7 +84,7 @@ Set at instantiation time (defaults fall back to InventoryController for backwar
 
 ### Refresh contract
 
-`ItemDisplay.Refresh()` is the **single per-mode content repaint** (Global: name + global qty + global target; Market: name + market qty + leaf-only market target; Storage: allow-toggle sprite). The three tree owners (InventoryController, StoragePanel, TradingPanel) keep ownership of row *visibility* — their discovery / class-compat / collapse rules differ — and call `Refresh()` per row. Don't add caller-side content repaint for a new mode; extend the switch in `Refresh()`.
+`ItemDisplay.Refresh()` is the **single per-mode content repaint** (Global: name + global qty + leaf-only target; Market: name + market qty + leaf-only target; Storage: allow-toggle sprite). The three tree owners (InventoryController, StoragePanel, TradingPanel) keep ownership of row *visibility* — their discovery / class-compat / collapse rules differ — and call `Refresh()` per row. Don't add caller-side content repaint for a new mode; extend the switch in `Refresh()`.
 
 ### Serialized inspector references
 
@@ -96,7 +106,7 @@ Managed by `InventoryController` (`Assets/Controller/InventoryController.cs`).
   - Groups start collapsed by default; flag `defaultOpen: true` in itemsDb.json to start a group expanded (e.g. `"food"`). Market mode always expands every group regardless of the flag.
   - **Global panel** collapse state persists across saves via `WorldSaveData.inventoryTreeOpen` (stores only deltas vs `defaultOpen`); on load the dict is staged on `InventoryController.pendingGroupOpenOverrides` and consumed by `ItemDisplay.Start`.
   - **StoragePanel** allow tree is built once and reused across all `Show()` calls, so its collapse state persists within a session but isn't saved.
-- **Targets**: stored in `InventoryController.targets[itemId]` (default 10000 fen = 100 liang). Adjusted via +/- buttons (doubles/halves). Used by `Recipe.Score()` for work order prioritization.
+- **Targets**: stored in `InventoryController.targets[itemId]` — **leaf items only** (group items hold no target). Seeded from each item's `DefaultTargetFen` (100 liang default; byproducts lower; books 1 liang). Adjusted via +/- buttons in ±1 liang (100 fen) steps. Read by `Recipe.Score()` (input surplus + output scarcity → work-order/craft prioritization) and `Task.ResolveConsumeLeaf` (which leaf a group input consumes).
 - **Market display**: the global panel always shows global quantities. Market inventory has its own tree in TradingPanel (see Overview).
 
 ## StoragePanel
@@ -283,7 +293,22 @@ Rows are spawned lazily on first open (in `OnEnable`) from `Db.happinessNeedsSor
 
 ### Food chart
 
-`FoodChart` is a `BarChartGraph` (a `RawImage` below the needs scroll) wired to the panel's `foodChart` field. Each `Refresh` feeds it the `food_produced` (up) and `food_consumed` (down) series from `StatsTracker` — a diverging per-day bar chart with per-bar hover tooltips. `BarChartGraph` is generic and reusable for any metric; the chart/stat machinery lives in **SPEC-stats.md**. The `avg_social` stat is already tracked (sampled) as a worked example, not yet charted.
+`FoodChart` is a `BarChartGraph` (a `RawImage` below the needs scroll) wired to the panel's `foodChart` field. Each `Refresh` feeds it via `SetSeries`: `food_produced` (up) and a stacked down bar of `food_consumed` (eaten) + `food_decayed` (spoilage, muted Slate). Diverging per-day chart with per-bar hover tooltips that break out each segment. `BarChartGraph` is generic/reusable; the chart/stat machinery lives in **SPEC-stats.md**. (`ResearchPanel` has a parallel `researchChart` — scientist+passive gain up, decay down; see SPEC-research.)
+
+## Top-bar readouts
+
+Two small HUD readouts driven from code (no panel), authored as scene TMPs:
+
+- **Low-food warning** — `AnimalController.foodWarningText`, a red TMP under the happiness
+  readout (`UI/TopBar/FoodWarning`). `UpdateColonyStats` → `UpdateFoodWarning` shows it as
+  "X.x days of food" only while `daysOfFoodInStorage < FoodWarnDays` (2.5); hidden when food is
+  healthy / colony empty.
+- **Season/time display** — `SeasonTimeDisplay` (`Assets/Components/SeasonTimeDisplay.cs`), a TMP
+  left of the time-speed buttons (`UI/SeasonTimeDisplay`, sibling of `TimeController`, right-aligned
+  so it grows leftward). Escalates with progress: season always ("winter"); + day-of-season once the
+  **Timekeeping** tech is unlocked ("winter 2"); + hour while any built clock is powered ("winter 2 5pm").
+  Reads `WeatherSystem.GetSeason/GetDayOfYear`, `ResearchSystem.IsUnlockedByName`, a powered-clock
+  scan (`StructController.GetByType` + `PowerSystem.IsBuildingPowered`), and `SunController.GetDayPhase`.
 
 ## Build Bar & Mouse Modes
 

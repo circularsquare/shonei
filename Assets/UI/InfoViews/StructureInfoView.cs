@@ -141,7 +141,10 @@ public class StructureInfoView : MonoBehaviour {
             }
             if (bldg.reservoir != null) {
                 int fuelQty = bldg.reservoir.Quantity();
-                sb.Append($"\n fuel: {ItemStack.FormatQ(fuelQty)}/{ItemStack.FormatQ(bldg.reservoir.capacity)} {bldg.reservoir.fuelItem.name}");
+                // Show what's actually stocked (the concrete leaf — consistent across restricted and
+                // any-fuel reservoirs). Empty: fall back to the restriction name, else generic "fuel".
+                string fuelName = bldg.reservoir.HeldLeaf()?.name ?? bldg.reservoir.fuelItem?.name ?? "fuel";
+                sb.Append($"\n fuel: {ItemStack.FormatQ(fuelQty)}/{ItemStack.FormatQ(bldg.reservoir.capacity)} {fuelName}");
             }
             // Only housing surfaces its Structure.res — it's the home-assignment count.
             // Other building types either don't have res (workstations, leisure, capacity==0)

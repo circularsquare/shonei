@@ -98,6 +98,15 @@ public class AlertToast : MonoBehaviour {
 
     void Update() {
         if (rows.Count == 0) return;
+        // Don't let toasts time out while the player is looking at another window. The app
+        // runs in the background, so unscaledTime keeps advancing when unfocused — slide each
+        // row's spawn stamp forward by the unfocused interval so its age (now - spawn) freezes
+        // and resumes exactly where it left off when focus returns.
+        if (!Application.isFocused) {
+            float dt = Time.unscaledDeltaTime;
+            foreach (Row r in rows) r.spawnUnscaled += dt;
+            return;
+        }
         float now = Time.unscaledTime;
         // Iterate in reverse so RemoveAt doesn't shift indices we haven't visited.
         for (int i = rows.Count - 1; i >= 0; i--) {

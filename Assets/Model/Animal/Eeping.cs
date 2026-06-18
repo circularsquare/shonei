@@ -42,11 +42,30 @@ public class Eeping {
         if (e >= threshold) return 0f;
         return (threshold - e) / threshold;
     }
+    // Wake-up thresholds. A sleeping mouse used to wake only at 100% eep, ignoring the clock,
+    // so a late-to-bed mouse slept all the way to full and into the morning ("sleeping in").
+    // Now, once rested past wakeConsiderEepness, it rolls each sleep-tick to wake — see WakeChance.
+    public const float wakeConsiderEepness = 0.8f; // below this, never wake early (still genuinely tired)
+    public const float wakeStickiness      = 0.3f; // bias to keep sleeping past the floor, so mice don't
+                                                    // all pop awake the instant they cross 80%
+
+    // Per-sleep-tick probability of waking. 0 below the wake floor; above it, ramps with how rested
+    // the mouse is, reduced by a stickiness bias AND by any remaining time-of-day sleep pull
+    // (SleepUrgency). Net effect: deep sleep through the night (high threshold keeps them down to
+    // ~0.95), but a morning wake-up around ~0.86–0.95 instead of grinding to 100%.
+    public float WakeChance(float bedtimeUrgency){
+        float e = eep / maxEep;
+        if (e >= 1f) return 1f;
+        if (e < wakeConsiderEepness) return 0f;
+        float rested = (e - wakeConsiderEepness) / (1f - wakeConsiderEepness); // 0 at floor → 1 at full
+        float keepSleeping = wakeStickiness + SleepUrgency(bedtimeUrgency);
+        return UnityEngine.Mathf.Clamp01(rested - keepSleeping);
+    }
     public float Efficiency(){
         if (eep / maxEep > 0.5f){
             return 1f;
         } else {
-            return eep / maxEep * 2f * 0.8f + 0.2f; // 20% at worst.
+            return eep / maxEep * 2f * 0.5f + 0.5f; // 50% at worst.
         }
     }
     public float Eepness(){ return eep / maxEep; }

@@ -355,6 +355,9 @@ public class WorldController : MonoBehaviour {
         PlantAt("wheat", 37); // 3 wheat so the onboarding "flag 3 wheat" PlayerTask is completable from a fresh world
 
         WorldGen.ScatterPlants(world, surfaceY, seed);
+        // Wild herbs are seeded separately (ScatterPlants skips them): WildHerbSystem fills
+        // each in-season type toward its maxWild cap, then maintains the population hourly.
+        WildHerbSystem.instance?.SeedWorld(world, seed);
 
         // No "refresh all tiles" pass needed: TileMeshController subscribes to
         // cbTileTypeChanged and blanket-dirties body + overlay + snow chunks

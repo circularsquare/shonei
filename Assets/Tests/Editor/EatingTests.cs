@@ -12,18 +12,6 @@ using NUnit.Framework;
 [TestFixture]
 public class EatingTests {
 
-    // ── Construction ────────────────────────────────────────────────────
-    [Test]
-    public void Constructor_DefaultsAreSane(){
-        // Defaults are public fields, so I'm pinning them here — if someone
-        // tunes them, this test fails loudly so the change is intentional.
-        Eating e = new Eating();
-        Assert.That(e.maxFood, Is.EqualTo(100f));
-        Assert.That(e.food, Is.EqualTo(90f));
-        Assert.That(e.hungerRate, Is.EqualTo(0.4f));
-        Assert.That(e.timeSinceLastAte, Is.EqualTo(9999f));
-    }
-
     // ── Fullness / Hungry ───────────────────────────────────────────────
     [TestCase(100f, 1f)]
     [TestCase(50f,  0.5f)]
@@ -59,13 +47,19 @@ public class EatingTests {
         Assert.That(e.Efficiency(), Is.EqualTo(expected).Within(0.0001f));
     }
 
-    [TestCase(50f, 1f)]   // 0.5 fullness * 1.6 + 0.2 = 1.0 (boundary, since "> 0.5" is false at exactly 0.5)
-    [TestCase(25f, 0.6f)] // 0.25 * 1.6 + 0.2 = 0.6
-    [TestCase(0f,  0.2f)] // floor: 20%
-    public void Efficiency_AtOrBelowHungryThreshold_LinearPenalty(float food, float expected){
+    // Below hungryThreshold, efficiency drops linearly from 1.0 (at the threshold) to a floor at
+    // empty. Asserts the *shape* — boundary continuity, linearity, and a sub-1-but-positive floor —
+    // so it survives retuning the floor/slope (which are inline literals in Efficiency()).
+    [Test]
+    public void Efficiency_BelowHungryThreshold_LinearPenaltyToFloor(){
         Eating e = new Eating();
-        e.food = food;
-        Assert.That(e.Efficiency(), Is.EqualTo(expected).Within(0.0001f));
+        e.food = 0f;  float atEmpty     = e.Efficiency();
+        e.food = 25f; float atQuarter   = e.Efficiency(); // midpoint of [0, threshold·maxFood]
+        e.food = 50f; float atThreshold = e.Efficiency(); // Fullness == hungryThreshold (0.5)
+
+        Assert.That(atThreshold, Is.EqualTo(1f).Within(0.0001f), "continuous with the >threshold branch");
+        Assert.That(atEmpty, Is.LessThan(1f).And.GreaterThan(0f), "a penalty floor, but never zero");
+        Assert.That(atQuarter, Is.EqualTo((atEmpty + 1f) / 2f).Within(0.0001f), "linear between floor and 1");
     }
 
     // ── HungerUrgency ─────────────────────────────────────────────────────

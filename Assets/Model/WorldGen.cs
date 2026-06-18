@@ -1607,18 +1607,20 @@ public static class WorldGen {
     // unnormalized — tune in plantsDb.json. Returns null only if no plant has a
     // positive genWeight (legacy compat / accidental misconfiguration); caller
     // skips the cluster in that case.
+    // Wild herbs (maxWild > 0) are excluded here — WildHerbSystem owns their spawning and
+    // seasonal lifecycle, so the static scatter must not also place them.
     static string PickPlantType(System.Random rng) {
         float total = 0f;
         foreach (var pt in Db.plantTypeByName.Values)
-            if (pt.genWeight > 0f) total += pt.genWeight;
+            if (pt.genWeight > 0f && !pt.isWild) total += pt.genWeight;
         if (total <= 0f) {
-            Debug.LogError("PickPlantType: no PlantTypes have genWeight > 0 — set genWeight on at least one entry in plantsDb.json.");
+            Debug.LogError("PickPlantType: no non-wild PlantTypes have genWeight > 0 — set genWeight on at least one crop/tree entry in plantsDb.json.");
             return null;
         }
         double pick = rng.NextDouble() * total;
         float acc = 0f;
         foreach (var pt in Db.plantTypeByName.Values) {
-            if (pt.genWeight <= 0f) continue;
+            if (pt.genWeight <= 0f || pt.isWild) continue;
             acc += pt.genWeight;
             if (pick < acc) return pt.name;
         }
@@ -1626,7 +1628,7 @@ public static class WorldGen {
         // on the last entry; fall through to the last weighted name.
         string last = null;
         foreach (var pt in Db.plantTypeByName.Values)
-            if (pt.genWeight > 0f) last = pt.name;
+            if (pt.genWeight > 0f && !pt.isWild) last = pt.name;
         return last;
     }
 

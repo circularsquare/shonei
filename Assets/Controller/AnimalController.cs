@@ -24,6 +24,9 @@ public class AnimalController : MonoBehaviour{
     [FormerlySerializedAs("happinessPanel")] public GameObject happinessReadoutText;
     // Top-bar readout button — clicking it opens the full GlobalHappinessPanel.
     [SerializeField] UnityEngine.UI.Button happinessButton;
+    // Low-food warning readout, sits under the happiness readout. Shows "X.x days of food"
+    // only when storage drops below FoodWarnDays; hidden otherwise. Optional (null-safe).
+    [SerializeField] TMPro.TextMeshProUGUI foodWarningText;
     public GameObject JobDisplay;
     private World world;
     public Dictionary<Job, int> jobCounts;
@@ -72,6 +75,9 @@ public class AnimalController : MonoBehaviour{
     public float foodStorageHappinessBonus = 0f;
     public const float MaxFoodStorageBonus = 4f;
     public const float FoodStorageBonusFullDays = 10f;
+
+    // Low-food warning readout threshold: the red "X.x days of food" readout appears below this.
+    const float FoodWarnDays = 2.5f;
 
     // Mice are queued by AddAnimal but only counted in `na` once Animal.Start runs
     // RegisterReady (next frame). pendingAnimals bridges that gap so MaybeOfferRescue
@@ -214,6 +220,7 @@ public class AnimalController : MonoBehaviour{
         rescuePromptShown = false;
         colonyReady = false;
         builtTypes.Clear();
+        if (foodWarningText != null) foodWarningText.gameObject.SetActive(false);
     }
 
     // Compacts animals[] in place, removing any flagged pendingDeath (set by
@@ -243,6 +250,7 @@ public class AnimalController : MonoBehaviour{
     // floor and fix the job count BEFORE Destroy() nulls the animal's references.
     private void HandleDeath(Animal a) {
         EventFeed.instance?.Post($"<color=#ff4444>{a.aName} starved to death.</color>");
+        SoundManager.instance?.PlaySFX("death"); // Resources/Audio/SFX/death.mp3 (bell toll)
         a.DropInventoryToFloor();
         if (a.job != null && jobCounts.ContainsKey(a.job)) {
             jobCounts[a.job] -= 1;
@@ -521,6 +529,7 @@ public class AnimalController : MonoBehaviour{
             avgHappiness = 0f;
             populationCapacity = 0;
             if (happinessDisplay != null) happinessDisplay.text = "pop 0";
+            if (foodWarningText != null) foodWarningText.gameObject.SetActive(false);
             return;
         }
         avgHappiness = 0f;
@@ -532,6 +541,7 @@ public class AnimalController : MonoBehaviour{
         // on the same frame see the up-to-date colony bonus.
         daysOfFoodInStorage = ComputeDaysOfFoodInStorage();
         foodStorageHappinessBonus = Mathf.Clamp01(daysOfFoodInStorage / FoodStorageBonusFullDays) * MaxFoodStorageBonus;
+        UpdateFoodWarning();
 
         // Linear rescale from avgHappiness ∈ [0, happinessMaxScore] to [0, MaxPopulationCap].
         // Falls back to the legacy ×2.5 constant if Db hasn't finished loading (shouldn't
@@ -542,6 +552,17 @@ public class AnimalController : MonoBehaviour{
             : Mathf.FloorToInt(avgHappiness * 2.5f);
         if (happinessDisplay != null)
             happinessDisplay.text = $"happiness {avgHappiness:0.0}  pop {na}/{populationCapacity}";
+    }
+
+    // Drives the low-food readout (red "X.x days of food", shown only while storage is below
+    // FoodWarnDays). Called from UpdateColonyStats (na > 0) after daysOfFoodInStorage is recomputed.
+    void UpdateFoodWarning() {
+        if (foodWarningText == null) return;
+        float days = daysOfFoodInStorage;
+        bool show = !float.IsInfinity(days) && !float.IsNaN(days) && days < FoodWarnDays;
+        if (foodWarningText.gameObject.activeSelf != show)
+            foodWarningText.gameObject.SetActive(show);
+        if (show) foodWarningText.text = $"{days:0.0} days of food";
     }
 
     // Days of food in colony storage, expressed per current mouse.

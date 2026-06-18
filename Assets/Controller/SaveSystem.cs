@@ -1089,7 +1089,9 @@ public class SaveSystem : MonoBehaviour {
         // Restore subclass-specific state that Create() can't know about.
         if (structure is Plant plant) {
             plant.age          = ssd.plantAge;
-            plant.growthStage  = ssd.plantGrowthStage;
+            // Clamp to maxStage — migrates saves whose plant was at a stage that's no longer
+            // valid (e.g. authored growthStages changed), so it can't render a phantom tile.
+            plant.growthStage  = Mathf.Min(ssd.plantGrowthStage, plant.plantType.maxStage);
             plant.harvestable  = ssd.plantHarvestable;
             plant.SetHarvestFlagged(ssd.plantHarvestFlagged ?? false);
             // Multi-tile plants re-claim their upper tiles + rebuild sprite children.

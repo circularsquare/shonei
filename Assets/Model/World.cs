@@ -113,6 +113,7 @@ public class World : MonoBehaviour {
         SnowAccumulationSystem.Create();
         PowerSystem.Create();
         StatsTracker.Create();
+        WildHerbSystem.Create();
     }
 
     // Reload Domain is off, so plain-C# singletons (unlike MonoBehaviours, whose destroyed
@@ -132,6 +133,7 @@ public class World : MonoBehaviour {
         SnowAccumulationSystem.ResetStatics();
         PowerSystem.ResetStatics();
         StatsTracker.ResetStatics();
+        WildHerbSystem.ResetStatics();
         GlobalInventory.ResetStatics();
         MarketBuilding.ResetStatics();
         // Static structure registries that a normal ClearWorld empties via each structure's
@@ -228,6 +230,7 @@ public class World : MonoBehaviour {
             WeatherSystem.instance?.StepWindHumidity();
         if (Math.Floor((timer + dt) / hourPeriod) - Math.Floor(timer / hourPeriod) > 0) {
             WeatherSystem.instance?.OnHourElapsed();
+            WildHerbSystem.instance?.OnHourElapsed();
             // Daily-stats sampling cadence (pulls sampler-backed stats, e.g. avg social).
             StatsTracker.instance?.OnSampleTick();
         }

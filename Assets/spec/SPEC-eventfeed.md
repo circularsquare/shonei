@@ -34,7 +34,7 @@ When adding a new post site: ask "is the player looking at chat when this happen
 
 ## Lifetime
 
-- Scene MonoBehaviour singleton following the project's `public static XYZ instance { get; protected set; }` pattern. Attached to a root GameObject named `EventFeed` in `Main.unity`.
+- Scene MonoBehaviour singleton following the project's `public static XYZ instance { get; protected set; }` pattern. Attached to a root GameObject named `EventFeed` in `Main.unity`, and to a second one in `Menu.unity` (so save/rename validation can toast on the front-end Load screen). Each scene's instance is independent — single-mode scene loads destroy the old before the new Awakes, so they never coexist.
 - Persists across `ClearWorld` / save-load (only `_history` is cleared, not the singleton itself). This means static-event subscriptions (e.g. `ResearchSystem.OnTechForgotten += ...`) are safe — they're made once in `Awake` and torn down in `OnDestroy`.
 - The instance becomes available during `Awake`. Subscribers should prefer `Start()` over `Awake()` to avoid Awake-order races: if the subscriber Awakes first, the null-guard on `EventFeed.instance` fails silently and the subscription is never made. Both renderers (ChatLog, AlertToast) subscribe in `Start`.
 
@@ -78,3 +78,4 @@ Each row carries a `ChatRowFader` (`Assets/Components/ChatRowFader.cs`): the row
 - Per-row lifetime: 8s real time, then 1s fade-out. Uses `Time.unscaledTime` so toasts still fade while the game is paused.
 - Dedupes consecutive identical messages by resetting the existing row's timer (prevents spam from rapid invalid clicks).
 - Scene placement: `UI/AlertToast` GameObject sits as a sibling of `ChatPanel`, anchored bottom-left, positioned just above ChatPanel's top edge. Owns its own VerticalLayoutGroup; rows are constructed at runtime following `ChatLog.AddChat`'s pattern so both renderers stay visually consistent.
+- `Menu.unity` has its own `AlertToast` under `MenuCanvas`, centered horizontally and just below the panel stack (box bottom ~y=−200, below the Load panel's edge). Same VLG config as Main's (left-aligned rows); only the position differs. Surfaces save/rename validation errors on the front-end (e.g. illegal filename characters).

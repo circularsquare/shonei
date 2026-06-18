@@ -55,8 +55,10 @@ public class PlantController : MonoBehaviour {
     }
 
     public void TickUpdate(){
-        foreach (Plant plant in plants){
-            plant.Grow(1);
+        // Iterate backwards so a plant that removes itself this tick (e.g. a water lily whose
+        // pond drained — see Plant.FloatOnWater) doesn't shift the indices we've yet to visit.
+        for (int i = plants.Count - 1; i >= 0; i--){
+            plants[i].Grow(1);
         }
     }
 

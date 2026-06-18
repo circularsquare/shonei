@@ -27,6 +27,16 @@ All world gen lives in `WorldGen.cs` (pure static class, no MonoBehaviour). Call
 
 **Post-Generate (in `WorldController.GenerateDefault`)** — `WaterController.Settle(maxSteps, moveThreshold)` runs the live CA `SimulateStep` up to `LiquidSettleMaxSteps` times (early-exit when a step transfers ≤ `LiquidSettleMoveThreshold` total water units). Drains cave pools whose worm tunnels exit to the surface, equalizes carved-pool seams, and chips away the diff-1 staircases pass 3 needs a few steps to flatten. Called before market/plant placement so `ScatterPlants`' water-presence check sees the settled topology.
 
+## Wild herbs (`WildHerbSystem`)
+
+A model-side singleton (created in `World.Awake`, reset in `OnDestroy`, ticked hourly from `World.Tick`) that owns the lifecycle of **wild herb** PlantTypes (`maxWild > 0`) — distinct from `ScatterPlants`, which handles crops/trees and **skips** wild types (`PickPlantType` excludes them).
+
+- **State is implicit** — the live `Plant` population *is* the state (plants persist as Structures), so the system saves nothing.
+- **Worldgen seed** (`SeedWorld`, called from `GenerateDefault` after `ScatterPlants`) fills each *in-season* wild type straight to its `maxWild` cap, matured to random stages. Out-of-season types start empty. **Loaded saves are NOT re-seeded** — they only refill via the hourly trickle (a known gap; see the cool-plants plan).
+- **Hourly** (`OnHourElapsed`): (1) culls ~15%/hr of *out-of-season* wild herbs (staggered die-back, not an instant wipe); (2) spawns at most 1 herb, its type a `genWeight`-weighted pick among in-season, under-cap types.
+- **Placement kinds** (per `PlantType.placement`, probing random columns): `meadow` = the air tile above surface dirt; `water` = topmost sky-exposed (`World.IsExposedAbove`) pond tile ≥ ¼ full, where the plant floats (`Plant.FloatOnWater` pins it to the waterline each tick and destroys it if the water drains).
+- **Foraging** harvest destroys a wild herb (`Plant.Harvest` `isWild` branch); the system re-seeds elsewhere over time, so an equilibrium emerges between spawn trickle and forage rate.
+
 ## Key design choices
 
 - **Continuous noise field** for caves (not immediate boolean) so worm tunnels blend with natural caves instead of looking stamped on.

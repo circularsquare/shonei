@@ -52,8 +52,11 @@ CONTENT
 - long term player goals (fable flagged as important)
     - town tiers?
 
-- mining tools plan
+- day hours vary with season
+    - show season / date with timekeeping techs
 
+- mining tools plan
+- partial progress on books (book in progress held at scriptorium?)
 
 SERVER
 - offline progress (see offline progress plan)
@@ -70,6 +73,7 @@ VISUALS
 - update all plants to have blob swaying
 - gradual snow buildup
 - more sounds (see sounds spec)
+- blueprint hovered over dirt tile pretty hard to see. maybe also add a low opacity whitge frame
 
 OPTIMIZATION  
 - chunk tiles?
@@ -88,6 +92,10 @@ UI
 - improve item icons
 - tab styling, add building icons?
 - add more info for happiness panel?
+
+- warn when less than 2 days of food remaining
+- show research gain per day (from scientists and from passive) and decay per day graph
+    - for food graph also stacked bar plot for decayed food?
 
 
 CODE CLEANUP
@@ -113,19 +121,14 @@ why is it using 38% gpu with all lighting off?
 
 
 TODAY
-- fire animation
-- fire particles
-vertical power shaft should support other power shafts
-
-- test fuel system 
-- test item target change
-    - set sawdust target to 1
-    - set pine target really high and cut down apple trees?
-
-
+- test how roads look
+- foraging job / tech?
 
 DEPLOYING
 server
     - in powershell in shonei-server: .\deploy\deploy.ps1
 game 
     - in shonei with unity editor closed: .\Tools\build-and-publish.ps1
+
+
+    

@@ -130,8 +130,11 @@ public class Plant : Structure {
         // Anchor SR was spawned by StructureVisualBuilder with the standard lit
         // material; swap to the plant-sway variant so wind-vertex displacement
         // applies. Done here rather than via a flag in the shared builder
-        // because plants are the only structure type that needs this.
-        var plantMat = SpriteMaterialUtil.PlantSpriteMaterial;
+        // because plants are the only structure type that needs this. Water plants
+        // (lilies) keep the plain lit material — they float, so they don't sway.
+        var plantMat = plantType.isWaterPlant
+            ? SpriteMaterialUtil.LitSpriteMaterial
+            : SpriteMaterialUtil.PlantSpriteMaterial;
         if (plantMat != null) sr.sharedMaterial = plantMat;
 
         plantPhase = ComputePlantPhase(x, y);
@@ -177,7 +180,7 @@ public class Plant : Structure {
         // whole-plant bend to their normals (its vert shifts when _PlantSway > 0.5)
         // and the shading sways as one chunk while the trunk stays put. swayAmount 0
         // also undoes the one ctor RefreshSwayMPB call that runs pre-TryEnableBlobSway.
-        float swayAmount = hasBlobSway ? 0f : 1f;
+        float swayAmount = (hasBlobSway || plantType.isWaterPlant) ? 0f : 1f;
         if (sr != null)
             LightReceiverUtil.SetPlantSwayMPB(sr, tile.y, height, plantPhase, HasSwayMaskCompanion(plantName, sr.sprite), swayAmount);
         for (int i = 0; i < extensionSrs.Count; i++) {
@@ -257,7 +260,23 @@ public class Plant : Structure {
         else   wom.UnregisterHarvest(this);
     }
 
+    // Pins a water plant's sprite to the surface of the water tile it occupies (height varies
+    // with the tile's fill level, 0..1 of the way up) and removes the plant if the water has
+    // drained. Returns false when it destroyed the plant, so Grow stops processing it.
+    private bool FloatOnWater() {
+        float w = tile.water;
+        if (w <= 0f) { Destroy(); return false; }
+        float frac = Mathf.Min(1f, w / WaterController.WaterMax);
+        Vector3 p = go.transform.position;
+        go.transform.position = new Vector3(p.x, tile.y + frac, p.z);
+        return true;
+    }
+
     public void Grow(int t){
+        // Water plants (lilies) float at their tile's water surface and die if it drains away.
+        // Handled first: a dry tile means the plant is gone this tick, so skip all growth.
+        if (plantType.placement == "water" && !FloatOnWater()) return;
+
         // Unpicked fruit rots on a wall-clock timer that runs BEFORE the comfort gate, so the
         // fruit drops on schedule even when the tree is too cold/dry to grow. Once ripe (max
         // stage) ripeTicks accumulates every tick; past fruitRotTicks the fruit drops (no yield)
@@ -279,6 +298,11 @@ public class Plant : Structure {
         // the tick (no withering, no stress damage).
         if (!plantType.IsTempComfortableAt(WeatherSystem.instance)) return;
 
+        // Gate 1a': season is also a HARD gate. Most herbs use this instead of a temp
+        // window — out-of-season freezes growth (e.g. a fall-only chrysanthemum sits
+        // dormant the rest of the year). Year-round plants leave `seasons` null.
+        if (!plantType.IsSeasonComfortableAt(WeatherSystem.instance)) return;
+
         // Gate 1b: moisture is a SOFT gate — out of comfort range slows growth to
         // DroughtGrowthRate rather than freezing it, so a fresh world that hasn't rained
         // yet still inches its crops along instead of stalling forever. Sub-tick progress
@@ -289,15 +313,15 @@ public class Plant : Structure {
         slowGrowthCarry -= effectiveT;
         if (effectiveT <= 0) return;
 
-        // Gate 2: crossing into a new growth stage. max stage = 4 * maxHeight - 1
-        // (4 per tile; single-tile plants cap at 3 exactly like before).
+        // Gate 2: crossing into a new growth stage. max stage = growthStages * maxHeight - 1
+        // (growthStages per tile; single-tile default-4 plants cap at 3 exactly like before).
         // A crossing always costs stageMoistureCost from the soil. If the crossing also
-        // lands us in a new height band (stage / 4 increased), we additionally require
-        // every new tile above to be free. Either gate failing freezes age + stage for
-        // the tick so they stay coherent.
+        // lands us in a new height band (stage / growthStages increased), we additionally
+        // require every new tile above to be free. Either gate failing freezes age + stage
+        // for the tick so they stay coherent.
         int maxStage       = plantType.maxStage;
         int candidateAge   = age + effectiveT;
-        int candidateStage = Math.Min(candidateAge * 3 / plantType.growthTime, maxStage);
+        int candidateStage = Math.Min(candidateAge * plantType.stageSpan / plantType.growthTime, maxStage);
         int prevStage      = growthStage;
         if (candidateStage > growthStage) {
             int cost = plantType.stageMoistureCost;
@@ -315,11 +339,12 @@ public class Plant : Structure {
 
         age         = candidateAge;
         growthStage = candidateStage;
-        // Harvestable once the plant has reached a "mature" 4-stage segment (stage 3 of any
-        // tile). Multi-tile plants keep growing past this; the harvest work order stays dormant
-        // until IsDoneGrowing(), so trees/bamboo are reaped at full height and deliver their
-        // height-scaled yield. `harvestable` here only gates harvest sanity rechecks.
-        if (growthStage >= 3 && !harvestable){
+        // Harvestable once the plant completes its first tile's stages (stage growthStages-1).
+        // Multi-tile plants keep growing past this; the harvest work order stays dormant until
+        // IsDoneGrowing(), so trees/bamboo are reaped at full height and deliver their height-
+        // scaled yield. For single-tile plants that threshold IS maxStage. `harvestable` here
+        // only gates harvest sanity rechecks.
+        if (growthStage >= plantType.growthStages - 1 && !harvestable){
             harvestable = true;
         }
         // Only rebuild visuals when the growth stage actually changed. The
@@ -336,13 +361,13 @@ public class Plant : Structure {
     private void RewindFruitCycle(){
         int target  = Mathf.Max(0, plantType.maxStage - plantType.fruitCycleStages);
         growthStage = target;
-        age         = target * plantType.growthTime / 3;
+        age         = target * plantType.growthTime / plantType.stageSpan;
         ripeTicks   = 0;
         UpdateSprite();
     }
     // Tile-height this plant occupies at a given growth stage. Table-driven plants read it
     // from growthFrames (each entry lists one sprite per occupied tile); others use the
-    // 4-stages-per-tile formula. Single source of truth for the height the growth/extension
+    // growthStages-per-tile formula. Single source of truth for the height the growth/extension
     // logic claims and the save/load rebuild re-derives.
     private int HeightForStage(int stage) {
         if (plantType.hasGrowthTable) {
@@ -350,7 +375,10 @@ public class Plant : Structure {
             stage = Mathf.Clamp(stage, 0, frames.Length - 1);
             return Mathf.Max(1, frames[stage].Length);
         }
-        return 1 + stage / 4;
+        // Clamp to maxHeight: within the valid stage range [0, maxStage] the formula never
+        // exceeds maxHeight, but a stale/out-of-range growthStage (e.g. a plant saved under a
+        // different growthStages, or pre-migration data) must not claim a phantom tile above.
+        return Mathf.Min(plantType.maxHeight, 1 + stage / plantType.growthStages);
     }
 
     // Worldgen shortcut: jump a plant straight to a given growth stage without paying the
@@ -360,8 +388,8 @@ public class Plant : Structure {
     public void Mature(int stage){
         stage       = Mathf.Clamp(stage, 0, plantType.maxStage);
         growthStage = stage;
-        age         = plantType.growthTime * stage / 3; // keep age coherent with stage
-        harvestable = stage >= 3;                        // matches Grow's harvestable gate
+        age         = plantType.growthTime * stage / plantType.stageSpan; // keep age coherent with stage
+        harvestable = stage >= plantType.growthStages - 1;                // matches Grow's harvestable gate
         RebuildExtensionTiles();
     }
 
@@ -398,6 +426,11 @@ public class Plant : Structure {
             // WOM harvest order goes dormant (IsDoneGrowing false) until it regrows to maxStage.
             // harvestable stays true — still a mature tree; dispatch is gated by IsDoneGrowing.
             RewindFruitCycle();
+        } else if (plantType.isWild) {
+            // Foraging a wild herb removes it; WildHerbSystem re-seeds the world elsewhere.
+            // Safe to Destroy here: HarvestTask reserves nothing and its remaining objectives
+            // operate on the produced items, not this plant.
+            Destroy();
         } else {
             ReleaseAllExtensionTiles();
             harvestable = false;
@@ -568,11 +601,11 @@ public class Plant : Structure {
             return;
         }
 
-        int topStageSpriteIdx = growthStage % 4;
+        int topStageSpriteIdx = growthStage % plantType.growthStages;
 
-        // Anchor: if the plant has extensions, anchor is a lower tile → index 4.
-        // Otherwise it's the topmost and uses the live stage sprite directly.
-        int anchorIdx = (extensionSrs.Count > 0) ? 4 : topStageSpriteIdx;
+        // Anchor: if the plant has extensions, anchor is a lower tile → stalk-continuation
+        // index (growthStages). Otherwise it's the topmost and uses the live stage sprite.
+        int anchorIdx = (extensionSrs.Count > 0) ? plantType.growthStages : topStageSpriteIdx;
 
         if (hasBlobSway) {
             // Rebuild every blob from scratch. Growth-stage changes happen on
@@ -587,12 +620,12 @@ public class Plant : Structure {
             sr.sprite = anchorStatic ?? LoadAnchorSprite(n, anchorIdx);
             SpawnBlobsForTile(n, anchorCell, go.transform, sr.sortingOrder);
 
-            // Extension tiles: all but the last use g4; the last (topmost) uses
-            // the current stage % 4. Extension tiles always live on the g
-            // row — they're upper-tile sprites by definition.
+            // Extension tiles: all but the last use the stalk-continuation sprite (g{growthStages});
+            // the last (topmost) uses the current stage % growthStages. Extension tiles always
+            // live on the g row — they're upper-tile sprites by definition.
             for (int i = 0; i < extensionSrs.Count; i++) {
                 bool isTop = (i == extensionSrs.Count - 1);
-                int idx = isTop ? topStageSpriteIdx : 4;
+                int idx = isTop ? topStageSpriteIdx : plantType.growthStages;
                 string extCell;
                 Sprite extStatic = LoadStaticSprite(n, "g", idx, out extCell);
                 extensionSrs[i].sprite = extStatic ?? LoadStageSprite(n, idx);
@@ -600,11 +633,11 @@ public class Plant : Structure {
             }
         } else {
             sr.sprite = LoadAnchorSprite(n, anchorIdx);
-            // Extension tiles: all but the last use g4; the last (topmost) uses the
-            // current stage % 4.
+            // Extension tiles: all but the last use the stalk-continuation sprite (g{growthStages});
+            // the last (topmost) uses the current stage % growthStages.
             for (int i = 0; i < extensionSrs.Count; i++) {
                 bool isTop = (i == extensionSrs.Count - 1);
-                extensionSrs[i].sprite = LoadStageSprite(n, isTop ? topStageSpriteIdx : 4);
+                extensionSrs[i].sprite = LoadStageSprite(n, isTop ? topStageSpriteIdx : plantType.growthStages);
             }
         }
 
@@ -803,15 +836,41 @@ public class PlantType : StructType {
     public string[][] growthFrames {get; set;}
     public bool hasGrowthTable => growthFrames != null && growthFrames.Length > 0;
 
+    // Growth-stage sprites per tile: a plant renders g0..g{growthStages-1}. Default 4 (the
+    // legacy model — single-tile plants run g0..g3). Herbs set 3 for a tidy g0/g1/g2 lifecycle.
+    // Drives maxStage, the per-tile height step, the age↔stage conversion, and which stage
+    // sprite renders. Table-driven plants (growthFrames) ignore this — their stage count is the
+    // table length.
+    public int growthStages {get; set;} = 4;
+    // Stages gained over one growthTime span (= growthStages-1, since stage 0 is the seedling).
+    // The age↔stage conversions divide by this; guarded ≥1 so a degenerate 1-stage plant can't
+    // divide by zero.
+    public int stageSpan => Math.Max(1, growthStages - 1);
+
     // Highest growth stage this plant type reaches. Table-driven plants run the full table;
-    // others use 4 stages per height tile (single-tile plants cap at 3 exactly like before).
-    public int maxStage => hasGrowthTable ? growthFrames.Length - 1 : 4 * maxHeight - 1;
+    // others use growthStages per height tile (single-tile, default 4 → caps at 3 as before).
+    public int maxStage => hasGrowthTable ? growthFrames.Length - 1 : growthStages * maxHeight - 1;
 
     // Relative weight used by WorldGen.ScatterPlants to pick which plant type seeds
     // each natural cluster. Sampled proportionally against all other plant types with
     // genWeight > 0 — units are unnormalized. 0 (default) = never spawns naturally
     // (legacy types, crops planted only by the player). Tune in plantsDb.json.
     public float genWeight {get; set;} = 0f;
+
+    // ── Wild herb lifecycle (WildHerbSystem) ─────────────────────────────────
+    // Per-world live-population cap for a WILD herb. >0 marks this type as wild: the world
+    // spawns/maintains up to maxWild of them (WildHerbSystem), foraging destroys them instead
+    // of auto-replanting (Plant.Harvest), and WorldGen.ScatterPlants skips them. 0 (default) =
+    // a normal crop/plant. genWeight still weights WHICH under-cap wild type spawns next.
+    public int maxWild {get; set;} = 0;
+    public bool isWild => maxWild > 0;
+
+    // Terrain kind a wild herb spawns on: "meadow" (surface dirt, default) or "water" (floats
+    // on the topmost water tile, e.g. moonlily). Only read for wild types. Future: "cave", "shade".
+    public string placement {get; set;} = "meadow";
+    // Floats on water rather than rooting in soil: no wind sway (not anchored to ground), no
+    // soil-moisture coupling, and Plant.FloatOnWater pins it to the surface. See Plant.Grow.
+    public bool isWaterPlant => placement == "water";
     // public string njob {get; set;}
     // public Job job;
 
@@ -823,6 +882,14 @@ public class PlantType : StructType {
     public float? tempMax     {get; set;}
     public int?   moistureMin {get; set;}
     public int?   moistureMax {get; set;}
+
+    // Seasons this plant grows in — each entry is a season name ("Spring"/"Summer"/
+    // "Fall"/"Winter") matching WeatherSystem.GetSeason(). Null/empty = year-round
+    // (the default for crops). A HARD growth gate like tempMin/tempMax: out-of-season
+    // freezes growth for the tick. Easier to author than a temperature window when the
+    // intent is "this herb only appears in autumn." WildHerbSystem will read this to
+    // gate seasonal spawning too.
+    public string[] seasons {get; set;}
 
     // Passive soil moisture draw per in-game hour from the tile below. Drains the soil
     // over time independent of growth. Default 2 (crops dry out fast enough that hand-
@@ -857,6 +924,16 @@ public class PlantType : StructType {
         if (moistureMin.HasValue && m < moistureMin.Value) return false;
         if (moistureMax.HasValue && m > moistureMax.Value) return false;
         return true;
+    }
+
+    // Season comfort — true when the current season is in the authored list.
+    // A HARD gate in Plant.Grow: out of season freezes growth. Null/empty list =
+    // no restriction (year-round). WeatherSystem null during early startup / tests
+    // is treated as in-season so plants don't stall before the first tick.
+    public bool IsSeasonComfortableAt(WeatherSystem weather) {
+        if (seasons == null || seasons.Length == 0) return true;
+        if (weather == null) return true;
+        return Array.IndexOf(seasons, weather.GetSeason()) >= 0;
     }
 
     [OnDeserialized]

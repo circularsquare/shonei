@@ -264,15 +264,15 @@
             {
                 "id": 201,
                 "name": "stone tools",
-                "decayRate": 0.05,
+                "decayRate": 0.3,
                 "discrete": true,
                 "workEfficiency": 1.10,
-                "equipDecayRate": 7.5,
+                "equipDecayRate": 10.0,
                 "children": null
             },{
                 "id": 202,
                 "name": "copper tools",
-                "decayRate": 0.05,
+                "decayRate": 0.15,
                 "discrete": true,
                 "workEfficiency": 1.20,
                 "equipDecayRate": 5.0,
@@ -280,7 +280,7 @@
             },{
                 "id": 203,
                 "name": "bronze tools",
-                "decayRate": 0.05,
+                "decayRate": 0.15,
                 "discrete": true,
                 "workEfficiency": 1.30,
                 "equipDecayRate": 4.0,
@@ -354,13 +354,44 @@
     },{
         "id": 300,
         "name": "book",
-        "decayRate": 2.0,
+        "decayRate": 1.2,
         "discrete": true,
         "itemClass": "book",
         "children": [
             {
                 "id": 301,
                 "name": "fiction_book",
+                "children": null
+            }
+        ]
+    },{
+        "id": 400,
+        "name": "herbs",
+        "decayRate": 0.2,
+        "children": [
+            {
+                "id": 401,
+                "name": "goji",
+                "foodValue": 6,
+                "defaultTarget": 20,
+                "children": null
+            },{
+                "id": 402,
+                "name": "mugwort",
+                "foodValue": 2,
+                "defaultTarget": 20,
+                "children": null
+            },{
+                "id": 403,
+                "name": "chrysanthemum",
+                "foodValue": 2,
+                "defaultTarget": 20,
+                "children": null
+            },{
+                "id": 404,
+                "name": "moonlily",
+                "decayRate": 0.05,
+                "defaultTarget": 20,
                 "children": null
             }
         ]

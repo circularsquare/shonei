@@ -22,10 +22,12 @@ public class Happiness {
     public Dictionary<string, float> satisfactions;
 
     // Warmth: decaying cold tolerance buff from sitting by a fireplace.
-    // Widens comfortTempLow by up to warmth * 1C (max 5C at cap).
+    // Widens comfortTempLow by warmthToleranceC per warmth point. One fireplace visit grants
+    // activityGrant (2) warmth → 4C tolerance; stacks to satisfactionCap (5) → 10C.
     // Decays ~2 days: 0.9695^96 ~ 0.05 (48 SlowUpdates/day x 2 days).
     public float warmth = 0f;
     private const float warmthDecayFactor10 = 0.9695f;
+    private const float warmthToleranceC = 2f; // C of cold tolerance per warmth point
 
     // Comfortable temperature range (C). Updated by UpdateComfortRange().
     public float comfortTempLow  = 10f;
@@ -109,11 +111,12 @@ public class Happiness {
     // Adjusts comfort temperature range based on equipped clothing and warmth buff.
     // Called from Animal.SlowUpdate() before SlowUpdate(). Currently hardcoded
     // to +/-3C for any clothing item; can be made data-driven later.
-    // Warmth buff widens cold tolerance by up to 5C (1C per warmth point).
+    // Warmth buff widens cold tolerance by warmthToleranceC per warmth point (one fireplace
+    // visit = 4C; up to 10C when stacked to the warmth cap).
     public void UpdateComfortRange(Animal a) {
         bool hasClothing = a.clothingSlotInv.itemStacks[0].item != null;
         float clothingBonus = hasClothing ? 3f : 0f;
-        float warmthBonus = warmth * 1f; // up to 5C at max warmth
+        float warmthBonus = warmth * warmthToleranceC;
         comfortTempLow  = 10f - clothingBonus - warmthBonus;
         comfortTempHigh = 25f + clothingBonus;
     }

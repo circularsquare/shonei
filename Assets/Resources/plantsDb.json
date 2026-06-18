@@ -145,6 +145,79 @@
         "moistureMin": 40, "moistureMax": 100,
         "maxHeight": 3,
         "genWeight": 10
+    },{
+        "id": 560,
+        "name": "goji",
+        "ncosts": [
+            { "name": "goji", "quantity": 1 }
+        ],
+        "nproducts": [
+            { "name": "goji", "quantity": 2 }
+        ],
+        "growthTime": 200,
+        "harvestTime": 8.0,
+        "njob": "farmer",
+        "capacity": 1,
+        "moistureMin": 10, "moistureMax": 50,
+        "seasons": ["Summer", "Fall"],
+        "genWeight": 25,
+        "maxWild": 4,
+        "growthStages": 3
+    },{
+        "id": 561,
+        "name": "mugwort",
+        "ncosts": [
+            { "name": "mugwort", "quantity": 1 }
+        ],
+        "nproducts": [
+            { "name": "mugwort", "quantity": 3 }
+        ],
+        "growthTime": 180,
+        "harvestTime": 8.0,
+        "njob": "farmer",
+        "capacity": 1,
+        "seasons": ["Spring", "Summer", "Fall"],
+        "genWeight": 30,
+        "maxWild": 5,
+        "growthStages": 3
+    },{
+        "id": 562,
+        "name": "chrysanthemum",
+        "ncosts": [
+            { "name": "chrysanthemum", "quantity": 1 }
+        ],
+        "nproducts": [
+            { "name": "chrysanthemum", "quantity": 2 }
+        ],
+        "growthTime": 220,
+        "harvestTime": 8.0,
+        "njob": "farmer",
+        "capacity": 1,
+        "moistureMin": 30, "moistureMax": 80,
+        "seasons": ["Fall"],
+        "genWeight": 15,
+        "maxWild": 4,
+        "growthStages": 3
+    },{
+        "id": 563,
+        "name": "moonlily",
+        "ncosts": [
+            { "name": "moonlily", "quantity": 1 }
+        ],
+        "nproducts": [
+            { "name": "moonlily", "quantity": 1 }
+        ],
+        "growthTime": 220,
+        "harvestTime": 8.0,
+        "njob": "farmer",
+        "capacity": 1,
+        "seasons": ["Spring", "Summer", "Fall"],
+        "placement": "water",
+        "stageMoistureCost": 0,
+        "moistureDrawPerHour": 0,
+        "genWeight": 15,
+        "maxWild": 3,
+        "growthStages": 3
     }
 
 ]

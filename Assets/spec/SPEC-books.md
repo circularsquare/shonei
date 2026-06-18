@@ -5,7 +5,7 @@ Books are discrete, durable items that scribes write at scriptoriums and store i
 - **Tech books** — one per research tech, generated at runtime. Scientists carry one matching their current study target for a 3× research-progress multiplier.
 - **Fiction book** — one hand-authored entry. Mice carry it during leisure to read it for "reading" satisfaction.
 
-Both kinds share a single sprite (`Sprites/Items/split/books/icon`) and one shelf type. Decay rate is 2.0 (matches tools), so the same per-inv-type multipliers apply (Floor 5×, Storage/Equip 1×, Animal/Market/Blueprint 0×).
+Both kinds share a single sprite (`Sprites/Items/split/books/icon`) and one shelf type. Decay rate is 1.2 (time-based, like clothing), with the standard per-inv-type multipliers (Floor 5×, Storage/Equip 1×, Animal/Market/Blueprint 0×) — so a shelved book lasts ~20 in-game days, a floored one ~4.
 
 ## Item class system
 
@@ -27,7 +27,7 @@ The previously-bool `Item.isLiquid` and `StructType.liquidStorage` were generali
 
 ## Item generation
 
-`itemsDb.json` declares the `book` group at id 300 with a single static child `fiction_book` (id 301). The group carries `decayRate: 2.0`, `discrete: true`, `itemClass: "book"` — children inherit all three.
+`itemsDb.json` declares the `book` group at id 300 with a single static child `fiction_book` (id 301). The group carries `decayRate: 1.2`, `discrete: true`, `itemClass: "book"` — children inherit all three.
 
 At startup, `Db.GenerateBookItems()` (called from `Db.Awake` between `ReadJson` and the `itemsFlat` trim):
 

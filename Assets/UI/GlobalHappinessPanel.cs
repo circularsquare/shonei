@@ -71,7 +71,6 @@ public class GlobalHappinessPanel : MonoBehaviour {
         // SpawnRows on first open rather than Start() — OnEnable fires before Start on first activation,
         // so rows must exist before Refresh() runs or data shows as 0 until the next periodic refresh.
         if (rows.Count == 0) SpawnRows();
-        if (foodChart != null) foodChart.SetLabels("food points", "produced", "eaten");
         Refresh();
     }
 
@@ -135,10 +134,25 @@ public class GlobalHappinessPanel : MonoBehaviour {
         if (foodChart != null && StatsTracker.instance != null) {
             var produced = StatsTracker.instance.Get("food_produced");
             var consumed = StatsTracker.instance.Get("food_consumed");
+            var decayed  = StatsTracker.instance.Get("food_decayed");
             if (produced != null) {
-                float[] up   = produced.GetSeries(FoodChartDays, includeCurrentDay: true);
-                float[] down = consumed != null ? consumed.GetSeries(FoodChartDays, includeCurrentDay: true) : null;
-                foodChart.SetData(up, down, FoodChartDays, lastIsLive: true);
+                // Up: produced. Down: eaten + decayed stacked, so the bar shows total food
+                // drain at a glance (spoilage sits on top of consumption in a muted colour).
+                var up = new[] {
+                    new BarChartGraph.Segment(
+                        produced.GetSeries(FoodChartDays, true),
+                        BarChartGraph.Amber, BarChartGraph.AmberLive, "produced"),
+                };
+                var down = new System.Collections.Generic.List<BarChartGraph.Segment>(2);
+                if (consumed != null)
+                    down.Add(new BarChartGraph.Segment(
+                        consumed.GetSeries(FoodChartDays, true),
+                        BarChartGraph.Red, BarChartGraph.RedLive, "eaten"));
+                if (decayed != null)
+                    down.Add(new BarChartGraph.Segment(
+                        decayed.GetSeries(FoodChartDays, true),
+                        BarChartGraph.Slate, BarChartGraph.SlateLive, "decayed"));
+                foodChart.SetSeries(up, down.ToArray(), FoodChartDays, lastIsLive: true);
             }
         }
 

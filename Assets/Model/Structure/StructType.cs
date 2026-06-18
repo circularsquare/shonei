@@ -238,10 +238,10 @@ public class StructType {
     // Fuel inventory: internal resource consumed over time (torch burns wood; furnace burns coal, etc.).
     // hasFuelInv = true → Building creates a fuelInv and WOM registers a standing supply order on placement.
     public bool hasFuelInv {get; set;}
-    public string fuelItemName {get; set;} // group or leaf item name (e.g. "wood"); resolved to fuelItem on load
-    public Item fuelItem;                  // resolved from fuelItemName in OnDeserialized
+    public string fuelItemName {get; set;} // OPTIONAL restriction: group/leaf name (e.g. "wood"); absent = accept any fuel (fuelValue>0)
+    public Item fuelItem;                  // resolved from fuelItemName in OnDeserialized; null = any fuel
     public int fuelCapacity {get; set;}    // max stack size in fen (JSON in liang, converted in OnDeserialized); supply triggers below half capacity
-    public float fuelBurnRate {get; set;}  // liang/day consumed; LightSource converts to fen/s at runtime
+    public float fuelBurnRate {get; set;}  // ENERGY/day consumed; divided by the stocked fuel's fuelValue at burn (wood=1 → unchanged)
 
     // ── Processor ──────────────────────────────────────────────────────
     // A passive timed converter (see Processor.cs). hasProcessor=true → Building creates a
@@ -458,10 +458,13 @@ public class StructType {
         // Fuel inventory: convert liang → fen; resolve fuel item reference.
         if (hasFuelInv) {
             if (fuelCapacity > 0) fuelCapacity = ItemStack.LiangToFen(fuelCapacity);
-            if (fuelItemName != null && Db.itemByName.ContainsKey(fuelItemName))
-                fuelItem = Db.itemByName[fuelItemName];
-            else
-                Debug.LogError($"StructType '{name}': hasFuelInv=true but fuelItemName '{fuelItemName}' not found in Db");
+            // fuelItemName is OPTIONAL: present = restrict to that item (group or leaf);
+            // absent = accept ANY fuel (any fuelValue>0 item), chosen at refuel via PickFuel.
+            // Only error on a name that's specified-but-unknown (typo guard).
+            if (!string.IsNullOrEmpty(fuelItemName)) {
+                if (Db.itemByName.TryGetValue(fuelItemName, out Item fi)) fuelItem = fi;
+                else Debug.LogError($"StructType '{name}': fuelItemName '{fuelItemName}' not found in Db");
+            }
         }
         // Cache placement-tile solid requirement so StructPlacement / StructController don't rescan.
         if (tileRequirements != null) {

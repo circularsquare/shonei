@@ -103,6 +103,8 @@ public class ItemStack {
                 Animal animal = resTask?.animal;
                 inv.Produce(item, -amountToDecay);
                 decayCounter -= amountToDecay * maxDecayCount;
+                // Track spoiled food for the colony food chart (no-op for non-edibles).
+                StatsTracker.instance?.NoteDecayed(before, amountToDecay);
                 if (this.item == null && inv?.invType == Inventory.InvType.Floor) {
                     string resNote = hadRes > 0 ? $" — silently dropped {hadRes} fen reservation (animal={animal?.aName})" : "";
                     Debug.LogWarning($"Decay emptied stack: {before.name} in {inv?.invType} at ({inv?.x},{inv?.y}){resNote}");
@@ -160,14 +162,14 @@ public class ItemStack {
         int amount = Math.Min(n, quantity - resAmount);
         if (amount <= 0) return 0;
         resAmount += amount;
-        resTime = World.instance.timer;
+        resTime = World.instance != null ? World.instance.timer : 0f; // tolerate no-World (early init / model tests)
         resTask = by;
         return amount;
     }
     public bool Reserve(Task by = null) {
         if (!Available()) return false;
         resAmount++;
-        resTime = World.instance.timer;
+        resTime = World.instance != null ? World.instance.timer : 0f; // tolerate no-World (early init / model tests)
         resTask = by;
         return true;
     }
@@ -206,7 +208,7 @@ public class ItemStack {
         int amount = Math.Min(n, free);
         if (amount <= 0) return 0;
         resSpace += amount;
-        resSpaceTime = World.instance.timer;
+        resSpaceTime = World.instance != null ? World.instance.timer : 0f; // tolerate no-World (early init / model tests)
         resSpaceTask = by;
         if (item == null && quantity == 0) resSpaceItem = forItem;
         return amount;

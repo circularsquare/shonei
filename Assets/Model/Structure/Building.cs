@@ -29,10 +29,11 @@ public class Workstation {
 // LightSource consumes via Burn(). WOM registers a standing SupplyBuilding order via building.reservoir.
 // Supply is triggered when quantity falls below half of capacity.
 public class Reservoir {
-    public Item fuelItem;     // the leaf or group item this reservoir accepts (e.g. "wood", "water")
+    public Item fuelItem;     // restrict to this leaf/group (e.g. "wood", "water"); null = accept ANY fuel (fuelValue>0)
     public int capacity;      // max stack size in fen
-    public float burnRate;    // liang/day consumed; LightSource converts to fen/s at runtime
+    public float burnRate;    // ENERGY/day consumed; divided by the stocked fuel's fuelValue at burn (wood=1 → unchanged)
     public Inventory inv;     // internal inventory: 1 stack, not tied to a tile
+    private float burnAccumulator = 0f; // fractional-fen carry so sub-fen burn rates work across frames/ticks
 
     public Reservoir(Item fuelItem, int capacity, float burnRate, int buildingX, int buildingY, string buildingName) {
         this.fuelItem = fuelItem;
@@ -42,23 +43,42 @@ public class Reservoir {
         inv.displayName = buildingName + "_fuel";
     }
 
-    // Current quantity for the configured item (checks all leaf stacks).
-    public int Quantity() => inv.Quantity(fuelItem);
+    // Total fen stocked in the (single) slot, regardless of which fuel leaf it holds. Unifies
+    // restricted and any-fuel reservoirs: a restricted slot only ever holds the allowed item, so
+    // this equals the old inv.Quantity(fuelItem); an any-fuel slot (fuelItem null) can't call that.
+    public int Quantity() {
+        int total = 0;
+        foreach (ItemStack s in inv.itemStacks) if (s.item != null) total += s.quantity;
+        return total;
+    }
+
+    // The concrete fuel leaf currently stocked (single slot), or null if empty. Used to top up the
+    // same type (no mixing) and to read the burning fuel's potency.
+    public Item HeldLeaf() {
+        foreach (ItemStack s in inv.itemStacks) if (s.item != null && s.quantity > 0) return s.item;
+        return null;
+    }
 
     // True when level is below half of capacity — triggers a WOM supply order.
-    public bool NeedsSupply() => inv.Quantity(fuelItem) < capacity / 2;
+    public bool NeedsSupply() => Quantity() < capacity / 2;
 
     // True when level is above zero.
-    public bool HasFuel() => inv.Quantity(fuelItem) > 0;
+    public bool HasFuel() => Quantity() > 0;
 
-    // Consumes the resource over time. Call from Update(). Returns the amount actually consumed (fen).
-    // Accumulates fractional fen across frames so sub-fen burn rates work correctly.
-    public int Burn(float deltaTime, ref float accumulator) {
-        float fenPerSecond = burnRate * 100f / World.ticksInDay;
-        accumulator += fenPerSecond * deltaTime;
-        if (accumulator < 1f) return 0;
+    // Consumes the resource over time. Call from a per-frame (LightSource) or per-tick
+    // (StructController, for non-light reservoirs like the fountain) update. `deltaTime` is in
+    // game-seconds. Returns the amount actually consumed (fen). Owns its fractional-fen carry.
+    public int Burn(float deltaTime) {
+        // burnRate is ENERGY/day; the fen drained depends on the stocked fuel's potency
+        // (fuelValue = energy per liang), so a denser fuel (coal 3) lasts proportionally longer.
+        // Non-fuel contents (fountain water, fuelValue 0) fall back to raw liang/day via potency 1.
+        Item burning = HeldLeaf();
+        float potency = (burning != null && burning.fuelValue > 0f) ? burning.fuelValue : 1f;
+        float fenPerSecond = burnRate * 100f / (potency * World.ticksInDay);
+        burnAccumulator += fenPerSecond * deltaTime;
+        if (burnAccumulator < 1f) return 0;
 
-        int toConsume = Mathf.FloorToInt(accumulator);
+        int toConsume = Mathf.FloorToInt(burnAccumulator);
         int remaining = toConsume;
         foreach (ItemStack stack in inv.itemStacks) {
             if (stack.item == null || stack.quantity == 0 || remaining <= 0) continue;
@@ -67,8 +87,8 @@ public class Reservoir {
             remaining -= fromThisStack;
         }
         int consumed = toConsume - remaining;
-        accumulator -= consumed > 0 ? consumed : toConsume;
-        if (accumulator < 0f) accumulator = 0f;
+        burnAccumulator -= consumed > 0 ? consumed : toConsume;
+        if (burnAccumulator < 0f) burnAccumulator = 0f;
         return consumed;
     }
 
@@ -77,9 +97,11 @@ public class Reservoir {
     public int FillToCapacity() {
         int need = capacity - Quantity();
         if (need <= 0) return 0;
-        // fuelItem may be a group (e.g. "wood") — only leaves can exist as physical stacks,
-        // so resolve to the first leaf (e.g. "pine") before spawning.
-        inv.Produce(fuelItem.FirstLeaf(), need);
+        // Resolve a concrete leaf to spawn: a restricted group (e.g. "wood") → its first leaf;
+        // an any-fuel reservoir (fuelItem null) → whatever's already stocked, else a picked fuel.
+        Item leaf = fuelItem != null ? fuelItem.FirstLeaf() : (HeldLeaf() ?? GlobalInventory.instance?.PickFuel());
+        if (leaf == null) return 0;
+        inv.Produce(leaf, need);
         return need;
     }
 

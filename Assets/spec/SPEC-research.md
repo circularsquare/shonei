@@ -11,7 +11,9 @@ The system, panel, task, and code identifiers are all still named "Research"; on
 
 ## Progress & decay
 
-Each technology has a progress value (0 to 2x cost). Every tick, all nodes with progress > 0 lose `DecayRate` (0.008) progress. Scientists add `workEfficiency * ScientistRate (0.04)` per tick.
+Each technology has a progress value (0 to 2x cost). Every tick, all nodes with progress > 0 lose `DecayRate` (0.004) progress. Scientists add `workEfficiency * ScientistRate (0.02)` per tick.
+
+Progress changes are recorded to `StatsTracker` as the actual clamped delta applied — scientist gains → `research_gained`, passive gains (construction/craft/repair) → `research_passive`, per-tick decay → `research_decayed`. `ResearchPanel.researchChart` (a `BarChartGraph`) stacks the two gain series upward and decay downward. See SPEC-stats.
 
 Passive progress sources (maintain-only — caps at 2x cost and cannot unlock a locked tech from scratch):
 - **Crafting**: recipes with a `research` field grant `researchPoints` to the named tech on each completed cycle. Hooked in `AnimalStateManager.ExecuteCraftTask`. Intended use: recipe-unlock techs gain from the recipe they unlock.

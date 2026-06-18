@@ -55,6 +55,21 @@ public class StatsTracker {
         // NoteConsumed. Charted downward opposite food_produced for an at-a-glance balance.
         Add(new DailyStat("food_consumed", "Food eaten/day", DailyStat.Agg.Sum, HistoryCapacity));
 
+        // Food points lost to spoilage per day. Push-fed from ItemStack.DecayAtRate via
+        // NoteDecayed. Stacked on top of food_consumed on the downward bar so the chart
+        // shows total food drain (eaten + wasted) vs production.
+        Add(new DailyStat("food_decayed", "Food decayed/day", DailyStat.Agg.Sum, HistoryCapacity));
+
+        // Research progress per day, split by source so the chart can stack them in two
+        // colours: scientist bench work vs passive gains (construction / crafting / repair).
+        // Both push-fed from ResearchSystem as the actual (clamped) progress delta applied.
+        Add(new DailyStat("research_gained",  "Research/day",         DailyStat.Agg.Sum, HistoryCapacity));
+        Add(new DailyStat("research_passive", "Passive research/day", DailyStat.Agg.Sum, HistoryCapacity));
+
+        // Research progress lost to decay per day (sum across all nodes). Charted downward
+        // opposite the two gain series. Push-fed from ResearchSystem.TickUpdate.
+        Add(new DailyStat("research_decayed", "Research decayed/day", DailyStat.Agg.Sum, HistoryCapacity));
+
         // Colony-average social satisfaction, sampled hourly. Not charted yet, but
         // registered now so history accrues from day one — and as a worked example
         // of the pull/sampler pattern for future graphs.
@@ -101,6 +116,15 @@ public class StatsTracker {
         if (item == null || fen <= 0) return;
         if (item.foodValue > 0f)
             Get("food_consumed")?.Record(fen / 100f * item.foodValue);
+    }
+
+    // Decay firehose — food lost to spoilage. Mirrors NoteConsumed; counts only edible
+    // items (tools/clothes also decay but carry no foodValue, so they're ignored). `fen`
+    // is the quantity that decayed away. Food points = (liang lost) × foodValue.
+    public void NoteDecayed(Item item, int fen) {
+        if (item == null || fen <= 0) return;
+        if (item.foodValue > 0f)
+            Get("food_decayed")?.Record(fen / 100f * item.foodValue);
     }
 
     // Direct push for non-item stats.

@@ -35,7 +35,7 @@ public Eating(){ }
         if (Fullness() > hungryThreshold){
             return 1f;
         } else {
-            return Fullness() * 2f * 0.6f + 0.4f; // 40% at worst.
+            return Fullness() * 2f * 0.4f + 0.6f; // 60% at worst.
         }
     }
 

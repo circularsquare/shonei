@@ -297,6 +297,11 @@ public class StructController : MonoBehaviour {
                 float temp = WeatherSystem.instance != null ? WeatherSystem.instance.temperature : 17.5f;
                 b.processor.Tick(0.2f / World.ticksInDay, temp);
             }
+            // Drain reservoirs NOT burned by a LightSource (e.g. fountain water evaporating).
+            // LightSource buildings (torch/fireplace) burn per-frame in LightSource, gated to night,
+            // so burning them here too would double-consume — skip those. Disabled/broken don't drain.
+            if (b.reservoir != null && !b.structType.isLightSource && !b.disabled && !b.IsBroken)
+                b.reservoir.Burn(0.2f);
         }
     }
 

@@ -1,10 +1,15 @@
 meoww!!
 
+6/18
+- more efficient eating / waking up logic
+- time display 
+- research graph
+- added herbs: goji, mugwort, moonlily, chrysanthemum
 6/17
 - recipe selection adjustments, caps on input and output influence
 - power shaft placement check
 - fuel system
-- changed water sortingjn to submerge buildings and mice
+- changed water sorting to submerge buildings and mice
 - fire animation / particles
 6/15
 - minor adjustments

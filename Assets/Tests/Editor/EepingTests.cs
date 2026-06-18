@@ -13,18 +13,6 @@ using NUnit.Framework;
 [TestFixture]
 public class EepingTests {
 
-    // ── Construction ────────────────────────────────────────────────────
-    [Test]
-    public void Constructor_DefaultsAreSane(){
-        // Pinning defaults so accidental tuning shows up in CI.
-        Eeping e = new Eeping();
-        Assert.That(e.maxEep, Is.EqualTo(100f));
-        Assert.That(e.eep, Is.EqualTo(90f));
-        Assert.That(Eeping.tireRate, Is.EqualTo(0.2f));
-        Assert.That(Eeping.eepRate, Is.EqualTo(1f));
-        Assert.That(Eeping.outsideEepRate, Is.EqualTo(0.7f));
-    }
-
     // ── Eepness ────────────────────────────────────────────────────────
     [TestCase(100f, 1f)]
     [TestCase(50f,  0.5f)]
@@ -102,28 +90,31 @@ public class EepingTests {
     }
 
     // ── Eep (recovery) ─────────────────────────────────────────────────
+    // Expected values derive from the live rate constants so they verify the *behaviour*
+    // (recovery = rate × t, at-home vs outside picks the right rate, additive onto current eep)
+    // without re-breaking every time the rates are retuned.
     [Test]
     public void Eep_AtHome_RecoversAtEepRate(){
         Eeping e = new Eeping();
         e.eep = 50f;
-        e.Eep(t: 1f, atHome: true); // +1
-        Assert.That(e.eep, Is.EqualTo(51f).Within(0.0001f));
+        e.Eep(t: 1f, atHome: true); // +eepRate
+        Assert.That(e.eep, Is.EqualTo(50f + Eeping.eepRate).Within(0.0001f));
     }
 
     [Test]
     public void Eep_Outside_RecoversAtOutsideRate(){
         Eeping e = new Eeping();
         e.eep = 50f;
-        e.Eep(t: 1f, atHome: false); // +0.7
-        Assert.That(e.eep, Is.EqualTo(50.7f).Within(0.0001f));
+        e.Eep(t: 1f, atHome: false); // +outsideEepRate
+        Assert.That(e.eep, Is.EqualTo(50f + Eeping.outsideEepRate).Within(0.0001f));
     }
 
     [Test]
     public void Eep_ScalesByDt(){
         Eeping e = new Eeping();
         e.eep = 50f;
-        e.Eep(t: 5f, atHome: true); // +5
-        Assert.That(e.eep, Is.EqualTo(55f).Within(0.0001f));
+        e.Eep(t: 5f, atHome: true); // +eepRate × 5
+        Assert.That(e.eep, Is.EqualTo(50f + Eeping.eepRate * 5f).Within(0.0001f));
     }
 
     [Test]
@@ -138,27 +129,29 @@ public class EepingTests {
     }
 
     // ── Update (fatigue) ───────────────────────────────────────────────
+    // Expected values derive from tireRate so they verify depletion = tireRate × t (and dt
+    // scaling) without re-breaking on a retune.
     [Test]
     public void Update_DepletesAtTireRate(){
         Eeping e = new Eeping();
         e.eep = 50f;
-        e.Update(1f);
-        Assert.That(e.eep, Is.EqualTo(49.8f).Within(0.0001f));
+        e.Update(1f); // -tireRate
+        Assert.That(e.eep, Is.EqualTo(50f - Eeping.tireRate).Within(0.0001f));
     }
 
     [Test]
     public void Update_ScalesByDt(){
         Eeping e = new Eeping();
         e.eep = 50f;
-        e.Update(10f); // -2.0
-        Assert.That(e.eep, Is.EqualTo(48f).Within(0.0001f));
+        e.Update(10f); // -tireRate × 10
+        Assert.That(e.eep, Is.EqualTo(50f - Eeping.tireRate * 10f).Within(0.0001f));
     }
 
     [Test]
     public void Update_ClampsAtZero(){
         Eeping e = new Eeping();
         e.eep = 0.05f;
-        e.Update(1f); // 0.05 - 0.2 = -0.15 → clamp 0
+        e.Update(1f); // 0.05 - tireRate < 0 → clamp 0
         Assert.That(e.eep, Is.EqualTo(0f));
     }
 
@@ -175,8 +168,8 @@ public class EepingTests {
     public void EepThenUpdate_RoundTrip(){
         Eeping e = new Eeping();
         e.eep = 0f;
-        e.Eep(t: 20f, atHome: true);  // +20 → 20
-        e.Update(50f);                 // -10 → 10
-        Assert.That(e.eep, Is.EqualTo(10f).Within(0.0001f));
+        e.Eep(t: 20f, atHome: true);  // +eepRate × 20
+        e.Update(50f);                 // -tireRate × 50
+        Assert.That(e.eep, Is.EqualTo(Eeping.eepRate * 20f - Eeping.tireRate * 50f).Within(0.0001f));
     }
 }

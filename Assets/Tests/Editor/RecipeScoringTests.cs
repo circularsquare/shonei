@@ -26,11 +26,12 @@ using UnityEngine;
 // ── Deferred to integration tests ────────────────────────────────────
 // The ResearchSystem-locked branch of IsEligibleForPicking requires
 // ResearchSystem.LoadNodes to read researchDb.json on Awake plus a populated
-// recipeToTechNode index — that's an integration concern. Group-item outputs,
-// recipe ratio scoring with dependencies between Score calls (e.g. dynamically
-// shifting target values mid-loop), and JSON [OnDeserialized] wire-up are
-// likewise out of scope; we construct Recipe instances directly via field
-// initializers per the audit guidance.
+// recipeToTechNode index — that's an integration concern. Group-item OUTPUTS are
+// invalid by Db.ValidateNoGroupOutputs, so untested here; group INPUTS (wildcards)
+// ARE exercised — we build throwaway group items via the Group() helper. Recipe
+// scoring with dependencies between Score calls (e.g. dynamically shifting target
+// values mid-loop) and JSON [OnDeserialized] wire-up remain out of scope; we
+// construct Recipe instances directly via field initializers per the audit guidance.
 [TestFixture]
 public class RecipeScoringTests {
 
@@ -127,31 +128,43 @@ public class RecipeScoringTests {
         Assert.That(r.Score(null), Is.EqualTo(1f));
     }
 
-    // ── Score: target == 0 is skipped ──────────────────────────────────
-    // The most important invariant per project memory: a per-item target of 0
-    // must NOT cause a divide-by-zero (output) or zero-multiply (input). It's
-    // treated as neutral so recipes touching that item aren't penalised.
+    // ── Score: target == 0 semantics ───────────────────────────────────
+    // A per-item target of 0 means "keep none". NaN-safe by construction — SurplusRatio
+    // special-cases target==0 and never divides. The two sides differ:
+    //   OUTPUT: a 0-target item is always at/above target → skipped (never produced).
+    //   INPUT:  a 0-target item we hold is "fully disposable" → max surplus (the cap), so its
+    //           recipe is favoured and the stock gets consumed — matching Task.ResolveConsumeLeaf.
     [Test]
-    public void Score_OutputTargetZero_IsNeutral_NoDivideByZero(){
+    public void Score_OutputTargetZero_Skipped_NoDivideByZero(){
         SetGlobal(itemA, 50);
         var targets = new Dictionary<int, int> { { itemA.id, 0 } };
         Recipe r = MakeRecipe(outputs: new[] { IQ(itemA, 10) });
-        // No targeted inputs/outputs after the skip → score stays at the seed value of 1.
+        // qty (50) >= target (0) → surplus output skipped → no scored outputs → score stays 1.
         Assert.That(r.Score(targets), Is.EqualTo(1f));
     }
 
     [Test]
-    public void Score_InputTargetZero_IsNeutral_NoZeroMultiply(){
+    public void Score_InputTargetZero_Held_IsMaxSurplus(){
         SetGlobal(itemA, 50);
         var targets = new Dictionary<int, int> { { itemA.id, 0 } };
         Recipe r = MakeRecipe(inputs: new[] { IQ(itemA, 10) });
-        Assert.That(r.Score(targets), Is.EqualTo(1f));
+        // target 0 + held → SurplusRatio caps at MaxSurplusRatio; no outputs → that IS the score.
+        Assert.That(r.Score(targets), Is.EqualTo(Recipe.MaxSurplusRatio).Within(1e-4f));
     }
 
     [Test]
-    public void Score_AllTargetsZero_ReturnsOne(){
-        SetGlobal(itemA, 50);
-        SetGlobal(itemB, 30);
+    public void Score_InputTargetZero_NoStock_IsZero(){
+        // target 0 but we hold none → SurplusRatio 0 → gmIn 0 → recipe unmakeable.
+        SetGlobal(itemA, 0);
+        var targets = new Dictionary<int, int> { { itemA.id, 0 } };
+        Recipe r = MakeRecipe(inputs: new[] { IQ(itemA, 10) });
+        Assert.That(r.Score(targets), Is.EqualTo(0f));
+    }
+
+    [Test]
+    public void Score_AllTargetsZero_InputDisposable_OutputSkipped(){
+        SetGlobal(itemA, 50);  // input, target 0, held → cap
+        SetGlobal(itemB, 30);  // output, target 0 → skipped
         var targets = new Dictionary<int, int> {
             { itemA.id, 0 },
             { itemB.id, 0 },
@@ -160,12 +173,13 @@ public class RecipeScoringTests {
             inputs:  new[] { IQ(itemA, 10) },
             outputs: new[] { IQ(itemB, 5) }
         );
-        Assert.That(r.Score(targets), Is.EqualTo(1f));
+        // gmIn = cap, gmOut = 1 (output skipped) → score = cap.
+        Assert.That(r.Score(targets), Is.EqualTo(Recipe.MaxSurplusRatio).Within(1e-4f));
     }
 
     [Test]
-    public void Score_MixedZeroAndNonZeroTargets_OnlyNonZeroAffectScore(){
-        // itemA target 0 (skipped), itemB target 100 (counted as input ratio 50/100 = 0.5).
+    public void Score_MixedZeroAndNonZeroInputTargets_ZeroTargetContributesMaxSurplus(){
+        // itemA target 0 + held → cap; itemB target 100, 50 in stock → 0.5.
         SetGlobal(itemA, 50);
         SetGlobal(itemB, 50);
         var targets = new Dictionary<int, int> {
@@ -173,7 +187,9 @@ public class RecipeScoringTests {
             { itemB.id, 100 },
         };
         Recipe r = MakeRecipe(inputs: new[] { IQ(itemA, 10), IQ(itemB, 10) });
-        Assert.That(r.Score(targets), Is.EqualTo(0.5f).Within(1e-6f));
+        // gmIn = sqrt(MaxSurplusRatio * 0.5).
+        float expected = Mathf.Sqrt(Recipe.MaxSurplusRatio * 0.5f);
+        Assert.That(r.Score(targets), Is.EqualTo(expected).Within(1e-4f));
     }
 
     // ── Score: input/output ratio behaviour ────────────────────────────
@@ -190,10 +206,13 @@ public class RecipeScoringTests {
         Assert.That(r.Score(targets), Is.EqualTo(expected).Within(1e-6f));
     }
 
-    [TestCase(50, 100, 2f)]     // half stocked → recipe doubly attractive
-    [TestCase(100, 100, 1f)]    // at target → neutral
-    [TestCase(200, 100, 0.5f)]  // overstocked → score halved
-    public void Score_SingleOutput_RatioIsTargetOverQuantity(int qty, int target, float expected){
+    // Only SCARCE outputs (qty < target) count, contributing target/qty (scarcer → higher score).
+    // An output at/above target is skipped entirely — it can't suppress the recipe (the byproduct
+    // fix), so the score falls back to the neutral 1.
+    [TestCase(50, 100, 2f)]     // scarce (half stocked) → doubly attractive
+    [TestCase(100, 100, 1f)]    // at target → skipped → neutral 1
+    [TestCase(200, 100, 1f)]    // over target → skipped → neutral 1 (was 0.5 before the byproduct fix)
+    public void Score_SingleOutput_ScarceCounts_SurplusSkipped(int qty, int target, float expected){
         SetGlobal(itemA, qty);
         var targets = new Dictionary<int, int> { { itemA.id, target } };
         Recipe r = MakeRecipe(outputs: new[] { IQ(itemA, 10) });
@@ -311,6 +330,113 @@ public class RecipeScoringTests {
         float score = r.Score(targets);
         Assert.That(float.IsNaN(score), Is.False);
         Assert.That(score, Is.EqualTo(0f));
+    }
+
+    // ── SurplusRatio: cap + target-zero ────────────────────────────────
+    // The shared scalar behind input scoring and Task.ResolveConsumeLeaf.
+    [TestCase(50, 100, 0.5f)]
+    [TestCase(150, 100, 1.5f)]
+    [TestCase(5000, 100, 20f)]   // ratio 50 clamped to the cap
+    [TestCase(50, 0, 20f)]       // target 0 + held → fully disposable → cap
+    [TestCase(0, 0, 0f)]         // target 0 + none → nothing to consume → 0
+    [TestCase(0, 100, 0f)]       // empty → 0
+    public void SurplusRatio_CapAndTargetZero(int qty, int target, float expected){
+        Assert.That(Recipe.SurplusRatio(qty, target), Is.EqualTo(expected).Within(1e-4f));
+    }
+
+    [Test]
+    public void SurplusRatio_CapMatchesConstant(){
+        // The clamp uses MaxSurplusRatio — assert the literal 20 in the [TestCase]s tracks it.
+        Assert.That(Recipe.SurplusRatio(1_000_000, 100), Is.EqualTo(Recipe.MaxSurplusRatio));
+        Assert.That(Recipe.MaxSurplusRatio, Is.EqualTo(20f)); // update SurplusRatio_CapAndTargetZero if this changes
+    }
+
+    // ── Score: byproduct (the sawdust fix) ─────────────────────────────
+    [Test]
+    public void Score_OverTargetByproduct_DoesNotSuppressScarcePrimary(){
+        // A multi-output recipe [scarce primary, flooded byproduct] must score identically to the
+        // same recipe without the byproduct: surplus outputs are skipped, so sawdust piling up no
+        // longer drags plank-cutting down. Core regression behind the byproduct fix.
+        SetGlobal(itemA, 50);     // primary — scarce (below target)
+        SetGlobal(itemB, 100000); // byproduct — flooded, far over target
+        var targets = new Dictionary<int, int> {
+            { itemA.id, 100 },
+            { itemB.id, 100 },
+        };
+        Recipe withByproduct = MakeRecipe(outputs: new[] { IQ(itemA, 10), IQ(itemB, 10) });
+        Recipe primaryOnly   = MakeRecipe(outputs: new[] { IQ(itemA, 10) });
+        Assert.That(withByproduct.Score(targets), Is.EqualTo(primaryOnly.Score(targets)).Within(1e-6f));
+        Assert.That(withByproduct.Score(targets), Is.EqualTo(2f).Within(1e-6f)); // 1 / (50/100)
+    }
+
+    // ── Score: group inputs resolve to the max-surplus leaf ────────────
+    [Test]
+    public void Score_GroupInput_UsesMaxSurplusLeaf(){
+        // A wildcard group input scores by its MOST over-target leaf — the leaf
+        // Task.ResolveConsumeLeaf would actually consume.
+        SetGlobal(itemA, 50);   // leaf A: 0.5
+        SetGlobal(itemB, 300);  // leaf B: 3.0  ← max
+        var targets = new Dictionary<int, int> {
+            { itemA.id, 100 },
+            { itemB.id, 100 },
+        };
+        Recipe r = MakeRecipe(inputs: new[] { IQ(Group(itemA, itemB), 10) });
+        Assert.That(r.Score(targets), Is.EqualTo(3f).Within(1e-6f));
+    }
+
+    [Test]
+    public void Score_GroupInput_MaxLeafObeysCap(){
+        SetGlobal(itemA, 100);      // 1.0
+        SetGlobal(itemB, 1000000);  // huge → capped
+        var targets = new Dictionary<int, int> {
+            { itemA.id, 100 },
+            { itemB.id, 100 },
+        };
+        Recipe r = MakeRecipe(inputs: new[] { IQ(Group(itemA, itemB), 10) });
+        Assert.That(r.Score(targets), Is.EqualTo(Recipe.MaxSurplusRatio).Within(1e-4f));
+    }
+
+    [Test]
+    public void Score_GroupInput_TargetZeroLeafHeld_IsMaxSurplus(){
+        // A held target-0 leaf is fully disposable → max surplus → makes the whole group input
+        // look abundant (and ResolveConsumeLeaf will burn that leaf first).
+        SetGlobal(itemA, 10);   // target 0, held → cap
+        SetGlobal(itemB, 50);   // 0.5
+        var targets = new Dictionary<int, int> {
+            { itemA.id, 0 },
+            { itemB.id, 100 },
+        };
+        Recipe r = MakeRecipe(inputs: new[] { IQ(Group(itemA, itemB), 10) });
+        Assert.That(r.Score(targets), Is.EqualTo(Recipe.MaxSurplusRatio).Within(1e-4f));
+    }
+
+    [Test]
+    public void Score_GroupInput_AllLeavesEmpty_Unmakeable(){
+        // No stock in any leaf → max surplus 0 → gmIn 0 → score 0 (recipe unmakeable).
+        SetGlobal(itemA, 0);
+        SetGlobal(itemB, 0);
+        var targets = new Dictionary<int, int> {
+            { itemA.id, 100 },
+            { itemB.id, 100 },
+        };
+        Recipe r = MakeRecipe(inputs: new[] { IQ(Group(itemA, itemB), 10) });
+        Assert.That(r.Score(targets), Is.EqualTo(0f));
+    }
+
+    // ── Item.LeafDescendants ───────────────────────────────────────────
+    [Test]
+    public void LeafDescendants_GroupReturnsAllLeavesDepthFirst(){
+        Item leaf1 = new Item { id = 430, name = "l1" };
+        Item leaf2 = new Item { id = 431, name = "l2" };
+        Item sub   = new Item { id = 432, name = "sub", children = new[] { leaf2 } };
+        Item group = new Item { id = 433, name = "g", children = new[] { leaf1, sub } };
+        CollectionAssert.AreEqual(new[] { leaf1, leaf2 }, group.LeafDescendants());
+    }
+
+    [Test]
+    public void LeafDescendants_LeafReturnsSelf(){
+        Item leaf = new Item { id = 434, name = "solo" };
+        CollectionAssert.AreEqual(new[] { leaf }, leaf.LeafDescendants());
     }
 
     // ── AllOutputsSatisfied ────────────────────────────────────────────
@@ -604,6 +730,13 @@ public class RecipeScoringTests {
     // takes the Item directly and is safe.
     static ItemQuantity IQ(Item item, int quantity){
         return new ItemQuantity(item, quantity);
+    }
+
+    // Builds a throwaway group item over the given leaves for group-input scoring tests.
+    // id is arbitrary: Score iterates the group's LeafDescendants and looks each LEAF up in
+    // GlobalInventory/targets — the group item itself is never looked up in Db.
+    static Item Group(params Item[] children){
+        return new Item { id = 409, name = "test_group", children = children };
     }
 
     // Force a global-inventory quantity to an exact value, bypassing the

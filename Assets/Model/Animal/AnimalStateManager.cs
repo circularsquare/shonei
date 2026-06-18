@@ -436,7 +436,11 @@ public class AnimalStateManager {
                 }
             }
         }
-        if (animal.eeping.eep >= animal.eeping.maxEep) {
+        // Wake-up check. Always wake when fully rested; otherwise, once rested past the wake floor,
+        // roll to wake (biased toward staying asleep, and toward deeper sleep at night) — so a mouse
+        // wakes in the morning rather than sleeping in to 100%. See Eeping.WakeChance.
+        if (animal.eeping.eep >= animal.eeping.maxEep
+            || (float)animal.random.NextDouble() < animal.eeping.WakeChance(animal.BedtimeUrgency())) {
             animal.task.Complete();
         }
     }

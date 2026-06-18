@@ -39,21 +39,40 @@ something before its first day ends.
 2. Save/load is automatic (keyed by id; see below). No `SaveSystem` edit needed.
 3. To chart it, point a `BarChartGraph` at `GetSeries(...)` (see below).
 
-**Firehoses**: `NoteProduced(item, fen)` / `NoteConsumed(item, fen)` are generic per-item
-entry points (called from `Animal.Produce`, `Processor.Tap`, `Animal.HandleNeeds`). They
-extract whatever item-derived stats are tracked — currently food points
-(`fen/100 × item.foodValue`, matching the game's nutrition math). Add new item-derived
-stats by extending these, not by scattering `Record` calls at every production site.
+**Firehoses**: `NoteProduced(item, fen)` / `NoteConsumed(item, fen)` / `NoteDecayed(item, fen)`
+are generic per-item entry points (called from `Animal.Produce`, `Processor.Tap`,
+`Animal.HandleNeeds`, and `ItemStack.DecayAtRate`). They extract whatever item-derived stats
+are tracked — currently food points (`fen/100 × item.foodValue`, matching the game's
+nutrition math; non-edibles are skipped, so tool/clothing decay doesn't count). Add new
+item-derived stats by extending these, not by scattering `Record` calls at every site.
+
+**Current stats**: `food_produced` / `food_consumed` / `food_decayed` (firehose-fed),
+`research_gained` (scientist) / `research_passive` (construction/craft/repair) /
+`research_decayed` (all `Record`-pushed from `ResearchSystem` as the actual clamped delta
+applied), and the sampled `avg_social`. The food chart stacks eaten+decayed on its down bar;
+the research chart (ResearchPanel) stacks scientist+passive up, decay down.
 
 ## BarChartGraph
 
-`SetData(up, down, slotCount, lastIsLive)`. `up`/`down` are oldest→newest value arrays
-(`down` null = single-sided). `slotCount` is the fixed column count — bars are a fixed
-width and **fill in from the right** (newest rightmost), so one day of data is one bar at
-the far right, not a stretched block.
+Two feed APIs:
+- `SetData(up, down, slotCount, lastIsLive)` — single series per side (float arrays, `down`
+  null = single-sided). Convenience sugar over `SetSeries` using the shared amber (up) /
+  red (down) palette.
+- `SetSeries(Segment[] up, Segment[] down, slotCount, lastIsLive)` — **stacked** segments per
+  side. A `Segment` is `{float[] values, Color32 color, Color32 liveColor, string label}`;
+  segments in a side stack within one bar (bar height = sum of its segments). Used by the
+  food chart (down = eaten + decayed) and the research chart (up = scientist + passive).
+  Reuse the public palette constants (`Amber/AmberLive`, `Red/RedLive`, `Slate/SlateLive`,
+  `Blue/BlueLive`, `Green/GreenLive`) so charts stay visually consistent.
 
-- **Each series is right-aligned independently**, so series of different lengths still line up by day (e.g. a metric added later has a shorter history and simply starts further right, sharing "today"). Do not align one series using the other's slot offset — that was the original bug.
-- Double-sided draws a centered baseline, `up` above / `down` below, on **one shared scale** so equal values read as equal heights.
+`up`/`down` values are oldest→newest. `slotCount` is the fixed column count — bars are a
+fixed width and **fill in from the right** (newest rightmost), so one day of data is one bar
+at the far right, not a stretched block.
+
+- **Each segment is right-aligned independently**, so series of different lengths still line up by day (e.g. a metric added later has a shorter history and simply starts further right, sharing "today"). Do not align one series using the other's slot offset — that was the original bug.
+- The shared scale is driven by the tallest **stacked total** across all slots (max of the up-sum and down-sum per slot), so up and down read on one scale and stacked bars don't clip.
+- Double-sided draws a centered baseline, `up` above / `down` below.
+- Per-column hover lists every non-zero segment as `label ±value` (up = +, down = −; values < 10 show tenths, ≥ 10 integer), so a stacked bar shows its signed breakdown.
 - Per-column hover tooltips via the shared `TooltipSystem` (`SetLabels(unit, upLabel, downLabel)` configures the text). `raycastTarget` must be on.
 - Renders into a point-filtered `Texture2D` (crisp pixel art), like `PriceGraph`. Awake/runtime only — no bars in edit mode.
 

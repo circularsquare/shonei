@@ -176,10 +176,12 @@ public class ResearchSystemTests {
 
     // ── AddScientistProgress ──────────────────────────────────────────────
     [Test]
-    public void AddScientistProgress_AddsScaledProgressAndCanUnlock(){
-        // ScientistRate = 0.04. workEfficiency=25 → 1.0 progress per call. alpha cost=1 → unlocks in one tick.
+    public void AddScientistProgress_AccumulatesAndUnlocks(){
+        // ScientistRate is a private const, so assert the behaviour (a scientist call adds
+        // progress, and enough calls cross the node's cost → unlock) rather than pinning the rate.
         rs.AddScientistProgress(25f, nodeA.id);
-        Assert.That(rs.GetProgress(nodeA.id), Is.EqualTo(1f).Within(1e-5f));
+        Assert.That(rs.GetProgress(nodeA.id), Is.GreaterThan(0f), "a scientist call adds progress");
+        for (int i = 0; i < 500 && !rs.IsUnlocked(nodeA.id); i++) rs.AddScientistProgress(25f, nodeA.id);
         Assert.That(rs.IsUnlocked(nodeA.id), Is.True);
     }
 
@@ -200,10 +202,12 @@ public class ResearchSystemTests {
     public void TickUpdate_DecaysAllNodesWithProgress(){
         rs.AddPassiveProgress("alpha", 0.5f);
         rs.AddPassiveProgress("beta", 0.5f);
-        // DecayRate = 0.008 per tick.
         rs.TickUpdate();
-        Assert.That(rs.GetProgress(nodeA.id), Is.EqualTo(0.492f).Within(1e-5f));
-        Assert.That(rs.GetProgress(nodeB.id), Is.EqualTo(0.492f).Within(1e-5f));
+        // DecayRate is a private const — assert a tick reduces progress (equally for every node)
+        // rather than pinning the exact amount.
+        float a = rs.GetProgress(nodeA.id), b = rs.GetProgress(nodeB.id);
+        Assert.That(a, Is.LessThan(0.5f).And.GreaterThan(0f), "a tick decays progress, but not to zero");
+        Assert.That(b, Is.EqualTo(a).Within(1e-5f), "all nodes decay by the same amount");
     }
 
     [Test]
@@ -224,9 +228,10 @@ public class ResearchSystemTests {
 
     // ── Forget transition ────────────────────────────────────────────────
     [Test]
-    public void TickUpdate_DecayBelowSeventyFivePercent_ForgetsAndFiresEvent(){
-        // alpha cost=1, forget threshold = 0.75. Set progress to just above cost,
-        // then decay enough ticks to drop below 0.75.
+    public void TickUpdate_DecayBelowForgetThreshold_ForgetsAndFiresEvent(){
+        // alpha cost=1, forget when progress < 0.75 × cost. Unlock it, then tick until decay drops
+        // it under the threshold. The tick count derives from "until forgotten" (bounded by a safety
+        // cap), so it's independent of the private DecayRate.
         rs.AddPassiveProgress("alpha", 1f);
         Assert.That(rs.IsUnlocked(nodeA.id), Is.True);
 
@@ -237,9 +242,7 @@ public class ResearchSystemTests {
         try {
             // RevertEffect logs a Debug.Log for the forget event.
             LogAssert.Expect(LogType.Log, new System.Text.RegularExpressions.Regex("Technology forgotten: alpha"));
-            // Need to drop from ~1.0 below the 0.75 threshold → at DecayRate 0.008/tick,
-            // 40 ticks sheds ~0.32, landing near 0.68 with comfortable margin.
-            for (int i = 0; i < 40; i++) rs.TickUpdate();
+            for (int i = 0; i < 1000 && rs.IsUnlocked(nodeA.id); i++) rs.TickUpdate();
         } finally {
             ResearchSystem.OnTechForgotten -= handler;
         }

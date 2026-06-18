@@ -135,7 +135,7 @@ public class Animal : MonoBehaviour{
         if (sg == null) sg = go.AddComponent<UnityEngine.Rendering.SortingGroup>();
         sg.sortingOrder = 50 + (id % 15);
         this.inv = new Inventory(5, 1000, Inventory.InvType.Animal);
-        this.foodSlotInv = new Inventory(1, 300, Inventory.InvType.Equip);
+        this.foodSlotInv = new Inventory(1, 500, Inventory.InvType.Equip);
         this.toolSlotInv = new Inventory(1, 200, Inventory.InvType.Equip);
         this.clothingSlotInv = new Inventory(1, 200, Inventory.InvType.Equip);
         // Restricted to Book-class items via storageClass — see Inventory.ItemTypeCompatible.
@@ -309,23 +309,23 @@ public class Animal : MonoBehaviour{
         // faster than it regains it and never wake. Ticking recovery here keeps it
         // symmetric with depletion — and with eating recovery below.
         if (state == AnimalState.Eeping) { eeping.Eep(1f, AtHome()); }
-        if (eating.Hungry()) {
-            Item slotFood = foodSlotInv.itemStacks[0].item;
-            if (slotFood != null && foodSlotInv.Quantity(slotFood) > 0) {
-                int qty = foodSlotInv.Quantity(slotFood);
-                if (qty >= 100) {
-                    // Full meal
-                    foodSlotInv.Produce(slotFood, -100);
-                    eating.Eat(slotFood.foodValue);
-                    happiness.NoteAte(slotFood, 1f);
-                    StatsTracker.instance?.NoteConsumed(slotFood, 100);
-                } else {
-                    // Partial meal — consume remainder, scale nutrition, partial happiness credit
-                    foodSlotInv.Produce(slotFood, -qty);
-                    eating.Eat(slotFood.foodValue * qty / 100f);
-                    happiness.NoteAte(slotFood, qty / 100f);
-                    StatsTracker.instance?.NoteConsumed(slotFood, qty);
-                }
+        // Nibble from the carried food slot to top the belly up toward full. The belly
+        // (eating.food, cap maxFood) is "eat to full"; the slot is the carried "to go" buffer.
+        // We eat at most ~1 liang/tick (gradual munch, not an instant gulp) and never more than
+        // the deficit to full — so a near-full mouse takes a partial bite instead of wasting a
+        // whole liang to the maxFood clamp. Runs whenever there's slot food and any deficit,
+        // so a mouse stays topped off as long as it's carrying food.
+        Item slotFood = foodSlotInv.itemStacks[0].item;
+        if (slotFood != null && slotFood.foodValue > 0 && eating.food < eating.maxFood) {
+            int available = foodSlotInv.Quantity(slotFood);
+            if (available > 0) {
+                // Fen needed to reach full at this food's nutrition density.
+                int deficitFen = Mathf.CeilToInt((eating.maxFood - eating.food) / slotFood.foodValue * 100f);
+                int eat = Math.Min(Math.Min(100, deficitFen), available);
+                foodSlotInv.Produce(slotFood, -eat);
+                eating.Eat(slotFood.foodValue * eat / 100f);
+                happiness.NoteAte(slotFood, eat / 100f);
+                StatsTracker.instance?.NoteConsumed(slotFood, eat);
             }
         }
 
@@ -343,7 +343,7 @@ public class Animal : MonoBehaviour{
     //   bedtime=1   → sleep if e < 0.9        (deep night: even mostly-rested mice sleep,
     //                                          but fully-rested mice (e ≥ 0.9) stay up)
     // Window: 0 before 7pm, linearly 0→1 from 7pm to 11pm, holds at 1 through to 6am.
-    private float BedtimeUrgency() {
+    public float BedtimeUrgency() {
         float phase = (World.instance.timer % World.ticksInDay) / (float)World.ticksInDay;
         float hour = phase * 24f;
         if (hour >= 6f && hour < 19f) return 0f;
@@ -649,7 +649,14 @@ public class Animal : MonoBehaviour{
             : foodSlotInv.stackSize;
         if (room <= 0) return false; // slot already full
 
-        int amountToPickUp = Math.Min(room, 100);
+        // Normally fill the whole slot so a mouse eats to full and carries a buffer (fewer
+        // trips, less time hungry). But when the colony is short on food (< 2 days in storage,
+        // matching the reproduction hard floor) fall back to a single liang so scarce food
+        // stays in shared, reachable storage instead of being locked in mouse slots.
+        const float scarceFoodDays = 2f;
+        bool foodScarce = AnimalController.instance != null
+            && AnimalController.instance.daysOfFoodInStorage < scarceFoodDays;
+        int amountToPickUp = foodScarce ? Math.Min(room, 100) : room;
         float urgency = (1f - eating.Fullness()) / Eating.starvingHalfDistance;
 
         // Peek nearest reachable source per food (no reservation — FindPathItemStack is read-only),
@@ -831,20 +838,37 @@ public class Animal : MonoBehaviour{
         slotInv.MoveItemTo(inv, item, slotInv.Quantity(item));
     }
     // moves item to tile here. returns amount *not* dropped
-    public int DropItem(Item item, int quantity = -1){ 
+    public int DropItem(Item item, int quantity = -1){
         if (quantity == -1) { quantity = inv.Quantity(item); }
-        return (inv.MoveItemTo(TileHere().EnsureFloorInventory(), item, quantity));
-        // maybe need failsafe?
+        Tile here = TileHere();
+        int leftover = inv.MoveItemTo(here.EnsureFloorInventory(), item, quantity);
+        // Post-drop fall: if these items landed on a non-standable tile, let them fall (and
+        // vanish if nothing's below) rather than float. No-op in the common case — a mouse
+        // stands on standable ground, so its own tile is standable.
+        World.instance.FallIfUnstandable(here.x, here.y);
+        return leftover;
     }
     public int DropItem(ItemQuantity iq) { return(DropItem(iq.item, iq.quantity)); }
 
-    // Spills everything the mouse is carrying — main inventory and all four equip
-    // slots — onto the floor when it dies, so the player can recover the food and
-    // tools. Each item type routes through FindPathToDrop so it lands on a tile
-    // with space (mirrors Produce's overflow handling); MoveItemTo keeps the
-    // GlobalInventory totals correct. Called by AnimalController before Destroy().
+    // Spills the mouse's carried goods onto the floor when it dies so the player can
+    // recover food and gear — EXCEPT the equipped tool, which is destroyed. Each dropped
+    // item routes through FindPathToDrop so it lands on a tile with space; MoveItemTo keeps
+    // the GlobalInventory totals correct. Called by AnimalController before Destroy().
     public void DropInventoryToFloor() {
-        Inventory[] sources = { inv, foodSlotInv, toolSlotInv, clothingSlotInv, bookSlotInv };
+        // Destroy worn equipment (tool + clothing) rather than dropping it: both wear down
+        // while equipped, but durability isn't tracked once an item is an unequipped floor
+        // item — dropping would silently restore full durability (a value dupe). Decrement the
+        // world total here; Animal.Destroy zeroes the slots afterward (Inventory.Destroy is
+        // ginv-neutral). Food and books still drop for recovery (no durability to lose).
+        foreach (Inventory worn in new[] { toolSlotInv, clothingSlotInv }) {
+            if (worn == null) continue;
+            foreach (ItemStack stack in worn.itemStacks) {
+                if (stack.item == null || stack.quantity == 0) continue;
+                ginv.AddItem(stack.item, -stack.quantity);
+            }
+        }
+
+        Inventory[] sources = { inv, foodSlotInv, bookSlotInv };
         foreach (Inventory src in sources) {
             if (src == null) continue;
             foreach (ItemStack stack in src.itemStacks) {
@@ -860,6 +884,10 @@ public class Animal : MonoBehaviour{
                 int leftover = src.MoveItemTo(dropTile.EnsureFloorInventory(), item, quantity);
                 if (leftover > 0)
                     Debug.Log($"{aName}'s {item.name} ({leftover} fen) had no floor space on death — lost");
+                // A spilled item can land on a non-standable tile (FindPathToDrop only needs
+                // floor space, not footing) — make it fall so it doesn't float; FallItems
+                // deletes it if there's nowhere standable below.
+                World.instance.FallIfUnstandable(dropTile.x, dropTile.y);
             }
         }
     }

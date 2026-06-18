@@ -87,17 +87,23 @@ public class WorkOrderManager : MonoBehaviour {
                 // Exclude Craft: it's its own category, scored by recipe economics (ChooseCraftTask).
                 if (!IsPickable(o, animal, exclude: OrderType.Craft)) continue;
                 float dist = o.getDistance?.Invoke(animal) ?? 0f;
-                float prox = UrgencyConfig.ProxWeight / (1f + dist / UrgencyConfig.ProxFalloff);
                 // Construct "finish what's started" bump, plus any dynamic per-order bonus
                 // (Water scales 0→WaterMaxThirstBonus with how far the soil is below comfort).
                 float finish = o.type == OrderType.Construct ? UrgencyConfig.FinishBonus : 0f;
                 float dyn = o.urgencyBonus?.Invoke() ?? 0f;
-                float u = Mathf.Clamp01(UrgencyConfig.TierBase[p - 1] + prox + finish + dyn);
+                float u = Mathf.Clamp01(UrgencyConfig.TierBase[p - 1] + Proximity(dist) + finish + dyn);
                 if (u > best) best = u;
             }
         }
         return best;
     }
+
+    // Distance → urgency/preference transform: max ProxWeight at distance 0, halving every
+    // ProxFalloff tiles. Monotonic decreasing in distance, so sorting orders by Proximity
+    // descending is identical to sorting by distance ascending — used by both BestWorkUrgency
+    // (urgency value) and ChooseOrder (pick order) so the two stay consistent.
+    private static float Proximity(float dist) =>
+        UrgencyConfig.ProxWeight / (1f + dist / UrgencyConfig.ProxFalloff);
 
     // Mirrors ChooseOrder's candidate filters EXACTLY (including the exclude param) so urgency only
     // counts orders that would actually be startable. Keep in sync with ChooseOrder if filters change.
@@ -111,9 +117,11 @@ public class WorkOrderManager : MonoBehaviour {
 
     // ── QUERY ──────────────────────────────────────────────────────────────────────
 
-    // Returns the best (distance-sorted) startable task at exactly this priority tier, or null.
-    // Removes the claimed order on success. Call PruneStale() once before a ChooseOrder sequence.
-    // Pass exclude to skip a specific order type (e.g. exclude craft orders when ChooseCraftTask handles them separately).
+    // Returns the best-ranked startable task at exactly this priority tier, or null.
+    // Ranking = Proximity(distance) + any dynamic urgencyBonus, descending — so it's nearest-first
+    // for ordinary orders (Proximity is monotonic in distance) but Water orders also bias toward the
+    // driest crop via their thirst bonus. Removes the claimed order on success. Call PruneStale() once
+    // before a ChooseOrder sequence. Pass exclude to skip a specific order type (e.g. craft).
     public Task ChooseOrder(Animal animal, int priority, OrderType? exclude = null) {
         List<WorkOrder> tier = orders[priority - 1];
         var candidates = tier
@@ -122,7 +130,7 @@ public class WorkOrderManager : MonoBehaviour {
             .Where(o => o.res.Available())
             .Where(o => o.canDo == null || o.canDo(animal))
             .Where(o => o.stack == null || o.stack.Available()) // skip haul orders whose stack is fully reserved
-            .OrderBy(o => o.getDistance?.Invoke(animal) ?? 0f)
+            .OrderByDescending(o => Proximity(o.getDistance?.Invoke(animal) ?? 0f) + (o.urgencyBonus?.Invoke() ?? 0f))
             .ToList();
         foreach (WorkOrder order in candidates) {
             Task task = order.factory(animal);

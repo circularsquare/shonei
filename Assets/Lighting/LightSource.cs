@@ -82,9 +82,6 @@ public class LightSource : MonoBehaviour {
     // the GPU perf plan.
     public static readonly List<LightSource> emitters = new();
 
-    // Fractional-fen accumulator so sub-fen burn rates work correctly across frames.
-    private float _fuelAccumulator = 0f;
-
     // The SpriteRenderer that carries the _EmissionMap. Resolved in
     // OnEnable / Start (fire child if present, else parent SR).
     private SpriteRenderer _emissionReceiver;
@@ -185,7 +182,7 @@ public class LightSource : MonoBehaviour {
         bool inWindow = IsInActiveWindow();
         // Only burn fuel while in the active time window and torch is emitting light.
         if (inWindow && EnvDarkness() > 0f)
-            reservoir.Burn(Time.deltaTime, ref _fuelAccumulator);
+            reservoir.Burn(Time.deltaTime);
         isLit = inWindow && reservoir.HasFuel();
     }
 

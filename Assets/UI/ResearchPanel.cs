@@ -30,6 +30,12 @@ public class ResearchPanel : MonoBehaviour {
     [Header("Misc")]
     public Button closeButton; // optional X in the corner
 
+    // Historic research bar chart (scene-authored RawImage + BarChartGraph). Diverging
+    // chart: scientist gain + passive gain stacked upward (two colours), decay downward.
+    // Left null → no chart (graceful no-op). Fed from StatsTracker each refresh.
+    [SerializeField] BarChartGraph researchChart;
+    const int ResearchChartDays = 15; // bars shown, including the in-progress day
+
     [Header("Debug")]
     public Button debugUnlockAllButton;
 
@@ -66,11 +72,40 @@ public class ResearchPanel : MonoBehaviour {
         if (refreshTimer >= RefreshInterval) {
             refreshTimer = 0f;
             foreach (var card in spawnedCards) card.RefreshProgress();
+            UpdateChart();
         }
     }
 
     void OnEnable() {
         Refresh();
+        UpdateChart();
+    }
+
+    // Feeds the research chart: scientist + passive gains stacked upward (blue/green),
+    // total decay downward (red). Last bar is the in-progress day (drawn live).
+    void UpdateChart() {
+        if (researchChart == null || StatsTracker.instance == null) return;
+        var gained  = StatsTracker.instance.Get("research_gained");
+        var passive = StatsTracker.instance.Get("research_passive");
+        var decayed = StatsTracker.instance.Get("research_decayed");
+
+        var up = new List<BarChartGraph.Segment>(2);
+        if (gained != null)
+            up.Add(new BarChartGraph.Segment(
+                gained.GetSeries(ResearchChartDays, true),
+                BarChartGraph.Blue, BarChartGraph.BlueLive, "scientists"));
+        if (passive != null)
+            up.Add(new BarChartGraph.Segment(
+                passive.GetSeries(ResearchChartDays, true),
+                BarChartGraph.Green, BarChartGraph.GreenLive, "passive"));
+
+        BarChartGraph.Segment[] down = decayed != null
+            ? new[] { new BarChartGraph.Segment(
+                decayed.GetSeries(ResearchChartDays, true),
+                BarChartGraph.Red, BarChartGraph.RedLive, "decay") }
+            : null;
+
+        researchChart.SetSeries(up.ToArray(), down, ResearchChartDays, lastIsLive: true);
     }
 
     public void Toggle() {

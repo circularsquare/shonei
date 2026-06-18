@@ -26,13 +26,24 @@ public class PlantTests {
         Assert.AreEqual(9, pt.maxStage);
     }
 
-    // Without a table, maxStage falls back to the 4-stages-per-tile formula (4*maxHeight - 1).
+    // Without a table, maxStage falls back to the growthStages-per-tile formula
+    // (growthStages*maxHeight - 1). Default growthStages is 4.
     [Test]
     public void MaxStage_FallsBackToHeightFormulaWithoutTable() {
         Assert.IsFalse(new PlantType { maxHeight = 1 }.hasGrowthTable);
         Assert.AreEqual(3, new PlantType { maxHeight = 1 }.maxStage);
         Assert.AreEqual(7, new PlantType { maxHeight = 2 }.maxStage);
         Assert.AreEqual(11, new PlantType { maxHeight = 3 }.maxStage);
+    }
+
+    // A non-default growthStages (herbs use 3 → g0/g1/g2) reshapes the formula: maxStage
+    // becomes growthStages*maxHeight - 1, and stageSpan (the age↔stage divisor) tracks it.
+    [Test]
+    public void MaxStage_HonoursCustomGrowthStages() {
+        Assert.AreEqual(2, new PlantType { maxHeight = 1, growthStages = 3 }.maxStage);
+        Assert.AreEqual(5, new PlantType { maxHeight = 2, growthStages = 3 }.maxStage);
+        Assert.AreEqual(2, new PlantType { growthStages = 3 }.stageSpan);
+        Assert.AreEqual(3, new PlantType().stageSpan); // default 4 → span 3
     }
 
     // Fruit-tree harvest behaviour is gated purely on fruitCycleStages > 0.

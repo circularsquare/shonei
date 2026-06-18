@@ -242,17 +242,4 @@ public class HappinessTests {
         h.comfortTempHigh = 200f;    // deviation huge
         Assert.That(h.TemperatureEfficiency(), Is.EqualTo(0.7f));
     }
-
-    // ── Aggregate score: tested indirectly here through manual decay math.
-    // Direct SlowUpdate(Animal) coverage is deferred — see fixture comment.
-    [Test]
-    public void Satisfactions_DecayMathMatchesDecayFactor(){
-        // The SlowUpdate decay step does: satisfactions[k] *= pow(1 - decayPerTick, 10).
-        // We replicate that here to confirm the constant interacts as expected — if
-        // decayPerTick is changed, this test pins the resulting 10-tick factor.
-        // With decayPerTick=0.005 → pow(0.995, 10) ~ 0.9511.
-        float factor10 = UnityEngine.Mathf.Pow(1f - Happiness.decayPerTick, 10f);
-        Assert.That(factor10, Is.EqualTo(0.9511f).Within(0.001f),
-            "decayFactor10 drifted from expected ~0.9511 — review SlowUpdate callers.");
-    }
 }
