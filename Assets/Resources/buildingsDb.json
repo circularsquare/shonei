@@ -115,7 +115,7 @@
         "ncosts": [
         ],
         "depth": 3,
-        "sortingOrder": 80,
+        "sortingOrder": 79,
         "lightingBucket": 1,
         "pathCostReduction": 0.1,
         "category": "structures",
@@ -561,22 +561,25 @@
     },{
         "id": 103,
         "constructionCost": 50,
-        "name": "furnace",
-        "description": "smelt and processes materials",
+        "name": "foundry",
+        "description": "passively smelt ores and alloy metals",
         "nx": 2, "ny": 2,
-        "storageTileX": 1,
+        "processorTileX": 1,
+        "processorTileY": 0,
         "ncosts": [
-            { "name": "stone", "quantity": 12 },
-            { "name": "clay",  "quantity": 8 }
+            { "name": "stone", "quantity": 20 },
+            { "name": "clay",  "quantity": 12 }
         ],
         "njob": "hauler",
-        "isStorage": true,
-        "nStacks": 4,
-        "storageStackSize": 50,
-        "capacity": 1,
-        "isWorkstation": true,
         "solidTop": true,
         "category": "production",
+        "hasProcessor": true,
+        "processorTended": false,
+        "processorLocalHeat": true,
+        "processorCapacityLiang": 10,
+        "hasFuelInv": true,
+        "fuelCapacity": 20,
+        "fuelBurnRate": 40,
         "defaultLocked": true
     },{
         "id": 104,
@@ -906,5 +909,27 @@
         "depth": 4,
         "category": "power",
         "defaultLocked": true
+    },{
+        "id": 113,
+        "constructionCost": 20,
+        "name": "cauldron",
+        "description": "brew herbal tonics",
+        "defaultLocked": true,
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "clay", "quantity": 15 },
+            { "name": "wood", "quantity": 5 }
+        ],
+        "njob": "hauler",
+        "workView": "back",
+        "nworkTiles": [ { "dx": 0, "dy": 0 } ],
+        "solidTop": true,
+        "category": "production",
+        "hasProcessor": true,
+        "processorTended": true,
+        "processorCapacityLiang": 10,
+        "lightWhileCrafting": true,
+        "lightOuterRadius": 6,
+        "lightFlicker": 0.06
     }
 ]

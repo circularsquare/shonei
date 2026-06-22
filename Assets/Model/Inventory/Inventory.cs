@@ -204,15 +204,28 @@ public class Inventory{
         if (!WorldController.isClearing && AnimalController.instance != null) {
             var ac = AnimalController.instance;
             string causeStr = string.IsNullOrEmpty(reason) ? "" : $" — {reason}";
+            // Snapshot reservation state before the loop (quantities are zeroed at the end of
+            // Destroy). Lets the abort logs surface over-subscription — the signature of a
+            // reservation desync: tasks collectively reserved more fen than the stack ever held,
+            // so several walked to a source only one of them could be served from.
+            int snapQty = 0, snapRes = 0;
+            foreach (ItemStack stack in itemStacks) { snapQty += stack.quantity; snapRes += stack.resAmount; }
+            int abortedReservedTotal = 0, abortedCount = 0;
             for (int i = 0; i < ac.na; i++) {
                 Animal a = ac.animals[i];
                 Task t = a?.task;
                 if (t == null || t == except) continue;
                 if (!t.HasReservationOn(this)) continue;
-                // TODO: temporary log while we observe how often this fires in practice.
-                Debug.Log($"Inventory.Destroy: {invType} '{displayName}' at ({x},{y}){causeStr} — aborting {a.aName}'s {t} task.");
+                int tReserved = t.ReservedAmountFromInv(this); // how much this task thought it had here
+                abortedReservedTotal += tReserved;
+                abortedCount++;
+                Debug.Log($"Inventory.Destroy: {invType} '{displayName}' at ({x},{y}){causeStr} — aborting {a.aName}'s {t} task (it reserved {tReserved} fen here).");
                 t.Fail(silent: true); // we just logged a more specific message
             }
+            // If the aborted tasks alone claimed more than the stack physically held, the
+            // reservation counters drifted (stack.resAmount under-counts the live claims).
+            if (abortedCount > 0 && abortedReservedTotal > snapQty)
+                Debug.LogWarning($"Inventory.Destroy over-subscription at ({x},{y}): {abortedCount} aborted task(s) held {abortedReservedTotal} fen of reservations on a stack with only {snapQty} fen (stack.resAmount={snapRes}). Reservation accounting desync.");
         }
         foreach (ItemStack stack in itemStacks) { stack.quantity = 0; stack.resAmount = 0; stack.resSpace = 0; stack.resSpaceItem = null; }
         if (go != null){GameObject.Destroy(go); go = null;}
@@ -273,7 +286,7 @@ public class Inventory{
     // ── Moving items ─────────────────────────────────────────────────────────
 
     // returns leftover size
-    private int AddItem(Item item, int quantity, bool force = false){
+    private int AddItem(Item item, int quantity, bool force = false, bool adjustReservation = true){
         if (destroyed) {
             Debug.LogError($"Inventory.AddItem called on destroyed {invType} '{displayName}' at ({x},{y}) — stale reference (item={item?.name}, qty={quantity}). Returning no-op.");
             return quantity; // full "overflow" — nothing added
@@ -315,7 +328,7 @@ public class Inventory{
 
         foreach (int i in sortedIndices){
             Item prevItem = itemStacks[i].item;
-            int? result = itemStacks[i].AddItem(item, quantity);
+            int? result = itemStacks[i].AddItem(item, quantity, adjustReservation);
             if (result == null){ continue; } // shouldn't happen with the pre-filter, but guard anyway
             // Floor haul side effects: remove order when stack empties, register when items arrive.
             if (invType == InvType.Floor) {
@@ -338,7 +351,11 @@ public class Inventory{
         return quantity; // leftover size
     }
 
-    public int MoveItemTo(Inventory otherInv, Item item, int quantity){
+    // `by` (optional): the task that owns this move and holds the reservation being consumed.
+    // When set, the source-item / destination-space reservation is released exactly once — here,
+    // for the amount actually moved — instead of being clamped away by AddItem AND unreserved
+    // again in Task.Cleanup (the double-count that let extra mice oversubscribe a shrinking pile).
+    public int MoveItemTo(Inventory otherInv, Item item, int quantity, Task by = null){
         if (destroyed || otherInv == null || otherInv.destroyed) {
             Inventory dead = destroyed ? this : otherInv;
             string role = destroyed ? "source" : "destination";
@@ -355,8 +372,11 @@ public class Inventory{
             if (stack == null) return quantity; // nothing here
             item = stack.item;
         }
-        int taken = quantity + AddItem(item, -quantity);
-        int overFill = otherInv.AddItem(item, taken);
+        bool ownedMove = by != null;
+        // Owned move: suppress AddItem's auto-clamp on both sides; the task releases its own
+        // reservation below. Unowned move: clamp as before.
+        int taken = quantity + AddItem(item, -quantity, adjustReservation: !ownedMove);
+        int overFill = otherInv.AddItem(item, taken, adjustReservation: !ownedMove);
         if (overFill > 0){
             // Force the return so disallowed/locked source invs don't silently eat the leftover.
             // Items came from this inventory, so there is always room — LogError if not.
@@ -365,6 +385,16 @@ public class Inventory{
                 Debug.LogError($"MoveItemTo: {stillLost} fen of {item.name} lost returning to {invType} inv at ({x},{y}) — source had no room!");
         }
         int moved = taken - overFill;
+        if (ownedMove){
+            // Release exactly what was consumed — source items from this inv, destination space in
+            // otherInv — each exactly once. Calls are no-ops on the side the task didn't reserve.
+            by.ConsumeSourceReservation(this, moved);
+            by.ConsumeSpaceReservation(otherInv, moved);
+            // Restore resAmount<=quantity / resSpace<=free for any residual unowned reservation the
+            // suppressed clamp deferred (legacy unreserved moves); matches default AddItem behaviour.
+            ClampReservationsToCapacity();
+            otherInv.ClampReservationsToCapacity();
+        }
         if (otherInv.invType == InvType.Market && moved > 0)
             WorkOrderManager.instance?.UpdateMarketOrders(otherInv);
         if (invType == InvType.Market && moved > 0)
@@ -372,6 +402,18 @@ public class Inventory{
         return moved;
     }
     public int MoveItemTo(Inventory otherInv, string name, int quantity){return MoveItemTo(otherInv, Db.itemByName[name], quantity);}
+
+    // Re-applies the resAmount<=quantity / resSpace<=freeSpace invariant that a task-owned
+    // MoveItemTo deferred (it suppressed AddItem's per-stack auto-clamp so the owning task could
+    // release exactly its own claim). Any leftover over-count belongs to unowned/legacy
+    // reservations and is clamped here — identical to what AddItem's else-branch would have done.
+    private void ClampReservationsToCapacity(){
+        foreach (ItemStack s in itemStacks){
+            if (s.resAmount > s.quantity) s.resAmount = s.quantity;
+            int free = s.EffectiveCapacity - s.quantity;
+            if (s.resSpace > free) s.resSpace = Math.Max(0, free);
+        }
+    }
 
     // Like MoveItemTo but bypasses the allowed filter on the destination — use when items must not be lost
     // (e.g. migrating a floor inventory into a newly-placed storage building).
@@ -388,11 +430,13 @@ public class Inventory{
         return taken - overFill;
     }
     
-    // adds to ginv. returns leftover size.
-    public int Produce(Item item, int quantity = 1){
-        int produced = quantity - AddItem(item, quantity);
+    // adds to ginv. returns leftover size. `force` bypasses the destination's allowed[] filter —
+    // used by production buffers (e.g. a cauldron) that must accept their own freshly-made output
+    // even though it isn't player-allowed there; the force-add then registers a storage-eviction
+    // haul (see AddItem) so the item is carried off to a proper stockpile/tank at the first chance.
+    public int Produce(Item item, int quantity = 1, bool force = false){
+        int produced = quantity - AddItem(item, quantity, force: force);
         ginv.AddItem(item, produced);
-        //Debug.Log("produced" + item.name + produced.ToString());
         if (invType == InvType.Market)
             WorkOrderManager.instance?.UpdateMarketOrders(this);
         return quantity - produced;

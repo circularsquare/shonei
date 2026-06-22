@@ -27,8 +27,7 @@ public class RecipeGroupDisplay : MonoBehaviour {
     [SerializeField] RectTransform cardsContainer; // rows instantiate here
 
     string                       tile;
-    List<Recipe>                 recipes;
-    List<ProcessorRecipe>        processes;
+    List<Recipe>                 recipes; // craft AND processor recipes for this building
     RecipeListRow                rowPrefab; // instantiated once per list row
     readonly List<RecipeListRow> rows = new List<RecipeListRow>();
 
@@ -38,10 +37,9 @@ public class RecipeGroupDisplay : MonoBehaviour {
     // tileKey persists across saves; st is the resolved StructType (may be null if a
     // recipe's tile isn't a known building — then we show the name with no icon).
     public void Setup(string tileKey, StructType st, List<Recipe> rs,
-                      List<ProcessorRecipe> procs, RecipeListRow rowPrefab, bool startExpanded) {
+                      RecipeListRow rowPrefab, bool startExpanded) {
         tile           = tileKey;
         recipes        = rs;
-        processes      = procs;
         this.rowPrefab = rowPrefab;
 
         // Building icon — hidden when the tile isn't a known building (no StructType sprite).
@@ -50,8 +48,7 @@ public class RecipeGroupDisplay : MonoBehaviour {
         else             iconImage.gameObject.SetActive(false);
 
         string name = st != null ? st.DisplayName : tile;
-        int    count = recipes.Count + (processes?.Count ?? 0);
-        label.text = name + " (" + count + ")";
+        label.text = name + " (" + recipes.Count + ")";
 
         headerButton.onClick.AddListener(() => SetExpanded(!expanded, persist: true));
 
@@ -68,16 +65,13 @@ public class RecipeGroupDisplay : MonoBehaviour {
     void BuildRows() {
         built = true;
         foreach (Recipe r in recipes)
-            AddRow("Row_" + r.id, r, null);
-        if (processes != null)
-            foreach (ProcessorRecipe pr in processes)
-                AddRow("ProcRow_" + pr.building + "_" + pr.id, null, pr);
+            AddRow("Row_" + r.id, r);
     }
 
-    void AddRow(string name, Recipe r, ProcessorRecipe pr) {
+    void AddRow(string name, Recipe r) {
         var row = Instantiate(rowPrefab, cardsContainer, false);
         row.name = name;
-        row.Setup(r, pr);
+        row.Setup(r);
         rows.Add(row);
     }
 

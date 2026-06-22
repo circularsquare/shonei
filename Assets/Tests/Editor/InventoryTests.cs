@@ -384,6 +384,84 @@ public class InventoryTests {
         }
     }
 
+    // ── Reservation double-release regression (multi-reserver oversubscription) ──
+    // Bug: a task-owned take released its reservation twice — once via AddItem's auto-clamp,
+    // once via Cleanup's Unreserve — so resAmount drifted BELOW the true outstanding claims,
+    // the stack falsely reported Available(), and extra mice piled onto a pile only one of
+    // them could be served from. These verify a take/deposit now releases exactly once.
+
+    [Test]
+    public void MoveItemTo_OwnedTake_ReleasesOnlyActingTasksReservation(){
+        // Three tasks reserve 100 each of a 300 stack (fully reserved). Task A takes its 100.
+        // resAmount must drop to exactly 200 (B+C still hold theirs) — not 100 (double-release).
+        Inventory source = MakeAnimal(stackSize: 300);
+        Inventory dest   = MakeAnimal(stackSize: 300);
+        source.Produce(apple, 300);
+        ItemStack stack = source.itemStacks[0];
+
+        TestTask a = new TestTask(null), b = new TestTask(null), c = new TestTask(null);
+        Assert.That(a.ReserveStack(stack, 100), Is.EqualTo(100));
+        Assert.That(b.ReserveStack(stack, 100), Is.EqualTo(100));
+        Assert.That(c.ReserveStack(stack, 100), Is.EqualTo(100));
+        Assert.That(stack.resAmount, Is.EqualTo(300));
+
+        int moved = source.MoveItemTo(dest, apple, 100, by: a);
+
+        Assert.That(moved, Is.EqualTo(100));
+        Assert.That(stack.quantity, Is.EqualTo(200));
+        Assert.That(stack.resAmount, Is.EqualTo(200),
+            "only A's 100 should be released — B and C still hold 200");
+        Assert.That(stack.Available(), Is.False,
+            "200 fen, 200 reserved — must NOT falsely re-open to a new reserver");
+        // A 4th task must not be able to reserve the fully-spoken-for remainder.
+        Assert.That(new TestTask(null).ReserveStack(stack, 100), Is.EqualTo(0));
+        // A's Cleanup must not release anything more (its claim was already consumed).
+        a.Cleanup();
+        Assert.That(stack.resAmount, Is.EqualTo(200), "no second release in Cleanup");
+    }
+
+    [Test]
+    public void MoveItemTo_OwnedTake_PartialReservation_ReleasesExactlyConsumed(){
+        // A reserved 100 of a 300 stack (200 unreserved slack). A takes its 100.
+        // resAmount must end at 0 (A's claim gone), with the 200 remainder fully available.
+        Inventory source = MakeAnimal(stackSize: 300);
+        Inventory dest   = MakeAnimal(stackSize: 300);
+        source.Produce(apple, 300);
+        ItemStack stack = source.itemStacks[0];
+
+        TestTask a = new TestTask(null);
+        Assert.That(a.ReserveStack(stack, 100), Is.EqualTo(100));
+
+        int moved = source.MoveItemTo(dest, apple, 100, by: a);
+
+        Assert.That(moved, Is.EqualTo(100));
+        Assert.That(stack.quantity, Is.EqualTo(200));
+        Assert.That(stack.resAmount, Is.EqualTo(0), "A's claim consumed; no residual over-count");
+        Assert.That(stack.Available(), Is.True);
+    }
+
+    [Test]
+    public void MoveItemTo_OwnedDeposit_ReleasesOnlySpaceConsumed(){
+        // Two tasks reserve space in one dest stack (60 + 40 = full). Task A deposits its 60.
+        // resSpace must drop to exactly 40 (B's), not 0 — else B's space would be overbooked.
+        Inventory source = MakeAnimal(stackSize: 100);
+        Inventory dest   = MakeAnimal(stackSize: 100);
+        source.Produce(apple, 60);
+        ItemStack destStack = dest.itemStacks[0];
+
+        TestTask a = new TestTask(null), b = new TestTask(null);
+        Assert.That(a.ReserveSpace(dest, apple, 60), Is.EqualTo(60));
+        Assert.That(b.ReserveSpace(dest, apple, 40), Is.EqualTo(40));
+        Assert.That(destStack.resSpace, Is.EqualTo(100));
+
+        int moved = source.MoveItemTo(dest, apple, 60, by: a);
+
+        Assert.That(moved, Is.EqualTo(60));
+        Assert.That(destStack.quantity, Is.EqualTo(60));
+        Assert.That(destStack.resSpace, Is.EqualTo(40),
+            "only A's 60 of space should be released — B still holds 40");
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────
     // Animal type: skips GameObject/SpriteRenderer creation in the ctor, so we
     // don't need a Resources/Lighting fixture. Default storageClass.

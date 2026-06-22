@@ -12,6 +12,10 @@ using UnityEngine.Networking;
 //   success → username + token are set, error is null.
 //   failure → username/token null, error is a short player-facing message.
 public static class AuthClient {
+    // Cap every auth request — a stalled connection must surface as "can't reach server",
+    // never leave the menu latched on "logging in..." with busy stuck true (no retry).
+    const int RequestTimeoutSecs = 20;
+
     [Serializable] class Req  { public string username; public string password; }
     [Serializable] class Resp { public string token; public string username; public string error; }
 
@@ -28,6 +32,7 @@ public static class AuthClient {
         using (var req = new UnityWebRequest(MarketServer.HttpBase + "/refresh", "POST")) {
             req.downloadHandler = new DownloadHandlerBuffer();
             req.SetRequestHeader("Authorization", "Bearer " + token);
+            req.timeout = RequestTimeoutSecs;
             yield return req.SendWebRequest();
             Report(req, done);
         }
@@ -41,6 +46,7 @@ public static class AuthClient {
             req.uploadHandler   = new UploadHandlerRaw(Encoding.UTF8.GetBytes(body));
             req.downloadHandler = new DownloadHandlerBuffer();
             req.SetRequestHeader("Content-Type", "application/json");
+            req.timeout = RequestTimeoutSecs;
             yield return req.SendWebRequest();
             Report(req, done);
         }

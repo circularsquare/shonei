@@ -90,34 +90,42 @@
         ]
     },{
         "id": 33,
-        "name": "malachite",
+        "name": "ores",
         "decayRate": 0.0,
-        "children": null
-    },{
-        "id": 34,
-        "name": "cassiterite",
-        "decayRate": 0.0,
-        "children": null
+        "children": [
+            {
+                "id": 34,
+                "name": "malachite",
+                "children": null
+            },{
+                "id": 35,
+                "name": "cassiterite",
+                "children": null
+            }
+        ]
     },{
         "id": 40,
-        "name": "iron bar",
+        "name": "metal",
         "decayRate": 0.0,
-        "children": null
-    },{
-        "id": 41,
-        "name": "copper bar",
-        "decayRate": 0.0,
-        "children": null
-    },{
-        "id": 42,
-        "name": "tin bar",
-        "decayRate": 0.0,
-        "children": null
-    },{
-        "id": 43,
-        "name": "bronze bar",
-        "decayRate": 0.0,
-        "children": null
+        "children": [
+            {
+                "id": 41,
+                "name": "iron bar",
+                "children": null
+            },{
+                "id": 42,
+                "name": "copper bar",
+                "children": null
+            },{
+                "id": 43,
+                "name": "tin bar",
+                "children": null
+            },{
+                "id": 44,
+                "name": "bronze bar",
+                "children": null
+            }
+        ]
     },{
         "id": 50,
         "name": "glass",
@@ -290,6 +298,7 @@
     },{
         "id": 210,
         "name": "water",
+        "description": "tanks collect rainwater if they allow water. lake water can be pumped.",
         "decayRate": 0,
         "itemClass": "liquid",
         "startDiscovered": true,
@@ -302,6 +311,7 @@
             {
                 "id": 251,
                 "name": "ramie",
+                "description": "can be made into cloth",
                 "children": null
             }
         ]
@@ -392,6 +402,50 @@
                 "name": "moonlily",
                 "decayRate": 0.05,
                 "defaultTarget": 20,
+                "children": null
+            }
+        ]
+    },{
+        "id": 420,
+        "name": "tonics",
+        "decayRate": 0.05,
+        "itemClass": "liquid",
+        "children": [
+            {
+                "id": 421,
+                "name": "vigor tonic",
+                "liquidColorHex": "#f7b099",
+                "defaultTarget": 20,
+                "buffType": "workSpeed",
+                "buffMagnitude": 0.1,
+                "buffDuration": 1,
+                "children": null
+            },{
+                "id": 422,
+                "name": "warming tonic",
+                "liquidColorHex": "#e4c57a",
+                "defaultTarget": 20,
+                "buffType": "coldTolerance",
+                "buffMagnitude": 4,
+                "buffDuration": 2,
+                "children": null
+            },{
+                "id": 423,
+                "name": "cooling tonic",
+                "liquidColorHex": "#f3ef94",
+                "defaultTarget": 20,
+                "buffType": "heatTolerance",
+                "buffMagnitude": 4,
+                "buffDuration": 2,
+                "children": null
+            },{
+                "id": 424,
+                "name": "restful tonic",
+                "liquidColorHex": "#c493ed",
+                "defaultTarget": 20,
+                "buffType": "sleepRecovery",
+                "buffMagnitude": 0.25,
+                "buffDuration": 4,
                 "children": null
             }
         ]

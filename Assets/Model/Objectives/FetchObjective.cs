@@ -83,7 +83,7 @@ public class FetchObjective : Objective {
             Fail(); return;
         }
         int sourceNeed = sourceLimit > 0 ? Math.Min(needed, sourceLimit) : needed;
-        int amountTaken = src.MoveItemTo(Dest, iq.item, sourceNeed);
+        int amountTaken = src.MoveItemTo(Dest, iq.item, sourceNeed, by: task);
         // Clean up empty floor inventories (replicates TakeItem behavior). Pass `task` as the
         // originator so Inventory.Destroy doesn't fail us — we just successfully fetched and
         // are mid-completion; failing here would clobber any chained objectives (Craft, Drop, …).
@@ -97,7 +97,12 @@ public class FetchObjective : Objective {
         }
         if (amountTaken == 0) {
             if (softFetch) { Complete(); return; }
-            Fail(); Debug.Log($"{animal.aName} Couldn't fetch any {iq.item.name} (needed {needed} fen)"); return;
+            // Surface the source's reservation state: a stack that's present but fully reserved by
+            // others (srcReserved high, srcQty low) means our claim was clobbered before we arrived
+            // — the reservation-desync symptom — vs. a genuinely empty stack (srcQty 0).
+            int srcQty = src.Quantity(iq.item);
+            int srcReserved = srcQty - src.AvailableQuantity(iq.item);
+            Fail(); Debug.Log($"{animal.aName} Couldn't fetch any {iq.item.name} (needed {needed} fen; source holds {srcQty} fen, {srcReserved} reserved, my limit was {sourceLimit})"); return;
         }
         // softFetch: always complete after one tile visit (CraftTask.Complete handles retry logic)
         // targetInv != null means equip slot (food/tool) — partial fills are fine there, don't retry

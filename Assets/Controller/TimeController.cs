@@ -104,7 +104,8 @@ public class TimeController : MonoBehaviour {
     }
 
     // Lights the button matching the current Time.timeScale and dims the others. Exact-equals
-    // compares are safe — SetSpeed only ever assigns 0/1/2 (and lastSpeed, itself one of those).
+    // compares are intentional: the buttons set 0/1/2, but the /timespeed cheat can set any value,
+    // in which case no button matches and all dim — the correct "none of these" indication.
     void RefreshSpeedButtons() {
         float s = Time.timeScale;
         SetButtonLit(pauseButton,  s == 0f);

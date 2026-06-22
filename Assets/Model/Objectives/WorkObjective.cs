@@ -34,6 +34,9 @@ public class WorkObjective : Objective {
                 Debug.LogError($"{animal.aName} WorkObjective.Start: not at workplace ({ct.workplace.x},{ct.workplace.y}), animal at ({animal.x},{animal.y})");
                 Fail(); return;
             }
+            // Register as the active crafter so the building can drive craft-state visuals (cauldron
+            // brew fill/fire) and a craft-gated light. Validated on read, so no explicit clear needed.
+            if (wb != null) wb.workingAnimal = animal;
         }
         if (!animal.inv.ContainsItems(recipe.inputs)) {
             Debug.Log($"{animal.aName} WorkObjective: missing inputs for {recipe.description}, failing");

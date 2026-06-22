@@ -16,8 +16,12 @@ public class Structure {
     public const float BreakThreshold     = 0.5f;   // below → IsBroken, functionality gated off
     public const float RegisterThreshold  = 0.75f;  // below → WOM order active, mender may come
     public const float MaxRepairPerTask   = 0.40f;  // cap on condition restored in one mender visit
-    public const float RepairWorkPerTick  = 0.05f;  // base condition gained per tick while working
-    public const float RepairCostFraction = 0.25f;  // full 0→1 repair = ¼ of construction cost
+    // Repair labour and materials both scale with the structure's build cost: a full 0→1 repair
+    // takes ¼ of the build's labour (RepairLaborFraction × constructionCost ticks) and ¼ of its
+    // materials (RepairCostFraction × ncosts). So a costlier/slower-to-build structure is also
+    // costlier/slower to repair — and grants proportionally more research per repair.
+    public const float RepairLaborFraction = 0.25f; // full 0→1 repair labour = ¼ of construction labour
+    public const float RepairCostFraction  = 0.25f; // full 0→1 repair materials = ¼ of construction cost
     public const int   DaysToBreak        = 30;     // in-game days from 1.0 → BreakThreshold (0.5), when sheltered
     public const float ExposedDecayFactor = 1.5f;   // no overhead cover → 1.5× the sheltered decay rate; see MaintenanceSystem
 
@@ -310,10 +314,8 @@ public class Structure {
         go.transform.SetParent(StructController.instance.transform, true);
         go.name = "structure_" + structType.name;
 
-        // Sort order by depth: 0=building(10), 1=platform(15), 2=foreground(40), 3=road(1), 4=shaft(5).
-        // Slot index ≠ visual layering — shafts are slot 4 but render behind buildings via
-        // sortingOrder 5 (between roads at 1 and buildings at 10).
-        // StructType.sortingOrder overrides this when >= 0 (e.g. light-source buildings at 64).
+        // Depth-based default order, overridden by an authored StructType.sortingOrder
+        // (the stock road is 79, just above the dirt body band). See ResolveBaseSortingOrder.
         int baseSortingOrder = ResolveBaseSortingOrder(st);
 
         // Spawn the primary visual via the shared builder. Standard path resolves the
@@ -354,8 +356,10 @@ public class Structure {
                     Debug.LogError($"Already a depth-{depth} structure at {x+dx},{y+dy}!");
                 t.structs[depth] = this;
                 t.NotifyStructChanged();
-                // Roads (depth 3) suppress tile overlays — see WorldController.OnTileOverlayChanged.
-                if (depth == 3) t.NotifyOverlayDirty();
+                // Roads (depth 3) suppress tile overlays — on this tile and on the
+                // top grass edge of the tile directly below (grass overhangs the tile
+                // edge up over the road; see TileMeshController.BuildOverlayGeometry).
+                if (depth == 3) NotifyRoadOverlayDirty(t);
             }
         }
         // Subclass hook for visuals that need the parent's final sortingOrder — rotating
@@ -638,11 +642,13 @@ public class Structure {
     // When adding a new Structure subclass, add its case here — no other dispatch site needed.
     // Subclasses without their own ctor signature ignore shapeIndex (only base Structure
     // currently supports shape variants — Plant has its own multi-tile system).
-    // Resolves the depth-based sortingOrder for a structure's anchor SR.
-    // Sort order by depth: 0=building(10), 1=platform(15), 2=foreground(40), 3=road(1), 4=shaft(5).
+    // Resolves the depth-based DEFAULT sortingOrder for a structure's anchor SR — the
+    // fallback used only when StructType.sortingOrder < 0:
+    //   0=building(10), 1=platform(15), 2=foreground(40), 3=road(1), 4=shaft(5).
     // Slot index ≠ visual layering — shafts are slot 4 but render behind buildings via
-    // sortingOrder 5 (between roads at 1 and buildings at 10).
-    // StructType.sortingOrder overrides this when >= 0 (e.g. light-source buildings at 64).
+    // sortingOrder 5 (between the road default 1 and buildings at 10).
+    // Most types author their own StructType.sortingOrder, which overrides the default
+    // (the stock road is 79 — just above the dirt body band; light-source buildings 64).
     // Used by the Structure ctor to compute the baseSortingOrder it passes into
     // StructureVisualBuilder.Build. Not used by Blueprint (always 100) or build preview
     // (always 200) — those are layer-fixed regardless of depth.
@@ -880,8 +886,9 @@ public class Structure {
                 if (t.structs[depth] == this) {
                     t.structs[depth] = null;
                     t.NotifyStructChanged();
-                    // Removing a road un-suppresses any overlay on this tile.
-                    if (depth == 3) t.NotifyOverlayDirty();
+                    // Removing a road un-suppresses the overlay on this tile and the
+                    // top edge of the tile below (mirror of the place path above).
+                    if (depth == 3) NotifyRoadOverlayDirty(t);
                 }
             }
         }
@@ -899,4 +906,12 @@ public class Structure {
         }
     }
 
+    // A road's presence on a tile suppresses that tile's own overlay AND the top
+    // (U) grass edge of the tile directly below it (roads pave a top surface; the
+    // grass below overhangs up over the road — see TileMeshController). Re-bake
+    // both whenever a road is placed or removed.
+    static void NotifyRoadOverlayDirty(Tile t) {
+        t.NotifyOverlayDirty();
+        World.instance.GetTileAt(t.x, t.y - 1)?.NotifyOverlayDirty();
+    }
 }

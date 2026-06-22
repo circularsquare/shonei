@@ -202,6 +202,9 @@ Singleton. Subscribes to TradingClient events in `Start()`, unsubscribes in
 - `/rain` — toggle precipitation.
 - `/day [n]` — jump world clock to day `n` of the current year.
 - `/wind [v]` — snap wind to value `v` (positive = right). Both `wind` and `targetWind` are set so the OU walk doesn't immediately pull it back.
+- `/timespeed [n]` — set `Time.timeScale` to any value 0–100 (cheat fast-forward beyond the 0x/1x/2x buttons), via `TimeController.SetSpeed`.
+- `/mice [n]` — set the colony population to exactly `n`. Above current pop, spawns newcomers clustered on the mouse nearest the original spawn point (`AnimalController.DebugSpawnMice`); below it, randomly culls (`DebugRemoveMice`).
+- `/research [id]` — fully research the tech with that `id` (and its prereqs), via `ResearchSystem.MaxTech`. With no `id`, researches everything (`UnlockAll`). Replaces the old debug-mode "unlock all" button.
 
 **Chat/fill display:** the chat log lives on `ChatLog` (on the always-active `ChatPanel`), **not** this panel — so it renders even when the trading panel is closed. `ChatLog` both *sources* server chat + fills into `EventFeed` and *renders* every non-Alert entry as a chat row (capped at 20). TradingPanel keeps only `chatInput` (command entry) and `RefreshMarketOnFill` (refreshes the holdings tree on a fill while open). Market errors, `/give` feedback, server chat, and fills all flow through `EventFeed.Post(...)`; inline `<color=...>` tags drive per-message coloring. See SPEC-eventfeed for the dispatcher contract and ChatLog details.
 

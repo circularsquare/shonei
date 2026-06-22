@@ -42,7 +42,6 @@ public class WorldSaveData {
     public ResearchSaveData research;
     public int[] disabledRecipeIds; // null = all enabled
     public string[] expandedRecipeGroups; // workstation tile-names of expanded recipe groups; null = all collapsed
-    public string[] disabledProcesses;    // building-names of processes the player paused; null = all running
     public ushort[] waterLevels;    // flat array, index = y * nx + x; null if all-dry
     public byte[] moistureLevels;   // flat array, same layout as waterLevels; null if every tile is dry soil
     public bool isRaining;          // false = clear (safe default for old saves)
@@ -63,6 +62,9 @@ public class WorldSaveData {
     // restored; the research re-apply + GlobalInventory positive-qty invariant repopulate from
     // current state, matching pre-persistence behavior.
     public string[] discoveredItems;
+    // Leaf items the player flagged "don't consume" (InventoryController.consumptionDisabled),
+    // stored by name. Null/empty on saves where nothing is protected.
+    public string[] consumptionDisabled;
     public float? cameraX;  // null on old saves → camera not repositioned on load
     public float? cameraY;
     public int?   cameraPPU; // null on old saves → zoom not changed on load
@@ -142,15 +144,13 @@ public class TileSaveData {
     // Nullable: absent on old saves and on tiles in the default Live state. Only
     // meaningful when overlayMask != 0; healthy/empty tiles stay null on disk.
     public byte? overlayState;
-    // Weather-driven snow cover (binary today; future: depth byte). Nullable:
-    // absent on old saves and on snow-free tiles, keeping JSON small and
-    // golden-test diffs minimal — same convention as overlayMask/overlayState.
+    // Weather-driven snow depth (0..SnowAccumulationSystem.SnowMax). Nullable:
+    // absent on snow-free tiles and old saves, keeping JSON small and golden-test
+    // diffs minimal — same convention as overlayMask/overlayState.
+    public byte? snowAmount;
+    // Legacy binary-snow flag from pre-depth saves — load-only migration (a true
+    // value loads as full depth). Newer saves write snowAmount and omit this.
     public bool? snow;
-    // Snapshot of the grass overlay at the moment snow accumulated; restored
-    // verbatim when snow melts. Nullable so they're absent unless meaningful
-    // (snow == true AND there was actual grass to preserve).
-    public byte? preSnowOverlayMask;
-    public byte? preSnowOverlayState;
 }
 
 public class StructureSaveData {
@@ -179,11 +179,14 @@ public class StructureSaveData {
     // null = no furnishing slots / all slots empty (treated as empty on load).
     public InventorySaveData[] furnishingInvData;
     public float[] furnishingRemainingDays;
-    // Processor buildings only: the fermentation tank's lifecycle state (Processor.State
-    // cast to int — 0 = Empty, the safe default for old saves), progress in in-game days,
-    // and the contents of its two internal inventories. null inv data = empty / old save.
+    // Processor buildings only: the batch's lifecycle state (Processor.State cast to int —
+    // 0 = Empty, the safe default for old saves), progress in seconds, the id of the recipe
+    // the current batch is running (null/absent on old saves → resolve from the building's
+    // recipes on load), and the contents of its two internal inventories. null inv data = empty.
     public int processorState;
     public float processorProgress;
+    public float processorHeat;   // local-heat processors (foundry): stored heat charge; 0 on old saves = cold
+    public int? processorRecipeId;
     public InventorySaveData processorInputData;
     public InventorySaveData processorOutputData;
     public bool mirrored;
@@ -257,6 +260,9 @@ public class BlueprintSaveData {
     // in-progress bridge blueprint. Null on every other blueprint and on old saves.
     public int? x2;
     public int? y2;
+    // Leaf item names the player banned from this blueprint's group costs (Blueprint.disallowedLeaves).
+    // Names, not ids, per the save convention. Null/empty on old saves and unbanned blueprints.
+    public string[] disallowedLeafNames;
 }
 
 public class InventorySaveData {
@@ -296,6 +302,7 @@ public class AnimalSaveData {
     public InventorySaveData bookSlotInv;
     public float[] skillXp;
     public int[]   skillLevel;
+    public List<BuffSaveData> buffs; // active tonic buffs; null on old saves → none restored
     public bool  isTraveling;     // was animal mid-journey (hidden) at save time?
     public float travelProgress;  // ticks elapsed so far in current travel leg
     public int   travelDuration;  // total ticks for current travel leg

@@ -1,3 +1,10 @@
+DEPLOYING
+server
+    - in powershell in shonei-server: .\deploy\deploy.ps1
+game 
+    - in shonei with unity editor closed: .\Tools\build-and-publish.ps1
+
+
 CONTENT
 - foot traffic view
 - bunnies
@@ -31,7 +38,8 @@ CONTENT
     - see cool-plants plan
     - gather stone from ground?
 - potions 
-    - alembic for brewing
+    - alembic for fancy potions
+    - bottling: make decay faster, last longer in bottles
 - tea
     - cauldron for cooking (also for cooking other stuff i guess)
     - plant likes cold... maybe have temperature drop slightly at higher altitude?
@@ -39,7 +47,9 @@ CONTENT
 
 - upsizing workshops
 
-- lots of herbs (see cool plants plan)
+- more herbs
+- foraging job / tech?
+
 - metallurgy 
     - copper / tin / bronze ingots
     - foundry
@@ -76,7 +86,6 @@ VISUALS
 - blueprint hovered over dirt tile pretty hard to see. maybe also add a low opacity whitge frame
 
 OPTIMIZATION  
-- chunk tiles?
 
 MOUSE AI
 - ponder inventory management
@@ -89,13 +98,10 @@ MOUSE AI
 - general way of estimating what needs will become an issue before starting a long task 
 
 UI
-- improve item icons
 - tab styling, add building icons?
 - add more info for happiness panel?
-
-- warn when less than 2 days of food remaining
-- show research gain per day (from scientists and from passive) and decay per day graph
-    - for food graph also stacked bar plot for decayed food?
+- per item plots
+- per happiness plots
 
 
 CODE CLEANUP
@@ -119,16 +125,21 @@ why is it using 38% gpu with all lighting off?
 
 - metal
 
+- cauldron potion brewing 
+    - 2 batch 
 
 TODAY
-- test how roads look
-- foraging job / tech?
 
-DEPLOYING
-server
-    - in powershell in shonei-server: .\deploy\deploy.ps1
-game 
-    - in shonei with unity editor closed: .\Tools\build-and-publish.ps1
+- stool target click adjustment weird
+- burrow doesn't need support below
+
+- mice preferring to use crucible over foundry
+    - balance crucible to use a lot more fuel, probably
+- foundry light scaling with heat 
+- how does melting work...
+    - separately track melt progress for each item inserted 
+    - cool display for liquids currently inside
+- help panel explaining hwo it works
 
 
-    
+/help slash command

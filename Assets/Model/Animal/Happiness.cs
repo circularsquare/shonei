@@ -117,8 +117,10 @@ public class Happiness {
         bool hasClothing = a.clothingSlotInv.itemStacks[0].item != null;
         float clothingBonus = hasClothing ? 3f : 0f;
         float warmthBonus = warmth * warmthToleranceC;
-        comfortTempLow  = 10f - clothingBonus - warmthBonus;
-        comfortTempHigh = 25f + clothingBonus;
+        // Tonic tolerance buffs widen the comfort band: a warming tonic lowers the cold floor, a
+        // cooling tonic raises the heat ceiling (each magnitude is authored directly in °C).
+        comfortTempLow  = 10f - clothingBonus - warmthBonus - a.buffs.Total(BuffType.ColdTolerance);
+        comfortTempHigh = 25f + clothingBonus + a.buffs.Total(BuffType.HeatTolerance);
     }
 
     public void SlowUpdate(Animal a) {

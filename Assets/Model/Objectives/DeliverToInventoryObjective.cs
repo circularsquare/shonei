@@ -22,7 +22,7 @@ public class DeliverToInventoryObjective : Objective {
         int have = animal.inv.Quantity(iq.item);
         if (have <= 0) { Debug.Log($"{animal.aName} DeliverToInventoryObjective: missing {iq.item.name}"); Fail(); return; }
         int toDeliver = Math.Min(have, iq.quantity);
-        int moved = animal.inv.MoveItemTo(TargetInv, iq.item, toDeliver);
+        int moved = animal.inv.MoveItemTo(TargetInv, iq.item, toDeliver, by: task);
         if (moved < toDeliver) {
             // Reservation-system contract violation: FreeSpace shrunk between reserve and
             // delivery, which by design shouldn't happen. Fail loudly with a diagnostic dump

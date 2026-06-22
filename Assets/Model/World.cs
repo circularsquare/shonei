@@ -354,9 +354,11 @@ public class World : MonoBehaviour {
 
     // Produces items on a tile's floor inventory.
     // If the tile is full, searches nearby standable tiles (expanding rings, radius 5).
-    public void ProduceAtTile(Item item, int quantity, Tile tile) {
+    // Returns the leftover fen that couldn't be placed anywhere (these are lost — they were
+    // never added back to GlobalInventory). A player-facing toast is posted for the loss.
+    public int ProduceAtTile(Item item, int quantity, Tile tile) {
         int remaining = PutOnFloor(tile, item, quantity);
-        if (remaining == 0) return;
+        if (remaining == 0) return 0;
 
         // Debug.Log($"ProduceAtTile: no space for {remaining} {item.name} at ({tile.x},{tile.y}), searching nearby.");
 
@@ -373,10 +375,14 @@ public class World : MonoBehaviour {
             }
         }
 
-        if (remaining > 0)
+        if (remaining > 0) {
             Debug.LogError($"ProduceAtTile: couldn't place {remaining} {item.name} anywhere near ({tile.x},{tile.y})");
+            // Player-facing: items vanished because the floor was full. Concise, data first.
+            EventFeed.instance?.Post($"<color=#d04040>no space: {ItemStack.FormatQ(remaining, item)} {item.name} lost</color>");
+        }
+        return remaining;
     }
-    public void ProduceAtTile(string itemName, int quantity, Tile tile) =>
+    public int ProduceAtTile(string itemName, int quantity, Tile tile) =>
         ProduceAtTile(Db.itemByName[itemName], quantity, tile);
 
     int PutOnFloor(Tile tile, Item item, int quantity) {

@@ -60,6 +60,14 @@ public class Blueprint {
     public bool cancelled = false;
     public bool disabled = false;
     public int priority = 0;
+    // Leaf item ids the player has banned from THIS blueprint (e.g. "don't build this
+    // foundry with gypsum"). Only meaningful for group-item costs (e.g. "stone"); a leaf
+    // belongs to exactly one group root (single parent chain), so a flat set is unambiguous
+    // and the ban is intentionally blueprint-wide. The supply path skips these leaves
+    // (SupplyBlueprintTask → ResolveConsumeLeaf), delivery refuses them (DeliverToBlueprint-
+    // Objective), and locking won't re-pick them (LockGroupCostsAfterDelivery). Persisted by
+    // name via BlueprintSaveData.disallowedLeafNames.
+    public HashSet<int> disallowedLeaves = new HashSet<int>();
     // Whether this blueprint (and the structure it builds) is horizontally mirrored.
     public bool mirrored = false;
     // Rotation in 90° clockwise steps (0..3). Set by BuildPanel during placement when
@@ -530,6 +538,7 @@ public class Blueprint {
             if (cost.item.children == null) continue; // already locked to a leaf
             foreach (ItemStack stack in inv.itemStacks) {
                 if (stack.item == null) continue;
+                if (disallowedLeaves.Contains(stack.item.id)) continue; // banned variant — never lock to it
                 // Walk up the delivered item's ancestry to see if it belongs to this group cost.
                 for (Item cur = stack.item.parent; cur != null; cur = cur.parent) {
                     if (cur != cost.item) continue;
@@ -538,6 +547,69 @@ public class Blueprint {
                     break;
                 }
                 if (cost.item.children == null) break; // locked — move on to next cost
+            }
+        }
+    }
+
+    // Player banned `leaf` (a group cost's variant, e.g. "gypsum") for this blueprint. Drops any
+    // already-delivered units of it onto the floor (a hauler returns them to storage via the normal
+    // floor-haul path), reverts every cost slot that was locked to it back to its authored group so
+    // a different leaf can be supplied, and re-derives the WOM orders. Banning resolves through
+    // disallowedLeaves in the supply/deliver/lock paths.
+    public void DisallowLeaf(Item leaf) {
+        if (leaf == null || leaf.children != null) return; // only leaves can be banned
+        if (!disallowedLeaves.Add(leaf.id)) return;        // already banned
+
+        bool revertedAnything = false;
+        for (int i = 0; i < costs.Length; i++) {
+            if (costs[i].item != leaf) continue; // only slots currently locked to this exact leaf
+            // Drop delivered units to the floor at the anchor tile. inv.Produce(-qty) decrements
+            // GlobalInventory; ProduceAtTile re-adds it on the floor and registers the haul — net
+            // global change is zero (mirrors Reservoir.DropToFloor).
+            int qty = inv.Quantity(leaf);
+            if (qty > 0) {
+                inv.Produce(leaf, -qty);
+                World.instance.ProduceAtTile(leaf, qty, tile);
+            }
+            // Revert the slot to its authored group (the deep-copy source is still the group).
+            costs[i].item = structType.costs[i].item;
+            costs[i].id   = structType.costs[i].item.id;
+            revertedAnything = true;
+        }
+        if (!revertedAnything) return; // leaf wasn't in use (pre-emptive ban) — orders unaffected
+
+        // Rolling back to Receiving: a fully-delivered bp that was Constructing is now short the
+        // reverted cost. Zero progress and fail any builder mid-construction so ReceiveConstruction
+        // doesn't LogError against the now-Receiving state.
+        if (state == BlueprintState.Constructing) {
+            state = BlueprintState.Receiving;
+            constructionProgress = 0f;
+            FailActiveConstructTask();
+        }
+        WorkOrderManager.instance?.RemoveForBlueprint(this);
+        RegisterOrdersIfUnsuspended();
+        InfoPanel.instance?.UpdateInfo();
+    }
+
+    // Player un-banned `leaf`. No item movement — just re-allow it and refresh orders (a previously
+    // un-suppliable blueprint may now be suppliable again).
+    public void AllowLeaf(Item leaf) {
+        if (leaf == null || !disallowedLeaves.Remove(leaf.id)) return;
+        RegisterOrdersIfUnsuspended();
+        InfoPanel.instance?.UpdateInfo();
+    }
+
+    // Fails the builder (if any) currently running a ConstructTask against this blueprint, so a
+    // mid-construction rollback to Receiving doesn't leave a task calling ReceiveConstruction on
+    // the wrong state. Cheap one-off scan; only called from DisallowLeaf's Constructing rollback.
+    void FailActiveConstructTask() {
+        AnimalController ac = AnimalController.instance;
+        if (ac == null) return;
+        for (int i = 0; i < ac.na; i++) {
+            Animal a = ac.animals[i];
+            if (a?.task is ConstructTask ct && ct.blueprint == this) {
+                ct.Fail();
+                return;
             }
         }
     }

@@ -48,7 +48,7 @@ public class DropObjective : Objective {
 
         int moved;
         if (targetInv != null && targetInv.GetStorageForItem(item) > 0) {
-            moved = animal.inv.MoveItemTo(targetInv, item, before);
+            moved = animal.inv.MoveItemTo(targetInv, item, before, by: task);
         } else {
             moved = before - animal.DropItem(item); // DropItem returns the leftover it couldn't place
         }

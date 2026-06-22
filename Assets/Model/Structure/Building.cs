@@ -141,6 +141,36 @@ public class Building : Structure {
 
     // Non-null only for workstation buildings. Owns the player-adjustable worker slot limit.
     public Workstation workstation { get; private set; }
+
+    // The animal currently running a CraftTask here, if any — registered by WorkObjective.Start and
+    // VALIDATED ON READ (see ActiveCraft), so it needs no teardown: an interrupted, finished, or
+    // reassigned worker simply stops matching. Drives the cauldron's brew fill/fire and the
+    // craft-gated light, and is the reusable "is this workstation being worked right now" signal.
+    public Animal workingAnimal;
+
+    // The live CraftTask running at this building this instant, or null. Re-checks the registered
+    // worker each call (still alive, still Working, still crafting HERE) so no stale state lingers.
+    public CraftTask ActiveCraft {
+        get {
+            if (workingAnimal == null || workingAnimal.pendingDeath) return null;
+            if (workingAnimal.state != Animal.AnimalState.Working) return null;
+            return (workingAnimal.task is CraftTask ct && ct.workplace?.building == this) ? ct : null;
+        }
+    }
+    public bool IsBeingCrafted => ActiveCraft != null;
+    // True while a worker is actively labouring at this building — a CraftTask OR a tended
+    // processor's WorkProcessorTask. Drives the craft-gated fire light (LightSource.craftGated),
+    // so the cauldron's fire lights while it brews even though it's a Processor, not a CraftTask.
+    // workingAnimal is set each work-tick (validated on read, so no teardown needed).
+    public bool IsBeingWorked {
+        get {
+            if (workingAnimal == null || workingAnimal.pendingDeath) return false;
+            if (workingAnimal.state != Animal.AnimalState.Working) return false;
+            if (workingAnimal.task is CraftTask ct)         return ct.workplace?.building == this;
+            if (workingAnimal.task is WorkProcessorTask wp) return wp.building == this;
+            return false;
+        }
+    }
     public Inventory storage { get; private set; }
     // Non-null only for buildings with a consumable resource reservoir (torch, furnace, fountain, etc.).
     public Reservoir reservoir { get; private set; }
@@ -166,7 +196,7 @@ public class Building : Structure {
     // (brewery) > plain full zone. A `tint` with alpha 0 renders as the shader's
     // default blue. `surfaceRow` flags whether the top rendered row shimmers
     // white like a pond surface. Returns false -> render nothing.
-    public bool TryGetDisplayLiquid(out float fillFraction, out Color32 tint, out bool surfaceRow) {
+    public virtual bool TryGetDisplayLiquid(out float fillFraction, out Color32 tint, out bool surfaceRow) {
         fillFraction = 0f;
         tint         = default;             // alpha 0 → shader default blue
         surfaceRow   = true;                // tanks / processors / plain zones shimmer at the liquid top
@@ -205,6 +235,12 @@ public class Building : Structure {
         return true;
     }
 
+    // Craft-output hook: a building may absorb some/all of a finished CRAFT output straight into
+    // its own store instead of having the worker carry it off and drop it. Returns the leftover
+    // quantity (fen) the worker must still handle normally. Default: absorb nothing. (Liquid batch
+    // output now lands in Processor.output, not here.) See AnimalStateManager.HandleWorking.
+    public virtual int TryAbsorbOutput(Item item, int qty) => qty;
+
     public Building(StructType st, int x, int y, bool mirrored = false, int shapeIndex = 0) : base(st, x, y, mirrored, shapeIndex: shapeIndex){
         go.name = "building_" + structType.name;
 
@@ -242,6 +278,22 @@ public class Building : Structure {
             }
         }
 
+        // Craft-gated light + fire (cauldron; opt-in for furnace/crucible): a LightSource whose lit
+        // state follows IsBeingCrafted rather than fuel/time. No reservoir. It also owns the fireGO
+        // toggle (LightSource.Update), so craft-gated buildings don't manage their own fire art.
+        if (st.lightWhileCrafting) {
+            var ls = go.AddComponent<LightSource>();
+            ls.baseIntensity = st.lightIntensity;
+            ls.outerRadius   = st.lightOuterRadius;
+            ls.innerRadius   = st.lightInnerRadius;
+            ls.centerFlatten = st.lightCenterFlatten;
+            ls.flickerAmount = st.lightFlicker;
+            ls.flickerPhase  = x * 0.37f + y * 0.71f; // decorrelate neighbours, deterministic
+            ls.building      = this;
+            ls.craftGated    = true;
+            ls.isLit         = false; // Update sets it from craft state on the first frame
+        }
+
         if (st.hasFurnishingSlots) {
             furnishingSlots = new FurnishingSlots(st.furnishingSlotNames, x, y, st.name);
             furnishingSlots.onSlotChanged = OnFurnishingSlotChanged;
@@ -254,15 +306,15 @@ public class Building : Structure {
         }
 
         if (st.hasProcessor) {
-            // The conversion recipe lives in processorRecipesDb.json, linked by building name.
-            ProcessorRecipe pr = Db.GetProcessorRecipe(st.name);
-            if (pr == null) {
-                Debug.LogError($"Building '{st.name}': hasProcessor=true but no processor recipe found in processorRecipesDb.json — skipping processor.");
+            // The batch recipes are ordinary Recipes with tile==this building + a duration.
+            System.Collections.Generic.List<Recipe> procRecipes = Db.GetProcessorRecipes(st.name);
+            if (procRecipes == null) {
+                Debug.LogError($"Building '{st.name}': hasProcessor=true but no recipe with tile=='{st.name}' and a duration — skipping processor.");
             } else {
                 Tile pTile = World.instance.GetTileAt(
                     x + (mirrored ? (st.nx - 1 - st.processorTileX) : st.processorTileX),
                     y + st.processorTileY);
-                processor = new Processor(pr, pTile.x, pTile.y, sr.sortingOrder);
+                processor = new Processor(procRecipes, st.processorTended, st.processorLocalHeat, st.processorCapacityLiang * 100, pTile.x, pTile.y, sr.sortingOrder);
             }
         }
     }

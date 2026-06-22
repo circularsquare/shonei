@@ -132,7 +132,7 @@ Load:    ClearWorld() + SaveSystem.ApplySaveData()  →  PostLoadInit (next fram
 
 ### Autosave
 
-Interval is `SettingsManager.autosaveIntervalMinutes` (PlayerPref, default 5; **0 = off**), chosen from the `OptionsPanel` "autosave" dropdown (off / 1 / 5 / 10 / 30 min). `SaveSystem.Update` runs an **unscaled**-time timer (fires even while paused) and re-reads the interval live. On fire, `WriteRotatingAutosave` keeps **at most 3** autosaves: it deletes the oldest while ≥3 slots under the reserved `"autosave"` name-prefix exist (`GetSaveSlots` is newest-first, so the oldest is last), then writes a fresh `autosave <settlement> <yyyy-MM-dd HH-mm-ss>` slot via `Save(slot, setCurrent: false)` — the `autosave` prefix stays **first** because both this rotation and the server's `pruneAutosaves` detect autosaves by it; the settlement name (`World.SettlementDisplayName`, pre-sanitized to the slot-safe charset) is embedded after it for readability — the `setCurrent:false` overload leaves the player's active `currentSlot` untouched so the background write never hijacks their named slot. Manual saves must avoid the `autosave` prefix (it's rotation-managed). `Save` is synchronous and stalls the frame on large worlds, so `AutosaveRoutine` activates the `SavingOverlay` (a plain centered UI element under the main canvas, referenced by `SaveSystem.savingOverlay`) and yields a frame to let it paint **before** the freeze, then hides it. Any save (manual or auto) resets the interval timer; it holds at 0 while there's no world loaded or autosave is off.
+Interval is `SettingsManager.autosaveIntervalMinutes` (PlayerPref, default 5; **0 = off**), chosen from the `OptionsPanel` "autosave" dropdown (off / 1 / 5 / 10 / 30 min). `SaveSystem.Update` runs an **unscaled**-time timer (so the interval is wall-clock, not game-speed) and re-reads the interval live. The timer is **frozen while the game is paused (`Time.timeScale == 0`) or a load is in progress (`LoadingScreen.IsActive`)** — paused means nothing's changing, and saving mid-load could persist a half-built world. It freezes (doesn't reset), so a brief pause resumes where it left off. On fire, `WriteRotatingAutosave` keeps **at most 3** autosaves: it deletes the oldest while ≥3 slots under the reserved `"autosave"` name-prefix exist (`GetSaveSlots` is newest-first, so the oldest is last), then writes a fresh `autosave <settlement> <yyyy-MM-dd HH-mm-ss>` slot via `Save(slot, setCurrent: false)` — the `autosave` prefix stays **first** because both this rotation and the server's `pruneAutosaves` detect autosaves by it; the settlement name (`World.SettlementDisplayName`, pre-sanitized to the slot-safe charset) is embedded after it for readability — the `setCurrent:false` overload leaves the player's active `currentSlot` untouched so the background write never hijacks their named slot. Manual saves must avoid the `autosave` prefix (it's rotation-managed). `Save` is synchronous and stalls the frame on large worlds, so `AutosaveRoutine` activates the `SavingOverlay` (a plain centered UI element under the main canvas, referenced by `SaveSystem.savingOverlay`) and yields a frame to let it paint **before** the freeze, then hides it. Any save (manual or auto) resets the interval timer; it holds at 0 while there's no world loaded or autosave is off.
 
 ---
 
@@ -155,7 +155,9 @@ All game logic is intended to be tick-driven. Movement and fall physics are the 
 
 ### Time scale
 
-`TimeController.cs` wraps `Time.timeScale`. Setting it to `0` pauses all ticks and movement; `2` doubles everything. Because `World.Update()` and `AnimalController.Update()` pass `Time.deltaTime` into their respective `Tick(dt)` methods, scaling is automatic — no special handling needed in tick consumers. `TradingClient.ReconnectLoop` uses `WaitForSecondsRealtime` so network reconnection is unaffected by time scale.
+`TimeController.cs` wraps `Time.timeScale`. Setting it to `0` pauses all ticks and movement; `2` doubles everything.
+
+**Loading pauses the sim.** `LoadingScreen.Begin` calls `TimeController.Pause()`, so the world is frozen for the whole boot load. `End` deliberately does *not* resume — the post-load speed is path-dependent: new worlds stay paused (`GenerateDefault`) for the settlement popup / press-space-to-start, while loaded worlds resume to normal speed in `WorldController.Start` (right after the synchronous `Load()`). Pressing **Esc while the loading screen is up** restores normal speed and returns to `Menu` (an escape hatch for a slow/stuck load; no confirm — nothing's lost mid-load). Because `World.Update()` and `AnimalController.Update()` pass `Time.deltaTime` into their respective `Tick(dt)` methods, scaling is automatic — no special handling needed in tick consumers. `TradingClient.ReconnectLoop` uses `WaitForSecondsRealtime` so network reconnection is unaffected by time scale.
 
 ### RNG and reproducibility
 
@@ -181,7 +183,7 @@ per-day balance drifts. When changing `ticksInDay` by k:
 
 1. **Day-anchored — leave alone** (formula already contains `ticksInDay`/`daysInYear`):
    sun/seasons, weather OU steps (72/day), fuel burn (liang/day), item decay (per-year),
-   maintenance (`DaysToBreak`), furnishing lifetime, processor `processDays`, market
+   maintenance (`DaysToBreak`), furnishing lifetime, market
    transit, starvation timer, birth chance, `MoistureSystem.TicksPerInGameHour` (derived).
    Editing these *double-scales* — a bug.
 2. **Per-tick rates — divide by k** (raw per-second, no `ticksInDay` in the formula):
@@ -193,7 +195,9 @@ per-day balance drifts. When changing `ticksInDay` by k:
    (per-real-second smoothing — divide to hold rain fraction + wind feel);
    `CloudLayer.cloudEvolutionRate` (visual).
 3. **Tick-count durations — multiply by k**: plantsDb `growthTime`/`harvestTime`/`fruitRotTicks`;
-   recipesDb `workload`; chat/leisure objective durations; `Animal.MaxWorkStintTicks`.
+   recipesDb `workload` **and processor-recipe `duration`** (both seconds/labour-seconds now —
+   untended ferments included, since `duration` is raw seconds not days); chat/leisure objective
+   durations; `Animal.MaxWorkStintTicks`.
 4. **Wall-clock — never touch** (`unscaledTime`/`WaitForSecondsRealtime`): autosave, network
    reconnect/poll, chat-row fade, render throttles, fps caps, audio fades.
 5. **Verify**: recompile clean; playtest the hunger↔food loop, one-sleep-per-night, rain

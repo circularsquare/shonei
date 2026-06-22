@@ -55,6 +55,7 @@ using Newtonsoft.Json;
 //   [x] Is raining + atmospheric humidity (drives rain via threshold) + temperature noise anomaly
 //   [x] Global item targets
 //   [x] Discovered items (so once-seen items stay visible even after going extinct)
+//   [x] "Don't consume" flags (InventoryController.consumptionDisabled, by item name)
 //   [x] Market targets (via MarketBuilding.instance)
 //   [x] Camera position and zoom (PPU)
 //   [x] Global inventory panel tree collapse state (deltas vs item.defaultOpen)
@@ -126,7 +127,12 @@ public class SaveSystem : MonoBehaviour {
             return;
         }
         if (autosaving) return;
-        autosaveTimer += Time.unscaledDeltaTime; // real time — fires even while the game is paused
+        // Don't autosave while paused or mid-load. Paused → nothing is changing, so there's
+        // nothing new worth capturing; mid-load (loading screen up) → a save would persist a
+        // half-built world. Freeze the timer rather than reset it, so a brief pause doesn't
+        // push the next autosave further out — it resumes where it left off.
+        if (Time.timeScale == 0f || LoadingScreen.IsActive) return;
+        autosaveTimer += Time.unscaledDeltaTime; // real time, so the interval is wall-clock, not game-speed
         if (autosaveTimer >= sm.autosaveIntervalMinutes * 60f) {
             autosaveTimer = 0f;
             StartCoroutine(AutosaveRoutine());
@@ -310,9 +316,6 @@ public class SaveSystem : MonoBehaviour {
 
             var expanded = rp.CopyExpandedGroups();
             if (expanded.Length > 0) data.expandedRecipeGroups = expanded;
-
-            var disabledProc = rp.CopyDisabledProcesses();
-            if (disabledProc.Length > 0) data.disabledProcesses = disabledProc;
         }
 
         data.isRaining   = WeatherSystem.instance?.isRaining   ?? false;
@@ -343,6 +346,16 @@ public class SaveSystem : MonoBehaviour {
                 disc.Add(item.name);
             }
             if (disc.Count > 0) data.discoveredItems = disc.ToArray();
+        }
+
+        // "Don't consume" flags — persist by name (stable across id renumbering), like targets.
+        if (ic?.consumptionDisabled != null && ic.consumptionDisabled.Count > 0) {
+            var prot = new List<string>();
+            foreach (int id in ic.consumptionDisabled) {
+                Item item = id < Db.items.Length ? Db.items[id] : null;
+                if (item != null) prot.Add(item.name);
+            }
+            if (prot.Count > 0) data.consumptionDisabled = prot.ToArray();
         }
 
         // Global inventory panel collapse state — store only groups whose current open state
@@ -418,15 +431,10 @@ public class SaveSystem : MonoBehaviour {
             // overlayState only meaningful when a mask exists; skip the field on bare or Live tiles.
             overlayState = (tile.overlayMask != 0 && tile.overlayState != OverlayState.Live)
                 ? (byte?)(byte)tile.overlayState : null,
-            snow = tile.snow ? (bool?)true : null,
-            // Pre-snow grass snapshot: only emit when actually buried under snow
-            // AND there was real grass to preserve (mask != 0). State is paired
-            // with mask — meaningless on its own.
-            preSnowOverlayMask  = (tile.snow && tile.preSnowOverlayMask != 0)
-                ? (byte?)tile.preSnowOverlayMask : null,
-            preSnowOverlayState = (tile.snow && tile.preSnowOverlayMask != 0
-                    && tile.preSnowOverlayState != OverlayState.Live)
-                ? (byte?)(byte)tile.preSnowOverlayState : null,
+            // Snow depth; null on snow-free tiles. Legacy bool `snow` is not written
+            // (load-only migration field). Under-snow grass needs no snapshot — it
+            // stays in the live overlayMask above (the renderer just hides it).
+            snowAmount = tile.snowAmount > 0 ? (byte?)tile.snowAmount : null,
         };
     }
 
@@ -472,6 +480,8 @@ public class SaveSystem : MonoBehaviour {
             if (b.processor != null) {
                 ssd.processorState    = (int)b.processor.state;
                 ssd.processorProgress = b.processor.progress;
+                ssd.processorHeat     = b.processor.heat;
+                if (b.processor.recipe != null) ssd.processorRecipeId = b.processor.recipe.id;
                 if (!b.processor.inputBuffer.IsEmpty()) ssd.processorInputData  = GatherInventory(b.processor.inputBuffer);
                 if (!b.processor.output.IsEmpty())      ssd.processorOutputData = GatherInventory(b.processor.output);
             }
@@ -509,7 +519,10 @@ public class SaveSystem : MonoBehaviour {
             shapeIndex           = bp.shapeIndex,
             disabled             = bp.disabled,
             x2                   = bp.x2,
-            y2                   = bp.y2
+            y2                   = bp.y2,
+            disallowedLeafNames  = bp.disallowedLeaves.Count > 0
+                ? bp.disallowedLeaves.Select(id => Db.items[id].name).ToArray()
+                : null
         };
     }
 
@@ -560,6 +573,7 @@ public class SaveSystem : MonoBehaviour {
             bookSlotInv        = GatherInventory(a.bookSlotInv),
             skillXp            = a.skills.SerializeXp(),
             skillLevel         = a.skills.SerializeLevel(),
+            buffs              = a.buffs.Serialize(),
             isTraveling        = a.state == Animal.AnimalState.Traveling,
             travelProgress     = a.state == Animal.AnimalState.Traveling ? a.workProgress : 0f,
             travelDuration     = (a.state == Animal.AnimalState.Traveling
@@ -629,7 +643,6 @@ public class SaveSystem : MonoBehaviour {
         WeatherSystem.instance?.RestoreState(false, 0f);
         RecipePanel.instance?.ClearDisabled();
         RecipePanel.instance?.ClearExpandedGroups();
-        RecipePanel.instance?.ClearDisabledProcesses();
         ResearchSystem.instance?.ResetAll();
         // Reset panel collapse state — both panels start open on a fresh world.
         InventoryController.instance?.inventoryHeader?.SetOpenSilent(true);
@@ -756,20 +769,15 @@ public class SaveSystem : MonoBehaviour {
                 // Old saves (field absent) load as Live (default).
                 if (tile.overlayMask != 0 && tsd.overlayState.HasValue)
                     tile.overlayState = (OverlayState)tsd.overlayState.Value;
-                // Snow only meaningful on solid tiles; the type setter would have
-                // cleared a stale flag during migration if the saved type were
-                // non-solid, but gate here too for old saves that wrote `snow:true`
-                // alongside an empty type.
-                if (tsd.snow == true && tile.type.solid) {
-                    tile.snow = true;
-                    // Restore the under-snow grass snapshot. Old saves (pre-
-                    // preservation) wrote `snow:true` without these fields;
-                    // they load as null → defaults of (0, Live), which means
-                    // "nothing to restore on melt" — the right migration.
-                    if (tsd.preSnowOverlayMask.HasValue)
-                        tile.preSnowOverlayMask  = tsd.preSnowOverlayMask.Value;
-                    if (tsd.preSnowOverlayState.HasValue)
-                        tile.preSnowOverlayState = (OverlayState)tsd.preSnowOverlayState.Value;
+                // Snow depth, only meaningful on solid tiles. Prefer the new
+                // snowAmount field; fall back to the legacy binary `snow` flag
+                // (pre-depth saves) loaded as full depth. Under-snow grass lives in
+                // the loaded overlayMask above — no snapshot. (Saves from the even
+                // older snapshot-based code stored buried grass in a since-removed
+                // preSnowOverlayMask with overlayMask=null, so those snow-over-grass
+                // tiles load as bare dirt and regrow after melt — cosmetic, one-time.)
+                if (tile.type.solid && (tsd.snowAmount.HasValue || tsd.snow == true)) {
+                    tile.snowAmount = tsd.snowAmount ?? SnowAccumulationSystem.SnowMax;
                 }
             }
 
@@ -858,6 +866,13 @@ public class SaveSystem : MonoBehaviour {
                     InventoryController.instance.DiscoverItem(item);
         }
 
+        // Restore "don't consume" flags. Leaf-only by name; group/unknown names are ignored.
+        if (save.consumptionDisabled != null && InventoryController.instance != null) {
+            foreach (string name in save.consumptionDisabled)
+                if (Db.itemByName.TryGetValue(name, out Item item))
+                    InventoryController.instance.SetConsumptionDisabled(item, true);
+        }
+
         // Stage tree-collapse overrides before the first TickUpdate creates ItemDisplays.
         // ItemDisplay.Start reads pendingGroupOpenOverrides and falls back to defaultOpen when absent.
         if (InventoryController.instance != null)
@@ -908,8 +923,6 @@ public class SaveSystem : MonoBehaviour {
                 rp.SetAllowed(id, false);
         if (rp != null && save.expandedRecipeGroups != null)
             rp.SetExpandedGroups(save.expandedRecipeGroups);
-        if (rp != null && save.disabledProcesses != null)
-            rp.SetDisabledProcesses(save.disabledProcesses);
 
         RestoreResearch(save.research);
 
@@ -1196,10 +1209,34 @@ public class SaveSystem : MonoBehaviour {
         if (structure is Building pb && pb.processor != null) {
             pb.processor.state    = (Processor.State)ssd.processorState;
             pb.processor.progress = ssd.processorProgress;
+            pb.processor.heat     = ssd.processorHeat;
             RestoreProcessorInv(ssd.processorInputData,  pb.processor.inputBuffer);
             RestoreProcessorInv(ssd.processorOutputData, pb.processor.output);
+            // Re-bind the batch recipe AFTER the buffer is restored (so its fuel leaf can be
+            // re-identified). Empty processors hold no batch — leave recipe null.
+            if (pb.processor.state != Processor.State.Empty)
+                pb.processor.RestoreBatch(ResolveProcessorRecipe(pb, ssd.processorRecipeId));
         }
         // WOM orders (harvest, workstation, fuel supply, processor) are registered by Reconcile() after all objects are restored.
+    }
+
+    // Resolves which recipe a restored batch was running. Prefers the saved id; for old saves
+    // (no id) defaults to the building's sole recipe, else the one whose inputs match the restored
+    // buffer, else the first — so a mid-ferment brewery from before the multi-recipe change loads
+    // correctly (it had exactly one recipe).
+    Recipe ResolveProcessorRecipe(Building pb, int? savedId) {
+        var recipes = Db.GetProcessorRecipes(pb.structType.name);
+        if (recipes == null) return null;
+        if (savedId.HasValue)
+            foreach (Recipe r in recipes) if (r.id == savedId.Value) return r;
+        if (recipes.Count == 1) return recipes[0];
+        foreach (Recipe r in recipes) {
+            bool matches = true;
+            foreach (ItemQuantity iq in r.inputs)
+                if (pb.processor.inputBuffer.Quantity(iq.item) <= 0) { matches = false; break; }
+            if (matches) return r;
+        }
+        return recipes[0];
     }
 
     // Restores a processor inventory (inputBuffer or output) by Producing each saved stack.
@@ -1227,6 +1264,13 @@ public class SaveSystem : MonoBehaviour {
         bp.constructionProgress = bsd.constructionProgress;
         bp.priority             = bsd.priority;
         bp.disabled             = bsd.disabled;
+        // Restore the per-build variant bans before the end-of-load Reconcile re-registers orders,
+        // so the first dispatched SupplyBlueprintTask honours them. After load cost.item is already
+        // the authored group (lock isn't re-run), so no slot revert is needed here.
+        if (bsd.disallowedLeafNames != null)
+            foreach (string leafName in bsd.disallowedLeafNames)
+                if (Db.itemByName.TryGetValue(leafName, out Item leaf))
+                    bp.disallowedLeaves.Add(leaf.id);
 
         if (bsd.inv != null) {
             // Route saved stacks to their cost slot (the stack whose slotConstraint matches

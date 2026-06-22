@@ -108,8 +108,10 @@
         "cost": 10,
         "unlocks": [
             { "type": "building", "target": "crucible" },
+            { "type": "building", "target": "foundry" },
             { "type": "job",      "target": "smith" },
-            { "type": "recipe",   "target": "2" }
+            { "type": "recipe",   "target": "70" },
+            { "type": "recipe",   "target": "71" }
         ]
     },{
         "id": 14,
@@ -129,7 +131,8 @@
         "cost": 5,
         "unlocks": [
             { "type": "building", "target": "brewery" },
-            { "type": "recipe",   "target": "40" }
+            { "type": "recipe",   "target": "40" },
+            { "type": "recipe",   "target": "94" }
         ]
     },{
         "id": 15,
@@ -168,6 +171,15 @@
             { "type": "building", "target": "roof" },
             { "type": "building", "target": "bracket" },
             { "type": "building", "target": "bench" }
+        ]
+    },{
+        "id": 19,
+        "name": "Herbalism",
+        "description": "brew gathered herbs into tonics at a cauldron.",
+        "prereqs": [],
+        "cost": 10,
+        "unlocks": [
+            { "type": "building", "target": "cauldron" }
         ]
     }
 ]

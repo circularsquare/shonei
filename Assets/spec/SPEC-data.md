@@ -16,7 +16,7 @@ ID ranges (keep entries ordered and thematically grouped):
 | 20–39 | storage | house, drawer, crate, tank, market |
 | 40–79 | decoration / ambience / leisure | torch, fountain, clock, fireplace |
 | 80–99 | placeable tiles | empty (dig), dirt, stone |
-| 101–109 | production — basic workstations | sawmill, workshop, furnace, press, pump, paper mill |
+| 101–109 | production — basic workstations | sawmill, workshop, crucible, foundry, press, pump, paper mill |
 | 110–119 | production — extraction | dirt pit, quarry |
 | 120–129 | production — research | laboratory |
 | 130–139 | production — clothing | weaver, tailor |
@@ -78,8 +78,11 @@ Fields:
 | `fireSprite` | string? | flame-overlay sheet name (default `{name}_f`). Authored at host tile size with the flame at the wick; rendered as a full-tile overlay child at `localPosition (fireOffsetX, fireOffsetY)`, `sortingOrder`+1 (draws over the body), `flipX`=mirrored — so it shares the body's pixel-snap rounding. See SPEC-rendering.md §Fire sprites. |
 | `fireOffsetX`, `fireOffsetY` | float? | flame child local offset in tile units (default 0; position is normally baked into the overlay art so 0 is typical). X flips with mirror. |
 | `fireFps` | float? | flame animation step rate (default 7). Fire flames step via a ±1 random walk (`FrameAnimator.randomWalk`), not a fixed cycle. |
-| `hasProcessor` | bool? | building has a `Processor` component — a passive timed converter (see SPEC-systems.md §Fermentation processors). The conversion itself (inputs, outputs, duration, temperature ramp, tint) is defined separately in `processorRecipesDb.json`, linked to the building by name — see the `processorRecipesDb.json` section below. The brewery is the first user. |
-| `processorTileX`, `processorTileY` | int? | tile offset of the processor's inventory tile within the footprint. This is footprint geometry, so it stays on the building — unlike the recipe data, which lives in `processorRecipesDb.json`. |
+| `hasProcessor` | bool? | building has a `Processor` component — a batch converter (see SPEC-systems.md §Processors). Its conversions are ordinary `Recipe`s with `tile == this building` and a `duration` (see Processor recipes below). The brewery (untended) + cauldron (tended) are the users. |
+| `processorTended` | bool? | `true` = the Working phase is worker-tended (cauldron — a worker labours for the batch's `duration`, then it auto-taps); `false`/omitted = passive ferment (brewery — advances on world ticks, temperature-scaled, then a worker taps). |
+| `processorCapacityLiang` | int? | the pot's liquid capacity in liang — the denominator for the rendered fill, so one batch in a bigger pot reads partially full (the cauldron's `10` makes a 5-liang batch render half). `0`/omit → sized to one batch (reads full). Also the `output` buffer size. A tended processor doesn't need `isWorkstation` (work-spot comes from `nworkTiles`); set it only if the building also runs craft recipes (the brewery does, for yeast). |
+| `processorTileX`, `processorTileY` | int? | tile offset of the processor's inventory tile within the footprint (footprint geometry). |
+| `processorLocalHeat` | bool? | `true` = the processor's advance rate is gated by its OWN heat (fuel burned → `Processor.heat`, decaying toward ambient) instead of ambient weather — the foundry smelts hot. Requires `hasFuelInv`. See SPEC-systems.md §Processors (local-heat mode). |
 | `noMaintenance` | bool? | opts this StructType out of the maintenance / condition decay system. Set to `true` on nav-critical types (platform, stairs, ladder) so a neglected world doesn't cut mice off from parts of the map. Plants and cost-free structures are already auto-exempt — see SPEC-systems.md §Maintenance System. |
 | `placementMethod` | string? | When `"twoClick"`, the StructType is placed by clicking TWO tiles (the two endpoint posts of a rope bridge). First click stashes the post; second click commits a single blueprint carrying both endpoints. Defaults to single-click placement. See SPEC-systems.md §Rope bridges. |
 | `minDx`, `maxDx` | int? | Horizontal-delta bounds for two-click placement. Bridge requires `minDx ≤ |xA - xB| ≤ maxDx`. Defaults: 3 / 20. |
@@ -102,8 +105,8 @@ ID ranges:
 | 5–9 | raw wood group + leaves (wood=5, oak=6, maple=7, pine=8) |
 | 10–19 | raw stone group + leaves (stone=10, slate=11, granite=12, limestone=13) |
 | 20–29 | earth items (dirt=20, sand=21, clay=22) |
-| 30–39 | ores (ore group=30, iron ore=31, coal=32, malachite=33, cassiterite=34) |
-| 40–49 | metals (iron bar=40, copper bar=41, tin bar=42, bronze bar=43) |
+| 30–39 | `ore` group=30 (iron ore=31, coal=32); `ores` group=33 (malachite=34, cassiterite=35) |
+| 40–49 | `metal` group=40 (iron bar=41, copper bar=42, tin bar=43, bronze bar=44) |
 | 60–69 | gems (gem=60, jade=61) |
 | 100–119 | processed wood group + leaves (planks=100, oak planks=101, maple planks=102, pine planks=103, sawdust=110, paper=112) |
 | 150–199 | food and seeds |
@@ -122,6 +125,7 @@ Fields:
 |-------|------|-------|
 | `id` | int | unique |
 | `name` | string | lookup key |
+| `description` | string? | optional player-facing tooltip body shown on icon hover (`ItemIcon`); absent/empty = name-only tooltip, as before. Keep concise. |
 | `decayRate` | float | passive decay per tick (multiplied by per-`InvType` factor: Floor 5×, Storage 1×, Equip 1×, Animal/Market/Blueprint/Reservoir/Furnishing 0); 0 = no passive decay; inherited by children if not specified on child. Units are "per in-game year" — see `ItemStack.Decay`. |
 | `equipDecayRate` | float? | extra wear ticked only while the item sits in an animal's Equip slot AND the animal is in the Working state (HandleWorking). Same per-year units as `decayRate`. Deterministic — shares `ItemStack.decayCounter` with passive decay so both contributions accumulate to the same wear pool. Set on tools (and could be set on clothing) to make wear scale with how much the animal actually works. 0/absent = no use-based wear. |
 | `workEfficiency` | float? | multiplier applied to `ModifierSystem.GetWorkMultiplier` when this item is equipped in the tool slot. 1.0 (default) = "no tool" — empty slot and a workEfficiency-1 item are indistinguishable. >1 = active bonus. Stone tools 1.10, copper 1.20, bronze 1.30; reserve ~1.5 for far-future endgame tools. Meaningless on non-tool items where it stays 1.0. |
@@ -132,6 +136,9 @@ Fields:
 | `itemClass` | enum? | `"default"` (solid), `"liquid"` (water, soymilk), `"book"` (tech/fiction books). Storage inventories match class exactly — liquids only fit in tanks, books only in bookshelves. Inherited by children. Defaults to `"default"`. |
 | `defaultTarget` | int? | initial global production target in liang. Used by `InventoryController.Start` to seed `targets[itemId]`, and by recipe / harvest scoring (`Recipe.Score`, `Recipe.AllItemsSatisfied`) as the threshold. Defaults to `100`; lower for byproducts (acorn, sawdust, pinecone are `10`) so multi-product harvest gating actually triggers. Books override to 1 liang via `itemClass==Book` regardless of this field. SaveSystem only persists deltas vs this default. |
 | `liquidColorHex` | string? | `#RRGGBB` tint used when this liquid is rendered in a decorative water zone (tank/fountain); absent → shader falls back to its default water blue |
+| `buffType` | string? | marks this item a **tonic**: `"workSpeed"` / `"coldTolerance"` / `"heatTolerance"` / `"sleepRecovery"`. Drinking it (`DrinkTonicTask`) applies a timed `BuffSet` effect — see SPEC-systems §Timed buffs. Parsed to the `BuffType` enum (`Item.buffEffect`) in `OnDeserialized`; `Db.tonicItems` lists all tonics. Absent = not a tonic. |
+| `buffMagnitude` | float? | tonic effect strength: work/sleep = fractional bonus (`0.1` = +10%); temperature = °C of tolerance added to the comfort bound. |
+| `buffDuration` | float? | tonic effect duration in in-game **days** (×`ticksInDay` → game-seconds at apply time). |
 | `defaultOpen` | bool? | group items only: start expanded in the inventory tree by default (e.g. `"food"`). Groups without this flag start collapsed. Runtime collapse state overrides on click. |
 | `children` | array? | leaf sub-types; see group item note above |
 
@@ -149,8 +156,7 @@ Fields:
 | `description` | string | shown in UI |
 | `workload` | float | ticks to complete |
 | `fuelCost` | float? | abstract fuel energy burned per round, satisfied by any `fuelValue>0` item (NOT a specific item — do not also list a fuel item in `ninputs`, or `Recipe.OnDeserialized` logs a double-charge error). `fuelCost 3` = 1 coal or 3 wood. Gated by `GlobalInventory.CanCraft`, reserved as a synthetic `CraftTask` fetch entry, shown as "fuel N" in the recipe panel. 0/absent = no fuel. |
-| `research` | string? | technology node that receives passive progress on each completed cycle (maintain-only) |
-| `researchPoints` | float? | passive research progress granted per cycle, paired with `research` |
+| `research` | string? | technology node that receives passive progress on each completed cycle (maintain-only). Amount derives from `workload` (`PassiveCraftRate × workload`) — no separate points field; see SPEC-research |
 | `skill` | string? | skill domain for XP (e.g. `"mining"`); defaults to `job.defaultSkill` if omitted |
 | `maxRoundsPerTask` | int? | cap on rounds in one CraftTask trip (0/omit = unlimited). Set to 1 for "one item per trip" recipes (e.g. book writing) where each cycle should be a deliberate, discrete action rather than a batch. |
 | `hidden` | bool? | omit from the Recipes panel (still craftable). Used for non-conventional pseudo-recipes like `dig` / `mine stone` whose "workstation" (digging pit, quarry) shouldn't appear as a recipe group. |
@@ -162,27 +168,22 @@ Fields:
 - `description` should stay short — `Db.WarnLongRecipeNames()` logs a warning at load for any longer than the reference string `"smelt malachite into copper (wood-"` (34 chars), since long names truncate in the card header.
 - Book-writing recipes (any recipe whose single output is `ItemClass.Book` — the runtime per-tech books + authored `fiction_book`) collapse in the panel into **one** generic "write a book" card per workstation; its On/Off toggles all book recipes together. See `RecipePanel.IsBookRecipe` / `BuildBookProxy`.
 
-## `processorRecipesDb.json` — Processor recipes
+## Processor recipes (a `Recipe` with a `duration`)
 
-A **processor recipe** is the passive timed conversion run by a building's `Processor` component (see SPEC-systems.md §Fermentation processors). It is a distinct concept from a craft `Recipe`: no active labor (`processDays` is wall-clock, not work-ticks), an optional temperature ramp, no job/skill/scoring model. Each recipe is linked to a building by name — mirroring how `Recipe.tile` links a craft recipe to its workstation. One building runs one recipe today; the data model (`Db.processorRecipesByBuilding`, a list per building) already allows several, so multiple-processes-per-building is an additive future extension.
+A **processor recipe** is just an ordinary `Recipe` in `recipesDb.json` whose `tile` is a building with `hasProcessor` and which has a **`duration`** (seconds). `Recipe.isProcessorRecipe` is set at load (`= duration > 0`). Such recipes are **bucketed by building** in `Db.processorRecipesByBuilding` (`Db.GetProcessorRecipes(name)` returns the list) and kept OUT of `job.recipes`, so the craft dispatch never runs them as `CraftTask`s — the Processor's Fill/Work/Tap orders do (see SPEC-systems.md §Processors). `Db.ValidateProcessorRecipes()` checks every `hasProcessor` building has at least one. A building may host both kinds: the brewery's yeast recipe (`workload`, a craft) and its rice-wine recipe (`duration`, untended ferment) coexist.
 
-Loaded into `Db.processorRecipesByBuilding` (keyed by building name); `Db.GetProcessorRecipe(name)` resolves a building's recipe. `Db.ValidateProcessorRecipes()` cross-checks that every `hasProcessor` building has a recipe and every recipe targets a real building.
-
-Fields:
+Authored exactly like a craft `Recipe`, plus these processor-only fields:
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `id` | int | informational — recipes are keyed by building name, not array-indexed. Duplicate ids are logged. Use a high range (≥1000) to avoid confusion with craft `Recipe` ids, which share no namespace but can collide numerically. |
-| `building` | string | name of the building whose `Processor` runs this recipe |
-| `description` | string | shown in UI / InfoPanel |
-| `ninputs` | `[{name, quantity}]` | the load recipe, authored in liang, resolved to fen |
-| `noutputs` | `[{name, quantity}]` | what one batch yields, authored in liang |
-| `processDays` | float | base conversion duration in in-game days at full (temperature rate 1.0) speed |
-| `processTempMin`, `processTempIdeal` | float? | optional temperature ramp: rate is 0 at/below `processTempMin`, 1.0 at/above `processTempIdeal`, linear between. Omit both → constant full rate. |
-| `autoTap` | bool? | schema stub — reserved for processors that yield output without a manual tap. Not yet implemented. |
-| `processColorHex` | string? | `#RRGGBB` tint for the building's `_w` liquid zone while the processor is Working (e.g. cloudy white rice mash mid-fermentation). Absent → the zone keeps its loading colour. See SPEC-rendering.md §Decorative liquid zones. |
+| `duration` | float | seconds to complete one batch. UNTENDED = elapsed in-game seconds (temperature-scaled); TENDED = seconds of worker labour. Large for slow ferments (rice wine `960` = 2 in-game days × `ticksInDay`). Displayed via `Recipe.FormatDuration` — `<60s` as `"8s"`, else in-game days `"2 days"`. |
+| `processTempMin`, `processTempIdeal` | float? | temperature ramp: rate 0 at/below min, 1.0 at/above ideal, linear between. Omit both → constant full rate. Read against AMBIENT (untended ferment) or the building's LOCAL heat-temperature (`processorLocalHeat` foundry). |
+| `heatCost` | float? | local-heat only: thermal charge discretely drawn from `Processor.heat` per completed batch (latent heat of the melt). Foundry recipes 150 (bronze 200). 0/absent = none. |
+| `processColorHex` | string? | `#RRGGBB` tint for the building's `_w` liquid zone while Working. Absent → default blue. See SPEC-rendering.md §Decorative liquid zones. |
 
-**Recipes panel:** processes appear as cards grouped under their building alongside that building's craft recipes. A process card shows the brew time + ideal temp (e.g. `2d at 25°`) in place of the worker-count line and an On/Off toggle that pauses the process — keyed by building name in `RecipePanel.disabledProcesses`, enforced by gating the `FillProcessor` work order's `isActive` (new fills stop; an in-progress batch still finishes + taps). Persisted as `WorldSaveData.disabledProcesses`.
+Inputs/outputs use the normal `ninputs`/`noutputs` (liang→fen). `fuelCost` is honoured for tended processors (hauled into the buffer, burned at tap). Recipe **selection** is the normal craft scorer, scoped to the building at fill time (`Animal.PickProcessorRecipe`).
+
+**Recipes panel:** processor recipes are ordinary `Recipe`s, so they appear in their building's group alongside its craft recipes with no special pass. A processor card shows its batch time + ideal temp (e.g. `2 days at 25°`) in place of the worker-count line, and the standard per-recipe On/Off toggle (`RecipePanel.IsAllowed(id)`) — enforced by `PickProcessorRecipe` (a disabled recipe is skipped at fill time). No separate per-building process toggle.
 
 ## `jobsDb.json` — Jobs
 

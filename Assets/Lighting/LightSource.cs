@@ -48,6 +48,12 @@ public class LightSource : MonoBehaviour {
 
     // Set to the Reservoir that powers this light. Null = no fuel needed (always lit).
     [HideInInspector] public Reservoir reservoir;
+    // Craft-gated mode: the light + fire art follow `building.IsBeingWorked` instead of fuel and time
+    // of day — a fire that glows (day or night) only while a mouse is actively working the station.
+    // Ignores the reservoir and sun modulation. The cauldron (a tended processor) uses it; any
+    // crafting building (furnace,
+    // crucible) can opt in via the `lightWhileCrafting` StructType flag.
+    [HideInInspector] public bool craftGated = false;
     // Owning Building, if any. Null for the sun and debug-cursor lights.
     // When non-null, the LightSource pauses burn + emission while building.disabled is true.
     [HideInInspector] public Building building;
@@ -156,7 +162,10 @@ public class LightSource : MonoBehaviour {
         // (Execution order is the default — SunController runs before
         // LightSource in practice; one-frame lag would be invisible
         // anyway because torchFactor changes smoothly over twilight.)
-        if (sunModulated && !isDirectional)
+        if (craftGated && !isDirectional)
+            // Craft fire: full intensity while a mouse works the station, day or night; no twilight ramp.
+            intensity = isLit ? baseIntensity : 0f;
+        else if (sunModulated && !isDirectional)
             intensity = isLit ? baseIntensity * EnvDarkness() : 0f;
         // Subtle organic flicker on top of the (time-of-day-scaled) intensity. One Perlin sample
         // along a per-instance lane (flickerPhase) — visual only, and the light pass already
@@ -170,6 +179,12 @@ public class LightSource : MonoBehaviour {
     }
 
     private void UpdateLitState() {
+        if (craftGated) {
+            // Lit only while a mouse is actively working here — craft OR tended processor (the
+            // cauldron is a Processor, not a CraftTask) — and the building is usable. No fuel.
+            isLit = building != null && !building.disabled && !building.IsBroken && building.IsBeingWorked;
+            return;
+        }
         if (reservoir == null) return; // no fuel needed — always lit
 
         // Disabled or broken buildings: don't consume fuel, don't emit light.

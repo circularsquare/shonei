@@ -80,6 +80,15 @@ public static class UrgencyConfig {
     public const float IdleBaseEvening = 0.35f;
     public const float IdleBaseDay = 0.15f;
 
+    // ── Tonic drinking (timed buffs) ─────────────────────────────────
+    // Vigor / restful tonics are "always eligible": a small baseline just above the daytime idle
+    // floor (0.15), so an idle mouse with one in stock drinks it but it never preempts real work or
+    // needs. Temperature tonics (warming / cooling) are need-driven instead — urgency scales with how
+    // far the mouse is outside its comfort band, mapping TonicTempSpan °C of deviation to TonicTempCeil.
+    public const float TonicBaseline = 0.18f;
+    public const float TonicTempCeil = 0.80f; // below the eat/sleep ~1.0 peaks, above most work tiers
+    public const float TonicTempSpan = 10f;   // °C outside comfort that maps to the ceiling
+
     // ── Jitter ───────────────────────────────────────────────────────
     // Headroom-scaled Gaussian noise on every score: s + (1-s) * N(0, JitterStdev). Two-directional
     // (a category can be nudged up or down) and the (1-s) factor keeps urgent scores near-fixed while

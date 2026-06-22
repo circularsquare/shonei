@@ -148,7 +148,9 @@ public class UI : MonoBehaviour {
         // (rather than each panel handling its own Esc) so a single press never triggers
         // two layers in the same frame — e.g. closing a build subpanel AND leaving Build
         // mode would feel like Esc "skipped" a step.
-        if (Input.GetKeyDown(KeyCode.Escape)) {
+        // While a load is in progress the LoadingScreen owns Esc (it bails to the main menu),
+        // so don't also dismiss a HUD layer underneath the overlay in the same press.
+        if (Input.GetKeyDown(KeyCode.Escape) && !LoadingScreen.IsActive) {
             DismissTopLayer();
         }
     }

@@ -29,6 +29,23 @@ public static class SaveSync {
     public static SyncState State { get; private set; }
     public static event Action OnStateChanged;
 
+    // Reset all persistent statics on every Play entry. Reload Domain is off in this
+    // project, so these survive Play-mode exit — and a prefetch coroutine that was
+    // mid-flight when Play stopped leaves CloudState stuck at Fetching (the coroutine
+    // dies, the static doesn't). Next Play, WarmCloudList / MenuLoadPanel then wait
+    // forever on a Fetching that nothing will ever advance → "loading saves..." hangs.
+    // SubsystemRegistration runs before any scene Awake, so this clears the slate
+    // before MenuController fires its prefetch. (Pattern: UIFontOptions.ResetCache.)
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics() {
+        CloudState = CloudListState.None;
+        CachedCloud = null;
+        cloudCacheScope = null;
+        State = SyncState.Idle;
+        pending.Clear();
+        authStopped = false;
+    }
+
     // Per-slot relationship between the local file and the account's cloud copy,
     // shown as a badge in the menu Load list. Decided rev-first (see ComputeStatus).
     public enum SyncStatus {
@@ -117,6 +134,8 @@ public static class SaveSync {
 
     const float IdlePollSeconds    = 0.5f;  // how often the pump checks for work when idle
     const float NetworkRetrySeconds = 15f;  // backoff after a transient upload failure
+    const int   RequestTimeoutSecs = 20;    // cap every cloud request — a stall must resolve to
+                                            // a failure, never an indefinite "loading saves..." hang
 
     // Touched only on the main thread (QueueUpload and the pump coroutine both run there).
     static readonly Dictionary<string, Pending> pending = new Dictionary<string, Pending>();
@@ -260,12 +279,21 @@ public static class SaveSync {
         if (!force && CloudState == CloudListState.Ready) yield break;
 
         SetCloudState(CloudListState.Fetching);
-        bool ok = false; List<CloudMeta> list = null;
-        yield return FetchCloudList((s, l, e) => { ok = s; list = l; });
-        // Guard against an account switch that happened while the request was in flight.
-        if (cloudCacheScope != Session.StorageScope) yield break;
-        if (ok) { CachedCloud = list; SetCloudState(CloudListState.Ready); }
-        else    { SetCloudState(CloudListState.Failed); }
+        // finally makes the fetch self-healing WITHIN a session: any abnormal exit while still
+        // Fetching (the mid-flight account-switch break below, the host coroutine being stopped
+        // on scene unload, an exception) demotes the state to Failed instead of stranding it at
+        // Fetching — a stuck Fetching is what makes the `while (Fetching) yield` waiters above and
+        // in MenuLoadPanel hang forever. (The runtime ResetStatics only covers the cross-Play case.)
+        try {
+            bool ok = false; List<CloudMeta> list = null;
+            yield return FetchCloudList((s, l, e) => { ok = s; list = l; });
+            // Guard against an account switch that happened while the request was in flight.
+            if (cloudCacheScope != Session.StorageScope) yield break;
+            if (ok) { CachedCloud = list; SetCloudState(CloudListState.Ready); }
+            else    { SetCloudState(CloudListState.Failed); }
+        } finally {
+            if (CloudState == CloudListState.Fetching) SetCloudState(CloudListState.Failed);
+        }
     }
 
     static void SetCloudState(CloudListState s) {
@@ -280,6 +308,7 @@ public static class SaveSync {
         if (!Session.LoggedIn) { done(false, null, "not logged in"); yield break; }
         using (var req = UnityWebRequest.Get(MarketServer.HttpBase + "/saves")) {
             req.SetRequestHeader("Authorization", "Bearer " + Session.Token);
+            req.timeout = RequestTimeoutSecs;
             yield return req.SendWebRequest();
             if (req.result != UnityWebRequest.Result.Success) {
                 done(false, null, req.responseCode == 401 ? "session expired" : "can't reach server");
@@ -296,6 +325,7 @@ public static class SaveSync {
         string url = MarketServer.HttpBase + "/save?slot=" + UnityWebRequest.EscapeURL(slot);
         using (var req = UnityWebRequest.Get(url)) {
             req.SetRequestHeader("Authorization", "Bearer " + Session.Token);
+            req.timeout = RequestTimeoutSecs;
             yield return req.SendWebRequest();
             if (req.result != UnityWebRequest.Result.Success) {
                 done(false, null, req.responseCode == 404 ? "no cloud copy" : "download failed");
@@ -314,6 +344,7 @@ public static class SaveSync {
         string url = MarketServer.HttpBase + "/save?slot=" + UnityWebRequest.EscapeURL(slot);
         using (var req = UnityWebRequest.Delete(url)) {
             req.SetRequestHeader("Authorization", "Bearer " + Session.Token);
+            req.timeout = RequestTimeoutSecs;
             yield return req.SendWebRequest();
             bool ok = req.result == UnityWebRequest.Result.Success;
             if (ok) SaveSyncIndex.Remove(slot);

@@ -89,5 +89,13 @@
         "jobType": "none",
         "usesTools": false,
         "defaultLocked": true
+    },{
+        "id": 19,
+        "name": "apothecary",
+        "jobType": "crafter",
+        "defaultSkill": "farming",
+        "skillWeights": { "farming": 0.8 },
+        "defaultLocked": true,
+        "unlockedByBuilding": "cauldron"
     }
 ]

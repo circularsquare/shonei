@@ -13,24 +13,21 @@ using TMPro;
 //     Label        (TMP; recipe / process name)
 //     OnOff        (Image + Button; allow check / redx, toggles in place)
 //
-// Each row carries one payload: a craft Recipe (incl. the "write a book" proxy) OR a
-// ProcessorRecipe — exactly one is non-null. Allow + selection routing go through
-// RecipePanel so the craft/process/book logic lives in one place.
+// Each row carries one Recipe — a craft recipe, the "write a book" proxy, or a processor
+// (batch-conversion) recipe; they all route allow + selection through RecipePanel by id.
 
 public class RecipeListRow : MonoBehaviour {
     [Header("UI Refs")]
     [SerializeField] Button   selectButton; // root button — click selects the row
     [SerializeField] Image    highlight;    // selection tint, toggled on/off
     [SerializeField] ItemIcon icon;         // output item icon
-    [SerializeField] TMP_Text label;        // recipe / process name
+    [SerializeField] TMP_Text label;        // recipe name
     [SerializeField] Image    onoffImg;     // allow check / redx sprite
     [SerializeField] Button   onoffButton;  // toggles allow in place (own click target)
 
-    Recipe          recipe;
-    ProcessorRecipe process;
+    Recipe recipe;
 
-    public Recipe          RecipeData  => recipe;
-    public ProcessorRecipe ProcessData => process;
+    public Recipe RecipeData => recipe;
 
     static Sprite iconAllowed, iconDisallowed;
     static void EnsureIcons() {
@@ -38,30 +35,29 @@ public class RecipeListRow : MonoBehaviour {
         if (iconDisallowed == null) iconDisallowed = Resources.Load<Sprite>("Sprites/Misc/redx");
     }
 
-    // Exactly one of r / p is non-null. Binds this prefab instance to its payload.
-    public void Setup(Recipe r, ProcessorRecipe p) {
-        recipe = r; process = p;
+    // Binds this prefab instance to its recipe.
+    public void Setup(Recipe r) {
+        recipe = r;
         EnsureIcons();
 
         selectButton.onClick.AddListener(() => RecipePanel.instance?.Select(this));
         onoffButton.onClick.AddListener(OnClickToggle);
 
         icon.SetItem(FirstOutputItem());
-        label.text = process != null
-            ? (string.IsNullOrEmpty(process.description) ? process.building : process.description)
-            : (string.IsNullOrEmpty(recipe.description) ? recipe.tile : recipe.description);
+        label.text = string.IsNullOrEmpty(recipe.description) ? recipe.tile : recipe.description;
 
         highlight.gameObject.SetActive(false);
         RefreshAllowIcon();
     }
 
     Item FirstOutputItem() {
-        ItemQuantity[] outs = process != null ? process.outputs : recipe?.outputs;
+        ItemQuantity[] outs = recipe?.outputs;
         return (outs != null && outs.Length > 0) ? outs[0].item : null;
     }
 
     void OnClickToggle() {
-        RecipePanel.instance?.ToggleEntryAllowed(recipe, process);
+        var rp = RecipePanel.instance;
+        if (rp != null) rp.SetAllowed(recipe.id, !rp.IsAllowed(recipe.id));
         RefreshAllowIcon();
     }
 
@@ -70,7 +66,7 @@ public class RecipeListRow : MonoBehaviour {
     }
 
     public void RefreshAllowIcon() {
-        bool allowed = RecipePanel.instance == null || RecipePanel.instance.IsEntryAllowed(recipe, process);
+        bool allowed = RecipePanel.instance == null || RecipePanel.instance.IsAllowed(recipe.id);
         if (onoffImg != null) onoffImg.sprite = allowed ? iconAllowed : iconDisallowed;
     }
 }

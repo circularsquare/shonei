@@ -38,7 +38,15 @@ public class ResearchSystem : MonoBehaviour {
 
     const float DecayRate        = 0.004f; // progress lost per tick (all nodes with any progress)
     const float ScientistRate    = 0.02f;  // progress gained per workefficiency of a scientist each tick
-    const float ConstructionGain = 0.75f;  // flat progress granted when a gated building is constructed
+
+    // Passive (non-scientist) research, both scaled by labour time so a faster / more skilled
+    // worker contributes proportionally more — mirroring how a scientist's per-tick gain scales.
+    //   Crafting: a baseline (eff 1.0) worker crafting a research recipe continuously earns 30%
+    //             of a baseline scientist's rate. workload (seconds/cycle) cancels out, so the
+    //             daily yield is the same for every research recipe regardless of its workload.
+    //   Construction: research per tick of build labour — a 10-tick build grants 1.0.
+    public const float PassiveCraftRate  = 0.3f * ScientistRate; // per second of craft labour (applied at the craft call site)
+    const float ConstructionResearchRate = 0.05f;                // per tick of build labour
 
     public Dictionary<int, float> progress = new Dictionary<int, float>();
 
@@ -332,23 +340,31 @@ public class ResearchSystem : MonoBehaviour {
     }
 
     // Called from Blueprint.Complete each time a building finishes construction (gameplay path only,
-    // not load/worldgen). Grants ConstructionGain × scale to the tech that gates the building.
+    // not load/worldgen). Grants ConstructionResearchRate × build-labour × scale to the tech that
+    // gates the building, so a costlier (longer) build teaches proportionally more.
     // Passive gain is maintain-only: caps at 2×cost and cannot unlock a locked tech — which is fine,
     // because a locked building cannot be constructed in the first place.
     //
-    // `scale` lets callers grant a fraction of the full per-build gain. Used by MaintenanceTask
-    // so a full 0→1 repair matches a fresh build, and a partial repair scales proportionally.
+    // Build labour = structType.constructionCost (ticks of one builder's labour; mirrors Blueprint's
+    // default-2 when unset). `scale` is the fraction of a full build's labour: 1.0 for a fresh build,
+    // repairAmount × RepairLaborFraction for a MaintenanceTask. Net effect: research is granted per
+    // tick of construction/repair labour at a uniform rate, so it scales with construction time.
     public void AddConstructionProgress(string buildingName, float scale = 1f) {
         if (!buildingToTechNode.TryGetValue(buildingName, out int id)) return;
         if (!nodeById.TryGetValue(id, out var node)) return;
+        float labour = Db.structTypeByName.TryGetValue(buildingName, out var st) && st.constructionCost > 0f
+                       ? st.constructionCost : 2f;
+        float gain   = ConstructionResearchRate * labour * scale;
         float before = GetProgress(id);
-        progress[id] = Mathf.Min(before + ConstructionGain * scale, GetCap(node));
+        progress[id] = Mathf.Min(before + gain, GetCap(node));
         float applied = progress[id] - before;
         if (applied > 0f) StatsTracker.instance?.Record("research_passive", applied);
         CheckTransitions();
     }
 
-    // Called from AnimalStateManager when a recipe cycle completes (passive skill gain).
+    // Generic raw-amount passive progress primitive. Callers compute the amount: the craft path
+    // passes PassiveCraftRate × recipe.workload so research accrues per unit of time worked rather
+    // than per cycle (short and long research recipes yield the same rate).
     public void AddPassiveProgress(string researchName, float amount) {
         foreach (var node in nodes) {
             if (node.name == researchName) {
@@ -465,6 +481,28 @@ public class ResearchSystem : MonoBehaviour {
                 ApplyEffect(node);
             }
         }
+    }
+
+    // Debug (/research [id]): fully research one node, recursively maxing its prereqs
+    // first so the unlock graph stays consistent (you can't have an unlocked tech whose
+    // prereqs aren't). Fires OnTechUnlocked per newly-unlocked node, mirroring the normal
+    // CheckTransitions path — so each gets its usual feed message + chime.
+    // Returns false if no node has this id.
+    public bool MaxTech(int id) {
+        if (!nodeById.TryGetValue(id, out var node)) return false;
+        MaxNodeRecursive(node);
+        return true;
+    }
+
+    void MaxNodeRecursive(ResearchNodeData node) {
+        if (IsUnlocked(node.id)) return; // already done — and by induction so are its prereqs
+        foreach (int prereq in node.prereqs)
+            if (nodeById.TryGetValue(prereq, out var pn)) MaxNodeRecursive(pn);
+        progress[node.id] = GetCap(node);
+        unlockedIds.Add(node.id);
+        unlockTimestamps[node.id] = ++unlockCounter;
+        ApplyEffect(node);
+        OnTechUnlocked?.Invoke(node);
     }
 
     // Re-apply effects for all already-unlocked nodes (called after save load).

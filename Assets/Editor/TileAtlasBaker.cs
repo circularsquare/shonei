@@ -28,7 +28,9 @@ public static class TileAtlasBaker {
     const string BakedResourceDir = "BakedTileAtlases"; // for Resources.Load
     const string SheetsDir        = "Assets/Resources/Sprites/Tiles/Sheets";
     const string FlatDir          = "Assets/Resources/Sprites/Tiles";
-    const string SnowOverlayName  = "snow"; // hardcoded by TileMeshController
+    // Snow depth overlays — hardcoded by TileMeshController.SnowAtlasName. Digit-free
+    // names so StripVariantSuffix doesn't fold them into a numbered "snow" base.
+    static readonly string[] SnowOverlayNames = { "snowlight", "snowmid", "snowdeep" };
     // Background-wall atlases — NOT tile types (not in Db.tileTypes), so the body
     // bake enumerates them explicitly. Must match BackgroundTileMeshController.Registry.
     // Body-only consumers (the flat-lit background renderer never binds _normal), but
@@ -198,7 +200,7 @@ public static class TileAtlasBaker {
     // True when a given atlas name corresponds to an overlay slot (snow,
     // grass, grass_dying, grass_dead, etc.).
     public static bool IsOverlayName(string name) {
-        if (name == SnowOverlayName) return true;
+        if (System.Array.IndexOf(SnowOverlayNames, name) >= 0) return true;
         foreach (var oname in CollectOverlayNames()) {
             if (oname == name) return true;
         }
@@ -209,7 +211,7 @@ public static class TileAtlasBaker {
 
     static HashSet<string> CollectOverlayNames() {
         EnsureDbLoaded();
-        var overlays = new HashSet<string> { SnowOverlayName };
+        var overlays = new HashSet<string>(SnowOverlayNames);
         foreach (var tt in Db.tileTypes) {
             if (tt?.overlay == null) continue;
             overlays.Add(tt.overlay);

@@ -29,6 +29,10 @@ public class TileMeshController : MonoBehaviour {
     // because the atlas-name suffix differs ("grass" / "grass_dying" /
     // "grass_dead"), and each name has its own Texture2DArray.
     const int NumOverlayStates = 3;
+    // Snow renders one mesh per depth level (snowlight / snowmid / snowdeep), keyed by
+    // SnowAccumulationSystem.SnowLevel — same per-mesh-per-variant shape as the
+    // overlay states above. Level 0 (no snow) draws nothing.
+    const int NumSnowLevels = 3;
 
     World world;
     Transform chunksRoot;
@@ -54,8 +58,8 @@ public class TileMeshController : MonoBehaviour {
     bool[,,]         bodyDirty;
     ChunkLayer[,,,]  overlayLayers;     // [cx, cy, typeIdx, stateIdx]
     bool[,,,]        overlayDirty;
-    ChunkLayer[,,]   snowLayers;        // [cx, cy, typeIdx]
-    bool[,,]         snowDirty;
+    ChunkLayer[,,,]  snowLayers;        // [cx, cy, typeIdx, levelIdx]
+    bool[,,,]        snowDirty;
 
     // Reused per-rebuild scratch buffers — avoids per-frame GC.
     readonly List<Vector3> _verts  = new();
@@ -149,8 +153,8 @@ public class TileMeshController : MonoBehaviour {
         bodyDirty     = new bool[chunksX, chunksY, numTypes];
         overlayLayers = new ChunkLayer[chunksX, chunksY, numTypes, NumOverlayStates];
         overlayDirty  = new bool[chunksX, chunksY, numTypes, NumOverlayStates];
-        snowLayers    = new ChunkLayer[chunksX, chunksY, numTypes];
-        snowDirty     = new bool[chunksX, chunksY, numTypes];
+        snowLayers    = new ChunkLayer[chunksX, chunksY, numTypes, NumSnowLevels];
+        snowDirty     = new bool[chunksX, chunksY, numTypes, NumSnowLevels];
 
         // Subscribe per-tile callbacks once. Each callback marks the affected
         // chunks dirty; mesh rebuild happens in LateUpdate (coalesced).
@@ -177,9 +181,10 @@ public class TileMeshController : MonoBehaviour {
                 for (int cy = 0; cy < chunksY; cy++) {
                     for (int t = 0; t < numTypes; t++) {
                         DestroyChunkLayer(bodyLayers[cx, cy, t]);
-                        DestroyChunkLayer(snowLayers[cx, cy, t]);
                         for (int s = 0; s < NumOverlayStates; s++)
                             DestroyChunkLayer(overlayLayers[cx, cy, t, s]);
+                        for (int s = 0; s < NumSnowLevels; s++)
+                            DestroyChunkLayer(snowLayers[cx, cy, t, s]);
                     }
                 }
             }
@@ -237,12 +242,18 @@ public class TileMeshController : MonoBehaviour {
         MarkOverlayChunkDirty(t.x, t.y);
     }
 
-    // Snow flag change → snow redraws. Only self — neighbours' snow visuals
-    // don't depend on this tile's snow flag (they care about their own neighbour
-    // solidity, which doesn't move when the snow flag flips). A neighbour's
+    // Snow flag change → snow AND overlay redraw (self only). Snow: neighbours'
+    // snow visuals don't depend on this tile's flag (they key on their own
+    // neighbour solidity, which doesn't move when the flag flips); a neighbour's
     // exposed-side snow re-bakes via OnTileTypeChanged's 3×3 mark instead.
+    // Overlay: the grass quad is skipped while snow is present and reappears on
+    // melt, so the overlay chunk must re-bake when the flag flips. Body: a snowed
+    // grass tile draws its full natural edge (the grass trim is suppressed under
+    // snow — see BuildBodyGeometry), so the body re-bakes on snow change too.
     void OnTileSnowChanged(Tile t) {
         MarkSnowChunkDirty(t.x, t.y);
+        MarkOverlayChunkDirty(t.x, t.y);
+        MarkBodyChunkDirty(t.x, t.y);
     }
 
     // Body-state change (rim-suppression mask OR bodyRenderSuppressed) → body AND
@@ -282,7 +293,12 @@ public class TileMeshController : MonoBehaviour {
     void MarkSnowChunkDirty(int x, int y) {
         if (x < 0 || x >= world.nx || y < 0 || y >= world.ny) return;
         int cx = x / ChunkSize, cy = y / ChunkSize;
-        for (int ti = 0; ti < numTypes; ti++) snowDirty[cx, cy, ti] = true;
+        // Dirty all levels — a single cbSnowChanged doesn't tell us which depth the
+        // tile moved to. Empty per-level rebuilds cost ~nothing (emit 0 quads).
+        // No per-type skip: every solid type can hold snow (unlike overlays).
+        for (int ti = 0; ti < numTypes; ti++)
+            for (int li = 0; li < NumSnowLevels; li++)
+                snowDirty[cx, cy, ti, li] = true;
     }
 
     // ── Rebuild (once per frame, after all callbacks have settled) ──────
@@ -292,7 +308,11 @@ public class TileMeshController : MonoBehaviour {
             for (int cy = 0; cy < chunksY; cy++) {
                 for (int ti = 0; ti < numTypes; ti++) {
                     if (bodyDirty[cx, cy, ti])    { RebuildBodyChunk(cx, cy, ti);    bodyDirty[cx, cy, ti] = false; }
-                    if (snowDirty[cx, cy, ti])    { RebuildSnowChunk(cx, cy, ti);    snowDirty[cx, cy, ti] = false; }
+                    for (int li = 0; li < NumSnowLevels; li++)
+                        if (snowDirty[cx, cy, ti, li]) {
+                            RebuildSnowChunk(cx, cy, ti, li);
+                            snowDirty[cx, cy, ti, li] = false;
+                        }
                     if (overlayBaseNames[ti] != null) {
                         for (int si = 0; si < NumOverlayStates; si++)
                             if (overlayDirty[cx, cy, ti, si]) {
@@ -338,27 +358,32 @@ public class TileMeshController : MonoBehaviour {
                 // Both equal the plain solidity bake away from such neighbours, so
                 // normal terrain is unaffected.
                 int bodySolid = 0, bodyWin = 0;
-                AccumulateTypeBoundary(t, x - 1, y,     1, ref bodySolid, ref bodyWin);
-                AccumulateTypeBoundary(t, x + 1, y,     2, ref bodySolid, ref bodyWin);
-                AccumulateTypeBoundary(t, x,     y - 1, 4, ref bodySolid, ref bodyWin);
-                AccumulateTypeBoundary(t, x,     y + 1, 8, ref bodySolid, ref bodyWin);
+                AccumulateTypeBoundary(t, x - 1, y,     TileSide.L, ref bodySolid, ref bodyWin);
+                AccumulateTypeBoundary(t, x + 1, y,     TileSide.R, ref bodySolid, ref bodyWin);
+                AccumulateTypeBoundary(t, x,     y - 1, TileSide.D, ref bodySolid, ref bodyWin);
+                AccumulateTypeBoundary(t, x,     y + 1, TileSide.U, ref bodySolid, ref bodyWin);
 
-                int nMask = 0;
-                if (LightSolidAt(x - 1, y    )) nMask |= 1;
-                if (LightSolidAt(x + 1, y    )) nMask |= 2;
-                if (LightSolidAt(x,     y - 1)) nMask |= 4;
-                if (LightSolidAt(x,     y + 1)) nMask |= 8;
-                if (LightSolidAt(x - 1, y - 1)) nMask |= 16;
-                if (LightSolidAt(x + 1, y - 1)) nMask |= 32;
-                if (LightSolidAt(x - 1, y + 1)) nMask |= 64;
-                if (LightSolidAt(x + 1, y + 1)) nMask |= 128;
+                int nMask = NeighbourSolidMask8(x, y, lightAware: true);
 
                 bool roadSuppressed = t.structs[3] != null;
-                int  overlayBits    = roadSuppressed ? 0 : (t.overlayMask & 0xF);
+                // Snow hides the grass overlay but the body should show the tile's
+                // FULL natural edge under the snow (dirt/stone bevel + 2px rim), not
+                // the grass-trimmed edge baked for the now-hidden, still-preserved
+                // overlayMask — otherwise the body's top is flattened and its 2px
+                // grass-trim gap reads as a seam beneath the snow. So drop the grass
+                // bits while snow sits on top (same as roads suppress them).
+                int  overlayBits    = (roadSuppressed || t.snow) ? 0 : (t.overlayMask & 0xF);
                 // bodyEdgeSuppressMask: structures (today: doored preservesTile buildings)
                 // can mark a side as "draw no rim" — OR it in so the bake picks the
                 // buried-side slice for that direction, hiding the 2px air bevel.
-                int  bodyCardinals  = (bodySolid & ~bodyWin) | overlayBits | (t.bodyEdgeSuppressMask & 0xF);
+                int  edgeSuppress   = t.bodyEdgeSuppressMask & 0xF;
+                // A road on the tile above hides this tile's top (see BuildOverlayGeometry
+                // for the grass side). For the body: drop the U overlay bit so it isn't
+                // trimmed for grass that's no longer drawn (which left a sky gap), AND
+                // force the U side to the flat buried slice — no exposed top-edge bevel
+                // poking above the frame, just plain dirt for the road to sit flush over.
+                if (HasRoadAt(x, y + 1)) { overlayBits &= ~TileSide.U; edgeSuppress |= TileSide.U; }
+                int  bodyCardinals  = (bodySolid & ~bodyWin) | overlayBits | edgeSuppress;
                 int  trimMask       = (overlayBits & ~bodySolid) & 0xF;
 
                 int bodySlice = TileSpriteCache.GetBodySlice(typeName, bodyCardinals, trimMask, x, y);
@@ -406,27 +431,31 @@ public class TileMeshController : MonoBehaviour {
                 if (t.bodyRenderSuppressed) continue; // dug-up cell: no grass over the hole
                 if (t.overlayMask == 0) continue;
                 if ((int)t.overlayState != stateIdx) continue;
+                // Snow covers the grass: skip the overlay quad while snow sits on
+                // top (the snow mesh draws over it). The live overlayMask is left
+                // intact so the grass reappears unchanged on melt — no snapshot.
+                if (t.snow) continue;
                 // Roads visually replace the ground surface — suppress overlay
                 // wholesale on roaded tiles.
                 if (t.structs[3] != null) continue;
 
-                // cMask = bit set when neighbour is solid (overlay-buried side).
-                int cMask = 0;
-                if (IsSolidAt(x - 1, y))     cMask |= 1;
-                if (IsSolidAt(x + 1, y))     cMask |= 2;
-                if (IsSolidAt(x,     y - 1)) cMask |= 4;
-                if (IsSolidAt(x,     y + 1)) cMask |= 8;
+                // Normal map shares the body type's normal — same nMask the body
+                // uses, so the directional edge bevel is consistent across body+overlay.
+                // cMask (which sides are buried) is the low nibble.
+                int nMask = NeighbourSolidMask8(x, y, lightAware: false);
+                int cMask = nMask & 0xF;
 
-                int effective = (t.overlayMask & ~cMask & ~t.bodyEdgeSuppressMask) & 0xF;
-                if (effective == 0) continue; // every overlay side is buried
+                // Roads sit on the air tile directly above the grass (they only ever
+                // pave a top surface) and are exactly tile-sized, but the top grass
+                // tuft overhangs the tile edge by 2px — so it pokes up over/around the
+                // road (both draw at sortingOrder 80). Suppress only the U (top) side
+                // when the tile above carries a road: roads visually own the surface.
+                // Snow, by contrast, doesn't suppress here — it just layers on top via
+                // its higher sortingOrder.
+                int roadMask = HasRoadAt(x, y + 1) ? TileSide.U : 0;
 
-                // Normal map shares the body type's normal — same nMask the body uses,
-                // so the directional edge bevel is consistent across body+overlay.
-                int nMask = cMask;
-                if (IsSolidAt(x - 1, y - 1)) nMask |= 16;
-                if (IsSolidAt(x + 1, y - 1)) nMask |= 32;
-                if (IsSolidAt(x - 1, y + 1)) nMask |= 64;
-                if (IsSolidAt(x + 1, y + 1)) nMask |= 128;
+                int effective = (t.overlayMask & ~cMask & ~t.bodyEdgeSuppressMask & ~roadMask) & 0xF;
+                if (effective == 0) continue; // every overlay side is buried or road-covered
 
                 // Inverted-cardinal mask: GetOverlay expects "which sides are NOT
                 // decorated" (the baker reads bit-set ⇒ Main interior, and overlay
@@ -459,22 +488,27 @@ public class TileMeshController : MonoBehaviour {
     }
 
     // ── Snow ───────────────────────────────────────────────────────────
-    void RebuildSnowChunk(int cx, int cy, int typeIdx) {
-        BuildSnowGeometry(cx, cy, typeIdx);
-        UploadMesh(ref snowLayers[cx, cy, typeIdx], () => NewSnowChunkLayer(cx, cy, typeIdx));
+    void RebuildSnowChunk(int cx, int cy, int typeIdx, int levelIdx) {
+        BuildSnowGeometry(cx, cy, typeIdx, levelIdx);
+        UploadMesh(ref snowLayers[cx, cy, typeIdx, levelIdx], () => NewSnowChunkLayer(cx, cy, typeIdx, levelIdx));
     }
 
-    void BuildSnowGeometry(int cx, int cy, int typeIdx) {
+    // levelIdx 0..2 → snowlight / snowmid / snowdeep. A tile emits into the single mesh for
+    // its current depth level (SnowAccumulationSystem.SnowLevel); deeper snow re-bakes
+    // here when its level changes (MarkSnowChunkDirty flags every level).
+    void BuildSnowGeometry(int cx, int cy, int typeIdx, int levelIdx) {
         ResetBuffers();
         int x0, y0, x1, y1; ChunkBoundsTiles(cx, cy, out x0, out y0, out x1, out y1);
         int typeId = indexToTypeId[typeIdx];
         string typeName = indexToTypeName[typeIdx];
+        string snowName = SnowAtlasName(levelIdx);
 
         for (int y = y0; y < y1; y++) {
             for (int x = x0; x < x1; x++) {
                 Tile t = world.GetTileAt(x, y);
                 if (t == null || !t.type.solid || t.type.id != typeId) continue;
-                if (!t.snow) continue;
+                // Only tiles whose current depth maps to THIS level's texture.
+                if (SnowAccumulationSystem.SnowLevel(t.snowAmount) != levelIdx + 1) continue;
 
                 // Strict bounds check (IsSolidAt would falsely treat off-map as
                 // solid). Top-row tiles still render snow even though there's
@@ -483,42 +517,47 @@ public class TileMeshController : MonoBehaviour {
                 bool buriedAbove = yAbove < world.ny && world.GetTileAt(x, yAbove).type.solid;
                 if (buriedAbove) continue;
 
-                int nMask = 0;
-                if (IsSolidAt(x - 1, y))     nMask |= 1;
-                if (IsSolidAt(x + 1, y))     nMask |= 2;
-                if (IsSolidAt(x,     y - 1)) nMask |= 4;
-                if (IsSolidAt(x,     y + 1)) nMask |= 8;
-                if (IsSolidAt(x - 1, y - 1)) nMask |= 16;
-                if (IsSolidAt(x + 1, y - 1)) nMask |= 32;
-                if (IsSolidAt(x - 1, y + 1)) nMask |= 64;
-                if (IsSolidAt(x + 1, y + 1)) nMask |= 128;
+                int nMask = NeighbourSolidMask8(x, y, lightAware: false);
 
                 // Snow caps the top and wraps onto any exposed vertical face, so a
                 // cliff-edge block shows snow clinging to its open side rather than
                 // just a flat top line. Bottom is never decorated — snow doesn't
                 // hang from an underside (and the atlas has no bottom-edge art).
-                // Decorated bits (LRDU): U always (a snow tile has open sky above);
-                // L/R only where that neighbour is open air. GetOverlaySlice wants
-                // the inverted mask (bit SET = NOT decorated), so invert at the end.
-                int decorated = 0b1000;                    // U (top)
-                if (!IsSolidAt(x - 1, y)) decorated |= 1;   // L exposed
-                if (!IsSolidAt(x + 1, y)) decorated |= 2;   // R exposed
+                // Decorated bits: U always (a snow tile has open sky above); L/R only
+                // where that neighbour is open air. GetOverlaySlice wants the inverted
+                // mask (bit SET = NOT decorated), so invert at the end.
+                int decorated = TileSide.U;                          // top
+                if (!IsSolidAt(x - 1, y)) decorated |= TileSide.L;    // L exposed
+                if (!IsSolidAt(x + 1, y)) decorated |= TileSide.R;    // R exposed
                 int snowCardinals = (~decorated) & 0xF;
 
-                int snowSlice = TileSpriteCache.GetOverlaySlice("snow", snowCardinals, x, y);
+                int snowSlice = TileSpriteCache.GetOverlaySlice(snowName, snowCardinals, x, y);
                 int nSlice    = TileSpriteCache.GetNormalMapSlice(typeName, nMask, x, y);
                 EmitQuad(x - x0, y - y0, snowSlice, nSlice);
             }
         }
     }
 
-    ChunkLayer NewSnowChunkLayer(int cx, int cy, int typeIdx) {
+    ChunkLayer NewSnowChunkLayer(int cx, int cy, int typeIdx, int levelIdx) {
+        string snowName = SnowAtlasName(levelIdx);
         return NewChunkLayer(cx, cy,
-            $"SnowChunk_{indexToTypeName[typeIdx]}",
+            $"SnowChunk_{indexToTypeName[typeIdx]}_{snowName}",
             SnowSortingOrder,
-            TileSpriteCache.GetOverlayArray("snow"),
+            TileSpriteCache.GetOverlayArray(snowName),
             TileSpriteCache.GetNormalMapArray(indexToTypeName[typeIdx]),
             GroundPlaneLightingBucket);  // draws at 81 but lights as ground, like the overlay
+    }
+
+    // levelIdx 0..2 → "snowlight" / "snowmid" / "snowdeep". One overlay atlas per
+    // depth, resolved from Sprites/Tiles/Sheets/<name>.png (or a pre-baked
+    // <name>_overlay.asset). Digit-free names so TileAtlasBaker treats them as
+    // distinct overlays rather than numbered variants of a "snow" base.
+    static string SnowAtlasName(int levelIdx) {
+        switch (levelIdx) {
+            case 1:  return "snowmid";
+            case 2:  return "snowdeep";
+            default: return "snowlight";
+        }
     }
 
     // ── Generic mesh / chunk plumbing ───────────────────────────────────
@@ -633,6 +672,47 @@ public class TileMeshController : MonoBehaviour {
         if (x < 0 || x >= world.nx || y < 0 || y >= world.ny) return true;
         Tile t = world.GetTileAt(x, y);
         return t != null && t.type.solid;
+    }
+
+    // 4-bit cardinal mask (TileSide.L/R/D/U) of solid neighbours — the "which
+    // sides are buried" mask used by overlay/snow bakes. Off-map reads solid
+    // (IsSolidAt). The body silhouette does NOT use this — it runs the soft-edge
+    // type contest (AccumulateTypeBoundary) instead.
+    int CardinalSolidMask(int x, int y) {
+        int m = 0;
+        if (IsSolidAt(x - 1, y))     m |= TileSide.L;
+        if (IsSolidAt(x + 1, y))     m |= TileSide.R;
+        if (IsSolidAt(x,     y - 1)) m |= TileSide.D;
+        if (IsSolidAt(x,     y + 1)) m |= TileSide.U;
+        return m;
+    }
+
+    // 8-bit neighbour mask (4 cardinals in the low nibble + 4 diagonals) used to
+    // key normal-map slices, shared by body / overlay / snow. lightAware=true uses
+    // LightSolidAt (lightAsAir cells read as open) for the body's lighting bake;
+    // false uses plain solidity for overlay/snow. Low nibble matches CardinalSolidMask.
+    int NeighbourSolidMask8(int x, int y, bool lightAware) {
+        int m = 0;
+        if (NeighbourSolid(x - 1, y,     lightAware)) m |= TileSide.L;
+        if (NeighbourSolid(x + 1, y,     lightAware)) m |= TileSide.R;
+        if (NeighbourSolid(x,     y - 1, lightAware)) m |= TileSide.D;
+        if (NeighbourSolid(x,     y + 1, lightAware)) m |= TileSide.U;
+        if (NeighbourSolid(x - 1, y - 1, lightAware)) m |= 16;
+        if (NeighbourSolid(x + 1, y - 1, lightAware)) m |= 32;
+        if (NeighbourSolid(x - 1, y + 1, lightAware)) m |= 64;
+        if (NeighbourSolid(x + 1, y + 1, lightAware)) m |= 128;
+        return m;
+    }
+
+    bool NeighbourSolid(int x, int y, bool lightAware) =>
+        lightAware ? LightSolidAt(x, y) : IsSolidAt(x, y);
+
+    // A road on the tile above suppresses this tile's top (U) grass edge
+    // (see BuildOverlayGeometry). Off-map reads as no road.
+    bool HasRoadAt(int x, int y) {
+        if (x < 0 || x >= world.nx || y < 0 || y >= world.ny) return false;
+        Tile t = world.GetTileAt(x, y);
+        return t != null && t.structs[3] != null;
     }
 
     // Solidity as seen by the normal-map (lighting) bake: a `lightAsAir` cell

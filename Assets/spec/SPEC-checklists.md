@@ -21,6 +21,7 @@ If you're adding a building, recipe, item, job, plant, research node, exclusive 
 - [ ] **Paired-field gotchas**: `isHousing` needs `capacity`; `isDecoration` needs `decorationNeed`; `isLeisure` needs `leisureNeed`. Missing the partner = building works but grants no slots / happiness.
 - [ ] **If it's a `Structure` subclass** (Windmill, ExtractionBuilding, …): see "Adding a new Structure subclass" below.
 - [ ] **If it has recipes**: see "Adding a new recipe" below — `recipe.tile` must exactly match this building's `name`.
+- [ ] **If it's a batch converter (brewery/cauldron-style)**: set `hasProcessor: true` and `processorTended` (`true` = a worker labours the batch then it auto-taps; `false`/omit = passive ferment, then a worker taps). Its conversions are ordinary recipes with a `duration` (see below). A building can be both a craft workstation *and* a processor (the brewery does both).
 
 ## Upsizing an existing building (1×1 → multi-tile)
 
@@ -51,6 +52,7 @@ This is the workflow:
 - [ ] **All input/output item names exist in `itemsDb.json`.** Typo → silent orphan at load.
 - [ ] **Group input = wildcard accept.** First delivery locks the blueprint to that specific leaf (`LockGroupCostsAfterDelivery`).
 - [ ] **No group items in `noutputs`** — outputs must be leaves. `Db.ValidateNoGroupOutputs()` logs at startup but the error is easy to miss in console spam.
+- [ ] **Processor recipe?** Give it a `duration` (seconds) instead of `workload` and point `tile` at a `hasProcessor` building. `duration > 0` flags it (`isProcessorRecipe`): it's bucketed by building, kept out of `job.recipes`, and run by the Fill/Work/Tap orders — NOT the craft dispatch. Optional `processTempMin`/`processTempIdeal` (untended temp ramp) + `processColorHex` (Working-state tint). `fuelCost` works on tended processors. See SPEC-data.md §Processor recipes.
 
 ## Adding a new item (`itemsDb.json`)
 

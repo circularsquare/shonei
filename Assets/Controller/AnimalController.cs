@@ -246,11 +246,20 @@ public class AnimalController : MonoBehaviour{
         if (anyDied) UpdateColonyStats();
     }
 
-    // Tears down one mouse that has died. Order matters: drop its goods to the
-    // floor and fix the job count BEFORE Destroy() nulls the animal's references.
+    // Tears down one mouse that has died of starvation: the player-facing
+    // announcement + toll, then the shared teardown.
     private void HandleDeath(Animal a) {
         EventFeed.instance?.Post($"<color=#ff4444>{a.aName} starved to death.</color>");
         SoundManager.instance?.PlaySFX("death"); // Resources/Audio/SFX/death.mp3 (bell toll)
+        TearDownAnimal(a);
+    }
+
+    // Releases one mouse's hooks into the rest of the game before its GameObject is
+    // destroyed. Order matters: drop its goods to the floor and fix the job count
+    // BEFORE Destroy() nulls the animal's references. Shared by starvation
+    // (HandleDeath) and the /mice cheat cull (DebugRemoveMice) — neither announces
+    // here, so each caller owns its own messaging/SFX.
+    private void TearDownAnimal(Animal a) {
         a.DropInventoryToFloor();
         if (a.job != null && jobCounts.ContainsKey(a.job)) {
             jobCounts[a.job] -= 1;
@@ -313,6 +322,72 @@ public class AnimalController : MonoBehaviour{
             if (s is Building b && b.structType.isHousing) return b;
         }
         return null;
+    }
+
+    // ── /mice population cheat ───────────────────────────────────────
+    // Driven by TradingPanel's /mice command; not a gameplay path.
+
+    // Spawns `count` mice clustered onto the existing mouse nearest the original
+    // spawn point (the worldgen spawn-zone centre, where the colony's first mice
+    // arrive) — so cheated-in newcomers land in the heart of the colony rather than
+    // scattered. Falls back to the spawn point itself when the colony is empty.
+    // Clamps to the animals[] capacity. Returns the number actually spawned.
+    public int DebugSpawnMice(int count) {
+        if (count <= 0) return 0;
+        // Pending (queued-but-not-yet-registered) mice still occupy a future slot,
+        // so count them against the cap to avoid overrunning animals[].
+        int room = maxna - na - pendingAnimals;
+        if (room <= 0) return 0;
+        count = Mathf.Min(count, room);
+        if (!GetSpawnClusterPoint(out float sx, out float sy)) return 0;
+        for (int i = 0; i < count; i++) AddAnimal(sx, sy);
+        return count;
+    }
+
+    // Randomly removes `count` living mice (cheat cull). Reuses the death teardown
+    // (drops inventory, fixes job counts, clears selection) but without the
+    // starvation message/toll — this is an instant removal, not a death. Picks via
+    // UnityEngine.Random so it never perturbs the deterministic gameplay stream.
+    // Returns the number actually removed.
+    public int DebugRemoveMice(int count) {
+        int toRemove = Mathf.Min(Mathf.Max(count, 0), na);
+        for (int k = 0; k < toRemove; k++) {
+            int idx = UnityEngine.Random.Range(0, na);
+            TearDownAnimal(animals[idx]);
+            // Swap the last live mouse into the gap and shrink — order in animals[]
+            // doesn't matter (tickOffset is per-id, not per-index).
+            animals[idx] = animals[na - 1];
+            animals[na - 1] = null;
+            na -= 1;
+        }
+        if (toRemove > 0) UpdateColonyStats();
+        return toRemove;
+    }
+
+    // Resolves where /mice newcomers should appear: the existing mouse nearest the
+    // original spawn point, or the spawn point itself when no mice are alive.
+    // Returns false (and logs) only if surfaceY isn't available yet.
+    private bool GetSpawnClusterPoint(out float sx, out float sy) {
+        sx = sy = 0f;
+        int[] surf = World.instance?.surfaceY;
+        int spawnX = (WorldGen.config.SpawnMinX + WorldGen.config.SpawnMaxX) / 2;
+        if (surf == null || surf.Length <= spawnX) {
+            Debug.LogError("GetSpawnClusterPoint: surfaceY unavailable");
+            return false;
+        }
+        float px = spawnX, py = surf[spawnX];
+
+        Animal nearest = null;
+        float bestDist = float.MaxValue;
+        for (int a = 0; a < na; a++) {
+            Animal m = animals[a];
+            if (m == null) continue;
+            float d = (m.x - px) * (m.x - px) + (m.y - py) * (m.y - py);
+            if (d < bestDist) { bestDist = d; nearest = m; }
+        }
+        if (nearest != null) { sx = nearest.x; sy = nearest.y; }
+        else                 { sx = px;        sy = py;        }
+        return true;
     }
 
     public void LoadAnimal(AnimalSaveData asd) {
@@ -687,13 +762,15 @@ public class AnimalController : MonoBehaviour{
         MouseController.instance?.CenterCameraOn(chosen.x, chosen.y);
     }
 
-    public void OnClickJobAssignment(string jobstr, string buttontype){
+    // step is the bulk multiplier from the +/- button (1, or 10 on Ctrl-click).
+    // "Zero" ignores it — it always clears the whole job.
+    public void OnClickJobAssignment(string jobstr, string buttontype, int step = 1){
         switch (buttontype){
             case "Add":
-                AddJob(jobstr, 1);
+                AddJob(jobstr, step);
                 break;
             case "Subtract":
-                AddJob(jobstr, -1);
+                AddJob(jobstr, -step);
                 break;
             case "Zero":
                 AddJob(jobstr, -GetJobCount(jobstr));

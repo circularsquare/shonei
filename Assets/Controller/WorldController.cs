@@ -137,6 +137,11 @@ public class WorldController : MonoBehaviour {
         if (mostRecent != null) {
             LoadingScreen.SetPhase($"Loading save: {mostRecent}");
             SaveSystem.instance.Load(mostRecent);
+            // The loading screen paused the sim (LoadingScreen.Begin) and the synchronous
+            // Load() above has now finished, so resume to normal speed. New worlds skip this
+            // and stay paused (GenerateDefault, below). An unnamed/old save re-pauses in
+            // PostLoadInit's settlement prompt (next frame, after this), so resuming is safe.
+            TimeController.instance?.NormalSpeed();
         } else {
             LoadingScreen.SetPhase("Generating world");
             GenerateDefault();

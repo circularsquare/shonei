@@ -1,26 +1,19 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 
-// EditMode tests for Db.GetProcessorRecipe — the resolver that links a building to the
-// passive-conversion recipe its Processor runs (see ProcessorRecipe in Db.cs).
+// EditMode tests for the unified processor-recipe model: Db.GetProcessorRecipes (the building→
+// recipes resolver its Processor scores among) and Recipe.FormatDuration (the seconds-vs-days
+// batch-time display). Processor recipes are ordinary Recipes with a `duration` (isProcessorRecipe).
 //
-// Scope: the lookup contract only — first-of-list, null for an unknown building, and
-// null-safety when the registry itself hasn't been built yet (GetProcessorRecipe is
-// called from the Building constructor, which in tests can run before Db is loaded).
-//
-// ── Deferred to integration tests ────────────────────────────────────
-// The full processorRecipesDb.json → ProcessorRecipe load path (JSON [OnDeserialized],
-// liang→fen resolution via Db.itemByName) is an integration concern — the same line
-// RecipeScoringTests draws for Recipe. It is exercised transitively by the PlayMode
-// smoke / snapshot tests: Db.Awake runs there, and a malformed file or broken loader
-// trips Db.ValidateProcessorRecipes' Debug.LogError, failing those tests. So here we
-// build ProcessorRecipe objects directly via field initializers, no Db load needed.
+// Builds Recipe objects directly via field initializers — no Db load needed. The JSON load path
+// (recipesDb → Recipe[OnDeserialized], liang→fen) is exercised transitively by the PlayMode smoke
+// tests, where Db.Awake runs and a broken loader trips Db.ValidateProcessorRecipes' LogError.
 [TestFixture]
 public class ProcessorRecipeTests {
 
-    // Saved in OneTimeSetUp, restored in OneTimeTearDown so we don't leak our test
-    // registry into sibling fixtures (Db.processorRecipesByBuilding is a shared static).
-    static Dictionary<string, List<ProcessorRecipe>> savedRegistry;
+    // Saved in OneTimeSetUp, restored in OneTimeTearDown so we don't leak our test registry into
+    // sibling fixtures (Db.processorRecipesByBuilding is a shared static).
+    static Dictionary<string, List<Recipe>> savedRegistry;
 
     [OneTimeSetUp]
     public void OneTimeSetUp(){
@@ -33,39 +26,54 @@ public class ProcessorRecipeTests {
     }
 
     [Test]
-    public void GetProcessorRecipe_KnownBuilding_ReturnsFirstRecipe(){
-        // Multi-recipe-per-building is a planned extension; today GetProcessorRecipe
-        // resolves the first entry. Two recipes on one building documents that contract.
-        var first  = new ProcessorRecipe { id = 0, building = "brewery" };
-        var second = new ProcessorRecipe { id = 1, building = "brewery" };
-        Db.processorRecipesByBuilding = new Dictionary<string, List<ProcessorRecipe>> {
-            { "brewery", new List<ProcessorRecipe> { first, second } },
+    public void GetProcessorRecipes_KnownBuilding_ReturnsList(){
+        var a = new Recipe { id = 0, tile = "brewery", duration = 960 };
+        var b = new Recipe { id = 1, tile = "brewery", duration = 480 };
+        Db.processorRecipesByBuilding = new Dictionary<string, List<Recipe>> {
+            { "brewery", new List<Recipe> { a, b } },
         };
-        Assert.That(Db.GetProcessorRecipe("brewery"), Is.SameAs(first));
+        var list = Db.GetProcessorRecipes("brewery");
+        Assert.That(list, Is.Not.Null);
+        Assert.That(list.Count, Is.EqualTo(2));
+        Assert.That(list[0], Is.SameAs(a));
     }
 
     [Test]
-    public void GetProcessorRecipe_UnknownBuilding_ReturnsNull(){
-        Db.processorRecipesByBuilding = new Dictionary<string, List<ProcessorRecipe>> {
-            { "brewery", new List<ProcessorRecipe> { new ProcessorRecipe { building = "brewery" } } },
+    public void GetProcessorRecipes_UnknownBuilding_ReturnsNull(){
+        Db.processorRecipesByBuilding = new Dictionary<string, List<Recipe>> {
+            { "brewery", new List<Recipe> { new Recipe { tile = "brewery", duration = 1 } } },
         };
-        Assert.That(Db.GetProcessorRecipe("sawmill"), Is.Null);
+        Assert.That(Db.GetProcessorRecipes("sawmill"), Is.Null);
     }
 
     [Test]
-    public void GetProcessorRecipe_NullRegistry_ReturnsNull(){
-        // The Building constructor calls GetProcessorRecipe; in a fixture where Db was
-        // never loaded the registry is null. The null-guard must hold rather than NRE.
+    public void GetProcessorRecipes_NullRegistry_ReturnsNull(){
+        // The Building constructor calls GetProcessorRecipes; in a fixture where Db was never
+        // loaded the registry is null. The null-guard must hold rather than NRE.
         Db.processorRecipesByBuilding = null;
-        Assert.That(Db.GetProcessorRecipe("brewery"), Is.Null);
+        Assert.That(Db.GetProcessorRecipes("brewery"), Is.Null);
     }
 
     [Test]
-    public void GetProcessorRecipe_EmptyListForBuilding_ReturnsNull(){
-        // An empty list shouldn't index [0] — GetProcessorRecipe guards on Count > 0.
-        Db.processorRecipesByBuilding = new Dictionary<string, List<ProcessorRecipe>> {
-            { "brewery", new List<ProcessorRecipe>() },
+    public void GetProcessorRecipes_EmptyListForBuilding_ReturnsNull(){
+        // An empty list is treated as "no recipes" (guards on Count > 0).
+        Db.processorRecipesByBuilding = new Dictionary<string, List<Recipe>> {
+            { "brewery", new List<Recipe>() },
         };
-        Assert.That(Db.GetProcessorRecipe("brewery"), Is.Null);
+        Assert.That(Db.GetProcessorRecipes("brewery"), Is.Null);
+    }
+
+    [Test]
+    public void FormatDuration_ShortBatchesShowSeconds(){
+        Assert.That(Recipe.FormatDuration(8f),  Is.EqualTo("8s"));
+        Assert.That(Recipe.FormatDuration(59f), Is.EqualTo("59s"));
+    }
+
+    [Test]
+    public void FormatDuration_LongBatchesShowDays(){
+        // 60s threshold → in-game days via World.ticksInDay (480 s/day).
+        Assert.That(Recipe.FormatDuration(World.ticksInDay),        Is.EqualTo("1 day"));
+        Assert.That(Recipe.FormatDuration(World.ticksInDay * 2f),   Is.EqualTo("2 days"));
+        Assert.That(Recipe.FormatDuration(World.ticksInDay * 1.5f), Is.EqualTo("1.5 days"));
     }
 }

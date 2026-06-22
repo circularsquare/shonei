@@ -56,8 +56,7 @@ public class OverlayGrowthSystem {
     const float DeathChancePerSecond       = 0.05f;     // per-tick chance to advance toward Dying or Dead while conditions warrant it
 
     // Bits we're allowed to flip ON: L, R, U (not D — no underside grass).
-    // Layout matches Tile.overlayMask: 0=L 1=R 2=D 3=U.
-    const byte GrowableSidesMask = 0b1011;
+    const byte GrowableSidesMask = (byte)(TileSide.L | TileSide.R | TileSide.U);
 
     // Max depth below the original surface where overlay growth is allowed.
     // Beyond this point, decoration belongs to the underground decoration set
@@ -93,9 +92,10 @@ public class OverlayGrowthSystem {
             for (int y = 0; y < ny; y++) {
                 Tile t = world.GetTileAt(x, y);
                 if (t.type.overlay == null) continue;
-                // Snow preserves the underlying grass intact — don't tick
-                // state or grow new sides while snow sits on top, otherwise
-                // the snapshot in tile.preSnowOverlay* drifts from reality.
+                // Snow preserves the underlying grass intact — don't tick state
+                // or grow new sides while snow sits on top. Freezing the tile here
+                // is what lets the live overlayMask/state survive untouched under
+                // snow (the renderer just hides the grass), so no snapshot needed.
                 if (t.snow) continue;
                 // Depth gate: grass overlay only grows within MaxDepthBelowSurface
                 // of the original surface. Tiles deeper than that get no new
@@ -115,10 +115,10 @@ public class OverlayGrowthSystem {
                 // WorldController.OnTileOverlayChanged so the renderer and growth
                 // agree on what "exposed" means.
                 int cMask = 0;
-                if (IsSolidAt(world, x - 1, y    )) cMask |= 1;
-                if (IsSolidAt(world, x + 1, y    )) cMask |= 2;
-                if (IsSolidAt(world, x,     y - 1)) cMask |= 4;
-                if (IsSolidAt(world, x,     y + 1)) cMask |= 8;
+                if (IsSolidAt(world, x - 1, y    )) cMask |= TileSide.L;
+                if (IsSolidAt(world, x + 1, y    )) cMask |= TileSide.R;
+                if (IsSolidAt(world, x,     y - 1)) cMask |= TileSide.D;
+                if (IsSolidAt(world, x,     y + 1)) cMask |= TileSide.U;
 
                 // Fully buried — skip both state evolution and growth. Buried
                 // grass is treated as preserved-in-place: insulated from surface

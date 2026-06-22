@@ -13,7 +13,8 @@ public class JobDisplay : MonoBehaviour, IPointerClickHandler {
     public void OnClickJobButton(){
         string buttonType = EventSystem.current.currentSelectedGameObject.name.Split('_')[1];
         string jobName = this.gameObject.name.Split('_')[1];
-        AnimalController.instance.OnClickJobAssignment(jobName, buttonType);
+        // Ctrl-click assigns/unassigns 10 at a time (UIInput.StepMultiplier).
+        AnimalController.instance.OnClickJobAssignment(jobName, buttonType, UIInput.StepMultiplier);
     }
 
     // Clicking the label cycles the InfoPanel through mice that have this job.

@@ -157,7 +157,22 @@ public class AnimalInfoView : MonoBehaviour {
         t += "\n eff: " + ani.efficiency.ToString("F2") + Help.Icon("eff") +
             "\n full: " + ani.eating.Fullness().ToString("F2") +
             "\n eep: " + ani.eeping.Eepness().ToString("F2") +
-            FormatHappiness(ani.happiness);
+            FormatHappiness(ani.happiness) +
+            FormatBuffs(ani.buffs);
         return t;
+    }
+
+    // Active tonic buffs, one line each, with time remaining. The whole section is omitted when the
+    // mouse has no buffs (so the panel stays clean for the common case).
+    static string FormatBuffs(BuffSet buffs) {
+        var sb = new StringBuilder();
+        bool any = false;
+        foreach (var b in buffs.Active()) {
+            if (!any) { sb.Append("\n current buffs:"); any = true; }
+            float days = World.ticksInDay > 0 ? b.remaining / World.ticksInDay : 0f;
+            string left = days >= 1f ? $"{days:0}d" : $"{days:0.0}d";
+            sb.Append($"\n  {BuffSet.Label(b.type)} ({left})");
+        }
+        return sb.ToString();
     }
 }

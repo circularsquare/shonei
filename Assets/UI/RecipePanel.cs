@@ -35,11 +35,6 @@ public class RecipePanel : MonoBehaviour {
     // Rebuild reads it but never clears it (see ClearExpandedGroups / SetExpandedGroups).
     readonly HashSet<string>          expandedGroups  = new HashSet<string>();
 
-    // Processes (ProcessorRecipe) the player has turned off, keyed by building name (one
-    // process per building today). Gates the FillProcessor work order so no new batches
-    // start. Instance field like disabledRecipes; persisted via SaveSystem.
-    readonly HashSet<string>          disabledProcesses = new HashSet<string>();
-
     // Real recipe ids the single "write a book" proxy stands in for (one per tech book).
     // Rebuilt each Rebuild(); used so the proxy's On/Off drives every book recipe at once.
     readonly List<int>                bookRecipeIds   = new List<int>();
@@ -141,8 +136,7 @@ public class RecipePanel : MonoBehaviour {
 
         detailCard = Instantiate(recipeDisplayPrefab, detailContainer, false);
         detailCard.name = "DetailCard";
-        if (selectedRow.ProcessData != null) detailCard.Setup(selectedRow.ProcessData);
-        else                                 detailCard.Setup(selectedRow.RecipeData);
+        detailCard.Setup(selectedRow.RecipeData);
         LayoutUtil.RebuildImmediate(detailContainer);
     }
 
@@ -199,23 +193,13 @@ public class RecipePanel : MonoBehaviour {
             list.Add(display);
         }
 
-        // Fold in processes (passive timed conversions), grouped under their building —
-        // so e.g. the brewery shows its craft recipe and its fermentation together. A
-        // process-only building gets a group of its own, appended after the craft ones.
-        var procByTile = new Dictionary<string, List<ProcessorRecipe>>();
-        if (Db.processorRecipesByBuilding != null) {
-            foreach (var kv in Db.processorRecipesByBuilding) {
-                string tile = kv.Key;
-                if (!IsWorkstationAvailable(tile)) continue; // hide processes until their building is reachable
-                procByTile[tile] = kv.Value;
-                if (!byTile.ContainsKey(tile)) { byTile[tile] = new List<Recipe>(); order.Add(tile); }
-            }
-        }
+        // Processor (batch-conversion) recipes are ordinary Recipes in Db.recipes, so the loop
+        // above already grouped them under their building alongside its craft recipes — e.g. the
+        // brewery shows its yeast craft and its rice-wine ferment together. No separate pass.
 
         for (int i = 0; i < order.Count; i++) {
             string tile = order[i];
-            procByTile.TryGetValue(tile, out var procs);
-            SpawnGroup(tile, byTile[tile], procs);
+            SpawnGroup(tile, byTile[tile]);
             if (i < order.Count - 1) SpawnDivider(); // separate workstation sections
         }
 
@@ -246,12 +230,12 @@ public class RecipePanel : MonoBehaviour {
         le.minHeight = le.preferredHeight = 2f;
     }
 
-    void SpawnGroup(string tile, List<Recipe> recipes, List<ProcessorRecipe> processes) {
+    void SpawnGroup(string tile, List<Recipe> recipes) {
         StructType st = (Db.structTypeByName != null && Db.structTypeByName.TryGetValue(tile, out var t)) ? t : null;
 
         var group = Instantiate(recipeGroupPrefab, recipeListContent, false);
         group.name = "RecipeGroup_" + tile;
-        group.Setup(tile, st, recipes, processes, recipeRowPrefab, IsGroupExpanded(tile));
+        group.Setup(tile, st, recipes, recipeRowPrefab, IsGroupExpanded(tile));
         spawnedGroups.Add(group);
     }
 
@@ -358,35 +342,6 @@ public class RecipePanel : MonoBehaviour {
     public int  DisabledCount                    => disabledRecipes.Count;
     public void CopyDisabledIds(int[] dest)      => disabledRecipes.CopyTo(dest);
     public void ClearDisabled()                  => disabledRecipes.Clear();
-
-    // --- Process allow/disable (by building name; gates FillProcessor, see WorkOrderManager) ---
-
-    public bool IsProcessAllowed(string building) => !disabledProcesses.Contains(building);
-
-    public void SetProcessAllowed(string building, bool allowed) {
-        if (allowed) disabledProcesses.Remove(building);
-        else         disabledProcesses.Add(building);
-    }
-
-    public int      DisabledProcessCount             => disabledProcesses.Count;
-    public string[] CopyDisabledProcesses()          { var a = new string[disabledProcesses.Count]; disabledProcesses.CopyTo(a); return a; }
-    public void     SetDisabledProcesses(string[] b) { disabledProcesses.Clear(); if (b != null) foreach (string s in b) disabledProcesses.Add(s); }
-    public void     ClearDisabledProcesses()         => disabledProcesses.Clear();
-
-    // --- Unified allow dispatch (one entry is a craft Recipe — incl. book proxy — OR a
-    //     ProcessorRecipe). Used by both the list rows and the detail card so the
-    //     craft/process/book routing lives in one place. ---
-
-    public bool IsEntryAllowed(Recipe r, ProcessorRecipe p) {
-        if (p != null) return IsProcessAllowed(p.building);
-        if (r != null) return IsAllowed(r.id); // handles the BookProxyRecipeId sentinel
-        return true;
-    }
-
-    public void ToggleEntryAllowed(Recipe r, ProcessorRecipe p) {
-        if (p != null)      SetProcessAllowed(p.building, !IsProcessAllowed(p.building));
-        else if (r != null) SetAllowed(r.id, !IsAllowed(r.id));
-    }
 
     // --- Expanded workstation groups (persisted; see SaveSystem) ---
 

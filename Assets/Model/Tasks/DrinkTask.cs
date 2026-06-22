@@ -20,6 +20,8 @@ public class DrinkTask : Task {
 
     public override bool Initialize() {
         if (riceWineItem == null && !Db.itemByName.TryGetValue("rice wine", out riceWineItem)) return false;
+        // "Don't consume" rice wine ⇒ no drinking it for leisure.
+        if (InventoryController.instance != null && InventoryController.instance.IsConsumptionDisabled(riceWineItem)) return false;
 
         // Nearest reachable wine stack. FindPathItemStack is read-only (no reservation),
         // so re-check the unreserved amount before committing.

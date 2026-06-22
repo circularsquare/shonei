@@ -304,6 +304,32 @@ Current values (per-year units):
 
 ---
 
+## Don't-consume protection (added 2026-06-21)
+
+A player-set per-leaf flag that stops mice **using up** an item. State lives in
+`InventoryController.consumptionDisabled` (a `HashSet<int>` of leaf ids, next to `targets`;
+predicate `IsConsumptionDisabled(item)`, group-fan setter `SetConsumptionDisabled`). Edited via the
+**GlobalInventoryPanel** "don't consume" toggle (see SPEC-ui). Persisted by name in
+`WorldSaveData.consumptionDisabled`; cleared on world reset by `InventoryController.ResetState`.
+
+**Enforced at SELECTION time, never mid-task** — guarding at execution (a mouse already carrying the
+food, a craft task mid-flight) would deadlock or fail in-flight tasks. Protection only stops items
+being *chosen*; an item already in-hand may still finish its task (accepted edge). Gate sites:
+
+- **Craft / processor eligibility** — `GlobalInventory.CanCraft` uses `ConsumableQuantity` (sum of
+  *non-protected* leaves, group-aware) per input + `ConsumableFuelEnergy` for fuel, so a recipe whose
+  only stock of an input/fuel is protected is simply not picked. Raw `Quantity` / `SufficientResources`
+  are unchanged (display + scoring still see everything).
+- **Input leaf choice** — `Task.ResolveConsumeLeaf` skips protected leaves.
+- **Eating** — `Animal.FindFood` skips protected foods.
+- **Fuel** — `GlobalInventory.PickFuel` skips protected leaves; round-sizing uses `ConsumableFuelEnergy`.
+- **Leisure / repair** — `DrinkTask` (rice wine) and `MaintenanceTask` (cost leaf) bail at `Initialize`.
+
+Independent of `RecipePanel.disabledRecipes` (the recipe on/off switch) — both gate crafting, no
+conflict. EditMode coverage: `Assets/Tests/Editor/ConsumptionGuardTests.cs`.
+
+---
+
 ## Water System (added 2026-03-19, rendering overhauled 2026-03-20)
 
 `Assets/Controller/WaterController.cs` — singleton MonoBehaviour; must be in the scene.
@@ -406,28 +432,40 @@ When balancing a plant's `[moistureMin, moistureMax]` comfort window against `gr
 
 Caveats: steady-state only (first cycle on a fresh world starts easier now — `StartingMoisture = 90` — though weather starts clear); temperature gate is independent (hard) and multiplies on top; the stage-crossing cost (`stageMoistureCost`, default 4) is effectively free vs. the comfort gate as long as `mLo ≥ stageMoistureCost`.
 
-## Fermentation processors
+## Processors (batch converters: tended & untended)
 
-A `Processor` is an optional `Building` component (sibling to `Workstation` / `Reservoir`, in `Processor.cs`) — a **passive timed converter**. Created when `StructType.hasProcessor` is set; the conversion it runs — inputs, outputs, `processDays`, temperature ramp, Working-state tint — is a `ProcessorRecipe` loaded from `processorRecipesDb.json` and linked to the building by name (see SPEC-data.md §`processorRecipesDb.json`). The `Processor` holds its recipe by reference, so a future "select a process" feature only has to reassign it. The brewery is the first user (rice + water + yeast → rice wine); the component is generic, so vinegar / soy-sauce / compost buildings can reuse it by adding a building plus a processor recipe — no new code.
+A `Processor` is an optional `Building` component (sibling to `Workstation` / `Reservoir`, in `Processor.cs`) — a **batch converter**: load a recipe's inputs into a buffer, let them transform for the recipe's `duration`, tap the whole batch out at once. Created when `StructType.hasProcessor`. The conversions it can run are ordinary **`Recipe`s** (`recipesDb.json`) with `tile == buildingName` and a `duration` (`recipe.isProcessorRecipe`, see SPEC-data.md) — so processors are **multi-recipe** and authored exactly like crafts. The recipe for each batch is **scored & chosen at fill time** (`Animal.PickProcessorRecipe`) and assigned via `Processor.SetBatchRecipe`; the buffers are sized once (ctor) to the largest recipe, so a batch can switch recipes with no reallocation.
 
-It differs from the worker-driven `CraftTask` paradigm: no worker is present during the wait, inputs are consumed at load time, and progress advances on world ticks regardless of who is nearby.
+**Two modes**, chosen by `StructType.processorTended`:
+- **UNTENDED** (brewery, foundry): no worker is present during the wait; `Working` advances passively in `Processor.Tick` — elapsed in-game **seconds** scaled by a temperature ramp (`Rate()` — linear between `processTempMin`/`processTempIdeal`, else constant 1.0) — then a worker taps the `Ready` batch.
+- **TENDED** (cauldron): a worker stands at the building and labours (`WorkProcessorTask`); `progress` accrues in `AnimalStateManager.HandleWorking` (~labour-seconds) and the batch **auto-taps** the instant it completes (no separate Ready/Tap walk). The inputs are NOT consumed per round — they sit in the buffer and the single `Tap()` is the whole conversion.
 
-**Two internal inventories** (neither is the building's `storage` — the brewery has no `storage`):
-- `inputBuffer` — `InvType.Reservoir`, so it accepts mixed item classes together (rice/water/yeast), never decays, and is never a haul source.
-- `output` — `InvType.Storage` (liquid), so the finished goods are a normal haul source.
+**Local-heat mode** (`StructType.processorLocalHeat`, foundry only — untended): the rate ramp reads the building's OWN heat-temperature instead of ambient weather. `Processor.heat` (degrees above ambient) is stoked by fuel: `StructController.TickUpdate` calls `Reservoir.Burn` then feeds the fen burned to `Processor.AddFuelHeat` **before** ticking the processor, so the heat lands the same frame it's gated on. Each tick `heat` decays toward ambient (`HeatRetentionPerTick`); `temperature = HeatToTemperature(heat, ambient) = ambient + heat` (the single conversion point, cached for the InfoPanel). A completed melt discretely draws `recipe.heatCost` from the pool (latent heat). Tuning constants (`HeatPerFuelEnergy`, `HeatRetentionPerTick`, `TempPerHeat`) are first-pass, playtest-tunable.
 
-**Lifecycle** (`Processor.State`): `Empty → Filling → Working → Ready → Tapped → Empty`.
-- `Empty` — a WOM `FillProcessor` order is open (`isActive`).
-- `Filling` — a cook is delivering inputs (`FillProcessorTask`); the fill order self-suppresses.
-- `Working` — inputs locked; `progress` accrues each tick via `Processor.Tick`, scaled by ambient temperature (`Rate()` — linear ramp between `processTempMin`/`processTempIdeal`, or constant 1.0 if unconfigured). On `progress ≥ processDays` → `Ready`.
-- `Ready` — a WOM `TapProcessor` order is open. `TapProcessorTask` → `Processor.Tap()` drains the inputs, produces the outputs, → `Tapped`.
-- `Tapped` — `output` holds the finished goods (haulable). `Tick` flips back to `Empty` once `output` is drained.
+A building can be **both** a craft workstation and a processor: the **brewery** crafts yeast (`workload` recipe in cook's `job.recipes`) *and* ferments rice wine (`duration` recipe, untended). Processor recipes are kept OUT of `job.recipes` so the craft dispatch never runs them as `CraftTask`s — the Fill/Work/Tap orders do.
 
-**Ticking**: `StructController.TickUpdate()` calls `Processor.Tick` for every building with a processor, alongside furnishing decay (no dedicated controller — fewer reload-state footguns).
+**Two internal inventories** (neither is the building's `storage`):
+- `inputBuffer` — `InvType.Reservoir`, accepts mixed item classes (inputs + fuel), never decays, not a haul source.
+- `output` — `InvType.Storage`, so the finished batch haul-routes normally. Sized to one batch; all recipes' outputs are `AllowItem`'d at construction. **Its `ItemClass` is DERIVED from the recipe outputs** (`Liquid` if all outputs are liquid — brewery/cauldron; else `Default` — foundry solids), NOT hardcoded. Load-bearing: Storage enforces an exact class match, so a hardcoded `Liquid` silently DROPS solid output (copper bars vanished on tap before this fix).
 
-**WOM**: `RegisterFillProcessor` / `RegisterTapProcessor` (priority 3, cook-gated) are registered from `Building.OnPlaced` and re-registered by `WorkOrderManager.ScanOrders` on load. `RemoveProcessorOrders` pairs with deconstruct. `Building.Destroy` drops both inventories' contents to the floor and destroys them.
+**Fuel**: a recipe's `fuelCost` is honoured by the cauldron — `SetBatchRecipe` commits a fuel leaf (`GlobalInventory.PickFuel`), the fill task hauls it into `inputBuffer` like any input, and `Tap()` drains it with the rest. `BatchLoaded()` gates Working on inputs **and** fuel present.
 
-**Save/load**: `StructureSaveData.processorState` / `processorProgress` / `processorInputData` / `processorOutputData` round-trip the full state. State/progress restore directly (no re-fired transitions); `ScanOrders` re-registers orders and any haul-out for a tank restored mid-`Tapped`.
+**Lifecycle** (`Processor.State`): `Empty → Filling → Working → (Ready →) Tapped → Empty`.
+- `Empty` — a WOM `FillProcessor` order is open.
+- `Filling` — a worker delivers the chosen batch's inputs + fuel (`FillProcessorTask`, resumable — keeps the same recipe on a partial top-up).
+- `Working` — loaded; advances passively (untended) or by a `WorkProcessor` worker (tended).
+- `Ready` — **untended only**: a WOM `TapProcessor` order is open. `TapProcessorTask` → `Processor.Tap()`.
+- `Tapped` — `output` holds the batch (haulable). `Tick` flips to `Empty` (clearing the recipe) once `output` drains.
+
+**Ticking**: `StructController.TickUpdate()` calls `Processor.Tick(0.2s, temp)` for every processor (advances untended Working + the Tapped→Empty drain).
+
+**WOM** (priority 3, gated by `JobOperatesProcessor` — any animal whose job owns a recipe for this building): `RegisterFillProcessor` always; `RegisterTapProcessor` (untended) **or** `RegisterWorkProcessor` (tended) — each self-skips the wrong mode. Registered from `Building.OnPlaced`, re-registered by `ScanOrders`. `RemoveProcessorOrders` pairs with deconstruct; `Building.Destroy` drops both inventories to the floor.
+
+**Output → tank**: `output` is an all-disallowed liquid Storage; `Tap` (untended) / the auto-tap (tended) register a **storage-eviction haul** so a hauler carries the batch to a real tank. No hard gate on a tank existing — `Tapped` just idles until one does. (This subsumes the old cauldron `TryAbsorbOutput` force-deposit; that hook still exists for craft outputs but no building overrides it now.)
+
+**Save/load**: `StructureSaveData.processorState` / `processorProgress` / `processorRecipeId` (nullable) / `processorInputData` / `processorOutputData` / `processorHeat` (local-heat charge). On load the recipe is re-bound AFTER the buffers restore (`ResolveProcessorRecipe` — by id, or for old saves the building's sole recipe / the one matching the buffer); `RestoreBatch` re-identifies the committed fuel leaf. `ScanOrders` re-registers orders + any haul-out for a tank restored mid-`Tapped`.
+
+**Visual**: `Processor.GetVisualFill` → `Building.TryGetDisplayLiquid` → `WaterController`. The fill always tracks the **actual liquid volume** against the pot's capacity (`PotCapacity` = `output` size, set by `processorCapacityLiang`), so a 5-liang batch in a 10-liang cauldron reads *half*, not full — and it's consistent across states (no jump): Filling/Working show the buffered LIQUID inputs (water, rising as loaded then held; tinted by `processColor` mid-batch), Ready/Tapped show the output liquid colour, draining as it's hauled off. The cauldron's fire light is a craft-gated `LightSource` (`lightWhileCrafting`) keyed on `Building.IsBeingWorked` (true for a CraftTask OR a tended `WorkProcessorTask`).
 
 ## Variable-shape structures
 
@@ -512,6 +550,18 @@ A side-mount hangs on a wall in the air tile beside it (no floor needed). `dir =
 - Outside range → `2 − deviation/5` happiness (smooth falloff from +2, crosses zero at 10°C deviation); efficiency = `max(0.7, 1.0 − deviation × 0.04)`.
 - Clothing expands the comfort range: `UpdateComfortRange()` shifts both bounds by ±3°C when any clothing item is equipped (7–28°C with a ramie shirt).
 - Fireplace warmth buff: leisuring at a fireplace grants a `warmth` value (0–5) that widens `comfortTempLow` by up to 5°C. Decays slowly over ~2 days (`×0.94` per SlowUpdate).
+- Tonic tolerance buffs: a **warming tonic** widens `comfortTempLow`, a **cooling tonic** widens `comfortTempHigh`, each by its `buffMagnitude` °C (`UpdateComfortRange` adds `buffs.Total(ColdTolerance)` / `Total(HeatTolerance)`). See §Timed buffs.
+
+### Timed buffs (tonics)
+
+`BuffSet` (`Model/Animal/Buffs.cs`) on every `Animal` (`animal.buffs`) holds short, expiring buffs from drinking tonics. `enum BuffType { WorkSpeed, ColdTolerance, HeatTolerance, SleepRecovery }`; one entry per type — re-drinking **refreshes** the timer and takes the stronger magnitude (never stacks). `Apply(type, magnitude, durationSeconds)` stamps an absolute `World.timer` expiry; `TickUpdate` calls `buffs.Tick()` each tick and re-runs `UpdateComfortRange` if anything expired.
+
+**Plug points** (where each effect is read — a buff is invisible unless queried here):
+- `WorkSpeed` → `ModifierSystem.GetWorkMultiplier` multiplies by `1 + Total(WorkSpeed)` (work only, not travel/energy).
+- `ColdTolerance` / `HeatTolerance` → `Happiness.UpdateComfortRange` (above).
+- `SleepRecovery` → `Animal.HandleNeeds` scales the `eeping.Eep` recovery rate by `1 + Total(SleepRecovery)`.
+
+Authored on the tonic **item** (`buffType`/`buffMagnitude`/`buffDuration`, SPEC-data); applied by `DrinkTonicTask`; mice seek tonics via the drink-tonic `ChooseTask` category (SPEC-ai). Persisted as **remaining duration** (`Serialize`/`Deserialize`, `AnimalSaveData.buffs`) so it survives a reload regardless of the world clock.
 
 **Rain/wind**: `WeatherSystem` advances rain state per in-game hour from `World.Update`. Rain probabilities: Clear → Rain 4%, Rain → Clear 12%. Lighting hooks (sun/ambient multipliers) are polled by `SunController` each frame. While raining, `OnHourElapsed` runs:
 
@@ -522,7 +572,7 @@ A side-mount hangs on a wall in the air tile beside it (no floor needed). `dir =
 
 **Snow vs rain**: a temperature gate inside `WeatherSystem` splits "isRaining" into two channels. Above `snowThresholdC = 2°C` the active channel is `rainAmount`; below, it's `snowAmount`. Both lerp on the same `MoveTowards` step. `RainReplenish` / `RainFillTanks` skip while snowing (snow doesn't fill puddles or tanks today; melt-driven water is a future feature). Light multipliers (`GetSunMultiplier`, `GetAmbientMultiplier`) use `max(rainAmount, snowAmount)` so an overcast snow scene dims identically to an overcast rain scene.
 
-**Snow accumulation**: `SnowAccumulationSystem` ticks once per in-game second from `World.Tick`. Per tile rules: if `tile.snow == false`, when `temperature < 0°C` and `WeatherSystem.snowAmount > 0`, roll `(1/10) × snowAmount` per second to flip `tile.snow = true`. Eligibility: `tile.type.solid` and `World.IsExposedAbove(x, y)`. Roads/buildings are not gated — sortingOrder layering in the renderer handles the visuals (snow draws above roads as a wintry road-cover; buildings draw above snow on their anchor tile, hiding it). **Grass preservation**: accumulation snapshots the live `overlayMask` and `overlayState` into `tile.preSnowOverlayMask`/`State` and clears the live mask so snow renders cleanly on top; `OverlayGrowthSystem` skips snowed tiles entirely so the snapshot doesn't drift. On melt, the snapshot is restored verbatim — same grass returns. Melt rolls when `tile.snow == true`: chance per second = `clamp01(((temp − 1°C) / 20°C)²)` — a quadratic ramp from `MeltStartC = 1°C` (no melt at/below) to `MeltFullC = 21°C` (100%/s). Squaring keeps melt near-zero just above freezing and accelerates with warmth, so snow survives a cold winter day and only clears once the afternoon warms well above freezing (mean-time-to-clear ≈ 1/chance: ~400s at 2°C, ~25s at 5°C, ~4s at 11°C). Because accumulation needs `temp < 0°C` but snow *falls* below `snowThresholdC = 2°C`, the 0–2°C band has snowfall that never sticks — meaningful accumulation happens only around the coldest days (≈ day 21), so the temperature noise above is what makes winter snow more than a rare event. Mining a snowy tile clears `tile.snow` and the grass snapshot automatically (the `Tile.type` setter, mirror of the grass `_overlayMask` reset). Save format: nullable `bool? snow`, `byte? preSnowOverlayMask`, `byte? preSnowOverlayState` on `TileSaveData` — absent on snow-free tiles or when there was no grass to preserve, keeping golden diffs minimal.
+**Snow accumulation**: `SnowAccumulationSystem` ticks once per in-game second from `World.Tick`. Snow is a **continuous depth** `byte tile.snowAmount` (0..`SnowMax = 100`), not a flag. Accumulation: when `temperature < 0°C`, `WeatherSystem.snowAmount > 0`, and the tile is eligible (`tile.type.solid` AND `World.IsExposedAbove(x, y)`), roll `(1/10) × snowAmount` per second; on a hit add `AccumStep` (capped at `SnowMax`) — so depth builds over sustained snowfall, including on already-snowed tiles. Roads/buildings are not gated — sortingOrder layering in the renderer handles the visuals (snow draws above roads as a wintry road-cover; buildings draw above snow on their anchor tile, hiding it). **Depth → texture**: `SnowLevel(snowAmount)` maps to 0 (none) / 1 / 2 / 3 (thresholds `Depth2Threshold`/`Depth3Threshold`), one renderer mesh per level (`snow1/2/3`); deterministic so no flicker near a threshold. **Grass preservation**: no snapshot — the renderer skips the grass overlay quad while `snowAmount > 0` (the snow mesh draws on top) and `OverlayGrowthSystem` freezes snowed tiles, so the live `overlayMask`/`overlayState` sit untouched and the same grass reappears on melt. **Melt**: when `temperature > MeltStartC = 1°C`, chance per second = `clamp01(((temp − 1°C) / 20°C)²)` (quadratic ramp to 100%/s at `MeltFullC = 21°C`); on a hit *subtract* `MeltStep` rather than clearing — a gradual draw-down through the depth textures, reaching 0 after ~`SnowMax/MeltStep` hits. Accum and melt are temperature-exclusive (accum needs `<0°C`, melt needs `>1°C`). Per-second hit chance: ~0.25% at 2°C, 4% at 5°C, 25% at 11°C. Because accumulation needs `temp < 0°C` but snow *falls* below `snowThresholdC = 2°C`, the 0–2°C band has snowfall that never sticks — meaningful accumulation happens only around the coldest days (≈ day 21). Mining a snowy tile clears `snowAmount` automatically (the `Tile.type` setter, alongside the grass `_overlayMask` reset). Save format: nullable `byte? snowAmount` on `TileSaveData` (absent on snow-free tiles); a legacy `bool? snow` is read load-only (pre-depth saves → full depth). Under-snow grass round-trips through the normal `overlayMask`/`overlayState` fields, so no separate snapshot is persisted.
 
 **Sky exposure**: `World.IsExposedAbove(x, y)` is the shared primitive. Returns true if no solid tile and no `solidTop`-or-`blocksRain` structure layer exists on any tile above `(x, y)`. Reused by rain-catch, windmills, the moisture rain-uptake gate, and snow accumulation.
 
@@ -554,6 +604,8 @@ Workstations don't use `Structure.res` — the WOM Craft order's `res` is the so
 |-----------|-------|---------------|
 | `ItemStack.resAmount` | Per-stack int counter (source) | Prevents two tasks from fetching the same items. Reserved via `Task.ReserveStack()` / `FetchAndReserve()`. Stale reservations expire via `Inventory.TickUpdate()` — see "Staleness expiry" below. |
 | `ItemStack.resSpace` | Per-stack int counter (destination) | Prevents two tasks from delivering to the same space. Reserved via `Task.ReserveSpace(inv, item, amount)`. `FreeSpace(item)` returns `stackSize - quantity - resSpace`. All space-checking methods (`GetStorageForItem`, `GetMergeSpace`, `HasSpaceForItem`) account for it. Empty stacks track `resSpaceItem` to prevent conflicting item claims. Stale reservations expire via `Inventory.TickUpdate()` — see "Staleness expiry" below. |
+
+**Release contract — exactly once, via the owning task.** `resAmount`/`resSpace` are *aggregate* counters: they hold the sum of all tasks' claims, but `resTask`/`resSpaceTask` only name the last reserver. So a quantity change can't tell *which* task lost a claim. When a task collects/deposits the items it reserved, pass it as `by` to `Inventory.MoveItemTo(otherInv, item, qty, by: task)`. That suppresses `ItemStack.AddItem`'s auto-clamp on the moved fen (`adjustReservation: false`) and routes the release through `Task.ConsumeSourceReservation` / `ConsumeSpaceReservation`, which decrement the counter *and* shrink the task's own `reservedStacks`/`reservedSpaces` entry by exactly the amount moved — so `Cleanup()` only releases the untaken remainder. Without `by`, the take would be released twice (clamp + Cleanup), drifting `resAmount` *below* the true outstanding claims; the stack would then falsely report `Available()` and over-subscribe (most visible under food scarcity: many mice converging on one shrinking pile, all but one aborting on arrival). `MoveItemTo` reclamps any unowned residual afterward (`ClampReservationsToCapacity`) to preserve `resAmount ≤ quantity`. **Any new objective that moves reserved items must pass `by: task`** — the four that do today are `FetchObjective`, `DeliverToInventoryObjective`, `ReceiveFromInventoryObjective`, `DropObjective`.
 
 ### Staleness expiry
 
@@ -616,7 +668,7 @@ Every `Structure` carries a `condition` float in `[0, 1]` (1 = pristine, 0 = ful
 | `BreakThreshold` | `0.5` | Below this → `IsBroken` → function gated off + grey tint. |
 | `RegisterThreshold` | `0.75` | Below this → `WantsMaintenance` → WOM Maintenance order is active. |
 | `MaxRepairPerTask` | `0.40` | A single mender visit can restore at most +40 % condition. Fully-broken (0 → 1) therefore requires 3 visits. |
-| `RepairWorkPerTick` | `0.05` | Base condition gained per work tick (≈ 8 ticks for a full-cap repair). |
+| `RepairLaborFraction` | `0.25` | A full 0→1 repair takes ¼ × `constructionCost` ticks of labour, so repair time scales with build time. Condition gained per tick (baseline) = `1 / (RepairLaborFraction × constructionCost)`. |
 | `RepairCostFraction` | `0.25` | A full 0→1 repair costs ¼ × `StructType.ncosts`. A single visit scales by `repairAmount` (e.g. 40 % repair = 10 % of build cost for each cost item). |
 | `DaysToBreak` | `30` | In-game days from 1.0 down to `BreakThreshold` (0.5). Full 1.0 → 0.0 takes ~60 days. Decay per tick = `(1 - BreakThreshold) / (DaysToBreak × World.ticksInDay)`. |
 
@@ -653,7 +705,7 @@ The Maintenance WOM order is **not removed** when condition climbs back into the
 3. **Pathfind**: `Nav.FindPathTo(target.workTile)`; aborts if unreachable.
 4. **Leaf resolution**: `Task.PickSupplyLeaf(group)` picks the highest-stock leaf per group cost item (single-leaf commit; no mixed-leaf delivery like blueprints). Shared with `SupplyBlueprintTask`.
 5. **Fetch chain**: one `FetchObjective` per cost item with reservations held by the task.
-6. **GoObjective** → **MaintenanceObjective** — ticks condition up by `RepairWorkPerTick × workEfficiency` per tick, grants Construction XP, stops at `startCondition + repairAmount` or `1.0`.
+6. **GoObjective** → **MaintenanceObjective** — ticks condition up by `workEfficiency / (RepairLaborFraction × constructionCost)` per tick (so repair time scales with build time), grants Construction XP, stops at `startCondition + repairAmount` or `1.0`.
 7. **Completion**: consume fetched materials from mender inventory; call `MaintenanceSystem.OnRepaired(target)` + `target.RefreshTint()`.
 
 **Nearest-below-75-%** target selection is emergent — `WorkOrderManager.ChooseOrder` distance-sorts within a priority tier, and `isActive = () => s.WantsMaintenance` narrows the candidate pool to qualifying structures. No bespoke selection code.

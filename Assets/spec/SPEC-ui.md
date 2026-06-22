@@ -60,13 +60,24 @@ Each row represents one item type in the tree. The same prefab is used in both t
 
 | DisplayMode | Targets (+/-) | Target text | Allow toggle | Used by |
 |-------------|---------------|-------------|--------------|---------|
-| `Global` | Leaf rows only | Leaf rows only | Hidden | Global panel |
+| `Global` | **Hidden** | **Hidden** | Hidden | Global panel — shows icon + name + count only |
 | `Storage` | Hidden | Hidden | Visible | StoragePanel allow tree |
 | `Market` | Leaf rows only | Leaf rows only | Hidden | TradingPanel market inventory tree |
+
+**Target editing moved off the always-visible panel.** As of the GlobalInventoryPanel feature, the
+always-visible Global panel is read-only (count only) — the editable target chrome (slash + input +
+steppers) is **Market-mode only** in `ItemDisplay.SetDisplayMode` (`showLeafTarget = mode == Market`).
+Targets are now edited in the full-screen **GlobalInventoryPanel** (below), which writes the same
+`InventoryController.targets` dict — single source of truth, unchanged save format.
 
 Group items hold no target (a group input resolves to a concrete leaf at scoring/consumption time
 — see SPEC-ai § recipe scoring), so the target widget is hidden on **group** rows in both Global and
 Market modes; only leaf rows show it. The +/- handlers also early-return on group items defensively.
+
+**Ctrl-click = 10× on any +/- stepper.** Target steppers (ItemDisplay, InventoryDetailRow) and the
+jobs panel +/- buttons multiply their normal step by `UIInput.StepMultiplier` (10 when Ctrl is held,
+else 1), read per-click. New +/- buttons should use the same helper for consistency — except small
+fixed-range controls (blueprint priority, worker slots) where 10× would just clamp.
 
 **Group rows still show their summed quantity.** The `Quantity` text lives inside the `TargetGroup`
 container (alongside `Slash` + `TargetInput`). `SetDisplayMode` keeps `TargetGroup` (`targetTextGo`)
@@ -148,6 +159,53 @@ A second set of ItemDisplay instances (separate from the global panel's) with `D
 - AllowAll / DenyAll buttons wired to `StoragePanel.OnClickAllowAll/DenyAll` — apply to all `selectedInventories`
 - Copy/paste filters: Shift+LMB on storage = copy, Shift+RMB = paste (handled by `MouseController` → `InventoryController.CopyAllowed/PasteAllowed`); operates on the single clicked tile regardless of multi-selection
 
+## GlobalInventoryPanel (detailed inventory)
+
+`Assets/UI/GlobalInventoryPanel.cs` — full-screen **exclusive** panel (registers via
+`UI.RegisterExclusive`, opens via `UI.OpenExclusive`, 0.5 s refresh while open), modeled on
+`RecipePanel`. Opened by the **"details"** button in the always-visible inventory header
+(`UI/InventoryScroll/.../InventoryTitle/DetailsButton`, persistent `onClick → Toggle`). It is the
+detailed counterpart to the always-visible panel, hosting the controls that were pulled off it.
+
+Per item it shows: **location breakdown** — Total + Storage + Floor + Carried (= `Animal` + `Equip`
+slots) + Market — plus the **editable target** (leaf rows; writes `InventoryController.targets`) and a
+**"don't consume"** toggle. The four breakdown buckets need not sum to Total; the remainder is in
+building buffers (processor/reservoir/blueprint) and Total is authoritative. Breakdown numbers come
+from `InventoryController.QuantityIn(item, params InvType[])`.
+
+**Row tree** — `InventoryDetailRow` (`Assets/UI/InventoryDetailRow.cs`, prefab
+`Resources/Prefabs/InventoryDetailRow`). Rows are a **flat sibling list** under the scroll content
+(parents precede children, `Db.items` order); depth is a leading **indent spacer**, not nested
+LayoutGroups (avoids the pixel-font-blur / layout churn nested groups cause here). Collapse =
+visibility: the panel's `IsVisible` walks ancestors' own `open` state (independent of the
+always-visible panel's collapse, mirroring `InventoryController.IsVisibleInTree` + `discoveredItems`).
+The row prefab was built by **cloning ItemDisplay's** styled widgets (ItemIcon, TMP_InputField target,
++/- steppers, dropdown) so styling matches; the consume toggle uses `check` (consumable) / `redx`
+(protected). Group rows show their target as a **read-only number** (the sum of discovered leaf
+targets, `InventoryDetailRow.BarTarget`) — input non-interactable, steppers hidden — so it isn't
+edited per-group; and read protected only when **every** leaf is protected — one click
+protects/clears the whole group via `InventoryController.SetConsumptionDisabled`.
+
+**Distribution bar** (`InventoryBar`, `Assets/UI/InventoryBar.cs`) — the "where" column. A
+fixed-width pill (`Sprites/Misc/progressbar` used as a `Mask`) with colored segments clipped to the
+pill shape: storage (green) / floor (yellow) / mice (gray) / market (blue) / installed=reservoir fuel
++ building furnishings (brown) / elsewhere=blueprint+processor buffers, in transit (orange). The
+breakdown columns show only storage/floor/mice/market as numbers; installed + elsewhere appear on the
+bar only. Width modes: **target > owned** → bar spans the target, the shortfall is a dark
+dull-red deficit zone; **target ≤ owned** → bar spans owned, target is a dark-red marker line
+(fraction = target/scale, so it pins to the right end once target ≥ owned). On **leaf** rows the
+marker is **draggable** (a wide transparent hit zone + thin overhanging line): drag left/right and
+the target commits **on release** to `fraction × scale` (snapped to 0.1 liang) — dragging past the
+right edge multiplies the target. Group markers sit flush (no overhang) and aren't draggable.
+Per-segment `Tooltippable` ("6.4 in storage"). Segments are code-built once and reused; visibility is
+toggled via `Image.enabled` (a disabled Graphic doesn't raycast) — never `SetActive`/disabling the
+Tooltippable, which would trip `OnDisable→Hide`. For a **group** row the bar target sums only
+**discovered** leaf targets (`InventoryDetailRow.BarTarget`) so it doesn't deficit against
+not-yet-unlocked leaves (oak/maple).
+
+The "don't consume" gameplay mechanic (what protection actually gates) lives in **SPEC-systems.md
+§Don't-consume**.
+
 ## InfoPanel (tabbed)
 
 `Assets/UI/InfoPanel.cs` — singleton tab container that displays details about selected entities.
@@ -179,6 +237,7 @@ A `ComfortBar` (`tempBar`, between the text blob and SkillsContainer) shows the 
 - **Harvest flag toggle** (plants only) — calls `Plant.SetHarvestFlagged`, which registers or unregisters the harvest WOM order and toggles the overlay sprite. Label flips between "flag for harvest" / "unflag harvest".
 - **Comfort bars** (plants only) — temperature + soil-moisture shown as two `ComfortBar` widgets (`TempBar`/`MoistureBar` rows) instead of text. Yellow track = stalled range, green overlay = comfortable band, circle marker = current value; hover shows exact range + value + the growth-effect note. `ShowPlantComfort` drives them per refresh; `SetComfortVisible(false)` hides them for buildings/blueprints/base structures.
 - **Target-gated dormancy alert** (plants only) — when a flagged plant is ripe but every product is at/above its global target, the panel shows red "will not harvest: outputs above target". Mirrors the WOM order's `isActive` gate; the order also surfaces with `[inactive]` next to its `wo: Harvest 0/1` row (via `AppendTileOrders`'s shared `[inactive]` suffix, same as `AppendBuildingOrders`).
+- **Cost rows** (construction blueprints only) — one `BlueprintCostRow` per `Blueprint.costs[i]`, spawned from `costRowPrefab` into the scene-authored `CostRows` container (a VerticalLayoutGroup at sibling index 1, after `Text`). Each row shows the item icon + `name have/need`. For a group-item cost currently locked to a concrete leaf, an **X** button disallows that variant (`Blueprint.DisallowLeaf`; tooltip "disallow {leaf}"); one cancel chip per already-banned leaf re-allows it (`AllowLeaf`; tooltip "{leaf} disallowed"). Chips are built in code (icon-only). **Lifecycle gotcha:** rows are rebuilt structurally only on tab-show and after a ban toggle (`RebuildCostRows`), never per tick — per-tick `Refresh` calls `BlueprintCostRow.UpdateDynamic` (label + idempotent X visibility) so a hovered tooltip isn't torn down by a SetActive/Destroy (see the Tooltippable per-tick memory). Deconstruct blueprints show no rows. See SPEC-ai §Blueprint costs for the model side.
 
 ### SelectionContext
 `Assets/Model/SelectionContext.cs` — plain C# class built by `MouseController.HandleSelectClick`. Contains `tile`, `List<Structure>`, `List<Blueprint>`, `List<Animal>`. Factory: `SelectionContext.FromTile(tile, animals)`.
@@ -371,15 +430,16 @@ required `CanvasGroup`). Absent buttons here are by design, not a bug:
   building is *built* (`GetByType` count > 0; blueprints under construction don't count).
   `BuildingBuiltGate` is generic — reuse it to gate any button on a building existing.
 
-**Allow dispatch** is unified on `RecipePanel.IsEntryAllowed/ToggleEntryAllowed(recipe,
-process)` (used by both rows and the detail card), routing craft → `disabledRecipes` (id),
-process → `disabledProcesses` (building name, gates the `FillProcessor` work order), book →
-`BookProxyRecipeId` sentinel. Icons: `Sprites/Misc/check` / `redx` at **native 11×11** (do
-not scale — keeps the pixel art crisp).
+**Allow dispatch**: every row (craft, processor, or the book proxy) routes through
+`RecipePanel.IsAllowed(id)` / `SetAllowed(id, …)` → `disabledRecipes` (by id). Processor
+recipes are ordinary `Recipe`s, so a disabled one is skipped at fill time by
+`PickProcessorRecipe`; the book proxy uses the `BookProxyRecipeId` sentinel. Icons:
+`Sprites/Misc/check` / `redx` at **native 11×11** (do not scale — keeps the pixel art crisp).
 
 **Special display cases**: book-writing recipes (output `ItemClass.Book`) collapse into one
-"write a book" proxy whose toggle drives all book recipes; processes (ProcessorRecipe)
-appear under their building with a `Nd at T°` header; `hidden`-flagged recipes (dig/mine/
+"write a book" proxy whose toggle drives all book recipes; processor recipes (a `Recipe` with a
+`duration`) appear under their building with a `FormatDuration at T°` header (e.g. `2 days at 25°`);
+`hidden`-flagged recipes (dig/mine/
 wheel) are omitted entirely. Expanded-group state persists (`expandedRecipeGroups`); see
 SPEC-data.md for the recipe/process panel data notes. Layout reveals use
 `LayoutUtil.RebuildImmediate` (see above) to avoid the min-height pop.
@@ -526,6 +586,9 @@ still hug their text.
 | `Assets/Components/CollapsibleHeader.cs` | Reusable header row that collapses/expands later siblings; used by inventory + jobs panels |
 | `Assets/UI/ItemDisplay.cs` | Row prefab component (tree collapse, targets, allow toggle) |
 | `Assets/UI/StoragePanel.cs` | Storage detail panel (slot view + allow tree; handles liquid storage too) |
+| `Assets/UI/GlobalInventoryPanel.cs` | Full-screen exclusive detail panel: per-item location breakdown + target editing + don't-consume toggle |
+| `Assets/UI/InventoryDetailRow.cs` | One row in GlobalInventoryPanel (prefab `Resources/Prefabs/InventoryDetailRow`) — flat-list, indent-for-depth |
+| `Assets/UI/InventoryBar.cs` | The row's "where" distribution bar — colored location segments + deficit/target marker, per-segment tooltips |
 | `Assets/Components/StorageSlotDisplay.cs` | Compact slot row text display |
 | `Assets/Model/Inventory.cs` | Data model (itemStacks, allowed dict, InvType) |
 | `Assets/Model/GlobalInventory.cs` | Global quantity totals |

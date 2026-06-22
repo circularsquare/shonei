@@ -83,25 +83,30 @@ public class TradingClient : MonoBehaviour {
         if (!MarketServer.UseLocal)
             Debug.LogWarning("[market] editor is connected to PRODUCTION — orders here hit the live market");
 #endif
-        ws = new WebSocket(url);
+        // finally clears isConnecting on EVERY exit, incl. a throwing ws.Connect() — else the
+        // flag latches true and ReconnectLoop's `!isConnecting` guard kills reconnect for good.
+        try {
+            ws = new WebSocket(url);
 
-        ws.OnMessage += (bytes) => {
-            string raw = Encoding.UTF8.GetString(bytes);
-            HandleMessage(raw);
-        };
+            ws.OnMessage += (bytes) => {
+                string raw = Encoding.UTF8.GetString(bytes);
+                HandleMessage(raw);
+            };
 
-        ws.OnOpen  += () => { Debug.Log("connected to server"); hasLoggedConnectError = false; hasLoggedDisconnect = false; SetOnline(true); };
-        ws.OnError += (e) => {
-            if (e == "Unable to connect to the remote server") {
-                if (!hasLoggedConnectError) { Debug.Log("ServerError: " + e); hasLoggedConnectError = true; }
-            } else {
-                Debug.Log("ServerError: " + e);
-            }
-        };
-        ws.OnClose += (e) => { if (!hasLoggedDisconnect) { Debug.Log("disconnected from server"); hasLoggedDisconnect = true; } SetOnline(false); };
+            ws.OnOpen  += () => { Debug.Log("connected to server"); hasLoggedConnectError = false; hasLoggedDisconnect = false; SetOnline(true); };
+            ws.OnError += (e) => {
+                if (e == "Unable to connect to the remote server") {
+                    if (!hasLoggedConnectError) { Debug.Log("ServerError: " + e); hasLoggedConnectError = true; }
+                } else {
+                    Debug.Log("ServerError: " + e);
+                }
+            };
+            ws.OnClose += (e) => { if (!hasLoggedDisconnect) { Debug.Log("disconnected from server"); hasLoggedDisconnect = true; } SetOnline(false); };
 
-        await ws.Connect();
-        isConnecting = false;
+            await ws.Connect();
+        } finally {
+            isConnecting = false;
+        }
     }
 
     void HandleMessage(string raw) {

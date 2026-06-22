@@ -102,12 +102,17 @@ public abstract class Task {
     // bias selection ×ExistingLeafBonus toward continuity. If another leaf still wins, this returns
     // it and the caller's space-reservation fails (can't mix in a single stack) — i.e. no top-up
     // this cycle, by design (see ExistingLeafBonus).
-    protected Item ResolveConsumeLeaf(Item item, Item preferLeaf = null) {
+    // excludeLeafIds: leaf item ids to skip outright — used by SupplyBlueprintTask to honour a
+    // blueprint's per-build variant ban (Blueprint.disallowedLeaves). Null = no extra exclusions.
+    protected Item ResolveConsumeLeaf(Item item, Item preferLeaf = null, HashSet<int> excludeLeafIds = null) {
         if (!item.IsGroup) return item;
         Item best = null;
         float bestScore = -1f;
-        var targets = InventoryController.instance?.targets;
+        var ic = InventoryController.instance;
+        var targets = ic?.targets;
         foreach (Item leaf in item.LeafDescendants()) {
+            if (excludeLeafIds != null && excludeLeafIds.Contains(leaf.id)) continue; // banned for this caller
+            if (ic != null && ic.IsConsumptionDisabled(leaf)) continue; // "don't consume" — never pick this leaf
             var (path, stack) = animal.nav.FindPathItemStack(leaf);
             if (path == null || stack == null) continue; // not in stock / not reachable
             int target = (targets != null && targets.TryGetValue(leaf.id, out int t)) ? t : 100;
@@ -187,6 +192,30 @@ public abstract class Task {
     protected void FetchAndReserve(ItemQuantity iq, Tile tile, ItemStack stack, Inventory targetInv){
         int reserved = ReserveStack(stack, iq.quantity);
         objectives.AddLast(new FetchObjective(this, iq, tile, targetInv, sourceInv: stack.inv, sourceLimit: reserved));
+    }
+
+    // Greedy nearest-neighbour visiting order over a set of source tiles, starting from
+    // (startX, startY). Returns indices into `tiles` in the order that minimises the fetch walk —
+    // a cheap heuristic (not optimal, ignores the final deliver leg), but for the handful of
+    // ingredients a recipe has it beats fetching in authoring order (closest needed item first).
+    // Null tiles sort to the end so they're never dropped.
+    protected static List<int> NearestFetchOrder(float startX, float startY, List<Tile> tiles){
+        var order = new List<int>(tiles.Count);
+        var taken = new bool[tiles.Count];
+        float cx = startX, cy = startY;
+        for (int n = 0; n < tiles.Count; n++){
+            int best = -1; float bestD = float.MaxValue;
+            for (int i = 0; i < tiles.Count; i++){
+                if (taken[i]) continue;
+                float d = tiles[i] != null ? Mathf.Abs(tiles[i].x - cx) + Mathf.Abs(tiles[i].y - cy) : float.MaxValue;
+                if (d < bestD){ bestD = d; best = i; }
+            }
+            if (best < 0) break;
+            taken[best] = true;
+            order.Add(best);
+            if (tiles[best] != null){ cx = tiles[best].x; cy = tiles[best].y; }
+        }
+        return order;
     }
 
     // Estimated walk time from anywhere on-map to the market portal at x=0.
@@ -347,6 +376,39 @@ public abstract class Task {
             reservedSpaces.RemoveAt(reservedSpaces.Count - 1);
         }
         lastReserveSpaceEntryCount = 0;
+    }
+
+    // Releases this task's SOURCE (resAmount) reservation on `inv` by `amount` — call right after
+    // physically taking reserved items (Inventory.MoveItemTo does this when given a `by` task). The
+    // taken fen leave the reservation accounting exactly once, here, so Cleanup() doesn't release
+    // them a second time. Shrinks the tracked reservedStacks entries for `inv`; the per-stack
+    // Unreserve is clamped to current resAmount so it can't underflow.
+    public void ConsumeSourceReservation(Inventory inv, int amount){
+        if (amount <= 0) return;
+        for (int i = 0; i < reservedStacks.Count && amount > 0; i++){
+            var (stack, entryAmt) = reservedStacks[i];
+            if (stack.inv != inv) continue;
+            int release = Math.Min(entryAmt, amount);
+            stack.Unreserve(Math.Min(release, stack.resAmount));
+            amount -= release;
+            if (release >= entryAmt){ reservedStacks.RemoveAt(i); i--; }
+            else reservedStacks[i] = (stack, entryAmt - release);
+        }
+    }
+
+    // Destination-space (resSpace) counterpart of ConsumeSourceReservation — call right after
+    // depositing into space this task reserved, so the filled space leaves the accounting once.
+    public void ConsumeSpaceReservation(Inventory inv, int amount){
+        if (amount <= 0) return;
+        for (int i = 0; i < reservedSpaces.Count && amount > 0; i++){
+            var (stack, entryAmt) = reservedSpaces[i];
+            if (stack.inv != inv) continue;
+            int release = Math.Min(entryAmt, amount);
+            stack.UnreserveSpace(Math.Min(release, stack.resSpace));
+            amount -= release;
+            if (release >= entryAmt){ reservedSpaces.RemoveAt(i); i--; }
+            else reservedSpaces[i] = (stack, entryAmt - release);
+        }
     }
 
     public void EnqueueFront(Objective obj) { objectives.AddFirst(obj); }

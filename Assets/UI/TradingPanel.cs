@@ -519,11 +519,14 @@ public class TradingPanel : MonoBehaviour {
 
         switch (cmd) {
             case "/give": CmdGive(parts); break;
+            case "/mice": CmdMice(parts); break;
             case "/rain": CmdRain(parts); break;
             case "/day":  CmdDay(parts);  break;
             case "/wind": CmdWind(parts); break;
+            case "/timespeed": CmdTimeSpeed(parts); break;
             case "/generate":   CmdGenerate(parts);   break;
             case "/regenerate": CmdRegenerate(parts); break;
+            case "/research": CmdResearch(parts); break;
             case "/online": CmdOnline(); break;
             default:
                 EventFeed.instance?.Post($"<color=#cc3333>Unknown command: {cmd}</color>", EventFeed.Category.Info);
@@ -627,6 +630,31 @@ public class TradingPanel : MonoBehaviour {
         }
         WeatherSystem.instance.SetWind(value);
         EventFeed.instance?.Post($"<color=#aaffaa>Wind set to {value:F2}.</color>", EventFeed.Category.Info);
+    }
+
+    // /timespeed [n] — set Time.timeScale to any value, beyond the 0x/1x/2x buttons.
+    // Cheat-only fast-forward (e.g. /timespeed 4). 0 pauses. Negative is rejected
+    // (Unity disallows it); an upper cap keeps fixedDeltaTime sane.
+    void CmdTimeSpeed(string[] parts) {
+        if (parts.Length != 2) {
+            EventFeed.instance?.Post("<color=#cc3333>Usage: /timespeed [n]</color>", EventFeed.Category.Info);
+            return;
+        }
+        if (!float.TryParse(parts[1], System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out float scale)) {
+            EventFeed.instance?.Post("<color=#cc3333>Speed must be a number.</color>", EventFeed.Category.Info);
+            return;
+        }
+        if (scale < 0f || scale > 100f) {
+            EventFeed.instance?.Post("<color=#cc3333>Speed must be between 0 and 100.</color>", EventFeed.Category.Info);
+            return;
+        }
+        if (TimeController.instance == null) {
+            EventFeed.instance?.Post("<color=#cc3333>TimeController not initialised.</color>", EventFeed.Category.Info);
+            return;
+        }
+        TimeController.instance.SetSpeed(scale);
+        EventFeed.instance?.Post($"<color=#aaffaa>Time speed set to {scale:0.##}x.</color>", EventFeed.Category.Info);
     }
 
     // /generate [seed] — wipe and rebuild the world from the given integer seed.
@@ -757,6 +785,77 @@ public class TradingPanel : MonoBehaviour {
             EventFeed.instance?.Post($"<color=#aaffaa>Gave {ItemStack.FormatQ(produced, item)} {itemName} to market.</color>", EventFeed.Category.Info);
         if (leftover > 0)
             EventFeed.instance?.Post($"<color=#cc3333>Could not fit {ItemStack.FormatQ(leftover, item)} {itemName} - market full.</color>", EventFeed.Category.Info);
+    }
+
+    // /mice [n] — set the colony population to exactly n (cheat). When n exceeds the
+    // current population, newcomers spawn clustered on the mouse nearest the original
+    // spawn point; when n is lower, mice are randomly culled. n == current is a no-op.
+    void CmdMice(string[] parts) {
+        if (parts.Length != 2) {
+            EventFeed.instance?.Post("<color=#cc3333>Usage: /mice [n]</color>", EventFeed.Category.Info);
+            return;
+        }
+        if (!int.TryParse(parts[1], System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture, out int target) || target < 0) {
+            EventFeed.instance?.Post("<color=#cc3333>Population must be a whole number >= 0.</color>", EventFeed.Category.Info);
+            return;
+        }
+        AnimalController ac = AnimalController.instance;
+        if (ac == null) {
+            EventFeed.instance?.Post("<color=#cc3333>AnimalController not initialised.</color>", EventFeed.Category.Info);
+            return;
+        }
+
+        int current = ac.na;
+        if (target == current) {
+            EventFeed.instance?.Post($"<color=#aaaaaa>Population already {current}.</color>", EventFeed.Category.Info);
+            return;
+        }
+
+        if (target > current) {
+            // ac.na won't reflect the new mice until they register next frame, so report
+            // the expected total from the spawn count rather than re-reading na.
+            int spawned = ac.DebugSpawnMice(target - current);
+            if (spawned > 0)
+                EventFeed.instance?.Post($"<color=#aaffaa>Spawned {spawned} mice (pop {current} -> {current + spawned}).</color>", EventFeed.Category.Info);
+            else
+                EventFeed.instance?.Post("<color=#cc3333>Couldn't spawn mice (at capacity or no spawn point).</color>", EventFeed.Category.Info);
+        } else {
+            int removed = ac.DebugRemoveMice(current - target);
+            EventFeed.instance?.Post($"<color=#aaffaa>Removed {removed} mice (pop {current} -> {current - removed}).</color>", EventFeed.Category.Info);
+        }
+    }
+
+    // /research        — fully research every tech (the old "unlock all" button).
+    // /research [id]    — fully research just the tech with this id (and its prereqs,
+    //                     so the unlock graph stays consistent).
+    void CmdResearch(string[] parts) {
+        ResearchSystem rs = ResearchSystem.instance;
+        if (rs == null) {
+            EventFeed.instance?.Post("<color=#cc3333>ResearchSystem not initialised.</color>", EventFeed.Category.Info);
+            return;
+        }
+
+        if (parts.Length == 1) {
+            rs.UnlockAll();
+            ResearchPanel.instance?.Refresh();
+            EventFeed.instance?.Post("<color=#aaffaa>All tech researched.</color>", EventFeed.Category.Info);
+            return;
+        }
+
+        if (parts.Length != 2 || !int.TryParse(parts[1], System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture, out int id)) {
+            EventFeed.instance?.Post("<color=#cc3333>Usage: /research or /research [id]</color>", EventFeed.Category.Info);
+            return;
+        }
+
+        if (!rs.MaxTech(id)) {
+            EventFeed.instance?.Post($"<color=#cc3333>No tech with id {id}.</color>", EventFeed.Category.Info);
+            return;
+        }
+        ResearchPanel.instance?.Refresh();
+        string techName = rs.nodeById.TryGetValue(id, out var node) ? node.name : id.ToString();
+        EventFeed.instance?.Post($"<color=#aaffaa>Researched tech {id} ({techName}).</color>", EventFeed.Category.Info);
     }
 
     // A fill changed the market inventory; refresh the holdings tree while the

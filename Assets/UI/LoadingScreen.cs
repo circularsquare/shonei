@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Debug = UnityEngine.Debug;
 
@@ -38,6 +39,11 @@ public class LoadingScreen : MonoBehaviour {
     public static bool Detailed = false;
 
     static LoadingScreen instance;
+
+    // True while the overlay is up (between Begin and End). Other systems gate on this —
+    // the game is paused during a load (see Begin), and autosave skips so a slow/hung load
+    // can't persist a half-built world (see SaveSystem.Update).
+    public static bool IsActive => instance != null && instance.canvas != null && instance.canvas.enabled;
 
     Canvas canvas;
 
@@ -77,6 +83,11 @@ public class LoadingScreen : MonoBehaviour {
         instance.RefreshLabel();
         instance.ApplyBar();
         instance.canvas.enabled = true;
+        // Pause the sim while loading: a load that hangs (or just runs across several frames)
+        // shouldn't tick the world or fire an autosave. End() deliberately does NOT resume —
+        // the post-load speed is path-dependent (new worlds stay paused for the settlement
+        // popup; loaded worlds resume in WorldController.Start) — so it's set there, not here.
+        TimeController.instance?.Pause();
     }
 
     public static void SetPhase(string phase) {
@@ -126,6 +137,18 @@ public class LoadingScreen : MonoBehaviour {
     // animates between phases on frames that actually render (the load yields a few).
     void Update() {
         if (totalSw == null || !canvas.enabled) return;
+        // Esc during a load bails back to the main menu — an escape hatch if a load is slow
+        // or stuck. Nothing is lost (the world is still loading), so unlike the in-game "main
+        // menu" button this needs no confirm. Restore normal speed first so the menu (no
+        // TimeController of its own) doesn't inherit the loading pause, and End() so the
+        // overlay doesn't linger over the menu (LoadingScreen is DontDestroyOnLoad).
+        if (Input.GetKeyDown(KeyCode.Escape)) {
+            Debug.Log("[LoadingScreen] Esc during load — returning to main menu.");
+            Time.timeScale = 1f;
+            End();
+            SceneManager.LoadScene("Menu");
+            return;
+        }
         // Ctrl+D reveals the detailed dev breakdown mid-load (and back).
         if (Input.GetKeyDown(KeyCode.D) && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)))
             SetDetailed(!Detailed);

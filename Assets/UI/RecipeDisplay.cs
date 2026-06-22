@@ -29,26 +29,19 @@ public class RecipeDisplay : MonoBehaviour {
     public Transform inputsContainer;   // InputsRow — item labels spawn here
     public Transform outputsContainer;  // OutputsRow — item labels spawn here
 
-    Recipe          recipe;   // set for craft recipes; null for processes
-    ProcessorRecipe process;  // set for processes; null for craft recipes
+    Recipe          recipe;   // the card's recipe — craft OR processor (recipe.isProcessorRecipe)
     Job             job;
     ItemQuantity[]  inputs;
     ItemQuantity[]  outputs;
     readonly List<TMP_Text> inputLabels  = new List<TMP_Text>();
     readonly List<TMP_Text> outputLabels = new List<TMP_Text>();
 
-    // Craft recipe card.
+    // Recipe card. A processor recipe (recipe.isProcessorRecipe) shows its batch duration in the
+    // header instead of a worker count; otherwise identical to a craft recipe.
     public void Setup(Recipe r) {
         recipe = r;
         job    = Db.GetJobByName(r.job);
         Build(string.IsNullOrEmpty(r.description) ? r.tile : r.description, r.inputs, r.outputs);
-    }
-
-    // Process card (passive timed conversion). No worker/job — the header shows brew time,
-    // and On/Off toggles the process by building (see RecipePanel.SetProcessAllowed).
-    public void Setup(ProcessorRecipe pr) {
-        process = pr;
-        Build(string.IsNullOrEmpty(pr.description) ? pr.building : pr.description, pr.inputs, pr.outputs);
     }
 
     // Allow toggle shown as the same circle/x icons as the inventory item-disallow UI
@@ -84,10 +77,10 @@ public class RecipeDisplay : MonoBehaviour {
         Refresh();
     }
 
-    // Detail-pane extra line: where the recipe came from + how long it takes. Built once
-    // (static per recipe). Skipped for processes — their header already shows time/temp.
+    // Detail-pane extra line: where the recipe came from + fuel cost. The "work" amount is
+    // shown only for craft recipes (workload>0); a processor recipe's batch time lives in the
+    // header instead (FormatProcessHeader), so its workload line auto-hides (workload==0).
     void BuildConditionsLine() {
-        if (process != null) return;
         var parts = new List<string>();
         string unlock = ResearchSystem.instance != null ? ResearchSystem.instance.GetUnlockResearchName(recipe.id) : null;
         if (!string.IsNullOrEmpty(unlock)) parts.Add("needs " + unlock);
@@ -176,9 +169,9 @@ public class RecipeDisplay : MonoBehaviour {
     }
 
     public void Refresh() {
-        if (process != null) {
-            // Passive process: no worker count — show brew time (+ ideal temp) instead.
-            jobText.text = FormatProcessHeader(process);
+        if (recipe.isProcessorRecipe) {
+            // Batch conversion: no live worker count — show batch time (+ ideal temp) instead.
+            jobText.text = FormatProcessHeader(recipe);
         } else {
             int count = 0;
             if (job != null && AnimalController.instance != null)
@@ -190,15 +183,15 @@ public class RecipeDisplay : MonoBehaviour {
         RefreshLabels(inputs,  inputLabels,  ginv, isOutput: false);
         RefreshLabels(outputs, outputLabels, ginv, isOutput: true);
 
-        bool allowed = RecipePanel.instance == null || RecipePanel.instance.IsEntryAllowed(recipe, process);
+        bool allowed = RecipePanel.instance == null || RecipePanel.instance.IsAllowed(recipe.id);
         if (allowButton.image != null) allowButton.image.sprite = allowed ? iconAllowed : iconDisallowed;
     }
 
-    // Process header: brew time + ideal temperature, e.g. "2d 25°" (° is now baked into m5x7).
-    static string FormatProcessHeader(ProcessorRecipe pr) {
-        string n = pr.processDays == Mathf.Floor(pr.processDays) ? ((int)pr.processDays).ToString() : pr.processDays.ToString("0.#");
-        string s = n + "d";
-        if (pr.processTempIdeal.HasValue) s += " at " + Mathf.RoundToInt(pr.processTempIdeal.Value) + "°";
+    // Processor-recipe header: batch time + ideal temperature, e.g. "2 days at 25°" (° is baked
+    // into m5x7). FormatDuration shows short batches in seconds, long ferments in in-game days.
+    static string FormatProcessHeader(Recipe r) {
+        string s = Recipe.FormatDuration(r.duration);
+        if (r.processTempIdeal.HasValue) s += " at " + Mathf.RoundToInt(r.processTempIdeal.Value) + "°";
         return s;
     }
 
@@ -225,7 +218,7 @@ public class RecipeDisplay : MonoBehaviour {
     void OnClickAllow() {
         var rp = RecipePanel.instance;
         if (rp == null) return;
-        rp.ToggleEntryAllowed(recipe, process);
+        rp.SetAllowed(recipe.id, !rp.IsAllowed(recipe.id));
         Refresh();
     }
 }

@@ -78,13 +78,11 @@ public class Tile {
                 cbOverlayChanged?.Invoke(this);
             }
             // Mining a snowy tile (or any transition to a non-solid type) clears
-            // the snow flag and the snapshotted under-snow grass — there's no
-            // surface left for it to rest on, and the grass it was preserving
-            // is gone with the tile.
-            if (_snow && (value == null || !value.solid)) {
-                _snow = false;
-                preSnowOverlayMask  = 0;
-                preSnowOverlayState = OverlayState.Live;
+            // the snow — there's no surface left for it to rest on. The overlayMask
+            // is cleared above in the same setter, so the under-snow grass goes with
+            // the tile too.
+            if (_snowAmount > 0 && (value == null || !value.solid)) {
+                _snowAmount = 0;
                 cbSnowChanged?.Invoke(this);
             }
             if (cbTileTypeChanged != null){
@@ -121,32 +119,30 @@ public class Tile {
             cbOverlayChanged?.Invoke(this);
         }
     }
-    // Weather-driven snow cover. Orthogonal to the grass overlay system above —
-    // snow is ephemeral, can land on any solid tile (dirt, stone, …) and
-    // *preserves* the underlying grass: at accumulation the live overlayMask
-    // and overlayState are snapshotted into preSnowOverlayMask/State and the
-    // live mask is cleared so the renderer hides grass while snow is on top;
-    // on melt the snapshot is restored. Driven by SnowAccumulationSystem from
-    // temperature + WeatherSystem.snowAmount; renderer subscribes to the change
-    // callback for sprite swaps. Cleared when the tile becomes non-solid
-    // (mining) — same pattern as overlayMask.
-    private bool _snow;
-    public bool snow {
-        get { return _snow; }
+    // Weather-driven snow cover, tracked as a continuous depth 0..SnowMax (byte).
+    // Orthogonal to the grass overlay system above — snow is ephemeral and can land
+    // on any solid tile (dirt, stone, …). It *preserves* the underlying grass with
+    // no snapshot: the renderer skips the grass overlay quad while snowAmount > 0
+    // (the snow mesh draws on top, picking a depth texture via
+    // SnowAccumulationSystem.SnowLevel), and OverlayGrowthSystem freezes snowed
+    // tiles, so the live overlayMask/State sit untouched and reappear on melt.
+    // Accumulation raises the depth, melt lowers it gradually — both in
+    // SnowAccumulationSystem (temperature + WeatherSystem.snowAmount). Renderer
+    // subscribes to cbSnowChanged for the overlay/snow rebuild. Cleared when the
+    // tile becomes non-solid (mining) — same pattern as overlayMask.
+    private byte _snowAmount;
+    public byte snowAmount {
+        get { return _snowAmount; }
         set {
-            if (_snow == value) return;
-            _snow = value;
+            if (_snowAmount == value) return;
+            _snowAmount = value;
             cbSnowChanged?.Invoke(this);
         }
     }
-    // Snapshot of the grass overlay at the moment snow accumulated, used to
-    // restore the underlying grass exactly when the snow melts. Plain fields
-    // (no callback) — they don't drive rendering directly; the actual
-    // overlayMask/overlayState properties do, and SnowAccumulationSystem
-    // copies between the snapshot and the live values. Meaningful only while
-    // snow == true; reset to (0, Live) on type change to non-solid.
-    public byte preSnowOverlayMask;
-    public OverlayState preSnowOverlayState;
+    // Presence shorthand for the readers that only care "is there snow" (renderer
+    // overlay-skip, OverlayGrowthSystem freeze, flower eligibility, save gate).
+    // Depth-aware consumers read snowAmount / SnowAccumulationSystem.SnowLevel.
+    public bool snow => _snowAmount > 0;
     // Background wall behind the tile (rendered by BackgroundTileMeshController).
     // Type is fixed at world-gen and never changes after mining: wall type
     // mirrors the worldgen dirt mask (wavy boundary) so cave-roof walls match

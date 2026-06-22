@@ -13,6 +13,79 @@
             { "name": "sawdust", "quantity": 1, "chance": 0.2 }
         ]
     },{
+        "id": 90,
+        "job": "apothecary",
+        "tile": "cauldron",
+        "description": "brew goji into vigor tonic",
+        "duration": 15,
+        "fuelCost": 2,
+        "ninputs": [
+            { "name": "goji", "quantity": 1 },
+            { "name": "water", "quantity": 5 }
+        ],
+        "noutputs": [
+            { "name": "vigor tonic", "quantity": 5 }
+        ]
+    },{
+        "id": 91,
+        "job": "apothecary",
+        "tile": "cauldron",
+        "description": "brew mugwort into warming tonic",
+        "duration": 15,
+        "fuelCost": 2,
+        "ninputs": [
+            { "name": "mugwort", "quantity": 1 },
+            { "name": "water", "quantity": 5 }
+        ],
+        "noutputs": [
+            { "name": "warming tonic", "quantity": 5 }
+        ]
+    },{
+        "id": 92,
+        "job": "apothecary",
+        "tile": "cauldron",
+        "description": "brew chrysanthemum into cooling tonic",
+        "duration": 15,
+        "fuelCost": 2,
+        "ninputs": [
+            { "name": "chrysanthemum", "quantity": 1 },
+            { "name": "water", "quantity": 5 }
+        ],
+        "noutputs": [
+            { "name": "cooling tonic", "quantity": 5 }
+        ]
+    },{
+        "id": 93,
+        "job": "apothecary",
+        "tile": "cauldron",
+        "description": "brew moonlily into restful tonic",
+        "duration": 15,
+        "fuelCost": 2,
+        "ninputs": [
+            { "name": "moonlily", "quantity": 1 },
+            { "name": "water", "quantity": 5 }
+        ],
+        "noutputs": [
+            { "name": "restful tonic", "quantity": 5 }
+        ]
+    },{
+        "id": 94,
+        "job": "cook",
+        "tile": "brewery",
+        "description": "ferment rice into rice wine",
+        "duration": 960,
+        "processTempMin": 5,
+        "processTempIdeal": 25,
+        "processColorHex": "#e8e8e3",
+        "ninputs": [
+            { "name": "rice", "quantity": 5 },
+            { "name": "water", "quantity": 10 },
+            { "name": "yeast", "quantity": 1 }
+        ],
+        "noutputs": [
+            { "name": "rice wine", "quantity": 10 }
+        ]
+    },{
         "id": 16,
         "job": "woodworker",
         "tile": "sawmill",
@@ -44,6 +117,7 @@
         "tile": "workshop",
         "description": "craft stone tools",
         "workload": 10.0,
+        "research": "Tools",
         "ninputs": [
             { "name": "planks", "quantity": 1 },
             { "name": "stone",  "quantity": 2 }
@@ -80,13 +154,13 @@
     },{
         "id": 8,
         "job": "smith",
-        "tile": "furnace",
+        "tile": "foundry",
         "description": "alloy copper and tin into bronze",
-        "hidden": true,
-        "workload": 6.0,
-        "fuelCost": 3,
+        "duration": 96,
+        "processTempMin": 300,
+        "processTempIdeal": 600,
+        "heatCost": 200,
         "research": "Metallurgy",
-        "researchPoints": 0.02,
         "ninputs": [
             { "name": "copper bar", "quantity": 1 },
             { "name": "tin bar", "quantity": 1 }
@@ -97,13 +171,13 @@
     },{
         "id": 3,
         "job": "smith",
-        "tile": "furnace",
+        "tile": "foundry",
         "description": "smelt glass",
-        "hidden": true,
-        "workload": 8.0,
-        "fuelCost": 3,
+        "duration": 48,
+        "processTempMin": 300,
+        "processTempIdeal": 600,
+        "heatCost": 150,
         "research": "Glassmaking",
-        "researchPoints": 0.02,
         "ninputs": [
             { "name": "sand", "quantity": 2 }
         ],
@@ -113,13 +187,13 @@
     },{
         "id": 4,
         "job": "smith",
-        "tile": "furnace",
+        "tile": "foundry",
         "description": "smelt malachite",
-        "hidden": true,
-        "workload": 6.0,
-        "fuelCost": 3,
+        "duration": 48,
+        "processTempMin": 300,
+        "processTempIdeal": 600,
+        "heatCost": 150,
         "research": "Metallurgy",
-        "researchPoints": 0.02,
         "ninputs": [
             { "name": "malachite", "quantity": 2 }
         ],
@@ -129,13 +203,13 @@
     },{
         "id": 5,
         "job": "smith",
-        "tile": "furnace",
+        "tile": "foundry",
         "description": "smelt cassiterite",
-        "hidden": true,
-        "workload": 6.0,
-        "fuelCost": 3,
+        "duration": 48,
+        "processTempMin": 300,
+        "processTempIdeal": 600,
+        "heatCost": 150,
         "research": "Metallurgy",
-        "researchPoints": 0.02,
         "ninputs": [
             { "name": "cassiterite", "quantity": 2 }
         ],
@@ -160,7 +234,6 @@
         "description": "create soymilk",
         "workload": 6.0,
         "research": "Soymilk",
-        "researchPoints": 0.02,
         "ninputs": [
             { "name": "soybeans", "quantity": 2.0 },
             { "name": "water", "quantity": 0.5 }
@@ -185,8 +258,7 @@
         "description": "mine stone",
         "workload": 24.0,
         "hidden": true,
-        "research": "Quarry",
-        "researchPoints": 0.02,
+        "research": "Mining",
         "ninputs": [
         ],
         "noutputs": [
@@ -198,7 +270,6 @@
         "description": "create tofu",
         "workload": 10.0,
         "research": "Tofu",
-        "researchPoints": 0.02,
         "ninputs": [
             { "name": "soymilk", "quantity": 2.0 },
             { "name": "gypsum", "quantity": 0.2 }
@@ -213,7 +284,6 @@
         "description": "weave ramie cloth",
         "workload": 6.0,
         "research": "Weaving",
-        "researchPoints": 0.02,
         "ninputs": [
             { "name": "ramie", "quantity": 2 }
         ],
@@ -227,7 +297,6 @@
         "description": "sew ramie shirt",
         "workload": 10.0,
         "research": "Tailoring",
-        "researchPoints": 0.02,
         "ninputs": [
             { "name": "ramie cloth", "quantity": 2 }
         ],
@@ -241,7 +310,6 @@
         "description": "create paper",
         "workload": 6.0,
         "research": "Papermaking",
-        "researchPoints": 0.02,
         "ninputs": [
             { "name": "wood", "quantity": 1 },
             { "name": "water", "quantity": 0.5 }
@@ -269,7 +337,6 @@
         "description": "ferment rice into yeast",
         "workload": 8.0,
         "research": "Fermentation",
-        "researchPoints": 0.02,
         "ninputs": [
             { "name": "rice", "quantity": 1 }
         ],
@@ -305,7 +372,6 @@
         "workload": 12.0,
         "fuelCost": 3,
         "research": "Metallurgy",
-        "researchPoints": 0.02,
         "ninputs": [
             { "name": "malachite", "quantity": 3 }
         ],
@@ -320,7 +386,6 @@
         "workload": 12.0,
         "fuelCost": 3,
         "research": "Metallurgy",
-        "researchPoints": 0.02,
         "ninputs": [
             { "name": "cassiterite", "quantity": 3 }
         ],
@@ -347,7 +412,6 @@
         "workload": 8.0,
         "fuelCost": 3,
         "research": "Glassmaking",
-        "researchPoints": 0.02,
         "ninputs": [
             { "name": "sand", "quantity": 2 }
         ],

@@ -112,7 +112,9 @@ public class ItemDisplay : MonoBehaviour {
         // its summed leaf total, e.g. "200" for wood). Storage mode hides it (no qty there).
         // The leaf-only target widgets (slash + editable target + steppers) hide for group rows,
         // so a group reads as a bare count with no dangling "/target".
-        bool showLeafTarget = !isGroupRow && inGlobalOrMarket;
+        // Target EDITING now lives in the full-screen GlobalInventoryPanel, so the always-visible
+        // Global panel shows count only — the editable target chrome is Market-mode only here.
+        bool showLeafTarget = !isGroupRow && mode == DisplayMode.Market;
         bool showToggle     = mode == DisplayMode.Storage;
         if (targetTextGo != null) targetTextGo.SetActive(inGlobalOrMarket);
         if (slashGo != null)      slashGo.SetActive(showLeafTarget);
@@ -213,9 +215,10 @@ public class ItemDisplay : MonoBehaviour {
         return (sel?.invType == Inventory.InvType.Market) ? sel : null;
     }
 
-    // Up/down buttons step the target by 1 liang (100 fen). Clamped to ≥0.
-    public void OnClickTargetUp()   => AdjustTarget(+100);
-    public void OnClickTargetDown() => AdjustTarget(-100);
+    // Up/down buttons step the target by 1 liang (100 fen), or 10 liang on
+    // Ctrl-click (UIInput.StepMultiplier). Clamped to ≥0.
+    public void OnClickTargetUp()   => AdjustTarget(+100 * UIInput.StepMultiplier);
+    public void OnClickTargetDown() => AdjustTarget(-100 * UIInput.StepMultiplier);
 
     private void AdjustTarget(int deltaFen) {
         if (displayMode == DisplayMode.Storage) return;

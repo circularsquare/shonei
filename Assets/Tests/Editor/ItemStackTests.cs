@@ -319,6 +319,32 @@ public class ItemStackTests {
         Assert.That(s.resSpace, Is.EqualTo(30));
     }
 
+    [Test]
+    public void AddItem_AdjustReservationFalse_DoesNotClampResAmount(){
+        // Task-owned moves (Inventory.MoveItemTo with a `by` task) suppress the auto-clamp so the
+        // owning task can release exactly its own reservation once, instead of the clamp releasing
+        // it here AND Cleanup unreserving it again. resAmount is left for the caller to reconcile.
+        Item apple = MakeItem("apple");
+        ItemStack s = new ItemStack(null, apple, 50);
+        s.resAmount = 50;
+        int? r = s.AddItem(apple, -30, adjustReservation: false);
+        Assert.That(r, Is.EqualTo(0));
+        Assert.That(s.quantity, Is.EqualTo(20));
+        Assert.That(s.resAmount, Is.EqualTo(50), "clamp suppressed — caller reconciles resAmount");
+    }
+
+    [Test]
+    public void AddItem_AdjustReservationFalse_DoesNotClampResSpace(){
+        Item apple = MakeItem("apple");
+        ItemStack s = new ItemStack(null, apple, 20, stackSize: 100);
+        s.resSpace = 50;
+        s.resSpaceItem = apple;
+        int? r = s.AddItem(apple, 50, adjustReservation: false); // quantity 70, free 30 < resSpace 50
+        Assert.That(r, Is.EqualTo(0));
+        Assert.That(s.quantity, Is.EqualTo(70));
+        Assert.That(s.resSpace, Is.EqualTo(50), "clamp suppressed — caller reconciles resSpace");
+    }
+
     // ── Empty / ContainsItem / HasSpaceForItem ─────────────────────────
     [Test]
     public void Empty_NoItem_ReturnsTrue(){

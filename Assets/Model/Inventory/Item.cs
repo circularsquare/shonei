@@ -18,11 +18,24 @@ public enum ItemClass { Default, Liquid, Book }
 public class Item {
     public int id {get; set;}
     public string name {get; set;}
+    // Optional flavour/help line shown as the tooltip body on hover. Null/empty = no body
+    // (tooltip shows just the name, as before). Author concisely in JSON, player-facing.
+    public string description {get; set;}
     public Item[] children {get; set;}
     public bool defaultOpen {get; set;} // group items only: start expanded in inventory trees by default (e.g. "food"). Groups without this start collapsed.
     public float decayRate{get; set;}
     public float foodValue {get; set;}  // 0 = not edible; >0 = nutrition restored per unit eaten
     public float fuelValue {get; set;}   // 0 = not fuel; >0 = burnable energy per liang (cascades group→leaf). See SPEC-data §Fuel
+
+    // Tonic buff: drinking this item applies a timed effect (see BuffSet / DrinkTonicTask).
+    // buffType is the effect name ("workSpeed" / "coldTolerance" / "heatTolerance" / "sleepRecovery");
+    // null = not a tonic. buffMagnitude is the effect strength (work/sleep: a fractional bonus, e.g.
+    // 0.2 = +20%; temperature: °C of tolerance). buffDuration is authored in in-game DAYS. buffEffect
+    // is the parsed enum (OnDeserialized), used by the drink AI + DrinkTonicTask.
+    public string buffType {get; set;}
+    public float  buffMagnitude {get; set;}
+    public float  buffDuration {get; set;}   // in-game days
+    [Newtonsoft.Json.JsonIgnore] public BuffType? buffEffect;
     public string happinessNeed {get; set;} // which happiness satisfaction eating this food grants (e.g. "wheat", "fruit"); null = none
     public bool discrete {get; set;}    // true = stored/moved in whole-unit (unitFen) multiples only
     // Weight of one whole unit, in liang (JSON-authored). Only meaningful when discrete; 0 = unset
@@ -134,6 +147,10 @@ public class Item {
             } else {
                 Debug.LogError($"Item '{name}': invalid liquidColorHex '{liquidColorHex}'");
             }
+        }
+        if (!string.IsNullOrEmpty(buffType)) {
+            if (System.Enum.TryParse<BuffType>(buffType, ignoreCase: true, out BuffType bt)) buffEffect = bt;
+            else Debug.LogError($"Item '{name}': unknown buffType '{buffType}'");
         }
     }
     // inventories are the ones with gameobjects and sprites, not items.

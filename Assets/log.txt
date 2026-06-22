@@ -1,5 +1,16 @@
 meoww!!
 
+6/22
+- more slash commands, big colony performance testing 
+- road hide grass
+- gradual snow accumulation
+- global inv item distribution bar 
+- added item leaf disallowing in blueprints
+6/21
+- big global inv panel
+6/20
+- cauldron added...
+- potions! warming / cooling tonic, sleep tonic, vigor (goji)
 6/18
 - more efficient eating / waking up logic
 - time display 

@@ -44,8 +44,18 @@ public class StructureInfoView : MonoBehaviour {
     [SerializeField] GameObject cancelBar;       // hidden for completed structures; shown on any blueprint tab
     [SerializeField] Button cancelButton;
 
+    [Header("Blueprint Cost Rows")]
+    [SerializeField] Transform costRowContainer;   // VerticalLayoutGroup parent for per-ingredient rows
+    [SerializeField] GameObject costRowPrefab;     // BlueprintCostRow prefab
+
     private Structure structure;
     private Blueprint blueprint;
+
+    // Per-ingredient rows for the active blueprint. Built once per tab-show (and after a ban
+    // toggle), then only dynamically refreshed each tick — never rebuilt per tick, so hovered
+    // X/chip tooltips survive. costRowsBuiltFor tracks which blueprint the rows belong to.
+    private readonly List<GameObject> costRows = new List<GameObject>();
+    private Blueprint costRowsBuiltFor;
 
     void Awake() {
         if (enableDisableButton != null)
@@ -89,6 +99,8 @@ public class StructureInfoView : MonoBehaviour {
         gameObject.SetActive(false);
         structure = null;
         blueprint = null;
+        ClearCostRows();
+        if (costRowContainer != null) costRowContainer.gameObject.SetActive(false);
         SetDeconstructVisible(false);
         SetCancelVisible(false);
         SetHarvestFlagVisible(false);
@@ -103,6 +115,10 @@ public class StructureInfoView : MonoBehaviour {
     }
 
     void RefreshStructure() {
+        // Cost rows belong to blueprints only — clear them when a completed structure is shown.
+        ClearCostRows();
+        if (costRowContainer != null) costRowContainer.gameObject.SetActive(false);
+
         var sb = new System.Text.StringBuilder();
         sb.Append(structure.structType.name);
 
@@ -146,6 +162,10 @@ public class StructureInfoView : MonoBehaviour {
                 string fuelName = bldg.reservoir.HeldLeaf()?.name ?? bldg.reservoir.fuelItem?.name ?? "fuel";
                 sb.Append($"\n fuel: {ItemStack.FormatQ(fuelQty)}/{ItemStack.FormatQ(bldg.reservoir.capacity)} {fuelName}");
             }
+            // Local-heat processors (foundry): surface the live temperature so the player can see it
+            // heating up / cooling after a smelt draws its heatCost.
+            if (bldg.processor != null && bldg.processor.localHeat)
+                sb.Append($"\n temp: {Mathf.RoundToInt(bldg.processor.temperature)}°");
             // Only housing surfaces its Structure.res — it's the home-assignment count.
             // Other building types either don't have res (workstations, leisure, capacity==0)
             // or have it but never reserve into it.
@@ -223,7 +243,11 @@ public class StructureInfoView : MonoBehaviour {
         var sb = new System.Text.StringBuilder();
         SetComfortVisible(false);
         sb.Append("blueprint: " + blueprint.structType.name);
-        sb.Append("\n progress: " + blueprint.GetProgress());
+        // Per-cost ingredient lines now render as interactive rows (see cost rows below); the text
+        // blob only carries the construction fraction once building/tearing-down is underway.
+        if (blueprint.state == Blueprint.BlueprintState.Constructing
+            || blueprint.state == Blueprint.BlueprintState.Deconstructing)
+            sb.Append($"\n progress: {blueprint.constructionProgress:F0}/{blueprint.constructionCost}");
         if (blueprint.structType.job != null)
             sb.Append("\n job: " + blueprint.structType.job.name);
         // Surface the silent failure paths in ConstructTask.Initialize for deconstructs:
@@ -261,6 +285,52 @@ public class StructureInfoView : MonoBehaviour {
         SetDeconstructVisible(false);
         SetCancelVisible(true);
         SetHarvestFlagVisible(false);
+
+        RefreshCostRows();
+    }
+
+    // ── Blueprint cost rows ──
+
+    // Drives the per-ingredient rows. Deconstruct blueprints show no costs. Rows are structurally
+    // (re)built only when the blueprint identity changes (tab-show) or after a ban toggle requests
+    // it via BlueprintCostRow's onChanged callback; otherwise each tick only dynamically refreshes
+    // existing rows (label + X visibility), so a hovered tooltip is never torn down.
+    void RefreshCostRows() {
+        bool show = blueprint != null
+                 && blueprint.state != Blueprint.BlueprintState.Deconstructing
+                 && blueprint.costs.Length > 0;
+        if (costRowContainer != null && costRowContainer.gameObject.activeSelf != show)
+            costRowContainer.gameObject.SetActive(show);
+        if (!show) { ClearCostRows(); return; }
+
+        if (costRowsBuiltFor != blueprint)
+            RebuildCostRows();
+        else
+            foreach (GameObject go in costRows)
+                go.GetComponent<BlueprintCostRow>()?.UpdateDynamic();
+    }
+
+    void RebuildCostRows() {
+        ClearCostRows();
+        if (costRowContainer == null || costRowPrefab == null || blueprint == null) return;
+        for (int i = 0; i < blueprint.costs.Length; i++) {
+            GameObject go = Instantiate(costRowPrefab, costRowContainer);
+            go.SetActive(true);
+            costRows.Add(go);
+            go.GetComponent<BlueprintCostRow>()?.Setup(blueprint, i, RebuildCostRows);
+        }
+        costRowsBuiltFor = blueprint;
+        LayoutUtil.RebuildImmediate((RectTransform)costRowContainer);
+    }
+
+    void ClearCostRows() {
+        foreach (GameObject go in costRows) {
+            if (go == null) continue;
+            go.SetActive(false); // drop from layout immediately (Destroy is deferred to frame end)
+            Destroy(go);
+        }
+        costRows.Clear();
+        costRowsBuiltFor = null;
     }
 
     // ── Controls ──
@@ -521,18 +591,51 @@ public class StructureInfoView : MonoBehaviour {
         }
     }
 
-    // Minimal per-processor fermentation readout. The full progress-bar UI is deferred
-    // to the rice-wine plan's P2-M6 — this is just dev visibility: lifecycle state, and
-    // while Working the progress in in-game days plus the current temperature rate.
+    // Minimal per-processor batch readout — dev visibility: lifecycle state, the batch recipe,
+    // and while Working the progress vs duration (+ the temperature rate for an untended ferment).
     static void AppendProcessor(System.Text.StringBuilder sb, Processor p) {
         sb.Append($"\n processor: {p.state.ToString().ToLower()}");
+        if (p.recipe != null) sb.Append($" ({p.recipe.description})");
+        // What's in the pot. While melting it's the raw inputs. At Ready the melt is done but not
+        // yet poured (inputBuffer still holds the raw inputs until Tap converts them) — so present a
+        // foundry's finished batch as the molten metal awaiting a smith's pour, not raw ore.
+        if (p.localHeat && p.state == Processor.State.Ready && p.recipe != null) {
+            sb.Append($"\n  molten: {DescribeItems(p.recipe.outputs)} (awaiting pour)");
+        } else {
+            string loaded = DescribeInv(p.inputBuffer);
+            if (loaded != null) sb.Append($"\n  loaded: {loaded}");
+        }
+        string made = DescribeInv(p.output);
+        if (made != null) sb.Append($"\n  output: {made}");
         if (p.state == Processor.State.Working) {
-            sb.Append($"  {p.progress:F2}/{p.processDays:F1}d");
-            if (p.TempScaled) {
-                float now = WeatherSystem.instance != null ? WeatherSystem.instance.temperature : 17.5f;
-                sb.Append($"  rate {p.Rate(now):P0}");
+            sb.Append($"\n  {Recipe.FormatDuration(p.progress)}/{Recipe.FormatDuration(p.duration)}");
+            if (!p.tended && p.TempScaled) {
+                // Local-heat processors (foundry) gate on their own heat, NOT ambient weather — so
+                // read the cached temperature, or the rate falsely shows 0% below the weather floor.
+                float t = p.localHeat ? p.temperature
+                        : (WeatherSystem.instance != null ? WeatherSystem.instance.temperature : 17.5f);
+                sb.Append($"  rate {p.Rate(t):P0}");
             }
         }
+    }
+
+    // Lists an inventory's non-empty stacks as "name qty, name qty", or null if empty.
+    static string DescribeInv(Inventory inv) {
+        if (inv == null) return null;
+        var parts = new List<string>();
+        foreach (ItemStack s in inv.itemStacks)
+            if (s?.item != null && s.quantity > 0)
+                parts.Add($"{s.item.name} {ItemStack.FormatQ(s.quantity, s.item)}");
+        return parts.Count > 0 ? string.Join(", ", parts) : null;
+    }
+
+    // Same as DescribeInv but over a recipe's declared quantities (the not-yet-produced output).
+    static string DescribeItems(ItemQuantity[] items) {
+        if (items == null) return null;
+        var parts = new List<string>();
+        foreach (ItemQuantity iq in items)
+            if (iq.item != null) parts.Add($"{iq.item.name} {ItemStack.FormatQ(iq.quantity, iq.item)}");
+        return parts.Count > 0 ? string.Join(", ", parts) : null;
     }
 
     // Appends work orders keyed by inventory (market hauls).

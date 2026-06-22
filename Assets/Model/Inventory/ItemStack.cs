@@ -112,7 +112,12 @@ public class ItemStack {
             }
         }
     }
-    public int? AddItem(Item item, int quantity){
+    // adjustReservation: when false, the else-branch auto-clamps of resAmount/resSpace are
+    // skipped. Used by task-owned moves (Inventory.MoveItemTo with a `by` task), which release
+    // exactly the acting task's reservation themselves (Task.ConsumeSource/SpaceReservation) and
+    // would otherwise double-count it — the clamp releasing it once, Cleanup's Unreserve again.
+    // The caller restores the invariant afterwards via Inventory.ClampReservationsToCapacity.
+    public int? AddItem(Item item, int quantity, bool adjustReservation = true){
         if (this.item == null){ // adopt the incoming item only when stack is genuinely untagged
             this.item = item; }
         if (item != this.item){ // item slot occupied by different item. go next
@@ -139,10 +144,10 @@ public class ItemStack {
             return sizeUnder; // underflow (-3 if still need 3 more)
         } else {
             this.quantity += quantity; // add to stack
-            if (resAmount > this.quantity) resAmount = this.quantity;
+            if (adjustReservation && resAmount > this.quantity) resAmount = this.quantity;
             // Clamp resSpace: someone else may have added items, reducing available space
             int maxResSpace = EffectiveCapacity - this.quantity;
-            if (resSpace > maxResSpace) resSpace = maxResSpace;
+            if (adjustReservation && resSpace > maxResSpace) resSpace = maxResSpace;
             return 0;
         }
     }

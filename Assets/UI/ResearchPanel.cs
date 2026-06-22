@@ -36,9 +36,6 @@ public class ResearchPanel : MonoBehaviour {
     [SerializeField] BarChartGraph researchChart;
     const int ResearchChartDays = 15; // bars shown, including the in-progress day
 
-    [Header("Debug")]
-    public Button debugUnlockAllButton;
-
     readonly List<ResearchDisplay> spawnedCards = new List<ResearchDisplay>();
     float refreshTimer = 0f;
     const float RefreshInterval = 0.5f;
@@ -48,23 +45,6 @@ public class ResearchPanel : MonoBehaviour {
         instance = this;
         UI.RegisterExclusive(gameObject);
         if (closeButton != null) closeButton.onClick.AddListener(() => gameObject.SetActive(false));
-    }
-
-    void Start() {
-        if (debugUnlockAllButton != null)
-            debugUnlockAllButton.onClick.AddListener(OnClickUnlockAll);
-        DebugMode.Changed += RefreshDebugControls;
-        RefreshDebugControls();
-    }
-
-    void OnDestroy() {
-        DebugMode.Changed -= RefreshDebugControls;
-    }
-
-    // The "unlock all" button is a dev cheat — only visible in debug mode (Ctrl+D).
-    void RefreshDebugControls() {
-        if (debugUnlockAllButton != null)
-            debugUnlockAllButton.gameObject.SetActive(DebugMode.Enabled);
     }
 
     void Update() {
@@ -134,11 +114,6 @@ public class ResearchPanel : MonoBehaviour {
         card.name = "Card_" + node.id;
         card.Setup(node, rs, OnClickToggleStudy);
         spawnedCards.Add(card);
-    }
-
-    void OnClickUnlockAll() {
-        ResearchSystem.instance?.UnlockAll();
-        Refresh();
     }
 
     void OnClickToggleStudy(ResearchNodeData node) {

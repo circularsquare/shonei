@@ -55,7 +55,7 @@ public class ItemIcon : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
     }
 
     public void OnPointerEnter(PointerEventData eventData) {
-        if (item != null) TooltipSystem.Show(item.name, "");
+        if (item != null) TooltipSystem.Show(item.name, item.description ?? "");
     }
 
     public void OnPointerExit(PointerEventData eventData) {

@@ -26,7 +26,7 @@ EventFeed.instance.history;                 // IReadOnlyList<Entry>, capped at 2
 | Category | Goes to | Used for |
 |---|---|---|
 | `Alert` | AlertToast (overlay) | World-state events the player should notice immediately while looking away from chat — placement errors, research forgotten. |
-| `Info` | ChatLog (HUD chat log) | Chat-input feedback the player is already looking at — `/give` / `/rain` / `/day` / `/wind` command responses (both errors and successes), connection-offline errors. Red `<color=#cc3333>` tags still mark errors visually within the chat. |
+| `Info` | ChatLog (HUD chat log) | Chat-input feedback the player is already looking at — console command responses (`/give`, `/rain`, `/day`, `/wind`, `/mice`, `/research`, …; both errors and successes), connection-offline errors. Red `<color=#cc3333>` tags still mark errors visually within the chat. |
 | `Chat` | ChatLog (HUD chat log) | Server chat from other players. |
 | `Fill` | ChatLog (HUD chat log) | Server trade fills. |
 
@@ -52,7 +52,7 @@ Split into `EventFeedBindings.cs` once this table grows past ~5 rows or bindings
 Call sites that post directly (not via a binding):
 
 - `TradingPanel.OnClickSendChat` — connection-offline error (`Info`)
-- `TradingPanel.HandleCommand` / `CmdGive` / `CmdRain` / `CmdDay` / `CmdWind` — `/give`, `/rain`, `/day [n]`, `/wind [v]` command feedback. Errors and successes both `Info` (rendered side-by-side in chat); red color tag distinguishes errors visually.
+- `TradingPanel.HandleCommand` / `CmdGive` / `CmdRain` / `CmdDay` / `CmdWind` / `CmdTimeSpeed` / `CmdMice` / `CmdResearch` — `/give`, `/rain`, `/day [n]`, `/wind [v]`, `/timespeed [n]`, `/mice [n]`, `/research [id]` command feedback. Errors and successes both `Info` (rendered side-by-side in chat); red color tag distinguishes errors visually.
 - `ChatLog.DisplayChat` — server chat from other players (`Chat`)
 - `ChatLog.DisplayFill` — server trade fills (`Fill`)
 - `BuildPanel.PlaceBlueprint` — blueprint placement rejections (single-tile and two-click bridge). Reason strings come from `StructPlacement.GetPlacementFailReason` / `GetTwoPointFailReason`; wrapped in `<color=#cc3333>` (red) and posted as `Alert`.

@@ -29,7 +29,10 @@ public static class ModifierSystem {
     public static float GetWorkMultiplier(Animal animal, Skill? skill = null) {
         float toolMult  = GetToolMultiplier(animal);
         float skillMult = skill.HasValue ? animal.skills.GetBonus(skill.Value) : 1f;
-        return animal.efficiency * toolMult * skillMult;
+        // Vigor-tonic work-speed buff (additive bonus, e.g. +20%). Kept here rather than folded into
+        // efficiency so the buff only speeds WORK, not the efficiency-driven travel/energy systems.
+        float buffMult  = 1f + animal.buffs.Total(BuffType.WorkSpeed);
+        return animal.efficiency * toolMult * skillMult * buffMult;
     }
 
     // Base work efficiency before the skill bonus — used to calculate XP gain so that

@@ -178,6 +178,8 @@ public class AnimalStateManager {
         if (t is ResearchTask)  return Skill.Science;
         if (t is CraftTask craftTask && craftTask.recipe?.skill != null)
             if (System.Enum.TryParse<Skill>(craftTask.recipe.skill, ignoreCase: true, out Skill s)) return s;
+        if (t is WorkProcessorTask wpt && wpt.building?.processor?.recipe?.skill != null)
+            if (System.Enum.TryParse<Skill>(wpt.building.processor.recipe.skill, ignoreCase: true, out Skill ws)) return ws;
         return null;
     }
 
@@ -289,14 +291,20 @@ public class AnimalStateManager {
                         if (extra != null) outputs = extra;
                     }
                     foreach (ItemQuantity output in outputs) {
-                        if (output.chance >= 1f || animal.random.NextDouble() < output.chance)
-                            animal.Produce(output.item, output.quantity);
+                        if (output.chance >= 1f || animal.random.NextDouble() < output.chance) {
+                            // The workstation may keep the output itself (e.g. a cauldron holds its
+                            // brewed tonic) — only what it can't absorb is carried off by the worker.
+                            int q = wsBuilding != null ? wsBuilding.TryAbsorbOutput(output.item, output.quantity)
+                                                       : output.quantity;
+                            if (q > 0) animal.Produce(output.item, q);
+                        }
                     }
+
                     // Pump buildings drain water from their source tile on each completed round
                     if (craftTask.workplace?.building is PumpBuilding pump) pump.DrainForCraft();
                     // Passive research progress from this recipe cycle
                     if (recipe.research != null)
-                        ResearchSystem.instance?.AddPassiveProgress(recipe.research, recipe.researchPoints);
+                        ResearchSystem.instance?.AddPassiveProgress(recipe.research, ResearchSystem.PassiveCraftRate * recipe.workload);
                     // Track uses and deplete workstation if applicable
                     Building wb = craftTask.workplace?.building;
                     if (wb?.workstation != null && wb.structType.depleteAt > 0) {
@@ -333,12 +341,36 @@ public class AnimalStateManager {
                     craftTask.Complete(); return; // out of inputs
                 }
             }
+        } else if (animal.task is WorkProcessorTask wpt) {
+            // Tended processor (cauldron): the worker labours on the locked-in batch. Unlike a
+            // CraftTask there's no per-round consume/produce here — the inputs already sit in the
+            // processor's buffer and the conversion is the single Tap() at the end. Progress lives
+            // on the processor (persists across stints + saves), advancing in ~labour-seconds.
+            Processor proc = wpt.building?.processor;
+            if (wpt.building == null || wpt.building.go == null || proc == null
+                    || proc.state != Processor.State.Working) { wpt.Fail(); return; }
+            wpt.building.workingAnimal = animal; // keep the craft-gated fire lit while labouring
+            proc.progress += workEfficiency;
+            if (taskSkill.HasValue) animal.skills.GainXp(taskSkill.Value, baseWorkEff * SkillSet.XpPerWorkTick);
+            if (proc.progress >= proc.duration) {
+                proc.Tap();                                 // drain buffer (+ fuel) → output, → Tapped
+                WorkProcessorTask.RegisterHaulOut(proc);    // haul the finished batch to a tank
+                wpt.Complete();
+                return;
+            }
+            // Yield after a capped stint so the worker re-evaluates needs; proc.progress persists
+            // and the WorkProcessor order re-fires (state still Working) for the next stint.
+            if (++wpt.ticksWorked >= Animal.MaxWorkStintTicks) wpt.Complete();
+            return;
         } else if (animal.task is MaintenanceTask maintTask) {
             Structure target = maintTask.target;
             if (target == null || target.go == null) { maintTask.Fail(); return; }
-            // Tick condition up. RepairWorkPerTick is the base rate; workEfficiency stretches
-            // or compresses it the same way as construction/craft.
-            float delta = Structure.RepairWorkPerTick * workEfficiency;
+            // Tick condition up. Repair labour scales with the structure's build cost: a full 0→1
+            // repair takes RepairLaborFraction × constructionCost ticks at baseline efficiency, so
+            // condition rises slower for costlier-to-build structures. workEfficiency stretches or
+            // compresses it the same way as construction/craft.
+            float buildLabour = target.structType.constructionCost > 0f ? target.structType.constructionCost : 2f;
+            float delta = workEfficiency / (Structure.RepairLaborFraction * buildLabour);
             float before = target.condition;
             float newCondition = Mathf.Min(maintTask.targetCondition, before + delta);
             target.condition = newCondition;
@@ -364,9 +396,12 @@ public class AnimalStateManager {
                 }
                 MaintenanceSystem.instance?.OnRepaired(target);
                 target.RefreshTint();
-                // Passive research: a full 0→1 repair matches a fresh build of this structure type.
-                // repairAmount is the fraction of condition restored by this task (≤ MaxRepairPerTask).
-                ResearchSystem.instance?.AddConstructionProgress(target.structType.name, maintTask.repairAmount);
+                // Passive research, granted per tick of repair labour at the same rate as a fresh build.
+                // scale = fraction of the full build's labour this repair represents = repairAmount ×
+                // RepairLaborFraction. So a full 0→1 repair grants ¼ of a fresh build's research (matching
+                // the ¼ labour/materials a full repair costs), and it scales with construction time.
+                ResearchSystem.instance?.AddConstructionProgress(target.structType.name,
+                    maintTask.repairAmount * Structure.RepairLaborFraction);
                 maintTask.Complete();
             }
             return;

@@ -32,7 +32,7 @@ using UnityEngine;
 public class WorkOrderManager : MonoBehaviour {
     public static WorkOrderManager instance { get; private set; }
 
-    public enum OrderType { Haul, Harvest, Construct, SupplyBlueprint, Deconstruct, HaulToMarket, HaulFromMarket, Research, Craft, SupplyBuilding, Maintenance, SupplyFurnishing, FillProcessor, TapProcessor, Water }
+    public enum OrderType { Haul, Harvest, Construct, SupplyBlueprint, Deconstruct, HaulToMarket, HaulFromMarket, Research, Craft, SupplyBuilding, Maintenance, SupplyFurnishing, FillProcessor, TapProcessor, WorkProcessor, Water }
 
     public class WorkOrder {
         public OrderType type;
@@ -572,35 +572,43 @@ public class WorkOrderManager : MonoBehaviour {
     // Active only while the processor is Empty (awaiting a fresh load); FillProcessorTask.Initialize
     // flips Empty→Filling on claim, so the order self-suppresses while a cook is loading.
     // Mirrors RegisterFuelSupply. Priority 3 (Craft tier) — loading a processor is core production.
+    // True if any of this building's processor recipes belongs to the animal's job — the gate for
+    // who operates (fills / works / taps) a Processor. Replaces the old hardcoded "cook" check, so
+    // the cauldron's apothecary recipes route to apothecaries and the brewery's to cooks, uniformly.
+    static bool JobOperatesProcessor(Animal a, string buildingName) {
+        var recipes = Db.GetProcessorRecipes(buildingName);
+        return recipes != null && recipes.Exists(r => r.job == a.job.name);
+    }
+
     public bool RegisterFillProcessor(Building building) {
         if (building?.processor == null) return false;
         if (orders[2].Exists(o => o.type == OrderType.FillProcessor && o.building == building)) return false;
         var processor = building.processor;
+        string buildingName = building.structType.name;
         Add(new WorkOrder {
             type        = OrderType.FillProcessor,
             priority    = 3,
             factory     = a => new FillProcessorTask(a, building),
             building    = building,
-            // Player can pause a process from the Recipes panel (RecipePanel.SetProcessAllowed,
-            // keyed by building name) — gates new fills only; an in-progress batch still taps.
+            // Active while Empty; the per-recipe On/Off toggle is enforced by PickProcessorRecipe
+            // (IsEligibleForPicking) — if every recipe is disabled the fill task just can't start,
+            // so no separate building-level pause gate is needed here.
             isActive    = () => !building.disabled && !building.IsBroken
-                              && processor.state == Processor.State.Empty
-                              && (RecipePanel.instance == null
-                                  || RecipePanel.instance.IsProcessAllowed(building.structType.name)),
-            canDo       = a => a.job.name == "cook",
+                              && processor.state == Processor.State.Empty,
+            canDo       = a => JobOperatesProcessor(a, buildingName),
             getDistance = a => Mathf.Abs(building.x - a.x) + Mathf.Abs(building.y - a.y)
         });
         return true;
     }
 
-    // Registers a standing TapProcessor order for a building with a Processor.
-    // Active only while the processor is Ready (fermentation finished, awaiting a tap).
-    // The order's res capacity (1) keeps a single cook on the tap; TapProcessorTask.Complete
+    // Registers a standing TapProcessor order for an UNTENDED processor (a tended one auto-taps).
+    // Active only while the processor is Ready (ferment finished, awaiting a tap). TapProcessorTask
     // does the Ready→Tapped transition. Mirrors RegisterFillProcessor.
     public bool RegisterTapProcessor(Building building) {
-        if (building?.processor == null) return false;
+        if (building?.processor == null || building.processor.tended) return false;
         if (orders[2].Exists(o => o.type == OrderType.TapProcessor && o.building == building)) return false;
         var processor = building.processor;
+        string buildingName = building.structType.name;
         Add(new WorkOrder {
             type        = OrderType.TapProcessor,
             priority    = 3,
@@ -608,15 +616,41 @@ public class WorkOrderManager : MonoBehaviour {
             building    = building,
             isActive    = () => !building.disabled && !building.IsBroken
                               && processor.state == Processor.State.Ready,
-            canDo       = a => a.job.name == "cook",
+            canDo       = a => JobOperatesProcessor(a, buildingName),
             getDistance = a => Mathf.Abs(building.x - a.x) + Mathf.Abs(building.y - a.y)
+        });
+        return true;
+    }
+
+    // Registers a standing WorkProcessor order for a TENDED processor (cauldron). Active while the
+    // batch is Working; the worker labours at the work-spot until the batch auto-taps (see
+    // AnimalStateManager.HandleWorking). Distance uses workNode (the stand-at-the-pot spot), and the
+    // worker limit rides building.workstation like a Craft order.
+    public bool RegisterWorkProcessor(Building building) {
+        if (building?.processor == null || !building.processor.tended) return false;
+        if (orders[2].Exists(o => o.type == OrderType.WorkProcessor && o.building == building)) return false;
+        var processor = building.processor;
+        string buildingName = building.structType.name;
+        var res = new Reservable(building.workstation != null ? building.workstation.capacity : 1);
+        if (building.workstation != null) res.effectiveCapacity = building.workstation.workerLimit;
+        Add(new WorkOrder {
+            type        = OrderType.WorkProcessor,
+            priority    = 3,
+            factory     = a => new WorkProcessorTask(a, building),
+            building    = building,
+            res         = res,
+            isActive    = () => !building.disabled && !building.IsBroken
+                              && processor.state == Processor.State.Working,
+            canDo       = a => JobOperatesProcessor(a, buildingName),
+            getDistance = a => Mathf.Abs(building.workNode.wx - a.x) + Mathf.Abs(building.workNode.wy - a.y)
         });
         return true;
     }
 
     // Removes all processor work orders for a building (call when building is destroyed).
     public void RemoveProcessorOrders(Building building) {
-        orders[2].RemoveAll(o => (o.type == OrderType.FillProcessor || o.type == OrderType.TapProcessor)
+        orders[2].RemoveAll(o => (o.type == OrderType.FillProcessor || o.type == OrderType.TapProcessor
+                                  || o.type == OrderType.WorkProcessor)
                                  && o.building == building);
     }
 
@@ -664,7 +698,8 @@ public class WorkOrderManager : MonoBehaviour {
             RegisterFurnishingSupply(building);
         if (building.processor != null) {
             RegisterFillProcessor(building);
-            RegisterTapProcessor(building);
+            RegisterTapProcessor(building);   // self-skips for a tended processor
+            RegisterWorkProcessor(building);  // self-skips for an untended processor
         }
     }
 
@@ -948,12 +983,22 @@ public class WorkOrderManager : MonoBehaviour {
                     Debug.LogError($"WOM audit: processor building {pb.structType.name} at ({pb.x},{pb.y}) has no FillProcessor order");
                 }
             }
-            if (!orders[2].Exists(o => o.type == OrderType.TapProcessor && o.building == pb)) {
+            // Untended processors get a Tap order; tended ones get a Work order. Each Register*
+            // self-skips the wrong mode, and the audit only flags the order the mode actually needs.
+            if (!pb.processor.tended && !orders[2].Exists(o => o.type == OrderType.TapProcessor && o.building == pb)) {
                 if (repair) {
                     RegisterTapProcessor(pb);
                     if (!silent) Debug.LogWarning($"WOM reconcile: registered missing TapProcessor order for {pb.structType.name} at ({pb.x},{pb.y})");
                 } else {
                     Debug.LogError($"WOM audit: processor building {pb.structType.name} at ({pb.x},{pb.y}) has no TapProcessor order");
+                }
+            }
+            if (pb.processor.tended && !orders[2].Exists(o => o.type == OrderType.WorkProcessor && o.building == pb)) {
+                if (repair) {
+                    RegisterWorkProcessor(pb);
+                    if (!silent) Debug.LogWarning($"WOM reconcile: registered missing WorkProcessor order for {pb.structType.name} at ({pb.x},{pb.y})");
+                } else {
+                    Debug.LogError($"WOM audit: tended processor {pb.structType.name} at ({pb.x},{pb.y}) has no WorkProcessor order");
                 }
             }
             // A processor restored mid-Tapped holds wine in `output` with no haul-out order

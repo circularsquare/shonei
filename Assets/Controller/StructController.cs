@@ -287,21 +287,25 @@ public class StructController : MonoBehaviour {
         // Per-building 0.2s updates. Called every 0.2s from World.Tick.
         //  - Furnishing slot decay: FurnishingSlots converts elapsed seconds → in-game days
         //    via World.ticksInDay, empties expired slots, fires onSlotChanged.
-        //  - Processor fermentation: Processor.Tick advances `progress` while Working, scaled
-        //    by ambient temperature. dtDays = 0.2s / ticksInDay (same seconds→days conversion).
+        //  - Processor ferment: Processor.Tick advances an UNTENDED batch's `progress` (seconds)
+        //    while Working, scaled by ambient temperature. Tended batches advance via their worker.
         foreach (Structure structure in structures){
             if (!(structure is Building b)) continue;
             if (b.furnishingSlots != null)
                 b.furnishingSlots.TickDecay(0.2f);
-            if (b.processor != null) {
-                float temp = WeatherSystem.instance != null ? WeatherSystem.instance.temperature : 17.5f;
-                b.processor.Tick(0.2f / World.ticksInDay, temp);
-            }
-            // Drain reservoirs NOT burned by a LightSource (e.g. fountain water evaporating).
-            // LightSource buildings (torch/fireplace) burn per-frame in LightSource, gated to night,
-            // so burning them here too would double-consume — skip those. Disabled/broken don't drain.
+            // Drain reservoirs NOT burned by a LightSource (e.g. fountain water evaporating, foundry
+            // fuel). LightSource buildings (torch/fireplace) burn per-frame in LightSource, gated to
+            // night, so burning them here too would double-consume — skip those. Disabled/broken don't
+            // drain. Burn FIRST so a foundry's fuel→heat lands before its processor ticks this frame.
+            int burnedFen = 0;
             if (b.reservoir != null && !b.structType.isLightSource && !b.disabled && !b.IsBroken)
-                b.reservoir.Burn(0.2f);
+                burnedFen = b.reservoir.Burn(0.2f);
+            if (b.processor != null) {
+                if (b.structType.processorLocalHeat && b.reservoir != null)
+                    b.processor.AddFuelHeat(burnedFen, b.reservoir.HeldLeaf());
+                float temp = WeatherSystem.instance != null ? WeatherSystem.instance.temperature : 17.5f;
+                b.processor.Tick(0.2f, temp);
+            }
         }
     }
 

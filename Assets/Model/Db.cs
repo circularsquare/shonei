@@ -23,6 +23,7 @@ public class Db : MonoBehaviour {
     public static Item[] itemsFlat = new Item[500];
     public static int itemsCount = 0;
     public static List<Item> edibleItems;
+    public static List<Item> tonicItems; // items with a buff effect (tonics); drink AI scans this
     // Edible items that are also a planting cost (some PlantType.costs entry). Mice avoid
     // eating the last few of these so farmers/loggers aren't left unable to replant — see
     // Animal.FindFood. Derived from plant data in LoadAll; no JSON flag.
@@ -64,10 +65,11 @@ public class Db : MonoBehaviour {
     public static int maxDecoScanRadius;
     public static Job[] jobs = new Job[100];
     public static Recipe[] recipes = new Recipe[500];
-    // Processor recipes (passive timed conversions — see ProcessorRecipe / Processor.cs),
-    // loaded from processorRecipesDb.json and bucketed by the building that runs them.
-    // One building = one recipe today; GetProcessorRecipe resolves the building's recipe.
-    public static Dictionary<string, List<ProcessorRecipe>> processorRecipesByBuilding;
+    // Processor recipes: ordinary `Recipe`s whose `tile` building hasProcessor, bucketed by
+    // that building so the fill-time scorer can pick among them. They are NOT added to any
+    // job.recipes (so the craft dispatch never runs them as CraftTasks) — the Processor's
+    // Fill/Work/Tap orders drive them instead. See Recipe.isProcessorRecipe / GetProcessorRecipes.
+    public static Dictionary<string, List<Recipe>> processorRecipesByBuilding;
     public static StructType[] structTypes = new StructType[600];
     public static PlantType[] plantTypes = new PlantType[600];
     public static TileType[] tileTypes = new TileType[100];
@@ -141,7 +143,7 @@ public class Db : MonoBehaviour {
         bookRecipeIdByTechId = new Dictionary<int, int>();
         bookItemIdByTechId   = new Dictionary<int, int>();
         itemsByFurnishingSlot = new Dictionary<string, List<Item>>();
-        processorRecipesByBuilding = new Dictionary<string, List<ProcessorRecipe>>();
+        processorRecipesByBuilding = new Dictionary<string, List<Recipe>>();
         // ReadJson Add()s into chineseNames/inventedNames — reset so reloads don't
         // double the pool (which would shift Rng-based name selection deterministically
         // wrong, breaking snapshot reproducibility).
@@ -164,6 +166,7 @@ public class Db : MonoBehaviour {
         WarnLongRecipeNames();
         itemsFlat = itemsFlat.Take(itemsCount).ToArray();
         edibleItems = itemsFlat.Where(i => i.foodValue > 0).OrderByDescending(i => i.foodValue).ToList();
+        tonicItems  = itemsFlat.Where(i => i.buffEffect.HasValue).ToList();
         // An edible counts as a "seed" if some plant lists it as a planting cost. PlantType.costs
         // is resolved in PlantType.OnDeserialized (ReadJson, above), so it's populated here.
         seedItems = new HashSet<Item>();
@@ -474,36 +477,31 @@ public class Db : MonoBehaviour {
                 if (iq.item.children != null)
                     Debug.LogError($"Db validation: tile '{tt.name}' product '{iq.item.name}' is a group item. Only leaf items may be produced.");
         }
-        foreach (List<ProcessorRecipe> list in processorRecipesByBuilding.Values){
-            foreach (ProcessorRecipe pr in list)
+        foreach (List<Recipe> list in processorRecipesByBuilding.Values){
+            foreach (Recipe pr in list)
                 foreach (ItemQuantity iq in pr.outputs)
                     if (iq.item.children != null)
                         Debug.LogError($"Db validation: processor recipe '{pr.description}' output '{iq.item.name}' is a group item. Only leaf items may be produced.");
         }
     }
 
-    // Cross-checks processor recipes against buildings: every recipe must target a real
-    // building, and every hasProcessor building must have at least one recipe — otherwise
-    // its Processor component can't be created (see Building constructor).
+    // Cross-checks processor recipes against buildings: every hasProcessor building must have at
+    // least one recipe (tile==buildingName) — otherwise its Processor has nothing to run.
     void ValidateProcessorRecipes(){
-        foreach (string buildingName in processorRecipesByBuilding.Keys)
-            if (!structTypeByName.ContainsKey(buildingName))
-                Debug.LogError($"Db validation: processor recipe targets building '{buildingName}' which does not exist.");
         foreach (StructType st in structTypes){
             if (st == null || !st.hasProcessor) continue;
-            if (GetProcessorRecipe(st.name) == null)
-                Debug.LogError($"Db validation: building '{st.name}' has hasProcessor=true but no processor recipe in processorRecipesDb.json.");
+            if (GetProcessorRecipes(st.name) == null)
+                Debug.LogError($"Db validation: building '{st.name}' has hasProcessor=true but no recipe with tile=='{st.name}' in recipesDb.json.");
         }
     }
 
-    // Returns the processor recipe a building runs, or null if none is declared.
-    // One building = one recipe today; multi-recipe selection is a future extension,
-    // at which point callers pick from processorRecipesByBuilding[name] directly.
-    public static ProcessorRecipe GetProcessorRecipe(string buildingName){
+    // Returns the list of recipes a building's Processor can run (every recipe with tile==name),
+    // or null if none. The fill-time scorer (Animal.PickProcessorRecipe) picks among them.
+    public static List<Recipe> GetProcessorRecipes(string buildingName){
         if (processorRecipesByBuilding != null
-            && processorRecipesByBuilding.TryGetValue(buildingName, out List<ProcessorRecipe> list)
+            && processorRecipesByBuilding.TryGetValue(buildingName, out List<Recipe> list)
             && list.Count > 0)
-            return list[0];
+            return list;
         return null;
     }
 
@@ -630,7 +628,19 @@ public class Db : MonoBehaviour {
         foreach (Recipe recipe in recipesUnplaced){
             if (recipes[recipe.id] != null){Debug.LogError($"multiple recipes with id={recipe.id}: '{recipes[recipe.id].description}' and '{recipe.description}'");}
             recipes[recipe.id] = recipe;
-            if (jobByName.ContainsKey(recipe.job)){ // add recipe to job's array of recipes
+            // A recipe with a duration is a batch conversion (processor), not a craft — keyed by
+            // its `duration` field, NOT by the building, because one building can host both: the
+            // brewery crafts yeast (workload) AND ferments rice wine (duration). Processor recipes
+            // are bucketed by building for the fill-time scorer and kept OUT of job.recipes so the
+            // craft dispatch never runs them as CraftTasks — the Fill/Work/Tap orders drive them.
+            recipe.isProcessorRecipe = recipe.duration > 0f;
+            if (recipe.isProcessorRecipe) {
+                if (!processorRecipesByBuilding.TryGetValue(recipe.tile, out List<Recipe> procList)) {
+                    procList = new List<Recipe>();
+                    processorRecipesByBuilding[recipe.tile] = procList;
+                }
+                procList.Add(recipe);
+            } else if (jobByName.ContainsKey(recipe.job)){ // add recipe to job's array of recipes
                 Job job = jobByName[recipe.job];
                 job.recipes[job.nRecipes] = recipe;
                 job.nRecipes += 1;
@@ -642,25 +652,6 @@ public class Db : MonoBehaviour {
             if (recipe.skill != null) continue;
             if (jobByName.TryGetValue(recipe.job, out Job j))
                 recipe.skill = j.defaultSkill;
-        }
-
-        // read Processor recipes (passive timed conversions — see Processor.cs). Must load
-        // after itemsDb: ProcessorRecipe.OnDeserialized resolves item names to fen quantities.
-        // Bucketed by building name; Building resolves its recipe via Db.GetProcessorRecipe.
-        // Missing file is non-fatal — ValidateProcessorRecipes then flags any orphaned
-        // hasProcessor building.
-        string jsonProcRecipes = LoadJsonText("processorRecipesDb");
-        if (jsonProcRecipes != null) {
-            var seenProcIds = new HashSet<int>();
-            foreach (ProcessorRecipe pr in JsonConvert.DeserializeObject<ProcessorRecipe[]>(jsonProcRecipes)) {
-                if (!seenProcIds.Add(pr.id))
-                    Debug.LogError($"Db: duplicate processor recipe id={pr.id} ('{pr.description}')");
-                if (!processorRecipesByBuilding.TryGetValue(pr.building, out List<ProcessorRecipe> list)) {
-                    list = new List<ProcessorRecipe>();
-                    processorRecipesByBuilding[pr.building] = list;
-                }
-                list.Add(pr);
-            }
         }
 
         // read Flowers (purely decorative — no Structure registration, no save state).
@@ -767,14 +758,33 @@ public class Recipe {
     // (coal, wood, …) at potency-scaled quantity — not a specific fuel item. 0 = no fuel needed.
     // See SPEC-data §Fuel and GlobalInventory.CanCraft/PickFuel.
     public float fuelCost { get; set; }
-    public string research   { get; set; }   // optional: research name to advance per cycle
-    public float  researchPoints { get; set; }  // progress added to that research per cycle
+    public string research   { get; set; }   // optional: research name a completed cycle advances
+                                              // (amount derives from workload — see ResearchSystem.PassiveCraftRate)
     public string skill      { get; set; }   // optional: overrides job.defaultSkill for this recipe (e.g. "mining")
     // Caps how many rounds a single CraftTask may queue up for this recipe. 0 (default) = no cap;
     // CalculateWorkPossible's normal estimate is used. Set to 1 for "one item per trip" recipes
     // like book-writing where each cycle should be a deliberate, discrete action — not a batch.
     public int    maxRoundsPerTask { get; set; }
     public bool   hidden { get; set; } // true = omit from the Recipes panel (e.g. dig/mine pseudo-recipes that aren't conventional crafting)
+
+    // ── Processor fields ────────────────────────────────────────────────────
+    // Set only on recipes run by a building with a Processor (hasProcessor). They turn a plain
+    // craft Recipe into a batch conversion: load inputs into a buffer, advance for `duration`
+    // seconds, tap the whole batch out at once. `duration` is the canonical "seconds to complete
+    // one batch": for an UNTENDED processor (brewery) it's elapsed in-game seconds, temperature-
+    // scaled by the ramp below; for a TENDED one (cauldron) it's seconds of worker labour. Large
+    // for slow ferments (rice wine 960 s = 2 in-game days); see Recipe.FormatDuration for display.
+    public float  duration {get; set;}            // 0 on craft recipes; >0 on processor recipes
+    public float? processTempMin {get; set;}      // null = constant rate (not temperature-scaled)
+    public float? processTempIdeal {get; set;}
+    public float heatCost {get; set;}             // local-heat processors (foundry): heat drawn from the pool per completed batch (latent heat of melting)
+    public string processColorHex {get; set;}     // optional #RRGGBB tint for the Working-state liquid zone
+    public Color32 processColor;                  // parsed; alpha=0 when processColorHex is unset
+    // True when this recipe's `tile` building hasProcessor. Resolved at load (ReadJson). Such
+    // recipes are bucketed in Db.processorRecipesByBuilding and kept OUT of job.recipes, so the
+    // craft dispatch never picks them up — the Processor's Fill/Work/Tap orders run them instead.
+    [JsonIgnore] public bool isProcessorRecipe;
+
     public TileType tileType;
     public ItemNameQuantity[] ninputs {get; set;}
     public ItemNameQuantity[] noutputs {get; set;}
@@ -789,6 +799,14 @@ public class Recipe {
         }
         for (int i = 0; i < noutputs.Length; i++){
             outputs[i] = new ItemQuantity(noutputs[i]); // chance carried by the constructor
+        }
+        if (!string.IsNullOrEmpty(processColorHex)) {
+            if (ColorUtility.TryParseHtmlString(processColorHex, out Color pc)) {
+                processColor = pc;
+                processColor.a = 255; // alpha flags "tint active" for the renderer
+            } else {
+                Debug.LogError($"Recipe {id} ('{description}'): invalid processColorHex '{processColorHex}'");
+            }
         }
         // Migration guard: a recipe must not BOTH declare a fuelCost AND list a literal fuel
         // item (fuelValue>0, e.g. coal) in its inputs — that double-charges fuel. Catches a
@@ -955,48 +973,19 @@ public class Recipe {
         }
         return true;
     }
-}
 
-// A passive timed conversion run by a building's Processor component (see Processor.cs).
-// Loaded from processorRecipesDb.json and linked to a building by name — mirroring how
-// Recipe.tile links a craft recipe to its workstation. Distinct from Recipe because a
-// processor recipe is a different concept: no active labor (processDays is wall-clock,
-// not work-ticks), an optional temperature ramp, and no scoring / job-skill model.
-// Quantities are authored in liang (float) and resolved to fen (int) in OnDeserialized.
-public class ProcessorRecipe {
-    public int id {get; set;}              // informational — recipes are keyed by building name, not array-indexed
-    public string building {get; set;}     // name of the building whose Processor runs this recipe
-    public string description {get; set;}
-    public ItemNameQuantity[] ninputs {get; set;}   // raw JSON
-    public ItemNameQuantity[] noutputs {get; set;}  // raw JSON
-    public ItemQuantity[] inputs;                   // resolved from ninputs (liang → fen)
-    public ItemQuantity[] outputs;                  // resolved from noutputs (liang → fen)
-    public float processDays {get; set;}            // base duration at full (rate 1.0) speed
-    public float? processTempMin {get; set;}        // null = constant rate (not temperature-scaled)
-    public float? processTempIdeal {get; set;}
-    public bool autoTap {get; set;}                 // schema stub — manual tap only for now
-    // Optional tint for the building's _w liquid zone while the processor is Working
-    // (e.g. the cloudy white of rice mash mid-fermentation). Authored as #RRGGBB; absent →
-    // the zone keeps its loading colour. Parsed to processColor in OnDeserialized.
-    public string processColorHex {get; set;}
-    public Color32 processColor;                    // parsed; alpha=0 when processColorHex is unset
-
-    [OnDeserialized]
-    internal void OnDeserialized(StreamingContext context){
-        int ni = ninputs?.Length ?? 0;
-        inputs = new ItemQuantity[ni];
-        for (int i = 0; i < ni; i++) inputs[i] = new ItemQuantity(ninputs[i]);
-        int no = noutputs?.Length ?? 0;
-        outputs = new ItemQuantity[no];
-        for (int i = 0; i < no; i++) outputs[i] = new ItemQuantity(noutputs[i]);
-        if (!string.IsNullOrEmpty(processColorHex)) {
-            if (ColorUtility.TryParseHtmlString(processColorHex, out Color pc)) {
-                processColor = pc;
-                processColor.a = 255; // alpha flags "tint active" for the renderer
-            } else {
-                Debug.LogError($"ProcessorRecipe '{description}': invalid processColorHex '{processColorHex}'");
-            }
-        }
+    // Player-facing batch duration. Short batches (cauldron tonics, ~8 s of labour) read in
+    // seconds; long ones (brewery ferments, hundreds of seconds of elapsed in-game time) read
+    // in in-game days so "960" doesn't show as a wall of seconds. Threshold 60 s. Concise per
+    // the UI style: "8s", "2 days", "1.5 days".
+    public static string FormatDuration(float seconds) {
+        float dayLen = World.ticksInDay > 0 ? World.ticksInDay : 480f;
+        // Short processes (under half an in-game day) read more naturally in seconds than as a
+        // fractional-day count, e.g. a 48s smelt vs "0.1 days".
+        if (seconds < dayLen * 0.5f) return Mathf.RoundToInt(seconds) + "s";
+        float days = seconds / dayLen;
+        string n = days == Mathf.Floor(days) ? ((int)days).ToString() : days.ToString("0.#");
+        return n + (days == 1f ? " day" : " days");
     }
 }
 

@@ -36,7 +36,7 @@ public class SupplyBlueprintTask : Task {
                 // pathfinding (the most over-target type, nearest preferred — see ResolveConsumeLeaf).
                 // This prevents the animal from collecting a mix of leaf types that would then lock
                 // the blueprint to whichever leaf happens to be delivered first.
-                Item supplyItem = ResolveConsumeLeaf(costItem);
+                Item supplyItem = ResolveConsumeLeaf(costItem, excludeLeafIds: blueprint.disallowedLeaves);
                 (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(supplyItem);
                 if (itemPath == null) continue; // can't find this item — try next cost slot
                 iq = new ItemQuantity(supplyItem, needed);

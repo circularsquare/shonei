@@ -17,6 +17,9 @@ public class DeliverToBlueprintObjective : Objective { // always queued after Go
     }
     public override void Start(){
         if (blueprint == null || blueprint.cancelled) { Fail(); return; }
+        // The player banned this variant after the hauler committed to it — refuse the delivery.
+        // The carried item stays on the animal and gets hauled/consolidated normally.
+        if (blueprint.disallowedLeaves.Contains(iq.item.id)) { Fail(); return; }
         if (animal.inv.Quantity(iq.item) > 0) {
             int needed = 0;
             // Use MatchesItem so a leaf iq.item (e.g. "pine") matches a group cost.item (e.g. "wood")

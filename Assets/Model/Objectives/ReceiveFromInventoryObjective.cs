@@ -25,7 +25,7 @@ public class ReceiveFromInventoryObjective : Objective {
         int available = sourceInv.Quantity(iq.item);
         if (available <= 0) { Debug.Log($"{animal.aName} ReceiveFromInventory: no {iq.item.name} at source"); task.FailAtMarket(); return; }
         int toReceive = Math.Min(available, iq.quantity);
-        int moved = sourceInv.MoveItemTo(animal.inv, iq.item, toReceive);
+        int moved = sourceInv.MoveItemTo(animal.inv, iq.item, toReceive, by: task);
         if (moved <= 0) { Debug.Log($"{animal.aName} ReceiveFromInventory: couldn't move {iq.item.name} to animal inv"); task.FailAtMarket(); return; }
         // Partial pickup is fine — downstream DeliverToInventoryObjective caps delivery by what the
         // animal actually has; no need to mutate iq.quantity here.

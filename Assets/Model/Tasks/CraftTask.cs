@@ -81,14 +81,25 @@ public class CraftTask : Task {
         foreach (ItemQuantity output in recipe.outputs)
             objectives.AddLast(new DropObjective(this, output.item));
 
-        // Prepend fetch objectives in reverse so index 0 ends at front
-        for (int i = _inputsToFetch.Count - 1; i >= 0; i--) {
-            var (item, perRound) = _inputsToFetch[i];
+        // Find a source for each fetch input, then fetch CLOSEST-FIRST instead of authoring order — so
+        // a nearby ingredient isn't skipped to walk to a far one first. _inputsToFetch is rebuilt in
+        // the same order so Complete's retry index-tracking still lines up with the walk order.
+        var srcs = new List<(Item item, int perRound, int toFetch, Tile tile, ItemStack stack)>();
+        foreach (var (item, perRound) in _inputsToFetch) {
             int toFetch = perRound * roundsRemaining - animal.inv.Quantity(item);
             (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(item);
             if (itemPath == null) { return false; }
-            ReserveStack(stack, toFetch);
-            objectives.AddFirst(new FetchObjective(this, new ItemQuantity(item, toFetch), itemPath.tile, softFetch: true, sourceInv: stack.inv));
+            srcs.Add((item, perRound, toFetch, itemPath.tile, stack));
+        }
+        var order = NearestFetchOrder(animal.x, animal.y, srcs.ConvertAll(s => s.tile));
+        var reordered = new List<(Item item, int perRound)>(order.Count);
+        foreach (int idx in order) reordered.Add((srcs[idx].item, srcs[idx].perRound));
+        _inputsToFetch = reordered;
+        // Prepend in reverse so order[0]'s fetch ends up front-most (ahead of Go/Work/Drop).
+        for (int k = order.Count - 1; k >= 0; k--) {
+            var s = srcs[order[k]];
+            ReserveStack(s.stack, s.toFetch);
+            objectives.AddFirst(new FetchObjective(this, new ItemQuantity(s.item, s.toFetch), s.tile, softFetch: true, sourceInv: s.stack.inv));
         }
 
         return true;

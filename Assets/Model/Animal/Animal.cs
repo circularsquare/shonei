@@ -52,6 +52,7 @@ public class Animal : MonoBehaviour{
     public float efficiency; // energy gain rate
 
     public SkillSet skills = new SkillSet();
+    public BuffSet  buffs  = new BuffSet(); // timed tonic buffs (work speed, temp tolerance, sleep)
 
     public Eating eating;
     public Eeping eeping;
@@ -184,6 +185,7 @@ public class Animal : MonoBehaviour{
             SaveSystem.LoadInventory(clothingSlotInv, pendingSaveData.clothingSlotInv);
             SaveSystem.LoadInventory(bookSlotInv, pendingSaveData.bookSlotInv);
             skills.Deserialize(pendingSaveData.skillXp, pendingSaveData.skillLevel);
+            buffs.Deserialize(pendingSaveData.buffs);
             // Resume mid-journey travel if the animal was saved while traveling.
             // New saves carry a travelTaskType descriptor so we can rebuild the full
             // HaulTo/FromMarketTask tail — delivering or receiving at the market and
@@ -283,6 +285,9 @@ public class Animal : MonoBehaviour{
             SlowUpdate();
         }
         HandleNeeds();
+        // Expire timed tonic buffs; recompute the cached comfort range at once if a temperature buff
+        // just lapsed (otherwise it would linger until the next 10-tick SlowUpdate).
+        if (buffs.Tick()) happiness.UpdateComfortRange(this);
         // Starvation: warn the player the moment the countdown starts, and flag the
         // mouse for removal once it's gone a full day without food. The dead mouse
         // skips the rest of its tick; AnimalController.RemoveDeadAnimals does the
@@ -308,7 +313,7 @@ public class Animal : MonoBehaviour{
         // efficiency; throttled recovery + unthrottled depletion would let it lose eep
         // faster than it regains it and never wake. Ticking recovery here keeps it
         // symmetric with depletion — and with eating recovery below.
-        if (state == AnimalState.Eeping) { eeping.Eep(1f, AtHome()); }
+        if (state == AnimalState.Eeping) { eeping.Eep(1f + buffs.Total(BuffType.SleepRecovery), AtHome()); }
         // Nibble from the carried food slot to top the belly up toward full. The belly
         // (eating.food, cap maxFood) is "eat to full"; the slot is the carried "to go" buffer.
         // We eat at most ~1 liang/tick (gradual munch, not an instant gulp) and never more than
@@ -484,6 +489,10 @@ public class Animal : MonoBehaviour{
         }
         var leisure = GatherLeisureCandidates();
         candidates.Add((Jitter(LeisureUrgency(leisure)), () => TryPickLeisure(leisure)));
+        // Drink a tonic for its timed buff. ChooseTonic returns null when nothing applies (no stock,
+        // already buffed, or comfortable) → urgency 0, so the category is simply skipped.
+        (Item tonic, float tonicU) = ChooseTonic();
+        if (tonic != null) candidates.Add((Jitter(tonicU), () => TryStartDrinkTonic(tonic)));
         candidates.Add((Jitter(IdleUrgency()), () => { task = null; return true; })); // idle floor — always "succeeds"
 
         // Highest urgency first; attempt each until one starts a task.
@@ -669,8 +678,10 @@ public class Animal : MonoBehaviour{
         // reachable eats it rather than starves — the reserve is a soft preference, not a lock.
         var candidates = new List<(float score, Item food)>();
         var scarceSeeds = new List<(float score, Item food)>();
+        var ic = InventoryController.instance;
         foreach (Item food in Db.edibleItems) {
             if (slotItem != null && slotItem != food) continue; // slot has a different food
+            if (ic != null && ic.IsConsumptionDisabled(food)) continue; // "don't consume" — mice won't fetch it to eat
             var (path, _) = nav.FindPathItemStack(food);
             if (path == null) continue;
             float cravingMult = happiness.WouldHelp(food) ? Eating.cravingMultiplier : 1f;
@@ -809,6 +820,51 @@ public class Animal : MonoBehaviour{
     // stored, walks there, and drinks 1 liang. Not tied to any building.
     private bool TryStartDrinking() {
         task = new DrinkTask(this);
+        if (task.Start()) return true;
+        task = null;
+        return false;
+    }
+
+    // ── Tonic drinking (timed buffs) ─────────────────────────────────────────
+    // Picks the most worthwhile in-stock tonic to drink and its urgency, or (null, 0) if none applies.
+    // A tonic whose effect the mouse already has is skipped — this self-limits drinking, since one
+    // dose lasts the whole effect duration before that tonic is a candidate again.
+    private (Item tonic, float urgency) ChooseTonic() {
+        if (Db.tonicItems == null) return (null, 0f);
+        Item best = null;
+        float bestU = 0f;
+        foreach (Item t in Db.tonicItems) {
+            if (!t.buffEffect.HasValue) continue;
+            if (buffs.Has(t.buffEffect.Value)) continue;             // already have this effect
+            if (GlobalInventory.instance.Quantity(t) <= 0) continue; // none in stock
+            float u = TonicUrgency(t.buffEffect.Value);
+            if (u > bestU) { bestU = u; best = t; }
+        }
+        return (best, bestU);
+    }
+
+    // Urgency to drink a tonic granting `type`. Temperature buffs are need-driven — they scale with
+    // how far outside the comfort band the mouse is (0 when comfortable). Vigor/restful are "always
+    // eligible" at a small baseline just above the idle floor, so an idle mouse tops them up but they
+    // never preempt real work or needs.
+    private float TonicUrgency(BuffType type) {
+        float temp = WeatherSystem.instance != null ? WeatherSystem.instance.temperature : 17.5f;
+        switch (type) {
+            case BuffType.ColdTolerance:
+                return temp < happiness.comfortTempLow
+                    ? Mathf.Clamp((happiness.comfortTempLow - temp) / UrgencyConfig.TonicTempSpan, 0f, UrgencyConfig.TonicTempCeil)
+                    : 0f;
+            case BuffType.HeatTolerance:
+                return temp > happiness.comfortTempHigh
+                    ? Mathf.Clamp((temp - happiness.comfortTempHigh) / UrgencyConfig.TonicTempSpan, 0f, UrgencyConfig.TonicTempCeil)
+                    : 0f;
+            default: // WorkSpeed, SleepRecovery
+                return UrgencyConfig.TonicBaseline;
+        }
+    }
+
+    private bool TryStartDrinkTonic(Item tonic) {
+        task = new DrinkTonicTask(this, tonic);
         if (task.Start()) return true;
         task = null;
         return false;
@@ -1053,6 +1109,36 @@ public class Animal : MonoBehaviour{
         return bestRecipe;
     }
 
+    // Like PickRecipeForBuilding but for a Processor batch: scores among the building's processor
+    // recipes (Db.GetProcessorRecipes — every recipe with tile==name + a duration) regardless of
+    // the picking animal's job, since whoever fills the building chooses the batch. No output-
+    // storage gate: the batch lands in the processor's own `output` buffer (always has room for
+    // one batch — the Fill order only re-opens once `output` has drained), then eviction-hauls.
+    public Recipe PickProcessorRecipe(Building building){
+        var recipes = Db.GetProcessorRecipes(building.structType.name);
+        if (recipes == null) return null;
+        var targets = InventoryController.instance.targets;
+        float maxScore = 0;
+        Recipe best = null;
+        int tiedCount = 0; // reservoir sampling for ties, as in PickRecipeForBuilding
+        foreach (Recipe recipe in recipes){
+            if (recipe == null) continue;
+            if (!recipe.IsEligibleForPicking()) continue;   // player toggle + research unlock
+            if (!ginv.CanCraft(recipe)) continue;           // inputs in stock AND fuel energy
+            if (recipe.AllOutputsSatisfied(targets)) continue;
+            float score = recipe.Score(targets);
+            if (score > maxScore){
+                maxScore = score;
+                best = recipe;
+                tiedCount = 1;
+            } else if (score == maxScore) {
+                tiedCount++;
+                if (random.NextDouble() < 1.0 / tiedCount) best = recipe;
+            }
+        }
+        return best;
+    }
+
     // Single source of truth for the per-task work-stint cap: an animal works at most this many
     // ticks (1 tick ~ 1s) on one task before it completes and re-evaluates — eat, sleep, switch to
     // a closer/better task. Craft derives its batch size from this budget (below); construction
@@ -1084,7 +1170,7 @@ public class Animal : MonoBehaviour{
         // trims further if the picked type alone can't cover the rounds. The CanCraft gate
         // already guaranteed ≥1 round's worth before we got here.
         if (recipe.fuelCost > 0f){
-            n = (int)(ginv.TotalFuelEnergy() / recipe.fuelCost);
+            n = (int)(ginv.ConsumableFuelEnergy() / recipe.fuelCost);
             if (n < numRounds) { numRounds = n; }
         }
         // Target cap: never overshoot the player's per-output target. See Recipe.CapRoundsByTarget.

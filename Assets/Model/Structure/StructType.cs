@@ -244,13 +244,20 @@ public class StructType {
     public float fuelBurnRate {get; set;}  // ENERGY/day consumed; divided by the stocked fuel's fuelValue at burn (wood=1 → unchanged)
 
     // ── Processor ──────────────────────────────────────────────────────
-    // A passive timed converter (see Processor.cs). hasProcessor=true → Building creates a
-    // Processor component. The conversion itself — inputs, outputs, duration, temperature
-    // ramp, the Working-state liquid tint — is data-driven from processorRecipesDb.json,
-    // linked to this building by name (see ProcessorRecipe in Db.cs). The only processor
-    // data kept here is processorTileX/Y, because that's footprint geometry: where in the
-    // building the processor's inventory tile sits, not part of the recipe.
+    // A batch converter (see Processor.cs). hasProcessor=true → Building creates a Processor
+    // component that runs the building's recipes (Recipe entries with tile==this.name and a
+    // `duration`; see Db.GetProcessorRecipes). processorTended chooses how the Working phase
+    // advances: false = UNTENDED (brewery — ferments passively over `duration` seconds, scaled
+    // by ambient temperature, then a worker taps); true = TENDED (cauldron — a worker stands and
+    // labours for `duration` seconds, then the batch auto-taps). The only processor data kept
+    // here is footprint geometry (processorTileX/Y) — where the processor's inventory tile sits.
     public bool hasProcessor {get; set;}
+    public bool processorTended {get; set;}  // true = worker-tended Working; false = passive ferment
+    public bool processorLocalHeat {get; set;}  // true (foundry): advance rate driven by building-local fuel heat, not ambient weather (requires hasFuelInv)
+    // The pot's liquid capacity in LIANG — sets how full the liquid renders (one batch against a
+    // bigger pot reads partially full) and how much `output` can buffer. 0/omit → sized to one
+    // batch (reads full when holding a batch). Authored in liang; ×100 → fen in the Processor ctor.
+    public int processorCapacityLiang {get; set;}
     public int processorTileX {get; set;}  // tile offset of the processor's inventory tile
     public int processorTileY {get; set;}
 
@@ -319,6 +326,10 @@ public class StructType {
     public bool enclosed {get; set;}
 
     public bool isLightSource {get; set;}
+    // When true, the building emits a craft-gated light + fire (LightSource.craftGated): lit only
+    // while a mouse is actively crafting here, day or night, with no fuel. Reuses the light* fields
+    // below. Cauldron uses it; furnace/crucible can opt in. Distinct from isLightSource (fuel + night).
+    public bool lightWhileCrafting {get; set;}
     public float lightIntensity {get; set;}
     public float lightOuterRadius {get; set;}
     public float lightInnerRadius {get; set;} = 4f; // flat-bright core radius; falloff ramps innerRadius → outerRadius
@@ -451,8 +462,8 @@ public class StructType {
         } else {
             job = Db.jobByName["hauler"]; // default if no njob provided
         }
-        if (isLightSource && lightIntensity == 0f) lightIntensity = 0.80f;
-        if (isLightSource && lightOuterRadius == 0f) lightOuterRadius = 10f;
+        if ((isLightSource || lightWhileCrafting) && lightIntensity == 0f) lightIntensity = 0.80f;
+        if ((isLightSource || lightWhileCrafting) && lightOuterRadius == 0f) lightOuterRadius = 10f;
         if (nworkTiles == null || nworkTiles.Length == 0)
             nworkTiles = new[] { new WorkTileOffset { dx = workTileX, dy = workTileY } };
         // Fuel inventory: convert liang → fen; resolve fuel item reference.

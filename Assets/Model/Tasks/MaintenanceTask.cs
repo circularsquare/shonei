@@ -50,6 +50,9 @@ public class MaintenanceTask : Task {
 
             Item costItem = cost.item;
             Item supplyItem = ResolveConsumeLeaf(costItem); // group cost → concrete leaf (surplus × nearness)
+            // ResolveConsumeLeaf already skips protected leaves for group costs; this also covers a
+            // leaf cost item that's itself flagged "don't consume" (no repair rather than spend it).
+            if (InventoryController.instance != null && InventoryController.instance.IsConsumptionDisabled(supplyItem)) return false;
             (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(supplyItem);
             if (itemPath == null || stack == null) return false;
             int available = stack.quantity - stack.resAmount;

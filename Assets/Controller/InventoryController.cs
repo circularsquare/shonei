@@ -26,6 +26,12 @@ public class InventoryController : MonoBehaviour {
     public Dictionary<int, bool> discoveredItems;
     public Dictionary<int, GameObject> itemDisplayGos;
     public Dictionary<int, int> targets; // per-item production targets in fen
+    // Leaf item ids the player has flagged "don't consume". Mice exclude these at SELECTION
+    // time — they won't fetch protected food to eat, pick a recipe whose only stock of an
+    // input is protected, or burn protected fuel. Items already in-hand may still finish their
+    // task (selection-time, not mid-task abort — see SetConsumptionDisabled callers). Leaf-only,
+    // mirroring `targets`; group rows in the detailed panel fan to leaves. Persisted in saves.
+    public HashSet<int> consumptionDisabled = new HashSet<int>();
     // Staged by SaveSystem on load; consumed by ItemDisplay.Start to override the JSON-default
     // open state with the player's last saved collapse state. Keyed by item name (stable across
     // id renumbering) and only holds deltas — groups matching their defaultOpen are absent.
@@ -105,6 +111,38 @@ public class InventoryController : MonoBehaviour {
         return total;
     }
 
+    // Sum of an item's quantity (group-aware via Inventory.Quantity) across all inventories of
+    // the given types. Used by GlobalInventoryPanel's per-item location breakdown
+    // (Storage / Floor / Carried = Animal+Equip / Market). The four shown buckets need not sum
+    // to the GlobalInventory total — the remainder lives in building buffers (processor input,
+    // fuel reservoir, blueprint cost slots) — so Total is the authoritative figure.
+    public int QuantityIn(Item item, params Inventory.InvType[] types){
+        int total = 0;
+        foreach (var t in types){
+            if (byType.TryGetValue(t, out var list))
+                foreach (Inventory inv in list) total += inv.Quantity(item);
+        }
+        return total;
+    }
+
+    // ── Consumption protection ("don't consume") ───────────────────────────────
+    // True if this leaf is flagged don't-consume. Group items are never themselves stored as
+    // protected (protection is leaf-only); callers in the selection paths always pass leaves.
+    public bool IsConsumptionDisabled(Item item){
+        return item != null && consumptionDisabled.Contains(item.id);
+    }
+    // Protect/unprotect an item. Group items fan to every leaf descendant (mirrors
+    // Inventory.SetAllowRecursive) so a single group-row toggle covers the whole group.
+    public void SetConsumptionDisabled(Item item, bool disabled){
+        if (item == null) return;
+        if (item.children != null && item.children.Length > 0){
+            foreach (Item child in item.children) SetConsumptionDisabled(child, disabled);
+            return;
+        }
+        if (disabled) consumptionDisabled.Add(item.id);
+        else          consumptionDisabled.Remove(item.id);
+    }
+
     public void TickUpdate(){
         // Simulation side: decay + reservation expiry. Gated behind the sim tick
         // (and thus paused with timeScale). The display refresh below is NOT —
@@ -139,11 +177,15 @@ public class InventoryController : MonoBehaviour {
 
     void AddItemDisplay(Item item){
         if (item == null){return;}
+        if (itemDisplayGos[item.id] != null) return; // already built (e.g. created on demand as a parent below)
 
         GameObject itemDisplayGo;
         if (item.parent == null){
             itemDisplayGo = Instantiate(itemDisplay, inventoryPanel.transform);
-        } else { // parent must be instantiated before child
+        } else {
+            // Db.items iterates in id order, so a group authored with a higher id than its children
+            // reaches the child first. Build the parent on demand so the tree is independent of id order.
+            if (itemDisplayGos[item.parent.id] == null) AddItemDisplay(item.parent);
             itemDisplayGo = Instantiate(itemDisplay, itemDisplayGos[item.parent.id].transform);
         }
 
@@ -343,6 +385,7 @@ public class InventoryController : MonoBehaviour {
             targets[key] = Db.items[key].DefaultTargetFen;
         foreach (var key in discoveredItems.Keys.ToList())
             discoveredItems[key] = false;
+        consumptionDisabled.Clear();
         SeedStartDiscovered();
         // Drop plant entries whose seed is no longer discovered; the load path re-adds the valid
         // ones as it restores discovery via DiscoverItem. Prevents stale entries surviving a reload.
