@@ -7,7 +7,7 @@
 - **Standability**: tile is standable if tile below is solid, has a platform/building, or has a ladder.
   - *Tall-body exception*: a tile that itself contains a `solidTop` structure also occupying the tile below (i.e. the SAME structure body extends through both) is non-standable — see §Variable-shape structures.
   - *Per-tile override*: a structure can declare specific local tiles as standable internal floors via `Structure.HasInternalFloorAt(localDx, localDy)` (default `false`). `Elevator` uses this to make its bottom and top stops walkable inside the chassis even though the multi-tile body would otherwise block them.
-  - *Future improvement*: data-driven per-tile / per-shape config replacing the binary `solidTop`.
+  - *`solidTop` is staying*: the binary whole-structure flag is the primary support signal. The per-tile `HasInternalFloorAt` override above **complements** it (interior floors that the binary flag can't express) — it is not a replacement.
 - **Vertical movement**: ladders produce direct node-to-node vertical edges (cost 2.0). Cliff climbing and stairs use **waypoint chains** (see below).
 - **Road speed boost**: road bonus is per-tile — only the tile the mouse is currently standing on contributes its `pathCostReduction` (doubled to match old two-endpoint feel). No bonus from adjacent road tiles.
 - **Floor item slowdown**: tiles with floor items reduce movement speed by 25% (×0.75).
@@ -183,7 +183,7 @@ Six inventory types:
 | Floor | 4 | 1000 fen | 5× normal | Created/destroyed dynamically; up to 4 item types can share a tile |
 | Equip | 1 | varies | normal | Animal equip slots (food, tool, clothing, book). Items may also opt into use-based wear via `equipDecayRate` — ticked once per `HandleWorking` call, on top of passive `decayRate`. See §Equip decay below. |
 | Market | varies | varies | none | Market building only; set via `SetMarket()` on a Storage inv |
-| Fuel | 1 | varies | none | Internal building resource (torch wood, furnace coal). No sprite, no tile. See below. |
+| Fuel | 1 | varies | none | Internal building resource (torch wood, foundry coal). No sprite, no tile. See below. |
 
 ### Inventory ownership
 
@@ -242,6 +242,7 @@ When a tile or building change reduces standability, items on the tile above tha
 - **`World.FallIfUnstandable(x, y)`**: no-op if the tile has no items or is still standable; otherwise calls `FallItems`.
 - **`World.FallItems(tile)`**: scans downward from `tile.y−1` for the first standable tile (`landing`). Moves all stacks via `MoveItemTo` (no GlobalInventory double-count). Fires `World.OnItemFall` to trigger the fall animation (subscribed in `WorldController`). Any items that can't fit in the landing inventory are subtracted from GlobalInventory and logged as a warning before the source inventory is destroyed. Same applies if no landing tile exists at all (e.g. items at y=0).
 - **Mixing**: `PutOnFloor` / `ProduceAtTile` prevent different item types from being placed on the same floor tile normally. `FallItems` bypasses this deliberately — a floor tile can hold up to 4 types after a fall.
+- **`ProduceAtTile` overflow**: tries the target tile, then expanding rings (radius 5) of standable tiles. Returns the leftover fen that fit nowhere — those are **lost** (never re-added to GlobalInventory) and a player-facing toast fires (see SPEC-eventfeed). Callers that must not lose items should check the return.
 - **GlobalInventory**: `MoveItemTo` is used (not `Produce`) so no double-counting occurs. Lost items are explicitly removed from GlobalInventory before destruction.
 - **Fall physics constants** (`World.cs`): `fallSecondsPerTile = 0.4f` (time to fall one tile), `fallGravity = 2 / fallSecondsPerTile²` (12.5 tiles/s²). Both item animation (t² ease-in over `fallSecondsPerTile × dist` seconds) and mouse falling (velocity accumulation) are derived from these constants. Animation spawned in `WorldController.ItemFallAnimCoroutine`.
 
@@ -437,18 +438,20 @@ Caveats: steady-state only (first cycle on a fresh world starts easier now — `
 A `Processor` is an optional `Building` component (sibling to `Workstation` / `Reservoir`, in `Processor.cs`) — a **batch converter**: load a recipe's inputs into a buffer, let them transform for the recipe's `duration`, tap the whole batch out at once. Created when `StructType.hasProcessor`. The conversions it can run are ordinary **`Recipe`s** (`recipesDb.json`) with `tile == buildingName` and a `duration` (`recipe.isProcessorRecipe`, see SPEC-data.md) — so processors are **multi-recipe** and authored exactly like crafts. The recipe for each batch is **scored & chosen at fill time** (`Animal.PickProcessorRecipe`) and assigned via `Processor.SetBatchRecipe`; the buffers are sized once (ctor) to the largest recipe, so a batch can switch recipes with no reallocation.
 
 **Two modes**, chosen by `StructType.processorTended`:
-- **UNTENDED** (brewery, foundry): no worker is present during the wait; `Working` advances passively in `Processor.Tick` — elapsed in-game **seconds** scaled by a temperature ramp (`Rate()` — linear between `processTempMin`/`processTempIdeal`, else constant 1.0) — then a worker taps the `Ready` batch.
+- **UNTENDED** (brewery): no worker is present during the wait; `Working` advances passively in `Processor.Tick` — elapsed in-game **seconds** scaled by a temperature ramp (`Rate()` — linear between `processTempMin`/`processTempIdeal` against AMBIENT weather, else constant 1.0) — then a worker taps the `Ready` batch.
 - **TENDED** (cauldron): a worker stands at the building and labours (`WorkProcessorTask`); `progress` accrues in `AnimalStateManager.HandleWorking` (~labour-seconds) and the batch **auto-taps** the instant it completes (no separate Ready/Tap walk). The inputs are NOT consumed per round — they sit in the buffer and the single `Tap()` is the whole conversion.
 
-**Local-heat mode** (`StructType.processorLocalHeat`, foundry only — untended): the rate ramp reads the building's OWN heat-temperature instead of ambient weather. `Processor.heat` (degrees above ambient) is stoked by fuel: `StructController.TickUpdate` calls `Reservoir.Burn` then feeds the fen burned to `Processor.AddFuelHeat` **before** ticking the processor, so the heat lands the same frame it's gated on. Each tick `heat` decays toward ambient (`HeatRetentionPerTick`); `temperature = HeatToTemperature(heat, ambient) = ambient + heat` (the single conversion point, cached for the InfoPanel). A completed melt discretely draws `recipe.heatCost` from the pool (latent heat). Tuning constants (`HeatPerFuelEnergy`, `HeatRetentionPerTick`, `TempPerHeat`) are first-pass, playtest-tunable.
+(The foundry was once an untended local-heat processor; it's now its own `Foundry` melt-pool subclass — see §Foundry below. `Processor` no longer carries any heat code.)
 
 A building can be **both** a craft workstation and a processor: the **brewery** crafts yeast (`workload` recipe in cook's `job.recipes`) *and* ferments rice wine (`duration` recipe, untended). Processor recipes are kept OUT of `job.recipes` so the craft dispatch never runs them as `CraftTask`s — the Fill/Work/Tap orders do.
 
 **Two internal inventories** (neither is the building's `storage`):
 - `inputBuffer` — `InvType.Reservoir`, accepts mixed item classes (inputs + fuel), never decays, not a haul source.
-- `output` — `InvType.Storage`, so the finished batch haul-routes normally. Sized to one batch; all recipes' outputs are `AllowItem`'d at construction. **Its `ItemClass` is DERIVED from the recipe outputs** (`Liquid` if all outputs are liquid — brewery/cauldron; else `Default` — foundry solids), NOT hardcoded. Load-bearing: Storage enforces an exact class match, so a hardcoded `Liquid` silently DROPS solid output (copper bars vanished on tap before this fix).
+- `output` — `InvType.Storage`, so the finished batch haul-routes normally. Sized to the pot (`capacityFen`, so it holds a full multi-round batch); all recipes' outputs are `AllowItem`'d at construction. **Its `ItemClass` is DERIVED from the recipe outputs** (`Liquid` if all outputs are liquid — the brewery/cauldron case; else `Default`), NOT hardcoded. Load-bearing: Storage enforces an exact class match, so a hardcoded class silently DROPS mismatched output.
 
 **Fuel**: a recipe's `fuelCost` is honoured by the cauldron — `SetBatchRecipe` commits a fuel leaf (`GlobalInventory.PickFuel`), the fill task hauls it into `inputBuffer` like any input, and `Tap()` drains it with the rest. `BatchLoaded()` gates Working on inputs **and** fuel present.
+
+**Multi-round batches** (`Processor.batchRounds`): a pot bigger than one round (`processorCapacityLiang` > a round's output) lets one batch run several rounds at once — N× the inputs/fuel/output for the **same `duration`** (a worker brews 2× warming tonic in the cauldron's 10-liang pot in one stint). `CapacityRounds()` = `capacityFen / Σ output-fen` is the hard ceiling; `FillProcessorTask` sets the actual `batchRounds = min(CapacityRounds, alreadyBuffered + SourceableRounds)`, floored at what a prior partial fill buffered. `SourceableRounds` mirrors `CalculateWorkPossible`'s input/fuel caps (free global stock; no time cap). `InputsComplete`/`BatchLoaded` require `×batchRounds`, the fill fetches `qty×batchRounds`, and `Tap()` produces `output×batchRounds`. A resumed fill that can no longer source the full count **trims down and starts** (the fill flips straight to `Working` when the buffer already holds a full batch). `batchRounds` isn't saved — `RestoreBatch` recovers it from the restored buffer (`BufferedRounds()`). `inputBuffer` stacks are sized in the ctor for the max rounds the pot allows. Generalizes to every processor (brewery, cauldron) via JSON capacity alone — no per-building code. Not yet capped by player target, so a batch can overshoot by up to one pot.
 
 **Lifecycle** (`Processor.State`): `Empty → Filling → Working → (Ready →) Tapped → Empty`.
 - `Empty` — a WOM `FillProcessor` order is open.
@@ -463,9 +466,35 @@ A building can be **both** a craft workstation and a processor: the **brewery** 
 
 **Output → tank**: `output` is an all-disallowed liquid Storage; `Tap` (untended) / the auto-tap (tended) register a **storage-eviction haul** so a hauler carries the batch to a real tank. No hard gate on a tank existing — `Tapped` just idles until one does. (This subsumes the old cauldron `TryAbsorbOutput` force-deposit; that hook still exists for craft outputs but no building overrides it now.)
 
-**Save/load**: `StructureSaveData.processorState` / `processorProgress` / `processorRecipeId` (nullable) / `processorInputData` / `processorOutputData` / `processorHeat` (local-heat charge). On load the recipe is re-bound AFTER the buffers restore (`ResolveProcessorRecipe` — by id, or for old saves the building's sole recipe / the one matching the buffer); `RestoreBatch` re-identifies the committed fuel leaf. `ScanOrders` re-registers orders + any haul-out for a tank restored mid-`Tapped`.
+**Save/load**: `StructureSaveData.processorState` / `processorProgress` / `processorRecipeId` (nullable) / `processorInputData` / `processorOutputData`. On load the recipe is re-bound AFTER the buffers restore (`ResolveProcessorRecipe` — by id, or for old saves the building's sole recipe / the one matching the buffer); `RestoreBatch` re-identifies the committed fuel leaf. `ScanOrders` re-registers orders + any haul-out for a tank restored mid-`Tapped`.
 
 **Visual**: `Processor.GetVisualFill` → `Building.TryGetDisplayLiquid` → `WaterController`. The fill always tracks the **actual liquid volume** against the pot's capacity (`PotCapacity` = `output` size, set by `processorCapacityLiang`), so a 5-liang batch in a 10-liang cauldron reads *half*, not full — and it's consistent across states (no jump): Filling/Working show the buffered LIQUID inputs (water, rising as loaded then held; tinted by `processColor` mid-batch), Ready/Tapped show the output liquid colour, draining as it's hauled off. The cauldron's fire light is a craft-gated `LightSource` (`lightWhileCrafting`) keyed on `Building.IsBeingWorked` (true for a CraftTask OR a tended `WorkProcessorTask`).
+
+## Foundry (melt pool)
+
+The **foundry** is a dedicated `Foundry : Building` subclass (`Foundry.cs`) — a continuous **melt pool**, NOT a `Processor`. Smiths deposit ore; each deposit melts independently on its own clock; melted metal accumulates in a shared molten pool; molten metals **auto-alloy** (copper + tin → bronze) when the cast target calls for it; a smith casts molten into bars. Inspired by Tinkers' Construct. Instantiated via the `Structure.Create` name switch (`name == "foundry"`) — the only structure of its kind, so no flag.
+
+**State**: `List<MeltChunk> chunks` (one per deposit — `{ore, fen, meltProgress}`); `Dictionary<int,int> moltenPool` (molten item id → fen — a plain dict, NOT an Inventory, so the melt/alloy core is pure & unit-testable); `heat`/`temperature`; and two Inventories — `intake` (Reservoir; ore awaiting melt) and `output` (single-slot Default Storage; cast bars). Capacity `foundryCapacityLiang` (×100 fen) bounds intake + chunks + molten pool.
+
+**Heat** (moved here from `Processor`): `heat` = degrees above ambient, stoked by fuel — `StructController.TickUpdate` burns the reservoir then calls `Foundry.AddFuelHeat` **before** `Foundry.Tick`, so heat lands the frame it's gated on. Decays toward ambient each tick (`HeatRetentionPerTick`); `temperature = HeatToTemperature(heat, ambient) = ambient + heat`. Tuning consts are playtest-tunable; `HeatPerFuelEnergy` sets BOTH rise speed and the equilibrium ceiling, `HeatRetentionPerTick` the cooldown + ceiling cap.
+
+**Tick** (each 0.2s): `SweepIntake` (drains delivered ore into chunks, one per ore type) → `StepMelt` → target-gated `StepAlloy`. `StepMelt`/`StepAlloy` are PUBLIC STATIC steppers over plain data (chunk list + pool dict) — unit-tested in `FoundryTests` without a live Building.
+- **Melt**: per chunk, `rate = (temp − meltTempMin)/(meltTempIdeal − meltTempMin)`, UNCLAMPED below min (a cold pool re-solidifies chunks at negative rate), capped ±1. Melt time is **size-independent** (`meltDuration` is per-chunk); at full progress the chunk pours its metal into the pool. **Latent heat** drains per LIANG melted this tick (heat drain DOES scale with chunk size — replaces the old per-batch `heatCost`, and is why a big cold dump stalls).
+- **Alloy**: greedy, in whole ratio-units; fires only for moltens consistent with the cast target. Sub-unit remainders linger until more molten arrives.
+
+**Cast target** (`castMode` Auto/Manual + `manualTargetBarId`) governs FEEDING + alloy gating, NOT which metal casts (casting pours ALL castable molten — target + inconsistent leftover, so molten can't strand). `TargetBar()`: Manual pins a bar; Auto picks the ore-chain-sourceable cast whose output bar is most under its production target (`-SurplusRatio` — NOT `Recipe.Score`, since cast inputs are transient molten that would score 0). **Consistency** (`ConsistentMoltens(bar)`): the bar's molten input + (if it's an alloy product) the alloy's component moltens; everything else is inconsistent. `OreChainSourceable` gates Auto on every ore-derived molten being in stock (bronze needs BOTH ores).
+
+**Casting** (`CastAll`): pours each castable molten into bars in `output`, bounded by output room (single slot → one bar type at a time; the rest stays molten until the slot's hauled out). `HasCastableMolten` also checks room, so a full crate doesn't busy-loop the cast order.
+
+**WOM** (priority 3): `RegisterFeedFoundry` (haul a consistent ore → intake) + `RegisterCastFoundry` (pour molten → bars + storage-eviction haul). Both gated on `JobOperatesFoundry` = the **smith** (the foundry recipe job), and the foundry's **fuel supply is also smith-gated** (`RegisterFuelSupply` special-cases `Foundry`) — so ALL foundry labour (feed, fuel, cast) is the smith's. Registered from `RegisterOrdersFor` (via `OnPlaced`) + `ScanOrders`. `Foundry.Destroy` (override) removes the orders, drops contents (casting molten to bars first), and destroys both inventories.
+
+**Recipes** (`recipesDb.json`, `foundryOp` field — see SPEC-data): **melt** (ore → molten), **alloy** (molten + molten → molten), **cast** (molten → bars). Bucketed in `Db.foundryMeltRecipes`/`foundryAlloyRecipes`/`foundryCastRecipes`, kept OUT of `job.recipes` AND the processor bucket. Molten metals are real liquid `Item`s.
+
+**Save/load**: `StructureSaveData.foundryHeat` / `foundryCastMode` / `foundryManualTargetBarId` / `foundryChunks` / `foundryMolten` / `foundryIntakeData` / `foundryOutputData`. `ScanOrders` re-registers the feed/cast orders + any output haul-out after load. Old (pre-rewrite) foundry saves load empty/cold.
+
+**Display**: `StructureInfoView.AppendFoundry` — temp, cast target (auto/manual), one line per melting chunk (`1.8 malachite 45% melted`), molten pool, output bars.
+
+**Known rough edges** (deferred): no manual-target UI yet (defaults Auto); raw-ore eviction unimplemented (inconsistent ore melts + pours out as bars rather than being hauled back raw); idle fuel-burn (burns even with nothing to melt); sub-bar molten dregs lost on deconstruct.
 
 ## Variable-shape structures
 

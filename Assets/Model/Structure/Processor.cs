@@ -33,12 +33,12 @@ public class Processor {
     public float progress;          // seconds elapsed/laboured while Working; clamped to [0, duration]
     public readonly bool tended;    // true = worker-tended Working; false = passive ferment
 
-    // Local-heat mode (foundry): the building's own heat — stoked by fuel burned in StructController
-    // (Reservoir.Burn → AddFuelHeat), bleeding off toward ambient each tick — drives the advance rate
-    // in place of ambient weather. A completed melt discretely draws recipe.heatCost. See SPEC-systems.
-    public readonly bool localHeat;
-    public float heat;              // stored thermal charge, in "degrees above ambient"; 0 = cold (ambient)
-    public float temperature;       // cached absolute reading (HeatToTemperature) — read by the InfoPanel
+    // How many recipe rounds the current batch runs at once. A pot bigger than one round (the
+    // cauldron's 10-liang pot vs a 5-liang tonic) lets a worker brew several rounds in a single
+    // batch — N× the inputs/fuel/output for the SAME `duration`. Decided at fill time
+    // (FillProcessorTask) from pot capacity and what the colony can source; 1 = a plain one-round
+    // batch (small pots, or only enough ingredients for one). Reset to 1 when the batch ends.
+    public int batchRounds = 1;
 
     // Mixed-class load buffer. Reservoir-typed so it accepts any item class together
     // (rice + water + yeast + fuel), never decays, and is never a haul source.
@@ -63,13 +63,49 @@ public class Processor {
     public ItemQuantity[] outputs => recipe?.outputs;
     public float duration         => recipe?.duration ?? 0f;
 
-    // capacityFen: the pot's liquid capacity (fen). 0 → sized to one batch's output (reads full when
-    // holding a batch); a larger value (cauldron's 10 liang) makes one batch read partially full and
-    // lets `output` buffer more.
-    public Processor(List<Recipe> recipes, bool tended, bool localHeat, int capacityFen, int tileX, int tileY, int parentSortingOrder) {
+    // ── Batch rounds ──────────────────────────────────────────────────────────
+    // The hard ceiling on batchRounds: how many rounds of the current recipe physically fit in the
+    // pot (its volume ÷ one round's output volume). ≥1. The fill task lowers the actual batchRounds
+    // further to what the colony can source right now.
+    public int CapacityRounds() => recipe == null ? 1 : CapacityRoundsFor(recipe, capacityFen);
+
+    static int CapacityRoundsFor(Recipe r, int capacityFen) {
+        int perRound = OutputFen(r);
+        if (perRound <= 0) return 1;
+        int cap = capacityFen > 0 ? capacityFen : perRound; // 0 = pot sized to a single round
+        return Mathf.Max(1, cap / perRound);
+    }
+
+    // Total fen of output one round of `r` produces — the per-round volume the pot must hold.
+    // Sums all outputs (a single-output recipe = that output's quantity).
+    static int OutputFen(Recipe r) {
+        int fen = 0;
+        foreach (ItemQuantity oq in r.outputs) fen += oq.quantity;
+        return fen;
+    }
+
+    // Full recipe rounds currently sitting in the input buffer (min over inputs). Recovers
+    // batchRounds after a load and floors it on a resumed partial fill. Fuel is excluded (not in
+    // recipe.inputs) — InputsComplete/BatchLoaded handle the fuel side.
+    public int BufferedRounds() {
+        if (recipe == null) return 0;
+        int rounds = int.MaxValue;
+        foreach (ItemQuantity iq in recipe.inputs) {
+            if (iq.item == null || iq.quantity <= 0) continue;
+            rounds = Mathf.Min(rounds, inputBuffer.Quantity(iq.item) / iq.quantity);
+        }
+        return rounds == int.MaxValue ? 0 : rounds;
+    }
+
+    // The pot's liquid capacity (fen). 0 → sized to one batch's output (reads full when holding a
+    // batch); a larger value (cauldron's 10 liang) makes one batch read partially full, lets
+    // `output` buffer more, AND sets the ceiling on batchRounds (CapacityRounds).
+    public readonly int capacityFen;
+
+    public Processor(List<Recipe> recipes, bool tended, int capacityFen, int tileX, int tileY, int parentSortingOrder) {
         this.recipes = recipes;
         this.tended  = tended;
-        this.localHeat = localHeat;
+        this.capacityFen = capacityFen;
         string buildingName = (recipes != null && recipes.Count > 0) ? recipes[0].tile : "processor";
 
         // Size the buffers ONCE to the largest recipe so a batch can switch recipes without
@@ -82,12 +118,16 @@ public class Processor {
             foreach (Recipe r in recipes) {
                 maxInputSlots  = Mathf.Max(maxInputSlots,  r.inputs.Length);
                 maxOutputSlots = Mathf.Max(maxOutputSlots, r.outputs.Length);
-                foreach (ItemQuantity iq in r.inputs)  inStack  = Mathf.Max(inStack,  iq.quantity);
+                // A multi-round batch loads rRounds× a recipe's inputs/fuel into the buffer at once,
+                // so each input slot must hold that many rounds' worth (the output pot is already
+                // sized to capacityFen below, which holds the full batch by construction).
+                int rRounds = CapacityRoundsFor(r, capacityFen);
+                foreach (ItemQuantity iq in r.inputs)  inStack  = Mathf.Max(inStack,  iq.quantity * rRounds);
                 foreach (ItemQuantity oq in r.outputs) {
                     outStack = Mathf.Max(outStack, oq.quantity);
                     if (oq.item != null) { anyOutput = true; if (!oq.item.isLiquid) allOutputsLiquid = false; }
                 }
-                if (r.fuelCost > 0f) { anyFuel = true; inStack = Mathf.Max(inStack, Mathf.RoundToInt(r.fuelCost * 100f)); }
+                if (r.fuelCost > 0f) { anyFuel = true; inStack = Mathf.Max(inStack, Mathf.RoundToInt(r.fuelCost * 100f) * rRounds); }
             }
         if (anyFuel) maxInputSlots += 1; // reserve a buffer slot for the fuel leaf
         outStack = Mathf.Max(outStack, capacityFen); // a roomier pot than one batch → partial-fill look
@@ -117,6 +157,7 @@ public class Processor {
     public void SetBatchRecipe(Recipe r) {
         recipe = r;
         progress = 0f;
+        batchRounds = 1; // FillProcessorTask sets the real count once it knows what it can source
         if (r != null && r.fuelCost > 0f) {
             if (batchFuelItem == null) {
                 Item fuel = GlobalInventory.instance?.PickFuel();
@@ -144,6 +185,10 @@ public class Processor {
             if (batchFuelItem != null)
                 batchFuelFen = Mathf.RoundToInt(r.fuelCost * 100f / batchFuelItem.fuelValue);
         }
+        // batchRounds isn't saved — recover it from the restored buffer. A Working/Ready batch holds
+        // exactly batchRounds rounds (the fill only flips to Working when fully loaded); a Tapped
+        // batch already drained its buffer (Tap is done, so the count no longer matters).
+        batchRounds = Mathf.Max(1, BufferedRounds());
     }
 
     // True while ambient temperature affects the (untended) advance rate.
@@ -156,38 +201,17 @@ public class Processor {
         return Mathf.InverseLerp(recipe.processTempMin.Value, recipe.processTempIdeal.Value, ambientTemp);
     }
 
-    // ── Local heat (foundry) ──────────────────────────────────────────────────
-    // First-pass tuning constants — expect a playtest pass to settle the curve. `heat` is stored as
-    // "degrees above ambient"; the temperature shown + rate-gated is ambient + heat. Gameplay knobs
-    // are JSON-authored (building fuelBurnRate, recipe processTempMin/Ideal + heatCost); these scale
-    // the burn→heat and cooling response.
-    public const float HeatPerFuelEnergy    = 100f;   // heat (deg) gained per unit of burned fuel energy (liang × fuelValue)
-    public const float HeatRetentionPerTick = 0.998f; // fraction of heat kept each 0.2s tick (slow cool toward ambient)
-    public const float TempPerHeat          = 1f;     // heat→temperature scale; 1 = heat is literally degrees-above-ambient
-
-    // Single tunable conversion point between internal heat charge and the absolute temperature the
-    // player sees (InfoPanel) and the rate gate reads. Linear for now; can curve later without touching callers.
-    public static float HeatToTemperature(float heat, float ambient) => ambient + heat * TempPerHeat;
-
-    // Converts fuel the reservoir burned this tick into stored heat. Called by StructController right
-    // after Reservoir.Burn so the heat lands BEFORE this tick's rate check. energy = liang × fuelValue
-    // (so coal's higher fuelValue yields more heat per liang, matching its slower burn).
-    public void AddFuelHeat(int fenBurned, Item fuel) {
-        if (!localHeat || fenBurned <= 0 || fuel == null) return;
-        heat += fenBurned / 100f * fuel.fuelValue * HeatPerFuelEnergy;
-    }
-
-    // Does inputBuffer hold every declared input in full?
+    // Does inputBuffer hold every declared input in full (×batchRounds for a multi-round batch)?
     public bool InputsComplete() {
         if (recipe == null) return false;
         foreach (ItemQuantity iq in recipe.inputs)
-            if (inputBuffer.Quantity(iq.item) < iq.quantity) return false;
+            if (inputBuffer.Quantity(iq.item) < iq.quantity * batchRounds) return false;
         return true;
     }
 
-    // Inputs AND the committed fuel are both loaded — the batch may start Working.
+    // Inputs AND the committed fuel (both ×batchRounds) are loaded — the batch may start Working.
     public bool BatchLoaded() =>
-        InputsComplete() && (batchFuelItem == null || inputBuffer.Quantity(batchFuelItem) >= batchFuelFen);
+        InputsComplete() && (batchFuelItem == null || inputBuffer.Quantity(batchFuelItem) >= batchFuelFen * batchRounds);
 
     // The pot's liquid capacity (fen) — the denominator for the visual fill, so the level reflects
     // the ACTUAL liquid volume in the pot, not "recipe complete = full". Sized in the ctor.
@@ -246,27 +270,18 @@ public class Processor {
     //            tended processor's Working is driven by its worker, so Tick leaves it alone.
     //   Tapped:  once `output` is fully drained → Empty, re-arming the Fill order.
     public void Tick(float dtSeconds, float ambientTemp) {
-        // Local-heat (foundry): cool toward ambient each tick (fuel re-adds heat in StructController
-        // before this call). The cached temperature drives the rate gate AND the InfoPanel readout.
-        if (localHeat) heat *= HeatRetentionPerTick;
-        float effTemp = localHeat ? HeatToTemperature(heat, ambientTemp) : ambientTemp;
-        temperature = effTemp;
-
         if (state == State.Working && !tended) {
-            progress += Rate(effTemp) * dtSeconds;
+            progress += Rate(ambientTemp) * dtSeconds;
             if (progress >= duration) {
                 progress = duration;
                 state = State.Ready;
-                // Latent heat: a completed melt discretely draws recipe.heatCost from the pool — the
-                // dominant, intentional fuel cost of smelting (kept from being negligible). Below-min
-                // temp afterwards freezes the next batch until the foundry is re-stoked.
-                if (localHeat && recipe != null) heat = Mathf.Max(0f, heat - recipe.heatCost);
             }
         } else if (state == State.Tapped && output.IsEmpty()) {
             state = State.Empty;
             recipe = null;
             batchFuelItem = null;
             batchFuelFen = 0;
+            batchRounds = 1;
         }
     }
 
@@ -280,9 +295,10 @@ public class Processor {
                 inputBuffer.Produce(s.item, -s.quantity);
         if (recipe != null)
             foreach (ItemQuantity oq in recipe.outputs) {
+                int produced = oq.quantity * batchRounds; // whole batch taps at once (N rounds)
                 // Fermented/brewed output bypasses Animal.Produce, so tally it here too (food chart, etc.).
-                StatsTracker.instance?.NoteProduced(oq.item, oq.quantity);
-                output.Produce(oq.item, oq.quantity);
+                StatsTracker.instance?.NoteProduced(oq.item, produced);
+                output.Produce(oq.item, produced);
             }
         state = State.Tapped;
     }

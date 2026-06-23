@@ -43,6 +43,10 @@ public abstract class Task {
     // Null for non-WOM tasks (Craft, Eep, Obtain, etc.). Released in Cleanup().
     public WorkOrderManager.WorkOrder workOrder;
 
+    // Set once by Fail() so the failure path is idempotent and so Start() can tell a synchronous
+    // first-objective failure (cleaned up, task dead) from a task that's actually running.
+    private bool aborted = false;
+
     // De minimis: skip hauls/drops below this unless it clears the source stack entirely.
     public const int MinHaulQuantity = 20; // 0.20 liang
 
@@ -311,11 +315,15 @@ public abstract class Task {
         objectives.AddFirst(new FetchObjective(this, foodIq, bestPath.tile, animal.foodSlotInv, softFetch: true, sourceInv: bestStack.inv, sourceLimit: reserved));
     }
 
-    public bool Start(){ // calls some task specific Initialize
+    public bool Start(){ // runs Initialize, then kicks off the first objective
         bool initialized = Initialize();
-        if (!initialized) Cleanup(); // release any reservations made before Initialize bailed
-        else if (objectives.Count > 0) StartNextObjective();
-        return initialized;
+        if (!initialized) { Cleanup(); return false; } // release any reservations made before Initialize bailed
+        if (objectives.Count > 0) StartNextObjective();
+        // The first objective can fail synchronously (e.g. FetchObjective finds no path), which
+        // routes through Fail() → Cleanup() and sets `aborted`. Initialize() already returned true,
+        // so report the real outcome here — otherwise dispatch (ChooseOrder / ChooseCraftTask) would
+        // adopt a task that's already dead and strand the reservations Initialize() made.
+        return !aborted;
     }
     public virtual void Complete(){ // advances to next objective, or finishes the task if none remain
         if (objectives.Count > 0){StartNextObjective();}
@@ -328,11 +336,13 @@ public abstract class Task {
     // silent=true skips the "failed X task at Y" log. Use when the caller has already logged
     // a more specific message about why the task is being aborted (e.g. Inventory.Destroy
     // proactive notify, which logs the destroyer + reason just before calling Fail).
-    public void Fail(bool silent = false){ // end task, go idle
-        // Idempotent — Inventory.Destroy proactively fails reserving tasks, after which
-        // the same task's own code path (e.g. FetchObjective.OnArrival) may fall through
-        // to its own Fail(). Skip if we no longer own the animal.
-        if (animal.task != this) return;
+    public void Fail(bool silent = false){ // end task, release reservations, go idle
+        // Idempotent via `aborted`: a task fails exactly once. Two paths can both call Fail() on the
+        // same task — Inventory.Destroy proactively fails reserving tasks, then the task's own code
+        // (e.g. FetchObjective.OnArrival) falls through to Fail() too — so the flag collapses the
+        // second call to a no-op.
+        if (aborted) return;
+        aborted = true;
         if (!silent && !WorldController.isClearing) {
             if (currentObjective == null){
                 Debug.Log($"{animal.aName} ({animal.job.name}) failed {ToString()} task, null objective");
@@ -340,9 +350,16 @@ public abstract class Task {
                 Debug.Log($"{animal.aName} ({animal.job.name}) failed {ToString()} task at {currentObjective}");
             }
         }
+        // Always release reservations, even when this task hasn't been assigned to animal.task yet:
+        // the dispatch path (ChooseOrder / ChooseCraftTask) Start()s the first objective before the
+        // assignment, so a synchronous failure here must still clean up or its reservations leak.
         Cleanup();
-        animal.task = null;
-        animal.state = Animal.AnimalState.Idle;
+        // Only relinquish the animal if we actually own it. During dispatch (pre-assignment) we
+        // don't — leave its task/state alone and let the dispatcher react to Start()'s false return.
+        if (animal.task == this) {
+            animal.task = null;
+            animal.state = Animal.AnimalState.Idle;
+        }
     }
     // Softer fail path for objectives that run while the animal is conceptually off-screen
     // at the market. Default = plain Fail(). Market tasks override to enqueue a return

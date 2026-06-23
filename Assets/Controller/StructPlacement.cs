@@ -49,7 +49,7 @@ public static class StructPlacement {
         // further down still enforces the solid-tile check itself.
         bool placementTileMustBeSolid = st.requiresSolidTilePlacement;
 
-        if (tile.type.id != 0 && st.name != "empty" && st.requiredTileName == null && !placementTileMustBeSolid) return "tile is not empty";
+        if (tile.type.id != 0 && st.name != "empty" && !st.OccupiesSolidTile) return "tile is not empty";
         // Block mining tiles that sit under a `preservesTile` structure (burrow). The host
         // structure relies on the tile staying its authored type for grass / support / snow;
         // mining it out would silently break those invariants and leave a broken burrow.
@@ -102,43 +102,17 @@ public static class StructPlacement {
             }
         }
 
-        // Standability check on the bottom row.
-        //  - Default: EVERY column of the footprint's bottom row must be supported (solid ground
-        //    or a built/queued solidTop structure beneath). Matches Blueprint.IsSuspended.
-        //  - edgeSupported: only the two end columns must be supported, the middle may hang in
-        //    mid-air (tarp). Rope-bridge posts are 1×1 twoClick placements validated per-post,
-        //    so "both ends supported" already holds for them via this same all-columns rule.
-        //  - hasStandableRequirement: the type names exactly which tiles need support via
-        //    mustBeStandable tileRequirements (pump → just the building tile, spout overhangs
-        //    water), so the generic check is skipped and those reqs (below) decide it.
-        // Power shafts get an extra support path: a shaft that hooks onto an existing shaft
-        // (axis-compatible neighbour) is self-bearing, like a rigid axle cantilevering off the
-        // run. So a vertical shaft stacks on the vertical / turn / 4-way shaft below it, etc.
-        // This only relaxes the shaft's OWN support requirement — shafts aren't solidTop, so
-        // they still don't bear other structures above. Falls through to the solid-ground /
-        // solid-top rules below when it doesn't connect. Counts queued shaft blueprints so a
-        // whole run can be planned in one pass (Blueprint.IsSuspended keeps it suspended until a
-        // real shaft anchors it).
+        // Bottom-row support. Self-supported types are exempt: `empty` (mining), OccupiesSolidTile
+        // (built into a solid tile), hasStandableRequirement (author named the bearing tiles via
+        // mustBeStandable reqs, checked below), and a shaft that hooks onto an existing shaft
+        // (self-bearing like a rigid axle cantilevering off the run; includeBlueprints lets a whole
+        // run be planned at once). The actual "is the bottom row supported?" test lives in the shared
+        // IsBottomRowSupported so it can't drift from Blueprint.IsSuspended.
         bool shaftConnected = PowerShaft.IsShaft(st)
                 && PowerShaft.ConnectsToShaft(st, tile, rotation, mirrored, includeBlueprints: true);
-
-        if (st.name != "empty" && st.requiredTileName == null && !placementTileMustBeSolid
-                && !st.hasStandableRequirement && !shaftConnected) {
-            if (st.edgeSupported) {
-                int leftX  = tile.x;
-                int rightX = tile.x + fnx - 1;
-                bool leftOk  = world.graph.nodes[leftX,  tile.y].standable
-                            || SupportedByBlueprintBelow(leftX,  tile.y);
-                bool rightOk = world.graph.nodes[rightX, tile.y].standable
-                            || SupportedByBlueprintBelow(rightX, tile.y);
-                if (!leftOk || !rightOk) return "both ends need support";
-            } else {
-                for (int dx = 0; dx < fnx; dx++) {
-                    if (!world.graph.nodes[tile.x + dx, tile.y].standable
-                        && !SupportedByBlueprintBelow(tile.x + dx, tile.y)) return "needs solid ground below";
-                }
-            }
-        }
+        if (st.name != "empty" && !st.OccupiesSolidTile && !st.hasStandableRequirement && !shaftConnected
+                && !IsBottomRowSupported(st, tile.x, tile.y, fnx, countBlueprintsBelow: true))
+            return st.edgeSupported ? "both ends need support" : "needs solid ground below";
 
         // Door-approach validation: at least one declared door must open onto a standable
         // tile so mice can actually reach the building. Buildings with multiple doors
@@ -184,7 +158,12 @@ public static class StructPlacement {
                 // Plant check runs before the generic mustBeEmpty so a plant gets the
                 // more specific message even when both flags are set on the same req.
                 if (req.mustNotBePlant && t.structs[0] is Plant) return "plant resting on this tile";
-                if (req.mustBeEmpty && t.structs[0] != null) return "something resting on this tile";
+                // A self-supporting structure (preservesTile: burrow / digging pit / quarry, dug into
+                // its own solid footprint) won't fall when the tile below is mined, so when the
+                // requirement opts in via allowSelfSupporting it doesn't count as "resting" here.
+                if (req.mustBeEmpty && t.structs[0] != null
+                    && !(req.allowSelfSupporting && t.structs[0].structType.preservesTile))
+                    return "something resting on this tile";
                 // A requirement on a tile below the origin (dy < 0, e.g. fireplace) reads as
                 // "below"; one on the placement tile itself (dy == 0, e.g. mineshaft sunk into
                 // the tile) keeps the bare phrasing.
@@ -270,5 +249,29 @@ public static class StructPlacement {
             if (bp != null && !bp.cancelled && bp.structType.solidTop) return true;
         }
         return false;
+    }
+
+    // Shared bottom-row support test — the SINGLE source of truth for "does this footprint's bottom
+    // row rest on something solid?", called by BOTH placement (GetPlacementFailReason) and
+    // Blueprint.IsSuspended so the rule can't drift (it used to be two hand-synced copies).
+    // edgeSupported types need only their two end columns supported (the middle may hang — tarp);
+    // everything else needs every column. A column is supported if its graph node is standable, or —
+    // when countBlueprintsBelow — a queued solidTop blueprint sits below it (placement lets you plan a
+    // run before its supports are built; suspension passes false so a structure stays suspended until
+    // real support exists). Callers own the guard (when the check applies) and the response (reason
+    // string vs. suspended-bool). A missing node counts as unsupported (defensive; doesn't occur for
+    // an in-bounds, validated footprint).
+    public static bool IsBottomRowSupported(StructType st, int x, int y, int fnx, bool countBlueprintsBelow) {
+        if (st.edgeSupported)
+            return ColumnSupported(x, y, countBlueprintsBelow)
+                && ColumnSupported(x + fnx - 1, y, countBlueprintsBelow);
+        for (int dx = 0; dx < fnx; dx++)
+            if (!ColumnSupported(x + dx, y, countBlueprintsBelow)) return false;
+        return true;
+    }
+    static bool ColumnSupported(int x, int y, bool countBlueprintsBelow) {
+        var node = World.instance.graph.nodes[x, y];
+        if (node != null && node.standable) return true;
+        return countBlueprintsBelow && SupportedByBlueprintBelow(x, y);
     }
 }

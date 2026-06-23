@@ -147,7 +147,7 @@ public class StructController : MonoBehaviour {
         // tile, not just the anchor. Single-tile buildings (mineshaft, quarry) run the loop once.
         // `preservesTile` opts out: the structure renders over the tile as if it were a hole, but
         // the tile stays its original type (burrow). Yield is still captured in Blueprint.Complete.
-        if ((st.requiredTileName != null || st.requiresSolidTilePlacement) && !st.preservesTile){
+        if (st.OccupiesSolidTile && !st.preservesTile){
             TileType empty = Db.tileTypeByName["empty"];
             World w = World.instance;
             for (int dy = 0; dy < fny; dy++) {
@@ -200,7 +200,7 @@ public class StructController : MonoBehaviour {
         // which is fine (UpdateNeighbors is idempotent). Diagonal neighbours can have
         // cliff/stair edges that depend on this tile's solidity, so the diagonals matter.
         // `preservesTile` opts out — solidity is unchanged, so no diagonal refresh needed.
-        if (st.isTile || ((st.requiredTileName != null || st.requiresSolidTilePlacement) && !st.preservesTile)) {
+        if (st.isTile || (st.OccupiesSolidTile && !st.preservesTile)) {
             int nx = world.nx, ny = world.ny;
             for (int fdy = 0; fdy < fny; fdy++) {
                 for (int fdx = 0; fdx < fnx; fdx++) {
@@ -296,15 +296,18 @@ public class StructController : MonoBehaviour {
             // Drain reservoirs NOT burned by a LightSource (e.g. fountain water evaporating, foundry
             // fuel). LightSource buildings (torch/fireplace) burn per-frame in LightSource, gated to
             // night, so burning them here too would double-consume — skip those. Disabled/broken don't
-            // drain. Burn FIRST so a foundry's fuel→heat lands before its processor ticks this frame.
+            // drain. Burn FIRST so a foundry's fuel→heat lands before it melts this frame.
             int burnedFen = 0;
             if (b.reservoir != null && !b.structType.isLightSource && !b.disabled && !b.IsBroken)
                 burnedFen = b.reservoir.Burn(0.2f);
+            float ambientTemp = WeatherSystem.instance != null ? WeatherSystem.instance.temperature : 17.5f;
             if (b.processor != null) {
-                if (b.structType.processorLocalHeat && b.reservoir != null)
-                    b.processor.AddFuelHeat(burnedFen, b.reservoir.HeldLeaf());
-                float temp = WeatherSystem.instance != null ? WeatherSystem.instance.temperature : 17.5f;
-                b.processor.Tick(0.2f, temp);
+                b.processor.Tick(0.2f, ambientTemp);
+            } else if (b is Foundry fdy) {
+                // The foundry stokes its OWN heat from burned fuel before melting (so the heat lands
+                // the same frame it's gated on), then advances its chunks + auto-alloy.
+                fdy.AddFuelHeat(burnedFen, b.reservoir?.HeldLeaf());
+                fdy.Tick(0.2f, ambientTemp);
             }
         }
     }

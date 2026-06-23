@@ -127,6 +127,34 @@
             }
         ]
     },{
+        "id": 45,
+        "name": "molten",
+        "itemClass": "liquid",
+        "decayRate": 0.0,
+        "children": [
+            {
+                "id": 46,
+                "name": "molten copper",
+                "liquidColorHex": "#ff6a1a",
+                "children": null
+            },{
+                "id": 47,
+                "name": "molten tin",
+                "liquidColorHex": "#ffe6a3",
+                "children": null
+            },{
+                "id": 48,
+                "name": "molten bronze",
+                "liquidColorHex": "#ffa430",
+                "children": null
+            },{
+                "id": 49,
+                "name": "molten glass",
+                "liquidColorHex": "#ffc23d",
+                "children": null
+            }
+        ]
+    },{
         "id": 50,
         "name": "glass",
         "decayRate": 0.0,

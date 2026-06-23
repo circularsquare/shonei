@@ -51,7 +51,7 @@ public class LightSource : MonoBehaviour {
     // Craft-gated mode: the light + fire art follow `building.IsBeingWorked` instead of fuel and time
     // of day — a fire that glows (day or night) only while a mouse is actively working the station.
     // Ignores the reservoir and sun modulation. The cauldron (a tended processor) uses it; any
-    // crafting building (furnace,
+    // crafting building (foundry,
     // crucible) can opt in via the `lightWhileCrafting` StructType flag.
     [HideInInspector] public bool craftGated = false;
     // Owning Building, if any. Null for the sun and debug-cursor lights.

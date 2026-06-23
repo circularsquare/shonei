@@ -76,6 +76,7 @@ public class TileRequirement {
     public bool mustHaveWater {get; set;}    // tile.water > 0
     public bool mustBeEmpty {get; set;}      // structs[0] (building layer) must be null
     public bool mustNotBePlant {get; set;}   // if structs[0] is a Plant, reject. Lets a structure permit non-plant occupants while still refusing rooted plants — e.g. digging pit on a dirt tile rejects when a plant grows in the air tile above, since hollowing out the dirt would orphan it.
+    public bool allowSelfSupporting {get; set;}  // relaxes mustBeEmpty: a preservesTile structure (burrow/digging pit/quarry, dug into its own solid footprint) is allowed here — it won't fall when this tile is removed. Used by the "empty" mining action's tile-above check so you can mine beneath a burrow.
     public bool mustBeSolidTile {get; set;}  // tile.type.solid must be true (ground tiles only, not solidTop buildings)
     public bool mustBeOpenSkyAbove {get; set;}  // World.IsExposedAbove(tx, ty) — used by windmill on each top-row tile
     public string requiredTileName {get; set;}
@@ -207,6 +208,14 @@ public class StructType {
     // (b) StructController.Construct() mines the tile to empty after placement (alongside the
     // existing `requiredTileName` mining trigger). Used by mineshaft.
     public bool requiresSolidTilePlacement;
+
+    // True when this structure is built INTO a solid tile rather than resting on open ground — either it
+    // targets a specific tile group (`requiredTileName`: burrow / digging pit / quarry) or any solid tile
+    // (`requiresSolidTilePlacement`: mineshaft). Such structures are self-supported by the tile they occupy,
+    // so they're exempt from the "tile is not empty" placement rejection AND the generic bottom-row support
+    // check. (Mining the tile out at build additionally requires `!preservesTile` — a burrow occupies but keeps it.)
+    public bool OccupiesSolidTile => requiredTileName != null || requiresSolidTilePlacement;
+
     // Cached: true if `tileRequirements` declares `mustBeStandable` on any tile. Signals that the
     // author controls support explicitly (which columns must rest on something solid) — so the
     // generic bottom-row support check in StructPlacement / Blueprint.IsSuspended is skipped and
@@ -235,7 +244,7 @@ public class StructType {
     // isBuilding: true = use Building class regardless of depth (default false = depth 0 uses Building; others don't).
     // Allows foreground/other-depth structures to have full Building features (fuelInv, uses, storage, etc.).
     public bool isBuilding {get; set;}
-    // Fuel inventory: internal resource consumed over time (torch burns wood; furnace burns coal, etc.).
+    // Fuel inventory: internal resource consumed over time (torch burns wood; foundry burns any fuel, etc.).
     // hasFuelInv = true → Building creates a fuelInv and WOM registers a standing supply order on placement.
     public bool hasFuelInv {get; set;}
     public string fuelItemName {get; set;} // OPTIONAL restriction: group/leaf name (e.g. "wood"); absent = accept any fuel (fuelValue>0)
@@ -253,13 +262,17 @@ public class StructType {
     // here is footprint geometry (processorTileX/Y) — where the processor's inventory tile sits.
     public bool hasProcessor {get; set;}
     public bool processorTended {get; set;}  // true = worker-tended Working; false = passive ferment
-    public bool processorLocalHeat {get; set;}  // true (foundry): advance rate driven by building-local fuel heat, not ambient weather (requires hasFuelInv)
     // The pot's liquid capacity in LIANG — sets how full the liquid renders (one batch against a
     // bigger pot reads partially full) and how much `output` can buffer. 0/omit → sized to one
     // batch (reads full when holding a batch). Authored in liang; ×100 → fen in the Processor ctor.
     public int processorCapacityLiang {get; set;}
-    public int processorTileX {get; set;}  // tile offset of the processor's inventory tile
+    public int processorTileX {get; set;}  // tile offset of the processor's (or foundry's) inventory tile
     public int processorTileY {get; set;}
+
+    // Foundry (melt pool, the dedicated `Foundry` Building subclass — NOT a Processor): the total
+    // ore + molten capacity in LIANG (chunks awaiting melt + the molten pool). Authored in liang;
+    // ×100 → fen in the Foundry ctor. See SPEC-systems §Foundry.
+    public int foundryCapacityLiang {get; set;}
 
     // Furnishing slots: when set, Building creates a FurnishingSlots sub-component with one
     // slot inventory per name in `furnishingSlotNames`. Mice auto-haul matching items into
@@ -328,7 +341,7 @@ public class StructType {
     public bool isLightSource {get; set;}
     // When true, the building emits a craft-gated light + fire (LightSource.craftGated): lit only
     // while a mouse is actively crafting here, day or night, with no fuel. Reuses the light* fields
-    // below. Cauldron uses it; furnace/crucible can opt in. Distinct from isLightSource (fuel + night).
+    // below. Cauldron uses it; foundry/crucible can opt in. Distinct from isLightSource (fuel + night).
     public bool lightWhileCrafting {get; set;}
     public float lightIntensity {get; set;}
     public float lightOuterRadius {get; set;}

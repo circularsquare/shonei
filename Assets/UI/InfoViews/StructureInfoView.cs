@@ -48,8 +48,17 @@ public class StructureInfoView : MonoBehaviour {
     [SerializeField] Transform costRowContainer;   // VerticalLayoutGroup parent for per-ingredient rows
     [SerializeField] GameObject costRowPrefab;     // BlueprintCostRow prefab
 
+    [Header("Foundry Cast Target")]
+    [SerializeField] Transform castOptionContainer;  // HorizontalLayoutGroup parent for cast-target option buttons; hidden for non-foundries
+
     private Structure structure;
     private Blueprint blueprint;
+
+    // Cast-target option buttons for the selected foundry (barId 0 = "auto"). Built once when the
+    // selected foundry changes, then only re-highlighted each tick (so hovering doesn't churn them).
+    private readonly List<CastOption> castOptions = new List<CastOption>();
+    private Foundry castOptionsBuiltFor;
+    private class CastOption { public GameObject go; public TextMeshProUGUI label; public int barId; }
 
     // Per-ingredient rows for the active blueprint. Built once per tab-show (and after a ban
     // toggle), then only dynamically refreshed each tick — never rebuilt per tick, so hovered
@@ -162,10 +171,9 @@ public class StructureInfoView : MonoBehaviour {
                 string fuelName = bldg.reservoir.HeldLeaf()?.name ?? bldg.reservoir.fuelItem?.name ?? "fuel";
                 sb.Append($"\n fuel: {ItemStack.FormatQ(fuelQty)}/{ItemStack.FormatQ(bldg.reservoir.capacity)} {fuelName}");
             }
-            // Local-heat processors (foundry): surface the live temperature so the player can see it
-            // heating up / cooling after a smelt draws its heatCost.
-            if (bldg.processor != null && bldg.processor.localHeat)
-                sb.Append($"\n temp: {Mathf.RoundToInt(bldg.processor.temperature)}°");
+            // Foundry: surface the live temperature so the player can see it heating up / cooling.
+            if (bldg is Foundry fdyTemp)
+                sb.Append($"\n temp: {Mathf.RoundToInt(fdyTemp.temperature)}°");
             // Only housing surfaces its Structure.res — it's the home-assignment count.
             // Other building types either don't have res (workstations, leisure, capacity==0)
             // or have it but never reserve into it.
@@ -175,6 +183,8 @@ public class StructureInfoView : MonoBehaviour {
                 AppendFurnishingSlots(sb, bldg.furnishingSlots);
             if (bldg.processor != null)
                 AppendProcessor(sb, bldg.processor);
+            if (bldg is Foundry fdy)
+                AppendFoundry(sb, fdy);
             AppendTileOrders(sb, bldg.tile);
             AppendBuildingOrders(sb, bldg);
             if (bldg.storage != null)
@@ -237,9 +247,11 @@ public class StructureInfoView : MonoBehaviour {
                 workerSlotsText.text = capStr;
             }
         }
+        RefreshCastOptions(structure as Foundry);
     }
 
     void RefreshBlueprint() {
+        RefreshCastOptions(null);
         var sb = new System.Text.StringBuilder();
         SetComfortVisible(false);
         sb.Append("blueprint: " + blueprint.structType.name);
@@ -331,6 +343,78 @@ public class StructureInfoView : MonoBehaviour {
         }
         costRows.Clear();
         costRowsBuiltFor = null;
+    }
+
+    // ── Foundry cast-target picker ──
+    // A row of clickable options — "auto" + one per castable bar — under the foundry's info. Built
+    // once per selected-foundry change (like cost rows, so hovering doesn't churn them), then only the
+    // highlight (active option = full colour, others dimmed) refreshes each tick. `f` null → hidden.
+    void RefreshCastOptions(Foundry f) {
+        bool show = f != null && castOptionContainer != null;
+        if (castOptionContainer != null && castOptionContainer.gameObject.activeSelf != show)
+            castOptionContainer.gameObject.SetActive(show);
+        if (!show) { ClearCastOptions(); return; }
+        if (castOptionsBuiltFor != f) RebuildCastOptions(f);
+        RefreshCastHighlight(f);
+    }
+
+    void RebuildCastOptions(Foundry f) {
+        ClearCastOptions();
+        if (castOptionContainer == null || text == null) return;
+        AddCastOption("auto", 0); // 0 = auto (scorer picks by production need)
+        var casts = Db.GetFoundryCastRecipes();
+        if (casts != null)
+            foreach (Recipe r in casts) {
+                if (r.outputs.Length == 0 || r.outputs[0].item == null) continue;
+                if (!r.IsEligibleForPicking()) continue; // hide locked / globally-disabled casts
+                AddCastOption(r.outputs[0].item.name, r.outputs[0].item.id);
+            }
+        castOptionsBuiltFor = f;
+        LayoutUtil.RebuildImmediate((RectTransform)castOptionContainer);
+    }
+
+    // Builds one option as a single GameObject: a TMP label that doubles as the Button's target
+    // graphic (clicking the text bounds fires). Transition None so the Button's hover-tint doesn't
+    // fight the manual highlight colour. Font/size copied from the info text blob for consistency.
+    void AddCastOption(string labelText, int barId) {
+        var go = new GameObject("CastOpt_" + barId, typeof(RectTransform));
+        go.transform.SetParent(castOptionContainer, false);
+        var lbl = go.AddComponent<TextMeshProUGUI>();
+        lbl.font = text.font;
+        lbl.fontSize = text.fontSize;
+        lbl.alignment = TextAlignmentOptions.BottomLeft;
+        lbl.text = labelText;
+        var btn = go.AddComponent<Button>();
+        btn.transition = Selectable.Transition.None;
+        btn.targetGraphic = lbl;
+        int captured = barId;
+        btn.onClick.AddListener(() => OnClickCastOption(captured));
+        castOptions.Add(new CastOption { go = go, label = lbl, barId = barId });
+    }
+
+    void RefreshCastHighlight(Foundry f) {
+        int activeId = f.castMode == Foundry.CastMode.Auto ? 0 : f.manualTargetBarId;
+        Color active = text.color;
+        Color dim = new Color(active.r, active.g, active.b, 0.4f);
+        foreach (CastOption o in castOptions)
+            if (o.label != null) o.label.color = o.barId == activeId ? active : dim;
+    }
+
+    void OnClickCastOption(int barId) {
+        if (structure is not Foundry f) return;
+        if (barId == 0) f.castMode = Foundry.CastMode.Auto;
+        else { f.castMode = Foundry.CastMode.Manual; f.manualTargetBarId = barId; }
+        Refresh();
+    }
+
+    void ClearCastOptions() {
+        foreach (CastOption o in castOptions) {
+            if (o.go == null) continue;
+            o.go.SetActive(false);
+            Destroy(o.go);
+        }
+        castOptions.Clear();
+        castOptionsBuiltFor = null;
     }
 
     // ── Controls ──
@@ -595,28 +679,33 @@ public class StructureInfoView : MonoBehaviour {
     // and while Working the progress vs duration (+ the temperature rate for an untended ferment).
     static void AppendProcessor(System.Text.StringBuilder sb, Processor p) {
         sb.Append($"\n processor: {p.state.ToString().ToLower()}");
-        if (p.recipe != null) sb.Append($" ({p.recipe.description})");
-        // What's in the pot. While melting it's the raw inputs. At Ready the melt is done but not
-        // yet poured (inputBuffer still holds the raw inputs until Tap converts them) — so present a
-        // foundry's finished batch as the molten metal awaiting a smith's pour, not raw ore.
-        if (p.localHeat && p.state == Processor.State.Ready && p.recipe != null) {
-            sb.Append($"\n  molten: {DescribeItems(p.recipe.outputs)} (awaiting pour)");
-        } else {
-            string loaded = DescribeInv(p.inputBuffer);
-            if (loaded != null) sb.Append($"\n  loaded: {loaded}");
-        }
+        if (p.recipe != null) sb.Append($" ({p.recipe.description}){(p.batchRounds > 1 ? $" x{p.batchRounds}" : "")}");
+        string loaded = DescribeInv(p.inputBuffer);
+        if (loaded != null) sb.Append($"\n  loaded: {loaded}");
         string made = DescribeInv(p.output);
         if (made != null) sb.Append($"\n  output: {made}");
         if (p.state == Processor.State.Working) {
             sb.Append($"\n  {Recipe.FormatDuration(p.progress)}/{Recipe.FormatDuration(p.duration)}");
             if (!p.tended && p.TempScaled) {
-                // Local-heat processors (foundry) gate on their own heat, NOT ambient weather — so
-                // read the cached temperature, or the rate falsely shows 0% below the weather floor.
-                float t = p.localHeat ? p.temperature
-                        : (WeatherSystem.instance != null ? WeatherSystem.instance.temperature : 17.5f);
+                float t = WeatherSystem.instance != null ? WeatherSystem.instance.temperature : 17.5f;
                 sb.Append($"  rate {p.Rate(t):P0}");
             }
         }
+    }
+
+    // Foundry melt-pool readout. Temp is shown in the main block above; the cast-target picker is a
+    // separate interactive row (castOptionContainer / RefreshCastOptions).
+    static void AppendFoundry(System.Text.StringBuilder sb, Foundry f) {
+        foreach (MeltChunk c in f.chunks)
+            sb.Append($"\n {ItemStack.FormatQ(c.fen, c.ore)} {c.ore.name} {Mathf.RoundToInt(c.meltProgress * 100)}% melted");
+        if (f.moltenPool.Count > 0) {
+            sb.Append("\n molten:");
+            foreach (System.Collections.Generic.KeyValuePair<int, int> kv in f.moltenPool)
+                sb.Append($" {Db.items[kv.Key].name} {ItemStack.FormatQ(kv.Value)}");
+        }
+        string made = DescribeInv(f.output);
+        if (made != null) sb.Append($"\n output: {made}");
+        sb.Append("\n cast target:"); // the clickable option list (castOptionContainer) renders below this
     }
 
     // Lists an inventory's non-empty stacks as "name qty, name qty", or null if empty.

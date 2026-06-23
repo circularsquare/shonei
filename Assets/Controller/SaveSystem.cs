@@ -480,10 +480,28 @@ public class SaveSystem : MonoBehaviour {
             if (b.processor != null) {
                 ssd.processorState    = (int)b.processor.state;
                 ssd.processorProgress = b.processor.progress;
-                ssd.processorHeat     = b.processor.heat;
                 if (b.processor.recipe != null) ssd.processorRecipeId = b.processor.recipe.id;
                 if (!b.processor.inputBuffer.IsEmpty()) ssd.processorInputData  = GatherInventory(b.processor.inputBuffer);
                 if (!b.processor.output.IsEmpty())      ssd.processorOutputData = GatherInventory(b.processor.output);
+            }
+            if (b is Foundry fdy) {
+                ssd.foundryHeat              = fdy.heat;
+                ssd.foundryCastMode          = (int)fdy.castMode;
+                ssd.foundryManualTargetBarId = fdy.manualTargetBarId;
+                if (fdy.chunks.Count > 0) {
+                    ssd.foundryChunks = new System.Collections.Generic.List<FoundryChunkSaveData>();
+                    foreach (MeltChunk c in fdy.chunks)
+                        if (c.ore != null && c.fen > 0)
+                            ssd.foundryChunks.Add(new FoundryChunkSaveData { oreName = c.ore.name, fen = c.fen, progress = c.meltProgress });
+                }
+                if (fdy.moltenPool.Count > 0) {
+                    ssd.foundryMolten = new System.Collections.Generic.List<FoundryMoltenSaveData>();
+                    foreach (System.Collections.Generic.KeyValuePair<int, int> kv in fdy.moltenPool)
+                        if (kv.Value > 0)
+                            ssd.foundryMolten.Add(new FoundryMoltenSaveData { itemName = Db.items[kv.Key].name, fen = kv.Value });
+                }
+                if (!fdy.intake.IsEmpty()) ssd.foundryIntakeData = GatherInventory(fdy.intake);
+                if (!fdy.output.IsEmpty()) ssd.foundryOutputData = GatherInventory(fdy.output);
             }
             if (b.disabled) ssd.disabled = true;
         }
@@ -1209,7 +1227,6 @@ public class SaveSystem : MonoBehaviour {
         if (structure is Building pb && pb.processor != null) {
             pb.processor.state    = (Processor.State)ssd.processorState;
             pb.processor.progress = ssd.processorProgress;
-            pb.processor.heat     = ssd.processorHeat;
             RestoreProcessorInv(ssd.processorInputData,  pb.processor.inputBuffer);
             RestoreProcessorInv(ssd.processorOutputData, pb.processor.output);
             // Re-bind the batch recipe AFTER the buffer is restored (so its fuel leaf can be
@@ -1217,7 +1234,28 @@ public class SaveSystem : MonoBehaviour {
             if (pb.processor.state != Processor.State.Empty)
                 pb.processor.RestoreBatch(ResolveProcessorRecipe(pb, ssd.processorRecipeId));
         }
-        // WOM orders (harvest, workstation, fuel supply, processor) are registered by Reconcile() after all objects are restored.
+        // Restore foundry (melt-pool) state: heat, cast target, chunks, molten pool, and the two
+        // inventories. ScanOrders re-registers the feed/cast orders after all objects are restored.
+        if (structure is Foundry fdy) {
+            fdy.heat              = ssd.foundryHeat;
+            fdy.castMode          = (Foundry.CastMode)ssd.foundryCastMode;
+            fdy.manualTargetBarId = ssd.foundryManualTargetBarId;
+            if (ssd.foundryChunks != null)
+                foreach (FoundryChunkSaveData c in ssd.foundryChunks) {
+                    if (string.IsNullOrEmpty(c.oreName) || c.fen <= 0) continue;
+                    if (!Db.itemByName.TryGetValue(c.oreName, out Item ore)) { Debug.LogError($"foundry restore: unknown ore '{c.oreName}'"); continue; }
+                    fdy.chunks.Add(new MeltChunk(ore, c.fen) { meltProgress = c.progress });
+                }
+            if (ssd.foundryMolten != null)
+                foreach (FoundryMoltenSaveData m in ssd.foundryMolten) {
+                    if (string.IsNullOrEmpty(m.itemName) || m.fen <= 0) continue;
+                    if (!Db.itemByName.TryGetValue(m.itemName, out Item it)) { Debug.LogError($"foundry restore: unknown molten '{m.itemName}'"); continue; }
+                    fdy.moltenPool[it.id] = m.fen;
+                }
+            RestoreProcessorInv(ssd.foundryIntakeData, fdy.intake);
+            RestoreProcessorInv(ssd.foundryOutputData, fdy.output);
+        }
+        // WOM orders (harvest, workstation, fuel supply, processor, foundry) are registered by Reconcile() after all objects are restored.
     }
 
     // Resolves which recipe a restored batch was running. Prefers the saved id; for old saves

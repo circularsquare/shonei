@@ -150,7 +150,7 @@ public class MouseController : MonoBehaviour {
                 hoveredBp.InstantFinish();
             }
             // Fill any reservoir on the tile — re-queries after InstantFinish so a just-built
-            // torch/furnace/fountain is topped up too.
+            // torch/foundry/fountain is topped up too.
             Reservoir reservoir = hoverTile?.building?.reservoir;
             if (reservoir != null) {
                 int added = reservoir.FillToCapacity();

@@ -17,7 +17,7 @@
         "job": "apothecary",
         "tile": "cauldron",
         "description": "brew goji into vigor tonic",
-        "duration": 15,
+        "duration": 30,
         "fuelCost": 2,
         "ninputs": [
             { "name": "goji", "quantity": 1 },
@@ -31,7 +31,7 @@
         "job": "apothecary",
         "tile": "cauldron",
         "description": "brew mugwort into warming tonic",
-        "duration": 15,
+        "duration": 30,
         "fuelCost": 2,
         "ninputs": [
             { "name": "mugwort", "quantity": 1 },
@@ -45,7 +45,7 @@
         "job": "apothecary",
         "tile": "cauldron",
         "description": "brew chrysanthemum into cooling tonic",
-        "duration": 15,
+        "duration": 30,
         "fuelCost": 2,
         "ninputs": [
             { "name": "chrysanthemum", "quantity": 1 },
@@ -59,7 +59,7 @@
         "job": "apothecary",
         "tile": "cauldron",
         "description": "brew moonlily into restful tonic",
-        "duration": 15,
+        "duration": 30,
         "fuelCost": 2,
         "ninputs": [
             { "name": "moonlily", "quantity": 1 },
@@ -152,69 +152,121 @@
             { "name": "bronze tools", "quantity": 1 }
         ]
     },{
-        "id": 8,
+        "id": 95,
         "job": "smith",
         "tile": "foundry",
-        "description": "alloy copper and tin into bronze",
-        "duration": 96,
-        "processTempMin": 300,
-        "processTempIdeal": 600,
-        "heatCost": 200,
+        "foundryOp": "melt",
+        "description": "melt malachite into molten copper",
         "research": "Metallurgy",
+        "meltTempMin": 300,
+        "meltTempIdeal": 600,
+        "meltDuration": 48,
+        "meltHeatCost": 80,
         "ninputs": [
-            { "name": "copper bar", "quantity": 1 },
-            { "name": "tin bar", "quantity": 1 }
+            { "name": "malachite", "quantity": 1 }
         ],
         "noutputs": [
-            { "name": "bronze bar", "quantity": 2 }
+            { "name": "molten copper", "quantity": 1 }
         ]
     },{
-        "id": 3,
+        "id": 96,
         "job": "smith",
         "tile": "foundry",
-        "description": "smelt glass",
-        "duration": 48,
-        "processTempMin": 300,
-        "processTempIdeal": 600,
-        "heatCost": 150,
+        "foundryOp": "melt",
+        "description": "melt cassiterite into molten tin",
+        "research": "Metallurgy",
+        "meltTempMin": 300,
+        "meltTempIdeal": 600,
+        "meltDuration": 48,
+        "meltHeatCost": 80,
+        "ninputs": [
+            { "name": "cassiterite", "quantity": 1 }
+        ],
+        "noutputs": [
+            { "name": "molten tin", "quantity": 1 }
+        ]
+    },{
+        "id": 97,
+        "job": "smith",
+        "tile": "foundry",
+        "foundryOp": "melt",
+        "description": "melt sand into molten glass",
+        "research": "Glassmaking",
+        "meltTempMin": 300,
+        "meltTempIdeal": 600,
+        "meltDuration": 48,
+        "meltHeatCost": 80,
+        "ninputs": [
+            { "name": "sand", "quantity": 1 }
+        ],
+        "noutputs": [
+            { "name": "molten glass", "quantity": 1 }
+        ]
+    },{
+        "id": 98,
+        "job": "smith",
+        "tile": "foundry",
+        "foundryOp": "alloy",
+        "description": "alloy molten copper and tin into bronze",
+        "research": "Metallurgy",
+        "ninputs": [
+            { "name": "molten copper", "quantity": 1 },
+            { "name": "molten tin", "quantity": 1 }
+        ],
+        "noutputs": [
+            { "name": "molten bronze", "quantity": 2 }
+        ]
+    },{
+        "id": 99,
+        "job": "smith",
+        "tile": "foundry",
+        "foundryOp": "cast",
+        "description": "cast copper bar",
+        "research": "Metallurgy",
+        "ninputs": [
+            { "name": "molten copper", "quantity": 1 }
+        ],
+        "noutputs": [
+            { "name": "copper bar", "quantity": 1 }
+        ]
+    },{
+        "id": 100,
+        "job": "smith",
+        "tile": "foundry",
+        "foundryOp": "cast",
+        "description": "cast tin bar",
+        "research": "Metallurgy",
+        "ninputs": [
+            { "name": "molten tin", "quantity": 1 }
+        ],
+        "noutputs": [
+            { "name": "tin bar", "quantity": 1 }
+        ]
+    },{
+        "id": 101,
+        "job": "smith",
+        "tile": "foundry",
+        "foundryOp": "cast",
+        "description": "cast bronze bar",
+        "research": "Metallurgy",
+        "ninputs": [
+            { "name": "molten bronze", "quantity": 1 }
+        ],
+        "noutputs": [
+            { "name": "bronze bar", "quantity": 1 }
+        ]
+    },{
+        "id": 102,
+        "job": "smith",
+        "tile": "foundry",
+        "foundryOp": "cast",
+        "description": "cast glass",
         "research": "Glassmaking",
         "ninputs": [
-            { "name": "sand", "quantity": 2 }
+            { "name": "molten glass", "quantity": 1 }
         ],
         "noutputs": [
-            { "name": "glass", "quantity": 2 }
-        ]
-    },{
-        "id": 4,
-        "job": "smith",
-        "tile": "foundry",
-        "description": "smelt malachite",
-        "duration": 48,
-        "processTempMin": 300,
-        "processTempIdeal": 600,
-        "heatCost": 150,
-        "research": "Metallurgy",
-        "ninputs": [
-            { "name": "malachite", "quantity": 2 }
-        ],
-        "noutputs": [
-            { "name": "copper bar", "quantity": 2 }
-        ]
-    },{
-        "id": 5,
-        "job": "smith",
-        "tile": "foundry",
-        "description": "smelt cassiterite",
-        "duration": 48,
-        "processTempMin": 300,
-        "processTempIdeal": 600,
-        "heatCost": 150,
-        "research": "Metallurgy",
-        "ninputs": [
-            { "name": "cassiterite", "quantity": 2 }
-        ],
-        "noutputs": [
-            { "name": "tin bar", "quantity": 2 }
+            { "name": "glass", "quantity": 1 }
         ]
     },{
         "id": 10,

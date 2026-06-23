@@ -11,6 +11,8 @@ CONTENT
 - magic
 - farming buildings
     - plant tending
+    - greenhouse 
+    - tarp doesn't prevent plant growth (exposed above)? 
 - grooming?
 - clothing
     - silk?
@@ -120,26 +122,22 @@ upsize more workshop buildings
     tailor
 test kiln
 
-
 why is it using 38% gpu with all lighting off?
 
 - metal
 
-- cauldron potion brewing 
-    - 2 batch 
-
-TODAY
-
-- stool target click adjustment weird
-- burrow doesn't need support below
 
 - mice preferring to use crucible over foundry
     - balance crucible to use a lot more fuel, probably
-- foundry light scaling with heat 
+- foundry max capacity... 20 metal? 
+- foundry light scaling with heat
+    - split heat system out in to specific foudry class
 - how does melting work...
-    - separately track melt progress for each item inserted 
     - cool display for liquids currently inside
 - help panel explaining hwo it works
 
+- global inv "use" toggle doesn't do anything for leaves (they are still used), explain or change 
+    - in general what does use toggle do? explain
 
-/help slash command
+TODAY
+

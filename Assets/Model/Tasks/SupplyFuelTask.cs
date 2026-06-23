@@ -5,7 +5,7 @@ using UnityEngine.EventSystems;
 using System;
 using System.Linq;
 
-// Hauls fuel items to a building's internal fuel inventory (torch wood, furnace coal, etc.).
+// Hauls fuel items to a building's internal fuel inventory (torch wood, foundry fuel, etc.).
 // Registered as a standing SupplyBuilding order; isActive suppresses it when fuel >= target.
 public class SupplyFuelTask : Task {
     private readonly Building building;

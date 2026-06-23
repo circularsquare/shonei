@@ -185,10 +185,19 @@ public class StructureSaveData {
     // recipes on load), and the contents of its two internal inventories. null inv data = empty.
     public int processorState;
     public float processorProgress;
-    public float processorHeat;   // local-heat processors (foundry): stored heat charge; 0 on old saves = cold
     public int? processorRecipeId;
     public InventorySaveData processorInputData;
     public InventorySaveData processorOutputData;
+    // Foundry (melt-pool) buildings only. Heat charge, the cast-target mode (0=Auto, 1=Manual) and
+    // its pinned bar id (0=none), the in-progress melt chunks, the molten pool, and the two
+    // inventories (intake ore, output bars). All null/0 on non-foundry saves and old saves.
+    public float foundryHeat;
+    public int foundryCastMode;
+    public int foundryManualTargetBarId;
+    public List<FoundryChunkSaveData> foundryChunks;
+    public List<FoundryMoltenSaveData> foundryMolten;
+    public InventorySaveData foundryIntakeData;
+    public InventorySaveData foundryOutputData;
     public bool mirrored;
     // 90° clockwise rotation steps (0..3). Default 0 covers old saves.
     public int rotation;
@@ -280,6 +289,20 @@ public class ItemStackSaveData {
     public string itemName; // empty string for empty stack
     public int quantity;
     public int decayCounter;
+}
+
+// One in-progress melt chunk in a foundry: the ore being melted, its amount (fen), and its
+// melt progress [0,1]. See Foundry / SPEC-systems §Foundry.
+public class FoundryChunkSaveData {
+    public string oreName;
+    public int fen;
+    public float progress;
+}
+
+// One molten-metal entry in a foundry's molten pool: the molten item and its fen.
+public class FoundryMoltenSaveData {
+    public string itemName;
+    public int fen;
 }
 
 public class AnimalSaveData {

@@ -32,6 +32,23 @@ public class FillProcessorTask : Task {
             proc.SetBatchRecipe(chosen);
         }
 
+        // How many rounds this batch loads: as many as the pot holds AND the colony can source right
+        // now (already-buffered rounds + what's still free in storage), capped by the pot. Floored at
+        // what a prior partial fill already buffered, so a resumed fill that can no longer source the
+        // full count trims down and STARTS rather than stalling. Recomputed every (re)fill.
+        int cap = proc.CapacityRounds();
+        int buffered = proc.BufferedRounds();
+        int rounds = Math.Min(buffered + SourceableRounds(proc), cap);
+        proc.batchRounds = Math.Max(rounds, Math.Max(1, buffered));
+
+        // A prior partial fill may already hold a full (now possibly trimmed) batch — nothing left to
+        // fetch. Start it straight away rather than building an empty fill task and stalling in Empty.
+        if (proc.BatchLoaded()) {
+            proc.state = Processor.State.Working;
+            proc.progress = 0f;
+            return false;
+        }
+
         // The tile the worker stands on to deposit (PathToOrAdjacent, like SupplyFuelTask).
         Path standPath = animal.nav.PathToOrAdjacent(building.tile);
         if (!animal.nav.WithinRadius(standPath, MediumFindRadius)) return false;
@@ -43,7 +60,7 @@ public class FillProcessorTask : Task {
         foreach (ItemQuantity input in proc.inputs) {
             // missing is measured against the group (input.item) so any already-buffered leaf counts;
             // the gather then commits to a concrete leaf (surplus × nearness) for the new delivery.
-            int missing = input.quantity - proc.inputBuffer.Quantity(input.item);
+            int missing = input.quantity * proc.batchRounds - proc.inputBuffer.Quantity(input.item);
             if (missing <= 0) continue;
             Item inputLeaf = ResolveConsumeLeaf(input.item, proc.inputBuffer.HeldLeafMatching(input.item));
             TryGather(inputLeaf, missing, proc, deliveries);
@@ -51,7 +68,7 @@ public class FillProcessorTask : Task {
         // Fuel: the processor committed to a concrete fuel leaf when the recipe was chosen; haul the
         // missing remainder into the buffer like any input (Tap drains it with the rest).
         if (proc.batchFuelItem != null) {
-            int missingFuel = proc.batchFuelFen - proc.inputBuffer.Quantity(proc.batchFuelItem);
+            int missingFuel = proc.batchFuelFen * proc.batchRounds - proc.inputBuffer.Quantity(proc.batchFuelItem);
             if (missingFuel > 0) TryGather(proc.batchFuelItem, missingFuel, proc, deliveries);
         }
         if (deliveries.Count == 0) return false; // nothing haulable right now — leave state Empty
@@ -68,6 +85,24 @@ public class FillProcessorTask : Task {
 
         proc.state = Processor.State.Filling;
         return true;
+    }
+
+    // How many ADDITIONAL full rounds of the current recipe the colony's free (unreserved) stock can
+    // supply — min over inputs, also bounded by available fuel energy. Mirrors the input/fuel caps in
+    // Animal.CalculateWorkPossible; no time cap (a processor batch is one fixed `duration`). Stock
+    // already buffered was consumed from global storage, so this counts only rounds beyond those.
+    private int SourceableRounds(Processor proc) {
+        int rounds = int.MaxValue;
+        foreach (ItemQuantity iq in proc.recipe.inputs) {
+            if (iq.item == null || iq.quantity <= 0) continue;
+            int avail = InventoryController.instance.TotalAvailableQuantity(iq.item);
+            rounds = Math.Min(rounds, avail / iq.quantity);
+        }
+        if (proc.recipe.fuelCost > 0f) {
+            int byFuel = (int)(GlobalInventory.instance.ConsumableFuelEnergy() / proc.recipe.fuelCost);
+            rounds = Math.Min(rounds, byFuel);
+        }
+        return rounds == int.MaxValue ? 0 : Math.Max(0, rounds);
     }
 
     // A committed delivery: the leaf+qty to haul, where it's coming from, and the reservations made.

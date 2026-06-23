@@ -172,7 +172,7 @@ public class Building : Structure {
         }
     }
     public Inventory storage { get; private set; }
-    // Non-null only for buildings with a consumable resource reservoir (torch, furnace, fountain, etc.).
+    // Non-null only for buildings with a consumable resource reservoir (torch, foundry, fountain, etc.).
     public Reservoir reservoir { get; private set; }
     // Non-null only for buildings with furnishing slots (currently: house). Each named slot
     // holds at most one furnishing item, decays on a fixed lifetime timer, and grants happiness
@@ -278,7 +278,7 @@ public class Building : Structure {
             }
         }
 
-        // Craft-gated light + fire (cauldron; opt-in for furnace/crucible): a LightSource whose lit
+        // Craft-gated light + fire (cauldron; opt-in for foundry/crucible): a LightSource whose lit
         // state follows IsBeingCrafted rather than fuel/time. No reservoir. It also owns the fireGO
         // toggle (LightSource.Update), so craft-gated buildings don't manage their own fire art.
         if (st.lightWhileCrafting) {
@@ -314,7 +314,7 @@ public class Building : Structure {
                 Tile pTile = World.instance.GetTileAt(
                     x + (mirrored ? (st.nx - 1 - st.processorTileX) : st.processorTileX),
                     y + st.processorTileY);
-                processor = new Processor(procRecipes, st.processorTended, st.processorLocalHeat, st.processorCapacityLiang * 100, pTile.x, pTile.y, sr.sortingOrder);
+                processor = new Processor(procRecipes, st.processorTended, st.processorCapacityLiang * 100, pTile.x, pTile.y, sr.sortingOrder);
             }
         }
     }

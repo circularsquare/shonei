@@ -432,12 +432,10 @@ public class Blueprint {
     //      count — pure blueprints don't bear weight, so a windmill on platform blueprints
     //      stays suspended until those platforms are actually built.
     public bool IsSuspended() {
-        // Structures placed *inside* a solid tile (mine-tile, quarry/dirt pit via requiredTileName,
-        // mineshaft via requiresSolidTilePlacement) are exempt from the standard support check —
-        // their placement tile is non-standable by design, but they're authored to occupy it.
-        if (structType.isTile || structType.name == "empty"
-            || structType.requiredTileName != null
-            || structType.requiresSolidTilePlacement)
+        // Structures built INTO a solid tile (mine-tile, quarry/dirt pit, mineshaft) are exempt from
+        // the standard support check — their placement tile is non-standable by design, but they're
+        // authored to occupy it. (isTile covers the bare `empty` mining action.)
+        if (structType.isTile || structType.OccupiesSolidTile)
             return false;
 
         // Side-mounted structures (ladder_side, bracket) lean on a wall, not a floor, so they
@@ -446,6 +444,11 @@ public class Blueprint {
         if (structType.sideMounted)
             return !StructPlacement.SideMountWallPresent(tile, mirrored);
 
+        // Suspension re-checks only the SUPPORT-relevant tile requirements (standable / water /
+        // solid). The placement-only flags — mustBeEmpty, mustNotBePlant, mustBeOpenSkyAbove, and the
+        // per-req requiredTileName — are deliberately NOT re-evaluated: they gate whether a blueprint
+        // may be QUEUED, but once placed those conditions shouldn't dynamically suspend it (e.g.
+        // something later resting on a neighbour mustn't freeze an otherwise-valid blueprint).
         if (structType.tileRequirements != null) {
             foreach (TileRequirement req in structType.tileRequirements) {
                 int effectiveDx = mirrored ? (structType.nx - 1 - req.dx) : req.dx;
@@ -460,31 +463,18 @@ public class Blueprint {
             // the pump). Otherwise the reqs are additive and the generic check still runs.
         }
 
-        // Generic bottom-row support — every column's base must rest on something solid (the
-        // rest of the column stacks above). edgeSupported types check only the two end columns,
-        // the middle may hang (tarp). Skipped entirely for types with explicit standable reqs.
-        // Mirrors the placement rule in StructPlacement.GetPlacementFailReason.
-        // Power shafts can also be supported by connecting to a built shaft (see
-        // StructPlacement / PowerShaft.ConnectsToShaft). includeBlueprints is false here so the
-        // run builds outward from a real, load-bearing shaft — a shaft hooked only onto another
-        // *blueprint* stays suspended until that neighbour is actually built. (StructController
+        // Bottom-row support — shared with placement via StructPlacement.IsBottomRowSupported so the
+        // rule can't drift. Skipped for types with explicit mustBeStandable reqs (handled above) and
+        // for shafts that hook onto a built shaft. includeBlueprints is false here, and
+        // countBlueprintsBelow is false for the same reason: a queued blueprint below doesn't bear
+        // weight, so a structure stays suspended until its support is actually built. (StructController
         // re-checks adjacent shaft blueprints whenever a shaft completes.)
         bool shaftConnected = PowerShaft.IsShaft(structType)
                 && PowerShaft.ConnectsToShaft(structType, tile, rotation, mirrored, includeBlueprints: false);
-
         if (!structType.hasStandableRequirement && !shaftConnected) {
             int bottomNx = structType.HasShapes ? Shape.nx : structType.nx;
-            if (structType.edgeSupported) {
-                Node leftNode  = World.instance.graph.nodes[tile.x, tile.y];
-                Node rightNode = World.instance.graph.nodes[tile.x + bottomNx - 1, tile.y];
-                if (leftNode  != null && !leftNode.standable)  return true;
-                if (rightNode != null && !rightNode.standable) return true;
-            } else {
-                for (int i = 0; i < bottomNx; i++) {
-                    Node node = World.instance.graph.nodes[tile.x + i, tile.y];
-                    if (node != null && !node.standable) return true;
-                }
-            }
+            if (!StructPlacement.IsBottomRowSupported(structType, tile.x, tile.y, bottomNx, countBlueprintsBelow: false))
+                return true;
         }
         // Two-click placements (rope bridges) own a second tile that the anchor
         // footprint loop above doesn't cover. The partner post needs the same

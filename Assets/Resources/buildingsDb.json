@@ -471,7 +471,7 @@
         "isTile": true,
         "njob": "digger",
         "tileRequirements": [
-            { "dx": 0, "dy": 1, "mustNotBePlant": true, "mustBeEmpty": true }
+            { "dx": 0, "dy": 1, "mustNotBePlant": true, "mustBeEmpty": true, "allowSelfSupporting": true }
         ],
         "category": "tiles"
     },{
@@ -573,10 +573,7 @@
         "njob": "hauler",
         "solidTop": true,
         "category": "production",
-        "hasProcessor": true,
-        "processorTended": false,
-        "processorLocalHeat": true,
-        "processorCapacityLiang": 10,
+        "foundryCapacityLiang": 30,
         "hasFuelInv": true,
         "fuelCapacity": 20,
         "fuelBurnRate": 40,

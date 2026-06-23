@@ -721,8 +721,11 @@ public class WaterController : MonoBehaviour {
             Debug.LogError($"ScanWaterPixels: {stem}_w.png is not Read/Write enabled — BuildingSpritePostprocessor should handle this automatically");
             return null;
         }
-        int sprW = (int)sprite.textureRect.width;
-        int sprH = (int)sprite.textureRect.height;
+        // Round, don't truncate: an atlased sprite's textureRect can read a hair under the integer
+        // size (e.g. foundry 31.92 vs 32) from atlas-UV float error — truncating would spuriously
+        // reject a correctly-sized mask. Every loose sprite's rect is already integer.
+        int sprW = Mathf.RoundToInt(sprite.textureRect.width);
+        int sprH = Mathf.RoundToInt(sprite.textureRect.height);
         if (mask.width != sprW || mask.height != sprH) {
             Debug.LogError($"ScanWaterPixels: {stem}_w.png size {mask.width}×{mask.height} does not match sprite {sprW}×{sprH}");
             return null;

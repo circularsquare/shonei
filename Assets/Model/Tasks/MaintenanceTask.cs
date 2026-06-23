@@ -11,7 +11,7 @@ using System.Linq;
 //
 // Material cost: for every cost item in structType.costs,
 //     needed = ceil(cost.quantity × RepairCostFraction × repairAmount)
-// So a 0.40 repair of a furnace consumes 10% of its full build cost per item. All
+// So a 0.40 repair of a foundry consumes 10% of its full build cost per item. All
 // cost items are required — the mender won't start a repair it can't fully supply.
 //
 // A single task restores at most MaxRepairPerTask (0.40) condition. A fully-broken

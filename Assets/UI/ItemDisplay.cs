@@ -217,8 +217,11 @@ public class ItemDisplay : MonoBehaviour {
 
     // Up/down buttons step the target by 1 liang (100 fen), or 10 liang on
     // Ctrl-click (UIInput.StepMultiplier). Clamped to ≥0.
-    public void OnClickTargetUp()   => AdjustTarget(+100 * UIInput.StepMultiplier);
-    public void OnClickTargetDown() => AdjustTarget(-100 * UIInput.StepMultiplier);
+    // Step by one whole unit: 1 liang for normal items, one item's worth for discrete
+    // multi-weight items (unitFen) — so a stool steps by 1 stool, not 1/3 of one.
+    public void OnClickTargetUp()   => AdjustTarget(+StepFen());
+    public void OnClickTargetDown() => AdjustTarget(-StepFen());
+    private int StepFen() => (item != null ? item.unitFen : 100) * UIInput.StepMultiplier;
 
     private void AdjustTarget(int deltaFen) {
         if (displayMode == DisplayMode.Storage) return;

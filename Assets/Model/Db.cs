@@ -70,6 +70,15 @@ public class Db : MonoBehaviour {
     // job.recipes (so the craft dispatch never runs them as CraftTasks) — the Processor's
     // Fill/Work/Tap orders drive them instead. See Recipe.isProcessorRecipe / GetProcessorRecipes.
     public static Dictionary<string, List<Recipe>> processorRecipesByBuilding;
+    // Foundry recipes (foundryOp set). The foundry is a continuous melt pool, NOT a Processor:
+    //   melt  — ore/bar → molten (auto, per deposited chunk, temperature-gated)
+    //   alloy — molten + molten → molten (auto in the pool, gated by the cast target)
+    //   cast  — molten → bars (by the foundry's cast target)
+    // Bucketed here at load and kept OUT of both job.recipes and processorRecipesByBuilding, so
+    // neither the craft dispatch nor the Processor orders ever run them. See SPEC-systems §Foundry.
+    public static List<Recipe> foundryMeltRecipes;
+    public static List<Recipe> foundryAlloyRecipes;
+    public static List<Recipe> foundryCastRecipes;
     public static StructType[] structTypes = new StructType[600];
     public static PlantType[] plantTypes = new PlantType[600];
     public static TileType[] tileTypes = new TileType[100];
@@ -144,6 +153,9 @@ public class Db : MonoBehaviour {
         bookItemIdByTechId   = new Dictionary<int, int>();
         itemsByFurnishingSlot = new Dictionary<string, List<Item>>();
         processorRecipesByBuilding = new Dictionary<string, List<Recipe>>();
+        foundryMeltRecipes  = new List<Recipe>();
+        foundryAlloyRecipes = new List<Recipe>();
+        foundryCastRecipes  = new List<Recipe>();
         // ReadJson Add()s into chineseNames/inventedNames — reset so reloads don't
         // double the pool (which would shift Rng-based name selection deterministically
         // wrong, breaking snapshot reproducibility).
@@ -505,6 +517,18 @@ public class Db : MonoBehaviour {
         return null;
     }
 
+    // ── Foundry recipe lookups (foundryOp recipes; see ReadJson + SPEC-systems §Foundry) ──
+    // The melt recipe for a meltable input item (ore or, later, a bar to remelt) → its molten
+    // metal, or null if the item can't be melted. Matched on the recipe's single input leaf.
+    public static Recipe GetFoundryMeltRecipe(Item input){
+        if (input == null || foundryMeltRecipes == null) return null;
+        foreach (Recipe r in foundryMeltRecipes)
+            if (r.inputs.Length > 0 && r.inputs[0].item == input) return r;
+        return null;
+    }
+    public static List<Recipe> GetFoundryAlloyRecipes() => foundryAlloyRecipes;
+    public static List<Recipe> GetFoundryCastRecipes()  => foundryCastRecipes;
+
     // Warns if a discrete item's unit is too heavy to fit in even the largest storage stack.
     // Such an item would be un-storable — every stack's EffectiveCapacity floors to 0 — yet
     // CalculateWorkPossible would still let one un-storable unit get crafted onto the floor.
@@ -628,6 +652,17 @@ public class Db : MonoBehaviour {
         foreach (Recipe recipe in recipesUnplaced){
             if (recipes[recipe.id] != null){Debug.LogError($"multiple recipes with id={recipe.id}: '{recipes[recipe.id].description}' and '{recipe.description}'");}
             recipes[recipe.id] = recipe;
+            // Foundry recipes (foundryOp set) are neither crafts nor processor batches — bucket them
+            // into their own lists and skip both the job.recipes and processor paths below.
+            if (recipe.foundryOp != null) {
+                switch (recipe.foundryOp) {
+                    case "melt":  foundryMeltRecipes.Add(recipe);  break;
+                    case "alloy": foundryAlloyRecipes.Add(recipe); break;
+                    case "cast":  foundryCastRecipes.Add(recipe);  break;
+                    default: Debug.LogError($"Recipe {recipe.id} ('{recipe.description}'): unknown foundryOp '{recipe.foundryOp}' (expected melt|alloy|cast)."); break;
+                }
+                continue;
+            }
             // A recipe with a duration is a batch conversion (processor), not a craft — keyed by
             // its `duration` field, NOT by the building, because one building can host both: the
             // brewery crafts yeast (workload) AND ferments rice wine (duration). Processor recipes
@@ -777,13 +812,23 @@ public class Recipe {
     public float  duration {get; set;}            // 0 on craft recipes; >0 on processor recipes
     public float? processTempMin {get; set;}      // null = constant rate (not temperature-scaled)
     public float? processTempIdeal {get; set;}
-    public float heatCost {get; set;}             // local-heat processors (foundry): heat drawn from the pool per completed batch (latent heat of melting)
     public string processColorHex {get; set;}     // optional #RRGGBB tint for the Working-state liquid zone
     public Color32 processColor;                  // parsed; alpha=0 when processColorHex is unset
     // True when this recipe's `tile` building hasProcessor. Resolved at load (ReadJson). Such
     // recipes are bucketed in Db.processorRecipesByBuilding and kept OUT of job.recipes, so the
     // craft dispatch never picks them up — the Processor's Fill/Work/Tap orders run them instead.
     [JsonIgnore] public bool isProcessorRecipe;
+
+    // ── Foundry fields ──────────────────────────────────────────────────────
+    // Set only on foundry recipes (foundryOp != null). The foundry is a continuous melt pool, NOT a
+    // Processor (see SPEC-systems §Foundry): melt (ore/bar → molten, auto per deposited chunk),
+    // alloy (molten + molten → molten, auto in the pool), cast (molten → bars, by target). melt*
+    // fields apply only to "melt" recipes; alloy/cast use ninputs/noutputs alone.
+    public string foundryOp {get; set;}        // "melt" | "alloy" | "cast" | null (= a normal craft/processor recipe)
+    public float  meltTempMin {get; set;}      // temperature where melt rate = 0; below it a chunk re-solidifies (rate goes negative)
+    public float  meltTempIdeal {get; set;}    // temperature where melt rate = 1 (full speed)
+    public float  meltDuration {get; set;}     // seconds to fully melt one chunk at ideal temp — INDEPENDENT of chunk size
+    public float  meltHeatCost {get; set;}     // heat drawn from the pool per LIANG melted (latent heat; scales with chunk size)
 
     public TileType tileType;
     public ItemNameQuantity[] ninputs {get; set;}

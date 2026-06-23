@@ -800,6 +800,7 @@ public class Structure {
             if (st.name == "elevator") return new Elevator(st, x, y, mirrored, shapeIndex);
             if (st.name == "tarp")     return new Tarp(st, x, y, mirrored, shapeIndex);
             if (st.name == "clock")    return new Clock(st, x, y, mirrored);
+            if (st.name == "foundry")  return new Foundry(st, x, y, mirrored);
             return new Building(st, x, y, mirrored);
         }
         return new Structure(st, x, y, mirrored, rotation, shapeIndex); // platforms, ladders, stairs, foreground, roads

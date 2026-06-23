@@ -528,10 +528,31 @@ public class TradingPanel : MonoBehaviour {
             case "/regenerate": CmdRegenerate(parts); break;
             case "/research": CmdResearch(parts); break;
             case "/online": CmdOnline(); break;
+            case "/help": case "/commands": CmdHelp(); break;
             default:
-                EventFeed.instance?.Post($"<color=#cc3333>Unknown command: {cmd}</color>", EventFeed.Category.Info);
+                EventFeed.instance?.Post($"<color=#cc3333>Unknown command: {cmd}. Try /help</color>", EventFeed.Category.Info);
                 break;
         }
+    }
+
+    // /help (alias /commands) — list every chat command, one multi-line feed entry.
+    // Keep this list in sync with the HandleCommand switch above. ASCII only: the m5x7
+    // pixel font has no em-dash/arrow glyphs, so usage hints use plain hyphens.
+    void CmdHelp() {
+        EventFeed.instance?.Post(
+            "<color=#aaccff>commands:\n" +
+            "/help - this list\n" +
+            "/give [item] [qty] ([x] [y]) - spawn items\n" +
+            "/mice [n] - set population\n" +
+            "/rain ([0..1]) - toggle or set rain\n" +
+            "/day [n] - jump to day-of-year\n" +
+            "/wind [value] - set wind\n" +
+            "/timespeed [n] - set time scale\n" +
+            "/generate [seed] - new world from seed\n" +
+            "/regenerate - rebuild current world\n" +
+            "/research ([id]) - unlock all or one tech\n" +
+            "/online - players online</color>",
+            EventFeed.Category.Info);
     }
 
     // /online — report how many players the server currently sees connected.

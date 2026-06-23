@@ -6,6 +6,10 @@ meoww!!
 - gradual snow accumulation
 - global inv item distribution bar 
 - added item leaf disallowing in blueprints
+- started foundry! 
+    - reservoir heat system / melting metals 
+    - chunk melting 
+- multi batch brewing
 6/21
 - big global inv panel
 6/20

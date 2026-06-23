@@ -80,9 +80,9 @@ Fields:
 | `fireFps` | float? | flame animation step rate (default 7). Fire flames step via a ±1 random walk (`FrameAnimator.randomWalk`), not a fixed cycle. |
 | `hasProcessor` | bool? | building has a `Processor` component — a batch converter (see SPEC-systems.md §Processors). Its conversions are ordinary `Recipe`s with `tile == this building` and a `duration` (see Processor recipes below). The brewery (untended) + cauldron (tended) are the users. |
 | `processorTended` | bool? | `true` = the Working phase is worker-tended (cauldron — a worker labours for the batch's `duration`, then it auto-taps); `false`/omitted = passive ferment (brewery — advances on world ticks, temperature-scaled, then a worker taps). |
-| `processorCapacityLiang` | int? | the pot's liquid capacity in liang — the denominator for the rendered fill, so one batch in a bigger pot reads partially full (the cauldron's `10` makes a 5-liang batch render half). `0`/omit → sized to one batch (reads full). Also the `output` buffer size. A tended processor doesn't need `isWorkstation` (work-spot comes from `nworkTiles`); set it only if the building also runs craft recipes (the brewery does, for yeast). |
+| `processorCapacityLiang` | int? | the pot's liquid capacity in liang — the denominator for the rendered fill, so one batch in a bigger pot reads partially full (the cauldron's `10` makes a 5-liang batch render half). `0`/omit → sized to one batch (reads full). Also the `output` buffer size AND the ceiling on multi-round batches (a pot bigger than one round brews several rounds per batch — see SPEC-systems §Processors). A tended processor doesn't need `isWorkstation` (work-spot comes from `nworkTiles`); set it only if the building also runs craft recipes (the brewery does, for yeast). |
 | `processorTileX`, `processorTileY` | int? | tile offset of the processor's inventory tile within the footprint (footprint geometry). |
-| `processorLocalHeat` | bool? | `true` = the processor's advance rate is gated by its OWN heat (fuel burned → `Processor.heat`, decaying toward ambient) instead of ambient weather — the foundry smelts hot. Requires `hasFuelInv`. See SPEC-systems.md §Processors (local-heat mode). |
+| `foundryCapacityLiang` | int? | the dedicated `Foundry` melt-pool subclass only (NOT a processor): total ore + molten capacity in liang (×100 → fen), bounding intake + chunks + molten pool. Requires `hasFuelInv`. See SPEC-systems.md §Foundry. |
 | `noMaintenance` | bool? | opts this StructType out of the maintenance / condition decay system. Set to `true` on nav-critical types (platform, stairs, ladder) so a neglected world doesn't cut mice off from parts of the map. Plants and cost-free structures are already auto-exempt — see SPEC-systems.md §Maintenance System. |
 | `placementMethod` | string? | When `"twoClick"`, the StructType is placed by clicking TWO tiles (the two endpoint posts of a rope bridge). First click stashes the post; second click commits a single blueprint carrying both endpoints. Defaults to single-click placement. See SPEC-systems.md §Rope bridges. |
 | `minDx`, `maxDx` | int? | Horizontal-delta bounds for two-click placement. Bridge requires `minDx ≤ |xA - xB| ≤ maxDx`. Defaults: 3 / 20. |
@@ -177,13 +177,24 @@ Authored exactly like a craft `Recipe`, plus these processor-only fields:
 | Field | Type | Notes |
 |-------|------|-------|
 | `duration` | float | seconds to complete one batch. UNTENDED = elapsed in-game seconds (temperature-scaled); TENDED = seconds of worker labour. Large for slow ferments (rice wine `960` = 2 in-game days × `ticksInDay`). Displayed via `Recipe.FormatDuration` — `<60s` as `"8s"`, else in-game days `"2 days"`. |
-| `processTempMin`, `processTempIdeal` | float? | temperature ramp: rate 0 at/below min, 1.0 at/above ideal, linear between. Omit both → constant full rate. Read against AMBIENT (untended ferment) or the building's LOCAL heat-temperature (`processorLocalHeat` foundry). |
-| `heatCost` | float? | local-heat only: thermal charge discretely drawn from `Processor.heat` per completed batch (latent heat of the melt). Foundry recipes 150 (bronze 200). 0/absent = none. |
+| `processTempMin`, `processTempIdeal` | float? | temperature ramp: rate 0 at/below min, 1.0 at/above ideal, linear between. Omit both → constant full rate. Read against AMBIENT weather (untended ferment). |
 | `processColorHex` | string? | `#RRGGBB` tint for the building's `_w` liquid zone while Working. Absent → default blue. See SPEC-rendering.md §Decorative liquid zones. |
 
 Inputs/outputs use the normal `ninputs`/`noutputs` (liang→fen). `fuelCost` is honoured for tended processors (hauled into the buffer, burned at tap). Recipe **selection** is the normal craft scorer, scoped to the building at fill time (`Animal.PickProcessorRecipe`).
 
 **Recipes panel:** processor recipes are ordinary `Recipe`s, so they appear in their building's group alongside its craft recipes with no special pass. A processor card shows its batch time + ideal temp (e.g. `2 days at 25°`) in place of the worker-count line, and the standard per-recipe On/Off toggle (`RecipePanel.IsAllowed(id)`) — enforced by `PickProcessorRecipe` (a disabled recipe is skipped at fill time). No separate per-building process toggle.
+
+## Foundry recipes (a `Recipe` with `foundryOp`)
+
+The **foundry** is a melt pool, not a processor (SPEC-systems §Foundry). Its recipes carry `tile: "foundry"` and a **`foundryOp`** discriminator — `"melt"`, `"alloy"`, or `"cast"` — bucketed at load into `Db.foundryMeltRecipes` / `foundryAlloyRecipes` / `foundryCastRecipes`, kept OUT of both `job.recipes` and the processor bucket. Inputs/outputs use the normal `ninputs`/`noutputs` (liang→fen). The molten metals are real liquid `Item`s (`itemClass: "liquid"` + a `liquidColorHex`): `molten copper` / `tin` / `bronze` / `glass`.
+
+| `foundryOp` | Shape | `foundryOp`-only fields |
+|-------------|-------|--------------|
+| `"melt"` | one ore (or a bar, for remelt) → one molten | `meltTempMin`, `meltTempIdeal` (rate ramp; UNCLAMPED below min so a cold pool re-solidifies), `meltDuration` (seconds per chunk — **size-independent**), `meltHeatCost` (heat per liang melted — latent heat) |
+| `"alloy"` | molten + molten → molten (e.g. 1 copper + 1 tin → 2 bronze) | none — applied greedily in whole ratio-units, only when the cast target wants the product |
+| `"cast"` | one molten → bars (1:1 fen by convention) | none — `research` gates it like any recipe |
+
+Melt recipes are looked up by input item (`Db.GetFoundryMeltRecipe`), NOT scored. Cast recipes drive the cast-target picker (Auto scores them by output-bar scarcity — see SPEC-systems §Foundry).
 
 ## `jobsDb.json` — Jobs
 

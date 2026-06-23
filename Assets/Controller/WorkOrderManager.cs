@@ -32,7 +32,7 @@ using UnityEngine;
 public class WorkOrderManager : MonoBehaviour {
     public static WorkOrderManager instance { get; private set; }
 
-    public enum OrderType { Haul, Harvest, Construct, SupplyBlueprint, Deconstruct, HaulToMarket, HaulFromMarket, Research, Craft, SupplyBuilding, Maintenance, SupplyFurnishing, FillProcessor, TapProcessor, WorkProcessor, Water }
+    public enum OrderType { Haul, Harvest, Construct, SupplyBlueprint, Deconstruct, HaulToMarket, HaulFromMarket, Research, Craft, SupplyBuilding, Maintenance, SupplyFurnishing, FillProcessor, TapProcessor, WorkProcessor, Water, FeedFoundry, CastFoundry }
 
     public class WorkOrder {
         public OrderType type;
@@ -529,7 +529,9 @@ public class WorkOrderManager : MonoBehaviour {
             factory    = a => new SupplyFuelTask(a, building),
             building   = building,
             isActive   = () => !building.disabled && !building.IsBroken && reservoir.NeedsSupply(),
-            canDo      = a => a.job.name == "hauler",
+            // The foundry's fuel is supplied by its operator (smith) — all foundry labour (feed, fuel,
+            // cast) is the smith's, giving the job more to do. Every other building's fuel = haulers'.
+            canDo      = a => building is Foundry ? JobOperatesFoundry(a) : a.job.name == "hauler",
             getDistance = a => Mathf.Abs(building.x - a.x) + Mathf.Abs(building.y - a.y)
         });
         return true;
@@ -654,6 +656,53 @@ public class WorkOrderManager : MonoBehaviour {
                                  && o.building == building);
     }
 
+    // ── Foundry orders (the melt-pool Foundry; NOT a Processor) ──────────────────────────────────
+    // Which job operates a foundry — any job that owns a foundry recipe (all are "smith" today, but
+    // kept data-driven like JobOperatesProcessor so it follows the recipes if that ever changes).
+    static bool JobOperatesFoundry(Animal a) =>
+        (Db.foundryCastRecipes != null && Db.foundryCastRecipes.Exists(r => r.job == a.job.name))
+        || (Db.foundryMeltRecipes != null && Db.foundryMeltRecipes.Exists(r => r.job == a.job.name));
+
+    // Standing order: haul a target-consistent ore into the foundry's intake. Active while the foundry
+    // has room AND a cast target (FeedFoundryTask re-checks both and what's actually sourceable). All
+    // foundry labour — feed, fuel (RegisterFuelSupply), and cast — is the smith's (JobOperatesFoundry).
+    public bool RegisterFeedFoundry(Foundry foundry) {
+        if (foundry == null) return false;
+        if (orders[2].Exists(o => o.type == OrderType.FeedFoundry && o.building == foundry)) return false;
+        Add(new WorkOrder {
+            type        = OrderType.FeedFoundry,
+            priority    = 3,
+            factory     = a => new FeedFoundryTask(a, foundry),
+            building    = foundry,
+            isActive    = () => !foundry.disabled && !foundry.IsBroken && foundry.HasRoom() && foundry.TargetBar() != null,
+            canDo       = a => JobOperatesFoundry(a),
+            getDistance = a => Mathf.Abs(foundry.x - a.x) + Mathf.Abs(foundry.y - a.y)
+        });
+        return true;
+    }
+
+    // Standing order: pour castable molten into bars. Active while any molten holds ≥ one bar's worth.
+    public bool RegisterCastFoundry(Foundry foundry) {
+        if (foundry == null) return false;
+        if (orders[2].Exists(o => o.type == OrderType.CastFoundry && o.building == foundry)) return false;
+        Add(new WorkOrder {
+            type        = OrderType.CastFoundry,
+            priority    = 3,
+            factory     = a => new CastFoundryTask(a, foundry),
+            building    = foundry,
+            isActive    = () => !foundry.disabled && !foundry.IsBroken && foundry.HasCastableMolten(),
+            canDo       = a => JobOperatesFoundry(a),
+            getDistance = a => Mathf.Abs(foundry.x - a.x) + Mathf.Abs(foundry.y - a.y)
+        });
+        return true;
+    }
+
+    // Removes all foundry work orders for a building (call when the foundry is destroyed).
+    public void RemoveFoundryOrders(Building building) {
+        orders[2].RemoveAll(o => (o.type == OrderType.FeedFoundry || o.type == OrderType.CastFoundry)
+                                 && o.building == building);
+    }
+
     // Registers a standing Maintenance order for any structure below RegisterThreshold.
     // Called from MaintenanceSystem.Tick() on the downward threshold crossing, and from
     // Reconcile() at load. Mender is the only job that matches canDo. isActive suppresses
@@ -700,6 +749,10 @@ public class WorkOrderManager : MonoBehaviour {
             RegisterFillProcessor(building);
             RegisterTapProcessor(building);   // self-skips for a tended processor
             RegisterWorkProcessor(building);  // self-skips for an untended processor
+        }
+        if (building is Foundry foundry) {
+            RegisterFeedFoundry(foundry);
+            RegisterCastFoundry(foundry);
         }
     }
 
@@ -1006,6 +1059,33 @@ public class WorkOrderManager : MonoBehaviour {
             // dedups, so this is a safe no-op once the orders already exist.
             if (repair && pb.processor.state == Processor.State.Tapped)
                 foreach (ItemStack st in pb.processor.output.itemStacks)
+                    if (st.item != null && st.quantity > 0)
+                        RegisterStorageEvictionHaul(st);
+        }
+
+        // ── Foundry (feed + cast) ──
+        // Standing orders for the melt-pool Foundry. Re-registered here so they survive load, plus a
+        // haul-out for any bars sitting in `output` from a foundry saved mid-cast.
+        foreach (Structure s in StructController.instance.GetStructures()) {
+            if (s is not Foundry fdy) continue;
+            if (!orders[2].Exists(o => o.type == OrderType.FeedFoundry && o.building == fdy)) {
+                if (repair) {
+                    RegisterFeedFoundry(fdy);
+                    if (!silent) Debug.LogWarning($"WOM reconcile: registered missing FeedFoundry order for foundry at ({fdy.x},{fdy.y})");
+                } else {
+                    Debug.LogError($"WOM audit: foundry at ({fdy.x},{fdy.y}) has no FeedFoundry order");
+                }
+            }
+            if (!orders[2].Exists(o => o.type == OrderType.CastFoundry && o.building == fdy)) {
+                if (repair) {
+                    RegisterCastFoundry(fdy);
+                    if (!silent) Debug.LogWarning($"WOM reconcile: registered missing CastFoundry order for foundry at ({fdy.x},{fdy.y})");
+                } else {
+                    Debug.LogError($"WOM audit: foundry at ({fdy.x},{fdy.y}) has no CastFoundry order");
+                }
+            }
+            if (repair)
+                foreach (ItemStack st in fdy.output.itemStacks)
                     if (st.item != null && st.quantity > 0)
                         RegisterStorageEvictionHaul(st);
         }

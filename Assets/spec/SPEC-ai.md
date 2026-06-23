@@ -161,6 +161,8 @@ Tasks decompose into an ordered queue of Objectives. Each task:
 
 `Task.Start()` only calls `StartNextObjective()` if `Initialize()` returned `true`. This prevents half-built objective queues from executing when a late reservation check fails.
 
+**Dispatch runs `Start()` before `animal.task` is assigned.** `ChooseOrder` / `ChooseCraftTask` create the task, call `task.Start()`, and only assign `animal.task` (and reserve `order.res`) on a `true` return. So the first objective can fail *synchronously inside `Start()`* while `animal.task != this`. Two invariants make that safe — don't break them: (1) `Task.Fail()` must release reservations unconditionally (it guards `animal.task`-mutation, **not** `Cleanup()`, behind `animal.task == this`; idempotency comes from the `aborted` flag, not an `animal.task != this` early-return) — otherwise `Initialize()`'s reservations leak; (2) `Start()` returns `!aborted` (not `initialized`), so a synchronous first-objective failure reports `false` and dispatch doesn't adopt a dead task.
+
 ### Reservation system
 
 Tasks reserve sources and destinations during `Initialize()` via `Task.ReserveStack` / `Task.ReserveSpace`; both auto-released by `base.Cleanup()`. See SPEC-systems.md §Reservation Systems for the full mechanism.

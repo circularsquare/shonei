@@ -68,9 +68,10 @@ public class InventoryDetailRow : MonoBehaviour {
             nameButton.transition = Selectable.Transition.None; // don't tint the name on press
             nameButton.onClick.AddListener(OnClickDropdown);
         }
-        // Ctrl-click steps by 10 liang instead of 1 (UIInput.StepMultiplier), read per-click.
-        if (targetUp != null)   targetUp.onClick.AddListener(() => AdjustTarget(+100 * UIInput.StepMultiplier));
-        if (targetDown != null) targetDown.onClick.AddListener(() => AdjustTarget(-100 * UIInput.StepMultiplier));
+        // Step by one whole unit: 1 liang for normal items, one item's worth (unitFen) for discrete
+        // multi-weight items — so a stool steps by 1 stool, not 1/3. Ctrl-click ×10 (StepMultiplier).
+        if (targetUp != null)   targetUp.onClick.AddListener(() => AdjustTarget(+item.unitFen * UIInput.StepMultiplier));
+        if (targetDown != null) targetDown.onClick.AddListener(() => AdjustTarget(-item.unitFen * UIInput.StepMultiplier));
         if (targetInput != null) targetInput.onEndEdit.AddListener(OnTargetEndEdit);
         if (consumeButton != null) consumeButton.onClick.AddListener(OnClickConsume);
 

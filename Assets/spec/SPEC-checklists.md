@@ -33,7 +33,7 @@ This is the workflow:
   - `nworkTiles: [ { "dx": ?, "dy": ? } ]` — where the operator stands (relative to anchor). Defaults to `(0, 0)` if omitted. Use `workSpotX/Y` for sub-tile precision (mouse-wheel pattern).
   - `storageTileX/Y` — if the building has storage, which tile holds it (anchor is `(0, 0)`; e.g. `storageTileX: 1` for storage on the right of a 2×1).
   - `solidTop: true` if mice should stand *on* the building.
-- [ ] **Author the new sprite at the same `name`** (e.g. `Sprites/Buildings/sawmill.png` for `sawmill`). Confirm pixels-per-unit and pivot are correct for the new footprint — easiest is to copy `.meta` settings from a comparably-sized existing building (e.g. `furnace.png` for 2×1).
+- [ ] **Author the new sprite at the same `name`** (e.g. `Sprites/Buildings/sawmill.png` for `sawmill`). Confirm pixels-per-unit and pivot are correct for the new footprint — easiest is to copy `.meta` settings from a comparably-sized existing building (e.g. `foundry.png` for 2×2).
 - [ ] **Recipes don't change.** `recipe.tile` still matches the building's name — no rename needed.
 - [ ] **Storage filter is per-instance, not data-driven.** New storage starts with all items disallowed ([Inventory.cs](../Model/Inventory/Inventory.cs)); players set the filter on each placed building via the storage UI. If a building should auto-allow a specific item by default, that's a separate feature (currently not implemented).
 - [ ] **Test in a fresh world**: place the building, verify work tile, storage tile, mirror orientation, sprite alignment.
@@ -41,7 +41,7 @@ This is the workflow:
 
 **Why no coexistence?**: The `_v2` + `displayName` + `deprecated` alternative works, but permanently clutters JSON, requires per-recipe duplication, and leaves inert legacy buildings in saves — so "delete + drop on mismatch" wins for a solo project where the player is the developer.
 
-**Pre-existing multi-tile buildings**: if you're changing a building that's *already* multi-tile (e.g. `furnace` from 2×1 → 3×1), the same workflow applies — the size-mismatch check uses the actual footprint, not 1×1 specifically.
+**Pre-existing multi-tile buildings**: if you're changing a building that's *already* multi-tile (e.g. `foundry` from 2×2 → 3×3), the same workflow applies — the size-mismatch check uses the actual footprint, not 1×1 specifically.
 
 ## Adding a new recipe (`recipesDb.json`)
 
@@ -53,6 +53,7 @@ This is the workflow:
 - [ ] **Group input = wildcard accept.** First delivery locks the blueprint to that specific leaf (`LockGroupCostsAfterDelivery`).
 - [ ] **No group items in `noutputs`** — outputs must be leaves. `Db.ValidateNoGroupOutputs()` logs at startup but the error is easy to miss in console spam.
 - [ ] **Processor recipe?** Give it a `duration` (seconds) instead of `workload` and point `tile` at a `hasProcessor` building. `duration > 0` flags it (`isProcessorRecipe`): it's bucketed by building, kept out of `job.recipes`, and run by the Fill/Work/Tap orders — NOT the craft dispatch. Optional `processTempMin`/`processTempIdeal` (untended temp ramp) + `processColorHex` (Working-state tint). `fuelCost` works on tended processors. See SPEC-data.md §Processor recipes.
+- [ ] **Foundry recipe?** Give it `tile: "foundry"` and a `foundryOp` (`"melt"`/`"alloy"`/`"cast"`) — bucketed into `Db.foundry*Recipes`, kept out of `job.recipes` AND the processor bucket. Melt recipes also need `meltTempMin`/`meltTempIdeal`/`meltDuration`/`meltHeatCost`; molten metals are liquid `Item`s. See SPEC-data.md §Foundry recipes.
 
 ## Adding a new item (`itemsDb.json`)
 
@@ -93,6 +94,7 @@ This is the workflow:
 - [ ] **If `AttachAnimations` is overridden**: don't reference subclass-side fields from it — it runs during `base()` before subclass ctor body.
 - [ ] **Any new `dx` field** (interior tile, door, ladder, workSpot, furnishing offset, …): apply `nx-1-dx` on mirror lookup. Convention used throughout — see [StructType.cs](../Model/Structure/StructType.cs).
 - [ ] **If the subclass adds saveable state**: see "Adding new save data" below.
+- [ ] **A subclass with its OWN state / inventories / WOM orders (not reusing a `Processor`/`Reservoir`/`Workstation` component)** needs PARALLEL blocks — the existing save/restore/WOM/`Destroy` paths are guarded on `component != null`, so they silently skip your subclass. The `Foundry` is the worked example: own `StructureSaveData` fields + SaveSystem save/restore (`structure is Foundry`), WOM `Register*`/`Remove*` + a `ScanOrders` reconcile branch + a `RegisterOrdersFor` hook, and an overridden `Destroy()` that drops contents + tears down its inventories before `base.Destroy()`.
 - [ ] **Substrate-capture pattern** (your building's behaviour depends on the tile it was built on): subclass `ExtractionBuilding` — it provides `capturedTile`, `CaptureOriginalTile` (called from `StructController.Construct` before the tile is mined), `GetExtractionOutputs()` (the captured tile's tilesDb `nExtractionProducts`, hooked into `AnimalStateManager.HandleWorking`), the `WorldSaveData.capturedTileType` save round-trip, and the InfoPanel "yields:" line. The quarry is a plain `ExtractionBuilding`; `DiggingPit` shows how to layer extra behaviour on top.
   - Recipes with dynamic outputs should leave `noutputs: []` in JSON — the override path supplies them, and a null return falls back to the static list as a safety net.
 
