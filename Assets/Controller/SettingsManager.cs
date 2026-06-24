@@ -26,6 +26,7 @@ public class SettingsManager : MonoBehaviour {
     const string K_TargetFps  = "settings.targetFps";   // 0 = unlimited
     const string K_Vsync      = "settings.vsync";       // 0 / 1
     const string K_FlatLighting = "settings.flatLighting"; // 0 = shaded, 1 = flat
+    const string K_WallShadows = "settings.wallShadows"; // 0 = legacy interior lighting, 1 = wall-occluded point lights
     const string K_CloudLight = "settings.cloudLighting"; // 0 / 1
     const string K_CloudDetail = "settings.cloudDetail"; // 0.2–1 fraction of full blob count
     const string K_ParticleDensity = "settings.particleDensity"; // 0–1 fraction of full precipitation (0 = off)
@@ -38,7 +39,7 @@ public class SettingsManager : MonoBehaviour {
     // PlayerPrefs.DeleteAll(), which would also nuke the login token (Session) and the
     // save-sync machine GUID (SaveSyncIndex). Add new settings keys here too.
     static readonly string[] AllKeys = {
-        K_MasterVol, K_SfxVol, K_AmbientVol, K_TargetFps, K_Vsync, K_FlatLighting,
+        K_MasterVol, K_SfxVol, K_AmbientVol, K_TargetFps, K_Vsync, K_FlatLighting, K_WallShadows,
         K_CloudLight, K_CloudDetail, K_ParticleDensity, K_AutosaveMins, K_UiScale, K_UiFontIndex, K_HideBackground,
     };
 
@@ -54,6 +55,12 @@ public class SettingsManager : MonoBehaviour {
     // occlusion is unaffected (that's LightPass, not the normals). A cheaper, better-
     // looking floor than fully-off lighting. Default off = full shaded lighting.
     public bool  flatLighting  { get; private set; } = false;
+    // Wall shadows: when on, point lights (torches) are occluded by solid tiles via a
+    // per-pixel ray-march, and enclosed-building interiors (burrows) are promoted from the
+    // directional-only tier to lit-only so they RECEIVE torchlight (a torch inside lights the
+    // burrow; a torch above is blocked by the roof). When off, the legacy behaviour: point
+    // lights ignore walls and burrow interiors get sun + ambient only. Default on.
+    public bool  wallShadows   { get; private set; } = true;
     // When off, CloudFieldGen Pass 0 skips the 5-tap height-field normal +
     // Lambertian band selection and outputs a flat-colour silhouette. Saves
     // ~80% of the cloud blob-loop work; useful for measuring the cost of the
@@ -114,6 +121,7 @@ public class SettingsManager : MonoBehaviour {
         targetFps       = Mathf.Max(0, PlayerPrefs.GetInt(K_TargetFps, 60));
         vsyncEnabled    = PlayerPrefs.GetInt(K_Vsync, 0) != 0;
         flatLighting    = PlayerPrefs.GetInt(K_FlatLighting, 0) != 0;
+        wallShadows     = PlayerPrefs.GetInt(K_WallShadows, 1) != 0;
         cloudLightingEnabled = PlayerPrefs.GetInt(K_CloudLight, 1) != 0;
         cloudDetail     = Mathf.Clamp(PlayerPrefs.GetFloat(K_CloudDetail, 1f), CloudDetailMin, CloudDetailMax);
         particleDensity = Mathf.Clamp01(PlayerPrefs.GetFloat(K_ParticleDensity, 1f));
@@ -178,6 +186,13 @@ public class SettingsManager : MonoBehaviour {
         if (flat == flatLighting) return;
         flatLighting = flat;
         PlayerPrefs.SetInt(K_FlatLighting, flat ? 1 : 0);
+        OnChanged?.Invoke();
+    }
+
+    public void SetWallShadows(bool enabled) {
+        if (enabled == wallShadows) return;
+        wallShadows = enabled;
+        PlayerPrefs.SetInt(K_WallShadows, enabled ? 1 : 0);
         OnChanged?.Invoke();
     }
 

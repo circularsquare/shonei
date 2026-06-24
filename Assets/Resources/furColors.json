@@ -1,0 +1,12 @@
+[
+  { "name": "gray",     "hex": "91989c", "weight": 45 },
+  { "name": "silver",   "hex": "a3aaae", "weight": 8 },
+  { "name": "ash",      "hex": "767d81", "weight": 14 },
+  { "name": "charcoal", "hex": "63686c", "weight": 8 },
+  { "name": "soot",     "hex": "565a5e", "weight": 4 },
+  { "name": "sand",     "hex": "968971", "weight": 8 },
+  { "name": "brown",    "hex": "816f5e", "weight": 8 },
+  { "name": "chestnut", "hex": "8e7863", "weight": 8 },
+  { "name": "cream",    "hex": "a8a7a2", "weight": 5 },
+  { "name": "rust",     "hex": "997868", "weight": 2 }
+]

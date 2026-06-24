@@ -36,6 +36,29 @@ public class Animal : MonoBehaviour{
     public Tile homeTile;
     private Tile _currentTile;  // cached for O(1) tile-occupancy tracking
 
+    // Work flag this mouse is assigned to (Step 6), or null. When set it OVERRIDES home as the
+    // work anchor, so the mouse gathers near the flag and works that area instead of around home.
+    // Stored as a live Building ref; persisted via assignedFlagX/Y and re-resolved on load. The
+    // flag keeps no roster — its assigned mice are found by scanning AnimalController (like home
+    // residents), so a dead mouse needs no cleanup and a demolished flag clears this in Destroy.
+    public Building assignedFlag;
+
+    // The tile a mouse gravitates toward when idle, and the territory origin for its work search
+    // (Step 5: work anchors). The assigned work flag wins; otherwise the mouse's home. Null for a
+    // mouse with neither (no anchor pull — it just wanders locally and searches mouse-relative).
+    public Tile WorkAnchorTile =>
+        assignedFlag != null ? (assignedFlag.doorApproachTile ?? assignedFlag.tile) : homeTile;
+
+    // Assigns/clears the mouse's work flag. Assigning a non-flag building is ignored (logged).
+    public void AssignToFlag(Building flag) {
+        if (flag != null && !flag.structType.isWorkFlag) {
+            Debug.LogError($"AssignToFlag: {flag.structType.name} is not a work flag");
+            return;
+        }
+        assignedFlag = flag;
+    }
+    public void UnassignFlag() { assignedFlag = null; }
+
     public Recipe recipe;
     public int numRounds = 0;
     public float workProgress = 0f;
@@ -250,6 +273,12 @@ public class Animal : MonoBehaviour{
                     happiness?.RecomputeFurnishingBonus(this);
                 }
             }
+            // Restore the assigned work flag (Step 6) — re-resolve the live Building from coords.
+            if (pendingSaveData.assignedFlagX.HasValue && pendingSaveData.assignedFlagY.HasValue) {
+                Tile flagTile = world.GetTileAt(pendingSaveData.assignedFlagX.Value, pendingSaveData.assignedFlagY.Value);
+                if (flagTile?.building != null && flagTile.building.structType.isWorkFlag)
+                    assignedFlag = flagTile.building;
+            }
             pendingSaveData = null;
         } else {
             this.aName = Db.DrawName(AnimalController.instance.UsedNames());
@@ -273,6 +302,9 @@ public class Animal : MonoBehaviour{
         _currentTile = TileHere();
         AnimalController.instance.RegisterAnimalOnTile(_currentTile);
         RefreshInteriorRendering();   // initial layer state (e.g. a mouse loaded inside a burrow)
+        // Tint this mouse's fur from its (now-finalized) rngSeed — deterministic and stable
+        // across save/load. Recolors only the gray fur shades; eyes and pink paws stay constant.
+        animationController?.ApplyFurColor(Db.FurColorForSeed(rngSeed));
         // Add to the tickable animals array now that we're fully initialized.
         // This is deferred from AddAnimal() so TickUpdate/UpdateColonyStats never
         // iterate over an animal whose Start() hasn't run yet.
@@ -581,6 +613,12 @@ public class Animal : MonoBehaviour{
             var found = wom.FindCraftOrder(recipe.tile, this);
             if (found == null) continue;
             var (order, building) = found.Value;
+            // Prefer the foundry for metalworking: skip a non-foundry recipe whose output the foundry
+            // can cast (e.g. crucible smelt → copper bar) when a foundry sits within medium radius of
+            // this station. Lets the player leave both crucible + foundry enabled without the crucible
+            // stealing metal work. Recipes the foundry can't do (clay-mold firing) are unaffected.
+            if (FoundrySupersedes(recipe) && wom.FoundryWithinRadius(building.x, building.y, Task.MediumFindRadius))
+                continue;
             var craftTask = new CraftTask(this, building, recipe);
             if (craftTask.Start()) {
                 order.res.Reserve();
@@ -590,6 +628,16 @@ public class Animal : MonoBehaviour{
             }
         }
         return false;
+    }
+
+    // A craft recipe is "foundry-superseded" when it's NOT a foundry recipe yet the foundry can cast its
+    // primary output (e.g. crucible smelt-malachite → copper bar, or crucible cast-copper-tools). Smiths
+    // skip these at the crucible when a foundry is in range (see ChooseCraftTask), so both buildings can
+    // stay enabled. Data-driven: keyed on whether any foundry cast recipe produces the same output.
+    private static bool FoundrySupersedes(Recipe r) {
+        if (r == null || r.tile == "foundry") return false;
+        if (r.outputs.Length == 0 || r.outputs[0].item == null) return false;
+        return Foundry.CastRecipeForBar(r.outputs[0].item) != null;
     }
 
     // Eligible recipes for this animal's job, scored by economic need and sorted best-first.
@@ -615,21 +663,16 @@ public class Animal : MonoBehaviour{
     // asymptote a scarce-output recipe approaches.
     private float CraftUrgency(List<(Recipe recipe, float score)> scored) {
         if (scored.Count == 0) return 0f;
-        float s = scored[0].score; // best-first
-        if (s <= 0f) return 0f;
-        // A never-yet-produced output makes Recipe.Score +Infinity (the recipe is "infinitely"
-        // needed). s/(1+s) would then be ∞/∞ = NaN, which sinks craft below the idle floor in
-        // ChooseTask's sort and the mouse never crafts. Saturate to the ceil instead (s/(1+s) → 1).
-        if (float.IsInfinity(s)) return UrgencyConfig.CraftCeil;
-        return UrgencyConfig.CraftFloor
-             + (UrgencyConfig.CraftCeil - UrgencyConfig.CraftFloor) * (s / (1f + s));
+        return UrgencyConfig.CraftBand(scored[0].score); // best-first; shared band (handles s<=0 and +∞)
     }
 
     // Picks up one tool into toolSlotInv if the slot is empty.
     private bool FindEquipment() {
         if (!job.usesTools) return false;                          // job gains no tool benefit; don't seek one
         if (toolSlotInv.itemStacks[0].item != null) return false; // already holding a tool
+        var ic = InventoryController.instance;
         foreach (Item equipment in Db.equipmentItems) {
+            if (ic != null && ic.IsConsumptionDisabled(equipment)) continue; // "consume" off — mice won't equip it
             task = new ObtainTask(this, equipment, 100, toolSlotInv);
             if (task.Start()) return true;
         }
@@ -639,7 +682,9 @@ public class Animal : MonoBehaviour{
     // Picks up one clothing item into clothingSlotInv if the slot is empty.
     private bool FindClothing() {
         if (clothingSlotInv.itemStacks[0].item != null) return false; // already wearing clothing
+        var ic = InventoryController.instance;
         foreach (Item clothing in Db.clothingItems) {
+            if (ic != null && ic.IsConsumptionDisabled(clothing)) continue; // "consume" off — mice won't wear it
             task = new ObtainTask(this, clothing, 100, clothingSlotInv);
             if (task.Start()) return true;
         }
@@ -833,9 +878,11 @@ public class Animal : MonoBehaviour{
         if (Db.tonicItems == null) return (null, 0f);
         Item best = null;
         float bestU = 0f;
+        var ic = InventoryController.instance;
         foreach (Item t in Db.tonicItems) {
             if (!t.buffEffect.HasValue) continue;
             if (buffs.Has(t.buffEffect.Value)) continue;             // already have this effect
+            if (ic != null && ic.IsConsumptionDisabled(t)) continue; // "consume" off — mice won't drink it
             if (GlobalInventory.instance.Quantity(t) <= 0) continue; // none in stock
             float u = TonicUrgency(t.buffEffect.Value);
             if (u > bestU) { bestU = u; best = t; }
@@ -1221,34 +1268,27 @@ public class Animal : MonoBehaviour{
     public void FindHome(){
         if (nav == null) return;
 
-        // Need a new home if (a) we don't have one, (b) the assignment was somehow lost
-        // its housing flag (StructType edited at runtime — unlikely but cheap to check),
-        // or (c) the building is broken and unusable.
+        // A mouse only (re)homes when it genuinely lacks a usable home: (a) none assigned,
+        // (b) the building lost its housing flag (StructType edited at runtime — unlikely but
+        // cheap to check), or (c) it's broken and unusable. Mice never voluntarily migrate
+        // between valid homes. That used to happen here — a mouse whose home was full would
+        // hop to a less-crowded house every slow tick — which silently undid the player's
+        // housing arrangements. Crowding is now the player's call (lower a house's cap, or
+        // evict), not the mouse's.
         bool needsHome = homeBuilding == null
                       || !homeBuilding.structType.isHousing
                       || homeBuilding.IsBroken;
-        if (needsHome) {
-            Building best = FindReachableHousing();
-            if (best != null) {
-                if (homeBuilding != null) homeBuilding.res.Unreserve();
-                AssignHome(best);
-                happiness?.RecomputeFurnishingBonus(this);
-            } else if (homeBuilding != null && happiness != null) {
-                // Home was lost (demolished / broken) but no replacement found — clear any
-                // stale furnishing bonus that was pinned to the old building.
-                happiness.RecomputeFurnishingBonus(this);
-            }
-        } else if (!homeBuilding.res.Available()) {
-            // Current home is full — look for a different housing building with ≥ 2 free slots
-            // (a one-slot gap isn't enough to be worth a move).
-            Building currentHome = homeBuilding;
-            Building better = FindReachableHousing(b =>
-                b != currentHome && b.res.capacity - b.res.reserved >= 2);
-            if (better != null) {
-                homeBuilding.res.Unreserve();
-                AssignHome(better);
-                happiness?.RecomputeFurnishingBonus(this);
-            }
+        if (!needsHome) return;
+
+        Building best = FindReachableHousing();
+        if (best != null) {
+            if (homeBuilding != null) homeBuilding.res.Unreserve();
+            AssignHome(best);
+            happiness?.RecomputeFurnishingBonus(this);
+        } else if (homeBuilding != null && happiness != null) {
+            // Home was lost (demolished / broken) but no replacement found — clear any
+            // stale furnishing bonus that was pinned to the old building.
+            happiness.RecomputeFurnishingBonus(this);
         }
     }
 
@@ -1261,11 +1301,30 @@ public class Animal : MonoBehaviour{
         b.res.Reserve(aName);
     }
 
+    // Player-initiated eviction from the current home. Moves the mouse to the best OTHER
+    // reachable house so it doesn't immediately re-home into the one it was just evicted
+    // from (FindHome picks the cheapest free slot — usually the freed one). If there's no
+    // other house, the home is cleared and the next SlowUpdate re-homes it (back here if
+    // this is the only housing). No-op if the mouse has no home.
+    public void EvictFromHome() {
+        if (homeBuilding == null) return;
+        Building other = FindReachableHousing(exclude: homeBuilding);
+        homeBuilding.res.Unreserve();
+        if (other != null) {
+            AssignHome(other);
+        } else {
+            homeBuilding = null;
+            homeTile = null;
+        }
+        happiness?.RecomputeFurnishingBonus(this);
+    }
+
     // Scans all reachable housing buildings (any StructType with isHousing == true) for the
-    // cheapest-cost path, optionally restricted by an extra filter (e.g. "must have ≥ 2 free
-    // slots" when migrating to a less-cramped house). Iterates StructController rather than
-    // routing through Nav.FindPathToStruct because housing isn't keyed by a single StructType.
-    private Building FindReachableHousing(System.Func<Building, bool> extraFilter = null) {
+    // cheapest-cost path with a free slot. Iterates StructController rather than routing
+    // through Nav.FindPathToStruct because housing isn't keyed by a single StructType.
+    // `exclude` skips one building — used by eviction so a freed-then-rehomed mouse doesn't
+    // just snap straight back into the house it was evicted from.
+    private Building FindReachableHousing(Building exclude = null) {
         Node myNode = PathStartNode();
         if (myNode == null) return null;
         Building best = null;
@@ -1273,10 +1332,10 @@ public class Animal : MonoBehaviour{
         foreach (Structure s in StructController.instance.GetStructures()) {
             Building b = s as Building;
             if (b == null) continue;
+            if (b == exclude) continue;
             if (!b.structType.isHousing) continue;
             if (b.IsBroken) continue;
             if (!b.res.Available()) continue;
-            if (extraFilter != null && !extraFilter(b)) continue;
             // Doored buildings route through the first interior waypoint (A* picks up the
             // door edge automatically); legacy housing (no interior tiles declared) uses
             // workNode = workTile.node = anchor tile.
@@ -1366,7 +1425,11 @@ public class Animal : MonoBehaviour{
             && TileHere() == homeBuilding.tile;
     }
 
-    public bool HasHouse => homeBuilding?.structType.isHousing == true;
+    // A broken home confers no housing benefit — it stops counting as the mouse's home for
+    // happiness, the furnishing bonus, and the "has a home" tally until it's repaired. FindHome
+    // already tries to relocate mice out of broken homes (needsHome polls IsBroken); this covers
+    // the stuck case where no replacement exists.
+    public bool HasHouse => homeBuilding != null && homeBuilding.structType.isHousing && !homeBuilding.IsBroken;
 
     public bool IsMoving(){
         return state == AnimalState.Moving || state == AnimalState.Falling;

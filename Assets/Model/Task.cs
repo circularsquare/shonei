@@ -72,8 +72,9 @@ public abstract class Task {
     // A candidate target is rejected if the *actual* path cost to reach it exceeds
     // radius × tolerance. This prevents mice committing to journeys that look close
     // crow-flies but wind endlessly around terrain.
-    public const int MediumFindRadius = 40;         // default for almost every task
+    public const int MediumFindRadius = 40;         // default for almost every task; also the work-anchor TERRITORY radius
     public const int MarketFindRadius = 120;        // market portal only — intentionally long
+    public const int WorkConvenienceRadius = 15;    // Step 5b: small circle around the mouse for grabbing work underfoot, outside its anchor territory
     public const float FindRadiusTolerance = 1.2f;  // path cost may exceed radius by this factor
 
     protected static int MinMarketHaul(Item item) =>
@@ -116,7 +117,10 @@ public abstract class Task {
         var targets = ic?.targets;
         foreach (Item leaf in item.LeafDescendants()) {
             if (excludeLeafIds != null && excludeLeafIds.Contains(leaf.id)) continue; // banned for this caller
-            if (ic != null && ic.IsConsumptionDisabled(leaf)) continue; // "don't consume" — never pick this leaf
+            if (leaf.excludeFromGroupInput) continue; // never auto-substituted for a group (e.g. gypsum for "stone")
+            // Note: the "consume" flag is NOT checked here. Crafting, construction, processor-fill,
+            // and repair are all "always allowed" uses (see SPEC-systems §Consume protection); only
+            // direct end-uses (eat/drink/equip/fuel/furnish) gate on it, at their own selection sites.
             var (path, stack) = animal.nav.FindPathItemStack(leaf);
             if (path == null || stack == null) continue; // not in stock / not reachable
             int target = (targets != null && targets.TryGetValue(leaf.id, out int t)) ? t : 100;

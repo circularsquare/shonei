@@ -10,11 +10,12 @@ using UnityEngine;
 // ── Priority ──────────────────────────────────────────────────────
 // Priority:  1 = highest (hauls unblocking a pending deconstruct)
 //            2 = construct, supply blueprint, deconstruct, harvest, maintenance
-//            3 = haul, consolidate, haul to market, craft
-//            4 = research, haul from market
-//                (HaulFromMarket sits below HaulToMarket so merchants deliver first
-//                 and opportunistically piggyback a pickup on the return leg; a pure
-//                 pickup trip only fires when there's nothing to deliver.)
+//            3 = haul, consolidate, haul to market, haul from market, craft, water, research
+//            4 = supply furnishing
+//                (HaulFromMarket shares p3 with HaulToMarket but is docked MarketPickupDock so
+//                 merchants deliver first and opportunistically piggyback a pickup on the return
+//                 leg; a pure pickup trip only fires when there's nothing to deliver. The dock
+//                 still keeps it above non-hauler floor hauls — see UpdateMarketOrders.)
 //                Deconstruct lives at p2 alongside Construct so teardown isn't gated
 //                behind every floor haul; within p2 the tier is distance-sorted, so a
 //                nearby decon can outrank a far construct.
@@ -91,7 +92,7 @@ public class WorkOrderManager : MonoBehaviour {
                 // (Water scales 0→WaterMaxThirstBonus with how far the soil is below comfort).
                 float finish = o.type == OrderType.Construct ? UrgencyConfig.FinishBonus : 0f;
                 float dyn = o.urgencyBonus?.Invoke() ?? 0f;
-                float u = Mathf.Clamp01(UrgencyConfig.TierBase[p - 1] + Proximity(dist) + finish + dyn);
+                float u = Mathf.Clamp01(UrgencyConfig.TierBase[p - 1] + Proximity(dist) + finish + dyn + UrgencyAdjust(o, animal));
                 if (u > best) best = u;
             }
         }
@@ -104,6 +105,13 @@ public class WorkOrderManager : MonoBehaviour {
     // (urgency value) and ChooseOrder (pick order) so the two stay consistent.
     private static float Proximity(float dist) =>
         UrgencyConfig.ProxWeight / (1f + dist / UrgencyConfig.ProxFalloff);
+
+    // Per-(order, animal) urgency adjustment applied in BOTH BestWorkUrgency (work-category score)
+    // and ChooseOrder (within-tier ranking) so the two stay consistent. Currently the sole rule:
+    // a non-hauler taking any Haul order is docked NonHaulerHaulPenalty — dedicated haulers keep
+    // priority, and within a tier a non-hauler's own work (e.g. farmer watering) outranks the haul.
+    private static float UrgencyAdjust(WorkOrder o, Animal animal) =>
+        o.type == OrderType.Haul && animal.job.name != "hauler" ? -UrgencyConfig.NonHaulerHaulPenalty : 0f;
 
     // Mirrors ChooseOrder's candidate filters EXACTLY (including the exclude param) so urgency only
     // counts orders that would actually be startable. Keep in sync with ChooseOrder if filters change.
@@ -130,7 +138,7 @@ public class WorkOrderManager : MonoBehaviour {
             .Where(o => o.res.Available())
             .Where(o => o.canDo == null || o.canDo(animal))
             .Where(o => o.stack == null || o.stack.Available()) // skip haul orders whose stack is fully reserved
-            .OrderByDescending(o => Proximity(o.getDistance?.Invoke(animal) ?? 0f) + (o.urgencyBonus?.Invoke() ?? 0f))
+            .OrderByDescending(o => Proximity(o.getDistance?.Invoke(animal) ?? 0f) + (o.urgencyBonus?.Invoke() ?? 0f) + UrgencyAdjust(o, animal))
             .ToList();
         foreach (WorkOrder order in candidates) {
             Task task = order.factory(animal);
@@ -157,6 +165,21 @@ public class WorkOrderManager : MonoBehaviour {
             return (order, order.building);
         }
         return null;
+    }
+
+    // True if an operational foundry sits within `radius` (Manhattan) of (x,y). Lets smiths PREFER the
+    // foundry over the crucible for metalworking — a crucible craft recipe whose output the foundry can
+    // cast is skipped when a foundry is in range, so both buildings can stay enabled without the crucible
+    // stealing the metal work. Scans the standing FeedFoundry orders (one per foundry) — no separate
+    // registry. A disabled / broken foundry doesn't count (it can't take the work).
+    public bool FoundryWithinRadius(int x, int y, int radius) {
+        foreach (WorkOrder o in orders[2]) {
+            if (o.type != OrderType.FeedFoundry) continue;
+            Building b = o.building;
+            if (b == null || b.disabled || b.IsBroken) continue;
+            if (Mathf.Abs(b.x - x) + Mathf.Abs(b.y - y) <= radius) return true;
+        }
+        return false;
     }
 
     // Prune stale orders. Call once per ChooseTask before the ChooseOrder sequence.
@@ -245,7 +268,7 @@ public class WorkOrderManager : MonoBehaviour {
                 return new ConsolidateTask(a, stack);
             },
             stack = stack,
-            canDo = a => a.job.name == "hauler",
+            canDo = null,   // any mouse may haul; non-haulers are docked NonHaulerHaulPenalty in urgency
             getDistance = a => Mathf.Abs(stack.inv.x - a.x) + Mathf.Abs(stack.inv.y - a.y)
         });
         return true;
@@ -302,7 +325,7 @@ public class WorkOrderManager : MonoBehaviour {
                 },
                 stack = stack,
                 blueprint = source,
-                canDo = a => a.job.name == "hauler",
+                canDo = null,   // any mouse may haul; non-haulers are docked NonHaulerHaulPenalty in urgency
                 getDistance = a => Mathf.Abs(stack.inv.x - a.x) + Mathf.Abs(stack.inv.y - a.y)
             });
         }
@@ -325,11 +348,19 @@ public class WorkOrderManager : MonoBehaviour {
             priority = 3,
             factory = a => new HaulTask(a, stack),
             stack = stack,
-            canDo = a => a.job.name == "hauler",
+            canDo = null,   // any mouse may haul; non-haulers are docked NonHaulerHaulPenalty in urgency
             getDistance = a => Mathf.Abs(stack.inv.x - a.x) + Mathf.Abs(stack.inv.y - a.y)
         });
         return true;
     }
+
+    // Foundry output eviction. A stale product left in the foundry's single output slot blocks all
+    // further casting, so it must clear promptly. With haul open to every job this is just an ordinary
+    // eviction haul — the smith (penalised like any non-hauler) still clears it when no hauler does,
+    // and is pulled to it anyway since the block stalls its own casting. Kept as a named method so the
+    // intent is greppable at the call site.
+    public bool RegisterFoundryOutputHaul(ItemStack stack) =>
+        RegisterStorageEvictionHaul(stack);
 
     // Creates or removes market haul orders to match current inventory vs targets.
     // Call immediately whenever the market inventory changes or a target is updated.
@@ -354,29 +385,30 @@ public class WorkOrderManager : MonoBehaviour {
                 inv = marketInv,
                 canDo = a => a.job.name == "merchant"
             });
-        // HaulFromMarket sits at priority 4 so merchants exhaust all outbound delivery work
-        // at p3 before considering a pure pickup trip. Combined with HaulToMarketTask's
-        // opportunistic piggyback, most excess gets hauled back on the return leg of a
-        // delivery — a pure HaulFromMarket only fires when there is genuinely nothing to
-        // deliver. Merchants are the only job that matches this order's canDo, so sharing
-        // the p4 tier with Research/Deconstruct is collision-free.
-        if (!targetRecentlyEdited && MarketNeedsHaulFrom(marketInv) && !orders[3].Exists(o => o.type == OrderType.HaulFromMarket && o.inv == marketInv))
+        // HaulFromMarket shares the p3 tier with HaulToMarket but is docked MarketPickupDock so a
+        // delivery always outranks a pickup — merchants exhaust outbound delivery work first and
+        // (via HaulToMarketTask's opportunistic piggyback) carry excess back on the return leg, so a
+        // pure pickup trip only fires when there's nothing to deliver. The dock also keeps the pickup
+        // ABOVE a non-hauler's floor haul (penalized more), so a merchant's own market work beats
+        // menial floor hauling instead of being starved by it (the reason it's p3, not p4).
+        if (!targetRecentlyEdited && MarketNeedsHaulFrom(marketInv) && !orders[2].Exists(o => o.type == OrderType.HaulFromMarket && o.inv == marketInv))
             Add(new WorkOrder {
                 type = OrderType.HaulFromMarket,
-                priority = 4,
+                priority = 3,
                 factory = a => new HaulFromMarketTask(a),
                 inv = marketInv,
-                canDo = a => a.job.name == "merchant"
+                canDo = a => a.job.name == "merchant",
+                urgencyBonus = () => -UrgencyConfig.MarketPickupDock
             });
-        // Remove orders whose need has gone away — HaulTo lives at p3 (index 2), HaulFrom at p4 (index 3).
+        // Remove orders whose need has gone away — both market haul types now live at p3 (index 2).
         orders[2].RemoveAll(o => o.inv == marketInv && o.type == OrderType.HaulToMarket   && !MarketNeedsHaulTo(marketInv));
-        orders[3].RemoveAll(o => o.inv == marketInv && o.type == OrderType.HaulFromMarket && !MarketNeedsHaulFrom(marketInv));
+        orders[2].RemoveAll(o => o.inv == marketInv && o.type == OrderType.HaulFromMarket && !MarketNeedsHaulFrom(marketInv));
     }
 
     // Returns the HaulFromMarket work order for this market (at any tier), or null.
     // Used by HaulToMarketTask.TryAppendPickup to claim the order so a second merchant
     // won't race the piggyback pickup. Scans all tiers defensively — the order's canonical
-    // tier is p4 (index 3), but keep this agnostic so a tier change doesn't break the lookup.
+    // tier is p3 (index 2), but keep this agnostic so a tier change doesn't break the lookup.
     public WorkOrder FindMarketHaulFromOrder(Inventory marketInv) {
         foreach (var tier in orders) {
             WorkOrder o = tier.Find(x => x.type == OrderType.HaulFromMarket && x.inv == marketInv);
@@ -445,12 +477,17 @@ public class WorkOrderManager : MonoBehaviour {
 
     // Registers a Research order for a specific lab building if it's unreserved and no order exists for it.
     // Returns true if a new order was inserted.
+    // Priority 3 (not lower) is load-bearing: research is a scientist's only job-work, and at p3 it
+    // shares the tier with open-to-all floor hauls. The NonHaulerHaulPenalty (> max proximity) makes a
+    // scientist's research a hard within-tier winner over hauls, so scientists only haul when no research
+    // can start. At p4 it sat BELOW the p3 haul tier, and tier-by-tier dispatch grabbed hauls first —
+    // draining scientists onto floor clutter (the penalty only ranks within a tier, never across).
     public bool RegisterResearch(Building lab) {
         if (lab == null) return false;
-        if (orders[3].Exists(o => o.type == OrderType.Research && o.tile == lab.tile)) return false;
+        if (orders[2].Exists(o => o.type == OrderType.Research && o.tile == lab.tile)) return false;
         Add(new WorkOrder {
             type = OrderType.Research,
-            priority = 4,
+            priority = 3,
             factory = a => {
                 var task = new ResearchTask(a, lab);
                 task.studyTargetId = ResearchSystem.instance?.PickStudyTarget() ?? -1;
@@ -674,9 +711,10 @@ public class WorkOrderManager : MonoBehaviour {
             priority    = 3,
             factory     = a => new FeedFoundryTask(a, foundry),
             building    = foundry,
-            isActive    = () => !foundry.disabled && !foundry.IsBroken && foundry.HasRoom() && foundry.TargetBar() != null,
+            isActive    = () => !foundry.disabled && !foundry.IsBroken && foundry.HasRoom() && foundry.CanMakeTarget(),
             canDo       = a => JobOperatesFoundry(a),
-            getDistance = a => Mathf.Abs(foundry.x - a.x) + Mathf.Abs(foundry.y - a.y)
+            getDistance = a => Mathf.Abs(foundry.x - a.x) + Mathf.Abs(foundry.y - a.y),
+            urgencyBonus = () => FoundryEconomicBonus(foundry)
         });
         return true;
     }
@@ -692,10 +730,20 @@ public class WorkOrderManager : MonoBehaviour {
             building    = foundry,
             isActive    = () => !foundry.disabled && !foundry.IsBroken && foundry.HasCastableMolten(),
             canDo       = a => JobOperatesFoundry(a),
-            getDistance = a => Mathf.Abs(foundry.x - a.x) + Mathf.Abs(foundry.y - a.y)
+            getDistance = a => Mathf.Abs(foundry.x - a.x) + Mathf.Abs(foundry.y - a.y),
+            urgencyBonus = () => FoundryEconomicBonus(foundry)
         });
         return true;
     }
+
+    // Lifts a foundry feed/cast order from its flat priority-3 base up to the ECONOMIC urgency its
+    // target output deserves — the same [CraftFloor, CraftCeil] band a crucible craft would get for that
+    // item (see UrgencyConfig.CraftBand + Foundry.TargetNeedScore). Without this, foundry work sat at a
+    // flat tier urgency and lost to any needed crucible craft (e.g. the smith spammed clay molds and
+    // never cast copper tools). Returned as a BONUS on top of TierBase[2] (priority 3), clamped ≥ 0, so
+    // total ≈ max(TierBase[2], CraftBand(need)) + proximity — i.e. foundry and crucible compete evenly.
+    private static float FoundryEconomicBonus(Foundry foundry) =>
+        Mathf.Max(0f, UrgencyConfig.CraftBand(foundry.TargetNeedScore()) - UrgencyConfig.TierBase[2]);
 
     // Removes all foundry work orders for a building (call when the foundry is destroyed).
     public void RemoveFoundryOrders(Building building) {
@@ -800,7 +848,7 @@ public class WorkOrderManager : MonoBehaviour {
     // Remove market haul orders where the need has gone away (safety net for edge cases
     // like a market being destroyed mid-task). UpdateMarketOrders now removes eagerly, so
     // this should rarely fire; LogWarning will tell you when it does.
-    // HaulToMarket lives at p3 (index 2); HaulFromMarket lives at p4 (index 3).
+    // Both market haul types live at p3 (index 2).
     private void PruneStaleMarketOrders() {
         orders[2].RemoveAll(o => {
             if (o.inv == null) return false;
@@ -808,10 +856,6 @@ public class WorkOrderManager : MonoBehaviour {
                 Debug.LogWarning($"WOM prune: stale HaulToMarket order for market at ({o.inv.x},{o.inv.y})");
                 return true;
             }
-            return false;
-        });
-        orders[3].RemoveAll(o => {
-            if (o.inv == null) return false;
             if (o.type == OrderType.HaulFromMarket && !MarketNeedsHaulFrom(o.inv)) {
                 Debug.LogWarning($"WOM prune: stale HaulFromMarket order for market at ({o.inv.x},{o.inv.y})");
                 return true;
@@ -983,7 +1027,7 @@ public class WorkOrderManager : MonoBehaviour {
             var allLabs = StructController.instance.GetByType(labSt) ?? new List<Structure>();
             foreach (Structure s in allLabs) {
                 if (s is not Building lab) continue;
-                bool has = orders[3].Exists(o => o.type == OrderType.Research && o.tile == lab.tile);
+                bool has = orders[2].Exists(o => o.type == OrderType.Research && o.tile == lab.tile);
                 if (!has) {
                     if (repair) {
                         RegisterResearch(lab);
@@ -1087,7 +1131,7 @@ public class WorkOrderManager : MonoBehaviour {
             if (repair)
                 foreach (ItemStack st in fdy.output.itemStacks)
                     if (st.item != null && st.quantity > 0)
-                        RegisterStorageEvictionHaul(st);
+                        RegisterFoundryOutputHaul(st);
         }
 
         // ── Furnishing supply ──
@@ -1156,7 +1200,7 @@ public class WorkOrderManager : MonoBehaviour {
 
             // Research: every Research order must reference a live lab
             if (Db.structTypeByName.TryGetValue("laboratory", out var labStAudit)) {
-                foreach (WorkOrder o in orders[3])
+                foreach (WorkOrder o in orders[2])
                     if (o.type == OrderType.Research
                         && !(o.tile?.building is Building b && b.structType == labStAudit))
                         Debug.LogError($"WOM audit: Research order at ({o.tile?.x},{o.tile?.y}) has no valid lab");
@@ -1243,7 +1287,7 @@ public class WorkOrderManager : MonoBehaviour {
         int tier = type switch {
             OrderType.Construct       => 1,   // p2
             OrderType.SupplyBlueprint => 1,   // p2
-            OrderType.Deconstruct     => 3,   // p4
+            OrderType.Deconstruct     => 1,   // p2 (index = priority - 1; deconstruct registers at p2)
             _ => -1
         };
         if (tier < 0) return false;

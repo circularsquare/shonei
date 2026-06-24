@@ -76,6 +76,12 @@ public class Inventory{
     // Only meaningful for InvType.Floor — other types ignore it. Persisted in saves.
     public float wetUntil = 0f;
 
+    // The structure that owns this inventory (set by Building for its storage inventory).
+    // Read by Decay so a broken storage building stops protecting its contents — items inside
+    // then spoil at the open-floor rate. Null for floor/animal/market inventories. Re-established
+    // on load (Building recreates its inventory), so it needs no save data.
+    public Structure ownerStructure;
+
     // Available space for an item in the market inventory (respects in-flight delivery reservations).
     // Separate from GetStorageForItem, which intentionally excludes market to prevent normal haulers routing here.
     public int GetMarketSpace(Item item) {
@@ -249,9 +255,11 @@ public class Inventory{
                 stack?.ExpireIfStale(maxAge);
         }
     }
+    public const float FloorDecayMult = 5f; // exposed-floor piles spoil 5× faster than sheltered storage
+
     public void Decay(float time = 1f){
         float invTypeMult = invType switch {
-            InvType.Floor      => 5f,
+            InvType.Floor      => FloorDecayMult,
             InvType.Market     => 0f,
             InvType.Animal     => 0f,
             InvType.Equip      => 1f,
@@ -260,6 +268,10 @@ public class Inventory{
             InvType.Furnishing => 0f, // furnishing slots track their own per-slot lifetime instead
             _                  => 1f
         };
+        // A broken storage building no longer shelters its contents — items inside spoil at the
+        // open-floor rate until a mender repairs it. Withdrawals still work; only decay changes.
+        if (invType == InvType.Storage && ownerStructure != null && ownerStructure.IsBroken)
+            invTypeMult = FloorDecayMult;
         if (invTypeMult == 0f) return;
         if (IsWet()) invTypeMult *= 2f;
         for (int i = 0; i < nStacks; i++){

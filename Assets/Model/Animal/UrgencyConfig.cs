@@ -15,6 +15,7 @@
 //   work    per tier = TierBase + proximity(≤0.15 at dist 0, halves every 8 tiles) + bonuses
 //           (Construct finish +0.10; Water thirst +0–0.10 by dryness):   p1 0.55–0.70
 //           p2 0.45–0.60 (construct 0.55–0.70)   p3 0.30–0.45 (water +0–0.10 thirst)   p4 0.25–0.40
+//           non-hauler haul = the p1/p3 haul tier minus NonHaulerHaulPenalty (0.20): ~0.10–0.50
 //   craft   0.16 → 0.60  (banded; floor clears daytime idle so a needed craft is never soft-locked)
 //   drop    0.60 → 0.90  (scales with carried main-inv fullness; below hunger/sleep peaks, above work)
 //   equip   0 or 0.45    (only when the tool/clothing slot is empty)
@@ -45,6 +46,21 @@ public static class UrgencyConfig {
     public const float FinishBonus = 0.10f;  // "finish what's started" bump for Construct orders
     public const float WaterMaxThirstBonus = 0.10f; // max extra urgency for a bone-dry crop; scales 0→this by how far soil is below moistureMin
 
+    // Any mouse may take a Haul order (floor clutter, storage eviction) — canDo is open — but a
+    // non-hauler's haul urgency is docked by this. Keeps dedicated haulers prioritized and makes a
+    // non-hauler only pitch in on nearby clutter when it would otherwise idle. Applied in BOTH
+    // BestWorkUrgency (the work-category score) and ChooseOrder's within-tier ranking, so haul also
+    // loses to a non-hauler's own same-tier work (farmer watering, merchant market hauls).
+    public const float NonHaulerHaulPenalty = 0.20f;
+
+    // HaulFromMarket (pickup of market excess) shares the p3 tier with HaulToMarket (delivery) and
+    // open-to-all floor hauls. This dock ranks a pickup just BELOW a delivery — so merchants still
+    // exhaust deliveries first and piggyback pickups on the return leg — while keeping it ABOVE a
+    // non-hauler's floor haul (which is docked the larger NonHaulerHaulPenalty). Both market orders
+    // carry no getDistance (fixed proximity), so this yields a clean hard ordering with no distance
+    // edge-cases. Must stay in (0, NonHaulerHaulPenalty) for that ordering to hold.
+    public const float MarketPickupDock = 0.10f;
+
     // ── Craft ────────────────────────────────────────────────────────
     // Recipe.Score is unbounded (0..+∞), so craft urgency maps it into a fixed band:
     //   CraftFloor + (CraftCeil - CraftFloor) * s/(1+s).
@@ -52,6 +68,16 @@ public static class UrgencyConfig {
     // soft-locked out; ceil is the asymptote a scarce-output recipe approaches.
     public const float CraftFloor = 0.16f;
     public const float CraftCeil  = 0.60f;
+
+    // Maps an unbounded economic need score `s` (0..+∞, as from Recipe.Score / Foundry.TargetNeedScore)
+    // into the craft urgency band via s/(1+s). s<=0 → 0 (no pull); +∞ (a never-produced output) saturates
+    // to CraftCeil (the "make it now" signal — guards the old NaN trap). Shared by crucible CRAFT
+    // (Animal.CraftUrgency) and FOUNDRY feed/cast urgency, so both compete on the SAME economic footing.
+    public static float CraftBand(float s) {
+        if (s <= 0f) return 0f;
+        if (float.IsInfinity(s)) return CraftCeil;
+        return CraftFloor + (CraftCeil - CraftFloor) * (s / (1f + s));
+    }
 
     // ── Drop carried inventory ───────────────────────────────────────
     // Urgency to dump stale main-inventory carry-over, scaled by how full the main inv is:

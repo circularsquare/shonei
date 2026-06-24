@@ -33,6 +33,10 @@ public class WaterController : MonoBehaviour {
     // parallax sky painting while letting the cave wall draw on top so cave pools
     // keep their see-through look. See SPEC-rendering.md §Water Rendering.
     [SerializeField] Shader waterUnderlayShader;
+    // Additive emissive overlay for hot decorative liquid (molten metal). Assign Water/MoltenGlow
+    // (Assets/Lighting/MoltenGlow.shader). Optional — if unassigned, the glow layer is skipped and
+    // the rest of the water system still works.
+    [SerializeField] Shader moltenGlowShader;
 
     // Asset pixels per tile edge. 16 PPU assets → 16 game pixels per tile edge.
     private const int PixelsPerTile = 16;
@@ -69,11 +73,20 @@ public class WaterController : MonoBehaviour {
     private Material   _decorMat;
     private GameObject _decorSpriteGo;
 
+    // Emissive overlay for hot decorative liquid (molten metal). Same dims as _decorTex; holds the
+    // filled pixels of zones whose Building.DisplayLiquidEmissive() is true. Rendered additively by
+    // _glowSpriteGo (MoltenGlow shader) in the per-tile _tintTex colour. See SPEC-rendering §Foundry.
+    private Texture2D  _emissiveTex;
+    private byte[]     _emissiveBytes;
+    private Material   _glowMat;
+    private GameObject _glowSpriteGo;
+
     // Sort orders (front→back): tiles 78..74 > natural water > mice 48..64 > decorative water
     // > buildings ≤17. All water pinned to one lighting bucket so the raised draw orders don't
     // change water's flat NormalsCaptureWater shading. See SPEC-rendering.md §Water Rendering.
     const int WaterSortingOrder         = 72;
     const int DecorWaterSortingOrder    = 20;
+    const int MoltenGlowSortingOrder    = 21; // just in front of decorative water, still behind mice
     const int WaterUnderlaySortingOrder = -15;
     const int WaterLightingBucket       = 0;
 
@@ -171,6 +184,14 @@ public class WaterController : MonoBehaviour {
         _decorTex   = new Texture2D(_texW, _texH, TextureFormat.R8, false);
         _decorTex.filterMode = FilterMode.Point;
         _decorBytes = new byte[_texW * _texH];
+
+        // Emissive mask — same dims; molten-metal pixels. Alpha8 so the byte lands in the ALPHA
+        // channel, which is what EmissionWriter samples (_EmissionMap.a) and what the MoltenGlow
+        // colour shader keys on. Full (255) at every molten pixel → the emission pass saturates the
+        // lightmap there, so the molten survives the composite multiply at full brightness.
+        _emissiveTex   = new Texture2D(_texW, _texH, TextureFormat.Alpha8, false);
+        _emissiveTex.filterMode = FilterMode.Point;
+        _emissiveBytes = new byte[_texW * _texH];
 
         // RGBA32 per-tile tint: 20 KB for a 100×50 world. Point filter is critical —
         // bilinear would bleed colors across tile borders.
@@ -279,6 +300,55 @@ public class WaterController : MonoBehaviour {
         LightReceiverUtil.SetSortBucket(decorSr);
         decorSr.renderingLayerMask = 1u << WaterLightingBucket;
 
+        // Molten-glow sprite — render of hot decorative liquid (the foundry's molten). The COLOUR is
+        // drawn by the MoltenGlow shader (reads _emissiveTex mask + _tintTex metal colour); its
+        // EMISSION comes from registering this sprite as a LightSource emitter with _emissiveTex bound
+        // as the _EmissionMap. The emission pass saturates the lightmap at molten pixels, so the molten
+        // survives the composite at full brightness (constant day/night) AND is occluded by mice — same
+        // mechanism as a torch flame (EmissionWriter's sort-mask drops emission behind closer sprites).
+        // Optional: if the shader is unassigned, skip it — the rest of the water system is unaffected.
+        if (moltenGlowShader != null) {
+            _glowMat = new Material(moltenGlowShader);
+            _glowMat.SetVector("_WorldPixelSize", new Vector4(_texW, _texH, 0, 0));
+            _glowMat.SetTexture("_SurfaceTex", _emissiveTex);
+            _glowMat.SetTexture("_TintTex",    _tintTex);
+
+            _glowSpriteGo = new GameObject("WaterSpriteMoltenGlow");
+            _glowSpriteGo.transform.position   = _waterSpriteGo.transform.position;
+            _glowSpriteGo.transform.localScale = _waterSpriteGo.transform.localScale;
+            // Glow layer: rendered by the MAIN camera so the colour sprite sorts in-world (mice in front
+            // occlude it) and is excluded from NormalsCapture (no ghost silhouette). Brightness comes
+            // from the emission pass below, not from being lit.
+            int glowLayer = LayerMask.NameToLayer("Glow");
+            _glowSpriteGo.layer = glowLayer >= 0 ? glowLayer : (waterLayer >= 0 ? waterLayer : 0);
+            SpriteRenderer glowSr = _glowSpriteGo.AddComponent<SpriteRenderer>();
+            glowSr.sprite       = waterSprite;
+            glowSr.material     = _glowMat;
+            glowSr.sortingOrder = MoltenGlowSortingOrder;
+            LightReceiverUtil.SetSortBucket(glowSr); // writes _SortBucket MPB used by EmissionWriter's occlusion test
+
+            // Bind the emissive mask as this renderer's _EmissionMap (its alpha is the per-pixel glow
+            // mask) so the emission pass writes white into the lightmap at molten pixels. Mirrors how
+            // the fire child binds its flame texture (Structure.cs).
+            var glowMpb = new MaterialPropertyBlock();
+            glowSr.GetPropertyBlock(glowMpb);
+            glowMpb.SetTexture("_EmissionMap", _emissiveTex);
+            glowSr.SetPropertyBlock(glowMpb);
+
+            // Pure emitter: a LightSource that contributes emission (EmissionReceiver auto-resolves to
+            // this sprite) but casts no point light (zero radius/intensity). baseIntensity 0 makes
+            // CurrentEmissionScale fall back to 1, so the molten always emits where the mask is set.
+            var glowLs = _glowSpriteGo.AddComponent<LightSource>();
+            glowLs.baseIntensity = 0f;
+            glowLs.intensity     = 0f;
+            glowLs.outerRadius   = 0f;
+            glowLs.innerRadius   = 0f;
+            glowLs.isDirectional = false;
+        } else {
+            Debug.LogWarning("WaterController: moltenGlowShader unassigned — molten glow disabled. " +
+                             "Assign Water/MoltenGlow (Assets/Lighting/MoltenGlow.shader) in the Inspector.");
+        }
+
         _worldResourcesBuilt = true;
     }
 
@@ -288,15 +358,19 @@ public class WaterController : MonoBehaviour {
     void DisposeWorldSizedResources() {
         if (_surfaceTex != null)        { Destroy(_surfaceTex); _surfaceTex = null; }
         if (_decorTex != null)          { Destroy(_decorTex); _decorTex = null; }
+        if (_emissiveTex != null)       { Destroy(_emissiveTex); _emissiveTex = null; }
         if (_tintTex != null)           { Destroy(_tintTex); _tintTex = null; }
         if (_waterMat != null)          { Destroy(_waterMat); _waterMat = null; }
         if (_decorMat != null)          { Destroy(_decorMat); _decorMat = null; }
+        if (_glowMat != null)           { Destroy(_glowMat); _glowMat = null; }
         if (_underlayMat != null)       { Destroy(_underlayMat); _underlayMat = null; }
         if (_waterSpriteGo != null)     { Destroy(_waterSpriteGo); _waterSpriteGo = null; }
         if (_underlaySpriteGo != null)  { Destroy(_underlaySpriteGo); _underlaySpriteGo = null; }
         if (_decorSpriteGo != null)     { Destroy(_decorSpriteGo); _decorSpriteGo = null; }
+        if (_glowSpriteGo != null)      { Destroy(_glowSpriteGo); _glowSpriteGo = null; }
         _surfaceBytes      = null;
         _decorBytes        = null;
+        _emissiveBytes     = null;
         _tintBytes         = null;
         _waterPixelHeights = null;
         _tileIsSolid       = null;
@@ -519,6 +593,8 @@ public class WaterController : MonoBehaviour {
         System.Array.Clear(_surfaceBytes, 0, _surfaceBytes.Length);
         // Decorative-zone mask is rebuilt from scratch each tick too.
         System.Array.Clear(_decorBytes, 0, _decorBytes.Length);
+        // Emissive (molten-glow) mask likewise.
+        if (_emissiveBytes != null) System.Array.Clear(_emissiveBytes, 0, _emissiveBytes.Length);
         // Clear per-tile tint — any tile a decorative zone doesn't stamp stays alpha=0
         // and falls through to the shader's default water color.
         System.Array.Clear(_tintBytes, 0, _tintBytes.Length);
@@ -611,6 +687,8 @@ public class WaterController : MonoBehaviour {
             int fillThreshold    = z.localMinY + fillRows;                       // exclusive upper bound for local Y
             int surfaceThreshold = surfaceRow ? fillThreshold - 1 : int.MinValue; // MinValue → no pixel flagged surface
             // tintColor: alpha=0 → shader's default blue; alpha=255 → liquid-specific tint.
+            // Emissive zones (foundry molten) also stamp the filled pixels into the glow mask.
+            bool emissive = _emissiveBytes != null && s is Building eb && eb.DisplayLiquidEmissive();
 
             var worldPixels = z.worldPixels;
             var localYs     = z.localYs;
@@ -619,7 +697,13 @@ public class WaterController : MonoBehaviour {
                 if (ly >= fillThreshold) continue;
                 Vector2Int px = worldPixels[i];
                 if ((uint)px.x >= (uint)_texW || (uint)px.y >= (uint)_texH) continue;
-                _decorBytes[px.y * _texW + px.x] = (ly == surfaceThreshold) ? (byte)255 : (byte)127;
+                int flat = px.y * _texW + px.x;
+                // Emissive zones (foundry molten) render ONLY on the glow sprite, not the lit
+                // decorative-water sprite. Full (255) at every molten pixel so the emission pass
+                // saturates the lightmap there — the molten then survives the composite at full
+                // brightness (constant day/night), like a torch flame.
+                if (emissive) _emissiveBytes[flat] = 255;
+                else          _decorBytes[flat]    = (ly == surfaceThreshold) ? (byte)255 : (byte)127;
             }
 
             // Stamp per-tile tint once per tile covered by this zone. Tanks are 1×1 so
@@ -645,6 +729,10 @@ public class WaterController : MonoBehaviour {
         _surfaceTex.Apply(false); // false = skip mipmap update
         _decorTex.LoadRawTextureData(_decorBytes);
         _decorTex.Apply(false);
+        if (_emissiveTex != null) {
+            _emissiveTex.LoadRawTextureData(_emissiveBytes);
+            _emissiveTex.Apply(false);
+        }
         _tintTex.LoadRawTextureData(_tintBytes);
         _tintTex.Apply(false);
 

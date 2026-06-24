@@ -505,10 +505,10 @@ public class SaveSystem : MonoBehaviour {
             }
             if (b.disabled) ssd.disabled = true;
         }
-        if (s is ExtractionBuilding eb && eb.capturedTile != null)
-            ssd.capturedTileType = eb.capturedTile.name;
-        if (s is DiggingPit dp)
-            ssd.digDir = (int)dp.digDir;   // persist direction even if the substrate didn't capture
+        if (s is ExtractionBuilding eb) {
+            if (eb.capturedTile != null) ssd.capturedTileType = eb.capturedTile.name;
+            ssd.digDir = (int)eb.digDir;   // persist direction even if the substrate didn't capture
+        }
         if (s is Flywheel fw)
             ssd.flywheelCharge = fw.charge;
         if (s is Elevator el) {
@@ -642,6 +642,10 @@ public class SaveSystem : MonoBehaviour {
         if (a.homeBuilding != null) {
             asd.homeBuildingX = a.homeBuilding.x;
             asd.homeBuildingY = a.homeBuilding.y;
+        }
+        if (a.assignedFlag != null) {
+            asd.assignedFlagX = a.assignedFlag.x;
+            asd.assignedFlagY = a.assignedFlag.y;
         }
         return asd;
     }
@@ -854,6 +858,7 @@ public class SaveSystem : MonoBehaviour {
         // Derived spatial caches that depend on final tile + structure geometry.
         // Order matches WorldController.GenerateDefault for symmetry between paths.
         SkyExposure.InitializeWorld(world);
+        OccluderField.InitializeWorld(world); // point-light wall-shadow distance field
         // Pair up loaded rope-bridge posts and materialise each bridge's waypoint
         // chain + visuals BEFORE graph.Initialize so the resulting edges are
         // present in the first RebuildComponents sweep — otherwise mice can't
@@ -1133,20 +1138,20 @@ public class SaveSystem : MonoBehaviour {
             if (b.workstation != null) b.workstation.uses = ssd.uses;
             b.disabled = ssd.disabled;
         }
-        if (structure is ExtractionBuilding eb && !string.IsNullOrEmpty(ssd.capturedTileType)) {
-            if (Db.tileTypeByName.TryGetValue(ssd.capturedTileType, out TileType tt))
-                eb.capturedTile = tt;
-            else
-                Debug.LogError($"RestoreStructure: unknown capturedTileType '{ssd.capturedTileType}' for {structure.structType.name} at ({ssd.x},{ssd.y})");
-        }
-        if (structure is DiggingPit drp) {
+        if (structure is ExtractionBuilding eb) {
+            if (!string.IsNullOrEmpty(ssd.capturedTileType)) {
+                if (Db.tileTypeByName.TryGetValue(ssd.capturedTileType, out TileType tt))
+                    eb.capturedTile = tt;
+                else
+                    Debug.LogError($"RestoreStructure: unknown capturedTileType '{ssd.capturedTileType}' for {structure.structType.name} at ({ssd.x},{ssd.y})");
+            }
             // OnPlaced (which picks the dig direction and wires the door) is skipped on
             // load, so restore digDir verbatim and let RestoreOnLoad wire the single
-            // door + rebuild the dish. capturedTile was restored just above (the shared
-            // ExtractionBuilding branch); ssd.uses was applied in the Building branch;
-            // workNode was repointed in the Structure ctor. Door wiring is independent of
-            // the substrate, so a pit whose tile fails to resolve stays reachable, not orphaned.
-            drp.RestoreOnLoad((DigDir)(ssd.digDir ?? 0));
+            // door + rebuild the dish. capturedTile was restored just above; ssd.uses was
+            // applied in the Building branch; workNode was repointed in the Structure ctor.
+            // Door wiring is independent of the substrate, so one whose tile fails to
+            // resolve stays reachable, not orphaned.
+            eb.RestoreOnLoad((DigDir)(ssd.digDir ?? 0));
         }
         if (structure is Flywheel fw)
             fw.charge = Mathf.Clamp(ssd.flywheelCharge, 0f, Flywheel.Capacity);

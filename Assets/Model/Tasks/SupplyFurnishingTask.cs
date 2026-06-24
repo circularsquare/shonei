@@ -27,14 +27,16 @@ public class SupplyFurnishingTask : Task {
             if (fs.slotInvs[i].itemStacks[0].resSpace > 0) continue;
             if (!Db.itemsByFurnishingSlot.TryGetValue(fs.slotNames[i], out var candidates)) continue;
 
+            var ic = InventoryController.instance;
             foreach (Item candidate in candidates) {
+                if (ic != null && ic.IsConsumptionDisabled(candidate)) continue; // "consume" off — don't furnish with it
                 if (GlobalInventory.instance.Quantity(candidate) <= 0) continue;
                 (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(candidate);
                 if (itemPath == null) continue;
 
                 Path standPath = animal.nav.PathToOrAdjacent(building.tile);
                 if (standPath == null) continue;
-                if (!animal.nav.WithinRadius(standPath, MediumFindRadius)) continue;
+                if (!animal.nav.WithinWorkRange(standPath)) continue;
 
                 int available = stack.quantity - stack.resAmount;
                 int needed = candidate.furnishingCostFen; // one whole furnishing's worth of this item

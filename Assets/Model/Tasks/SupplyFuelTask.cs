@@ -18,7 +18,7 @@ public class SupplyFuelTask : Task {
         int needed = fuel.capacity - fuel.Quantity();
         if (needed <= 0) return false;
         Path standPath = animal.nav.PathToOrAdjacent(building.tile);
-        if (!animal.nav.WithinRadius(standPath, MediumFindRadius)) return false;
+        if (!animal.nav.WithinWorkRange(standPath)) return false;
         // Pick the concrete leaf to deliver. Restricted reservoir: resolve its fuelItem (group→leaf,
         // surplus×nearness, biased toward the leaf already stocked so we top up rather than stall).
         // Any-fuel reservoir (fuelItem null): top up whatever leaf is already stocked, else PickFuel
@@ -27,6 +27,10 @@ public class SupplyFuelTask : Task {
             ? ResolveConsumeLeaf(fuel.fuelItem, fuel.inv.HeldLeafMatching(fuel.fuelItem))
             : (fuel.HeldLeaf() ?? GlobalInventory.instance.PickFuel());
         if (fuelLeaf == null) return false;
+        // Burning is a gated "consume" channel. PickFuel already skips protected fuel, but the
+        // restricted-reservoir leaf fuelItem and the HeldLeaf() top-up branch bypass it — so
+        // re-check here to honour the flag uniformly across all three paths.
+        if (InventoryController.instance != null && InventoryController.instance.IsConsumptionDisabled(fuelLeaf)) return false;
         (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(fuelLeaf);
         if (itemPath == null) return false;
         int available = stack.quantity - stack.resAmount;

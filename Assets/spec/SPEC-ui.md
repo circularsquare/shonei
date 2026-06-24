@@ -169,7 +169,7 @@ detailed counterpart to the always-visible panel, hosting the controls that were
 
 Per item it shows: **location breakdown** — Total + Storage + Floor + Carried (= `Animal` + `Equip`
 slots) + Market — plus the **editable target** (leaf rows; writes `InventoryController.targets`) and a
-**"don't consume"** toggle. The four breakdown buckets need not sum to Total; the remainder is in
+**"consume"** toggle (hover help authored in code in `InventoryDetailRow.Init`). The four breakdown buckets need not sum to Total; the remainder is in
 building buffers (processor/reservoir/blueprint) and Total is authoritative. Breakdown numbers come
 from `InventoryController.QuantityIn(item, params InvType[])`.
 
@@ -203,8 +203,8 @@ Tooltippable, which would trip `OnDisable→Hide`. For a **group** row the bar t
 **discovered** leaf targets (`InventoryDetailRow.BarTarget`) so it doesn't deficit against
 not-yet-unlocked leaves (oak/maple).
 
-The "don't consume" gameplay mechanic (what protection actually gates) lives in **SPEC-systems.md
-§Don't-consume**.
+The "consume" gameplay mechanic (what the flag actually gates) lives in **SPEC-systems.md
+§Consume protection**.
 
 ## InfoPanel (tabbed)
 
@@ -238,6 +238,10 @@ A `ComfortBar` (`tempBar`, between the text blob and SkillsContainer) shows the 
 - **Comfort bars** (plants only) — temperature + soil-moisture shown as two `ComfortBar` widgets (`TempBar`/`MoistureBar` rows) instead of text. Yellow track = stalled range, green overlay = comfortable band, circle marker = current value; hover shows exact range + value + the growth-effect note. `ShowPlantComfort` drives them per refresh; `SetComfortVisible(false)` hides them for buildings/blueprints/base structures.
 - **Target-gated dormancy alert** (plants only) — when a flagged plant is ripe but every product is at/above its global target, the panel shows red "will not harvest: outputs above target". Mirrors the WOM order's `isActive` gate; the order also surfaces with `[inactive]` next to its `wo: Harvest 0/1` row (via `AppendTileOrders`'s shared `[inactive]` suffix, same as `AppendBuildingOrders`).
 - **Cost rows** (construction blueprints only) — one `BlueprintCostRow` per `Blueprint.costs[i]`, spawned from `costRowPrefab` into the scene-authored `CostRows` container (a VerticalLayoutGroup at sibling index 1, after `Text`). Each row shows the item icon + `name have/need`. For a group-item cost currently locked to a concrete leaf, an **X** button disallows that variant (`Blueprint.DisallowLeaf`; tooltip "disallow {leaf}"); one cancel chip per already-banned leaf re-allows it (`AllowLeaf`; tooltip "{leaf} disallowed"). Chips are built in code (icon-only). **Lifecycle gotcha:** rows are rebuilt structurally only on tab-show and after a ban toggle (`RebuildCostRows`), never per tick — per-tick `Refresh` calls `BlueprintCostRow.UpdateDynamic` (label + idempotent X visibility) so a hovered tooltip isn't torn down by a SetActive/Destroy (see the Tooltippable per-tick memory). Deconstruct blueprints show no rows. See SPEC-ai §Blueprint costs for the model side.
+- **Occupant rows** (housing only) — one `OccupantRow` per resident (`Building.GetResidents()`) in the scene `OccupantRows` VLG: mouse head (`MouseHeadIcon`) + name + **evict** (x). Head-click selects that mouse. Rebuilt only when the resident set changes (tooltip-safe).
+- **Work-flag rows** (`isWorkFlag` only) — `OccupantRow`s in the `FlagRoster` VLG: assigned mice (`GetAssignedMice()`) with **unassign** (x), then every other mouse with **assign** (+). `OccupantRow` is the shared configurable mouse-row — `Setup(animal, buttonSprite, tooltip, action)` — used for evict/unassign/assign. Rebuilt only on flag / assigned-set / colony-size change. See SPEC-ai §Work anchors.
+
+**Reusable widgets**: `MouseHeadIcon` (`Assets/Components/`) — UI head portrait, `Set(Animal)` (fur-tinted, hover = name, optional `onClick`). `OverlayController` (`Assets/Controller/`) — world data-overlay singleton: an nx×ny Point texture on the Unlit layer (1 texel = 1 tile). `ShowSearchRange(Animal)` paints a mouse's anchor-territory + convenience boxes (see SPEC-ai §Work anchors); entered from `AnimalInfoView`'s "range" button, dismissed by a world click, with a per-tile hover readout. Built so other overlays (foot traffic, …) are a new fill mode.
 
 ### SelectionContext
 `Assets/Model/SelectionContext.cs` — plain C# class built by `MouseController.HandleSelectClick`. Contains `tile`, `List<Structure>`, `List<Blueprint>`, `List<Animal>`. Factory: `SelectionContext.FromTile(tile, animals)`.

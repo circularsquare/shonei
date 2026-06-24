@@ -22,7 +22,7 @@ public class ResearchTask : Task {
     public override bool Initialize() {
         if (_lab == null) return false;
         Path p = animal.nav.PathToOrAdjacent(_lab.tile);
-        if (!animal.nav.WithinRadius(p, MediumFindRadius)) return false;
+        if (!animal.nav.WithinWorkRange(p)) return false;
 
         // Optional book borrow: if a matching book exists somewhere reachable, queue a
         // fetch into bookSlotInv before the research, and a return (unequip + drop to

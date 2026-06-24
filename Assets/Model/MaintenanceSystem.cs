@@ -144,10 +144,20 @@ public class MaintenanceSystem {
     // This is the place to refresh visual tint.
     void OnBroken(Structure s) {
         s.RefreshTint();
+        OnBrokenStateChanged(s);
     }
 
     void OnUnbroken(Structure s) {
         s.RefreshTint();
+        OnBrokenStateChanged(s);
+    }
+
+    // Side effects that need to fire on EITHER threshold crossing. Power shafts change the
+    // network's conductivity when they break/repair (a broken shaft severs the run — see
+    // PowerSystem.RebuildTopology), so the topology must rebuild. Producers/consumers/storage
+    // self-gate their output to 0 when broken and need no rebuild.
+    void OnBrokenStateChanged(Structure s) {
+        if (s is PowerShaft) PowerSystem.instance?.MarkDirty();
     }
 
     // A structure is sheltered when its entire top row is covered from the sky — a roof,

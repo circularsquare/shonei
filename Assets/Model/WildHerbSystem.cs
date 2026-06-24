@@ -170,6 +170,7 @@ public class WildHerbSystem {
             if (air == null || air.type.solid) return -1;
             if (air.water > 0) return -1;
             if (air.structs[0] != null) return -1;
+            if (air.greenhouse != null) return -1;       // greenhouses are for deliberate planting, not wild spawns
             return gy + 1;
         }
         return -1;
@@ -184,6 +185,7 @@ public class WildHerbSystem {
             Tile t = world.GetTileAt(x, wy);
             if (t == null || t.water < MinLilyWater) continue;
             if (t.structs[0] != null) return -1;
+            if (t.greenhouse != null) return -1;
             // Surface ponds only — lilies need open sky above, like the decorative flowers.
             // Excludes cave pools (rock overhead). IsExposedAbove is the shared sun/rain gate.
             if (!world.IsExposedAbove(x, wy)) return -1;

@@ -326,9 +326,12 @@ public class Nav {
     // Default 1 matches legacy "any space counts" behaviour. Callers that plan to deliver
     // a meaningful batch (e.g. merchants with MinMarketHaul) should pass a higher floor so
     // we skip near-full storages and route to one that can actually hold the trip.
-    public (Path path, Inventory inv) FindPathToStorage(Item item, int r = Task.MediumFindRadius, int minSpace = 1) {
+    // `exclude` skips a specific inventory — pass the haul SOURCE so an eviction can't pick its own
+    // inventory as the destination (a production-buffer Storage like the foundry output allows its own
+    // product and has spare room, so without this it self-hauls in a no-op loop).
+    public (Path path, Inventory inv) FindPathToStorage(Item item, int r = Task.MediumFindRadius, int minSpace = 1, Inventory exclude = null) {
         return FindPathToInv(new[] { Inventory.InvType.Storage },
-            inv => inv.GetStorageForItem(item) >= minSpace, r); }
+            inv => inv != exclude && inv.GetStorageForItem(item) >= minSpace, r); }
 
     // Like FindPathToStorage, but picks the storage with the MOST free space for `item`
     // among reachable candidates. Use for batch deliveries where fit matters more than
@@ -592,7 +595,7 @@ public class Nav {
         Node myNode = a.PathStartNode();
         if (myNode == null) return false;
         foreach (Structure s in list) {
-            if (Mathf.Max(Mathf.Abs(s.x - (int)a.x), Mathf.Abs(s.y - (int)a.y)) > r) continue;
+            if (!InWorkChebRegion(s.x, s.y, r)) continue;
             if (!s.res.Available()) continue;
             if (s.workNode == null) continue;
             if (world.graph.SameComponent(myNode, s.workNode)) return true;
@@ -602,8 +605,49 @@ public class Nav {
 
     // True if p is non-null and its cost fits within r × Task.FindRadiusTolerance.
     // Use after PathTo / PathToOrAdjacent / PathStrictlyAdjacent in WOM tasks where the
-    // target is provided directly (no Find* loop to inherit the gate from).
+    // target is provided directly (no Find* loop to inherit the gate from). Mouse-gated —
+    // use for FULFILLMENT/utility (sourcing inputs, going home, market). For a work task's
+    // TARGET-selection gate, use WithinWorkRange instead.
     public bool WithinRadius(Path p, int r) {
         return p != null && p.cost <= r * Task.FindRadiusTolerance;
     }
+
+    // ── Work anchors (Step 5b) ───────────────────────────────────────────────
+    // Work-DISCOVERY gate: true if path p reaches a tile the animal should take WORK at —
+    // either within its anchor TERRITORY (Chebyshev MediumFindRadius of WorkAnchorTile) and
+    // reachable within a territory-sized journey, OR conveniently UNDERFOOT (within the smaller
+    // WorkConvenienceRadius of the mouse). The journey cost is always measured from the MOUSE
+    // (it walks there); the anchor only adds a Chebyshev territory filter, so a mouse won't take
+    // far work just because it's standing next to it — it stays in its zone. A homeless mouse
+    // (no anchor) falls back to the plain mouse-gated MediumFindRadius test (today's behaviour).
+    // Use ONLY at a task's target-selection gate, never for sourcing inputs / depositing output
+    // (those must stay mouse-only or a mouse couldn't fetch materials from outside its territory).
+    public bool WithinWorkRange(Path p) {
+        if (p == null || p.tile == null) return false;
+        Tile t = p.tile;
+        float tol = Task.FindRadiusTolerance;
+        // Territory branch (anchored) or legacy mouse branch (homeless): full medium cap.
+        Tile anchor = a.WorkAnchorTile;
+        bool inTerritory = anchor != null
+            ? Cheb(anchor.x, anchor.y, t.x, t.y) <= Task.MediumFindRadius
+            : Cheb((int)a.x, (int)a.y, t.x, t.y) <= Task.MediumFindRadius;
+        if (inTerritory && p.cost <= Task.MediumFindRadius * tol) return true;
+        // Convenience branch: grab work right under the mouse regardless of territory, small cap.
+        if (Cheb((int)a.x, (int)a.y, t.x, t.y) <= Task.WorkConvenienceRadius
+            && p.cost <= Task.WorkConvenienceRadius * tol) return true;
+        return false;
+    }
+
+    // Chebyshev work-region test shared with CanReachBuilding (which adds same-component
+    // reachability instead of an A* journey). Mirrors WithinWorkRange's spatial regions so
+    // craft eligibility and craft-target selection stay consistent.
+    private bool InWorkChebRegion(int tx, int ty, int territoryR) {
+        if (Cheb((int)a.x, (int)a.y, tx, ty) <= Task.WorkConvenienceRadius) return true;
+        Tile anchor = a.WorkAnchorTile;
+        if (anchor != null) return Cheb(anchor.x, anchor.y, tx, ty) <= territoryR;
+        return Cheb((int)a.x, (int)a.y, tx, ty) <= territoryR;
+    }
+
+    static int Cheb(int x1, int y1, int x2, int y2) =>
+        Mathf.Max(Mathf.Abs(x1 - x2), Mathf.Abs(y1 - y2));
 }

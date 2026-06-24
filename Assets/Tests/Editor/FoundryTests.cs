@@ -8,7 +8,9 @@ using NUnit.Framework;
 [TestFixture]
 public class FoundryTests {
     Item malachite, cassiterite, moltenCopper, moltenTin, moltenBronze;
-    Recipe meltMalachite, alloyBronze;
+    Item copperBar, tinBar, bronzeBar;
+    Recipe meltMalachite, meltCassiterite, alloyBronze;
+    Recipe remeltCopperBar, castCopper, castTin, castBronze;
 
     List<Recipe> _origMelt, _origAlloy, _origCast;
 
@@ -30,14 +32,38 @@ public class FoundryTests {
         meltMalachite.inputs  = new[] { new ItemQuantity(malachite, 100) };
         meltMalachite.outputs = new[] { new ItemQuantity(moltenCopper, 100) };
 
+        // 1 cassiterite → 1 molten tin (the other ore-derived component for bronze).
+        meltCassiterite = new Recipe { foundryOp = "melt", meltTempMin = 300, meltTempIdeal = 600, meltDuration = 48, meltHeatCost = 80 };
+        meltCassiterite.inputs  = new[] { new ItemQuantity(cassiterite, 100) };
+        meltCassiterite.outputs = new[] { new ItemQuantity(moltenTin, 100) };
+
         // 1 molten copper + 1 molten tin → 2 molten bronze (1:1 input ratio = current economy).
         alloyBronze = new Recipe { foundryOp = "alloy" };
         alloyBronze.inputs  = new[] { new ItemQuantity(moltenCopper, 100), new ItemQuantity(moltenTin, 100) };
         alloyBronze.outputs = new[] { new ItemQuantity(moltenBronze, 200) };
 
-        Db.foundryMeltRecipes  = new List<Recipe> { meltMalachite };
+        // Bars + their cast recipes (cast keys the molten→bar lookup, so a bar = a cast OUTPUT).
+        copperBar = new Item { id = 42, name = "copper bar" };
+        tinBar    = new Item { id = 43, name = "tin bar" };
+        bronzeBar = new Item { id = 44, name = "bronze bar" };
+        castCopper = new Recipe { foundryOp = "cast" };
+        castCopper.inputs  = new[] { new ItemQuantity(moltenCopper, 100) };
+        castCopper.outputs = new[] { new ItemQuantity(copperBar, 100) };
+        castTin = new Recipe { foundryOp = "cast" };
+        castTin.inputs  = new[] { new ItemQuantity(moltenTin, 100) };
+        castTin.outputs = new[] { new ItemQuantity(tinBar, 100) };
+        castBronze = new Recipe { foundryOp = "cast" };
+        castBronze.inputs  = new[] { new ItemQuantity(moltenBronze, 100) };
+        castBronze.outputs = new[] { new ItemQuantity(bronzeBar, 100) };
+
+        // Remelt: copper bar → molten copper (so BestFeedSource has an ore + bar producing the same molten).
+        remeltCopperBar = new Recipe { foundryOp = "melt", meltTempMin = 300, meltTempIdeal = 600, meltDuration = 24, meltHeatCost = 80 };
+        remeltCopperBar.inputs  = new[] { new ItemQuantity(copperBar, 100) };
+        remeltCopperBar.outputs = new[] { new ItemQuantity(moltenCopper, 100) };
+
+        Db.foundryMeltRecipes  = new List<Recipe> { meltMalachite, meltCassiterite, remeltCopperBar };
         Db.foundryAlloyRecipes = new List<Recipe> { alloyBronze };
-        Db.foundryCastRecipes  = new List<Recipe>();
+        Db.foundryCastRecipes  = new List<Recipe> { castCopper, castTin, castBronze };
     }
 
     [TearDown]
@@ -118,5 +144,50 @@ public class FoundryTests {
         Assert.That(pool.ContainsKey(moltenBronze.id), Is.False);
         Assert.That(pool.GetValueOrDefault(moltenCopper.id), Is.EqualTo(100));
         Assert.That(pool.GetValueOrDefault(moltenTin.id), Is.EqualTo(100));
+    }
+
+    // ── Feed ratio shares ─────────────────────────────────────────────────────
+    [Test]
+    public void Shares_AlloyTarget_SplitsCapacityByInputRatio() {
+        // Bronze casts from molten bronze, made by the 1:1 copper+tin alloy → 0.5 / 0.5 of capacity.
+        var shares = Foundry.TargetMoltenShares(bronzeBar);
+        Assert.That(shares[moltenCopper.id], Is.EqualTo(0.5f).Within(1e-4));
+        Assert.That(shares[moltenTin.id],    Is.EqualTo(0.5f).Within(1e-4));
+        Assert.That(shares.ContainsKey(moltenBronze.id), Is.False, "the alloy PRODUCT isn't fed by ore");
+    }
+
+    [Test]
+    public void Shares_PureMetalTarget_GivesWholeCapacity() {
+        // Copper isn't an alloy product → its molten gets the whole pot.
+        var shares = Foundry.TargetMoltenShares(copperBar);
+        Assert.That(shares[moltenCopper.id], Is.EqualTo(1f).Within(1e-4));
+        Assert.That(shares.Count, Is.EqualTo(1));
+    }
+
+    // ── Source preference (ore vs remelt-bar) ─────────────────────────────────
+    // ic == null skips stock checks, so these exercise the preference/guard logic purely.
+    [Test]
+    public void BestFeedSource_PrefersOreOverRemeltingABar() {
+        // Both malachite (ore) and copper bar (remelt) make molten copper → ore wins (output = bronze bar).
+        Item src = Foundry.BestFeedSource(moltenCopper.id, targetOutputId: bronzeBar.id, ic: null);
+        Assert.That(src, Is.EqualTo(malachite));
+    }
+
+    [Test]
+    public void BestFeedSource_NeverRemeltsTheTargetsOwnOutputBar() {
+        // Target OUTPUT = copper bar. With only a copper-bar remelt recipe (no ore), feeding must return
+        // null — remelting the foundry's own output (copper bar → molten copper → copper bar) would loop.
+        Db.foundryMeltRecipes = new List<Recipe> { remeltCopperBar };
+        Item src = Foundry.BestFeedSource(moltenCopper.id, targetOutputId: copperBar.id, ic: null);
+        Assert.That(src, Is.Null);
+    }
+
+    [Test]
+    public void BestFeedSource_RemeltsABarTowardADifferentOutput() {
+        // Target OUTPUT is NOT copper bar (e.g. copper tools / bronze) → remelting copper bars into molten
+        // copper is fine (it's a different product, no loop). Only the copper-bar remelt recipe available.
+        Db.foundryMeltRecipes = new List<Recipe> { remeltCopperBar };
+        Item src = Foundry.BestFeedSource(moltenCopper.id, targetOutputId: bronzeBar.id, ic: null);
+        Assert.That(src, Is.EqualTo(copperBar));
     }
 }

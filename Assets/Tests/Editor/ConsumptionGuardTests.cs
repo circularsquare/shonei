@@ -3,15 +3,17 @@ using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 
-// EditMode tests for the "don't consume" mechanic — the pure, nav-free core:
-//   - GlobalInventory.ConsumableQuantity (leaf + group-aware, excludes protected leaves)
-//   - GlobalInventory.CanCraft           (a recipe whose only input/fuel stock is protected is uncraftable)
+// EditMode tests for the "consume" mechanic — the pure, nav-free core:
+//   - GlobalInventory.CanCraft           (crafting is ALWAYS allowed: a protected INPUT never blocks;
+//                                         only protected FUEL does, for deadlock avoidance)
 //   - GlobalInventory.PickFuel           (protected fuel is never burned)
 //   - GlobalInventory.ConsumableFuelEnergy
 //   - InventoryController.SetConsumptionDisabled (group rows fan to leaf descendants)
 //
-// The selection sites that need an Animal + Navigation (Task.ResolveConsumeLeaf, Animal.FindFood,
-// DrinkTask, MaintenanceTask) are integration-level and verified in playtest, not here.
+// The flag now gates only direct END-USE channels (eat / drink / equip / fuel / furnish), all of
+// which need an Animal + Navigation to exercise (Animal.FindFood/ChooseTonic/FindEquipment,
+// DrinkTask, SupplyFuelTask, SupplyFurnishingTask) — those are integration-level, verified in
+// playtest. Crafting, construction, processor-fill, and repair ignore the flag entirely.
 //
 // ── Setup pattern (mirrors GlobalInventoryTests / RecipeScoringTests) ──
 // We swap a tiny item fixture into Db.items / Db.itemsFlat, construct a fresh GlobalInventory,
@@ -69,57 +71,36 @@ public class ConsumptionGuardTests {
         dirtyIids.Clear();
     }
 
-    // ── ConsumableQuantity ──────────────────────────────────────────────
+    // ── CanCraft: crafting is ALWAYS allowed (inputs ignore the flag) ───
     [Test]
-    public void ConsumableQuantity_LeafProtected_IsZero_RawUnchanged(){
-        SetGlobal(apple, 500);
-        var gi = GlobalInventory.instance;
-        Assert.That(gi.ConsumableQuantity(apple), Is.EqualTo(500));
-
-        InventoryController.instance.SetConsumptionDisabled(apple, true);
-        Assert.That(gi.ConsumableQuantity(apple), Is.EqualTo(0), "protected leaf is not consumable");
-        Assert.That(gi.Quantity(apple), Is.EqualTo(500), "raw Quantity must be unaffected (display path)");
-    }
-
-    [Test]
-    public void ConsumableQuantity_Group_SumsOnlyUnprotectedLeaves(){
-        SetGlobal(apple, 500);
-        SetGlobal(pear, 300);
-        var gi = GlobalInventory.instance;
-        Assert.That(gi.ConsumableQuantity(food), Is.EqualTo(800));
-
-        InventoryController.instance.SetConsumptionDisabled(apple, true);
-        Assert.That(gi.ConsumableQuantity(food), Is.EqualTo(300), "only pear remains consumable");
-    }
-
-    // ── CanCraft ────────────────────────────────────────────────────────
-    [Test]
-    public void CanCraft_LeafInputProtected_IsFalse(){
+    public void CanCraft_LeafInputProtected_StillCraftable(){
+        // Crafting is a transformation use, not a "consume" channel — protecting an ingredient
+        // must NOT make its recipe uncraftable (this is the re-scope: the old code returned false).
         SetGlobal(apple, 500);
         var gi = GlobalInventory.instance;
         Recipe r = new Recipe { id = 1, inputs = new[]{ new ItemQuantity(apple, 100) }, outputs = new ItemQuantity[0] };
         Assert.That(gi.CanCraft(r), Is.True);
 
         InventoryController.instance.SetConsumptionDisabled(apple, true);
-        Assert.That(gi.CanCraft(r), Is.False);
+        Assert.That(gi.CanCraft(r), Is.True, "protected ingredient still craftable — crafting always allowed");
     }
 
     [Test]
-    public void CanCraft_GroupInput_CraftableWhileAnyLeafUnprotected(){
+    public void CanCraft_AllGroupLeavesProtected_StillCraftable(){
         SetGlobal(apple, 500);
         SetGlobal(pear, 500);
         var gi = GlobalInventory.instance;
         Recipe r = new Recipe { id = 1, inputs = new[]{ new ItemQuantity(food, 100) }, outputs = new ItemQuantity[0] };
 
         InventoryController.instance.SetConsumptionDisabled(apple, true);
-        Assert.That(gi.CanCraft(r), Is.True, "pear still satisfies the group input");
-
         InventoryController.instance.SetConsumptionDisabled(pear, true);
-        Assert.That(gi.CanCraft(r), Is.False, "both leaves protected → no consumable stock");
+        Assert.That(gi.CanCraft(r), Is.True, "even all leaves protected → still craftable from the group input");
     }
 
     [Test]
     public void CanCraft_FuelOnlyProtected_IsFalse(){
+        // Fuel IS a gated consume channel — so a recipe whose only fuel is protected stays
+        // uncraftable (else PickFuel returns null and the craft stalls).
         SetGlobal(apple, 500);
         SetGlobal(coal, 500); // 5 liang × 10 = 50 energy
         var gi = GlobalInventory.instance;
@@ -129,7 +110,7 @@ public class ConsumptionGuardTests {
         Assert.That(gi.CanCraft(r), Is.True);
 
         InventoryController.instance.SetConsumptionDisabled(coal, true);
-        Assert.That(gi.CanCraft(r), Is.False, "only fuel in stock is protected");
+        Assert.That(gi.CanCraft(r), Is.False, "only fuel in stock is protected → can't fuel the craft");
     }
 
     // ── PickFuel / ConsumableFuelEnergy ─────────────────────────────────

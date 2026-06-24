@@ -77,7 +77,11 @@ public class FurnishingSlots {
             // 0 for a fully-reserved empty stack is the canonical signal.
             if (slotInvs[i].itemStacks[0].resSpace > 0) continue;
             if (!Db.itemsByFurnishingSlot.TryGetValue(slotNames[i], out var candidates)) continue;
+            var ic = InventoryController.instance;
             foreach (Item candidate in candidates) {
+                // Mirror SupplyFurnishingTask's skip so a slot whose only candidates are all
+                // "consume"-off doesn't keep the standing WOM order active for a task that bails.
+                if (ic != null && ic.IsConsumptionDisabled(candidate)) continue;
                 if (GlobalInventory.instance.Quantity(candidate) > 0) return i;
             }
         }

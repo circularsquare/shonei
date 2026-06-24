@@ -28,6 +28,32 @@ public class AnimationController : MonoBehaviour {
     private Animal.FacingView cachedClothingView = Animal.FacingView.Side; // reload also on view flip
     private bool hasBackParam;        // true if the Animator declares the "back" int (wired later)
 
+    static readonly int FurColorId = Shader.PropertyToID("_FurColor");
+
+    // Applies this mouse's fur tint by setting the _FurColor per-renderer property on every
+    // body SpriteRenderer — body, head, legs, arm, tail, and their back/front/eep variants,
+    // which are sprite-swaps on these same renderers, so all are covered by one set. The
+    // Custom/Sprite shader recolors only the gray fur shades, leaving eyes and pink paws/ears
+    // untouched. Clothing renderers and the chat bubble are excluded so they keep their own
+    // colors. _FurColor is [PerRendererData] (MPB-set), so SRP batching is preserved.
+    // Called once from Animal.Start after rngSeed is finalized; safe regardless of Start
+    // ordering since clothingParts/chatBubble are serialized and child renderers always exist.
+    public void ApplyFurColor(Color main) {
+        var skip = new HashSet<SpriteRenderer>();
+        if (clothingParts != null)
+            foreach (var part in clothingParts)
+                if (part.renderer != null) skip.Add(part.renderer);
+        if (chatBubble != null) skip.Add(chatBubble);
+
+        var mpb = new MaterialPropertyBlock();
+        foreach (var sr in GetComponentsInChildren<SpriteRenderer>(true)) {
+            if (skip.Contains(sr)) continue;
+            sr.GetPropertyBlock(mpb);
+            mpb.SetColor(FurColorId, main);
+            sr.SetPropertyBlock(mpb);
+        }
+    }
+
     void Start() {
         animator = GetComponent<Animator>();
         animal = GetComponent<Animal>();

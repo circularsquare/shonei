@@ -51,7 +51,7 @@ public class FillProcessorTask : Task {
 
         // The tile the worker stands on to deposit (PathToOrAdjacent, like SupplyFuelTask).
         Path standPath = animal.nav.PathToOrAdjacent(building.tile);
-        if (!animal.nav.WithinRadius(standPath, MediumFindRadius)) return false;
+        if (!animal.nav.WithinWorkRange(standPath)) return false;
 
         // Gather a delivery (reserving source + buffer space) for each input's missing remainder, then
         // fetch them CLOSEST-FIRST rather than in authoring order — so a nearby water isn't skipped to

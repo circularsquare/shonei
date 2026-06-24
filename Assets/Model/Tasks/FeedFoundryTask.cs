@@ -16,17 +16,18 @@ public class FeedFoundryTask : Task {
         if (foundry == null || !foundry.HasRoom()) return false;
         Item target = foundry.TargetBar();
         if (target == null) return false; // nothing wanted right now
+        if (!foundry.CanMakeTarget()) return false; // target unmakeable (e.g. bronze with no tin source) → don't feed
         HashSet<int> consistent = Foundry.ConsistentMoltens(target);
         Item ore = foundry.ChooseFeedOre(consistent);
         if (ore == null) return false; // no consistent ore in stock
 
         Path standPath = animal.nav.PathToOrAdjacent(foundry.tile);
-        if (!animal.nav.WithinRadius(standPath, MediumFindRadius)) return false;
+        if (!animal.nav.WithinWorkRange(standPath)) return false;
         (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(ore);
         if (itemPath == null) return false;
 
         int available = stack.quantity - stack.resAmount;
-        int room = foundry.capacityFen - foundry.CurrentFen();
+        int room = foundry.RoomForOreFen(ore); // fen of THIS ore that fits under the metal-equiv ceiling
         int qty = Math.Min(available, room);
         if (qty <= 0) return false;
         int spaceReserved = ReserveSpace(foundry.intake, ore, qty);

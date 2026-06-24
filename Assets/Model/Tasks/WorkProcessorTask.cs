@@ -17,7 +17,7 @@ public class WorkProcessorTask : Task {
         Processor proc = building?.processor;
         if (proc == null || proc.state != Processor.State.Working) return false;
         Path p = animal.nav.PathTo(building.workNode);
-        if (!animal.nav.WithinRadius(p, MediumFindRadius)) return false;
+        if (!animal.nav.WithinWorkRange(p)) return false;
         objectives.AddLast(new GoObjective(this, building.workNode));
         objectives.AddLast(new WorkProcessorObjective(this));
         return true;

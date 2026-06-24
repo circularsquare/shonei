@@ -36,11 +36,11 @@ public class InventoryDetailRow : MonoBehaviour {
     [SerializeField] TMP_InputField targetInput;
     [SerializeField] Button targetUp, targetDown;
 
-    [Header("Don't-consume toggle")]
+    [Header("Consume toggle")]
     [SerializeField] Button consumeButton;
     [SerializeField] Image  consumeImage;
     [SerializeField] Sprite spriteConsumable;  // shown when the item IS consumable (default)
-    [SerializeField] Sprite spriteProtected;   // shown when flagged "don't consume"
+    [SerializeField] Sprite spriteProtected;   // shown when "consume" is toggled off
 
     [Header("Distribution bar")]
     [SerializeField] InventoryBar bar;         // optional; visual location breakdown + target

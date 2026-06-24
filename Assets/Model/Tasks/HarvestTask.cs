@@ -21,7 +21,7 @@ public class HarvestTask : Task {
         if (!plant.harvestable) return false;
         // Reject unreachable plants and plants whose actual path is significantly longer than the
         // medium search radius (e.g. 5 tiles crow-flies but 150 tiles around a chasm).
-        if (!animal.nav.WithinRadius(animal.nav.PathTo(tile), MediumFindRadius)) return false;
+        if (!animal.nav.WithinWorkRange(animal.nav.PathTo(tile))) return false;
 
         objectives.AddLast(new GoObjective(this, tile));
         objectives.AddLast(new HarvestObjective(this, plant));

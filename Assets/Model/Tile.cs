@@ -45,7 +45,7 @@ public class Tile {
     // (lighting) bake, so their edges facing it light as exposed cliff faces
     // rather than buried seams. Separate from bodyRenderSuppressed: an excavation
     // pit suppresses its body immediately, but only flips this once it's dug
-    // enough that the cell reads as mostly-open (see DiggingPit.UpdateHoleLighting).
+    // enough that the cell reads as mostly-open (see ExtractionBuilding.UpdateHoleLighting).
     // Solidity itself is unchanged. Fire NotifyBodyDirty() after mutating.
     public bool lightAsAir;
     Action<Tile> cbBackgroundChanged;
@@ -170,6 +170,13 @@ public class Tile {
     // interiorTiles (burrow, doored housing). Set/cleared by Structure interior-node
     // setup/teardown. Animal.insideBuilding is derived from this — don't cache it elsewhere.
     public Building interiorBuilding;
+    // Non-null when this tile is covered by a greenhouse frame (isGreenhouse structure, at a
+    // foreground depth so it doesn't contest structs[0]). Set across the greenhouse footprint in
+    // the Structure tile-registration loop, cleared in Structure.Destroy. A plant rooted on a
+    // greenhouse-covered tile bypasses the temperature growth-gate, grows faster, and can't grow
+    // taller than the frame. Reference identity is load-bearing: Plant.CanExtendTo compares an
+    // extension tile's greenhouse against the anchor's to enforce the height cap. See Plant.Grow.
+    public Structure greenhouse;
     public Inventory inv; // this encapsulates all inventory types
     public ushort water; // 0–160 internal fixed-point (10 units = 1 display unit); 160 = fully filled tile
     public byte moisture; // 0–100 soil wetness percent. Only meaningful on SOLID tiles (dirt/stone) — air tiles stay 0. Plants above read moisture from the soil tile directly below them.

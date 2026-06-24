@@ -46,6 +46,12 @@ public class Item {
     // read for them. Computed, not cached: the unitWeight cascade in Db runs after deserialization.
     public int unitFen => discrete ? (unitWeight > 0 ? ItemStack.LiangToFen(unitWeight) : 100) : 100;
     public bool startDiscovered {get; set;} // true = revealed in inventory/storage trees from game start, no research or production needed (e.g. water, drawn from ponds without research)
+    // When true, the AI never auto-selects this leaf to satisfy a GROUP input/cost. Used for gypsum:
+    // it stays sorted under "stone" (display/refunds unaffected) and is still usable where a recipe
+    // names "gypsum" directly (tofu), but is never auto-substituted for a "stone" requirement in
+    // buildings/tools. Leaf-authored; no effect on a group item. Consulted by Task.ResolveConsumeLeaf
+    // and Recipe.GeoMeanInputs so recipe scoring and execution agree on which leaves count.
+    public bool excludeFromGroupInput {get; set;}
     // Multiplier applied when this item is equipped in the tool slot. 1.0 = no bonus (treated
     // as "no tool"). >1 = a usable tool. Higher-tier metals (bronze > copper > stone) get
     // larger values. Read by ModifierSystem; meaningless on non-tool items where it stays 1.

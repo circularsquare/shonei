@@ -585,7 +585,16 @@ public class AnimalController : MonoBehaviour{
         }
         if (jobsPanel == null) return;
         Transform row = jobsPanel.transform.Find("JobCount_" + jobName);
-        if (row != null) Destroy(row.gameObject);
+        if (row != null) {
+            // Detach before destroying. Unity defers Destroy to end-of-frame, but
+            // Transform.Find sees the doomed child until then — so on a same-frame
+            // lock-then-unlock (save load: ResetAll → RevertEffect → LockJob, then
+            // ReapplyAllEffects → UnlockJob → AddJobRow) the re-add's idempotency
+            // Find would match the doomed row and skip, leaving the job missing.
+            // Reparenting hides it from Find immediately.
+            row.SetParent(null, false);
+            Destroy(row.gameObject);
+        }
     }
     void UpdateJobCount(Job job){
         if (job != null && jobsPanel != null){

@@ -75,6 +75,14 @@ So a corner only continues the run on its two open sides — it is genuinely
 different from a 4-way, where the older "turn ≡ 4-way, rotation cosmetic" model
 was wrong (a turn placed next to any shaft would join it as if omnidirectional).
 
+**Broken shafts don't conduct.** A shaft below `BreakThreshold` is excluded from the
+conductive `byTile` index in `RebuildTopology`, so the run is severed at that tile until
+a mender repairs it (neighbours on either side fall into separate networks). It stays in
+the `shafts` set and rejoins automatically once repaired. `MaintenanceSystem` marks the
+topology dirty on the break/repair edge (`OnBrokenStateChanged`) so the rebuild fires.
+Producers/consumers/storage need no such handling — they already self-gate output to 0
+when broken.
+
 **Axis vs. Side.** `PowerSystem.Axis` (Horizontal / Vertical / Both) still exists
 but is now used **only for producer/consumer port coupling** — a port asks "does
 the shaft at my target tile carry my axis?". `PowerShaft.axis` is *derived* from

@@ -41,7 +41,7 @@ public class CraftTask : Task {
         // with a workSpot (e.g. wheel) it's an off-grid waypoint at the worker's pose
         // position. workplace stays as the integer workTile for power/occupancy semantics.
         Path p = animal.nav.PathTo(_building.workNode);
-        if (!animal.nav.WithinRadius(p, MediumFindRadius)) { return false; }
+        if (!animal.nav.WithinWorkRange(p)) { return false; }
         workplace = _building.workTile;
 
         roundsRemaining = animal.CalculateWorkPossible(recipe);

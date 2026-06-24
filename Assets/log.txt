@@ -1,5 +1,19 @@
 meoww!!
 
+6/24
+- greenhouse (began)
+- fixed burrow mending bug
+- foundry tool casting, and various foundry bug fixes 
+- made quarry have bite out like digging pit
+- added more broken building cases 
+- multicolored mice 
+- house evictions / mouse head ui icon
+- search radius overlay 
+- added work flag building to extend search radius
+6/23
+- foundry molten metal display
+    - molten metal light emission
+- allow consume toggle for items
 6/22
 - more slash commands, big colony performance testing 
 - road hide grass
@@ -46,6 +60,7 @@ meoww!!
 - temperature anomaly random walk
 - digging pit / quarry mine from side
 - changed lighting to add flat center region for point sourcesn 
+- plant sun exposure raycasting
 6/10
 - itch deployment! (v0.1.0)
 - better tooltips 

@@ -15,7 +15,7 @@ public class TapProcessorTask : Task {
         Processor proc = building?.processor;
         if (proc == null || proc.state != Processor.State.Ready) return false;
         Path standPath = animal.nav.PathToOrAdjacent(building.tile);
-        if (!animal.nav.WithinRadius(standPath, MediumFindRadius)) return false;
+        if (!animal.nav.WithinWorkRange(standPath)) return false;
         objectives.AddLast(new GoObjective(this, standPath.tile));
         return true;
     }

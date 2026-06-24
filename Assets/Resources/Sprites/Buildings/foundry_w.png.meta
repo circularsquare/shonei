@@ -157,12 +157,14 @@ TextureImporter:
     indices: 
     edges: []
     weights: []
-    secondaryTextures: []
+    secondaryTextures:
+    - texture: {fileID: 2800000, guid: bd2aa3ef04dda0e468f4b4928373c227, type: 3}
+      name: _NormalMap
     spriteCustomMetadata:
       entries: []
     nameFileIdTable: {}
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
-  userData: 
+  userData: normalsCacheKey=mMZmYXVjig+AXtuGWWOtRg==
   assetBundleName: 
   assetBundleVariant: 

@@ -38,9 +38,19 @@ public class MaintenanceTask : Task {
         if (repairAmount <= 0f) return false;
         if (target.structType.costs == null || target.structType.costs.Length == 0) return false;
 
-        Tile workTile = target.workTile ?? target.tile;
-        Path standPath = animal.nav.PathToOrAdjacent(workTile);
-        if (!animal.nav.WithinRadius(standPath, MediumFindRadius)) return false;
+        // Resolve where the mender stands to repair. Structures with an interior layer
+        // (burrows, doored housing) are mended from inside: the mender enters through the
+        // door and stands on an interior node, exactly as occupants do to sleep (see EepTask).
+        // Their work tile sits in solid ground with no standable neighbour, so outside-adjacency
+        // pathing can never reach them. Everything else is mended from a standable tile adjacent
+        // to its work tile. Interior nodes are edged together, so any one is reachable iff all are.
+        Node interiorTarget = (target.interiorNodes != null && target.interiorNodes.Length > 0)
+            ? target.interiorNodes[0]
+            : null;
+        Path standPath = interiorTarget != null
+            ? animal.nav.PathTo(interiorTarget)
+            : animal.nav.PathToOrAdjacent(target.workTile ?? target.tile);
+        if (!animal.nav.WithinWorkRange(standPath)) return false;
 
         // Fetch each cost item. Fail if any single item is unavailable — partial visits
         // are wasteful (animal walks then can't finish) and leaves reserved materials stranded.
@@ -49,10 +59,9 @@ public class MaintenanceTask : Task {
             if (needed <= 0) continue;
 
             Item costItem = cost.item;
+            // Repair is an "always allowed" use (like construction, continued) — the "consume" flag
+            // does not block it, so no IsConsumptionDisabled check here.
             Item supplyItem = ResolveConsumeLeaf(costItem); // group cost → concrete leaf (surplus × nearness)
-            // ResolveConsumeLeaf already skips protected leaves for group costs; this also covers a
-            // leaf cost item that's itself flagged "don't consume" (no repair rather than spend it).
-            if (InventoryController.instance != null && InventoryController.instance.IsConsumptionDisabled(supplyItem)) return false;
             (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(supplyItem);
             if (itemPath == null || stack == null) return false;
             int available = stack.quantity - stack.resAmount;
@@ -62,7 +71,9 @@ public class MaintenanceTask : Task {
             FetchAndReserve(iq, itemPath.tile, stack);
         }
 
-        objectives.AddLast(new GoObjective(this, standPath.tile));
+        objectives.AddLast(interiorTarget != null
+            ? new GoObjective(this, interiorTarget)
+            : new GoObjective(this, standPath.tile));
         objectives.AddLast(new MaintenanceObjective(this));
         return true;
     }

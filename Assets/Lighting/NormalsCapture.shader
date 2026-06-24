@@ -63,6 +63,15 @@ Shader "Hidden/NormalsCapture" {
         // chunked tiles use a different shader, so terrain keeps its depth.
         float _FlatNormals;
 
+        // Interior-lighting toggle — global, set by LightFeature from
+        // SettingsManager.wallShadows. When >0.5 the directional-only tier (0.3,
+        // used by enclosed-building interiors: burrow facade/backdrop, mice + furniture
+        // inside) is promoted to the lit-only tier (0.5) so it RECEIVES point lights.
+        // Wall occlusion is then handled per-pixel by the ray-march in LightCircle
+        // instead of the blunt "skip torches entirely" alpha-0.3 gate. 0 = legacy
+        // behaviour (interiors get sun + ambient only).
+        float _InteriorLit;
+
         struct Attributes {
             float3 positionOS : POSITION;
             float2 uv         : TEXCOORD0;
@@ -119,6 +128,13 @@ Shader "Hidden/NormalsCapture" {
             float spriteAlpha = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, sampleUV).a;
             clip(spriteAlpha - 0.1);
 
+            // Promote the directional-only tier (0.3) to lit-only (0.5) when interior
+            // point lighting is enabled, so enclosed-building interiors receive torches
+            // (occlusion comes from LightCircle's ray-march). Shadow (1.0) and lit-only
+            // (0.5) tiers pass through unchanged. Computed before the flat-mode return
+            // so it applies in both shaded and flat lighting.
+            float effShadowAlpha = (shadowAlpha < 0.4) ? lerp(0.3, 0.5, _InteriorLit) : shadowAlpha;
+
             // Flat-lighting mode: skip the normal-map sample + tangent→world
             // transform and write a flat camera-facing normal ((0,0,-1) → packed
             // 0.5,0.5). The light shaders then give this sprite uniform lighting
@@ -127,7 +143,7 @@ Shader "Hidden/NormalsCapture" {
             // edge-depth (ns.a) doesn't apply here: tiles use a separate chunked
             // shader, and non-tile sprites already have edge-depth = 1.0.
             if (_FlatNormals > 0.5) {
-                return float4(0.5, 0.5, _SortBucket, shadowAlpha);
+                return float4(0.5, 0.5, _SortBucket, effShadowAlpha);
             }
 
             // Tangent-space normal, RGBA32 packed 0–1.
@@ -148,8 +164,8 @@ Shader "Hidden/NormalsCapture" {
             // _NormalMap.a carries edge-distance falloff baked by TileSpriteCache:
             //   1.0 = at exposed edge (fully lit), 0.0 = deep interior (dark).
             // Non-tile sprites have _NormalMap.a = 1.0 → lerp(0.80, 1.0, 1.0) = 1.0.
-            float outAlpha = shadowAlpha;
-            if (shadowAlpha > 0.75)
+            float outAlpha = effShadowAlpha;
+            if (effShadowAlpha > 0.75)
                 outAlpha = lerp(0.80, 1.0, ns.a);
 
             // R, G = normal.xy packed. B = sort bucket (not normal.z — the

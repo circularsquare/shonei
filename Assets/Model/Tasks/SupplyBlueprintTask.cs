@@ -25,7 +25,7 @@ public class SupplyBlueprintTask : Task {
         Path standPath = blueprint.structType.isTile
             ? animal.nav.PathStrictlyAdjacent(blueprint.tile)
             : animal.nav.PathToOrAdjacentBlueprint(blueprint);
-        if (!animal.nav.WithinRadius(standPath, MediumFindRadius)) return false;
+        if (!animal.nav.WithinWorkRange(standPath)) return false;
         for (int i = 0; i < blueprint.costs.Length; i++) {
             int needed = blueprint.costs[i].quantity - blueprint.inv.Quantity(blueprint.costs[i].item);
             if (needed <= 0) continue;

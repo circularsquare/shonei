@@ -235,6 +235,12 @@ public class Building : Structure {
         return true;
     }
 
+    // When true, this building's decorative liquid ALSO renders an additive emissive glow (the
+    // foundry's molten metal — hot liquid self-glows in its metal colour). WaterController stamps the
+    // filled zone pixels into the emissive mask and the MoltenGlow sprite adds the per-tile tint over
+    // them. Default false (tanks/fountains/brewery liquids are inert, no glow).
+    public virtual bool DisplayLiquidEmissive() => false;
+
     // Craft-output hook: a building may absorb some/all of a finished CRAFT output straight into
     // its own store instead of having the worker carry it off and drop it. Returns the leftover
     // quantity (fen) the worker must still handle normally. Default: absorb nothing. (Liquid batch
@@ -254,6 +260,7 @@ public class Building : Structure {
             var invType = structType.name == "market" ? Inventory.InvType.Market : Inventory.InvType.Storage;
             storage = new Inventory(structType.nStacks, structType.storageStackSize, invType, sTile.x, sTile.y, storageClass: structType.storageClass, parentSortingOrder: sr.sortingOrder);
             storage.displayName = structType.name;
+            storage.ownerStructure = this; // lets Decay apply the floor rate when this building is broken
             // Floor items stay on the floor — storage is separate (building.storage).
         }
 
@@ -321,21 +328,41 @@ public class Building : Structure {
 
     // Fires when a furnishing slot's contents change (install or decay-out). Recomputes
     // happiness for every resident animal and notifies the optional visual component.
-    // Resident discovery: scan AnimalController for any animal whose homeBuilding == this.
-    // Reservable.reservedBy is a single string and can't enumerate residents, so the scan
-    // is the durable source of truth.
     void OnFurnishingSlotChanged(int slotIndex) {
-        AnimalController ac = AnimalController.instance;
-        if (ac != null) {
-            for (int i = 0; i < ac.na; i++) {
-                Animal a = ac.animals[i];
-                if (a == null) continue;
-                if (a.homeBuilding == this)
-                    a.happiness?.RecomputeFurnishingBonus(a);
-            }
-        }
+        foreach (Animal a in GetResidents())
+            a.happiness?.RecomputeFurnishingBonus(a);
         FurnishingVisuals visuals = go != null ? go.GetComponent<FurnishingVisuals>() : null;
         visuals?.Refresh(slotIndex);
+    }
+
+    // Every animal whose home is this building. The single source of truth for residents:
+    // Reservable tracks only a count (+ one reservedBy string), so it can't enumerate them —
+    // a scan of AnimalController is required. Used by the info panel's occupant list and by
+    // furnishing-bonus recompute.
+    public System.Collections.Generic.List<Animal> GetResidents() {
+        var residents = new System.Collections.Generic.List<Animal>();
+        AnimalController ac = AnimalController.instance;
+        if (ac == null) return residents;
+        for (int i = 0; i < ac.na; i++) {
+            Animal a = ac.animals[i];
+            if (a != null && a.homeBuilding == this)
+                residents.Add(a);
+        }
+        return residents;
+    }
+
+    // Mice currently assigned to this work flag (Step 6). Same scan-is-source-of-truth approach as
+    // GetResidents — the flag holds no roster; assignment lives on Animal.assignedFlag.
+    public System.Collections.Generic.List<Animal> GetAssignedMice() {
+        var assigned = new System.Collections.Generic.List<Animal>();
+        AnimalController ac = AnimalController.instance;
+        if (ac == null) return assigned;
+        for (int i = 0; i < ac.na; i++) {
+            Animal a = ac.animals[i];
+            if (a != null && a.assignedFlag == this)
+                assigned.Add(a);
+        }
+        return assigned;
     }
 
     public override void AttachAnimations() {
@@ -467,6 +494,8 @@ public class Building : Structure {
                         a.homeTile = null;
                         a.task?.Fail();
                     }
+                    // Demolishing a work flag releases its assigned mice back to their home anchor.
+                    if (a.assignedFlag == this) a.assignedFlag = null;
                 }
             }
         }

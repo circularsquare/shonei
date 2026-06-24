@@ -902,6 +902,10 @@ public static class SpriteNormalMapGenerator {
     // 16×16 with centred pivot (matches existing single-file convention used
     // by StructureVisuals.PositionFor / shape-aware extension SRs). Also turns
     // on the merged-normals flag — spatial stacks always want it.
+    // Lives under Assets/ because it's a contextual command on the selected sprite sheet
+    // (right-click on the texture); the validate greys it out unless a 16×32/16×48 texture is
+    // selected. The menu-bar entry point is the batch "Slice All Vertical Building Sheets" under
+    // Tools/ — this per-asset command stays Assets-only for one-off / oddly-named sheets.
     [MenuItem("Assets/Slice Vertical Building Sheet", validate = true)]
     static bool ValidateSliceVertical() {
         foreach (Object o in Selection.objects) {
@@ -913,58 +917,89 @@ public static class SpriteNormalMapGenerator {
 
     [MenuItem("Assets/Slice Vertical Building Sheet")]
     static void SliceVertical() {
+        int sliced = 0;
         foreach (Object obj in Selection.objects) {
             if (!(obj is Texture2D tex)) continue;
-            string path = AssetDatabase.GetAssetPath(tex);
-            TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            if (imp == null) continue;
-            if (tex.width != 16 || (tex.height != 32 && tex.height != 48)) {
-                Debug.LogError($"[NormalMapGen] {path}: vertical slicer expects 16×32 or 16×48 (got {tex.width}×{tex.height}).");
-                continue;
-            }
-
-            // Slice names follow the existing suffix convention so
-            // StructureVisuals.LoadShapeSprite can find them. Strip a trailing
-            // `_s` from the file stem to get the canonical building name —
-            // `platform_s.png` slices into `platform_b/_m/_t`, NOT
-            // `platform_s_b/_m/_t`. The `_s` suffix is purely a filename
-            // disambiguator (so the sheet can coexist with a 1×1 `{name}.png`).
-            // For 16×48: bottom (y=0) → _b, middle (y=16) → _m, top (y=32) → _t.
-            // For 16×32: bottom (y=0) → _b, top (y=16) → _t (no middle).
-            string stem = SysPath.GetFileNameWithoutExtension(path);
-            string buildingName = stem.EndsWith("_s") ? stem.Substring(0, stem.Length - 2) : stem;
-            int rows = tex.height / 16;
-            var sheet = new List<SpriteMetaData>(rows);
-            for (int row = 0; row < rows; row++) {
-                string suffix = row == 0 ? "_b"
-                              : row == rows - 1 ? "_t"
-                              : "_m";
-                sheet.Add(new SpriteMetaData {
-                    name      = buildingName + suffix,
-                    rect      = new Rect(0, row * 16, 16, 16),
-                    alignment = (int)SpriteAlignment.Center,
-                    pivot     = new Vector2(0.5f, 0.5f),
-                });
-            }
-            imp.spriteImportMode = SpriteImportMode.Multiple;
-            imp.spritesheet      = sheet.ToArray();
-            imp.spritePixelsPerUnit = 16;
-            SetUserDataFlag(imp, "normals", "merged");
-
-            // Clear m_NameFileIdTable so Unity allocates fresh unique internalIDs
-            // for the new slice names. Without this, re-slicing leaves stale
-            // entries from prior names alongside new entries that all default to
-            // 0, producing "Identifier uniqueness violation" warnings and
-            // ambiguous asset references.
-            var so = new SerializedObject(imp);
-            var table = so.FindProperty("m_SpriteSheet.m_NameFileIdTable");
-            if (table != null && table.isArray) {
-                table.ClearArray();
-                so.ApplyModifiedPropertiesWithoutUndo();
-            }
-
-            imp.SaveAndReimport();
-            Debug.Log($"[NormalMapGen] Sliced {path} into {rows} rows (merged normals ON). Re-run normal map generation.");
+            // Selection path passes logBadDims:true — the user explicitly picked this asset,
+            // so a wrong-size pick deserves a console explanation rather than silent no-op.
+            if (SliceVerticalSheet(AssetDatabase.GetAssetPath(tex), logBadDims: true)) sliced++;
         }
+        if (sliced > 0) AssetDatabase.Refresh();
+    }
+
+    // Batch sibling of the above: slices every not-yet-sliced vertical building sheet under
+    // Sprites/Buildings in one pass (mirrors "Generate All Normal Maps"). "Viable" = a 16×32 /
+    // 16×48 texture whose filename ends in the `_s` sheet-convention suffix and is still in Single
+    // import mode. Already-sliced (Multiple-mode) sheets are skipped so re-running is cheap and
+    // doesn't churn sub-sprite internalIDs. Oddly-named or wrong-size sheets are left to the
+    // per-asset command above.
+    [MenuItem("Tools/Slice All Vertical Building Sheets", priority = 105)]
+    static void SliceAllVertical() {
+        string[] guids = AssetDatabase.FindAssets("t:Texture2D", new[] { "Assets/Resources/Sprites/Buildings" });
+        int sliced = 0, skipped = 0;
+        foreach (string guid in guids) {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            if (!SysPath.GetFileNameWithoutExtension(path).EndsWith("_s")) continue;  // sheet-convention files only
+            Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            if (tex == null || tex.width != 16 || (tex.height != 32 && tex.height != 48)) continue;
+            var imp = AssetImporter.GetAtPath(path) as TextureImporter;
+            if (imp != null && imp.spriteImportMode == SpriteImportMode.Multiple) { skipped++; continue; } // already sliced
+            if (SliceVerticalSheet(path, logBadDims: false)) sliced++;
+        }
+        AssetDatabase.Refresh();
+        Debug.Log($"[NormalMapGen] Slice-all done — sliced {sliced} sheet(s), skipped {skipped} already-sliced. Re-run normal map generation.");
+    }
+
+    // Slices one 16×32 / 16×48 texture into bottom→top sub-sprites (16×16, centred pivot) and
+    // turns on the merged-normals flag. Returns true if it sliced. Shared by the single-selection
+    // and batch commands so the slicing rule lives in one place.
+    //
+    // Slice names follow the suffix convention StructureVisuals.LoadShapeSprite reads, with a
+    // trailing `_s` stripped from the stem — `platform_s.png` → `platform_b/_m/_t`, NOT
+    // `platform_s_b/...` (the `_s` is purely a filename disambiguator so the sheet can coexist
+    // with a 1×1 `{name}.png`). 16×48: y=0 → _b, y=16 → _m, y=32 → _t. 16×32: _b then _t (no middle).
+    static bool SliceVerticalSheet(string path, bool logBadDims) {
+        var imp = AssetImporter.GetAtPath(path) as TextureImporter;
+        if (imp == null) return false;
+        Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+        if (tex == null) return false;
+        if (tex.width != 16 || (tex.height != 32 && tex.height != 48)) {
+            if (logBadDims) Debug.LogError($"[NormalMapGen] {path}: vertical slicer expects 16×32 or 16×48 (got {tex.width}×{tex.height}).");
+            return false;
+        }
+
+        string stem = SysPath.GetFileNameWithoutExtension(path);
+        string buildingName = stem.EndsWith("_s") ? stem.Substring(0, stem.Length - 2) : stem;
+        int rows = tex.height / 16;
+        var sheet = new List<SpriteMetaData>(rows);
+        for (int row = 0; row < rows; row++) {
+            string suffix = row == 0 ? "_b"
+                          : row == rows - 1 ? "_t"
+                          : "_m";
+            sheet.Add(new SpriteMetaData {
+                name      = buildingName + suffix,
+                rect      = new Rect(0, row * 16, 16, 16),
+                alignment = (int)SpriteAlignment.Center,
+                pivot     = new Vector2(0.5f, 0.5f),
+            });
+        }
+        imp.spriteImportMode = SpriteImportMode.Multiple;
+        imp.spritesheet      = sheet.ToArray();
+        imp.spritePixelsPerUnit = 16;
+        SetUserDataFlag(imp, "normals", "merged");
+
+        // Clear m_NameFileIdTable so Unity allocates fresh unique internalIDs for the new slice
+        // names. Without this, re-slicing leaves stale entries alongside new ones that all default
+        // to 0, producing "Identifier uniqueness violation" warnings and ambiguous references.
+        var so = new SerializedObject(imp);
+        var table = so.FindProperty("m_SpriteSheet.m_NameFileIdTable");
+        if (table != null && table.isArray) {
+            table.ClearArray();
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        imp.SaveAndReimport();
+        Debug.Log($"[NormalMapGen] Sliced {path} into {rows} rows (merged normals ON). Re-run normal map generation.");
+        return true;
     }
 }

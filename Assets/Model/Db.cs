@@ -88,6 +88,14 @@ public class Db : MonoBehaviour {
     public static FlowerType[] flowerTypes = new FlowerType[64];
     public static int flowerTypesCount = 0;
 
+    // Mouse fur palette (cosmetic only). Each entry is the MAIN fur shade; the
+    // Custom/Sprite shader reconstructs the highlight/shadow/eep shades by re-applying
+    // their fixed offsets. Picked per-mouse by FurColorForSeed (weighted). Parallel lists:
+    // furColorWeights[i] is the relative pick weight of furColors[i]. Loaded from furColors.json.
+    public static List<Color> furColors = new List<Color>();
+    public static List<float> furColorWeights = new List<float>();
+    static float furColorTotalWeight = 0f;
+
     // Mouse name pools loaded from Resources/Misc/names.csv.
     public static List<string> chineseNames = new List<string>();
     public static List<string> inventedNames = new List<string>();
@@ -149,6 +157,9 @@ public class Db : MonoBehaviour {
         tileTypes   = new TileType[100];
         flowerTypes = new FlowerType[64];
         flowerTypesCount = 0;
+        furColors.Clear();
+        furColorWeights.Clear();
+        furColorTotalWeight = 0f;
         bookRecipeIdByTechId = new Dictionary<int, int>();
         bookItemIdByTechId   = new Dictionary<int, int>();
         itemsByFurnishingSlot = new Dictionary<string, List<Item>>();
@@ -557,6 +568,10 @@ public class Db : MonoBehaviour {
     // (bit dy*nx+dx) of which footprint tiles have a solid left / right edge.
     class EdgeMaskEntry { public string name; public int left; public int right; }
 
+    // DTO for furColors.json — `hex` is the main fur shade (RRGGBB); `weight` is the
+    // relative pick frequency (omitted/≤0 → treated as 1).
+    class FurColorEntry { public string name; public string hex; public float weight; }
+
     static string LoadJsonText(string resourceName) {
         TextAsset ta = Resources.Load<TextAsset>(resourceName);
         if (ta == null) {
@@ -708,6 +723,44 @@ public class Db : MonoBehaviour {
                 flowerTypeByName.Add(ft.name, ft);
             }
         }
+
+        // read fur colors (cosmetic mouse fur palette). Missing file is non-fatal —
+        // FurColorForSeed falls back to the default gray shade, so mice render as today.
+        string jsonFurColors = LoadJsonText("furColors");
+        if (jsonFurColors != null) {
+            foreach (FurColorEntry fc in JsonConvert.DeserializeObject<FurColorEntry[]>(jsonFurColors)) {
+                if (ColorUtility.TryParseHtmlString("#" + fc.hex, out Color c)) {
+                    float w = fc.weight > 0f ? fc.weight : 1f;
+                    furColors.Add(c);
+                    furColorWeights.Add(w);
+                    furColorTotalWeight += w;
+                } else {
+                    Debug.LogError($"furColors: bad hex '{fc.hex}' for fur color '{fc.name}'");
+                }
+            }
+        }
+    }
+
+    // The main fur shade (91989c) — the identity color for the Custom/Sprite remap, and
+    // FurColorForSeed's fallback when the palette is empty (missing/failed furColors.json).
+    public static readonly Color DefaultFurColor = new Color(145f / 255f, 152f / 255f, 156f / 255f, 1f);
+
+    // Deterministic per-mouse fur color from its rngSeed. Hashes the seed directly rather
+    // than drawing from Animal.random, so picking a color never perturbs the AI RNG stream;
+    // stable across save/load since rngSeed is persisted. Caveat: reordering furColors.json
+    // reshuffles existing mice's colors on next load — acceptable for a cosmetic.
+    public static Color FurColorForSeed(int seed) {
+        if (furColors.Count == 0) return DefaultFurColor;
+        uint h = (uint)seed * 2654435761u; // Knuth multiplicative hash
+        if (furColorTotalWeight <= 0f) return furColors[(int)(h % (uint)furColors.Count)];
+        // Map the hash uniformly into [0, totalWeight) and walk the cumulative weights.
+        double t = (h / 4294967296.0) * furColorTotalWeight; // h ∈ [0, 2^32) → [0, total)
+        float acc = 0f;
+        for (int i = 0; i < furColors.Count; i++) {
+            acc += furColorWeights[i];
+            if (t < acc) return furColors[i];
+        }
+        return furColors[furColors.Count - 1];
     }
 
     public static Job GetJobByName(string name) {
@@ -912,6 +965,7 @@ public class Recipe {
                 ratio = 0f;
                 bool anyLeaf = false;
                 foreach (Item leaf in iq.item.LeafDescendants()){
+                    if (leaf.excludeFromGroupInput) continue; // never auto-substituted → exclude from scoring too
                     if (!targets.TryGetValue(leaf.id, out int lt)) continue;
                     anyLeaf = true;
                     ratio = UnityEngine.Mathf.Max(ratio, SurplusRatio(GlobalInventory.instance.Quantity(leaf), lt));

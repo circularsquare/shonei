@@ -54,6 +54,14 @@ public class LightSource : MonoBehaviour {
     // crafting building (foundry,
     // crucible) can opt in via the `lightWhileCrafting` StructType flag.
     [HideInInspector] public bool craftGated = false;
+    // Heat-gated mode: intensity, fire-art emission brightness, AND fire-art opacity all scale
+    // continuously with an external 0..1 "fire strength" supplied by glow01Provider (the foundry's
+    // stored heat). Day or night, no fuel/sun/worker gating — a fire that brightens as the pot heats
+    // and dims as it cools. Distinct from craftGated (worker-present) and sunModulated (time-of-day).
+    // Only the foundry uses it. When weak, the fire art fades toward transparent so the dull-red
+    // firebox painted into the base sprite shows through.
+    [HideInInspector] public bool heatGated = false;
+    [HideInInspector] public System.Func<float> glow01Provider;
     // Owning Building, if any. Null for the sun and debug-cursor lights.
     // When non-null, the LightSource pauses burn + emission while building.disabled is true.
     [HideInInspector] public Building building;
@@ -162,7 +170,14 @@ public class LightSource : MonoBehaviour {
         // (Execution order is the default — SunController runs before
         // LightSource in practice; one-frame lag would be invisible
         // anyway because torchFactor changes smoothly over twilight.)
-        if (craftGated && !isDirectional)
+        if (heatGated && !isDirectional) {
+            // Heat fire: brightness + light scale with the pot's stored heat (0..1), day or night.
+            float g = glow01Provider != null ? Mathf.Clamp01(glow01Provider()) : 0f;
+            bool usable = building == null || (!building.disabled && !building.IsBroken);
+            isLit = usable && g > 0.01f;
+            intensity = isLit ? baseIntensity * g : 0f;
+        }
+        else if (craftGated && !isDirectional)
             // Craft fire: full intensity while a mouse works the station, day or night; no twilight ramp.
             intensity = isLit ? baseIntensity : 0f;
         else if (sunModulated && !isDirectional)
@@ -174,11 +189,22 @@ public class LightSource : MonoBehaviour {
             intensity *= 1f + flickerAmount * (Mathf.PerlinNoise(flickerPhase, Time.time * FlickerSpeed) - 0.5f) * 2f;
         // Fire child visibility tracks emission scale — fire appears/disappears
         // in sync with the emission glow, including smooth twilight fade.
-        if (building?.fireGO != null)
-            building.fireGO.SetActive(CurrentEmissionScale > 0.05f);
+        if (building?.fireGO != null) {
+            bool show = CurrentEmissionScale > 0.05f;
+            building.fireGO.SetActive(show);
+            // Heat-gated fires also fade the flame ART's opacity with strength, so a weak fire reads
+            // as the dull-red firebox (painted into the base sprite) showing through the orange overlay.
+            // Other fire types keep full opacity (their emission alone carries the brightness ramp).
+            if (show && heatGated && building.fireSR != null) {
+                Color c = building.fireSR.color;
+                c.a = CurrentEmissionScale;
+                building.fireSR.color = c;
+            }
+        }
     }
 
     private void UpdateLitState() {
+        if (heatGated) return; // isLit is computed from glow01Provider in Update()
         if (craftGated) {
             // Lit only while a mouse is actively working here — craft OR tended processor (the
             // cauldron is a Processor, not a CraftTask) — and the building is usable. No fuel.

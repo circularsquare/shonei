@@ -379,6 +379,7 @@ public class WorldController : MonoBehaviour {
         // market) before snapshotting. The wall itself renders via
         // BackgroundTileMeshController (created in Start, subscribes its own callbacks).
         SkyExposure.InitializeWorld(world);
+        OccluderField.InitializeWorld(world); // point-light wall-shadow distance field
 
         world.timer = World.ticksInDay * 0.3f;
         world.graph.Initialize();

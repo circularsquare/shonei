@@ -35,6 +35,27 @@ public class Plant : Structure {
     // until it sums to a whole tick. Not persisted — losing <1 tick on reload is harmless.
     private float slowGrowthCarry;
 
+    // ── Sun exposure ──────────────────────────────────────────────────────────
+    // Fraction (0..1) of this plant's sun requirement that's met — clamp01(open sky degrees /
+    // sunNeedDegrees), from a raycast over the upper hemisphere (see World.OpenSkyDegreesAt).
+    // 1 = fully sunlit. A SOFT growth gate (gate 1c): the growth rate scales with it, floored at
+    // MinSunGrowthRate so a fully shaded plant still creeps rather than freezing. Cached and
+    // recomputed on a throttle (shade only changes when the player builds/mines) plus on any
+    // height change; the InfoPanel forces a live recompute for the inspected plant. Not persisted.
+    private float sunOpen01 = 1f;
+    public  float SunOpen01 => sunOpen01;
+
+    // Min growth-rate multiplier when fully shaded (0° open sky). Floors the sun factor so an
+    // enclosed plant keeps inching forward instead of stalling forever — mirrors how the moisture
+    // gate floors at DroughtGrowthRate rather than freezing.
+    private const float MinSunGrowthRate = 0.2f;
+
+    // Ticks between throttled sun recomputes in Grow. Shade is static between build/mine events,
+    // and growth is slow, so a coarse cadence is invisible. Counts down each tick; a height change
+    // forces an immediate recompute by zeroing it.
+    private const int SunRecomputeInterval = 30;
+    private int sunRecomputeTimer;
+
     // Player-set flag: does this plant get harvested when ripe? Gates the WOM harvest order.
     // Persistent across regrowth cycles — Harvest() leaves it set, so flagged plants keep
     // being harvested each time they mature until the player explicitly unflags.
@@ -294,9 +315,25 @@ public class Plant : Structure {
         // soil is treated as missing → moisture check skipped.
         Tile soil = World.instance.GetTileAt(tile.x, tile.y - 1);
 
-        // Gate 1a: temperature is a HARD gate — out of comfort range freezes growth for
-        // the tick (no withering, no stress damage).
-        if (!plantType.IsTempComfortableAt(WeatherSystem.instance)) return;
+        // A greenhouse frame covering the anchor tile regulates the climate: it warms the
+        // temperature gate toward its target (gate 1a), speeds growth (gate 1b), halves the
+        // stage moisture cost (gate 2), and caps height (gate 3, via CanExtendTo). The season
+        // gate is intentionally NOT regulated — herbs are wild-only and can't be planted here.
+        // A broken greenhouse provides no climate regulation until repaired — treat it as absent
+        // for all bonuses. The height cap (CanExtendTo) still reads tile.greenhouse directly, since
+        // the glass frame physically blocks regardless of condition.
+        Structure ghStruct = tile.greenhouse;
+        StructType gh = (ghStruct != null && !ghStruct.IsBroken) ? ghStruct.structType : null;
+
+        // Gate 1a: temperature is a HARD gate — out of comfort range freezes growth for the
+        // tick. A greenhouse pulls ambient a fraction of the way toward its target temp before
+        // the check (e.g. halfway toward ~80°F), so it warms a cold day without being perfect —
+        // leaving room for stronger greenhouses to push the pull/target higher.
+        WeatherSystem weather = WeatherSystem.instance;
+        if (weather != null) {
+            float airTemp = gh != null ? gh.RegulatedTemp(weather.temperature) : weather.temperature;
+            if (!plantType.IsTempComfortableAtTemp(airTemp)) return;
+        }
 
         // Gate 1a': season is also a HARD gate. Most herbs use this instead of a temp
         // window — out-of-season freezes growth (e.g. a fall-only chrysanthemum sits
@@ -308,6 +345,14 @@ public class Plant : Structure {
         // yet still inches its crops along instead of stalling forever. Sub-tick progress
         // accumulates in slowGrowthCarry until it sums to a whole tick (age is integral).
         float rate = plantType.IsMoistureComfortableAt(soil) ? 1f : DroughtGrowthRate;
+        if (gh != null) rate *= gh.greenhouseGrowthMult;
+
+        // Gate 1c: sun exposure is a SOFT gate — overhead shade scales growth down linearly,
+        // floored at MinSunGrowthRate so a shaded plant still creeps. Recomputed on a throttle
+        // (and on height change, which zeroes the timer). See sunOpen01 / RecomputeSunExposure.
+        if (--sunRecomputeTimer <= 0) RecomputeSunExposure();
+        rate *= Mathf.Lerp(MinSunGrowthRate, 1f, sunOpen01);
+
         slowGrowthCarry += t * rate;
         int effectiveT   = (int)slowGrowthCarry;
         slowGrowthCarry -= effectiveT;
@@ -324,7 +369,10 @@ public class Plant : Structure {
         int candidateStage = Math.Min(candidateAge * plantType.stageSpan / plantType.growthTime, maxStage);
         int prevStage      = growthStage;
         if (candidateStage > growthStage) {
+            // A greenhouse's controlled humidity cuts how much soil moisture each stage crossing
+            // spends (gate 2) — same multiplier that trims passive transpiration in MoistureSystem.
             int cost = plantType.stageMoistureCost;
+            if (gh != null) cost = Mathf.RoundToInt(cost * gh.greenhouseMoistureMult);
             if (cost > 0 && (soil == null || !soil.type.solid || soil.moisture < cost)) return;
 
             int candidateHeight = HeightForStage(candidateStage);
@@ -411,6 +459,71 @@ public class Plant : Structure {
         return nextHeight > height && !CanExtendTo(nextHeight);
     }
 
+    // Recompute cached sun exposure from a sky raycast at the plant's TOP occupied tile (so a
+    // taller plant sees over low obstructions). sunOpen01 = clamp01(open sky degrees / need),
+    // and the throttle timer is reset. Cheap (~12 short rays); called on a cadence from Grow,
+    // forced on height change, and forced live by the InfoPanel for the inspected plant.
+    public void RecomputeSunExposure() {
+        int topY = tile.y + height - 1;
+        float openDeg = World.instance.OpenSkyDegreesAt(tile.x, topY);
+        float need = plantType.sunNeedDegrees;
+        sunOpen01 = need > 0f ? Mathf.Clamp01(openDeg / need) : 1f;
+        sunRecomputeTimer = SunRecomputeInterval;
+    }
+
+    // ── Growth-block diagnostics ──────────────────────────────────────────────
+    // Why a plant isn't advancing, surfaced in the InfoPanel. Frozen reasons halt
+    // growth entirely; the Slow* reasons only throttle it (DroughtGrowthRate). The
+    // model reports the cause; StructureInfoView owns the player-facing wording.
+    public enum GrowthBlock {
+        None,          // growing normally, or already fully grown
+        TooCold,       // temperature below tempMin (hard freeze)
+        TooHot,        // temperature above tempMax (hard freeze)
+        OutOfSeason,   // current season not in `seasons` (hard freeze)
+        NoSpaceAbove,  // next stage needs a taller plant but tile(s) above are blocked (hard freeze)
+        SoilTooDry,    // soil below stageMoistureCost — can't pay a stage crossing (hard stall)
+        SlowDry,       // soil below moisture comfort — only slowed
+        SlowWet,       // soil above moisture comfort — only slowed
+    }
+
+    // The current reason this plant's growth is impeded, or None if it's growing
+    // normally or already fully grown. Mirrors the gate order in Grow() so the
+    // reported cause matches the gate that actually stops advancement. Read-only
+    // diagnostic — the sim never branches on it.
+    public GrowthBlock GetGrowthBlock() {
+        if (growthStage >= plantType.maxStage) return GrowthBlock.None; // fully grown — done, not blocked
+
+        WeatherSystem weather = WeatherSystem.instance;
+
+        // HARD gates first (these freeze growth), in Grow()'s order.
+        if (!plantType.IsTempComfortableAt(weather)) {
+            float t = weather != null ? weather.temperature : 0f;
+            bool tooHot = plantType.tempMax.HasValue && t > plantType.tempMax.Value;
+            return tooHot ? GrowthBlock.TooHot : GrowthBlock.TooCold;
+        }
+        if (!plantType.IsSeasonComfortableAt(weather)) return GrowthBlock.OutOfSeason;
+
+        // Soil too dry to pay a stage crossing — a hard stall (Grow returns at the cost
+        // gate before advancing). Checked before the open-sky gate to match Grow's order.
+        Tile soil = World.instance.GetTileAt(tile.x, tile.y - 1);
+        if (soil != null && plantType.stageMoistureCost > 0 && soil.moisture < plantType.stageMoistureCost)
+            return GrowthBlock.SoilTooDry;
+
+        // "Open sky" gate: the next stage would make the plant taller, but the tile(s)
+        // directly above are solid or occupied, so it can't extend. Only multi-tile
+        // plants (trees, bamboo) ever reach this; single-tile crops never need space above.
+        int nextHeight = HeightForStage(growthStage + 1);
+        if (nextHeight > height && !CanExtendTo(nextHeight)) return GrowthBlock.NoSpaceAbove;
+
+        // Soft moisture gate — out of comfort only slows growth (it doesn't freeze).
+        if (soil != null && !plantType.IsMoistureComfortableAt(soil)) {
+            bool tooWet = plantType.moistureMax.HasValue && soil.moisture > plantType.moistureMax.Value;
+            return tooWet ? GrowthBlock.SlowWet : GrowthBlock.SlowDry;
+        }
+
+        return GrowthBlock.None;
+    }
+
     public ItemQuantity[] Harvest(){
         if (!harvestable) { Debug.LogError($"Harvest() called on {plantType.name} but harvestable=false"); return Array.Empty<ItemQuantity>(); }
 
@@ -492,12 +605,19 @@ public class Plant : Structure {
     // and has a null structs[0]. No blueprints check — a stacked blueprint at depth 0
     // on an empty air tile doesn't block plant extension (the blueprint will re-resolve
     // when the mouse tries to construct onto a now-occupied tile).
+    //
+    // Greenhouse cap: a plant rooted inside a greenhouse can't grow past the frame. Each new
+    // tile must be covered by the SAME greenhouse instance as the anchor — so a tree in a 1-high
+    // frame freezes at height 1, in a 2-high frame at height 2. Comparing the instance (not just
+    // non-null) avoids "tunnelling" from one greenhouse up into a separate one stacked above.
     private bool CanExtendTo(int targetHeight) {
+        Structure anchorGreenhouse = tile.greenhouse;
         for (int h = height; h < targetHeight; h++) {
             Tile t = World.instance.GetTileAt(tile.x, tile.y + h);
             if (t == null) return false;
             if (t.type.solid) return false;
             if (t.structs[0] != null) return false;
+            if (anchorGreenhouse != null && t.greenhouse != anchorGreenhouse) return false;
         }
         return true;
     }
@@ -527,6 +647,7 @@ public class Plant : Structure {
         RefreshHarvestOverlaySize(); // plant grew a tile — stretch the flag to match
         // Plant just got taller — every existing SR's _PlantHeight is now stale.
         RefreshSwayMPB();
+        sunRecomputeTimer = 0; // top tile moved up — re-sample sky next Grow
     }
 
     private void ReleaseAllExtensionTiles() {
@@ -546,6 +667,7 @@ public class Plant : Structure {
         // Anchor's _PlantHeight needs to drop back to 1 — otherwise a harvested
         // bamboo that just regrew its anchor would still sway as if 3 tiles tall.
         RefreshSwayMPB();
+        sunRecomputeTimer = 0; // collapsed to anchor — re-sample sky next Grow
     }
 
     // Keeps Structure.tintableSrs (walked by SetTint for the deconstruct red overlay)
@@ -883,6 +1005,13 @@ public class PlantType : StructType {
     public int?   moistureMin {get; set;}
     public int?   moistureMax {get; set;}
 
+    // Degrees of open sky (of the 180° overhead hemisphere) this plant needs for FULL sun.
+    // The growth rate scales with clamp01(open sky degrees / sunNeedDegrees), floored at a
+    // minimum so deep shade slows rather than freezes (see Plant sun exposure / Grow gate 1c).
+    // Default 90 = "needs roughly half the sky open." Lower = more shade-tolerant. A future
+    // shade-loving plant could set this small. See World.OpenSkyDegreesAt.
+    public float sunNeedDegrees {get; set;} = 90f;
+
     // Seasons this plant grows in — each entry is a season name ("Spring"/"Summer"/
     // "Fall"/"Winter") matching WeatherSystem.GetSeason(). Null/empty = year-round
     // (the default for crops). A HARD growth gate like tempMin/tempMax: out-of-season
@@ -907,7 +1036,13 @@ public class PlantType : StructType {
     // in-range so plants don't stall before the first tick wires things up.
     public bool IsTempComfortableAt(WeatherSystem weather) {
         if (weather == null) return true;
-        float t = weather.temperature;
+        return IsTempComfortableAtTemp(weather.temperature);
+    }
+
+    // Comfort check against an explicit temperature, used when something regulates the local
+    // climate away from raw ambient (a greenhouse pulls ambient toward its target temp — see
+    // Plant.Grow). Null bound = no limit on that side.
+    public bool IsTempComfortableAtTemp(float t) {
         if (tempMin.HasValue && t < tempMin.Value) return false;
         if (tempMax.HasValue && t > tempMax.Value) return false;
         return true;

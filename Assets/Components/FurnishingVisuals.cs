@@ -78,6 +78,12 @@ public class FurnishingVisuals : MonoBehaviour {
             SpriteRenderer sr = SpriteMaterialUtil.AddSpriteRenderer(sgo);
             sr.sortingOrder = parentOrder + 1 + slotIndex;
             LightReceiverUtil.SetSortBucket(sr);
+            // Enclosed buildings (burrow) render on the Interior layer — sun + ambient only,
+            // no point-light bleed. The building's own sprites are moved there at construction
+            // (Structure.AttachAnimations), but furnishing overlays spawn lazily here, after
+            // construction, so they'd otherwise stay on Default and pick up torchlight. Mirror
+            // the building's tier so installed furniture lights like the burrow around it.
+            if (owner.structType.enclosed) InteriorLayer.SetSpriteLayers(sgo, InteriorLayer.Interior);
             slotGOs[slotIndex] = sgo;
             slotSRs[slotIndex] = sr;
         }

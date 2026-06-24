@@ -143,12 +143,12 @@ Per-side decoration rendered on top of the tile body. Today this is grass on dir
   - Body bake: `bodyCardinals = (bodySolid & ~bodyWin) | overlayBits | bodyEdgeSuppressMask` — the mask bits force the buried-side slice on those sides.
   - Overlay bake: `effective = overlayMask & ~cMask & ~bodyEdgeSuppressMask` — masked sides skip emitting a tuft.
   - Maintenance: `Structure` ctor (for `preservesTile` buildings) ORs the door's side-bit into the door tile's mask + calls `Tile.NotifyBodyDirty()`; `Structure.Destroy` XORs the same bits back and notifies again. Refresh fires `cbBodyChanged` → `OnTileBodyChanged` marks both body **and** overlay chunks dirty (the mask affects both bakes).
-- **Excavation hole suppression (`bodyRenderSuppressed` + `lightAsAir`)**: digging pits keep their tile solid (`preservesTile`) but draw their own receding-substrate "dish" sprite over the cell (see [DiggingPit.cs](../Model/Structure/DiggingPit.cs)). Two `bool`s on `Tile` let the cell read as a hole without touching solidity:
+- **Excavation hole suppression (`bodyRenderSuppressed` + `lightAsAir`)**: extraction buildings (digging pits, quarries) keep their tile solid (`preservesTile`) but draw their own receding-substrate "dish" sprite over the cell (see [ExtractionBuilding.cs](../Model/Structure/ExtractionBuilding.cs)). Two `bool`s on `Tile` let the cell read as a hole without touching solidity:
   - `bodyRenderSuppressed`: the cell skips its own body + overlay quads, so the dug-out (transparent) region of the dish shows the background wall / sky behind. Neighbours also treat the cell as **air for the body silhouette contest**, so their edges toward the hole stay jagged instead of flat-seaming against it.
-  - `lightAsAir`: neighbours treat the cell as **air for the normal-map (lighting) bake**, so edges facing the hole light as exposed cliffs. The pit sets this only past ~10% dug (a barely-dug pit shouldn't pop neighbours bright); below that the cell still lights as solid. Binary per side — the lower edge where substrate still remains is slightly over-lit; a true per-pixel ("half-occupied") solution is deferred.
+  - `lightAsAir`: neighbours treat the cell as **air for the normal-map (lighting) bake**, so edges facing the hole light as exposed cliffs. It's set only past ~10% dug (a barely-dug hole shouldn't pop neighbours bright); below that the cell still lights as solid. Binary per side — the lower edge where substrate still remains is slightly over-lit; a true per-pixel ("half-occupied") solution is deferred.
   - The body bake therefore keeps **two independent masks**: `bodySolid`/`bodyWin` (silhouette; a `bodyRenderSuppressed` neighbour reads as air, via `AccumulateTypeBoundary`) and `nMask` (lighting; a `lightAsAir` neighbour reads as air, via `LightSolidAt`). Away from such cells both equal the plain solidity bake, so normal terrain is unaffected.
   - The dish sprite samples its substrate with a same-type-aware cardinal mask (flat only toward same-substrate solid neighbours, jagged toward air / other types) and carves the bowl from the **full** substrate including its 2px overhang borders — that's what preserves the jagged inter-type seam at the bottom. Its normal map is re-baked per carve via `TileSpriteCache.BakeMaskedNormalMap` so the receding bowl is lit as a real cut surface.
-  - Because these flags drive **neighbours'** bakes, `OnTileBodyChanged` dirties the full 3×3 (not self-only). `DiggingPit` sets/clears the flags in `RebuildDishVisual` / `Destroy` and calls `NotifyBodyDirty`; neither flag is saved — both are re-derived on load. (The older `bodyEdgeSuppressMask` is still a self-only override, but shares the now-3×3 refresh path.)
+  - Because these flags drive **neighbours'** bakes, `OnTileBodyChanged` dirties the full 3×3 (not self-only). `ExtractionBuilding` sets/clears the flags in `RebuildDishVisual` / `Destroy` and calls `NotifyBodyDirty`; neither flag is saved — both are re-derived on load. (The older `bodyEdgeSuppressMask` is still a self-only override, but shares the now-3×3 refresh path.)
 - **Live growth + health state** (`OverlayGrowthSystem`): once per real-time second, dirt tiles with `moisture > 40` (when `temperature > 5°C`) and `y >= World.surfaceY[x] - 5` (within 5 below the original ground line) roll a small chance to sprout grass on each non-grassy, exposed, non-flooded L/R/U side (~½ in-game day expected wait per side). The depth gate keeps grass overlay an outdoor / shallow-skylight feature; deeper caves get mushrooms / moss via FlowerController instead. Tiles deeper than the gate skip both growth and state evolution. Bottom never grows. The same Tick also evolves a per-tile `Tile.overlayState` (Live / Dying / Dead) — death is a per-tick roll while conditions warrant it (cold/dryout → Dying, deep freeze → Dead, ~10 s steady-state average), recovery to Live is the slower fresh-grass roll. The chunked renderer maintains **one mesh per overlay state** per (chunk × tile-type): tiles in different states emit quads into different meshes, each bound to its state's atlas array (`grass` / `grass_dying` / `grass_dead`). Atlas geometry is identical across variants so per-side bit semantics are unchanged. See SPEC-systems "Soil Moisture" for the dispatch slot and full state-machine table.
 
 ### Decorative scatter (flowers, mushrooms, moss)
@@ -301,6 +301,46 @@ shaders still carry the in-CBUFFER pattern and happen to render fine
 treat any new shader's `_RendererColor` placement as correctness-critical,
 not just a perf nicety.
 
+### Per-mouse fur recolor
+
+Mice get fur color variation with **no extra sprites** via an exact-color palette
+swap baked into `Custom/Sprite` (the shared sprite shader). `frag` runs `RemapFur`:
+the 5 known cool-gray fur shades (highlight `9aa0a4`, main `91989c`, shadow `898e91`,
+eep `707679`, eep `6a7174`) are remapped to a per-renderer `_FurColor` plus each
+shade's original per-channel offset from the main — so authoring just the new main
+color reconstructs its highlight/shadow/eep shades. Every other pixel (eyes = pure
+black/white, pink paws/ears, and **all non-mouse sprites**) passes through untouched.
+
+- **Why exact-match keying is safe**: the project is **Gamma** color space and the
+  Animals atlas is Point-filtered + uncompressed, so texels arrive as their authored
+  sRGB values — no linearization, no filtering blends. (In a Linear project this
+  approach would need color-space conversion; revisit `RemapFur` if that ever changes.)
+- **Identity default**: `_FurColor` defaults to the main shade (`91989c`), making the
+  remap a no-op for any renderer that never gets a per-renderer value. That's every
+  sprite except mouse body parts, so the global shader change is inert elsewhere.
+- **Per-mouse pick**: `Db.FurColorForSeed(rngSeed)` hashes the saved seed directly
+  (not via `Animal.random`, so the AI RNG stream is untouched) and does a **weighted**
+  pick over the `furColors.json` palette (each entry has a `weight`; gray dominates,
+  reds are rare) — deterministic and stable across save/load with **no new save field**.
+  Caveat: reordering or reweighting the palette reshuffles existing mice on next load
+  (cosmetic). Palette colors are authored desaturated (~30% toward the base gray) so the
+  variation reads as subtle fur tone, not costume color.
+- **Application**: `AnimationController.ApplyFurColor` sets `_FurColor` (MPB,
+  `[PerRendererData]` so SRP batching holds) on every body SpriteRenderer, excluding
+  the clothing renderers and chat bubble. Front/back/eep variants are sprite-swaps on
+  these same renderers, so one set covers all of them. Called once from `Animal.Start`.
+  (Known caveat: Unity clears SR MPBs on sprite *reimport* during Play — a reimported
+  mouse reverts to default gray until respawn; harmless in builds. Move to a LateUpdate
+  re-apply only if this bites in practice.)
+- **UI head icon** (`MouseHeadIcon`): the portrait widget recolors too, via a parallel UI
+  shader `Custom/MouseHeadUI` ([MouseHeadUI.shader](../Lighting/MouseHeadUI.shader)) — built
+  on Unity's UI/Default (full clip-rect + stencil, so it works in ScrollRects / masks) with
+  the same `RemapFur`. The fur color rides in as the Image's **vertex color** (`image.color`
+  set from `FurColorForSeed`), so all icons share one material (`Resources/Materials/MouseHeadUI.mat`)
+  and still batch. `RemapFur` + the 5 source shades are intentionally **duplicated** between
+  `Sprite.shader` (world SpriteRenderer) and `MouseHeadUI.shader` (Canvas UI) — keep them in
+  sync if the source palette ever changes.
+
 **Current health metric** (see [project-srp-batcher-metric memory] for
 the formula): srpHealth = 1 − SetPass / Draws. Pre-atlas baseline ~0.08;
 post-Animals atlas ~0.16; post-all-atlases + shader fix ~0.29. Target for
@@ -375,7 +415,7 @@ Draws sprites with `Hidden/NormalsCapture` override into `_CapturedNormalsRT` (f
 |---|---|
 | 0.80–1.0 | Solid tile. Range encodes edge depth for underground darkening — 1.0 = at exposed surface (fully lit), 0.80 = deep interior (darkened to `deepFloor`). Extracted in `LightComposite` as `saturate((alpha − 0.80) / 0.20)`. |
 | 0.5 | Lit-only (full light). |
-| 0.3 | Directional-only (sun + ambient only; `LightCircle` skips torch for these pixels). |
+| 0.3 | Directional-only (sun + ambient only; `LightCircle` skips torch for these pixels). **Promoted to 0.5 (lit-only) when `_InteriorLit` is set** (SettingsManager.wallShadows on) so enclosed-building interiors — burrow facade/backdrop + mice/furniture inside, all on the **Interior** Unity layer — receive torchlight, with wall occlusion handled by the ray-march above. The burrow's preserved-tile backdrop is put on the Interior layer too (not the solid shadow-caster tier) so the burrow's own body never self-occludes. See `InteriorLayer.cs`, `NormalsCapture.shader` (`effShadowAlpha`). |
 | 0.0 | No sprite (flat-normal fallback). |
 
 **Tile border clipping**: tiles use pre-baked 20×20 sprites whose alpha already encodes the border shape. NormalsCapture clips on `_MainTex` alpha for both tiles and non-tiles — no per-pixel atlas lookup needed.
@@ -429,6 +469,12 @@ The RT uses `FilterMode.Point`, so the in-front/behind boundary is always sprite
 **Ambient fill.** Two-part model: clear to `LightFeature.deepAmbientColor`, then blit `SunController.GetAmbientColor()` modulated by `_SkyExposureTex` via `LightAmbientFill.shader`. See §Sky exposure for the full model.
 
 **Point lights** (torches, etc.): `cmd.DrawMesh` per-light quad scaled to `outerRadius × 2`, screen blend (`BlendOp Add, Blend One OneMinusSrcColor`), radial falloff × NdotL. Skips pixels where normals RT alpha is 0–0.4 (directional-only tier).
+
+**Wall occlusion (`_PointShadows`)**: when `SettingsManager.wallShadows` is on, `LightCircle.shader` **sphere-traces one ray** (Inigo Quilez SDF soft shadow) from each lit fragment toward the light through the occluder **distance field** (`_OccluderDist`, built by [`OccluderField.cs`](../Lighting/OccluderField.cs)). Each step leaps by the field's distance-to-nearest-wall (big leaps across open space → a few steps; the dominant open pixels of a big light are cheapest), accumulating `res = min(res, K·d/t)`; if it reaches a wall (`d < eps`) it's full umbra, otherwise `res` is the penumbra and `shadow = 1 − res`. **`K`** tunes hardness (higher = sharper edge). Sampled in world space via `(worldPos + 0.5)/_GridSize` (tiles are centered on integer coords). This is **view-independent**, so unlike the earlier fixed-step / area-source attempts it has no step/grid aliasing (no banding/rings) and no perpendicular-source artifacts (no false darkening or "parabola" in cramped interiors — a short interior ray never gets close enough to a wall to darken, so burrow interiors stay lit). Soft penumbra widens with occluder→receiver distance; expect mild AO-like darkening where a *distant* light's ray grazes a wall. **Only non-solid receivers trace** (`ns.a < 0.78`, from the normals RT): a wall's own lit face is lit by the radial falloff, and a solid receiver sits at distance 0 so it would self-shadow. Lighting stays full per-pixel; the field only answers "how close is the nearest wall along the ray to the light?". Off (legacy) = unoccluded radial light.
+
+> **OccluderField** mirrors `SkyExposure`: a per-tile **RFloat** world-mapped texture (bilinear), rebuilt on a dirty flag from `cbTileTypeChanged` + `cbBodyChanged`. A 2-pass **chamfer** distance transform (ortho 1, diag √2 ≈ Euclidean) floods outward from **occluder** cells = `tile.type.solid && !bodyDrawnByStructure` — real earth/walls but NOT a burrow/pit's carved footprint (stays model-solid yet must not shadow its own interior; pairs with the Interior-tier promotion). Distance is in tiles, clamped to `MaxDistTiles`. Occluders are **tiles only** — free-standing buildings (houses) don't cast point-light shadows; terrain walls and burrows do. Digging pits/quarries keep their tile solid and *aren't* carved, so they currently read as occluders (could be excluded via `bodyRenderSuppressed` if undesired).
+
+> **OccluderField** mirrors `SkyExposure`: a per-tile R8 world-mapped texture (point-filtered), rebuilt on a dirty flag from `cbTileTypeChanged` + `cbBodyChanged`. Each cell is 1 if it's an **occluder** = `tile.type.solid && !bodyDrawnByStructure` — real earth/walls but NOT a burrow/pit's carved footprint (which stays model-solid yet must not shadow its own interior; pairs with the Interior-tier promotion). Occluders are **tiles only** — free-standing buildings (houses) don't cast point-light shadows; terrain walls and burrows do. The shader walks cells in world space (world coords == tile coords); `_GridSize = (nx, ny)` maps a cell to its texel via `(cell + 0.5)/_GridSize` (same convention as `SkyExposure.hlsl`).
 
 **Sun** (directional): `cmd.Blit(null, LightRTId, sunMat)`, additive blend (`BlendOp Add, Blend One One`), NdotL with `_SunDir`. Shadow ray march is **disabled** (commented out in `LightSun.shader` for performance). **Must use `cmd.Blit`, not `cmd.DrawMesh`** — DrawMesh silently fails to write to the temp RT for cameras without PixelPerfectCamera (e.g. SkyCamera); Blit handles its own fullscreen geometry and RT binding internally, bypassing the issue.
 
@@ -979,6 +1025,22 @@ Sparse glowing sparks that drift up from lit fires at night — pure ambience, n
 **Don't manually pixel-snap the particles.** The `PixelPerfectCamera` already rasterizes the additive sparks to native pixels, so they stay crisp on their own. Rounding each particle's position to the pixel grid and writing it back via `SetParticles` (an earlier attempt) **corrupts the sim**: at `riseSpeed` ≈ 0.23px/frame the rounded base never accumulates past 0.5px, so the rise freezes and only ticks forward on a frame hitch — it reads as the rising randomly turning on/off.
 
 **Even spacing.** Spawn *timing* is a per-emitter fractional accumulator (`spawnAccum`, keyed by `LightSource`), emitting on even ~1/rate intervals — NOT independent per-frame probability, which is a Poisson process that clusters and leaves conspicuous gaps. Same cost (one float add + compare per fire). Per-spark position/velocity jitter uses a **private `System.Random`**, never `UnityEngine.Random`, so embers never perturb the sim stream. `WorldController.ClearWorld` calls `EmberManager.instance.Clear()` to flush in-flight sparks and the accumulators on world reload.
+
+---
+
+## Foundry visuals
+
+The foundry (`Foundry : Building`, SPEC-systems §Foundry) layers three custom visuals over its base sprite. The art is a **cutaway shaft furnace**: a flat-bottomed hearth where ore sits and molten pools, a firebox grate below it, and a chimney. Three companion sprites: `foundry.png` (body, with a dull-red firebox painted in), `foundry_w.png` (decorative-liquid zone mask over the hearth cavity), `foundry_f.png` (the firebox glow overlay).
+
+**Firebox glow + cast light (heat-gated `LightSource`).** Reuses the fire-art + emission path (§Fire sprites), but driven by HEAT instead of sun/fuel/worker gating. A new `LightSource.heatGated` mode reads `glow01Provider` — wired to `Foundry.HeatGlow01()` (`heat / FireGlowReferenceHeat`, clamped 0..1) — and from that ONE strength scales: the cast light's `intensity`, the `foundry_f` emission brightness (`CurrentEmissionScale`), AND the flame art's **opacity** (`fireSR.color.a`, set only for heat-gated lights). So a cold pot shows the dull-red painted firebox through a transparent overlay; a hot one blazes orange, day or night. Created in the `Foundry` ctor (warm-orange `lightColor`), not the generic `Building` light blocks.
+
+**Molten emissive glow.** The molten must read as self-luminous (constant day/night) AND be occluded by mice — so it uses the **emission path**, exactly like a torch flame:
+- `Building.DisplayLiquidEmissive()` (Foundry → true) flags a decorative-liquid zone as emissive. In `WaterController.UpdateSurfaceMask`, an emissive zone's filled pixels are stamped (255) into a separate **`_emissiveTex`** (Alpha8) instead of the lit `_decorTex` — i.e. the foundry's molten does NOT render on the lit decorative-water sprite (which would shift colour day↔night).
+- A dedicated `WaterSpriteMoltenGlow` sprite (`MoltenGlow.shader`) draws the molten COLOUR (per-metal `_tintTex` + shimmer) on the **`Glow` layer** (main camera, in-world sort → mice occlude it; excluded from NormalsCapture). It's registered as a **pure-emitter `LightSource`** (zero radius/intensity, casts no light) with `_emissiveTex` bound as its `_EmissionMap`, so the emission pass saturates the lightmap at molten pixels and the composite shows the colour full-bright. `EmissionWriter`'s sort-mask drops the emission where a closer sprite (a mouse) is in front, so mice neither hide behind it nor get glow-bled.
+- **Dead ends (why neither simpler layer works):** `Unlit` is full-bright but the overlay camera draws it on top of *everything* (mice included). Plain `Glow` is in-world-sorted but the composite *multiplies* it by light → reads as a lit flat surface, not emissive, and picks up nearby point lights. Only the emission path gives full-bright + occluded.
+- **Molten fill = molten only.** `Foundry.TryGetDisplayLiquid` reports fill from `MoltenFen()` ONLY (not unmelted chunks), so no liquid appears until an ore finishes melting — before that the ore shows as its item sprite. Tint is `DominantMoltenColor()`.
+
+**In-hearth item sprites (`FoundryVisuals`).** A `Components/FoundryVisuals` MonoBehaviour (modeled on `PortStubVisuals`) spawns two child SpriteRenderers at authored pixel spots on the 32×32 sprite — the dominant ore chunk in the hearth and the cast bar/tool on the front dish — using the items' `qlow` quarter art, anchored bottom-centre via `sprite.bounds`. The ore sorts below the molten so the rising liquid covers it; the output inventory's own centred storage sprite is suppressed (the dish sprite replaces it). `Refresh()` is callback-driven from `Foundry.Tick`.
 
 ---
 

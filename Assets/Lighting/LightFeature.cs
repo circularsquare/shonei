@@ -133,15 +133,21 @@ public class LightFeature : ScriptableRendererFeature {
         // Terrain tiles keep their depth (separate chunked shader). Tolerate a missing
         // SettingsManager (defaults to shaded).
         float flatNormals = (SettingsManager.instance != null && SettingsManager.instance.flatLighting) ? 1f : 0f;
+        // Wall-shadow / interior lighting toggle (SettingsManager.wallShadows). Drives two
+        // coordinated globals: _InteriorLit promotes enclosed-building interiors from the
+        // directional-only tier (skip torches) to lit-only (receive torches) in the capture
+        // pass; _PointShadows enables the per-pixel wall ray-march in the light pass. Both off
+        // = legacy behaviour. Tolerate a missing SettingsManager (defaults to off/legacy).
+        float wallShadows = (SettingsManager.instance != null && SettingsManager.instance.wallShadows) ? 1f : 0f;
         // Skip cameras that see no sprites participating in the normals RT pipeline
         // (lit, directional-only, or water). The Unlit overlay camera hits this check
         // because its culling mask only contains layers excluded from all three masks.
         var cullingMask = renderingData.cameraData.camera.cullingMask;
         if (cullingMask == 0) return;
         if ((cullingMask & (litLayers | directionalOnlyLayers | waterLayer | backgroundLayer | tileChunkLayer)) == 0) return;
-        capturePass.Setup(litLayers, shadowCasterLayers, directionalOnlyLayers, waterLayer, backgroundLayer, tileChunkLayer, flatNormals);
+        capturePass.Setup(litLayers, shadowCasterLayers, directionalOnlyLayers, waterLayer, backgroundLayer, tileChunkLayer, flatNormals, wallShadows);
         renderer.EnqueuePass(capturePass);
-        lightPass.Setup(ambientNormal, deepAmbientColor, skyLightBlend, sortRampRange, behindFarHeightFactor, emissionStrength, tileChunkLayer);
+        lightPass.Setup(ambientNormal, deepAmbientColor, skyLightBlend, sortRampRange, behindFarHeightFactor, emissionStrength, tileChunkLayer, wallShadows);
         renderer.EnqueuePass(lightPass);
     }
 
@@ -177,6 +183,7 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
     // MPB. (Both chunked overrides instead read _SortBucket from a per-chunk MPB.)
     static readonly int SortBucketGlobalId = Shader.PropertyToID("_SortBucket");
     static readonly int FlatNormalsId      = Shader.PropertyToID("_FlatNormals");
+    static readonly int InteriorLitId      = Shader.PropertyToID("_InteriorLit");
 
     // Camera-facing-normal + directional-only-tier clear for non-world cameras.
     //   rg = 0.5 → decoded normal (0,0,-1) camera-facing.
@@ -197,6 +204,7 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
     int backgroundMask    = 0;
     int tileChunkMask     = 0;
     float flatNormals     = 0f;   // 1 = write flat camera-facing normals (flat-lighting mode)
+    float interiorLit     = 0f;   // 1 = promote dir-only tier (0.3) to lit-only (0.5) — see _InteriorLit
 
     // The normals RT this pass produced this frame. LightPass reads it (declares a
     // RenderGraph read dependency) and it is also bound as the global
@@ -221,7 +229,7 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
             bgChunkedMat = CoreUtils.CreateEngineMaterial(chunkedBackgroundNormalsCapture);
     }
 
-    public void Setup(int litMask, int shadowMask, int dirOnlyMask, int waterMask, int backgroundMask, int tileChunkMask, float flatNormals) {
+    public void Setup(int litMask, int shadowMask, int dirOnlyMask, int waterMask, int backgroundMask, int tileChunkMask, float flatNormals, float interiorLit) {
         this.litMask          = litMask;
         this.shadowMask       = shadowMask;
         this.dirOnlyMask      = dirOnlyMask;
@@ -229,6 +237,7 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
         this.backgroundMask   = backgroundMask;
         this.tileChunkMask    = tileChunkMask;
         this.flatNormals      = flatNormals;
+        this.interiorLit      = interiorLit;
     }
 
     public void Dispose() {
@@ -246,6 +255,7 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
         public bool isWorldCam;
         public Color clearColor;
         public float flatNormals;
+        public float interiorLit;
         public bool hasBackground, hasDirOnly, hasLitOnly, hasChunked, hasShadow, hasWater;
         public RendererListHandle background, chunked;
         public readonly RendererListHandle[] dirOnly = new RendererListHandle[SortBucketUtil.BucketCount];
@@ -294,6 +304,7 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
             data.isWorldCam    = isWorldCam;
             data.clearColor    = isWorldCam ? Color.clear : NonWorldClear;
             data.flatNormals   = flatNormals;
+            data.interiorLit   = interiorLit;
             data.hasBackground = data.hasDirOnly = data.hasLitOnly = false;
             data.hasChunked    = data.hasShadow  = data.hasWater   = false;
             for (int b = 0; b < SortBucketUtil.BucketCount; b++)
@@ -368,6 +379,8 @@ class NormalsCapturePass : ScriptableRenderPass, System.IDisposable {
                 // Drives the generic override's flat-normal branch; the chunked / water
                 // overrides don't declare _FlatNormals, so terrain keeps its depth.
                 cmd.SetGlobalFloat(FlatNormalsId, d.flatNormals);
+                // Drives the generic override's dir-only→lit-only promotion (interior point lighting).
+                cmd.SetGlobalFloat(InteriorLitId, d.interiorLit);
                 cmd.ClearRenderTarget(false, true, d.clearColor);
 
                 // Non-world cameras (SkyCamera etc.) only need the cleared tier values —
@@ -416,6 +429,7 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
     float sortRampRange;
     float behindFarHeightFactor;
     float emissionStrength = 1f;
+    float pointShadows = 0f;   // 1 = ray-march point lights against solid tiles (see _PointShadows)
     int   tileChunkMask;
     Color deepAmbientColor;
     NormalsCapturePass capture;               // for the normals RT handle (set by LightFeature.Create)
@@ -450,7 +464,7 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         CoreUtils.Destroy(circleMesh);
     }
 
-    public void Setup(float ambientNormal, Color deepAmbientColor, float skyLightBlend, float sortRampRange, float behindFarHeightFactor, float emissionStrength, int tileChunkMask) {
+    public void Setup(float ambientNormal, Color deepAmbientColor, float skyLightBlend, float sortRampRange, float behindFarHeightFactor, float emissionStrength, int tileChunkMask, float pointShadows) {
         this.ambientNormal         = ambientNormal;
         this.deepAmbientColor      = deepAmbientColor;
         this.skyLightBlend         = skyLightBlend;
@@ -458,6 +472,7 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         this.behindFarHeightFactor = behindFarHeightFactor;
         this.emissionStrength      = emissionStrength;
         this.tileChunkMask         = tileChunkMask;
+        this.pointShadows          = pointShadows;
     }
 
     // Set by LightFeature.Create. RecordRenderGraph reads capture.NormalsHandle to
@@ -472,6 +487,7 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         public Mesh circleMesh;
         public MaterialPropertyBlock mpb;
         public float ambientNormal, skyLightBlend, sortRampRange, behindFarHeightFactor, emissionStrength;
+        public float pointShadows;
         public Color deepAmbientColor;
         public int tileChunkMask;
         public Camera cam;
@@ -510,6 +526,7 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
             data.sortRampRange = sortRampRange;
             data.behindFarHeightFactor = behindFarHeightFactor;
             data.emissionStrength = emissionStrength;
+            data.pointShadows  = pointShadows;
             data.deepAmbientColor = deepAmbientColor;
             data.tileChunkMask = tileChunkMask;
             data.cam           = cam;
@@ -554,6 +571,9 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
                 cmd.SetGlobalColor("_DeepAmbient",     deepAmbient);
                 cmd.SetGlobalFloat("_SortRampRange",         d.sortRampRange);
                 cmd.SetGlobalFloat("_BehindFarHeightFactor", d.behindFarHeightFactor);
+                // Wall ray-march toggle for the point-light circle draw below. _WorldToUV
+                // (set above) gives the march its world→screen-UV step.
+                cmd.SetGlobalFloat("_PointShadows", d.pointShadows);
                 // Bypass sky-exposure on non-world cameras — their _CamWorldBounds maps
                 // screen UV to world positions that don't match what they draw.
                 cmd.SetGlobalFloat("_SkyExposureBypass", isWorldCam ? 0f : 1f);

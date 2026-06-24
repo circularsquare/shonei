@@ -11,6 +11,7 @@
         ],
         "depth": 1,
         "solidTop": true,
+        "sunPermeable": true,
         "noMaintenance": true,
         "category": "structures",
         "shapes": [
@@ -88,6 +89,29 @@
             { "nx": 1, "ny": 1, "sprite": "roof2" }
         ]
     },{
+        "id": 150,
+        "constructionCost": 8,
+        "name": "greenhouse",
+        "description": "warms plants inside; faster growth, less watering",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "glass", "quantity": 10 },
+            { "name": "planks", "quantity": 2 },
+            { "name": "dirt", "quantity": 1 }
+        ],
+        "depth": 2,
+        "isBuilding": true,
+        "isGreenhouse": true,
+        "greenhouseTargetTempC": 25,
+        "greenhouseTempPull": 0.5,
+        "greenhouseGrowthMult": 1.1,
+        "greenhouseMoistureMult": 0.5,
+        "category": "structures",
+        "shapes": [
+            { "nx": 1, "ny": 1 },
+            { "nx": 1, "ny": 2 }
+        ]
+    },{
         "id": 5,
         "constructionCost": 3,
         "constructionCostPerTile": true,
@@ -96,8 +120,8 @@
         "description": "click in two places to connect them. cost scales with length.",
         "nx": 1, "ny": 1,
         "ncosts": [
-            { "name": "wood", "quantity": 0.5 },
-            { "name": "ramie", "quantity": 0.25 }
+            { "name": "wood", "quantity": 1.0 },
+            { "name": "ramie", "quantity": 1.0 }
         ],
         "depth": 2,
         "category": "structures",
@@ -375,6 +399,21 @@
         "category": "structures",
         "defaultLocked": true
     },{
+        "id": 200,
+        "constructionCost": 2,
+        "name": "work flag",
+        "description": "assign mice to work and rest here",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 1 },
+            { "name": "ramie cloth", "quantity": 1 }
+        ],
+        "depth": 0,
+        "noMaintenance": true,
+        "isBuilding": true,
+        "isWorkFlag": true,
+        "category": "structures"
+    },{
         "id": 43,
         "constructionCost": 25,
         "name": "fireplace",
@@ -573,10 +612,16 @@
         "njob": "hauler",
         "solidTop": true,
         "category": "production",
-        "foundryCapacityLiang": 30,
+        "foundryCapacityLiang": 10,
         "hasFuelInv": true,
         "fuelCapacity": 20,
-        "fuelBurnRate": 40,
+        "fuelBurnRate": 60,
+        "lightIntensity": 0.9,
+        "lightInnerRadius": 1,
+        "lightOuterRadius": 9,
+        "lightCenterFlatten": 0.6,
+        "lightFlicker": 0.06,
+        "fireFps": 7,
         "defaultLocked": true
     },{
         "id": 104,
@@ -722,11 +767,18 @@
         "capacity": 1,
         "isWorkstation": true,
         "requiredTileName": "stone",
+        "preservesTile": true,
         "extractsTileOverTime": true,
         "solidTop": true,
+        "depleteAt": 100,
+        "interiorTiles": [
+            { "dx": 0, "dy": 0 }
+        ],
+        "tileRequirements": [
+            { "dx": 0, "dy": 1, "mustNotBePlant": true }
+        ],
         "category": "production",
-        "defaultLocked": true,
-        "depleteAt": 100
+        "defaultLocked": true
     },{
         "id": 112,
         "constructionCost": 25,
@@ -926,7 +978,9 @@
         "processorTended": true,
         "processorCapacityLiang": 10,
         "lightWhileCrafting": true,
-        "lightOuterRadius": 6,
+        "lightIntensity": 0.95,
+        "lightInnerRadius": 1,
+        "lightOuterRadius": 8,
         "lightFlicker": 0.06
     }
 ]

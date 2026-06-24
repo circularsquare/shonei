@@ -54,6 +54,7 @@
                 "id": 14,
                 "name": "gypsum",
                 "decayRate": 0.05,
+                "excludeFromGroupInput": true,
                 "children": null
             }
         ]

@@ -3,6 +3,7 @@ server
     - in powershell in shonei-server: .\deploy\deploy.ps1
 game 
     - in shonei with unity editor closed: .\Tools\build-and-publish.ps1
+ssh root@5.161.112.237 "cat /opt/shonei/accounts.json 2>/dev/null | python3 -c 'import sys,json; d=json.load(sys.stdin); [print(k) for k in sorted(d)]' || (echo FALLBACK; find / -name accounts.json 2>/dev/null)"
 
 
 CONTENT
@@ -53,9 +54,7 @@ CONTENT
 - foraging job / tech?
 
 - metallurgy 
-    - copper / tin / bronze ingots
-    - foundry
-    - fuel system (instead of manual coal and wood recipes for each)
+    - more uses for metal? 
 
 - structures 
     - hanging ropes? for building down off cliffsides
@@ -69,6 +68,9 @@ CONTENT
 
 - mining tools plan
 - partial progress on books (book in progress held at scriptorium?)
+
+- hats! 
+    - job gated 
 
 SERVER
 - offline progress (see offline progress plan)
@@ -85,9 +87,13 @@ VISUALS
 - update all plants to have blob swaying
 - gradual snow buildup
 - more sounds (see sounds spec)
-- blueprint hovered over dirt tile pretty hard to see. maybe also add a low opacity whitge frame
+- blueprint hovered over dirt tile pretty hard to see. maybe also add a low opacity white frame
+
+- mosue fur variation
 
 OPTIMIZATION  
+why is it using 38% gpu with all lighting off?
+
 
 MOUSE AI
 - ponder inventory management
@@ -120,24 +126,14 @@ upsize more workshop buildings
     laboratory
     weaver
     tailor
-test kiln
-
-why is it using 38% gpu with all lighting off?
-
-- metal
-
-
-- mice preferring to use crucible over foundry
-    - balance crucible to use a lot more fuel, probably
-- foundry max capacity... 20 metal? 
-- foundry light scaling with heat
-    - split heat system out in to specific foudry class
-- how does melting work...
-    - cool display for liquids currently inside
-- help panel explaining hwo it works
-
-- global inv "use" toggle doesn't do anything for leaves (they are still used), explain or change 
-    - in general what does use toggle do? explain
 
 TODAY
 
+greenhouse
+    - thermometer   
+
+
+work flag system 
+- have mice try to move closer to work flag?
+
+- burrow lighting

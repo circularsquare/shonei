@@ -165,6 +165,15 @@ public class StructType {
     public bool noMaintenance {get; set;}
     public float pathCostReduction {get; set;} // subtracted from edge cost for horizontal moves (roads: 0.1)
     public bool solidTop {get; set;} // can animals stand on top of this structure?
+    // Lets sunlight through despite being solidTop — slatted / mostly-open structures (platforms)
+    // and any future see-through floors. Excludes the structure from BlocksSun so it doesn't shade
+    // plants below/around it. Greenhouses are excluded separately (isGreenhouse). See BlocksSun.
+    public bool sunPermeable {get; set;}
+    // Does this structure cast shade — block sunlight from reaching plants? Sun-blocking keys off
+    // solidTop (roofs, floors, buildings) but skips greenhouses (glass) and sunPermeable structures
+    // (slatted platforms). Read by World.BlocksSun for the plant sun-exposure raycast. Distinct from
+    // the rain/overhead predicate (World.BlocksSky), which also counts blocksRain (tarps).
+    public bool BlocksSun => solidTop && !isGreenhouse && !sunPermeable;
     // Decoupled rain-shelter flag. solidTop also blocks rain (a roofed-over tile is by
     // definition sheltered), but some structures want to block rain WITHOUT being walkable
     // on top — e.g. tarps. Authors set blocksRain=true on those. World.IsExposedAbove and
@@ -244,6 +253,27 @@ public class StructType {
     // isBuilding: true = use Building class regardless of depth (default false = depth 0 uses Building; others don't).
     // Allows foreground/other-depth structures to have full Building features (fuelInv, uses, storage, etc.).
     public bool isBuilding {get; set;}
+    // isGreenhouse: true = this structure is a climate frame plants grow inside. It lives at a non-zero
+    // depth (foreground) so it never contests the plant's structs[0] slot; the footprint tiles back-point
+    // to it via Tile.greenhouse. A plant whose anchor tile is greenhouse-covered grows in a regulated
+    // climate (below), grows faster, draws less moisture, and is height-capped to the frame.
+    // See Plant.Grow / SPEC-systems §Plant Growth.
+    public bool isGreenhouse {get; set;}
+
+    // ── Greenhouse climate tuning (only read when isGreenhouse) ───────────────
+    // A plant rooted on a greenhouse-covered tile reads these off tile.greenhouse.structType.
+    // Defaults model the starter greenhouse; a future larger/stronger greenhouse just overrides
+    // them in JSON (e.g. greenhouseTempPull 1.0 for perfect regulation). All read in Plant.Grow
+    // and MoistureSystem's per-plant draw.
+    public float greenhouseTargetTempC {get; set;} = 25f;   // interior temp (°C) the frame pulls toward
+    public float greenhouseTempPull {get; set;} = 0.5f;     // 0..1 fraction of (target − ambient) applied; 0.5 = halfway, imperfect
+    public float greenhouseGrowthMult {get; set;} = 1.1f;   // growth-rate multiplier inside (+10%)
+    public float greenhouseMoistureMult {get; set;} = 0.5f; // scales transpiration draw AND stage moisture cost (half)
+
+    // The regulated temperature a greenhouse presents to a plant inside it: ambient pulled a
+    // fraction of the way toward the target. Single source of truth shared by the growth gate
+    // (Plant.Grow) and the InfoPanel comfort bar (StructureInfoView) so the two never drift.
+    public float RegulatedTemp(float ambient) => ambient + (greenhouseTargetTempC - ambient) * greenhouseTempPull;
     // Fuel inventory: internal resource consumed over time (torch burns wood; foundry burns any fuel, etc.).
     // hasFuelInv = true → Building creates a fuelInv and WOM registers a standing supply order on placement.
     public bool hasFuelInv {get; set;}
@@ -302,6 +332,11 @@ public class StructType {
     // `structType.name == "house"` check that's sprinkled across Animal AI, info panels,
     // and capacity queries. Set on every housing tier (house, shack, future burrow).
     public bool isHousing {get; set;}
+
+    // Canonical "this building is a work flag" — a marker mice can be assigned to so it becomes
+    // their work anchor (they gather and work around it instead of home). Drives the assignment
+    // widget in the info panel and Animal.AssignToFlag validation. See plans/work-anchors-and-housing.
+    public bool isWorkFlag {get; set;}
 
     // Decoration: nearby animals gain a happiness point when within decorRadius (Chebyshev) of this building.
     // A decoration with hasFuelInv=true only counts when its reservoir has fuel (e.g. fountain needs water).

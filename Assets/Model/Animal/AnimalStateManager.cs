@@ -17,6 +17,11 @@ public class AnimalStateManager {
     // unemployed (who have no work pulling them out) from clustering in their burrow all day.
     private const double WanderOutOfHomeChance = 0.30;
 
+    // How far (Chebyshev tiles) an idle mouse may drift from its work anchor before idle-homing
+    // pulls it back. Within this slack it wanders locally; beyond it, it steps homeward. Keep it
+    // a few tiles so mice mill naturally around the anchor rather than snapping to a single spot.
+    private const int AnchorSlack = 4;
+
     public AnimalStateManager(Animal animal) {
         this.animal = animal;
     }
@@ -110,6 +115,24 @@ public class AnimalStateManager {
                 }
                 return;
             }
+            // Idle-homing: an idle mouse drifts back toward its work anchor (its home today;
+            // a work flag in Step 6) so one that wandered or finished a far task returns to its
+            // territory instead of drifting away. Only fires when meaningfully far (beyond
+            // AnchorSlack) AND a strictly-closer neighbour exists — one tile per idle tick, so
+            // ChooseTask still runs every tick and real work always wins. If no neighbour gets
+            // closer (boxed in) it falls through to the random wander, which can unstick it.
+            Tile anchor = animal.WorkAnchorTile;
+            if (here != null && anchor != null) {
+                int curDist = Mathf.Max(Mathf.Abs(here.x - anchor.x), Mathf.Abs(here.y - anchor.y));
+                if (curDist > AnchorSlack) {
+                    Tile step = PickNeighbourTowardAnchor(animal.PathStartNode(), anchor, curDist);
+                    if (step != null) {
+                        animal.task = new GoTask(animal, step);
+                        if (!animal.task.Start()) animal.task = null;
+                        return;
+                    }
+                }
+            }
             // Random walking when nothing else to do — prefer tiles without mice,
             // only consider direct nav-graph neighbours (no detours via ladders etc.)
             if (here != null && animal.random.Next(0, 5) == 0) {
@@ -140,6 +163,25 @@ public class AnimalStateManager {
         if (candidates != null && candidates.Count > 0)
             return candidates[animal.random.Next(0, candidates.Count)];
         return null; // don't wander if all neighbours have mice
+    }
+
+    // Returns the unoccupied, standable, tile-backed nav neighbour that gets STRICTLY closer
+    // (Chebyshev) to `anchor` than `curDist`, or null if none does (boxed in / all neighbours
+    // occupied) — caller then falls back to a random wander. Greedy single-step homing, the
+    // counterpart to PickRandomNavNeighbour; door waypoints are skipped, but the anchor is an
+    // outside approach tile so greedy stepping reaches it without crossing a door.
+    private Tile PickNeighbourTowardAnchor(Node startNode, Tile anchor, int curDist) {
+        if (startNode == null || anchor == null) return null;
+        var ac = AnimalController.instance;
+        Tile best = null;
+        int bestDist = curDist;
+        foreach (Node n in startNode.neighbors) {
+            if (n.isWaypoint || n.tile == null || !n.standable) continue;
+            if (ac.AnyOtherAnimalOnTile(n.tile, animal)) continue;
+            int d = Mathf.Max(Mathf.Abs(n.tile.x - anchor.x), Mathf.Abs(n.tile.y - anchor.y));
+            if (d < bestDist) { bestDist = d; best = n.tile; }
+        }
+        return best;
     }
 
     // Walks a group item's leaf tree and returns the first leaf with at least `needed` on
@@ -311,24 +353,25 @@ public class AnimalStateManager {
                         wb.workstation.uses++;
                         if (wb.workstation.uses >= wb.structType.depleteAt) {
                             Tile depletedTile = craftTask.workplace;
-                            bool wasPit = wb is DiggingPit;
+                            bool wasExtraction = wb is ExtractionBuilding;
                             wb.Destroy();
-                            // Digging pit kept the tile intact during operation (preservesTile)
-                            // — on full depletion the dirt is finally gone, so empty the tile
-                            // before the platform takes its place. Without this, the follow-up
-                            // platform would sit on top of the original solid substrate.
-                            if (wasPit) depletedTile.type = Db.tileTypeByName["empty"];
+                            // Extraction buildings (digging pit / quarry) keep the tile intact
+                            // during operation (preservesTile) — on full depletion the substrate
+                            // is finally gone, so empty the tile before the platform takes its
+                            // place. Without this, the follow-up platform would sit on top of the
+                            // original solid substrate.
+                            if (wasExtraction) depletedTile.type = Db.tileTypeByName["empty"];
                             StructController.instance.Construct(Db.structTypeByName["platform"], depletedTile);
                             craftTask.Complete();
                             return;
                         }
-                        // Digging pit: refresh the dish visual and drop the workspot
-                        // so the next craft round shows the new excavation depth and
-                        // the digger keeps standing on the receding floor. The animal
-                        // is already standing AT workNode (CraftTask arrived) so it
-                        // needs an explicit SnapTo — otherwise its transform stays at
-                        // the old wy until it walks somewhere else.
-                        if (wb is DiggingPit pit) {
+                        // Extraction building (digging pit / quarry): refresh the dish
+                        // visual and drop the workspot so the next craft round shows the
+                        // new excavation depth and the digger keeps standing on the
+                        // receding floor. The animal is already standing AT workNode
+                        // (CraftTask arrived) so it needs an explicit SnapTo — otherwise
+                        // its transform stays at the old wy until it walks somewhere else.
+                        if (wb is ExtractionBuilding pit) {
                             pit.RebuildDishVisual();
                             if (pit.workNode != null) animal.SnapTo(animal.x, pit.workNode.wy);
                         }

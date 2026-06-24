@@ -8,6 +8,11 @@ using UnityEngine;
 // them, so torchlight from above doesn't bleed into a buried interior. The Interior layer is
 // in the world camera's culling mask, so these sprites still render normally; only their
 // lighting tier changes. See SPEC-rendering §Lighting.
+//
+// When SettingsManager.wallShadows is ON, the capture pass promotes this tier from 0.3 to
+// 0.5 (lit-only) via the _InteriorLit global, so interiors instead RECEIVE point lights and
+// occlusion is handled per-pixel by LightCircle's wall ray-march (a torch inside lights the
+// burrow; one above is blocked by the roof). OFF = the legacy "skip torches entirely" tier.
 public static class InteriorLayer {
     // Resolved on each access (not cached) — a static readonly would lock in -1 forever if
     // the layer didn't exist at type-init, masking a missing-layer setup. NameToLayer is a

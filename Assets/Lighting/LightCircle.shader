@@ -38,9 +38,19 @@ Shader "Hidden/LightCircle" {
             float  _SortRampRange;
             float  _BehindFarHeightFactor;
 
+            // Wall-occlusion toggle (set per frame by LightPass from SettingsManager.wallShadows).
+            // 1 = sphere-trace the occluder distance field toward the light; 0 = no occlusion.
+            float  _PointShadows;
+
             // Populated each frame by NormalsCapturePass.
             TEXTURE2D(_CapturedNormalsRT);
             SAMPLER(sampler_CapturedNormalsRT);
+
+            // Occluder distance field (OccluderField.cs): per-tile world-space distance (tiles) to
+            // the nearest wall, bilinear. _GridSize = (nx, ny). Sphere-traced below for soft shadows.
+            TEXTURE2D(_OccluderDist);
+            SAMPLER(sampler_OccluderDist);
+            float4 _GridSize;
 
             struct Attributes {
                 float3 positionOS : POSITION;
@@ -136,7 +146,37 @@ Shader "Hidden/LightCircle" {
                 float ndotl   = min(hiCeil, dot(normal, toLight) / lerp(1.0, flatRef, _CenterFlatten));
                 ndotl = max(ambientFloor, ndotl);
 
-                return float4(saturate(_LightColor.rgb * (_Intensity * falloff * ndotl)), 1.0);
+                // Soft wall shadows (Inigo Quilez SDF soft shadow): sphere-trace ONE ray from this
+                // fragment toward the light through the occluder distance field. Each step leaps by
+                // the distance to the nearest wall (big leaps across open space → a few steps), and
+                // the penumbra comes from the closest the ray passes a wall relative to how far along
+                // it is (res = min over the ray of K·d/t). View-INDEPENDENT, so no perpendicular-
+                // source artifacts (banding / parabolas) and cramped interiors stay lit (a short
+                // interior ray never gets close enough to a wall to darken). Only NON-solid receivers
+                // trace (ns.a < 0.78): a wall's own lit face is lit by the radial falloff; a solid
+                // receiver sits at distance 0 and would self-shadow.
+                float shadow = 0.0;
+                float2 toL = _LightWorldPos.xy - IN.worldPos.xy;
+                float  distL = length(toL);
+                if (_PointShadows > 0.5 && ns.a < 0.78 && distL > 1e-4) {
+                    const float K = 6.0;        // penumbra hardness — higher = sharper edge
+                    float2 dir = toL / distL;
+                    float2 p   = IN.worldPos.xy;
+                    float  res = 1.0;
+                    float  t   = 0.15;          // bias past the receiver's own cell
+                    [loop]
+                    for (int i = 0; i < 48; i++) {
+                        float2 uv = (p + dir * t + 0.5) / _GridSize.xy;   // tiles centered on integer coords
+                        float  d  = SAMPLE_TEXTURE2D(_OccluderDist, sampler_OccluderDist, uv).r;
+                        if (d < 0.02) { res = 0.0; break; }               // reached a wall → umbra
+                        res = min(res, K * d / t);                        // penumbra: nearest approach / distance
+                        t += max(d, 0.1);                                 // sphere-trace leap; min step avoids stalls
+                        if (t >= distL) break;                            // reached the light → done
+                    }
+                    shadow = 1.0 - res;
+                }
+
+                return float4(saturate(_LightColor.rgb * (_Intensity * falloff * ndotl * (1.0 - shadow))), 1.0);
             }
             ENDHLSL
         }

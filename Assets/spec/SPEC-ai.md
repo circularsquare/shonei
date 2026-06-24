@@ -181,7 +181,7 @@ Tasks reserve sources and destinations during `Initialize()` via `Task.ReserveSt
 | `HaulFromMarketTask` | WOM p3 | merchant | Haul excess items from market back to storage |
 | `ConstructTask` | WOM p2 | building's `njob` | Build or deconstruct a blueprint (both order types live at p2) |
 | `SupplyBlueprintTask` | WOM p2 | building's `njob` | Deliver materials to an incomplete blueprint |
-| `ResearchTask` | WOM p4 | scientist | Navigate to a specific lab, work in loops. Optionally borrows the matching tech book (via `bookSlotInv`) before research and returns it after — book grants 3× research progress per tick while equipped (see SPEC-books.md). |
+| `ResearchTask` | WOM p3 | scientist | Navigate to a specific lab, work in loops. Optionally borrows the matching tech book (via `bookSlotInv`) before research and returns it after — book grants 3× research progress per tick while equipped (see SPEC-books.md). |
 | `ObtainTask` | survival | any | Fetch a specific item (food/equip) |
 | `EepTask` | survival | any | Navigate home and sleep |
 | `DropTask` | drop category | any | Drop excess main inventory — prefers nearby storage/tank (10-tile bonus) over floor. `DropObjective` (shared by Craft/Harvest output drops + book returns) **retries across targets until the item is fully offloaded** — tops off the nearest storage, then spills the remainder to the next storage/floor (floor is the guaranteed sink), so a near-full crate no longer leaves a partial load stuck in the carrier's inventory. On no-reachable-target, or a visit that deposits 0 (discrete item / full floor tile), it stops: logs a warning and sets `animal.dropCooldownUntil = timer + 3f` so `ChooseTask` falls through instead of respawning every tick. The stuck-remainder give-up uses `Complete` (not `Fail`) so chained/best-effort callers aren't torn down |
@@ -194,7 +194,7 @@ Tasks reserve sources and destinations during `Initialize()` via `Task.ReserveSt
 | `FillProcessorTask` | WOM p3 | operator¹ | Picks the batch recipe (scored — `Animal.PickProcessorRecipe`) if not already chosen, then loads a building's `Processor`: fetches the missing remainder of each input **+ the committed fuel** (resumable), delivers into `processor.inputBuffer`, and on completion starts the batch (`Empty`→`Filling`→`Working`). WOM `FillProcessor` order, `isActive` while `Empty`. |
 | `WorkProcessorTask` | WOM p3 | operator¹ | **Tended processors only** (cauldron). Walks to the work-spot and labours on the locked-in batch; `progress` accrues in `HandleWorking` (no per-round consume — the conversion is the single `Tap()`), and on reaching `duration` it **auto-taps** + registers haul-out. WOM `WorkProcessor` order, `isActive` while `Working`. |
 | `TapProcessorTask` | WOM p3 | operator¹ | **Untended processors only** (brewery). Walks to a building whose `Processor` finished fermenting (`Ready`), taps it (`Processor.Tap()` → `Tapped`), and registers haul-out orders. WOM `TapProcessor` order, `isActive` while `Ready`. |
-| `MaintenanceTask` | WOM p2 | mender | Fetch repair materials (¼ × build cost, scaled by repair amount) → walk to work tile → `MaintenanceObjective` ticks up `condition` by 0.05 × efficiency per tick, capped at +40 % per visit. Grants Construction XP. See SPEC-systems.md §Maintenance System. |
+| `MaintenanceTask` | WOM p2 | mender | Fetch repair materials (¼ × build cost, scaled by repair amount) → walk to the repair spot → `MaintenanceObjective` ticks up `condition` by 0.05 × efficiency per tick, capped at +40 % per visit. Grants Construction XP. **Repair spot**: structures with an interior layer (burrows, doored housing) are mended from *inside* — the mender enters via an interior node, same as occupants do in `EepTask`; their work tile sits in solid ground with no standable neighbour so outside-adjacency would never reach them. All others are mended from a standable tile adjacent to the work tile. See SPEC-systems.md §Maintenance System. |
 
 ¹ *operator* = `WorkOrderManager.JobOperatesProcessor`: any animal whose job owns a recipe for this building (cook for the brewery, apothecary for the cauldron) — not a hardcoded job.
 
@@ -232,16 +232,19 @@ Every task pathfind is gated by an absolute cap on the **actual A\* path cost** 
 **Constants** (top of `Task` class in [Task.cs](../Model/Task.cs)):
 
 ```csharp
-public const int   MediumFindRadius   = 40;    // default for almost every task
-public const int   MarketFindRadius   = 120;   // market portal only — intentionally long
-public const float FindRadiusTolerance = 1.2f; // path cost may exceed radius by this factor
+public const int   MediumFindRadius     = 40;   // default for almost every task; also the work-anchor TERRITORY radius
+public const int   MarketFindRadius      = 120;  // market portal only — intentionally long
+public const int   WorkConvenienceRadius = 15;   // small circle around the mouse for grabbing work outside its territory
+public const float FindRadiusTolerance   = 1.2f; // path cost may exceed radius by this factor
 ```
 
 A candidate is rejected when `path.cost > r × FindRadiusTolerance`.
 
-**Gate helper** — `Nav.WithinRadius(Path p, int r)` in [Nav.cs](../Model/Animal/Nav.cs): returns `true` iff `p != null && p.cost <= r × tolerance`. WOM-dispatched tasks call this after their single `PathTo*` in `Initialize()`; if it returns false, the task aborts before reserving.
+**Two gate helpers** in [Nav.cs](../Model/Animal/Nav.cs):
+- `WithinRadius(Path p, int r)` — plain mouse-gated `p.cost <= r × tolerance`. Use for **fulfillment** (sourcing inputs, depositing output) and **utility** (go home/EepTask, market, drop, leisure, chat).
+- `WithinWorkRange(Path p)` — the **work-discovery** gate (work anchors). A target tile is in range if it's in the mouse's **anchor territory** (Chebyshev `MediumFindRadius` of `WorkAnchorTile`, reachable within that journey from the mouse) OR conveniently **underfoot** (Chebyshev `WorkConvenienceRadius` of the mouse). Journey cost is always from the mouse; the anchor only adds a territory filter, so a mouse won't take far work just because it's standing next to it — it stays in its zone. Homeless mouse (no anchor) falls back to plain mouse-gated medium. Applied at the target-selection gate of every work task (`CraftTask`, `HaulTask`, `HarvestTask`, `WaterPlantTask`, the processor/foundry/supply/construct/maintenance/research tasks); `CanReachBuilding` mirrors its Chebyshev regions so craft eligibility tracks craft-target. `EepTask`/`ChatTask`/`LeisureTask` stay on `WithinRadius`. `GoTask` is unconditional (explicit intent).
 
-**Applied in `Initialize()`** of: `CraftTask`, `HarvestTask`, `HaulTask`, `ConstructTask`, `SupplyBlueprintTask`, `SupplyFuelTask`, `ResearchTask`, `EepTask` (conditional — falls back to sleeping in place if home is too far), `ChatTask`, `LeisureTask`. `GoTask` is the sole unconditional exception — explicit player/system intent has no radius concept.
+**Work anchors** ([Animal.cs](../Model/Animal/Animal.cs) `WorkAnchorTile`): a mouse's work anchor is its assigned **work flag** if any, else its **home**. It is the territory centre for `WithinWorkRange` AND the tile idle mice drift back toward (`AnimalStateManager.HandleIdle` greedy-steps homeward beyond `AnchorSlack`=4 tiles, one tile/idle-tick so work still wins). Net: mice operate around home/flag instead of drifting. Mice **no longer voluntarily migrate homes** (`FindHome` only re-homes when it has none / it's broken). Work flags: a `isWorkFlag` building; `Animal.AssignToFlag`/`UnassignFlag`, persisted via `assignedFlagX/Y`, roster via `Building.GetAssignedMice()` (scan, no stored list); demolish clears assignees. See `plans/work-anchors-and-housing.md`.
 
 **Built into `Nav.Find*` methods** — `FindPathTo`, `FindPathToInv`, `FindPathToStruct` all use a **sort-by-Chebyshev + first-fit** pattern:
 
@@ -323,8 +326,12 @@ Player-adjustable workstation slot count flows: `Building.workstation.workerLimi
 |----------|-------------|
 | 1 | Haul unblocking a pending deconstruct |
 | 2 | Construct, SupplyBlueprint, Deconstruct, Harvest, Maintenance |
-| 3 | Haul (floor items + storage evictions), HaulToMarket, Craft, Water |
-| 4 | Research, HaulFromMarket |
+| 3 | Haul (floor items + storage evictions), HaulToMarket, HaulFromMarket, Craft, Water, Research |
+| 4 | SupplyFurnishing |
+
+Tier-by-tier dispatch (`ChooseOrder(1→2→3→4)`) means a higher tier is tried in full before a lower one, so a job's own work must not sit *below* the open-to-all haul tier or hauls drain that job onto floor clutter. The `NonHaulerHaulPenalty` (> max proximity) only ranks *within* a tier, never across — so the rule is: every job's primary work lives at p3 or above, alongside hauls, where the penalty makes it a hard within-tier winner. Two consequences:
+- **Research** is p3 (a scientist's only job-work). At p4 it lost to floor hauls every cycle, gutting research output.
+- **HaulFromMarket** (merchant pickup) is p3, docked `MarketPickupDock` (in `(0, NonHaulerHaulPenalty)`) so it ranks below HaulToMarket (deliver-before-pickup, both have fixed proximity → clean hard ordering) but above floor hauls.
 
 ### Registration rules
 

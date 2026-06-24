@@ -346,6 +346,11 @@ public class PowerSystem {
         var stale = new List<Structure>();
         foreach (Structure s in shafts) {
             if (s == null || s.go == null) { stale.Add(s); continue; }
+            // A broken shaft doesn't conduct — leave it out of the conductive index so the run is
+            // severed at that tile until a mender repairs it. It stays in `shafts` (not stale) so it
+            // rejoins automatically once repaired and the topology rebuilds (MaintenanceSystem marks
+            // power dirty on the break/repair edge). byTile membership is the single conductivity test.
+            if (s.IsBroken) continue;
             // Shafts are 1×1 in v1. If we add multi-tile shafts later, register every covered tile.
             byTile[(s.x, s.y)] = s;
         }
@@ -368,6 +373,7 @@ public class PowerSystem {
         int nextId = 0;
         foreach (Structure root in shafts) {
             if (shaftNet.ContainsKey(root)) continue;
+            if (!byTile.ContainsKey((root.x, root.y))) continue;  // broken shaft: not in the conductive index
             int id = nextId++;
             ufParent[id] = id;
             shaftNet[root] = id;

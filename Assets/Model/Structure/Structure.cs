@@ -356,6 +356,10 @@ public class Structure {
                     Debug.LogError($"Already a depth-{depth} structure at {x+dx},{y+dy}!");
                 t.structs[depth] = this;
                 t.NotifyStructChanged();
+                // Greenhouse frames back-point every covered tile to themselves so a plant rooted
+                // here can detect the climate frame in O(1) (mirrors interiorBuilding). Set in this
+                // shared loop so it lands on the gameplay, worldgen, AND load paths (all run the ctor).
+                if (st.isGreenhouse) t.greenhouse = this;
                 // Roads (depth 3) suppress tile overlays — on this tile and on the
                 // top grass edge of the tile directly below (grass overhangs the tile
                 // edge up over the road; see TileMeshController.BuildOverlayGeometry).
@@ -589,7 +593,7 @@ public class Structure {
     // (already mirror-resolved), records the first as doorApproachTile (FindHome's
     // homeTile hint), and for preservesTile buildings suppresses the door tile's
     // air-side rim so the entrance reads as a clean hole. Shared by the ctor's
-    // JSON-door loop and by DiggingPit, which picks its single door's side at
+    // JSON-door loop and by ExtractionBuilding, which picks its single door's side at
     // runtime from neighbour openness rather than from JSON.
     protected void WireDoorEdge(Node interiorNode, int doorWorldX, int doorWorldY, string side) {
         int approachX = doorWorldX, approachY = doorWorldY;
@@ -719,6 +723,12 @@ public class Structure {
                 bsr.sprite       = body;
                 bsr.sortingOrder = backdropOrder;
                 LightReceiverUtil.SetSortBucket(bsr); // order ≤ 8 → Tiles bucket, like the chunk body
+                // Enclosed buildings (burrow): the dirt backdrop behind the facade joins the
+                // facade on the Interior layer, so the lighting pipeline treats the burrow's own
+                // body as a non-occluding interior (directional-only tier) rather than a solid
+                // shadow-caster wall. With wall-shadows on it's promoted to lit-only and receives
+                // torches; the surrounding REAL tiles still occlude. See InteriorLayer / SPEC-rendering.
+                if (structType.enclosed && InteriorLayer.Interior >= 0) bgo.layer = InteriorLayer.Interior;
                 Texture2D nrm = TileSpriteCache.GetNormalMap(t.type.name, mask8, tx, ty);
                 if (nrm != null) {
                     var mpb = new MaterialPropertyBlock();
@@ -792,8 +802,8 @@ public class Structure {
         if (st.depth == 0 || st.isBuilding) {
             if (st.name == "pump")     return new PumpBuilding(st, x, y, mirrored);
             if (st.name == "market")   return new MarketBuilding(st, x, y, mirrored);
-            if (st.name == "quarry")   return new ExtractionBuilding(st, x, y, mirrored);
-            if (st.name == "digging pit") return new DiggingPit(st, x, y, mirrored);
+            // quarry (stone) and digging pit (earth) share one class; they differ only in JSON data.
+            if (st.name == "quarry" || st.name == "digging pit") return new ExtractionBuilding(st, x, y, mirrored);
             if (st.name == "wheel")    return new MouseWheel(st, x, y, mirrored);
             if (st.name == "windmill") return new Windmill(st, x, y, mirrored);
             if (st.name == "flywheel") return new Flywheel(st, x, y, mirrored);
@@ -801,6 +811,7 @@ public class Structure {
             if (st.name == "tarp")     return new Tarp(st, x, y, mirrored, shapeIndex);
             if (st.name == "clock")    return new Clock(st, x, y, mirrored);
             if (st.name == "foundry")  return new Foundry(st, x, y, mirrored);
+            if (st.isWorkFlag)         return new WorkFlag(st, x, y, mirrored);
             return new Building(st, x, y, mirrored);
         }
         return new Structure(st, x, y, mirrored, rotation, shapeIndex); // platforms, ladders, stairs, foreground, roads
@@ -891,6 +902,10 @@ public class Structure {
                     // top edge of the tile below (mirror of the place path above).
                     if (depth == 3) NotifyRoadOverlayDirty(t);
                 }
+                // Clear the greenhouse back-ref (guarded by identity so a re-used tile that some
+                // other greenhouse now covers isn't wrongly cleared). A plant left inside simply
+                // un-caps and resumes normal growth from the next stage crossing.
+                if (t.greenhouse == this) t.greenhouse = null;
             }
         }
         GameObject.Destroy(go);

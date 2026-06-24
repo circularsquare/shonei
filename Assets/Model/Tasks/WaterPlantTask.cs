@@ -41,7 +41,7 @@ public class WaterPlantTask : Task {
         if (fenNeeded <= 0) return false;
 
         // Reject unreachable plants and plants whose actual path winds far around terrain.
-        if (!animal.nav.WithinRadius(animal.nav.PathTo(tile), MediumFindRadius)) return false;
+        if (!animal.nav.WithinWorkRange(animal.nav.PathTo(tile))) return false;
 
         // Find water to carry.
         (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(waterItem);

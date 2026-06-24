@@ -50,6 +50,16 @@ public static class Help {
             "Items on the ground spoil 5x faster than in storage.") },
         { "wet", new Entry("Wet",
             "Wet items decay twice as fast.") },
+        { "sun", new Entry("Sun",
+            "Plants grow faster with more open sky overhead.\n" +
+            "Solid ground and roofed buildings cast shade. Platforms and greenhouses let light through.") },
+        { "foundry", new Entry("Foundry",
+            "Fuel builds heat. The hotter the foundry, the faster ore melts.\n" +
+            "Below 300 degrees ore will not melt. Melting is fastest at 600 degrees or above.\n" +
+            "Melting an item consumes heat.\n" +
+            "Heat decays over time, so running continuously is more fuel efficient than repeated cold starts.\n" +
+            "The cast target sets which bar to make. Auto makes whatever is most needed, relative to item targets.\n" +
+            "Holds up to about 10 bars worth of ore and molten metal at once.") },
     };
 
     // Transient per-selection copy, set live by an InfoView right before it emits the

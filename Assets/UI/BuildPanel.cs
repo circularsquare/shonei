@@ -266,7 +266,17 @@ public class BuildPanel : MonoBehaviour {
             bool shouldShow = PlantSeedDiscovered(st);
             Transform entry = panel.Find("BuildDisplay_" + st.name);
             if (shouldShow && entry == null) AddBuildDisplay(panel, st);
-            else if (!shouldShow && entry != null) Destroy(entry.gameObject);
+            else if (!shouldShow && entry != null) {
+                // Detach before destroying. On a save load this method runs twice in one frame —
+                // once from InventoryController.ResetState (discovery cleared → removes the entry)
+                // and again from DiscoverItem as discovery is restored (should re-add it). Destroy
+                // is deferred to frame-end, so the second pass's Find would still see this doomed
+                // entry and skip the re-add, leaving the plant missing. Reparenting hides it from
+                // Find immediately. (LockBuilding's removal is safe without this — AddBuildDisplay
+                // has no Find-guard — but this path's re-add does, so it needs the detach.)
+                entry.SetParent(null, false);
+                Destroy(entry.gameObject);
+            }
         }
         RefreshPlantCategoryButton();
     }

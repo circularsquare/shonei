@@ -42,7 +42,7 @@ public class ConstructTask : Task {
         Path standPath = blueprint.structType.isTile
             ? animal.nav.PathStrictlyAdjacent(blueprint.tile)
             : animal.nav.PathToOrAdjacentBlueprint(blueprint);
-        if (!animal.nav.WithinRadius(standPath, MediumFindRadius)) return false;
+        if (!animal.nav.WithinWorkRange(standPath)) return false;
         objectives.AddLast(new GoObjective(this, standPath.tile));
         objectives.AddLast(new ConstructObjective(this, blueprint));
         return true;

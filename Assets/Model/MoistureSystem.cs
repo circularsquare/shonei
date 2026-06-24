@@ -237,7 +237,14 @@ public class MoistureSystem {
                 if (py < 0) continue;
                 Tile soil = world.GetTileAt(plant.tile.x, py);
                 if (soil == null || !soil.type.solid) continue;
-                int draw = Mathf.RoundToInt(plant.plantType.moistureDrawPerHour);
+                // A greenhouse's controlled humidity cuts transpiration — scale the draw by the
+                // frame's moisture multiplier (same factor trims the stage cost in Plant.Grow).
+                float drawF = plant.plantType.moistureDrawPerHour;
+                // Broken greenhouse: no transpiration savings until repaired (mirrors Plant.Grow).
+                Structure ghStruct = plant.tile.greenhouse;
+                StructType gh = (ghStruct != null && !ghStruct.IsBroken) ? ghStruct.structType : null;
+                if (gh != null) drawF *= gh.greenhouseMoistureMult;
+                int draw = Mathf.RoundToInt(drawF);
                 if (draw <= 0) continue;
                 int left = soil.moisture - draw;
                 soil.moisture = left > 0 ? (byte)left : (byte)0;

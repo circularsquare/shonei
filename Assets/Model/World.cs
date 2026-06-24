@@ -269,8 +269,8 @@ public class World : MonoBehaviour {
     // ── Main settlement nav component ─────────────────────────────────────────
     // The connected nav-graph component that the most animals currently occupy —
     // a robust proxy for "the reachable colony" (a sealed cave pocket holds no
-    // mice, so it never wins). DiggingPit uses it to orient its dig toward a face
-    // the workforce can actually reach rather than into an inaccessible void.
+    // mice, so it never wins). ExtractionBuilding uses it to orient its dig toward a
+    // face the workforce can actually reach rather than into an inaccessible void.
     //
     // Cached on a coarse frame cadence since it drifts slowly; callers that bake
     // the value into a PERMANENT decision (e.g. a pit's persisted dig direction)
@@ -334,22 +334,76 @@ public class World : MonoBehaviour {
         }
     }
 
-    // True if nothing blocks a line of rain (or sun) from reaching (x, y) from the sky.
-    // Blockers: solid ground tiles, or any structure layer with solidTop=true OR
-    // blocksRain=true (buildings, platforms, foreground, road, tarps) on a tile above
-    // this one. Blueprints are ignored — unbuilt doesn't block.
-    // Shared primitive for rain-catching tanks and future plant sun/rain systems.
+    // True if this tile blocks sky/rain/sun from passing through it: solid terrain, or any
+    // structure layer that roofs the tile (solidTop) or sheds rain (blocksRain) — buildings,
+    // platforms, floors, tarps. Blueprints don't block (unbuilt = no shade). Plants and the
+    // greenhouse frame (glass) are NOT blockers. The single source of truth for overhead
+    // occlusion, shared by IsExposedAbove (straight-up) and OpenSkyDegreesAt (angled rays).
+    public bool BlocksSky(Tile t){
+        if (t == null) return false;
+        if (t.type.solid) return true;
+        for (int d = 0; d < t.structs.Length; d++){
+            Structure s = t.structs[d];
+            if (s != null && (s.structType.solidTop || s.structType.blocksRain)) return true;
+        }
+        return false;
+    }
+
+    // True if this tile casts shade — blocks SUNLIGHT (not rain) from passing through. Solid
+    // terrain blocks; among structures only solid-topped ones cast shade, EXCEPT platforms
+    // (slatted — mostly open underneath) and greenhouses (glass), which let light through.
+    // See StructType.BlocksSun. Distinct from BlocksSky: a tarp (blocksRain, not solidTop)
+    // sheds rain but doesn't shade, and platforms shed neither here. Used by OpenSkyDegreesAt.
+    public bool BlocksSun(Tile t){
+        if (t == null) return false;
+        if (t.type.solid) return true;
+        for (int d = 0; d < t.structs.Length; d++){
+            Structure s = t.structs[d];
+            if (s != null && s.structType.BlocksSun) return true;
+        }
+        return false;
+    }
+
+    // True if nothing blocks a line of rain (or sun) from reaching (x, y) straight up from the
+    // sky. Shared primitive for rain-catching tanks and the windmill's open-sky requirement.
     public bool IsExposedAbove(int x, int y){
         if (x < 0 || x >= nx) return false;
-        for (int py = y + 1; py < ny; py++){
-            Tile t = tiles[x, py];
-            if (t.type.solid) return false;
-            for (int d = 0; d < t.structs.Length; d++){
-                Structure s = t.structs[d];
-                if (s != null && (s.structType.solidTop || s.structType.blocksRain)) return false;
-            }
-        }
+        for (int py = y + 1; py < ny; py++)
+            if (BlocksSky(tiles[x, py])) return false;
         return true;
+    }
+
+    // How much of the upper sky hemisphere (the 180° arc from horizon to horizon, passing
+    // overhead) is visible from (x, y), expressed in degrees of open arc (0..180). Casts
+    // `RayCount` evenly-spaced rays across the hemisphere, marching each up to `maxDist` tiles;
+    // a ray counts as open unless it hits a BlocksSun tile. Returns openRays / RayCount × 180.
+    // Plant maps this to a 0..1 sun-exposure growth factor via its sunNeedDegrees. See Plant.Grow.
+    public float OpenSkyDegreesAt(int x, int y, int maxDist = 5){
+        const int RayCount = 12;
+        int open = 0;
+        for (int i = 0; i < RayCount; i++){
+            // Sample ray centres at (i+0.5)/RayCount of the arc, so no ray sits exactly on the
+            // horizon; angle 0..π means sinθ ≥ 0 → every ray points up into the sky.
+            float ang = Mathf.PI * (i + 0.5f) / RayCount;
+            if (!RayHitsBlocker(x, y, Mathf.Cos(ang), Mathf.Sin(ang), maxDist)) open++;
+        }
+        return open / (float)RayCount * 180f;
+    }
+
+    // Marches a ray from (ox, oy) along (dx, dy) up to maxDist tiles in half-tile steps. True if
+    // it hits a sky-blocker before clearing maxDist. Clearing the top of the world, or running
+    // off the side, counts as open sky (no hit).
+    private bool RayHitsBlocker(int ox, int oy, float dx, float dy, int maxDist){
+        for (float t = 0.5f; t <= maxDist + 1e-3f; t += 0.5f){
+            int tx = Mathf.RoundToInt(ox + dx * t);
+            int ty = Mathf.RoundToInt(oy + dy * t);
+            if (tx == ox && ty == oy) continue;   // still on the origin tile
+            if (ty >= ny) return false;            // cleared the top of the world → open sky
+            Tile tile = GetTileAt(tx, ty);
+            if (tile == null) continue;            // off the side → open beyond the world edge
+            if (BlocksSun(tile)) return true;
+        }
+        return false;
     }
 
     // Produces items on a tile's floor inventory.

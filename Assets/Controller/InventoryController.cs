@@ -26,11 +26,13 @@ public class InventoryController : MonoBehaviour {
     public Dictionary<int, bool> discoveredItems;
     public Dictionary<int, GameObject> itemDisplayGos;
     public Dictionary<int, int> targets; // per-item production targets in fen
-    // Leaf item ids the player has flagged "don't consume". Mice exclude these at SELECTION
-    // time — they won't fetch protected food to eat, pick a recipe whose only stock of an
-    // input is protected, or burn protected fuel. Items already in-hand may still finish their
-    // task (selection-time, not mid-task abort — see SetConsumptionDisabled callers). Leaf-only,
-    // mirroring `targets`; group rows in the detailed panel fan to leaves. Persisted in saves.
+    // Leaf item ids the player has flagged "consume" off. Mice exclude these at SELECTION time
+    // from the DIRECT END-USE channels only: eating, drinking (rice wine + tonic), equipping
+    // (tool/clothing), burning as fuel, and house furnishing. Transformation uses — crafting,
+    // processor input, construction, and repair — are always allowed and ignore this flag.
+    // For an item with no consume channel (e.g. plain stone) the flag is a no-op, by design.
+    // Items already in-hand may still finish their task (selection-time, not mid-task abort).
+    // Leaf-only, mirroring `targets`; group rows in the detailed panel fan to leaves. Persisted.
     public HashSet<int> consumptionDisabled = new HashSet<int>();
     // Staged by SaveSystem on load; consumed by ItemDisplay.Start to override the JSON-default
     // open state with the player's last saved collapse state. Keyed by item name (stable across

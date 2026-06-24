@@ -51,6 +51,13 @@ public class StructureInfoView : MonoBehaviour {
     [Header("Foundry Cast Target")]
     [SerializeField] Transform castOptionContainer;  // HorizontalLayoutGroup parent for cast-target option buttons; hidden for non-foundries
 
+    [Header("Housing Occupants")]
+    [SerializeField] Transform occupantContainer;   // VerticalLayoutGroup parent for resident rows; hidden for non-housing
+    [SerializeField] GameObject occupantRowPrefab;  // OccupantRow prefab (reused for the work-flag rows too)
+
+    [Header("Work Flag Assignment")]
+    [SerializeField] Transform flagRosterContainer; // VLG parent for assigned + available mouse rows; hidden for non-flags
+
     private Structure structure;
     private Blueprint blueprint;
 
@@ -65,6 +72,24 @@ public class StructureInfoView : MonoBehaviour {
     // X/chip tooltips survive. costRowsBuiltFor tracks which blueprint the rows belong to.
     private readonly List<GameObject> costRows = new List<GameObject>();
     private Blueprint costRowsBuiltFor;
+
+    // Resident rows for a housing building. Built only when the resident set changes (not per
+    // tick), so the head-icon hover tooltip isn't torn down mid-hover. occupantRowsBuiltFor
+    // mirrors the residents the current rows represent, for change detection.
+    private readonly List<GameObject> occupantRows = new List<GameObject>();
+    private readonly List<Animal> occupantRowsBuiltFor = new List<Animal>();
+
+    // Work-flag rows (assigned + available mice). Rebuilt only when the flag, its assigned set, or
+    // the colony size changes — same tooltip-preserving discipline as the other row lists.
+    private readonly List<GameObject> flagRows = new List<GameObject>();
+    private Building flagRowsBuiltFor;
+    private readonly List<Animal> flagAssignedCache = new List<Animal>();
+    private int flagTotalCache = -1;
+
+    // Action-button glyphs, loaded once. buttonx = evict/unassign, buttonplus = assign.
+    private static Sprite _xSprite, _plusSprite;
+    private static Sprite XSprite => _xSprite != null ? _xSprite : (_xSprite = Resources.Load<Sprite>("Sprites/Misc/buttonx"));
+    private static Sprite PlusSprite => _plusSprite != null ? _plusSprite : (_plusSprite = Resources.Load<Sprite>("Sprites/Misc/buttonplus"));
 
     void Awake() {
         if (enableDisableButton != null)
@@ -110,6 +135,10 @@ public class StructureInfoView : MonoBehaviour {
         blueprint = null;
         ClearCostRows();
         if (costRowContainer != null) costRowContainer.gameObject.SetActive(false);
+        ClearOccupantRows();
+        if (occupantContainer != null) occupantContainer.gameObject.SetActive(false);
+        ClearFlagRows();
+        if (flagRosterContainer != null) flagRosterContainer.gameObject.SetActive(false);
         SetDeconstructVisible(false);
         SetCancelVisible(false);
         SetHarvestFlagVisible(false);
@@ -148,6 +177,17 @@ public class StructureInfoView : MonoBehaviour {
             if (plant.plantType.maxHeight > 1)
                 sb.Append($"  height: {plant.height}/{plant.plantType.maxHeight}");
             ShowPlantComfort(plant);
+            // Why growth is impeded, if at all (season dormancy, no open space above, soil too dry,
+            // etc.). Complements the comfort bars: the bars show the input value, this states the
+            // growth verdict (frozen vs merely slowed). No line when the plant is growing fine / done.
+            AppendGrowthBlock(sb, plant.GetGrowthBlock());
+            // Sun exposure — only surfaced when overhead shade is actually reducing it. Force a
+            // live recompute for the inspected plant so the % reacts immediately when the player
+            // builds/removes a roof (the growth loop itself only re-samples on a throttle).
+            plant.RecomputeSunExposure();
+            int sunPct = Mathf.RoundToInt(plant.SunOpen01 * 100f);
+            if (sunPct < 100)
+                sb.Append($"\n <color=#b35a14>sun: {sunPct}%</color>{Help.Icon("sun")}");
             // Surface the target-gated dormancy from RegisterHarvest's isActive — without this
             // the player sees a flagged, ripe crop sitting un-harvested with no in-game cue.
             if (plant.harvestFlagged && plant.IsDoneGrowing()
@@ -171,9 +211,12 @@ public class StructureInfoView : MonoBehaviour {
                 string fuelName = bldg.reservoir.HeldLeaf()?.name ?? bldg.reservoir.fuelItem?.name ?? "fuel";
                 sb.Append($"\n fuel: {ItemStack.FormatQ(fuelQty)}/{ItemStack.FormatQ(bldg.reservoir.capacity)} {fuelName}");
             }
-            // Foundry: surface the live temperature so the player can see it heating up / cooling.
-            if (bldg is Foundry fdyTemp)
+            // Foundry: surface the live temperature so the player can see it heating up / cooling,
+            // with a help icon explaining the heat system + cast target.
+            if (bldg is Foundry fdyTemp) {
                 sb.Append($"\n temp: {Mathf.RoundToInt(fdyTemp.temperature)}°");
+                sb.Append(Help.Icon("foundry"));
+            }
             // Only housing surfaces its Structure.res — it's the home-assignment count.
             // Other building types either don't have res (workstations, leisure, capacity==0)
             // or have it but never reserve into it.
@@ -248,10 +291,14 @@ public class StructureInfoView : MonoBehaviour {
             }
         }
         RefreshCastOptions(structure as Foundry);
+        RefreshOccupants(structure as Building);
+        RefreshFlag(structure as Building);
     }
 
     void RefreshBlueprint() {
         RefreshCastOptions(null);
+        RefreshOccupants(null);
+        RefreshFlag(null);
         var sb = new System.Text.StringBuilder();
         SetComfortVisible(false);
         sb.Append("blueprint: " + blueprint.structType.name);
@@ -417,6 +464,124 @@ public class StructureInfoView : MonoBehaviour {
         castOptionsBuiltFor = null;
     }
 
+    // ── Housing occupant rows ──
+    // One row per resident (head icon + name + evict). Shown only for housing buildings.
+    // Rebuilt only when the resident set changes — like cost/cast rows, so a hovered head
+    // tooltip survives — then otherwise left alone.
+    void RefreshOccupants(Building bldg) {
+        bool show = bldg != null && bldg.structType.isHousing
+                 && occupantContainer != null && occupantRowPrefab != null;
+        if (occupantContainer != null && occupantContainer.gameObject.activeSelf != show)
+            occupantContainer.gameObject.SetActive(show);
+        if (!show) { ClearOccupantRows(); return; }
+
+        List<Animal> residents = bldg.GetResidents();
+        if (!ResidentsUnchanged(residents))
+            RebuildOccupantRows(residents);
+    }
+
+    bool ResidentsUnchanged(List<Animal> residents) {
+        if (residents.Count != occupantRowsBuiltFor.Count) return false;
+        for (int i = 0; i < residents.Count; i++)
+            if (residents[i] != occupantRowsBuiltFor[i]) return false;
+        return true;
+    }
+
+    void RebuildOccupantRows(List<Animal> residents) {
+        ClearOccupantRows();
+        if (occupantContainer == null || occupantRowPrefab == null) return;
+        foreach (Animal a in residents) {
+            GameObject go = Instantiate(occupantRowPrefab, occupantContainer);
+            go.SetActive(true);
+            occupantRows.Add(go);
+            // Refresh re-fetches residents → an evicted mouse drops out and the list rebuilds.
+            Animal m = a;
+            go.GetComponent<OccupantRow>()?.Setup(m, XSprite, "evict", () => { m.EvictFromHome(); Refresh(); });
+        }
+        occupantRowsBuiltFor.Clear();
+        occupantRowsBuiltFor.AddRange(residents);
+        LayoutUtil.RebuildImmediate((RectTransform)occupantContainer);
+    }
+
+    void ClearOccupantRows() {
+        foreach (GameObject go in occupantRows) {
+            if (go == null) continue;
+            go.SetActive(false); // drop from layout immediately (Destroy is deferred to frame end)
+            Destroy(go);
+        }
+        occupantRows.Clear();
+        occupantRowsBuiltFor.Clear();
+    }
+
+    // ── Work flag assignment rows ──
+    // For a work flag, lists assigned mice (button = unassign) followed by every other mouse
+    // (button = assign). Clicking a head selects that mouse. Rebuilt only when the flag, its
+    // assigned set, or the colony size changes — so a hovered head tooltip survives.
+    void RefreshFlag(Building bldg) {
+        bool show = bldg != null && bldg.structType.isWorkFlag
+                 && flagRosterContainer != null && occupantRowPrefab != null;
+        if (flagRosterContainer != null && flagRosterContainer.gameObject.activeSelf != show)
+            flagRosterContainer.gameObject.SetActive(show);
+        if (!show) { ClearFlagRows(); return; }
+
+        List<Animal> assigned = bldg.GetAssignedMice();
+        int total = AnimalController.instance != null ? AnimalController.instance.na : 0;
+        // Change detection: same flag, same assigned set, same colony size → available set is
+        // unchanged too (it's everyone minus the assigned), so leave the rows alone.
+        if (bldg == flagRowsBuiltFor && total == flagTotalCache && SameAnimals(assigned, flagAssignedCache))
+            return;
+        RebuildFlagRows(bldg, assigned);
+        flagRowsBuiltFor = bldg;
+        flagTotalCache = total;
+        flagAssignedCache.Clear();
+        flagAssignedCache.AddRange(assigned);
+    }
+
+    static bool SameAnimals(List<Animal> a, List<Animal> b) {
+        if (a.Count != b.Count) return false;
+        for (int i = 0; i < a.Count; i++) if (a[i] != b[i]) return false;
+        return true;
+    }
+
+    void RebuildFlagRows(Building bldg, List<Animal> assigned) {
+        ClearFlagRows();
+        if (flagRosterContainer == null || occupantRowPrefab == null) return;
+        // Assigned first — unassign button (reverts the mouse to its home anchor).
+        foreach (Animal a in assigned) {
+            Animal m = a;
+            GameObject go = Instantiate(occupantRowPrefab, flagRosterContainer);
+            go.SetActive(true);
+            flagRows.Add(go);
+            go.GetComponent<OccupantRow>()?.Setup(m, XSprite, "unassign", () => { m.UnassignFlag(); Refresh(); });
+        }
+        // Everyone else — assign button (sets this flag as their work anchor).
+        AnimalController ac = AnimalController.instance;
+        if (ac != null) {
+            for (int i = 0; i < ac.na; i++) {
+                Animal a = ac.animals[i];
+                if (a == null || a.assignedFlag == bldg) continue;
+                Animal m = a;
+                GameObject go = Instantiate(occupantRowPrefab, flagRosterContainer);
+                go.SetActive(true);
+                flagRows.Add(go);
+                go.GetComponent<OccupantRow>()?.Setup(m, PlusSprite, "assign", () => { m.AssignToFlag(bldg); Refresh(); });
+            }
+        }
+        LayoutUtil.RebuildImmediate((RectTransform)flagRosterContainer);
+    }
+
+    void ClearFlagRows() {
+        foreach (GameObject go in flagRows) {
+            if (go == null) continue;
+            go.SetActive(false);
+            Destroy(go);
+        }
+        flagRows.Clear();
+        flagRowsBuiltFor = null;
+        flagAssignedCache.Clear();
+        flagTotalCache = -1;
+    }
+
     // ── Controls ──
 
     void OnClickEnableDisable() {
@@ -521,8 +686,16 @@ public class StructureInfoView : MonoBehaviour {
     // (null = unbounded; the bar runs its green band to the domain edge).
     void ShowPlantComfort(Plant plant) {
         PlantType pt = plant.plantType;
-        if (tempBar != null)
-            tempBar.Set(pt.tempMin, pt.tempMax, WeatherSystem.instance?.temperature);
+        if (tempBar != null) {
+            // Show the temperature the plant actually grows at: a greenhouse regulates ambient
+            // toward its target, so the bar marker reflects the regulated value (matches Plant.Grow).
+            float? nowTemp = WeatherSystem.instance?.temperature;
+            // A broken greenhouse no longer regulates, so the bar shows raw ambient (matches Plant.Grow).
+            Structure ghStruct = plant.tile.greenhouse;
+            StructType gh = (ghStruct != null && !ghStruct.IsBroken) ? ghStruct.structType : null;
+            if (nowTemp.HasValue && gh != null) nowTemp = gh.RegulatedTemp(nowTemp.Value);
+            tempBar.Set(pt.tempMin, pt.tempMax, nowTemp);
+        }
         if (moistureBar != null) {
             Tile soil = World.instance.GetTileAt(plant.tile.x, plant.tile.y - 1);
             moistureBar.Set(pt.moistureMin, pt.moistureMax, soil != null ? (float?)soil.moisture : null);
@@ -532,6 +705,26 @@ public class StructureInfoView : MonoBehaviour {
     void SetComfortVisible(bool visible) {
         if (tempBar != null) tempBar.gameObject.SetActive(visible);
         if (moistureBar != null) moistureBar.gameObject.SetActive(visible);
+    }
+
+    // One concise line naming why a plant isn't advancing. Frozen reasons render red (growth
+    // halted), the soft "growing slowly" reasons amber (still creeping). No line when growing
+    // normally / fully grown (GrowthBlock.None). Wording lives here, not in the model.
+    static void AppendGrowthBlock(System.Text.StringBuilder sb, Plant.GrowthBlock block) {
+        string text;
+        bool frozen = true;
+        switch (block) {
+            case Plant.GrowthBlock.TooCold:      text = "dormant: too cold";        break;
+            case Plant.GrowthBlock.TooHot:       text = "dormant: too hot";         break;
+            case Plant.GrowthBlock.OutOfSeason:  text = "dormant: out of season";   break;
+            case Plant.GrowthBlock.NoSpaceAbove: text = "blocked: no space above";  break;
+            case Plant.GrowthBlock.SoilTooDry:   text = "stalled: soil too dry";    break;
+            case Plant.GrowthBlock.SlowDry:      text = "growing slowly: soil dry"; frozen = false; break;
+            case Plant.GrowthBlock.SlowWet:      text = "growing slowly: soil wet"; frozen = false; break;
+            default: return; // None
+        }
+        string color = frozen ? "#d04040" : "#d0a040";
+        sb.Append($"\n <color={color}>{text}</color>");
     }
 
     // Per-dig yield distribution for extraction buildings (quarry / digging pit), built

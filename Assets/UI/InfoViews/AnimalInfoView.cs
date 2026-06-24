@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using UnityEngine;
+using UnityEngine.UI;
 using TMPro;
 
 // Sub-view for InfoPanel that displays a single animal's info:
@@ -11,6 +12,7 @@ public class AnimalInfoView : MonoBehaviour {
     [SerializeField] SkillDisplay    skillDisplayPrefab;
     [SerializeField] Transform       skillsContainer;
     [SerializeField] ComfortBar      tempBar;   // temperature comfort bar (under the temp line)
+    [SerializeField] Button          rangeButton;  // toggles the work-search-range world overlay
 
     private Animal animal;
     private List<SkillDisplay> _skillDisplays = new List<SkillDisplay>();
@@ -21,6 +23,13 @@ public class AnimalInfoView : MonoBehaviour {
     void Awake() {
         if (text != null && text.GetComponent<InfoTextHover>() == null)
             text.gameObject.AddComponent<InfoTextHover>();
+        if (rangeButton != null)
+            rangeButton.onClick.AddListener(OnClickRange);
+    }
+
+    // Shows this mouse's work-search range as a world overlay (dismissed by a world click).
+    void OnClickRange() {
+        if (animal != null) OverlayController.instance?.ShowSearchRange(animal);
     }
 
     public void Show(Animal animal) {
@@ -138,7 +147,6 @@ public class AnimalInfoView : MonoBehaviour {
 
     static string FormatAnimal(Animal ani) {
         string t = "animal: " + ani.aName +
-            "\n state: " + ani.state.ToString() +
             "\n job: " + ani.job.name +
             "\n [food] " + FormatSlot(ani.foodSlotInv);
         // Equip slots stay hidden until the player can fill them (tech or trade).

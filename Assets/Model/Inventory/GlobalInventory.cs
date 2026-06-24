@@ -102,21 +102,6 @@ public class GlobalInventory {
         return true;
     }
 
-    // Quantity available for CONSUMPTION — excludes leaves the player flagged "don't consume"
-    // (see InventoryController.consumptionDisabled). Group-aware: sums non-protected leaf
-    // descendants. The craft/fuel selection gates use this so a protected item is never eaten,
-    // crafted with, or burned; display/scoring paths keep using raw Quantity. Null Inventory
-    // controller (tests / early startup) ⇒ no protection, falls back to raw Quantity.
-    public int ConsumableQuantity(Item item){
-        var ic = InventoryController.instance;
-        if (ic == null) return Quantity(item);
-        if (item.children == null)
-            return ic.IsConsumptionDisabled(item) ? 0 : Quantity(item);
-        int total = 0;
-        foreach (Item child in item.children) total += ConsumableQuantity(child);
-        return total;
-    }
-
     // ── Fuel (generic) ──────────────────────────────────────────────────────
     // Any item with fuelValue>0 IS fuel; fuelValue is burnable energy per liang. Recipes burn
     // an abstract `fuelCost` (energy) rather than a specific fuel item, so one recipe accepts
@@ -146,14 +131,15 @@ public class GlobalInventory {
     // Same gate but counting only non-protected fuel — used by the craftability check.
     public bool HasConsumableFuelEnergy(float fuelCost) => fuelCost <= 0f || ConsumableFuelEnergy() >= fuelCost;
 
-    // Recipe-aware craftability gate: inputs in (consumable) stock AND enough (consumable) fuel
-    // energy. Uses ConsumableQuantity / ConsumableFuelEnergy so a recipe whose only stock of an
-    // input — or its only fuel — is flagged "don't consume" is not pickable, instead of mice
-    // looping on a fetch that can never be satisfied. Every craft-selection site must call this
-    // (see Animal.PickRecipe*/ScoreCraftRecipes).
+    // Recipe-aware craftability gate: inputs in stock AND enough (consumable) fuel energy.
+    // Crafting is an "always allowed" use — the "consume" flag never blocks an ingredient, so
+    // inputs use raw group-aware Quantity. Fuel IS a gated consume channel, so the fuel check
+    // stays consumable: this prevents picking a recipe whose only fuel is flagged "don't consume"
+    // (PickFuel would then return null and the craft would stall). Every craft-selection site
+    // must call this (see Animal.PickRecipe*/ScoreCraftRecipes).
     public bool CanCraft(Recipe recipe){
         foreach (ItemQuantity iq in recipe.inputs)
-            if (ConsumableQuantity(iq.item) < iq.quantity) return false;
+            if (Quantity(iq.item) < iq.quantity) return false;
         return HasConsumableFuelEnergy(recipe.fuelCost);
     }
 

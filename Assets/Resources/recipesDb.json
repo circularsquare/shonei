@@ -127,26 +127,30 @@
         ]
     },{
         "id": 6,
-        "job": "woodworker",
-        "tile": "workshop",
-        "description": "craft copper tools",
-        "workload": 10.0,
+        "job": "smith",
+        "tile": "crucible",
+        "description": "cast copper tools",
+        "workload": 12.0,
+        "research": "Metallurgy",
         "ninputs": [
-            { "name": "planks", "quantity": 1 },
-            { "name": "copper bar", "quantity": 1 }
+            { "name": "copper bar", "quantity": 1 },
+            { "name": "clay mold", "quantity": 1 },
+            { "name": "planks", "quantity": 1 }
         ],
         "noutputs": [
             { "name": "copper tools", "quantity": 1 }
         ]
     },{
         "id": 7,
-        "job": "woodworker",
-        "tile": "workshop",
-        "description": "craft bronze tools",
-        "workload": 10.0,
+        "job": "smith",
+        "tile": "crucible",
+        "description": "cast bronze tools",
+        "workload": 12.0,
+        "research": "Metallurgy",
         "ninputs": [
-            { "name": "planks", "quantity": 1 },
-            { "name": "bronze bar", "quantity": 1 }
+            { "name": "bronze bar", "quantity": 1 },
+            { "name": "clay mold", "quantity": 1 },
+            { "name": "planks", "quantity": 1 }
         ],
         "noutputs": [
             { "name": "bronze tools", "quantity": 1 }
@@ -161,7 +165,7 @@
         "meltTempMin": 300,
         "meltTempIdeal": 600,
         "meltDuration": 48,
-        "meltHeatCost": 80,
+        "meltHeatCost": 120,
         "ninputs": [
             { "name": "malachite", "quantity": 1 }
         ],
@@ -178,7 +182,7 @@
         "meltTempMin": 300,
         "meltTempIdeal": 600,
         "meltDuration": 48,
-        "meltHeatCost": 80,
+        "meltHeatCost": 120,
         "ninputs": [
             { "name": "cassiterite", "quantity": 1 }
         ],
@@ -195,7 +199,7 @@
         "meltTempMin": 300,
         "meltTempIdeal": 600,
         "meltDuration": 48,
-        "meltHeatCost": 80,
+        "meltHeatCost": 120,
         "ninputs": [
             { "name": "sand", "quantity": 1 }
         ],
@@ -267,6 +271,70 @@
         ],
         "noutputs": [
             { "name": "glass", "quantity": 1 }
+        ]
+    },{
+        "id": 103,
+        "job": "smith",
+        "tile": "foundry",
+        "foundryOp": "melt",
+        "description": "remelt copper bar into molten copper",
+        "research": "Metallurgy",
+        "meltTempMin": 300,
+        "meltTempIdeal": 600,
+        "meltDuration": 24,
+        "meltHeatCost": 80,
+        "ninputs": [
+            { "name": "copper bar", "quantity": 1 }
+        ],
+        "noutputs": [
+            { "name": "molten copper", "quantity": 1 }
+        ]
+    },{
+        "id": 104,
+        "job": "smith",
+        "tile": "foundry",
+        "foundryOp": "melt",
+        "description": "remelt tin bar into molten tin",
+        "research": "Metallurgy",
+        "meltTempMin": 300,
+        "meltTempIdeal": 600,
+        "meltDuration": 24,
+        "meltHeatCost": 80,
+        "ninputs": [
+            { "name": "tin bar", "quantity": 1 }
+        ],
+        "noutputs": [
+            { "name": "molten tin", "quantity": 1 }
+        ]
+    },{
+        "id": 105,
+        "job": "smith",
+        "tile": "foundry",
+        "foundryOp": "cast",
+        "description": "cast copper tools",
+        "research": "Metallurgy",
+        "ninputs": [
+            { "name": "molten copper", "quantity": 1 },
+            { "name": "clay mold", "quantity": 1 },
+            { "name": "planks", "quantity": 1 }
+        ],
+        "noutputs": [
+            { "name": "copper tools", "quantity": 1 }
+        ]
+    },{
+        "id": 106,
+        "job": "smith",
+        "tile": "foundry",
+        "foundryOp": "cast",
+        "description": "cast bronze tools",
+        "research": "Metallurgy",
+        "ninputs": [
+            { "name": "molten bronze", "quantity": 1 },
+            { "name": "clay mold", "quantity": 1 },
+            { "name": "planks", "quantity": 1 }
+        ],
+        "noutputs": [
+            { "name": "bronze tools", "quantity": 1 }
         ]
     },{
         "id": 10,
@@ -421,11 +489,11 @@
         "job": "smith",
         "tile": "crucible",
         "description": "smelt malachite",
-        "workload": 12.0,
+        "workload": 20.0,
         "fuelCost": 3,
         "research": "Metallurgy",
         "ninputs": [
-            { "name": "malachite", "quantity": 3 }
+            { "name": "malachite", "quantity": 2 }
         ],
         "noutputs": [
             { "name": "copper bar", "quantity": 1 }
@@ -435,11 +503,11 @@
         "job": "smith",
         "tile": "crucible",
         "description": "smelt cassiterite",
-        "workload": 12.0,
+        "workload": 20.0,
         "fuelCost": 3,
         "research": "Metallurgy",
         "ninputs": [
-            { "name": "cassiterite", "quantity": 3 }
+            { "name": "cassiterite", "quantity": 2 }
         ],
         "noutputs": [
             { "name": "tin bar", "quantity": 1 }

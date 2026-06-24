@@ -271,7 +271,8 @@ public class StructController : MonoBehaviour {
         // burrow, and any other housing tier without code changes.
         foreach (Structure s in GetStructures()) {
             if (s == null || s.res == null) continue;
-            if (s.structType.isHousing) total += s.res.capacity;
+            // Broken housing isn't usable shelter, so it doesn't count toward available housing.
+            if (s.structType.isHousing && !s.IsBroken) total += s.res.capacity;
         }
         return total;
     }
@@ -296,9 +297,11 @@ public class StructController : MonoBehaviour {
             // Drain reservoirs NOT burned by a LightSource (e.g. fountain water evaporating, foundry
             // fuel). LightSource buildings (torch/fireplace) burn per-frame in LightSource, gated to
             // night, so burning them here too would double-consume — skip those. Disabled/broken don't
-            // drain. Burn FIRST so a foundry's fuel→heat lands before it melts this frame.
+            // drain. Burn FIRST so a foundry's fuel→heat lands before it melts this frame. An IDLE
+            // foundry (nothing to melt, target unmakeable) skips burning so its heat decays.
             int burnedFen = 0;
-            if (b.reservoir != null && !b.structType.isLightSource && !b.disabled && !b.IsBroken)
+            bool foundryIdle = b is Foundry idleChk && !idleChk.WantsHeat();
+            if (b.reservoir != null && !b.structType.isLightSource && !b.disabled && !b.IsBroken && !foundryIdle)
                 burnedFen = b.reservoir.Burn(0.2f);
             float ambientTemp = WeatherSystem.instance != null ? WeatherSystem.instance.temperature : 17.5f;
             if (b.processor != null) {

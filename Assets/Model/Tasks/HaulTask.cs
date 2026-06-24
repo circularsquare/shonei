@@ -20,8 +20,10 @@ public class HaulTask : Task {
         if (itemTile == null) return false;
         // Gate the source leg too — unreachable or obscenely-winding pickup should skip the task.
         // Storage leg is already gated by FindPathToStorage's internal radius cap.
-        if (!animal.nav.WithinRadius(animal.nav.PathTo(itemTile), MediumFindRadius)) return false;
-        var (storagePath, storageInv) = animal.nav.FindPathToStorage(item);
+        if (!animal.nav.WithinWorkRange(animal.nav.PathTo(itemTile))) return false;
+        // exclude the source inv so an eviction haul never targets its own inventory as the
+        // destination (e.g. the foundry output is a Storage that allows its own bars + has spare room).
+        var (storagePath, storageInv) = animal.nav.FindPathToStorage(item, exclude: targetStack.inv);
         if (storagePath == null) return false;
         int available = targetStack.quantity - targetStack.resAmount;
         int quantity = Math.Min(available, storageInv.GetStorageForItem(item));

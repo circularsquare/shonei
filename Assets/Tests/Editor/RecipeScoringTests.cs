@@ -105,6 +105,9 @@ public class RecipeScoringTests {
             if (cur != 0) GlobalInventory.instance.AddItem(iid, -cur);
         }
         dirtyIids.Clear();
+        // itemA/itemB are shared fixture items — reset any per-test flags so they don't leak.
+        itemA.excludeFromGroupInput = false;
+        itemB.excludeFromGroupInput = false;
         // Re-enable any recipe ids the test disabled in RecipePanel.
         if (RecipePanel.instance != null) RecipePanel.instance.ClearDisabled();
     }
@@ -421,6 +424,37 @@ public class RecipeScoringTests {
         };
         Recipe r = MakeRecipe(inputs: new[] { IQ(Group(itemA, itemB), 10) });
         Assert.That(r.Score(targets), Is.EqualTo(0f));
+    }
+
+    // ── excludeFromGroupInput (gypsum-under-stone) ─────────────────────
+    // A leaf flagged excludeFromGroupInput is never auto-substituted for its group, so group
+    // scoring ignores it — even when it's the most over-target leaf. Scoring must agree with
+    // Task.ResolveConsumeLeaf (which also skips it), or a recipe scores makeable on stock it
+    // will never consume.
+    [Test]
+    public void Score_GroupInput_ExcludedLeafIgnored(){
+        itemA.excludeFromGroupInput = true;
+        SetGlobal(itemA, 300);  // would be 3.0 (the max leaf) — but excluded
+        SetGlobal(itemB, 50);   // 0.5
+        var targets = new Dictionary<int, int> {
+            { itemA.id, 100 },
+            { itemB.id, 100 },
+        };
+        Recipe r = MakeRecipe(inputs: new[] { IQ(Group(itemA, itemB), 10) });
+        Assert.That(r.Score(targets), Is.EqualTo(0.5f).Within(1e-6f), "excluded leaf must not raise the group score");
+    }
+
+    [Test]
+    public void Score_GroupInput_OnlyExcludedLeafHasStock_Unmakeable(){
+        itemA.excludeFromGroupInput = true;
+        SetGlobal(itemA, 500);  // excluded → contributes nothing
+        SetGlobal(itemB, 0);    // empty
+        var targets = new Dictionary<int, int> {
+            { itemA.id, 100 },
+            { itemB.id, 100 },
+        };
+        Recipe r = MakeRecipe(inputs: new[] { IQ(Group(itemA, itemB), 10) });
+        Assert.That(r.Score(targets), Is.EqualTo(0f), "only the excluded leaf has stock → unmakeable");
     }
 
     // ── Item.LeafDescendants ───────────────────────────────────────────

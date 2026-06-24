@@ -214,9 +214,10 @@ public class StructureSaveData {
     // placed on, picking the per-tile extraction distribution (tilesDb
     // nExtractionProducts). null on other structures and on old saves.
     public string capturedTileType;
-    // Digging pit only: the open face it digs toward (0=Up, 1=Left, 2=Right), chosen
-    // at construction and never recomputed. Nullable so old saves (field absent) and
-    // non-pits restore as Up — the original dig-from-the-top behaviour. See DiggingPit.DigDir.
+    // ExtractionBuilding (digging pit / quarry): the open face it digs toward (0=Up,
+    // 1=Left, 2=Right), chosen at construction and never recomputed. Nullable so old
+    // saves (field absent) and non-extraction structures restore as Up — the original
+    // dig-from-the-top behaviour. See ExtractionBuilding.DigDir.
     public int? digDir;
     // Flywheel only: stored mechanical-power energy. 0 on non-flywheels / old saves.
     // Without this, flywheels would reset to empty on every load and surrender any
@@ -346,4 +347,9 @@ public class AnimalSaveData {
     // case. (insideBuilding is not persisted — it's derived from the animal's position.)
     public int? homeBuildingX;
     public int? homeBuildingY;
+
+    // Assigned work flag (Step 6). Persists the flag's anchor coords; on load Animal.Start
+    // re-resolves the live Building via World.GetTileAt(x,y).building. Null = no flag.
+    public int? assignedFlagX;
+    public int? assignedFlagY;
 }
