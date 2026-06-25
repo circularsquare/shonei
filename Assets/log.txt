@@ -1,5 +1,8 @@
 meoww!!
 
+6/25
+- thermometer 
+- greenhouse testing 
 6/24
 - greenhouse (began)
 - fixed burrow mending bug

@@ -120,8 +120,9 @@
         "prereqs": [13],
         "cost": 5,
         "unlocks": [
-            { "type": "recipe", "target": "3" },
-            { "type": "recipe", "target": "73" }
+            { "type": "recipe",   "target": "97" },
+            { "type": "recipe",   "target": "102" },
+            { "type": "building", "target": "thermometer" }
         ]
     },{
         "id": 16,

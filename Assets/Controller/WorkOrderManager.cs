@@ -565,7 +565,11 @@ public class WorkOrderManager : MonoBehaviour {
             priority   = 3,
             factory    = a => new SupplyFuelTask(a, building),
             building   = building,
-            isActive   = () => !building.disabled && !building.IsBroken && reservoir.NeedsSupply(),
+            // A foundry is only fuelled when it WantsHeat (ore actually melting / in intake) — same gate
+            // StructController uses to decide burning, so we never haul fuel that won't be consumed.
+            // Other reservoirs (torch, fountain) supply unconditionally.
+            isActive   = () => !building.disabled && !building.IsBroken && reservoir.NeedsSupply()
+                               && (!(building is Foundry foundry) || foundry.WantsHeat()),
             // The foundry's fuel is supplied by its operator (smith) — all foundry labour (feed, fuel,
             // cast) is the smith's, giving the job more to do. Every other building's fuel = haulers'.
             canDo      = a => building is Foundry ? JobOperatesFoundry(a) : a.job.name == "hauler",

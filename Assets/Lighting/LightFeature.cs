@@ -133,21 +133,23 @@ public class LightFeature : ScriptableRendererFeature {
         // Terrain tiles keep their depth (separate chunked shader). Tolerate a missing
         // SettingsManager (defaults to shaded).
         float flatNormals = (SettingsManager.instance != null && SettingsManager.instance.flatLighting) ? 1f : 0f;
-        // Wall-shadow / interior lighting toggle (SettingsManager.wallShadows). Drives two
-        // coordinated globals: _InteriorLit promotes enclosed-building interiors from the
-        // directional-only tier (skip torches) to lit-only (receive torches) in the capture
-        // pass; _PointShadows enables the per-pixel wall ray-march in the light pass. Both off
-        // = legacy behaviour. Tolerate a missing SettingsManager (defaults to off/legacy).
-        float wallShadows = (SettingsManager.instance != null && SettingsManager.instance.wallShadows) ? 1f : 0f;
+        // Interior lighting mode (SettingsManager.interiorMode). Drives two independent globals:
+        // _InteriorLit promotes enclosed-building interiors from the directional-only tier (skip
+        // torches) to lit-only (receive torches) in the capture pass — wall-shadows mode only;
+        // _PointShadows enables the per-pixel wall ray-march in the light pass — on for everything
+        // but the legacy no-shadows mode. Tolerate a missing SettingsManager (defaults to legacy off).
+        var sm = SettingsManager.instance;
+        float interiorLit = (sm != null && sm.interiorLit)  ? 1f : 0f;
+        float pointShadows = (sm != null && sm.pointShadows) ? 1f : 0f;
         // Skip cameras that see no sprites participating in the normals RT pipeline
         // (lit, directional-only, or water). The Unlit overlay camera hits this check
         // because its culling mask only contains layers excluded from all three masks.
         var cullingMask = renderingData.cameraData.camera.cullingMask;
         if (cullingMask == 0) return;
         if ((cullingMask & (litLayers | directionalOnlyLayers | waterLayer | backgroundLayer | tileChunkLayer)) == 0) return;
-        capturePass.Setup(litLayers, shadowCasterLayers, directionalOnlyLayers, waterLayer, backgroundLayer, tileChunkLayer, flatNormals, wallShadows);
+        capturePass.Setup(litLayers, shadowCasterLayers, directionalOnlyLayers, waterLayer, backgroundLayer, tileChunkLayer, flatNormals, interiorLit);
         renderer.EnqueuePass(capturePass);
-        lightPass.Setup(ambientNormal, deepAmbientColor, skyLightBlend, sortRampRange, behindFarHeightFactor, emissionStrength, tileChunkLayer, wallShadows);
+        lightPass.Setup(ambientNormal, deepAmbientColor, skyLightBlend, sortRampRange, behindFarHeightFactor, emissionStrength, tileChunkLayer, pointShadows);
         renderer.EnqueuePass(lightPass);
     }
 

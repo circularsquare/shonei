@@ -220,6 +220,7 @@ public class StoragePanel : MonoBehaviour {
 
     // Mirrors InventoryController.IsVisibleInTree but walks allowDisplayGos.
     private bool IsVisibleInAllowTree(Item item) {
+        if (item.hidden) return false; // internal intermediary — see Item.hidden
         if (item.parent == null) return true;
         if (!allowDisplayGos.TryGetValue(item.parent.id, out var parentGo)) return true;
         ItemDisplay parentDisplay = parentGo.GetComponent<ItemDisplay>();

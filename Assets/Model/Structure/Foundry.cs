@@ -458,13 +458,11 @@ public class Foundry : Building {
     }
 
     // Whether the foundry should keep stoking heat. It needs heat ONLY to melt chunks (pool molten
-    // doesn't re-solidify), so it wants heat while chunks are melting OR while it's actively feeding
-    // toward a makeable target (pre-heat). When the target is unmakeable and nothing's left to melt this
-    // goes false and StructController stops burning fuel → heat decays toward ambient.
-    public bool WantsHeat() {
-        if (chunks.Count > 0) return true;
-        return HasRoom() && CanMakeTarget();
-    }
+    // doesn't re-solidify), so it wants heat strictly while there's ore to melt — chunks already
+    // melting, or ore in intake awaiting the next sweep. No pre-heating of an empty hearth: heat
+    // starts the tick ore lands. When nothing's left to melt this goes false and StructController stops
+    // burning fuel (and the smith stops fuelling) → heat decays toward ambient.
+    public bool WantsHeat() => chunks.Count > 0 || IntakeFen() > 0;
 
     // ── Casting ─────────────────────────────────────────────────────────────────
     // Molten ids HELD BACK from casting: the alloy COMPONENTS of the current cast target, while their

@@ -595,7 +595,7 @@ public class Nav {
         Node myNode = a.PathStartNode();
         if (myNode == null) return false;
         foreach (Structure s in list) {
-            if (!InWorkChebRegion(s.x, s.y, r)) continue;
+            if (!InWorkRegion(s.x, s.y, r)) continue;
             if (!s.res.Available()) continue;
             if (s.workNode == null) continue;
             if (world.graph.SameComponent(myNode, s.workNode)) return true;
@@ -613,41 +613,55 @@ public class Nav {
     }
 
     // ── Work anchors (Step 5b) ───────────────────────────────────────────────
-    // Work-DISCOVERY gate: true if path p reaches a tile the animal should take WORK at —
-    // either within its anchor TERRITORY (Chebyshev MediumFindRadius of WorkAnchorTile) and
-    // reachable within a territory-sized journey, OR conveniently UNDERFOOT (within the smaller
-    // WorkConvenienceRadius of the mouse). The journey cost is always measured from the MOUSE
-    // (it walks there); the anchor only adds a Chebyshev territory filter, so a mouse won't take
-    // far work just because it's standing next to it — it stays in its zone. A homeless mouse
-    // (no anchor) falls back to the plain mouse-gated MediumFindRadius test (today's behaviour).
-    // Use ONLY at a task's target-selection gate, never for sourcing inputs / depositing output
-    // (those must stay mouse-only or a mouse couldn't fetch materials from outside its territory).
+    // Work-DISCOVERY gate: true if path p reaches a tile the animal should take WORK at — either
+    // within its anchor TERRITORY (a MediumFindRadius journey of WorkAnchorTile — the work flag, or
+    // home if unassigned), OR conveniently UNDERFOOT (within the smaller WorkConvenienceRadius of
+    // the mouse). The territory journey is measured FROM THE ANCHOR, not the mouse: the territory is
+    // a fixed zone around the flag/home, so a mouse will leave wherever it has wandered to and walk
+    // to any work inside that zone — it isn't trapped out of range just by having drifted off. A
+    // homeless mouse (no anchor at all) falls back to the mouse-gated test. Use ONLY at a task's
+    // target-selection gate, never for sourcing inputs / depositing output (those stay mouse-gated,
+    // measured from the mouse, so a mouse can still fetch materials from outside its territory).
     public bool WithinWorkRange(Path p) {
-        if (p == null || p.tile == null) return false;
-        Tile t = p.tile;
+        if (p == null || p.end == null) return false;
+        // Destination grid coords. p.tile is null when the target is an off-grid workspot waypoint
+        // (extraction pits, the wheel — their workNode has no backing tile), so read the end node's
+        // tile position directly: Node.x/y is set for waypoints too (rounded from the world pos).
+        // Using p.tile here silently rejected every workspot building regardless of distance.
+        Node target = p.end;
+        int tx = target.x, ty = target.y;
         float tol = Task.FindRadiusTolerance;
-        // Territory branch (anchored) or legacy mouse branch (homeless): full medium cap.
+        float budget = Task.MediumFindRadius * tol;
+
+        // Territory branch: the zone is a Manhattan diamond of MediumFindRadius around the anchor;
+        // the anchor→target A* below then confirms it's actually reachable within budget (not just
+        // close on the grid but walled off behind terrain).
         Tile anchor = a.WorkAnchorTile;
-        bool inTerritory = anchor != null
-            ? Cheb(anchor.x, anchor.y, t.x, t.y) <= Task.MediumFindRadius
-            : Cheb((int)a.x, (int)a.y, t.x, t.y) <= Task.MediumFindRadius;
-        if (inTerritory && p.cost <= Task.MediumFindRadius * tol) return true;
+        if (anchor != null) {
+            if (Manhattan(anchor.x, anchor.y, tx, ty) <= Task.MediumFindRadius && anchor.node != null) {
+                Path ap = world.graph.Navigate(anchor.node, target);
+                if (ap != null && ap.cost <= budget) return true;
+            }
+        } else if (Manhattan((int)a.x, (int)a.y, tx, ty) <= Task.MediumFindRadius && p.cost <= budget) {
+            // Homeless (no flag, no home): medium radius around the mouse, reusing the given path.
+            return true;
+        }
         // Convenience branch: grab work right under the mouse regardless of territory, small cap.
-        if (Cheb((int)a.x, (int)a.y, t.x, t.y) <= Task.WorkConvenienceRadius
+        if (Manhattan((int)a.x, (int)a.y, tx, ty) <= Task.WorkConvenienceRadius
             && p.cost <= Task.WorkConvenienceRadius * tol) return true;
         return false;
     }
 
-    // Chebyshev work-region test shared with CanReachBuilding (which adds same-component
+    // Manhattan work-region test shared with CanReachBuilding (which adds same-component
     // reachability instead of an A* journey). Mirrors WithinWorkRange's spatial regions so
     // craft eligibility and craft-target selection stay consistent.
-    private bool InWorkChebRegion(int tx, int ty, int territoryR) {
-        if (Cheb((int)a.x, (int)a.y, tx, ty) <= Task.WorkConvenienceRadius) return true;
+    private bool InWorkRegion(int tx, int ty, int territoryR) {
+        if (Manhattan((int)a.x, (int)a.y, tx, ty) <= Task.WorkConvenienceRadius) return true;
         Tile anchor = a.WorkAnchorTile;
-        if (anchor != null) return Cheb(anchor.x, anchor.y, tx, ty) <= territoryR;
-        return Cheb((int)a.x, (int)a.y, tx, ty) <= territoryR;
+        if (anchor != null) return Manhattan(anchor.x, anchor.y, tx, ty) <= territoryR;
+        return Manhattan((int)a.x, (int)a.y, tx, ty) <= territoryR;
     }
 
-    static int Cheb(int x1, int y1, int x2, int y2) =>
-        Mathf.Max(Mathf.Abs(x1 - x2), Mathf.Abs(y1 - y2));
+    static int Manhattan(int x1, int y1, int x2, int y2) =>
+        Mathf.Abs(x1 - x2) + Mathf.Abs(y1 - y2);
 }

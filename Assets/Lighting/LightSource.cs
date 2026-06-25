@@ -77,11 +77,6 @@ public class LightSource : MonoBehaviour {
     [HideInInspector] public float flickerPhase  = 0f;
     private const float FlickerSpeed = 3f; // noise lanes/sec — how fast the wobble evolves
 
-    // Optional time gate: fuel only burns and light only shows within [activeStartHour, activeEndHour).
-    // Hours 0–24; end < start wraps midnight (e.g. 16→6 = 4pm–6am). -1 = always active.
-    [HideInInspector] public float activeStartHour = -1f;
-    [HideInInspector] public float activeEndHour   =  0f;
-
     public static readonly List<LightSource> all = new();
 
     // LightSources with an _EmissionMap (torch fire children, fireplace
@@ -220,14 +215,14 @@ public class LightSource : MonoBehaviour {
             return;
         }
 
-        bool inWindow = IsInActiveWindow();
-        // Only burn fuel while in the active time window and torch is emitting light.
-        if (inWindow && EnvDarkness() > 0f)
-            reservoir.Burn(Time.deltaTime);
-        isLit = inWindow && reservoir.HasFuel();
+        // Sun-modulated lights track dusk: burn fuel and stay lit only while it's
+        // dark where this light sits (EnvDarkness > 0 — from dusk onset to dawn).
+        // The lit window thus follows the season's actual sunset/sunrise (which
+        // shift with day length) rather than a fixed clock window.
+        bool dark = EnvDarkness() > 0f;
+        if (dark) reservoir.Burn(Time.deltaTime);
+        isLit = dark && reservoir.HasFuel();
     }
-
-    private bool IsInActiveWindow() => SunController.IsHourInRange(activeStartHour, activeEndHour);
 
     // How dark it is where this light sits, 0 (full daylight) → 1 (full night). Normally just
     // the outside time-of-day ramp (SunController.torchFactor). But a light against a solid

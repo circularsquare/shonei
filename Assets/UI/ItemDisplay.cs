@@ -225,7 +225,7 @@ public class ItemDisplay : MonoBehaviour {
 
     private void AdjustTarget(int deltaFen) {
         if (displayMode == DisplayMode.Storage) return;
-        if (item != null && item.IsGroup) return; // groups hold no target (widget is hidden) — defensive
+        if (item == null || item.IsGroup) return; // no item (e.g. unbound/template row) or a group (holds no target) — defensive
         Inventory market = ResolveMarketInventory();
         int newFen;
         if (market != null) {

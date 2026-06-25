@@ -97,6 +97,23 @@ public static class StructPlacement {
                         // check. Other depths (shafts behind a bamboo, road under a sapling, etc.)
                         // are allowed to coexist — visual clipping inside tall plants is accepted.
                         if (t.structs[st.depth] != null || t.GetBlueprintAt(st.depth) != null) return "footprint is blocked";
+                        // A greenhouse coexists with the plant it covers (slot 0 = Plant) but is
+                        // useless over a non-plant building/storage, which leaves no room to grow a
+                        // plant inside. Reject when the building layer is taken — built or queued —
+                        // by anything that isn't a plant.
+                        if (st.isGreenhouse) {
+                            Structure s0 = t.structs[0];
+                            Blueprint bp0 = t.GetBlueprintAt(0);
+                            if ((s0 != null && !(s0 is Plant)) || (bp0 != null && !bp0.structType.isPlant))
+                                return "no room for a plant";
+                        }
+                        // Symmetric guard: a building/storage placed in the slot-0 layer would sit
+                        // UNDER an existing greenhouse, again leaving no room for the plant the frame
+                        // warms. Block depth-0 placements on a greenhouse tile (built or queued).
+                        // Plants are exempt (they take the !st.isPlant branch above); ladders/ropes
+                        // (depth 2+) coexist freely.
+                        else if (st.depth == 0 && TileHasGreenhouse(t))
+                            return "greenhouse here";
                     }
                 }
             }
@@ -220,6 +237,18 @@ public static class StructPlacement {
             if (t.GetBlueprintAt(st.depth) != null) return "rope path blocked by blueprint";
         }
         return null;
+    }
+
+    // True if a greenhouse covers this tile — either a built frame (the `Tile.greenhouse`
+    // back-pointer) or a queued greenhouse blueprint at any depth. Used to keep the slot-0
+    // building layer clear so the frame's plant always has somewhere to grow.
+    private static bool TileHasGreenhouse(Tile t) {
+        if (t.greenhouse != null) return true;
+        for (int d = 0; d < Tile.NumDepths; d++) {
+            Blueprint bp = t.GetBlueprintAt(d);
+            if (bp != null && bp.structType.isGreenhouse) return true;
+        }
+        return false;
     }
 
     // True if a side-mounted structure (ladder_side, bracket) has a solid wall to lean on

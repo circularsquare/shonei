@@ -124,7 +124,8 @@ public class InventoryDetailRow : MonoBehaviour {
         // "installed" = reservoir fuel + building furnishings; bar-only, no dedicated column.
         if (bar != null) {
             int installed = ic.QuantityIn(item, Inventory.InvType.Reservoir, Inventory.InvType.Furnishing);
-            bar.SetData(item, storage, floor, carried, market, installed, total, BarTarget(ic));
+            int capacity  = ic.StorageCapacityFor(item); // free storage space that currently allows this item
+            bar.SetData(item, storage, floor, carried, market, installed, total, BarTarget(ic), capacity);
         }
         RefreshConsumeSprite();
     }

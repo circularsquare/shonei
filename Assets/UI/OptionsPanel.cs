@@ -24,9 +24,8 @@ using TMPro;
 //     flatLightingToggle — Toggle (on = flat lighting: dynamic sprites get uniform,
 //                          un-shaded lighting; off = full shaded lighting). Drives
 //                          SettingsManager.flatLighting.
-//     wallShadowsToggle  — Toggle (on = torches occluded by walls + burrow interiors
-//                          receive torchlight; off = legacy unoccluded point lights).
-//                          Drives SettingsManager.wallShadows.
+//     interiorLightingDropdown — TMP_Dropdown; options auto-populated (wall shadows / no shadows /
+//                          as building). Drives SettingsManager.interiorMode.
 //     cloudLightingToggle — Toggle (when off, clouds use flat shading — skips
 //                          height-field normal + Lambertian band selection in
 //                          CloudFieldGen Pass 0)
@@ -56,7 +55,7 @@ public class OptionsPanel : MonoBehaviour {
     [SerializeField] TMP_Dropdown fpsDropdown;
     [SerializeField] Toggle       vsyncToggle;
     [SerializeField] Toggle       flatLightingToggle; // on = flat (un-shaded) lighting; off = full shaded
-    [SerializeField] Toggle       wallShadowsToggle; // on = torches occluded by walls + burrow interiors lit; off = legacy
+    [SerializeField] TMP_Dropdown interiorLightingDropdown; // wall shadows / no shadows / burrow as building; drives SettingsManager.interiorMode
     [SerializeField] Toggle       cloudLightingToggle;
     [SerializeField] Slider       cloudDetailSlider;    // range 0.2–1 (1 = full blob count); drives SettingsManager.cloudDetail
     [SerializeField] Slider       particleDensitySlider; // range 0–1 (0 = no rain/snow); drives SettingsManager.particleDensity
@@ -114,6 +113,15 @@ public class OptionsPanel : MonoBehaviour {
 
     // Dropdown index → fps value. 0 = unlimited (no cap).
     static readonly int[] FpsOptions = { 30, 60, 120, 144, 0 };
+
+    // Interior-lighting dropdown index → mode. Order/labels are parallel; labels are concise
+    // and ASCII (m5x7 has no special glyphs). See SettingsManager.InteriorMode.
+    static readonly SettingsManager.InteriorMode[] InteriorModeOptions = {
+        SettingsManager.InteriorMode.WallShadows,
+        SettingsManager.InteriorMode.NoWallShadows,
+        SettingsManager.InteriorMode.BurrowAsBuilding,
+    };
+    static readonly string[] InteriorModeLabels = { "wall shadows", "no shadows", "as building" };
 
     // Autosave dropdown index → interval in minutes. 0 = off. Labels are populated in WireUp.
     static readonly int[]    AutosaveOptions = { 0, 1, 5, 10, 30 };
@@ -319,7 +327,11 @@ public class OptionsPanel : MonoBehaviour {
         if (fpsDropdown    != null) fpsDropdown.onValueChanged.AddListener(OnFpsIndex);
         if (vsyncToggle    != null) vsyncToggle.onValueChanged.AddListener(OnVsync);
         if (flatLightingToggle != null) flatLightingToggle.onValueChanged.AddListener(OnFlatLighting);
-        if (wallShadowsToggle != null) wallShadowsToggle.onValueChanged.AddListener(OnWallShadows);
+        if (interiorLightingDropdown != null) {
+            interiorLightingDropdown.ClearOptions();
+            interiorLightingDropdown.AddOptions(new List<string>(InteriorModeLabels));
+            interiorLightingDropdown.onValueChanged.AddListener(OnInteriorMode);
+        }
         if (cloudLightingToggle != null) cloudLightingToggle.onValueChanged.AddListener(OnCloudLighting);
         if (cloudDetailSlider != null) cloudDetailSlider.onValueChanged.AddListener(OnCloudDetail);
         if (particleDensitySlider != null) particleDensitySlider.onValueChanged.AddListener(OnParticleDensity);
@@ -370,7 +382,7 @@ public class OptionsPanel : MonoBehaviour {
         if (fpsDropdown    != null) fpsDropdown.value    = FpsValueToIndex(s.targetFps);
         if (vsyncToggle    != null) vsyncToggle.isOn     = s.vsyncEnabled;
         if (flatLightingToggle != null) flatLightingToggle.isOn = s.flatLighting;
-        if (wallShadowsToggle != null) wallShadowsToggle.isOn = s.wallShadows;
+        if (interiorLightingDropdown != null) interiorLightingDropdown.value = InteriorModeToIndex(s.interiorMode);
         if (cloudLightingToggle != null) cloudLightingToggle.isOn = s.cloudLightingEnabled;
         if (cloudDetailSlider != null) cloudDetailSlider.value = s.cloudDetail;
         if (particleDensitySlider != null) particleDensitySlider.value = s.particleDensity;
@@ -390,6 +402,12 @@ public class OptionsPanel : MonoBehaviour {
         return FpsOptions.Length - 1;
     }
 
+    static int InteriorModeToIndex(SettingsManager.InteriorMode mode) {
+        for (int i = 0; i < InteriorModeOptions.Length; i++)
+            if (InteriorModeOptions[i] == mode) return i;
+        return 0; // unreachable (every enum value is listed); default to wall shadows
+    }
+
     static int AutosaveValueToIndex(int minutes) {
         for (int i = 0; i < AutosaveOptions.Length; i++)
             if (AutosaveOptions[i] == minutes) return i;
@@ -405,7 +423,14 @@ public class OptionsPanel : MonoBehaviour {
     void OnAmbient(float v)  { if (!suppressCallbacks) SettingsManager.instance?.SetAmbientVolume(v); }
     void OnVsync(bool v)     { if (!suppressCallbacks) SettingsManager.instance?.SetVsync(v); }
     void OnFlatLighting(bool v) { if (!suppressCallbacks) SettingsManager.instance?.SetFlatLighting(v); }
-    void OnWallShadows(bool v) { if (!suppressCallbacks) SettingsManager.instance?.SetWallShadows(v); }
+    void OnInteriorMode(int i) {
+        if (suppressCallbacks) return;
+        if (i < 0 || i >= InteriorModeOptions.Length) {
+            Debug.LogError($"[OptionsPanel] Interior lighting dropdown index out of range: {i}");
+            return;
+        }
+        SettingsManager.instance?.SetInteriorMode(InteriorModeOptions[i]);
+    }
     void OnCloudLighting(bool v) { if (!suppressCallbacks) SettingsManager.instance?.SetCloudLighting(v); }
     void OnCloudDetail(float v)  { if (!suppressCallbacks) SettingsManager.instance?.SetCloudDetail(v); }
     void OnParticleDensity(float v) { if (!suppressCallbacks) SettingsManager.instance?.SetParticleDensity(v); }

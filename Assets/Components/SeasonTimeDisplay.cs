@@ -16,7 +16,8 @@ public class SeasonTimeDisplay : MonoBehaviour {
 
     TextMeshProUGUI _text;
     float           _timer;
-    StructType      _clockType;   // cached once Db resolves it; clock type never changes after
+    StructType      _clockType;        // cached once Db resolves it; clock type never changes after
+    StructType      _thermometerType;  // ditto
 
     void Awake() {
         _text = GetComponent<TextMeshProUGUI>();
@@ -50,6 +51,10 @@ public class SeasonTimeDisplay : MonoBehaviour {
         if (HasPoweredClock())
             sb.Append(' ').Append(FormatHour(SunController.GetDayPhase() * 24f));
 
+        // Temperature, only once a thermometer is built. Format shared with the info panel.
+        if (HasThermometer())
+            sb.Append(' ').Append(WeatherSystem.FormatTemp(ws.temperature));
+
         _text.text = sb.ToString();
     }
 
@@ -71,6 +76,22 @@ public class SeasonTimeDisplay : MonoBehaviour {
         if (_clockType == null && Db.structTypeByName != null)
             Db.structTypeByName.TryGetValue("clock", out _clockType);
         return _clockType;
+    }
+
+    // True if any thermometer has been constructed (no power needed — it's a passive gauge).
+    bool HasThermometer() {
+        var sc = StructController.instance;
+        if (sc == null) return false;
+        StructType thermometer = ThermometerType();
+        if (thermometer == null) return false;
+        List<Structure> built = sc.GetByType(thermometer);
+        return built != null && built.Count > 0;
+    }
+
+    StructType ThermometerType() {
+        if (_thermometerType == null && Db.structTypeByName != null)
+            Db.structTypeByName.TryGetValue("thermometer", out _thermometerType);
+        return _thermometerType;
     }
 
     // 24h float → 12h clock label, e.g. "5pm" / "12am" / "12pm".

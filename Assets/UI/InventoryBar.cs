@@ -21,6 +21,11 @@ using UnityEngine.EventSystems;
 // with a thin red LINE child; on leaf rows the line overhangs the pill ~1px top+bottom, on group
 // rows it sits flush (a visual cue that it isn't draggable).
 //
+// A second, dark-GREEN marker shows the STORAGE CEILING — how much of this item the player's
+// storage could hold if topped off (storage already held + free space in stacks that currently
+// allow it). It's read-only: a full-pill-height line, no drag handle. Fraction =
+// ceiling/scale, so like the target it pins to the right edge once the ceiling exceeds the scale.
+//
 // Segments/marker carry Tooltippables. Built in code (dynamic per-item content); GameObjects are
 // created once and reused. Segment visibility is driven by `Image.enabled` (a disabled Graphic
 // doesn't raycast) — NOT SetActive / disabling the Tooltippable, either of which trips
@@ -35,20 +40,24 @@ public class InventoryBar : MonoBehaviour {
     [System.NonSerialized] public System.Action<int> onTargetSet;
 
     // Muted palette (matches the SPEC-mcp UI colour guidance).
-    static readonly Color cStorage   = new Color(0.40f, 0.62f, 0.40f); // green
+    static readonly Color cStorage   = new Color(0.48f, 0.70f, 0.48f); // green
     static readonly Color cFloor     = new Color(0.85f, 0.72f, 0.32f); // yellow
     static readonly Color cMice      = new Color(0.55f, 0.55f, 0.55f); // gray
     static readonly Color cMarket    = new Color(0.42f, 0.56f, 0.74f); // blue
     static readonly Color cInstalled = new Color(0.50f, 0.36f, 0.22f); // brown (reservoir fuel / furnishings)
     static readonly Color cOther     = new Color(0.82f, 0.52f, 0.28f); // orange
     static readonly Color cDeficit   = new Color(0.42f, 0.20f, 0.20f); // dark dull red
-    static readonly Color cMarker    = new Color(0.58f, 0.12f, 0.12f); // dark red
+    static readonly Color cMarker    = new Color(0.58f, 0.12f, 0.12f); // dark red (target)
+    static readonly Color cCapacity  = new Color(0.16f, 0.34f, 0.18f); // dark green (storage-capacity ceiling)
 
     const int   BucketCount     = 6;             // storage, floor, mice, market, installed, other
     const int   SegCount        = BucketCount + 1; // + deficit zone
-    const float MarkerLineWidthPx = 3f;          // visible red line
+    const float MarkerLineWidthPx = 2f;          // visible red line
     const float MarkerHitWidthPx  = 14f;         // invisible grab zone around the line
     const float MarkerOverhangPx  = 2f;          // leaf marker: line taller than the pill (1px above + 1px below) — the draggable cue
+    const float CapacityHitWidthPx  = 10f;       // grab zone around the capacity line (hover → tooltip)
+    const float CapacityLineWidthPx = 2f;        // same width as the target line; the two differ by height (target overhangs taller)
+    const float CapacityHeightFrac  = 1f;        // capacity line spans the full pill height (target line overhangs slightly taller)
     const int   TargetSnapFen     = 10;          // dragged targets snap to 0.1 liang
     const float Eps               = 0.0005f;
 
@@ -58,6 +67,10 @@ public class InventoryBar : MonoBehaviour {
     Image          markerHitImg;
     Image          markerLine;  // thin red visible line
     Tooltippable   markerTip;
+    RectTransform  capHit;      // capacity marker grab zone (raycast + tooltip; NOT draggable)
+    Image          capHitImg;
+    Image          capLine;     // thin dark-green visible line, shorter than the pill
+    Tooltippable   capTip;
 
     // Captured at SetData for the drag math (target/owned don't change mid-drag).
     Item  lastItem;
@@ -100,11 +113,36 @@ public class InventoryBar : MonoBehaviour {
         lrt.sizeDelta = new Vector2(MarkerLineWidthPx, 0);
         markerLine = lgo.AddComponent<Image>();
         markerLine.color = cMarker; markerLine.raycastTarget = false;
+
+        // Capacity marker — mirrors the target marker (hit zone + line + tooltip) but is NOT
+        // draggable (no drag handle) and the line is shorter than the pill, signalling read-only.
+        // Also parented to the bar cell so it tracks the same geometry as the track.
+        var cgo = new GameObject("capacity", typeof(RectTransform));
+        cgo.transform.SetParent(transform, false);
+        capHit = cgo.GetComponent<RectTransform>();
+        capHit.anchorMin = new Vector2(0, 0); capHit.anchorMax = new Vector2(0, 1); capHit.pivot = new Vector2(0.5f, 0.5f);
+        capHit.sizeDelta = new Vector2(CapacityHitWidthPx, 0f);
+        capHitImg = cgo.AddComponent<Image>();
+        capHitImg.color = new Color(0, 0, 0, 0); capHitImg.raycastTarget = true; // transparent grab zone
+        capTip = cgo.AddComponent<Tooltippable>();
+        // Full-pill-height line, centered in the hit zone. Same width as the target line; the
+        // slightly-overhanging draggable target line reads as taller.
+        var clgo = new GameObject("line", typeof(RectTransform));
+        clgo.transform.SetParent(cgo.transform, false);
+        var clrt = clgo.GetComponent<RectTransform>();
+        float pad = (1f - CapacityHeightFrac) * 0.5f;
+        clrt.anchorMin = new Vector2(0.5f, pad); clrt.anchorMax = new Vector2(0.5f, 1f - pad); clrt.pivot = new Vector2(0.5f, 0.5f);
+        clrt.sizeDelta = new Vector2(CapacityLineWidthPx, 0);
+        capLine = clgo.AddComponent<Image>();
+        capLine.color = cCapacity; capLine.raycastTarget = false;
     }
 
     // All quantities in fen; rendered via ItemStack.FormatQ for tooltips. `installed` = reservoir
     // fuel + furnishings equipped in buildings (shown only on the bar, no dedicated column).
-    public void SetData(Item item, int storage, int floor, int mice, int market, int installed, int total, int target) {
+    // `capacity` = free storage space that currently allows this item (empty allowed stacks + room
+    // in stacks already holding it); the dark-green capacity marker sits at the storage CEILING
+    // (storage + capacity), i.e. how much this item's storage could hold if topped off.
+    public void SetData(Item item, int storage, int floor, int mice, int market, int installed, int total, int target, int capacity) {
         EnsureBuilt();
         lastItem = item;
         int owned = total;
@@ -112,7 +150,7 @@ public class InventoryBar : MonoBehaviour {
         int scale = Mathf.Max(owned, target);
         lastScale = scale;
 
-        if (scale <= 0) { for (int i = 0; i < SegCount; i++) HideSeg(i); HideMarker(); return; }
+        if (scale <= 0) { for (int i = 0; i < SegCount; i++) HideSeg(i); HideMarker(); HideCapacity(); return; }
 
         int[]    vals  = { storage, floor, mice, market, installed, other };
         Color[]  cols  = { cStorage, cFloor, cMice, cMarket, cInstalled, cOther };
@@ -136,6 +174,12 @@ public class InventoryBar : MonoBehaviour {
         // Target marker: always shown (fraction target/scale → right end when target ≥ owned).
         // Skipped while dragging so the live drag position isn't clobbered by the refresh tick.
         if (!dragging) ShowMarker(target / (float)scale, "target " + ItemStack.FormatQ(target, item));
+
+        // Capacity marker: dark-green line at the storage ceiling (storage already held + free
+        // space that allows the item). Hidden when no storage allows the item at all.
+        int ceiling = storage + capacity;
+        if (ceiling > 0) ShowCapacity(ceiling / (float)scale, "storage " + ItemStack.FormatQ(ceiling, item) + " (" + ItemStack.FormatQ(capacity, item) + " free)");
+        else             HideCapacity();
     }
 
     void SetSeg(int i, float start, float end, Color c, string tip) {
@@ -165,6 +209,22 @@ public class InventoryBar : MonoBehaviour {
     void HideMarker() {
         if (markerLine != null) markerLine.enabled = false;
         if (markerHitImg != null) markerHitImg.raycastTarget = false;
+    }
+
+    void ShowCapacity(float frac, string tip) {
+        float f = Mathf.Clamp01(frac);
+        capHit.anchorMin = new Vector2(f, 0); capHit.anchorMax = new Vector2(f, 1);
+        capHit.anchoredPosition = Vector2.zero;
+        capLine.enabled = true;
+        capHitImg.raycastTarget = true;
+        capTip.body = tip;
+        // Both markers sit above the track. Keep the draggable target marker on TOP so its grab zone
+        // wins where the two overlap (capHit's transparent hit area would otherwise block the drag).
+        if (markerHit != null) markerHit.SetAsLastSibling();
+    }
+    void HideCapacity() {
+        if (capLine != null) capLine.enabled = false;
+        if (capHitImg != null) capHitImg.raycastTarget = false;
     }
 
     // Places the marker hit zone at horizontal fraction `f` of the bar (f may exceed 1 mid-drag).

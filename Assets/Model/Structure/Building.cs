@@ -27,18 +27,20 @@ public class Workstation {
 // Owns inv, fuelItem, capacity, and burn rate. Non-null only when structType.hasFuelInv.
 // Works for any drainable resource (fuel, water, etc.).
 // LightSource consumes via Burn(). WOM registers a standing SupplyBuilding order via building.reservoir.
-// Supply is triggered when quantity falls below half of capacity.
+// Supply is triggered when quantity falls below refillFraction of capacity (default half).
 public class Reservoir {
     public Item fuelItem;     // restrict to this leaf/group (e.g. "wood", "water"); null = accept ANY fuel (fuelValue>0)
     public int capacity;      // max stack size in fen
     public float burnRate;    // ENERGY/day consumed; divided by the stocked fuel's fuelValue at burn (wood=1 → unchanged)
+    public float refillFraction; // supply fires when level drops below this fraction of capacity
     public Inventory inv;     // internal inventory: 1 stack, not tied to a tile
     private float burnAccumulator = 0f; // fractional-fen carry so sub-fen burn rates work across frames/ticks
 
-    public Reservoir(Item fuelItem, int capacity, float burnRate, int buildingX, int buildingY, string buildingName) {
+    public Reservoir(Item fuelItem, int capacity, float burnRate, int buildingX, int buildingY, string buildingName, float refillFraction = 0.5f) {
         this.fuelItem = fuelItem;
         this.capacity = capacity;
         this.burnRate = burnRate;
+        this.refillFraction = refillFraction;
         inv = new Inventory(1, capacity, Inventory.InvType.Reservoir, buildingX, buildingY);
         inv.displayName = buildingName + "_fuel";
     }
@@ -59,8 +61,8 @@ public class Reservoir {
         return null;
     }
 
-    // True when level is below half of capacity — triggers a WOM supply order.
-    public bool NeedsSupply() => Quantity() < capacity / 2;
+    // True when level is below the refill fraction of capacity — triggers a WOM supply order.
+    public bool NeedsSupply() => Quantity() < capacity * refillFraction;
 
     // True when level is above zero.
     public bool HasFuel() => Quantity() > 0;
@@ -265,7 +267,7 @@ public class Building : Structure {
         }
 
         if (st.hasFuelInv) {
-            reservoir = new Reservoir(st.fuelItem, st.fuelCapacity, st.fuelBurnRate, x, y, st.name);
+            reservoir = new Reservoir(st.fuelItem, st.fuelCapacity, st.fuelBurnRate, x, y, st.name, st.fuelRefillFraction);
             if (st.isLightSource) {
                 var ls = go.AddComponent<LightSource>();
                 ls.baseIntensity = st.lightIntensity;
@@ -277,8 +279,6 @@ public class Building : Structure {
                 ls.reservoir = reservoir;
                 ls.building  = this; // gates burn + emission on this.disabled
                 ls.sunModulated    = true;
-                ls.activeStartHour = st.activeStartHour;
-                ls.activeEndHour   = st.activeEndHour;
                 // Start unlit — Update() will set isLit correctly on the first frame
                 // once fuel state is known. Avoids a one-frame flicker on placement/load.
                 ls.isLit = false;

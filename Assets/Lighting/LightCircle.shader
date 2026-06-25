@@ -38,8 +38,8 @@ Shader "Hidden/LightCircle" {
             float  _SortRampRange;
             float  _BehindFarHeightFactor;
 
-            // Wall-occlusion toggle (set per frame by LightPass from SettingsManager.wallShadows).
-            // 1 = sphere-trace the occluder distance field toward the light; 0 = no occlusion.
+            // Wall-occlusion toggle (set per frame by LightPass from SettingsManager.pointShadows).
+            // 1 = thickness-attenuate the light by solid material crossed toward the light; 0 = no occlusion.
             float  _PointShadows;
 
             // Populated each frame by NormalsCapturePass.
@@ -47,10 +47,49 @@ Shader "Hidden/LightCircle" {
             SAMPLER(sampler_CapturedNormalsRT);
 
             // Occluder distance field (OccluderField.cs): per-tile world-space distance (tiles) to
-            // the nearest wall, bilinear. _GridSize = (nx, ny). Sphere-traced below for soft shadows.
+            // the nearest wall, bilinear. 0 inside walls, >=1 in open cells. _GridSize = (nx, ny).
+            // Walked by SolidThickness for the soft thickness-attenuated shadow.
             TEXTURE2D(_OccluderDist);
             SAMPLER(sampler_OccluderDist);
             float4 _GridSize;
+
+            // Accumulated thickness (in tiles) of solid material the ray from `p` to `lightPos`
+            // crosses. Exact DDA grid walk (Amanatides & Woo) that sums the segment length spent
+            // inside each solid cell. Because it's a continuous function of the light/receiver
+            // positions, the shadow edge FADES smoothly as a grazing ray catches more/less wall —
+            // unlike a binary blocked test, which snaps from lit to black at a tile boundary. It
+            // visits EVERY cell the ray crosses (no leaps), so a straight shot through a 1-tile
+            // wall accumulates a full tile of thickness (no thin-wall leak); only corner-grazing
+            // rays accumulate a fraction, which is exactly the soft penumbra we want. Solidity is
+            // read from the field (a cell centre samples ~0 inside walls, >=1 in open). Tiles are
+            // centered on integer world coords, so cell indexing shifts by +0.5.
+            float SolidThickness(float2 p, float2 lightPos) {
+                float2 dvec = lightPos - p;
+                float  dist = length(dvec);
+                if (dist <= 1e-4) return 0.0;
+                float2 rd     = dvec / dist;
+                float2 rdSafe = float2(abs(rd.x) < 1e-6 ? 1e-6 : rd.x, abs(rd.y) < 1e-6 ? 1e-6 : rd.y);
+                float2 g      = p + 0.5;
+                int2   cell   = (int2)floor(g);
+                int2   stp    = int2(rd.x >= 0.0 ? 1 : -1, rd.y >= 0.0 ? 1 : -1);
+                float2 tDelta = abs(1.0 / rdSafe);
+                float2 nb     = floor(g) + float2(rd.x >= 0.0 ? 1.0 : 0.0, rd.y >= 0.0 ? 1.0 : 0.0);
+                float2 tMax   = (nb - g) / rdSafe;
+                float  thickness = 0.0;
+                float  prevT     = 0.0;
+                [loop]
+                for (int i = 0; i < 48; i++) {
+                    float  nextT = min(min(tMax.x, tMax.y), dist);   // exit param of current cell (clamped to light)
+                    float2 uv    = ((float2)cell + 0.5) / _GridSize.xy;
+                    if (SAMPLE_TEXTURE2D(_OccluderDist, sampler_OccluderDist, uv).r < 0.5)
+                        thickness += nextT - prevT;                  // length of the ray inside this solid cell
+                    if (nextT >= dist) break;                        // reached the light
+                    prevT = nextT;
+                    if (tMax.x < tMax.y) { tMax.x += tDelta.x; cell.x += stp.x; }
+                    else                 { tMax.y += tDelta.y; cell.y += stp.y; }
+                }
+                return thickness;
+            }
 
             struct Attributes {
                 float3 positionOS : POSITION;
@@ -146,34 +185,24 @@ Shader "Hidden/LightCircle" {
                 float ndotl   = min(hiCeil, dot(normal, toLight) / lerp(1.0, flatRef, _CenterFlatten));
                 ndotl = max(ambientFloor, ndotl);
 
-                // Soft wall shadows (Inigo Quilez SDF soft shadow): sphere-trace ONE ray from this
-                // fragment toward the light through the occluder distance field. Each step leaps by
-                // the distance to the nearest wall (big leaps across open space → a few steps), and
-                // the penumbra comes from the closest the ray passes a wall relative to how far along
-                // it is (res = min over the ray of K·d/t). View-INDEPENDENT, so no perpendicular-
-                // source artifacts (banding / parabolas) and cramped interiors stay lit (a short
-                // interior ray never gets close enough to a wall to darken). Only NON-solid receivers
-                // trace (ns.a < 0.78): a wall's own lit face is lit by the radial falloff; a solid
-                // receiver sits at distance 0 and would self-shadow.
+                // Wall shadows = thickness-attenuated soft occlusion. Instead of a binary
+                // "ray crosses a wall → fully black" test (which snaps at tile boundaries and
+                // looks like a hard cutout), accumulate how much SOLID material the ray to the
+                // light passes through (SolidThickness, exact DDA) and ramp to full shadow over
+                // WallFade tiles of it. A straight shot through a 1-tile wall accumulates ~1 tile
+                // → fully blocked (no thin-wall leak); a ray that just clips a corner accumulates
+                // a fraction → partial shadow. As the light slides across a wall edge that
+                // grazing length grows continuously, so the receiver fades lit→dark over ~WallFade
+                // tiles — the same gradual feel as the tile edge-depth darkening, not a hard line.
+                // Only NON-solid receivers trace (ns.a < 0.78): a wall's own lit face is lit by the
+                // radial falloff; a solid receiver sits at distance 0 and would self-shadow.
                 float shadow = 0.0;
                 float2 toL = _LightWorldPos.xy - IN.worldPos.xy;
                 float  distL = length(toL);
                 if (_PointShadows > 0.5 && ns.a < 0.78 && distL > 1e-4) {
-                    const float K = 6.0;        // penumbra hardness — higher = sharper edge
-                    float2 dir = toL / distL;
-                    float2 p   = IN.worldPos.xy;
-                    float  res = 1.0;
-                    float  t   = 0.15;          // bias past the receiver's own cell
-                    [loop]
-                    for (int i = 0; i < 48; i++) {
-                        float2 uv = (p + dir * t + 0.5) / _GridSize.xy;   // tiles centered on integer coords
-                        float  d  = SAMPLE_TEXTURE2D(_OccluderDist, sampler_OccluderDist, uv).r;
-                        if (d < 0.02) { res = 0.0; break; }               // reached a wall → umbra
-                        res = min(res, K * d / t);                        // penumbra: nearest approach / distance
-                        t += max(d, 0.1);                                 // sphere-trace leap; min step avoids stalls
-                        if (t >= distL) break;                            // reached the light → done
-                    }
-                    shadow = 1.0 - res;
+                    const float WallFade = 0.5;                    // tiles of solid to reach full shadow (lower = harder edge)
+                    float thick = SolidThickness(IN.worldPos.xy, _LightWorldPos.xy);
+                    shadow = saturate(thick / WallFade);
                 }
 
                 return float4(saturate(_LightColor.rgb * (_Intensity * falloff * ndotl * (1.0 - shadow))), 1.0);

@@ -277,9 +277,10 @@ public class TradingPanel : MonoBehaviour {
         }
     }
 
-    // True if every ancestor of `item` in the market tree is `open`.
-    // Mirrors InventoryController.IsVisibleInTree but reads marketDisplayGos.
+    // True if `item` isn't flagged hidden (see Item.hidden) and every ancestor in the market
+    // tree is `open`. Mirrors InventoryController.IsVisibleInTree but reads marketDisplayGos.
     bool IsVisibleInMarketTree(Item item) {
+        if (item.hidden) return false;
         if (item.parent == null) return true;
         if (!marketDisplayGos.TryGetValue(item.parent.id, out GameObject parentGo) || parentGo == null) return true;
         ItemDisplay parentDisplay = parentGo.GetComponent<ItemDisplay>();
@@ -306,6 +307,8 @@ public class TradingPanel : MonoBehaviour {
             // Skip "none" (placeholder, not a real item) and "silver" (the trade currency,
             // never the traded item — appears on every order automatically).
             if (item.name == "none" || item.name == "silver") continue;
+            // Skip hidden intermediaries (molten metals/glass) — not tradable. See Item.hidden.
+            if (item.hidden) continue;
 
             // Slot wrapper sits in the GridLayoutGroup cell. Children render in order,
             // so Highlight (added first) draws behind Icon (added second).

@@ -99,7 +99,7 @@
             { "name": "planks", "quantity": 2 },
             { "name": "dirt", "quantity": 1 }
         ],
-        "depth": 2,
+        "depth": 5,
         "isBuilding": true,
         "isGreenhouse": true,
         "greenhouseTargetTempC": 25,
@@ -399,6 +399,21 @@
         "category": "structures",
         "defaultLocked": true
     },{
+        "id": 46,
+        "constructionCost": 15,
+        "name": "thermometer",
+        "description": "shows the temperature",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "planks", "quantity": 5 },
+            { "name": "glass", "quantity": 5 },
+            { "name": "water", "quantity": 2 }
+        ],
+        "depth": 0,
+        "solidTop": true,
+        "category": "structures",
+        "defaultLocked": true
+    },{
         "id": 200,
         "constructionCost": 2,
         "name": "work flag",
@@ -616,6 +631,7 @@
         "hasFuelInv": true,
         "fuelCapacity": 20,
         "fuelBurnRate": 60,
+        "fuelRefillFraction": 0.7,
         "lightIntensity": 0.9,
         "lightInnerRadius": 1,
         "lightOuterRadius": 9,

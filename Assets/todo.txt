@@ -29,8 +29,6 @@ CONTENT
     - additional levels?
 - power 
     - small internal power storage for power consumers? (hidden if contain 0 power)
-- thermometer/glass 
-    - sand
 - house furnishing
     - glass
     - torch?
@@ -64,13 +62,13 @@ CONTENT
     - town tiers?
 
 - day hours vary with season
-    - show season / date with timekeeping techs
 
 - mining tools plan
 - partial progress on books (book in progress held at scriptorium?)
 
 - hats! 
     - job gated 
+    - mouse gender
 
 SERVER
 - offline progress (see offline progress plan)
@@ -81,15 +79,13 @@ VISUALS
 - lighting 
     - improve undergroundwall sprite 
         - procedurally generate rocks with normalmaps?
-    - interior lighting
-        - what to do here? currently not receiving any point light
 - wind sway on tarp?
-- update all plants to have blob swaying
-- gradual snow buildup
+- update more plants to have blob swaying
 - more sounds (see sounds spec)
 - blueprint hovered over dirt tile pretty hard to see. maybe also add a low opacity white frame
 
-- mosue fur variation
+- propagated light: try out. see plan
+
 
 OPTIMIZATION  
 why is it using 38% gpu with all lighting off?
@@ -110,6 +106,8 @@ UI
 - add more info for happiness panel?
 - per item plots
 - per happiness plots
+
+- job load metric (idle time)
 
 
 CODE CLEANUP
@@ -137,3 +135,5 @@ work flag system
 - have mice try to move closer to work flag?
 
 - burrow lighting
+
+- foot traffic mode 

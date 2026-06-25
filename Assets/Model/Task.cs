@@ -72,7 +72,7 @@ public abstract class Task {
     // A candidate target is rejected if the *actual* path cost to reach it exceeds
     // radius × tolerance. This prevents mice committing to journeys that look close
     // crow-flies but wind endlessly around terrain.
-    public const int MediumFindRadius = 40;         // default for almost every task; also the work-anchor TERRITORY radius
+    public const int MediumFindRadius = 32;         // default for almost every task; also the work-anchor TERRITORY radius
     public const int MarketFindRadius = 120;        // market portal only — intentionally long
     public const int WorkConvenienceRadius = 15;    // Step 5b: small circle around the mouse for grabbing work underfoot, outside its anchor territory
     public const float FindRadiusTolerance = 1.2f;  // path cost may exceed radius by this factor

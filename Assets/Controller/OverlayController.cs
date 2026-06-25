@@ -111,8 +111,8 @@ public class OverlayController : MonoBehaviour {
         int mx = (int)subject.x, my = (int)subject.y;
         Tile anchor = subject.WorkAnchorTile;
         int ax = anchor != null ? anchor.x : mx, ay = anchor != null ? anchor.y : my;
-        int dMouse  = Mathf.Max(Mathf.Abs(tx - mx), Mathf.Abs(ty - my));
-        int dAnchor = Mathf.Max(Mathf.Abs(tx - ax), Mathf.Abs(ty - ay));
+        int dMouse  = Mathf.Abs(tx - mx) + Mathf.Abs(ty - my);
+        int dAnchor = Mathf.Abs(tx - ax) + Mathf.Abs(ty - ay);
         if (dMouse <= Task.WorkConvenienceRadius) {
             title = "convenience";
             body  = dMouse + " / " + Task.WorkConvenienceRadius + " from mouse";
@@ -188,8 +188,8 @@ public class OverlayController : MonoBehaviour {
         StampBox(mx, my, Task.WorkConvenienceRadius, ConvenienceColor, reachFrom); // convenience, on top
     }
 
-    // Stamps a Chebyshev box of radius r centred at (cx,cy): the region colour at full strength in
-    // the centre, fading toward EdgeBright at the edge so the value falloff reads against the dark
+    // Stamps a Manhattan diamond of radius r centred at (cx,cy): the region colour at full strength
+    // in the centre, fading toward EdgeBright at the edge so the value falloff reads against the dark
     // wash. Only reachable tiles (same nav component as reachFrom) are coloured; others keep the
     // dark wash. Always overwrites, so the later box (convenience) wins where the two overlap.
     void StampBox(int cx, int cy, int r, Color col, Node reachFrom) {
@@ -200,10 +200,11 @@ public class OverlayController : MonoBehaviour {
             for (int dx = -r; dx <= r; dx++) {
                 int tx = cx + dx;
                 if (tx < 0 || tx >= nx) continue;
+                int dist = Mathf.Abs(dx) + Mathf.Abs(dy);
+                if (dist > r) continue; // Manhattan diamond, not a square
                 Tile tile = w.GetTileAt(tx, ty);
                 if (tile == null || !w.graph.SameComponent(reachFrom, tile.node)) continue; // unreachable → stay dark
-                int cheb = Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy));
-                float t = r > 0 ? (float)cheb / r : 0f;
+                float t = r > 0 ? (float)dist / r : 0f;
                 float bright = Mathf.Lerp(1f, EdgeBright, t);
                 Color c = col * bright; // fade toward black; alpha stays constant
                 pixels[ty * nx + tx] = new Color32(

@@ -493,6 +493,13 @@ public class Animal : MonoBehaviour{
     // slots) is itself a scored category (DropUrgency), not a hard pre-step — so a starving or
     // exhausted mouse eats / sleeps before crawling off to offload. It still carries its own cooldown
     // fallback (DropObjective sets it on a boxed-in give-up) so it doesn't loop forever.
+    // Display-only readout of the mouse's current priority: the category that won the most recent
+    // ChooseTask, and its pre-jitter urgency. Set below, surfaced in the mouse info panel, not saved
+    // (it's recomputed on the next decision). raw value (not the jittered one used for the sort) so
+    // the number is stable and meaningful.
+    public string topUrgencyLabel = "idle";
+    public float  topUrgencyValue;
+
     public void ChooseTask() {
         if (task != null){ return; }
 
@@ -500,39 +507,50 @@ public class Animal : MonoBehaviour{
         // applies (full slot, no orders) get urgency 0 so they're never attempted. Idle is the floor.
         // Craft and leisure are gathered once here and threaded into both their urgency and their
         // pick, so the (non-trivial) scan isn't run twice per idle tick.
-        var candidates = new List<(float urgency, System.Func<bool> tryStart)>();
+        // Each candidate carries its pre-jitter urgency and a label purely so the winner can be
+        // recorded for the info panel (topUrgencyLabel/Value) — they don't affect the choice.
+        var candidates = new List<(float urgency, float raw, string label, System.Func<bool> tryStart)>();
 
-        candidates.Add((Jitter(eating.HungerUrgency()), FindFood));
-        candidates.Add((Jitter(eeping.SleepUrgency(BedtimeUrgency())), TryStartSleep));
+        float eatU = eating.HungerUrgency();
+        candidates.Add((Jitter(eatU), eatU, "eat", FindFood));
+        float sleepU = eeping.SleepUrgency(BedtimeUrgency());
+        candidates.Add((Jitter(sleepU), sleepU, "sleep", TryStartSleep));
         // Equip/clothing: fixed pull, only when the slot is actually empty (else the helper would
         // rank then no-op — see validation note in the plan).
         float equipU = (job.usesTools && toolSlotInv.itemStacks[0].item == null) ? UrgencyConfig.EquipUrgency : 0f;
         float clothingU = clothingSlotInv.itemStacks[0].item == null ? UrgencyConfig.EquipUrgency : 0f;
-        candidates.Add((Jitter(equipU), FindEquipment));
-        candidates.Add((Jitter(clothingU), FindClothing));
-        candidates.Add((Jitter(DropUrgency()), TryStartDrop));
+        candidates.Add((Jitter(equipU), equipU, "equip", FindEquipment));
+        candidates.Add((Jitter(clothingU), clothingU, "clothing", FindClothing));
+        float dropU = DropUrgency();
+        candidates.Add((Jitter(dropU), dropU, "drop", TryStartDrop));
 
         var wom = WorkOrderManager.instance;
         if (wom != null) {
             wom.PruneStale();
-            candidates.Add((Jitter(wom.BestWorkUrgency(this)), TryStartWorkOrder));
+            float workU = wom.BestWorkUrgency(this);
+            candidates.Add((Jitter(workU), workU, "work", TryStartWorkOrder));
             var craft = ScoreCraftRecipes();
-            candidates.Add((Jitter(CraftUrgency(craft)), () => ChooseCraftTask(craft)));
+            float craftU = CraftUrgency(craft);
+            candidates.Add((Jitter(craftU), craftU, "craft", () => ChooseCraftTask(craft)));
         }
         var leisure = GatherLeisureCandidates();
-        candidates.Add((Jitter(LeisureUrgency(leisure)), () => TryPickLeisure(leisure)));
+        float leisureU = LeisureUrgency(leisure);
+        candidates.Add((Jitter(leisureU), leisureU, "leisure", () => TryPickLeisure(leisure)));
         // Drink a tonic for its timed buff. ChooseTonic returns null when nothing applies (no stock,
         // already buffed, or comfortable) → urgency 0, so the category is simply skipped.
         (Item tonic, float tonicU) = ChooseTonic();
-        if (tonic != null) candidates.Add((Jitter(tonicU), () => TryStartDrinkTonic(tonic)));
-        candidates.Add((Jitter(IdleUrgency()), () => { task = null; return true; })); // idle floor — always "succeeds"
+        if (tonic != null) candidates.Add((Jitter(tonicU), tonicU, "tonic", () => TryStartDrinkTonic(tonic)));
+        float idleU = IdleUrgency();
+        candidates.Add((Jitter(idleU), idleU, "idle", () => { task = null; return true; })); // idle floor — always "succeeds"
 
-        // Highest urgency first; attempt each until one starts a task.
+        // Highest urgency first; attempt each until one starts a task. Record the winner for display.
         candidates.Sort((a, b) => b.urgency.CompareTo(a.urgency));
         foreach (var c in candidates) {
             if (c.urgency <= 0f) continue;
-            if (c.tryStart()) return;
+            if (c.tryStart()) { topUrgencyLabel = c.label; topUrgencyValue = c.raw; return; }
         }
+        topUrgencyLabel = "idle";
+        topUrgencyValue = idleU;
         task = null;
     }
 
@@ -1402,9 +1420,14 @@ public class Animal : MonoBehaviour{
     // only, so torchlight from above doesn't bleed onto it underground. Driven by the
     // existing insideBuilding property — flips only on the tile-change boundary.
     private bool _interiorRendered;
-    private void RefreshInteriorRendering() {
+    // Public so the live re-apply on a settings change (InteriorLightingApplier) can re-evaluate
+    // every mouse when the interior mode flips — BurrowAsBuilding makes inside-mice want Default.
+    public void RefreshInteriorRendering() {
         Building ib = insideBuilding;   // property: tile lookup, never stale
-        bool wantInterior = ib != null && ib.structType.enclosed;
+        // In BurrowAsBuilding mode the burrow (and anyone inside it) shades like a surface
+        // building, so inside-mice stay on Default too.
+        bool asBuilding = SettingsManager.instance != null && SettingsManager.instance.burrowAsBuilding;
+        bool wantInterior = ib != null && ib.structType.enclosed && !asBuilding;
         if (wantInterior == _interiorRendered) return;
         _interiorRendered = wantInterior;
         InteriorLayer.SetSpriteLayers(go, wantInterior ? InteriorLayer.Interior : InteriorLayer.Default);
@@ -1438,7 +1461,12 @@ public class Animal : MonoBehaviour{
     public float SquareDistance(float x1, float x2, float y1, float y2) { return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2); }
     public void Destroy() {
         // Fail before tearing down inv — otherwise in-flight reservations strand on about-to-die stacks.
-        task?.Fail();
+        // Skipped during bulk teardown (ClearWorld): every stack, WOM order, and reservation is being
+        // destroyed together, so failing here only triggers pointless Cleanup side effects — e.g. a
+        // ReadBookTask/ResearchTask dumping its held book to the floor, which re-creates a tile.inv
+        // (defeating ClearWorld's tile.inv null-out) and spawns a FallAnim coroutine that leaks into
+        // the freshly-loaded world. Same guard pattern as Inventory.Destroy.
+        if (!WorldController.isClearing) task?.Fail();
         AnimalController.instance.UnregisterAnimalFromTile(_currentTile);
         _currentTile = null;
         // Release the home slot so another mouse can claim it.

@@ -547,6 +547,33 @@ public class Inventory{
             space += stack.FreeSpace(item);
         return space;
     }
+    // Total physical storage space in THIS inventory that currently allows `item` (Storage type
+    // only). Counts empty allowed stacks at full capacity + free space in stacks already holding a
+    // matching allowed item; a stack occupied by a disallowed/other item counts 0. Reservations are
+    // ignored — this reports the physical capacity the player has built, not the in-flight-adjusted
+    // figure (cf. GetStorageForItem, which is for delivery routing and subtracts resSpace).
+    // Group-aware: for a group an empty stack counts if it allows ANY leaf descendant.
+    public int StorageCapacityFor(Item item){
+        if (invType != InvType.Storage || locked) return 0;
+        if (!ItemTypeCompatible(item)) return 0;
+        int space = 0;
+        foreach (ItemStack stack in itemStacks){
+            if (stack.item == null || stack.quantity == 0){
+                if (AllowsAnyLeaf(item)) space += stack.PhysicalFreeSpace(item);
+            } else if (MatchesItem(stack.item, item) && allowed[stack.item.id]){
+                space += stack.PhysicalFreeSpace(item);
+            }
+        }
+        return space;
+    }
+    // True if this inventory currently allows `item` (leaf) or, for a group, any of its leaf
+    // descendants — gates whether an empty stack counts toward an item's storage capacity.
+    bool AllowsAnyLeaf(Item item){
+        if (!item.IsGroup) return allowed.TryGetValue(item.id, out bool a) && a;
+        foreach (Item leaf in item.LeafDescendants())
+            if (ItemTypeCompatible(leaf) && allowed.TryGetValue(leaf.id, out bool a) && a) return true;
+        return false;
+    }
     // Quantity not reserved by any task (usable for order placement checks).
     public int AvailableQuantity(Item item){
         int total = 0;

@@ -524,19 +524,5 @@
         "noutputs": [
             { "name": "clay mold", "quantity": 1 }
         ]
-    },{
-        "id": 73,
-        "job": "smith",
-        "tile": "crucible",
-        "description": "smelt glass",
-        "workload": 8.0,
-        "fuelCost": 3,
-        "research": "Glassmaking",
-        "ninputs": [
-            { "name": "sand", "quantity": 2 }
-        ],
-        "noutputs": [
-            { "name": "glass", "quantity": 2 }
-        ]
     }
 ]

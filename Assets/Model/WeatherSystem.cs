@@ -359,6 +359,14 @@ public class WeatherSystem {
         return "Winter";
     }
 
+    // Concise temperature label shared by the thermometer's readouts (top-bar date display +
+    // info panel). Rounded to the nearest even degree with a "c" suffix — the m5x7 font has no
+    // degree glyph — and "<0c" for anything below freezing rather than a negative number.
+    public static string FormatTemp(float tempC) {
+        if (tempC < 0f) return "<0c";
+        return (2 * Mathf.RoundToInt(tempC / 2f)) + "c";
+    }
+
     // Recalculates temperature from the current world timer plus the smoothed
     // random anomaly.
     // temperature = 13.5 + 12*sin(yearly) + 2.5*sin(daily) + tempAnomaly

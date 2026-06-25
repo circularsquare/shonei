@@ -154,6 +154,8 @@ public class AnimalInfoView : MonoBehaviour {
         if (Reachable("Tailoring", Db.clothingItems))                                               t += "\n [top]  " + FormatSlot(ani.clothingSlotInv);
         if (Reachable("Writing",   Db.itemsFlat.Where(i => i != null && i.itemClass == ItemClass.Book))) t += "\n [book] " + FormatSlot(ani.bookSlotInv);
         t += "\n inv: " + ani.inv.ToString();
+        // Top priority right now: the category that won the mouse's last decision and its urgency.
+        t += "\n urgency: " + ani.topUrgencyLabel + " (" + ani.topUrgencyValue.ToString("F2") + ")";
         // Task/objective/recipe/location are dev internals — debug mode only.
         if (DebugMode.Enabled) {
             t += "\n task: " + (ani.task?.ToString() ?? "none");

@@ -25,7 +25,6 @@ public class ComfortBar : MonoBehaviour {
     [SerializeField] float  domainHi = 40f;   // value mapped to the bar's right edge
     [SerializeField] string caption  = "temp";// left label + tooltip noun
     [SerializeField] string unit     = "C";   // suffix in the hover readout ("" for moisture)
-    [SerializeField] int    decimals = 1;     // hover precision for the current value
     [SerializeField, TextArea] string note = "out of range stops growth"; // appended to hover body
 
     [Header("Refs")]
@@ -77,7 +76,7 @@ public class ComfortBar : MonoBehaviour {
         if (tooltip != null) {
             string lo  = comfortLo.HasValue ? comfortLo.Value.ToString("0") : "?";
             string hi  = comfortHi.HasValue ? comfortHi.Value.ToString("0") : "?";
-            string cur = now.HasValue ? now.Value.ToString("F" + decimals) + unit : "?";
+            string cur = now.HasValue ? now.Value.ToString("0") + unit : "?";
             tooltip.title = caption;
             tooltip.body  = $"comfortable {lo}-{hi}{unit}\ncurrent {cur}"
                           + (string.IsNullOrEmpty(note) ? "" : "\n" + note);

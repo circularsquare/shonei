@@ -127,7 +127,7 @@ public class StructType {
     public bool constructionCostPerTile {get; set;}
     public bool isTile {get; set;}
     public bool isPlant;
-    public int depth {get; set;} // 0=building, 1=platform, 2=foreground, 3=road
+    public int depth {get; set;} // 0=building, 1=platform, 2=foreground, 3=road, 4=power shaft, 5=enclosure (greenhouse)
     // Optional sprite sortingOrder override. -1 = use depth-based default (see Structure ctor).
     // Used for e.g. torches/fireplaces that need to sort above plants (60) and animals (48-57) so
     // LightSource's auto-detected sort bucket front-lights those receivers. Also changes draw order.
@@ -279,8 +279,11 @@ public class StructType {
     public bool hasFuelInv {get; set;}
     public string fuelItemName {get; set;} // OPTIONAL restriction: group/leaf name (e.g. "wood"); absent = accept any fuel (fuelValue>0)
     public Item fuelItem;                  // resolved from fuelItemName in OnDeserialized; null = any fuel
-    public int fuelCapacity {get; set;}    // max stack size in fen (JSON in liang, converted in OnDeserialized); supply triggers below half capacity
+    public int fuelCapacity {get; set;}    // max stack size in fen (JSON in liang, converted in OnDeserialized); supply triggers below refill fraction of capacity
     public float fuelBurnRate {get; set;}  // ENERGY/day consumed; divided by the stocked fuel's fuelValue at burn (wood=1 → unchanged)
+    // Fuel level (fraction of capacity) below which the supply order fires. Default 0.5; the foundry runs
+    // it higher (its fueller is the busy smith, who also feeds + casts), so it refuels with more margin.
+    public float fuelRefillFraction {get; set;} = 0.5f;
 
     // ── Processor ──────────────────────────────────────────────────────
     // A batch converter (see Processor.cs). hasProcessor=true → Building creates a Processor
@@ -358,8 +361,12 @@ public class StructType {
     // Mapped to an Animator int by AnimationController.PoseToInt. null = default state-driven animation.
     public string leisurePose {get; set;}
     public bool socialWhenShared {get; set;} // true = grant half social happiness to both mice when one finishes and another is still seated
-    // When activeStartHour >= 0, this building is only active during [activeStartHour, activeEndHour).
-    // Hours 0–24; end < start wraps midnight (e.g. 16→6 = 4pm–6am). -1 = always active.
+    // Leisure-hours window: mice only use this building for leisure during
+    // [activeStartHour, activeEndHour) (see Building.CanHostLeisureNow — e.g. the
+    // fireplace is an evening/night warmth spot). Hours 0–24; end < start wraps
+    // midnight (e.g. 16→6 = 4pm–6am). -1 = always available. Note: this is a fixed
+    // CLOCK window and does NOT gate light sources — sun-modulated lights track
+    // dusk independently (LightSource.UpdateLitState).
     public float activeStartHour {get; set;} = -1f;
     public float activeEndHour   {get; set;}
 

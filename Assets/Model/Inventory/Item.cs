@@ -46,6 +46,12 @@ public class Item {
     // read for them. Computed, not cached: the unitWeight cascade in Db runs after deserialization.
     public int unitFen => discrete ? (unitWeight > 0 ? ItemStack.LiangToFen(unitWeight) : 100) : 100;
     public bool startDiscovered {get; set;} // true = revealed in inventory/storage trees from game start, no research or production needed (e.g. water, drawn from ponds without research)
+    // True = never shown in any item-list UI (inventory panel, market holdings + icon grid, storage
+    // allow trees), even once produced/discovered. For internal intermediaries that aren't tradable
+    // or usable in their own state — the molten metals/glass produced and consumed inside the foundry.
+    // Discovery still works normally (so e.g. cast recipes that take molten as input stay available);
+    // this only suppresses the display rows. Cascades to children (Db.AddItemToDb).
+    public bool hidden {get; set;}
     // When true, the AI never auto-selects this leaf to satisfy a GROUP input/cost. Used for gypsum:
     // it stays sorted under "stone" (display/refunds unaffected) and is still usable where a recipe
     // names "gypsum" directly (tofu), but is never auto-substituted for a "stone" requirement in

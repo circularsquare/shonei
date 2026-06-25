@@ -132,6 +132,7 @@
         "name": "molten",
         "itemClass": "liquid",
         "decayRate": 0.0,
+        "hidden": true,
         "children": [
             {
                 "id": 46,

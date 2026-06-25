@@ -127,6 +127,16 @@ public class InventoryController : MonoBehaviour {
         return total;
     }
 
+    // Total physical storage space that currently allows `item` across all Storage inventories —
+    // empty allowed stacks + room in stacks already holding it, ignoring stacks filled with
+    // something else. Drives the GlobalInventoryPanel distribution bar's storage-capacity marker.
+    public int StorageCapacityFor(Item item){
+        int cap = 0;
+        if (byType.TryGetValue(Inventory.InvType.Storage, out var list))
+            foreach (Inventory inv in list) cap += inv.StorageCapacityFor(item);
+        return cap;
+    }
+
     // ── Consumption protection ("don't consume") ───────────────────────────────
     // True if this leaf is flagged don't-consume. Group items are never themselves stored as
     // protected (protection is leaf-only); callers in the selection paths always pass leaves.
@@ -193,7 +203,7 @@ public class InventoryController : MonoBehaviour {
 
         itemDisplayGos[item.id] = itemDisplayGo;
         itemDisplayGo.name = "ItemDisplay_" + item.name;
-        itemDisplayGo.SetActive(discoveredItems[item.id]);
+        itemDisplayGo.SetActive(discoveredItems[item.id] && !item.hidden);
 
         ItemDisplay display = itemDisplayGo.GetComponent<ItemDisplay>();
         // Set item now rather than relying on ItemDisplay.Start(): Start() never runs while the GO
@@ -205,8 +215,10 @@ public class InventoryController : MonoBehaviour {
 
         UpdateItemDisplay(item);
     }
-    // Returns false if any ancestor ItemDisplay is collapsed, meaning this item should be hidden.
+    // Returns false if the item is flagged hidden (internal intermediary — see Item.hidden) or any
+    // ancestor ItemDisplay is collapsed, meaning this item should not show.
     bool IsVisibleInTree(Item item){
+        if (item.hidden) return false;
         if (item.parent == null) return true;
         ItemDisplay parentDisplay = itemDisplayGos[item.parent.id]?.GetComponent<ItemDisplay>();
         if (parentDisplay == null) return true;

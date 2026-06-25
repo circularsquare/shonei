@@ -217,6 +217,9 @@ public class StructureInfoView : MonoBehaviour {
                 sb.Append($"\n temp: {Mathf.RoundToInt(fdyTemp.temperature)}°");
                 sb.Append(Help.Icon("foundry"));
             }
+            // Thermometer: the ambient temperature, same readout as the top-bar date display.
+            if (bldg is Thermometer && WeatherSystem.instance != null)
+                sb.Append($"\n temp: {WeatherSystem.FormatTemp(WeatherSystem.instance.temperature)}");
             // Only housing surfaces its Structure.res — it's the home-assignment count.
             // Other building types either don't have res (workstations, leisure, capacity==0)
             // or have it but never reserve into it.

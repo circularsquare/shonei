@@ -203,6 +203,18 @@ Tooltippable, which would trip `OnDisable→Hide`. For a **group** row the bar t
 **discovered** leaf targets (`InventoryDetailRow.BarTarget`) so it doesn't deficit against
 not-yet-unlocked leaves (oak/maple).
 
+A second **dark-green capacity marker** shows the **storage ceiling** — how much of this item the
+player's storage could hold if topped off: storage already held + free space in stacks that
+currently allow it (`InventoryController.StorageCapacityFor` → `Inventory.StorageCapacityFor` →
+`ItemStack.PhysicalFreeSpace`). "Allows it" counts empty allowed stacks + room in stacks already
+holding a matching item; a stack filled with something else doesn't count. Reservations are ignored
+(physical capacity, not the delivery-routing figure `GetStorageForItem` gives). The marker is
+**read-only** (full-pill-height line, no drag handle — unlike the slightly-taller overhanging draggable target marker);
+fraction = ceiling/scale, so it pins to the right edge once the ceiling exceeds the bar scale, and
+it's hidden when no storage allows the item. Group-aware: an empty stack counts toward a group's
+capacity if it allows ANY leaf descendant (`Inventory.AllowsAnyLeaf`), so it isn't double-counted
+per leaf.
+
 The "consume" gameplay mechanic (what the flag actually gates) lives in **SPEC-systems.md
 §Consume protection**.
 
@@ -369,9 +381,12 @@ Two small HUD readouts driven from code (no panel), authored as scene TMPs:
 - **Season/time display** — `SeasonTimeDisplay` (`Assets/Components/SeasonTimeDisplay.cs`), a TMP
   left of the time-speed buttons (`UI/SeasonTimeDisplay`, sibling of `TimeController`, right-aligned
   so it grows leftward). Escalates with progress: season always ("winter"); + day-of-season once the
-  **Timekeeping** tech is unlocked ("winter 2"); + hour while any built clock is powered ("winter 2 5pm").
-  Reads `WeatherSystem.GetSeason/GetDayOfYear`, `ResearchSystem.IsUnlockedByName`, a powered-clock
-  scan (`StructController.GetByType` + `PowerSystem.IsBuildingPowered`), and `SunController.GetDayPhase`.
+  **Timekeeping** tech is unlocked ("winter 2"); + hour while any built clock is powered ("winter 2 5pm");
+  + temperature while any **thermometer** is built ("winter 2 5pm 22c"). Reads `WeatherSystem.GetSeason/GetDayOfYear`,
+  `ResearchSystem.IsUnlockedByName`, a powered-clock scan (`StructController.GetByType` +
+  `PowerSystem.IsBuildingPowered`), `SunController.GetDayPhase`, and a built-thermometer scan.
+  Temperature formatting is shared with the info panel via `WeatherSystem.FormatTemp` (nearest even
+  degree + "c", "<0c" below freezing — the m5x7 font has no degree glyph).
 
 ## Build Bar & Mouse Modes
 

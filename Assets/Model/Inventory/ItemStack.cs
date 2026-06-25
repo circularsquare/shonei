@@ -199,6 +199,19 @@ public class ItemStack {
         }
         return 0; // occupied by a different item
     }
+    // Physical free space (fen) currently usable by `query`, IGNORING reservations — unlike
+    // FreeSpace, which subtracts resSpace for delivery planning. Used by the GlobalInventoryPanel
+    // storage-capacity indicator, which reports the physical capacity the player has built, not the
+    // in-flight-adjusted figure. An empty stack counts at full capacity; a stack already holding a
+    // matching item counts its remaining space; a non-matching occupied stack counts 0. `query` may
+    // be a group item (matches any leaf descendant).
+    public int PhysicalFreeSpace(Item query) {
+        if (item == null || quantity == 0)            // empty stack — floor to the query's unit if discrete
+            return FloorToUnit(stackSize, query.IsGroup ? null : query);
+        if (Inventory.MatchesItem(item, query))       // holds a matching item — floor to that leaf's unit
+            return FloorToUnit(stackSize - quantity, item);
+        return 0;                                      // occupied by a non-matching item
+    }
     // Clamps a free-space figure to >=0, and for a discrete item down to a whole-unit (unitFen)
     // multiple. Floors the final figure — never EffectiveCapacity separately — so a non-unit
     // resSpace can't leak a fractional remainder through.

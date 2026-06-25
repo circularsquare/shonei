@@ -159,9 +159,11 @@ public class Tile {
     }
     public bool hasBackground => _backgroundType != BackgroundType.None;
     // Depth slots — slot index is independent of visual sortingOrder.
-    // 0=building, 1=platform, 2=foreground, 3=road, 4=power shaft.
+    // 0=building, 1=platform, 2=foreground, 3=road, 4=power shaft, 5=enclosure (greenhouse).
     // Slot 4 (shafts) renders behind buildings via a low sortingOrder; see Structure.cs.
-    public const int NumDepths = 5;
+    // Slot 5 (greenhouse) is its own layer so the glass frame coexists on a tile with the plant
+    // it covers (slot 0) AND any foreground ladder/rope (slot 2) without contending for a slot.
+    public const int NumDepths = 6;
     public Structure[] structs = new Structure[NumDepths];
     public Blueprint[] blueprints = new Blueprint[NumDepths];
     public Building building => structs[0] as Building; // alias for depth-0 Building (does NOT match Plant)

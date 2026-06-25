@@ -8,7 +8,7 @@ using UnityEngine;
 // Quilez soft shadows): it leaps by the distance-to-nearest-wall and softens by how closely the
 // ray passes occluders relative to distance. This gives a smooth, view-INDEPENDENT penumbra
 // (no banding, no perpendicular-source artifacts) and is cheap (a few big leaps in open space).
-// Gated by SettingsManager.wallShadows via the _PointShadows global (set in LightFeature);
+// Gated by SettingsManager.pointShadows via the _PointShadows global (set in LightFeature);
 // lighting itself stays full per-pixel.
 //
 // Occluder = tile.type.solid && !bodyDrawnByStructure: real earth/walls, but NOT a burrow/pit's

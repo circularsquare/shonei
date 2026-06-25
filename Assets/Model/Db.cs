@@ -786,6 +786,7 @@ public class Db : MonoBehaviour {
                 if (child.unitWeight == 0f) child.unitWeight = item.unitWeight;
                 if (child.itemClass == ItemClass.Default) child.itemClass = item.itemClass;
                 if (child.fuelValue == 0f) child.fuelValue = item.fuelValue;
+                if (!child.hidden) child.hidden = item.hidden;
                 // Furnishing fields cascade so authors can tag a single group (e.g. "cloth")
                 // and every leaf descendant becomes a valid furnishing without per-leaf JSON.
                 if (child.furnishingSlot == null)     child.furnishingSlot = item.furnishingSlot;

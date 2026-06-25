@@ -123,7 +123,7 @@ public class AnimalStateManager {
             // closer (boxed in) it falls through to the random wander, which can unstick it.
             Tile anchor = animal.WorkAnchorTile;
             if (here != null && anchor != null) {
-                int curDist = Mathf.Max(Mathf.Abs(here.x - anchor.x), Mathf.Abs(here.y - anchor.y));
+                int curDist = Mathf.Abs(here.x - anchor.x) + Mathf.Abs(here.y - anchor.y);
                 if (curDist > AnchorSlack) {
                     Tile step = PickNeighbourTowardAnchor(animal.PathStartNode(), anchor, curDist);
                     if (step != null) {
@@ -166,7 +166,7 @@ public class AnimalStateManager {
     }
 
     // Returns the unoccupied, standable, tile-backed nav neighbour that gets STRICTLY closer
-    // (Chebyshev) to `anchor` than `curDist`, or null if none does (boxed in / all neighbours
+    // (Manhattan) to `anchor` than `curDist`, or null if none does (boxed in / all neighbours
     // occupied) — caller then falls back to a random wander. Greedy single-step homing, the
     // counterpart to PickRandomNavNeighbour; door waypoints are skipped, but the anchor is an
     // outside approach tile so greedy stepping reaches it without crossing a door.
@@ -178,7 +178,7 @@ public class AnimalStateManager {
         foreach (Node n in startNode.neighbors) {
             if (n.isWaypoint || n.tile == null || !n.standable) continue;
             if (ac.AnyOtherAnimalOnTile(n.tile, animal)) continue;
-            int d = Mathf.Max(Mathf.Abs(n.tile.x - anchor.x), Mathf.Abs(n.tile.y - anchor.y));
+            int d = Mathf.Abs(n.tile.x - anchor.x) + Mathf.Abs(n.tile.y - anchor.y);
             if (d < bestDist) { bestDist = d; best = n.tile; }
         }
         return best;

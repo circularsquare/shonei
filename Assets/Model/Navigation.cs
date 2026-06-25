@@ -441,12 +441,12 @@ public class Graph {
         // Everything below here is ladder-only footing — a rung in mid-air with no ground beneath.
         if (!allowLadder) return false;
         if (tileHere.HasLadder() || tileBelow.HasLadder()) {return true;}
-        // Side ladders: same standability rule as regular ladders. Mice stand on the
-        // ladder's tile or on the air tile directly above the stack. Crucially, unlike
-        // HasLadder this does NOT trigger an integer-X vertical edge in UpdateNeighbors
-        // — vertical climb through a side ladder routes through the cliff chain's
-        // fractional-X waypoints (so the mouse hugs the wall visually).
-        if (tileHere.HasSideLadderAny() || tileBelow.HasSideLadderAny()) {return true;}
+        // Side ladders: stand ONLY on the ladder's own tile (so a mouse can mount it and a
+        // builder can reach mid-air rungs). Unlike a regular ladder, a side ladder does NOT
+        // make the tile ABOVE it standable — it's climbed like a cliff face: vertical traversal
+        // routes through the cliff chain's fractional-X waypoints, which exit sideways onto the
+        // wall column, never onto a phantom floor in the open air above the ladder.
+        if (tileHere.HasSideLadderAny()) {return true;}
         return false;
     }
     public void UpdateStandability(int x, int y){ nodes[x,y].standable = GetStandability(x, y); }

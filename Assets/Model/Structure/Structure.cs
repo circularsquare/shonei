@@ -426,8 +426,9 @@ public class Structure {
         // Enclosed buildings (burrow, dug-in housing) render on the Interior layer so they
         // receive sun + ambient only — torchlight from above doesn't bleed into the buried
         // interior. Applied after all child SRs (main, extensions, fire) exist. Mice standing
-        // inside get the same treatment dynamically (Animal.RefreshInteriorRendering).
-        if (structType.enclosed) InteriorLayer.SetSpriteLayers(go, InteriorLayer.Interior);
+        // inside get the same treatment dynamically (Animal.RefreshInteriorRendering). The
+        // BurrowAsBuilding mode swaps this to Default (see InteriorLayer.LayerForEnclosed).
+        if (structType.enclosed) InteriorLayer.SetSpriteLayers(go, InteriorLayer.LayerForEnclosed());
 
         // Scan sprite for water-marker pixels. Registration happens in StructController.Place().
         waterPixelOffsets = WaterController.ScanWaterPixels(sprite);
@@ -664,6 +665,7 @@ public class Structure {
             case 2: return 40;
             case 3: return 1;
             case 4: return 5;
+            case 5: return 45; // enclosure (greenhouse) — glass frame draws over the tile's contents
             default: return 10;
         }
     }
@@ -728,7 +730,8 @@ public class Structure {
                 // body as a non-occluding interior (directional-only tier) rather than a solid
                 // shadow-caster wall. With wall-shadows on it's promoted to lit-only and receives
                 // torches; the surrounding REAL tiles still occlude. See InteriorLayer / SPEC-rendering.
-                if (structType.enclosed && InteriorLayer.Interior >= 0) bgo.layer = InteriorLayer.Interior;
+                int enclosedLayer = InteriorLayer.LayerForEnclosed();
+                if (structType.enclosed && enclosedLayer >= 0) bgo.layer = enclosedLayer;
                 Texture2D nrm = TileSpriteCache.GetNormalMap(t.type.name, mask8, tx, ty);
                 if (nrm != null) {
                     var mpb = new MaterialPropertyBlock();
@@ -810,9 +813,10 @@ public class Structure {
             if (st.name == "elevator") return new Elevator(st, x, y, mirrored, shapeIndex);
             if (st.name == "tarp")     return new Tarp(st, x, y, mirrored, shapeIndex);
             if (st.name == "clock")    return new Clock(st, x, y, mirrored);
+            if (st.name == "thermometer") return new Thermometer(st, x, y, mirrored);
             if (st.name == "foundry")  return new Foundry(st, x, y, mirrored);
             if (st.isWorkFlag)         return new WorkFlag(st, x, y, mirrored);
-            return new Building(st, x, y, mirrored);
+            return new Building(st, x, y, mirrored, shapeIndex); // shapeIndex carries multi-tile shapes (e.g. 2-high greenhouse)
         }
         return new Structure(st, x, y, mirrored, rotation, shapeIndex); // platforms, ladders, stairs, foreground, roads
     }

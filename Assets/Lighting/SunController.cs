@@ -8,11 +8,21 @@ using UnityEngine;
 //   3. Wire all References fields in the Inspector.
 //   4. Background Camera → Background Type: Solid Color.
 //
-// Timing reference (fraction of a day):
-//   0.00 = midnight
-//   0.25 = sunrise (sun on east horizon)
-//   0.50 = noon
-//   0.75 = sunset  (sun on west horizon)
+// Timing reference. Two phases are in play:
+//   • Clock phase (GetDayPhase) — real time-of-day, 0=midnight … 0.5=solar noon.
+//     Solar noon is ALWAYS 0.5, so clock-anchored schedules (mouse routines,
+//     building active-hour windows, the clock hand) never shift with the season.
+//   • Solar phase (SolarPhase) — clock phase remapped so the season-varying
+//     sunrise/noon/sunset land on the fixed canonical anchors below. All the
+//     sun-look ramps (twilight, brightness, sun color, orbit angle) are authored
+//     against these and read solar phase, so they track the real sunrise/sunset.
+//       0.25 = sunrise (sun on east horizon)
+//       0.50 = noon
+//       0.75 = sunset  (sun on west horizon)
+//
+// Day length varies with the season at latitude 35°N (see DaylightFraction):
+// ~0.5 of the day is lit at the equinoxes, ~0.6 at the summer solstice, ~0.4 at
+// the winter solstice. The longest day is aligned to the yearly temperature peak.
 //
 // twilightFraction: 1 = full day, 0 = full night.
 // Brightness: sin^3 of sun elevation, 0 at horizon/night, 1 at noon.
@@ -116,10 +126,12 @@ public class SunController : MonoBehaviour {
             if (!useStandaloneClock) return;
             _standaloneClock += Time.deltaTime;  // no World (menu): drive the cycle from real time
         }
-        float phase = GetDayPhase();
+        // Remap real clock time onto solar phase so every ramp below tracks the
+        // season's actual sunrise/sunset while solar noon stays pinned at 0.5.
+        float phase = SolarPhase(GetDayPhase());
         twilightFraction = _twilightFraction = CalcTwilightFraction(phase);
         brightness       = _brightness       = Brightness(phase);
-        UpdateSun();
+        UpdateSun(phase);
         skyColor     = SkyColor();
         horizonColor = HorizonColor();
 
@@ -197,6 +209,59 @@ public class SunController : MonoBehaviour {
 
     // ── Internal ──────────────────────────────────────────────────────────────
 
+    // ── Season-varying day length ──────────────────────────────────────────────
+    // Latitude and axial tilt fix how strongly day length swings across the year.
+    // 35°N is a fixed design choice, so these are consts (no scene-serialized
+    // value to drift out of sync with the code).
+    const float LatitudeDeg  = 35f;
+    const float AxialTiltDeg = 23.44f;  // Earth's obliquity → max solar declination
+
+    // Fraction of the day the sun is above the horizon at the current day-of-year.
+    // 0.5 at the equinoxes, ~0.6 at the summer solstice, ~0.4 at the winter
+    // solstice for latitude 35°N. No World (the menu) → a flat equinox so the
+    // standalone sun stays symmetric.
+    float DaylightFraction() {
+        if (World.instance == null) return 0.5f;
+
+        float yearLen  = World.ticksInDay * World.daysInYear;
+        float yearFrac = (World.instance.timer % yearLen) / yearLen;
+
+        // Solar declination: peaks at +tilt on the summer solstice, troughs at
+        // −tilt half a year later. The solstice sits at the start of summer
+        // (yearFrac 0.25), which lands all four astronomical events on the season
+        // boundaries (equinox at start of spring/fall, solstice at start of
+        // summer/winter). Temperature peaks later, at yearFrac 0.375 (mid-summer)
+        // — the longest day leads the hottest day, i.e. seasonal thermal lag.
+        const float SummerSolsticeFrac = 0.25f;
+        float decl = AxialTiltDeg * Mathf.Deg2Rad
+                   * Mathf.Cos(2f * Mathf.PI * (yearFrac - SummerSolsticeFrac));
+
+        // Sunrise hour angle H0: cos(H0) = −tan(lat)·tan(decl). Daylight spans
+        // 2·H0 of the 2π day, so the lit fraction is H0/π. The clamp guards the
+        // polar day/night case — unreachable at 35°, but keeps Acos finite.
+        float cosH0 = -Mathf.Tan(LatitudeDeg * Mathf.Deg2Rad) * Mathf.Tan(decl);
+        return Mathf.Acos(Mathf.Clamp(cosH0, -1f, 1f)) / Mathf.PI;
+    }
+
+    // Remaps real clock phase (0=midnight, 0.5=solar noon) onto solar phase, where
+    // sunrise/noon/sunset sit at the canonical 0.25/0.5/0.75 the ramp curves are
+    // authored against. Each of the four clock segments (pre-dawn, morning,
+    // afternoon, night) is stretched linearly onto its canonical quarter, so the
+    // daytime ramps fill the actual daylight window and the night ramps fill the
+    // rest. Solar noon and midnight are fixed points, so clock-anchored systems
+    // are untouched. A side effect: twilight/color durations scale with day
+    // length (longer twilight in summer) — a fair approximation of the real thing.
+    float SolarPhase(float clockPhase) {
+        float daylight = DaylightFraction();
+        float sunrise  = 0.5f - daylight * 0.5f;
+        float sunset   = 0.5f + daylight * 0.5f;
+
+        if (clockPhase < sunrise) return 0.25f * Mathf.InverseLerp(0f, sunrise, clockPhase);
+        if (clockPhase < 0.5f)    return 0.25f + 0.25f * Mathf.InverseLerp(sunrise, 0.5f, clockPhase);
+        if (clockPhase < sunset)  return 0.50f + 0.25f * Mathf.InverseLerp(0.5f, sunset, clockPhase);
+        return 0.75f + 0.25f * Mathf.InverseLerp(sunset, 1f, clockPhase);
+    }
+
     // Clamped linear ramp: 0 at `start`, 1 at `end`. The three day-cycle
     // ramp methods below all express their sunrise/sunset transitions as
     // calls to this helper — same shape, different windows.
@@ -264,8 +329,9 @@ public class SunController : MonoBehaviour {
         return     Color.Lerp(sunColorEarlyDusk, sunColorDay,       (phase - (0.25f + half)) / half);
     }
 
-    void UpdateSun() {
-        float phase = GetDayPhase();
+    // `phase` is solar phase (sunrise/noon/sunset pinned to 0.25/0.5/0.75), so the
+    // orbit maps east-horizon→zenith→west-horizon onto the actual daylight window.
+    void UpdateSun(float phase) {
         float angle = (phase - 0.25f) * Mathf.PI * 2f;
         _sunTransform.position = new Vector3(
             orbitCenterX + orbitRadius * Mathf.Cos(angle),
@@ -283,7 +349,7 @@ public class SunController : MonoBehaviour {
         // ahead of the sun — so they're already bright by deep dusk.
         // Each sun-modulated LightSource pulls this value in its own
         // Update() to scale its intensity; we just publish it.
-        torchFactor = 1f - TorchBrightness(GetDayPhase());
+        torchFactor = 1f - TorchBrightness(phase);
     }
 
     // 4-stop gradient: day → twilight1 → twilight3 → night
