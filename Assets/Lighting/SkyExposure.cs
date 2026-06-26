@@ -36,8 +36,12 @@ public class SkyExposure : MonoBehaviour {
     void Initialize(World world) {
         if (this.world != null) {
             for (int x = 0; x < this.world.nx; x++)
-                for (int y = 0; y < this.world.ny; y++)
-                    this.world.GetTileAt(x, y).UnregisterCbBackgroundChanged(OnBackgroundChanged);
+                for (int y = 0; y < this.world.ny; y++) {
+                    Tile t = this.world.GetTileAt(x, y);
+                    t.UnregisterCbBackgroundChanged(OnDirty);
+                    t.UnregisterCbBodyChanged(OnDirty);
+                    t.UnregisterCbStructChanged(OnDirty);
+                }
         }
         if (exposureTex != null) Destroy(exposureTex);
 
@@ -52,11 +56,15 @@ public class SkyExposure : MonoBehaviour {
         RebuildExposureTexture();
 
         for (int x = 0; x < nx; x++)
-            for (int y = 0; y < ny; y++)
-                world.GetTileAt(x, y).RegisterCbBackgroundChanged(OnBackgroundChanged);
+            for (int y = 0; y < ny; y++) {
+                Tile t = world.GetTileAt(x, y);
+                t.RegisterCbBackgroundChanged(OnDirty); // sky sources (hasBackground)
+                t.RegisterCbBodyChanged(OnDirty);       // burrow carve/restore → burrow interior cells
+                t.RegisterCbStructChanged(OnDirty);     // burrow placed/removed
+            }
     }
 
-    void OnBackgroundChanged(Tile t) {
+    void OnDirty(Tile t) {
         dirty = true;
     }
 
@@ -107,6 +115,10 @@ public class SkyExposure : MonoBehaviour {
                     if (dx == 0 && dy == 0) continue;
                     int nx2 = cx + dx;
                     if (nx2 < 0 || nx2 >= nx) continue;
+                    // Don't flood sky INTO a burrow interior. A burrow is a dark den: a cell is lit by
+                    // the sky only if it's itself a sky-open mouth (seeded as a source above) — otherwise
+                    // it stays at the deep-ambient floor, with no falloff bleeding in from the door.
+                    if (world.GetTileAt(nx2, ny2).bodyDrawnByStructure) continue;
                     int nIdx = ny2 * nx + nx2;
                     if (nd < dist[nIdx]) {
                         dist[nIdx] = nd;

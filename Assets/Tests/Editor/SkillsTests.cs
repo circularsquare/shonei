@@ -28,7 +28,7 @@ public class SkillsTests {
         // Defensive: if a Skill is added without bumping any code paths, this
         // catches the mismatch quickly. Actual enum values listed for clarity.
         Assert.That(SkillSet.Count, Is.EqualTo(System.Enum.GetValues(typeof(Skill)).Length));
-        Assert.That(SkillSet.Count, Is.GreaterThanOrEqualTo(5)); // Farming, Mining, Construction, Science, Woodworking
+        Assert.That(SkillSet.Count, Is.GreaterThanOrEqualTo(5)); // Farming, Mining, Construction, Scholarship, Woodworking
     }
 
     // ── Defaults ────────────────────────────────────────────────────────
@@ -105,21 +105,21 @@ public class SkillsTests {
     public void GainXp_NonPositive_NoOp(float amount){
         // GainXp early-outs on amount <= 0; protects against negative XP poisoning the bank.
         SkillSet ss = new SkillSet();
-        ss.GainXp(Skill.Science, 7f); // seed something so we can detect erroneous changes
-        ss.GainXp(Skill.Science, amount);
-        Assert.That(ss.GetXp(Skill.Science),    Is.EqualTo(7f));
-        Assert.That(ss.GetLevel(Skill.Science), Is.EqualTo(0));
+        ss.GainXp(Skill.Scholarship, 7f); // seed something so we can detect erroneous changes
+        ss.GainXp(Skill.Scholarship, amount);
+        Assert.That(ss.GetXp(Skill.Scholarship),    Is.EqualTo(7f));
+        Assert.That(ss.GetLevel(Skill.Scholarship), Is.EqualTo(0));
     }
 
     [Test]
     public void GainXp_DoesNotBleedAcrossSkills(){
-        // Domain isolation: gaining Farming XP must not affect Mining / Science / etc.
+        // Domain isolation: gaining Farming XP must not affect Mining / Scholarship / etc.
         SkillSet ss = new SkillSet();
         ss.GainXp(Skill.Farming, 5f);
         Assert.That(ss.GetXp(Skill.Farming),     Is.EqualTo(5f));
         Assert.That(ss.GetXp(Skill.Mining),      Is.EqualTo(0f));
         Assert.That(ss.GetXp(Skill.Construction),Is.EqualTo(0f));
-        Assert.That(ss.GetXp(Skill.Science),     Is.EqualTo(0f));
+        Assert.That(ss.GetXp(Skill.Scholarship),     Is.EqualTo(0f));
         Assert.That(ss.GetXp(Skill.Woodworking), Is.EqualTo(0f));
     }
 
@@ -164,7 +164,7 @@ public class SkillsTests {
         Assert.That(ss.GetXp(Skill.Mining),       Is.EqualTo(2f));
         Assert.That(ss.GetXp(Skill.Construction), Is.EqualTo(3f));
         // Tail untouched at default 0.
-        Assert.That(ss.GetXp(Skill.Science),      Is.EqualTo(0f));
+        Assert.That(ss.GetXp(Skill.Scholarship),      Is.EqualTo(0f));
         Assert.That(ss.GetXp(Skill.Woodworking),  Is.EqualTo(0f));
     }
 

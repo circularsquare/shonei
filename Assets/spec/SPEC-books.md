@@ -5,7 +5,7 @@ Books are discrete, durable items that scribes write at scriptoriums and store i
 - **Tech books** — one per research tech, generated at runtime. Scientists carry one matching their current study target for a 3× research-progress multiplier.
 - **Fiction book** — one hand-authored entry. Mice carry it during leisure to read it for "reading" satisfaction.
 
-Both kinds share a single sprite (`Sprites/Items/split/books/icon`) and one shelf type. Decay rate is 1.2 (time-based, like clothing), with the standard per-inv-type multipliers (Floor 5×, Storage/Equip 1×, Animal/Market/Blueprint 0×) — so a shelved book lasts ~20 in-game days, a floored one ~4.
+Both kinds share a single sprite (`Sprites/Items/split/books/icon`) and one shelf type. Decay rate is 0.3 (time-based, like clothing), with the standard per-inv-type multipliers (Floor 5×, Storage/Equip 1×, Animal/Market/Blueprint 0×) — so a shelved book lasts ~80 in-game days, a floored one ~16. Books are slow to write (a long tended-processor batch — see "Recipe generation") and correspondingly slow to decay.
 
 ## Item class system
 
@@ -27,7 +27,7 @@ The previously-bool `Item.isLiquid` and `StructType.liquidStorage` were generali
 
 ## Item generation
 
-`itemsDb.json` declares the `book` group at id 300 with a single static child `fiction_book` (id 301). The group carries `decayRate: 1.2`, `discrete: true`, `itemClass: "book"` — children inherit all three.
+`itemsDb.json` declares the `book` group at id 300 with a single static child `fiction_book` (id 301). The group carries `decayRate: 0.3`, `discrete: true`, `itemClass: "book"` — children inherit all three.
 
 At startup, `Db.GenerateBookItems()` (called from `Db.Awake` between `ReadJson` and the `itemsFlat` trim):
 
@@ -39,13 +39,15 @@ At startup, `Db.GenerateBookItems()` (called from `Db.Awake` between `ReadJson` 
 
 ## Recipe generation
 
+Books are **tended-processor batches**, not instant crafts — they take a long `duration` of scribe labour, stored as partial progress on the scriptorium's `Processor` so a scribe can leave to eat/sleep and the next scribe resumes the same book. This is the standard tended-processor flow (the cauldron's pattern; see `Processor.cs` and SPEC-systems §Processor). The scriptorium is therefore `hasProcessor: true`, `processorTended: true` (and stays `isWorkstation: true` for the worker-limit slider, mirroring the cauldron).
+
 `Db.GenerateBookRecipes()` runs immediately after `GenerateBookItems`. For each tech with a generated book item:
 
-- Creates a `Recipe` (id 200+, skipping any occupied ids) with `job: "scribe"`, `tile: "scriptorium"`, `workload: 20`, `maxRoundsPerTask: 1` (one book per trip — see `Recipe.maxRoundsPerTask`), inputs = 1 paper, outputs = 1 matching tech book.
-- Appends to the scribe job's `recipes[]` array.
+- Creates a `Recipe` (id 200+, skipping any occupied ids) with `job: "scribe"`, `tile: "scriptorium"`, `duration: BookDuration` (a `const` in the method — the per-book labour-seconds tuning knob), `isProcessorRecipe = true`, inputs = 1 paper, outputs = 1 matching tech book.
+- Buckets it into `Db.processorRecipesByBuilding["scriptorium"]` — **not** `scribe.recipes`. (The generator runs after `ReadJson`, which is what auto-buckets JSON processor recipes, so it does the bucketing manually.) Keeping book recipes out of `scribe.recipes` ensures the craft dispatch never runs them as instant `CraftTask`s — the scriptorium's `Processor` Fill/Work orders drive them. The `scribe` job ends up with an empty `recipes[]`; it exists only to operate the scriptorium processor (gated by `recipe.job` in `JobOperatesProcessor`).
 - Stores the mapping in `Db.bookRecipeIdByTechId`.
 
-The fiction book recipe is hand-authored in `recipesDb.json` (id 30) with the same `maxRoundsPerTask: 1` cap and 20-tick workload.
+The fiction book recipe is hand-authored in `recipesDb.json` (id 30) with a `duration` (no `workload`/`maxRoundsPerTask`), so `ReadJson` auto-buckets it as a scriptorium processor recipe.
 
 ## Tech-gated unlocks (runtime injection)
 
@@ -54,7 +56,9 @@ After `Db.Awake`, `ResearchSystem.Awake` runs `LoadNodes` → `InjectBookRecipeU
 ## Buildings
 
 - **`bookshelf`** (id 25): storage building, `storageClass: "book"`, 10 stacks × 1 liang each. Auto-allows all books on construction (see `Inventory` constructor — book-class storage opts every book in by default; tanks deliberately don't auto-allow liquids since players usually dedicate a tank to one liquid). Renders as a single whole-shelf sprite via `Inventory.UpdateSprite` with three fill levels (`slow` / `smid` / `shigh`) at `Sprites/Items/split/books/`. The `Inventory` constructor excludes Book-class storage from the multi-stack-per-slot rendering branch so the whole shelf shows one sprite regardless of `nStacks`.
-- **`scriptorium`** (id 107): standard workstation. `njob: "hauler"` (the *logistics* job — who builds it; operators come from `recipe.job`, see CLAUDE.md "Craft order job check" anti-pattern).
+- **`scriptorium`** (id 107): a **tended processor** + workstation (`hasProcessor`, `processorTended`, `isWorkstation`). `njob: "hauler"` (the *logistics* job — who builds it; operators come from `recipe.job` = scribe, see CLAUDE.md "Craft order job check" anti-pattern). Default pot capacity (one book per batch). Its `Processor.output` inventory is `ItemClass.Book` (derived from the book outputs — see `Processor` ctor); the finished book taps there, then eviction-hauls to a bookshelf. The output is created `renderless: true` so it doesn't paint a full-bookshelf sprite on the scriptorium (all processor outputs are renderless internal buffers — liquid pots draw via WaterController's zone instead).
+
+A `ProcessorLoadVisuals` component (Components/) overlays `Sprites/Buildings/scriptorium_load` while a batch is loaded (processor state ≠ Empty), hidden when Empty. It's opt-in by art — any discrete-output processor with a `{name}_load` sprite gets it (attached from the Building ctor after the processor is created; liquid processors ship no `_load` sprite and show their batch via the pot fill instead).
 
 ## Equip slot
 
@@ -116,10 +120,10 @@ Mirrors the chat per-tick pattern (0.2 social/tick × 10 ticks = 2.0 total). The
 
 ## Production gating
 
-`Animal.OutputsHaveClassStorage(recipe)` — checks if every class-restricted output (Liquid, Book) has at least one matching storage with space. Used in both `PickRecipe` and `PickRecipeForBuilding` to skip recipes whose output literally has nowhere to go. Default-class outputs are exempt — they can land on the floor and be hauled later.
+`Animal.OutputsHaveClassStorage(recipe)` — checks if every class-restricted output (Liquid, Book) has at least one matching storage with space. Used in `PickRecipe`/`PickRecipeForBuilding` to skip *craft* recipes whose output literally has nowhere to go. Default-class outputs are exempt — they can land on the floor and be hauled later.
 
-For books this means scribes idle when all bookshelves are full (vs piling books on the floor). For liquids it means cooks stop pressing soymilk when all tanks are full.
+Books no longer go through this gate (they're processor recipes — `PickProcessorRecipe` has no output-storage check). Instead a finished book taps into the scriptorium's own `Processor.output`, then eviction-hauls to a bookshelf. If all shelves are full the book waits in the scriptorium output, and the Fill order won't re-open until it drains — so a full-shelf colony stalls book-writing at one finished-but-unshelved book rather than idling outright. For liquids the gate still applies: cooks stop pressing soymilk when all tanks are full.
 
 ## Random tiebreak
 
-`PickRecipe` and `PickRecipeForBuilding` use reservoir sampling (k=1) when multiple recipes tie at `maxScore`. Without it, iteration order (recipe id) deterministically wins ties. This is most visible for newly-unlocked tech books: all compute `Score` = +Infinity (output qty = 0 divides by zero in the `score /= qty/target` step), so the first by id always wrote first.
+`PickRecipe`, `PickRecipeForBuilding`, and `PickProcessorRecipe` (which books now use) all use reservoir sampling (k=1) when multiple recipes tie at `maxScore`. Without it, iteration order (recipe id) deterministically wins ties. This is most visible for newly-unlocked tech books: all compute `Score` = +Infinity (output qty = 0 divides by zero in the `score /= qty/target` step), so the first by id always wrote first.

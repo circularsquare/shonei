@@ -58,6 +58,7 @@ Call sites that post directly (not via a binding):
 - `BuildPanel.PlaceBlueprint` — blueprint placement rejections (single-tile and two-click bridge). Reason strings come from `StructPlacement.GetPlacementFailReason` / `GetTwoPointFailReason`; wrapped in `<color=#cc3333>` (red) and posted as `Alert`.
 - `WorldController.ShowWelcomeGreeting` — one-time "Welcome to Shonei!" on world entry (`Alert`, so it shows via AlertToast without opening anything). Appends "N players online" only when `TradingClient.OnlinePlayerCount > 1`; waits up to 3 s for the count, omits it when solo/offline.
 - `World.ProduceAtTile` — "no space: {qty} {item} lost" (`Alert`, red) when a dropped item can't fit on its tile or any tile within a 5-ring search and is discarded. Surfaces an otherwise-silent loss (e.g. cancelling a blueprint variant onto a crowded floor).
+- `AnimalStateManager.HandleStuckCheck` — "{name} is stuck" (`Alert`, orange) when a mouse is cut off from the settlement and the auto-rescue snap *also* failed (a genuinely sealed pocket), persisting 5s. The common cut-off cases self-resolve silently via the snap, so this only fires when the player must intervene. See SPEC-systems §Stuck (cut-off) rescue.
 
 ## Renderers
 

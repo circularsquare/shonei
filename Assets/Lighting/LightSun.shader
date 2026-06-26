@@ -37,6 +37,56 @@ Shader "Hidden/LightSun" {
             TEXTURE2D(_CapturedNormalsRT);
             SAMPLER(sampler_CapturedNormalsRT);
 
+            // Burrow walls + interior mask (WallField.cs): B = burrow interior cell; R/G =
+            // vertical/horizontal burrow wall edges. _WallTexSize = (nx+1, ny+1).
+            TEXTURE2D(_WallBurrowTex);
+            SAMPLER(sampler_WallBurrowTex);
+            float4 _WallTexSize;
+
+            // Sun occlusion by a burrow's solid shell. A burrow is a hollow carved inside solid tiles,
+            // so the sun shouldn't reach its interior except through the door. Only burrow-interior
+            // fragments (B) march (gated, so this fullscreen pass costs nothing elsewhere): step toward
+            // the sun, accumulate the in-burrow chord, and when the ray crosses a burrow wall commit it
+            // as shell thickness → soft shadow (grazing rays → softer). Leaving the burrow without a
+            // wall crossing means the ray went out the door → sunlit. Disabled on the SkyCamera.
+            float BurrowSunShadow(float2 worldPos) {
+                if (_SkyExposureBypass > 0.5) return 0.0;
+                float2 g    = worldPos + 0.5;
+                int2   cell = (int2)floor(g);
+                if (SAMPLE_TEXTURE2D(_WallBurrowTex, sampler_WallBurrowTex, ((float2)cell + 0.5) / _WallTexSize.xy).b < 0.5)
+                    return 0.0;                                  // not in a burrow → sun unoccluded
+                float2 rd     = normalize(_SunDir.xy);
+                float2 rdSafe = float2(abs(rd.x) < 1e-6 ? 1e-6 : rd.x, abs(rd.y) < 1e-6 ? 1e-6 : rd.y);
+                int2   stp    = int2(rd.x >= 0.0 ? 1 : -1, rd.y >= 0.0 ? 1 : -1);
+                float2 tDelta = abs(1.0 / rdSafe);
+                float2 nb     = floor(g) + float2(rd.x >= 0.0 ? 1.0 : 0.0, rd.y >= 0.0 ? 1.0 : 0.0);
+                float2 tMax   = (nb - g) / rdSafe;
+                const float WallFade    = 0.5;   // match LightCircle
+                const float BurrowThick = 1.0;   // burrow-edge softness; lower = softer (match LightCircle)
+                float pending = 0.0, prevT = 0.0;
+                [loop]
+                for (int i = 0; i < 20; i++) {
+                    float nextT = min(tMax.x, tMax.y);
+                    pending += nextT - prevT;
+                    prevT = nextT;
+                    if (tMax.x < tMax.y) {
+                        int lineX = (stp.x > 0) ? cell.x + 1 : cell.x;
+                        bool wall = SAMPLE_TEXTURE2D(_WallBurrowTex, sampler_WallBurrowTex, (float2((float)lineX, (float)cell.y) + 0.5) / _WallTexSize.xy).r > 0.5;
+                        tMax.x += tDelta.x; cell.x += stp.x;
+                        if (wall) return saturate(pending * BurrowThick / WallFade);
+                    } else {
+                        int lineY = (stp.y > 0) ? cell.y + 1 : cell.y;
+                        bool wall = SAMPLE_TEXTURE2D(_WallBurrowTex, sampler_WallBurrowTex, (float2((float)cell.x, (float)lineY) + 0.5) / _WallTexSize.xy).g > 0.5;
+                        tMax.y += tDelta.y; cell.y += stp.y;
+                        if (wall) return saturate(pending * BurrowThick / WallFade);
+                    }
+                    // Left the burrow without crossing a wall → out the door/opening → sunlit.
+                    if (SAMPLE_TEXTURE2D(_WallBurrowTex, sampler_WallBurrowTex, ((float2)cell + 0.5) / _WallTexSize.xy).b < 0.5)
+                        return 0.0;
+                }
+                return 0.0;
+            }
+
             struct Attributes {
                 float3 positionOS : POSITION;
                 float2 uv         : TEXCOORD0;
@@ -89,7 +139,12 @@ Shader "Hidden/LightSun" {
                 // Bypassed on the SkyCamera (see _SkyExposureBypass declaration above).
                 float exposure = lerp(SampleSkyExposure(IN.uv), 1.0, _SkyExposureBypass);
 
-                return float4(saturate(_SunColor.rgb * (_SunIntensity * ndotl * exposure)), 1.0);
+                // Seal the sun out of burrow interiors (except through the door). Ambient is a separate
+                // pass, so it still fills the burrow.
+                float2 worldPos = _CamWorldBounds.xy + IN.uv * _CamWorldBounds.zw;
+                float  sunShadow = BurrowSunShadow(worldPos);
+
+                return float4(saturate(_SunColor.rgb * (_SunIntensity * ndotl * exposure * (1.0 - sunShadow))), 1.0);
             }
             ENDHLSL
         }

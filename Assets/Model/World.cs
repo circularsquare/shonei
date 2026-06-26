@@ -279,6 +279,11 @@ public class World : MonoBehaviour {
     int mainSettlementComponent = -1;
     int mainSettlementFrame = -1;
     const int SettlementRefreshFrames = 120; // ~2s at 60fps; intentionally loose
+    // Per-component animal headcount from the last settlement scan. Lets the stuck-mouse
+    // rescue tell a lone trapped mouse (snap it out) from a populated stranded group
+    // (alert only, never teleport). Refreshed in lockstep with mainSettlementComponent,
+    // so it's exactly as fresh as a MainSettlementComponent() read.
+    Dictionary<int, int> settlementCounts;
 
     public int MainSettlementComponent(bool forceFresh = false) {
         if (forceFresh || mainSettlementFrame < 0
@@ -305,12 +310,20 @@ public class World : MonoBehaviour {
             if (n == null || n.componentId < 0) continue;
             counts[n.componentId] = counts.TryGetValue(n.componentId, out int cur) ? cur + 1 : 1;
         }
+        settlementCounts = counts;
         int best = -1, bestCount = -1;
         foreach (var kv in counts)
             if (kv.Value > bestCount || (kv.Value == bestCount && kv.Key < best)) {
                 best = kv.Key; bestCount = kv.Value;
             }
         return best;
+    }
+
+    // Animals occupying a given nav component, from the last settlement scan (≤2s stale).
+    // Returns 0 for an unknown component or before the first scan.
+    public int AnimalsInComponent(int comp) {
+        if (settlementCounts == null || comp < 0) return 0;
+        return settlementCounts.TryGetValue(comp, out int c) ? c : 0;
     }
 
     // Recomputes the surface-height-per-column array from the current tile

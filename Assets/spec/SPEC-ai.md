@@ -284,7 +284,7 @@ Animals accumulate XP in skill domains as they work, gaining permanent speed bon
 | `Farming` | `HarvestTask` (all jobs — farmer, logger, etc.) |
 | `Mining` | `CraftTask` with digger/miner job (via `defaultSkill`) |
 | `Construction` | `ConstructTask` (build and deconstruct), `MaintenanceTask` (mender) |
-| `Science` | `ResearchTask` (scientist job) |
+| `Scholarship` | `ResearchTask` (scientist job) |
 | `Woodworking` | `CraftTask` with sawyer/smith job (via `defaultSkill`) |
 
 Recipes can override the default with an explicit `skill` JSON field. At load time, `Db.ReadJson()` propagates each job's `defaultSkill` to any recipe that didn't specify its own.

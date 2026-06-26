@@ -202,6 +202,69 @@ public abstract class Task {
         objectives.AddLast(new FetchObjective(this, iq, tile, targetInv, sourceInv: stack.inv, sourceLimit: reserved));
     }
 
+    // ── Market multi-item cargo budget ───────────────────────────────────────
+    // A merchant fills its main inventory with several item types per trip. Capacity is
+    // counted in whole stacks, not raw fen: distinct item types never share a stack, so an
+    // item of q fen consumes ceil(q / stackSize) stacks and strands the tail of its last
+    // stack. CargoBudget hands out a per-item cap (Cap) and is decremented as items are
+    // committed (Commit). Construct one fresh per trip phase — outbound goods are fully
+    // delivered at the market before the return pickup, so the inventory is empty again.
+    protected class CargoBudget {
+        private int remainingStacks;
+        private readonly int stackSize;
+        public CargoBudget(Animal animal){
+            stackSize = animal.inv.stackSize;
+            foreach (ItemStack s in animal.inv.itemStacks)
+                if (s.item == null) remainingStacks++;
+        }
+        public bool Exhausted => remainingStacks <= 0;
+        public int Cap => remainingStacks * stackSize;          // max fen of one item type still loadable
+        public void Commit(int q){
+            remainingStacks = Math.Max(0, remainingStacks - (q + stackSize - 1) / stackSize); // ceil division
+        }
+    }
+
+    // Selects above-target market leaf items to haul home, filling the merchant's cargo
+    // budget with as many item types as fit. For each pick it resolves the home storage with
+    // the most space and reserves both that storage space and the market source stack. Shared
+    // by HaulFromMarketTask (pure pickup trip) and HaulToMarketTask's return-leg piggyback;
+    // the caller turns the picks into Receive/Go/Deliver objectives.
+    protected List<(ItemQuantity iq, Tile tile, Inventory inv)> SelectMarketPickups(Inventory marketInv){
+        var picks = new List<(ItemQuantity iq, Tile tile, Inventory inv)>();
+        if (marketInv?.targets == null) return picks;
+        var budget = new CargoBudget(animal);
+        foreach (var kvp in marketInv.targets){
+            if (budget.Exhausted) break;
+            Item item = kvp.Key;
+            if (item.IsGroup) continue; // targets on groups are ignored (market targets are leaf-only)
+            int excess = marketInv.Quantity(item) - kvp.Value;
+            if (excess <= 0) continue;
+
+            ItemStack stack = marketInv.GetItemStack(item);
+            if (stack == null) continue;
+            int avail = stack.quantity - stack.resAmount;
+            if (avail <= 0) continue;
+
+            int want = Math.Min(Math.Min(excess, avail), budget.Cap);
+            if (want < MinMarketHaul(item)) continue;
+
+            // Pick the storage with the most free space so the full payload lands in one drop-off.
+            var (storagePath, storageInv) = animal.nav.FindPathToStorageMostSpace(item, minSpace: MinMarketHaul(item));
+            if (storagePath == null) continue;
+
+            // ReserveSpace is the only reservation here that can fail-then-undo, and nothing else
+            // calls ReserveSpace before the next iteration, so UndoLastSpaceReservation is safe.
+            int spaceReserved = ReserveSpace(storageInv, item, want);
+            if (spaceReserved < MinMarketHaul(item)) { UndoLastSpaceReservation(); continue; }
+            int finalQty = Math.Min(want, spaceReserved);
+
+            ReserveStack(stack, finalQty);
+            picks.Add((new ItemQuantity(item, finalQty), storagePath.tile, storageInv));
+            budget.Commit(finalQty);
+        }
+        return picks;
+    }
+
     // Greedy nearest-neighbour visiting order over a set of source tiles, starting from
     // (startX, startY). Returns indices into `tiles` in the order that minimises the fetch walk —
     // a cheap heuristic (not optimal, ignores the final deliver leg), but for the handful of

@@ -220,6 +220,12 @@ public class StructureInfoView : MonoBehaviour {
             // Thermometer: the ambient temperature, same readout as the top-bar date display.
             if (bldg is Thermometer && WeatherSystem.instance != null)
                 sb.Append($"\n temp: {WeatherSystem.FormatTemp(WeatherSystem.instance.temperature)}");
+            // Greenhouse: surface its moisture mode. A self-contained frame shows its isolated pool
+            // (farmers refill it); a ground frame just notes it draws from the soil below.
+            if (bldg is Greenhouse ghb) {
+                if (ghb.selfContained) sb.Append($"\n water: {ghb.selfMoisture}/100");
+                else                   sb.Append("\n draws from soil below");
+            }
             // Only housing surfaces its Structure.res — it's the home-assignment count.
             // Other building types either don't have res (workstations, leisure, capacity==0)
             // or have it but never reserve into it.
@@ -683,9 +689,9 @@ public class StructureInfoView : MonoBehaviour {
     // ── Work order display helpers (moved from InfoPanel) ──
 
     // Drives the temperature + moisture comfort bars for a plant and reveals them.
-    // Temp "now" is the global ambient (WeatherSystem); moisture "now" is the soil tile
-    // directly below the plant (matches growth logic) — null if there's no tile below,
-    // which hides that bar's marker. Comfortable bounds come straight from PlantType
+    // Temp "now" is the (greenhouse-regulated) ambient; moisture "now" is the plant's reservoir —
+    // the soil below or a self-contained greenhouse pool (matches growth logic) — null if there's
+    // none, which hides that bar's marker. Comfortable bounds come straight from PlantType
     // (null = unbounded; the bar runs its green band to the domain edge).
     void ShowPlantComfort(Plant plant) {
         PlantType pt = plant.plantType;
@@ -700,8 +706,10 @@ public class StructureInfoView : MonoBehaviour {
             tempBar.Set(pt.tempMin, pt.tempMax, nowTemp);
         }
         if (moistureBar != null) {
-            Tile soil = World.instance.GetTileAt(plant.tile.x, plant.tile.y - 1);
-            moistureBar.Set(pt.moistureMin, pt.moistureMax, soil != null ? (float?)soil.moisture : null);
+            // "Now" is the plant's reservoir — soil below, or a self-contained greenhouse's pool —
+            // matching the growth gate. -1 (no reservoir) hides the marker.
+            int rm = plant.ReservoirMoisture();
+            moistureBar.Set(pt.moistureMin, pt.moistureMax, rm >= 0 ? (float?)rm : null);
         }
     }
 

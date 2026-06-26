@@ -30,6 +30,7 @@ public class Db : MonoBehaviour {
     public static HashSet<Item> seedItems;
     public static List<Item> equipmentItems;
     public static List<Item> clothingItems;
+    public static List<Item> hatItems; // leaf items under the "hat" group; worn in Animal.hatSlotInv
     // Leaf items that fit into a named furnishing slot. Built at Db.LoadAll time by
     // walking itemsFlat and bucketing by `Item.furnishingSlot` (which cascades from
     // parent groups via AddItemToDb). Keys are slot names (e.g. "cloth"); a slot on a
@@ -200,6 +201,14 @@ public class Db : MonoBehaviour {
         }
         equipmentItems = itemsFlat.Where(i => { Item cur = i; while (cur != null) { if (cur.name == "tools") return true; cur = cur.parent; } return false; }).ToList();
         clothingItems = itemsFlat.Where(i => { Item cur = i; while (cur != null) { if (cur.name == "clothing") return true; cur = cur.parent; } return false; }).ToList();
+        hatItems = itemsFlat.Where(i => { Item cur = i; while (cur != null) { if (cur.name == "hat") return true; cur = cur.parent; } return false; }).ToList();
+        // Resolve each job's preferredHat item name (authored in jobsDb.json) to the Item, now that
+        // both jobs and items are loaded. Unknown name → logged error + left null (job seeks no hat).
+        foreach (Job job in jobs) {
+            if (job == null || string.IsNullOrEmpty(job.preferredHat)) continue;
+            if (!itemByName.TryGetValue(job.preferredHat, out job.preferredHatItem))
+                Debug.LogError($"Job '{job.name}': preferredHat '{job.preferredHat}' is not a known item");
+        }
         BuildFurnishingSlotRegistry();
         BuildHappinessNeedRegistry();
         ValidateNoGroupOutputs();
@@ -361,8 +370,8 @@ public class Db : MonoBehaviour {
         // clear so we don't accumulate stale mappings on a second Awake.
         bookItemIdByTechId.Clear();
         _cachedTechs = null;
-        if (!itemByName.TryGetValue("book", out Item bookGroup)) {
-            Debug.LogError("Db: 'book' group missing from itemsDb.json — skipping tech-book generation");
+        if (!itemByName.TryGetValue("books", out Item bookGroup)) {
+            Debug.LogError("Db: 'books' group missing from itemsDb.json — skipping tech-book generation");
             return;
         }
         string researchJson = LoadJsonText("researchDb");
@@ -373,7 +382,7 @@ public class Db : MonoBehaviour {
             Debug.LogError($"Db: failed to parse researchDb.json for book generation: {e.Message}");
             return;
         }
-        // Tech book IDs start at 302: 300=book group, 301=fiction_book child (in JSON).
+        // Tech book IDs start at 302: 300=books group, 301=fiction_book child (in JSON).
         var newChildren = new List<Item>();
         int nextId = 302;
         foreach (ResearchNodeData tech in _cachedTechs) {
@@ -399,7 +408,7 @@ public class Db : MonoBehaviour {
             nextId++;
         }
         // Append the new tech books to the book group's children array so the inventory tree
-        // (StoragePanel, global panel, etc.) renders them under "book" alongside fiction_book.
+        // (StoragePanel, global panel, etc.) renders them under "books" alongside fiction_book.
         if (newChildren.Count > 0) {
             Item[] existing = bookGroup.children ?? Array.Empty<Item>();
             var combined = new Item[existing.Length + newChildren.Count];
@@ -421,7 +430,7 @@ public class Db : MonoBehaviour {
             Debug.LogError("Db: no cached techs from GenerateBookItems — skipping book recipe generation");
             return;
         }
-        if (!jobByName.TryGetValue("scribe", out Job scribe)) {
+        if (!jobByName.ContainsKey("scribe")) {
             Debug.LogError("Db: 'scribe' job missing from jobsDb.json — skipping book recipe generation");
             return;
         }
@@ -430,6 +439,16 @@ public class Db : MonoBehaviour {
             return;
         }
         Item paper = itemByName["paper"];
+        // Labour-seconds to write one book (tended-processor duration). Long enough to be a project
+        // spread across scribes/stints, NOT trapping one mouse. Tuning knob — playtest by feel.
+        const float BookDuration = 120f;
+        // Generated AFTER ReadJson, so the book recipes won't be auto-bucketed as processor recipes —
+        // do it here. They live ONLY in processorRecipesByBuilding (never scribe.recipes) so the craft
+        // dispatch never runs them; the scriptorium's Processor Fill/Work orders drive them instead.
+        if (!processorRecipesByBuilding.TryGetValue("scriptorium", out List<Recipe> scriptoriumRecipes)) {
+            scriptoriumRecipes = new List<Recipe>();
+            processorRecipesByBuilding["scriptorium"] = scriptoriumRecipes;
+        }
         int nextId = 200;
         foreach (ResearchNodeData tech in _cachedTechs) {
             if (tech == null) continue;
@@ -442,14 +461,14 @@ public class Db : MonoBehaviour {
             }
             Item bookItem = items[bookItemId];
             var recipe = new Recipe {
-                id               = nextId,
-                job              = "scribe",
-                tile             = "scriptorium",
-                description      = $"write the {tech.name} book",
-                workload         = 20f,
-                maxRoundsPerTask = 1, // one book per trip — see Recipe.maxRoundsPerTask
-                inputs           = new[] { new ItemQuantity(paper,    ItemStack.LiangToFen(1f)) },
-                outputs          = new[] { new ItemQuantity(bookItem, ItemStack.LiangToFen(1f)) },
+                id                = nextId,
+                job               = "scribe",
+                tile              = "scriptorium",
+                description       = $"write {tech.name} book",
+                duration          = BookDuration,  // processor recipe (tended): laboured over `duration`
+                isProcessorRecipe = true,
+                inputs            = new[] { new ItemQuantity(paper,    ItemStack.LiangToFen(1f)) },
+                outputs           = new[] { new ItemQuantity(bookItem, ItemStack.LiangToFen(1f)) },
                 // ninputs/noutputs aren't consumed at runtime (those are the JSON staging fields;
                 // inputs/outputs are what the task layer uses), but keep them non-null so any
                 // code that enumerates them — e.g. a future recipe-panel introspection — doesn't NRE.
@@ -457,12 +476,7 @@ public class Db : MonoBehaviour {
                 noutputs = new ItemNameQuantity[0],
             };
             recipes[nextId] = recipe;
-            if (scribe.nRecipes >= Job.maxRecipes) {
-                Debug.LogError($"Db: scribe job at max recipe capacity ({Job.maxRecipes}) — dropping {recipe.description}");
-                recipes[nextId] = null;
-                return;
-            }
-            scribe.recipes[scribe.nRecipes++] = recipe;
+            scriptoriumRecipes.Add(recipe);
             bookRecipeIdByTechId[tech.id] = nextId;
             nextId++;
         }
@@ -835,6 +849,12 @@ public class Job {
     // Authored in JSON as string keys; resolved to Skill enum at load time.
     public Dictionary<string, float> skillWeights {get; set;}
     [JsonIgnore] public Dictionary<Skill, float> resolvedSkillWeights;
+
+    // Optional: the hat this job's mice prefer to wear, for at-a-glance identification (e.g.
+    // farmer → bamboo hat). Authored as an item name in jobsDb.json; resolved to the Item at
+    // load. null = this job seeks no hat. Read by Animal.FindHat.
+    public string preferredHat {get; set;}
+    [JsonIgnore] public Item preferredHatItem;
 }
 
 public class Recipe {

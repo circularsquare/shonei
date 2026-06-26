@@ -1,8 +1,15 @@
 meoww!!
 
+6/26
+- partial progress for books 
+- greenhouse self contained water 
+- stuck mouse handling
+- burrow ceiling light occlusion
+- batch market hauling
 6/25
 - thermometer 
 - greenhouse testing 
+- seasonal day length
 6/24
 - greenhouse (began)
 - fixed burrow mending bug

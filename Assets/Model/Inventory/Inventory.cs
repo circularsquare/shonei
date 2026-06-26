@@ -44,6 +44,11 @@ public class Inventory{
     public Item[] slotConstraints;
     public bool locked = false; // when true, no items accepted and all existing items are treated as needing haul-out
     public string displayName;
+    // When true this inventory draws no sprite of its own — it's an internal staging buffer, not a
+    // player-visible store. Used by a Processor's `output` (a scriptorium's Book-class output would
+    // otherwise paint a full-bookshelf sprite on the building; a liquid output's pot fill is drawn
+    // separately by WaterController, so suppressing the generic sprite is harmless there too).
+    public bool renderless;
     // Set true at the top of Destroy(). Any mutation/render op on a destroyed inv is a stale-reference
     // bug (animal still holds a cached Inventory ref after the inv was torn down). AddItem / MoveItemTo /
     // UpdateSprite check this and LogError-no-op instead of NREing on the nulled-out `go`.
@@ -96,13 +101,14 @@ public class Inventory{
     // just above the building they belong to (e.g. drawer at 10 → stacks at 11). Pass -1
     // (the default) to fall back to the legacy hardcoded 30 — used by tests that don't
     // construct a real building.
-    public Inventory(int n = 1, int stackSize = 2500, InvType invType = InvType.Floor, int x = 0, int y = 0, ItemClass storageClass = ItemClass.Default, int parentSortingOrder = -1) {
+    public Inventory(int n = 1, int stackSize = 2500, InvType invType = InvType.Floor, int x = 0, int y = 0, ItemClass storageClass = ItemClass.Default, int parentSortingOrder = -1, bool renderless = false) {
         nStacks = n;
         this.stackSize = stackSize;
         this.invType = invType;
         this.x = x;
         this.y = y;
         this.storageClass = storageClass;
+        this.renderless = renderless;
         displayName = invType.ToString().ToLower();
         itemStacks = new ItemStack[nStacks];
         for (int i = 0; i < nStacks; i++){
@@ -151,8 +157,9 @@ public class Inventory{
             if (invType == InvType.Floor) { sr.sortingOrder = ComputeFloorSortingOrder(); }
             else { sr.sortingOrder = storageOrder; }
             LightReceiverUtil.SetSortBucket(sr);
-            // Bookshelves render their own fill sprite via UpdateSprite — skip the generic Storage placeholder.
-            if (storageClass != ItemClass.Book) {
+            // Bookshelves render their own fill sprite via UpdateSprite — skip the generic Storage
+            // placeholder. Renderless buffers (processor outputs) draw nothing at all.
+            if (storageClass != ItemClass.Book && !renderless) {
                 string spriteName = (invType == InvType.Storage && isLiquidStorage) ? "Liquid" : invType.ToString();
                 sr.sprite = Resources.Load<Sprite>("Sprites/Inventory/" + spriteName);
             }
@@ -854,6 +861,8 @@ public class Inventory{
             return;
         }
         if (invType == InvType.Animal || invType == InvType.Market || invType == InvType.Equip || invType == InvType.Blueprint || invType == InvType.Reservoir || invType == InvType.Furnishing) return;
+        // Internal staging buffer (e.g. a processor output): never paint a sprite.
+        if (renderless) { if (go != null) go.GetComponent<SpriteRenderer>().sprite = null; return; }
         if (stackGos != null){
             // Multi-stack storage (drawer): update each slot independently
             for (int i = 0; i < nStacks && i < stackGos.Length; i++){

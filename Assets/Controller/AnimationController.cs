@@ -24,8 +24,19 @@ public class AnimationController : MonoBehaviour {
     // Shown while the animal is actively chatting; counter-flipped so it stays world-upright.
     public SpriteRenderer chatBubble;
 
+    // Assign in prefab inspector — the Hat child renderer under Head. Driven by hatSlotInv,
+    // separate from the clothing overlay (different slot, head-anchored). See UpdateHatOverlay.
+    public SpriteRenderer hatRenderer;
+
     private Item cachedClothingItem;  // tracks equipped item so we only reload on change
     private Animal.FacingView cachedClothingView = Animal.FacingView.Side; // reload also on view flip
+    private Item cachedHatItem;       // same caching for the hat overlay
+    private Animal.FacingView cachedHatView = Animal.FacingView.Side;
+    private Sprite cachedHatSprite;
+    private Vector3 hatBasePos;        // prefab-authored Hat localPosition (side/front view), cached in Start
+    // Back-facing hats sit 1px (1/16 unit) left of their side-view spot — the back-of-head art
+    // is centred differently. In local space so it mirrors correctly with the mouse's facing flip.
+    const float HatBackXShift = -0.0625f;
     private bool hasBackParam;        // true if the Animator declares the "back" int (wired later)
 
     static readonly int FurColorId = Shader.PropertyToID("_FurColor");
@@ -44,6 +55,7 @@ public class AnimationController : MonoBehaviour {
             foreach (var part in clothingParts)
                 if (part.renderer != null) skip.Add(part.renderer);
         if (chatBubble != null) skip.Add(chatBubble);
+        if (hatRenderer != null) skip.Add(hatRenderer); // hat keeps its own colors, like clothing
 
         var mpb = new MaterialPropertyBlock();
         foreach (var sr in GetComponentsInChildren<SpriteRenderer>(true)) {
@@ -58,6 +70,7 @@ public class AnimationController : MonoBehaviour {
         animator = GetComponent<Animator>();
         animal = GetComponent<Animal>();
         if (chatBubble != null) chatBubble.enabled = false;
+        if (hatRenderer != null) hatBasePos = hatRenderer.transform.localPosition;
         // Probe for the "back" Animator param so we don't spam warnings before it's authored.
         if (animator != null)
             foreach (var param in animator.parameters)
@@ -111,6 +124,7 @@ public class AnimationController : MonoBehaviour {
         if (hasBackParam) animator.SetInteger("back", view == Animal.FacingView.Back ? 1 : 0);
 
         UpdateClothingOverlay(view);
+        UpdateHatOverlay(view);
         UpdateChatBubble();
     }
 
@@ -195,6 +209,46 @@ public class AnimationController : MonoBehaviour {
             } else {
                 part.renderer.enabled = false;
             }
+        }
+    }
+
+    // Draws the mouse's worn hat on the head from hatSlotInv. Hats live flat at
+    // Sprites/Animals/Clothing/hats/{despaced item name}[_back] (one sprite per hat) — the
+    // despacing matches Db.LoadItemIcons ("cloth hat" → "clothhat"). Back-facing loads the
+    // {name}_back variant; with no back art the hat hides while back-facing (same graceful
+    // convention as clothing parts). Reloads only on equipped-item or view change.
+    private void UpdateHatOverlay(Animal.FacingView view) {
+        if (hatRenderer == null) return;
+
+        Item equipped = animal.hatSlotInv?.itemStacks[0]?.item;
+        if (equipped == null) {
+            hatRenderer.enabled = false;
+            cachedHatItem = null;
+            return;
+        }
+
+        if (equipped != cachedHatItem || view != cachedHatView) {
+            cachedHatItem = equipped;
+            cachedHatView = view;
+            string basePath = "Sprites/Animals/Clothing/hats/" + equipped.name.Replace(" ", "");
+            // Back-facing prefers a {name}_back variant; unlike clothing we fall BACK to the
+            // front sprite when none exists (rather than hiding), so a mouse's profession hat
+            // stays visible even while it works at a back-view station — the whole point is
+            // at-a-glance identification. A hat with no art at all simply hides.
+            Sprite s = view == Animal.FacingView.Back ? Resources.Load<Sprite>(basePath + "_back") : null;
+            cachedHatSprite = s ?? Resources.Load<Sprite>(basePath);
+            // Nudge the back-facing hat off its side-view spot (back-of-head art is centred
+            // differently). Front/side use the prefab-authored position unchanged.
+            hatRenderer.transform.localPosition = view == Animal.FacingView.Back
+                ? hatBasePos + new Vector3(HatBackXShift, 0f, 0f)
+                : hatBasePos;
+        }
+
+        if (cachedHatSprite != null) {
+            hatRenderer.enabled = true;
+            hatRenderer.sprite = cachedHatSprite;
+        } else {
+            hatRenderer.enabled = false;
         }
     }
 }

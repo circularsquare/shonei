@@ -298,11 +298,11 @@ public class RecipePanel : MonoBehaviour {
 
     // Display-only stand-in for all of a tile's book recipes. NOT added to Db.recipes; its
     // On/Off routes to every real book recipe via the BookProxyRecipeId sentinel. Output is
-    // the "book" group item, which carries the shared book sprite + generic "book" label.
+    // the "books" group item, which carries the shared book sprite + generic "books" label.
     Recipe BuildBookProxy(string tile) {
         if (Db.itemByName == null) return null;
         if (!Db.itemByName.TryGetValue("paper", out Item paper)) return null;
-        if (!Db.itemByName.TryGetValue("book",  out Item book))  return null;
+        if (!Db.itemByName.TryGetValue("books", out Item book))  return null;
         return new Recipe {
             id          = BookProxyRecipeId,
             job         = "scribe",

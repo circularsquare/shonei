@@ -553,7 +553,7 @@ public class TradingPanel : MonoBehaviour {
             "/timespeed [n] - set time scale\n" +
             "/generate [seed] - new world from seed\n" +
             "/regenerate - rebuild current world\n" +
-            "/research ([id]) - unlock all or one tech\n" +
+            "/research ([id|name]) - unlock all or one tech\n" +
             "/online - players online</color>",
             EventFeed.Category.Info);
     }
@@ -850,9 +850,10 @@ public class TradingPanel : MonoBehaviour {
         }
     }
 
-    // /research        — fully research every tech (the old "unlock all" button).
-    // /research [id]    — fully research just the tech with this id (and its prereqs,
-    //                     so the unlock graph stays consistent).
+    // /research          — fully research every tech (the old "unlock all" button).
+    // /research [id]      — fully research just the tech with this id.
+    // /research [name]    — same, by tech name (case-insensitive, may contain spaces).
+    // In both single-tech forms prereqs are maxed too, so the unlock graph stays consistent.
     void CmdResearch(string[] parts) {
         ResearchSystem rs = ResearchSystem.instance;
         if (rs == null) {
@@ -867,18 +868,28 @@ public class TradingPanel : MonoBehaviour {
             return;
         }
 
-        if (parts.Length != 2 || !int.TryParse(parts[1], System.Globalization.NumberStyles.Integer,
-                System.Globalization.CultureInfo.InvariantCulture, out int id)) {
-            EventFeed.instance?.Post("<color=#cc3333>Usage: /research or /research [id]</color>", EventFeed.Category.Info);
-            return;
+        // Everything after "/research" is the target: a numeric id or a tech name.
+        string arg = string.Join(" ", parts, 1, parts.Length - 1).Trim();
+
+        int id;
+        if (int.TryParse(arg, System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture, out id)) {
+            if (!rs.MaxTech(id)) {
+                EventFeed.instance?.Post($"<color=#cc3333>No tech with id {id}.</color>", EventFeed.Category.Info);
+                return;
+            }
+        } else {
+            var node = rs.nodes.Find(n => string.Equals(n.name, arg, System.StringComparison.OrdinalIgnoreCase));
+            if (node == null) {
+                EventFeed.instance?.Post($"<color=#cc3333>No tech named '{arg}'.</color>", EventFeed.Category.Info);
+                return;
+            }
+            id = node.id;
+            rs.MaxTech(id);
         }
 
-        if (!rs.MaxTech(id)) {
-            EventFeed.instance?.Post($"<color=#cc3333>No tech with id {id}.</color>", EventFeed.Category.Info);
-            return;
-        }
         ResearchPanel.instance?.Refresh();
-        string techName = rs.nodeById.TryGetValue(id, out var node) ? node.name : id.ToString();
+        string techName = rs.nodeById.TryGetValue(id, out var found) ? found.name : id.ToString();
         EventFeed.instance?.Post($"<color=#aaffaa>Researched tech {id} ({techName}).</color>", EventFeed.Category.Info);
     }
 

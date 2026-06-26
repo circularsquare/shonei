@@ -182,5 +182,17 @@
         "unlocks": [
             { "type": "building", "target": "cauldron" }
         ]
+    },{
+        "id": 20,
+        "name": "Hats",
+        "description": "hats!",
+        "prereqs": [9],
+        "cost": 5,
+        "unlocks": [
+            { "type": "building", "target": "hattery" },
+            { "type": "recipe",   "target": "23" },
+            { "type": "recipe",   "target": "24" },
+            { "type": "recipe",   "target": "25" }
+        ]
     }
 ]

@@ -22,6 +22,16 @@ public class AnimalStateManager {
     // a few tiles so mice mill naturally around the anchor rather than snapping to a single spot.
     private const int AnchorSlack = 4;
 
+    // Stuck (cut-off) detection. A mouse is "stuck" when its pathing node can't reach the main
+    // settlement nav component — most often a non-worker left on a quarry's interior node whose
+    // single open face is blocked. We wait StuckGrace before acting (to ride out the brief
+    // componentId == -1 windows during a graph rebuild), then auto-rescue by snapping it to the
+    // nearest reachable ground. Only if even that fails — a genuinely sealed pocket — do we alert
+    // the player, once the situation has persisted StuckAlert seconds. Real (Time.time) seconds,
+    // so it pauses with the game.
+    private const float StuckGrace = 1f;
+    private const float StuckAlert = 5f;
+
     public AnimalStateManager(Animal animal) {
         this.animal = animal;
     }
@@ -61,6 +71,9 @@ public class AnimalStateManager {
         // animal.task is set so the paper-doll reflects the chosen objective.
         if (animal.task != null) animal.animationController?.UpdateState();
         if (animal.state == AnimalState.Idle) {
+            // Cut off from the colony? Rescue it before the doomed escape attempts below
+            // (random walk / idle-homing all route through neighbours that lead nowhere).
+            if (HandleStuckCheck()) return;
             // Try job swap every 2 ticks when truly idle. Cadence is ~2.5× the prior
             // every-5-ticks rate to compensate for the idle-only partner filter in
             // JobSwapper, which makes individual attempts less likely to find a match.
@@ -145,6 +158,53 @@ public class AnimalStateManager {
         }
     }
 
+    // Detects and resolves a mouse that's cut off from the main settlement. Returns true
+    // when it acted (rescued or escalated) so HandleIdle short-circuits the normal idle
+    // behaviour for this tick. See the StuckGrace / StuckAlert constants above.
+    private bool HandleStuckCheck() {
+        World w = animal.world;
+        int comp = w.MainSettlementComponent();
+        if (comp < 0) { animal.stuckSince = -1f; return false; }  // settlement unknown — can't judge
+
+        Node psn = animal.PathStartNode();
+        bool cutOff = psn == null || psn.componentId != comp;
+        if (!cutOff) {
+            animal.stuckSince = -1f; animal.stuckAlerted = false; animal.stuckSnapped = false;
+            return false;
+        }
+
+        if (animal.stuckSince < 0f) animal.stuckSince = Time.time;   // first sighting
+        float elapsed = Time.time - animal.stuckSince;
+        if (elapsed < StuckGrace) return true;                       // ride out rebuild transients
+
+        // Auto-rescue ONCE per episode, then verify. Snapping clears the cut-off next tick
+        // (the `!cutOff` branch resets the flags); if it DOESN'T — the mouse is still cut off
+        // after its snap — we must not re-snap every tick (that's a silent loop that hides a
+        // genuinely-stuck mouse with no alert, exactly the failure that masked this bug). So
+        // `stuckSnapped` gates us to one attempt; a snap that didn't take falls through to the
+        // alert. Only snap a mouse essentially ALONE in its pocket — a populated component is
+        // a stranded group or a self-sufficient sub-base, and teleporting those would wreck a
+        // deliberate setup. (componentId < 0 counts as alone — an unresolved node is no base.)
+        bool alone = psn.componentId < 0 || w.AnimalsInComponent(psn.componentId) <= 1;
+        if (alone && !animal.stuckSnapped) {
+            animal.stuckSnapped = true;  // one attempt per episode, success or not
+            Node dest = w.graph.FindNearestStandableNodeInComponent(animal.x, animal.y, comp);
+            if (dest != null) {
+                animal.SnapTo(dest.wx, dest.wy);
+                animal.UpdateCurrentTile();
+                return true;  // verify next tick — if reconnected, flags clear; if not, we alert
+            }
+        }
+
+        // Couldn't auto-free it — a sealed-in loner, a snap that didn't reconnect, or a
+        // stranded group. Tell the player once, after it's clearly persistent.
+        if (!animal.stuckAlerted && elapsed >= StuckAlert) {
+            EventFeed.instance?.Post("<color=#ffaa55>" + animal.aName + " is stuck</color>");
+            animal.stuckAlerted = true;
+        }
+        return true;
+    }
+
     // Returns a random tile-backed standable neighbour reachable from `startNode`,
     // skipping waypoints and tiles occupied by other animals. Caller passes the
     // mouse's logical position node (Animal.PathStartNode) so a mouse standing on an
@@ -217,7 +277,7 @@ public class AnimalStateManager {
         if (t is HarvestTask)   return Skill.Farming;
         if (t is ConstructTask) return Skill.Construction;
         if (t is MaintenanceTask) return Skill.Construction;
-        if (t is ResearchTask)  return Skill.Science;
+        if (t is ResearchTask)  return Skill.Scholarship;
         if (t is CraftTask craftTask && craftTask.recipe?.skill != null)
             if (System.Enum.TryParse<Skill>(craftTask.recipe.skill, ignoreCase: true, out Skill s)) return s;
         if (t is WorkProcessorTask wpt && wpt.building?.processor?.recipe?.skill != null)
@@ -243,14 +303,14 @@ public class AnimalStateManager {
             return;
         } else if (animal.task is WaterPlantTask waterTask) {
             Plant plant = waterTask.tile.plant;
-            if (plant == null) { waterTask.Fail(); return; }
-            Tile soil = World.instance.GetTileAt(waterTask.tile.x, waterTask.tile.y - 1);
-            if (soil == null || !soil.type.solid) { waterTask.Fail(); return; }
+            // Bail only if the plant is gone or has no reservoir at all — a self-contained greenhouse
+            // pool is a valid target even though the tile below isn't solid soil.
+            if (plant == null || !plant.HasReservoir()) { waterTask.Fail(); return; }
             animal.workProgress += workEfficiency;
             animal.skills.GainXp(Skill.Farming, baseWorkEff * SkillSet.XpPerWorkTick);
             if (animal.workProgress < WaterPlantTask.WaterTime) return;
             animal.workProgress -= WaterPlantTask.WaterTime;
-            waterTask.PourWater(soil);
+            waterTask.PourWater();
             waterTask.Complete();
             return;
         } else if (animal.task is ConstructTask constructTask){
@@ -450,7 +510,7 @@ public class AnimalStateManager {
             return;
         } else if (animal.task is ResearchTask rt) {
             animal.workProgress += workEfficiency;
-            animal.skills.GainXp(Skill.Science, baseWorkEff * SkillSet.XpPerWorkTick);
+            animal.skills.GainXp(Skill.Scholarship, baseWorkEff * SkillSet.XpPerWorkTick);
             // 3× research progress bonus when the matching tech book is equipped.
             // Multiplies the research-progress contribution only — workProgress (the study-cycle
             // counter) is unchanged so cycle length stays consistent regardless of book presence.

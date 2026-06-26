@@ -152,6 +152,7 @@ public class AnimalInfoView : MonoBehaviour {
         // Equip slots stay hidden until the player can fill them (tech or trade).
         if (Reachable("Tools",     Db.equipmentItems))                                              t += "\n [tool] " + FormatSlot(ani.toolSlotInv);
         if (Reachable("Tailoring", Db.clothingItems))                                               t += "\n [top]  " + FormatSlot(ani.clothingSlotInv);
+        if (Reachable("Hats",      Db.hatItems))                                                    t += "\n [hat]  " + FormatSlot(ani.hatSlotInv);
         if (Reachable("Writing",   Db.itemsFlat.Where(i => i != null && i.itemClass == ItemClass.Book))) t += "\n [book] " + FormatSlot(ani.bookSlotInv);
         t += "\n inv: " + ani.inv.ToString();
         // Top priority right now: the category that won the mouse's last decision and its urgency.

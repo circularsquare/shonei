@@ -92,12 +92,12 @@
         "id": 150,
         "constructionCost": 8,
         "name": "greenhouse",
-        "description": "warms plants inside; faster growth, less watering",
+        "description": "warms plants inside; grow even off soil",
         "nx": 1, "ny": 1,
         "ncosts": [
             { "name": "glass", "quantity": 10 },
             { "name": "planks", "quantity": 2 },
-            { "name": "dirt", "quantity": 1 }
+            { "name": "dirt", "quantity": 5 }
         ],
         "depth": 5,
         "isBuilding": true,
@@ -724,6 +724,8 @@
         "njob": "hauler",
         "capacity": 1,
         "isWorkstation": true,
+        "hasProcessor": true,
+        "processorTended": true,
         "solidTop": true,
         "category": "production",
         "defaultLocked": true
@@ -854,6 +856,24 @@
         "capacity": 1,
         "isWorkstation": true,
         "workView": "back",
+        "solidTop": true,
+        "category": "production",
+        "defaultLocked": true
+    },{
+        "id": 132,
+        "constructionCost": 25,
+        "name": "hattery",
+        "description": "make hats",
+        "nx": 2, "ny": 1,
+        "ncosts": [
+            { "name": "planks", "quantity": 10 },
+            { "name": "wood", "quantity": 2 }
+        ],
+        "njob": "hauler",
+        "capacity": 1,
+        "isWorkstation": true,
+        "workView": "back",
+        "nworkTiles": [ { "dx": 0, "dy": 0 } ],
         "solidTop": true,
         "category": "production",
         "defaultLocked": true

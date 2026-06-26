@@ -87,6 +87,13 @@ public static class StructPlacement {
 
         if (!st.isTile) {
             if (st.isPlant && tile.structs[0] != null) return "tile is occupied";
+            // Bare plants must root in real soil directly below (dirt/sand/clay). A greenhouse
+            // provides its own reservoir — the soil it sits on, or an isolated pool when elevated —
+            // so planting inside a (built) greenhouse is allowed regardless of what's underneath.
+            if (st.isPlant && tile.greenhouse == null) {
+                Tile below = world.GetTileAt(tile.x, tile.y - 1);
+                if (below == null || !below.type.isSoil) return "needs soil below";
+            }
             if (!st.isPlant) {
                 for (int dy = 0; dy < fny; dy++) {
                     for (int dx = 0; dx < fnx; dx++) {

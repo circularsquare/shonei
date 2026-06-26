@@ -1,7 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.EventSystems;
-using UnityEngine.UI;
 
 // Horizontal strip inside TradingPanel showing a head-icon for every merchant
 // currently in AnimalState.Traveling. Icons lerp along a line between
@@ -9,9 +7,10 @@ using UnityEngine.UI;
 // through the current TravelingObjective. Clicking an icon opens the animal
 // in InfoPanel.
 //
-// Per-merchant visuals: the icon's Image.sprite and .color are copied from
-// the animal's Head child SpriteRenderer at spawn time, so different-coloured
-// mice render with their own head on the strip.
+// Per-merchant visuals: each icon is a shared MouseHeadIcon (the same widget the
+// housing occupant lists use), Set() with the animal — so heads render with the
+// correct per-mouse fur tint + name/job tooltip by construction, with no logic
+// duplicated here.
 //
 // Direction detection:
 //   HaulToMarketTask   → first leg outbound, second leg returning.
@@ -36,7 +35,7 @@ public class MerchantJourneyDisplay : MonoBehaviour {
     [Header("Icon sizing")]
     public Vector2 iconSize = new Vector2(16, 16);
 
-    private readonly Dictionary<Animal, MerchantJourneyIcon> icons = new Dictionary<Animal, MerchantJourneyIcon>();
+    private readonly Dictionary<Animal, MouseHeadIcon> icons = new Dictionary<Animal, MouseHeadIcon>();
     private readonly List<Animal> staleBuf = new List<Animal>();
     private readonly HashSet<Animal> activeBuf = new HashSet<Animal>();
 
@@ -78,8 +77,8 @@ public class MerchantJourneyDisplay : MonoBehaviour {
     }
 
     private void PlaceIcon(Animal a, TravelingObjective obj) {
-        if (!icons.TryGetValue(a, out MerchantJourneyIcon icon) || icon == null) {
-            icon = MerchantJourneyIcon.Create(iconsContainer, iconSize, a);
+        if (!icons.TryGetValue(a, out MouseHeadIcon icon) || icon == null) {
+            icon = CreateIcon(a);
             icons[a] = icon;
         }
 
@@ -97,6 +96,19 @@ public class MerchantJourneyDisplay : MonoBehaviour {
         icon.transform.position = Vector3.Lerp(start, end, t);
     }
 
+    // Builds one strip icon: a sized RectTransform carrying a MouseHeadIcon (its [RequireComponent]
+    // Image is added automatically). Clicking opens the mouse in InfoPanel.
+    private MouseHeadIcon CreateIcon(Animal a) {
+        GameObject go = new GameObject("MerchantIcon_" + a.aName, typeof(RectTransform));
+        go.transform.SetParent(iconsContainer, false);
+        ((RectTransform)go.transform).sizeDelta = iconSize;
+
+        MouseHeadIcon icon = go.AddComponent<MouseHeadIcon>();
+        icon.onClick = m => InfoPanel.instance?.ShowInfo(new List<Animal> { m });
+        icon.Set(a);
+        return icon;
+    }
+
     private static bool IsOutbound(Animal a) {
         if (a.task is HaulToMarketTask ht) return !ht.IsReturnLeg;
         if (a.task is HaulFromMarketTask hf) return !hf.IsReturnLeg;
@@ -107,59 +119,5 @@ public class MerchantJourneyDisplay : MonoBehaviour {
         foreach (var kvp in icons)
             if (kvp.Value != null) Destroy(kvp.Value.gameObject);
         icons.Clear();
-    }
-}
-
-// One icon on the journey strip. Built in code via Create(); pulls its sprite
-// from the animal's Head child so per-mouse sprite/colour variation shows up
-// on the strip, and forwards clicks to InfoPanel via IPointerClickHandler
-// (lighter than Button — no transition/interactable machinery we don't use).
-public class MerchantJourneyIcon : MonoBehaviour, IPointerClickHandler {
-    private Image image;
-    private Animal animal;
-
-    public static MerchantJourneyIcon Create(RectTransform parent, Vector2 size, Animal a) {
-        GameObject go = new GameObject("MerchantIcon_" + a.aName, typeof(RectTransform));
-        go.transform.SetParent(parent, false);
-        RectTransform rt = (RectTransform)go.transform;
-        rt.sizeDelta = size;
-
-        Image img = go.AddComponent<Image>();
-        img.raycastTarget = true;
-        img.preserveAspect = true;
-
-        MerchantJourneyIcon icon = go.AddComponent<MerchantJourneyIcon>();
-        icon.image  = img;
-        icon.animal = a;
-        icon.PopulateSprite();
-        return icon;
-    }
-
-    private void PopulateSprite() {
-        SpriteRenderer head = FindHeadRenderer(animal);
-        if (head != null) {
-            image.sprite = head.sprite;
-            image.color  = head.color;
-        } else {
-            Debug.LogError($"MerchantJourneyIcon: no Head child found on {animal?.aName}");
-        }
-    }
-
-    public void OnPointerClick(PointerEventData eventData) {
-        if (animal == null) return;
-        if (InfoPanel.instance == null) {
-            Debug.LogError("MerchantJourneyIcon: no InfoPanel instance");
-            return;
-        }
-        InfoPanel.instance.ShowInfo(new List<Animal> { animal });
-    }
-
-    // Recursive — Head lives under Body, not as a direct child of the root.
-    // Walking the whole subtree keeps this robust to further hierarchy tweaks.
-    private static SpriteRenderer FindHeadRenderer(Animal a) {
-        if (a?.go == null) return null;
-        foreach (SpriteRenderer sr in a.go.GetComponentsInChildren<SpriteRenderer>(true))
-            if (sr.gameObject.name == "Head") return sr;
-        return null;
     }
 }

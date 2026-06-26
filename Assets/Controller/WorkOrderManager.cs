@@ -880,25 +880,26 @@ public class WorkOrderManager : MonoBehaviour {
     private static bool WaterNeedsOrder(Plant p) =>
         p != null && p.tile != null && p.plantType.moistureMin.HasValue;
 
-    // True when the plant's soil tile is at/below its moisture-comfort floor — the gate for
-    // dispatching a watering task. Cheap (one tile lookup); called from the Water order's isActive.
+    // True when the plant's moisture reservoir (soil below or self-contained greenhouse pool) is
+    // at/below its moisture-comfort floor — the gate for dispatching a watering task. Cheap; called
+    // from the Water order's isActive.
     private static bool PlantThirsty(Plant p) {
         if (!WaterNeedsOrder(p)) return false;
-        Tile soil = World.instance.GetTileAt(p.tile.x, p.tile.y - 1);
-        if (soil == null || !soil.type.solid) return false;
-        return soil.moisture <= p.plantType.moistureMin.Value;
+        int rm = p.ReservoirMoisture();
+        if (rm < 0) return false;
+        return rm <= p.plantType.moistureMin.Value;
     }
 
-    // Extra watering urgency (0 → WaterMaxThirstBonus) scaling with how far the soil sits below
+    // Extra watering urgency (0 → WaterMaxThirstBonus) scaling with how far the reservoir sits below
     // the plant's comfort floor — a bone-dry crop pulls harder than one just dipping under
     // moistureMin. 0 at the floor, full bonus at bone-dry. Added to the order's base urgency.
     private static float WaterThirstUrgency(Plant p) {
         if (!WaterNeedsOrder(p)) return 0f;
-        Tile soil = World.instance.GetTileAt(p.tile.x, p.tile.y - 1);
-        if (soil == null || !soil.type.solid) return 0f;
+        int rm = p.ReservoirMoisture();
+        if (rm < 0) return 0f;
         int floor = p.plantType.moistureMin.Value;
         if (floor <= 0) return 0f;
-        float severity = Mathf.Clamp01((floor - soil.moisture) / (float)floor); // 0 at floor → 1 at bone-dry
+        float severity = Mathf.Clamp01((floor - rm) / (float)floor); // 0 at floor → 1 at bone-dry
         return severity * UrgencyConfig.WaterMaxThirstBonus;
     }
 

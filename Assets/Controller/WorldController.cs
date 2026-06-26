@@ -380,6 +380,7 @@ public class WorldController : MonoBehaviour {
         // BackgroundTileMeshController (created in Start, subscribes its own callbacks).
         SkyExposure.InitializeWorld(world);
         OccluderField.InitializeWorld(world); // point-light wall-shadow distance field
+        WallField.InitializeWorld(world);     // per-edge light walls (feeds LightCircle's burrow-wall occlusion)
 
         world.timer = World.ticksInDay * 0.3f;
         world.graph.Initialize();

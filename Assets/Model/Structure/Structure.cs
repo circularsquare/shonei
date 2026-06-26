@@ -815,6 +815,7 @@ public class Structure {
             if (st.name == "clock")    return new Clock(st, x, y, mirrored);
             if (st.name == "thermometer") return new Thermometer(st, x, y, mirrored);
             if (st.name == "foundry")  return new Foundry(st, x, y, mirrored);
+            if (st.name == "greenhouse") return new Greenhouse(st, x, y, mirrored, shapeIndex);
             if (st.isWorkFlag)         return new WorkFlag(st, x, y, mirrored);
             return new Building(st, x, y, mirrored, shapeIndex); // shapeIndex carries multi-tile shapes (e.g. 2-high greenhouse)
         }

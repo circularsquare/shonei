@@ -11,12 +11,13 @@ CONTENT
 - bunnies
 - magic
 - farming buildings
-    - plant tending
-    - greenhouse 
-    - tarp doesn't prevent plant growth (exposed above)? 
+    - greenhouse moisture
 - grooming?
 - clothing
     - silk?
+    - hats
+        - job gated 
+        - mouse gender
 - trading 
 - trains    
 - plant
@@ -61,14 +62,10 @@ CONTENT
 - long term player goals (fable flagged as important)
     - town tiers?
 
-- day hours vary with season
-
 - mining tools plan
 - partial progress on books (book in progress held at scriptorium?)
 
-- hats! 
-    - job gated 
-    - mouse gender
+
 
 SERVER
 - offline progress (see offline progress plan)
@@ -108,6 +105,7 @@ UI
 - per happiness plots
 
 - job load metric (idle time)
+- big job panel : see all mice 
 
 
 CODE CLEANUP
@@ -127,13 +125,17 @@ upsize more workshop buildings
 
 TODAY
 
-greenhouse
-    - thermometer   
-
-
 work flag system 
 - have mice try to move closer to work flag?
 
 - burrow lighting
+    - add walls 
+    - flood lighting for intensity, but not directionality
 
 - foot traffic mode 
+
+- hats 
+
+- well
+
+- ship 0.2?

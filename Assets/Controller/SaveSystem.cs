@@ -42,9 +42,9 @@ using Newtonsoft.Json;
 //   [x] Per-animal RNG seed (drives Animal.random — animal AI reproduces on reload)
 //   [x] Tile types, floor inventories (incl. wetUntil rain-soaked timer), background wall, overlay masks (grass on dirt), overlay health state (live/dying/dead), and snow cover
 //   [x] Per-column original surface heights (worldgen ground line, persisted so decoration depth gates survive column mining)
-//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, furnishingInvData + furnishingRemainingDays, processor state/progress/inputData/outputData, mirrored, rotation, shapeIndex, disabled, plantHarvestFlagged, quarry/digging pit capturedTileType, digging pit digDir, flywheel charge, elevator currentY + history buffers, bridge-post partnerX/Y, savedNx/savedNy footprint, build materials materialItems/materialFen)
+//   [x] Structures (type, position, uses, workOrderEffectiveCapacity, fuelInvData, storageInvData, furnishingInvData + furnishingRemainingDays, processor state/progress/inputData/outputData, mirrored, rotation, shapeIndex, disabled, plantHarvestFlagged, quarry/digging pit capturedTileType, digging pit digDir, flywheel charge, greenhouse selfContained + selfMoisture, elevator currentY + history buffers, bridge-post partnerX/Y, savedNx/savedNy footprint, build materials materialItems/materialFen)
 //   [x] Blueprints (type, position, state, constructionProgress, inv, priority, mirrored, rotation, shapeIndex, disabled, two-click x2/y2)
-//   [x] Animals (position, job, energy, food, starvation countdown, happiness, decoration happiness, socialization, fireplace warmth, inv, foodSlotInv, toolSlotInv, clothingSlotInv, bookSlotInv)
+//   [x] Animals (position, job, energy, food, starvation countdown, happiness, decoration happiness, socialization, fireplace warmth, inv, foodSlotInv, toolSlotInv, clothingSlotInv, hatSlotInv, bookSlotInv)
 //   [x] Mid-transit merchant task descriptor (travelTaskType + iq + storage tile + leg)
 //   [x] Research (progress, unlockedIds, studiedIds, unlockTimestamps, unlockCounter)
 //   [x] Disabled recipe ids
@@ -509,6 +509,10 @@ public class SaveSystem : MonoBehaviour {
             if (eb.capturedTile != null) ssd.capturedTileType = eb.capturedTile.name;
             ssd.digDir = (int)eb.digDir;   // persist direction even if the substrate didn't capture
         }
+        if (s is Greenhouse gh) {
+            ssd.greenhouseSelfContained = gh.selfContained;
+            ssd.greenhouseMoisture      = gh.selfMoisture;
+        }
         if (s is Flywheel fw)
             ssd.flywheelCharge = fw.charge;
         if (s is Elevator el) {
@@ -588,6 +592,7 @@ public class SaveSystem : MonoBehaviour {
             foodSlotInv        = GatherInventory(a.foodSlotInv),
             toolSlotInv        = GatherInventory(a.toolSlotInv),
             clothingSlotInv    = GatherInventory(a.clothingSlotInv),
+            hatSlotInv         = GatherInventory(a.hatSlotInv),
             bookSlotInv        = GatherInventory(a.bookSlotInv),
             skillXp            = a.skills.SerializeXp(),
             skillLevel         = a.skills.SerializeLevel(),
@@ -613,26 +618,24 @@ public class SaveSystem : MonoBehaviour {
         // planned pickup is silently dropped on load — we lose an opportunistic
         // trip, not a committed task.
         if (asd.isTraveling) {
-            if (a.task is HaulToMarketTask ht && ht.iq?.item != null) {
-                if (ht.IsReturnLeg && ht.PickupReceived && ht.pickupStorageTile != null) {
+            if (a.task is HaulToMarketTask ht) {
+                if (ht.IsReturnLeg && ht.PickupReceived && ht.pickupIqs.Count > 0) {
+                    // Return leg carrying received pickups home — functionally a HaulFromMarket
+                    // return leg, so emit that descriptor (Animal.Start rebuilds the deliver tail).
                     asd.travelTaskType  = "HaulFromMarket";
-                    asd.travelItemName  = ht.pickupIq.item.name;
-                    asd.travelItemQty   = ht.pickupIq.quantity;
-                    asd.travelStorageX  = ht.pickupStorageTile.x;
-                    asd.travelStorageY  = ht.pickupStorageTile.y;
+                    WriteTravelItems(asd, ht.pickupIqs, ht.pickupStorageTiles);
                     asd.travelReturnLeg = true;
-                } else {
+                } else if (ht.iqs.Count > 0) {
+                    // Outbound (carrying goods to market) or return-with-no-pickup. The planned
+                    // pickup, if any, is silently dropped on an outbound save — an opportunistic
+                    // trip lost, not a committed task.
                     asd.travelTaskType  = "HaulToMarket";
-                    asd.travelItemName  = ht.iq.item.name;
-                    asd.travelItemQty   = ht.iq.quantity;
+                    WriteTravelItems(asd, ht.iqs, null);
                     asd.travelReturnLeg = ht.IsReturnLeg;
                 }
-            } else if (a.task is HaulFromMarketTask hf && hf.iq?.item != null && hf.storageTile != null) {
+            } else if (a.task is HaulFromMarketTask hf && hf.iqs.Count > 0 && hf.storageTiles.Count > 0) {
                 asd.travelTaskType  = "HaulFromMarket";
-                asd.travelItemName  = hf.iq.item.name;
-                asd.travelItemQty   = hf.iq.quantity;
-                asd.travelStorageX  = hf.storageTile.x;
-                asd.travelStorageY  = hf.storageTile.y;
+                WriteTravelItems(asd, hf.iqs, hf.storageTiles);
                 asd.travelReturnLeg = hf.IsReturnLeg;
             }
         }
@@ -648,6 +651,27 @@ public class SaveSystem : MonoBehaviour {
             asd.assignedFlagY = a.assignedFlag.y;
         }
         return asd;
+    }
+
+    // Writes a merchant's carried items into the multi-item travel descriptor arrays.
+    // `tiles` is null for the to-market direction (items deliver to the market, no home tile);
+    // when non-null it is parallel to `iqs` and records each item's home storage tile.
+    static void WriteTravelItems(AnimalSaveData asd, List<ItemQuantity> iqs, List<Tile> tiles) {
+        int n = iqs.Count;
+        asd.travelItemNames = new string[n];
+        asd.travelItemQtys  = new int[n];
+        for (int i = 0; i < n; i++) {
+            asd.travelItemNames[i] = iqs[i].item.name;
+            asd.travelItemQtys[i]  = iqs[i].quantity;
+        }
+        if (tiles != null) {
+            asd.travelStorageXs = new int[n];
+            asd.travelStorageYs = new int[n];
+            for (int i = 0; i < n; i++) {
+                asd.travelStorageXs[i] = tiles[i].x;
+                asd.travelStorageYs[i] = tiles[i].y;
+            }
+        }
     }
 
     // ── Load ─────────────────────────────────────────────────────────────────
@@ -859,6 +883,7 @@ public class SaveSystem : MonoBehaviour {
         // Order matches WorldController.GenerateDefault for symmetry between paths.
         SkyExposure.InitializeWorld(world);
         OccluderField.InitializeWorld(world); // point-light wall-shadow distance field
+        WallField.InitializeWorld(world);     // per-edge light walls (feeds LightCircle's burrow-wall occlusion)
         // Pair up loaded rope-bridge posts and materialise each bridge's waypoint
         // chain + visuals BEFORE graph.Initialize so the resulting edges are
         // present in the first RebuildComponents sweep — otherwise mice can't
@@ -1152,6 +1177,12 @@ public class SaveSystem : MonoBehaviour {
             // Door wiring is independent of the substrate, so one whose tile fails to
             // resolve stays reachable, not orphaned.
             eb.RestoreOnLoad((DigDir)(ssd.digDir ?? 0));
+        }
+        if (structure is Greenhouse gh) {
+            // OnPlaced (which decides the mode + seeds the pool) is skipped on load, so restore both
+            // verbatim. Old saves / absent fields → ground mode, empty pool.
+            gh.selfContained = ssd.greenhouseSelfContained ?? false;
+            gh.selfMoisture  = (byte)Mathf.Clamp(ssd.greenhouseMoisture ?? 0, 0, MoistureSystem.MoistureMax);
         }
         if (structure is Flywheel fw)
             fw.charge = Mathf.Clamp(ssd.flywheelCharge, 0f, Flywheel.Capacity);

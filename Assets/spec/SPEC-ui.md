@@ -265,16 +265,23 @@ A `ComfortBar` (`tempBar`, between the text blob and SkillsContainer) shows the 
 
 Some always-visible panels can be collapsed to a single header row to reclaim
 screen real estate. Implemented via `Assets/Components/CollapsibleHeader.cs`
-— a reusable MonoBehaviour that sits at **sibling index 0** of a panel's
-VerticalLayoutGroup and toggles every later sibling on click.
+— a reusable MonoBehaviour that sits at **sibling index 0** of its parent and
+toggles every later sibling on click.
 
-Current adopters:
+Current adopters (both scrollable):
 - **Inventory panel** (`InventoryController.inventoryHeader`, saveKey `"inventory"`)
 - **Jobs panel** (`AnimalController.jobsHeader`, saveKey `"jobs"`)
 
-The "header is sibling 0, content is the rest" pattern means runtime-spawned
-rows (ItemDisplay, JobDisplay) need no re-parenting — they continue to spawn
-at the end of the panel and become "content" siblings automatically.
+**Sticky header (above the scroll).** Each header lives at sibling 0 of the
+**outer ScrollRect frame** (`InventoryScroll` / `JobsScroll`), *above* the
+`Viewport` — not inside the scroll content — so it stays pinned while the list
+scrolls. It's anchored top-stretch (pivot `(0.5,1)`, `sizeDelta.x = -4` and
+`anchoredPosition = (0,-2)` for the 2px wood-frame inset; `ContentSizeFitter`
+drives its height), and the `Viewport`'s top `offsetMax.y` is inset by the
+header height. Because "toggle every later sibling" now hits the `Viewport`,
+collapse hides the entire list with no extra code; `OnHeaderToggled` still
+resizes the frame to ~22px. Runtime-spawned rows (ItemDisplay, JobDisplay)
+still spawn into the content **inside** the Viewport and need no re-parenting.
 
 **Spawn-site collapse awareness**: when adding a new row to a collapsed panel,
 the spawn site (`InventoryController.AddItemDisplay`,
@@ -293,9 +300,10 @@ Gather/restore live in `SaveSystem.cs` alongside `inventoryTreeOpen`.
 `ResetSystemState` sets both headers back to open on a fresh world.
 
 **Adding a new collapsible panel**:
-1. Add a header GameObject as sibling 0 of the panel's content container,
-   with HLG + transparent raycast Image + DropdownArrow child + TitleLabel
-   child + `CollapsibleHeader` component.
+1. Add a header GameObject as sibling 0 of the parent whose later siblings
+   should collapse (for a scrollable panel: the outer ScrollRect frame, above
+   the Viewport — see Sticky header above), with HLG + transparent raycast
+   Image + DropdownArrow child + TitleLabel child + `CollapsibleHeader`.
 2. Pick a unique `saveKey` (matches `Dictionary<string, bool>` keys).
 3. Add a `[SerializeField] CollapsibleHeader yourHeader;` ref on the
    controller that owns the panel and wire it in the editor.

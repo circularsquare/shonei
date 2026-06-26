@@ -293,6 +293,47 @@ public class Plant : Structure {
         return true;
     }
 
+    // ── Moisture reservoir ─────────────────────────────────────────────────────
+    // A plant draws and stores moisture from ONE reservoir, resolved here so growth, transpiration,
+    // watering, and the info panel all agree on the source:
+    //   • a self-contained greenhouse's isolated pool (built on stone / elevated over air), or
+    //   • the soil tile directly below (the common case — bare crops and ground-placed greenhouses).
+
+    // The self-contained greenhouse this plant draws from, or null if it roots in the soil below
+    // (ground-mode greenhouse, or a bare crop with no greenhouse at all).
+    public Greenhouse SelfContainedPot() {
+        return tile.greenhouse is Greenhouse g && g.selfContained ? g : null;
+    }
+
+    // The solid soil tile this plant draws from, or null when it draws from a self-contained pot
+    // instead (or there's genuinely no soil below — shouldn't happen for a validly-placed plant).
+    public Tile SoilTile() {
+        if (SelfContainedPot() != null) return null;
+        Tile s = World.instance.GetTileAt(tile.x, tile.y - 1);
+        return (s != null && s.type.solid) ? s : null;
+    }
+
+    // Current moisture in this plant's reservoir (0..MoistureMax), or -1 if it has no reservoir.
+    public int ReservoirMoisture() {
+        Greenhouse pot = SelfContainedPot();
+        if (pot != null) return pot.selfMoisture;
+        Tile s = SoilTile();
+        return s != null ? s.moisture : -1;
+    }
+
+    public bool HasReservoir() => ReservoirMoisture() >= 0;
+
+    // Adds delta moisture (may be negative), clamped 0..MoistureMax. No-op when there's no reservoir.
+    public void AddReservoirMoisture(int delta) {
+        Greenhouse pot = SelfContainedPot();
+        if (pot != null) {
+            pot.selfMoisture = (byte)Mathf.Clamp(pot.selfMoisture + delta, 0, MoistureSystem.MoistureMax);
+            return;
+        }
+        Tile s = SoilTile();
+        if (s != null) s.moisture = (byte)Mathf.Clamp(s.moisture + delta, 0, MoistureSystem.MoistureMax);
+    }
+
     public void Grow(int t){
         // Water plants (lilies) float at their tile's water surface and die if it drains away.
         // Handled first: a dry tile means the plant is gone this tick, so skip all growth.
@@ -310,10 +351,11 @@ public class Plant : Structure {
             ripeTicks = 0;
         }
 
-        // The plant occupies an air tile; moisture lives on the solid soil tile directly
-        // below, so we read that tile. If there is no tile below (world bottom edge) the
-        // soil is treated as missing → moisture check skipped.
-        Tile soil = World.instance.GetTileAt(tile.x, tile.y - 1);
+        // Moisture comes from this plant's reservoir — the soil tile below (bare crop or ground
+        // greenhouse) OR a self-contained greenhouse's isolated pool. -1 = no reservoir (no soil,
+        // no pool), treated as "no data" so a misplaced plant doesn't wither. The reservoir is a
+        // physical fact independent of greenhouse condition — a broken greenhouse still holds its pool.
+        int rm = ReservoirMoisture();
 
         // A greenhouse frame covering the anchor tile regulates the climate: it warms the
         // temperature gate toward its target (gate 1a), speeds growth (gate 1b), halves the
@@ -344,7 +386,7 @@ public class Plant : Structure {
         // DroughtGrowthRate rather than freezing it, so a fresh world that hasn't rained
         // yet still inches its crops along instead of stalling forever. Sub-tick progress
         // accumulates in slowGrowthCarry until it sums to a whole tick (age is integral).
-        float rate = plantType.IsMoistureComfortableAt(soil) ? 1f : DroughtGrowthRate;
+        float rate = plantType.IsMoistureComfortableForLevel(rm) ? 1f : DroughtGrowthRate;
         if (gh != null) rate *= gh.greenhouseGrowthMult;
 
         // Gate 1c: sun exposure is a SOFT gate — overhead shade scales growth down linearly,
@@ -369,16 +411,18 @@ public class Plant : Structure {
         int candidateStage = Math.Min(candidateAge * plantType.stageSpan / plantType.growthTime, maxStage);
         int prevStage      = growthStage;
         if (candidateStage > growthStage) {
-            // A greenhouse's controlled humidity cuts how much soil moisture each stage crossing
-            // spends (gate 2) — same multiplier that trims passive transpiration in MoistureSystem.
+            // A greenhouse's controlled humidity cuts how much moisture each stage crossing spends
+            // (gate 2) — same multiplier that trims passive transpiration in MoistureSystem. Spent
+            // from the reservoir (soil below or self-contained pool); rm < cost (incl. the no-reservoir
+            // rm = -1 case) freezes the crossing.
             int cost = plantType.stageMoistureCost;
             if (gh != null) cost = Mathf.RoundToInt(cost * gh.greenhouseMoistureMult);
-            if (cost > 0 && (soil == null || !soil.type.solid || soil.moisture < cost)) return;
+            if (cost > 0 && rm < cost) return;
 
             int candidateHeight = HeightForStage(candidateStage);
             if (candidateHeight > height && !CanExtendTo(candidateHeight)) return;
 
-            if (cost > 0) soil.moisture = (byte)(soil.moisture - cost);
+            if (cost > 0) AddReservoirMoisture(-cost);
             if (candidateHeight > height) {
                 for (int h = height; h < candidateHeight; h++) ClaimExtensionTile(h);
                 height = candidateHeight;
@@ -494,20 +538,30 @@ public class Plant : Structure {
         if (growthStage >= plantType.maxStage) return GrowthBlock.None; // fully grown — done, not blocked
 
         WeatherSystem weather = WeatherSystem.instance;
+        // A greenhouse regulates the climate it presents to the plant — the verdict must read the
+        // SAME regulated temperature and reduced moisture cost as Grow() and the comfort bar, or it
+        // reports a stale "too cold" while the plant is actually growing in the warmed interior. A
+        // broken greenhouse stops regulating (matches Grow), so exclude it.
+        Structure ghStruct = tile.greenhouse;
+        StructType gh = (ghStruct != null && !ghStruct.IsBroken) ? ghStruct.structType : null;
+        int rm = ReservoirMoisture();   // soil below or self-contained pool; -1 = no reservoir
 
         // HARD gates first (these freeze growth), in Grow()'s order.
-        if (!plantType.IsTempComfortableAt(weather)) {
-            float t = weather != null ? weather.temperature : 0f;
-            bool tooHot = plantType.tempMax.HasValue && t > plantType.tempMax.Value;
-            return tooHot ? GrowthBlock.TooHot : GrowthBlock.TooCold;
+        if (weather != null) {
+            float t = gh != null ? gh.RegulatedTemp(weather.temperature) : weather.temperature;
+            if (!plantType.IsTempComfortableAtTemp(t)) {
+                bool tooHot = plantType.tempMax.HasValue && t > plantType.tempMax.Value;
+                return tooHot ? GrowthBlock.TooHot : GrowthBlock.TooCold;
+            }
         }
         if (!plantType.IsSeasonComfortableAt(weather)) return GrowthBlock.OutOfSeason;
 
-        // Soil too dry to pay a stage crossing — a hard stall (Grow returns at the cost
-        // gate before advancing). Checked before the open-sky gate to match Grow's order.
-        Tile soil = World.instance.GetTileAt(tile.x, tile.y - 1);
-        if (soil != null && plantType.stageMoistureCost > 0 && soil.moisture < plantType.stageMoistureCost)
-            return GrowthBlock.SoilTooDry;
+        // Reservoir too dry to pay a stage crossing — a hard stall (Grow returns at the cost gate
+        // before advancing). Checked before the open-sky gate to match Grow's order. The greenhouse
+        // halves the stage cost, so mirror that here too.
+        int stageCost = plantType.stageMoistureCost;
+        if (gh != null) stageCost = Mathf.RoundToInt(stageCost * gh.greenhouseMoistureMult);
+        if (stageCost > 0 && rm < stageCost) return GrowthBlock.SoilTooDry;
 
         // "Open sky" gate: the next stage would make the plant taller, but the tile(s)
         // directly above are solid or occupied, so it can't extend. Only multi-tile
@@ -516,8 +570,8 @@ public class Plant : Structure {
         if (nextHeight > height && !CanExtendTo(nextHeight)) return GrowthBlock.NoSpaceAbove;
 
         // Soft moisture gate — out of comfort only slows growth (it doesn't freeze).
-        if (soil != null && !plantType.IsMoistureComfortableAt(soil)) {
-            bool tooWet = plantType.moistureMax.HasValue && soil.moisture > plantType.moistureMax.Value;
+        if (rm >= 0 && !plantType.IsMoistureComfortableForLevel(rm)) {
+            bool tooWet = plantType.moistureMax.HasValue && rm > plantType.moistureMax.Value;
             return tooWet ? GrowthBlock.SlowWet : GrowthBlock.SlowDry;
         }
 
@@ -1055,7 +1109,15 @@ public class PlantType : StructType {
     // treated as "no data" → comfortable. Null bound = no limit.
     public bool IsMoistureComfortableAt(Tile soilTile) {
         if (soilTile == null) return true;
-        int m = soilTile.moisture;
+        return IsMoistureComfortableForLevel(soilTile.moisture);
+    }
+
+    // Comfort check against an explicit moisture level (0..100), used when the plant draws from a
+    // self-contained greenhouse pool rather than a soil tile (see Plant's reservoir helpers). A
+    // negative level means "no reservoir" → treated as comfortable so a misplaced plant doesn't
+    // wither. Null bound = no limit on that side.
+    public bool IsMoistureComfortableForLevel(int m) {
+        if (m < 0) return true;
         if (moistureMin.HasValue && m < moistureMin.Value) return false;
         if (moistureMax.HasValue && m > moistureMax.Value) return false;
         return true;

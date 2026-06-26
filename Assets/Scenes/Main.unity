@@ -1596,13 +1596,13 @@ RectTransform:
   - {fileID: 954102349}
   - {fileID: 335585477}
   - {fileID: 916989057}
-  m_Father: {fileID: 211705627}
+  m_Father: {fileID: 1631204974}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 13}
-  m_Pivot: {x: 0.5, y: 0.5}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 1.5, y: -5}
+  m_SizeDelta: {x: -7, y: 13}
+  m_Pivot: {x: 0.5, y: 1}
 --- !u!222 &50468192
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -4608,8 +4608,7 @@ RectTransform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 50468190}
+  m_Children: []
   m_Father: {fileID: 1318366870}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
@@ -6463,7 +6462,6 @@ MonoBehaviour:
   domainHi: 40
   caption: temp
   unit: C
-  decimals: 1
   note: out of range lowers happiness
   label: {fileID: 1100047891}
   greenZone: {fileID: 2077586369}
@@ -6766,13 +6764,13 @@ RectTransform:
   m_Children:
   - {fileID: 52140136}
   - {fileID: 392651451}
-  m_Father: {fileID: 402312174}
+  m_Father: {fileID: 1654440930}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 100, y: 13}
-  m_Pivot: {x: 0, y: 1}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 1.5, y: -5}
+  m_SizeDelta: {x: -7, y: 13}
+  m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &310274630
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8229,8 +8227,7 @@ RectTransform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 310274629}
+  m_Children: []
   m_Father: {fileID: 1563943401}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
@@ -23553,6 +23550,7 @@ GameObject:
   m_Component:
   - component: {fileID: 763108541}
   - component: {fileID: 763108542}
+  - component: {fileID: 763108543}
   m_Layer: 0
   m_Name: OccluderField
   m_TagString: Untagged
@@ -23587,6 +23585,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0e8ce1363e751fc499be5444de303f20, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Shonei.Runtime::OccluderField
+--- !u!114 &763108543
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 763108540}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c4c5bca98170d84399d5fad360ac76d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Shonei.Runtime::WallField
+  debugDraw: 1
 --- !u!1 &765333235
 GameObject:
   m_ObjectHideFlags: 0
@@ -31589,8 +31600,6 @@ MonoBehaviour:
   sunModulated: 0
   flickerAmount: 0
   flickerPhase: 0
-  activeStartHour: -1
-  activeEndHour: 0
 --- !u!1 &1222503807
 GameObject:
   m_ObjectHideFlags: 0
@@ -33712,8 +33721,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 2, y: -2}
-  m_SizeDelta: {x: -4, y: -4}
+  m_AnchoredPosition: {x: 2, y: -16}
+  m_SizeDelta: {x: -4, y: -18}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1318366872
 MonoBehaviour:
@@ -35988,8 +35997,6 @@ MonoBehaviour:
   sunModulated: 0
   flickerAmount: 0
   flickerPhase: 0
-  activeStartHour: -1
-  activeEndHour: 0
 --- !u!1 &1443354242
 GameObject:
   m_ObjectHideFlags: 0
@@ -36480,7 +36487,6 @@ MonoBehaviour:
   domainHi: 40
   caption: temp
   unit: C
-  decimals: 1
   note: out of range stops growth
   label: {fileID: 557593172}
   greenZone: {fileID: 2037256281}
@@ -38506,8 +38512,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 2, y: -2}
-  m_SizeDelta: {x: -4, y: -4}
+  m_AnchoredPosition: {x: 2, y: -16}
+  m_SizeDelta: {x: -4, y: -18}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1563943403
 MonoBehaviour:
@@ -40476,13 +40482,14 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 50468190}
   - {fileID: 1318366870}
   m_Father: {fileID: 1961944951}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 4, y: -4}
-  m_SizeDelta: {x: 140, y: 240}
+  m_SizeDelta: {x: 140, y: 260}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1631204975
 MonoBehaviour:
@@ -41145,6 +41152,7 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 310274629}
   - {fileID: 1563943401}
   m_Father: {fileID: 1961944951}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -42503,7 +42511,6 @@ MonoBehaviour:
   domainHi: 100
   caption: moisture
   unit: 
-  decimals: 0
   note: out of range slows growth
   label: {fileID: 829651624}
   greenZone: {fileID: 377345361}

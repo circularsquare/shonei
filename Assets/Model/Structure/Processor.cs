@@ -113,7 +113,10 @@ public class Processor {
         // input plus one for fuel; output a slot per distinct output.
         int maxInputSlots = 1, maxOutputSlots = 1, inStack = 100, outStack = 100;
         bool anyFuel = false;
-        bool anyOutput = false, allOutputsLiquid = true; // → the output pot's ItemClass
+        // The single ItemClass all outputs share, or a "diverged" flag once two outputs disagree.
+        // Drives the output pot's class (below).
+        ItemClass? sharedOutClass = null;
+        bool outClassDiverged = false;
         if (recipes != null)
             foreach (Recipe r in recipes) {
                 maxInputSlots  = Mathf.Max(maxInputSlots,  r.inputs.Length);
@@ -125,16 +128,21 @@ public class Processor {
                 foreach (ItemQuantity iq in r.inputs)  inStack  = Mathf.Max(inStack,  iq.quantity * rRounds);
                 foreach (ItemQuantity oq in r.outputs) {
                     outStack = Mathf.Max(outStack, oq.quantity);
-                    if (oq.item != null) { anyOutput = true; if (!oq.item.isLiquid) allOutputsLiquid = false; }
+                    if (oq.item == null) continue;
+                    if (!outClassDiverged) {
+                        if (sharedOutClass == null) sharedOutClass = oq.item.itemClass;
+                        else if (sharedOutClass != oq.item.itemClass) outClassDiverged = true;
+                    }
                 }
                 if (r.fuelCost > 0f) { anyFuel = true; inStack = Mathf.Max(inStack, Mathf.RoundToInt(r.fuelCost * 100f) * rRounds); }
             }
         if (anyFuel) maxInputSlots += 1; // reserve a buffer slot for the fuel leaf
         outStack = Mathf.Max(outStack, capacityFen); // a roomier pot than one batch → partial-fill look
         // The output pot enforces an EXACT item-class match (Inventory.ItemTypeCompatible), so its
-        // class MUST match what the recipes produce or Tap silently drops the batch: Liquid for
-        // brewed/fermented liquids (wine, tonics), Default for solid output (foundry bars, glass).
-        ItemClass outClass = (anyOutput && allOutputsLiquid) ? ItemClass.Liquid : ItemClass.Default;
+        // class MUST match what the recipes produce or Tap silently drops the batch. When every output
+        // shares one class we adopt it — Liquid for brewed liquids (wine, tonics), Book for scribed
+        // books — so Tap can deposit. Mixed or Default outputs (foundry bars, glass) fall back to Default.
+        ItemClass outClass = (!outClassDiverged && sharedOutClass.HasValue) ? sharedOutClass.Value : ItemClass.Default;
 
         // inputBuffer: Reservoir type → accepts mixed item classes, no decay, not haulable.
         inputBuffer = new Inventory(maxInputSlots, inStack, Inventory.InvType.Reservoir, tileX, tileY);
@@ -143,7 +151,7 @@ public class Processor {
         // output: Storage so it haul/drink-routes normally; class derived above. Storage starts
         // all-disallowed; explicitly allow EVERY recipe's outputs so Tap can deposit whichever batch ran.
         output = new Inventory(maxOutputSlots, outStack, Inventory.InvType.Storage, tileX, tileY,
-                               storageClass: outClass, parentSortingOrder: parentSortingOrder);
+                               storageClass: outClass, parentSortingOrder: parentSortingOrder, renderless: true);
         output.displayName = buildingName + "_output";
         if (recipes != null)
             foreach (Recipe r in recipes)

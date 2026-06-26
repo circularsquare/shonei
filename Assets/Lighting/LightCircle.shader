@@ -53,6 +53,15 @@ Shader "Hidden/LightCircle" {
             SAMPLER(sampler_OccluderDist);
             float4 _GridSize;
 
+            // Burrow-wall edge mask (WallField.cs): (nx+1)×(ny+1) point-sampled. R = vertical burrow
+            // wall on grid line x at row y; G = horizontal burrow wall on column x at grid line y. A
+            // burrow is a hollow carved INSIDE solid tiles, so its perimeter (incl. a ceiling with
+            // open air above) blocks light even though the cell isn't in _OccluderDist. SolidThickness
+            // hard-blocks when the ray to the light crosses one of these edges. _WallTexSize=(nx+1,ny+1).
+            TEXTURE2D(_WallBurrowTex);
+            SAMPLER(sampler_WallBurrowTex);
+            float4 _WallTexSize;
+
             // Accumulated thickness (in tiles) of solid material the ray from `p` to `lightPos`
             // crosses. Exact DDA grid walk (Amanatides & Woo) that sums the segment length spent
             // inside each solid cell. Because it's a continuous function of the light/receiver
@@ -77,18 +86,65 @@ Shader "Hidden/LightCircle" {
                 float2 tMax   = (nb - g) / rdSafe;
                 float  thickness = 0.0;
                 float  prevT     = 0.0;
+                // Burrow-shell softening (see _WallBurrowTex header). A burrow cell is open (not in
+                // _OccluderDist) but its solid shell must occlude. While the ray is INSIDE a burrow (B)
+                // accumulate its chord length in `pending`; when it crosses a burrow wall (R/G) that
+                // chord was real shell between this fragment and an external light → commit it as
+                // thickness. Reaching the light still inside (interior torch) or leaving via the open
+                // door (no wall crossing) discards it → not shadowed. Grazing rays cut a shorter chord
+                // → soft penumbra. BurrowThick scales the committed chord: it's the burrow-edge
+                // softness knob (lower = wider/softer shadow edge, but a shallow burrow leaks more
+                // light; higher = harder edge, thin burrows stay fully dark). Burrow-only — terrain
+                // shadow softness is WallFade, left untouched.
+                const float BurrowThick = 1.0;
+                // BurrowBleed: the crossed wall goes transparent as the light nears it (committed block
+                // scales with the light's distance from the wall, ramping over BurrowBleed tiles).
+                // Without it a burrow snaps lit↔dark the instant the light crosses its wall line; with
+                // it the burrow fades in as the light approaches and two adjacent burrows cross-fade.
+                // Larger = longer/softer fade but more light leaks through walls near a light.
+                const float BurrowBleed = 1.0;
+                bool  inside  = SAMPLE_TEXTURE2D(_WallBurrowTex, sampler_WallBurrowTex, ((float2)cell + 0.5) / _WallTexSize.xy).b > 0.5;
+                float pending = 0.0;
                 [loop]
                 for (int i = 0; i < 48; i++) {
-                    float  nextT = min(min(tMax.x, tMax.y), dist);   // exit param of current cell (clamped to light)
-                    float2 uv    = ((float2)cell + 0.5) / _GridSize.xy;
+                    float  nextT  = min(min(tMax.x, tMax.y), dist);  // exit param of current cell (clamped to light)
+                    float  segLen = nextT - prevT;
+                    float2 uv     = ((float2)cell + 0.5) / _GridSize.xy;
                     if (SAMPLE_TEXTURE2D(_OccluderDist, sampler_OccluderDist, uv).r < 0.5)
-                        thickness += nextT - prevT;                  // length of the ray inside this solid cell
+                        thickness += segLen;                         // solid terrain inside this cell
+                    if (inside) pending += segLen;                   // chord inside the burrow shell
                     if (nextT >= dist) break;                        // reached the light
                     prevT = nextT;
-                    if (tMax.x < tMax.y) { tMax.x += tDelta.x; cell.x += stp.x; }
-                    else                 { tMax.y += tDelta.y; cell.y += stp.y; }
+                    float bleed = saturate((dist - prevT) / BurrowBleed);
+                    // Soft burrow wall. Read the wall mask BILINEARLY at the true crossing point,
+                    // blending only ALONG the wall (the perpendicular axis is pinned to the texel
+                    // centre so walls don't smear sideways). A ray crossing mid-wall reads w≈1 (full
+                    // block); one grazing a corner or door jamb reads a partial w → partial commit →
+                    // the diagonal shadow boundary fades instead of snapping (same soft feel terrain
+                    // corners get from continuous thickness). The w fraction of the chord commits as
+                    // shell thickness; the (1−w) that "passed through" the soft edge keeps marching.
+                    float w;
+                    if (tMax.x < tMax.y) {
+                        int   lineX  = (stp.x > 0) ? cell.x + 1 : cell.x;   // vertical line being crossed
+                        float crossY = p.y + rd.y * prevT;                  // world Y where the ray meets it
+                        float2 wuv   = float2((lineX + 0.5) / _WallTexSize.x, (crossY + 0.5) / _WallTexSize.y);
+                        w = SAMPLE_TEXTURE2D(_WallBurrowTex, sampler_WallBurrowTex, wuv).r;
+                        tMax.x += tDelta.x; cell.x += stp.x;
+                    } else {
+                        int   lineY  = (stp.y > 0) ? cell.y + 1 : cell.y;   // horizontal line being crossed
+                        float crossX = p.x + rd.x * prevT;                  // world X where the ray meets it
+                        float2 wuv   = float2((crossX + 0.5) / _WallTexSize.x, (lineY + 0.5) / _WallTexSize.y);
+                        w = SAMPLE_TEXTURE2D(_WallBurrowTex, sampler_WallBurrowTex, wuv).g;
+                        tMax.y += tDelta.y; cell.y += stp.y;
+                    }
+                    thickness += pending * BurrowThick * bleed * w;
+                    pending   *= (1.0 - w);
+                    // Re-derive "am I inside a burrow" from the interior mask at the cell we stepped
+                    // into, rather than blind-toggling — correct across interior edges, the door, and
+                    // two adjacent burrows sharing a wall (the toggle mishandled burrow→burrow).
+                    inside = SAMPLE_TEXTURE2D(_WallBurrowTex, sampler_WallBurrowTex, ((float2)cell + 0.5) / _WallTexSize.xy).b > 0.5;
                 }
-                return thickness;
+                return thickness;   // any still-pending in-burrow chord is intentionally discarded
             }
 
             struct Attributes {

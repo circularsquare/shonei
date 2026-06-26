@@ -204,7 +204,7 @@ Singleton. Subscribes to TradingClient events in `Start()`, unsubscribes in
 - `/wind [v]` — snap wind to value `v` (positive = right). Both `wind` and `targetWind` are set so the OU walk doesn't immediately pull it back.
 - `/timespeed [n]` — set `Time.timeScale` to any value 0–100 (cheat fast-forward beyond the 0x/1x/2x buttons), via `TimeController.SetSpeed`.
 - `/mice [n]` — set the colony population to exactly `n`. Above current pop, spawns newcomers clustered on the mouse nearest the original spawn point (`AnimalController.DebugSpawnMice`); below it, randomly culls (`DebugRemoveMice`).
-- `/research [id]` — fully research the tech with that `id` (and its prereqs), via `ResearchSystem.MaxTech`. With no `id`, researches everything (`UnlockAll`). Replaces the old debug-mode "unlock all" button.
+- `/research [id|name]` — fully research the tech with that `id` or name (case-insensitive, may contain spaces) plus its prereqs, via `ResearchSystem.MaxTech`. With no argument, researches everything (`UnlockAll`). Replaces the old debug-mode "unlock all" button.
 
 **Chat/fill display:** the chat log lives on `ChatLog` (on the always-active `ChatPanel`), **not** this panel — so it renders even when the trading panel is closed. `ChatLog` both *sources* server chat + fills into `EventFeed` and *renders* every non-Alert entry as a chat row (capped at 20). TradingPanel keeps only `chatInput` (command entry) and `RefreshMarketOnFill` (refreshes the holdings tree on a fill while open). Market errors, `/give` feedback, server chat, and fills all flow through `EventFeed.Post(...)`; inline `<color=...>` tags drive per-message coloring. See SPEC-eventfeed for the dispatcher contract and ChatLog details.
 
@@ -260,8 +260,9 @@ walks to home storage after the return leg.
   search range).
 - Save/load: mid-transit merchants persist the full task context on
   `AnimalSaveData` — `isTraveling`, `travelProgress`, `travelDuration` plus a
-  task descriptor (`travelTaskType`, `travelItemName`, `travelItemQty`,
-  `travelStorageX/Y` for HaulFromMarket, `travelReturnLeg` indicating whether
+  task descriptor (`travelTaskType`, the carried-item arrays `travelItemNames[]` /
+  `travelItemQtys[]`, plus `travelStorageXs[]` / `travelStorageYs[]` for HaulFromMarket,
+  and `travelReturnLeg` indicating whether
   the merchant was still outbound or already homeward-bound). `travelReturnLeg`
   applies to both `HaulToMarket` (true once delivered, on leg 2) and
   `HaulFromMarket` (true once items received, on leg 2). On load
@@ -292,12 +293,14 @@ horizontal line between two RectTransform anchors — `marketAnchor` (left, the
 distant city) and `townAnchor` (right, home) — based on the merchant's progress
 through its `TravelingObjective`.
 
-Each icon is a `MerchantJourneyIcon`: an `Image` with an `IPointerClickHandler`
-that routes clicks to `InfoPanel.ShowInfo(new List<Animal>{ a })`. Icons are
-constructed in code via `MerchantJourneyIcon.Create(...)` (no prefab) and copy
-`sprite` + `color` from the animal's `Head` child SpriteRenderer, so per-mouse
-sprite/colour variation carries into the strip. `IPointerClickHandler` is
-preferred over `Button` to avoid unused transition/interactable machinery.
+Each icon is a shared `MouseHeadIcon` (the same widget the housing occupant lists
+use), built in code via `CreateIcon(...)` (no prefab) and `Set(animal)` — so heads
+render with the correct per-mouse fur tint (`Db.FurColorForSeed`) and a name/job
+tooltip by construction. The icon's `onClick` routes to
+`InfoPanel.ShowInfo(new List<Animal>{ a })`. (Previously a bespoke `MerchantJourneyIcon`
+copied `sprite`+`color` off the in-world `Head` SpriteRenderer, but fur is applied via
+an MPB property, not `sr.color`, so those icons were never actually fur-tinted —
+consolidating onto `MouseHeadIcon` fixed that.)
 
 Direction of travel is inferred from the animal's task:
 - `HaulToMarketTask` — first leg outbound, second leg returning. Detected via
@@ -389,43 +392,47 @@ cross-device status is a menu concern — refreshed live via `OnStateChanged`.
 
 Dedicated `"merchant"` job in jobsDb. Merchant mice only perform `HaulToMarketTask` and `HaulFromMarketTask`; they do not take craft/harvest jobs. They are the only mice allowed to path to the market building.
 
+**Multi-item batching.** Both market tasks fill the merchant's cargo with as many item types as fit per round trip, not one — the long transit makes a fuller trip almost always worth it. `HaulToMarket` selects multiple below-target items (one `FetchObjective` gathered in town + one market `DeliverToInventoryObjective` each); `HaulFromMarket` (and the piggyback) selects multiple above-target items, each routed to its own home storage. Carried goods live in lists: `iqs` on both tasks (+ `storageTiles` / `pickupIqs` + `pickupStorageTiles`).
+
+Capacity is tracked by `Task.CargoBudget` in **whole stacks**, not raw fen: the animal inv is 5 stacks × 1000 fen, and distinct item types never share a stack, so an item of `q` fen consumes `ceil(q / stackSize)` stacks (the tail of its last stack is stranded). A fresh `CargoBudget` is built per trip phase — outbound goods are fully delivered at the market before the return pickup, so the inventory is empty again. The above-target pickup selection (reserve source stack + most-spacious home storage, per item) is shared via `Task.SelectMarketPickups`, used by both `HaulFromMarketTask.Initialize` and the `HaulToMarket` piggyback. `MinMarketHaul(item)` is still applied per item (skip any item whose viable quantity is below it); there is no per-trip aggregate minimum. Food provisioning budgets `WalkToPortalSeconds` of extra ground walking per home-delivery leg (`extraGroundSeconds` passed to `PrependFoodFetchForMarketJourney`).
+
 `UpdateMarketOrders(marketInv)` adds a `HaulToMarket` order at **priority 3** when the market has any item below target, and a `HaulFromMarket` order at **priority 4** when any item is above target. The tier split encodes a dispatch preference: merchants exhaust outbound delivery work before considering a pure pickup trip. Combined with the piggyback described below, most excess gets hauled back on the return leg of a delivery, and a pure `HaulFromMarket` only fires when there is genuinely nothing to deliver. Merchants are the only job whose `canDo` matches these orders, so sharing the p4 tier with Research/Deconstruct is collision-free. Orders are deduped by market inventory reference. Registration happens in `Reconcile()` (every 10 s), on inventory changes, and after each task finishes.
 
 **Dispatch gate — target edit delay:** both `HaulToMarket` and `HaulFromMarket` orders are suppressed for 3 s after the player manually edits a market target (`Inventory.lastTargetManualUpdateTimer`, gated by `marketHaulDelayAfterTargetChange`). Applied to both directions because an edit can flip an item from below-target to above-target or vice versa; letting one direction fire immediately would dispatch a merchant on a soon-to-be-stale target.
 
 **Task initialization gates (both market tasks):**
 - Eep < 75 %: merchant refuses the trip (`animal.eeping.Eepness() < 0.75f`). Stricter than the general night-sleep threshold so a merchant doesn't dip into efficiency-loss territory mid-transit.
-- Food provisioning: `PrependFoodFetchForMarketJourney(transitTicks, extraGroundSeconds=0)` requires `foodNeeded = hungerRate × (2 × (WalkToPortalSeconds=20 + transitTicks) + extraGroundSeconds) + maxFood × hungryThreshold`. Read this as "enough to burn across the round trip **and** land home exactly at the hungry threshold line". `transitTicks` is **per leg** — the `2×` factor covers the round trip. `extraGroundSeconds` budgets any trip-terminating on-map walk beyond the portal (used by the piggyback path, which ends at a specific storage tile instead of idle at x=0). It checks body food + food slot, then fetches from the nearest available food source into the food slot if the deficit can be covered. Returns false (aborts Initialize) if it cannot provision enough food. `HaulFromMarket` passes `(MarketTransitTicks)`; `HaulToMarket` passes `(MarketTransitTicks, WalkToPortalSeconds)` when a piggyback is planned, else `(MarketTransitTicks)`.
+- Food provisioning: `PrependFoodFetchForMarketJourney(transitTicks, extraGroundSeconds=0)` requires `foodNeeded = hungerRate × (2 × (WalkToPortalSeconds=20 + transitTicks) + extraGroundSeconds) + maxFood × hungryThreshold`. Read this as "enough to burn across the round trip **and** land home exactly at the hungry threshold line". `transitTicks` is **per leg** — the `2×` factor covers the round trip. `extraGroundSeconds` budgets any trip-terminating on-map walk beyond the portal (used by the piggyback path, which ends at a specific storage tile instead of idle at x=0). It checks body food + food slot, then fetches from the nearest available food source into the food slot if the deficit can be covered. Returns false (aborts Initialize) if it cannot provision enough food. Both tasks pass `extraGroundSeconds = WalkToPortalSeconds × (number of home-delivery legs)` — one per item dropped at a home storage on the return (0 for a `HaulToMarket` with no piggyback, which ends idle at the portal).
 - Minimum haul quantity: `MinMarketHaulQuantity = 100 fen` (1.0 liang) for most items; `MinMarketHaulQuantitySilver = 40 fen` (silver moves in smaller amounts). Selected via `MinMarketHaul(item)`.
 
 ### Return-leg piggyback (`HaulToMarket` only)
 
-When a `HaulToMarketTask` initializes, after building its outbound deliver queue it calls `TryAppendPickup(marketInv)`. If there is an active `HaulFromMarket` order for the same market **and** a leaf item above target with ≥ `MinMarketHaul` units of unreserved excess and a reachable home storage with room, the pickup is spliced into the trip and the objective queue becomes:
+When a `HaulToMarketTask` initializes, after building its outbound deliver queue it calls `TryAppendPickup(marketInv)`, which fills the (return-empty) cargo with as many above-target items as fit via `SelectMarketPickups`. Each pickup reserves its market source stack + most-spacious home storage. For a two-item-out / two-item-back trip the queue becomes:
 
 ```
-Fetch (food) → Go (portal) → Travel (outbound)
-  → Deliver (market)
-  → Receive (market)                   ← piggyback tail begins
+Fetch (food) → Fetch (out A) → Fetch (out B) → Go (portal) → Travel (outbound)
+  → Deliver A (market) → Deliver B (market)
+  → Receive X (market) → Receive Y (market)   ← piggyback tail begins
   → Travel (return)
-  → Go (home storage)
-  → Deliver (home storage)
+  → Go (storage X) → Deliver X
+  → Go (storage Y) → Deliver Y
 ```
 
-`TryAppendPickup` reserves the market source stack + home storage space and claims the `HaulFromMarket` WOM order's `res` so a second merchant doesn't race the pickup. The claimed order is released in `HaulToMarketTask.Cleanup()` (override), alongside the normal stack/space reservation unwind in `base.Cleanup()`. If no viable pickup is found, the task behaves identically to its pre-piggyback form (plain return travel, merchant reappears idle at x=0).
+`TryAppendPickup` claims the single `HaulFromMarket` WOM order's `res` once (a nicety so a parallel pure-pickup merchant doesn't duplicate the excess; per-stack reservation is the real race guard). The claimed order is released in `HaulToMarketTask.Cleanup()` (override), alongside the normal stack/space reservation unwind in `base.Cleanup()`. If no viable pickup is found, the task appends a plain return travel and the merchant reappears idle at x=0.
 
-`IsReturnLeg` is defined in terms of the market delivery objective specifically (`DeliverToInventoryObjective.TargetInv == marketInv`) so it stays correct when the queue contains two `DeliverToInventoryObjective`s (market + home). `PickupReceived` is true once the `ReceiveFromInventoryObjective` has completed — used by the save/load mapping below.
+`IsReturnLeg` is defined in terms of the market delivery objective specifically (`DeliverToInventoryObjective.TargetInv == marketInv`) so it stays correct when the queue contains multiple `DeliverToInventoryObjective`s (several market + several home). `PickupReceived` is true once **every** `ReceiveFromInventoryObjective` has completed — used by the save/load mapping below.
 
-**Save/load mapping (no schema change).** Because the piggyback tail becomes structurally identical to a `HaulFromMarketTask` return leg once pickup items are on board, we reuse the existing `HaulFromMarket` save descriptor to represent that phase. Phase detection in `SaveSystem.GatherAnimal`:
+**Save/load mapping (list-based descriptor).** A travel descriptor is only emitted while the merchant is in `AnimalState.Traveling`, and at every such point the carried set is uniform (all outbound-undelivered, or all pickup-received), so a parallel-array descriptor + a leg flag fully describes it — the at-market receive/deliver window is non-Traveling and is dropped on load by the existing rule. The descriptor is `travelItemNames[]` / `travelItemQtys[]` (+ `travelStorageXs[]` / `travelStorageYs[]` for the home-delivery direction); the legacy single `travelItemName/Qty/StorageX/Y` fields are still read as a 1-element fallback. Carried goods themselves persist independently via `GatherInventory(a.inv)`; the descriptor only rebuilds the deliver/receive objective tail. Because the piggyback return is structurally identical to a `HaulFromMarketTask` return leg once pickups are on board, we reuse the `HaulFromMarket` descriptor for that phase. Phase detection in `SaveSystem.GatherAnimal` (`WriteTravelItems` writes the arrays):
 
 | Phase at save (merchant is in `AnimalState.Traveling`) | Descriptor emitted | Resume behaviour |
 |---|---|---|
-| Outbound travel (pre-market-deliver) | `HaulToMarket`, `returnLeg=false`, primary `iq` | `HaulToMarketTask` outbound resume. Planned pickup silently dropped — we lose an opportunistic trip, not a committed task. |
+| Outbound travel (pre-market-deliver) | `HaulToMarket`, `returnLeg=false`, outbound `iqs` | `HaulToMarketTask` outbound resume (re-reserve market space + rebuild N delivers). Planned pickups silently dropped — opportunistic trips lost, not committed tasks. |
 | Return travel, no pickup | `HaulToMarket`, `returnLeg=true` | `HaulToMarketTask` return resume — tail is just remaining travel. |
-| Return travel, pickup received | `HaulFromMarket`, `returnLeg=true`, pickup `iq` + storage tile | `HaulFromMarketTask` return resume — tail is remaining travel + go-to-storage + deliver. Primary goods were delivered pre-save, so no drift. |
+| Return travel, pickups received | `HaulFromMarket`, `returnLeg=true`, pickup `iqs` + storage tiles | `HaulFromMarketTask` return resume — remaining travel + per-item go-to-storage + deliver. A pickup whose storage was demolished since save is dropped from the plan (its goods idle-drop) while the rest still deliver; the whole task only aborts to `ResumeTravelTask` if the market is gone or nothing is deliverable. |
 
 Rough edge: if the game is saved during the brief non-Traveling window at the market (between `DeliverToInventoryObjective` and `ReceiveFromInventoryObjective`), `SaveSystem` skips the descriptor (it's only emitted for `AnimalState.Traveling`) and the task is dropped on load. The merchant wakes idle at the market tile; the next WOM pass dispatches a fresh `HaulFromMarket` if excess remains, otherwise the merchant walks home.
 
-**Graceful at-market fail (`Task.FailAtMarket`).** The merchant's sprite is parked at the town portal for the entire market phase — on a plain `Fail()` they would snap idle at x=0 as if they never travelled. Instead, at-market objectives (currently `ReceiveFromInventoryObjective`) call `task.FailAtMarket()` on any abort path. `HaulFromMarketTask` and `HaulToMarketTask` override it to clear the remaining queue, enqueue a single return `TravelingObjective(MarketTransitTicks)`, and `StartNextObjective()`. The task stays alive so reservations unwind in the normal `Cleanup` once travel completes. `iq` / `storageTile` / `pickupIq` are nulled in the override so a mid-return save emits no task descriptor — the loader falls through to `ResumeTravelTask` and finishes the tail rather than trying to deliver items the merchant never picked up.
+**Graceful at-market fail (`Task.FailAtMarket`).** The merchant's sprite is parked at the town portal for the entire market phase — on a plain `Fail()` they would snap idle at x=0 as if they never travelled. Instead, at-market objectives (currently `ReceiveFromInventoryObjective`) call `task.FailAtMarket()` on any abort path. `HaulFromMarketTask` and `HaulToMarketTask` override it to clear the remaining queue, enqueue a single return `TravelingObjective(MarketTransitTicks)`, and `StartNextObjective()`. The task stays alive so reservations unwind in the normal `Cleanup` once travel completes. The item lists (`iqs` / `storageTiles` / `pickupIqs` / `pickupStorageTiles`) are cleared in the override so a mid-return save emits no task descriptor — the loader falls through to `ResumeTravelTask` and finishes the tail rather than trying to deliver items the merchant never picked up.
 
 ### Order placement flow
 

@@ -513,6 +513,29 @@ public class Graph {
         return best;
     }
 
+    // Nearest standable TILE node whose componentId == comp, within a box of half-width
+    // maxR. Used to rescue a mouse cut off from the colony (e.g. left on a quarry's
+    // interior node when its only open face is blocked) by snapping it onto reachable
+    // ground. Returns null when nothing reachable is near — a genuinely sealed pocket —
+    // so the caller can escalate to a player alert instead of teleporting into the void.
+    public Node FindNearestStandableNodeInComponent(float x, float y, int comp, int maxR = 20){
+        if (comp < 0) return null;
+        int cx = Mathf.RoundToInt(x), cy = Mathf.RoundToInt(y);
+        Node best = null;
+        float bestSqr = float.MaxValue;
+        for (int dx = -maxR; dx <= maxR; dx++){
+            for (int dy = -maxR; dy <= maxR; dy++){
+                int nx = cx + dx, ny = cy + dy;
+                if (nx < 0 || nx >= world.nx || ny < 0 || ny >= world.ny) continue;
+                Node n = nodes[nx, ny];
+                if (!n.standable || n.componentId != comp) continue;
+                float d = (n.wx - x) * (n.wx - x) + (n.wy - y) * (n.wy - y);
+                if (d < bestSqr){ bestSqr = d; best = n; }
+            }
+        }
+        return best;
+    }
+
     // Every waypoint node the graph knows about, across stair / cliff / bridge chains.
     // Used only by the one-shot load-time snap, so a full sweep is fine.
     private IEnumerable<Node> AllChainWaypoints(){

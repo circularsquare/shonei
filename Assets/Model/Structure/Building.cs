@@ -322,6 +322,17 @@ public class Building : Structure {
                     x + (mirrored ? (st.nx - 1 - st.processorTileX) : st.processorTileX),
                     y + st.processorTileY);
                 processor = new Processor(procRecipes, st.processorTended, st.processorCapacityLiang * 100, pTile.x, pTile.y, sr.sortingOrder);
+
+                // Discrete-output processors (scriptorium) show an overlay sprite while a batch is
+                // loaded. Opt-in by art: only if a `{name}_load` sprite exists. Liquid processors
+                // (cauldron) render their batch via the WaterController pot fill, so they ship no
+                // `_load` sprite and skip this. Wired here, not AttachAnimations — the processor
+                // doesn't exist yet when AttachAnimations runs (see Structure.AttachAnimations).
+                Sprite loadSprite = Resources.Load<Sprite>("Sprites/Buildings/" + st.name.Replace(" ", "") + "_load");
+                if (loadSprite != null) {
+                    var plv = go.AddComponent<ProcessorLoadVisuals>();
+                    plv.Init(this, loadSprite, sr.sortingOrder);
+                }
             }
         }
     }

@@ -69,6 +69,19 @@ public class Item {
     // passively whenever this item is anywhere in an inventory.
     public float equipDecayRate {get; set;} = 0f;
     public ItemClass itemClass {get; set;} = ItemClass.Default; // Default = solid goods; Liquid = water/soymilk/etc.; Book = tech & fiction books. Storage inventories accept only items matching their storageClass.
+
+    // ── Hat bonus fields ──────────────────────────────────────────────────────
+    // Passive bonuses granted while this item is worn in an animal's hat slot (see
+    // Animal.hatSlotInv, Db.hatItems). All optional; null/0 on non-hat items.
+    // skillBonus names a Skill domain (parsed to skillBonusEffect on deserialize);
+    // skillBonusLevels is how many effective levels it adds to that domain's work
+    // multiplier — 1 level = +SkillSet.BonusPerLevel (+5%), the same value a real level
+    // adds, so a hat reads as "+1 farming level". walkBonus is a fractional travel-speed
+    // boost (0.02 = +2%). All read by ModifierSystem.
+    public string skillBonus {get; set;}
+    public int    skillBonusLevels {get; set;}
+    public float  walkBonus {get; set;}
+    [Newtonsoft.Json.JsonIgnore] public Skill? skillBonusEffect; // parsed from skillBonus
     // Initial value seeded into InventoryController.targets for this item's id. In liang for normal
     // items; in whole-unit count for discrete items (resolved via unitFen, like recipe quantities).
     // Lower for byproducts (acorn, sawdust) so the "outputs over target" gate can actually
@@ -163,6 +176,10 @@ public class Item {
         if (!string.IsNullOrEmpty(buffType)) {
             if (System.Enum.TryParse<BuffType>(buffType, ignoreCase: true, out BuffType bt)) buffEffect = bt;
             else Debug.LogError($"Item '{name}': unknown buffType '{buffType}'");
+        }
+        if (!string.IsNullOrEmpty(skillBonus)) {
+            if (System.Enum.TryParse<Skill>(skillBonus, ignoreCase: true, out Skill sk)) skillBonusEffect = sk;
+            else Debug.LogError($"Item '{name}': unknown skillBonus '{skillBonus}'");
         }
     }
     // inventories are the ones with gameobjects and sprites, not items.

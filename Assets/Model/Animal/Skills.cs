@@ -12,7 +12,7 @@ public enum Skill {
     Farming,
     Mining,
     Construction,
-    Science,
+    Scholarship,
     Woodworking,
 }
 

@@ -24,7 +24,8 @@ using UnityEngine;
 // from neighbour openness + reachability from the main settlement, then persisted in
 // the save and never recomputed (a loaded structure reads digDir back verbatim). A
 // surface quarry/pit with open sky above digs Up. The dish bite, the worker's stand
-// point, and the single wired door all orient to digDir.
+// point, and the primary door all orient to digDir; additional doors are wired to any
+// other open+standable face so a mouse can climb out any clear side (UpdateOpenFaceDoors).
 //
 // ── Dish visual ─────────────────────────────────────────────────────────
 // Renders in two layers: the platform sprite (from the standard
@@ -73,16 +74,19 @@ public class ExtractionBuilding : Building {
     Color32[] substratePixels;
     int lastDishUses = -1; // skip texture rebuilds when uses hasn't changed
 
-    // Exactly one door — the chosen dig face — is wired by this class (the JSON
-    // declares none), so reachability can be measured on the clean pre-dig graph
-    // before the door bridges anything. Idempotent via this flag (OnPlaced and the
-    // per-craft RebuildDishVisual both call EnsurePrimaryDoor).
+    // The dig face is wired FIRST by this class (the JSON declares no doors) so the dig
+    // direction's reachability can be measured on the clean pre-dig graph before any door
+    // bridges anything. Idempotent via this flag (OnPlaced and the per-craft
+    // RebuildDishVisual both call EnsurePrimaryDoor).
     bool primaryDoorWired;
 
-    // UP-dug only: once the bowl is mined past 60%, also open the L/R faces so mice
-    // can hop in from the sides (the substrate's no longer in the way). Side-dug
-    // structures use their single chosen door exclusively. Wired once on crossing 60%.
-    bool sideDoorsWired;
+    // Which orthogonal faces have a walkable door wired, so a mouse can climb in/out that
+    // side. Bitmask (FaceUp/Left/Right); additive and idempotent. Every face that is OPEN
+    // and standable gets a door — not just the dig face — so a non-worker left on the
+    // interior node is never trapped when the dig face happens to be blocked. Re-checked
+    // each craft round as mining opens new faces. See UpdateOpenFaceDoors.
+    const byte FaceUp = 1, FaceLeft = 2, FaceRight = 4;
+    byte wiredFaceMask;
 
     public ExtractionBuilding(StructType st, int x, int y, bool mirrored = false) : base(st, x, y, mirrored) { }
 
@@ -187,7 +191,7 @@ public class ExtractionBuilding : Building {
         EnsurePrimaryDoor();
         UpdateDishTexture();
         UpdateWorkSpot();
-        UpdateSideAccess();
+        UpdateOpenFaceDoors();
         UpdateHoleLighting();
     }
 
@@ -214,6 +218,11 @@ public class ExtractionBuilding : Building {
             _            => "top",
         };
         WireDoorEdge(workNode, x, y, side);
+        wiredFaceMask |= digDir switch {
+            DigDir.Left  => FaceLeft,
+            DigDir.Right => FaceRight,
+            _            => FaceUp,
+        };
         primaryDoorWired = true;
     }
 
@@ -233,24 +242,32 @@ public class ExtractionBuilding : Building {
         }
     }
 
-    // UP-dug: once the bowl is mined past 60%, also open whichever L/R faces are
-    // clear, so mice can hop in from the sides (below that the substrate's in the way
-    // and a diagonal pop-in looks wrong). Side-dug structures enter only via their one
-    // chosen door, so they skip this entirely. `uses` only increases, so this wires
-    // once and stays.
-    void UpdateSideAccess() {
-        if (digDir != DigDir.Up || sideDoorsWired || workNode == null) return;
-        int uses = workstation != null ? workstation.uses : 0;
-        int depleteAt = Mathf.Max(1, structType.depleteAt);
-        if (uses < depleteAt * 0.6f) return;
-
+    // Wire a walkable door to EVERY orthogonally-adjacent face that is currently open and
+    // standable, so a mouse can climb in or out any clear side — not just the chosen dig
+    // face. Without this, the lone dig-direction door strands a non-worker left on the
+    // interior node whenever that face is blocked, even with open ground one tile over.
+    // Additive + idempotent via wiredFaceMask; re-checked each craft round so faces opened
+    // by ongoing mining get connected. Only ever wires faces that are ALREADY open air
+    // (IsOpenStandable), so there's no walking through still-solid substrate.
+    void UpdateOpenFaceDoors() {
+        if (workNode == null) return;
         World w = World.instance;
-        bool any = false;
-        if (IsOpenStandable(w, x - 1, y, out _)) { WireDoorEdge(workNode, x, y, "left");  any = true; }
-        if (IsOpenStandable(w, x + 1, y, out _)) { WireDoorEdge(workNode, x, y, "right"); any = true; }
-        sideDoorsWired = true;
+        bool changed = false;
+        changed |= TryWireFace(w, FaceUp,    x,     y + 1, "top");
+        changed |= TryWireFace(w, FaceLeft,  x - 1, y,     "left");
+        changed |= TryWireFace(w, FaceRight, x + 1, y,     "right");
         // Reachability set changed — refresh A* connectivity components.
-        if (any) w.graph.RebuildComponents();
+        if (changed) w.graph.RebuildComponents();
+    }
+
+    // Wires one face's door if it's open+standable and not already wired. Returns whether
+    // it added a new edge (so the caller knows to rebuild components).
+    bool TryWireFace(World w, byte bit, int nx, int ny, string side) {
+        if ((wiredFaceMask & bit) != 0) return false;
+        if (!IsOpenStandable(w, nx, ny, out _)) return false;
+        WireDoorEdge(workNode, x, y, side);
+        wiredFaceMask |= bit;
+        return true;
     }
 
     void EnsureDishObject() {

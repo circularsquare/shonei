@@ -180,6 +180,11 @@
     "right": 1
   },
   {
+    "name": "hattery",
+    "left": 3,
+    "right": 3
+  },
+  {
     "name": "windmill",
     "left": 10,
     "right": 5

@@ -110,7 +110,7 @@ public class GlobalInventoryPanel : MonoBehaviour {
     // reads each row's own `open` (the panel keeps its own collapse state, independent of the
     // always-visible panel's).
     bool IsVisible(Item item) {
-        if (item == null) return false;
+        if (item == null || item.hidden) return false; // internal intermediary — see Item.hidden
         var ic = InventoryController.instance;
         if (ic == null || !ic.discoveredItems.TryGetValue(item.id, out bool disc) || !disc) return false;
         for (Item p = item.parent; p != null; p = p.parent) {

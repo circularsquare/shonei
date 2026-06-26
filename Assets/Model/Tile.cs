@@ -318,6 +318,12 @@ public class TileType {
     // Optional logical family ("stone" for limestone/granite/slate, etc.) — used by
     // StructPlacement so that a building's `requiredTileName` can match by group.
     public string group {get; set;}
+    // True when this tile type is farmable soil — the ground a bare plant may root in and a
+    // ground-mode greenhouse draws moisture from. The diggable earth group (dirt/sand/clay) plus
+    // player-placed dirt (which drops its group per the _placed convention but is still soil).
+    // Stone and everything else are NOT soil: bare crops can't grow on them, and a greenhouse
+    // built on them runs self-contained. See StructPlacement (planting) and Greenhouse.OnPlaced.
+    public bool isSoil => solid && (group == "earth" || name == "dirt_placed");
     // Optional override: borrow another tile type's texture for rendering instead of `name`
     // (cache + per-type arrays stay keyed by `name`). Usually unnecessary — the "_placed"
     // convention (below) auto-borrows the base art. Set this only to point at some OTHER stem.

@@ -227,16 +227,12 @@ public class MoistureSystem {
             }
         }
 
-        // 3. Plant passive draw. Each plant pulls moistureDrawPerHour from the soil
-        // tile below — clamped ≥ 0, no penalty if undersupplied (the advancement cost
-        // in Plant.Grow is where moisture actually gates growth).
+        // 3. Plant passive draw. Each plant pulls moistureDrawPerHour from its reservoir — the soil
+        // tile below, or a self-contained greenhouse's pool — clamped ≥ 0, no penalty if undersupplied
+        // (the advancement cost in Plant.Grow is where moisture actually gates growth).
         PlantController pc = PlantController.instance;
         if (pc != null) {
             foreach (Plant plant in pc.Plants) {
-                int py = plant.tile.y - 1;
-                if (py < 0) continue;
-                Tile soil = world.GetTileAt(plant.tile.x, py);
-                if (soil == null || !soil.type.solid) continue;
                 // A greenhouse's controlled humidity cuts transpiration — scale the draw by the
                 // frame's moisture multiplier (same factor trims the stage cost in Plant.Grow).
                 float drawF = plant.plantType.moistureDrawPerHour;
@@ -246,8 +242,8 @@ public class MoistureSystem {
                 if (gh != null) drawF *= gh.greenhouseMoistureMult;
                 int draw = Mathf.RoundToInt(drawF);
                 if (draw <= 0) continue;
-                int left = soil.moisture - draw;
-                soil.moisture = left > 0 ? (byte)left : (byte)0;
+                // Routes to the self-contained pool or the soil below; no-op if the plant has neither.
+                plant.AddReservoirMoisture(-draw);
             }
         }
     }

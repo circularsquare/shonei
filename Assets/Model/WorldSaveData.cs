@@ -219,6 +219,11 @@ public class StructureSaveData {
     // saves (field absent) and non-extraction structures restore as Up — the original
     // dig-from-the-top behaviour. See ExtractionBuilding.DigDir.
     public int? digDir;
+    // Greenhouse only: self-contained moisture mode + isolated pool. Decided at construction from
+    // the tile below (non-soil → self-contained) and never recomputed, so it's persisted rather
+    // than re-derived. Null on non-greenhouses / old saves → restores as ground mode, empty pool.
+    public bool? greenhouseSelfContained;
+    public int?  greenhouseMoisture;
     // Flywheel only: stored mechanical-power energy. 0 on non-flywheels / old saves.
     // Without this, flywheels would reset to empty on every load and surrender any
     // energy buffered during the play session.
@@ -323,6 +328,7 @@ public class AnimalSaveData {
     public InventorySaveData foodSlotInv;
     public InventorySaveData toolSlotInv;
     public InventorySaveData clothingSlotInv;
+    public InventorySaveData hatSlotInv;
     public InventorySaveData bookSlotInv;
     public float[] skillXp;
     public int[]   skillLevel;
@@ -335,11 +341,23 @@ public class AnimalSaveData {
     // to market / receive + travel back + deliver to storage), not just the remaining
     // travel ticks. Null taskType indicates a legacy save — falls back to ResumeTravelTask.
     public string travelTaskType;     // "HaulToMarket" | "HaulFromMarket" | null
+    public bool   travelReturnLeg;    // true if past the deliver-to-market / receive-from-market step
+
+    // Multi-item cargo (supersedes the single travelItem* fields below when present).
+    // Parallel arrays: travelItemNames[i] / travelItemQtys[i] are one carried item type; for the
+    // home-delivery direction (HaulFromMarket descriptor) travelStorageXs[i] / travelStorageYs[i]
+    // give that item's destination Building.storage tile. Null for the to-market direction.
+    public string[] travelItemNames;
+    public int[]    travelItemQtys;   // fen
+    public int[]    travelStorageXs;
+    public int[]    travelStorageYs;
+
+    // Legacy single-item fields — still read as a 1-element fallback for saves written before
+    // multi-item hauling. New saves write the arrays above and leave these unset.
     public string travelItemName;
     public int    travelItemQty;      // fen
     public int?   travelStorageX;     // HaulFromMarket only — destination Building.storage tile
     public int?   travelStorageY;
-    public bool   travelReturnLeg;    // HaulFromMarket only — true if past the ReceiveFromInventory
 
     // Home reservation. homeBuildingX/Y persists the home reservation so loaded animals
     // don't have to re-find a home on first SlowUpdate (which would also reset their

@@ -19,6 +19,17 @@ public class Animal : MonoBehaviour{
     public bool facingRight = true;
     public bool pendingRefresh = false; // deferred Refresh() when SetJob fires mid-waypoint
 
+    // Stuck (cut-off) tracking — transient, not persisted. stuckSince is the Time.time at
+    // which this mouse was first found unable to reach the main settlement; -1 means "not
+    // stuck". stuckAlerted prevents re-posting the player alert each tick. stuckSnapped marks
+    // that this episode's one auto-rescue snap has been attempted — so a snap that fails to
+    // reconnect the mouse escalates to an alert instead of looping silently. All reset when
+    // the mouse is no longer cut off. Owned by AnimalStateManager.HandleStuckCheck.
+    // See SPEC-systems §Stuck (cut-off) rescue.
+    public float stuckSince = -1f;
+    public bool stuckAlerted = false;
+    public bool stuckSnapped = false;
+
     public Node target;         // path endpoint (tile-node or off-grid waypoint) — where you are currently going
     // The building this animal calls home — the authoritative reservation owner. Replaces
     // the old "homeTile.building" idiom that broke for multi-tile housing (the home tile
@@ -68,6 +79,7 @@ public class Animal : MonoBehaviour{
     public Inventory foodSlotInv; // equip slot: food only, 1 stack, 5 liang capacity
     public Inventory toolSlotInv; // equip slot: tool, 1 stack
     public Inventory clothingSlotInv; // equip slot: clothing (top), 1 stack
+    public Inventory hatSlotInv;      // equip slot: hat (head), 1 stack — profession identifier + small bonus
     public Inventory bookSlotInv;     // equip slot: book only (storageClass=Book), 1 stack of size 1
     public GlobalInventory ginv;
 
@@ -162,6 +174,7 @@ public class Animal : MonoBehaviour{
         this.foodSlotInv = new Inventory(1, 500, Inventory.InvType.Equip);
         this.toolSlotInv = new Inventory(1, 200, Inventory.InvType.Equip);
         this.clothingSlotInv = new Inventory(1, 200, Inventory.InvType.Equip);
+        this.hatSlotInv = new Inventory(1, 200, Inventory.InvType.Equip);
         // Restricted to Book-class items via storageClass — see Inventory.ItemTypeCompatible.
         // Used by ResearchTask (M5) and ReadBookTask (M6) to carry a book during the activity.
         this.bookSlotInv = new Inventory(1, 100, Inventory.InvType.Equip, storageClass: ItemClass.Book);
@@ -206,6 +219,7 @@ public class Animal : MonoBehaviour{
             SaveSystem.LoadInventory(foodSlotInv, pendingSaveData.foodSlotInv);
             SaveSystem.LoadInventory(toolSlotInv, pendingSaveData.toolSlotInv);
             SaveSystem.LoadInventory(clothingSlotInv, pendingSaveData.clothingSlotInv);
+            SaveSystem.LoadInventory(hatSlotInv, pendingSaveData.hatSlotInv);
             SaveSystem.LoadInventory(bookSlotInv, pendingSaveData.bookSlotInv);
             skills.Deserialize(pendingSaveData.skillXp, pendingSaveData.skillLevel);
             buffs.Deserialize(pendingSaveData.buffs);
@@ -222,27 +236,16 @@ public class Animal : MonoBehaviour{
             // which just finishes the remaining ticks and goes idle.
             if (pendingSaveData.isTraveling && pendingSaveData.travelDuration > 0) {
                 Task resumed = null;
+                List<ItemQuantity> travelItems = ReadTravelItems(pendingSaveData);
                 switch (pendingSaveData.travelTaskType) {
                     case "HaulToMarket":
-                        if (!string.IsNullOrEmpty(pendingSaveData.travelItemName)
-                            && Db.itemByName.TryGetValue(pendingSaveData.travelItemName, out Item htItem))
-                            resumed = new HaulToMarketTask(this,
-                                new ItemQuantity(htItem, pendingSaveData.travelItemQty),
-                                pendingSaveData.travelReturnLeg);
+                        if (travelItems.Count > 0)
+                            resumed = new HaulToMarketTask(this, travelItems, pendingSaveData.travelReturnLeg);
                         break;
                     case "HaulFromMarket":
-                        if (!string.IsNullOrEmpty(pendingSaveData.travelItemName)
-                            && Db.itemByName.TryGetValue(pendingSaveData.travelItemName, out Item hfItem)
-                            && pendingSaveData.travelStorageX.HasValue
-                            && pendingSaveData.travelStorageY.HasValue) {
-                            Tile storageTile = World.instance.GetTileAt(
-                                pendingSaveData.travelStorageX.Value,
-                                pendingSaveData.travelStorageY.Value);
-                            if (storageTile != null)
-                                resumed = new HaulFromMarketTask(this,
-                                    new ItemQuantity(hfItem, pendingSaveData.travelItemQty),
-                                    storageTile, pendingSaveData.travelReturnLeg);
-                        }
+                        List<Tile> storageTiles = ReadTravelStorageTiles(pendingSaveData, travelItems.Count);
+                        if (travelItems.Count > 0 && storageTiles != null)
+                            resumed = new HaulFromMarketTask(this, travelItems, storageTiles, pendingSaveData.travelReturnLeg);
                         break;
                 }
                 // Legacy fallback: ResumeTravelTask only knows how to finish the
@@ -309,6 +312,42 @@ public class Animal : MonoBehaviour{
         // This is deferred from AddAnimal() so TickUpdate/UpdateColonyStats never
         // iterate over an animal whose Start() hasn't run yet.
         AnimalController.instance.RegisterReady(this);
+    }
+
+    // Reads a mid-transit merchant's carried items from the save descriptor. Prefers the
+    // multi-item arrays; falls back to the legacy single travelItemName/Qty fields for saves
+    // written before multi-item hauling. Items whose name no longer resolves are skipped.
+    static List<ItemQuantity> ReadTravelItems(AnimalSaveData sd) {
+        var list = new List<ItemQuantity>();
+        if (sd.travelItemNames != null && sd.travelItemQtys != null
+            && sd.travelItemNames.Length == sd.travelItemQtys.Length) {
+            for (int i = 0; i < sd.travelItemNames.Length; i++)
+                if (Db.itemByName.TryGetValue(sd.travelItemNames[i], out Item it))
+                    list.Add(new ItemQuantity(it, sd.travelItemQtys[i]));
+        } else if (!string.IsNullOrEmpty(sd.travelItemName)
+            && Db.itemByName.TryGetValue(sd.travelItemName, out Item single)) {
+            list.Add(new ItemQuantity(single, sd.travelItemQty));
+        }
+        return list;
+    }
+
+    // Reads the per-item home storage tiles for a HaulFromMarket descriptor, parallel to
+    // ReadTravelItems. Prefers the arrays; falls back to the legacy single tile when there's
+    // exactly one item. A tile that no longer exists comes back null — the resume constructor
+    // drops that item's delivery gracefully. Returns null only when the descriptor is unusable
+    // (count mismatch with no legacy fallback), routing the loader to ResumeTravelTask.
+    static List<Tile> ReadTravelStorageTiles(AnimalSaveData sd, int count) {
+        if (sd.travelStorageXs != null && sd.travelStorageYs != null
+            && sd.travelStorageXs.Length == sd.travelStorageYs.Length
+            && sd.travelStorageXs.Length == count) {
+            var tiles = new List<Tile>(count);
+            for (int i = 0; i < count; i++)
+                tiles.Add(World.instance.GetTileAt(sd.travelStorageXs[i], sd.travelStorageYs[i]));
+            return tiles;
+        }
+        if (count == 1 && sd.travelStorageX.HasValue && sd.travelStorageY.HasValue)
+            return new List<Tile> { World.instance.GetTileAt(sd.travelStorageX.Value, sd.travelStorageY.Value) };
+        return null;
     }
 
     public void TickUpdate() { // called from animalcontroller each second.
@@ -519,8 +558,10 @@ public class Animal : MonoBehaviour{
         // rank then no-op — see validation note in the plan).
         float equipU = (job.usesTools && toolSlotInv.itemStacks[0].item == null) ? UrgencyConfig.EquipUrgency : 0f;
         float clothingU = clothingSlotInv.itemStacks[0].item == null ? UrgencyConfig.EquipUrgency : 0f;
+        float hatU = (job.preferredHatItem != null && hatSlotInv.itemStacks[0].item == null) ? UrgencyConfig.EquipUrgency : 0f;
         candidates.Add((Jitter(equipU), equipU, "equip", FindEquipment));
         candidates.Add((Jitter(clothingU), clothingU, "clothing", FindClothing));
+        candidates.Add((Jitter(hatU), hatU, "hat", FindHat));
         float dropU = DropUrgency();
         candidates.Add((Jitter(dropU), dropU, "drop", TryStartDrop));
 
@@ -707,6 +748,18 @@ public class Animal : MonoBehaviour{
             if (task.Start()) return true;
         }
         return false;
+    }
+
+    // Picks up this mouse's profession hat into hatSlotInv if the slot is empty. Unlike clothing
+    // (any item works), a mouse seeks only the one hat its job prefers — so hats read as a uniform.
+    private bool FindHat() {
+        if (hatSlotInv.itemStacks[0].item != null) return false; // already wearing a hat
+        Item hat = job.preferredHatItem;
+        if (hat == null) return false;                            // job seeks no hat
+        var ic = InventoryController.instance;
+        if (ic != null && ic.IsConsumptionDisabled(hat)) return false; // "consume" off — mice won't wear it
+        task = new ObtainTask(this, hat, 100, hatSlotInv);
+        return task.Start();
     }
 
     // Scores each reachable edible by foodValue * cravingMult * discount, where
@@ -981,7 +1034,7 @@ public class Animal : MonoBehaviour{
         // item — dropping would silently restore full durability (a value dupe). Decrement the
         // world total here; Animal.Destroy zeroes the slots afterward (Inventory.Destroy is
         // ginv-neutral). Food and books still drop for recovery (no durability to lose).
-        foreach (Inventory worn in new[] { toolSlotInv, clothingSlotInv }) {
+        foreach (Inventory worn in new[] { toolSlotInv, clothingSlotInv, hatSlotInv }) {
             if (worn == null) continue;
             foreach (ItemStack stack in worn.itemStacks) {
                 if (stack.item == null || stack.quantity == 0) continue;
@@ -1372,13 +1425,22 @@ public class Animal : MonoBehaviour{
 
     // Pathing start node — the Node any FindPath / Navigate call should treat as the
     // animal's "current" graph position. For mice outside a building, that's just the
-    // tile node under their feet. For mice inside a doored building (insideBuilding
-    // != null), the tile node may be solid dirt / non-standable (burrow's preserved
-    // dirt) and have no graph edges — using it as a start would orphan every path
-    // request. Return the nearest interior waypoint instead; it's edged to the door
-    // approach so A* can route out via the door automatically. Falls back to TileHere
-    // if interior data is missing (corrupted state).
+    // tile node under their feet.
+    //
+    // The interior-waypoint indirection below exists ONLY for tiles you can't actually
+    // stand on: inside a doored building the grid node may be solid dirt / non-standable
+    // (a burrow's preserved dirt) with no graph edges, so starting a path from it would
+    // orphan every request — we return the nearest interior waypoint instead, edged to
+    // the door approach so A* routes out automatically. But when the grid node under the
+    // mouse IS standable, that's real footing — use it directly. This also self-heals a
+    // stale `interiorBuilding` back-ref left on an emptied/standable tile (e.g. a legacy
+    // extraction structure whose tile was dug out under the old non-preserving behaviour):
+    // its interior waypoint is orphaned (disconnected) and would otherwise strand the mouse
+    // one step from perfectly walkable ground. Falls back to TileHere if interior data is
+    // missing (corrupted state).
     public Node PathStartNode() {
+        Node gridNode = TileHere()?.node;
+        if (gridNode != null && gridNode.standable) return gridNode;
         Building ib = insideBuilding; // property does a tile lookup — read once
         if (ib != null && ib.interiorNodes != null && ib.interiorNodes.Length > 0) {
             Node best = null;
@@ -1391,7 +1453,7 @@ public class Animal : MonoBehaviour{
             }
             if (best != null) return best;
         }
-        return TileHere()?.node;
+        return gridNode;
     }
 
     // Single point of truth for "set the animal's position." Mirrors (x, y) into the
@@ -1480,6 +1542,7 @@ public class Animal : MonoBehaviour{
         if (foodSlotInv != null)     { foodSlotInv.Destroy(reason: $"{aName} died"); foodSlotInv = null; }
         if (toolSlotInv != null)     { toolSlotInv.Destroy(reason: $"{aName} died"); toolSlotInv = null; }
         if (clothingSlotInv != null) { clothingSlotInv.Destroy(reason: $"{aName} died"); clothingSlotInv = null; }
+        if (hatSlotInv != null)      { hatSlotInv.Destroy(reason: $"{aName} died"); hatSlotInv = null; }
         if (bookSlotInv != null)     { bookSlotInv.Destroy(reason: $"{aName} died"); bookSlotInv = null; }
         GameObject.Destroy(gameObject);
     }

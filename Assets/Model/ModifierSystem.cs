@@ -29,6 +29,14 @@ public static class ModifierSystem {
     public static float GetWorkMultiplier(Animal animal, Skill? skill = null) {
         float toolMult  = GetToolMultiplier(animal);
         float skillMult = skill.HasValue ? animal.skills.GetBonus(skill.Value) : 1f;
+        // Hat skill bonus: a hat grants +N effective levels to its matching skill domain (data-driven
+        // per hat in itemsDb.json), each level worth SkillSet.BonusPerLevel — the same a real level
+        // adds. Added into skillMult so it speeds the same work (and research, which rides this).
+        if (skill.HasValue) {
+            Item hat = animal.hatSlotInv?.itemStacks[0].item;
+            if (hat != null && hat.skillBonusEffect == skill.Value)
+                skillMult += hat.skillBonusLevels * SkillSet.BonusPerLevel;
+        }
         // Vigor-tonic work-speed buff (additive bonus, e.g. +20%). Kept here rather than folded into
         // efficiency so the buff only speeds WORK, not the efficiency-driven travel/energy systems.
         float buffMult  = 1f + animal.buffs.Total(BuffType.WorkSpeed);
@@ -46,6 +54,10 @@ public static class ModifierSystem {
     // All factors are multiplicative.
     public static float GetTravelSpeedMultiplier(Animal animal) {
         float speed = BaseAnimalSpeed * animal.efficiency;
+
+        // Hat walk bonus (e.g. straw hat +2%). Multiplicative; applies regardless of tile.
+        Item hat = animal.hatSlotInv?.itemStacks[0].item;
+        if (hat != null && hat.walkBonus != 0f) speed *= 1f + hat.walkBonus;
 
         Tile tile = animal.TileHere();
         if (tile == null) return speed;

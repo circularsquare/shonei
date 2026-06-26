@@ -74,10 +74,10 @@
         "decayRate": 0.0,
         "children": null
     },{
-        "id": 30,
-        "name": "ore",
+        "id": 33,
+        "name": "ores",
         "decayRate": 0.01,
-                "children": [
+        "children": [
             {
                 "id": 31,
                 "name": "iron ore",
@@ -87,14 +87,7 @@
                 "name": "coal",
                 "fuelValue": 3,
                 "children": null
-            }
-        ]
-    },{
-        "id": 33,
-        "name": "ores",
-        "decayRate": 0.0,
-        "children": [
-            {
+            },{
                 "id": 34,
                 "name": "malachite",
                 "children": null
@@ -202,11 +195,6 @@
         "name": "sawdust",
         "decayRate": 0.04,
         "defaultTarget": 10,
-        "children": null
-    },{
-        "id": 112,
-        "name": "paper",
-        "decayRate": 0.06,
         "children": null
     },{
         "id": 150,
@@ -379,8 +367,33 @@
         "decayRate": 0.05,
         "children": null
     },{
+        "id": 275,
+        "name": "hat",
+        "decayRate": 4.0,
+        "discrete": true,
+        "children": [
+            {
+                "id": 276,
+                "name": "bamboo hat",
+                "skillBonus": "farming",
+                "skillBonusLevels": 1,
+                "children": null
+            },{
+                "id": 277,
+                "name": "straw hat",
+                "walkBonus": 0.02,
+                "children": null
+            },{
+                "id": 278,
+                "name": "cloth hat",
+                "skillBonus": "scholarship",
+                "skillBonusLevels": 1,
+                "children": null
+            }
+        ]
+    },{
         "id": 290,
-        "name": "stool",
+        "name": "stools",
         "decayRate": 0.06,
         "discrete": true,
         "unitWeight": 3,
@@ -392,9 +405,14 @@
         "furnishingSprite": "stool",
         "children": null
     },{
+        "id": 112,
+        "name": "paper",
+        "decayRate": 0.06,
+        "children": null
+    },{
         "id": 300,
-        "name": "book",
-        "decayRate": 1.2,
+        "name": "books",
+        "decayRate": 0.3,
         "discrete": true,
         "itemClass": "book",
         "children": [
