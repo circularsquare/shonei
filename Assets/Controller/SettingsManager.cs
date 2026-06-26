@@ -26,6 +26,7 @@ public class SettingsManager : MonoBehaviour {
     const string K_TargetFps  = "settings.targetFps";   // 0 = unlimited
     const string K_Vsync      = "settings.vsync";       // 0 / 1
     const string K_FlatLighting = "settings.flatLighting"; // 0 = shaded, 1 = flat
+    const string K_FloodFill   = "settings.floodFill";    // 0 = radial point lights, 1 = geodesic flood-fill
     const string K_WallShadows = "settings.wallShadows"; // DEPRECATED legacy bool — migrated to K_InteriorMode on first load
     const string K_InteriorMode = "settings.interiorMode"; // InteriorMode int (0 = wall shadows, 1 = no wall shadows, 2 = burrow lit as building)
     const string K_CloudLight = "settings.cloudLighting"; // 0 / 1
@@ -40,7 +41,7 @@ public class SettingsManager : MonoBehaviour {
     // PlayerPrefs.DeleteAll(), which would also nuke the login token (Session) and the
     // save-sync machine GUID (SaveSyncIndex). Add new settings keys here too.
     static readonly string[] AllKeys = {
-        K_MasterVol, K_SfxVol, K_AmbientVol, K_TargetFps, K_Vsync, K_FlatLighting, K_WallShadows, K_InteriorMode,
+        K_MasterVol, K_SfxVol, K_AmbientVol, K_TargetFps, K_Vsync, K_FlatLighting, K_FloodFill, K_WallShadows, K_InteriorMode,
         K_CloudLight, K_CloudDetail, K_ParticleDensity, K_AutosaveMins, K_UiScale, K_UiFontIndex, K_HideBackground,
     };
 
@@ -66,6 +67,12 @@ public class SettingsManager : MonoBehaviour {
     // occlusion is unaffected (that's LightPass, not the normals). A cheaper, better-
     // looking floor than fully-off lighting. Default off = full shaded lighting.
     public bool  flatLighting  { get; private set; } = false;
+    // Flood-fill (geodesic) point lighting: when on, each point light's magnitude comes from a
+    // per-light geodesic reach field that bends AROUND walls (LightReachField → LightCircle.shader)
+    // instead of the radial falloff + straight-line thickness shadow. Adds around-corner reach into
+    // tunnels/burrow doors; the NdotL direction stays the real toLight, so normal maps still shade.
+    // Experimental — may show faceting/temporal artifacts. Default off = current radial model.
+    public bool  floodFill     { get; private set; } = false;
     // Enclosed-building interior lighting mode (see InteriorMode above). Default = wall shadows.
     public InteriorMode interiorMode { get; private set; } = InteriorMode.WallShadows;
     // Derived flags consumed by the renderer / layer assignment — single source of truth so
@@ -137,6 +144,7 @@ public class SettingsManager : MonoBehaviour {
         targetFps       = Mathf.Max(0, PlayerPrefs.GetInt(K_TargetFps, 60));
         vsyncEnabled    = PlayerPrefs.GetInt(K_Vsync, 0) != 0;
         flatLighting    = PlayerPrefs.GetInt(K_FlatLighting, 0) != 0;
+        floodFill       = PlayerPrefs.GetInt(K_FloodFill, 0) != 0;
         // Interior mode: prefer the new key; else migrate the deprecated wallShadows bool
         // (on → WallShadows, off → NoWallShadows); else default to WallShadows.
         if (PlayerPrefs.HasKey(K_InteriorMode))
@@ -209,6 +217,13 @@ public class SettingsManager : MonoBehaviour {
         if (flat == flatLighting) return;
         flatLighting = flat;
         PlayerPrefs.SetInt(K_FlatLighting, flat ? 1 : 0);
+        OnChanged?.Invoke();
+    }
+
+    public void SetFloodFill(bool enabled) {
+        if (enabled == floodFill) return;
+        floodFill = enabled;
+        PlayerPrefs.SetInt(K_FloodFill, enabled ? 1 : 0);
         OnChanged?.Invoke();
     }
 

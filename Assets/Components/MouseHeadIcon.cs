@@ -24,6 +24,11 @@ public class MouseHeadIcon : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
     static Material furMaterial;
     static bool furMaterialTried;
 
+    // Shared UI material that samples bilinear (Custom/UIBilinear) so the hat overlay smooths at
+    // the non-integer UI scale without changing the Point world texture. Resources ref → safe static.
+    static Material hatMaterial;
+    static bool hatMaterialTried;
+
     Image image;
     Animal animal;
 
@@ -114,6 +119,14 @@ public class MouseHeadIcon : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
             hatImage = go.GetComponent<Image>();
             hatImage.raycastTarget = false;   // clicks pass through to the head
             hatImage.preserveAspect = true;
+            // Bilinear UI material so the Point hat texture smooths in the UI (world stays crisp).
+            if (!hatMaterialTried) {
+                hatMaterialTried = true;
+                hatMaterial = Resources.Load<Material>("Materials/UIBilinear");
+                if (hatMaterial == null)
+                    Debug.LogError("MouseHeadIcon: could not load Materials/UIBilinear — hat icon will not smooth");
+            }
+            if (hatMaterial != null) hatImage.material = hatMaterial;
         }
         hatImage.sprite = hatSprite;
         hatImage.color = Color.white;          // hats keep their own colors (no fur tint)

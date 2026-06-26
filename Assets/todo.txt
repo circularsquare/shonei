@@ -128,13 +128,9 @@ TODAY
 work flag system 
 - have mice try to move closer to work flag?
 
-- burrow lighting
-    - add walls 
-    - flood lighting for intensity, but not directionality
+- lighting graaah
 
 - foot traffic mode 
-
-- hats 
 
 - well
 

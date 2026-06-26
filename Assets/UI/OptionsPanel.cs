@@ -24,6 +24,8 @@ using TMPro;
 //     flatLightingToggle — Toggle (on = flat lighting: dynamic sprites get uniform,
 //                          un-shaded lighting; off = full shaded lighting). Drives
 //                          SettingsManager.flatLighting.
+//     floodFillToggle — Toggle (on = geodesic flood-fill point lights that bend around
+//                          walls; off = radial point lights). Drives SettingsManager.floodFill.
 //     interiorLightingDropdown — TMP_Dropdown; options auto-populated (wall shadows / no shadows /
 //                          as building). Drives SettingsManager.interiorMode.
 //     cloudLightingToggle — Toggle (when off, clouds use flat shading — skips
@@ -55,6 +57,7 @@ public class OptionsPanel : MonoBehaviour {
     [SerializeField] TMP_Dropdown fpsDropdown;
     [SerializeField] Toggle       vsyncToggle;
     [SerializeField] Toggle       flatLightingToggle; // on = flat (un-shaded) lighting; off = full shaded
+    [SerializeField] Toggle       floodFillToggle;   // on = geodesic flood-fill point lights; drives SettingsManager.floodFill
     [SerializeField] TMP_Dropdown interiorLightingDropdown; // wall shadows / no shadows / burrow as building; drives SettingsManager.interiorMode
     [SerializeField] Toggle       cloudLightingToggle;
     [SerializeField] Slider       cloudDetailSlider;    // range 0.2–1 (1 = full blob count); drives SettingsManager.cloudDetail
@@ -327,6 +330,7 @@ public class OptionsPanel : MonoBehaviour {
         if (fpsDropdown    != null) fpsDropdown.onValueChanged.AddListener(OnFpsIndex);
         if (vsyncToggle    != null) vsyncToggle.onValueChanged.AddListener(OnVsync);
         if (flatLightingToggle != null) flatLightingToggle.onValueChanged.AddListener(OnFlatLighting);
+        if (floodFillToggle != null) floodFillToggle.onValueChanged.AddListener(OnFloodFill);
         if (interiorLightingDropdown != null) {
             interiorLightingDropdown.ClearOptions();
             interiorLightingDropdown.AddOptions(new List<string>(InteriorModeLabels));
@@ -382,6 +386,7 @@ public class OptionsPanel : MonoBehaviour {
         if (fpsDropdown    != null) fpsDropdown.value    = FpsValueToIndex(s.targetFps);
         if (vsyncToggle    != null) vsyncToggle.isOn     = s.vsyncEnabled;
         if (flatLightingToggle != null) flatLightingToggle.isOn = s.flatLighting;
+        if (floodFillToggle != null) floodFillToggle.isOn = s.floodFill;
         if (interiorLightingDropdown != null) interiorLightingDropdown.value = InteriorModeToIndex(s.interiorMode);
         if (cloudLightingToggle != null) cloudLightingToggle.isOn = s.cloudLightingEnabled;
         if (cloudDetailSlider != null) cloudDetailSlider.value = s.cloudDetail;
@@ -423,6 +428,7 @@ public class OptionsPanel : MonoBehaviour {
     void OnAmbient(float v)  { if (!suppressCallbacks) SettingsManager.instance?.SetAmbientVolume(v); }
     void OnVsync(bool v)     { if (!suppressCallbacks) SettingsManager.instance?.SetVsync(v); }
     void OnFlatLighting(bool v) { if (!suppressCallbacks) SettingsManager.instance?.SetFlatLighting(v); }
+    void OnFloodFill(bool v) { if (!suppressCallbacks) SettingsManager.instance?.SetFloodFill(v); }
     void OnInteriorMode(int i) {
         if (suppressCallbacks) return;
         if (i < 0 || i >= InteriorModeOptions.Length) {

@@ -378,9 +378,9 @@ public class WorldController : MonoBehaviour {
         // still happens here since it needs the world fully populated (plants,
         // market) before snapshotting. The wall itself renders via
         // BackgroundTileMeshController (created in Start, subscribes its own callbacks).
-        SkyExposure.InitializeWorld(world);
+        WallField.InitializeWorld(world);     // per-edge light walls — built FIRST: SkyExposure reads its burrow edges
         OccluderField.InitializeWorld(world); // point-light wall-shadow distance field
-        WallField.InitializeWorld(world);     // per-edge light walls (feeds LightCircle's burrow-wall occlusion)
+        SkyExposure.InitializeWorld(world);   // routes sky around burrow shells (needs WallField)
 
         world.timer = World.ticksInDay * 0.3f;
         world.graph.Initialize();

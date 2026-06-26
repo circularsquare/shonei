@@ -49,6 +49,11 @@ public class WallField : MonoBehaviour {
     public const byte SrcTerrain = 1;
     public const byte SrcBurrow  = 2;
 
+    // Bumped every rebuild. LightReachField compares it to know when a cached per-light geodesic
+    // reach field is stale (walls moved). Monotonic; survives scene reloads harmlessly (just forces
+    // one rebake).
+    public static int version;
+
     // Per-side bits matching Tile.bodyEdgeSuppressMask (the door side lives in this layout).
     const byte SideL = 1, SideR = 2, SideD = 4, SideU = 8;
 
@@ -152,6 +157,25 @@ public class WallField : MonoBehaviour {
         return hEdge[x * (ny + 1) + lineY] != 0;
     }
 
+    // BURROW-only variants (the carved-pocket shell, door excluded). SkyExposure routes sky light
+    // around these so a buried burrow is lit only through its door, not through its roof/walls — while
+    // sky still penetrates ordinary terrain (SrcTerrain) for the surface→underground gradient.
+    public bool VEdgeBurrow(int lineX, int y) {
+        if (vEdge == null || lineX < 0 || lineX > nx || y < 0 || y >= ny) return false;
+        return (vEdge[lineX * ny + y] & SrcBurrow) != 0;
+    }
+
+    public bool HEdgeBurrow(int x, int lineY) {
+        if (hEdge == null || x < 0 || x >= nx || lineY < 0 || lineY > ny) return false;
+        return (hEdge[x * (ny + 1) + lineY] & SrcBurrow) != 0;
+    }
+
+    // Solid occluder at (x,y)? Same set as OccluderField (light can't travel through it). Public so
+    // LightReachField can mark solid cells non-passable in its flood fill. Out-of-grid = open.
+    public bool Solid(int x, int y) {
+        return Occludes(x, y);
+    }
+
     // ── Rebuild ────────────────────────────────────────────────────────────
 
     // Tiles outside the grid count as open, so an occluder on the world border still walls its outer
@@ -201,6 +225,7 @@ public class WallField : MonoBehaviour {
             }
 
         BakeBurrowTexture();
+        version++; // invalidate cached per-light reach fields (LightReachField)
     }
 
     // Pack the SrcBurrow edges + burrow-interior cells into _WallBurrowTex for the lighting ray-march.

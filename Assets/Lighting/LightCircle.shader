@@ -42,6 +42,19 @@ Shader "Hidden/LightCircle" {
             // 1 = thickness-attenuate the light by solid material crossed toward the light; 0 = no occlusion.
             float  _PointShadows;
 
+            // Flood-fill (geodesic) mode (global, set per frame from SettingsManager.floodFill).
+            // 1 = take the light's MAGNITUDE from its per-light geodesic reach field (_ReachTex, baked
+            // by LightReachField — already includes geodesic falloff + around-corner occlusion)
+            // instead of the radial falloff + SolidThickness shadow. The NdotL DIRECTION still uses the
+            // real toLight, so normal-map shading is preserved (see propagated-lighting.md).
+            float  _FloodFill;
+            // Per-light reach field (set via MPB). R8, WxW window centred on the light, bilinear.
+            // _ReachRect = (originWorldX, originWorldY, width, height) in tiles → uv = (worldPos-xy)/zw.
+            // A zero rect (width 0) means "not baked this light" → fall back to radial falloff.
+            TEXTURE2D(_ReachTex);
+            SAMPLER(sampler_ReachTex);
+            float4 _ReachRect;
+
             // Populated each frame by NormalsCapturePass.
             TEXTURE2D(_CapturedNormalsRT);
             SAMPLER(sampler_CapturedNormalsRT);
@@ -175,6 +188,15 @@ Shader "Hidden/LightCircle" {
                 float  falloff = 1.0 - smoothstep(inner, 0.5, r);
                 falloff = falloff * falloff;
 
+                // Flood-fill: replace the radial falloff with this light's geodesic reach (which
+                // already bakes in around-corner falloff + occlusion). Valid only when the light has
+                // a baked field (_ReachRect.z > 0); otherwise fall back to the radial value above.
+                bool useReach = (_FloodFill > 0.5) && (_ReachRect.z > 0.0);
+                if (useReach) {
+                    float2 ruv = (IN.worldPos.xy - _ReachRect.xy) / _ReachRect.zw;
+                    falloff = SAMPLE_TEXTURE2D(_ReachTex, sampler_ReachTex, ruv).r;
+                }
+
                 // Sample world-space normals RT at this fragment's screen position.
                 // No Y-flip: DrawRenderers writes _CapturedNormalsRT in OpenGL convention
                 // (V=0 at bottom). positionCS.y is also 0 at the bottom (renderIntoTexture:false
@@ -255,7 +277,7 @@ Shader "Hidden/LightCircle" {
                 float shadow = 0.0;
                 float2 toL = _LightWorldPos.xy - IN.worldPos.xy;
                 float  distL = length(toL);
-                if (_PointShadows > 0.5 && ns.a < 0.78 && distL > 1e-4) {
+                if (!useReach && _PointShadows > 0.5 && ns.a < 0.78 && distL > 1e-4) {
                     const float WallFade = 0.5;                    // tiles of solid to reach full shadow (lower = harder edge)
                     float thick = SolidThickness(IN.worldPos.xy, _LightWorldPos.xy);
                     shadow = saturate(thick / WallFade);

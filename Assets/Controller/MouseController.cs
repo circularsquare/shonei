@@ -67,6 +67,7 @@ public class MouseController : MonoBehaviour {
     // Wire a GameObject with a LightSource (and optional sortOrderOverride) in the
     // inspector. Keep it disabled by default so it only appears when toggled on.
     [SerializeField] private GameObject debugCursorLight;
+    private LightSource cursorLS;          // cached LightSource on debugCursorLight
 
     // ── Camera pan tuning ──────────────────────────────────────────────────
     // Pan speed in screen-heights per second — independent of zoom, so a value
@@ -188,6 +189,16 @@ public class MouseController : MonoBehaviour {
         if (debugCursorLight != null && debugCursorLight.activeSelf) {
             Vector3 mouseWorld = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             debugCursorLight.transform.position = new Vector3(mouseWorld.x, mouseWorld.y, 0f);
+            // Switch the cursor light off while it's inside raw solid rock — but NOT over a building
+            // carved into solid (a burrow), where a torch makes sense. Uses the non-destructive
+            // `suppressed` render gate (recomputed every frame), so it never clobbers the light's
+            // intensity or gets stuck off.
+            if (cursorLS == null) cursorLS = debugCursorLight.GetComponent<LightSource>();
+            if (cursorLS != null) {
+                var w = WorldController.instance != null ? WorldController.instance.world : null;
+                Tile ct = w != null ? w.GetTileAt(mouseWorld.x, mouseWorld.y) : null;
+                cursorLS.suppressed = ct != null && ct.type.solid && ct.building == null;
+            }
         }
 
         // Secondary pan inputs (WASD + screen edge). Runs before the overUI return

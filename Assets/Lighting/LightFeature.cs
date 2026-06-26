@@ -141,6 +141,9 @@ public class LightFeature : ScriptableRendererFeature {
         var sm = SettingsManager.instance;
         float interiorLit = (sm != null && sm.interiorLit)  ? 1f : 0f;
         float pointShadows = (sm != null && sm.pointShadows) ? 1f : 0f;
+        // Flood-fill (geodesic) point lighting: when on, each point light samples its per-light reach
+        // field (LightReachField) for magnitude instead of radial falloff + the thickness shadow.
+        float floodFill = (sm != null && sm.floodFill) ? 1f : 0f;
         // Skip cameras that see no sprites participating in the normals RT pipeline
         // (lit, directional-only, or water). The Unlit overlay camera hits this check
         // because its culling mask only contains layers excluded from all three masks.
@@ -149,7 +152,7 @@ public class LightFeature : ScriptableRendererFeature {
         if ((cullingMask & (litLayers | directionalOnlyLayers | waterLayer | backgroundLayer | tileChunkLayer)) == 0) return;
         capturePass.Setup(litLayers, shadowCasterLayers, directionalOnlyLayers, waterLayer, backgroundLayer, tileChunkLayer, flatNormals, interiorLit);
         renderer.EnqueuePass(capturePass);
-        lightPass.Setup(ambientNormal, deepAmbientColor, skyLightBlend, sortRampRange, behindFarHeightFactor, emissionStrength, tileChunkLayer, pointShadows);
+        lightPass.Setup(ambientNormal, deepAmbientColor, skyLightBlend, sortRampRange, behindFarHeightFactor, emissionStrength, tileChunkLayer, pointShadows, floodFill);
         renderer.EnqueuePass(lightPass);
     }
 
@@ -432,6 +435,7 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
     float behindFarHeightFactor;
     float emissionStrength = 1f;
     float pointShadows = 0f;   // 1 = ray-march point lights against solid tiles (see _PointShadows)
+    float floodFill = 0f;      // 1 = geodesic flood-fill point lighting (see _FloodFill / LightReachField)
     int   tileChunkMask;
     Color deepAmbientColor;
     NormalsCapturePass capture;               // for the normals RT handle (set by LightFeature.Create)
@@ -466,7 +470,7 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         CoreUtils.Destroy(circleMesh);
     }
 
-    public void Setup(float ambientNormal, Color deepAmbientColor, float skyLightBlend, float sortRampRange, float behindFarHeightFactor, float emissionStrength, int tileChunkMask, float pointShadows) {
+    public void Setup(float ambientNormal, Color deepAmbientColor, float skyLightBlend, float sortRampRange, float behindFarHeightFactor, float emissionStrength, int tileChunkMask, float pointShadows, float floodFill) {
         this.ambientNormal         = ambientNormal;
         this.deepAmbientColor      = deepAmbientColor;
         this.skyLightBlend         = skyLightBlend;
@@ -475,6 +479,7 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         this.emissionStrength      = emissionStrength;
         this.tileChunkMask         = tileChunkMask;
         this.pointShadows          = pointShadows;
+        this.floodFill             = floodFill;
     }
 
     // Set by LightFeature.Create. RecordRenderGraph reads capture.NormalsHandle to
@@ -490,6 +495,7 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
         public MaterialPropertyBlock mpb;
         public float ambientNormal, skyLightBlend, sortRampRange, behindFarHeightFactor, emissionStrength;
         public float pointShadows;
+        public float floodFill;
         public Color deepAmbientColor;
         public int tileChunkMask;
         public Camera cam;
@@ -529,6 +535,7 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
             data.behindFarHeightFactor = behindFarHeightFactor;
             data.emissionStrength = emissionStrength;
             data.pointShadows  = pointShadows;
+            data.floodFill     = floodFill;
             data.deepAmbientColor = deepAmbientColor;
             data.tileChunkMask = tileChunkMask;
             data.cam           = cam;
@@ -576,6 +583,8 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
                 // Wall ray-march toggle for the point-light circle draw below. _WorldToUV
                 // (set above) gives the march its world→screen-UV step.
                 cmd.SetGlobalFloat("_PointShadows", d.pointShadows);
+                // Flood-fill mode switch for the point-light circle draw below.
+                cmd.SetGlobalFloat("_FloodFill", d.floodFill);
                 // Bypass sky-exposure on non-world cameras — their _CamWorldBounds maps
                 // screen UV to world positions that don't match what they draw.
                 cmd.SetGlobalFloat("_SkyExposureBypass", isWorldCam ? 0f : 1f);
@@ -598,7 +607,7 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
                     float camMaxX = camMinX + orthoW;
                     float camMaxY = camMinY + orthoH;
                     foreach (var src in LightSource.all) {
-                        if (src == null || src.isDirectional) continue;
+                        if (src == null || src.isDirectional || src.suppressed) continue;
                         Vector3 lp = src.transform.position;
                         float r = src.outerRadius;
                         if (lp.x + r < camMinX || lp.x - r > camMaxX
@@ -612,6 +621,18 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
                         d.mpb.SetFloat("_LightHeight",    src.lightHeight);
                         d.mpb.SetFloat("_LightSortBucket", src.sortBucket);
                         d.mpb.SetFloat("_CenterFlatten",   src.centerFlatten);
+
+                        // Flood-fill mode: bind this light's geodesic reach field. A zero rect (no
+                        // bake yet) makes the shader fall back to radial falloff for this light. The
+                        // MPB persists between draws, so always set both (else a prior light's reach
+                        // texture/rect would leak into this draw).
+                        if (d.floodFill > 0.5f && src.reachTex != null) {
+                            d.mpb.SetTexture("_ReachTex", src.reachTex);
+                            d.mpb.SetVector("_ReachRect", src.reachRect);
+                        } else {
+                            d.mpb.SetTexture("_ReachTex", Texture2D.blackTexture);
+                            d.mpb.SetVector("_ReachRect", Vector4.zero);
+                        }
 
                         float diam = r * 2f;
                         var matrix = Matrix4x4.TRS(

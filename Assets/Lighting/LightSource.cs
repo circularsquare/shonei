@@ -68,6 +68,11 @@ public class LightSource : MonoBehaviour {
     // False when fuel has run out, outside the active time window, or owning building is disabled.
     public bool isLit = true;
 
+    // Transient render gate (NOT persisted): when true, LightPass skips drawing this point light, with
+    // no effect on intensity/fuel/state. Used by the debug cursor light to switch off inside solid rock
+    // without clobbering its intensity. Recompute every frame from whoever sets it.
+    [HideInInspector] public bool suppressed = false;
+
     // When true, SunController modulates intensity by time of day (torches, fireplaces).
     [HideInInspector] public bool sunModulated = false;
 
@@ -76,6 +81,18 @@ public class LightSource : MonoBehaviour {
     [HideInInspector] public float flickerAmount = 0f;
     [HideInInspector] public float flickerPhase  = 0f;
     private const float FlickerSpeed = 3f; // noise lanes/sec — how fast the wobble evolves
+
+    // ── Flood-fill geodesic reach (SettingsManager.floodFill) ────────────────
+    // When flood-fill lighting is on, LightReachField bakes a small per-light grid of how much this
+    // light reaches each nearby cell routing AROUND walls; LightCircle.shader samples it for the
+    // light's magnitude instead of the radial falloff + thickness shadow. Unused when flood-fill off.
+    [HideInInspector] public Texture2D reachTex;   // R8 geodesic reach, WxW window centred on the light
+    [HideInInspector] public Vector4   reachRect;  // (originWorldX, originWorldY, W, H) tiles → uv map
+    // Cache-validity keys (see LightReachField.EnsureBaked): rebake when the light moves (sub-tile, so
+    // the field slides smoothly) or walls change. reachWallVersion = -1 forces the first bake.
+    internal int   reachW;
+    internal float reachPosX, reachPosY;
+    internal int   reachWallVersion = -1;
 
     public static readonly List<LightSource> all = new();
 
@@ -127,6 +144,20 @@ public class LightSource : MonoBehaviour {
         all.Remove(this);
         SetEmissionReceiver(null);
         if (building?.fireGO != null) building.fireGO.SetActive(false);
+    }
+
+    void OnDestroy() {
+        if (reachTex != null) Destroy(reachTex);
+    }
+
+    // Keep this light's flood-fill reach field current (only when the mode is on). Runs after Update
+    // (so the light has moved this frame); EnsureBaked is a cheap no-op unless the light changed tile
+    // or walls changed — so static torches bake once and only the moving cursor light re-bakes.
+    void LateUpdate() {
+        if (isDirectional) return;
+        var sm = SettingsManager.instance;
+        if (sm == null || !sm.floodFill) return;
+        LightReachField.EnsureBaked(this);
     }
 
     // Keeps _emissionReceiver and the emitters registry in lockstep.

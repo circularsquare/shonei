@@ -881,9 +881,9 @@ public class SaveSystem : MonoBehaviour {
         // ── Phase 4: Spatial indexes ───────────────────────────────────────────────────
         // Derived spatial caches that depend on final tile + structure geometry.
         // Order matches WorldController.GenerateDefault for symmetry between paths.
-        SkyExposure.InitializeWorld(world);
+        WallField.InitializeWorld(world);     // per-edge light walls — built FIRST: SkyExposure reads its burrow edges
         OccluderField.InitializeWorld(world); // point-light wall-shadow distance field
-        WallField.InitializeWorld(world);     // per-edge light walls (feeds LightCircle's burrow-wall occlusion)
+        SkyExposure.InitializeWorld(world);   // routes sky around burrow shells (needs WallField)
         // Pair up loaded rope-bridge posts and materialise each bridge's waypoint
         // chain + visuals BEFORE graph.Initialize so the resulting edges are
         // present in the first RebuildComponents sweep — otherwise mice can't
