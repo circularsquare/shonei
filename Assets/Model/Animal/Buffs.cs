@@ -9,8 +9,10 @@ using UnityEngine;
 // Happiness.UpdateComfortRange (comfortTempLow / comfortTempHigh); SleepRecovery → Animal.HandleNeeds
 // (the eeping.Eep recovery rate).
 //
-// Not persisted: buffs are short (a few in-game days) and transient — a save reload drops them.
-// Re-applying on load would need save data plus an absolute-time anchor; deferred (cool-plants plan).
+// Persisted across saves as REMAINING duration per buff (see Serialize/Deserialize; SaveSystem
+// stores them per animal). Every application AND every load clamps a buff to one full (1-liang)
+// dose's worth of time, so an effect can never outlive its intended cap — including a buff carried
+// over from an older build with different balance or a pre-cap Apply.
 public enum BuffType { WorkSpeed, ColdTolerance, HeatTolerance, SleepRecovery }
 
 public class BuffSet {
@@ -24,18 +26,38 @@ public class BuffSet {
 
     private static float Now => World.instance != null ? World.instance.timer : 0f;
 
+    // A buff may last up to this multiple of a single full (1-liang) dose. The 1.2 headroom keeps
+    // the clamp from trimming a legitimately full buff over float/timing jitter, while still catching
+    // egregious over-caps like a multi-liang buff persisted from an older build.
+    private const float MaxDoseMultiple = 1.2f;
+
     // Apply or refresh a buff. Re-drinking the same effect resets the timer to whichever expiry is
     // later and keeps the stronger magnitude — so drinking again never weakens or shortens an active
-    // effect, and one effect type never stacks into a runaway bonus.
+    // effect, and one effect type never stacks into a runaway bonus. Expiry is capped at
+    // MaxDurationSeconds (a full dose plus MaxDoseMultiple headroom) so no sequence of drinks — or a
+    // stale over-long buff from an older build — can push the effect past ~1.2 liang's grant.
     public void Apply(BuffType type, float magnitude, float durationSeconds) {
-        float expiry = Now + durationSeconds;
+        float cap    = Now + MaxDurationSeconds(type);
+        float expiry = Mathf.Min(Now + durationSeconds, cap);
         foreach (Entry e in active) {
             if (e.type != type) continue;
-            e.expiresAt = Mathf.Max(e.expiresAt, expiry);
+            e.expiresAt = Mathf.Min(Mathf.Max(e.expiresAt, expiry), cap);
             e.magnitude = Mathf.Max(e.magnitude, magnitude);
             return;
         }
         active.Add(new Entry { type = type, magnitude = magnitude, expiresAt = expiry });
+    }
+
+    // Longest a buff of `type` may last, in game-seconds: the biggest full-dose duration any tonic
+    // grants it, times MaxDoseMultiple headroom. Db-derived so it tracks itemsDb without a second
+    // source of truth. Returns "no cap" when the answer is unknown (Db not yet loaded, or no tonic
+    // grants this effect) so we never zero out a live buff.
+    private static float MaxDurationSeconds(BuffType type) {
+        float maxDays = 0f;
+        if (Db.tonicItems != null)
+            foreach (Item t in Db.tonicItems)
+                if (t.buffEffect == type) maxDays = Mathf.Max(maxDays, t.buffDuration);
+        return maxDays > 0f ? maxDays * World.ticksInDay * MaxDoseMultiple : float.MaxValue;
     }
 
     // Drops expired buffs. Returns true if anything expired this call, so the caller can refresh any
@@ -96,8 +118,11 @@ public class BuffSet {
         if (saved == null) return; // old save → no buffs
         float now = Now;
         foreach (BuffSaveData s in saved)
-            if (s != null && s.remaining > 0f)
-                active.Add(new Entry { type = s.type, magnitude = s.magnitude, expiresAt = now + s.remaining });
+            if (s != null && s.remaining > 0f) {
+                // Clamp to one full dose — heals buffs saved under older balance / a pre-cap Apply.
+                float rem = Mathf.Min(s.remaining, MaxDurationSeconds(s.type));
+                active.Add(new Entry { type = s.type, magnitude = s.magnitude, expiresAt = now + rem });
+            }
     }
 }
 

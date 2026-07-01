@@ -41,6 +41,8 @@ All messages use an envelope wrapper:
 | `order` | Place a buy or sell order | `item`, `side` ("b"/"s"), `price`, `quantity` |
 | `market_query` | Request the current order book for an item | `item` |
 | `price_history_query` | Request downsampled price history for an item | `item`, `rangeSec`, `bucketSec` |
+| `cancel_order` | Cancel a resting order by id | `id` |
+| `stock_query` | Request a bot trader's current stock | `name` |
 | `chat` | Send a chat message to all players | `text` |
 
 `from` is always injected server-side from the connection name.
@@ -229,10 +231,10 @@ special **Market building**, which represents a distant city.
 
 ### Market building
 
-- StructType `"market"`, `isMarket = true` on the StructType.
-- Auto-spawned once at world gen at tile `(0, 20)` (left world edge, off normal camera view); never player-buildable. Represents a distant city.
+- StructType `"market"`, identified by name (there is no `isMarket` flag).
+- Auto-spawned once at world gen at tile `(0, surfaceY[0])` (left world edge at the surface, off normal camera view); never player-buildable. Represents a distant city.
 - Does **not** appear in the build menu (enforced via the unlock system — see below).
-- The Market inventory starts as `InvType.Storage` then `SetMarket()` flips it to `InvType.Market` and initializes `targets`/`incomingRes`. Normal haul logic (HaulTask) skips market inventories; only merchant mice may target them.
+- The market building's inventory is created directly as `InvType.Market` in the `Building` constructor (`structType.name == "market"` — `Building.cs`). Normal haul logic (HaulTask) skips market inventories; only merchant mice may target them.
 
 ### Market targets are leaf-only
 
@@ -326,15 +328,13 @@ mode = token required); locally with no secret it runs insecure and accepts
 `?name=` for the CLI test client. NPC trader names are reserved at registration.
 Tokens are **stateless** (30-day expiry) and **cannot be revoked before expiry** —
 logout only clears the client's cached token; rotating `SHONEI_SECRET` is the only
-revocation lever (invalidates *all* tokens at once). Fine for trusted friends; the
-plan notes the per-user token-version upgrade if it ever matters.
+revocation lever (invalidates *all* tokens at once).
 
 Client: `Session` (static) holds the logged-in username + token across the
 Menu→Main scene load; `MarketServer` resolves the host (prod vs editor-local
 toggle); `AuthClient` does register/login; `MenuController`/`Menu.unity` is the
-login front-end. `TradingClient.playerName` is now `Session.Username` (with an
-editor-only dev fallback when running Main standalone) — used to identify which
-side of a fill is this player. Full roadmap: `plans/account-system.md`.
+login front-end. `TradingClient.playerName` = `Session.Username` (editor-only dev
+fallback when running Main standalone). Full roadmap: `plans/account-system.md`.
 
 **Sliding renewal + expiry.** `POST /refresh` (bearer auth) trades a still-valid
 token for a fresh full-TTL one; the menu calls it silently at startup
@@ -360,33 +360,29 @@ Server (`saves.go`, token-authed HTTP, decoupled from the trading WS): `GET /sav
 are stored **gzipped + opaque** (server never decompresses; client gzips/gunzips —
 served as `application/octet-stream`, NOT `Content-Encoding`, since UnityWebRequest
 can't be relied on to auto-inflate). Auth is `Authorization: Bearer <token>` reusing
-`verifyToken`. Per-account quota + server-side autosave rotation (`MaxCloudAutosaves`)
-— the latter because per-machine-timestamped autosave names mean client rotation can't
-bound cross-device growth. `DELETE` writes a **tombstone** (rev-bumped meta, blob
+`verifyToken`. Per-account quota + server-side autosave rotation (`MaxCloudAutosaves`,
+detected via `isAutosaveSlot` — the `"auto"`-prefix whole-word match mirroring the client)
+— the latter because per-machine autosave names (`auto <town> (N)`, counter is per-machine)
+mean client rotation can't bound cross-device growth. Slot names allow `[A-Za-z0-9 ()_-]`
+(`slotRe`); parens were added for the `(N)` autosave counter. `DELETE` writes a **tombstone** (rev-bumped meta, blob
 removed) so a stale offline device can't resurrect a deleted slot.
 
-Client: `SaveSync` (static: upload pump + list/download/delete coroutines) runs its
-pump on `SaveSyncRunner` (DontDestroyOnLoad — must outlive the Menu↔Main load, since a
-final save fires as the player returns to the menu and `SaveSystem` is Main-only).
-`SaveSyncIndex` holds per-slot markers `{uploadedAt, cloudRev}` + a stable machine GUID,
-stored OUTSIDE `SaveDir` (`SaveStore` filters dot-prefixed files so it's never a phantom
-slot). **Local saves are themselves per-account** (`SaveStore.SaveDir` = `<root>/<account>`,
-`account` = `Session.StorageScope`), so the sync markers are keyed per account too
-(`SaveSyncIndex.ScopedKey` = `<account>/<slot>`) — two accounts on one machine keep
-independent local slot sets *and* sync lineages. Conflict status is **rev-based** (server-assigned `rev`, not wall clocks);
-`savedAt` is display/tiebreak only. `MenuLoadPanel` async-merges local + cloud into
-one badged row per slot (`SaveSync.SyncStatus`: synced/local/cloud/cloud-newer/conflict/
-update-needed); cloud picks download to disk then boot the normal load path. Continue is
-cloud-aware. A conflict row prompts three-way **cloud / local / both**
-(`MenuLoadPanel.KeepBoth`): "both" sets the local divergence aside as
-`"<slot> local <date>"` (rename, sync marker removed — independent lineage) and adopts
-the cloud copy under the original name, so the cloud rev lineage stays put and nothing
-is lost; the list refreshes instead of booting. The third button is
-`ConfirmationPopup.altButton` — assigned only in Menu.unity (Main's popup stays
-two-button; `Show` degrades gracefully when alt is unassigned). A save whose `saveVersion` exceeds this build is refused on download. The
-**in-game** `SaveMenuPanel` shows a simpler **network-free** per-row badge
-(`SaveSync.LocalBadge`: synced/syncing/local/offline) from the local marker only —
-cross-device status is a menu concern — refreshed live via `OnStateChanged`.
+Client: `SaveSync` (static — upload pump + list/download/delete coroutines) runs on a
+`DontDestroyOnLoad` runner so it outlives the Menu↔Main load (a final save fires as the
+player returns to the menu, and `SaveSystem` is Main-only). Per-slot sync markers
+`{uploadedAt, cloudRev}` live outside `SaveDir`. **Local saves are themselves per-account**
+(`SaveDir = <root>/<account>`), so two accounts on one machine keep independent local slot
+sets *and* sync lineages. Conflict status is **rev-based** (server-assigned `rev`, not wall
+clocks; `savedAt` is display/tiebreak only). `MenuLoadPanel` async-merges local + cloud into
+one badged row per slot (`SaveSync.SyncStatus`: synced / local / cloud / cloud-newer /
+conflict / update-needed); picking a cloud row downloads to disk then boots the normal load
+path, and Continue is cloud-aware. A **conflict** row prompts three-way **cloud / local /
+both** (`MenuLoadPanel.KeepBoth`): "both" renames the local divergence aside as an independent
+lineage and adopts the cloud copy under the original name, so nothing is lost and the cloud rev
+lineage stays put. A save whose `saveVersion` exceeds this build is refused on download. The
+**in-game** `SaveMenuPanel` shows a simpler **network-free** badge (`SaveSync.LocalBadge`:
+synced / syncing / local / offline) from the local marker only — cross-device status is a
+menu concern.
 
 ### Merchant job
 
@@ -394,31 +390,38 @@ Dedicated `"merchant"` job in jobsDb. Merchant mice only perform `HaulToMarketTa
 
 **Multi-item batching.** Both market tasks fill the merchant's cargo with as many item types as fit per round trip, not one — the long transit makes a fuller trip almost always worth it. `HaulToMarket` selects multiple below-target items (one `FetchObjective` gathered in town + one market `DeliverToInventoryObjective` each); `HaulFromMarket` (and the piggyback) selects multiple above-target items, each routed to its own home storage. Carried goods live in lists: `iqs` on both tasks (+ `storageTiles` / `pickupIqs` + `pickupStorageTiles`).
 
-Capacity is tracked by `Task.CargoBudget` in **whole stacks**, not raw fen: the animal inv is 5 stacks × 1000 fen, and distinct item types never share a stack, so an item of `q` fen consumes `ceil(q / stackSize)` stacks (the tail of its last stack is stranded). A fresh `CargoBudget` is built per trip phase — outbound goods are fully delivered at the market before the return pickup, so the inventory is empty again. The above-target pickup selection (reserve source stack + most-spacious home storage, per item) is shared via `Task.SelectMarketPickups`, used by both `HaulFromMarketTask.Initialize` and the `HaulToMarket` piggyback. `MinMarketHaul(item)` is still applied per item (skip any item whose viable quantity is below it); there is no per-trip aggregate minimum. Food provisioning budgets `WalkToPortalSeconds` of extra ground walking per home-delivery leg (`extraGroundSeconds` passed to `PrependFoodFetchForMarketJourney`).
+Capacity is tracked by `Task.CargoBudget` in **whole stacks**, not raw fen: the animal inv is 5 stacks × 1000 fen, and distinct item types never share a stack, so an item of `q` fen consumes `ceil(q / stackSize)` stacks (the tail of its last stack is stranded). A fresh `CargoBudget` is built per trip phase — outbound goods are fully delivered at the market before the return pickup, so the inventory is empty again. The above-target pickup selection (reserve source stack + most-spacious home storage, per item) is shared via `Task.SelectMarketPickups`, used by both `HaulFromMarketTask.Initialize` and the `HaulToMarket` piggyback. Picks are taken **largest-excess-first** (sorted descending), so when cargo fills it's trickles that get stranded, not bulk hauls.
 
-`UpdateMarketOrders(marketInv)` adds a `HaulToMarket` order at **priority 3** when the market has any item below target, and a `HaulFromMarket` order at **priority 4** when any item is above target. The tier split encodes a dispatch preference: merchants exhaust outbound delivery work before considering a pure pickup trip. Combined with the piggyback described below, most excess gets hauled back on the return leg of a delivery, and a pure `HaulFromMarket` only fires when there is genuinely nothing to deliver. Merchants are the only job whose `canDo` matches these orders, so sharing the p4 tier with Research/Deconstruct is collision-free. Orders are deduped by market inventory reference. Registration happens in `Reconcile()` (every 10 s), on inventory changes, and after each task finishes.
+`SelectMarketPickups(marketInv, enforceMinHaul)` gates each item's minimum two ways: the **pure** `HaulFromMarket` trip passes `enforceMinHaul: true` (a dedicated round trip must clear `MinMarketHaul(item)` per item or it isn't worth making), while the **piggyback** passes `false` (floor of 1 — the trip is already happening, so grab any positive excess that fits, down to a single fen). The home-storage search is **map-wide** (`Nav.FindPathToStorageMostSpace(wholeMap: true)`), not radius-gated to the merchant's position: a piggyback merchant selects from the far-left portal, so "is there reachable storage *anywhere*" is the right question. Reachability (a path exists) is still required; an item with no storage that accepts it is simply left in the market.
+
+Food provisioning: `HaulFromMarket` budgets `WalkToPortalSeconds` of extra ground walking per home-delivery leg. `HaulToMarket` can't — its pickup count is unknown at departure (decided at the market) — so it budgets a fixed `WalkToPortalSeconds × AssumedMarketPickupLegs` (=2) buffer; over-provisioning food is harmless (it rides the food slot, not cargo), a far delivery just lands the merchant mildly hungry to self-correct.
+
+`UpdateMarketOrders(marketInv)` adds a `HaulToMarket` order at **priority 3** when the market has any item below target, and a `HaulFromMarket` order **also at priority 3** when there's above-target excess (see `MarketNeedsHaulFrom` below). Both share the p3 tier, but `HaulFromMarket` carries an `urgencyBonus` of `-UrgencyConfig.MarketPickupDock`, docking it *within* the tier so merchants exhaust outbound delivery work before a pure pickup trip. Merchants are the only job whose `canDo` matches these orders. Orders are deduped by market inventory reference. Registration happens in `Reconcile()` (every 10 s), on inventory changes, and after each task finishes.
+
+**`MarketNeedsHaulFrom` — in-flight-capacity gate.** A pure `HaulFromMarket` is only worth a *dedicated* round trip for excess that isn't already spoken for. So the gate sums **unreserved** above-target excess (`AvailableQuantity − target`, so stacks reserved for a sell order or another merchant's pickup don't count) and fires only when that exceeds `InflightPiggybackCapacityFen(marketInv)` — the total return-leg cargo capacity of merchants currently **outbound** on a `HaulToMarketTask` (each `!IsReturnLeg` merchant will piggyback a full empty cargo of excess home for free). This keeps a redundant dedicated pickup from being dispatched for excess an in-transit delivery merchant will grab anyway. The capacity estimate is in fen (ignores per-item-type stack fragmentation), but is safe against stranding: a merchant stops counting the instant it flips to its return leg, so any excess it couldn't carry re-triggers the order on the next pass.
 
 **Dispatch gate — target edit delay:** both `HaulToMarket` and `HaulFromMarket` orders are suppressed for 3 s after the player manually edits a market target (`Inventory.lastTargetManualUpdateTimer`, gated by `marketHaulDelayAfterTargetChange`). Applied to both directions because an edit can flip an item from below-target to above-target or vice versa; letting one direction fire immediately would dispatch a merchant on a soon-to-be-stale target.
 
 **Task initialization gates (both market tasks):**
 - Eep < 75 %: merchant refuses the trip (`animal.eeping.Eepness() < 0.75f`). Stricter than the general night-sleep threshold so a merchant doesn't dip into efficiency-loss territory mid-transit.
-- Food provisioning: `PrependFoodFetchForMarketJourney(transitTicks, extraGroundSeconds=0)` requires `foodNeeded = hungerRate × (2 × (WalkToPortalSeconds=20 + transitTicks) + extraGroundSeconds) + maxFood × hungryThreshold`. Read this as "enough to burn across the round trip **and** land home exactly at the hungry threshold line". `transitTicks` is **per leg** — the `2×` factor covers the round trip. `extraGroundSeconds` budgets any trip-terminating on-map walk beyond the portal (used by the piggyback path, which ends at a specific storage tile instead of idle at x=0). It checks body food + food slot, then fetches from the nearest available food source into the food slot if the deficit can be covered. Returns false (aborts Initialize) if it cannot provision enough food. Both tasks pass `extraGroundSeconds = WalkToPortalSeconds × (number of home-delivery legs)` — one per item dropped at a home storage on the return (0 for a `HaulToMarket` with no piggyback, which ends idle at the portal).
+- Food provisioning: `PrependFoodFetchForMarketJourney(transitTicks, extraGroundSeconds=0)` requires `foodNeeded = hungerRate × (2 × (WalkToPortalSeconds=20 + transitTicks) + extraGroundSeconds) + maxFood × hungryThreshold`. Read this as "enough to burn across the round trip **and** land home exactly at the hungry threshold line". `transitTicks` is **per leg** — the `2×` factor covers the round trip. `extraGroundSeconds` budgets any trip-terminating on-map walk beyond the portal (used by the piggyback path, which ends at a specific storage tile instead of idle at x=0). It checks body food + food slot, then fetches from the nearest available food source into the food slot if the deficit can be covered. Returns false (aborts Initialize) if it cannot provision enough food. `HaulFromMarket` passes `extraGroundSeconds = WalkToPortalSeconds × picks.Count` (one per home-delivery leg, known at Initialize); `HaulToMarket` passes a fixed `WalkToPortalSeconds × AssumedMarketPickupLegs` buffer because its pickups aren't chosen until the market.
 - Minimum haul quantity: `MinMarketHaulQuantity = 100 fen` (1.0 liang) for most items; `MinMarketHaulQuantitySilver = 40 fen` (silver moves in smaller amounts). Selected via `MinMarketHaul(item)`.
 
 ### Return-leg piggyback (`HaulToMarket` only)
 
-When a `HaulToMarketTask` initializes, after building its outbound deliver queue it calls `TryAppendPickup(marketInv)`, which fills the (return-empty) cargo with as many above-target items as fit via `SelectMarketPickups`. Each pickup reserves its market source stack + most-spacious home storage. For a two-item-out / two-item-back trip the queue becomes:
+The pickup manifest is **chosen at the market, not at departure**, so it reflects live market state on arrival (an item that went above target mid-transit gets grabbed; one that was pulled back doesn't). `HaulToMarketTask.Initialize` appends a `SelectMarketPickupsObjective` after its outbound market delivers; when that objective runs at the portal it calls `HaulToMarketTask.AppendReturnPickups()`, which fills the (return-empty) cargo with above-target items via `SelectMarketPickups(marketInv, enforceMinHaul: false)`, reserves each market source stack + map-wide most-spacious home storage, and appends the receive/return/deliver tail. For a two-item-out / two-item-back trip the queue becomes:
 
 ```
 Fetch (food) → Fetch (out A) → Fetch (out B) → Go (portal) → Travel (outbound)
   → Deliver A (market) → Deliver B (market)
-  → Receive X (market) → Receive Y (market)   ← piggyback tail begins
+  → SelectMarketPickups        ← runs at the portal; appends the tail below against live state
+  → Receive X (market) → Receive Y (market)
   → Travel (return)
   → Go (storage X) → Deliver X
   → Go (storage Y) → Deliver Y
 ```
 
-`TryAppendPickup` claims the single `HaulFromMarket` WOM order's `res` once (a nicety so a parallel pure-pickup merchant doesn't duplicate the excess; per-stack reservation is the real race guard). The claimed order is released in `HaulToMarketTask.Cleanup()` (override), alongside the normal stack/space reservation unwind in `base.Cleanup()`. If no viable pickup is found, the task appends a plain return travel and the merchant reappears idle at x=0.
+`AppendReturnPickups` claims the single `HaulFromMarket` WOM order's `res` once (a nicety so a parallel pure-pickup merchant doesn't duplicate the excess; per-stack reservation is the real race guard). Because the claim now happens at the market rather than at departure, the order would be unclaimed during outbound travel — but `MarketNeedsHaulFrom`'s in-flight-capacity gate (above) already suppresses a redundant pure `HaulFromMarket` for excess this outbound merchant will grab, so the dedicated-trip race is closed at the source; the claim + per-stack reservation remain as backstops. The claimed order is released in `HaulToMarketTask.Cleanup()` (override), alongside the normal stack/space reservation unwind in `base.Cleanup()`. If no viable pickup is found, `AppendReturnPickups` appends a plain return travel and the merchant reappears idle at x=0.
 
 `IsReturnLeg` is defined in terms of the market delivery objective specifically (`DeliverToInventoryObjective.TargetInv == marketInv`) so it stays correct when the queue contains multiple `DeliverToInventoryObjective`s (several market + several home). `PickupReceived` is true once **every** `ReceiveFromInventoryObjective` has completed — used by the save/load mapping below.
 
@@ -426,7 +429,7 @@ Fetch (food) → Fetch (out A) → Fetch (out B) → Go (portal) → Travel (out
 
 | Phase at save (merchant is in `AnimalState.Traveling`) | Descriptor emitted | Resume behaviour |
 |---|---|---|
-| Outbound travel (pre-market-deliver) | `HaulToMarket`, `returnLeg=false`, outbound `iqs` | `HaulToMarketTask` outbound resume (re-reserve market space + rebuild N delivers). Planned pickups silently dropped — opportunistic trips lost, not committed tasks. |
+| Outbound travel (pre-market-deliver) | `HaulToMarket`, `returnLeg=false`, outbound `iqs` | `HaulToMarketTask` outbound resume (re-reserve market space + rebuild N delivers + re-append `SelectMarketPickupsObjective`). Since pickups are chosen at the market, the resumed merchant runs a fresh at-market selection after delivering — nothing was committed pre-save to drop. |
 | Return travel, no pickup | `HaulToMarket`, `returnLeg=true` | `HaulToMarketTask` return resume — tail is just remaining travel. |
 | Return travel, pickups received | `HaulFromMarket`, `returnLeg=true`, pickup `iqs` + storage tiles | `HaulFromMarketTask` return resume — remaining travel + per-item go-to-storage + deliver. A pickup whose storage was demolished since save is dropped from the plan (its goods idle-drop) while the rest still deliver; the whole task only aborts to `ResumeTravelTask` if the market is gone or nothing is deliverable. |
 
@@ -448,9 +451,11 @@ If checks pass:
 1. Send order to server.
 2. For sells: reserve `qty` of `item` in market inv (existing `Reservable`
    mechanism).
-3. For buys: reserve `price × qty` silver outgoing **and** reserve `qty`
-   incoming capacity for `item` (new `reservedIncoming` dict on Inventory —
-   see below).
+3. For buys: reserve `price × qty` silver outgoing. Incoming space for `item`
+   is validated against `Inventory.GetStorageForItem` at placement but not
+   separately reserved (see §Space below).
+
+**No-storage warning (buys).** Storages start accepting nothing (`allowed[]` all-false; player opts in per item), so a freshly-bought item type can't be hauled home — the merchant leaves it safely in the market until storage exists. After a buy is sent, `TradingPanel.AnyStorageAccepts(item)` checks whether *any* storage's filter allows the item (filter-level, not space-level); if none, it posts a `No storage for [item]` toast via `EventFeed`. The order still goes through (the player may be about to build storage); the toast just closes the "why didn't it come back?" gap.
 
 ### Fill processing
 
@@ -458,11 +463,11 @@ When `OnFill` fires and `fill.buyer == playerName` or `fill.seller ==
 playerName`:
 
 - **We are buyer**: deduct `fill.price × fill.quantity` silver from market
-  inv; add `fill.quantity` of `fill.item` to market inv. Release silver
-  outgoing reservation and incoming capacity reservation for item.
+  inv; add `fill.quantity` of `fill.item` to market inv. Release the silver
+  outgoing reservation.
 - **We are seller**: deduct `fill.quantity` of `fill.item` from market inv;
-  add `fill.price × fill.quantity` silver to market inv. Release item
-  outgoing reservation and incoming capacity reservation for silver.
+  add `fill.price × fill.quantity` silver to market inv. Release the item
+  outgoing reservation.
 
 Partial fills are handled — only the filled quantity is deducted/released.
 
@@ -480,7 +485,7 @@ arrival, excess goods are simply rejected or overflow.
 
 - Absent/false → available in build menu from the start (most buildings).
 - `true` → hidden from build menu at startup; must be unlocked via research.
-- Currently locked: `soil pit`, `quarry`, `market` (market is never unlockable — it's auto-spawned by world gen).
+- Most production/advanced buildings ship `defaultLocked: true` and are unlocked via research (see `buildingsDb.json` for the current set). `market` is the one that's never unlockable — it's auto-spawned by world gen.
 - `BuildPanel.Start()` skips locked buildings when building sub-panels.
 - `BuildPanel.UnlockBuilding(name)` adds the entry to the correct sub-panel at runtime, called from `ResearchSystem.ApplyEffect`.
 
@@ -492,7 +497,7 @@ manages one item and maintains dynamic buy/sell prices based on internal stock.
 
 **Pricing:**
 ```
-sellPrice = clamp(defaultPrice × defaultStock / stock + minPrice, _, maxPrice)
+sellPrice = min(maxPrice, defaultPrice × defaultStock / stock + minPrice)
 buyPrice  = sellPrice / 4
 ```
 `buyPrice` is what the nation pays the player when buying the player's exports —

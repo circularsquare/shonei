@@ -199,8 +199,8 @@ public class StructureInfoView : MonoBehaviour {
                 sb.Append("\n uses: " + bldg.workstation.uses + "/" + bldg.structType.depleteAt);
                 // Extraction buildings (quarry / digging pit) hang their per-dig yield list off
                 // a help hover on the uses line, rather than spelling it out inline.
-                if (bldg is ExtractionBuilding eb && eb.capturedTile?.extractionProducts != null) {
-                    Help.SetDynamic("mining", "Yields", BuildExtractionYields(eb.capturedTile.extractionProducts));
+                if (bldg is IExtractor ext && ext.CapturedProducts != null) {
+                    Help.SetDynamic("mining", "Yields", BuildExtractionYields(ext.CapturedProducts));
                     sb.Append(Help.Icon("mining"));
                 }
             }
@@ -226,6 +226,9 @@ public class StructureInfoView : MonoBehaviour {
                 if (ghb.selfContained) sb.Append($"\n water: {ghb.selfMoisture}/100");
                 else                   sb.Append("\n draws from soil below");
             }
+            // Well: pooled groundwater stored vs total shaft capacity, in liang.
+            if (bldg is Well wl)
+                sb.Append($"\n water: {ItemStack.FormatQ(wl.StoredWaterFen)}/{ItemStack.FormatQ(wl.CapacityFen)}");
             // Only housing surfaces its Structure.res — it's the home-assignment count.
             // Other building types either don't have res (workstations, leisure, capacity==0)
             // or have it but never reserve into it.

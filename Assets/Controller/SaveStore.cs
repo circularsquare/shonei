@@ -40,17 +40,20 @@ public static class SaveStore {
     public const int MaxSlotNameLength = 64;
 
     // Validates a slot name against the charset that round-trips everywhere: the cloud
-    // server's slotRe (saves.go) = ^[A-Za-z0-9 _-]{1,64}$. A name outside this can't sync
+    // server's slotRe (saves.go) = ^[A-Za-z0-9 ()_-]{1,64}$. A name outside this can't sync
     // to the cloud, and characters like '?' / ':' / '/' also break the local filesystem on
     // some platforms — so the UI checks this before any save or rename and tells the player
-    // exactly what's wrong. `error` is a concise player-facing reason on failure (else null).
+    // exactly what's wrong. Parens are allowed (autosaves are named "auto <town> (N)"); the
+    // excluded chars are the path-unsafe / OS-reserved ones ('.' '/' '\' etc.). `error` is a
+    // concise player-facing reason on failure (else null).
     public static bool IsValidSlotName(string name, out string error) {
         error = null;
         if (string.IsNullOrEmpty(name)) { error = "name can't be empty"; return false; }
         if (name.Length > MaxSlotNameLength) { error = "name too long (max " + MaxSlotNameLength + ")"; return false; }
         foreach (char c in name) {
             bool ok = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
-                   || (c >= '0' && c <= '9') || c == ' ' || c == '_' || c == '-';
+                   || (c >= '0' && c <= '9') || c == ' ' || c == '_' || c == '-'
+                   || c == '(' || c == ')';
             if (!ok) {
                 // Echo printable-ASCII offenders (the common case: ? . / :); for anything
                 // else (control/non-ASCII, which m5x7 can't render) fall back to a generic note.

@@ -214,6 +214,7 @@ public class Db : MonoBehaviour {
         ValidateNoGroupOutputs();
         ValidateDiscreteUnitsFit();
         ValidateProcessorRecipes();
+        ValidateRecipeCarryable();
         LoadItemIcons();
         LoadNames();
         Debug.Log("db loaded");
@@ -401,6 +402,7 @@ public class Db : MonoBehaviour {
             // declared in JSON. Since these are runtime-attached children, replicate the same
             // field-inheritance the JSON-load path would have applied.
             if (book.decayRate == 0f) book.decayRate = bookGroup.decayRate;
+            if (book.equipDecayRate == 0f) book.equipDecayRate = bookGroup.equipDecayRate;
             if (!book.discrete) book.discrete = bookGroup.discrete;
             if (book.itemClass == ItemClass.Default) book.itemClass = bookGroup.itemClass;
             newChildren.Add(book);
@@ -441,7 +443,7 @@ public class Db : MonoBehaviour {
         Item paper = itemByName["paper"];
         // Labour-seconds to write one book (tended-processor duration). Long enough to be a project
         // spread across scribes/stints, NOT trapping one mouse. Tuning knob — playtest by feel.
-        const float BookDuration = 120f;
+        const float BookDuration = 100f;
         // Generated AFTER ReadJson, so the book recipes won't be auto-bucketed as processor recipes —
         // do it here. They live ONLY in processorRecipesByBuilding (never scribe.recipes) so the craft
         // dispatch never runs them; the scriptorium's Processor Fill/Work orders drive them instead.
@@ -465,6 +467,7 @@ public class Db : MonoBehaviour {
                 job               = "scribe",
                 tile              = "scriptorium",
                 description       = $"write {tech.name} book",
+                skill             = "scholarship", // scribing speed (and XP) scales with Scholarship
                 duration          = BookDuration,  // processor recipe (tended): laboured over `duration`
                 isProcessorRecipe = true,
                 inputs            = new[] { new ItemQuantity(paper,    ItemStack.LiangToFen(1f)) },
@@ -519,6 +522,30 @@ public class Db : MonoBehaviour {
                 foreach (ItemQuantity iq in pr.outputs)
                     if (iq.item.children != null)
                         Debug.LogError($"Db validation: processor recipe '{pr.description}' output '{iq.item.name}' is a group item. Only leaf items may be produced.");
+        }
+    }
+
+    // Warns for any craft recipe whose inputs (+ fuel) can't physically fit a mouse's carry pack
+    // even when empty — such a recipe is silently un-craftable (CraftTask's carry cap returns 0
+    // rounds forever, no mouse can ever assemble one round). Coarse by design: sums fen per distinct
+    // input item and ceils over a full stack, +1 for fuel. A group input resolves to a single leaf
+    // at craft time, so each distinct input entry counts as its own stack here. Extraction
+    // pseudo-recipes carry nothing — skipped.
+    void ValidateRecipeCarryable(){
+        foreach (Recipe r in recipes){
+            if (r == null || r.inputs == null || r.IsExtraction) continue;
+            var fenByItem = new Dictionary<Item, int>();
+            foreach (ItemQuantity iq in r.inputs){
+                if (iq.item == null) continue;
+                fenByItem.TryGetValue(iq.item, out int cur);
+                fenByItem[iq.item] = cur + iq.quantity;
+            }
+            int stacks = 0;
+            foreach (var kv in fenByItem)
+                stacks += (kv.Value + Animal.MainInvStackSize - 1) / Animal.MainInvStackSize;
+            if (r.fuelCost > 0f) stacks += 1;
+            if (stacks > Animal.MainInvStacks)
+                Debug.LogError($"Recipe '{r.description}' (id {r.id}) needs {stacks} carry stacks for one round but a mouse holds only {Animal.MainInvStacks} — it can never be crafted. Reduce inputs or per-round quantities.");
         }
     }
 
@@ -578,9 +605,10 @@ public class Db : MonoBehaviour {
     // works in the Editor but breaks in built players, where Resources/ is baked
     // into a binary blob (not a real folder on disk). Returns null and logs on
     // miss; callers should bail rather than try to recover.
-    // DTO for buildingEdgeMasks.json (baked by BuildingEdgeMaskBaker). Per-building bitmasks
-    // (bit dy*nx+dx) of which footprint tiles have a solid left / right edge.
-    class EdgeMaskEntry { public string name; public int left; public int right; }
+    // DTO for buildingEdgeMasks.json (baked by BuildingEdgeSolidityBaker). Per-building bitmasks
+    // (bit dy*nx+dx) of which footprint tiles have body on their left / right / bottom edge.
+    // `bottom` is nullable so a pre-bottom JSON (not yet re-baked) leaves it -1 → permissive.
+    class EdgeMaskEntry { public string name; public int left; public int right; public int? bottom; }
 
     // DTO for furColors.json — `hex` is the main fur shade (RRGGBB); `weight` is the
     // relative pick frequency (omitted/≤0 → treated as 1).
@@ -647,16 +675,16 @@ public class Db : MonoBehaviour {
             structTypeByName.Add(structType.name, structType);
         }
 
-        // Baked side-ladder edge masks (Tools/Bake Building Edge Masks). Optional — loaded
+        // Baked building edge-solidity masks (Tools/Bake Building Edge Solidity). Optional — loaded
         // directly (not via LoadJsonText) so an un-baked project doesn't log an error; absent
-        // file leaves masks unset and SideEdgeSolid stays permissive.
+        // file leaves masks unset and EdgeSolid stays permissive.
         TextAsset edgeMaskAsset = Resources.Load<TextAsset>("buildingEdgeMasks");
         if (edgeMaskAsset != null) {
             EdgeMaskEntry[] masks = JsonConvert.DeserializeObject<EdgeMaskEntry[]>(edgeMaskAsset.text);
             if (masks != null)
                 foreach (EdgeMaskEntry m in masks)
                     if (m != null && m.name != null && structTypeByName.TryGetValue(m.name, out StructType est))
-                        est.SetEdgeMasks(m.left, m.right);
+                        est.SetEdgeMasks(m.left, m.right, m.bottom ?? -1);
         }
 
         string jsonPlantTypes = LoadJsonText("plantsDb");
@@ -796,6 +824,7 @@ public class Db : MonoBehaviour {
                 AddItemToDb(child);
                 child.parent = item;
                 if (child.decayRate == 0f) child.decayRate = item.decayRate;
+                if (child.equipDecayRate == 0f) child.equipDecayRate = item.equipDecayRate;
                 if (!child.discrete) child.discrete = item.discrete;
                 if (child.unitWeight == 0f) child.unitWeight = item.unitWeight;
                 if (child.itemClass == ItemClass.Default) child.itemClass = item.itemClass;
@@ -1020,6 +1049,28 @@ public class Recipe {
         }
         if (n == 0) return 1f;
         return UnityEngine.Mathf.Pow(product, 1f / n);
+    }
+
+    // True for extraction recipes (quarry / digging pit): their outputs are deliberately empty (the
+    // real yield is the captured wall's material) and their urgency is a FLAT rate, not economic.
+    // Identified by the target building type's requiresBackgroundWall flag. Null-safe pre-Db.
+    public bool IsExtraction => Db.structTypeByName != null
+        && Db.structTypeByName.TryGetValue(tile, out StructType st) && st.requiresBackgroundWall;
+
+    // Whether extracting `products` is still worthwhile. Players keep mining for the RARE chance drops
+    // even after the base material is over target, so extraction only stops once EVERY possible output
+    // (guaranteed AND chance-rolled) that the player tracks is at/above its target. Untracked outputs
+    // are ignored (set a target to make one keep the dig alive). Drives the flat extraction urgency in
+    // Animal.ScoreCraftRecipes — return false = all wanted outputs satisfied, don't dig.
+    public static bool ExtractionWanted(ItemQuantity[] products, Dictionary<int, int> targets){
+        if (products == null || targets == null) return false;
+        foreach (ItemQuantity iq in products){
+            if (iq.item == null) continue;
+            if (targets.TryGetValue(iq.item.id, out int target)
+                && GlobalInventory.instance.Quantity(iq.item) < target)
+                return true;   // a possible output (base or rare) still below target — keep extracting
+        }
+        return false;
     }
 
     // Centralised gate for "can an animal currently pick / continue this recipe?":

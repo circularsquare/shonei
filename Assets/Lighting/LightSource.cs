@@ -69,9 +69,10 @@ public class LightSource : MonoBehaviour {
     public bool isLit = true;
 
     // Transient render gate (NOT persisted): when true, LightPass skips drawing this point light, with
-    // no effect on intensity/fuel/state. Used by the debug cursor light to switch off inside solid rock
-    // without clobbering its intensity. Recompute every frame from whoever sets it.
+    // no effect on intensity/fuel/state. The debug cursor light sets it each frame to switch off inside
+    // solid rock. Recompute every frame from whoever sets it.
     [HideInInspector] public bool suppressed = false;
+
 
     // When true, SunController modulates intensity by time of day (torches, fireplaces).
     [HideInInspector] public bool sunModulated = false;
@@ -107,6 +108,10 @@ public class LightSource : MonoBehaviour {
     // the older List<Renderer> + per-renderer MPB scheme — see Phase 4 of
     // the GPU perf plan.
     public static readonly List<LightSource> emitters = new();
+
+    // Per-emitter self-emission multiplier (from StructType.emissionStrength). Scales how bright the
+    // _EmissionMap pixels write to the lightmap, independent of the radial light. 1 = full (default).
+    [HideInInspector] public float emissionMult = 1f;
 
     // The SpriteRenderer that carries the _EmissionMap. Resolved in
     // OnEnable / Start (fire child if present, else parent SR).

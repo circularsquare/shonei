@@ -49,6 +49,7 @@ using Newtonsoft.Json;
 //   [x] Research (progress, unlockedIds, studiedIds, unlockTimestamps, unlockCounter)
 //   [x] Disabled recipe ids
 //   [x] Expanded recipe groups (Recipes panel — workstation collapse state)
+//   [x] Seen recipe ids (Recipes panel — clears the "new" badge once looked at)
 //   [x] Disabled processes (Recipes panel — paused fermentation etc., by building name)
 //   [x] Water levels
 //   [x] Moisture levels
@@ -113,8 +114,8 @@ public class SaveSystem : MonoBehaviour {
     // manual save). Interval is SettingsManager.autosaveIntervalMinutes (0 = off), re-read
     // live. Save() is synchronous and stalls the frame on large worlds, so the routine shows
     // savingOverlay first and yields a frame to let it paint before the freeze.
-    const int    MaxAutosaves   = 3;          // keep at most this many; oldest is deleted first
-    const string AutosavePrefix = "autosave"; // reserved slot-name prefix for rotation
+    const int    MaxAutosaves   = 3;      // keep at most this many; oldest is deleted first
+    const string AutosavePrefix = "auto"; // reserved slot-name prefix for rotation
     [SerializeField] GameObject savingOverlay; // centered "saving..." box (scene object), shown during a save
     float autosaveTimer;
     bool  autosaving;
@@ -150,23 +151,47 @@ public class SaveSystem : MonoBehaviour {
         autosaving = false;
     }
 
-    // Writes a fresh timestamped autosave, first deleting the oldest while ≥ MaxAutosaves
-    // exist so we keep at most MaxAutosaves. Only ever touches slots under AutosavePrefix —
-    // that prefix is reserved for autosaves, so manual saves must not use it.
+    // Writes a fresh autosave, first deleting the oldest while ≥ MaxAutosaves exist so we
+    // keep at most MaxAutosaves. Only ever touches slots under AutosavePrefix — that prefix
+    // is reserved for autosaves, so manual saves must not start with it.
     void WriteRotatingAutosave() {
         // GetSaveSlots is newest-first, so autosaves sort newest→oldest; the oldest is last.
-        var autos = SaveStore.GetSaveSlots().Where(s => s.StartsWith(AutosavePrefix)).ToList();
+        var autos = SaveStore.GetSaveSlots().Where(IsAutosaveSlot).ToList();
         while (autos.Count >= MaxAutosaves) {
             SaveStore.DeleteSlot(autos[autos.Count - 1]);
             autos.RemoveAt(autos.Count - 1);
         }
         // Keep AutosavePrefix at the FRONT — both client rotation above and the server's
         // pruneAutosaves (saves.go) identify autosaves by this prefix. The settlement name is
-        // embedded after it so the slot reads as "autosave <town> <timestamp>" in the load list.
+        // embedded after it so the slot reads as "auto <town> (N)" in the load list. The
+        // save date is no longer in the name; the load list shows it from the file's mtime.
         // settlementName is pre-sanitized to the slot-safe charset, so it never breaks SlotPath.
         string town = World.instance != null ? World.instance.SettlementDisplayName : World.DefaultSettlementName;
-        string name = AutosavePrefix + " " + town + " " + System.DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss");
+        string name = AutosavePrefix + " " + town + " (" + NextAutosaveNumber(town) + ")";
         Save(name, setCurrent: false);
+    }
+
+    // True if a slot is an autosave. Matches the "auto <town> (N)" form as a whole word
+    // (so a manual save like "automaton" isn't swept up), plus the legacy "autosave ..."
+    // names from before the rename so they still rotate out. Mirrors isAutosaveSlot in
+    // saves.go. Used for rotation.
+    static bool IsAutosaveSlot(string slot) =>
+        slot == AutosavePrefix || slot.StartsWith(AutosavePrefix + " ")
+        || slot.StartsWith("autosave ");
+
+    // Next autosave number for a town: highest "(N)" already on disk for that town, + 1
+    // (so numbers stay monotonic across rotation rather than reused). Starts at 1 when the
+    // town has no autosaves yet. Parsing is unambiguous — settlement names are sanitized to
+    // exclude parens, so the trailing "(N)" can only be the counter.
+    static int NextAutosaveNumber(string town) {
+        string prefix = AutosavePrefix + " " + town + " (";
+        int max = 0;
+        foreach (string slot in SaveStore.GetSaveSlots()) {
+            if (!slot.StartsWith(prefix) || !slot.EndsWith(")")) continue;
+            string mid = slot.Substring(prefix.Length, slot.Length - prefix.Length - 1);
+            if (int.TryParse(mid, out int n) && n > max) max = n;
+        }
+        return max + 1;
     }
 
     // ── Save ─────────────────────────────────────────────────────────────────
@@ -316,6 +341,9 @@ public class SaveSystem : MonoBehaviour {
 
             var expanded = rp.CopyExpandedGroups();
             if (expanded.Length > 0) data.expandedRecipeGroups = expanded;
+
+            var seen = rp.CopySeenRecipes();
+            if (seen.Length > 0) data.seenRecipeIds = seen;
         }
 
         data.isRaining   = WeatherSystem.instance?.isRaining   ?? false;
@@ -424,7 +452,8 @@ public class SaveSystem : MonoBehaviour {
             y        = tile.y,
             tileType = tile.type.name,
             inv      = tile.inv != null ? GatherInventory(tile.inv) : null,
-            backgroundWallType = (int)tile.backgroundType,
+            backgroundTile = tile.backgroundTile?.name,
+            backgroundQuarriedOut = tile.backgroundQuarriedOut ? true : (bool?)null,
             // Nullable: emit only when nonzero so on-disk JSON stays small and
             // existing snapshot-test goldens diff minimally.
             overlayMask  = tile.overlayMask != 0 ? tile.overlayMask : (byte?)null,
@@ -509,6 +538,7 @@ public class SaveSystem : MonoBehaviour {
             if (eb.capturedTile != null) ssd.capturedTileType = eb.capturedTile.name;
             ssd.digDir = (int)eb.digDir;   // persist direction even if the substrate didn't capture
         }
+        if (s is WallQuarry wq && wq.capturedWall != null) ssd.capturedTileType = wq.capturedWall.name;
         if (s is Greenhouse gh) {
             ssd.greenhouseSelfContained = gh.selfContained;
             ssd.greenhouseMoisture      = gh.selfMoisture;
@@ -520,6 +550,8 @@ public class SaveSystem : MonoBehaviour {
             ssd.elevatorRecentTripTicks     = el.recentTripTicks.ToArray();
             ssd.elevatorRecentEndToEndTicks = el.recentEndToEndTicks.ToArray();
         }
+        if (s is Well well)
+            ssd.wellStoredWater = well.storedWater;
         if (s is BridgePost post) {
             ssd.partnerX = post.partnerX;
             ssd.partnerY = post.partnerY;
@@ -596,6 +628,7 @@ public class SaveSystem : MonoBehaviour {
             bookSlotInv        = GatherInventory(a.bookSlotInv),
             skillXp            = a.skills.SerializeXp(),
             skillLevel         = a.skills.SerializeLevel(),
+            activity           = a.activity.Serialize(),
             buffs              = a.buffs.Serialize(),
             isTraveling        = a.state == Animal.AnimalState.Traveling,
             travelProgress     = a.state == Animal.AnimalState.Traveling ? a.workProgress : 0f,
@@ -689,6 +722,7 @@ public class SaveSystem : MonoBehaviour {
         WeatherSystem.instance?.RestoreState(false, 0f);
         RecipePanel.instance?.ClearDisabled();
         RecipePanel.instance?.ClearExpandedGroups();
+        RecipePanel.instance?.ClearSeenRecipes();
         ResearchSystem.instance?.ResetAll();
         // Reset panel collapse state — both panels start open on a fresh world.
         InventoryController.instance?.inventoryHeader?.SetOpenSilent(true);
@@ -797,12 +831,17 @@ public class SaveSystem : MonoBehaviour {
                 if (typeName == "limestone_brick") typeName = "limestone_placed";
                 if (!string.IsNullOrEmpty(typeName) && Db.tileTypeByName.ContainsKey(typeName))
                     tile.type = Db.tileTypeByName[typeName];
-                BackgroundType bt = (BackgroundType)tsd.backgroundWallType;
-                // Legacy migration: pre-typed saves stored only hasBackgroundWall.
-                // Type info is lost; default to Stone.
-                if (bt == BackgroundType.None && tsd.hasBackgroundWall) bt = BackgroundType.Stone;
-                tile.backgroundType = bt;
-                if (bt != BackgroundType.None) anyWall = true;
+                // Background wall: new saves store the material name. Legacy saves stored an
+                // int enum (1=Stone→limestone, 2=Dirt→dirt) or only the hasBackgroundWall bool
+                // (type lost → limestone). Placed/renamed variants aren't walls, so no remap.
+                TileType bg = null;
+                if (!string.IsNullOrEmpty(tsd.backgroundTile) && Db.tileTypeByName.TryGetValue(tsd.backgroundTile, out TileType bgtt))
+                    bg = bgtt;
+                else if (tsd.backgroundWallType == 2) bg = Db.tileTypeByName["dirt"];
+                else if (tsd.backgroundWallType == 1 || tsd.hasBackgroundWall) bg = Db.tileTypeByName["limestone"];
+                tile.backgroundTile = bg;
+                tile.backgroundQuarriedOut = tsd.backgroundQuarriedOut ?? false;
+                if (bg != null) anyWall = true;
 
                 // Restore the overlay mask AFTER tile.type is set above — the type
                 // setter may zero overlayMask if the saved type doesn't carry an
@@ -827,11 +866,12 @@ public class SaveSystem : MonoBehaviour {
                 }
             }
 
-            // Ancient saves predate any wall data — apply the old y <= 43 Stone default.
+            // Ancient saves predate any wall data — apply the old y <= 43 stone default.
             if (!anyWall) {
+                TileType limestone = Db.tileTypeByName["limestone"];
                 for (int x = 0; x < world.nx; x++)
                     for (int y = 0; y <= 43 && y < world.ny; y++)
-                        world.GetTileAt(x, y).backgroundType = BackgroundType.Stone;
+                        world.GetTileAt(x, y).backgroundTile = limestone;
             }
         }
 
@@ -971,6 +1011,7 @@ public class SaveSystem : MonoBehaviour {
                 rp.SetAllowed(id, false);
         if (rp != null && save.expandedRecipeGroups != null)
             rp.SetExpandedGroups(save.expandedRecipeGroups);
+        if (rp != null) rp.SetSeenRecipes(save.seenRecipeIds); // null → everything reads as new
 
         RestoreResearch(save.research);
 
@@ -1178,6 +1219,17 @@ public class SaveSystem : MonoBehaviour {
             // resolve stays reachable, not orphaned.
             eb.RestoreOnLoad((DigDir)(ssd.digDir ?? 0));
         }
+        if (structure is WallQuarry wq) {
+            // OnPlaced (which wires the open-face doors) is skipped on load, so restore capturedWall
+            // (drives yield) then re-wire the doors. workNode was repointed in the Structure ctor.
+            if (!string.IsNullOrEmpty(ssd.capturedTileType)) {
+                if (Db.tileTypeByName.TryGetValue(ssd.capturedTileType, out TileType tt))
+                    wq.capturedWall = tt;
+                else
+                    Debug.LogError($"RestoreStructure: unknown capturedTileType '{ssd.capturedTileType}' for {structure.structType.name} at ({ssd.x},{ssd.y})");
+            }
+            wq.RestoreOnLoad();
+        }
         if (structure is Greenhouse gh) {
             // OnPlaced (which decides the mode + seeds the pool) is skipped on load, so restore both
             // verbatim. Old saves / absent fields → ground mode, empty pool.
@@ -1195,6 +1247,8 @@ public class SaveSystem : MonoBehaviour {
             el.recentTripTicks.LoadFrom(ssd.elevatorRecentTripTicks);
             el.recentEndToEndTicks.LoadFrom(ssd.elevatorRecentEndToEndTicks);
         }
+        if (structure is Well well)
+            well.storedWater = Mathf.Clamp(ssd.wellStoredWater ?? 0, 0, well.Capacity);
 
         StructController.instance.Place(structure);
         World.instance.graph.UpdateNeighbors(ssd.x, ssd.y);
@@ -1413,8 +1467,16 @@ public class SaveSystem : MonoBehaviour {
     public static void LoadInventory(Inventory inv, InventorySaveData data) {
         if (data == null || data.stacks == null) return;
         foreach (ItemStackSaveData ssd in data.stacks) {
-            if (!string.IsNullOrEmpty(ssd.itemName) && Db.itemByName.ContainsKey(ssd.itemName) && ssd.quantity > 0)
-                inv.Produce(Db.itemByName[ssd.itemName], ssd.quantity);
+            if (string.IsNullOrEmpty(ssd.itemName) || !Db.itemByName.ContainsKey(ssd.itemName) || ssd.quantity <= 0)
+                continue;
+            Item item = Db.itemByName[ssd.itemName];
+            inv.Produce(item, ssd.quantity);
+            // Restore accumulated wear. Without this, every load reset equip-slot decayCounter to 0,
+            // so tools/clothing never aged across a save/load (and so rarely broke). The data was
+            // always saved (GatherInventory) — only the load dropped it. Equip slots hold one item
+            // type, so match by item to find the stack Produce just filled.
+            foreach (ItemStack st in inv.itemStacks)
+                if (st.item == item) { st.decayCounter = ssd.decayCounter; break; }
         }
     }
 

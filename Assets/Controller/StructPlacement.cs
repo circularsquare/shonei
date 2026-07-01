@@ -27,18 +27,17 @@ public static class StructPlacement {
 
         if (tile.GetBlueprintAt(st.depth) != null) return "already a blueprint here";
 
-        // Side-mounted structures (ladder_side, bracket): hang on a wall, no floor needed.
-        // Skip standability and the rest of the generic rule set — they don't use
-        // requiredTileName, doors, tileRequirements, or shapes. Only require (a) the target
-        // tile is air-and-empty at its depth and (b) the wall tile on the mounted side is
-        // solid (terrain or a building face). Because the wall check only accepts terrain or
-        // a depth-0 building, a bracket can't mount on another bracket (depth 1) — cantilevers
-        // extend exactly one tile per level, no chaining.
-        // dir convention: mirrored=true → wall on right (sprite flipped); mirrored=false → wall on left.
-        if (st.sideMounted) {
+        // Mounted structures (ladder_side, bracket, torch_side; lantern): hang on a surface, no
+        // floor needed. Skip standability and the rest of the generic rule set — they don't use
+        // requiredTileName, doors, tileRequirements, or shapes. Only require (a) the target tile is
+        // air-and-empty at its depth and (b) the mount surface is present — a side wall (Side) or a
+        // ceiling above (Ceiling). The surface check only accepts terrain or a depth-0 building, so
+        // a mount can't chain off another mount (depth 1) — one tile of reach per level.
+        if (st.isMounted) {
             if (tile.type.id != 0) return "tile is not empty";
             if (tile.structs[st.depth] != null) return "footprint is blocked";
-            if (!SideMountWallPresent(tile, mirrored)) return "needs a wall on this side";
+            if (!MountSurfacePresent(tile, st.mountTo, mirrored))
+                return st.mountTo == MountTo.Ceiling ? "needs a ceiling above" : "needs a wall on this side";
             return null;
         }
 
@@ -72,10 +71,23 @@ public static class StructPlacement {
             return "needs Mining technology";
 
         // requiredTileName matches either a specific tile name or the tile's group
-        // (e.g. quarry's "stone" requirement accepts limestone/granite/slate).
-        if (st.requiredTileName != null
+        // (e.g. a mineshaft's requirement). Wall-quarry types reinterpret requiredTileName as the
+        // WALL group (checked in the requiresBackgroundWall block below), so skip the solid-tile test.
+        if (st.requiredTileName != null && !st.requiresBackgroundWall
             && tile.type.name  != st.requiredTileName
             && tile.type.group != st.requiredTileName) return $"needs {st.requiredTileName} tile";
+
+        // Wall quarry / digging pit: an OPEN tile (emptiness already enforced above, since these
+        // aren't OccupiesSolidTile) with a revealed, un-exhausted wall of the right material group,
+        // and at least one open orthogonal side the miner can enter through (the door is wired to
+        // open faces; A* handles whether/when that side is actually standable).
+        if (st.requiresBackgroundWall) {
+            if (!tile.hasBackground) return $"needs exposed {st.requiredTileName}";
+            if (tile.backgroundQuarriedOut) return "wall quarried out";
+            if (st.requiredTileName != null && tile.backgroundTile.group != st.requiredTileName)
+                return $"needs exposed {st.requiredTileName}";
+            if (!HasOpenFace(world, tile)) return "no open side";
+        }
 
         // Footprint dimensions for collision: every tile in the visual footprint must be
         // empty, so a 2×4 windmill's collision check covers all 8 tiles. Matches the claim
@@ -85,6 +97,25 @@ public static class StructPlacement {
         int fnx = shapeAware ? shape.nx : st.nx;
         int fny = shapeAware ? shape.ny : Mathf.Max(1, st.ny);
 
+        // Column-dig (well): the bottom ny-1 tiles are the shaft, carved into solid ground; the
+        // TOP tile (dy=ny-1) is the open surface tile the wellhead occupies (the workstation the
+        // hauler walks up to). requiresSolidTilePlacement (set in OnDeserialized) only validates
+        // the anchor; this enforces the whole column. A stone-group shaft tile gates the dig
+        // behind Mining, same rule as the single-tile solid placement above.
+        if (st.digsSolidColumn) {
+            bool miningUnlocked = ResearchSystem.instance == null
+                || ResearchSystem.instance.IsUnlockedByName("Mining");
+            for (int dy = 0; dy < fny - 1; dy++) {
+                Tile t = world.GetTileAt(tile.x, tile.y + dy);
+                if (t == null) return "shaft extends off the map";
+                if (!t.type.solid) return "needs solid ground to dig";
+                if (t.type.group == "stone" && !miningUnlocked) return "needs Mining technology";
+            }
+            Tile top = world.GetTileAt(tile.x, tile.y + fny - 1);
+            if (top == null) return "shaft extends off the map";
+            if (top.type.solid) return "wellhead needs an open top";
+        }
+
         if (!st.isTile) {
             if (st.isPlant && tile.structs[0] != null) return "tile is occupied";
             // Bare plants must root in real soil directly below (dirt/sand/clay). A greenhouse
@@ -93,6 +124,16 @@ public static class StructPlacement {
             if (st.isPlant && tile.greenhouse == null) {
                 Tile below = world.GetTileAt(tile.x, tile.y - 1);
                 if (below == null || !below.type.isSoil) return "needs soil below";
+            }
+            // Till-requiring field crops (wheat/rice/soybean) need DIRT specifically — not sand/clay,
+            // and not an elevated greenhouse pool. Placeable on untilled dirt (a farmer tills it
+            // first, the crop's construct order staying suspended until then — see Blueprint.TillReady)
+            // OR on already-tilled "dirttilled".
+            if (st is PlantType pt && pt.requiresTill) {
+                Tile below = world.GetTileAt(tile.x, tile.y - 1);
+                if (below == null || (below.type.name != "dirt" && below.type.name != "dirt_placed"
+                        && below.type.name != "dirttilled"))
+                    return "needs dirt below";
             }
             if (!st.isPlant) {
                 for (int dy = 0; dy < fny; dy++) {
@@ -134,7 +175,10 @@ public static class StructPlacement {
         // IsBottomRowSupported so it can't drift from Blueprint.IsSuspended.
         bool shaftConnected = PowerShaft.IsShaft(st)
                 && PowerShaft.ConnectsToShaft(st, tile, rotation, mirrored, includeBlueprints: true);
-        if (st.name != "empty" && !st.OccupiesSolidTile && !st.hasStandableRequirement && !shaftConnected
+        // Wall quarries work from an interior node (the miner goes inside), so they don't stand
+        // on the tile and need no floor — exempt like OccupiesSolidTile types.
+        if (st.name != "empty" && !st.OccupiesSolidTile && !st.requiresBackgroundWall
+                && !st.hasStandableRequirement && !shaftConnected
                 && !IsBottomRowSupported(st, tile.x, tile.y, fnx, countBlueprintsBelow: true))
             return st.edgeSupported ? "both ends need support" : "needs solid ground below";
 
@@ -202,6 +246,21 @@ public static class StructPlacement {
         return null;
     }
 
+    // A wall quarry needs at least one OPEN orthogonal side (top/left/right — not down) so the
+    // miner's door can be wired. Standability isn't required here — a side that gains a floor
+    // later becomes usable via the already-wired door edge.
+    static bool HasOpenFace(World world, Tile tile) {
+        return IsOpenAt(world, tile.x, tile.y + 1)
+            || IsOpenAt(world, tile.x - 1, tile.y)
+            || IsOpenAt(world, tile.x + 1, tile.y);
+    }
+
+    static bool IsOpenAt(World world, int x, int y) {
+        if (x < 0 || x >= world.nx || y < 0 || y >= world.ny) return false;
+        Tile t = world.GetTileAt(x, y);
+        return t != null && !t.type.solid;
+    }
+
     // Validation for two-click placements (rope bridge). Both posts must be standable
     // 1×1 spots, and every integer tile the catenary passes through (between the two
     // posts, exclusive) must be empty at depth 2 — no structure, no blueprint, no
@@ -258,21 +317,31 @@ public static class StructPlacement {
         return false;
     }
 
-    // True if a side-mounted structure (ladder_side, bracket) has a solid wall to lean on
-    // its mounted side — a natural/built solid tile, or a building whose sprite has body on
-    // the facing edge (never a plant, never a visually-empty footprint tile). This is the
-    // SINGLE source of truth for side-mount support: both placement (above) and
-    // Blueprint.IsSuspended call it, so a side-mounted blueprint is always completeable under
-    // the same rule it was placed with. dir: mirrored=true → wall on right; mirrored=false → wall on left.
-    public static bool SideMountWallPresent(Tile tile, bool mirrored) {
+    // True if a mounted structure has a surface to attach to — a natural/built solid tile, or a
+    // building whose sprite has body on the facing edge (never a plant, never a visually-empty
+    // footprint tile). The SINGLE source of truth for mount support: both placement (above) and
+    // Blueprint.IsSuspended call it, so a mounted blueprint is always completeable under the same
+    // rule it was placed with.
+    //   Side    → the wall tile beside it (mirrored=true → wall on right; false → left).
+    //   Ceiling → the underside of the tile above (mirror-invariant).
+    public static bool MountSurfacePresent(Tile tile, MountTo mountTo, bool mirrored) {
         World world = World.instance;
+        if (mountTo == MountTo.Ceiling) {
+            Tile ceil = world.GetTileAt(tile.x, tile.y + 1);
+            if (ceil == null) return false;
+            if (ceil.type.solid) return true;
+            Structure s = ceil.structs[0];
+            if (s == null || s is Plant) return false;
+            return s.structType.EdgeSolid(ceil.x - s.x, ceil.y - s.y, MountFace.Bottom, s.mirrored);
+        }
         int dir = mirrored ? +1 : -1;
         Tile wall = world.GetTileAt(tile.x + dir, tile.y);
         if (wall == null) return false;
         if (wall.type.solid) return true;
-        Structure s = wall.structs[0];
-        if (s == null || s is Plant) return false;
-        return s.structType.SideEdgeSolid(wall.x - s.x, wall.y - s.y, !mirrored, s.mirrored);
+        Structure ws = wall.structs[0];
+        if (ws == null || ws is Plant) return false;
+        return ws.structType.EdgeSolid(wall.x - ws.x, wall.y - ws.y,
+                                       mirrored ? MountFace.Left : MountFace.Right, ws.mirrored);
     }
 
     // Returns true if any blueprint on the tile below (x, y-1) would provide solid-top support once built.

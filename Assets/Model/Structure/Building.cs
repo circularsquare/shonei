@@ -130,6 +130,13 @@ public class Building : Structure {
     // Player intent vs. world state — both must be satisfied for the building to accept orders.
     public bool disabled = false;
 
+    // Reachability-alert latch (runtime only, never saved). A workstation whose workNode no
+    // animal can reach is silently useless. StructController's usability sweep sets
+    // unreachableSince on first sighting, posts ONE EventFeed alert once it persists past a grace
+    // window, and resets both when the building becomes reachable again. -1 = reachable / unseen.
+    public float unreachableSince = -1f;
+    public bool unreachableAlerted = false;
+
     // True when a mouse could meaningfully use this leisure building right now: not disabled,
     // not broken, fueled (if it has a reservoir), and within its active-hour window. Used by
     // LeisureTask / ReadBookTask seat scans so every leisure-type task applies the same
@@ -264,6 +271,13 @@ public class Building : Structure {
             storage.displayName = structType.name;
             storage.ownerStructure = this; // lets Decay apply the floor rate when this building is broken
             // Floor items stay on the floor — storage is separate (building.storage).
+
+            // Prompt the player to configure a fresh, empty, accepts-nothing store (dry storage
+            // and tanks start all-disallowed). Markets accept everything by default, so skip them.
+            if (invType == Inventory.InvType.Storage) {
+                var sev = go.AddComponent<StorageEmptyVisuals>();
+                sev.Init(storage, st.nx, sr.sortingOrder);
+            }
         }
 
         if (st.hasFuelInv) {
@@ -275,6 +289,7 @@ public class Building : Structure {
                 ls.innerRadius   = st.lightInnerRadius;
                 ls.centerFlatten   = st.lightCenterFlatten;
                 ls.flickerAmount   = st.lightFlicker;
+                ls.emissionMult    = st.emissionStrength;
                 ls.flickerPhase    = x * 0.37f + y * 0.71f; // decorrelate neighbours, deterministic
                 ls.reservoir = reservoir;
                 ls.building  = this; // gates burn + emission on this.disabled
@@ -295,6 +310,7 @@ public class Building : Structure {
             ls.innerRadius   = st.lightInnerRadius;
             ls.centerFlatten = st.lightCenterFlatten;
             ls.flickerAmount = st.lightFlicker;
+            ls.emissionMult  = st.emissionStrength;
             ls.flickerPhase  = x * 0.37f + y * 0.71f; // decorrelate neighbours, deterministic
             ls.building      = this;
             ls.craftGated    = true;

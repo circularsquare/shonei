@@ -66,7 +66,7 @@ Each row represents one item type in the tree. The same prefab is used in both t
 
 **Target editing moved off the always-visible panel.** As of the GlobalInventoryPanel feature, the
 always-visible Global panel is read-only (count only) — the editable target chrome (slash + input +
-steppers) is **Market-mode only** in `ItemDisplay.SetDisplayMode` (`showLeafTarget = mode == Market`).
+steppers) is **Market-mode only** and never shown on group rows, in `ItemDisplay.SetDisplayMode` (`showLeafTarget = !isGroupRow && mode == Market`).
 Targets are now edited in the full-screen **GlobalInventoryPanel** (below), which writes the same
 `InventoryController.targets` dict — single source of truth, unchanged save format.
 
@@ -101,7 +101,7 @@ Set at instantiation time (defaults fall back to InventoryController for backwar
 
 - `itemText` — TMP text for the item name (left-aligned)
 - `quantityText` — TMP text for the current quantity, rendered immediately left of the slash (empty in Storage mode)
-- `targetText` — TMP text for target display ("/100")
+- `targetInput` — user-editable `TMP_InputField` for the leaf target (Global/Market modes)
 - `toggleGo` — the allow/disallow Toggle GameObject
 - `targetUpGo`, `targetDownGo`, `targetTextGo` — target button and text GameObjects (for show/hide)
 - `spriteOpen`, `spriteCollapsed`, `spriteLeaf` — dropdown arrow sprites
@@ -112,7 +112,7 @@ Managed by `InventoryController` (`Assets/Controller/InventoryController.cs`).
 
 - ItemDisplay instances are created once in `AddItemDisplay()` during first `TickUpdate`, one per item in `Db.items`.
 - Tree structure: root items parent to `inventoryPanel.transform`, children parent to their parent ItemDisplay's transform.
-- **Discovery**: items are hidden until `globalInventory.Quantity > 0` (checked recursively via `HaveAnyOfChildren`). Once discovered, stays visible even if quantity drops to 0.
+- **Discovery**: items are hidden until `globalInventory.Quantity > 0` (discovery tracked in `InventoryController.discoveredItems`). Once discovered, stays visible even if quantity drops to 0.
 - **Tree collapse**: `IsVisibleInTree` walks ancestors — if any parent ItemDisplay has `open == false`, the item is hidden.
   - Groups start collapsed by default; flag `defaultOpen: true` in itemsDb.json to start a group expanded (e.g. `"food"`). Market mode always expands every group regardless of the flag.
   - **Global panel** collapse state persists across saves via `WorldSaveData.inventoryTreeOpen` (stores only deltas vs `defaultOpen`); on load the dict is staged on `InventoryController.pendingGroupOpenOverrides` and consumed by `ItemDisplay.Start`.
@@ -159,6 +159,8 @@ A second set of ItemDisplay instances (separate from the global panel's) with `D
 - AllowAll / DenyAll buttons wired to `StoragePanel.OnClickAllowAll/DenyAll` — apply to all `selectedInventories`
 - Copy/paste filters: Shift+LMB on storage = copy, Shift+RMB = paste (handled by `MouseController` → `InventoryController.CopyAllowed/PasteAllowed`); operates on the single clicked tile regardless of multi-selection
 
+**Unconfigured-storage prompt**: a storage that is empty AND `Inventory.AcceptsNothing()` (nothing opted into the filter — the default state for fresh dry storage / tanks) shows a yellow `?` in-world at the front of the building. `StorageEmptyVisuals` (Components/, attached in the `Building` ctor's `isStorage` block, Unlit-layer overlay) polls this each frame and hides the moment an item is allowed or something lands inside. Bookshelves auto-allow books at construction, so they never show it.
+
 ## GlobalInventoryPanel (detailed inventory)
 
 `Assets/UI/GlobalInventoryPanel.cs` — full-screen **exclusive** panel (registers via
@@ -167,15 +169,25 @@ A second set of ItemDisplay instances (separate from the global panel's) with `D
 (`UI/InventoryScroll/.../InventoryTitle/DetailsButton`, persistent `onClick → Toggle`). It is the
 detailed counterpart to the always-visible panel, hosting the controls that were pulled off it.
 
-Per item it shows: **location breakdown** — Total + Storage + Floor + Carried (= `Animal` + `Equip`
-slots) + Market — plus the **editable target** (leaf rows; writes `InventoryController.targets`) and a
-**"consume"** toggle (hover help authored in code in `InventoryDetailRow.Init`). The four breakdown buckets need not sum to Total; the remainder is in
-building buffers (processor/reservoir/blueprint) and Total is authoritative. Breakdown numbers come
-from `InventoryController.QuantityIn(item, params InvType[])`.
+Per item it shows: **Total**, the **distribution bar** (the full location breakdown — see below), the
+**editable target** (leaf rows; writes `InventoryController.targets`) and a **"consume"** toggle (hover
+help authored in code in `InventoryDetailRow.Init`). The per-location *numeric* columns
+(storage/floor/carried/market) were dropped for a cleaner, narrower panel — that breakdown now reads
+off the bar's colored segments + hover tooltips only. Quantities come from
+`InventoryController.QuantityIn(item, params InvType[])`.
+
+A **"no storage assigned" alert** icon (`Sprites/Misc/alert`, a code-built cell slotted right after the
+name — a headerless column, empty in the common case) appears when the item can't be stored anywhere:
+`storageHeld + StorageCapacityFor(item) == 0`, i.e. exactly when the bar's dark-green capacity marker is
+hidden. Tooltip: `0 storage assigned`. Toggled via `Image.enabled` (disabled Graphic = no raycast = no
+tooltip). The row's flexible name column absorbs the alert cell's width, so the total/bar/target/consume
+columns stay aligned with their headers with no matching header spacer.
 
 **Row tree** — `InventoryDetailRow` (`Assets/UI/InventoryDetailRow.cs`, prefab
 `Resources/Prefabs/InventoryDetailRow`). Rows are a **flat sibling list** under the scroll content
-(parents precede children, `Db.items` order); depth is a leading **indent spacer**, not nested
+(parents precede children in a **pre-order tree walk** — roots in id order, then each subtree — so a
+group's leaves sit contiguously under it regardless of interleaving ids, matching the summary panel);
+depth is a leading **indent spacer**, not nested
 LayoutGroups (avoids the pixel-font-blur / layout churn nested groups cause here). Collapse =
 visibility: the panel's `IsVisible` walks ancestors' own `open` state (independent of the
 always-visible panel's collapse, mirroring `InventoryController.IsVisibleInTree` + `discoveredItems`).
@@ -189,9 +201,9 @@ protects/clears the whole group via `InventoryController.SetConsumptionDisabled`
 **Distribution bar** (`InventoryBar`, `Assets/UI/InventoryBar.cs`) — the "where" column. A
 fixed-width pill (`Sprites/Misc/progressbar` used as a `Mask`) with colored segments clipped to the
 pill shape: storage (green) / floor (yellow) / mice (gray) / market (blue) / installed=reservoir fuel
-+ building furnishings (brown) / elsewhere=blueprint+processor buffers, in transit (orange). The
-breakdown columns show only storage/floor/mice/market as numbers; installed + elsewhere appear on the
-bar only. Width modes: **target > owned** → bar spans the target, the shortfall is a dark
++ building furnishings (brown) / elsewhere=blueprint+processor buffers, in transit (orange). All
+buckets live on the bar only — the per-location numeric columns were removed. Width modes:
+**target > owned** → bar spans the target, the shortfall is a dark
 dull-red deficit zone; **target ≤ owned** → bar spans owned, target is a dark-red marker line
 (fraction = target/scale, so it pins to the right end once target ≥ owned). On **leaf** rows the
 marker is **draggable** (a wide transparent hit zone + thin overhanging line): drag left/right and
@@ -215,8 +227,53 @@ it's hidden when no storage allows the item. Group-aware: an empty stack counts 
 capacity if it allows ANY leaf descendant (`Inventory.AllowsAnyLeaf`), so it isn't double-counted
 per leaf.
 
+A **`SwatchLegend`** (source = InventoryBar) sits above the column headers (which, with the
+Scroll, were shifted down to make room): one swatch per bar segment (storage/floor/mice/market/
+installed/elsewhere), the deficit zone labeled **"empty"**, and thin line swatches for the **target**
+(red) and **capacity** (green) markers. Entries come from `InventoryBar.LegendEntries()` so they
+track the bar colors.
+
 The "consume" gameplay mechanic (what the flag actually gates) lives in **SPEC-systems.md
 §Consume protection**.
+
+## Population panel (master-detail)
+
+`PopulationPanel` (`Assets/UI/PopulationPanel.cs`) — full-screen **exclusive** panel, one row per
+mouse, surfacing how each mouse spends its time (the "job load / idle time" metric). Built by cloning
+GlobalInventoryPanel's woodframe shell + a right-side DetailPane (master-detail like RecipePanel).
+Lifecycle mirrors GlobalInventoryPanel (singleton, `UI.RegisterExclusive` in Awake, `Toggle`, 0.5 s
+refresh).
+
+- **Rows** are pooled (grown on demand, never destroyed; activate/deactivate to match the colony),
+  sorted **by job then name**. A row is re-`Setup` (which re-bakes the head) only when its bound mouse
+  changes; otherwise the cheap `Refresh`. The sort/bind step skips null/destroyed `animals[]` entries
+  (they appear transiently during spawn/death and would NRE on `a.job`).
+- **Two entry points:** a "details" button on the **jobs-panel header** (persistent onClick →
+  `Toggle`), and a "details" button on **AnimalInfoView** (→ `PopulationPanel.Open(animal)`, opens
+  with that mouse preselected). `instance` is a **lazy getter** (`FindObjectOfType(true)`) so the
+  info-view button works before the panel has ever activated and run `Awake`.
+- `PopulationRow` (`Assets/Components/PopulationRow.cs`, prefab `Resources/Prefabs/PopulationRow`) —
+  head + name + job + `ActivityBar`. A dedicated row, NOT `OccupantRow` (head + name + one button) —
+  the multi-column shape differs. Whole-row click selects the mouse (root has a transparent raycast
+  Image + `IPointerClickHandler`).
+- `ActivityBar` (`Assets/Components/ActivityBar.cs`) — five code-built anchor-fraction segments
+  (working/walking/leisure/idle/sleep) sized from `ActivityTracker.Fraction` (see SPEC-ai §Activity
+  tracking). Per-segment `Tooltippable` set via **`Tooltippable.SetLiveBody`** (not `.body =`) so a
+  tooltip already open on a segment refreshes its % in place under a lingering pointer — it re-shows
+  only while that element is hovered (driven by the existing refresh tick, zero per-frame cost).
+  Visibility via `Image.enabled`, never SetActive (would trip Tooltippable OnDisable→Hide).
+- `SwatchLegend` (`Assets/Components/SwatchLegend.cs`) — swatch + label per group, sitting above the
+  row list. Self-builds on Awake from `ActivityBar.LegendEntries()` (source = ActivityBar), so the
+  legend can't drift from the bar colors. The same component (source = InventoryBar) legends the
+  GlobalInventoryPanel — see below.
+- **Detail pane** — `MouseDetailView` (`Assets/UI/MouseDetailView.cs`) renders the selected mouse:
+  head+name + a find button (centers the camera on the mouse, like AnimalInfoView's), stats
+  (job/eff/full/eep), recent-activity %, gear (all five equip slots), happiness
+  (score + housing/temp/furnish + per-need o/x), a `ComfortBar` (temp; capped to 120px via a
+  left-aligned holder since the pane VLG force-expands width), and reused `SkillDisplay` widgets.
+  Content sits in a **ScrollRect** (it can exceed the pane height) and is shown **ungated** (more room
+  than the cramped AnimalInfoView). Reuses the info view's HeadIcon/TempBar instances (cloned) + the
+  SkillDisplay prefab.
 
 ## InfoPanel (tabbed)
 
@@ -233,12 +290,21 @@ When the player clicks a tile, `MouseController` builds a `SelectionContext` (ti
 ### Tab ordering
 Animals first → structures by increasing depth → blueprints by depth → tile last. Tab label uses tile type name (e.g. "dirt") if non-empty, otherwise "tile". First tab is auto-selected.
 
-### AnimalInfoView skill widgets
-Skills are shown as `SkillDisplay` prefab instances (`Assets/Components/SkillDisplay.cs`) spawned into a `skillsContainer` layout group. One widget per `Skill` enum value, rebuilt on `Show()`, refreshed on `Refresh()`.
+### AnimalInfoView header & happiness
+The mouse's name is **not** in the text blob — a scene-authored `HeaderBar` row (sibling 0) holds a `MouseHeadIcon` portrait (`headIcon`, hover = name + job) and a `findButton` (`buttontarget` icon, no label) that calls `MouseController.CenterCameraOn(animal.x, animal.y)` to jump the camera to the mouse. The text blob opens at the job line.
 
-Each widget: icon (hover → skill name tooltip) + "lv{n}" label + progress bar. Bar fill uses anchor-based sizing (`anchorMax.x = xp/threshold`) so the rect actually resizes rather than just clipping rendering. Bar hover tooltip shows exact xp (e.g. "1.0/20").
+Happiness shows only the summary line (`happiness: 8.0 / 21.0`) + a `?` hover; the per-need o/x breakdown lives in that tooltip, set live each `Refresh` via `Help.SetDynamic("happiness", …)` (same inline-hover pattern as StructureInfoView's mining yields).
 
-Sprites loaded from `Resources/Sprites/Skills/{skillname}` with `Sprites/Skills/default` fallback.
+### AnimalInfoView detail link & comfort
+Skills are **no longer** shown here — the `SkillDisplay` widgets moved to the population panel's
+detail pane (`MouseDetailView`, see §Population panel). The info view is the quick glance; a
+**"details"** button (`populationButton`, a fixed-width clone of the inventory details button, in a
+left-aligned `DetailsRow` holder so the panel VLG doesn't stretch it) opens the population panel
+focused on this mouse via `PopulationPanel.Open(animal)`.
+
+`SkillDisplay` (`Assets/Components/SkillDisplay.cs`) — still used by MouseDetailView: icon (hover →
+skill name) + "lv{n}" + anchor-sized xp bar (`anchorMax.x = xp/threshold`); sprites from
+`Resources/Sprites/Skills/{skillname}` with `Sprites/Skills/default` fallback.
 
 A `ComfortBar` (`tempBar`, between the text blob and SkillsContainer) shows the mouse's temperature comfort: green band = the clothing/warmth-widened `comfortTempLow..comfortTempHigh`, marker = ambient temp. The numeric "warmth" readout was dropped — warmth's effect is now visible as the widened green band.
 
@@ -253,10 +319,10 @@ A `ComfortBar` (`tempBar`, between the text blob and SkillsContainer) shows the 
 - **Occupant rows** (housing only) — one `OccupantRow` per resident (`Building.GetResidents()`) in the scene `OccupantRows` VLG: mouse head (`MouseHeadIcon`) + name + **evict** (x). Head-click selects that mouse. Rebuilt only when the resident set changes (tooltip-safe).
 - **Work-flag rows** (`isWorkFlag` only) — `OccupantRow`s in the `FlagRoster` VLG: assigned mice (`GetAssignedMice()`) with **unassign** (x), then every other mouse with **assign** (+). `OccupantRow` is the shared configurable mouse-row — `Setup(animal, buttonSprite, tooltip, action)` — used for evict/unassign/assign. Rebuilt only on flag / assigned-set / colony-size change. See SPEC-ai §Work anchors.
 
-**Reusable widgets**: `MouseHeadIcon` (`Assets/Components/`) — UI head portrait, `Set(Animal)` (fur-tinted, hover = name, optional `onClick`). `OverlayController` (`Assets/Controller/`) — world data-overlay singleton: an nx×ny Point texture on the Unlit layer (1 texel = 1 tile). `ShowSearchRange(Animal)` paints a mouse's anchor-territory + convenience boxes (see SPEC-ai §Work anchors); entered from `AnimalInfoView`'s "range" button, dismissed by a world click, with a per-tile hover readout. Built so other overlays (foot traffic, …) are a new fill mode.
+**Reusable widgets**: `MouseHeadIcon` (`Assets/Components/`) — UI head portrait, `Set(Animal)` (fur-tinted, hover = name, optional `onClick`). `OverlayController` (`Assets/Controller/`) — world data-overlay singleton: an nx×ny Point texture on the Unlit layer (1 texel = 1 tile), one `Fill*`/`Show*` pair per mode, dismissed by a world click, with a per-tile hover readout. Modes: **SearchRange** (`ShowSearchRange(Animal)`) paints a mouse's anchor-territory + convenience boxes (see SPEC-ai §Work anchors), entered from `AnimalInfoView`'s "range" button; **FootTraffic** (`ShowFootTraffic`) is a normalised amber heat map of `FootTrafficSystem` (mice/hr on hover); **SoilMoisture** (`ShowSoilMoisture`) tints solid tiles blue by saturation = `moisture / tile.type.moistureCapacity` (so a full low-cap tile reads 100%; % on hover). The two data-view modes have no subject and rebuild on a 0.5s timer (their fields drift). They're opened from `DataViewMenu` (`Assets/UI/`) — the TopBar map-button dropdown; **adding a view = a scene dropdown row wired to a new `ShowX` + a new `FillX`/mode.** `FootTrafficSystem` (`Assets/Model/`) samples each moving mouse's tile once/in-game-second into a decaying (45s half-life) per-tile EMA — always running, not saved (re-converges after load), cleared in `ClearWorld`.
 
 ### SelectionContext
-`Assets/Model/SelectionContext.cs` — plain C# class built by `MouseController.HandleSelectClick`. Contains `tile`, `List<Structure>`, `List<Blueprint>`, `List<Animal>`. Factory: `SelectionContext.FromTile(tile, animals)`.
+`Assets/UI/SelectionContext.cs` — plain C# class built by `MouseController.HandleSelectClick`. Contains `tile`, `List<Structure>`, `List<Blueprint>`, `List<Animal>`. Factory: `SelectionContext.FromTile(tile, animals)`.
 
 ### Backward compatibility
 `ShowInfo(object)` wraps raw args into a `SelectionContext`. `UpdateInfo()` refreshes the active sub-view (called each tick from `World.cs`). `obj` property returns `currentSelection?.tile` for Blueprint.cs checks.
@@ -428,8 +494,14 @@ Each panel's `Toggle()` calls `UI.OpenExclusive(gameObject)` when opening, and `
 **master-detail**: a grouped, scrollable list on the **left** (the in-scene `RecipeScroll`,
 narrowed to a fixed `LeftWidth` column in code) and a **detail pane on the right**.
 
+`RecipePanel.instance` is a **lazy getter** (`FindObjectOfType(true)`, like GlobalHappinessPanel) so
+save-load restore reaches it before the (inactive-by-default) panel has ever been opened — a plain
+static would be null at load time and silently drop the restore (disabled / expanded / seen recipes).
+
 **Left list** — recipes are grouped by workstation (`Recipe.tile`) into collapsible
-`RecipeGroupDisplay`s (header: building icon + `name (N)`; click toggles). Both the group
+`RecipeGroupDisplay`s (header: building icon + `name (N)`; click toggles). Groups are ordered by the
+workstation's **buildingsDb position** (`StructType.id`, monotonic with file order) so related buildings
+cluster (crucible near furnace); rows *within* a group keep authored recipesDb order. Both the group
 and its rows are editor-authored prefabs (`Resources/Prefabs/RecipeGroup` +
 `RecipeListRow`, wired to `RecipePanel.recipeGroupPrefab` / `recipeRowPrefab`, Resources
 fallback if unwired) — tweak header layout / icon size / row style in the editor, not code.
@@ -438,6 +510,15 @@ header per workstation, not a card per recipe. Each row is `[output icon][name][
 On/Off icon]` + a behind-highlight; `Setup` just binds the payload. Clicking the row body
 selects it, the On/Off icon toggles allow in place. A thin `Sprites/Misc/divider` separates
 each group.
+
+**"new" badge** — a pulsing red-orange lowercase `new` (code-built `PulsingText`, `Assets/Components/`)
+sits after each recipe name and after each workstation header name. A recipe starts new and clears only
+once its group is **expanded AND its row is actually scrolled into the scroll viewport** (world-rect
+overlap check each refresh tick in `RecipeGroupDisplay.RefreshVisibleCards`) — off-screen rows stay new.
+A header shows `new` whenever any child recipe is still new, even collapsed. Seen state is per display
+id (`RecipePanel.seenRecipes`, book proxy tracked as one) and **persisted** via `WorldSaveData.seenRecipeIds`
+(gather/restore/reset mirror `disabledRecipeIds`). The badge label is auto-fonted by UITextRuntimeStyle
+(which never touches color); the pulse animates `alpha` only, on unscaled time so all badges sync.
 
 **Detail pane** — on select, a fresh `RecipeDisplay` card (the prefab) is instantiated into
 the detail container showing inputs/outputs (live have-amounts), job, a conditions line
@@ -467,7 +548,8 @@ recipes are ordinary `Recipe`s, so a disabled one is skipped at fill time by
 "write a book" proxy whose toggle drives all book recipes; processor recipes (a `Recipe` with a
 `duration`) appear under their building with a `FormatDuration at T°` header (e.g. `2 days at 25°`);
 `hidden`-flagged recipes (dig/mine/
-wheel) are omitted entirely. Expanded-group state persists (`expandedRecipeGroups`); see
+wheel/well draw-water — utility jobs that don't read as crafting) are omitted entirely (`hidden` is
+display-only; the job itself still runs). Expanded-group state persists (`expandedRecipeGroups`); see
 SPEC-data.md for the recipe/process panel data notes. Layout reveals use
 `LayoutUtil.RebuildImmediate` (see above) to avoid the min-height pop.
 
@@ -621,11 +703,16 @@ still hug their text.
 | `Assets/Model/GlobalInventory.cs` | Global quantity totals |
 | `Assets/UI/InfoPanel.cs` | Tabbed info panel container (selection → tabs → sub-views) |
 | `Assets/UI/InfoViews/StructureInfoView.cs` | Structure/blueprint info + enable/disable, priority, worker controls |
-| `Assets/UI/InfoViews/AnimalInfoView.cs` | Single animal info display (spawns SkillDisplay widgets) |
+| `Assets/UI/InfoViews/AnimalInfoView.cs` | Single animal quick-glance info + "details" button → PopulationPanel (skills/deep stats moved to MouseDetailView) |
+| `Assets/UI/PopulationPanel.cs` | Exclusive master-detail panel: one row per mouse (activity bars) + right detail pane; opened from jobs header / info view |
+| `Assets/Components/PopulationRow.cs` | One mouse row (head + name + job + ActivityBar); prefab `Resources/Prefabs/PopulationRow` |
+| `Assets/Components/ActivityBar.cs` | 5-segment recency-weighted time bar (working/walking/leisure/idle/sleep) from `ActivityTracker.Fraction`; per-segment live tooltips |
+| `Assets/Components/SwatchLegend.cs` | Shared swatch+label legend (squares + line markers); self-builds from `ActivityBar`/`InventoryBar` `LegendEntries()` (source enum) — used by the population + inventory panels |
+| `Assets/UI/MouseDetailView.cs` | Population panel's right detail pane: full per-mouse readout (stats, activity, gear, happiness, skills, comfort) in a scroll |
 | `Assets/Components/SkillDisplay.cs` | Skill icon + level + XP bar widget (anchor-based fill, Tooltippable on icon + bar hitbox) |
 | `Assets/Components/FillBar.cs` | Reusable fill bar (0–1 fraction → fillAmount); used by HappinessNeedRow |
 | `Assets/Components/ComfortBar.cs` | Range bar: comfortable band (green) vs stalled (yellow) over a fixed domain + circle marker for current value + hover readout; used by StructureInfoView (plant temp/moisture) and AnimalInfoView (mouse temp) |
 | `Assets/UI/GlobalHappinessPanel.cs` | Exclusive panel: colony happiness overview + per-need breakdown |
 | `Assets/UI/HappinessNeedRow.cs` | One need row: name, count, fill bar, avg value |
 | `Assets/UI/InfoViews/TileInfoView.cs` | Tile-only info (coords, water, floor inv) |
-| `Assets/Model/SelectionContext.cs` | Structured selection data (tile + structures + blueprints + animals) |
+| `Assets/UI/SelectionContext.cs` | Structured selection data (tile + structures + blueprints + animals) |

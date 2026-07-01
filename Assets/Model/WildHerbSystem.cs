@@ -144,6 +144,16 @@ public class WildHerbSystem {
         return true;
     }
 
+    // True if any structure occupies `t` at any depth (building, platform,
+    // foreground, road, shaft, greenhouse frame) — a wild herb here would
+    // visually overlap it, so the tile is ineligible. (Was depth-0 only.)
+    private static bool AnyStruct(Tile t) {
+        if (t == null) return false;
+        for (int d = 0; d < Tile.NumDepths; d++)
+            if (t.structs[d] != null) return true;
+        return false;
+    }
+
     private bool TryFindTile(World world, PlantType type, System.Random r, out int x, out int y) {
         x = y = -1;
         bool wantsWater = type.placement == "water";
@@ -169,7 +179,7 @@ public class WildHerbSystem {
             Tile air = world.GetTileAt(x, gy + 1);
             if (air == null || air.type.solid) return -1;
             if (air.water > 0) return -1;
-            if (air.structs[0] != null) return -1;
+            if (AnyStruct(air)) return -1;               // any structure here would overlap the herb
             if (air.greenhouse != null) return -1;       // greenhouses are for deliberate planting, not wild spawns
             return gy + 1;
         }
@@ -184,7 +194,7 @@ public class WildHerbSystem {
         for (int wy = world.ny - 1; wy >= 0; wy--) {
             Tile t = world.GetTileAt(x, wy);
             if (t == null || t.water < MinLilyWater) continue;
-            if (t.structs[0] != null) return -1;
+            if (AnyStruct(t)) return -1;
             if (t.greenhouse != null) return -1;
             // Surface ponds only — lilies need open sky above, like the decorative flowers.
             // Excludes cave pools (rock overhead). IsExposedAbove is the shared sun/rain gate.

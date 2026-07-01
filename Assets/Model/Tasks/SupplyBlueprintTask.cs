@@ -36,7 +36,14 @@ public class SupplyBlueprintTask : Task {
                 // pathfinding (the most over-target type, nearest preferred — see ResolveConsumeLeaf).
                 // This prevents the animal from collecting a mix of leaf types that would then lock
                 // the blueprint to whichever leaf happens to be delivered first.
-                Item supplyItem = ResolveConsumeLeaf(costItem, excludeLeafIds: blueprint.disallowedLeaves);
+                //
+                // minHaulableFen: only pick a leaf with enough total stock (floor + storage + carried)
+                // to FULLY finish this slot. A partial delivery locks the group cost to a scarce leaf
+                // and strands the build — the bug where haulers trickled in the last apple/oak wood
+                // instead of the abundant pine. When no leaf qualifies we skip the slot; the info
+                // panel flags it "not enough X" (Blueprint.IngredientShort, same stock check).
+                Item supplyItem = ResolveConsumeLeaf(costItem, excludeLeafIds: blueprint.disallowedLeaves, minHaulableFen: needed);
+                if (supplyItem == null) continue; // no leaf can fully supply this slot — try next cost slot
                 (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(supplyItem);
                 if (itemPath == null) continue; // can't find this item — try next cost slot
                 iq = new ItemQuantity(supplyItem, needed);

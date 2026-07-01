@@ -104,6 +104,7 @@ public class SaveMenuPanel : MonoBehaviour {
             SaveSlotEntry entry = go.GetComponent<SaveSlotEntry>();
             if (entry == null) { Debug.LogError("SaveMenuPanel: slotEntryPrefab missing SaveSlotEntry component"); continue; }
             entry.Init(slot, miceCount, startRenaming: slot == startRenamingSlot);
+            entry.SetDate(SaveStore.GetSlotModifiedUnix(slot));
             entries.Add(entry);
         }
         RefreshSyncBadges();
@@ -127,8 +128,8 @@ public class SaveMenuPanel : MonoBehaviour {
     // Returns "<settlement>", "<settlement> 2", etc. — first name with no file on disk.
     // Defaults the base to the settlement name (already slot-safe; "new town" when unnamed)
     // so manual saves are pre-titled after the colony rather than a generic "new save".
-    // Dedups via the space form (not "(2)"): parentheses are outside the cloud slotRe
-    // charset, so a "(2)" name would save locally but silently fail to sync.
+    // Dedups via the space form ("<name> 2"); the parenthesized "(N)" form is reserved for
+    // the autosave counter.
     string GenerateNewSlotName() {
         string baseName = World.instance != null ? World.instance.SettlementDisplayName : "new save";
         return SaveStore.UniqueSlotName(baseName);

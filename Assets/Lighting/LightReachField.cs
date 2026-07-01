@@ -98,18 +98,19 @@ public static class LightReachField {
             }
         }
 
-        // Phase 2 — light visible SOLID faces. A solid cell unreached by the flood, bordering a lit open
-        // cell ACROSS a wall, is that wall's front face: it inherits the open neighbour's distance (+1
-        // tile of normal falloff). Written to a separate buffer so a just-lit face can't chain light
-        // deeper into solid (only the first solid layer lights; everything behind a wall stays dark).
-        // ONLY solid cells inherit — an unreached OPEN cell (e.g. a burrow interior sealed off from the
-        // light by its roof) must stay dark, not face-light through the wall. See class header.
+        // Phase 2 — one-layer face bleed across walls. An unreached cell bordering a lit cell ACROSS a
+        // wall inherits that neighbour's distance (+1 tile of falloff). Written to a separate buffer so
+        // a just-lit face can't chain deeper (only the first layer past a wall lights; everything beyond
+        // stays dark). Two cases this covers: (a) a SOLID cell = the lit front face of rock; (b) an OPEN
+        // cell across a BURROW shell = seepage into/out of a burrow (the only open↔open wall there is).
+        // So a lit burrow glows one tile into the open space around it, and an outside light faintly
+        // kisses a burrow wall — symmetric, soft, and bounded to a single tile.
         if (face == null || face.Length < n) face = new float[n];
         for (int j = 0; j < W; j++)
             for (int i = 0; i < W; i++) {
                 int idx = j * W + i;
                 int wx = cx - R + i, wy = cy - R + j;
-                if (dist[idx] != float.MaxValue || Passable(wf, wx, wy)) { face[idx] = dist[idx]; continue; }
+                if (dist[idx] != float.MaxValue) { face[idx] = dist[idx]; continue; }
                 float best = float.MaxValue;
                 if (i > 0)     best = InheritFace(best, dist[j * W + i - 1],       wf, wx - 1, wy, wx, wy);
                 if (i < W - 1) best = InheritFace(best, dist[j * W + i + 1],       wf, wx + 1, wy, wx, wy);

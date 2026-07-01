@@ -30,9 +30,7 @@ Any  → Falling (involuntary; interrupts current task) → Idle on landing
 
 **Needs tick wall-clock; only work ticks on efficiency.** Need depletion *and* recovery (hunger, sleep) run every tick in `Animal.HandleNeeds()`, independent of efficiency. The energy/efficiency throttle (`energy += efficiency; if (energy > 1) UpdateState()`) paces only *work* — craft/build/harvest/research progress, and the per-sleep-tick events in `HandleEeping` (reproduction roll, wake-up check). Sleep **recovery** must stay in `HandleNeeds`. Driving it from the throttled path would scale recovery with efficiency while depletion stays unthrottled. A low-efficiency mouse (hungry + exhausted) would then lose eep faster than it regains it and never wake — a death spiral that locks the whole colony. Do not move `eeping.Eep()` back into `HandleEeping`.
 
-**Colony rescue spawn.** `AnimalController.MaybeRescueSpawn()` (called after `RemoveDeadAnimals()`) prevents a starvation softlock: if `na < 4` and the current season is not Winter, the colony is topped back up to 4 — typically 1–2 mice after a death or two. New arrivals spawn at the first `isHousing` building it finds — or, if none exist, at the left surface edge (`x=1, y=surfaceY[1]`; `x=0` is the worldgen market column). A 120-frame cooldown gates the trigger so the same drop doesn't re-fire while the queued animals are still registering (Animal.Start runs the frame after AddAnimal). Winter is excluded so the player isn't handed a relief wave during the lean season; help comes in spring/summer/fall.
-
-**Starvation death.** A mouse whose `food` hits 0 starts a countdown: `Eating.starvingTicks` is incremented every tick `Eating.Update()` finds food at 0, and reset to 0 by `Eat()` or any tick with food remaining. Once it reaches `World.ticksInDay` — a full in-game day at zero food — `Eating.StarvedToDeath()` trips and `Animal.TickUpdate()` sets the transient `pendingDeath` flag (skipping the rest of that mouse's tick). `AnimalController.RemoveDeadAnimals()`, run once **after** the per-animal tick loop so `animals[]` is never compacted mid-iteration, sweeps for the flag and calls `HandleDeath`: it posts an EventFeed alert, drops the mouse's inventory + all four equip slots to the floor via `Animal.DropInventoryToFloor()` (recoverable by the player), fixes the job count, deselects the InfoPanel if it was showing the mouse, and tears the mouse down via `Animal.Destroy()` — which now also releases the home reservation and destroys the equip-slot inventories. A separate EventFeed warning fires the moment the countdown first starts (`starvingTicks == 1`). With the default `hungerRate` it takes a couple in-game days from a full belly to death. `starvingTicks` is persisted in `AnimalSaveData` (0 on old saves = not starving).
+**Starvation death.** A mouse whose `food` hits 0 starts a countdown: `Eating.starvingTicks` is incremented every tick `Eating.Update()` finds food at 0, and reset to 0 by `Eat()` or any tick with food remaining. Once it reaches `World.ticksInDay` — a full in-game day at zero food — `Eating.StarvedToDeath()` trips and `Animal.TickUpdate()` sets the transient `pendingDeath` flag (skipping the rest of that mouse's tick). `AnimalController.RemoveDeadAnimals()`, run once **after** the per-animal tick loop so `animals[]` is never compacted mid-iteration, sweeps for the flag and calls `HandleDeath`: it posts an EventFeed alert, drops the mouse's inventory + all five equip slots to the floor via `Animal.DropInventoryToFloor()` (recoverable by the player), fixes the job count, deselects the InfoPanel if it was showing the mouse, and tears the mouse down via `Animal.Destroy()` — which now also releases the home reservation and destroys the equip-slot inventories. A separate EventFeed warning fires the moment the countdown first starts (`starvingTicks == 1`). With the default `hungerRate` it takes a couple in-game days from a full belly to death. `starvingTicks` is persisted in `AnimalSaveData` (0 on old saves = not starving).
 
 ### Happiness satisfactions
 
@@ -45,7 +43,7 @@ Any  → Falling (involuntary; interrupts current task) → Idle on landing
 | Leisure buildings | `StructType.leisureNeed` | fireplace → "fireplace" |
 | ChatTask (hardcoded) | — | "social" |
 
-Each satisfaction decays exponentially each SlowUpdate (`×0.9044`). Score = sum over satisfied needs (≥1.0 threshold) — `+1` each, except `"alcohol"` which is `+2` (a satisfied tipple is worth more than a tidy bench) — plus housing (bool) + temperature (−1/5°C to +2) + **colony food-storage bonus** (0..4, scales linearly with days-of-food up to 10 days; same value applied to every mouse). `Db.happinessMaxScore` = need count + 1 (housing) + 2 (temp max) + 4 (food storage) + 1 (alcohol's extra point above, added when the need is registered) + ceil(maxFurnishingPerMouse).
+Each satisfaction decays exponentially each SlowUpdate (`(1 - decayPerTick)^10`, i.e. slowly — a few percent per SlowUpdate). Score = sum over satisfied needs (≥1.0 threshold) — `+1` each, except `"alcohol"` which is `+2` (a satisfied tipple is worth more than a tidy bench) — plus housing (bool) + temperature (−1/5°C to +2) + **colony food-storage bonus** (0..4, scales linearly with days-of-food up to 10 days; same value applied to every mouse). `Db.happinessMaxScore` = need count + 1 (housing) + 2 (temp max) + 4 (food storage) + 1 (alcohol's extra point above, added when the need is registered) + ceil(maxFurnishingPerMouse).
 
 **Colony food-storage bonus.** `AnimalController.UpdateColonyStats` (every 10 ticks) recomputes `daysOfFoodInStorage = Σ (qty_fen/100 × foodValue) / (hungerRate × ticksInDay × na)` over `Db.edibleItems`, then sets `foodStorageHappinessBonus = clamp01(days/10) × 4`. `Happiness.SlowUpdate` reads the field and adds it to each mouse's score uniformly — it's a colony-level pressure, not per-mouse. The same `daysOfFoodInStorage` field drives the reproduction gate in `HandleEeping`: hard floor at 2 days (no births), then linear taper `× clamp(days/10)` on the per-sleep-tick birth chance up to full rate at 10 days. Births also require `na < populationCapacity` **and** a free housing slot (`na < totalHousingCapacity`). **Early-growth boost:** the first `AnimalController.EarlyBirthBoostBirths` (2) births — the starting colony's 4→6 — roll at 2× chance, gated on the cumulative `AnimalController.births` counter (persisted in `WorldSaveData.births`; reset to 0 on a fresh world, restored as boost-spent on pre-feature saves). It's keyed off births-ever, so it's strictly the first two births, not "while pop < 6".
 
@@ -195,11 +193,18 @@ Tasks reserve sources and destinations during `Initialize()` via `Task.ReserveSt
 | `WorkProcessorTask` | WOM p3 | operator¹ | **Tended processors only** (cauldron). Walks to the work-spot and labours on the locked-in batch; `progress` accrues in `HandleWorking` (no per-round consume — the conversion is the single `Tap()`), and on reaching `duration` it **auto-taps** + registers haul-out. WOM `WorkProcessor` order, `isActive` while `Working`. |
 | `TapProcessorTask` | WOM p3 | operator¹ | **Untended processors only** (brewery). Walks to a building whose `Processor` finished fermenting (`Ready`), taps it (`Processor.Tap()` → `Tapped`), and registers haul-out orders. WOM `TapProcessor` order, `isActive` while `Ready`. |
 | `MaintenanceTask` | WOM p2 | mender | Fetch repair materials (¼ × build cost, scaled by repair amount) → walk to the repair spot → `MaintenanceObjective` ticks up `condition` by 0.05 × efficiency per tick, capped at +40 % per visit. Grants Construction XP. **Repair spot**: structures with an interior layer (burrows, doored housing) are mended from *inside* — the mender enters via an interior node, same as occupants do in `EepTask`; their work tile sits in solid ground with no standable neighbour so outside-adjacency would never reach them. All others are mended from a standable tile adjacent to the work tile. See SPEC-systems.md §Maintenance System. |
+| `FeedFoundryTask` | WOM p3 | smith | Haul a target-consistent ore to a foundry's intake (swept into a melt chunk by `Foundry.Tick`). Single fetch→deliver; the cast target (not an allow-set) decides which ore is wanted, balanced by `ChooseFeedOre`. `isActive` off when the foundry is full or has no cast target. Carries `FoundryEconomicBonus` urgency. |
+| `CastFoundryTask` | WOM p3 | smith | Pour a foundry's castable molten into its output, then register eviction hauls to storage. Plain bars for leftover/inconsistent molten; for a tool cast target, fetch enough molds + planks to pour the whole batch in one trip, then cast in `Complete`. No reservation on the foundry (liveness re-checked in `Complete`, like `TapProcessorTask`). |
+| `SupplyFuelTask` | WOM p3 (`SupplyBuilding`) | hauler (smith for foundries) | Haul fuel items (torch wood, foundry fuel) into a building's `Reservoir`; `isActive` off once fuel ≥ target. |
+| `SupplyFurnishingTask` | WOM p4 | hauler | Haul one furnishing item from floor/storage into an empty `FurnishingSlots` slot on a house. Reserves one furnishing's worth (`Item.furnishingCostFen`) on both source stack and slot; `isActive` off while no slot is haulable. On `Complete` notifies the slot so happiness + visuals refresh. |
+| `DrawWaterTask` | craft layer | hauler | Draw water from a well: walk to the wellhead, lower the bucket to the water surface, raise ~5 liang, haul it to storage. Dispatched via `Animal.ChooseCraftTask` like the pump (competes for water demand), but the draw time scales with depth via the Well's per-tick state machine rather than a fixed workload. |
+| `ConsolidateTask` | WOM p1/p3 | hauler | The Haul order's fallback when no storage path exists: merge a specific floor stack into an existing same-item floor pile instead. Uses destination reservation. |
+| `ResumeTravelTask` | load-only | merchant | Created on load to finish an interrupted `TravelingObjective` (a merchant mid-market-trip). On completion the animal idles at x=0 and WOM assigns fresh work. See SPEC-trading.md. |
 
 ¹ *operator* = `WorkOrderManager.JobOperatesProcessor`: any animal whose job owns a recipe for this building (cook for the brewery, apothecary for the cauldron) — not a hardcoded job.
 
 **Objectives (atomic steps):**
-`GoObjective`, `FetchObjective`, `DeliverObjective`, `DeliverToBlueprintObjective`, `DeliverToInventoryObjective`, `ReceiveFromInventoryObjective`, `WorkObjective`, `WorkProcessorObjective`, `HarvestObjective`, `WaterObjective`, `ConstructObjective`, `EepObjective`, `DropObjective`, `ResearchObjective`, `LeisureObjective`, `MaintenanceObjective`, `UnequipObjective`
+`GoObjective`, `FetchObjective`, `DeliverObjective`, `DeliverToBlueprintObjective`, `DeliverToInventoryObjective`, `ReceiveFromInventoryObjective`, `WorkObjective`, `WorkProcessorObjective`, `HarvestObjective`, `WaterObjective`, `DrawWaterObjective`, `ConstructObjective`, `EepObjective`, `DropObjective`, `ResearchObjective`, `LeisureObjective`, `ChatObjective`, `MaintenanceObjective`, `TravelingObjective`, `UnequipObjective`
 
 **`FetchObjective` behaviour:**
 - Navigates to a source tile and picks up `iq.quantity` of an item into the animal's inventory (or an equip slot if `targetInv` is set).
@@ -312,6 +317,24 @@ At full efficiency with a tool (1.25× base), an animal gains 0.125 XP/tick. Lev
 
 ---
 
+## Activity tracking (job-load metric)
+
+Each mouse carries `Animal.activity` (`ActivityTracker`, `Assets/Model/Animal/Activity.cs`) — a
+**recency-weighted** record of how it's spent its time lately, grouped into five `ActivityGroup`
+buckets (working / walking / leisure / idle / sleep; `GroupFor` maps the 7 `AnimalState`s, folding
+Traveling→walking and Falling→idle). Drives the population panel's per-mouse bar + detail readout
+(SPEC-ui §Population panel).
+
+- **Decaying occupancy, NOT lifetime.** Ticked every tick (wall-clock) at the top of
+  `Animal.TickUpdate` — decay all buckets, add to the current state's. ~2 in-game-day half-life. The
+  buckets self-normalize (Σ≈1), so `Fraction(g)` is directly that group's share of recent time. Full
+  rationale in the `Activity.cs` header; don't duplicate it here.
+- **Save:** `AnimalSaveData.activity` (`float[]`, null on old saves → stays zero and re-warms over a
+  day or two). Gathered in `SaveSystem.GatherAnimal`, restored in `Animal.Start`'s load branch — same
+  null-safe, length-clamped pattern as skills. Covered by `ActivityTrackerTests`.
+
+---
+
 ## WorkOrderManager
 
 `WorkOrderManager` (singleton MonoBehaviour) is the central registry of pending work. Orders are stored as `List<WorkOrder>[] orders` — four lists, one per priority tier (index = priority - 1), FIFO within each tier.
@@ -326,7 +349,7 @@ Player-adjustable workstation slot count flows: `Building.workstation.workerLimi
 |----------|-------------|
 | 1 | Haul unblocking a pending deconstruct |
 | 2 | Construct, SupplyBlueprint, Deconstruct, Harvest, Maintenance |
-| 3 | Haul (floor items + storage evictions), HaulToMarket, HaulFromMarket, Craft, Water, Research |
+| 3 | Haul (floor items + storage evictions), HaulToMarket, HaulFromMarket, Craft, Water, Research, SupplyBuilding (fuel), FillProcessor, TapProcessor, WorkProcessor, FeedFoundry, CastFoundry |
 | 4 | SupplyFurnishing |
 
 Tier-by-tier dispatch (`ChooseOrder(1→2→3→4)`) means a higher tier is tried in full before a lower one, so a job's own work must not sit *below* the open-to-all haul tier or hauls drain that job onto floor clutter. The `NonHaulerHaulPenalty` (> max proximity) only ranks *within* a tier, never across — so the rule is: every job's primary work lives at p3 or above, alongside hauls, where the penalty makes it a hard within-tier winner. Two consequences:
@@ -351,6 +374,10 @@ Orders are created once when the need first arises and removed only when the nee
 | `HaulFromMarket` | `UpdateMarketOrders` sees item above target | `UpdateMarketOrders` sees excess cleared |
 | `Research` | Lab placed | Lab deconstructed |
 | `Craft` | `isWorkstation` building placed (via `RegisterWorkstation`) | Building deconstructed |
+| `SupplyBuilding` (fuel) | Building with a fuel `Reservoir` placed (`RegisterFuelSupply`); `isActive` while fuel < target | Building deconstructed |
+| `SupplyFurnishing` | House with `FurnishingSlots` placed (`RegisterFurnishingSupply`); `isActive` while a slot is haulable | Building deconstructed |
+| `FillProcessor` / `TapProcessor` / `WorkProcessor` | `Processor` building placed (`RegisterOrdersFor`); gated by processor state (`Empty` / `Ready` / `Working` — tap vs work self-skip by tended-ness) | Building deconstructed |
+| `FeedFoundry` / `CastFoundry` | `Foundry` placed; `isActive` on a cast target present / castable molten present | Foundry deconstructed |
 | `Maintenance` | Structure's `condition` drops below `RegisterThreshold` (0.75) — registered by `MaintenanceSystem` on first downward crossing, or by `Reconcile`/`ScanOrders` at load. `isActive = () => s.WantsMaintenance` suppresses when fully repaired (no removal/churn on every decay tick). | Structure destroyed (`RemoveMaintenanceOrders` from `Structure.Destroy()`) |
 
 Exact eager-removal hook sites live in code comments next to the relevant `Remove*` call — check them before editing. Research and Harvest orders are **per-source** (one per lab/plant, keyed by `o.tile`); `ResearchTask` is constructed with the specific `Building lab` so it doesn't re-pathfind at init.
@@ -403,7 +430,7 @@ Both reconciliation and auditing are handled by a single `ScanOrders(mode, silen
 
 `Task.MinHaulQuantity = 20` (0.20 liang). A move is skipped if it's below this threshold **and** wouldn't take the whole amount in play (drain the source stack / fit the entire carried load). This rule is centralised in `Task.MeetsHaulMinimum(amount, wholeAmount)` — every haul / consolidate / fuel / drop-target site (`HaulTask`, `ConsolidateTask`, `SupplyFuelTask`, `Nav.FindPathToDrop` / `FindPathToDropTarget` / `FindFloorConsolidation`) tests through it, so the threshold stays consistent. Use it rather than re-inlining the comparison.
 
-`Task.MinMarketHaulQuantity = 100` (1.0 liang). `HaulToMarketTask` and `HaulFromMarketTask` use this stricter threshold with **no exceptions** — not for stack-clearing or topping off. Merchants shouldn't make a trip for a trickle.
+`Task.MinMarketHaulQuantity = 100` (1.0 liang), with a per-item override `MinMarketHaulQuantitySilver = 40` (0.4 liang — silver moves in smaller amounts), selected by the `Task.MinMarketHaul(item)` helper. `HaulToMarketTask` and `HaulFromMarketTask` use this stricter threshold (no stack-clearing or topping-off exception). Merchants shouldn't make a trip for a trickle.
 
 ### Blueprint stacking & suspension
 

@@ -10,8 +10,9 @@ using UnityEngine;
 // itself is a slow Ornstein-Uhlenbeck walk reverting toward `humidityMean`,
 // stepped 3× per in-game hour and smoothed continuously toward the target.
 // The walk is calibrated so the smoothed humidity sits above the rain
-// threshold ≈9% of the time (≈0.8 rain episodes/in-game-day, ~3 hr each;
-// Monte-Carlo verified). CloudLayer also reads `humidity` to drive cloud count, size, altitude
+// threshold ≈11% of the time (≈1 rain episode/in-game-day, ~3 hr each; estimate
+// after lowering the threshold to 0.67 from the Monte-Carlo-verified ≈9% at
+// 0.7). CloudLayer also reads `humidity` to drive cloud count, size, altitude
 // and tint, so the sky visually builds up before rain and clears after.
 //
 // Precipitation intensity is a smooth function of humidity (see ComputeWetness):
@@ -130,12 +131,12 @@ public class WeatherSystem {
     // Midpoint of the precipitation lerp band — also where the discrete
     // `isRaining` boolean flips. With humidityMean=0.5 and the shock params
     // below, the walk's stationary std is ~0.21, putting the threshold
-    // about 0.95σ above mean. Light drizzle starts below this (see lerp band).
-    public const float rainThreshold = 0.7f;
+    // about 0.8σ above mean. Light drizzle starts below this (see lerp band).
+    public const float rainThreshold = 0.67f;
 
     // Half-width of the humidity band over which rainAmount/snowAmount lerp
-    // from 0 → 1. Below (rainThreshold − rainLerpHalfRange = 0.6) no particles;
-    // above (rainThreshold + rainLerpHalfRange = 0.8) full intensity. Most
+    // from 0 → 1. Below (rainThreshold − rainLerpHalfRange = 0.57) no particles;
+    // above (rainThreshold + rainLerpHalfRange = 0.77) full intensity. Most
     // rain-driven effects (drain, replenish, tank fill, floor soak) scale
     // their magnitude by the resulting wetness so light drizzle has light
     // effects and heavy rain has heavy effects — no on/off cliff at the
@@ -150,10 +151,11 @@ public class WeatherSystem {
     // Shock half-width sets the stationary variance V = h²/(6λ) of the OU
     // target. Set slightly above the bare √reversion calibration (≈0.1162)
     // to offset the variance that the humidity low-pass below removes — so
-    // the *smoothed* humidity keeps std ≈ 0.22 and the 0.7 threshold stays
-    // ~0.9σ above mean. Long-run rain fraction ≈ 9% of the time (Monte-Carlo
-    // verified); raise this in lockstep if humiditySmoothingRate is lowered
-    // further, or rain thins out.
+    // the *smoothed* humidity keeps std ≈ 0.22 and the 0.67 threshold stays
+    // ~0.8σ above mean. Long-run rain fraction ≈ 11% of the time (estimated
+    // from the σ shift after lowering the threshold from 0.7, where Monte-Carlo
+    // gave ≈ 9% — not re-verified); raise this in lockstep if
+    // humiditySmoothingRate is lowered further, or rain thins out.
     const float humidityShock     = 0.121f;
 
     // Subtracted from `targetHumidity` each sub-step, scaled by current

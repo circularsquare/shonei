@@ -110,7 +110,9 @@ public class TradingClient : MonoBehaviour {
     }
 
     void HandleMessage(string raw) {
-        Debug.Log("Server: " + raw);
+        // Per-message server traffic is intentionally not logged — it's high-volume and the
+        // server has been stable. Re-enable this line if debugging the wire protocol.
+        // Debug.Log("Server: " + raw);
         var env = JsonUtility.FromJson<Envelope>(raw);
         switch (env.type) {
             case "market_response":

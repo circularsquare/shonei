@@ -102,6 +102,7 @@ public class Foundry : Building {
         ls.innerRadius    = st.lightInnerRadius;
         ls.centerFlatten  = st.lightCenterFlatten;
         ls.flickerAmount  = st.lightFlicker;
+        ls.emissionMult   = st.emissionStrength;
         ls.flickerPhase   = x * 0.37f + y * 0.71f; // decorrelate neighbours, deterministic
         ls.lightColor     = new Color(1f, 0.5f, 0.18f); // warm orange firebox
         ls.building       = this;

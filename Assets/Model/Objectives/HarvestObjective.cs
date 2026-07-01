@@ -18,4 +18,8 @@ public class HarvestObjective : Objective {
         animal.state = Animal.AnimalState.Working;
         // AnimalStateManager.HandleWorking calls task.Complete() when harvesting finishes.
     }
+    // Turn the harvester's back to the camera — a visual cue that farm work is happening
+    // (shared by the till/water/plant objectives). Unconditional: the farmer works the plant
+    // at their feet, so unlike construction there's no adjacent-tile side-view case.
+    public override string ViewOverride => "back";
 }

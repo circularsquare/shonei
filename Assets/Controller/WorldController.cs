@@ -107,10 +107,11 @@ public class WorldController : MonoBehaviour {
         var bgtmc = gameObject.AddComponent<BackgroundTileMeshController>();
         bgtmc.Initialize(world, tilesTransform, chunkedTileMaterial, BackgroundChunkLayerName);
 
-        // Decorative flowers — scattered across grass-topped tiles. No save
-        // state of its own (deterministic from world seed). Subscribes per-tile
-        // overlay / snow callbacks on first OnWorldReady so the spawn set stays
-        // current as grass grows, dies, snows over, etc. See FlowerController.cs.
+        // Decorative flowers — scattered across grass-topped tiles, then a
+        // persisted layer (saved/restored, removed only when its host tile is
+        // mined or built over). Surface variants also live a seasonal cycle:
+        // out of season they die back, in season they re-seed up to a per-species
+        // cap (FlowerController.OnHourElapsed). See FlowerController.cs.
         gameObject.AddComponent<FlowerController>();
 
         for (int x = 0; x < world.nx; x++){
@@ -284,11 +285,13 @@ public class WorldController : MonoBehaviour {
         //    appear as ghost walls in sky columns.
         WaterController.instance?.ClearWater();
         MoistureSystem.instance?.Clear();
+        FootTrafficSystem.instance?.Clear();
         for (int x = 0; x < world.nx; x++) {
             for (int y = 0; y < world.ny; y++) {
                 Tile tile = world.GetTileAt(x, y);
                 tile.type = Db.tileTypeByName["empty"];
-                tile.backgroundType = BackgroundType.None;
+                tile.backgroundTile = null;
+                tile.backgroundQuarriedOut = false;
                 tile.overlayMask = 0; // belt-and-braces; the type setter also clears it on dirt→empty
             }
         }

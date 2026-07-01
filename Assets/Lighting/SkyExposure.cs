@@ -20,9 +20,9 @@ public class SkyExposure : MonoBehaviour {
     [Tooltip("How far (tiles) sky light travels down OPEN passages — caves, tunnels, burrow doors — " +
              "falling off with depth, so an opening admits a little light. 0 disables. Separate from " +
              "penetrationDepth (how far sky penetrates SOLID terrain, kept tight).")]
-    [SerializeField] float openLightReach = 5f;
+    [SerializeField] float openLightReach = 1.65f;
     [Tooltip("Overall strength of open-passage light (0-1). Lower = subtler seep into caves/burrows.")]
-    [Range(0f, 1f)] [SerializeField] float openLightStrength = 1f;
+    [Range(0f, 1f)] [SerializeField] float openLightStrength = 0.7f;
 
     // Falloff distance read from LightFeature.penetrationDepth (unified with the
     // sub-tile edge-depth baked into tile normal maps by TileSpriteCache).

@@ -14,7 +14,7 @@ If you're adding a building, recipe, item, job, plant, research node, exclusive 
 - [ ] **`id` falls in the right range** for its category (see ID-range table in SPEC-data.md). Keep entries ordered.
 - [ ] **Costs in liang** (float), not fen. `{ "name": "wood", "quantity": 3 }` = 3 liang.
 - [ ] **Group vs leaf item in costs.** `"wood"` is a wildcard accepting any wood-type leaf; `"oak planks"` is a specific leaf. Pick deliberately. (Group items are never physical — see SPEC-data.md.)
-- [ ] **`category` must be `"storage"` / `"structures"` / `"tiles"` / `"production"`** — any other value silently hides the building from the build menu.
+- [ ] **`category` must be `"tiles"` / `"structures"` / `"production"` / `"storage"` / `"housing"`** (plant types auto-route to `"plants"`) — any other value silently hides the building from the build menu.
 - [ ] **`depth`, `solidTop`** copied from a similar building rather than guessed.
 - [ ] **Placement constraints** go in `tileRequirements`, not freeform fields. (Water under windmill, dirt-bank for burrow, etc.)
 - [ ] **`requiredTileName` matches tile name OR group** (e.g. `"stone"` accepts limestone, granite, slate via `TileType.group`).
@@ -126,6 +126,7 @@ For *per-need* contributors (food items, decoration/leisure buildings) just set 
 - [ ] **Follow the checklist comment at the top of [SaveSystem.cs](../Controller/SaveSystem.cs)** — it lists the exact Gather/Restore/Reset call sites to hit.
 - [ ] **Restore order matters.** Anything that depends on animals being fully constructed goes in `PostLoadInit` (frame 2+), not the synchronous restore phase.
 - [ ] **Bump `saveVersion` only for non-additive changes** (renames, removals, semantic shifts). Pure additions are forward-compatible.
+- [ ] **New per-`ItemStack` save field?** Restore it in **all three** restore paths, not just one: `RestoreInventory` (floor) and `RestoreStructure` (storage) assign by index, but `LoadInventory` (equip slots) is `Produce`-based and easy to miss. The equip-slot `decayCounter` was silently dropped on load for exactly this reason — saved correctly, never restored, so tool/clothing wear reset every load.
 
 ---
 

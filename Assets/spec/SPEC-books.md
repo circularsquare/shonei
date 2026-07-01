@@ -5,7 +5,7 @@ Books are discrete, durable items that scribes write at scriptoriums and store i
 - **Tech books** — one per research tech, generated at runtime. Scientists carry one matching their current study target for a 3× research-progress multiplier.
 - **Fiction book** — one hand-authored entry. Mice carry it during leisure to read it for "reading" satisfaction.
 
-Both kinds share a single sprite (`Sprites/Items/split/books/icon`) and one shelf type. Decay rate is 0.3 (time-based, like clothing), with the standard per-inv-type multipliers (Floor 5×, Storage/Equip 1×, Animal/Market/Blueprint 0×) — so a shelved book lasts ~80 in-game days, a floored one ~16. Books are slow to write (a long tended-processor batch — see "Recipe generation") and correspondingly slow to decay.
+Both kinds share a single sprite (`Sprites/Items/split/books/icon`) and one shelf type. Passive `decayRate` is 0.3 (time-based, like clothing), with the standard per-inv-type multipliers (Floor 5×, Storage/Equip 1×, Animal/Market/Blueprint 0×) — so a shelved book lasts ~80 in-game days, a floored one ~16. Books also carry `equipDecayRate` 1.0: a tech book wears with *use* as a scientist studies with it (research is the Working state; fiction reading is leisure, so the fiction book doesn't wear from use). See SPEC-systems §Equip decay.
 
 ## Item class system
 
@@ -27,7 +27,7 @@ The previously-bool `Item.isLiquid` and `StructType.liquidStorage` were generali
 
 ## Item generation
 
-`itemsDb.json` declares the `book` group at id 300 with a single static child `fiction_book` (id 301). The group carries `decayRate: 0.3`, `discrete: true`, `itemClass: "book"` — children inherit all three.
+`itemsDb.json` declares the `book` group at id 300 with a single static child `fiction_book` (id 301). The group carries `decayRate: 0.3`, `equipDecayRate: 1.0`, `discrete: true`, `itemClass: "book"` — children inherit all four. The JSON child-inheritance loop in `AddItemToDb` copies `equipDecayRate` (alongside `decayRate` etc.), and `GenerateBookItems` replicates the same for runtime tech books.
 
 At startup, `Db.GenerateBookItems()` (called from `Db.Awake` between `ReadJson` and the `itemsFlat` trim):
 
@@ -48,6 +48,8 @@ Books are **tended-processor batches**, not instant crafts — they take a long 
 - Stores the mapping in `Db.bookRecipeIdByTechId`.
 
 The fiction book recipe is hand-authored in `recipesDb.json` (id 30) with a `duration` (no `workload`/`maxRoundsPerTask`), so `ReadJson` auto-buckets it as a scriptorium processor recipe.
+
+All book recipes carry `skill: "scholarship"` — generated recipes set it explicitly in `GenerateBookRecipes`; the fiction book inherits it from the `scribe` job's `defaultSkill` (the generated ones bypass that backfill, so they must set it themselves). The scriptorium is a **tended** processor, whose work advances by `workEfficiency` (= `GetWorkMultiplier`, which folds in the skill bonus *and* the scholar's cloth hat), so writing speed — and the scribe's Scholarship XP — scale with Scholarship. (Untended processors like the brewery advance via a passive `Rate × seconds` countdown and are unaffected by any `skill` tag.)
 
 ## Tech-gated unlocks (runtime injection)
 
@@ -117,6 +119,8 @@ if (animal.task is ReadBookTask) {
 ```
 
 Mirrors the chat per-tick pattern (0.2 social/tick × 10 ticks = 2.0 total). The `"reading"` need is registered as a hardcoded happiness need in `Db.BuildHappinessNeedRegistry` (no leisure building backs it, so the data-driven scan won't pick it up).
+
+Reading speed scales with Scholarship: `HandleLeisure` advances `ReadBookTask` by `GetWorkMultiplier(animal, Skill.Scholarship)` (not a flat 1×) and scales the per-tick grant by the same rate — so a skilled reader (or one in a cloth hat) finishes faster while the total reading-happiness stays 2.0. Scaling both keeps speed a perk, not a penalty (fewer ticks × a bigger grant = unchanged total).
 
 ## Production gating
 

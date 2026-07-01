@@ -36,7 +36,7 @@ Assets/
 │   └── Inventory/     Inventory, GlobalInventory, ItemStack, Item
 ├── Components/    Single-purpose MonoBehaviours: UI widgets (FillBar, ItemIcon) and building-attached visuals (RotatingPart, PortStubVisuals)
 ├── UI/            Panels, displays, tooltip system, InfoViews/ for the tabbed InfoPanel
-├── Lighting/      Custom ScriptableRendererFeature lighting pipeline (shaders + SkyExposure + BackgroundTile)
+├── Lighting/      Custom ScriptableRendererFeature lighting pipeline (shaders + SkyExposure + BackgroundLayer)
 ├── Editor/        Editor-only tools (sheet splitters, sprite normal map generator)
 └── Resources/
     ├── *.json         Game content (buildings, items, recipes, jobs, plants, research)
@@ -118,8 +118,8 @@ When adding new content, read these files first and match their pattern:
 
 | Adding... | Model after | Key file(s) |
 |-----------|-------------|-------------|
-| New Task type | `HaulTask` (simple) or `CraftTask` (complex) | `Assets/Model/Tasks/` (base in `Task.cs`) — also see 11-step checklist in SPEC-ai.md |
-| New Objective | `FetchObjective` (retry) or `WorkObjective` (simple) | `Assets/Model/Objectives/` (base in `Objective.cs`) |
+| New Task type | `HaulTask` (simple) or `CraftTask` (complex) | concrete tasks in `Assets/Model/Tasks/`; base `Task.cs` in `Assets/Model/` — also see 11-step checklist in SPEC-ai.md |
+| New Objective | `FetchObjective` (retry) or `WorkObjective` (simple) | concrete objectives in `Assets/Model/Objectives/`; base `Objective.cs` in `Assets/Model/` |
 | New WOM order type | `RegisterConstructOrder` / `RegisterWorkstation` | `WorkOrderManager.cs` + SPEC-ai.md checklist |
 | New Building subclass | `PumpBuilding` | `Assets/Model/Structure/PumpBuilding.cs` + `Structure.Create` in `Structure.cs` |
 | New UI panel (exclusive) | `ResearchPanel` | `Assets/UI/ResearchPanel.cs` |

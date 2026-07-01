@@ -270,6 +270,10 @@ public class Blueprint {
 
         StructController.instance.AddBlueprint(this);
         if (autoRegister) {
+            // Till-requiring crops queue a Till order on the dirt below (no-op otherwise). The
+            // Supply/Construct order registered below stays suppressed (ConditionsMet → TillReady)
+            // until a farmer tills it.
+            WorkOrderManager.instance?.RegisterTill(this);
             if (costs.Length == 0) {
                 state = BlueprintState.Constructing;
                 if (!IsSuspended())
@@ -398,6 +402,10 @@ public class Blueprint {
     // re-enabling a blueprint.
     public void RegisterOrdersIfUnsuspended() {
         if (IsSuspended() || cancelled || disabled) return;
+        // Till-requiring crops queue a Till order on the dirt below (no-op otherwise). The
+        // Supply/Construct orders register below too but stay suppressed (ConditionsMet → TillReady)
+        // until a farmer tills it.
+        WorkOrderManager.instance?.RegisterTill(this);
         if (state == BlueprintState.Receiving) {
             // After save/load, LockGroupCostsAfterDelivery() is not re-run so cost.item reverts to
             // the group ("wood"). IsFullyDelivered() uses MatchesItem so it still works correctly.
@@ -418,7 +426,18 @@ public class Blueprint {
     // is live iff `!disabled && ConditionsMet()`). For blueprints, the only runtime condition is
     // non-suspension. IsSuspended remains the named predicate for blueprint-specific paths (UI
     // tinting, RegisterOrdersIfUnsuspended) where the reason is clearer than the abstract gate.
-    public bool ConditionsMet() => !IsSuspended();
+    public bool ConditionsMet() => !IsSuspended() && TillReady();
+
+    // Till-requiring crops (wheat/rice/soybean) can't be supplied or built until a farmer has
+    // tilled the dirt below — a separate Till order (registered alongside) flips soil.tilled.
+    // Gated here rather than in IsSuspended on purpose: the Construct/Supply orders still REGISTER
+    // at placement (IsSuspended stays false), then self-suppress via isActive=ConditionsMet until
+    // tilled, so they auto-activate the moment the till lands with no re-registration.
+    bool TillReady() {
+        if (!(structType is PlantType pt) || !pt.requiresTill) return true;
+        Tile soil = World.instance?.GetTileAt(tile.x, tile.y - 1);
+        return soil != null && soil.tilled;
+    }
 
     // True when this blueprint is waiting for world conditions to be met before it can be worked on.
     // Suspended blueprints are placed validly but mice should not supply or construct them yet.
@@ -438,11 +457,11 @@ public class Blueprint {
         if (structType.isTile || structType.OccupiesSolidTile)
             return false;
 
-        // Side-mounted structures (ladder_side, bracket) lean on a wall, not a floor, so they
-        // bypass the bottom-row support check entirely. Support is the mounting wall, validated
-        // by the SAME predicate placement uses — suspended only if that wall is gone.
-        if (structType.sideMounted)
-            return !StructPlacement.SideMountWallPresent(tile, mirrored);
+        // Mounted structures (side: ladder_side/bracket/torch_side; ceiling: lantern) hang on a
+        // surface, not a floor, so they bypass the bottom-row support check entirely. Support is the
+        // mount surface, validated by the SAME predicate placement uses — suspended only if it's gone.
+        if (structType.isMounted)
+            return !StructPlacement.MountSurfacePresent(tile, structType.mountTo, mirrored);
 
         // Suspension re-checks only the SUPPORT-relevant tile requirements (standable / water /
         // solid). The placement-only flags — mustBeEmpty, mustNotBePlant, mustBeOpenSkyAbove, and the
@@ -610,6 +629,67 @@ public class Blueprint {
         return true;
     }
 
+    // Amount of cost slot `i` still outstanding (already-delivered subtracted; never negative).
+    public int RemainingNeed(int i) => Math.Max(0, costs[i].quantity - inv.Quantity(costs[i].item));
+
+    // The concrete leaves that may still be delivered into cost slot `i`. A leaf cost yields just
+    // itself; a group cost (e.g. "wood") yields its leaf descendants minus this blueprint's banned
+    // variants and any leaf flagged excludeFromGroupInput (e.g. gypsum for "stone"). Mirrors the
+    // filter in Task.ResolveConsumeLeaf so the supply gate and the shortage alert see the same set.
+    public IEnumerable<Item> AllowedLeaves(int i) {
+        Item costItem = costs[i].item;
+        if (!costItem.IsGroup) { yield return costItem; yield break; }
+        foreach (Item leaf in costItem.LeafDescendants()) {
+            if (disallowedLeaves.Contains(leaf.id)) continue;
+            if (leaf.excludeFromGroupInput) continue;
+            yield return leaf;
+        }
+    }
+
+    // True when cost slot `i` still needs materials but no single allowed leaf has enough haulable
+    // stock (floor + storage + carried) to FULLY finish it. Because a group cost locks to one leaf on
+    // first delivery, a slot is only satisfiable if some leaf can cover the whole remaining amount on
+    // its own — summing across leaves would be wrong (they can't mix in one slot). Surfaced in the
+    // info panel as a "not enough X" alert, and used by SupplyBlueprintTask to refuse a partial
+    // delivery that would strand the build. Returns false when InventoryController isn't ready.
+    public bool IngredientShort(int i) {
+        int need = RemainingNeed(i);
+        if (need <= 0) return false;
+        var ic = InventoryController.instance;
+        if (ic == null) return false;
+        foreach (Item leaf in AllowedLeaves(i))
+            if (ic.HaulableStock(leaf) >= need) return false;
+        return true;
+    }
+
+    // Seeds this blueprint's cost slots directly from a pool of just-produced items, bypassing the
+    // haul-from-storage step. Used by harvest-replant: the seed (1 of the harvest yield) is dropped
+    // straight into the replant blueprint so it never round-trips to storage and back — otherwise a
+    // hauler can carry the loose seed off before the farmer returns to plant, forcing a wasted trip.
+    // Mutates `available` down by what it consumes (so the caller produces only the remainder), routes
+    // through the cost slots + credits the global inventory (via Inventory.Produce), and heals the
+    // blueprint to Constructing once fully delivered. Items not matching any cost are left untouched.
+    public void PreDeliver(ItemQuantity[] available) {
+        if (available == null) return;
+        foreach (var cost in costs) {
+            int needed = cost.quantity - inv.Quantity(cost.item);
+            if (needed <= 0) continue;
+            foreach (var iq in available) {
+                if (iq == null || iq.quantity <= 0 || !Inventory.MatchesItem(iq.item, cost.item)) continue;
+                int give    = Math.Min(needed, iq.quantity);
+                int added   = give - inv.Produce(iq.item, give); // Produce returns the leftover not added
+                iq.quantity -= added;
+                needed      -= added;
+                if (needed <= 0) break;
+            }
+        }
+        LockGroupCostsAfterDelivery();
+        if (IsFullyDelivered()) {
+            state = BlueprintState.Constructing;
+            WorkOrderManager.instance?.PromoteToConstruct(this);
+        }
+    }
+
     public bool ReceiveConstruction(float progress){ // returns whether you just finished
         if (state == BlueprintState.Receiving) { Debug.LogError("Blueprint is not in Constructing state"); return true;}
         constructionProgress += progress;
@@ -636,18 +716,19 @@ public class Blueprint {
             if (stack.item != null && stack.quantity > 0)
                 inv.Produce(stack.item, -stack.quantity);
         // Capture tile products before Construct() either changes or hides the tile. Three trigger
-        // paths: (a) the legacy isTile mine-tile (`empty`); (b) any structure placed inside a solid
-        // tile (mineshaft); (c) a `preservesTile` structure that leaves the tile alone visually but
-        // still yields its materials (burrow). The first two consume a single anchor tile. The
-        // preserve path walks the full footprint so multi-tile excavators (burrow: 3× dirt) yield
-        // one tile's worth of products per footprint tile.
+        // paths: (a) the legacy isTile mine-tile (`empty`); (b) any structure placed inside a single
+        // solid tile (mineshaft); (c) a `preservesTile` structure that leaves the tile alone visually
+        // but still yields its materials (burrow, well). The preserve path is checked FIRST and walks
+        // the full footprint so multi-tile excavators (burrow: 3× dirt; well: the ny-1 dug shaft
+        // tiles) yield one tile's worth per footprint tile. Footprint cells with no products — air
+        // (the well's open top tile) — are skipped, so they contribute nothing. A preservesTile well
+        // also sets requiresSolidTilePlacement, so this ordering is what keeps it on the full-footprint
+        // path rather than the single-anchor mineTile branch.
         // `extractsTileOverTime` (quarry, digging pit) opts out entirely — those structures mine the
         // tile's material gradually through work, so dumping it all on completion would double up.
         bool minesTile = !structType.extractsTileOverTime
             && ((structType.isTile && structType.name == "empty") || structType.requiresSolidTilePlacement);
-        if (minesTile && tile.type.products != null) {
-            pendingOutput = new List<ItemQuantity>(tile.type.products);
-        } else if (structType.preservesTile && !structType.extractsTileOverTime) {
+        if (structType.preservesTile && !structType.extractsTileOverTime) {
             int fnx = structType.HasShapes ? Shape.nx : structType.nx;
             int fny = structType.HasShapes ? Shape.ny : Mathf.Max(1, structType.ny);
             pendingOutput = new List<ItemQuantity>();
@@ -660,6 +741,8 @@ public class Blueprint {
                         pendingOutput.Add(new ItemQuantity(p.item, p.quantity));
                 }
             }
+        } else if (minesTile && tile.type.products != null) {
+            pendingOutput = new List<ItemQuantity>(tile.type.products);
         }
         // Record the exact leaf items this structure is built from, for an exact deconstruct
         // refund (and future wood-type tinting). By now costs are locked to their delivered
@@ -695,7 +778,7 @@ public class Blueprint {
         // A tile mined to empty drops any side-mount (side ladder, bracket, side torch) that was
         // leaning on the now-removed wall; its materials route to the mining mouse (via
         // pendingOutput → animal.Produce fallbacks).
-        if (minesTile) DestroyDependentSideMounts();
+        if (minesTile) DestroyDependentMounts();
         // Passive research gain from constructing a tech-gated building.
         // No-op for ungated structures (floors, walls, etc.).
         ResearchSystem.instance?.AddConstructionProgress(structType.name);
@@ -711,34 +794,38 @@ public class Blueprint {
         }
     }
 
-    // Side-mounts (side ladders, brackets, side torches) hang against a wall (a solid tile or a
-    // building's body). When this completion mines a footprint tile to empty, any side-mount leaning
-    // on it has lost its wall — destroy it instantly and route its half-cost materials to the mining
-    // mouse via pendingOutput (animal.Produce already falls back to a floor drop, then
-    // vanishing-with-log, if the mouse can't hold it).
-    void DestroyDependentSideMounts() {
+    // Mounts hang on a surface (a solid tile or a building's body): side-mounts (ladder/bracket/
+    // torch) lean on a wall beside them; ceiling-mounts (lantern) hang under the tile above. When
+    // this completion mines a footprint tile to empty, any mount that depended on it has lost its
+    // surface — destroy it instantly and route its half-cost materials to the mining mouse via
+    // pendingOutput (animal.Produce already falls back to a floor drop, then vanishing-with-log,
+    // if the mouse can't hold it).
+    void DestroyDependentMounts() {
         World w = World.instance;
         int fnx = structType.HasShapes ? Shape.nx : structType.nx;
         int fny = structType.HasShapes ? Shape.ny : Mathf.Max(1, structType.ny);
         bool anyDestroyed = false;
         for (int dy = 0; dy < fny; dy++)
             for (int dx = 0; dx < fnx; dx++) {
-                Tile wall = w.GetTileAt(tile.x + dx, tile.y + dy);
-                if (wall == null || wall.type.solid) continue;          // still a wall → nothing lost
-                Structure wb = wall.structs[0];
-                if (wb != null && !(wb is Plant)) continue;             // a building still provides a wall
-                // Mount to the RIGHT of the wall leans on its left face (mirrored=false → dir -1);
-                // mount to the LEFT leans on its right face (mirrored=true → dir +1).
-                anyDestroyed |= TryDestroySideMount(w.GetTileAt(wall.x + 1, wall.y), -1);
-                anyDestroyed |= TryDestroySideMount(w.GetTileAt(wall.x - 1, wall.y), +1);
+                Tile gone = w.GetTileAt(tile.x + dx, tile.y + dy);
+                if (gone == null || gone.type.solid) continue;          // still a surface → nothing lost
+                Structure gb = gone.structs[0];
+                if (gb != null && !(gb is Plant)) continue;             // a building still provides a surface
+                // Side-mounts beside the lost wall: a mount to its RIGHT leaned on its left face
+                // (mirrored=false → dir -1), to its LEFT on its right face (mirrored=true → dir +1).
+                Tile right = w.GetTileAt(gone.x + 1, gone.y);
+                Tile left  = w.GetTileAt(gone.x - 1, gone.y);
+                Tile below = w.GetTileAt(gone.x, gone.y - 1);
+                anyDestroyed |= TryDestroyMount(right?.GetSideMount(-1), right);
+                anyDestroyed |= TryDestroyMount(left?.GetSideMount(+1), left);
+                // Ceiling-mount hanging directly below the lost tile lost its ceiling.
+                anyDestroyed |= TryDestroyMount(below?.GetCeilingMount(), below);
             }
         if (anyDestroyed) w.graph.RebuildComponents();
     }
 
-    bool TryDestroySideMount(Tile mountTile, int wallDir) {
-        if (mountTile == null) return false;
-        Structure mount = mountTile.GetSideMount(wallDir);
-        if (mount == null) return false;
+    bool TryDestroyMount(Structure mount, Tile mountTile) {
+        if (mount == null || mountTile == null) return false;
         // Half-cost refund (mirrors Deconstruct), group cost resolved to a concrete leaf.
         if (pendingOutput == null) pendingOutput = new List<ItemQuantity>();
         foreach (ItemQuantity cost in mount.structType.costs) {

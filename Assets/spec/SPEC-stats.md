@@ -41,7 +41,7 @@ something before its first day ends.
 
 **Firehoses**: `NoteProduced(item, fen)` / `NoteConsumed(item, fen)` / `NoteDecayed(item, fen)`
 are generic per-item entry points (called from `Animal.Produce`, `Processor.Tap`,
-`Animal.HandleNeeds`, and `ItemStack.DecayAtRate`). They extract whatever item-derived stats
+`Foundry` (smelt/cast output), `Animal.HandleNeeds`, and `ItemStack.DecayAtRate`). They extract whatever item-derived stats
 are tracked — currently food points (`fen/100 × item.foodValue`, matching the game's
 nutrition math; non-edibles are skipped, so tool/clothing decay doesn't count). Add new
 item-derived stats by extending these, not by scattering `Record` calls at every site.

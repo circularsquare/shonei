@@ -331,7 +331,7 @@ public class Plant : Structure {
             return;
         }
         Tile s = SoilTile();
-        if (s != null) s.moisture = (byte)Mathf.Clamp(s.moisture + delta, 0, MoistureSystem.MoistureMax);
+        if (s != null) s.moisture = (byte)Mathf.Clamp(s.moisture + delta, 0, s.type.moistureCapacity);
     }
 
     public void Grow(int t){
@@ -599,11 +599,30 @@ public class Plant : Structure {
             // operate on the produced items, not this plant.
             Destroy();
         } else {
-            ReleaseAllExtensionTiles();
-            harvestable = false;
-            age         = 0; // autoreplant
-            growthStage = 0;
-            UpdateSprite();
+            // Felled crop (wheat/rice/soybean/pine): harvest takes the whole plant down. Destroy it
+            // and drop a replant blueprint of the same type on the tile, so a farmer re-sows it — the
+            // seed is supplied from the harvest yield via the blueprint's normal ncost. The rebuilt
+            // plant defaults to harvestFlagged in OnPlaced, inheriting the flag that got it harvested
+            // here in the first place.
+            Tile plantTile  = tile;
+            StructType type = plantType;
+            Destroy();
+            // Tilling is per-cycle: revert the soil below from "dirttilled" back to plain dirt so the
+            // replant has to be re-tilled (guarded so it only touches till-requiring crops' farmland —
+            // other felled crops never tilled it). The replant blueprint below registers suspended on
+            // the now-untilled dirt and auto-queues a fresh Till order; the harvesting farmer, standing
+            // here, picks up that distance-0 Till order immediately, then plants — one continuous stint.
+            Tile soil = World.instance?.GetTileAt(plantTile.x, plantTile.y - 1);
+            if (soil != null && soil.tilled) soil.type = Db.tileTypeByName["dirt"];
+            // Drop the now-stale harvest/water orders keyed to this tile (the plant they pointed at
+            // is gone); the replant's Plant.OnPlaced re-registers fresh ones once it's built.
+            WorkOrderManager.instance?.RemoveForTile(plantTile);
+            // Seed the replant straight from this harvest's yield so the seed never round-trips to
+            // storage (and can't be hauled off before the farmer returns to plant). PreDeliver moves
+            // one seed's worth into the blueprint and trims it out of `yields`, so the rest drops as
+            // normal. The farmer then only needs to till (if required) and plant — supply is done.
+            Blueprint replant = new Blueprint(type, plantTile.x, plantTile.y);
+            replant.PreDeliver(yields);
         }
         return yields;
     }
@@ -991,11 +1010,39 @@ public class PlantType : StructType {
         return s != null && s.texture != null ? s : null;
     }
 
+    // Build-menu icon: the tallest single-tile growth stage — a mature crop / young tree —
+    // rather than the g0 seedling LoadSprite returns. Table-driven plants scan growthFrames
+    // for the highest stage that still occupies one tile and use that cell; formula plants use
+    // the last stage before they'd claim a second tile (index growthStages-1), matching what
+    // UpdateSprite renders there. Prefers the b{i} anchor art, then g{i}, then the seedling.
+    public Sprite LoadMenuIconSprite() {
+        string n = name.Replace(" ", "");
+        if (hasGrowthTable) {
+            for (int s = growthFrames.Length - 1; s >= 0; s--) {
+                if (growthFrames[s].Length != 1) continue;
+                Sprite cell = Resources.Load<Sprite>("Sprites/Plants/Split/" + n + "/" + growthFrames[s][0]);
+                if (cell != null && cell.texture != null) return cell;
+            }
+        } else {
+            int idx = growthStages - 1;
+            Sprite b = Resources.Load<Sprite>("Sprites/Plants/Split/" + n + "/b" + idx);
+            if (b != null && b.texture != null) return b;
+            Sprite g = Resources.Load<Sprite>("Sprites/Plants/Split/" + n + "/g" + idx);
+            if (g != null && g.texture != null) return g;
+        }
+        return LoadSprite();
+    }
+
     public int maxSize;
     public int maxYieldPerSize;
     public int harvestProgress;
     public int growthTime;
     public float harvestTime {get; set;}
+
+    // Field crop that needs tilled soil: can only be planted on dirt, and a farmer must till
+    // the tile first (the construct order stays gated until tile.tilled). Set for wheat/rice/
+    // soybean in plantsDb.json. Tilled soil is persistent, so a replant reuses it without re-tilling.
+    public bool requiresTill {get; set;} = false;
 
     // Max tile-height this plant can reach. 1 = stays at the anchor tile (existing behaviour
     // for all pre-bamboo plants). 2+ = dynamically extends upward as growth stage crosses

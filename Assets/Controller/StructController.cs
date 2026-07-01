@@ -55,6 +55,11 @@ public class StructController : MonoBehaviour {
     private List<Blueprint> blueprints = new List<Blueprint>();
     private List<Building> leisureBuildings = new List<Building>();
     private int _seatResExpireTick = 0;
+    private int _usabilityTick = 0;
+    // How long a workstation must read unreachable before we alert — long enough to ride out the
+    // componentId=-1 window during a nav rebuild (mining a chunk, placing a bridge), short enough
+    // that a genuinely walled-off building surfaces quickly.
+    const float UnreachableGrace = 8f;
     public int n = 0;
     private World world;
 
@@ -135,10 +140,11 @@ public class StructController : MonoBehaviour {
 
 
         // ── Mining + tile-type swap ──────────────────────────────────────
-        // Capture the original tile type BEFORE it's replaced below — quarry and
-        // digging pit both produce their substrate's material per cycle, so they
-        // need the tile they were built on remembered.
+        // Capture the source material BEFORE any tile change below. ExtractionBuilding (solid
+        // dish excavator) remembers the tile it mines; WallQuarry remembers the revealed wall
+        // it digs into. Both drive per-cycle yield from the captured material.
         if (structure is ExtractionBuilding eb) eb.CaptureOriginalTile(tile.type);
+        else if (structure is WallQuarry wq) wq.CaptureWall(tile);
 
         // Mining trigger. Two paths converge here:
         //   - `requiredTileName != null` (quarry / digging pit): the structure replaces a specific tile group.
@@ -285,6 +291,13 @@ public class StructController : MonoBehaviour {
                     foreach (var seat in b.seatRes)
                         seat.ExpireIfStale(60f, $"{b.structType.name} seat");
         }
+        // Usability sweep (~every 1s): flag workstations no worker can reach. Gated on a known
+        // settlement so we don't judge during startup/load before the nav graph is built.
+        bool checkUsable = false;
+        if (++_usabilityTick >= 5) {
+            _usabilityTick = 0;
+            checkUsable = World.instance != null && World.instance.MainSettlementComponent() >= 0;
+        }
         // Per-building 0.2s updates. Called every 0.2s from World.Tick.
         //  - Furnishing slot decay: FurnishingSlots converts elapsed seconds → in-game days
         //    via World.ticksInDay, empties expired slots, fires onSlotChanged.
@@ -292,6 +305,7 @@ public class StructController : MonoBehaviour {
         //    while Working, scaled by ambient temperature. Tended batches advance via their worker.
         foreach (Structure structure in structures){
             if (!(structure is Building b)) continue;
+            if (checkUsable) CheckReachability(b);
             if (b.furnishingSlots != null)
                 b.furnishingSlots.TickDecay(0.2f);
             // Drain reservoirs NOT burned by a LightSource (e.g. fountain water evaporating, foundry
@@ -312,6 +326,28 @@ public class StructController : MonoBehaviour {
                 fdy.AddFuelHeat(burnedFen, b.reservoir?.HeldLeaf());
                 fdy.Tick(0.2f, ambientTemp);
             }
+        }
+    }
+
+    // Surfaces silently-useless workstations: a building whose work spot no worker can reach
+    // (unwired door, walled-off pocket, mined-away approach) accepts orders that never run, and
+    // the player has no other cue. Reachable = at least one animal shares the workNode's nav
+    // component. We latch (unreachableSince + unreachableAlerted on Building) so a persistent
+    // fault alerts exactly once and re-arms only after it recovers. Non-workstations (storage,
+    // decor) and player-disabled buildings aren't judged. Mirrors AnimalStateManager's stuck check.
+    void CheckReachability(Building b) {
+        if (b.workNode == null || !b.structType.isWorkstation || b.disabled) {
+            b.unreachableSince = -1f; b.unreachableAlerted = false; return;
+        }
+        bool reachable = b.workNode.componentId >= 0
+                      && World.instance.AnimalsInComponent(b.workNode.componentId) > 0;
+        if (reachable) {
+            b.unreachableSince = -1f; b.unreachableAlerted = false; return;
+        }
+        if (b.unreachableSince < 0f) b.unreachableSince = Time.time;   // first sighting
+        if (!b.unreachableAlerted && Time.time - b.unreachableSince >= UnreachableGrace) {
+            EventFeed.instance?.Post($"<color=#ffaa55>{b.structType.DisplayName} unreachable</color>");
+            b.unreachableAlerted = true;
         }
     }
 

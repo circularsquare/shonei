@@ -2,7 +2,7 @@ DEPLOYING
 server
     - in powershell in shonei-server: .\deploy\deploy.ps1
 game 
-    - in shonei with unity editor closed: .\Tools\build-and-publish.ps1
+    - in shonei with unity editor closed: ..\Tools\build-and-publish.ps1
 ssh root@5.161.112.237 "cat /opt/shonei/accounts.json 2>/dev/null | python3 -c 'import sys,json; d=json.load(sys.stdin); [print(k) for k in sorted(d)]' || (echo FALLBACK; find / -name accounts.json 2>/dev/null)"
 
 
@@ -10,35 +10,32 @@ CONTENT
 - foot traffic view
 - bunnies
 - magic
-- farming buildings
-    - greenhouse moisture
 - grooming?
 - clothing
     - silk?
     - hats
-        - job gated 
         - mouse gender
+        - flower hats
 - trading 
 - trains    
 - plant
     - farmers can water plants 
-    - buckets
+    - farm tending
     - plants die if temp / moisture are bad?
     - irrigation?
-    - well?
 - research
     - additional levels?
 - power 
     - small internal power storage for power consumers? (hidden if contain 0 power)
 - house furnishing
     - glass
-    - torch?
+    - lantern?
+        - bees?
 - gems!
     - grind to get skill dust 
 - forgaging tech 
-    - get random plants from grass?
+    - more herbs
     - see cool-plants plan
-    - gather stone from ground?
 - potions 
     - alembic for fancy potions
     - bottling: make decay faster, last longer in bottles
@@ -49,7 +46,6 @@ CONTENT
 
 - upsizing workshops
 
-- more herbs
 - foraging job / tech?
 
 - metallurgy 
@@ -62,8 +58,13 @@ CONTENT
 - long term player goals (fable flagged as important)
     - town tiers?
 
-- mining tools plan
-- partial progress on books (book in progress held at scriptorium?)
+- mining tools plant
+
+- quarry -> mine depth, not laterally (can increase uses past 100)
+    - visible ore overlay ?
+
+- add mill, flour, steamer, bread 
+    - ink? 
 
 
 
@@ -80,9 +81,7 @@ VISUALS
 - update more plants to have blob swaying
 - more sounds (see sounds spec)
 - blueprint hovered over dirt tile pretty hard to see. maybe also add a low opacity white frame
-
-- propagated light: try out. see plan
-
+- improve propagated light - round corners?
 
 OPTIMIZATION  
 why is it using 38% gpu with all lighting off?
@@ -95,7 +94,6 @@ MOUSE AI
     - crafttask priority
     - work station priority
     - inventory priority? or inventory pull orders
-- dynamic mouse task objectives
 - general way of estimating what needs will become an issue before starting a long task 
 
 UI
@@ -103,9 +101,6 @@ UI
 - add more info for happiness panel?
 - per item plots
 - per happiness plots
-
-- job load metric (idle time)
-- big job panel : see all mice 
 
 
 CODE CLEANUP
@@ -118,20 +113,18 @@ upsize more workshop buildings
     press 
     paper mill
     scriptorium
-    brewery 
+    brewery   
     laboratory
     weaver
     tailor
 
 TODAY
 
-work flag system 
-- have mice try to move closer to work flag?
+- add bread happiness? Idk
 
-- lighting graaah
+- default disable new recipes?
+- quarry sprite
+- test background tiles on new world
 
-- foot traffic mode 
-
-- well
-
-- ship 0.2?
+- way todispose of materials
+- show formula for efficiency in efficiency tooltip

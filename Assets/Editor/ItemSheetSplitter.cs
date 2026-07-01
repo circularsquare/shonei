@@ -42,17 +42,18 @@ public static class ItemSheetSplitter {
     const string CacheKey     = "itemSplitCacheKey";
 
     // (row, col, outputFileName, cropSize)  cropSize <= CellSize; top-left of cell is used.
-    // Quarter sprites (q*) use cropSize=6 so that when placed at ±0.25 Unity units (±4 px at PPU=16),
-    // the sprite edges land on exact pixel boundaries (4±3 = 1 and 7). 7×7 would give ±3.5 px = misaligned.
+    // Quarter sprites (q*) crop to 5×5 to fill the drawer's 5×5 panes (art is anchored top-left in
+    // the cell). They're GPU-composited into one 16×16 drawer-contents texture at fixed pane pixels
+    // (Inventory.CompositeContents / paneOrigins), so the crop just needs to match the pane size.
     static readonly (int row, int col, string name, int cropSize)[] Slots = {
         (0, 0, "icon",  CellSize),
         (0, 1, "floor", CellSize),
         (1, 0, "slow",  CellSize),
         (1, 1, "smid",  CellSize),
         (1, 2, "shigh", CellSize),
-        (2, 0, "qlow",  6),
-        (2, 1, "qmid",  6),
-        (2, 2, "qhigh", 6),
+        (2, 0, "qlow",  5),
+        (2, 1, "qmid",  5),
+        (2, 2, "qhigh", 5),
     };
 
     // ── batch: all sheets in Sheets/ (no menu item — invoked by the

@@ -51,7 +51,7 @@ using UnityEngine;
 // to the original dig-from-the-top behaviour.
 public enum DigDir { Up = 0, Left = 1, Right = 2 }
 
-public class ExtractionBuilding : Building {
+public class ExtractionBuilding : Building, IExtractor {
     public TileType capturedTile;
 
     // Chosen once at construction (live) or restored from save (load); never
@@ -107,6 +107,26 @@ public class ExtractionBuilding : Building {
             return;
         }
         capturedTile = t;
+    }
+
+    // Captured substrate's distribution for display (info panel); null-safe, never logs.
+    public ItemQuantity[] CapturedProducts => capturedTile?.extractionProducts;
+
+    // After each non-final craft round: deepen the dish and drop the workspot so the next
+    // round shows the new excavation depth and the digger stands on the receding floor. The
+    // animal is already AT workNode (CraftTask arrived) so it needs an explicit SnapTo —
+    // otherwise its transform stays at the old wy until it walks elsewhere.
+    public void OnExtractionRound(Animal animal) {
+        RebuildDishVisual();
+        if (workNode != null) animal.SnapTo(animal.x, workNode.wy);
+    }
+
+    // On final depletion (building already destroyed): the substrate is finally gone, so
+    // empty the preserved tile and drop a platform in its place (the floor of the new hole).
+    // Without emptying first, the platform would sit atop the original solid substrate.
+    public void OnExtractionDepleted(Tile tile) {
+        tile.type = Db.tileTypeByName["empty"];
+        StructController.instance.Construct(Db.structTypeByName["platform"], tile);
     }
 
     // Returns the captured tile's extraction distribution, or null if unavailable.

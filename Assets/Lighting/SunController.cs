@@ -207,6 +207,22 @@ public class SunController : MonoBehaviour {
         return toSun == Vector3.zero ? Vector3.up : toSun.normalized;
     }
 
+    // Vertical component the normalized sun direction WOULD have `inGameMinutes`
+    // after sunset (negative = below the horizon). Season-accurate: the night
+    // half (sunset→midnight) spans clock-phase 0.5·(1−daylight), and that maps
+    // linearly onto a fixed quarter of solar phase, so a real clock offset
+    // corresponds to a larger solar-angle step on short winter nights than on
+    // long summer ones. Mirrors before sunrise by symmetry. A negative
+    // `inGameMinutes` therefore gives the value that many minutes BEFORE sunset.
+    // Used by CloudLayer's night-band flatten window so its timing stays put
+    // across seasons. Falls back to the equinox curve when there's no World.
+    public static float SunYAfterSunset(float inGameMinutes) {
+        float daylight  = instance != null ? instance.DaylightFraction() : 0.5f;
+        float nightSpan = 1f - daylight;                  // clock fraction the night occupies
+        if (nightSpan < 1e-4f) return -1f;                // polar guard (unreachable at 35°)
+        return -Mathf.Sin(Mathf.PI * (inGameMinutes / 1440f) / nightSpan);
+    }
+
     // ── Internal ──────────────────────────────────────────────────────────────
 
     // ── Season-varying day length ──────────────────────────────────────────────

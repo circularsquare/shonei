@@ -1,11 +1,34 @@
 meoww!!
 
+7/1
+- ui changes 
+    - build menu building icons, ordering fixes 
+    - alert for no storage 
+    - recipe newness tracking
+    - item frames
+- changed quarry to be on empty tiles, facing depth
+6/30
+- resized quarter item sprites
+- added flour milling, steamer, and bread
+- plant tilling
+6/29
+- mouse detail panel - see how they spend time
+- groundwater diffusion fixes / speedup 
+- foot traffic and moisture views 
+- animal equip slot view
+- lantern / solid bottom placement
+6/28
+- clouds lit by horizon color 
+- added well
+- seasonal flower regrow
 6/26
 - partial progress for books 
 - greenhouse self contained water 
 - stuck mouse handling
 - burrow ceiling light occlusion
 - batch market hauling
+- added hats!
+- v0.1.1 ship!
 6/25
 - thermometer 
 - greenhouse testing 

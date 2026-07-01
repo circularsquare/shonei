@@ -14,4 +14,6 @@ public class WaterObjective : Objective {
         animal.state = Animal.AnimalState.Working;
         // AnimalStateManager.HandleWorking pours + completes once workProgress reaches WaterPlantTask.WaterTime.
     }
+    // Back to camera while pouring — the shared farm-work visual cue (see HarvestObjective).
+    public override string ViewOverride => "back";
 }

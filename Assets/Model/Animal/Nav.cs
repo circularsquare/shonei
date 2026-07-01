@@ -336,16 +336,23 @@ public class Nav {
     // Like FindPathToStorage, but picks the storage with the MOST free space for `item`
     // among reachable candidates. Use for batch deliveries where fit matters more than
     // proximity — e.g. merchant return trips where a cramped-but-close storage can't hold
-    // the whole payload. Still gated by `minSpace` and the radius cap.
-    public (Path path, Inventory inv) FindPathToStorageMostSpace(Item item, int r = Task.MediumFindRadius, int minSpace = 1) {
+    // the whole payload. Gated by `minSpace`; the radius cap applies unless wholeMap=true.
+    //
+    // wholeMap drops the radius/cost cap entirely and considers every reachable storage on the map.
+    // Used by market pickups: the merchant chooses storage from the far-left portal, and whether
+    // storage exists *anywhere* is the right question — it'll walk however far on return. Reachability
+    // (a path exists) is still required.
+    public (Path path, Inventory inv) FindPathToStorageMostSpace(Item item, int r = Task.MediumFindRadius, int minSpace = 1, bool wholeMap = false) {
         var ic = InventoryController.instance;
         float maxCost = r * Task.FindRadiusTolerance;
         Node myNode = a.PathStartNode();
         var candidates = new List<(int space, Inventory inv, Tile tile)>();
         if (ic.byType.TryGetValue(Inventory.InvType.Storage, out var list)) {
             foreach (Inventory inv in list) {
-                int cheb = Mathf.Max(Mathf.Abs(inv.x - (int)a.x), Mathf.Abs(inv.y - (int)a.y));
-                if (cheb > r) continue;
+                if (!wholeMap) {
+                    int cheb = Mathf.Max(Mathf.Abs(inv.x - (int)a.x), Mathf.Abs(inv.y - (int)a.y));
+                    if (cheb > r) continue;
+                }
                 int space = inv.GetStorageForItem(item);
                 if (space < minSpace) continue;
                 Tile t = world.GetTileAt(inv.x, inv.y);
@@ -357,7 +364,7 @@ public class Nav {
         candidates.Sort((x, y) => y.space.CompareTo(x.space));
         foreach (var (_, inv, t) in candidates) {
             Path p = world.graph.Navigate(myNode, t.node);
-            if (p != null && p.cost <= maxCost) return (p, inv);
+            if (p != null && (wholeMap || p.cost <= maxCost)) return (p, inv);
         }
         return (null, null);
     }

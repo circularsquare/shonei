@@ -38,12 +38,13 @@ public class TileInfoView : MonoBehaviour {
             sb.Append("\ntile: " + tile.type.DisplayName + "  solid: " + tile.type.solid);
         }
 
+        // Show the player-facing liang value (full tile = LiangPerFullTile), not raw sim units.
         if (tile.water > 0)
-            sb.Append($"\nwater: {tile.water}/{WaterController.WaterMax}");
+            sb.Append($"\nwater: {ItemStack.FormatQ(WaterController.WaterUnitsToFen(tile.water))}/{WaterController.LiangPerFullTile}");
 
         // Moisture is only meaningful on solid soil tiles — air tiles stay 0 by convention.
         if (tile.type.solid)
-            sb.Append($"\nmoisture: {tile.moisture}/{MoistureSystem.MoistureMax}");
+            sb.Append($"\nmoisture: {tile.moisture}/{tile.type.moistureCapacity}");
 
         // Floor inventory
         if (tile.inv != null) {

@@ -33,7 +33,7 @@ using UnityEngine;
 public class WorkOrderManager : MonoBehaviour {
     public static WorkOrderManager instance { get; private set; }
 
-    public enum OrderType { Haul, Harvest, Construct, SupplyBlueprint, Deconstruct, HaulToMarket, HaulFromMarket, Research, Craft, SupplyBuilding, Maintenance, SupplyFurnishing, FillProcessor, TapProcessor, WorkProcessor, Water, FeedFoundry, CastFoundry }
+    public enum OrderType { Haul, Harvest, Construct, SupplyBlueprint, Deconstruct, HaulToMarket, HaulFromMarket, Research, Craft, SupplyBuilding, Maintenance, SupplyFurnishing, FillProcessor, TapProcessor, WorkProcessor, Water, FeedFoundry, CastFoundry, Till }
 
     public class WorkOrder {
         public OrderType type;
@@ -107,11 +107,16 @@ public class WorkOrderManager : MonoBehaviour {
         UrgencyConfig.ProxWeight / (1f + dist / UrgencyConfig.ProxFalloff);
 
     // Per-(order, animal) urgency adjustment applied in BOTH BestWorkUrgency (work-category score)
-    // and ChooseOrder (within-tier ranking) so the two stay consistent. Currently the sole rule:
-    // a non-hauler taking any Haul order is docked NonHaulerHaulPenalty — dedicated haulers keep
-    // priority, and within a tier a non-hauler's own work (e.g. farmer watering) outranks the haul.
-    private static float UrgencyAdjust(WorkOrder o, Animal animal) =>
-        o.type == OrderType.Haul && animal.job.name != "hauler" ? -UrgencyConfig.NonHaulerHaulPenalty : 0f;
+    // and ChooseOrder (within-tier ranking) so the two stay consistent. Two job rules:
+    //   • A dedicated hauler's whole job is fetch-and-carry, so ALL their eligible orders get the small
+    //     HaulerWorkBonus — lifts a far p3 task over the evening idle floor. Uniform across order types,
+    //     so it cancels in within-tier ranking and only shifts the work-vs-idle threshold.
+    //   • Any other job is docked NonHaulerHaulPenalty on Haul orders only, so their own same-tier work
+    //     (e.g. farmer watering) outranks pitching in on a haul.
+    private static float UrgencyAdjust(WorkOrder o, Animal animal) {
+        if (animal.job.name == "hauler") return UrgencyConfig.HaulerWorkBonus;
+        return o.type == OrderType.Haul ? -UrgencyConfig.NonHaulerHaulPenalty : 0f;
+    }
 
     // Mirrors ChooseOrder's candidate filters EXACTLY (including the exclude param) so urgency only
     // counts orders that would actually be startable. Keep in sync with ChooseOrder if filters change.
@@ -406,7 +411,7 @@ public class WorkOrderManager : MonoBehaviour {
     }
 
     // Returns the HaulFromMarket work order for this market (at any tier), or null.
-    // Used by HaulToMarketTask.TryAppendPickup to claim the order so a second merchant
+    // Used by HaulToMarketTask.AppendReturnPickups to claim the order so a second merchant
     // won't race the piggyback pickup. Scans all tiers defensively — the order's canonical
     // tier is p3 (index 2), but keep this agnostic so a tier change doesn't break the lookup.
     public WorkOrder FindMarketHaulFromOrder(Inventory marketInv) {
@@ -473,6 +478,37 @@ public class WorkOrderManager : MonoBehaviour {
             getDistance = a => Mathf.Abs(tile.x - a.x) + Mathf.Abs(tile.y - a.y)
         });
         return true;
+    }
+
+    // Registers a Till order on the dirt below a till-requiring crop blueprint (wheat/rice/soybean),
+    // if that soil is dirt and not yet tilled. Keyed by the soil tile (dedup) and tagged with the
+    // blueprint so cancelling the crop cleans the order up via RemoveForBlueprint. Priority 2 —
+    // tilling is the gate to planting, so it sits alongside Construct/Harvest, not below hauls. The
+    // crop's own Construct/SupplyBlueprint orders stay registered but suppressed (their
+    // isActive=ConditionsMet, which fails TillReady) until the till completes and flips soil.tilled.
+    // Idempotent; no-ops for non-till crops, already-tilled soil, or non-dirt.
+    public bool RegisterTill(Blueprint bp) {
+        if (bp == null || !(bp.structType is PlantType pt) || !pt.requiresTill) return false;
+        Tile soil = World.instance?.GetTileAt(bp.tile.x, bp.tile.y - 1);
+        if (soil == null || soil.tilled) return false;
+        if (soil.type.name != "dirt" && soil.type.name != "dirt_placed") return false;
+        if (orders[1].Exists(o => o.type == OrderType.Till && o.tile == soil)) return false;
+        Add(new WorkOrder {
+            type = OrderType.Till,
+            priority = 2,
+            factory = a => new TillSoilTask(a, soil),
+            tile = soil,
+            blueprint = bp,
+            canDo = a => a.job.name == "farmer",
+            isActive = () => !soil.tilled,
+            getDistance = a => Mathf.Abs(soil.x - a.x) + Mathf.Abs(soil.y - a.y)
+        });
+        return true;
+    }
+
+    // Drops the Till order for a tile once it's tilled (called by TillSoilTask on completion).
+    public void UnregisterTill(Tile soil) {
+        orders[1].RemoveAll(o => o.type == OrderType.Till && o.tile == soil);
     }
 
     // Registers a Research order for a specific lab building if it's unreserved and no order exists for it.
@@ -907,8 +943,41 @@ public class WorkOrderManager : MonoBehaviour {
     // Filter out group keys so their 0-default targets don't spuriously trigger haul orders.
     private static bool MarketNeedsHaulTo(Inventory inv) =>
         inv.targets != null && inv.targets.Any(kvp => !kvp.Key.IsGroup && inv.Quantity(kvp.Key) < kvp.Value);
-    private static bool MarketNeedsHaulFrom(Inventory inv) =>
-        inv.targets != null && inv.targets.Any(kvp => !kvp.Key.IsGroup && inv.Quantity(kvp.Key) > kvp.Value);
+    // True when the market holds above-target excess that a merchant currently OUTBOUND on a delivery
+    // trip won't already carry home for free. Each outbound HaulToMarket merchant piggybacks up to a
+    // full cargo of excess on its return leg (HaulToMarketTask.AppendReturnPickups), so only the
+    // shortfall beyond that in-flight capacity justifies dispatching a *dedicated* pickup trip. Excess
+    // is measured UNRESERVED (AvailableQuantity) to match what SelectMarketPickups can actually take —
+    // stacks reserved for a sell order or another merchant's pickup aren't haulable and don't count.
+    private static bool MarketNeedsHaulFrom(Inventory inv) {
+        if (inv.targets == null) return false;
+        int excessFen = 0;
+        foreach (var kvp in inv.targets) {
+            if (kvp.Key.IsGroup) continue; // group targets are wildcards, never physical
+            int over = inv.AvailableQuantity(kvp.Key) - kvp.Value;
+            if (over > 0) excessFen += over;
+        }
+        return excessFen > 0 && excessFen > InflightPiggybackCapacityFen(inv);
+    }
+
+    // Summed return-leg cargo capacity (fen) of merchants currently outbound to `marketInv` on a
+    // HaulToMarketTask. Their whole cargo is empty again on return (outbound goods delivered at the
+    // market), so each fills it with excess before heading home. A merchant already on its return leg
+    // is excluded — it has either reserved its picks (already reflected in the unreserved excess above)
+    // or is carrying goods home. Fen is a deliberate estimate: it ignores per-item-type stack
+    // fragmentation, but any over-optimism self-corrects — a merchant stops counting the moment it flips
+    // to the return leg, so any leftover excess re-triggers the order on the next pass.
+    private static int InflightPiggybackCapacityFen(Inventory marketInv) {
+        var ac = AnimalController.instance;
+        if (ac == null || ac.animals == null) return 0;
+        int cap = 0;
+        foreach (Animal a in ac.animals) {
+            if (a?.inv == null) continue;
+            if (a.task is HaulToMarketTask ht && !ht.IsReturnLeg)
+                cap += a.inv.stackSize * a.inv.itemStacks.Length;
+        }
+        return cap;
+    }
 
     private enum ScanMode { Repair, Audit }
 
@@ -954,7 +1023,16 @@ public class WorkOrderManager : MonoBehaviour {
         // ── Blueprints ──
         var bps = StructController.instance.GetBlueprints();
         foreach (Blueprint bp in bps) {
-            if (!bp.ConditionsMet() || bp.disabled) continue; // blueprints with conditions unmet (suspended) or disabled intentionally have no orders
+            // Till-requiring crops keep a Till order on the dirt below until tilled (no-op otherwise).
+            // Registered here (not gated by ConditionsMet) so it survives save/load, mirroring the
+            // Harvest/Water scans above. The crop's Construct/Supply orders below stay suppressed via
+            // their isActive=ConditionsMet until the till lands.
+            if (repair) RegisterTill(bp);
+            // Skip on IsSuspended (not ConditionsMet): a till-gated crop is NOT suspended, so its
+            // Construct/Supply order should be registered now and self-suppress via isActive until
+            // tilled — otherwise reconcile after load would never register it. For non-plant
+            // blueprints ConditionsMet == !IsSuspended, so this is unchanged.
+            if (bp.IsSuspended() || bp.disabled) continue;
             if (repair) {
                 // For Receiving blueprints, heal state to Constructing if fully delivered (can happen
                 // after save/load when LockGroupCostsAfterDelivery isn't re-run).

@@ -54,14 +54,52 @@ public class Inventory{
     // UpdateSprite check this and LogError-no-op instead of NREing on the nulled-out `go`.
     public bool destroyed { get; private set; }
     public GameObject go;
-    private GameObject[] stackGos; // per-stack sprites for multi-stack storage (e.g. drawer)
 
-    private static readonly Vector2[] quarterOffsets = {
-        new Vector2(-0.25f,  0.25f), // top-left
-        new Vector2( 0.25f,  0.25f), // top-right
-        new Vector2(-0.25f, -0.25f), // bottom-left
-        new Vector2( 0.25f, -0.25f), // bottom-right
+    // ── Drawer contents compositing ─────────────────────────────────────────
+    // Multi-stack storage (drawers) renders ALL stacks into one 16×16 sprite sitting
+    // exactly on the drawer's footprint, rather than four separate 5×5 sprites at
+    // fractional offsets. The camera does no pixel snapping (PixelPerfectCamera
+    // gridSnapping=None), so at non-integer zoom a small separate sprite rasterizes
+    // independently of the drawer frame and visibly drifts within its pane; a single
+    // sprite sharing the drawer's transform cannot. Each stack's 5×5 art is GPU-blitted
+    // (Graphics.CopyTexture — no CPU readback, works on the atlased source) into its pane,
+    // and the matching normal map is composited in parallel and bound via _NormalMap MPB.
+    private GameObject contentsGo;
+    private Texture2D contentsColorTex;   // 16×16 RGBA32, item art blitted per pane
+    private Texture2D contentsNormalTex;  // 16×16 RGBA32, per-item normals (flat where empty)
+    private Sprite contentsSprite;        // wraps contentsColorTex; created once, content updated in place
+    private MaterialPropertyBlock contentsMpb;
+
+    static readonly int NormalMapId = Shader.PropertyToID("_NormalMap");
+
+    // Bottom-left pixel of each 5×5 pane in the 16×16 contents texture (bottom-origin),
+    // measured from drawer.png: panes at cols 2-6/9-13, rows 2-6/9-13 (top-origin).
+    // Index order matches itemStacks slot order: 0=top-left, 1=top-right, 2=bottom-left, 3=bottom-right.
+    private static readonly Vector2Int[] paneOrigins = {
+        new Vector2Int(2, 9), // top-left
+        new Vector2Int(9, 9), // top-right
+        new Vector2Int(2, 2), // bottom-left
+        new Vector2Int(9, 2), // bottom-right
     };
+
+    // Shared 5×5 fill sources for clearing emptied panes via CopyTexture (all-GPU, no readback).
+    // Transparent color clears the pane; a flat tangent-space normal is harmless (the transparent
+    // color alpha-clips that pane out of NormalsCapture anyway). Lazy + null-guarded so they
+    // survive / re-create across reload-domain-off play sessions.
+    static Texture2D _clear5, _flatNormal5;
+    static Texture2D Clear5      { get { if (_clear5 == null)      _clear5      = MakeFill(5, new Color32(0, 0, 0, 0));       return _clear5; } }
+    static Texture2D FlatNormal5 { get { if (_flatNormal5 == null) _flatNormal5 = MakeFill(5, new Color32(128, 128, 255, 255)); return _flatNormal5; } }
+
+    static Texture2D MakeFill(int size, Color32 c){
+        var t = new Texture2D(size, size, TextureFormat.RGBA32, mipChain: false){
+            filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.HideAndDontSave
+        };
+        var px = new Color32[size * size];
+        for (int i = 0; i < px.Length; i++) px[i] = c;
+        t.SetPixels32(px);
+        t.Apply(updateMipmaps: false);
+        return t;
+    }
 
     public GlobalInventory ginv;
 
@@ -139,16 +177,24 @@ public class Inventory{
         // the per-slot multi-stack path below.
         bool useMultiStackRendering = invType == InvType.Storage && nStacks > 1 && storageClass != ItemClass.Book;
         if (useMultiStackRendering){
-            // Multi-stack storage (drawer): one sprite per stack slot in a 2x2 grid
-            stackGos = new GameObject[nStacks];
-            for (int i = 0; i < nStacks && i < quarterOffsets.Length; i++){
-                stackGos[i] = new GameObject("InventoryStack_" + i);
-                stackGos[i].transform.position = new Vector3(x + quarterOffsets[i].x, y + quarterOffsets[i].y, 0);
-                stackGos[i].transform.SetParent(InventoryController.instance.transform, true);
-                SpriteRenderer sr = SpriteMaterialUtil.AddSpriteRenderer(stackGos[i]);
-                sr.sortingOrder = storageOrder;
-                LightReceiverUtil.SetSortBucket(sr);
-            }
+            // Multi-stack storage (drawer): one 16×16 contents sprite on the drawer's footprint.
+            // The per-pane art is filled in by UpdateSprite → CompositeContents.
+            contentsGo = new GameObject("InventoryContents");
+            contentsGo.transform.position = new Vector3(x, y, 0);
+            contentsGo.transform.SetParent(InventoryController.instance.transform, true);
+            SpriteRenderer sr = SpriteMaterialUtil.AddSpriteRenderer(contentsGo);
+            sr.sortingOrder = storageOrder;
+            LightReceiverUtil.SetSortBucket(sr);
+
+            contentsColorTex  = MakeFill(16, new Color32(0, 0, 0, 0));        // transparent; only panes get painted
+            contentsNormalTex = MakeFill(16, new Color32(128, 128, 255, 255)); // flat normal baseline
+            contentsSprite = Sprite.Create(contentsColorTex, new Rect(0, 0, 16, 16),
+                                           new Vector2(0.5f, 0.5f), 16f, 0, SpriteMeshType.FullRect);
+            contentsSprite.hideFlags = HideFlags.HideAndDontSave;
+            sr.sprite = contentsSprite;
+            contentsMpb = new MaterialPropertyBlock();
+            contentsMpb.SetTexture(NormalMapId, contentsNormalTex);
+            sr.SetPropertyBlock(contentsMpb);
         } else if (invType == InvType.Floor || invType == InvType.Storage){
             go = new GameObject();
             go.transform.position = new Vector3(x, y, 0);
@@ -242,10 +288,11 @@ public class Inventory{
         }
         foreach (ItemStack stack in itemStacks) { stack.quantity = 0; stack.resAmount = 0; stack.resSpace = 0; stack.resSpaceItem = null; }
         if (go != null){GameObject.Destroy(go); go = null;}
-        if (stackGos != null){
-            foreach (GameObject sgo in stackGos){ if (sgo != null) GameObject.Destroy(sgo); }
-            stackGos = null;
-        }
+        // The runtime sprite/textures are separate Unity objects — destroying the GO doesn't free them.
+        if (contentsGo != null){ GameObject.Destroy(contentsGo); contentsGo = null; }
+        if (contentsSprite != null){ GameObject.Destroy(contentsSprite); contentsSprite = null; }
+        if (contentsColorTex != null){ GameObject.Destroy(contentsColorTex); contentsColorTex = null; }
+        if (contentsNormalTex != null){ GameObject.Destroy(contentsNormalTex); contentsNormalTex = null; }
         InventoryController.instance.RemoveInventory(this);
     }
     const int   ReservationExpireInterval = 120; // ticks between expiry sweeps per inventory
@@ -659,6 +706,46 @@ public class Inventory{
         }
         return amount;
     }
+    // ── Carry-capacity planning ────────────────────────────────────────────────
+    // Empty slots (untyped or zero-quantity stacks). Used by the craft carry-capacity checks.
+    public int CountEmptyStacks(){
+        int n = 0;
+        foreach (ItemStack s in itemStacks)
+            if (s == null || s.item == null || s.quantity == 0) n++;
+        return n;
+    }
+
+    // Empty stacks this inventory must have free to physically absorb `additions` — a set of
+    // (leaf, fen-to-add) — packing exactly like AddItem: a stack already holding the leaf absorbs
+    // its headroom first, and the remainder ceils over an empty stack's capacity. Additions are
+    // summed per leaf, so two entries of the same leaf (e.g. two group inputs that resolve alike)
+    // share stacks instead of double-booking. Distinct leaves never share a stack, so each leaf's
+    // empty-stack need is independent and the total is their sum — exact, no bin-packing needed.
+    // Discrete leaves use unit-floored capacity; entries with addFen <= 0 are ignored. Returns
+    // int.MaxValue for a pathological leaf whose unit exceeds a whole stack.
+    public int EmptyStacksToAbsorb(IEnumerable<(Item leaf, int addFen)> additions){
+        var byLeaf = new Dictionary<Item, int>();
+        foreach (var (leaf, addFen) in additions){
+            if (leaf == null || addFen <= 0) continue;
+            byLeaf.TryGetValue(leaf, out int cur);
+            byLeaf[leaf] = cur + addFen;
+        }
+        int emptyNeeded = 0;
+        foreach (var kv in byLeaf){
+            Item leaf = kv.Key;
+            int remaining = kv.Value;
+            // Credit free headroom in stacks already holding this leaf (topped off first).
+            foreach (ItemStack s in itemStacks)
+                if (s != null && s.item == leaf && s.quantity > 0)
+                    remaining -= s.EffectiveCapacity - s.quantity;
+            if (remaining <= 0) continue;
+            int capPerEmpty = leaf.discrete ? stackSize - stackSize % leaf.unitFen : stackSize;
+            if (capPerEmpty <= 0) return int.MaxValue; // unit larger than a stack — can't ever hold
+            emptyNeeded += (remaining + capPerEmpty - 1) / capPerEmpty;
+        }
+        return emptyNeeded;
+    }
+
     public ItemStack GetItemStack(Item item){
         ItemStack best = null;
         foreach (ItemStack stack in itemStacks){
@@ -711,6 +798,15 @@ public class Inventory{
         foreach (ItemStack stack in itemStacks){
             if (stack != null && stack.quantity > 0){
                 return false; }}
+        return true;
+    }
+    // True when no item type is allowed in — i.e. the player has never opted anything into
+    // the filter (fresh dry storage / tank) or has denied everything. Such a store can never
+    // receive a haul, so it's an unconfigured dead-end. Bookshelves auto-allow books at
+    // construction, so they don't read as "accepts nothing". Drives StorageEmptyVisuals.
+    public bool AcceptsNothing(){
+        foreach (bool a in allowed.Values)
+            if (a) return false;
         return true;
     }
     public List<Item> GetItemsList(){
@@ -863,27 +959,8 @@ public class Inventory{
         if (invType == InvType.Animal || invType == InvType.Market || invType == InvType.Equip || invType == InvType.Blueprint || invType == InvType.Reservoir || invType == InvType.Furnishing) return;
         // Internal staging buffer (e.g. a processor output): never paint a sprite.
         if (renderless) { if (go != null) go.GetComponent<SpriteRenderer>().sprite = null; return; }
-        if (stackGos != null){
-            // Multi-stack storage (drawer): update each slot independently
-            for (int i = 0; i < nStacks && i < stackGos.Length; i++){
-                if (stackGos[i] == null) continue;
-                ItemStack stack = itemStacks[i];
-                SpriteRenderer sr = stackGos[i].GetComponent<SpriteRenderer>();
-                if (stack == null || stack.Empty()){
-                    stackGos[i].name = "inventorystack_empty";
-                    sr.sprite = null;
-                    continue;
-                }
-                string sName = stack.item.name.Trim().Replace(" ", "");
-                float qFill = stack.quantity / (float)stack.stackSize;
-                string qVariant = qFill >= 0.75f ? "qhigh" : qFill < 0.2f ? "qlow" : "qmid";
-                Sprite sSprite  = Resources.Load<Sprite>($"Sprites/Items/split/{sName}/{qVariant}");
-                sSprite ??= Resources.Load<Sprite>($"Sprites/Items/split/{sName}/qmid");
-                sSprite ??= Resources.Load<Sprite>($"Sprites/Items/split/default/{qVariant}");
-                sSprite ??= Resources.Load<Sprite>("Sprites/Items/split/default/qmid");
-                stackGos[i].name = "inventorystack_" + sName;
-                sr.sprite = sSprite;
-            }
+        if (contentsGo != null){
+            CompositeContents();
             return;
         }
         if (IsEmpty()) {
@@ -948,6 +1025,51 @@ public class Inventory{
         sprite ??= Resources.Load<Sprite>("Sprites/Items/split/default/icon");
         go.name = "inventory_" + mostItem.name;
         go.GetComponent<SpriteRenderer>().sprite = sprite;
+    }
+
+    // Repaints the drawer's 16×16 contents texture in place: each non-empty stack's 5×5 art is
+    // GPU-blitted into its pane (color from the possibly-atlased sprite at its textureRect, normal
+    // from the standalone _n), emptied panes cleared to transparent + flat normal. CopyTexture needs
+    // no CPU readback, so the atlased/non-readable sources are fine. The contentsSprite wraps
+    // contentsColorTex, so updating the texture updates what renders — no new Sprite per change.
+    private void CompositeContents(){
+        if (contentsColorTex == null || contentsNormalTex == null) return;
+        for (int i = 0; i < paneOrigins.Length; i++){
+            Vector2Int o = paneOrigins[i];
+            ItemStack stack = i < nStacks ? itemStacks[i] : null;
+            if (stack == null || stack.Empty()){
+                Graphics.CopyTexture(Clear5,      0, 0, 0, 0, 5, 5, contentsColorTex,  0, 0, o.x, o.y);
+                Graphics.CopyTexture(FlatNormal5, 0, 0, 0, 0, 5, 5, contentsNormalTex, 0, 0, o.x, o.y);
+                continue;
+            }
+            string sName = stack.item.name.Trim().Replace(" ", "");
+            float qFill = stack.quantity / (float)stack.stackSize;
+            string qVariant = qFill >= 0.75f ? "qhigh" : qFill < 0.2f ? "qlow" : "qmid";
+            Sprite art = Resources.Load<Sprite>($"Sprites/Items/split/{sName}/{qVariant}");
+            art ??= Resources.Load<Sprite>($"Sprites/Items/split/{sName}/qmid");
+            art ??= Resources.Load<Sprite>($"Sprites/Items/split/default/{qVariant}");
+            art ??= Resources.Load<Sprite>("Sprites/Items/split/default/qmid");
+            if (art == null){ // nothing resolved — leave the pane cleared
+                Graphics.CopyTexture(Clear5,      0, 0, 0, 0, 5, 5, contentsColorTex,  0, 0, o.x, o.y);
+                Graphics.CopyTexture(FlatNormal5, 0, 0, 0, 0, 5, 5, contentsNormalTex, 0, 0, o.x, o.y);
+                continue;
+            }
+            Rect r = art.textureRect; // 5×5 sub-rect within the (possibly atlased) source page
+            Graphics.CopyTexture(art.texture, 0, 0, (int)r.x, (int)r.y, 5, 5, contentsColorTex, 0, 0, o.x, o.y);
+
+            Texture2D nrm = Resources.Load<Texture2D>($"Sprites/Items/split/{sName}/{qVariant}_n");
+            nrm ??= Resources.Load<Texture2D>($"Sprites/Items/split/{sName}/qmid_n");
+            nrm ??= Resources.Load<Texture2D>($"Sprites/Items/split/default/{qVariant}_n");
+            nrm ??= Resources.Load<Texture2D>("Sprites/Items/split/default/qmid_n");
+            if (nrm != null) Graphics.CopyTexture(nrm, 0, 0, 0, 0, 5, 5, contentsNormalTex, 0, 0, o.x, o.y);
+            else             Graphics.CopyTexture(FlatNormal5, 0, 0, 0, 0, 5, 5, contentsNormalTex, 0, 0, o.x, o.y);
+        }
+        // Re-assert the normal binding — a sprite-atlas reimport mid-play can clear the SR's MPB.
+        var sr = contentsGo.GetComponent<SpriteRenderer>();
+        if (contentsMpb == null) contentsMpb = new MaterialPropertyBlock();
+        sr.GetPropertyBlock(contentsMpb);
+        contentsMpb.SetTexture(NormalMapId, contentsNormalTex);
+        sr.SetPropertyBlock(contentsMpb);
     }
 
     public override string ToString(){

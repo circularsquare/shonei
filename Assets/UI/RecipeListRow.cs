@@ -26,8 +26,10 @@ public class RecipeListRow : MonoBehaviour {
     [SerializeField] Button   onoffButton;  // toggles allow in place (own click target)
 
     Recipe recipe;
+    TMP_Text newBadge; // pulsing "new" badge, built in code after the name; toggled by RefreshNew
 
     public Recipe RecipeData => recipe;
+    public int    RecipeId   => recipe != null ? recipe.id : int.MinValue;
 
     static Sprite iconAllowed, iconDisallowed;
     static void EnsureIcons() {
@@ -46,8 +48,23 @@ public class RecipeListRow : MonoBehaviour {
         icon.SetItem(FirstOutputItem());
         label.text = string.IsNullOrEmpty(recipe.description) ? recipe.tile : recipe.description;
 
+        // Let the name hug its text so the "new" badge sits right after it (the prefab flexes the
+        // label to fill; that would shove the badge to the far edge, into the floating On/Off icon).
+        var labelLE = label.GetComponent<LayoutElement>();
+        if (labelLE != null) labelLE.flexibleWidth = 0;
+        if (newBadge == null) newBadge = PulsingText.CreateNewBadge(transform);
+
         highlight.gameObject.SetActive(false);
         RefreshAllowIcon();
+        RefreshNew();
+    }
+
+    // Shows the "new" badge until the player has actually seen this recipe (group expanded + row
+    // scrolled into view — tracked by RecipePanel). Called each refresh tick by the group.
+    public void RefreshNew() {
+        bool isNew = RecipePanel.instance != null && RecipePanel.instance.IsRecipeNew(recipe.id);
+        if (newBadge != null && newBadge.gameObject.activeSelf != isNew)
+            newBadge.gameObject.SetActive(isNew);
     }
 
     Item FirstOutputItem() {

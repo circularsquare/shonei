@@ -42,6 +42,7 @@ public class WorldSaveData {
     public ResearchSaveData research;
     public int[] disabledRecipeIds; // null = all enabled
     public string[] expandedRecipeGroups; // workstation tile-names of expanded recipe groups; null = all collapsed
+    public int[] seenRecipeIds; // recipe ids the player has looked at (clears the "new" badge); null = none seen
     public ushort[] waterLevels;    // flat array, index = y * nx + x; null if all-dry
     public byte[] moistureLevels;   // flat array, same layout as waterLevels; null if every tile is dry soil
     public bool isRaining;          // false = clear (safe default for old saves)
@@ -134,8 +135,16 @@ public class TileSaveData {
     public int x, y;
     public string tileType;
     public InventorySaveData inv;     // floor inventory only; storage building inventories are filled after structures are restored
-    public int backgroundWallType;    // BackgroundType enum (0=None, 1=Stone, 2=Dirt) — authoritative
-    public bool hasBackgroundWall;    // legacy: read for migration of pre-typed saves; no longer written
+    // Background-wall material by tile-type name (e.g. "limestone"); null/absent = no wall.
+    // Authoritative for new saves.
+    public string backgroundTile;
+    // True once a quarry/pit has exhausted this cell's wall (renders darkened, no re-quarry).
+    // Nullable: absent on non-exhausted tiles and old saves, keeping JSON small.
+    public bool? backgroundQuarriedOut;
+    // Legacy: old int enum (0=None, 1=Stone, 2=Dirt) and pre-typed bool. Read for migration
+    // of old saves (Stone→limestone, Dirt→dirt); no longer written.
+    public int backgroundWallType;
+    public bool hasBackgroundWall;
     // Per-side overlay-decoration bits (grass on dirt, future moss on stone). Bit
     // layout: 0=L 1=R 2=D 3=U. Nullable so absent on (a) old saves, and (b) tiles
     // with mask=0 — keeps the on-disk JSON small and golden-test diffs minimal.
@@ -210,11 +219,12 @@ public class StructureSaveData {
     // saves (field absent) deserialize as 0 which the restore path treats as "missing → default
     // to 1.0" so pre-maintenance saves don't load every structure as broken.
     public float condition;
-    // ExtractionBuilding (quarry / digging pit): name of the tile the structure was
-    // placed on, picking the per-tile extraction distribution (tilesDb
-    // nExtractionProducts). null on other structures and on old saves.
+    // Captured source material by tile-type name, picking the extraction distribution
+    // (tilesDb nExtractionProducts). For WallQuarry (quarry / digging pit) this is the
+    // background WALL material; for ExtractionBuilding (dish excavator) it's the mined tile.
+    // null on other structures and on old saves.
     public string capturedTileType;
-    // ExtractionBuilding (digging pit / quarry): the open face it digs toward (0=Up,
+    // ExtractionBuilding only (dish excavator): the open face it digs toward (0=Up,
     // 1=Left, 2=Right), chosen at construction and never recomputed. Nullable so old
     // saves (field absent) and non-extraction structures restore as Up — the original
     // dig-from-the-top behaviour. See ExtractionBuilding.DigDir.
@@ -237,6 +247,9 @@ public class StructureSaveData {
     // diagnostic. null on non-elevators / old saves; restore path treats null as empty.
     public int[] elevatorRecentTripTicks;
     public int[] elevatorRecentEndToEndTicks;
+    // Well only: pooled groundwater reservoir level, in tile-water units (0..Capacity). Null on
+    // non-wells / old saves → restores empty.
+    public int? wellStoredWater;
     // BridgePost only: the partner post's tile coords. Nullable so old saves and
     // every other StructType deserialize cleanly. RopeBridge.PairAllAfterLoad reads
     // these to re-link both posts after Phase 2 restores them independently.
@@ -332,6 +345,7 @@ public class AnimalSaveData {
     public InventorySaveData bookSlotInv;
     public float[] skillXp;
     public int[]   skillLevel;
+    public float[] activity;         // recency-weighted time-per-state buckets; null on old saves → re-warms
     public List<BuffSaveData> buffs; // active tonic buffs; null on old saves → none restored
     public bool  isTraveling;     // was animal mid-journey (hidden) at save time?
     public float travelProgress;  // ticks elapsed so far in current travel leg

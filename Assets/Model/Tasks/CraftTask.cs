@@ -74,6 +74,13 @@ public class CraftTask : Task {
         }
         _fetchInputIndex = 0;
 
+        // Carry cap: never commit to more rounds than the animal can physically hold. Packs the
+        // resolved input + fuel leaves just assembled the way AddItem will. If even one round won't
+        // fit the current (possibly cluttered) pack, bail — ChooseTask's clutter-drop trigger frees
+        // the slots first. Runs before any ReserveStack below, so an early return leaks nothing.
+        roundsRemaining = MaxCarryableRounds(roundsRemaining);
+        if (roundsRemaining == 0) { return false; }
+
         // Queue tail: Go → Work → Drops. GoObjective targets workNode (waypoint or tile-node)
         // so the runner ends up at the workSpot position, not just on the workTile center.
         objectives.AddLast(new GoObjective(this, _building.workNode));
@@ -87,6 +94,10 @@ public class CraftTask : Task {
         var srcs = new List<(Item item, int perRound, int toFetch, Tile tile, ItemStack stack)>();
         foreach (var (item, perRound) in _inputsToFetch) {
             int toFetch = perRound * roundsRemaining - animal.inv.Quantity(item);
+            // Already carrying enough for the (possibly carry-capped) round count — no fetch needed.
+            // Skipping keeps _inputsToFetch (rebuilt from srcs below) and the FetchObjectives aligned,
+            // and avoids failing the craft over an input whose only remaining copies are in our pack.
+            if (toFetch <= 0) { continue; }
             (Path itemPath, ItemStack stack) = animal.nav.FindPathItemStack(item);
             if (itemPath == null) { return false; }
             srcs.Add((item, perRound, toFetch, itemPath.tile, stack));
@@ -104,6 +115,23 @@ public class CraftTask : Task {
 
         return true;
     }
+
+    // Largest round count in [1, cap] whose still-to-fetch inputs (incl. committed fuel) fit the
+    // animal's current pack, packing like Inventory.AddItem. 0 when even one round can't fit as-is
+    // — the pack is too cluttered to carry the recipe (ChooseTask's drop trigger clears it). Fit is
+    // monotonic in rounds, so scan from cap down and take the first that fits (cap fits on the first
+    // pass in the common uncluttered case).
+    private int MaxCarryableRounds(int cap){
+        for (int r = cap; r >= 1; r--){
+            var adds = new List<(Item, int)>(_inputsToFetch.Count);
+            foreach (var (item, perRound) in _inputsToFetch)
+                adds.Add((item, perRound * r - animal.inv.Quantity(item)));
+            if (animal.inv.EmptyStacksToAbsorb(adds) <= animal.inv.CountEmptyStacks())
+                return r;
+        }
+        return 0;
+    }
+
     public override void Complete(){
         // When a FetchObjective finishes and we're still in the fetch phase, run continuation logic
         if (currentObjective is FetchObjective && _fetchInputIndex < _inputsToFetch.Count) {

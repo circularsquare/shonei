@@ -15,9 +15,12 @@
 //   work    per tier = TierBase + proximity(≤0.15 at dist 0, halves every 8 tiles) + bonuses
 //           (Construct finish +0.10; Water thirst +0–0.10 by dryness):   p1 0.55–0.70
 //           p2 0.45–0.60 (construct 0.55–0.70)   p3 0.30–0.45 (water +0–0.10 thirst)   p4 0.25–0.40
+//           hauler work     = ANY tier the hauler is eligible for, plus HaulerWorkBonus (0.05): p3 ~0.35–0.50
 //           non-hauler haul = the p1/p3 haul tier minus NonHaulerHaulPenalty (0.20): ~0.10–0.50
 //   craft   0.16 → 0.60  (banded; floor clears daytime idle so a needed craft is never soft-locked)
-//   drop    0.60 → 0.90  (scales with carried main-inv fullness; below hunger/sleep peaks, above work)
+//   extract 0 or 0.50    (quarry / pit: flat 0.5 while any output wanted, else 0 — not economic-banded)
+//   drop    0.40 → 0.90  (scales with carried main-inv fullness; below hunger/sleep peaks, above work)
+//           + 0.62 spike when a wanted craft can't fit its inputs for carried clutter (DropCraftBlocked)
 //   equip   0 or 0.45    (only when the tool/clothing slot is empty)
 //   leisure 0 → 0.60 (evening) / 0 → 0.15 (day)   (bias × least-satisfied need pull)
 //   idle    0.15 (day) / 0.35 (evening)           — the floor low work/leisure must clear
@@ -53,6 +56,15 @@ public static class UrgencyConfig {
     // loses to a non-hauler's own same-tier work (farmer watering, merchant market hauls).
     public const float NonHaulerHaulPenalty = 0.20f;
 
+    // Mirror of the penalty above, for the dedicated hauler. A hauler's entire job IS hauling — floor
+    // hauls, fuel supply, blueprint/furnishing supply are all fetch-and-carry — so every order a hauler
+    // is eligible for gets this small bump. Purpose: a FAR p3 task (proximity bonus decayed to ~0)
+    // scores only ~TierBase[2] (0.30) and would lose to the evening idle floor (IdleBaseEvening 0.35);
+    // this lifts it to ~0.35 so the hauler keeps working instead of standing around while haulable work
+    // sits across the map. Applied uniformly to all of a hauler's orders in the UrgencyAdjust seam, so
+    // it shifts their whole work curve up vs idle WITHOUT changing the within-tier ranking among them.
+    public const float HaulerWorkBonus = 0.05f;
+
     // HaulFromMarket (pickup of market excess) shares the p3 tier with HaulToMarket (delivery) and
     // open-to-all floor hauls. This dock ranks a pickup just BELOW a delivery — so merchants still
     // exhaust deliveries first and piggyback pickups on the return leg — while keeping it ABOVE a
@@ -79,14 +91,33 @@ public static class UrgencyConfig {
         return CraftFloor + (CraftCeil - CraftFloor) * (s / (1f + s));
     }
 
+    // Extraction (quarry / digging pit) uses a FLAT urgency instead of economic scarcity: players keep
+    // mining for rare drops even when the base material is over target, so it pulls at a constant rate
+    // until every possible output is over target (gated by Recipe.ExtractionWanted). Sits below the
+    // evening-leisure ceiling (0.60) and the hunger/sleep peaks, above idle and non-hauler hauls.
+    public const float ExtractionUrgency = 0.5f;
+    // The economic-score value that maps to ExtractionUrgency through CraftBand, so extraction recipes
+    // ride the same scored-recipe pipeline as normal crafts with no special case downstream. Inverts
+    // CraftBand: U = Floor + (Ceil-Floor)·s/(1+s)  →  s = (U-Floor)/(Ceil-U).
+    public static float ExtractionScoreForBand() => (ExtractionUrgency - CraftFloor) / (CraftCeil - ExtractionUrgency);
+
     // ── Drop carried inventory ───────────────────────────────────────
     // Urgency to dump stale main-inventory carry-over, scaled by how full the main inv is:
     //   DropFloor + (DropCeil - DropFloor) * occupiedStacks/totalStacks.
     // The band sits below the hunger/sleep peaks (~1.0) so a starving or exhausted mouse eats /
-    // sleeps before offloading, but above the work tiers (≤0.70) so a laden idle mouse still drops
-    // promptly instead of crawling around with a full pack while there's other work to do.
-    public const float DropFloor = 0.60f;
+    // sleeps before offloading. The FLOOR is deliberately low so a mouse carrying just a stack or two
+    // keeps working (a producer like a miner accumulates several rounds before hauling — drop only
+    // overtakes its 0.5 work urgency once the pack is ~20% full); the CEIL still forces a full pack to
+    // offload promptly. The old gap where clutter below this floor could starve a multi-input craft
+    // of fetch slots is now closed by the DropCraftBlocked spike below + CraftTask's carry cap.
+    public const float DropFloor = 0.40f;
     public const float DropCeil  = 0.90f;
+
+    // Spike urgency when a craft the mouse wants can't fit its inputs because of carried clutter
+    // (Animal.CraftBlockedByClutter). Sits just above the craft ceiling (0.60) so the mouse clears
+    // the pack before re-attempting the craft, but below the hunger/sleep peaks (~1.0) and near-p1
+    // work — so genuine priorities still win, and the craft simply waits a beat.
+    public const float DropCraftBlocked = 0.62f;
 
     // ── Hunger curve (Eating.HungerUrgency) ──────────────────────────
     public const float HungerConcavity = 0.6f;     // <1 = steep right after the seek threshold (seek early)

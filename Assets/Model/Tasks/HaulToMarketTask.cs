@@ -22,12 +22,13 @@ public class HaulToMarketTask : Task {
     // If the market simultaneously needs items delivered AND has excess to haul away,
     // a single merchant does both in one round trip: outbound delivery, then receive
     // excess at market, return with goods, deliver into home storage. Pickups are
-    // planned at Initialize time and reserved up-front; if none are viable the task
-    // behaves identically to the pre-piggyback HaulToMarketTask.
+    // chosen at the market (AppendReturnPickups, via SelectMarketPickupsObjective) so they
+    // reflect live state on arrival; if none are viable the task behaves identically to
+    // the pre-piggyback HaulToMarketTask.
     // Parallel lists: pickupIqs[i] is delivered into the storage at pickupStorageTiles[i].
     public List<ItemQuantity> pickupIqs = new();
     public List<Tile> pickupStorageTiles = new();
-    // Claimed HaulFromMarket WOM order — reserved in TryAppendPickup so a second
+    // Claimed HaulFromMarket WOM order — reserved in AppendReturnPickups so a second
     // merchant doesn't race us, released in Cleanup override.
     private WorkOrderManager.WorkOrder pickupOrder;
 
@@ -136,35 +137,44 @@ public class HaulToMarketTask : Task {
         foreach (var iq in iqs)
             objectives.AddLast(new DeliverToInventoryObjective(this, iq, marketInv));
 
-        // Piggyback adds [Receive×N → Travel(return) → (Go→DeliverHome)×N]; otherwise just the
-        // return travel and the merchant reappears at x=0 idle. Each home drop is an extra on-map
-        // walk at trip end, so budget WalkToPortalSeconds per pickup in the food fetch.
-        int pickupLegs = TryAppendPickup(marketInv);
-        if (pickupLegs == 0)
-            objectives.AddLast(new TravelingObjective(this, MarketTransitTicks));
+        // Return-leg pickups are chosen at the market (SelectMarketPickupsObjective), not here, so the
+        // manifest reflects live market state on arrival. That objective appends [Receive×N →
+        // Travel(return) → (Go→DeliverHome)×N], or just the return Travel when nothing is viable.
+        objectives.AddLast(new SelectMarketPickupsObjective(this));
 
         // transitTicks = per-leg; PrependFoodFetchForMarketJourney doubles internally for round trip.
-        return PrependFoodFetchForMarketJourney(MarketTransitTicks, WalkToPortalSeconds * pickupLegs);
+        // Pickup count is unknown at departure (decided at the market), so provision a fixed buffer of
+        // assumed home-delivery legs (see AssumedMarketPickupLegs).
+        return PrependFoodFetchForMarketJourney(MarketTransitTicks, WalkToPortalSeconds * AssumedMarketPickupLegs);
     }
 
-    // Extends the delivery queue with opportunistic pickups from the same market visit,
-    // filling the merchant's (now-empty-on-return) cargo with above-target excess. Reserves
-    // each market source stack + home storage space (via SelectMarketPickups), claims the
-    // HaulFromMarket WOM order once, and appends [Receive×N → Travel(return) → (Go → DeliverHome)×N].
-    // Returns the number of pickups (0 = none; caller appends its own return travel).
-    private int TryAppendPickup(Inventory marketInv) {
-        var picks = SelectMarketPickups(marketInv);
-        if (picks.Count == 0) return 0;
+    // Called by SelectMarketPickupsObjective once the merchant is at the market and has delivered its
+    // outbound goods. Fills the (now-empty-on-return) cargo with above-target excess against LIVE market
+    // state, reserves each market source stack + home storage space (via SelectMarketPickups), claims the
+    // HaulFromMarket WOM order once, and appends [Receive×N → Travel(return) → (Go → DeliverHome)×N]. If
+    // nothing is viable it appends just the return Travel, so the merchant always has a way home.
+    //
+    // Min-haul is NOT enforced here (enforceMinHaul: false): the trip is already happening, so any
+    // positive excess that fits is worth grabbing. Picks come back largest-excess-first, so if cargo
+    // fills it's the trickles that get left behind, not the bulk hauls.
+    public void AppendReturnPickups() {
+        Inventory marketInv = MarketBuilding.instance?.storage;
+        if (marketInv == null) {
+            // Market demolished mid-trip — nothing to pick up; just walk home.
+            objectives.AddLast(new TravelingObjective(this, MarketTransitTicks));
+            return;
+        }
 
+        var picks = SelectMarketPickups(marketInv, enforceMinHaul: false);
         foreach (var p in picks) {
             pickupIqs.Add(p.iq);
             pickupStorageTiles.Add(p.tile);
         }
 
-        // Opportunistically claim the HaulFromMarket WOM order if one exists and is free.
-        // If the order is missing or already reserved by another merchant, we proceed anyway
-        // — stack-level reservation is the real race guard. Cleanup only unreserves when we
-        // did reserve (pickupOrder is set).
+        // Opportunistically claim the HaulFromMarket WOM order if one exists and is free. With selection
+        // deferred to the market, the order stays unclaimed during outbound travel, so a second merchant
+        // could be dispatched on a pure HaulFromMarket meanwhile — the per-stack reservation above is the
+        // real race guard; this claim is just a courtesy to reduce duplicate trips. Released in Cleanup.
         WorkOrderManager wom = WorkOrderManager.instance;
         WorkOrderManager.WorkOrder order = wom?.FindMarketHaulFromOrder(marketInv);
         if (order != null && order.res.Available()) {
@@ -179,7 +189,6 @@ public class HaulToMarketTask : Task {
             objectives.AddLast(new GoObjective(this, p.tile));
             objectives.AddLast(new DeliverToInventoryObjective(this, p.iq, p.inv));
         }
-        return picks.Count;
     }
 
     public override void Cleanup() {
@@ -208,8 +217,8 @@ public class HaulToMarketTask : Task {
 
     // Rebuilds the tail of the task for a merchant loaded mid-transit (to-market direction only;
     // the return-with-pickup phase loads as a HaulFromMarketTask instead). Two shapes:
-    //   outbound: [Travel(remaining) → Deliver×N → Travel(return)]
-    //   return:   [Travel(remaining)]                  (items already delivered)
+    //   outbound: [Travel(remaining) → Deliver×N → SelectMarketPickups]   (picks chosen at the market)
+    //   return:   [Travel(remaining)]                  (items already delivered, no pickup taken)
     // Returns false only if the market has been demolished between save and load, or the item
     // list is empty, in which case Animal.Start() falls back to ResumeTravelTask.
     private bool InitializeResume() {
@@ -233,7 +242,10 @@ public class HaulToMarketTask : Task {
                 if (iq?.item == null) continue;
                 objectives.AddLast(new DeliverToInventoryObjective(this, iq, marketInv));
             }
-            objectives.AddLast(new TravelingObjective(this, MarketTransitTicks));
+            // Pickups are chosen at the market, so a resumed outbound merchant still does the at-market
+            // selection after delivering (it gets a fresh, live piggyback rather than the one it planned
+            // before saving — which was never committed anyway). The objective adds the return travel.
+            objectives.AddLast(new SelectMarketPickupsObjective(this));
         }
         return true;
     }

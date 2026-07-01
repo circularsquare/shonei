@@ -238,15 +238,6 @@
                 "happinessNeed": "fruit",
                 "children": null
             },{
-                "id": 230,
-                "name": "soymilk",
-                "decayRate": 2.0,
-                "foodValue": 15,
-                "happinessNeed": "soymilk",
-                "itemClass": "liquid",
-                "liquidColorHex": "#e6e9be",
-                "children": null
-            },{
                 "id": 241,
                 "name": "tofu",
                 "decayRate": 3.0,
@@ -266,6 +257,18 @@
                 "foodValue": 40,
                 "happinessNeed": "dairy",
                 "children": null
+            },{
+                "id": 155,
+                "name": "flour",
+                "decayRate": 0.2,
+                "children": null
+            },{
+                "id": 156,
+                "name": "bread",
+                "decayRate": 0.5,
+                "foodValue": 30,
+                "happinessNeed": "wheat",
+                "children": null
             }
         ]
     },{
@@ -276,12 +279,27 @@
         "defaultTarget": 10,
         "children": null
     },{
-        "id": 246,
-        "name": "rice wine",
+        "id": 247,
+        "name": "drinks",
         "decayRate": 0.0,
         "itemClass": "liquid",
-        "liquidColorHex": "#e8d28a",
-        "children": null
+        "children": [
+            {
+                "id": 230,
+                "name": "soymilk",
+                "decayRate": 2.0,
+                "foodValue": 15,
+                "happinessNeed": "soymilk",
+                "liquidColorHex": "#e6e9be",
+                "children": null
+            },{
+                "id": 246,
+                "name": "rice wine",
+                "decayRate": 0.0,
+                "liquidColorHex": "#e8d28a",
+                "children": null
+            }
+        ]
     },{
         "id": 200,
         "name": "tools",
@@ -377,17 +395,20 @@
                 "name": "bamboo hat",
                 "skillBonus": "farming",
                 "skillBonusLevels": 1,
+                "defaultTarget": 10,
                 "children": null
             },{
                 "id": 277,
                 "name": "straw hat",
                 "walkBonus": 0.02,
+                "defaultTarget": 10,
                 "children": null
             },{
                 "id": 278,
                 "name": "cloth hat",
                 "skillBonus": "scholarship",
                 "skillBonusLevels": 1,
+                "defaultTarget": 10,
                 "children": null
             }
         ]
@@ -413,6 +434,7 @@
         "id": 300,
         "name": "books",
         "decayRate": 0.3,
+        "equipDecayRate": 1.0,
         "discrete": true,
         "itemClass": "book",
         "children": [
@@ -488,7 +510,7 @@
                 "children": null
             },{
                 "id": 424,
-                "name": "restful tonic",
+                "name": "sleep tonic",
                 "liquidColorHex": "#c493ed",
                 "defaultTarget": 20,
                 "buffType": "sleepRecovery",

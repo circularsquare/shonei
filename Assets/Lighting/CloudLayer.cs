@@ -83,10 +83,14 @@ public class CloudLayer : SkyLayerBase {
     [Range(0f, 1f)] public float tintLerpStartHumidity = 0.4f;
 
     [Header("Cloud shading — 3 colour bands")]
-    [Tooltip("Colour used for sunlit pixels (the brightest band).")]
+    [Tooltip("Base colour the sunlit band (brightest) blends from toward the sky horizon — see litHorizonWhiten. At litHorizonWhiten=1 the band is exactly this colour.")]
     public Color litColor    = new Color(1.00f, 0.98f, 0.92f, 1f);
-    [Tooltip("Colour used for mid-tone pixels (the default cloud body).")]
+    [Tooltip("How far the lit band stays at its own litColor vs the live sky HORIZON colour. 1 = pure litColor (no tint); 0 = full horizon colour; in between = blend. Lower picks up more of the sky's warmth at dawn/dusk; higher keeps brighter, subtler highlights.")]
+    [Range(0f, 1f)] public float litHorizonWhiten = 0.85f;
+    [Tooltip("Base colour the mid band (cloud body) blends from toward the sky horizon — see midHorizonWhiten. At midHorizonWhiten=1 the band is exactly this colour.")]
     public Color midColor    = new Color(0.78f, 0.80f, 0.85f, 1f);
+    [Tooltip("How far the mid band stays at its own midColor vs the live sky HORIZON colour. 1 = pure midColor (no tint); 0 = full horizon colour; in between = blend.")]
+    [Range(0f, 1f)] public float midHorizonWhiten = 0.92f;
     [Tooltip("Colour used for shadowed pixels (the darkest band).")]
     public Color shadowColor = new Color(0.45f, 0.50f, 0.60f, 1f);
     [Tooltip("Lambertian value above this → sunlit band. Lower = larger sunlit area.")]
@@ -95,6 +99,12 @@ public class CloudLayer : SkyLayerBase {
     [Range(0f, 1f)] public float shadowBand = 0.20f;
     [Tooltip("Cloud-specific sun elevation, overriding the scene's _SunHeight. Higher = the cloud's terminator visibly curves (moon-phase look on each sphere); lower = terminator straightens. Decoupled from the scene's actual sun so clouds keep their crescent-style shading regardless of the day-cycle sun angle. _SunDir.xy is still tracked for the lighting direction.")]
     public float cloudSunHeight = 1.5f;
+    [Tooltip("How much the three shading bands collapse toward the mid band at night, softening the hard Lambertian banding when clouds are lit only by moonlight/ambient. 0 = full banding all night; 1 = fully flat (single mid colour) at deep night. The fade-in timing is set by the two window knobs below.")]
+    [Range(0f, 1f)] public float nightBandFlatten = 1f;
+    [Tooltip("In-game minutes after sunset (and the mirror before sunrise) at which the night flatten BEGINS — before this the clouds keep full daytime banding. Keyed to the sun's depression below the horizon, so it tracks sunset/sunrise. Approximate (drifts slightly with season).")]
+    public float nightFlattenStartMin = 20f;
+    [Tooltip("In-game minutes after sunset (and before sunrise) at which the night flatten reaches full strength. Past this the clouds are fully flattened (per nightBandFlatten).")]
+    public float nightFlattenFullMin = 60f;
 
     [Header("Sphere-blobs")]
     [Tooltip("Grid cell size in world units. Smaller = denser blob spawn, more solid clouds. Blob radii should overlap adjacent cells (radiusMax ≈ cellSize) so clouds merge visually. Floored at 0.2 — smaller values explode the per-bake grid-cell count and hang the editor.")]
@@ -456,9 +466,38 @@ public class CloudLayer : SkyLayerBase {
 
             cloudGenMat.SetVector(TexSizeId,        new Vector2(textureSize.x, textureSize.y));
             cloudGenMat.SetFloat (InvPpuId,         1f / pixelsPerUnit);
-            cloudGenMat.SetColor (LitColorId,       litColor);
-            cloudGenMat.SetColor (MidColorId,       midColor);
-            cloudGenMat.SetColor (ShadowColorId,    shadowColor);
+            // Lit + mid bands: blend the live sky horizon colour toward each
+            // band's own authored colour so cloud highlights and body pick up
+            // the sky (warm at dawn/dusk). whiten = how far back toward the
+            // original colour: 1 = pure original (no tint), 0 = full horizon
+            // colour. Each band blends toward ITS OWN colour, so at whiten=1
+            // lit and mid stay distinct. Falls back to the static colours only
+            // when there's no SunController (e.g. a sky-less scene).
+            bool haveSun = SunController.instance != null;
+            Color horizon = haveSun ? SunController.horizonColor : Color.white;
+            horizon.a = 1f;
+            Color litEff = haveSun ? Color.Lerp(horizon, litColor, litHorizonWhiten) : litColor;
+            Color midEff = haveSun ? Color.Lerp(horizon, midColor, midHorizonWhiten) : midColor;
+            Color shadowEff = shadowColor;
+            // Night band flatten: collapse the lit + shadow bands toward the
+            // mid band once the sun is far enough below the horizon, so moonlit
+            // clouds read as a soft flat silhouette instead of hard Lambertian
+            // banding. Keyed to the sun's vertical direction (sunY = 0 at the
+            // horizon, negative below) so it tracks sunset/sunrise
+            // symmetrically. The two minute knobs are converted to that signal
+            // by SunYAfterSunset, which accounts for the season's night length
+            // so the window stays at the requested real offset year-round.
+            float sunY   = haveSun ? SunController.GetSunDirection().y : 1f;
+            float startY = SunController.SunYAfterSunset(nightFlattenStartMin);
+            float fullY  = SunController.SunYAfterSunset(nightFlattenFullMin);
+            float flatten = Mathf.InverseLerp(startY, fullY, sunY) * nightBandFlatten;
+            if (flatten > 0f) {
+                litEff    = Color.Lerp(litEff,    midEff, flatten);
+                shadowEff = Color.Lerp(shadowEff, midEff, flatten);
+            }
+            cloudGenMat.SetColor (LitColorId,       litEff);
+            cloudGenMat.SetColor (MidColorId,       midEff);
+            cloudGenMat.SetColor (ShadowColorId,    shadowEff);
             cloudGenMat.SetFloat (LitBandId,        litBand);
             cloudGenMat.SetFloat (ShadowBandId,     shadowBand);
             cloudGenMat.SetFloat (CloudSunHeightId, cloudSunHeight);

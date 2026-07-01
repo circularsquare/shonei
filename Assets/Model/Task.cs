@@ -67,6 +67,12 @@ public abstract class Task {
     // territory mid-transit and arrive useless at the far side.
     public const float MinMarketEepness = 0.75f;
 
+    // Return-leg pickups are now chosen at the market (SelectMarketPickupsObjective), so the home-
+    // delivery leg count is unknown when HaulToMarket provisions food at departure. Budget this many
+    // assumed legs of extra ground walking. Over-provisioning food is harmless (it rides the food slot,
+    // not cargo); a pathologically far delivery just lands the merchant mildly hungry to self-correct.
+    public const int AssumedMarketPickupLegs = 2;
+
     // ── Search radii ─────────────────────────────────────────────────────
     // Every task pathfind should be gated by one of these radii × FindRadiusTolerance.
     // A candidate target is rejected if the *actual* path cost to reach it exceeds
@@ -109,15 +115,25 @@ public abstract class Task {
     // this cycle, by design (see ExistingLeafBonus).
     // excludeLeafIds: leaf item ids to skip outright — used by SupplyBlueprintTask to honour a
     // blueprint's per-build variant ban (Blueprint.disallowedLeaves). Null = no extra exclusions.
-    protected Item ResolveConsumeLeaf(Item item, Item preferLeaf = null, HashSet<int> excludeLeafIds = null) {
-        if (!item.IsGroup) return item;
+    // minHaulableFen: when > 0, only accept a leaf with at least this much haulable stock (floor +
+    // storage + carried), and return NULL if none qualifies instead of falling back to the group.
+    // Used by blueprint supply, which must never commit a group cost to a leaf too scarce to finish
+    // the slot — a partial delivery locks the slot to that leaf and strands the build. Leaf inputs
+    // are also availability-checked in this mode (null when short). Default 0 = original behaviour.
+    protected Item ResolveConsumeLeaf(Item item, Item preferLeaf = null, HashSet<int> excludeLeafIds = null, int minHaulableFen = 0) {
+        var ic = InventoryController.instance;
+        if (!item.IsGroup) {
+            if (minHaulableFen > 0 && ic != null && ic.HaulableStock(item) < minHaulableFen) return null;
+            return item;
+        }
         Item best = null;
         float bestScore = -1f;
-        var ic = InventoryController.instance;
         var targets = ic?.targets;
         foreach (Item leaf in item.LeafDescendants()) {
             if (excludeLeafIds != null && excludeLeafIds.Contains(leaf.id)) continue; // banned for this caller
             if (leaf.excludeFromGroupInput) continue; // never auto-substituted for a group (e.g. gypsum for "stone")
+            // Blueprint gate: skip any leaf without enough total stock to fully finish the slot.
+            if (minHaulableFen > 0 && ic != null && ic.HaulableStock(leaf) < minHaulableFen) continue;
             // Note: the "consume" flag is NOT checked here. Crafting, construction, processor-fill,
             // and repair are all "always allowed" uses (see SPEC-systems §Consume protection); only
             // direct end-uses (eat/drink/equip/fuel/furnish) gate on it, at their own selection sites.
@@ -129,7 +145,9 @@ public abstract class Task {
             if (leaf == preferLeaf) score *= ExistingLeafBonus;
             if (score > bestScore) { bestScore = score; best = leaf; }
         }
-        return best ?? item;
+        // In the blueprint-gate mode a null result is meaningful ("no leaf can finish this slot"),
+        // so don't fall back to the un-fetchable group there.
+        return best ?? (minHaulableFen > 0 ? null : item);
     }
 
     // check whether a task is possible. create objectives, make reservations
@@ -229,33 +247,50 @@ public abstract class Task {
     // the most space and reserves both that storage space and the market source stack. Shared
     // by HaulFromMarketTask (pure pickup trip) and HaulToMarketTask's return-leg piggyback;
     // the caller turns the picks into Receive/Go/Deliver objectives.
-    protected List<(ItemQuantity iq, Tile tile, Inventory inv)> SelectMarketPickups(Inventory marketInv){
+    //
+    // enforceMinHaul: pure pickup trips (HaulFromMarketTask) pass true — a dedicated round trip must
+    // clear MinMarketHaul per item or it isn't worth making. The piggyback (HaulToMarket return leg)
+    // passes false: that trip is already happening, so it grabs any positive excess that fits, down to
+    // a floor of 1. Either way picks are taken in descending-excess order, so the bulkiest hauls claim
+    // cargo first and only trickles get stranded when budget runs out.
+    //
+    // Storage search is map-wide (FindPathToStorageMostSpace wholeMap), NOT radius-gated to the
+    // merchant's position: a piggyback merchant selects at the portal (far from the colony), and "is
+    // there storage anywhere reachable" is the right question regardless of where the trip set out.
+    protected List<(ItemQuantity iq, Tile tile, Inventory inv)> SelectMarketPickups(Inventory marketInv, bool enforceMinHaul = true){
         var picks = new List<(ItemQuantity iq, Tile tile, Inventory inv)>();
         if (marketInv?.targets == null) return picks;
-        var budget = new CargoBudget(animal);
+
+        // Gather every above-target leaf, then sort by excess descending so bulk hauls go first.
+        var candidates = new List<(Item item, int excess, ItemStack stack, int avail)>();
         foreach (var kvp in marketInv.targets){
-            if (budget.Exhausted) break;
             Item item = kvp.Key;
             if (item.IsGroup) continue; // targets on groups are ignored (market targets are leaf-only)
             int excess = marketInv.Quantity(item) - kvp.Value;
             if (excess <= 0) continue;
-
             ItemStack stack = marketInv.GetItemStack(item);
             if (stack == null) continue;
             int avail = stack.quantity - stack.resAmount;
             if (avail <= 0) continue;
+            candidates.Add((item, excess, stack, avail));
+        }
+        candidates.Sort((a, b) => b.excess.CompareTo(a.excess));
 
+        var budget = new CargoBudget(animal);
+        foreach (var (item, excess, stack, avail) in candidates){
+            if (budget.Exhausted) break;
+            int floor = enforceMinHaul ? MinMarketHaul(item) : 1;
             int want = Math.Min(Math.Min(excess, avail), budget.Cap);
-            if (want < MinMarketHaul(item)) continue;
+            if (want < floor) continue;
 
-            // Pick the storage with the most free space so the full payload lands in one drop-off.
-            var (storagePath, storageInv) = animal.nav.FindPathToStorageMostSpace(item, minSpace: MinMarketHaul(item));
+            // Most free space, anywhere reachable, so the full payload lands in one drop-off.
+            var (storagePath, storageInv) = animal.nav.FindPathToStorageMostSpace(item, minSpace: floor, wholeMap: true);
             if (storagePath == null) continue;
 
             // ReserveSpace is the only reservation here that can fail-then-undo, and nothing else
             // calls ReserveSpace before the next iteration, so UndoLastSpaceReservation is safe.
             int spaceReserved = ReserveSpace(storageInv, item, want);
-            if (spaceReserved < MinMarketHaul(item)) { UndoLastSpaceReservation(); continue; }
+            if (spaceReserved < floor) { UndoLastSpaceReservation(); continue; }
             int finalQty = Math.Min(want, spaceReserved);
 
             ReserveStack(stack, finalQty);
@@ -291,7 +326,7 @@ public abstract class Task {
 
     // Estimated walk time from anywhere on-map to the market portal at x=0.
     // protected so HaulToMarketTask can reuse it as a budget for the piggyback
-    // portal→storage walk (see TryAppendPickup).
+    // portal→storage walk (see AppendReturnPickups).
     protected const float WalkToPortalSeconds = 20f;
 
     // Finds the nearest reachable food source. If slotItem is non-null, only searches

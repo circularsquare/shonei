@@ -60,9 +60,23 @@ public class GlobalInventoryPanel : MonoBehaviour {
             return;
         }
         built = true;
-        // Db.items is parent-before-child ordered, so each row's parent already exists when we
-        // reach it — same assumption InventoryController.AddItemDisplay relies on.
-        foreach (Item item in Db.items) AddRow(item);
+        // Pre-order tree walk (roots in id order, then each root's subtree) so every child row is
+        // instantiated — and thus sits — immediately after its parent. Db.items is id-indexed and
+        // children can have ids that interleave with unrelated groups, so a flat id-order pass would
+        // scatter a group's leaves (e.g. soybeans/soymilk landing after "tools"/"water"). The
+        // always-visible summary panel gets contiguity for free via real parenting; this flat
+        // sibling list has to walk the tree explicitly.
+        foreach (Item item in Db.items)
+            if (item != null && item.parent == null) AddRowSubtree(item);
+    }
+
+    // Adds a row for `item`, then recurses into its children — pre-order, so parents precede their
+    // descendants and each subtree is contiguous. Children come from item.children (authored order),
+    // independent of id, which is what keeps them grouped under their parent.
+    void AddRowSubtree(Item item) {
+        AddRow(item);
+        if (item.children != null)
+            foreach (Item child in item.children) AddRowSubtree(child);
     }
 
     void AddRow(Item item) {

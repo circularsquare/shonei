@@ -275,6 +275,7 @@ public class AnimalStateManager {
     private static Skill? GetTaskSkill(Animal animal) {
         Task t = animal.task;
         if (t is HarvestTask)   return Skill.Farming;
+        if (t is TillSoilTask)  return Skill.Farming;
         if (t is ConstructTask) return Skill.Construction;
         if (t is MaintenanceTask) return Skill.Construction;
         if (t is ResearchTask)  return Skill.Scholarship;
@@ -312,6 +313,16 @@ public class AnimalStateManager {
             animal.workProgress -= WaterPlantTask.WaterTime;
             waterTask.PourWater();
             waterTask.Complete();
+            return;
+        } else if (animal.task is TillSoilTask tillTask) {
+            // Soil may have been tilled by another farmer mid-task — bail gracefully.
+            if (tillTask.soil == null || tillTask.soil.tilled) { tillTask.Fail(); return; }
+            animal.workProgress += workEfficiency;
+            animal.skills.GainXp(Skill.Farming, baseWorkEff * SkillSet.XpPerWorkTick);
+            if (animal.workProgress < TillSoilTask.TillTime) return;
+            animal.workProgress -= TillSoilTask.TillTime;
+            tillTask.DoTill();
+            tillTask.Complete();
             return;
         } else if (animal.task is ConstructTask constructTask){
             Blueprint blueprint = constructTask.blueprint;
@@ -388,7 +399,7 @@ public class AnimalStateManager {
                     foreach (ItemQuantity iq in recipe.inputs) animal.Consume(iq.item, iq.quantity);
                     if (craftTask.FuelItem != null) animal.Consume(craftTask.FuelItem, craftTask.FuelPerRoundFen);
                     ItemQuantity[] outputs = recipe.outputs;
-                    if (craftTask.workplace?.building is ExtractionBuilding extractor) {
+                    if (craftTask.workplace?.building is IExtractor extractor) {
                         var extra = extractor.GetExtractionOutputs();
                         if (extra != null) outputs = extra;
                     }
@@ -413,28 +424,19 @@ public class AnimalStateManager {
                         wb.workstation.uses++;
                         if (wb.workstation.uses >= wb.structType.depleteAt) {
                             Tile depletedTile = craftTask.workplace;
-                            bool wasExtraction = wb is ExtractionBuilding;
+                            var depExtractor = wb as IExtractor;
                             wb.Destroy();
-                            // Extraction buildings (digging pit / quarry) keep the tile intact
-                            // during operation (preservesTile) — on full depletion the substrate
-                            // is finally gone, so empty the tile before the platform takes its
-                            // place. Without this, the follow-up platform would sit on top of the
-                            // original solid substrate.
-                            if (wasExtraction) depletedTile.type = Db.tileTypeByName["empty"];
-                            StructController.instance.Construct(Db.structTypeByName["platform"], depletedTile);
+                            // Extractors define their own end state (ExtractionBuilding empties the
+                            // tile + drops a platform; WallQuarry marks the wall quarried-out). Any
+                            // other depleting workstation falls back to the legacy platform swap.
+                            if (depExtractor != null) depExtractor.OnExtractionDepleted(depletedTile);
+                            else StructController.instance.Construct(Db.structTypeByName["platform"], depletedTile);
                             craftTask.Complete();
                             return;
                         }
-                        // Extraction building (digging pit / quarry): refresh the dish
-                        // visual and drop the workspot so the next craft round shows the
-                        // new excavation depth and the digger keeps standing on the
-                        // receding floor. The animal is already standing AT workNode
-                        // (CraftTask arrived) so it needs an explicit SnapTo — otherwise
-                        // its transform stays at the old wy until it walks somewhere else.
-                        if (wb is ExtractionBuilding pit) {
-                            pit.RebuildDishVisual();
-                            if (pit.workNode != null) animal.SnapTo(animal.x, pit.workNode.wy);
-                        }
+                        // Per-round refresh for extractors (dish deepen + workspot track; wall
+                        // quarry is a no-op for now).
+                        (wb as IExtractor)?.OnExtractionRound(animal);
                     }
                     craftTask.roundsRemaining--;
                     if (craftTask.roundsRemaining <= 0) { craftTask.Complete(); return; }
@@ -525,6 +527,10 @@ public class AnimalStateManager {
             if (animal.workProgress < 10f) return;
             animal.workProgress = 0f;
             animal.task.Complete();
+        } else if (animal.task is DrawWaterTask) {
+            // The Well drives the bucket draw (Well.AdvanceDraw) and completes the objective when the
+            // bucket returns; the hauler just stands at the wellhead. Nothing to tick here.
+            return;
         } else {
             Debug.LogError(animal.aName + " in working state but no work to do");
         }
@@ -635,13 +641,21 @@ public class AnimalStateManager {
             }
         }
 
+        // Reading scales with Scholarship (and the scholar's hat, via GetWorkMultiplier): a skilled
+        // reader finishes the book faster AND still draws the same TOTAL reading-happiness — the
+        // per-tick grant scales by the same rate, so reading quicker is a perk, not a penalty
+        // (fewer ticks × a bigger grant = unchanged total). Non-reading leisure advances at base 1×.
+        float leisureRate = animal.task is ReadBookTask
+            ? ModifierSystem.GetWorkMultiplier(animal, Skill.Scholarship)
+            : 1f;
+
         // Per-tick reading happiness during ReadBookTask's read phase. Mirrors the per-tick
         // social grant for chatting — no lump grant in ReadBookTask.Complete.
         if (animal.task is ReadBookTask) {
-            animal.happiness.NoteRead(Happiness.readingTickGrant);
+            animal.happiness.NoteRead(Happiness.readingTickGrant * leisureRate);
         }
 
-        animal.workProgress += 1f;
+        animal.workProgress += leisureRate;
         if (animal.workProgress >= obj.duration) {
             animal.task.Complete();
         }

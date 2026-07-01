@@ -41,10 +41,12 @@ public class World : MonoBehaviour {
     public string SettlementDisplayName => string.IsNullOrEmpty(settlementName) ? DefaultSettlementName : settlementName;
 
     // Settlement names double as autosave slot-name fragments, so they must stay within
-    // the save store's filesystem-safe charset ([A-Za-z0-9 _-], see SaveStore / server
-    // slotRe) and short enough that "autosave <name> <timestamp>" fits the 64-char slot
-    // cap. Strips disallowed chars, collapses whitespace, trims, and caps length. Returns
-    // null for empty/blank input so callers fall back to DefaultSettlementName.
+    // the save store's filesystem-safe charset (see SaveStore / server slotRe) and short
+    // enough that "auto <name> (N)" fits the 64-char slot cap. Parens are deliberately
+    // excluded here even though slot names allow them — that keeps the trailing "(N)"
+    // autosave counter unambiguous to parse. Strips disallowed chars, collapses whitespace,
+    // trims, and caps length. Returns null for empty/blank input so callers fall back to
+    // DefaultSettlementName.
     public const int MaxSettlementNameLength = 24;
     public static string SanitizeSettlementName(string raw) {
         if (string.IsNullOrEmpty(raw)) return null;
@@ -114,6 +116,7 @@ public class World : MonoBehaviour {
         PowerSystem.Create();
         StatsTracker.Create();
         WildHerbSystem.Create();
+        FootTrafficSystem.Create();
     }
 
     // Reload Domain is off, so plain-C# singletons (unlike MonoBehaviours, whose destroyed
@@ -134,6 +137,7 @@ public class World : MonoBehaviour {
         PowerSystem.ResetStatics();
         StatsTracker.ResetStatics();
         WildHerbSystem.ResetStatics();
+        FootTrafficSystem.ResetStatics();
         GlobalInventory.ResetStatics();
         MarketBuilding.ResetStatics();
         // Static structure registries that a normal ClearWorld empties via each structure's
@@ -195,6 +199,11 @@ public class World : MonoBehaviour {
             // Moisture gains (rain + water seep) before plants so Grow() reads current soil.
             MoistureSystem.instance?.RainUptakePerSecond();
             MoistureSystem.instance?.SeepPerSecond();
+            // Wells exchange groundwater with the soil around their shaft AFTER the generic
+            // moisture pass settles: they pull from wet neighbours (>50%) into their reservoir
+            // and seep back into dry ones (<50%). Runs before OverlayGrowth so grass sees the
+            // updated soil this tick.
+            Well.TickAll();
             // Live growth of tile overlays (grass on dirt). Reads tile.moisture
             // (just refreshed above) and WeatherSystem.temperature; writes
             // overlayMask via the property setter so the renderer redraws.
@@ -213,6 +222,9 @@ public class World : MonoBehaviour {
             // is essentially identical to this-tick supply for the inclusive-fallback path.
             Elevator.TickAll();
             PowerSystem.instance?.Tick();
+            // Foot-traffic heat map: one coarse sample + decay per second (cheap; always
+            // runs so the data overlay is warm whenever the player opens it).
+            FootTrafficSystem.instance?.Sample();
         }
         float reconcilePeriod = 10f;
         if (Math.Floor((timer + dt) / reconcilePeriod) - Math.Floor(timer / reconcilePeriod) > 0)
@@ -231,6 +243,7 @@ public class World : MonoBehaviour {
         if (Math.Floor((timer + dt) / hourPeriod) - Math.Floor(timer / hourPeriod) > 0) {
             WeatherSystem.instance?.OnHourElapsed();
             WildHerbSystem.instance?.OnHourElapsed();
+            FlowerController.instance?.OnHourElapsed();
             // Daily-stats sampling cadence (pulls sampler-backed stats, e.g. avg social).
             StatsTracker.instance?.OnSampleTick();
         }

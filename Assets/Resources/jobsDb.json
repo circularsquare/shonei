@@ -85,6 +85,7 @@
         "id": 17,
         "name": "scribe",
         "jobType": "crafter",
+        "defaultSkill": "scholarship",
         "defaultLocked": true,
         "preferredHat": "cloth hat"
     },{

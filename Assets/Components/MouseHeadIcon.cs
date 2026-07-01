@@ -7,27 +7,15 @@ using UnityEngine.EventSystems;
 // rosters, and anywhere a mouse needs to be identified at a glance. Hovering shows the
 // mouse's name.
 //
-// Every mouse shares the one `mouse_head` sprite; per-mouse fur color is applied as a tint
-// (see furMaterial below), matching the in-world mouse. Set() is animal-typed (not
-// sprite-typed) so further per-mouse appearance — profession hats, etc. — can layer in here
-// without touching any call site.
+// Every mouse shares the one `mouse_head` sprite; per-mouse fur color is baked into a Bilinear UI
+// sprite by MouseHeadBaker (the in-world shader recolor can't go bilinear — it keys on exact pixel
+// values). Set() is animal-typed (not sprite-typed) so further per-mouse appearance — profession
+// hats, etc. — can layer in here without touching any call site.
 [RequireComponent(typeof(Image))]
 public class MouseHeadIcon : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler {
-    // Shared head sprite, loaded once. Point-filtered pixel art (see import settings).
+    // Shared base head sprite, loaded once — the un-recolored source MouseHeadBaker reads from.
     // A Resources asset ref — safe to hold statically across scene/domain reloads.
     static Sprite headSprite;
-
-    // Shared material running Custom/MouseHeadUI: recolors the gray fur shades to the per-icon
-    // Image.color (which the Canvas feeds the shader as vertex color), leaving eyes and pink
-    // ears constant — same remap as the in-world mouse. One shared instance keeps all heads
-    // batched (only the vertex color differs per icon). Resources ref → safe static.
-    static Material furMaterial;
-    static bool furMaterialTried;
-
-    // Shared UI material that samples bilinear (Custom/UIBilinear) so the hat overlay smooths at
-    // the non-integer UI scale without changing the Point world texture. Resources ref → safe static.
-    static Material hatMaterial;
-    static bool hatMaterialTried;
 
     Image image;
     Animal animal;
@@ -72,20 +60,11 @@ public class MouseHeadIcon : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
             Debug.LogError("MouseHeadIcon: could not load Sprites/Animals/mouse_head");
             return;
         }
-        image.sprite = headSprite;
-
-        // Apply this mouse's fur tint. Lazy-load the shared material once; on failure we
-        // leave the head untinted (default UI material) rather than multiply-tinting eyes/ears.
-        if (!furMaterialTried) {
-            furMaterialTried = true;
-            furMaterial = Resources.Load<Material>("Materials/MouseHeadUI");
-            if (furMaterial == null)
-                Debug.LogError("MouseHeadIcon: could not load Materials/MouseHeadUI — fur tint disabled");
-        }
-        if (furMaterial != null) {
-            image.material = furMaterial;
-            image.color = Db.FurColorForSeed(animal.rngSeed);
-        }
+        // UI uses a pre-baked, fur-recolored BILINEAR head — the in-world shader recolor keys on
+        // exact pixel values and breaks under bilinear. The world mouse is unaffected (shader+MPB).
+        image.sprite = MouseHeadBaker.Head(headSprite, Db.FurColorForSeed(animal.rngSeed));
+        image.material = null;      // default UI material; the recolor is baked into the sprite
+        image.color = Color.white;  // no tint (CanvasGroup still handles fades)
 
         UpdateHatOverlay();
         gameObject.SetActive(true);
@@ -119,16 +98,8 @@ public class MouseHeadIcon : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
             hatImage = go.GetComponent<Image>();
             hatImage.raycastTarget = false;   // clicks pass through to the head
             hatImage.preserveAspect = true;
-            // Bilinear UI material so the Point hat texture smooths in the UI (world stays crisp).
-            if (!hatMaterialTried) {
-                hatMaterialTried = true;
-                hatMaterial = Resources.Load<Material>("Materials/UIBilinear");
-                if (hatMaterial == null)
-                    Debug.LogError("MouseHeadIcon: could not load Materials/UIBilinear — hat icon will not smooth");
-            }
-            if (hatMaterial != null) hatImage.material = hatMaterial;
         }
-        hatImage.sprite = hatSprite;
+        hatImage.sprite = MouseHeadBaker.HatCopy(hatSprite);
         hatImage.color = Color.white;          // hats keep their own colors (no fur tint)
         hatImage.gameObject.SetActive(true);
     }

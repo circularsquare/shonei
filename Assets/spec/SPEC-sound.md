@@ -8,12 +8,13 @@ around *focus* — a priority hierarchy plus throttles that keep the mix legible
 ## Current implementation
 
 `SoundManager` (`Assets/Controller/SoundManager.cs`) — MonoBehaviour singleton in
-`Main.unity`. Self-creates two `AudioSource`s in `Awake`:
+`Main.unity`. Self-creates three `AudioSource`s in `Awake`:
 - `sfxSource` — one-shots via `PlayOneShot`.
-- `ambientSource` — `loop = true`, per-frame volume.
+- `ambientSource` — rain loop, `loop = true`, per-frame volume.
+- `windSource` — wind loop (mixes alongside rain), currently gated off by `const bool windAmbientEnabled = false`.
 
 Clips are `Resources.Load<AudioClip>`-ed on first use and cached:
-- `Resources/Audio/SFX/` — one-shots (`click.wav`, `blueprint_place`, …)
+- `Resources/Audio/SFX/` — one-shots (`click.wav`, `death.wav`, …)
 - `Resources/Audio/Ambient/` — loops (`rain.mp3`)
 
 **Volume**: designer baselines (`sfxVolume`, `ambientVolume` inspector fields) ×
@@ -35,7 +36,7 @@ fade instead of popping. They mix freely (windy AND raining). Both pause togethe
 resume mid-loop instead of re-attacking.
 - **rain** (`ambientSource`) — `0.5 + 0.5·rain` of the `ambientVolume` baseline,
   gated off `rainAmount` (silent when not raining).
-- **wind** (`windSource`) — driven by `|wind|` (direction-agnostic). **Silent below
+- **wind** (`windSource`) — **currently disabled** (`const bool windAmbientEnabled = false` — it read as intrusive); the code below stays in place behind that flag. When enabled: driven by `|wind|` (direction-agnostic), **silent below
   `windThreshold` (0.3)**, then scales from there to full `windVolume` at
   `windFullMagnitude` (0.9) — so it only speaks up on breezier stretches, not the
   ~±0.4 typical drift. Tune via `windThreshold` / `windFullMagnitude` / `windVolume`.
@@ -98,6 +99,7 @@ Wired and live. Canonical clip names (files in `Resources/Audio/SFX/`):
 | `research_select` | toggle-study a research node | `ResearchPanel.OnClickToggleStudy` |
 | `research_complete` | a node passively completes | binding → `ResearchSystem.OnTechUnlocked` |
 | `trade_fill` (×0.5) | a market order fills | `ChatLog.DisplayFill` |
+| `death` | a mouse starves to death (bell toll) | `AnimalController.HandleDeath` |
 
 The deliberate choice: **most player actions share one `click`** — placing,
 cancelling, designating, harvesting. Only genuinely distinct *outcomes* get their
@@ -119,8 +121,8 @@ Notes:
 [EventFeed](SPEC-eventfeed.md)'s bindings table *is* the "things the player should
 notice" list — the natural hook. Add a `SoundManager` binding (like
 `OnTechUnlocked`) per event, or a small `SoundBindings` once the list grows past ~5.
-Candidates: trade fill (done), research forgotten (`OnTechForgotten`), market
-errors, mouse born, mouse starved (`Animal` already tracks death). Keep each
+Candidates: trade fill (done), mouse death (done — `death`), research forgotten
+(`OnTechForgotten`), market errors, mouse born. Keep each
 deduped/cooldowned in one place so a burst of fills doesn't overlap.
 
 ### Tier 3 — machine / process loops (highest "alive" payoff)
@@ -139,9 +141,9 @@ scope it deliberately:
 - **Zoom-as-mixer**: a global micro-sound gain curve driven by camera zoom; tier 3/5
   multiply into it.
 
-### Tier 4 — ambient bed (rain + wind built)
+### Tier 4 — ambient bed (rain built; wind built but disabled)
 
-Rain and wind loops are live (see Current implementation). Still to add, each a
+The rain loop is live; the wind loop is implemented but currently gated off (`windAmbientEnabled = false`) — see Current implementation. Still to add, each a
 further `AudioSource` following the same per-source pattern: day vs. night beds
 (cross-faded by time of day) and an **underground** bed that fades in as the camera
 descends below the surface (caves / digging should *sound* different from the

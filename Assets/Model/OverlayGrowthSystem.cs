@@ -92,6 +92,9 @@ public class OverlayGrowthSystem {
             for (int y = 0; y < ny; y++) {
                 Tile t = world.GetTileAt(x, y);
                 if (t.type.overlay == null) continue;
+                // A facade structure (well shaft) covers its tiles — don't sprout grass there
+                // (the renderer suppresses it too, but skip the work and keep state clean).
+                if (t.building != null && t.building.structType.suppressOverlay) continue;
                 // Snow preserves the underlying grass intact — don't tick state
                 // or grow new sides while snow sits on top. Freezing the tile here
                 // is what lets the live overlayMask/state survive untouched under

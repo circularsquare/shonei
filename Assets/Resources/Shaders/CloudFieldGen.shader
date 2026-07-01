@@ -358,6 +358,7 @@ Shader "Hidden/CloudFieldGen" {
                 half3 col = (ndotl > _LitBand)    ? _LitColor.rgb
                           : (ndotl > _ShadowBand) ? _MidColor.rgb
                                                   : _ShadowColor.rgb;
+
                 return half4(col, coverage);
             }
             ENDHLSL

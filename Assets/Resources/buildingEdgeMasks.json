@@ -2,201 +2,259 @@
   {
     "name": "stairs",
     "left": 0,
-    "right": 0
+    "right": 0,
+    "bottom": 0
   },
   {
     "name": "ladder",
     "left": 0,
-    "right": 0
+    "right": 0,
+    "bottom": 1
   },
   {
     "name": "ladder_side",
     "left": 1,
-    "right": 0
+    "right": 0,
+    "bottom": 0
   },
   {
     "name": "bracket",
     "left": 1,
-    "right": 0
+    "right": 0,
+    "bottom": 0
   },
   {
     "name": "rope bridge post",
     "left": 0,
-    "right": 0
+    "right": 0,
+    "bottom": 0
   },
   {
     "name": "road",
     "left": 0,
-    "right": 0
+    "right": 0,
+    "bottom": 1
   },
   {
     "name": "house",
     "left": 15,
-    "right": 15
+    "right": 15,
+    "bottom": 15
   },
   {
     "name": "shack",
     "left": 2,
-    "right": 3
+    "right": 3,
+    "bottom": 3
   },
   {
     "name": "burrow",
     "left": 7,
-    "right": 7
+    "right": 7,
+    "bottom": 7
   },
   {
     "name": "drawer",
     "left": 1,
-    "right": 1
+    "right": 1,
+    "bottom": 1
   },
   {
     "name": "crate",
     "left": 1,
-    "right": 1
+    "right": 1,
+    "bottom": 1
   },
   {
     "name": "tank",
     "left": 1,
-    "right": 1
+    "right": 1,
+    "bottom": 1
   },
   {
     "name": "bookshelf",
     "left": 1,
-    "right": 1
+    "right": 1,
+    "bottom": 1
   },
   {
     "name": "market",
     "left": 0,
-    "right": 0
+    "right": 0,
+    "bottom": 0
   },
   {
     "name": "torch",
     "left": 0,
-    "right": 0
+    "right": 0,
+    "bottom": 0
   },
   {
     "name": "torch_side",
     "left": 0,
-    "right": 0
+    "right": 0,
+    "bottom": 0
+  },
+  {
+    "name": "lantern",
+    "left": 0,
+    "right": 0,
+    "bottom": 0
   },
   {
     "name": "fountain",
     "left": 0,
-    "right": 0
+    "right": 0,
+    "bottom": 1
   },
   {
     "name": "clock",
     "left": 0,
-    "right": 0
+    "right": 0,
+    "bottom": 1
+  },
+  {
+    "name": "thermometer",
+    "left": 0,
+    "right": 0,
+    "bottom": 1
+  },
+  {
+    "name": "work flag",
+    "left": 0,
+    "right": 0,
+    "bottom": 0
   },
   {
     "name": "fireplace",
     "left": 0,
-    "right": 0
+    "right": 0,
+    "bottom": 2
   },
   {
     "name": "bench",
     "left": 0,
-    "right": 0
+    "right": 0,
+    "bottom": 1
   },
   {
     "name": "mineshaft",
     "left": 1,
-    "right": 1
+    "right": 1,
+    "bottom": 0
   },
   {
     "name": "sawmill",
     "left": 3,
-    "right": 3
+    "right": 3,
+    "bottom": 3
   },
   {
     "name": "workshop",
     "left": 3,
-    "right": 3
+    "right": 3,
+    "bottom": 3
   },
   {
     "name": "foundry",
     "left": 10,
-    "right": 5
+    "right": 5,
+    "bottom": 7
   },
   {
     "name": "press",
     "left": 0,
-    "right": 0
+    "right": 0,
+    "bottom": 1
   },
   {
     "name": "mill",
     "left": 1,
-    "right": 1
+    "right": 1,
+    "bottom": 1
   },
   {
     "name": "pump",
     "left": 0,
-    "right": 0
+    "right": 0,
+    "bottom": 1
   },
   {
     "name": "paper mill",
     "left": 1,
-    "right": 1
+    "right": 1,
+    "bottom": 1
   },
   {
     "name": "scriptorium",
-    "left": 1,
-    "right": 1
+    "left": 0,
+    "right": 1,
+    "bottom": 1
   },
   {
     "name": "brewery",
     "left": 0,
-    "right": 0
+    "right": 0,
+    "bottom": 3
   },
   {
     "name": "digging pit",
     "left": 0,
-    "right": 0
+    "right": 0,
+    "bottom": 1
   },
   {
     "name": "quarry",
     "left": 0,
-    "right": 0
+    "right": 0,
+    "bottom": 1
   },
   {
     "name": "crucible",
     "left": 0,
-    "right": 0
+    "right": 0,
+    "bottom": 1
   },
   {
     "name": "laboratory",
     "left": 1,
-    "right": 1
+    "right": 1,
+    "bottom": 1
   },
   {
     "name": "weaver",
     "left": 1,
-    "right": 1
+    "right": 1,
+    "bottom": 1
   },
   {
     "name": "tailor",
     "left": 1,
-    "right": 1
+    "right": 1,
+    "bottom": 1
   },
   {
     "name": "hattery",
     "left": 3,
-    "right": 3
+    "right": 2,
+    "bottom": 3
   },
   {
     "name": "windmill",
     "left": 10,
-    "right": 5
+    "right": 5,
+    "bottom": 3
   },
   {
     "name": "flywheel",
     "left": 10,
-    "right": 1
+    "right": 1,
+    "bottom": 4
   },
   {
     "name": "cauldron",
     "left": 0,
-    "right": 0
+    "right": 0,
+    "bottom": 1
   }
 ]

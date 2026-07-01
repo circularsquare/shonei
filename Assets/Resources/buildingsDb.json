@@ -43,7 +43,7 @@
         "sideVariant": "ladder_side",
         "category": "structures"
     },{
-        "id": 6,
+        "id": 4,
         "constructionCost": 4,
         "name": "ladder_side",
         "description": "ladder hung against the side of a wall or building. place by hovering near the edge of a tile",
@@ -53,11 +53,11 @@
         ],
         "depth": 2,
         "noMaintenance": true,
-        "sideMounted": true,
+        "mountTo": "side",
         "category": "structures",
         "defaultLocked": true
     },{
-        "id": 147,
+        "id": 5,
         "constructionCost": 4,
         "name": "bracket",
         "description": "support hung off the side of a wall.",
@@ -67,52 +67,28 @@
         ],
         "depth": 1,
         "solidTop": true,
-        "sideMounted": true,
+        "mountTo": "side",
         "category": "structures",
         "defaultLocked": true
     },{
-        "id": 148,
-        "constructionCost": 5,
-        "name": "roof",
-        "description": "",
+        "id": 6,
+        "constructionCost": 15,
+        "name": "mineshaft",
+        "description": "excavates a tile and places a ladder",
         "nx": 1, "ny": 1,
         "ncosts": [
-            { "name": "wood", "quantity": 3 }
+            { "name": "wood", "quantity": 10 }
         ],
-        "depth": 2,
-        "blocksRain": true,
+        "depth": 1,
+        "njob": "digger",
         "noMaintenance": true,
-        "category": "structures",
-        "defaultLocked": true,
-        "shapes": [
-            { "nx": 1, "ny": 1 },
-            { "nx": 1, "ny": 1, "sprite": "roof2" }
-        ]
-    },{
-        "id": 150,
-        "constructionCost": 8,
-        "name": "greenhouse",
-        "description": "warms plants inside; grow even off soil",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "glass", "quantity": 10 },
-            { "name": "planks", "quantity": 2 },
-            { "name": "dirt", "quantity": 5 }
+        "placesStructureOnComplete": "ladder",
+        "tileRequirements": [
+            { "dx": 0, "dy": 0, "mustBeSolidTile": true }
         ],
-        "depth": 5,
-        "isBuilding": true,
-        "isGreenhouse": true,
-        "greenhouseTargetTempC": 25,
-        "greenhouseTempPull": 0.5,
-        "greenhouseGrowthMult": 1.1,
-        "greenhouseMoistureMult": 0.5,
-        "category": "structures",
-        "shapes": [
-            { "nx": 1, "ny": 1 },
-            { "nx": 1, "ny": 2 }
-        ]
+        "category": "structures"
     },{
-        "id": 5,
+        "id": 7,
         "constructionCost": 3,
         "constructionCostPerTile": true,
         "name": "rope bridge post",
@@ -131,7 +107,7 @@
         "maxDy": 5,
         "sagFraction": 0.15
     },{
-        "id": 4,
+        "id": 8,
         "constructionCost": 5,
         "name": "road",
         "description": "increases movement speed",
@@ -145,167 +121,52 @@
         "category": "structures",
         "defaultLocked": true
     },{
-        "id": 20,
-        "constructionCost": 50,
-        "name": "house",
-        "description": "houses 3 mice",
-        "nx": 2, "ny": 2,
+        "id": 9,
+        "constructionCost": 5,
+        "name": "roof",
+        "description": "",
+        "nx": 1, "ny": 1,
         "ncosts": [
-            { "name": "planks", "quantity": 20 },
-            { "name": "wood", "quantity": 5 }
+            { "name": "wood", "quantity": 3 }
         ],
-        "njob": "hauler",
-        "capacity": 3,
-        "depth": 0,
-        "solidTop": true,
-        "category": "housing",
-        "isHousing": true,
-        "hasFurnishingSlots": true,
-        "furnishingSlotNames": ["cloth", "stool"],
-        "furnishingSlotPositions": [
-            { "dx": 1, "dy": 1 },
-            { "dx": 1, "dy": 0 }
-        ],
-        "interiorTiles": [
-            { "dx": 1, "dy": 1 }, { "dx": 0, "dy": 1 },
-            { "dx": 0, "dy": 0 }, { "dx": 1, "dy": 0 }
-        ],
-        "ladders": [{ "dx": 0, "dy": 0 }],
-        "doors":   [{ "dx": 1, "dy": 0, "side": "right" }]
-    },{
-        "id": 26,
-        "constructionCost": 18,
-        "name": "shack",
-        "description": "houses 1 mouse. no room for furnishing.",
-        "nx": 2, "ny": 1,
-        "ncosts": [
-            { "name": "wood", "quantity": 4 }
-        ],
-        "njob": "hauler",
-        "capacity": 1,
-        "depth": 0,
-        "solidTop": true,
-        "category": "housing",
-        "isHousing": true,
-        "hasFurnishingSlots": true,
-        "furnishingSlotNames": ["cloth"],
-        "furnishingSlotPositions": [
-            { "dx": 1, "dy": 0 }
-        ],
-        "doors": [{ "dx": 0, "dy": 0, "side": "left" }],
-        "interiorTiles": [{ "dx": 1, "dy": 0 }, { "dx": 0, "dy": 0 }]
-    },{
-        "id": 30,
-        "constructionCost": 30,
-        "name": "burrow",
-        "description": "houses 2 mice. dug into a dirt bank",
-        "nx": 3, "ny": 1,
-        "enclosed": true,
-        "ncosts": [
-            { "name": "wood", "quantity": 8 }
-        ],
-        "njob": "digger",
-        "capacity": 2,
-        "depth": 0,
-        "solidTop": true,
-        "category": "housing",
-        "isHousing": true,
-        "hasFurnishingSlots": true,
-        "furnishingSlotNames": ["cloth", "stool"],
-        "furnishingSlotPositions": [
-            { "dx": 0, "dy": 0 },
-            { "dx": 1, "dy": 0 }
-        ],
-        "interiorTiles": [
-            { "dx": 0, "dy": 0 }, { "dx": 1, "dy": 0 }, { "dx": 2, "dy": 0 }
-        ],
-        "doors": [{ "dx": 2, "dy": 0, "side": "right" }],
-        "requiredTileName": "dirt",
-        "preservesTile": true,
-        "tileRequirements": [
-            { "dx": 1, "dy": 0, "requiredTileName": "dirt" },
-            { "dx": 2, "dy": 0, "requiredTileName": "dirt" }
+        "depth": 2,
+        "blocksRain": true,
+        "noMaintenance": true,
+        "category": "structures",
+        "defaultLocked": true,
+        "shapes": [
+            { "nx": 1, "ny": 1 },
+            { "nx": 1, "ny": 1, "sprite": "roof2" }
         ]
     },{
-        "id": 21,
-        "constructionCost": 16,
-        "name": "drawer",
-        "description": "stores 4 stacks of 20 liang",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "wood", "quantity": 5 },
-            { "name": "planks", "quantity": 5 }
-        ],
-        "njob": "hauler",
-        "isStorage": true,
-        "nStacks": 4,
-        "storageStackSize": 20,
-        "solidTop": true,
-        "category": "storage"
-    },{
-        "id": 22,
-        "constructionCost": 12,
-        "name": "crate",
-        "description": "stores 1 stack of 100 liang",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "wood", "quantity": 5 }
-        ],
-        "njob": "hauler",
-        "isStorage": true,
-        "nStacks": 1,
-        "storageStackSize": 100,
-        "solidTop": true,
-        "category": "storage"
-    },{
-        "id": 23,
-        "constructionCost": 16,
-        "name": "tank",
-        "description": "stores liquids. also gathers rainwater if water is allowed in",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "wood", "quantity": 4 },
-            { "name": "planks", "quantity": 3 }
-        ],
-        "isStorage": true,
-        "storageClass": "liquid",
-        "nStacks": 1,
-        "storageStackSize": 100,
-        "category": "storage"
-    },{
-        "id": 25,
-        "constructionCost": 20,
-        "name": "bookshelf",
-        "description": "stores up to 10 books",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "wood", "quantity": 5 },
-            { "name": "planks", "quantity": 5 }
-        ],
-        "njob": "hauler",
-        "isStorage": true,
-        "storageClass": "book",
-        "nStacks": 10,
-        "storageStackSize": 1,
-        "solidTop": true,
-        "category": "storage",
-        "defaultLocked": true
-    },{
-        "id": 24,
-        "constructionCost": 5,
-        "name": "market",
-        "description": "",
+        "id": 10,
+        "constructionCost": 3,
+        "constructionCostPerTile": true,
+        "name": "tarp",
+        "description": "shelters area below from rain",
         "nx": 3, "ny": 1,
-        "storageTileX": 1,
-        "ncosts": [ ],
-        "isStorage": true,
-        "nStacks": 50,
-        "storageStackSize": 10000,
+        "ncosts": [
+            { "name": "cloth", "quantity": 3 }
+        ],
+        "depth": 1,
+        "isBuilding": true,
+        "blocksRain": true,
+        "edgeSupported": true,
         "noMaintenance": true,
-        "category": "storage",
+        "shapes": [
+            { "nx": 3, "ny": 1 },
+            { "nx": 4, "ny": 1 },
+            { "nx": 5, "ny": 1 },
+            { "nx": 6, "ny": 1 },
+            { "nx": 3, "ny": 2 },
+            { "nx": 4, "ny": 2 },
+            { "nx": 5, "ny": 2 },
+            { "nx": 6, "ny": 2 }
+        ],
+        "category": "structures",
         "defaultLocked": true
     },{
-        "id": 40,
+        "id": 11,
         "constructionCost": 8,
         "name": "torch",
         "description": "consumes wood to light",
@@ -335,7 +196,7 @@
         "emberOffsetY": -0.23,
         "category": "structures"
     },{
-        "id": 149,
+        "id": 12,
         "constructionCost": 8,
         "name": "torch_side",
         "description": "torch hung against the side of a wall or building. place by hovering near the edge of a tile",
@@ -356,7 +217,7 @@
         "lightCenterFlatten": 0.6,
         "lightFlicker": 0.06,
         "sortingOrder": 40,
-        "sideMounted": true,
+        "mountTo": "side",
         "fireFps": 4.2,
         "fireOffsetX": 0,
         "fireOffsetY": 0,
@@ -366,70 +227,33 @@
         "category": "structures",
         "defaultLocked": true
     },{
-        "id": 41,
-        "constructionCost": 20,
-        "name": "fountain",
-        "description": "decorative. requires stocking with water to function",
+        "id": 13,
+        "constructionCost": 8,
+        "name": "lantern",
+        "description": "hangs from a ceiling; consumes wood to light",
         "nx": 1, "ny": 1,
         "ncosts": [
-            { "name": "stone", "quantity": 10 }
+            { "name": "wood", "quantity": 5 },
+            { "name": "paper", "quantity": 3 }
         ],
-        "depth": 0,
+        "depth": 2,
         "isBuilding": true,
-        "isDecoration": true,
-        "decorationNeed": "fountain",
-        "decorRadius": 3,
         "hasFuelInv": true,
-        "fuelItemName": "water",
-        "fuelCapacity": 10,
-        "fuelBurnRate": 0.5,
-        "category": "structures",
-        "defaultLocked": true
-    },{
-        "id": 42,
-        "constructionCost": 20,
-        "name": "clock",
-        "description": "tells the time of day",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "wood", "quantity": 5 }
-        ],
-        "depth": 0,
-        "solidTop": true,
-        "category": "structures",
-        "defaultLocked": true
-    },{
-        "id": 46,
-        "constructionCost": 15,
-        "name": "thermometer",
-        "description": "shows the temperature",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "planks", "quantity": 5 },
-            { "name": "glass", "quantity": 5 },
-            { "name": "water", "quantity": 2 }
-        ],
-        "depth": 0,
-        "solidTop": true,
-        "category": "structures",
-        "defaultLocked": true
-    },{
-        "id": 200,
-        "constructionCost": 2,
-        "name": "work flag",
-        "description": "assign mice to work and rest here",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "wood", "quantity": 1 },
-            { "name": "ramie cloth", "quantity": 1 }
-        ],
-        "depth": 0,
-        "noMaintenance": true,
-        "isBuilding": true,
-        "isWorkFlag": true,
+        "fuelItemName": "wood",
+        "fuelCapacity": 5,
+        "fuelBurnRate": 1.0,
+        "isLightSource": true,
+        "lightIntensity": 0.88,
+        "lightInnerRadius": 1,
+        "lightOuterRadius": 9,
+        "lightCenterFlatten": 0.6,
+        "lightFlicker": 0.06,
+        "emissionStrength": 0.5,
+        "sortingOrder": 40,
+        "mountTo": "ceiling",
         "category": "structures"
     },{
-        "id": 43,
+        "id": 14,
         "constructionCost": 25,
         "name": "fireplace",
         "description": "mice who sit here gain warmth and happiness",
@@ -466,34 +290,7 @@
         ],
         "category": "structures"
     },{
-        "id": 45,
-        "constructionCost": 3,
-        "constructionCostPerTile": true,
-        "name": "tarp",
-        "description": "shelters area below from rain",
-        "nx": 3, "ny": 1,
-        "ncosts": [
-            { "name": "cloth", "quantity": 3 }
-        ],
-        "depth": 1,
-        "isBuilding": true,
-        "blocksRain": true,
-        "edgeSupported": true,
-        "noMaintenance": true,
-        "shapes": [
-            { "nx": 3, "ny": 1 },
-            { "nx": 4, "ny": 1 },
-            { "nx": 5, "ny": 1 },
-            { "nx": 6, "ny": 1 },
-            { "nx": 3, "ny": 2 },
-            { "nx": 4, "ny": 2 },
-            { "nx": 5, "ny": 2 },
-            { "nx": 6, "ny": 2 }
-        ],
-        "category": "structures",
-        "defaultLocked": true
-    },{
-        "id": 44,
+        "id": 15,
         "constructionCost": 8,
         "name": "bench",
         "description": "place to sit",
@@ -515,7 +312,230 @@
         "category": "structures",
         "defaultLocked": true
     },{
-        "id": 80,
+        "id": 16,
+        "constructionCost": 20,
+        "name": "fountain",
+        "description": "decorative. requires stocking with water to function",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "stone", "quantity": 10 }
+        ],
+        "depth": 0,
+        "isBuilding": true,
+        "isDecoration": true,
+        "decorationNeed": "fountain",
+        "decorRadius": 3,
+        "hasFuelInv": true,
+        "fuelItemName": "water",
+        "fuelCapacity": 10,
+        "fuelBurnRate": 0.5,
+        "category": "structures",
+        "defaultLocked": true
+    },{
+        "id": 17,
+        "constructionCost": 20,
+        "name": "clock",
+        "description": "tells the time of day",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 5 }
+        ],
+        "depth": 0,
+        "solidTop": true,
+        "category": "structures",
+        "defaultLocked": true
+    },{
+        "id": 18,
+        "constructionCost": 15,
+        "name": "thermometer",
+        "description": "shows the temperature",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "planks", "quantity": 5 },
+            { "name": "glass", "quantity": 5 },
+            { "name": "water", "quantity": 2 }
+        ],
+        "depth": 0,
+        "solidTop": true,
+        "category": "structures",
+        "defaultLocked": true
+    },{
+        "id": 19,
+        "constructionCost": 2,
+        "name": "work flag",
+        "description": "assign mice to work and rest here",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 1 },
+            { "name": "ramie cloth", "quantity": 1 }
+        ],
+        "depth": 0,
+        "noMaintenance": true,
+        "isBuilding": true,
+        "isWorkFlag": true,
+        "category": "structures"
+    },{
+        "id": 50,
+        "constructionCost": 18,
+        "name": "shack",
+        "description": "houses 1 mouse. no room for furnishing.",
+        "nx": 2, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 4 }
+        ],
+        "njob": "hauler",
+        "capacity": 1,
+        "depth": 0,
+        "solidTop": true,
+        "category": "housing",
+        "isHousing": true,
+        "hasFurnishingSlots": true,
+        "furnishingSlotNames": ["cloth"],
+        "furnishingSlotPositions": [
+            { "dx": 1, "dy": 0 }
+        ],
+        "doors": [{ "dx": 0, "dy": 0, "side": "left" }],
+        "interiorTiles": [{ "dx": 1, "dy": 0 }, { "dx": 0, "dy": 0 }]
+    },{
+        "id": 51,
+        "constructionCost": 30,
+        "name": "burrow",
+        "description": "houses 2 mice. dug into a dirt bank",
+        "nx": 3, "ny": 1,
+        "enclosed": true,
+        "ncosts": [
+            { "name": "wood", "quantity": 8 }
+        ],
+        "njob": "digger",
+        "capacity": 2,
+        "depth": 0,
+        "solidTop": true,
+        "category": "housing",
+        "isHousing": true,
+        "hasFurnishingSlots": true,
+        "furnishingSlotNames": ["cloth", "stool"],
+        "furnishingSlotPositions": [
+            { "dx": 0, "dy": 0 },
+            { "dx": 1, "dy": 0 }
+        ],
+        "interiorTiles": [
+            { "dx": 0, "dy": 0 }, { "dx": 1, "dy": 0 }, { "dx": 2, "dy": 0 }
+        ],
+        "doors": [{ "dx": 2, "dy": 0, "side": "right" }],
+        "requiredTileName": "dirt",
+        "preservesTile": true,
+        "tileRequirements": [
+            { "dx": 1, "dy": 0, "requiredTileName": "dirt" },
+            { "dx": 2, "dy": 0, "requiredTileName": "dirt" }
+        ]
+    },{
+        "id": 52,
+        "constructionCost": 50,
+        "name": "house",
+        "description": "houses 3 mice",
+        "nx": 2, "ny": 2,
+        "ncosts": [
+            { "name": "planks", "quantity": 20 },
+            { "name": "wood", "quantity": 5 }
+        ],
+        "njob": "hauler",
+        "capacity": 3,
+        "depth": 0,
+        "solidTop": true,
+        "category": "housing",
+        "isHousing": true,
+        "hasFurnishingSlots": true,
+        "furnishingSlotNames": ["cloth", "stool"],
+        "furnishingSlotPositions": [
+            { "dx": 1, "dy": 1 },
+            { "dx": 1, "dy": 0 }
+        ],
+        "interiorTiles": [
+            { "dx": 1, "dy": 1 }, { "dx": 0, "dy": 1 },
+            { "dx": 0, "dy": 0 }, { "dx": 1, "dy": 0 }
+        ],
+        "ladders": [{ "dx": 0, "dy": 0 }],
+        "doors":   [{ "dx": 1, "dy": 0, "side": "right" }]
+    },{
+        "id": 60,
+        "constructionCost": 12,
+        "name": "crate",
+        "description": "stores 1 stack of 100 liang",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 5 }
+        ],
+        "njob": "hauler",
+        "isStorage": true,
+        "nStacks": 1,
+        "storageStackSize": 100,
+        "solidTop": true,
+        "category": "storage"
+    },{
+        "id": 61,
+        "constructionCost": 16,
+        "name": "drawer",
+        "description": "stores 4 stacks of 20 liang",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 5 },
+            { "name": "planks", "quantity": 5 }
+        ],
+        "njob": "hauler",
+        "isStorage": true,
+        "nStacks": 4,
+        "storageStackSize": 20,
+        "solidTop": true,
+        "category": "storage"
+    },{
+        "id": 62,
+        "constructionCost": 16,
+        "name": "tank",
+        "description": "stores liquids. also gathers rainwater if water is allowed in",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 4 },
+            { "name": "planks", "quantity": 3 }
+        ],
+        "isStorage": true,
+        "storageClass": "liquid",
+        "nStacks": 1,
+        "storageStackSize": 100,
+        "category": "storage"
+    },{
+        "id": 63,
+        "constructionCost": 20,
+        "name": "bookshelf",
+        "description": "stores up to 10 books",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 5 },
+            { "name": "planks", "quantity": 5 }
+        ],
+        "njob": "hauler",
+        "isStorage": true,
+        "storageClass": "book",
+        "nStacks": 10,
+        "storageStackSize": 1,
+        "solidTop": true,
+        "category": "storage",
+        "defaultLocked": true
+    },{
+        "id": 64,
+        "constructionCost": 5,
+        "name": "market",
+        "description": "",
+        "nx": 3, "ny": 1,
+        "storageTileX": 1,
+        "ncosts": [ ],
+        "isStorage": true,
+        "nStacks": 50,
+        "storageStackSize": 10000,
+        "noMaintenance": true,
+        "category": "storage",
+        "defaultLocked": true
+    },{
+        "id": 70,
         "constructionCost": 20,
         "name": "empty",
         "description": "excavate a tile. gives a small fraction of a digging pit or quarry's yield",
@@ -529,7 +549,7 @@
         ],
         "category": "tiles"
     },{
-        "id": 81,
+        "id": 71,
         "constructionCost": 5,
         "name": "dirt_placed",
         "displayName": "dirt",
@@ -542,7 +562,7 @@
         "njob": "hauler",
         "category": "tiles"
     },{
-        "id": 82,
+        "id": 72,
         "constructionCost": 6,
         "name": "limestone_placed",
         "displayName": "limestone",
@@ -555,24 +575,7 @@
         "njob": "hauler",
         "category": "tiles"
     },{
-        "id": 83,
-        "constructionCost": 15,
-        "name": "mineshaft",
-        "description": "excavates a tile and places a ladder",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "wood", "quantity": 10 }
-        ],
-        "depth": 1,
-        "njob": "digger",
-        "noMaintenance": true,
-        "placesStructureOnComplete": "ladder",
-        "tileRequirements": [
-            { "dx": 0, "dy": 0, "mustBeSolidTile": true }
-        ],
-        "category": "structures"
-    },{
-        "id": 101,
+        "id": 100,
         "constructionCost": 30,
         "name": "sawmill",
         "description": "process wood into planks",
@@ -592,7 +595,7 @@
         "solidTop": true,
         "category": "production"
     },{
-        "id": 102,
+        "id": 101,
         "constructionCost": 30,
         "name": "workshop",
         "defaultLocked": true,
@@ -613,7 +616,311 @@
         "solidTop": true,
         "category": "production"
     },{
+        "id": 102,
+        "constructionCost": 15,
+        "name": "digging pit",
+        "description": "dig for dirt, sand, or clay. also yields some stone.",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 5 }
+        ],
+        "njob": "digger",
+        "capacity": 1,
+        "isWorkstation": true,
+        "requiredTileName": "earth",
+        "requiresBackgroundWall": true,
+        "solidTop": true,
+        "workView": "back",
+        "depleteAt": 100,
+        "interiorTiles": [
+            { "dx": 0, "dy": 0 }
+        ],
+        "tileRequirements": [
+            { "dx": 0, "dy": 1, "mustNotBePlant": true }
+        ],
+        "category": "production"
+    },{
         "id": 103,
+        "constructionCost": 25,
+        "name": "quarry",
+        "description": "dig for stone",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 8 },
+            { "name": "planks", "quantity": 5 }
+        ],
+        "njob": "miner",
+        "capacity": 1,
+        "isWorkstation": true,
+        "requiredTileName": "stone",
+        "requiresBackgroundWall": true,
+        "solidTop": true,
+        "workView": "back",
+        "depleteAt": 100,
+        "interiorTiles": [
+            { "dx": 0, "dy": 0 }
+        ],
+        "tileRequirements": [
+            { "dx": 0, "dy": 1, "mustNotBePlant": true }
+        ],
+        "category": "production",
+        "defaultLocked": true
+    },{
+        "id": 104,
+        "constructionCost": 25,
+        "constructionCostPerTile": true,
+        "name": "well",
+        "description": "draws groundwater. press E/Q while placing to change depth.",
+        "nx": 1, "ny": 3,
+        "ncosts": [
+            { "name": "stone", "quantity": 30 }
+        ],
+        "njob": "digger",
+        "isWorkstation": true,
+        "capacity": 1,
+        "depth": 0,
+        "preservesTile": true,
+        "digsSolidColumn": true,
+        "anchorAtTop": true,
+        "suppressOverlay": true,
+        "category": "production",
+        "shapes": [
+            { "nx": 1, "ny": 3 },
+            { "nx": 1, "ny": 4 },
+            { "nx": 1, "ny": 5 },
+            { "nx": 1, "ny": 6 },
+            { "nx": 1, "ny": 7 },
+            { "nx": 1, "ny": 8 }
+        ]
+    },{
+        "id": 105,
+        "constructionCost": 25,
+        "name": "pump",
+        "description": "pumps water below. faster when powered",
+        "nx": 2, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 6 },
+            { "name": "planks", "quantity": 6 }
+        ],
+        "njob": "hauler",
+        "isWorkstation": true,
+        "capacity": 2,
+        "category": "production",
+        "powerBoost": 3.0,
+        "workTileX": 0,
+        "tileRequirements": [
+            { "dx": 0, "mustBeStandable": true },
+            { "dx": 1, "mustBeEmpty": true },
+            { "dx": 1, "dy": -1, "mustHaveWater": true }
+        ],
+        "defaultLocked": true
+    },{
+        "id": 106,
+        "constructionCost": 25,
+        "name": "mill",
+        "description": "grind wheat or soybeans. faster when powered",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "stone", "quantity": 6 },
+            { "name": "wood", "quantity": 2 },
+            { "name": "planks", "quantity": 2 }
+        ],
+        "isWorkstation": true,
+        "capacity": 1,
+        "category": "production",
+        "powerBoost": 3.0,
+        "defaultLocked": true
+    },{
+        "id": 107,
+        "constructionCost": 25,
+        "name": "steamer",
+        "description": "steam flour and water into bread",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "stone", "quantity": 6 },
+            { "name": "clay", "quantity": 4 },
+            { "name": "planks", "quantity": 2 }
+        ],
+        "isWorkstation": true,
+        "capacity": 1,
+        "workView": "back",
+        "category": "production",
+        "defaultLocked": true
+    },{
+        "id": 108,
+        "constructionCost": 25,
+        "name": "press",
+        "description": "press soymilk curds into tofu. faster when powered",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "planks", "quantity": 4 },
+            { "name": "wood", "quantity": 2 },
+            { "name": "stone", "quantity": 4 }
+        ],
+        "njob": "farmer",
+        "isWorkstation": true,
+        "capacity": 1,
+        "category": "production",
+        "powerBoost": 3.0,
+        "defaultLocked": true
+    },{
+        "id": 109,
+        "constructionCost": 40,
+        "name": "brewery",
+        "description": "craft yeast and ferment rice into rice wine",
+        "nx": 2, "ny": 1,
+        "processorTileX": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 12 },
+            { "name": "planks", "quantity": 12 }
+        ],
+        "njob": "hauler",
+        "capacity": 1,
+        "isWorkstation": true,
+        "hasProcessor": true,
+        "solidTop": true,
+        "category": "production",
+        "defaultLocked": true
+    },{
+        "id": 110,
+        "constructionCost": 8,
+        "name": "greenhouse",
+        "description": "warms plants inside; grow even off soil",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "glass", "quantity": 10 },
+            { "name": "planks", "quantity": 2 },
+            { "name": "dirt", "quantity": 5 }
+        ],
+        "depth": 5,
+        "isBuilding": true,
+        "isGreenhouse": true,
+        "greenhouseTargetTempC": 25,
+        "greenhouseTempPull": 0.5,
+        "greenhouseGrowthMult": 1.1,
+        "greenhouseMoistureMult": 0.5,
+        "category": "production",
+        "shapes": [
+            { "nx": 1, "ny": 1 },
+            { "nx": 1, "ny": 2 }
+        ]
+    },{
+        "id": 111,
+        "constructionCost": 25,
+        "name": "weaver",
+        "description": "weave fiber into cloth",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "planks", "quantity": 10 },
+            { "name": "wood", "quantity": 2 }
+        ],
+        "njob": "hauler",
+        "capacity": 1,
+        "isWorkstation": true,
+        "workView": "back",
+        "solidTop": true,
+        "category": "production",
+        "defaultLocked": true
+    },{
+        "id": 112,
+        "constructionCost": 25,
+        "name": "tailor",
+        "description": "sew cloth into clothing",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "planks", "quantity": 10 },
+            { "name": "wood", "quantity": 2 }
+        ],
+        "njob": "hauler",
+        "capacity": 1,
+        "isWorkstation": true,
+        "workView": "back",
+        "solidTop": true,
+        "category": "production",
+        "defaultLocked": true
+    },{
+        "id": 113,
+        "constructionCost": 25,
+        "name": "hattery",
+        "description": "make hats",
+        "nx": 2, "ny": 1,
+        "ncosts": [
+            { "name": "planks", "quantity": 10 },
+            { "name": "wood", "quantity": 2 }
+        ],
+        "njob": "hauler",
+        "capacity": 1,
+        "isWorkstation": true,
+        "workView": "back",
+        "nworkTiles": [ { "dx": 0, "dy": 0 } ],
+        "solidTop": true,
+        "category": "production",
+        "defaultLocked": true
+    },{
+        "id": 114,
+        "constructionCost": 25,
+        "name": "paper mill",
+        "description": "process wood and water into paper",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "planks", "quantity": 8 },
+            { "name": "wood", "quantity": 2 },
+            { "name": "stone", "quantity": 5 }
+        ],
+        "njob": "hauler",
+        "capacity": 1,
+        "isWorkstation": true,
+        "solidTop": true,
+        "category": "production",
+        "defaultLocked": true
+    },{
+        "id": 115,
+        "constructionCost": 30,
+        "name": "scriptorium",
+        "description": "write books",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "planks", "quantity": 10 },
+            { "name": "wood", "quantity": 2 }
+        ],
+        "njob": "hauler",
+        "capacity": 1,
+        "isWorkstation": true,
+        "hasProcessor": true,
+        "processorTended": true,
+        "solidTop": true,
+        "category": "production",
+        "defaultLocked": true
+    },{
+        "id": 116,
+        "constructionCost": 30,
+        "name": "laboratory",
+        "description": "scientists conduct research here",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "wood", "quantity": 10 },
+            { "name": "planks", "quantity": 5 }
+        ],
+        "njob": "hauler",
+        "workView": "back",
+        "solidTop": true,
+        "category": "production"
+    },{
+        "id": 117,
+        "constructionCost": 25,
+        "name": "crucible",
+        "description": "primitive metal smelter",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "clay", "quantity": 6 }
+        ],
+        "capacity": 1,
+        "isWorkstation": true,
+        "workView": "back",
+        "category": "production",
+        "defaultLocked": true
+    },{
+        "id": 118,
         "constructionCost": 50,
         "name": "foundry",
         "description": "passively smelt ores and alloy metals",
@@ -640,245 +947,31 @@
         "fireFps": 7,
         "defaultLocked": true
     },{
-        "id": 104,
-        "constructionCost": 25,
-        "name": "press",
-        "description": "press soymilk curds into tofu. faster when powered",
+        "id": 119,
+        "constructionCost": 20,
+        "name": "cauldron",
+        "description": "brew herbal tonics",
+        "defaultLocked": true,
         "nx": 1, "ny": 1,
         "ncosts": [
-            { "name": "planks", "quantity": 4 },
-            { "name": "wood", "quantity": 2 },
-            { "name": "stone", "quantity": 4 }
-        ],
-        "njob": "farmer",
-        "isWorkstation": true,
-        "capacity": 1,
-        "category": "production",
-        "powerBoost": 3.0,
-        "defaultLocked": true
-    },{
-        "id": 109,
-        "constructionCost": 25,
-        "name": "mill",
-        "description": "grind soybeans into soymilk. faster when powered",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "stone", "quantity": 6 },
-            { "name": "wood", "quantity": 2 },
-            { "name": "planks", "quantity": 2 }
-        ],
-        "isWorkstation": true,
-        "capacity": 1,
-        "category": "production",
-        "powerBoost": 3.0,
-        "defaultLocked": true
-    },{
-        "id": 105,
-        "constructionCost": 25,
-        "name": "pump",
-        "description": "pumps water below. faster when powered",
-        "nx": 2, "ny": 1,
-        "ncosts": [
-            { "name": "wood", "quantity": 6 },
-            { "name": "planks", "quantity": 6 }
-        ],
-        "njob": "hauler",
-        "isWorkstation": true,
-        "capacity": 2,
-        "category": "production",
-        "powerBoost": 3.0,
-        "workTileX": 0,
-        "tileRequirements": [
-            { "dx": 0, "mustBeStandable": true },
-            { "dx": 1, "mustBeEmpty": true },
-            { "dx": 1, "dy": -1, "mustHaveWater": true }
-        ],
-        "defaultLocked": true
-    },{
-        "id": 106,
-        "constructionCost": 25,
-        "name": "paper mill",
-        "description": "process wood and water into paper",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "planks", "quantity": 8 },
-            { "name": "wood", "quantity": 2 },
-            { "name": "stone", "quantity": 5 }
-        ],
-        "njob": "hauler",
-        "capacity": 1,
-        "isWorkstation": true,
-        "solidTop": true,
-        "category": "production",
-        "defaultLocked": true
-    },{
-        "id": 107,
-        "constructionCost": 30,
-        "name": "scriptorium",
-        "description": "write books",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "planks", "quantity": 10 },
-            { "name": "wood", "quantity": 2 }
-        ],
-        "njob": "hauler",
-        "capacity": 1,
-        "isWorkstation": true,
-        "hasProcessor": true,
-        "processorTended": true,
-        "solidTop": true,
-        "category": "production",
-        "defaultLocked": true
-    },{
-        "id": 108,
-        "constructionCost": 40,
-        "name": "brewery",
-        "description": "craft yeast and ferment rice into rice wine",
-        "nx": 2, "ny": 1,
-        "processorTileX": 1,
-        "ncosts": [
-            { "name": "wood", "quantity": 12 },
-            { "name": "planks", "quantity": 12 }
-        ],
-        "njob": "hauler",
-        "capacity": 1,
-        "isWorkstation": true,
-        "hasProcessor": true,
-        "solidTop": true,
-        "category": "production",
-        "defaultLocked": true
-    },{
-        "id": 110,
-        "constructionCost": 15,
-        "name": "digging pit",
-        "description": "dig for dirt, sand, or clay. also yields some stone.",
-        "nx": 1, "ny": 1,
-        "ncosts": [
+            { "name": "clay", "quantity": 15 },
             { "name": "wood", "quantity": 5 }
         ],
-        "njob": "digger",
-        "capacity": 1,
-        "isWorkstation": true,
-        "requiredTileName": "earth",
-        "preservesTile": true,
-        "extractsTileOverTime": true,
-        "solidTop": true,
-        "depleteAt": 100,
-        "interiorTiles": [
-            { "dx": 0, "dy": 0 }
-        ],
-        "tileRequirements": [
-            { "dx": 0, "dy": 1, "mustNotBePlant": true }
-        ],
-        "category": "production"
-    },{
-        "id": 111,
-        "constructionCost": 25,
-        "name": "quarry",
-        "description": "dig for stone",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "wood", "quantity": 8 },
-            { "name": "planks", "quantity": 5 }
-        ],
-        "njob": "miner",
-        "capacity": 1,
-        "isWorkstation": true,
-        "requiredTileName": "stone",
-        "preservesTile": true,
-        "extractsTileOverTime": true,
-        "solidTop": true,
-        "depleteAt": 100,
-        "interiorTiles": [
-            { "dx": 0, "dy": 0 }
-        ],
-        "tileRequirements": [
-            { "dx": 0, "dy": 1, "mustNotBePlant": true }
-        ],
-        "category": "production",
-        "defaultLocked": true
-    },{
-        "id": 112,
-        "constructionCost": 25,
-        "name": "crucible",
-        "description": "primitive metal smelter",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "clay", "quantity": 6 }
-        ],
-        "capacity": 1,
-        "isWorkstation": true,
-        "workView": "back",
-        "category": "production",
-        "defaultLocked": true
-    },{
-        "id": 120,
-        "constructionCost": 30,
-        "name": "laboratory",
-        "description": "scientists conduct research here",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "wood", "quantity": 10 },
-            { "name": "planks", "quantity": 5 }
-        ],
         "njob": "hauler",
-        "workView": "back",
-        "solidTop": true,
-        "category": "production"
-    },{
-        "id": 130,
-        "constructionCost": 25,
-        "name": "weaver",
-        "description": "weave fiber into cloth",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "planks", "quantity": 10 },
-            { "name": "wood", "quantity": 2 }
-        ],
-        "njob": "hauler",
-        "capacity": 1,
-        "isWorkstation": true,
-        "workView": "back",
-        "solidTop": true,
-        "category": "production",
-        "defaultLocked": true
-    },{
-        "id": 131,
-        "constructionCost": 25,
-        "name": "tailor",
-        "description": "sew cloth into clothing",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "planks", "quantity": 10 },
-            { "name": "wood", "quantity": 2 }
-        ],
-        "njob": "hauler",
-        "capacity": 1,
-        "isWorkstation": true,
-        "workView": "back",
-        "solidTop": true,
-        "category": "production",
-        "defaultLocked": true
-    },{
-        "id": 132,
-        "constructionCost": 25,
-        "name": "hattery",
-        "description": "make hats",
-        "nx": 2, "ny": 1,
-        "ncosts": [
-            { "name": "planks", "quantity": 10 },
-            { "name": "wood", "quantity": 2 }
-        ],
-        "njob": "hauler",
-        "capacity": 1,
-        "isWorkstation": true,
         "workView": "back",
         "nworkTiles": [ { "dx": 0, "dy": 0 } ],
         "solidTop": true,
         "category": "production",
-        "defaultLocked": true
+        "hasProcessor": true,
+        "processorTended": true,
+        "processorCapacityLiang": 10,
+        "lightWhileCrafting": true,
+        "lightIntensity": 0.95,
+        "lightInnerRadius": 1,
+        "lightOuterRadius": 8,
+        "lightFlicker": 0.06
     },{
-        "id": 140,
+        "id": 200,
         "constructionCost": 40,
         "name": "wheel",
         "description": "a runner generates mechanical power here",
@@ -897,7 +990,7 @@
         "category": "power",
         "defaultLocked": true
     },{
-        "id": 141,
+        "id": 201,
         "constructionCost": 80,
         "name": "windmill",
         "description": "harvests wind into mechanical power. needs open sky above",
@@ -915,7 +1008,7 @@
         ],
         "defaultLocked": true
     },{
-        "id": 145,
+        "id": 202,
         "constructionCost": 40,
         "name": "flywheel",
         "description": "stores mechanical power",
@@ -928,7 +1021,48 @@
         "category": "power",
         "defaultLocked": true
     },{
-        "id": 146,
+        "id": 203,
+        "constructionCost": 5,
+        "name": "power shaft",
+        "description": "mechanical power shaft. press R to rotate",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "planks", "quantity": 1 }
+        ],
+        "njob": "hauler",
+        "depth": 4,
+        "category": "power",
+        "rotatable": true,
+        "defaultLocked": true
+    },{
+        "id": 204,
+        "constructionCost": 5,
+        "name": "power shaft turn",
+        "description": "turning power shaft",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "planks", "quantity": 1 }
+        ],
+        "njob": "hauler",
+        "depth": 4,
+        "category": "power",
+        "rotatable": true,
+        "defaultLocked": true
+    },{
+        "id": 205,
+        "constructionCost": 8,
+        "name": "power shaft 4",
+        "description": "4-way power junction",
+        "nx": 1, "ny": 1,
+        "ncosts": [
+            { "name": "planks", "quantity": 2 }
+        ],
+        "njob": "hauler",
+        "depth": 4,
+        "category": "power",
+        "defaultLocked": true
+    },{
+        "id": 206,
         "constructionCost": 30,
         "constructionCostPerTile": true,
         "name": "elevator",
@@ -953,70 +1087,5 @@
             { "nx": 1, "ny": 10 }
         ],
         "defaultLocked": true
-    },{
-        "id": 142,
-        "constructionCost": 5,
-        "name": "power shaft",
-        "description": "mechanical power shaft. press R to rotate",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "planks", "quantity": 1 }
-        ],
-        "njob": "hauler",
-        "depth": 4,
-        "category": "power",
-        "rotatable": true,
-        "defaultLocked": true
-    },{
-        "id": 144,
-        "constructionCost": 5,
-        "name": "power shaft turn",
-        "description": "turning power shaft",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "planks", "quantity": 1 }
-        ],
-        "njob": "hauler",
-        "depth": 4,
-        "category": "power",
-        "rotatable": true,
-        "defaultLocked": true
-    },{
-        "id": 143,
-        "constructionCost": 8,
-        "name": "power shaft 4",
-        "description": "4-way power junction",
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "planks", "quantity": 2 }
-        ],
-        "njob": "hauler",
-        "depth": 4,
-        "category": "power",
-        "defaultLocked": true
-    },{
-        "id": 113,
-        "constructionCost": 20,
-        "name": "cauldron",
-        "description": "brew herbal tonics",
-        "defaultLocked": true,
-        "nx": 1, "ny": 1,
-        "ncosts": [
-            { "name": "clay", "quantity": 15 },
-            { "name": "wood", "quantity": 5 }
-        ],
-        "njob": "hauler",
-        "workView": "back",
-        "nworkTiles": [ { "dx": 0, "dy": 0 } ],
-        "solidTop": true,
-        "category": "production",
-        "hasProcessor": true,
-        "processorTended": true,
-        "processorCapacityLiang": 10,
-        "lightWhileCrafting": true,
-        "lightIntensity": 0.95,
-        "lightInnerRadius": 1,
-        "lightOuterRadius": 8,
-        "lightFlicker": 0.06
     }
 ]

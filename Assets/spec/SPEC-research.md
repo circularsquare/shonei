@@ -21,7 +21,7 @@ Passive progress sources (maintain-only — caps at 2x cost and cannot unlock a 
 - **Maintenance**: completing a `MaintenanceTask` grants research at the same per-labour-tick rate as a fresh build — `scale = repairAmount × RepairLaborFraction`. Since repair labour and research both scale with `constructionCost`, a full 0→1 repair grants ¼ of a fresh build's research (mirroring the ¼ labour/materials a full repair costs). Implemented via the `scale` parameter on `AddConstructionProgress`.
 
 - **Unlock**: progress >= cost AND all prerequisites currently unlocked.
-- **Forget**: progress < 0.75 x cost (hysteresis prevents flickering). Fires `OnTechForgotten` event + `Debug.Log`. Surfaced to the player via `EventFeed` (see SPEC-eventfeed).
+- **Forget**: progress < `ForgetThreshold` × cost (0.75; hysteresis prevents flickering). Fires `OnTechForgotten` event + `Debug.Log`. Surfaced to the player via `EventFeed` (see SPEC-eventfeed).
 - **Reinforcement**: progress can exceed cost up to 2x cost, providing a buffer against decay.
 
 ## Study system
@@ -29,8 +29,8 @@ Passive progress sources (maintain-only — caps at 2x cost and cannot unlock a 
 Each technology has a per-player **study** toggle (`ResearchSystem.studiedIds`). When enabled, scientists will research and maintain that technology.
 
 **Scientist priority when picking up a ResearchTask** (via `PickStudyTarget()`):
-1. Any studied tech below cost with prereqs met → pick the one with the **oldest unlock timestamp** (LIFO forgetting — early techs are presumed more load-bearing). Never-unlocked techs have no timestamp and tie at the bottom of this bucket — they're still picked when no older candidate exists, and work cycles through them as each one unlocks.
-2. If no studied tech is below cost: pick the studied tech with the **lowest progress %** relative to 2×cost (spreads reinforcement evenly).
+1. Any studied tech below **`MaintainThreshold` × cost (1.10×)** with prereqs met → pick the one with the **oldest unlock timestamp** (LIFO forgetting — early techs are presumed more load-bearing). The band is 1.10×, not just `<cost`: an already-unlocked tech that's decayed a little (100–110%) is topped back up *before* a never-unlocked tech is started. Never-unlocked techs have no timestamp and tie at the bottom of this bucket, so any maintained tech in the band outranks them — but work still cycles through new techs when nothing needs maintaining.
+2. If nothing is below 1.10× cost: pick the studied tech with the **lowest progress %** relative to 2×cost (spreads reinforcement evenly).
 3. If nothing to do: return -1 (scientist idles through the work loop).
 
 Unlock timestamps are recorded in `unlockTimestamps` (monotonic counter, incremented on each unlock). If a tech is forgotten and re-unlocked, its timestamp is updated — it becomes lower priority than continuously-held techs.

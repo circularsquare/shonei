@@ -43,12 +43,26 @@ public class InventoryBar : MonoBehaviour {
     static readonly Color cStorage   = new Color(0.48f, 0.70f, 0.48f); // green
     static readonly Color cFloor     = new Color(0.85f, 0.72f, 0.32f); // yellow
     static readonly Color cMice      = new Color(0.55f, 0.55f, 0.55f); // gray
-    static readonly Color cMarket    = new Color(0.42f, 0.56f, 0.74f); // blue
+    static readonly Color cMarket    = new Color(0.24f, 0.40f, 0.66f); // blue (deepened so it reads apart from gray mice)
     static readonly Color cInstalled = new Color(0.50f, 0.36f, 0.22f); // brown (reservoir fuel / furnishings)
     static readonly Color cOther     = new Color(0.82f, 0.52f, 0.28f); // orange
     static readonly Color cDeficit   = new Color(0.42f, 0.20f, 0.20f); // dark dull red
     static readonly Color cMarker    = new Color(0.58f, 0.12f, 0.12f); // dark red (target)
     static readonly Color cCapacity  = new Color(0.16f, 0.34f, 0.18f); // dark green (storage-capacity ceiling)
+
+    // Legend source for SwatchLegend — segments, the deficit zone ("empty"), then the two marker
+    // lines (target = red, capacity = green). Single source of truth so the legend tracks the bar.
+    public static LegendEntry[] LegendEntries() => new[] {
+        new LegendEntry("storage",  cStorage),
+        new LegendEntry("floor",    cFloor),
+        new LegendEntry("mice",     cMice),
+        new LegendEntry("market",   cMarket),
+        new LegendEntry("installed",cInstalled),
+        new LegendEntry("elsewhere",cOther),
+        new LegendEntry("empty",    cDeficit),
+        new LegendEntry("target",   cMarker,   true),
+        new LegendEntry("capacity", cCapacity, true),
+    };
 
     const int   BucketCount     = 6;             // storage, floor, mice, market, installed, other
     const int   SegCount        = BucketCount + 1; // + deficit zone
@@ -159,8 +173,14 @@ public class InventoryBar : MonoBehaviour {
         float cum = 0f;
         for (int i = 0; i < BucketCount; i++) {
             float frac = vals[i] / (float)scale;
-            if (frac > Eps) SetSeg(i, cum, cum + frac, cols[i], ItemStack.FormatQ(vals[i], item) + " in " + names[i]);
-            else            HideSeg(i);
+            if (frac > Eps) {
+                string qty = ItemStack.FormatQ(vals[i], item);
+                // "installed" reads as a state, not a place — "34 installed" not "34 in installed".
+                string tip = names[i] == "installed" ? qty + " installed" : qty + " in " + names[i];
+                SetSeg(i, cum, cum + frac, cols[i], tip);
+            } else {
+                HideSeg(i);
+            }
             cum += frac;
         }
 

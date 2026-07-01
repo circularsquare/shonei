@@ -34,7 +34,7 @@ and for direct workstation acceleration.
 | `clock`             | consumer     | 1×1       | always-on demand `0.1` whenever not broken/disabled (no crafter gate — clocks have no worker). Hand freezes when unpowered. Three port options — see table below. |
 | `elevator`          | consumer     | 1×N (3..10 via shapes) | variable-height transit. Implements `IPowerConsumer` directly; ports `(-1, 0, H)` and `(nx, 0, H)` at base. Demand proportional to per-tick motion — see §Elevator demand below. See SPEC-systems.md §Transit for the navigation side. |
 
-Existing pump and press declare `powerBoost: 3.0` in JSON, opting them in as
+Existing pump, press, and mill declare `powerBoost: 3.0` in JSON, opting them in as
 consumers — operator's work-tick rate triples while the building is on a powered
 network. **Demand is gated on active crafting**: a placed pump only reports
 `Demand = 1.0` while a mouse is currently in WorkObjective at it. Idle / unmanned
@@ -137,7 +137,8 @@ show through the gaps and convey "axle running between the two buildings".
 | Wheel        | `(-1, 0, Horizontal)` and `(nx, 0, Horizontal)` — both bottom-row sides. Routing is symmetric so the F flip is purely cosmetic. |
 | Windmill     | Four options for routing flexibility: `(-1, 0, Horizontal)` and `(nx, 0, Horizontal)` (both base sides), `(0, -1, Vertical)` and `(1, -1, Vertical)` (under each base tile). |
 | Flywheel     | Full perimeter, `Axis.Both` per tile — any adjacent shaft on any side connects. |
-| Pump / press | Auto-wrapper (`BuildingPowerConsumer`) provides full perimeter `Axis.Both` — any side, any axis. |
+| Pump         | Subclass (`PumpBuilding : IPowerConsumer`) declares two ports: `(-1, 0, Horizontal)` (left) and `(0, -1, Vertical)` (below). |
+| Press        | Auto-wrapper (`BuildingPowerConsumer`) provides full perimeter `Axis.Both` — any side, any axis. |
 | Clock        | Three options: `(-1, 0, Horizontal)` and `(1, 0, Horizontal)` (left/right axles) and `(0, -1, Vertical)` (below). No top port — the hand spins there. |
 
 ## Architecture
@@ -190,13 +191,15 @@ adjacent to any side connects.
 building type:**
 
 1. **Auto-wrapper path** — set `powerBoost > 1` in JSON, no subclass. The
-   wrapper handles registration, ports, and the boost lookup. Used by pump
-   and press.
+   wrapper handles registration, ports, and the boost lookup. Used by press.
 2. **Subclass path** — implement `PowerSystem.IPowerConsumer` directly on a
    `Building` subclass and register from `OnPlaced` / unregister from
    `Destroy`. Use this when the consumer needs custom ports (a layout other
-   than full perimeter), runtime state, or computed demand. Leave
-   `powerBoost = 1` to suppress the auto-wrapper.
+   than full perimeter), runtime state, or computed demand. Used by
+   `PumpBuilding` (two ports). Setting `powerBoost = 1` suppresses the
+   auto-wrapper, but it's skipped automatically when `this is IPowerConsumer`
+   anyway — so a subclass may still set `powerBoost > 1` purely for the
+   work-efficiency multiplier (pump does this).
 
 Mixing both on the same type would register two consumer entries for one
 building — `Building.OnPlaced` skips auto-wrapping when `this is IPowerConsumer`,
@@ -227,7 +230,7 @@ Each tick, in `Allocate()`:
 
 Decay runs in `Tick()` *before* allocation via `IPowerStorage.StorageTick()`.
 Each unit owns its decay rule; the flywheel applies an exponential
-`charge *= DecayFactor` (currently `0.97`, ≈ 23-tick half-life).
+`charge *= DecayFactor` (currently `0.985`, ≈ 46-tick half-life).
 
 **Flywheel** (`Assets/Model/Structure/Flywheel.cs`) is the only storage type in v1:
 
@@ -235,7 +238,7 @@ Each unit owns its decay rule; the flywheel applies an exponential
 |--------------|-------|---------|
 | `Capacity`   | 50.0  | Maximum stored energy. |
 | `MaxRate`    | 3.0   | Per-tick cap on charge or discharge magnitude (symmetric). Sized so one flywheel can cover up to 3 nominal-demand consumers during a wind stall. |
-| `DecayFactor`| 0.97  | Exponential bleed per tick (≈ 23-tick half-life ≈ 2.3 in-game hours). |
+| `DecayFactor`| 0.985 | Exponential bleed per tick (≈ 46-tick half-life ≈ 2.3 in-game hours). |
 
 Charge persists via `StructureSaveData.flywheelCharge`. Without it, every
 flywheel would reset to empty on load — players would lose any surplus
@@ -249,7 +252,8 @@ the same way; only the constants and decay rule differ.
 `AnimalStateManager.HandleWorking` (CraftTask branch only):
 
 ```csharp
-if (wsBuilding.structType.powerBoost > 1f
+if (wsBuilding != null && wsBuilding.structType.powerBoost > 1f
+        && PowerSystem.instance != null
         && PowerSystem.instance.IsBuildingPowered(wsBuilding)) {
     workEfficiency *= wsBuilding.structType.powerBoost;
 }
@@ -327,8 +331,8 @@ renders correctly before the animator takes over.
 |---------------------|------------------------------|-------------------------------------------------------|---------------------------------------------|----------|
 | shaft / shaft turn  | `FrameAnimator`              | `PowerSystem.IsShaftActivelyTransmitting(this)`       | 1                                           | 6        |
 | wheel               | `FrameAnimator`              | `MouseWheel.IsCurrentlyActive`                        | 1                                           | 8        |
-| windmill (wheel)    | `RotatingPart` (transform)   | `Windmill.IsCurrentlyActive`                          | `\|wind\| × 180°/s`, clockwise                | n/a      |
-| flywheel (wheel)    | `RotatingPart` (transform)   | `Flywheel.IsCurrentlyActive`                          | `(charge / Capacity) × 360°/s`, clockwise   | n/a      |
+| windmill (wheel)    | `RotatingPart` (transform)   | `Windmill.IsCurrentlyActive`                          | `wind × 126°/s` (signed; `WheelDegPerSecAtMaxWind`) | n/a      |
+| flywheel (wheel)    | `RotatingPart` (transform)   | `Flywheel.IsCurrentlyActive`                          | `(charge / Capacity) × 180°/s`, clockwise   | n/a      |
 | clock (hand)        | `ClockHand` (transform)      | `!IsBroken && IsBuildingPowered(this)`                | derived from `SunController.GetDayPhase()` | n/a      |
 
 `PowerNetwork.flowing` is set during `Allocate()` whenever any consumer is powered
@@ -396,8 +400,8 @@ which refreshes all stubs.
 | `Windmill.StallThreshold` | 0.05 | `Windmill.cs` (below this `|wind|`, output is 0) |
 | `WeatherSystem` wind noise | ±0.15 / hour | `WeatherSystem.cs` (Uniform shock per OU step; stationary `\|wind\|` σ ≈ 0.43, mean ≈ 0.35 → average windmill output ≈ 1.0 power/tick) |
 | `BuildingPowerConsumer.Demand` | 1.0 | `BuildingPowerConsumer.cs` (reported only while `Building.HasActiveCrafter()`; idle / unmanned = 0) |
-| pump/press `powerBoost` | 3.0 | `buildingsDb.json` |
-| Mouse-wheel recipe `workload` | 5 ticks | `recipesDb.json` (id 50) |
+| pump/press/mill `powerBoost` | 3.0 | `buildingsDb.json` |
+| Mouse-wheel recipe `workload` | 10 ticks | `recipesDb.json` (id 50) |
 
 ## Anti-patterns
 

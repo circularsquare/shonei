@@ -127,6 +127,17 @@ public class InventoryController : MonoBehaviour {
         return total;
     }
 
+    // Physical stock of `item` a hauler could still deliver to a blueprint: floor + storage +
+    // carried by mice. Group-aware. Deliberately EXCLUDES items already inside blueprint cost
+    // slots / building buffers (committed elsewhere) and is NOT reservation-aware — so it's a
+    // stable "can this ever be satisfied" figure. Contrast TotalAvailableQuantity, which is
+    // reservation-aware and floor+storage only (used for live fetch sizing, not feasibility).
+    // Backs the blueprint supply gate (SupplyBlueprintTask) and the "not enough X" shortage
+    // alert (Blueprint.IngredientShort) so the two always agree: a slot alerts exactly when
+    // mice have stopped supplying it for lack of stock.
+    public int HaulableStock(Item item) =>
+        QuantityIn(item, Inventory.InvType.Floor, Inventory.InvType.Storage, Inventory.InvType.Animal);
+
     // Total physical storage space that currently allows `item` across all Storage inventories —
     // empty allowed stacks + room in stacks already holding it, ignoring stacks filled with
     // something else. Drives the GlobalInventoryPanel distribution bar's storage-capacity marker.

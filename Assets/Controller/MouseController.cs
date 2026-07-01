@@ -67,7 +67,7 @@ public class MouseController : MonoBehaviour {
     // Wire a GameObject with a LightSource (and optional sortOrderOverride) in the
     // inspector. Keep it disabled by default so it only appears when toggled on.
     [SerializeField] private GameObject debugCursorLight;
-    private LightSource cursorLS;          // cached LightSource on debugCursorLight
+    private LightSource cursorLS; // cached LightSource on debugCursorLight
 
     // ── Camera pan tuning ──────────────────────────────────────────────────
     // Pan speed in screen-heights per second — independent of zoom, so a value
@@ -157,7 +157,15 @@ public class MouseController : MonoBehaviour {
                 int added = reservoir.FillToCapacity();
                 Debug.Log($"[debug] instant-fill {hoverTile.building.structType.name} reservoir at ({hoverTile.x}, {hoverTile.y}): +{added} fen {reservoir.fuelItem?.name}");
             }
-            if (hoveredBp == null && reservoir == null) {
+            // Fill a well's pooled-water reservoir so the rendered pool + seep-back are testable
+            // without waiting for groundwater to accumulate.
+            bool filledWell = false;
+            if (hoverTile?.building is Well wellDbg) {
+                wellDbg.storedWater = wellDbg.Capacity;
+                filledWell = true;
+                Debug.Log($"[debug] instant-fill well at ({hoverTile.x}, {hoverTile.y}): {wellDbg.storedWater} units");
+            }
+            if (hoveredBp == null && reservoir == null && !filledWell) {
                 BuildPanel.instantBuildNext = !BuildPanel.instantBuildNext;
                 Debug.Log($"[debug] instant-build next blueprint: {(BuildPanel.instantBuildNext ? "ARMED" : "disarmed")}");
             }
@@ -189,10 +197,7 @@ public class MouseController : MonoBehaviour {
         if (debugCursorLight != null && debugCursorLight.activeSelf) {
             Vector3 mouseWorld = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             debugCursorLight.transform.position = new Vector3(mouseWorld.x, mouseWorld.y, 0f);
-            // Switch the cursor light off while it's inside raw solid rock — but NOT over a building
-            // carved into solid (a burrow), where a torch makes sense. Uses the non-destructive
-            // `suppressed` render gate (recomputed every frame), so it never clobbers the light's
-            // intensity or gets stuck off.
+            // Off inside raw solid rock, but NOT over a building carved into solid (a burrow).
             if (cursorLS == null) cursorLS = debugCursorLight.GetComponent<LightSource>();
             if (cursorLS != null) {
                 var w = WorldController.instance != null ? WorldController.instance.world : null;
@@ -298,6 +303,14 @@ public class MouseController : MonoBehaviour {
         if (tileAt != null && st != null && st.nx > 1) {
             int offsetX = (st.nx - 1) / 2;
             anchorTile = WorldController.instance.world.GetTileAt(tileAt.x - offsetX, tileAt.y);
+        }
+        // Downward-dug buildings (well): the cursor marks the surface/wellhead tile, so the
+        // bottom (dy=0) anchor sits ny-1 tiles below it. Q/E then extends the shaft DOWNWARD
+        // while the wellhead stays under the cursor. This single offset feeds both the preview
+        // and the placement (MouseController passes anchorTile to PlaceBlueprint).
+        if (tileAt != null && st != null && st.anchorAtTop && st.HasShapes) {
+            int ny = st.GetShape(BuildPanel.instance != null ? BuildPanel.instance.shapeIndex : 0).ny;
+            anchorTile = WorldController.instance.world.GetTileAt(tileAt.x, tileAt.y - (ny - 1));
         }
 
         // Side-variant resolution: for a build type with a `sideVariant` (ladder, torch),

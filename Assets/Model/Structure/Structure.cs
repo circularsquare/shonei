@@ -124,7 +124,9 @@ public class Structure {
         return _crackedMaterialCache;
     }
     public Tile tile => World.instance.GetTileAt(x, y);
-    public Tile workTile => World.instance.GetTileAt(
+    // virtual so a structure whose work spot isn't a fixed JSON offset can relocate it — the well
+    // puts it at the wellhead (top of its variable-height column), not the bottom anchor.
+    public virtual Tile workTile => World.instance.GetTileAt(
         x + (mirrored ? (structType.nx - 1 - structType.workTileX) : structType.workTileX),
         y + structType.workTileY);
 
@@ -191,7 +193,10 @@ public class Structure {
     // Local pixel offsets (bottom-left origin, unmirrored) of the structure's water zone —
     // the opaque pixels of its `{name}_w.png` companion mask. Null when no companion exists.
     // Registered with WaterController by StructController.Place().
-    public List<Vector2Int> waterPixelOffsets { get; private set; }
+    // protected set so a subclass can synthesise the zone in code instead of from a {name}_w.png
+    // scan — the well builds a full-shaft-column interior zone spanning its variable height,
+    // which a single anchor-sprite mask can't express.
+    public List<Vector2Int> waterPixelOffsets { get; protected set; }
 
     // "World conditions allow this structure to be worked on" gate for Structure subclasses.
     // Returns false to suppress the WOM craft order without removing it. Combined with
@@ -682,8 +687,11 @@ public class Structure {
     void BuildPreservedTileBackdrop() {
         const int backdropOrder = 0;   // dirt's pre-reorder body order: behind the facade (10), Tiles bucket (≤8)
         World world = World.instance;
-        for (int dy = 0; dy < structType.ny; dy++) {
-            for (int dx = 0; dx < structType.nx; dx++) {
+        // Shape-aware: a variable-height preservesTile structure (well) backdrops its WHOLE chosen
+        // column, not just the base ny — otherwise the upper shaft tiles keep their chunk-drawn dirt
+        // body, which renders over the facade and reads sky-lit.
+        for (int dy = 0; dy < Shape.ny; dy++) {
+            for (int dx = 0; dx < Shape.nx; dx++) {
                 int tx = x + dx, ty = y + dy;
                 Tile t = world.GetTileAt(tx, ty);
                 if (t == null || !t.type.solid) continue;
@@ -806,11 +814,14 @@ public class Structure {
             if (st.name == "pump")     return new PumpBuilding(st, x, y, mirrored);
             if (st.name == "market")   return new MarketBuilding(st, x, y, mirrored);
             // quarry (stone) and digging pit (earth) share one class; they differ only in JSON data.
-            if (st.name == "quarry" || st.name == "digging pit") return new ExtractionBuilding(st, x, y, mirrored);
+            // They dig into an open tile's background wall (WallQuarry). ExtractionBuilding — the
+            // solid-tile dish excavator — is kept for a future animated "mine tile", not wired here.
+            if (st.name == "quarry" || st.name == "digging pit") return new WallQuarry(st, x, y, mirrored);
             if (st.name == "wheel")    return new MouseWheel(st, x, y, mirrored);
             if (st.name == "windmill") return new Windmill(st, x, y, mirrored);
             if (st.name == "flywheel") return new Flywheel(st, x, y, mirrored);
             if (st.name == "elevator") return new Elevator(st, x, y, mirrored, shapeIndex);
+            if (st.name == "well")     return new Well(st, x, y, mirrored, shapeIndex);
             if (st.name == "tarp")     return new Tarp(st, x, y, mirrored, shapeIndex);
             if (st.name == "clock")    return new Clock(st, x, y, mirrored);
             if (st.name == "thermometer") return new Thermometer(st, x, y, mirrored);
@@ -853,8 +864,10 @@ public class Structure {
         // so the chunk redraws the cell normally. Gated as in the ctor so digging-pit/quarry
         // cells (which clear their own bodyRenderSuppressed) aren't touched here.
         if (structType.preservesTile && !structType.extractsTileOverTime) {
-            for (int dy = 0; dy < structType.ny; dy++) {
-                for (int dx = 0; dx < structType.nx; dx++) {
+            // Shape-aware to match BuildPreservedTileBackdrop — clear the flag across the whole
+            // chosen column so a tall well doesn't leave orphaned bodyDrawnByStructure tiles behind.
+            for (int dy = 0; dy < Shape.ny; dy++) {
+                for (int dx = 0; dx < Shape.nx; dx++) {
                     Tile t = World.instance?.GetTileAt(x + dx, y + dy);
                     if (t == null || !t.bodyDrawnByStructure) continue;
                     t.bodyDrawnByStructure = false;

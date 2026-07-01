@@ -32,6 +32,10 @@ Shader "Hidden/LightSun" {
             // the Main camera draws the terrain — producing a ghost terrain
             // silhouette on the sky, most visible at max zoom-in.
             float  _SkyExposureBypass;
+            // Set per frame by LightPass from SettingsManager.floodFill. Under flood-fill, burrow
+            // darkening is handled by the SkyExposure pass (sky routed through the door), so the
+            // straight-line burrow sun march below is redundant and only adds a hard shadow edge.
+            float  _FloodFill;
 
             // Populated each frame by NormalsCapturePass.
             TEXTURE2D(_CapturedNormalsRT);
@@ -50,6 +54,7 @@ Shader "Hidden/LightSun" {
             // as shell thickness → soft shadow (grazing rays → softer). Leaving the burrow without a
             // wall crossing means the ray went out the door → sunlit. Disabled on the SkyCamera.
             float BurrowSunShadow(float2 worldPos) {
+                if (_FloodFill > 0.5) return 0.0;       // flood-fill: SkyExposure seals burrows instead (no hard edge)
                 if (_SkyExposureBypass > 0.5) return 0.0;
                 float2 g    = worldPos + 0.5;
                 int2   cell = (int2)floor(g);

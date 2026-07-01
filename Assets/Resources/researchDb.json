@@ -30,13 +30,25 @@
         ]
     },{
         "id": 6,
-        "name": "Soymilk",
-        "description": "grind soybeans into soymilk.",
-        "prereqs": [5, 15],
+        "name": "Mill",
+        "description": "grind wheat and soybeans at a mill.",
+        "prereqs": [],
         "cost": 5,
         "unlocks": [
+            { "type": "building", "target": "mill" },
             { "type": "recipe",   "target": "13" },
+            { "type": "recipe",   "target": "26" },
             { "type": "job",      "target": "cook" }
+        ]
+    },{
+        "id": 21,
+        "name": "Steaming",
+        "description": "steam flour into bread.",
+        "prereqs": [6],
+        "cost": 5,
+        "unlocks": [
+            { "type": "building", "target": "steamer" },
+            { "type": "recipe",   "target": "27" }
         ]
     },{
         "id": 7,
@@ -149,7 +161,6 @@
             { "type": "building", "target": "power shaft" },
             { "type": "building", "target": "power shaft turn" },
             { "type": "building", "target": "power shaft 4" },
-            { "type": "building", "target": "mill" },
             { "type": "job",      "target": "runner" }
         ]
     },{

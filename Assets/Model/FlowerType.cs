@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 // Decorative flower / mushroom / moss variant — purely visual, no gameplay
@@ -38,6 +39,32 @@ public class FlowerType {
     // PlantSprite shader as the `_SwayAmount` MPB property — see
     // LightReceiverUtil.SetPlantSwayMPB.
     public float windEffect { get; set; } = 1f;
+
+    // ── Seasonal regrowth lifecycle (FlowerController.OnHourElapsed) ──────
+    // Per-species live cap the regrowth trickle fills toward. 0 (default) =
+    // this variant never regrows on its own — it only exists where worldgen
+    // scattered it. >0 marks a re-seeding decoration: whenever its live count
+    // drops below the cap (a season ending, or being mined / built over) the
+    // world slowly re-seeds it back up to this many instances across the map.
+    // Independent of `seasons`: a capped type with no seasons (mushrooms / moss)
+    // regrows but never dies back on its own. Tunable in flowersDb.json.
+    public int maxCount { get; set; } = 0;
+
+    // Seasons this decoration is alive in — entries match WeatherSystem.GetSeason()
+    // ("Spring"/"Summer"/"Fall"/"Winter"). Null/empty = year-round (the default;
+    // mushrooms / moss never go out of season). Out of season the flower stops
+    // re-seeding AND its placed instances die back at random — see
+    // FlowerController.CullOutOfSeason.
+    public string[] seasons { get; set; }
+
+    // True when the current season is one this decoration lives in. Null/empty
+    // seasons = year-round. WeatherSystem null during early startup is treated
+    // as in-season so worldgen scatter isn't suppressed before the clock wires up.
+    public bool IsInSeason(WeatherSystem weather) {
+        if (seasons == null || seasons.Length == 0) return true;
+        if (weather == null) return true;
+        return Array.IndexOf(seasons, weather.GetSeason()) >= 0;
+    }
 
     // ── Sprite cache ─────────────────────────────────────────────────────
     [Newtonsoft.Json.JsonIgnore] public Sprite cachedSprite;

@@ -31,11 +31,15 @@ public static class TileAtlasBaker {
     // Snow depth overlays — hardcoded by TileMeshController.SnowAtlasName. Digit-free
     // names so StripVariantSuffix doesn't fold them into a numbered "snow" base.
     static readonly string[] SnowOverlayNames = { "snowlight", "snowmid", "snowdeep" };
-    // Background-wall atlases — NOT tile types (not in Db.tileTypes), so the body
-    // bake enumerates them explicitly. Must match BackgroundTileMeshController.Registry.
+    // Background-wall atlases — one per material that can appear as a revealed wall.
+    // Must match the TileType.backgroundAtlas values in tilesDb.json (the runtime
+    // BackgroundTileMeshController groups by that field). Names whose source art is
+    // absent are skipped by the bake loop below (no magenta fallback asset).
     // Body-only consumers (the flat-lit background renderer never binds _normal), but
     // BakeType writes both {name}_body + {name}_normal harmlessly.
-    static readonly string[] BackgroundAtlasNames = { "stoneback", "dirtback" };
+    static readonly string[] BackgroundAtlasNames = {
+        "limestoneback", "graniteback", "slateback", "dirtback", "sandback", "clayback",
+    };
 
     // ── Entry points ────────────────────────────────────────────────────
 

@@ -8,11 +8,17 @@ public class Tooltippable : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
     public string title;
     [TextArea(2, 6)] public string body;
 
+    // True while the pointer is over this element. Lets callers live-update the tooltip
+    // (SetLiveBody) so a long hover over content that's changing underneath stays fresh.
+    bool hovered;
+
     public void OnPointerEnter(PointerEventData eventData) {
+        hovered = true;
         TooltipSystem.Show(title, body);
     }
 
     public void OnPointerExit(PointerEventData eventData) {
+        hovered = false;
         TooltipSystem.Hide();
         // Unity only fires OnPointerEnter on the parent once — so when the pointer
         // moves from a nested child Tooltippable back onto its parent (still hovered),
@@ -23,6 +29,7 @@ public class Tooltippable : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
         while (t != null) {
             var parentTip = t.GetComponent<Tooltippable>();
             if (parentTip != null && parentTip.isActiveAndEnabled) {
+                parentTip.hovered = true;
                 TooltipSystem.Show(parentTip.title, parentTip.body);
                 return;
             }
@@ -31,6 +38,15 @@ public class Tooltippable : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
     }
 
     void OnDisable() {
+        hovered = false;
         TooltipSystem.Hide();
+    }
+
+    // Update the tooltip body, re-showing immediately if this element is currently hovered.
+    // For live content (e.g. the activity bar's per-segment %) whose value drifts while the
+    // pointer lingers — the caller's existing refresh tick pushes the new text in.
+    public void SetLiveBody(string newBody) {
+        body = newBody;
+        if (hovered) TooltipSystem.Show(title, body);
     }
 }

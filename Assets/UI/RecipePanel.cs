@@ -17,7 +17,19 @@ using UnityEngine.UI;
 //   Wire a UI button: onClick → RecipePanel.instance.Toggle()
 
 public class RecipePanel : MonoBehaviour {
-    public static RecipePanel instance { get; protected set; }
+    static RecipePanel _instance;
+    // Lazy getter resolves the (inactive) panel via FindObjectOfType(true) so save-load restore
+    // (disabled / expanded / seen recipes) works before the panel has ever been opened. Awake only
+    // runs on first activation, so a plain static would be null at load time and the restore would
+    // be silently skipped — which is why "new" badges (and disabled/expanded state) didn't persist.
+    // Mirrors GlobalHappinessPanel / PopulationPanel.
+    public static RecipePanel instance {
+        get {
+            if (_instance == null) _instance = FindObjectOfType<RecipePanel>(true);
+            return _instance;
+        }
+        private set { _instance = value; }
+    }
 
     [Header("UI Refs")]
     public Transform      recipeListContent;
@@ -34,6 +46,12 @@ public class RecipePanel : MonoBehaviour {
     // so it dies with the GameObject — no domain-reload reset hook needed. Persisted;
     // Rebuild reads it but never clears it (see ClearExpandedGroups / SetExpandedGroups).
     readonly HashSet<string>          expandedGroups  = new HashSet<string>();
+
+    // Recipes the player has actually looked at (group expanded + row scrolled into view). Everything
+    // starts "new"; ids move here once seen. Instance field like disabledRecipes — persisted (see
+    // SaveSystem) so "new" doesn't reappear across loads. Keyed by the row's display id (real recipe
+    // id, or BookProxyRecipeId for the collapsed book row).
+    readonly HashSet<int>             seenRecipes     = new HashSet<int>();
 
     // Real recipe ids the single "write a book" proxy stands in for (one per tech book).
     // Rebuilt each Rebuild(); used so the proxy's On/Off drives every book recipe at once.
@@ -57,7 +75,7 @@ public class RecipePanel : MonoBehaviour {
     const float   HeaderHeight = 28f; // top zone reserved for the scene-authored "recipes" title + divider
 
     void Awake() {
-        if (instance != null) { Debug.LogError("two RecipePanels!"); }
+        if (_instance != null && _instance != this) { Debug.LogError("two RecipePanels!"); }
         instance = this;
         UI.RegisterExclusive(gameObject);
         if (closeButton != null) closeButton.onClick.AddListener(() => gameObject.SetActive(false));
@@ -72,7 +90,8 @@ public class RecipePanel : MonoBehaviour {
         refreshTimer += Time.deltaTime;
         if (refreshTimer >= RefreshInterval) {
             refreshTimer = 0f;
-            foreach (var group in spawnedGroups) group.RefreshVisibleCards();
+            RectTransform viewport = scrollRect != null ? scrollRect.viewport : null;
+            foreach (var group in spawnedGroups) group.RefreshVisibleCards(viewport);
             if (detailCard != null) detailCard.Refresh(); // live have-amounts in the detail pane
         }
     }
@@ -160,8 +179,9 @@ public class RecipePanel : MonoBehaviour {
         refreshTimer = 0f;
         ClearSelection(); // old rows are gone; reset detail to the placeholder
 
-        // Group unlocked recipes by workstation (recipe.tile), preserving first-seen
-        // order so the list order is the authored recipesDb order. Book recipes (one per
+        // Group unlocked recipes by workstation (recipe.tile). Group order is sorted by the
+        // workstation's buildingsDb order below (so related buildings — crucible/furnace — sit
+        // together); rows WITHIN a group keep authored recipesDb order. Book recipes (one per
         // tech) collapse into a single "write a book" proxy so the scriptorium isn't a
         // wall of near-identical rows; bookRecipeIds tracks the real ones the proxy stands
         // in for, so its On/Off toggle can drive them all (see IsAllowed/SetAllowed).
@@ -196,6 +216,10 @@ public class RecipePanel : MonoBehaviour {
         // Processor (batch-conversion) recipes are ordinary Recipes in Db.recipes, so the loop
         // above already grouped them under their building alongside its craft recipes — e.g. the
         // brewery shows its yeast craft and its rice-wine ferment together. No separate pass.
+
+        // Order groups by the workstation's position in buildingsDb (== StructType.id, which is
+        // monotonic with file order) so related buildings cluster. Unknown/null tiles sort last.
+        order.Sort((a, b) => WorkstationOrder(a).CompareTo(WorkstationOrder(b)));
 
         for (int i = 0; i < order.Count; i++) {
             string tile = order[i];
@@ -237,6 +261,15 @@ public class RecipePanel : MonoBehaviour {
         group.name = "RecipeGroup_" + tile;
         group.Setup(tile, st, recipes, recipeRowPrefab, IsGroupExpanded(tile));
         spawnedGroups.Add(group);
+    }
+
+    // Sort key for workstation groups: the building's StructType.id, which follows buildingsDb
+    // file order (ids are monotonic with the file). Unknown/null tiles (e.g. "(none)") sort last.
+    static int WorkstationOrder(string tile) {
+        if (!string.IsNullOrEmpty(tile) && Db.structTypeByName != null
+            && Db.structTypeByName.TryGetValue(tile, out StructType st) && st != null)
+            return st.id;
+        return int.MaxValue;
     }
 
     // --- Discovery / availability filters ---
@@ -342,6 +375,25 @@ public class RecipePanel : MonoBehaviour {
     public int  DisabledCount                    => disabledRecipes.Count;
     public void CopyDisabledIds(int[] dest)      => disabledRecipes.CopyTo(dest);
     public void ClearDisabled()                  => disabledRecipes.Clear();
+
+    // --- "New" recipe tracking (persisted; see SaveSystem) ---
+
+    public bool IsRecipeNew(int recipeId) => !seenRecipes.Contains(recipeId);
+
+    // Marks a recipe seen (idempotent). Called by a group when one of its rows is scrolled into
+    // view while expanded — so a recipe is only ever cleared after the player has actually looked.
+    public void MarkRecipeSeen(int recipeId) => seenRecipes.Add(recipeId);
+
+    public int[] CopySeenRecipes() {
+        var arr = new int[seenRecipes.Count];
+        seenRecipes.CopyTo(arr);
+        return arr;
+    }
+    public void SetSeenRecipes(int[] ids) {
+        seenRecipes.Clear();
+        if (ids != null) foreach (int id in ids) seenRecipes.Add(id);
+    }
+    public void ClearSeenRecipes() => seenRecipes.Clear();
 
     // --- Expanded workstation groups (persisted; see SaveSystem) ---
 

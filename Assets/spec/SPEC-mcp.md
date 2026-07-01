@@ -43,7 +43,7 @@ work.
 `.prefab` files on disk by parsing-and-serializing YAML. These read the
 *on-disk* version, ignore Unity's in-memory state, and clobber unsaved work
 on next reimport. **Avoid these** unless the user has explicitly saved
-everything first. (We lost ~3 hours of UI work to this on 2026-03-23.)
+everything first — this has destroyed hours of unsaved UI work.
 
 Practical workflow:
 1. Before scene mutations, ask once: "OK to make in-editor changes? Ctrl+S
@@ -90,22 +90,18 @@ Practical workflow:
   you're about to mutate scene state. `MarkSceneDirty` also throws in Play
   mode.
 - **Prefab-instance property edits silently revert on domain reload unless
-  recorded.** Many scene UI panels are *prefab instances* (OptionsPanel lives at
-  `Resources/Prefabs/OptionsPanel.prefab`, etc.). A direct property set on a
+  recorded.** Many scene UI panels are *prefab instances* (e.g. OptionsPanel at
+  `Resources/Prefabs/OptionsPanel.prefab`). A direct property set on a
   prefab-*child* — `tmp.text = …`, `img.color = …`, `slider.minValue = …` —
-  changes it in memory and even serializes into the scene, but it is NOT added to
-  the instance's override (`m_Modifications`) list. So the next recompile /
-  domain reload re-syncs that property from the prefab and your edit vanishes —
-  while `manage_scene save` reported success the whole time (a genuinely
-  confusing "saved but undone later" failure; diagnosed 2026-06 after OptionsPanel
-  label renames reverted three times). **Fix:** after the edit call
+  changes it in memory and even serializes into the scene, but is NOT added to
+  the instance's override (`m_Modifications`) list, so the next domain reload
+  re-syncs it from the prefab and the edit vanishes — even though `manage_scene
+  save` reported success ("saved but undone later"). **Fix:** after the edit call
   `PrefabUtility.RecordPrefabInstancePropertyModifications(component)`, then verify
-  it took — `PrefabUtility.GetPropertyModifications(go)` should list a
-  `propertyPath` (e.g. `m_text`) for it, or grep the saved `.unity` for the value.
-  Or edit the prefab asset itself. Note: *structural* overrides — added
-  GameObjects, renames, `SerializedObject` reference wiring — record themselves;
-  only **direct property setters on existing prefab-children** need the explicit
-  Record call (which is why a panel's new rows/wiring stick but a relabel doesn't).
+  via `PrefabUtility.GetPropertyModifications(go)` (should list the `propertyPath`,
+  e.g. `m_text`) — or just edit the prefab asset. *Structural* overrides (added
+  GameObjects, renames, reference wiring) record themselves; only **direct property
+  setters on existing prefab-children** need the explicit Record call.
 - **Edit the prefab, not the instance.** For anything that lives as a prefab
   (OptionsPanel, SaveSlot, ItemDisplay, …), make structural/content changes on the
   **prefab asset** — open the prefab stage, or `PrefabUtility.LoadPrefabContents` →
@@ -127,7 +123,7 @@ Practical workflow:
   focused, so leaving Unity focused is the correct unattended setup.
 - **A recompile tears down the bridge; auto-resume can fail for good.** Script
   compilation triggers a domain reload that kills the bridge, which retries on a
-  ~49s backoff (0,1,3,5,10,30s) — but if Unity stays unfocused through that
+  backoff totalling ~49s (0,1,3,5,10,30s) — but if Unity stays unfocused through that
   window the resume exhausts and the bridge stays down until a focus + recompile
   (user must restart MCP). So: batch script edits, fire one `refresh_unity
   compile=request`, then poll `editor_state` with backoff (don't spray MCP calls
@@ -236,11 +232,20 @@ project already has these primitives — **copy them, don't replace them**:
 | Increment / decrement | `buttonplus.png`, `buttonminus.png` |
 | Checkbox / toggle checkmark | `check.png` |
 | Close button glyph | `x.png` (generic), `redx.png`, `yellowx.png` |
+| Dropdown arrow | `downarrow.png` |
 
-**If a needed widget doesn't have a sprite yet** (e.g. sliders, dropdowns —
-both still using Unity's default gray skin), build with placeholders **and
-flag it explicitly** to the user as "needs custom asset." Don't silently
-ship default-skinned widgets pretending they're done.
+**Dropdown styling** (TMP_Dropdown): the project convention is `woodframe` (sliced)
+on the box + Template, `downarrow` on the arrow, **`#ceb886` (0.808,0.722,0.525)
+flat on the Item Background** (the row fill — the only "white" left on a default
+dropdown), `check` checkmark, and ~3px bottom margin under the last entry (extend
+the Template's Content bottom: `content.offsetMin.y -= 3`, which TMP carries into
+the popup height — see TMP_Dropdown.cs:926). OptionsPanel's dropdowns are the
+reference; match them for any new dropdown.
+
+**If a needed widget doesn't have a sprite yet** (e.g. sliders still use Unity's
+default gray skin), build with placeholders **and flag it explicitly** to the
+user as "needs custom asset." Don't silently ship default-skinned widgets
+pretending they're done.
 
 **Respect native sprite size for `Image.Type = Simple` widgets.** Simple-mode
 Images stretch to fill their RectTransform — pixel art looks awful when
@@ -314,8 +319,7 @@ every descendant — sprites, RectTransform anchors/offsets/sizeDelta, Image
 colors, LayoutElement, etc. Visual styling lives inside the tree, not at
 the top. Copying only the outer container's LayoutElement matches sizes
 but leaves visual defaults untouched, producing siblings that share
-dimensions but look completely different (caught after a slider-copy task
-left Sfx/Ambient sliders visually divergent from Master). Cleanest pattern:
+dimensions but look completely different. Cleanest pattern:
 `UnityEngine.Object.Instantiate(source.gameObject)` then re-parent and
 rewire references — guarantees byte-identical visuals. If iterating
 manually, recurse the subtree, don't stop at direct children.

@@ -80,13 +80,19 @@ public class EepingTests {
         Assert.That(e.Efficiency(), Is.EqualTo(expected).Within(0.0001f));
     }
 
-    [TestCase(50f, 1f)]   // boundary: "> 0.5" false → linear branch returns 1.0 here
-    [TestCase(25f, 0.6f)] // 0.25 * 1.6 + 0.2 = 0.6
-    [TestCase(0f,  0.2f)] // 20% floor
-    public void Efficiency_AtOrBelowHalf_LinearPenalty(float eep, float expected){
+    // At or below half-eep, efficiency drops linearly from 1.0 (at the half boundary) to a floor at
+    // empty. Asserts the *shape* — boundary continuity, linearity, and a sub-1-but-positive floor —
+    // so it survives retuning the floor/slope (inline literals in Efficiency(), currently a 50% floor).
+    [Test]
+    public void Efficiency_AtOrBelowHalf_LinearPenaltyToFloor(){
         Eeping e = new Eeping();
-        e.eep = eep;
-        Assert.That(e.Efficiency(), Is.EqualTo(expected).Within(0.0001f));
+        e.eep = 0f;  float atEmpty   = e.Efficiency();
+        e.eep = 25f; float atQuarter = e.Efficiency(); // midpoint of [0, 0.5·maxEep]
+        e.eep = 50f; float atHalf    = e.Efficiency(); // eep/maxEep == 0.5 boundary
+
+        Assert.That(atHalf, Is.EqualTo(1f).Within(0.0001f), "continuous with the >0.5 branch");
+        Assert.That(atEmpty, Is.LessThan(1f).And.GreaterThan(0f), "a penalty floor, but never zero");
+        Assert.That(atQuarter, Is.EqualTo((atEmpty + 1f) / 2f).Within(0.0001f), "linear between floor and 1");
     }
 
     // ── Eep (recovery) ─────────────────────────────────────────────────

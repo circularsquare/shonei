@@ -438,6 +438,9 @@ public class TileMeshController : MonoBehaviour {
                 // Roads visually replace the ground surface — suppress overlay
                 // wholesale on roaded tiles.
                 if (t.structs[3] != null) continue;
+                // A facade structure (well shaft) draws over its own footprint — no
+                // surface grass/dirt overlay on its tiles.
+                if (t.building != null && t.building.structType.suppressOverlay) continue;
 
                 // Normal map shares the body type's normal — same nMask the body
                 // uses, so the directional edge bevel is consistent across body+overlay.

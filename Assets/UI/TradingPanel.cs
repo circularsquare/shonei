@@ -480,6 +480,23 @@ public class TradingPanel : MonoBehaviour {
         ShowAlert("");
         string side = _orderIsBuy ? "b" : "s";
         TradingClient.instance?.SendOrder(itemName, side, priceFen, qtyFen);
+
+        // Heads-up: a bought item that no storage is configured to accept can't be hauled home — it
+        // sits safely in the market until the player designates storage for it. Let the order through
+        // (they may be about to build storage) but warn so the "why didn't it come back?" gap closes.
+        if (_orderIsBuy && !AnyStorageAccepts(item))
+            EventFeed.instance?.Post($"<color=#ddbb66>No storage for {itemName}</color>", EventFeed.Category.Info);
+    }
+
+    // True if any home storage's filter is set to accept `item` (regardless of current fullness).
+    // Filter-level, not space-level: the actionable signal is "you never set up storage for this",
+    // which is the new-item case; a storage that allows it but is currently full is a different story.
+    static bool AnyStorageAccepts(Item item) {
+        var ic = InventoryController.instance;
+        if (ic == null || !ic.byType.TryGetValue(Inventory.InvType.Storage, out var storages)) return false;
+        foreach (var inv in storages)
+            if (inv.allowed != null && inv.allowed.TryGetValue(item.id, out bool ok) && ok) return true;
+        return false;
     }
 
     void ShowAlert(string msg) {

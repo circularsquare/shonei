@@ -6,6 +6,19 @@ using System.Runtime.Serialization;
 // hold a reference to their StructType. Quantities are authored in liang (float) and
 // converted to fen (int) in OnDeserialized.
 
+// How a structure attaches to the world. None = rests on the ground (default).
+// Side = hangs against a vertical wall face (terrain or a building's body), the player
+// picking left/right via the mirror toggle. Ceiling = hangs from the solid underside of
+// the tile above. Side and Ceiling share the mount-attach placement branch in
+// StructPlacement and skip the generic standability check.
+public enum MountTo { None, Side, Ceiling }
+
+// A face of a footprint tile, queried against the baked edge-solidity masks via
+// StructType.EdgeSolid ("does this tile present body on that face?"). Left/Right feed
+// side-mounts; Bottom feeds ceiling-mounts. Top is NOT baked — top-face support is the
+// authored `solidTop` flag, which also carries occlusion semantics a sprite bake can't.
+public enum MountFace { Left, Right, Bottom }
+
 // Work tile offset: a position within a multi-tile building where an animal can stand to interact.
 // Used by nworkTiles[] on StructType. Mirroring is applied at runtime by Structure.WorkTileAt().
 public class WorkTileOffset {
@@ -218,12 +231,20 @@ public class StructType {
     // existing `requiredTileName` mining trigger). Used by mineshaft.
     public bool requiresSolidTilePlacement;
 
+    // Placement requires an OPEN tile with a revealed background wall whose material group matches
+    // `requiredTileName` (quarry → "stone", digging pit → "earth"). The structure digs the wall's
+    // depth over time (WallQuarry) instead of mining a solid tile. Mutually exclusive with the
+    // solid-tile occupancy path below — a wall structure sits on empty air, not in solid rock.
+    public bool requiresBackgroundWall {get; set;}
+
     // True when this structure is built INTO a solid tile rather than resting on open ground — either it
-    // targets a specific tile group (`requiredTileName`: burrow / digging pit / quarry) or any solid tile
+    // targets a specific tile group (`requiredTileName`: burrow / mineshaft variants) or any solid tile
     // (`requiresSolidTilePlacement`: mineshaft). Such structures are self-supported by the tile they occupy,
     // so they're exempt from the "tile is not empty" placement rejection AND the generic bottom-row support
     // check. (Mining the tile out at build additionally requires `!preservesTile` — a burrow occupies but keeps it.)
-    public bool OccupiesSolidTile => requiredTileName != null || requiresSolidTilePlacement;
+    // Wall-quarry types opt OUT: they use `requiredTileName` to match the WALL group on an open tile, not to
+    // occupy solid rock, so they must not take the solid-tile exemptions.
+    public bool OccupiesSolidTile => !requiresBackgroundWall && (requiredTileName != null || requiresSolidTilePlacement);
 
     // Cached: true if `tileRequirements` declares `mustBeStandable` on any tile. Signals that the
     // author controls support explicitly (which columns must rest on something solid) — so the
@@ -246,6 +267,23 @@ public class StructType {
     // products on completion would double up on what the worker mines out over time. The
     // burrow, by contrast, leaves this false: its dirt really is dug out at construction.
     public bool extractsTileOverTime {get; set;}
+    // A 1-wide structure dug straight DOWN into solid ground (well). The bottom ny-1 tiles of
+    // the chosen shape must be solid + mineable (the shaft); the TOP tile (dy=ny-1) must be an
+    // OPEN surface tile — that's the wellhead a hauler walks up to and operates, rendered like a
+    // normal surface building. requiresSolidTilePlacement only validates dx=0,dy=0, so this is
+    // the variable-height generalisation StructPlacement enforces. OnDeserialized turns on
+    // requiresSolidTilePlacement too, so the empty-tile / bottom-support exemptions and the
+    // stone-mining tech gate all apply without authoring a per-dy tileRequirements entry.
+    public bool digsSolidColumn {get; set;}
+    // Cursor maps to the TOP tile, not the bottom anchor — so a downward-dug structure (well)
+    // places its surface piece under the cursor and Q/E extends the shaft DOWNWARD. MouseController
+    // offsets the anchor by -(ny-1) in Y; everything downstream still uses the bottom (dy=0) anchor.
+    public bool anchorAtTop {get; set;}
+    // The structure draws its own facade over its footprint tiles, so the surface grass/dirt overlay
+    // must NOT render on them (it would draw at order 80, on top of the facade). Unlike the burrow —
+    // which keeps grass growing over its dug top on purpose — a well's sky-exposed shaft mouth would
+    // otherwise sprout grass over the shaft. Same effect roads get via their depth-3 layer.
+    public bool suppressOverlay {get; set;}
     // Optional name of an additional Structure to place on the tile after Construct() completes.
     // Resolved via Db.structTypeByName at construction time. Used by structures that bundle a
     // follow-up structure with their placement (mineshaft → ladder). Null = no extra placement.
@@ -397,6 +435,12 @@ public class StructType {
     // Perlin sample (phase from position so neighbours don't pulse in unison). 0 by default.
     public float lightFlicker {get; set;}
 
+    // Per-building self-emission multiplier (the bright pixels of the body/_e glow), independent of
+    // the radial point light. 1 = full (default); <1 dims the glow without touching the light reach.
+    // Lets a soft-glow building (lantern) read dimmer than a hot flame (torch) on the same global
+    // _EmissionStrength. Feeds LightSource.emissionMult → LightFeature's per-emitter _EmissionScale.
+    public float emissionStrength {get; set;} = 1f;
+
     // ── Fire art ──────────────────────────────────────────────────────
     // Toggleable flame child sprite (Structure ctor) for light-emitting buildings. The art is a
     // small flame, positioned at the wick end via the offset below rather than baked into the
@@ -439,11 +483,14 @@ public class StructType {
     // for most types; PowerShaft additionally derives its connectivity axis from rotation.
     public bool rotatable {get; set;}
 
-    // When true, this structure mounts against a solid vertical SIDE (terrain or a building
-    // wall) instead of resting on the ground — placement uses the side-attach branch in
-    // StructPlacement (shared with ladder_side) and skips the generic standability check.
-    // The player chooses which side via the mirror toggle (F). Used by ladder_side and bracket.
-    public bool sideMounted {get; set;}
+    // How this structure attaches instead of resting on the ground. Side = against a vertical
+    // wall face (terrain or a building's body), player picks the side via the mirror toggle (F);
+    // Ceiling = hangs from the solid underside of the tile above. Both route through the
+    // mount-attach branch in StructPlacement and skip the generic standability check. Default
+    // None = ground-supported. Used by ladder_side / bracket / torch_side (Side) and lantern (Ceiling).
+    public MountTo mountTo {get; set;} = MountTo.None;
+    public bool isMounted => mountTo != MountTo.None;          // hangs on a surface, not the ground
+    public bool sideMounted => mountTo == MountTo.Side;        // convenience for the many side-only sites
 
     // Name of the side-mounted variant this build tool resolves to when the cursor hovers near
     // a tile edge during placement (e.g. "ladder" → "ladder_side", "torch" → "torch_side").
@@ -500,7 +547,17 @@ public class StructType {
         // back to the first sliced frame so animated buildings still have a static
         // default before FrameAnimator takes over at Update time.
         Sprite[] all = Resources.LoadAll<Sprite>(path);
-        return (all != null && all.Length > 0 && all[0].texture != null) ? all[0] : null;
+        if (all != null && all.Length > 0 && all[0].texture != null) return all[0];
+        // Shape-only buildings (e.g. well) ship art solely as a sliced "{name}_s" sheet with
+        // no flat "{name}.png" — the in-world render assembles it via LoadShapeSprite, but a
+        // flat icon/preview still wants a representative frame. Prefer the "_b" anchor slice.
+        Sprite[] sheet = Resources.LoadAll<Sprite>(path + "_s");
+        if (sheet != null && sheet.Length > 0) {
+            string anchor = name.Replace(" ", "") + "_b";
+            foreach (Sprite sp in sheet) if (sp != null && sp.name == anchor) return sp;
+            return sheet[0];
+        }
+        return null;
     }
 
     [OnDeserialized]
@@ -540,28 +597,42 @@ public class StructType {
                 if (r.mustBeStandable) hasStandableRequirement = true;
             }
         }
+        // A column-digging structure occupies solid tiles, so reuse the same placement
+        // exemptions + mining tech gate as a single-tile solid placement (mineshaft). The
+        // per-column solidity is validated separately in StructPlacement.
+        if (digsSolidColumn) requiresSolidTilePlacement = true;
     }
 
-    // ── Sprite body-edge mask (side-ladder mounting) ──────────────────────
-    // Per-footprint-tile bitmasks (bit dy*nx+dx) of which tiles present a solid wall on their
-    // left / right edge — so a side-ladder won't mount against a visually-empty footprint tile
+    // ── Sprite body-edge solidity masks (mount support) ───────────────────
+    // Per-footprint-tile bitmasks (bit dy*nx+dx) of which tiles present body on their left /
+    // right / bottom edge — so a mount won't attach against a visually-empty footprint tile
     // (e.g. a windmill's blade tiles, claimed in tile.structs[] but with no sprite body). Baked
-    // offline from sprite alpha by Tools/Bake Building Edge Masks and applied at Db load via
-    // SetEdgeMasks. -1 = unbaked → permissive (treat every edge as solid) so we never wrongly
-    // reject a mount before the bake has run. Authored un-mirrored; SideEdgeSolid applies mirror.
-    int leftEdgeMask  = -1;
-    int rightEdgeMask = -1;
-    public void SetEdgeMasks(int left, int right) { leftEdgeMask = left; rightEdgeMask = right; }
+    // offline from sprite alpha by Tools/Bake Building Edge Solidity and applied at Db load via
+    // SetEdgeMasks. -1 = unbaked → permissive (treat the edge as solid) so we never wrongly reject
+    // a mount before the bake has run. Authored un-mirrored; EdgeSolid applies mirror. Left/Right
+    // feed side-mounts; Bottom feeds ceiling-mounts. (No top mask — see solidTop.)
+    int leftEdgeMask   = -1;
+    int rightEdgeMask  = -1;
+    int bottomEdgeMask = -1;
+    public void SetEdgeMasks(int left, int right, int bottom) {
+        leftEdgeMask = left; rightEdgeMask = right; bottomEdgeMask = bottom;
+    }
 
-    // True if footprint tile (dx,dy) presents a wall on the side facing a mounting ladder.
-    // wallRightSide = the ladder rests against this tile's RIGHT face. structMirrored flips
-    // both the column lookup and which authored side we read.
-    public bool SideEdgeSolid(int dx, int dy, bool wallRightSide, bool structMirrored) {
-        if (leftEdgeMask < 0) return true;                   // unbaked → permissive
+    // True if footprint tile (dx,dy) presents body on the given face — i.e. a mount can attach
+    // there. structMirrored flips both the column lookup and (for Left/Right) which authored side
+    // we read; Bottom is mirror-invariant. Out-of-range or unbaked → permissive (true).
+    public bool EdgeSolid(int dx, int dy, MountFace face, bool structMirrored) {
         int lx = structMirrored ? (nx - 1 - dx) : dx;
-        bool readRight = structMirrored ? !wallRightSide : wallRightSide;
         if (lx < 0 || lx >= nx || dy < 0 || dy >= ny) return true;
-        int mask = readRight ? rightEdgeMask : leftEdgeMask;
+        int mask;
+        if (face == MountFace.Bottom) {
+            mask = bottomEdgeMask;
+        } else {
+            bool wantRight = face == MountFace.Right;
+            bool readRight = structMirrored ? !wantRight : wantRight;
+            mask = readRight ? rightEdgeMask : leftEdgeMask;
+        }
+        if (mask < 0) return true;                           // unbaked → permissive
         return ((mask >> (dy * nx + lx)) & 1) != 0;
     }
 }

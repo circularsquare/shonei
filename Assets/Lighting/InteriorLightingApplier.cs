@@ -1,13 +1,12 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-// Re-applies SettingsManager.interiorMode's layer choice to existing enclosed buildings when
-// the mode changes at runtime. The mode's two shader globals (_InteriorLit / _PointShadows) are
-// re-read every frame by LightFeature, so only the Interior-vs-Default LAYER swap needs an
-// explicit re-apply — that's what flips a burrow between its own interior tier and the normal
-// building tier (the BurrowAsBuilding comparison mode). New structures/mice read the mode at
-// creation (InteriorLayer.LayerForEnclosed / Animal.RefreshInteriorRendering), so this only
-// matters for live toggling of an already-built world.
+// Applies SettingsManager.burrowAsBuilding's layer choice to existing enclosed buildings on a
+// settings change. The flag is now fixed (the wall-shadows dropdown was retired — burrows always
+// render as buildings), so this is mostly belt-and-braces: new structures/mice already read it at
+// creation (InteriorLayer.LayerForEnclosed / Animal.RefreshInteriorRendering), and it re-confirms
+// the Interior-vs-Default LAYER swap after a ResetToDefaults. (The _InteriorLit / _PointShadows
+// shader globals are re-read every frame by LightFeature, so only the layer needs an explicit apply.)
 //
 // Per-scene self-bootstrap, mirroring BackgroundVisibility: SettingsManager is a per-scene
 // singleton, so a fresh instance subscribes to each scene's manager. No scene wiring needed.

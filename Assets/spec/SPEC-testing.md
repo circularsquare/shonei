@@ -8,7 +8,7 @@ How tests are organised and run. For *when* it's worth running them at all, see 
 
 **PlayMode tests** (`Assets/Tests/PlayMode/`) — load `Main.unity`, run actual game lifecycle. Slower (seconds each). Use for integration / snapshot tests where Animal AI, scene-loaded controllers, or the real save/load path matter. `TickSmokeTest.cs` is the canonical example: load Main → wait 3 frames → drive `World.Tick(1/60f)` × N → assert state.
 
-**Snapshot tests** (`Assets/Tests/PlayMode/SnapshotTests.cs` + `SnapshotRunner.cs`) — capture full world state as JSON, diff against a checked-in golden file. Catches regressions in *any* system that affects serialized state (worldgen, animal AI, tick dispatch, save format) without writing per-system assertions. Goldens live in `Assets/Tests/PlayMode/Scenarios/<name>.golden.json`. On mismatch, the actual is written to `Application.temporaryCachePath` for diffing.
+**Snapshot tests** (`Assets/Tests/PlayMode/SnapshotTests.cs` + `SnapshotRunner.cs`) — **currently paused per user preference; don't suggest running them or re-baselining goldens until re-enabled.** The machinery below stays documented for when they come back. They capture full world state as JSON, diff against a checked-in golden file. Catches regressions in *any* system that affects serialized state (worldgen, animal AI, tick dispatch, save format) without writing per-system assertions. Goldens live in `Assets/Tests/PlayMode/Scenarios/<name>.golden.json`. On mismatch, the actual is written to `Application.temporaryCachePath` for diffing.
 
 To add a new snapshot scenario:
 1. Add a `[UnityTest]` method to `SnapshotTests.cs` that calls `SnapshotRunner.RunDefaultWorld(unitySeed: <fixed>, ticks: <N>, name: <unique>)`.

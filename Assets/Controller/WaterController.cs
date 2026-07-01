@@ -114,8 +114,20 @@ public class WaterController : MonoBehaviour {
     // Internal fixed-point scale: 10 internal units = 1 display unit (tile fully filled at 160).
     // Scaling up from 16 eliminates the integer-truncation dead zone in the spread formula
     // (diff/2 == 0 when diff == 1), which would otherwise leave water in a staircase pattern.
-    // The dead zone shrinks to 1/10 of a visual unit — sub-pixel.
+    // The dead zone shrinks to 1/10 of a visual unit — sub-pixel. This is PURELY the simulation
+    // resolution, not an economic quantity — the value of a tile is LiangPerFullTile below.
     public const ushort WaterMax = 160;
+
+    // Economic value of a full water tile, in liang (100 fen = 1 liang). The ONLY tile-water ⇄
+    // item conversion knob: a full tile (WaterMax sim units) is worth this many liang. Kept
+    // separate from WaterMax (the sim resolution) so there's no confusing "units per liang" ratio —
+    // both numbers are individually meaningful. All conversions go through the two helpers below.
+    public const int LiangPerFullTile = 32;
+
+    // ── Sim-unit ⇄ water-item economy ────────────────────────────────
+    // tile.water is in internal sim units (0..WaterMax); the water item is in fen (100 fen = 1 liang).
+    public static int WaterUnitsToFen(int units)   => units * LiangPerFullTile * 100 / WaterMax;
+    public static int LiangToWaterUnits(int liang) => liang * WaterMax / LiangPerFullTile;
 
     // Tiles with water in [1, ResidualBandMax) render as 0 pixel rows (round(w/160*16) = 0
     // for w ≤ 4 and = 1 for w = 5; we use 5 here as the strict upper bound). Pass 4 jitters

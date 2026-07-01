@@ -45,6 +45,16 @@ public static class WorldGen {
         FillTerrain(world, surfaceY, dirtMask);
         ApplyVeins(world, surfaceY, seed);
 
+        // Snapshot the solid fill material at every cell BEFORE caves carve tiles out —
+        // this is what each cell "would be" if intact. SetBackgrounds reads it so a
+        // cave/mined-out tile reveals a wall matching the stone that spawned in front
+        // (limestone/granite/slate/dirt). Beach sand + clay banks run later (post-cave)
+        // and patch their own backgrounds directly. Captured here, after veins.
+        TileType[,] fillType = new TileType[nx, ny];
+        for (int x = 0; x < nx; x++)
+            for (int y = 0; y < ny; y++)
+                fillType[x, y] = world.GetTileAt(x, y).type;
+
         // Cave generation: build a continuous noise field, blend in worm tunnels,
         // then threshold + CA smooth into the final boolean mask.
         float[,] caveNoise = BuildCaveNoiseField(surfaceY, nx, ny, seed);
@@ -59,7 +69,7 @@ public static class WorldGen {
         // for its connectivity graph. SetBackgrounds is pure on surfaceY +
         // current tile solidity, so the call site doesn't matter for its own
         // correctness — moved here purely to feed the chunk-removal pass.
-        SetBackgrounds(world, surfaceY, dirtMask);
+        SetBackgrounds(world, surfaceY, fillType);
 
         // Remove solid clusters that aren't connected (orthogonally) to the
         // mainland via either solid tiles OR background walls. Catches the
@@ -179,10 +189,14 @@ public static class WorldGen {
         // confetti — single tiles flipping every few columns.
         RemoveSmallPatches(candidate, world.nx, world.ny, cfg.SandMinPatchSize);
 
-        // Phase 3: commit survivors.
+        // Phase 3: commit survivors. Patch the revealed wall to match (sand runs after
+        // SetBackgrounds, so its cells otherwise carry the pre-sand fill's wall).
         for (int x = 0; x < world.nx; x++) {
             for (int y = 0; y < world.ny; y++) {
-                if (candidate[x, y]) world.GetTileAt(x, y).type = sand;
+                if (!candidate[x, y]) continue;
+                Tile t = world.GetTileAt(x, y);
+                t.type = sand;
+                if (t.hasBackground) t.backgroundTile = sand;
             }
         }
     }
@@ -231,10 +245,14 @@ public static class WorldGen {
         // Phase 2: drop tiny isolated patches.
         RemoveSmallPatches(candidate, world.nx, world.ny, cfg.ClayMinPatchSize);
 
-        // Phase 3: commit survivors.
+        // Phase 3: commit survivors. Patch the revealed wall to match (clay runs after
+        // SetBackgrounds, so its cells otherwise carry the pre-clay fill's wall).
         for (int x = 0; x < world.nx; x++) {
             for (int y = 0; y < world.ny; y++) {
-                if (candidate[x, y]) world.GetTileAt(x, y).type = clay;
+                if (!candidate[x, y]) continue;
+                Tile t = world.GetTileAt(x, y);
+                t.type = clay;
+                if (t.hasBackground) t.backgroundTile = clay;
             }
         }
     }
@@ -316,28 +334,31 @@ public static class WorldGen {
     // Place a wall behind every tile below the natural surface heightmap, with
     // a near-surface skylight relaxation: a non-solid tile within 2 of the
     // surface stays open so shallow caves visibly punch through to sky.
-    // Wall type follows the precomputed dirtMask near the surface — keeps
-    // wavy dirt pockets visible from inside shallow caves — but deeper than
-    // `DirtWallMaxDepth` we always use Stone, so deep caves that punch
-    // through buried dirt pockets don't show dirt/grass walls.
-    public static void SetBackgrounds(World world, int[] surfaceY, bool[,] dirtMask) {
+    // The wall MATERIAL mirrors the fill snapshot (the stone/earth that spawned in
+    // front), so a mined-out or cave tile reveals a matching wall. Deeper than
+    // `DirtWallMaxDepth` we substitute limestone for any EARTH-group fill, so deep
+    // caves that punch through a buried dirt pocket don't show dirt/grass walls —
+    // stone variety (granite/slate) is preserved at any depth.
+    public static void SetBackgrounds(World world, int[] surfaceY, TileType[,] fillType) {
         int nx = world.nx;
         int ny = world.ny;
         int dirtWallMaxDepth = config.DirtWallMaxDepth;
+        TileType limestone = Db.tileTypeByName["limestone"];
 
         // Pass 1: place walls following the surface contour, with the near-surface
         // skylight relaxation for shallow caves.
         for (int x = 0; x < nx; x++) {
             int sy = surfaceY[x];
             int yMax = Mathf.Min(sy, ny);
-            int dirtWallCutoffY = sy - 1 - dirtWallMaxDepth; // below this row, always Stone wall
+            int dirtWallCutoffY = sy - 1 - dirtWallMaxDepth; // below this row, no earth walls
             for (int y = 0; y < yMax; y++) {
                 Tile t = world.GetTileAt(x, y);
                 if (!t.type.solid && y >= sy - 2) continue;
-                bool dirtAllowed = y > dirtWallCutoffY;
-                t.backgroundType = (dirtAllowed && dirtMask[x, y])
-                    ? BackgroundType.Dirt
-                    : BackgroundType.Stone;
+                TileType fill = fillType[x, y];
+                if (fill == null) continue; // no material would fill this cell
+                bool deep = y <= dirtWallCutoffY;
+                if (deep && fill.group == "earth") fill = limestone;
+                t.backgroundTile = fill;
             }
         }
 
@@ -352,19 +373,19 @@ public static class WorldGen {
         for (int x = 0; x < nx; x++) {
             for (int y = 0; y < ny; y++) {
                 Tile t = world.GetTileAt(x, y);
-                if (t.backgroundType == BackgroundType.None) continue;
+                if (!t.hasBackground) continue;
                 if (HasNoneCardinalNeighbor(world, x, y, nx, ny))
                     toClear.Add(t);
             }
         }
-        foreach (Tile t in toClear) t.backgroundType = BackgroundType.None;
+        foreach (Tile t in toClear) t.backgroundTile = null;
     }
 
     static bool HasNoneCardinalNeighbor(World world, int x, int y, int nx, int ny) {
-        if (x > 0      && world.GetTileAt(x - 1, y).backgroundType == BackgroundType.None) return true;
-        if (x < nx - 1 && world.GetTileAt(x + 1, y).backgroundType == BackgroundType.None) return true;
-        if (y > 0      && world.GetTileAt(x, y - 1).backgroundType == BackgroundType.None) return true;
-        if (y < ny - 1 && world.GetTileAt(x, y + 1).backgroundType == BackgroundType.None) return true;
+        if (x > 0      && !world.GetTileAt(x - 1, y).hasBackground) return true;
+        if (x < nx - 1 && !world.GetTileAt(x + 1, y).hasBackground) return true;
+        if (y > 0      && !world.GetTileAt(x, y - 1).hasBackground) return true;
+        if (y < ny - 1 && !world.GetTileAt(x, y + 1).hasBackground) return true;
         return false;
     }
 
@@ -376,7 +397,8 @@ public static class WorldGen {
         for (int x = 0; x < world.nx; x++)
             for (int y = 0; y < world.ny; y++) {
                 Tile t = world.GetTileAt(x, y);
-                if (t.type.solid) t.moisture = startingMoisture;
+                // Clamp to the material's capacity — low-cap stone (granite/slate cap 20) can't hold the full seed.
+                if (t.type.solid) t.moisture = (byte)Mathf.Min((int)startingMoisture, t.type.moistureCapacity);
             }
     }
 
@@ -855,7 +877,7 @@ public static class WorldGen {
         for (int x = 0; x < nx; x++) {
             for (int y = 0; y < ny; y++) {
                 Tile t = world.GetTileAt(x, y);
-                connectable[x, y] = t.type.solid || t.backgroundType != BackgroundType.None;
+                connectable[x, y] = t.type.solid || t.hasBackground;
             }
         }
 

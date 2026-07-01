@@ -39,6 +39,11 @@ public class ResearchSystem : MonoBehaviour {
     const float DecayRate        = 0.004f; // progress lost per tick (all nodes with any progress)
     const float ScientistRate    = 0.02f;  // progress gained per workefficiency of a scientist each tick
 
+    // Unlocked techs below MaintainThreshold × cost still count as "needs work" in PickStudyTarget,
+    // so scientists top up a slightly-decayed unlock (e.g. 109%) before starting a brand-new tech.
+    const float MaintainThreshold = 1.10f;
+    const float ForgetThreshold   = 0.75f; // unlocked tech reverts to locked once progress falls below this × cost
+
     // Passive (non-scientist) research, both scaled by labour time so a faster / more skilled
     // worker contributes proportionally more — mirroring how a scientist's per-tick gain scales.
     //   Crafting: a baseline (eff 1.0) worker crafting a research recipe continuously earns 30%
@@ -218,7 +223,7 @@ public class ResearchSystem : MonoBehaviour {
                 unlockTimestamps[node.id] = ++unlockCounter;
                 ApplyEffect(node);
                 OnTechUnlocked?.Invoke(node);
-            } else if (unlocked && p < node.cost * 0.75f) {
+            } else if (unlocked && p < node.cost * ForgetThreshold) {
                 unlockedIds.Remove(node.id);
                 RevertEffect(node);
                 Debug.Log($"Technology forgotten: {node.name}");
@@ -284,11 +289,12 @@ public class ResearchSystem : MonoBehaviour {
     // Called when a scientist picks up a ResearchTask.
     // Returns the node ID the scientist should work on, or -1 if nothing to do.
     //
-    // Priority: (1) Studied techs below cost (need maintenance/research) — oldest-unlocked first.
-    //               Never-unlocked techs tie at int.MaxValue — still picked if no older
-    //               candidate exists, so the queue actually progresses through new techs.
-    //           (2) Studied techs above cost but below 2×cost — lowest progress % first
-    //               (spread reinforcement evenly).
+    // Priority: (1) Studied techs below MaintainThreshold × cost (need maintenance/research) —
+    //               oldest-unlocked first. Never-unlocked techs tie at int.MaxValue — still picked
+    //               if no older candidate exists, so the queue progresses through new techs, but an
+    //               already-unlocked tech that's drifted into the maintenance band is topped up first.
+    //           (2) Studied techs above MaintainThreshold × cost but below 2×cost — lowest progress %
+    //               first (spread reinforcement evenly).
     public int PickStudyTarget() {
         int bestBelow = -1;
         int bestBelowStamp = int.MaxValue;
@@ -302,8 +308,11 @@ public class ResearchSystem : MonoBehaviour {
             float p   = GetProgress(id);
             float cap = GetCap(node);
 
-            if (p < node.cost) {
-                // Below unlock threshold — prioritise oldest-unlocked.
+            if (p < node.cost * MaintainThreshold) {
+                // Below the maintenance threshold — needs work (first unlock, or a slightly-
+                // decayed unlock to top back up). Prioritise oldest-unlocked. A never-unlocked
+                // tech sits below cost with stamp = MaxValue, so an unlocked tech in the
+                // maintenance band (real, lower stamp) is kept up before a new tech is started.
                 // bestBelow < 0 seeds the first candidate so MaxValue-tied never-unlocked
                 // techs still win over the fallback reinforcement branch.
                 int stamp = unlockTimestamps.TryGetValue(id, out int s) ? s : int.MaxValue;
@@ -312,7 +321,7 @@ public class ResearchSystem : MonoBehaviour {
                     bestBelowStamp = stamp;
                 }
             } else if (p < cap) {
-                // Above cost, below 2×cost — reinforce lowest % first.
+                // Above the maintenance threshold, below 2×cost — reinforce lowest % first.
                 float ratio = p / cap;
                 if (ratio < bestAboveRatio) {
                     bestAbove = id;

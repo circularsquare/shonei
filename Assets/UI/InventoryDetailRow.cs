@@ -3,7 +3,12 @@ using UnityEngine.UI;
 using TMPro;
 
 // One row in the full-screen GlobalInventoryPanel item tree. Left→right:
-//   [indent][dropdown][icon][name] | total | storage | floor | carried | market | [target +/-] | [don't-consume]
+//   [indent][dropdown][icon][name][alert] | total | [distribution bar] | [target +/-] | [don't-consume]
+//
+// The per-location numeric columns (storage/floor/carried/market) were dropped for a cleaner,
+// narrower panel — that breakdown still reads off the distribution bar's colored segments (and
+// their hover tooltips). The [alert] cell is a small icon that appears only when the item has no
+// storage assigned anywhere in town (see Refresh).
 //
 // Layout is authored on the prefab (Resources/Prefabs/InventoryDetailRow); this component only
 // binds data + handles clicks. It is a SEPARATE, richer row than ItemDisplay (which serves the
@@ -30,7 +35,16 @@ public class InventoryDetailRow : MonoBehaviour {
     [SerializeField] TextMeshProUGUI nameText;
 
     [Header("Breakdown (fen → FormatQ)")]
-    [SerializeField] TextMeshProUGUI totalText, storageText, floorText, carriedText, marketText;
+    [SerializeField] TextMeshProUGUI totalText;
+
+    // "No storage assigned" alert — a small icon built in code and slotted right after the name
+    // (a column with no header, empty in the common case). Shown only when nowhere in town can
+    // store this item; see Refresh. Sprite is optional — the feature stays dormant until it exists.
+    static Sprite alertSprite;
+    static bool   alertSpriteLoaded;
+    Image         alertImage;
+    Tooltippable  alertTip;
+    const float   AlertIconSize = 13f;
 
     [Header("Target (leaf only)")]
     [SerializeField] TMP_InputField targetInput;
@@ -83,7 +97,36 @@ public class InventoryDetailRow : MonoBehaviour {
         // Leaf rows: dragging the bar's target marker commits a new target (groups have no editable target).
         if (bar != null && !isGroup) bar.onTargetSet = SetTargetFromBar;
 
+        BuildAlert();
         RefreshDropdownSprite();
+    }
+
+    // Builds the "no storage assigned" alert cell as a sibling immediately after the name, so it
+    // reads as a small badge on the item. Code-built (not on the prefab) because it's a tiny
+    // per-row addition and keeps the toggle logic next to Refresh. Starts hidden; Refresh drives it.
+    void BuildAlert() {
+        if (nameText == null) return;
+        if (!alertSpriteLoaded) { alertSprite = Resources.Load<Sprite>("Sprites/Misc/alert"); alertSpriteLoaded = true; }
+        if (alertSprite == null) return; // no art yet → feature dormant (no white-box placeholder)
+
+        var go = new GameObject("Alert", typeof(RectTransform));
+        var rt = (RectTransform)go.transform;
+        rt.SetParent(nameText.transform.parent, false);
+        rt.SetSiblingIndex(nameText.transform.GetSiblingIndex() + 1);
+        rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
+        rt.pivot = new Vector2(0f, 1f);
+
+        alertImage = go.AddComponent<Image>();
+        alertImage.sprite = alertSprite;
+        alertImage.preserveAspect = true;
+        alertImage.enabled = false; // shown only on alert; a disabled Graphic also stops raycasting → no tooltip
+
+        alertTip = go.AddComponent<Tooltippable>();
+        alertTip.body = "0 storage assigned";
+
+        var le = go.AddComponent<LayoutElement>();
+        le.minWidth = le.preferredWidth = AlertIconSize;
+        le.minHeight = le.preferredHeight = AlertIconSize;
     }
 
     // Configure the target column. Leaf rows: editable input + steppers. Group rows: the input
@@ -105,16 +148,18 @@ public class InventoryDetailRow : MonoBehaviour {
         var ic = InventoryController.instance;
         var gi = GlobalInventory.instance;
         if (ic == null || gi == null || item == null) return;
-        int total   = gi.Quantity(item);
-        int storage = ic.QuantityIn(item, Inventory.InvType.Storage);
-        int floor   = ic.QuantityIn(item, Inventory.InvType.Floor);
-        int carried = ic.QuantityIn(item, Inventory.InvType.Animal, Inventory.InvType.Equip);
-        int market  = ic.QuantityIn(item, Inventory.InvType.Market);
-        if (totalText != null)   totalText.text   = ItemStack.FormatQ(total, item);
-        if (storageText != null) storageText.text = ItemStack.FormatQ(storage, item);
-        if (floorText != null)   floorText.text   = ItemStack.FormatQ(floor, item);
-        if (carriedText != null) carriedText.text = ItemStack.FormatQ(carried, item);
-        if (marketText != null)  marketText.text  = ItemStack.FormatQ(market, item);
+        int total    = gi.Quantity(item);
+        int storage  = ic.QuantityIn(item, Inventory.InvType.Storage);
+        int floor    = ic.QuantityIn(item, Inventory.InvType.Floor);
+        int carried  = ic.QuantityIn(item, Inventory.InvType.Animal, Inventory.InvType.Equip);
+        int market   = ic.QuantityIn(item, Inventory.InvType.Market);
+        int capacity = ic.StorageCapacityFor(item); // free storage space that currently allows this item
+        if (totalText != null) totalText.text = ItemStack.FormatQ(total, item);
+        // No storage assigned = nothing is stored AND no storage stack allows the item (empty or
+        // partial). That's exactly when the bar's dark-green capacity marker is hidden.
+        if (alertImage != null) alertImage.enabled = (storage + capacity) == 0;
+        // The per-location numbers (storage/floor/carried/market) are no longer shown as columns;
+        // they still feed the distribution bar's segments below.
         // Target value: leaf → its own (editable) target; group → read-only sum of discovered leaf
         // targets (same figure the bar marks against).
         if (targetInput != null && !targetInput.isFocused) {
@@ -124,7 +169,6 @@ public class InventoryDetailRow : MonoBehaviour {
         // "installed" = reservoir fuel + building furnishings; bar-only, no dedicated column.
         if (bar != null) {
             int installed = ic.QuantityIn(item, Inventory.InvType.Reservoir, Inventory.InvType.Furnishing);
-            int capacity  = ic.StorageCapacityFor(item); // free storage space that currently allows this item
             bar.SetData(item, storage, floor, carried, market, installed, total, BarTarget(ic), capacity);
         }
         RefreshConsumeSprite();

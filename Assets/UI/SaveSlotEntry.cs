@@ -23,6 +23,11 @@ public class SaveSlotEntry : MonoBehaviour {
 
     string _slotName;
     public string SlotName => _slotName;
+    // syncLabel shows "<date>  <status>" composed from these two halves (either may be
+    // empty — date when the file's mtime is unknown, status when logged out). Held
+    // separately so SetDate and the sync badge can update independently.
+    string _dateText = "";
+    string _statusText = "";
     System.Action<string> _onLoad;    // null → default in-game Load (SaveSystem.instance.Load)
     System.Action         _onChanged; // list-rebuild hook after a delete; null → SaveMenuPanel.Refresh
 
@@ -71,7 +76,24 @@ public class SaveSlotEntry : MonoBehaviour {
 
     // Sets the badge text directly (in-game SaveMenuPanel uses the network-free LocalBadge).
     public void SetSyncBadge(string text) {
-        if (syncLabel != null) syncLabel.text = text;
+        _statusText = text ?? "";
+        RenderBadge();
+    }
+
+    // Shows the save's date (YYYY-MM-DD) to the left of the sync status, in the same gray.
+    // unixSeconds is the file's mtime (or cloud savedAt); 0 hides the date.
+    public void SetDate(long unixSeconds) {
+        _dateText = unixSeconds > 0
+            ? System.DateTimeOffset.FromUnixTimeSeconds(unixSeconds).LocalDateTime.ToString("yyyy-MM-dd")
+            : "";
+        RenderBadge();
+    }
+
+    void RenderBadge() {
+        if (syncLabel == null) return;
+        syncLabel.text = _dateText.Length > 0 && _statusText.Length > 0
+            ? _dateText + "  " + _statusText
+            : _dateText + _statusText;
     }
 
     void OnRename(string newName) {

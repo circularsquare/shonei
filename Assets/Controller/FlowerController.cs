@@ -63,6 +63,32 @@ public class FlowerController : MonoBehaviour {
     // path restores the exact saved flowers instead of re-deriving from live grass/snow state.
     FlowerSaveData[] pendingRestore;
 
+    // ── Seasonal regrowth lifecycle (OnHourElapsed) ──────────────────────
+    // Surface flowers are a living layer: out of season they die back at
+    // random and in season they re-seed up to FlowerType.maxCount. Mirrors
+    // WildHerbSystem in shape. Underground decorations (no `seasons`, no
+    // `maxCount`) opt out and stay the static worldgen scatter they always were.
+    //
+    // Like WildHerbSystem, this uses a plain (non-deterministic) RNG and holds
+    // NO save data — the live flower set IS the state and is persisted via
+    // GatherSave/RestoreFlowers, so a reload restores the population and the
+    // lifecycle simply continues evolving it.
+    System.Random lifeRng = new System.Random();
+
+    // Per-hour chance each OUT-OF-SEASON flower dies back. An in-game hour is
+    // ~20 s (ticksInDay/24), so ~0.10/hour ≈ a 5% chance per 10 s — a staggered
+    // die-back over the first day or two of the off-season, not an instant wipe.
+    const float CullChancePerHour = 0.10f;
+
+    // Flowers re-seeded per in-game hour across all under-cap in-season types.
+    // Kept a slow trickle so a winter-wiped meadow visibly grows back in over
+    // the early part of spring rather than popping in all at once.
+    const int RegrowPerHour = 2;
+
+    // Random columns probed per re-seed before giving up (much of the map is
+    // ineligible — caves, water, built-over tiles).
+    const int PlacementAttempts = 40;
+
     void Awake() {
         if (instance != null) {
             Debug.LogError("FlowerController: more than one instance");
@@ -156,8 +182,20 @@ public class FlowerController : MonoBehaviour {
         Tile above = world.GetTileAt(t.x, t.y + 1);
         if (above == null) return false;
         if (above.type != null && above.type.solid) return false;
-        if (above.structs[0] != null) return false;
+        if (AnyStructAt(above)) return false;
         return true;
+    }
+
+    // True if any structure occupies `t` at any depth slot — building, platform,
+    // foreground (ladder/rope/sign), road, power shaft, or greenhouse frame. A
+    // decoration anchored to the air tile above its host would visually overlap
+    // any of these, so an occupied air tile disqualifies the spot. (Was a
+    // depth-0-only check; widened so flowers never clip platforms/shafts/etc.)
+    static bool AnyStructAt(Tile t) {
+        if (t == null) return false;
+        for (int d = 0; d < Tile.NumDepths; d++)
+            if (t.structs[d] != null) return true;
+        return false;
     }
 
     // ── Eligibility + spawn/despawn ─────────────────────────────────────
@@ -181,7 +219,7 @@ public class FlowerController : MonoBehaviour {
         Tile above = world.GetTileAt(t.x, t.y + 1);
         if (above == null) return PlacementZone.None;
         if (above.type != null && above.type.solid) return PlacementZone.None;
-        if (above.structs[0] != null) return PlacementZone.None;
+        if (AnyStructAt(above)) return PlacementZone.None;
 
         int[] sY = world.surfaceY;
         bool sYValid = sY != null && t.x >= 0 && t.x < sY.Length && sY[t.x] >= 0;
@@ -244,7 +282,7 @@ public class FlowerController : MonoBehaviour {
             for (int dy = -1; dy <= 1; dy++) {
                 Tile t = world.GetTileAt(cx + dx, cy + dy);
                 if (t == null) return false;
-                if (t.backgroundType == BackgroundType.None) return false;
+                if (!t.hasBackground) return false;
             }
         }
         return true;
@@ -370,6 +408,119 @@ public class FlowerController : MonoBehaviour {
         flowers.Clear();
     }
 
+    // ── Seasonal regrowth lifecycle ─────────────────────────────────────
+    // Hooked from World.Tick on the hourly cadence (alongside WildHerbSystem).
+    // Out-of-season flowers die back at random; in-season under-cap types
+    // re-seed a slow trickle. Underground decorations opt out (no seasons / cap).
+    public void OnHourElapsed() {
+        if (world == null) return;
+        CullOutOfSeason();
+        TrickleRegrow();
+    }
+
+    // Staggered seasonal die-back. Snapshots victim keys first because Despawn
+    // mutates the `flowers` dictionary. Year-round types (no `seasons`) are never
+    // culled — only flowers whose authored season has passed.
+    void CullOutOfSeason() {
+        WeatherSystem weather = WeatherSystem.instance;
+        List<long> doomed = null;
+        foreach (var kv in flowers) {
+            FlowerType ft = kv.Value.type;
+            if (ft == null) continue;
+            if (ft.seasons == null || ft.seasons.Length == 0) continue; // year-round
+            if (ft.IsInSeason(weather)) continue;                       // still in season
+            if (lifeRng.NextDouble() >= CullChancePerHour) continue;
+            (doomed ??= new List<long>()).Add(kv.Key);
+        }
+        if (doomed == null) return;
+        foreach (long key in doomed) Despawn(key);
+    }
+
+    // Re-seed up to RegrowPerHour flowers toward their per-species caps, choosing
+    // among in-season under-cap types weighted by `weight`.
+    void TrickleRegrow() {
+        for (int n = 0; n < RegrowPerHour; n++) {
+            FlowerType ft = PickUnderCapType();
+            if (ft == null) return; // every regrowing type is at cap or out of season
+            PlacementZone zone = ft.placement == ZoneUnderground
+                ? PlacementZone.Underground : PlacementZone.SurfaceGrass;
+            if (TryFindTile(zone, out int hx, out int hy))
+                SpawnAt(world.GetTileAt(hx, hy), ft);
+        }
+    }
+
+    // weight-weighted pick among regrowing types (maxCount > 0) that are in
+    // season AND below their live cap. Null if none are eligible.
+    FlowerType PickUnderCapType() {
+        Dictionary<FlowerType, int> counts = CountLivePerType();
+        WeatherSystem weather = WeatherSystem.instance;
+        float total = 0f;
+        for (int i = 0; i < Db.flowerTypesCount; i++)
+            if (UnderCap(Db.flowerTypes[i], counts, weather)) total += Db.flowerTypes[i].weight;
+        if (total <= 0f) return null;
+
+        double pick = lifeRng.NextDouble() * total;
+        float acc = 0f;
+        for (int i = 0; i < Db.flowerTypesCount; i++) {
+            FlowerType ft = Db.flowerTypes[i];
+            if (!UnderCap(ft, counts, weather)) continue;
+            acc += ft.weight;
+            if (pick < acc) return ft;
+        }
+        return null; // FP edge — caller treats as "nothing to spawn"
+    }
+
+    static bool UnderCap(FlowerType ft, Dictionary<FlowerType, int> counts, WeatherSystem weather) {
+        if (ft == null || ft.maxCount <= 0) return false;
+        if (!ft.IsInSeason(weather)) return false;
+        if (ft.LoadSprite() == null) return false;
+        counts.TryGetValue(ft, out int live);
+        return live < ft.maxCount;
+    }
+
+    Dictionary<FlowerType, int> CountLivePerType() {
+        var counts = new Dictionary<FlowerType, int>();
+        foreach (var kv in flowers) {
+            FlowerType ft = kv.Value.type;
+            if (ft == null) continue;
+            counts.TryGetValue(ft, out int c);
+            counts[ft] = c + 1;
+        }
+        return counts;
+    }
+
+    // Probe random tiles for an eligible host in `zone` (GetZone) that isn't
+    // already decorated. Returns the SOLID host tile coords (the air tile above
+    // is where the decoration visually sits). Gives up after PlacementAttempts.
+    //
+    // SurfaceGrass: only the topmost solid tile of a column can be the host
+    // (grass is a one-tile-thick surface), so we scan a random column down to
+    // the ground line. Underground: cave-floor hosts are scattered throughout
+    // the depth, so we sample random (x, y) cells and let GetZone filter.
+    bool TryFindTile(PlacementZone zone, out int hx, out int hy) {
+        hx = hy = -1;
+        for (int a = 0; a < PlacementAttempts; a++) {
+            int cx = lifeRng.Next(0, world.nx);
+            if (zone == PlacementZone.SurfaceGrass) {
+                for (int gy = world.ny - 1; gy >= 1; gy--) {
+                    Tile t = world.GetTileAt(cx, gy);
+                    if (t == null || t.type == null || !t.type.solid) continue;
+                    if (GetZone(t) != PlacementZone.SurfaceGrass) break;
+                    if (flowers.ContainsKey(Key(cx, gy))) break; // already taken
+                    hx = cx; hy = gy; return true;
+                }
+            } else {
+                int cy = lifeRng.Next(1, world.ny);
+                Tile t = world.GetTileAt(cx, cy);
+                if (t == null) continue;
+                if (GetZone(t) != zone) continue;
+                if (flowers.ContainsKey(Key(cx, cy))) continue;
+                hx = cx; hy = cy; return true;
+            }
+        }
+        return false;
+    }
+
     // ── Save / restore (persisted flower layout) ────────────────────────
     // Flowers are persisted rather than re-derived on load: their eligibility depends on live
     // grass/snow state that evolves via the shared RNG and so doesn't reproduce across a reload.
@@ -451,14 +602,16 @@ public class FlowerController : MonoBehaviour {
     // `normalized01` is a deterministic fraction in [0, 1) from the per-tile
     // hash — same seed → same variant. Skips variants whose sprite is missing
     // so authors can ship JSON entries before the art is finished without
-    // breaking already-placed sprites.
+    // breaking already-placed sprites. Also skips out-of-season variants so the
+    // worldgen scatter never plants something that would immediately die back
+    // (e.g. summer daylilies on a spring-start world — they grow in via the
+    // regrowth trickle once their season arrives).
     FlowerType PickVariantForPlacement(float normalized01, string placement) {
+        WeatherSystem weather = WeatherSystem.instance;
         float totalWeight = 0f;
         for (int i = 0; i < Db.flowerTypesCount; i++) {
             FlowerType ft = Db.flowerTypes[i];
-            if (ft == null) continue;
-            if (ft.placement != placement) continue;
-            if (ft.LoadSprite() == null) continue;
+            if (!EligibleVariant(ft, placement, weather)) continue;
             totalWeight += Mathf.Max(0f, ft.weight);
         }
         if (totalWeight <= 0f) return null;
@@ -467,12 +620,17 @@ public class FlowerController : MonoBehaviour {
         float acc = 0f;
         for (int i = 0; i < Db.flowerTypesCount; i++) {
             FlowerType ft = Db.flowerTypes[i];
-            if (ft == null) continue;
-            if (ft.placement != placement) continue;
-            if (ft.LoadSprite() == null) continue;
+            if (!EligibleVariant(ft, placement, weather)) continue;
             acc += Mathf.Max(0f, ft.weight);
             if (target <= acc) return ft;
         }
         return null; // unreachable barring float drift; defensive
+    }
+
+    static bool EligibleVariant(FlowerType ft, string placement, WeatherSystem weather) {
+        return ft != null
+            && ft.placement == placement
+            && ft.IsInSeason(weather)
+            && ft.LoadSprite() != null;
     }
 }

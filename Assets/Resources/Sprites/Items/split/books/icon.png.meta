@@ -34,7 +34,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 1
+    filterMode: 0
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -140,6 +140,6 @@ TextureImporter:
     nameFileIdTable: {}
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
-  userData: normalsCacheKey=KMVEHbg5Qlxmk3vh/oej5g==
+  userData: normalsCacheKey=P6TNiIbORrBW9zXxoSbSOg==
   assetBundleName: 
   assetBundleVariant: 

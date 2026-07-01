@@ -18,8 +18,8 @@ using UnityEngine.Rendering;
 //    it only samples _MainTexArr, which we bind per-chunk to the background array).
 //    The normals capture uses a dedicated flat override (Hidden/ChunkedBackgroundNormalsCapture),
 //    which LightFeature draws for the Background layer (reused — the old mask sprite is retired).
-//  - backgroundType is fixed at worldgen and effectively never changes after mining,
-//    so cbBackgroundChanged fires only during gen / load — the dirty+rebuild machinery
+//  - backgroundTile rarely changes after worldgen (only a quarry/pit exhausting a wall),
+//    so cbBackgroundChanged fires mostly during gen / load — the dirty+rebuild machinery
 //    is cheap. We mirror it (rather than build-once) so load and different-size-save
 //    re-allocation are handled identically to TileMeshController.
 //  - Dormant until its atlases exist: if neither a baked asset nor a source PNG is
@@ -55,27 +55,19 @@ public class BackgroundTileMeshController : MonoBehaviour {
     static readonly int MainTexArrayId = Shader.PropertyToID("_MainTexArr");
     static readonly int SortBucketId   = Shader.PropertyToID("_SortBucket");
 
-    // ── Background-type maps ─────────────────────────────────────────────
-    // One registry entry per renderable background type. id orders the soft-edge
-    // contest: the lower id wins (draws its air-edge art overhanging the other type)
-    // and gets the higher sortingOrder. Stone < Dirt today — flip the ids to make dirt
-    // overhang stone instead (purely aesthetic). atlas is the sprite stem under
-    // Resources/Sprites/Tiles/Sheets/ (and the {atlas}_body baked asset name).
-    struct BgTypeDef {
-        public BackgroundType type;
-        public string         atlas;
-        public int            id;
-    }
-    static readonly BgTypeDef[] Registry = {
-        new BgTypeDef { type = BackgroundType.Stone, atlas = "stoneback", id = 1 },
-        new BgTypeDef { type = BackgroundType.Dirt,  atlas = "dirtback",  id = 2 },
-    };
+    // ── Background-atlas maps ────────────────────────────────────────────
+    // One render group per distinct background-wall atlas declared by the tile types
+    // (TileType.backgroundAtlas — limestone→"limestoneback", dirt→"dirtback", etc).
+    // The contest id orders the soft edge: the lower id wins (draws its air-edge art
+    // overhanging the neighbour) and gets the higher sortingOrder. id = the smallest
+    // tile-type id using that atlas, so the ordering is deterministic (purely aesthetic).
+    // Groups are keyed by atlas string, so two materials sharing an atlas render as one
+    // seamless wall.
 
-    // Available (art present) types, compacted to 0..numTypes-1 ascending by id.
-    int             numTypes;
-    BackgroundType[] indexToBgType;
-    string[]         indexToAtlas;
-    int[]            indexToId;
+    // Available (art present) atlases, compacted to 0..numTypes-1 ascending by id.
+    int      numTypes;
+    string[] indexToAtlas;
+    int[]    indexToId;
 
     // ── Chunk layers ─────────────────────────────────────────────────────
     ChunkLayer[,,] bodyLayers;   // [cx, cy, typeIdx]
@@ -106,7 +98,7 @@ public class BackgroundTileMeshController : MonoBehaviour {
             // No background atlases drawn/baked yet — stay dormant rather than render
             // magenta fallbacks. Activates automatically once the art exists next play.
             Debug.Log("BackgroundTileMeshController: no background atlases found (e.g. " +
-                      "Resources/Sprites/Tiles/Sheets/stoneback.png) — chunked background renderer idle.");
+                      "Resources/Sprites/Tiles/Sheets/limestoneback.png) — chunked background renderer idle.");
             return;
         }
         if (chunkLayerIndex < 0) {
@@ -133,21 +125,26 @@ public class BackgroundTileMeshController : MonoBehaviour {
         // so the new chunks fill in through the normal dirty path — no explicit rebuild.
     }
 
-    // Only registry entries whose atlas art is present become renderable types.
+    // Enumerate the distinct background-wall atlases declared by tile types (stone + earth
+    // materials). Each becomes a render group; only atlases whose art is present are kept,
+    // so committing ahead of missing art never renders magenta.
     void BuildTypeMaps() {
-        var avail = new List<BgTypeDef>();
-        foreach (var def in Registry)
-            if (ArtAvailable(def.atlas)) avail.Add(def);
-        avail.Sort((a, b) => a.id.CompareTo(b.id));
+        var idByAtlas = new Dictionary<string, int>();
+        foreach (var tt in Db.tileTypeByName.Values) {
+            if (string.IsNullOrEmpty(tt.backgroundAtlas)) continue;
+            if (!ArtAvailable(tt.backgroundAtlas)) continue;
+            if (!idByAtlas.TryGetValue(tt.backgroundAtlas, out int cur) || tt.id < cur)
+                idByAtlas[tt.backgroundAtlas] = tt.id;
+        }
+        var avail = new List<KeyValuePair<string, int>>(idByAtlas);
+        avail.Sort((a, b) => a.Value.CompareTo(b.Value));
 
-        numTypes      = avail.Count;
-        indexToBgType = new BackgroundType[numTypes];
-        indexToAtlas  = new string[numTypes];
-        indexToId     = new int[numTypes];
+        numTypes     = avail.Count;
+        indexToAtlas = new string[numTypes];
+        indexToId    = new int[numTypes];
         for (int i = 0; i < numTypes; i++) {
-            indexToBgType[i] = avail[i].type;
-            indexToAtlas[i]  = avail[i].atlas;
-            indexToId[i]     = avail[i].id;
+            indexToAtlas[i] = avail[i].Key;
+            indexToId[i]    = avail[i].Value;
         }
     }
 
@@ -156,12 +153,6 @@ public class BackgroundTileMeshController : MonoBehaviour {
         return Resources.Load<Texture2DArray>($"BakedTileAtlases/{atlas}_body") != null
             || Resources.Load<Texture2D>($"Sprites/Tiles/Sheets/{atlas}") != null
             || Resources.Load<Texture2D>($"Sprites/Tiles/{atlas}") != null;
-    }
-
-    int TypeIndexFor(BackgroundType type) {
-        for (int i = 0; i < numTypes; i++)
-            if (indexToBgType[i] == type) return i;
-        return -1;
     }
 
     void BuildWorldSizedResources() {
@@ -233,13 +224,12 @@ public class BackgroundTileMeshController : MonoBehaviour {
     void BuildGeometry(int cx, int cy, int typeIdx) {
         ResetBuffers();
         int x0, y0, x1, y1; ChunkBoundsTiles(cx, cy, out x0, out y0, out x1, out y1);
-        string atlas        = indexToAtlas[typeIdx];
-        BackgroundType type = indexToBgType[typeIdx];
+        string atlas = indexToAtlas[typeIdx];
 
         for (int y = y0; y < y1; y++) {
             for (int x = x0; x < x1; x++) {
                 Tile t = world.GetTileAt(x, y);
-                if (t == null || t.backgroundType != type) continue;
+                if (t == null || t.backgroundTile == null || t.backgroundTile.backgroundAtlas != atlas) continue;
 
                 int bgSolid = 0, bgWin = 0;
                 AccumulateBoundary(t, x - 1, y,     1, ref bgSolid, ref bgWin);
@@ -267,17 +257,19 @@ public class BackgroundTileMeshController : MonoBehaviour {
             return;
         }
         Tile n = world.GetTileAt(nx, ny);
-        if (n == null || n.backgroundType == BackgroundType.None) return;
+        if (n == null || n.backgroundTile == null) return;
         bgSolid |= bit;
-        if (n.backgroundType == tile.backgroundType) return;
-        if (BgId(tile.backgroundType) < BgId(n.backgroundType)) bgWin |= bit;
+        string myAtlas = tile.backgroundTile.backgroundAtlas;
+        string nAtlas  = n.backgroundTile.backgroundAtlas;
+        if (nAtlas == myAtlas) return;
+        if (AtlasId(myAtlas) < AtlasId(nAtlas)) bgWin |= bit;
     }
 
-    // Registry id for a background type (contest priority). Returns int.MaxValue for
-    // any type not in the available set so it never wins against a rendered neighbour.
-    int BgId(BackgroundType type) {
+    // Contest id for a background atlas (lower wins the shared edge). Returns int.MaxValue
+    // for any atlas not in the available set so it never wins against a rendered neighbour.
+    int AtlasId(string atlas) {
         for (int i = 0; i < numTypes; i++)
-            if (indexToBgType[i] == type) return indexToId[i];
+            if (indexToAtlas[i] == atlas) return indexToId[i];
         return int.MaxValue;
     }
 
@@ -329,7 +321,7 @@ public class BackgroundTileMeshController : MonoBehaviour {
         // highest, so its overhang covers the higher-id type's Main at a wall seam.
         int sortingOrder = BaseSortingOrder - typeIdx;
 
-        GameObject go = new GameObject($"BgChunk_{indexToBgType[typeIdx]}_{cx}_{cy}");
+        GameObject go = new GameObject($"BgChunk_{indexToAtlas[typeIdx]}_{cx}_{cy}");
         go.transform.SetParent(chunksRoot, false);
         go.transform.localPosition = new Vector3(cx * ChunkSize, cy * ChunkSize, 0);
         go.layer = chunkLayerIndex;
@@ -339,7 +331,7 @@ public class BackgroundTileMeshController : MonoBehaviour {
         mr.sharedMaterial = chunkedMaterial;
         mr.sortingOrder   = sortingOrder;
 
-        var mesh = new Mesh { name = $"BgChunk_{indexToBgType[typeIdx]}_{cx}_{cy}" };
+        var mesh = new Mesh { name = $"BgChunk_{indexToAtlas[typeIdx]}_{cx}_{cy}" };
         mesh.indexFormat = IndexFormat.UInt32;
         mf.sharedMesh = mesh;
 

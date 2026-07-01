@@ -133,11 +133,10 @@ public class LightFeature : ScriptableRendererFeature {
         // Terrain tiles keep their depth (separate chunked shader). Tolerate a missing
         // SettingsManager (defaults to shaded).
         float flatNormals = (SettingsManager.instance != null && SettingsManager.instance.flatLighting) ? 1f : 0f;
-        // Interior lighting mode (SettingsManager.interiorMode). Drives two independent globals:
-        // _InteriorLit promotes enclosed-building interiors from the directional-only tier (skip
-        // torches) to lit-only (receive torches) in the capture pass — wall-shadows mode only;
-        // _PointShadows enables the per-pixel wall ray-march in the light pass — on for everything
-        // but the legacy no-shadows mode. Tolerate a missing SettingsManager (defaults to legacy off).
+        // Interior-lighting flags (fixed since the wall-shadows dropdown was retired): _InteriorLit is
+        // always 0 (burrows render as buildings, not on the Interior tier) and _PointShadows always 1
+        // (wall occlusion on — geodesic under flood-fill, thickness DDA when flood-fill off). Read via
+        // the SettingsManager flag properties so the consumers don't hardcode. Tolerate a missing SM.
         var sm = SettingsManager.instance;
         float interiorLit = (sm != null && sm.interiorLit)  ? 1f : 0f;
         float pointShadows = (sm != null && sm.pointShadows) ? 1f : 0f;
@@ -670,7 +669,7 @@ class LightPass : ScriptableRenderPass, System.IDisposable {
                         if (src == null) continue;
                         var rr = src.EmissionReceiver;
                         if (rr == null || !rr.enabled || !rr.gameObject.activeInHierarchy) continue;
-                        cmd.SetGlobalFloat("_EmissionScale", src.CurrentEmissionScale);
+                        cmd.SetGlobalFloat("_EmissionScale", src.CurrentEmissionScale * src.emissionMult);
                         cmd.SetGlobalFloat("_SortBucket",
                             SortBucketUtil.BucketToNormalized(SortBucketUtil.GetBucket(rr.sortingOrder)));
                         cmd.DrawRenderer(rr, d.emissionMat, 0, 0);

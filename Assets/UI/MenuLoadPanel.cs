@@ -87,6 +87,9 @@ public class MenuLoadPanel : MonoBehaviour {
             entry.Init(rowSlot, miceCount, startRenaming: false,
                        onLoad: _ => LoadChosen(rowSlot, rowStatus, rowMeta),
                        onChanged: Refresh, showSave: false);
+            // Date from the local file's mtime, or the cloud savedAt for a cloud-only row.
+            entry.SetDate(localExists ? SaveStore.GetSlotModifiedUnix(slot)
+                                      : (meta != null ? meta.savedAt : 0));
             entry.SetSyncStatus(status);
         }
     }

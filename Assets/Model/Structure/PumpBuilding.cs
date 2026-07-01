@@ -12,12 +12,12 @@ using System.Collections.Generic;
 // pump head/spout — visually solid, no shaft can attach there. Authoring custom ports
 // here keeps the port-stub visuals on just the two sides where an axle makes sense.
 public class PumpBuilding : Building, PowerSystem.IPowerConsumer {
-    // Liquid pond-water units drained from the source tile per completed craft round (1 round
-    // produces 1 liang of the water item — recipesDb id 12). WaterMax=160 = one full tile, so at
-    // this rate a full tile of water yields 32 liang. Public because it also sets how moisture-rich
-    // a bottled water item is for farmer watering: 1 liang ≡ this × MoistureSeepGainPerWater moisture
-    // (so 1 unit of pond water ≡ 10 moisture). See MoistureSystem.MoistureForWaterFen.
-    public const int WaterDrainPerRound = WaterController.WaterMax/32;   // = 5
+    // Liquid pond-water units drained from the source tile per completed craft round. Defined as
+    // the sim units in one liang (WaterMax / LiangPerFullTile) so a round produces exactly 1 liang
+    // of the water item (recipesDb id 12) — a full tile (WaterMax units = LiangPerFullTile liang)
+    // yields LiangPerFullTile liang. (The bottled water item's moisture worth is set separately by
+    // MoistureSystem.MoisturePerLiang — 1 liang ≡ 50 moisture — not derived through this constant.)
+    public const int WaterDrainPerRound = WaterController.WaterMax / WaterController.LiangPerFullTile;   // = 5 (1 liang/round)
 
     public PumpBuilding(StructType st, int x, int y, bool mirrored = false) : base(st, x, y, mirrored) { }
 

@@ -69,7 +69,7 @@ public static class GameplayAtlasBuilder
         {
             "mousearrow", "whiteborder", "tileselect", "harvestselect",
             "blueprintframe", "bpdeconstructframe", "crack",
-            "mycelium", "tree", "selectframe",
+            "mycelium", "tree", "selectframe", "questionmark",
         };
         System.Func<string, bool> isWorldOverlay = name =>
             worldOverlayNames.Contains(System.IO.Path.GetFileNameWithoutExtension(name).ToLowerInvariant());

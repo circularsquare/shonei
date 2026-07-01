@@ -58,7 +58,7 @@
         "id": 93,
         "job": "apothecary",
         "tile": "cauldron",
-        "description": "brew moonlily into restful tonic",
+        "description": "brew moonlily into sleep tonic",
         "duration": 30,
         "fuelCost": 2,
         "ninputs": [
@@ -66,7 +66,7 @@
             { "name": "water", "quantity": 5 }
         ],
         "noutputs": [
-            { "name": "restful tonic", "quantity": 5 }
+            { "name": "sleep tonic", "quantity": 5 }
         ]
     },{
         "id": 94,
@@ -341,7 +341,7 @@
         "job": "digger",
         "tile": "digging pit",
         "description": "dig",
-        "workload": 8.0,
+        "workload": 6.0,
         "hidden": true,
         "ninputs": [
         ],
@@ -353,13 +353,41 @@
         "tile": "mill",
         "description": "create soymilk",
         "workload": 6.0,
-        "research": "Soymilk",
+        "research": "Mill",
         "ninputs": [
             { "name": "soybeans", "quantity": 2.0 },
             { "name": "water", "quantity": 0.5 }
         ],
         "noutputs": [
             { "name": "soymilk", "quantity": 1.0 }
+        ]
+    },{
+        "id": 26,
+        "job": "cook",
+        "tile": "mill",
+        "description": "grind wheat into flour",
+        "workload": 6.0,
+        "research": "Mill",
+        "ninputs": [
+            { "name": "wheat", "quantity": 1.0 }
+        ],
+        "noutputs": [
+            { "name": "flour", "quantity": 1.0 }
+        ]
+    },{
+        "id": 27,
+        "job": "cook",
+        "tile": "steamer",
+        "description": "steam flour into bread",
+        "workload": 5.0,
+        "fuelCost": 1,
+        "research": "Steaming",
+        "ninputs": [
+            { "name": "flour", "quantity": 1.0 },
+            { "name": "water", "quantity": 0.5 }
+        ],
+        "noutputs": [
+            { "name": "bread", "quantity": 1.0 }
         ]
     },{
         "id": 12,
@@ -372,11 +400,22 @@
             { "name": "water", "quantity": 1.0 }
         ]
     },{
+        "id": 14,
+        "job": "hauler",
+        "tile": "well",
+        "description": "draw water",
+        "hidden": true,
+        "workload": 1.0,
+        "ninputs": [],
+        "noutputs": [
+            { "name": "water", "quantity": 5.0 }
+        ]
+    },{
         "id": 11,
         "job": "miner",
         "tile": "quarry",
         "description": "mine stone",
-        "workload": 24.0,
+        "workload": 12.0,
         "hidden": true,
         "research": "Mining",
         "ninputs": [
@@ -481,7 +520,7 @@
         "job": "scribe",
         "tile": "scriptorium",
         "description": "write fiction book",
-        "duration": 120,
+        "duration": 100,
         "ninputs": [
             { "name": "paper", "quantity": 1 }
         ],

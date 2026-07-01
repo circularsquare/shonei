@@ -4,12 +4,12 @@ using UnityEngine;
 // (_OccluderDist, bilinear) holding, for each cell, the (chamfer ≈ Euclidean) distance in
 // tiles to the nearest occluder tile — 0 inside walls, growing outward, clamped to MaxDistTiles.
 //
-// LightCircle.shader sphere-traces this field from each lit pixel toward the light (Inigo
-// Quilez soft shadows): it leaps by the distance-to-nearest-wall and softens by how closely the
-// ray passes occluders relative to distance. This gives a smooth, view-INDEPENDENT penumbra
-// (no banding, no perpendicular-source artifacts) and is cheap (a few big leaps in open space).
-// Gated by SettingsManager.pointShadows via the _PointShadows global (set in LightFeature);
-// lighting itself stays full per-pixel.
+// LightCircle.shader's `SolidThickness` walks this field from each lit pixel toward the light with
+// an exact DDA tile traversal (Amanatides & Woo), summing the segment length spent inside solid
+// cells (`dist < 0.5`) → a soft thickness-attenuated shadow. (This replaced an earlier IQ
+// sphere-trace; the field stays a distance field, but the consumer is now a thickness walk, not a
+// sphere-trace.) Used only when flood-fill is OFF — flood-fill routes occlusion through
+// LightReachField instead. Gated by SettingsManager.pointShadows via the _PointShadows global.
 //
 // Occluder = tile.type.solid && !bodyDrawnByStructure: real earth/walls, but NOT a burrow/pit's
 // own carved footprint (which stays model-solid yet must not shadow its own interior — pairs

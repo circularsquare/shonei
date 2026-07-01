@@ -82,6 +82,7 @@ public class BuildPanel : MonoBehaviour {
             // sees plants they can't grow (e.g. a tree entry with no acorns). Undiscovered
             // ones are added later by RefreshPlantVisibility when the seed turns up.
             if (!PlantSeedDiscovered(st)) continue;
+            if (IsForageOnly(st)) continue;   // wild herbs come from natural spawns, not the build menu
             string cat = st.isPlant ? "plants" : st.category;
             if (cat != null && cats.ContainsKey(cat)) cats[cat].Add(st);
         }
@@ -144,8 +145,13 @@ public class BuildPanel : MonoBehaviour {
         }
     }
 
+    // Icon size for the per-entry building preview. Matches the recipe panel's item icons
+    // (RecipeDisplay.IconSize) so the two panels read consistently.
+    const float BuildIconSize = 16f;
+
     void AddBuildDisplay(Transform parent, StructType st) {
         GameObject go = Instantiate(buildDisplayPrefab, parent);
+        AddBuildIcon(go.transform, st);
         Transform costsContainer = go.transform.Find("CostsContainer");
         foreach (ItemQuantity iq in st.costs) {
             GameObject costDisplay = Instantiate(textDisplayPrefab, costsContainer);
@@ -153,7 +159,7 @@ public class BuildPanel : MonoBehaviour {
             costDisplay.name = "CostDisplay_" + iq.item.name;
         }
         StructType captured = st;
-        go.transform.GetChild(0).GetComponent<Button>().onClick.AddListener(() => {
+        go.transform.Find("BuildingButton").GetComponent<Button>().onClick.AddListener(() => {
             SetStructType(captured);
             CloseSubPanel();
         });
@@ -170,6 +176,90 @@ public class BuildPanel : MonoBehaviour {
             tip.title = buildingName;
             tip.body  = st.description;
         }
+
+        // Menu entries are added at two different times — the initial id-sorted sweep in Start
+        // and later one-off UnlockBuilding calls (research). Appending would leave unlocked
+        // buildings in unlock order; re-sort by id so an entry's slot is a pure function of its
+        // id no matter when it appears.
+        PlaceByIdOrder(go.transform, parent, st.id);
+    }
+
+    // Prepends the building's preview sprite as the first child of the entry's HorizontalLayoutGroup,
+    // sitting left of the name button. Sizing mirrors the recipe panel's item icons: a fixed
+    // BuildIconSize square (min==preferred, no flex) so the layout can't shrink it to a fractional
+    // width and blur the adjacent pixel font. Buildings with no sprite (e.g. the "empty" mine-tile
+    // action) keep the slot but hide the image, so every row's name stays left-aligned.
+    static void AddBuildIcon(Transform entry, StructType st) {
+        var iconGO = new GameObject("Icon", typeof(RectTransform));
+        iconGO.transform.SetParent(entry, false);
+        iconGO.transform.SetSiblingIndex(0);
+        ((RectTransform)iconGO.transform).sizeDelta = new Vector2(BuildIconSize, BuildIconSize);
+
+        var img = iconGO.AddComponent<Image>();
+        img.preserveAspect = true;   // keep pixel-art icons square
+        img.raycastTarget  = false;  // decorative — never intercept the name-button click
+
+        var le = iconGO.AddComponent<LayoutElement>();
+        le.minWidth  = le.preferredWidth  = BuildIconSize;
+        le.minHeight = le.preferredHeight = BuildIconSize;
+        le.flexibleWidth = 0f;
+
+        // Plants show their tallest single-tile stage (mature crop / young tree), not the g0
+        // seedling; everything else uses its flat/shape sprite.
+        Sprite icon = st is PlantType pt ? pt.LoadMenuIconSprite() : st.LoadSprite();
+        if (icon != null) {
+            img.sprite = icon;
+            AddFireOverlay(iconGO.transform, st, icon);   // flame companion, for lit buildings
+        } else {
+            img.enabled = false;    // no sprite: keep the layout gap, show nothing
+        }
+    }
+
+    // Lays the first frame of a building's flame sheet ("{name}_f", or its fireSprite override)
+    // over the base icon, so lit buildings (torch, fireplace, foundry) read as lit in the menu.
+    // Purely decorative — no light, no animation.
+    //
+    // Base and flame are both native tile art but often DIFFERENT sizes (e.g. a 48x16 fireplace
+    // body with a 16x16 one-tile flame). The base gets letterboxed into the square icon by
+    // preserveAspect at scale k = BuildIconSize / max(bodyW, bodyH); the flame must use that SAME
+    // k, then centre on the body (offset by fireOffset, in tile units — matching the in-world
+    // child at localPosition (fireOffsetX, fireOffsetY)). Filling the icon rect instead would blow
+    // a one-tile flame up to full size and bury the body.
+    static void AddFireOverlay(Transform iconTf, StructType st, Sprite baseSprite) {
+        string flameName = !string.IsNullOrEmpty(st.fireSprite) ? st.fireSprite : st.name.Replace(" ", "") + "_f";
+        Sprite[] frames = Resources.LoadAll<Sprite>("Sprites/Buildings/" + flameName);
+        if (frames == null || frames.Length == 0) return;
+        Sprite fs = frames[0];
+
+        float k   = BuildIconSize / Mathf.Max(baseSprite.rect.width, baseSprite.rect.height);
+        float ppt = baseSprite.pixelsPerUnit;   // native px per tile (== per world unit)
+
+        var fireGO = new GameObject("Fire", typeof(RectTransform));
+        fireGO.transform.SetParent(iconTf, false);
+        var rt = (RectTransform)fireGO.transform;
+        rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta        = new Vector2(fs.rect.width * k, fs.rect.height * k);
+        rt.anchoredPosition = new Vector2(st.fireOffsetX * ppt * k, st.fireOffsetY * ppt * k);
+
+        var fimg = fireGO.AddComponent<Image>();
+        fimg.sprite = fs;
+        fimg.raycastTarget = false;
+    }
+
+    // Move `entry` to the sibling slot that keeps `parent`'s BuildDisplay children in ascending
+    // StructType-id order. Each child is named "BuildDisplay_<name>"; we resolve its id via
+    // Db.structTypeByName. The target index is simply the count of existing entries whose id is
+    // lower, since the panel holds only BuildDisplay children.
+    static void PlaceByIdOrder(Transform entry, Transform parent, int id) {
+        int index = 0;
+        for (int i = 0; i < parent.childCount; i++) {
+            Transform child = parent.GetChild(i);
+            if (child == entry) continue;
+            if (!child.name.StartsWith("BuildDisplay_")) continue;
+            string other = child.name.Substring("BuildDisplay_".Length);
+            if (Db.structTypeByName.TryGetValue(other, out StructType st) && st.id < id) index++;
+        }
+        entry.SetSiblingIndex(index);
     }
 
     public void ToggleCategory(string cat) {
@@ -250,6 +340,10 @@ public class BuildPanel : MonoBehaviour {
         return true;
     }
 
+    // Wild herbs (goji, mugwort, ...) are foraged from natural spawns and never deliberately
+    // planted, so they stay out of the build menu entirely even once their seed is discovered.
+    static bool IsForageOnly(StructType st) => st is PlantType pt && pt.isWild;
+
     // Reconciles plant entries against current seed-discovery state. Idempotent: adds a plant's
     // entry when its seed becomes discovered (picked up, traded for, researched) and removes it
     // when the seed is no longer discovered (after a save load / world reset). Called by
@@ -262,7 +356,7 @@ public class BuildPanel : MonoBehaviour {
         if (!subPanels.TryGetValue("plants", out GameObject sp) || sp == null) return;
         Transform panel = sp.transform;
         foreach (StructType st in Db.structTypes) {
-            if (st == null || !st.isPlant || st.defaultLocked) continue;
+            if (st == null || !st.isPlant || st.defaultLocked || IsForageOnly(st)) continue;
             bool shouldShow = PlantSeedDiscovered(st);
             Transform entry = panel.Find("BuildDisplay_" + st.name);
             if (shouldShow && entry == null) AddBuildDisplay(panel, st);
@@ -288,7 +382,7 @@ public class BuildPanel : MonoBehaviour {
         if (!catButtons.TryGetValue("plants", out Button btn) || btn == null) return;
         int n = 0;
         foreach (StructType st in Db.structTypes)
-            if (st != null && st.isPlant && !st.defaultLocked && PlantSeedDiscovered(st)) n++;
+            if (st != null && st.isPlant && !st.defaultLocked && !IsForageOnly(st) && PlantSeedDiscovered(st)) n++;
         btn.gameObject.SetActive(n > 0);
         if (n == 0 && openCategory == "plants") CloseSubPanel();
     }

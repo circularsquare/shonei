@@ -27,8 +27,6 @@ public class SettingsManager : MonoBehaviour {
     const string K_Vsync      = "settings.vsync";       // 0 / 1
     const string K_FlatLighting = "settings.flatLighting"; // 0 = shaded, 1 = flat
     const string K_FloodFill   = "settings.floodFill";    // 0 = radial point lights, 1 = geodesic flood-fill
-    const string K_WallShadows = "settings.wallShadows"; // DEPRECATED legacy bool — migrated to K_InteriorMode on first load
-    const string K_InteriorMode = "settings.interiorMode"; // InteriorMode int (0 = wall shadows, 1 = no wall shadows, 2 = burrow lit as building)
     const string K_CloudLight = "settings.cloudLighting"; // 0 / 1
     const string K_CloudDetail = "settings.cloudDetail"; // 0.2–1 fraction of full blob count
     const string K_ParticleDensity = "settings.particleDensity"; // 0–1 fraction of full precipitation (0 = off)
@@ -41,19 +39,10 @@ public class SettingsManager : MonoBehaviour {
     // PlayerPrefs.DeleteAll(), which would also nuke the login token (Session) and the
     // save-sync machine GUID (SaveSyncIndex). Add new settings keys here too.
     static readonly string[] AllKeys = {
-        K_MasterVol, K_SfxVol, K_AmbientVol, K_TargetFps, K_Vsync, K_FlatLighting, K_FloodFill, K_WallShadows, K_InteriorMode,
+        K_MasterVol, K_SfxVol, K_AmbientVol, K_TargetFps, K_Vsync, K_FlatLighting, K_FloodFill,
         K_CloudLight, K_CloudDetail, K_ParticleDensity, K_AutosaveMins, K_UiScale, K_UiFontIndex, K_HideBackground,
     };
 
-    // How enclosed-building (burrow) interiors are lit. Comparison knob — see SPEC-rendering §Lighting.
-    //   WallShadows      — point lights occluded by solid tiles (per-pixel ray-march); burrow interiors
-    //                      promoted to lit-only so a torch inside lights them, one above is blocked. (default)
-    //   NoWallShadows    — legacy: point lights ignore walls; burrow interiors get sun + ambient only.
-    //   BurrowAsBuilding — burrow sprites move off the Interior layer onto Default, so they shade exactly
-    //                      like a normal surface building (own normals + underground darkening + point
-    //                      lights). Wall occlusion still on. The dug-in carve/backdrop is unchanged, so
-    //                      the burrow stays visible — only its lighting tier differs.
-    public enum InteriorMode { WallShadows = 0, NoWallShadows = 1, BurrowAsBuilding = 2 }
 
     // ── Values ───────────────────────────────────────────────────────────────
     public float masterVolume   { get; private set; } = 1f;
@@ -72,18 +61,17 @@ public class SettingsManager : MonoBehaviour {
     // instead of the radial falloff + straight-line thickness shadow. Adds around-corner reach into
     // tunnels/burrow doors; the NdotL direction stays the real toLight, so normal maps still shade.
     // Experimental — may show faceting/temporal artifacts. Default off = current radial model.
-    public bool  floodFill     { get; private set; } = false;
-    // Enclosed-building interior lighting mode (see InteriorMode above). Default = wall shadows.
-    public InteriorMode interiorMode { get; private set; } = InteriorMode.WallShadows;
-    // Derived flags consumed by the renderer / layer assignment — single source of truth so
-    // callers never branch on the raw enum.
-    //   pointShadows: wall ray-march on (everything except the legacy no-shadows mode).
-    //   interiorLit : promote the Interior-layer dir-only tier to lit-only (wall-shadows mode only;
-    //                 BurrowAsBuilding puts nothing on the Interior layer, so promotion is moot).
+    public bool  floodFill     { get; private set; } = true;
+    // Interior-building (burrow) lighting is fixed: burrows render on the Default layer and shade like
+    // normal surface buildings (own normals + underground darkening + point lights). The old
+    // wall-shadows / no-shadows dropdown was retired once flood-fill made occlusion intrinsic. These
+    // stay as named constants because the renderer / layer assignment still read them.
+    //   pointShadows:    wall occlusion on (geodesic under flood-fill; thickness DDA when flood-fill off).
+    //   interiorLit:     no Interior-tier promotion (burrows aren't on the Interior layer).
     //   burrowAsBuilding: enclosed buildings render on Default instead of Interior.
-    public bool pointShadows     => interiorMode != InteriorMode.NoWallShadows;
-    public bool interiorLit      => interiorMode == InteriorMode.WallShadows;
-    public bool burrowAsBuilding => interiorMode == InteriorMode.BurrowAsBuilding;
+    public bool pointShadows     => true;
+    public bool interiorLit      => false;
+    public bool burrowAsBuilding => true;
     // When off, CloudFieldGen Pass 0 skips the 5-tap height-field normal +
     // Lambertian band selection and outputs a flat-colour silhouette. Saves
     // ~80% of the cloud blob-loop work; useful for measuring the cost of the
@@ -144,15 +132,7 @@ public class SettingsManager : MonoBehaviour {
         targetFps       = Mathf.Max(0, PlayerPrefs.GetInt(K_TargetFps, 60));
         vsyncEnabled    = PlayerPrefs.GetInt(K_Vsync, 0) != 0;
         flatLighting    = PlayerPrefs.GetInt(K_FlatLighting, 0) != 0;
-        floodFill       = PlayerPrefs.GetInt(K_FloodFill, 0) != 0;
-        // Interior mode: prefer the new key; else migrate the deprecated wallShadows bool
-        // (on → WallShadows, off → NoWallShadows); else default to WallShadows.
-        if (PlayerPrefs.HasKey(K_InteriorMode))
-            interiorMode = (InteriorMode)Mathf.Clamp(PlayerPrefs.GetInt(K_InteriorMode, 0), 0, 2);
-        else if (PlayerPrefs.HasKey(K_WallShadows))
-            interiorMode = PlayerPrefs.GetInt(K_WallShadows, 1) != 0 ? InteriorMode.WallShadows : InteriorMode.NoWallShadows;
-        else
-            interiorMode = InteriorMode.WallShadows;
+        floodFill       = PlayerPrefs.GetInt(K_FloodFill, 1) != 0;
         cloudLightingEnabled = PlayerPrefs.GetInt(K_CloudLight, 1) != 0;
         cloudDetail     = Mathf.Clamp(PlayerPrefs.GetFloat(K_CloudDetail, 1f), CloudDetailMin, CloudDetailMax);
         particleDensity = Mathf.Clamp01(PlayerPrefs.GetFloat(K_ParticleDensity, 1f));
@@ -224,13 +204,6 @@ public class SettingsManager : MonoBehaviour {
         if (enabled == floodFill) return;
         floodFill = enabled;
         PlayerPrefs.SetInt(K_FloodFill, enabled ? 1 : 0);
-        OnChanged?.Invoke();
-    }
-
-    public void SetInteriorMode(InteriorMode mode) {
-        if (mode == interiorMode) return;
-        interiorMode = mode;
-        PlayerPrefs.SetInt(K_InteriorMode, (int)mode);
         OnChanged?.Invoke();
     }
 

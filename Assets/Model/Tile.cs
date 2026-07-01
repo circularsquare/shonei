@@ -143,21 +143,40 @@ public class Tile {
     // overlay-skip, OverlayGrowthSystem freeze, flower eligibility, save gate).
     // Depth-aware consumers read snowAmount / SnowAccumulationSystem.SnowLevel.
     public bool snow => _snowAmount > 0;
-    // Background wall behind the tile (rendered by BackgroundTileMeshController).
-    // Type is fixed at world-gen and never changes after mining: wall type
-    // mirrors the worldgen dirt mask (wavy boundary) so cave-roof walls match
-    // what the tile would have been. `hasBackground` is a derived getter for
-    // callers that just want presence (SkyExposure etc.).
-    private BackgroundType _backgroundType;
-    public BackgroundType backgroundType {
-        get { return _backgroundType; }
+    // Farmland: tilling swaps the dirt tile's TYPE to "dirttilled" (its own tile type, with no
+    // grass overlay and its own body sprite), so the state is the type itself — no separate flag,
+    // and it persists/renders/clears-grass for free through the normal tile-type machinery. Till-
+    // requiring crops (wheat/rice/soybean) need this below them; persistent, so a replant reuses it.
+    public bool tilled => _type != null && _type.name == "dirttilled";
+    // Background wall behind the tile — the MATERIAL (TileType) whose wall art renders
+    // at this cell (drawn by BackgroundTileMeshController, grouped by TileType.backgroundAtlas).
+    // Set at world-gen to mirror the stone/earth that spawned in front (WorldGen.SetBackgrounds),
+    // so mining a tile out reveals the matching wall. null = no wall (open to sky / void).
+    // `hasBackground` is the presence shorthand for callers that don't care which material
+    // (SkyExposure, flower placement, save gate).
+    private TileType _backgroundTile;
+    public TileType backgroundTile {
+        get { return _backgroundTile; }
         set {
-            if (_backgroundType == value) return;
-            _backgroundType = value;
+            if (_backgroundTile == value) return;
+            _backgroundTile = value;
             cbBackgroundChanged?.Invoke(this);
         }
     }
-    public bool hasBackground => _backgroundType != BackgroundType.None;
+    public bool hasBackground => _backgroundTile != null;
+    // True once a quarry/pit has fully extracted this cell's wall (its depth is spent).
+    // The wall is exhausted: it can't host another quarry (StructPlacement) and renders
+    // darkened. Set on depletion, persisted, reset only by ClearWorld. Fires
+    // cbBackgroundChanged so the renderer can redraw.
+    private bool _backgroundQuarriedOut;
+    public bool backgroundQuarriedOut {
+        get { return _backgroundQuarriedOut; }
+        set {
+            if (_backgroundQuarriedOut == value) return;
+            _backgroundQuarriedOut = value;
+            cbBackgroundChanged?.Invoke(this);
+        }
+    }
     // Depth slots — slot index is independent of visual sortingOrder.
     // 0=building, 1=platform, 2=foreground, 3=road, 4=power shaft, 5=enclosure (greenhouse).
     // Slot 4 (shafts) renders behind buildings via a low sortingOrder; see Structure.cs.
@@ -262,6 +281,16 @@ public class Tile {
         return null;
     }
 
+    // Any ceiling-mounted structure (hanging lantern) on this tile — it hangs from the tile
+    // above. Mirror-invariant. Used by Blueprint to drop a mount whose ceiling was mined out.
+    public Structure GetCeilingMount(){
+        for (int d = 0; d < NumDepths; d++){
+            Structure s = structs[d];
+            if (s != null && s.structType.mountTo == MountTo.Ceiling) return s;
+        }
+        return null;
+    }
+
     public Blueprint GetAnyBlueprint(){
         foreach (var bp in blueprints) if (bp != null) return bp;
         return null;
@@ -297,16 +326,6 @@ public class Tile {
 }
 
 
-// Wall type behind a tile. Saved per-tile and authoritative for which
-// background texture renders at that grid cell. Decided at world-gen
-// from the dirt mask (wavy boundary) and never changes.
-public enum BackgroundType {
-    None  = 0,
-    Stone = 1,
-    Dirt  = 2,
-}
-
-
 public class TileType {
     public int id {get; set;}
     public string name {get; set;}                  // internal lookup key — never shown to the player.
@@ -324,6 +343,11 @@ public class TileType {
     // Stone and everything else are NOT soil: bare crops can't grow on them, and a greenhouse
     // built on them runs self-contained. See StructPlacement (planting) and Greenhouse.OnPlaced.
     public bool isSoil => solid && (group == "earth" || name == "dirt_placed");
+    // Max soil moisture this material holds (0..100; = MoistureSystem.MoistureMax for earth). Stone
+    // holds less — slate/granite are near-impermeable. Drives the moisture clamp, the diffusion
+    // conductivity (low cap = poor conductor = barrier), the well pull threshold, and (future)
+    // saturation-based plant comfort. Default 100; only set lower for stone in tilesDb.json.
+    public int moistureCapacity {get; set;} = 100;
     // Optional override: borrow another tile type's texture for rendering instead of `name`
     // (cache + per-type arrays stay keyed by `name`). Usually unnecessary — the "_placed"
     // convention (below) auto-borrows the base art. Set this only to point at some OTHER stem.
@@ -355,6 +379,11 @@ public class TileType {
     // Tile breaking = "clear the area"; extraction = "deliberate resource harvesting".
     public ItemNameQuantity[] nExtractionProducts {get; set;}
     public ItemQuantity[] extractionProducts;
+    // Optional stem of this material's background-wall atlas under Resources/Sprites/Tiles/Sheets/
+    // (e.g. "limestoneback"). Non-null only on materials that can appear as a revealed wall
+    // (stone + earth groups). BackgroundTileMeshController groups walls by this atlas; null
+    // means the material never renders as a wall. See SPEC-rendering (background walls).
+    public string backgroundAtlas {get; set;}
 
 
     [OnDeserialized]

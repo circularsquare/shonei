@@ -75,6 +75,11 @@ public class Animal : MonoBehaviour{
     public float workProgress = 0f;
 
     public Job job;
+    // Main carry pack: general work carry-over + fetched craft inputs. Equip slots (food/tool/
+    // clothing/hat/book) are separate. Size is single-sourced here so Db's carry-capacity
+    // validation and CraftTask's carry cap agree with what's actually constructed.
+    public const int MainInvStacks = 5;
+    public const int MainInvStackSize = 1000; // fen per stack
     public Inventory inv;
     public Inventory foodSlotInv; // equip slot: food only, 1 stack, 5 liang capacity
     public Inventory toolSlotInv; // equip slot: tool, 1 stack
@@ -88,6 +93,7 @@ public class Animal : MonoBehaviour{
 
     public SkillSet skills = new SkillSet();
     public BuffSet  buffs  = new BuffSet(); // timed tonic buffs (work speed, temp tolerance, sleep)
+    public ActivityTracker activity = new ActivityTracker(); // recency-weighted time-per-state (population panel)
 
     public Eating eating;
     public Eeping eeping;
@@ -170,7 +176,7 @@ public class Animal : MonoBehaviour{
         var sg = go.GetComponent<UnityEngine.Rendering.SortingGroup>();
         if (sg == null) sg = go.AddComponent<UnityEngine.Rendering.SortingGroup>();
         sg.sortingOrder = 50 + (id % 15);
-        this.inv = new Inventory(5, 1000, Inventory.InvType.Animal);
+        this.inv = new Inventory(MainInvStacks, MainInvStackSize, Inventory.InvType.Animal);
         this.foodSlotInv = new Inventory(1, 500, Inventory.InvType.Equip);
         this.toolSlotInv = new Inventory(1, 200, Inventory.InvType.Equip);
         this.clothingSlotInv = new Inventory(1, 200, Inventory.InvType.Equip);
@@ -222,6 +228,7 @@ public class Animal : MonoBehaviour{
             SaveSystem.LoadInventory(hatSlotInv, pendingSaveData.hatSlotInv);
             SaveSystem.LoadInventory(bookSlotInv, pendingSaveData.bookSlotInv);
             skills.Deserialize(pendingSaveData.skillXp, pendingSaveData.skillLevel);
+            activity.Deserialize(pendingSaveData.activity); // null on old saves → stays zeroed, re-warms
             buffs.Deserialize(pendingSaveData.buffs);
             // Resume mid-journey travel if the animal was saved while traveling.
             // New saves carry a travelTaskType descriptor so we can rebuild the full
@@ -352,6 +359,10 @@ public class Animal : MonoBehaviour{
 
     public void TickUpdate() { // called from animalcontroller each second.
         tickCounter++;
+        // Sample the state held since the last tick into the recency-weighted activity
+        // record (population-panel "job load" bar). Before the starvation early-return so
+        // a starving mouse's last ticks still register.
+        activity.Tick(state);
         if (tickCounter % 10 == 0) {
             SlowUpdate();
         }
@@ -558,19 +569,29 @@ public class Animal : MonoBehaviour{
         // rank then no-op — see validation note in the plan).
         float equipU = (job.usesTools && toolSlotInv.itemStacks[0].item == null) ? UrgencyConfig.EquipUrgency : 0f;
         float clothingU = clothingSlotInv.itemStacks[0].item == null ? UrgencyConfig.EquipUrgency : 0f;
+        // Self-heal the hard hat-uniform rule: drop a hat that isn't this mouse's preferred one
+        // (kept across a job change, or loaded from a pre-gating save) so the slot frees to seek the
+        // right one. Pairs with SetJob (immediate on swap) and FindHat (only ever fetches the preferred hat).
+        if (hatSlotInv.itemStacks[0].item != null && hatSlotInv.itemStacks[0].item != job.preferredHatItem)
+            Unequip(hatSlotInv);
         float hatU = (job.preferredHatItem != null && hatSlotInv.itemStacks[0].item == null) ? UrgencyConfig.EquipUrgency : 0f;
         candidates.Add((Jitter(equipU), equipU, "equip", FindEquipment));
         candidates.Add((Jitter(clothingU), clothingU, "clothing", FindClothing));
         candidates.Add((Jitter(hatU), hatU, "hat", FindHat));
-        float dropU = DropUrgency();
+        var wom = WorkOrderManager.instance;
+        // Craft is scored before drop so a craft blocked purely by a cluttered pack can lift drop
+        // urgency above the craft band (clear clutter now, craft next tick). The scan is
+        // wom-independent; the craft *candidate* still needs wom, added in the block below.
+        var craft = wom != null ? ScoreCraftRecipes() : null;
+        bool craftBlockedByClutter = craft != null && craft.Count > 0 && CraftBlockedByClutter(craft[0].recipe);
+
+        float dropU = DropUrgency(craftBlockedByClutter);
         candidates.Add((Jitter(dropU), dropU, "drop", TryStartDrop));
 
-        var wom = WorkOrderManager.instance;
         if (wom != null) {
             wom.PruneStale();
             float workU = wom.BestWorkUrgency(this);
             candidates.Add((Jitter(workU), workU, "work", TryStartWorkOrder));
-            var craft = ScoreCraftRecipes();
             float craftU = CraftUrgency(craft);
             candidates.Add((Jitter(craftU), craftU, "craft", () => ChooseCraftTask(craft)));
         }
@@ -643,14 +664,33 @@ public class Animal : MonoBehaviour{
     // while starving" behaviour), and above the work tiers so a laden idle mouse still drops
     // promptly. Returns 0 when the inv is empty or the boxed-in cooldown hasn't elapsed, so the
     // category sits out of the ranking on those ticks.
-    private float DropUrgency() {
+    private float DropUrgency(bool craftBlocked = false) {
         if (inv.IsEmpty() || World.instance.timer < dropCooldownUntil) return 0f;
+        // A craft the mouse wants can't fit its inputs because of carried clutter: spike above the
+        // craft band so it offloads now and crafts next tick, rather than possibly doing other work
+        // while boxed in. Still below hunger/sleep peaks and near-p1 work (see UrgencyConfig).
+        if (craftBlocked) return UrgencyConfig.DropCraftBlocked;
         int occupied = 0;
         foreach (ItemStack s in inv.itemStacks)
             if (s != null && s.quantity > 0) occupied++;
         float fullness = (float)occupied / inv.itemStacks.Length;
         return UrgencyConfig.DropFloor
              + (UrgencyConfig.DropCeil - UrgencyConfig.DropFloor) * fullness;
+    }
+
+    // True when the best craftable recipe can't fit even one round in the current pack, yet WOULD
+    // fit an empty pack — carried clutter is the sole blocker. Signals ChooseTask to spike drop
+    // urgency so the mouse clears the pack, then crafts next tick. Volume-aware (fen per input,
+    // ceil over stacks, deduped by item); fuel is approximated as one stack and a group input uses
+    // the group item as a stand-in. This only gates the *drop* decision — CraftTask.Initialize's
+    // exact, leaf-resolved carry cap is the real gate, so a coarse estimate here is harmless.
+    private bool CraftBlockedByClutter(Recipe recipe) {
+        if (recipe == null || recipe.IsExtraction || inv.IsEmpty()) return false;
+        var adds = new List<(Item, int)>(recipe.inputs.Length);
+        foreach (ItemQuantity iq in recipe.inputs) adds.Add((iq.item, iq.quantity));
+        int need = inv.EmptyStacksToAbsorb(adds) + (recipe.fuelCost > 0f ? 1 : 0);
+        int total = inv.itemStacks.Length;
+        return need <= total && need > inv.CountEmptyStacks();
     }
 
     private bool TryStartDrop() {
@@ -678,11 +718,15 @@ public class Animal : MonoBehaviour{
             // stealing metal work. Recipes the foundry can't do (clay-mold firing) are unaffected.
             if (FoundrySupersedes(recipe) && wom.FoundryWithinRadius(building.x, building.y, Task.MediumFindRadius))
                 continue;
-            var craftTask = new CraftTask(this, building, recipe);
-            if (craftTask.Start()) {
+            // The well reuses the craft demand/dispatch layer (so it competes for water like a pump)
+            // but runs a bespoke lowering-bucket draw instead of the fixed-workload craft loop.
+            Task chosen = building is Well well
+                ? new DrawWaterTask(this, well, recipe)
+                : new CraftTask(this, building, recipe);
+            if (chosen.Start()) {
                 order.res.Reserve();
-                craftTask.workOrder = order;
-                task = craftTask;
+                chosen.workOrder = order;
+                task = chosen;
                 return true;
             }
         }
@@ -708,11 +752,33 @@ public class Animal : MonoBehaviour{
             if (r == null) continue;
             if (!r.IsEligibleForPicking()) continue;
             if (!ginv.CanCraft(r)) continue;   // inputs in stock AND fuel energy (if recipe burns fuel)
+            if (r.IsExtraction) {
+                // Quarry / digging pit: flat urgency (via the band-inverse score) while ANY reachable
+                // wall still has a wanted output — base OR rare drop below target. Skipped entirely once
+                // every possible output is over target, so a fully-satisfied cluster stops digging.
+                if (AnyExtractorWanted(r, targets))
+                    scored.Add((r, UrgencyConfig.ExtractionScoreForBand()));
+                continue;
+            }
             if (r.AllOutputsSatisfied(targets)) continue;
             scored.Add((r, r.Score(targets)));
         }
         scored.Sort((a, b) => b.score.CompareTo(a.score)); // highest score first
         return scored;
+    }
+
+    // True if any live extractor building for this recipe's type still has a wanted output in its
+    // captured wall (Recipe.ExtractionWanted). Recipe-level gate for the flat extraction urgency —
+    // per-building wall differences are ignored here (v1: which building the miner visits is chosen
+    // by ChooseCraftTask/proximity). Returns false when no such building exists.
+    private bool AnyExtractorWanted(Recipe r, Dictionary<int, int> targets) {
+        var sc = StructController.instance;
+        if (sc == null) return false;
+        foreach (Structure s in sc.GetStructures())
+            if (s is IExtractor ex && s.structType.name == r.tile
+                && Recipe.ExtractionWanted(ex.CapturedProducts, targets))
+                return true;
+        return false;
     }
 
     // 0..1 urgency for the craft category. Recipe.Score is unbounded (0..+∞), so it can't be
@@ -1262,7 +1328,7 @@ public class Animal : MonoBehaviour{
     // a closer/better task. Craft derives its batch size from this budget (below); construction
     // counts ticks against it directly (see AnimalStateManager.HandleWorking). Harvest, research,
     // and maintenance already finish a stint well under this.
-    public const int MaxWorkStintTicks = 25;
+    public const int MaxWorkStintTicks = 30;
 
     public int CalculateWorkPossible(Recipe recipe){
         // looks at inputs in gInv, and first available storage you can find in animal range, at least 1.
@@ -1317,6 +1383,15 @@ public class Animal : MonoBehaviour{
         this.job = newJob;
         if (cbAnimalChanged != null){
             cbAnimalChanged(this, oldJob);
+        }
+        // Hats are a hard profession uniform: a mouse wears ONLY its job's preferredHat. On a job
+        // change, drop any hat that no longer matches (including switching to a hatless job) so it
+        // returns to circulation for a mouse that actually wants it. FindHat enforces the same rule
+        // on the pickup side, so the two together make "preferred" a hard requirement, not a default.
+        if (hatSlotInv != null) {
+            Item worn = hatSlotInv.itemStacks[0].item;
+            if (worn != null && worn != newJob?.preferredHatItem)
+                Unequip(hatSlotInv);
         }
         // Only interrupt the current task if it's actually job-tied. Sleeping, eating,
         // socializing, leisure etc. should carry on across a job change. Task.IsWork
